@@ -1,9 +1,18 @@
 "use client";
 
 import { useAction, useMutation } from "convex/react";
-import { Copy, Link2, Trash2 } from "lucide-react";
+import {
+  ArrowRight01Icon,
+  Copy01Icon,
+  Delete02Icon,
+  Globe02Icon,
+  Pin02Icon,
+  Refresh01Icon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Link2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { memo, useState } from "react";
+import { memo, useId, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -18,19 +27,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { FieldGroup, Panel, ReadOnlyValue, ToggleRow } from "../fields";
-import { Field, SectionCard } from "../section-card";
+import { SectionCard } from "../section-card";
 import { StatusChip, type StatusTone } from "../status-chip";
 
 type DomainFailure =
@@ -91,15 +91,25 @@ export const DomainSection = memo(function DomainSection({
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.domain");
   const ts = useTranslations("evidenceLibraryConfiguration.sections");
-  const { data } = useProtectedQuery(api.evidenceLibraries.domains.listDomains, {
-    libraryId,
-  });
+  const { data } = useProtectedQuery(
+    api.evidenceLibraries.domains.listDomains,
+    {
+      libraryId,
+    },
+  );
   const addDomain = useAction(api.evidenceLibraries.domainActions.addDomain);
-  const checkDomain = useAction(api.evidenceLibraries.domainActions.checkDomain);
-  const removeDomain = useAction(api.evidenceLibraries.domainActions.removeDomain);
-  const setPrimary = useMutation(api.evidenceLibraries.versions.setDomainPrimary);
+  const checkDomain = useAction(
+    api.evidenceLibraries.domainActions.checkDomain,
+  );
+  const removeDomain = useAction(
+    api.evidenceLibraries.domainActions.removeDomain,
+  );
+  const setPrimary = useMutation(
+    api.evidenceLibraries.versions.setDomainPrimary,
+  );
   const [custom, setCustom] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const customId = useId();
   // Switching the library's address signs everyone out, so it is confirmed
   // first — in both directions.
   const [confirming, setConfirming] = useState<{
@@ -162,10 +172,14 @@ export const DomainSection = memo(function DomainSection({
       return;
     }
     if (checked.state === "failed") {
-      toast.error(checked.failure ? t(`failure.${checked.failure}`) : t("failed"));
+      toast.error(
+        checked.failure ? t(`failure.${checked.failure}`) : t("failed"),
+      );
       return;
     }
-    toast.success(t(`status.${dnsStatusOf({ ...row, state: checked.state }, false)}`));
+    toast.success(
+      t(`status.${dnsStatusOf({ ...row, state: checked.state }, false)}`),
+    );
   }
 
   function copy(value: string) {
@@ -182,43 +196,41 @@ export const DomainSection = memo(function DomainSection({
       description={t("description")}
       data-domain-state={domains[0]?.state ?? "empty"}
     >
-      <Field label={t("platformLabel")} hint={t("platformHint")}>
-        {(id) => <ReadOnlyValue id={id} value={data?.platformAddress ?? ""} />}
-      </Field>
-
       {canAdd ? (
-        <Field
-          label={domains.length === 0 ? t("customLabel") : t("addAnother")}
-          hint={t("customHint")}
-        >
-          {(id) => (
-            <div className="flex gap-2">
-              <Input
-                id={id}
-                className="bg-background font-mono text-sm"
-                placeholder="library.example.org"
-                value={custom}
-                onChange={(event) => setCustom(event.target.value)}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy !== null || !custom.trim()}
-                onClick={() => void onAdd()}
-              >
-                {busy === "add" ? <Spinner /> : null}
-                {t("add")}
-              </Button>
-            </div>
-          )}
-        </Field>
+        <div className="flex gap-2">
+          <label className="sr-only" htmlFor={customId}>
+            {domains.length === 0 ? t("customLabel") : t("addAnother")}
+          </label>
+          <Input
+            id={customId}
+            className="bg-background font-mono text-sm"
+            placeholder="library.example.org"
+            value={custom}
+            onChange={(event) => setCustom(event.target.value)}
+          />
+          <Button
+            type="button"
+            disabled={busy !== null || !custom.trim()}
+            onClick={() => void onAdd()}
+          >
+            {busy === "add" ? <Spinner /> : null}
+            {t("add")}
+          </Button>
+        </div>
       ) : null}
 
       {suggestedWwwHost ? (
-        <Panel tone="muted" className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium">{t("wwwTitle")}</p>
-            <p className="text-sm text-muted-foreground">{t("wwwHint")}</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/15 bg-primary/5 px-3 py-2.5">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <HugeiconsIcon
+              icon={Globe02Icon}
+              size={18}
+              className="mt-0.5 shrink-0 text-primary"
+            />
+            <div>
+              <p className="text-sm font-medium">{t("wwwTitle")}</p>
+              <p className="text-xs text-muted-foreground">{t("wwwHint")}</p>
+            </div>
           </div>
           <Button
             type="button"
@@ -231,159 +243,179 @@ export const DomainSection = memo(function DomainSection({
               host: suggestedWwwHost,
             })}
           </Button>
-        </Panel>
+        </div>
       ) : null}
 
-      {domains.map((domain: DomainRow) => {
-        const checking = busy === domain.domainId;
-        const status = dnsStatusOf(domain, checking);
-        return (
-          <FieldGroup
-            key={domain.domainId}
-            title={t("recordsHeading")}
-            hint={t("recordsHint")}
-            data-domain-host={domain.host}
-            action={
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                // A removal that stopped halfway is finished by pressing
-                // again, so the button stays usable while one is under way.
-                disabled={busy !== null}
-                onClick={() =>
-                  void run(domain.domainId, () =>
-                    removeDomain({ libraryId, domainId: domain.domainId }),
-                  )
-                }
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                {domain.removing ? t("removeAgain") : t("remove")}
-              </Button>
-            }
-          >
-            <Field label={t("customLabel")}>
-              {(id) => (
-                <ReadOnlyValue id={id} value={domain.host} locked={false} />
-              )}
-            </Field>
+      {domains.length > 0 ? (
+        <div className="space-y-2">
+          <div>
+            <p className="text-sm font-medium">{t("recordsHeading")}</p>
+            <p className="text-xs text-muted-foreground">{t("recordsHint")}</p>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-border/60 bg-background">
+            {domains.map((domain: DomainRow, index) => {
+              const checking = busy === domain.domainId;
+              const status = dnsStatusOf(domain, checking);
+              const canChooseAsPrimary =
+                domain.role === "primary" ||
+                (domain.state === "active" && !domain.removing);
 
-            {domain.isApex ? (
-              <Panel tone="muted" role="note">
-                <p className="text-sm">{t("apex")}</p>
-              </Panel>
-            ) : null}
+              return (
+                <article
+                  key={domain.domainId}
+                  className={
+                    index === 0 ? undefined : "border-t border-border/60"
+                  }
+                  data-domain-host={domain.host}
+                >
+                  <header className="flex flex-wrap items-center gap-2.5 px-3 py-2.5">
+                    <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+                      <HugeiconsIcon icon={Globe02Icon} size={17} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate font-mono text-sm font-medium">
+                          {domain.host}
+                        </p>
+                        {status !== "failed" ? (
+                          <StatusChip
+                            tone={STATUS_TONE[status]}
+                            data-dns-status={status}
+                          >
+                            {checking ? <Spinner /> : null}
+                            {t(`status.${status}`)}
+                          </StatusChip>
+                        ) : null}
+                        {domain.attached ? (
+                          <StatusChip
+                            tone={
+                              domain.state === "active" ? "success" : "neutral"
+                            }
+                            data-certificate={
+                              domain.state === "active" ? "active" : "pending"
+                            }
+                          >
+                            {domain.state === "active"
+                              ? t("tlsActive")
+                              : t("tlsPending")}
+                          </StatusChip>
+                        ) : null}
+                      </div>
+                      {status === "failed" && domain.failure ? (
+                        <p
+                          className="mt-0.5 text-xs text-destructive"
+                          data-dns-status={status}
+                        >
+                          {t(`failure.${domain.failure}`)}
+                        </p>
+                      ) : null}
+                    </div>
+                    {canChooseAsPrimary ? (
+                      <Button
+                        type="button"
+                        variant={
+                          domain.role === "primary" ? "secondary" : "ghost"
+                        }
+                        size="icon"
+                        className="size-8"
+                        aria-label={
+                          domain.role === "primary"
+                            ? t("confirmOffTitle")
+                            : t("redirectLabel")
+                        }
+                        title={t("redirectHint")}
+                        disabled={busy !== null}
+                        onClick={() =>
+                          setConfirming({
+                            domainId: domain.domainId,
+                            host: domain.host,
+                            primary: domain.role !== "primary",
+                          })
+                        }
+                      >
+                        <HugeiconsIcon icon={Pin02Icon} size={16} />
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={busy !== null || domain.removing}
+                      onClick={() => void onCheck(domain)}
+                    >
+                      {checking ? (
+                        <Spinner />
+                      ) : (
+                        <HugeiconsIcon icon={Refresh01Icon} size={15} />
+                      )}
+                      {t("checkDns")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-muted-foreground hover:text-destructive"
+                      aria-label={
+                        domain.removing ? t("removeAgain") : t("remove")
+                      }
+                      title={domain.removing ? t("removeAgain") : t("remove")}
+                      disabled={busy !== null}
+                      onClick={() =>
+                        void run(domain.domainId, () =>
+                          removeDomain({
+                            libraryId,
+                            domainId: domain.domainId,
+                          }),
+                        )
+                      }
+                    >
+                      <HugeiconsIcon icon={Delete02Icon} size={16} />
+                    </Button>
+                  </header>
 
-            <div className="rounded-lg border border-border/50 bg-background">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-20">{t("colType")}</TableHead>
-                    <TableHead>{t("colName")}</TableHead>
-                    <TableHead>{t("colValue")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {domain.records.map((record) => (
-                    <TableRow key={record.type}>
-                      <TableCell className="font-mono text-xs">
-                        {record.type}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {record.name}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-between gap-2">
+                  <div className="border-t border-border/50 bg-muted/10 px-3">
+                    {domain.records.map((record, recordIndex) => (
+                      <div
+                        key={record.type}
+                        className={`grid grid-cols-[3.25rem_minmax(0,1fr)_2rem] items-center gap-2 py-2 ${
+                          recordIndex === 0 ? "" : "border-t border-border/40"
+                        }`}
+                      >
+                        <span className="w-fit rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
+                          {record.type}
+                        </span>
+                        <div className="grid min-w-0 items-center gap-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
                           <span className="truncate font-mono text-xs">
+                            {record.name}
+                          </span>
+                          <HugeiconsIcon
+                            icon={ArrowRight01Icon}
+                            size={14}
+                            className="hidden text-muted-foreground/60 sm:block"
+                          />
+                          <span className="truncate font-mono text-xs text-muted-foreground">
                             {record.value}
                           </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 shrink-0"
-                            aria-label={t("copyValue", { type: record.type })}
-                            onClick={() => copy(record.value)}
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            <Panel
-              tone="muted"
-              className="flex flex-wrap items-center justify-between gap-3"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusChip tone={STATUS_TONE[status]} data-dns-status={status}>
-                  {checking ? <Spinner /> : null}
-                  {/* A failed check names what actually went wrong; the mock's
-                      wording is the answer for a domain with no records. */}
-                  {status === "failed" && domain.failure
-                    ? t(`failure.${domain.failure}`)
-                    : t(`status.${status}`)}
-                </StatusChip>
-                {domain.attached ? (
-                  <StatusChip
-                    tone={domain.state === "active" ? "success" : "neutral"}
-                    data-certificate={domain.state === "active" ? "active" : "pending"}
-                  >
-                    {domain.state === "active"
-                      ? t("tlsActive")
-                      : t("tlsPending")}
-                  </StatusChip>
-                ) : null}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                // A domain on its way out is not checked again: that would
-                // race the removal already running.
-                disabled={busy !== null || domain.removing}
-                onClick={() => void onCheck(domain)}
-              >
-                {checking ? <Spinner /> : null}
-                {t("checkDns")}
-              </Button>
-            </Panel>
-
-            <ToggleRow
-              label={t("redirectLabel")}
-              hint={t("redirectHint")}
-              checked={domain.role === "primary"}
-              // Turning it on needs a working domain and one that is not on
-              // its way out. Turning the current address off is always
-              // allowed: that is how an owner takes back the platform
-              // address when a domain stops working.
-              disabled={
-                busy !== null ||
-                (domain.role !== "primary" &&
-                  (domain.state !== "active" || domain.removing))
-              }
-              disabledReason={
-                domain.removing
-                  ? t("removingNow")
-                  : domain.state === "verified"
-                    ? t("redirectWaiting")
-                    : t("redirectDisabled")
-              }
-              onChange={(checked) =>
-                setConfirming({
-                  domainId: domain.domainId,
-                  host: domain.host,
-                  primary: checked,
-                })
-              }
-            />
-          </FieldGroup>
-        );
-      })}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          aria-label={t("copyValue", { type: record.type })}
+                          onClick={() => copy(record.value)}
+                        >
+                          <HugeiconsIcon icon={Copy01Icon} size={15} />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <AlertDialog
         open={confirming !== null}
@@ -394,9 +426,7 @@ export const DomainSection = memo(function DomainSection({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirming?.primary
-                ? t("confirmOnTitle")
-                : t("confirmOffTitle")}
+              {confirming?.primary ? t("confirmOnTitle") : t("confirmOffTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirming?.primary
