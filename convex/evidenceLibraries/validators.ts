@@ -158,7 +158,6 @@ export const ownerConfigurationVersionValidator = v.union(
   v.literal(4),
 );
 export const draftOwnerConfigurationVersionValidator = v.union(
-  v.literal(2),
   v.literal(3),
   v.literal(4),
 );
