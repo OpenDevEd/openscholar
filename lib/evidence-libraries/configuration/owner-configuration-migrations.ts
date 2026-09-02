@@ -10,7 +10,7 @@ import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 3 as const;
+export const CURRENT_OWNER_CONFIGURATION_VERSION = 4 as const;
 export const MAX_CHANGED_POINTERS = 100;
 
 // Version 3 used the runtime catalog pinned when that migration shipped.
@@ -486,6 +486,22 @@ function migrateVersionTwoToThree(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+function migrateVersionThreeToFour(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 4;
+  for (const row of next.sections) {
+    if (!isRecord(row.payload)) continue;
+    const payload = { ...row.payload };
+    if (row.sectionKey === "search") delete payload.authorCountry;
+    if (row.sectionKey === "filters") delete payload.countryLibrary;
+    if (row.sectionKey === "features") delete payload.authorLocation;
+    row.payload = payload;
+  }
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
   {
     from: 1,
@@ -504,6 +520,19 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 2,
     to: 3,
     migrate: migrateVersionTwoToThree,
+    defaultRows: [
+      {
+        sectionKey: "ai",
+        payload: () => ({
+          providers: [{ provider: AI_PROVIDER, enabled: false, models: [] }],
+        }),
+      },
+    ],
+  },
+  {
+    from: 3,
+    to: 4,
+    migrate: migrateVersionThreeToFour,
     defaultRows: [
       {
         sectionKey: "ai",

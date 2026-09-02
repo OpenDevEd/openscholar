@@ -174,6 +174,57 @@ describe("owner configuration migrations", () => {
     );
   });
 
+  it("removes the temporary author-location settings from version 3", () => {
+    const result = migrateOwnerConfiguration({
+      ownerConfigurationVersion: 3,
+      sections: [
+        {
+          sectionKey: "search",
+          payload: { fullText: true, country: true, authorCountry: false },
+        },
+        {
+          sectionKey: "filters",
+          payload: { countryLibrary: true, years: { enabled: true } },
+        },
+        {
+          sectionKey: "features",
+          payload: { authorFilter: true, authorLocation: true },
+        },
+      ],
+    });
+
+    expect(result.snapshot).toEqual({
+      ownerConfigurationVersion: 4,
+      sections: [
+        {
+          sectionKey: "search",
+          payload: { fullText: true, country: true },
+        },
+        {
+          sectionKey: "filters",
+          payload: { years: { enabled: true } },
+        },
+        {
+          sectionKey: "features",
+          payload: { authorFilter: true },
+        },
+        {
+          sectionKey: "ai",
+          payload: {
+            providers: [{ provider: "openrouter", enabled: false, models: [] }],
+          },
+        },
+      ],
+    });
+    expect(result.changedPointers).toEqual([
+      "/ownerConfigurationVersion",
+      "/search/authorCountry",
+      "/filters/countryLibrary",
+      "/features/authorLocation",
+      "/ai",
+    ]);
+  });
+
   it("completes declared default rows without overwriting explicit values", () => {
     const currentMigration = OWNER_CONFIGURATION_MIGRATIONS.find(
       ({ to }) => to === CURRENT_OWNER_CONFIGURATION_VERSION,
@@ -247,6 +298,7 @@ describe("owner configuration migrations", () => {
     ).toEqual([
       [1, 2],
       [2, 3],
+      [3, 4],
     ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
@@ -365,9 +417,7 @@ describe("owner configuration migrations", () => {
       {
         sectionKey: "ai",
         payload: {
-          providers: [
-            { provider: "openrouter", enabled: false, models: [] },
-          ],
+          providers: [{ provider: "openrouter", enabled: false, models: [] }],
         },
       },
     ]);
@@ -481,6 +531,7 @@ describe("owner configuration migrations", () => {
     ).toEqual([
       [1, 2],
       [2, 3],
+      [3, 4],
     ]);
   });
 
@@ -853,7 +904,7 @@ describe("owner configuration migrations", () => {
   });
 
   it("rejects missing, unknown, newer, and gapped versions", () => {
-    for (const version of [undefined, 0, 4]) {
+    for (const version of [undefined, 0, 5]) {
       const error = expectMigrationError(() =>
         migrateOwnerConfiguration({
           ownerConfigurationVersion: version as never,

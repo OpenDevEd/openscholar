@@ -25,13 +25,22 @@ import { ChoiceChips, FieldGroup, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { FeaturedInstitutionPicker } from "./institution-pickers";
 
-export function SearchSection({ libraryId, draft, saved, patch, reset }: SectionProps) {
+export function SearchSection({
+  libraryId,
+  draft,
+  saved,
+  patch,
+  reset,
+}: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.search");
   const { search, filters } = draft;
   const featuredMode = filters.institution.mode === "facet-with-featured-value";
 
   // Some features need a search option or filter; they switch off with it.
-  const setSearch = <K extends keyof SearchDraft>(key: K, value: SearchDraft[K]) =>
+  const setSearch = <K extends keyof SearchDraft>(
+    key: K,
+    value: SearchDraft[K],
+  ) =>
     patch((d) => {
       d.search[key] = value;
       return settleFeatures(d);
@@ -61,18 +70,25 @@ export function SearchSection({ libraryId, draft, saved, patch, reset }: Section
             patch((d) => {
               d.search.fullText = checked;
               // Full text off: the runtime rejects the documents scope.
-              if (!checked) d.search.scopes = d.search.scopes.filter((s) => s !== "documents");
+              if (!checked)
+                d.search.scopes = d.search.scopes.filter(
+                  (s) => s !== "documents",
+                );
               return d;
             })
           }
         />
-        <ToggleRow label={t("tags")} hint={t("tagsHint")} checked={search.tags} onChange={(v) => setSearch("tags", v)} />
-        <ToggleRow label={t("country")} hint={t("countryHint")} checked={search.country} onChange={(v) => setSearch("country", v)} />
         <ToggleRow
-          label={t("authorCountry")}
-          hint={t("authorCountryHint")}
-          checked={search.authorCountry}
-          onChange={(v) => setSearch("authorCountry", v)}
+          label={t("tags")}
+          hint={t("tagsHint")}
+          checked={search.tags}
+          onChange={(v) => setSearch("tags", v)}
+        />
+        <ToggleRow
+          label={t("country")}
+          hint={t("countryHint")}
+          checked={search.country}
+          onChange={(v) => setSearch("country", v)}
         />
       </FieldGroup>
 
@@ -88,27 +104,38 @@ export function SearchSection({ libraryId, draft, saved, patch, reset }: Section
                 value: scope,
                 label: t(`scope.${scope}`),
                 disabled,
-                disabledReason: disabled ? t("documentsNeedsFullText") : undefined,
+                disabledReason: disabled
+                  ? t("documentsNeedsFullText")
+                  : undefined,
               };
             })}
           />
-          {search.scopes.length === 0 ? <FieldError>{t("scopesError")}</FieldError> : null}
+          {search.scopes.length === 0 ? (
+            <FieldError>{t("scopesError")}</FieldError>
+          ) : null}
         </div>
         <Field
           label={t("defaultScope")}
           hint={t("defaultScopeHint")}
           className="max-w-sm"
           error={
-            search.scopes.length > 0 && !search.scopes.includes(search.defaultScope)
+            search.scopes.length > 0 &&
+            !search.scopes.includes(search.defaultScope)
               ? t("defaultScopeError")
               : null
           }
         >
           {(id) => (
             <Select
-              value={search.scopes.includes(search.defaultScope) ? search.defaultScope : undefined}
+              value={
+                search.scopes.includes(search.defaultScope)
+                  ? search.defaultScope
+                  : undefined
+              }
               disabled={search.scopes.length === 0}
-              onValueChange={(value) => setSearch("defaultScope", value as SearchScope)}
+              onValueChange={(value) =>
+                setSearch("defaultScope", value as SearchScope)
+              }
             >
               <SelectTrigger id={id} className="w-full bg-background">
                 <SelectValue placeholder={t("defaultScopePlaceholder")} />
@@ -151,7 +178,10 @@ export function SearchSection({ libraryId, draft, saved, patch, reset }: Section
             )}
           </Field>
           {filters.institution.mode !== "hidden" ? (
-            <Field label={t("institutionLabel")} hint={t("institutionLabelHint")}>
+            <Field
+              label={t("institutionLabel")}
+              hint={t("institutionLabelHint")}
+            >
               {(id) => (
                 <Input
                   id={id}
@@ -173,7 +203,11 @@ export function SearchSection({ libraryId, draft, saved, patch, reset }: Section
             label={t("featuredInstitution")}
             hint={t("featuredInstitutionHint")}
             className="max-w-sm"
-            error={!filters.institution.featuredValue.trim() ? t("featuredInstitutionError") : null}
+            error={
+              !filters.institution.featuredValue.trim()
+                ? t("featuredInstitutionError")
+                : null
+            }
           >
             {(id) => (
               <FeaturedInstitutionPicker

@@ -52,12 +52,12 @@ describe("Evidence Library draft storage", () => {
         revisionId: fixture.created.revisionId,
       },
     );
-    expect(currentDraft.draft.ownerConfigurationVersion).toBe(3);
-    expect(currentRevision.revision.ownerConfigurationVersion).toBe(3);
+    expect(currentDraft.draft.ownerConfigurationVersion).toBe(4);
+    expect(currentRevision.revision.ownerConfigurationVersion).toBe(4);
 
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(fixture.created.draftId, {
-        ownerConfigurationVersion: 2,
+        ownerConfigurationVersion: 3,
       });
       const rows = await ctx.db
         .query("evidenceLibraryConfigSections")
@@ -65,19 +65,17 @@ describe("Evidence Library draft storage", () => {
           query.eq("draftId", fixture.created.draftId),
         )
         .collect();
-      for (const sectionKey of ["features", "ai"] as const) {
+      for (const sectionKey of ["features", "search"] as const) {
         const existing = rows.find((row) => row.sectionKey === sectionKey);
         const payload =
           sectionKey === "features"
-            ? { ...((existing?.payload as object | undefined) ?? {}), ai: true }
+            ? {
+                ...((existing?.payload as object | undefined) ?? {}),
+                authorLocation: true,
+              }
             : {
-                providers: [
-                  {
-                    provider: "openrouter",
-                    enabled: true,
-                    defaultModel: "anthropic/claude-sonnet-5",
-                  },
-                ],
+                ...((existing?.payload as object | undefined) ?? {}),
+                authorCountry: true,
               };
         const payloadByteLength = Buffer.byteLength(JSON.stringify(payload));
         if (existing) {
@@ -104,32 +102,28 @@ describe("Evidence Library draft storage", () => {
     const storedRolloutDraft = await fixture.t.run((ctx) =>
       ctx.db.get(fixture.created.draftId),
     );
-    expect(rolloutDraft.draft.ownerConfigurationVersion).toBe(3);
-    expect(storedRolloutDraft?.ownerConfigurationVersion).toBe(2);
+    expect(rolloutDraft.draft.ownerConfigurationVersion).toBe(4);
+    expect(storedRolloutDraft?.ownerConfigurationVersion).toBe(3);
     expect(
       rolloutDraft.sections.find((row) => row.sectionKey === "features")
         ?.payload,
-    ).toMatchObject({ ai: false });
+    ).not.toHaveProperty("authorLocation");
     expect(
-      rolloutDraft.sections.find((row) => row.sectionKey === "ai")?.payload,
-    ).toEqual({
-      providers: [{ provider: "openrouter", enabled: false, models: [] }],
-    });
+      rolloutDraft.sections.find((row) => row.sectionKey === "search")?.payload,
+    ).not.toHaveProperty("authorCountry");
 
     await fixture.admin.mutation(
       api.evidenceLibraries.mutations.saveDraftSections,
       {
         libraryId: fixture.created.libraryId,
-        sections: [
-          { sectionKey: "footer", payload: { poweredBy: true } },
-        ],
+        sections: [{ sectionKey: "footer", payload: { poweredBy: true } }],
         expectedEditVersion: rolloutDraft.draft.editVersion,
       },
     );
     const migratedDraft = await fixture.t.run((ctx) =>
       ctx.db.get(fixture.created.draftId),
     );
-    expect(migratedDraft?.ownerConfigurationVersion).toBe(3);
+    expect(migratedDraft?.ownerConfigurationVersion).toBe(4);
 
     await expect(
       fixture.t.run((ctx) =>

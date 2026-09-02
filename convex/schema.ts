@@ -36,25 +36,19 @@ import {
   organizationFields,
   organizationMembershipFields,
 } from "./evidenceLibraries/validators";
-import {
-  evidenceLibraryRuntimeReadCacheFields,
-  evidenceLibraryZoteroGroupFields,
-} from "./zotero/libraryGroupValidators";
+import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidators";
 
 export default defineSchema({
   clerkEventLogs: defineTable(clerkEventLogFields)
     .index("by_instanceId_and_eventId", ["instanceId", "eventId"])
-    .index(
-      "by_entity_outcome_time_and_eventId",
-      [
-        "instanceId",
-        "entityType",
-        "entityId",
-        "outcome",
-        "occurredAt",
-        "eventId",
-      ],
-    ),
+    .index("by_entity_outcome_time_and_eventId", [
+      "instanceId",
+      "entityType",
+      "entityId",
+      "outcome",
+      "occurredAt",
+      "eventId",
+    ]),
 
   organizations: defineTable(organizationFields)
     .index("by_clerkOrganizationId", ["clerkOrganizationId"])
@@ -81,10 +75,8 @@ export default defineSchema({
     .index("by_organizationId_and_slug", ["organizationId", "slug"])
     .index("by_organizationId_and_state", ["organizationId", "state"]),
 
-  evidenceLibraryConfigDrafts: defineTable(evidenceLibraryConfigDraftFields).index(
-    "by_libraryId",
-    ["libraryId"],
-  )
+  evidenceLibraryConfigDrafts: defineTable(evidenceLibraryConfigDraftFields)
+    .index("by_libraryId", ["libraryId"])
     .index("by_ownerConfigurationVersion", ["ownerConfigurationVersion"]),
 
   evidenceLibraryConfigRevisions: defineTable(
@@ -109,7 +101,9 @@ export default defineSchema({
     evidenceLibraryAdminLoginCodeFields,
   ).index("by_libraryId_and_codeDigest", ["libraryId", "codeDigest"]),
 
-  evidenceLibraryRuntimeBindings: defineTable(evidenceLibraryRuntimeBindingValidator)
+  evidenceLibraryRuntimeBindings: defineTable(
+    evidenceLibraryRuntimeBindingValidator,
+  )
     .index("by_libraryId", ["libraryId"])
     .index("by_targetRuntimeId", ["targetRuntimeId"])
     .index("by_targetBaseUrl", ["targetBaseUrl"])
@@ -123,8 +117,9 @@ export default defineSchema({
     // The sweep walks working domains oldest check first, so none starves.
     .index("by_state_and_checkedAt", ["state", "checkedAt"]),
 
-  evidenceLibraryRuntimeReleases: defineTable(evidenceLibraryRuntimeReleaseFields)
-    .index("by_running", ["running"]),
+  evidenceLibraryRuntimeReleases: defineTable(
+    evidenceLibraryRuntimeReleaseFields,
+  ).index("by_running", ["running"]),
 
   evidenceLibraryZoteroGroups: defineTable(evidenceLibraryZoteroGroupFields)
     .index("by_libraryId", ["libraryId"])
@@ -133,14 +128,6 @@ export default defineSchema({
   evidenceLibraryServedHosts: defineTable(
     evidenceLibraryServedHostsFields,
   ).index("by_source", ["source"]),
-
-  evidenceLibraryRuntimeReadCache: defineTable(
-    evidenceLibraryRuntimeReadCacheFields,
-  ).index("by_libraryId_and_kind_and_cacheKey", [
-    "libraryId",
-    "kind",
-    "cacheKey",
-  ]),
 
   evidenceLibraryConfigOperations: defineTable(evidenceLibraryOperationFields)
     .index("by_libraryId_and_idempotencyKey", ["libraryId", "idempotencyKey"])
@@ -345,7 +332,7 @@ export default defineSchema({
       v.literal("processed"),
       v.literal("retrying"),
       v.literal("failed"),
-      v.literal("ignored")
+      v.literal("ignored"),
     ),
     attemptCount: v.number(),
     lastError: v.optional(v.string()),
@@ -407,7 +394,7 @@ export default defineSchema({
       v.literal("openai"),
       v.literal("anthropic"),
       v.literal("google"),
-      v.literal("openrouter")
+      v.literal("openrouter"),
     ),
     encryptedKey: v.string(),
     keyPrefix: v.string(), // First chars for display (sk-xxxx...)
@@ -426,8 +413,8 @@ export default defineSchema({
   zoteroConnections: defineTable({
     userId: v.id("users"),
     zoteroUserId: v.string(),
-    encryptedApiKey: v.string(),  // Required: encrypted API key (only storage form after Phase 43 migration)
-    keyPrefix: v.string(),       // Required: first chars for display (e.g. "zot_xxxx...")
+    encryptedApiKey: v.string(), // Required: encrypted API key (only storage form after Phase 43 migration)
+    keyPrefix: v.string(), // Required: first chars for display (e.g. "zot_xxxx...")
     username: v.optional(v.string()),
     connectedAt: v.number(),
   })
@@ -491,7 +478,7 @@ export default defineSchema({
       v.literal("library"),
       v.literal("collection"),
       v.literal("zotero"),
-      v.literal("upload")
+      v.literal("upload"),
     ),
     sourceRefId: v.string(),
     title: v.string(),
@@ -510,9 +497,7 @@ export default defineSchema({
     // history: saved-search placeholder that expands during queue setup
     searchFilters: v.optional(searchFiltersValidator),
     // zotero context (libraryType/groupId resolve the OAuth target at queue setup)
-    libraryType: v.optional(
-      v.union(v.literal("user"), v.literal("group"))
-    ),
+    libraryType: v.optional(v.union(v.literal("user"), v.literal("group"))),
     groupId: v.optional(v.string()),
     zoteroUserId: v.optional(v.string()),
     collectionKey: v.optional(v.string()),
@@ -643,12 +628,10 @@ export default defineSchema({
       v.literal("completed"),
       v.literal("cancelled"),
       v.literal("failed"),
-      v.literal("creditsExhausted")
+      v.literal("creditsExhausted"),
     ),
     totalPapers: v.number(),
-    questions: v.array(
-      v.object({ key: v.string(), question: v.string() })
-    ),
+    questions: v.array(v.object({ key: v.string(), question: v.string() })),
     scoringConfig: v.object({
       rules: v.array(
         v.object({
@@ -656,13 +639,13 @@ export default defineSchema({
           yesPoints: v.number(),
           noPoints: v.number(),
           nullPoints: v.number(),
-        })
+        }),
       ),
       starThresholds: v.array(
         v.object({
           minScore: v.number(),
           stars: v.number(),
-        })
+        }),
       ),
       minimumScore: v.optional(v.number()),
     }),
@@ -691,11 +674,9 @@ export default defineSchema({
       v.literal("processing"),
       v.literal("completed"),
       v.literal("failed"),
-      v.literal("skipped")
+      v.literal("skipped"),
     ),
-    answers: v.optional(
-      v.record(v.string(), v.union(v.boolean(), v.null()))
-    ),
+    answers: v.optional(v.record(v.string(), v.union(v.boolean(), v.null()))),
     score: v.optional(v.number()),
     stars: v.optional(v.number()),
     qualified: v.optional(v.boolean()),
@@ -705,7 +686,7 @@ export default defineSchema({
         confidence: v.optional(v.number()),
         model: v.optional(v.string()),
         provider: v.optional(v.string()),
-      })
+      }),
     ),
     creditsUsed: v.optional(v.number()),
     savedToLibrary: v.optional(v.boolean()),
@@ -762,8 +743,7 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     itemCount: v.optional(v.number()),
-  })
-    .index("by_user", ["userId"]),
+  }).index("by_user", ["userId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEM COLLECTIONS - Junction table for many-to-many
@@ -791,10 +771,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   userResourceLocks: defineTable({
     userId: v.id("users"),
-    kind: v.union(
-      v.literal("batch_screening"),
-      v.literal("batch_translation"),
-    ),
+    kind: v.union(v.literal("batch_screening"), v.literal("batch_translation")),
     acquiredAt: v.number(),
     expiresAt: v.number(),
   })

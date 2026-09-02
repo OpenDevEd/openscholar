@@ -26,15 +26,6 @@ export const evidenceLibraryZoteroGroupValidator = v.object({
   ...evidenceLibraryZoteroGroupFields,
 });
 
-// Short-lived copies of runtime read answers (collections, institutions).
-export const evidenceLibraryRuntimeReadCacheFields = {
-  libraryId: v.id("evidenceLibraries"),
-  kind: v.union(v.literal("collections"), v.literal("institutions")),
-  cacheKey: v.string(),
-  payload: v.any(),
-  fetchedAt: v.number(),
-};
-
 export function zoteroGroupCredentialKey(groupId: string): string {
   return `zotero-group:${groupId}`;
 }
