@@ -1,11 +1,12 @@
 import type { ComponentPropsWithoutRef, CSSProperties } from "react";
 
-import tricon from "@/public/openalex-tricon.png";
 import { cn } from "@/lib/utils";
 
+const OPENALEX_TRICON_URL = "/openalex-tricon.png";
+
 const MASK_STYLE: CSSProperties = {
-  WebkitMaskImage: `url(${tricon.src})`,
-  maskImage: `url(${tricon.src})`,
+  WebkitMaskImage: `url(${OPENALEX_TRICON_URL})`,
+  maskImage: `url(${OPENALEX_TRICON_URL})`,
   WebkitMaskRepeat: "no-repeat",
   maskRepeat: "no-repeat",
   WebkitMaskPosition: "center",
