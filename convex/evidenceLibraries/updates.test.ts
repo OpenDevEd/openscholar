@@ -304,7 +304,7 @@ describe("Evidence Library update check", () => {
     expect(github.requests).toHaveLength(0);
   });
 
-  it("keeps the last deployable update while the newest image is building", async () => {
+  it("starts the last deployable update while the newest image is building", async () => {
     const fixture = await createReadySetupFixture("update-check-image-pending");
     const newest = "e".repeat(40);
     const github = createGithub({ latest: newest, imageStatus: 404 });
@@ -324,7 +324,26 @@ describe("Evidence Library update check", () => {
       fixture.admin.action(api.evidenceLibraries.updates.check, {
         libraryId: fixture.created.libraryId,
       }),
-    ).resolves.toEqual(cached);
+    ).resolves.toEqual({ ...cached, checkedAt: Date.now() });
+
+    const started = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(started).toMatchObject({
+      status: "running",
+      from: RUNNING,
+      to: LATEST,
+    });
+    await expect(
+      fixture.t.run((ctx) => ctx.db.get(started.operationId)),
+    ).resolves.toMatchObject({
+      runtimeUpdate: {
+        from: RUNNING,
+        to: LATEST,
+        toImage: IMAGE,
+      },
+    });
   });
 
   it("keeps working when two cold checks left two rows for the same commit", async () => {

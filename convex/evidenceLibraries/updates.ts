@@ -120,7 +120,14 @@ async function refreshRuntimeRelease(
     release = await fetchRuntimeRelease({ running, token });
   } catch (error) {
     if (error instanceof RuntimeReleaseError) {
-      if (error.code === "RUNTIME_IMAGE_PENDING" && fallback) return fallback;
+      if (error.code === "RUNTIME_IMAGE_PENDING" && fallback) {
+        const checkedFallback = { ...fallback, checkedAt: Date.now() };
+        await ctx.runMutation(
+          internal.evidenceLibraries.updates.saveRuntimeRelease,
+          checkedFallback,
+        );
+        return checkedFallback;
+      }
       throw createError("INVALID_DATA", error.message, { reason: error.code });
     }
     throw error;
