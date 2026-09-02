@@ -41,9 +41,7 @@ import { EmptyList, FieldGroup, Panel } from "../fields";
 import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip, type StatusTone } from "../status-chip";
 
-type RuntimeState = FunctionReturnType<
-  typeof api.evidenceLibraries.updates.check
->;
+type RuntimeState = FunctionReturnType<typeof api.evidenceLibraries.updates.check>;
 type VersionRow = FunctionReturnType<
   typeof api.evidenceLibraries.versions.listVersions
 >[number];
@@ -87,9 +85,7 @@ function settle(
   );
 }
 
-type CheckAction = (args: {
-  libraryId: Id<"evidenceLibraries">;
-}) => Promise<RuntimeState>;
+type CheckAction = (args: { libraryId: Id<"evidenceLibraries"> }) => Promise<RuntimeState>;
 
 /**
  * One update check per page open, shared with `use()` across renders. The
@@ -98,10 +94,7 @@ type CheckAction = (args: {
  * render reuses the first call. "Check again" and a started update replace
  * the entry.
  */
-const runtimeChecks = new WeakMap<
-  CheckAction,
-  Map<string, Promise<RuntimeCheck>>
->();
+const runtimeChecks = new WeakMap<CheckAction, Map<string, Promise<RuntimeCheck>>>();
 
 function runtimeCheck(
   check: CheckAction,
@@ -175,24 +168,15 @@ export function VersionsSection({
     ? runtimeCheck(check, libraryId, refreshKey, checkError)
     : null;
   const [busy, setBusy] = useState(false);
-  const [checking, setChecking] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [restoring, setRestoring] = useState<VersionRow | null>(null);
 
-  const blocked = busy || checking || operationRunning;
+  const blocked = busy || operationRunning;
 
   function checkAgain() {
-    if (checking) return;
-    setChecking(true);
-    const request = runtimeCheck(check, libraryId, refreshKey, checkError, {
-      fresh: true,
-    });
+    runtimeCheck(check, libraryId, refreshKey, checkError, { fresh: true });
     setCheckCount((count) => count + 1);
-    void Promise.all([
-      request,
-      new Promise((resolve) => setTimeout(resolve, 500)),
-    ]).then(() => setChecking(false));
   }
 
   function confirmUpdate() {
@@ -296,13 +280,10 @@ export function VersionsSection({
               variant="ghost"
               size="sm"
               onClick={checkAgain}
-              disabled={busy || operationRunning}
-              aria-busy={checking}
-              aria-disabled={checking || undefined}
-              className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
+              disabled={blocked}
             >
-              {checking ? <Spinner aria-hidden="true" /> : <RefreshCw />}
-              {t(checking ? "versions.checking" : "versions.checkAgain")}
+              <RefreshCw />
+              {t("versions.checkAgain")}
             </Button>
           ) : null
         }
@@ -401,9 +382,7 @@ export function VersionsSection({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("versions.restoreTitle", {
-                rev: restoring?.revisionKey ?? "",
-              })}
+              {t("versions.restoreTitle", { rev: restoring?.revisionKey ?? "" })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t("versions.restoreBody")}
@@ -447,9 +426,7 @@ function SoftwarePanel({
     <Panel tone="muted" className="space-y-3" data-runtime-state={state}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         {updateAvailable ? (
-          <StatusChip tone="warning">
-            {t("versions.updateAvailable")}
-          </StatusChip>
+          <StatusChip tone="warning">{t("versions.updateAvailable")}</StatusChip>
         ) : (
           <StatusChip tone="success">{t("versions.upToDate")}</StatusChip>
         )}
@@ -550,9 +527,7 @@ function VersionTable({
               data-version-status={row.status}
               data-revision={row.revisionKey}
             >
-              <TableCell className="font-mono text-xs">
-                {row.revisionKey}
-              </TableCell>
+              <TableCell className="font-mono text-xs">{row.revisionKey}</TableCell>
               <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                 {format.dateTime(new Date(row.createdAt), {
                   dateStyle: "medium",

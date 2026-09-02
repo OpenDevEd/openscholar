@@ -1,14 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -63,8 +56,10 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
 }));
 
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string, params?: Record<string, string>) =>
-    params ? `${key}:${Object.values(params).join(",")}` : key,
+  useTranslations:
+    () =>
+    (key: string, params?: Record<string, string>) =>
+      params ? `${key}:${Object.values(params).join(",")}` : key,
   useFormatter: () => ({
     dateTime: (date: Date) => date.toISOString(),
   }),
@@ -115,9 +110,7 @@ const rows = [
  * The software panel suspends until the update check answers. React retries a
  * suspended tree only inside an awaited act, so render and settle there.
  */
-async function renderSection(
-  props: Partial<Parameters<typeof VersionsSection>[0]> = {},
-) {
+async function renderSection(props: Partial<Parameters<typeof VersionsSection>[0]> = {}) {
   await act(async () => {
     render(
       <VersionsSection
@@ -161,10 +154,7 @@ describe("<VersionsSection>", () => {
 
   it("offers Update when newer software exists and starts it after confirming", async () => {
     const user = userEvent.setup();
-    mocks.startRuntimeUpdate.mockResolvedValue({
-      from: "aaaaaaa1234",
-      to: "bbbbbbb1234",
-    });
+    mocks.startRuntimeUpdate.mockResolvedValue({ from: "aaaaaaa1234", to: "bbbbbbb1234" });
     await renderSection();
 
     const update = screen.getByRole("button", { name: "versions.update" });
@@ -174,14 +164,10 @@ describe("<VersionsSection>", () => {
     ).not.toBeNull();
 
     await user.click(update);
-    await user.click(
-      screen.getByRole("button", { name: "versions.updateConfirm" }),
-    );
+    await user.click(screen.getByRole("button", { name: "versions.updateConfirm" }));
 
     await waitFor(() =>
-      expect(mocks.startRuntimeUpdate).toHaveBeenCalledWith({
-        libraryId: "library_123",
-      }),
+      expect(mocks.startRuntimeUpdate).toHaveBeenCalledWith({ libraryId: "library_123" }),
     );
     expect(mocks.toast).toHaveBeenCalledWith("versions.updateStarted", {
       description: "versions.updateStartedDescription:bbbbbbb",
@@ -190,12 +176,8 @@ describe("<VersionsSection>", () => {
 
   it("disables Update and Restore while an operation runs", async () => {
     await renderSection({ operationRunning: true });
-    expect(
-      screen.getByRole("button", { name: "versions.update" }),
-    ).toBeDisabled();
-    for (const button of screen.getAllByRole("button", {
-      name: "versions.restore",
-    })) {
+    expect(screen.getByRole("button", { name: "versions.update" })).toBeDisabled();
+    for (const button of screen.getAllByRole("button", { name: "versions.restore" })) {
       expect(button).toBeDisabled();
     }
   });
@@ -209,39 +191,7 @@ describe("<VersionsSection>", () => {
     });
     await renderSection();
     expect(screen.getByText("versions.upToDate")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "versions.update" }),
-    ).toBeNull();
-  });
-
-  it("shows feedback while checking again", async () => {
-    await renderSection();
-    vi.useFakeTimers();
-
-    await act(async () => {
-      fireEvent.click(
-        screen.getByRole("button", { name: "versions.checkAgain" }),
-      );
-      await Promise.resolve();
-    });
-    expect(
-      screen.getByRole("button", { name: "versions.checking" }),
-    ).toHaveAttribute("aria-disabled", "true");
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(499);
-    });
-    expect(
-      screen.getByRole("button", { name: "versions.checking" }),
-    ).toHaveAttribute("aria-disabled", "true");
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1);
-    });
-    expect(
-      screen.getByRole("button", { name: "versions.checkAgain" }),
-    ).toBeEnabled();
-    vi.useRealTimers();
+    expect(screen.queryByRole("button", { name: "versions.update" })).toBeNull();
   });
 
   it("marks the live row and offers Restore only on previous and failed rows", async () => {
@@ -250,22 +200,12 @@ describe("<VersionsSection>", () => {
     expect(live).not.toBeNull();
     expect(live).toHaveAttribute("data-revision", "r3");
     expect(row("r3").getByText("versions.status.live")).toBeInTheDocument();
-    expect(
-      row("r3").queryByRole("button", { name: "versions.restore" }),
-    ).toBeNull();
-    expect(
-      row("r2").getByRole("button", { name: "versions.restore" }),
-    ).toBeInTheDocument();
-    expect(
-      row("r1").getByRole("button", { name: "versions.restore" }),
-    ).toBeInTheDocument();
+    expect(row("r3").queryByRole("button", { name: "versions.restore" })).toBeNull();
+    expect(row("r2").getByRole("button", { name: "versions.restore" })).toBeInTheDocument();
+    expect(row("r1").getByRole("button", { name: "versions.restore" })).toBeInTheDocument();
     // Changed rows are named by their page card; a software update names the commit.
-    expect(
-      row("r3").getByText("sections.identity, sections.contact"),
-    ).toBeInTheDocument();
-    expect(
-      row("r2").getByText("versions.softwareUpdate bbbbbbb"),
-    ).toBeInTheDocument();
+    expect(row("r3").getByText("sections.identity, sections.contact")).toBeInTheDocument();
+    expect(row("r2").getByText("versions.softwareUpdate bbbbbbb")).toBeInTheDocument();
   });
 
   it("restores a version after confirming", async () => {
@@ -273,17 +213,9 @@ describe("<VersionsSection>", () => {
     mocks.restoreRevision.mockResolvedValue({ revisionKey: "r4" });
     await renderSection();
 
-    await user.click(
-      row("r1").getByRole("button", { name: "versions.restore" }),
-    );
-    expect(screen.getByRole("alertdialog")).toHaveTextContent(
-      "versions.restoreTitle:r1",
-    );
-    await user.click(
-      within(screen.getByRole("alertdialog")).getByRole("button", {
-        name: "versions.restore",
-      }),
-    );
+    await user.click(row("r1").getByRole("button", { name: "versions.restore" }));
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("versions.restoreTitle:r1");
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "versions.restore" }));
 
     await waitFor(() =>
       expect(mocks.restoreRevision).toHaveBeenCalledWith({
@@ -299,9 +231,7 @@ describe("<VersionsSection>", () => {
   it("says nothing about the address while the library answers at it", async () => {
     await renderSection();
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: "versions.addressMove" }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "versions.addressMove" })).toBeNull();
   });
 
   it("offers a move when another site answers the address", async () => {
@@ -328,9 +258,7 @@ describe("<VersionsSection>", () => {
       document.querySelector('[data-address-state="not-ours"]'),
     ).not.toBeNull();
 
-    await user.click(
-      screen.getByRole("button", { name: "versions.addressMove" }),
-    );
+    await user.click(screen.getByRole("button", { name: "versions.addressMove" }));
     await user.click(
       screen.getByRole("button", { name: "versions.addressMoveConfirm" }),
     );
@@ -424,9 +352,8 @@ describe("<VersionsSection>", () => {
     });
 
     expect(screen.getByText("versions.upToDate")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "versions.update" }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "versions.update" })).toBeNull();
     expect(mocks.check).toHaveBeenCalledTimes(2);
   });
+
 });
