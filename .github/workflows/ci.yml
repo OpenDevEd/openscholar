@@ -305,6 +305,12 @@ jobs:
         if: steps.billing-environment.outputs.available == 'true'
         run: npx playwright install chromium
 
+      - name: Finish Evidence Library draft migration
+        if: steps.billing-environment.outputs.available == 'true'
+        run: >-
+          npx convex run migrations/migrateEvidenceLibraryDraftsV4:run '{}'
+          --typecheck disable --codegen disable
+
       - name: Run required live and browser billing checks
         if: steps.billing-environment.outputs.available == 'true'
         run: |
