@@ -1,5 +1,5 @@
-// Reads the newest Evidence Library software commit from GitHub and the list
-// of commits between the commit a library runs and that newest commit.
+// Reads the newest successfully published Evidence Library runtime from
+// GitHub and the commits between a library's runtime and that release.
 // The repository is private, so every request carries a token.
 
 import {
@@ -10,7 +10,7 @@ import {
 
 const GITHUB_ORIGIN = "https://api.github.com";
 const RUNTIME_REPOSITORY = "OpenDevEd/new-el";
-const RUNTIME_BRANCH = "main";
+const RUNTIME_RELEASE_WORKFLOW = "runtime-image.yml";
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_CHANGES = 250;
@@ -20,6 +20,10 @@ const COMMIT = /^[a-f0-9]{40}$/u;
 export const RUNTIME_RELEASE_CACHE_MS = 10 * 60 * 1_000;
 
 export type RuntimeReleaseChange = { sha: string; message: string };
+export type RecommendedRuntimeRelease = {
+  latest: string;
+  image: RuntimeImageReference;
+};
 export type RuntimeRelease = {
   latest: string;
   image: RuntimeImageReference;
@@ -115,12 +119,10 @@ async function readGithub(
   }
 }
 
-export async function fetchRuntimeRelease(input: {
-  running: string;
+export async function fetchRecommendedRuntimeRelease(input: {
   token: string;
   fetchImpl?: typeof fetch;
-}): Promise<RuntimeRelease> {
-  const running = requireCommit("running commit", input.running);
+}): Promise<RecommendedRuntimeRelease> {
   const token = input.token.trim();
   if (!token) {
     throw new RuntimeReleaseError(
@@ -129,18 +131,27 @@ export async function fetchRuntimeRelease(input: {
     );
   }
   const fetchImpl = input.fetchImpl ?? fetch;
-  const head = await readGithub(
+  const releases = await readGithub(
     fetchImpl,
     token,
-    `/repos/${RUNTIME_REPOSITORY}/commits/${RUNTIME_BRANCH}`,
+    `/repos/${RUNTIME_REPOSITORY}/actions/workflows/${RUNTIME_RELEASE_WORKFLOW}/runs?branch=main&event=workflow_run&status=success&per_page=1`,
   );
-  if (head.status !== 200 || !isRecord(head.body)) {
+  const runs =
+    releases.status === 200 && isRecord(releases.body)
+      ? releases.body.workflow_runs
+      : null;
+  const newest = Array.isArray(runs) ? runs[0] : null;
+  if (
+    !isRecord(newest) ||
+    newest.event !== "workflow_run" ||
+    newest.conclusion !== "success"
+  ) {
     throw new RuntimeReleaseError(
       "GITHUB_UNAVAILABLE",
-      "The latest Evidence Library commit could not be read",
+      "The latest Evidence Library release could not be read",
     );
   }
-  const latest = requireCommit("latest commit", head.body.sha);
+  const latest = requireCommit("latest release commit", newest.head_sha);
   let image: RuntimeImageReference | null;
   try {
     image = await resolveRuntimeImage({
@@ -156,10 +167,25 @@ export async function fetchRuntimeRelease(input: {
   }
   if (!image) {
     throw new RuntimeReleaseError(
-      "RUNTIME_IMAGE_PENDING",
-      "The newest Evidence Library update is still being prepared",
+      "RUNTIME_IMAGE_UNAVAILABLE",
+      "The Evidence Library software image could not be read right now",
     );
   }
+  return { latest, image };
+}
+
+export async function fetchRuntimeRelease(input: {
+  running: string;
+  token: string;
+  fetchImpl?: typeof fetch;
+}): Promise<RuntimeRelease> {
+  const running = requireCommit("running commit", input.running);
+  const token = input.token.trim();
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const { latest, image } = await fetchRecommendedRuntimeRelease({
+    token,
+    fetchImpl,
+  });
   if (latest === running) return { latest, image, changes: [] };
 
   const compare = await readGithub(
