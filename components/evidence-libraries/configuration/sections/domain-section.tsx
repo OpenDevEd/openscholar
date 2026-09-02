@@ -200,6 +200,32 @@ export const DomainSection = memo(function DomainSection({
       description={t("description")}
       data-domain-state={domains[0]?.state ?? "empty"}
     >
+      {data?.platformAddress ? (
+        <div
+          role="group"
+          aria-label={t("platformLabel")}
+          className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-background px-3 py-2.5"
+          data-platform-address
+        >
+          <HugeiconsIcon
+            icon={Globe02Icon}
+            size={17}
+            className="shrink-0 text-muted-foreground"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-muted-foreground">
+              {t("platformLabel")}
+            </p>
+            <LibraryAddressLink
+              address={data.platformAddress}
+              className="max-w-full font-mono text-sm font-medium"
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <p className="text-sm font-medium">{t("customDomainsLabel")}</p>
+
       {canAdd ? (
         <div className="flex gap-2">
           <label className="sr-only" htmlFor={customId}>

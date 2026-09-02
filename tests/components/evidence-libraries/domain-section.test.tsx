@@ -170,6 +170,22 @@ describe("DomainSection", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the platform address separate when a custom domain is present", () => {
+    mocks.data.domains = [row({ state: "active", attached: true })];
+
+    render(<DomainSection libraryId={libraryId} />);
+
+    const platform = screen.getByRole("group", {
+      name: "evidenceLibraryConfiguration.domain.platformLabel",
+    });
+    expect(
+      within(platform).getByRole("link", { name: "climate-lib.opendev.space" }),
+    ).toHaveAttribute("href", "https://climate-lib.opendev.space");
+    expect(
+      document.querySelector("[data-domain-host='evidence.example.org']"),
+    ).not.toBeNull();
+  });
+
   it("shows the apex A record and adds the recommended www host", async () => {
     mocks.data.domains = [
       row({
