@@ -277,7 +277,12 @@ export type EvidenceLibraryAddressState = "ours" | "not-ours" | "unreachable";
 
 export type EvidenceLibraryAddressProbe =
   | { kind: "unreachable" }
-  | { kind: "answer"; status: number; body: string };
+  | { kind: "answer"; status: number; body: string; runtimeRoute?: string };
+
+type ExpectedRuntimeRoute = {
+  runtimeCommit: string;
+  revisionKey: string;
+};
 
 export type EvidenceLibraryAddressAnswer = {
   /** Whose site answers this address. */
@@ -301,6 +306,7 @@ const UNREACHABLE_ADDRESS: EvidenceLibraryAddressAnswer = {
  */
 export function classifyEvidenceLibraryAddress(
   probe: EvidenceLibraryAddressProbe,
+  expectedRuntimeRoute?: ExpectedRuntimeRoute,
 ): EvidenceLibraryAddressAnswer {
   if (probe.kind === "unreachable") return UNREACHABLE_ADDRESS;
   if (
@@ -308,6 +314,19 @@ export function classifyEvidenceLibraryAddress(
     probe.body.trimStart().toLowerCase().startsWith(FREE_ADDRESS_SIGNAL)
   ) {
     return UNREACHABLE_ADDRESS;
+  }
+  if (
+    expectedRuntimeRoute &&
+    probe.status >= 300 &&
+    probe.status < 400 &&
+    probe.runtimeRoute ===
+      `${expectedRuntimeRoute.runtimeCommit}:${expectedRuntimeRoute.revisionKey}`
+  ) {
+    return {
+      state: "ours",
+      revision: expectedRuntimeRoute.revisionKey,
+      activeAndAccepted: true,
+    };
   }
   if (probe.status !== 200) {
     return { state: "not-ours", revision: null, activeAndAccepted: false };
@@ -341,6 +360,7 @@ export function classifyEvidenceLibraryAddress(
 export async function probeEvidenceLibraryAddress(input: {
   targetBaseUrl: string;
   fetchImpl?: typeof fetch;
+  expectedRuntimeRoute?: ExpectedRuntimeRoute;
 }): Promise<EvidenceLibraryAddressAnswer> {
   const fetchImpl = input.fetchImpl ?? fetch;
   let origin: URL;
@@ -356,12 +376,18 @@ export async function probeEvidenceLibraryAddress(input: {
       fetchImpl,
       new URL("/api/library-config/health", origin),
       { headers: publicLibraryHeaders("application/json"), method: "GET" },
-      async (response) =>
-        classifyEvidenceLibraryAddress({
-          kind: "answer",
-          status: response.status,
-          body: await readBoundedText(response, { allowEmpty: true }),
-        }),
+      async (response) => {
+        const runtimeRoute = response.headers.get(RUNTIME_ROUTE_HEADER);
+        return classifyEvidenceLibraryAddress(
+          {
+            kind: "answer",
+            status: response.status,
+            body: await readBoundedText(response, { allowEmpty: true }),
+            ...(runtimeRoute ? { runtimeRoute } : {}),
+          },
+          input.expectedRuntimeRoute,
+        );
+      },
     );
   } catch {
     return UNREACHABLE_ADDRESS;

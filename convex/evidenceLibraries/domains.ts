@@ -73,6 +73,7 @@ const domainContextRowValidator = v.object({
   attachIntent: v.boolean(),
   removing: v.boolean(),
   deploymentPending: v.boolean(),
+  recoverableDeployment: v.boolean(),
   generation: v.number(),
 });
 
@@ -212,6 +213,7 @@ type DomainContext = {
   platformAddress: string;
   canonicalAddress: string;
   applicationUuid: string | null;
+  runtimeCommit: string | null;
   liveRevisionKey: string | null;
   attachedHosts: string[];
   uncertainHosts: string[];
@@ -227,6 +229,7 @@ type DomainContext = {
     attachIntent: boolean;
     removing: boolean;
     deploymentPending: boolean;
+    recoverableDeployment: boolean;
     generation: number;
   }>;
   domain: DomainContext["domains"][number] | null;
@@ -246,6 +249,9 @@ function presentDomainContextRow(row: Doc<"evidenceLibraryDomains">) {
     removing: row.removingAt !== undefined,
     deploymentPending:
       row.deploymentPending === true || row.pendingDeployment !== undefined,
+    recoverableDeployment:
+      row.pendingDeployment?.phase === "attach" ||
+      (row.pendingDeployment === undefined && row.deploymentPending === true),
     generation: row.generation,
   };
 }
@@ -259,6 +265,7 @@ export const readDomainContext = internalQuery({
     platformAddress: v.string(),
     canonicalAddress: v.string(),
     applicationUuid: v.union(v.string(), v.null()),
+    runtimeCommit: v.union(v.string(), v.null()),
     liveRevisionKey: v.union(v.string(), v.null()),
     attachedHosts: v.array(v.string()),
     uncertainHosts: v.array(v.string()),
@@ -290,6 +297,7 @@ export const readDomainContext = internalQuery({
       canonicalAddress: binding.canonicalBaseUrl ?? binding.targetBaseUrl,
       applicationUuid:
         "targetRuntimeId" in binding ? binding.targetRuntimeId : null,
+      runtimeCommit: "runtimeCommit" in binding ? binding.runtimeCommit : null,
       liveRevisionKey: revision?.revisionKey ?? null,
       // Hosts the proxy has confirmed it holds.
       attachedHosts: rows
@@ -533,7 +541,7 @@ export const claimDomainTransitions = internalMutation({
             row!.pendingDeployment !== undefined)
         ),
     );
-    if (claimable.length === 0) {
+    if (claimable.length !== rows.length) {
       return { status: "busy" as const };
     }
     await rateLimit(ctx, {
@@ -721,6 +729,57 @@ export const writeDomainCheck = internalMutation({
       ...(args.state === "active" && row.activatedAt === undefined
         ? { activatedAt: now }
         : {}),
+    });
+    return null;
+  },
+});
+
+/** Clears a stale failed deployment after the live route proves it already landed. */
+export const recoverLiveDomain = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    domainId: v.id("evidenceLibraryDomains"),
+    token: v.string(),
+    expectedGeneration: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+    if (!row || row.libraryId !== args.libraryId) {
+      throw createError("NOT_FOUND", "That domain is not on this library");
+    }
+    requireTransition(row, args.token);
+    if (
+      row.generation !== args.expectedGeneration ||
+      row.attachedAt === undefined ||
+      row.removingAt !== undefined ||
+      (row.deploymentPending !== true && row.pendingDeployment === undefined)
+    ) {
+      throw createError("CONFLICT", "That domain changed while it was checked");
+    }
+    if (row.pendingDeployment) {
+      if (row.pendingDeployment.phase !== "attach") {
+        throw createError("CONFLICT", "That domain has another change pending");
+      }
+      const operation = await ctx.db.get(row.pendingDeployment.operationId);
+      if (!operation || operation.status !== "failed") {
+        throw createError(
+          "CONFLICT",
+          "That domain deployment is still running",
+        );
+      }
+    }
+    const now = Date.now();
+    await ctx.db.patch(args.domainId, {
+      state: "active",
+      failure: undefined,
+      deploymentPending: undefined,
+      pendingDeployment: undefined,
+      transition: undefined,
+      checkedAt: now,
+      activatedAt: row.activatedAt ?? now,
+      updatedAt: now,
     });
     return null;
   },
@@ -972,6 +1031,7 @@ export const readDomainsForActivation = internalQuery({
       domainId: v.id("evidenceLibraryDomains"),
       host: v.string(),
       generation: v.number(),
+      runtimeCommit: v.string(),
       liveRevisionKey: v.string(),
     }),
   ),
@@ -981,7 +1041,18 @@ export const readDomainsForActivation = internalQuery({
     const revision = library?.activeRevisionId
       ? await ctx.db.get(library.activeRevisionId)
       : null;
-    if (!library || library.state !== "active" || !revision) return [];
+    const binding = library?.runtimeBindingId
+      ? await ctx.db.get(library.runtimeBindingId)
+      : null;
+    if (
+      !library ||
+      library.state !== "active" ||
+      !revision ||
+      !binding ||
+      !("runtimeCommit" in binding)
+    ) {
+      return [];
+    }
     const rows = await Promise.all(
       args.domainIds.map((domainId) => ctx.db.get(domainId)),
     );
@@ -998,6 +1069,7 @@ export const readDomainsForActivation = internalQuery({
               domainId: row._id,
               host: row.host,
               generation: row.generation,
+              runtimeCommit: binding.runtimeCommit,
               liveRevisionKey: revision.revisionKey,
             },
           ]
@@ -1028,6 +1100,7 @@ export const listWorkingDomains = internalQuery({
         checkedAt: v.number(),
         generation: v.number(),
         busy: v.boolean(),
+        runtimeCommit: v.union(v.string(), v.null()),
         liveRevisionKey: v.union(v.string(), v.null()),
       }),
     ),
@@ -1060,6 +1133,9 @@ export const listWorkingDomains = internalQuery({
               library.activeRevisionId,
             )
           : null;
+        const binding = library.runtimeBindingId
+          ? await ctx.db.get(library.runtimeBindingId)
+          : null;
         return {
           domainId: row._id,
           libraryId: row.libraryId,
@@ -1074,6 +1150,10 @@ export const listWorkingDomains = internalQuery({
               row.transition.expiresAt > Date.now()) ||
             row.pendingDeployment !== undefined ||
             row.removingAt !== undefined,
+          runtimeCommit:
+            binding && "runtimeCommit" in binding
+              ? binding.runtimeCommit
+              : null,
           liveRevisionKey: revision?.revisionKey ?? null,
         };
       }),

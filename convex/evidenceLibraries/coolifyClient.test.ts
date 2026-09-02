@@ -1489,6 +1489,35 @@ describe("Coolify Evidence Library client", () => {
     });
   });
 
+  it("accepts a finished deployment whose configuration hash expired after exact readback", async () => {
+    const configHash = hashForRevision(1);
+    const server = createCoolifyServer({
+      application: expectedApplication({ config_hash: configHash }),
+      deployments: [
+        {
+          deployment_uuid: "deployment-finished-without-hash",
+          commit: RUNTIME_COMMIT,
+          configuration_hash: null,
+          status: "finished",
+        },
+      ],
+    });
+
+    await expect(
+      createClient(server.fetchImpl).requireFinishedDeployment({
+        deploymentUuid: "deployment-finished-without-hash",
+        runtimeCommit: RUNTIME_COMMIT,
+        coolifyConfigHash: configHash,
+        allowMissingConfigurationHash: true,
+      }),
+    ).resolves.toMatchObject({
+      deploymentUuid: "deployment-finished-without-hash",
+      runtimeCommit: RUNTIME_COMMIT,
+      coolifyConfigHash: null,
+      state: "finished",
+    });
+  });
+
   it("rejects an unknown deployment status instead of treating it as active", async () => {
     const server = createCoolifyServer({
       application: expectedApplication(),

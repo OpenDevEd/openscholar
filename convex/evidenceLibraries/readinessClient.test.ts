@@ -639,6 +639,38 @@ describe("Evidence Library address ownership", () => {
     ).toMatchObject({ state: "not-ours" });
   });
 
+  it("reads an exact route-marked redirect as ours", () => {
+    expect(
+      classifyEvidenceLibraryAddress(
+        {
+          kind: "answer",
+          status: 308,
+          body: "",
+          runtimeRoute: `${RUNTIME_COMMIT}:${REVISION}`,
+        },
+        { runtimeCommit: RUNTIME_COMMIT, revisionKey: REVISION },
+      ),
+    ).toEqual({
+      state: "ours",
+      revision: REVISION,
+      activeAndAccepted: true,
+    });
+  });
+
+  it("rejects a redirect carrying another library route", () => {
+    expect(
+      classifyEvidenceLibraryAddress(
+        {
+          kind: "answer",
+          status: 308,
+          body: "",
+          runtimeRoute: `${RUNTIME_COMMIT}:another-revision`,
+        },
+        { runtimeCommit: RUNTIME_COMMIT, revisionKey: REVISION },
+      ),
+    ).toMatchObject({ state: "not-ours" });
+  });
+
   it("probes the health route of a live library address", async () => {
     const requests: string[] = [];
     const fetchImpl = vi.fn<typeof fetch>(async (request) => {
