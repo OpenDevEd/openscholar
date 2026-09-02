@@ -23,7 +23,8 @@ export type DomainFailure =
   | "token-mismatch"
   | "host-taken"
   | "not-served"
-  | "caa-blocked";
+  | "caa-blocked"
+  | "tls-timeout";
 
 export type DomainOutcome =
   | { state: "pointing" | "verified" | "active" }
@@ -41,7 +42,9 @@ export type DomainRecordsReading = {
  * matters until the name reaches us; then the CAA rules, because a blocked
  * authority cannot be worked around; then the ownership record.
  */
-export function readDomainRecords(reading: DomainRecordsReading): DomainOutcome {
+export function readDomainRecords(
+  reading: DomainRecordsReading,
+): DomainOutcome {
   if (reading.target === "no-name") {
     return { state: "failed", failure: "no-name" };
   }

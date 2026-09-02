@@ -14,7 +14,8 @@ import { createError } from "../lib/errors";
 import {
   claimDomainTransitionRow,
   readAttachedDomainOrigins,
-  settleDomainDeploymentRow,
+  readEvidenceLibraryDomains,
+  settleDomainDeploymentRows,
 } from "./domains";
 import { applyEvidenceLibraryCanonicalAddress } from "./versions";
 import { requireEvidenceLibraryAccess } from "./access";
@@ -1294,14 +1295,18 @@ export const completeConfigurationDeployment = internalMutation({
     });
     // A custom domain change finishes here, and only here.
     const domainChange = deployment.operation.domainChange;
+    let domainsToActivate: Id<"evidenceLibraryDomains">[] = [];
     if (domainChange) {
       // The domain must still be held by this change. If it is not, this
       // throws and the operation fails rather than reporting success for a
       // change that was never written.
-      await settleDomainDeploymentRow(ctx, {
-        domainId: domainChange.domainId,
+      domainsToActivate = await settleDomainDeploymentRows(ctx, {
+        libraryId: args.libraryId,
         operationId: deployment.operation._id,
-        token: domainChange.token,
+        anchor: {
+          domainId: domainChange.domainId,
+          token: domainChange.token,
+        },
         outcome: "succeeded",
       });
       // The library's new address is written in this same transaction as the
@@ -1316,6 +1321,17 @@ export const completeConfigurationDeployment = internalMutation({
       }
     }
     await updateDraftBaseRevision(ctx, deployment);
+    if (domainsToActivate.length > 0) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.evidenceLibraries.domainActions.activateDomains,
+        {
+          libraryId: args.libraryId,
+          domainIds: domainsToActivate,
+          attempt: 0,
+        },
+      );
+    }
     return { status: "succeeded" as const };
   },
 });
@@ -1357,12 +1373,13 @@ export const failConfigurationDeployment = internalMutation({
     // the proxy change and its deployment — is kept, so the retry knows
     // where it stopped.
     if (operation.domainChange) {
-      await settleDomainDeploymentRow(ctx, {
-        domainId: operation.domainChange.domainId,
+      await settleDomainDeploymentRows(ctx, {
+        libraryId: operation.libraryId,
         operationId: operation._id,
-        // A failure only frees the change it was carrying: a newer one that
-        // has already taken the domain keeps it.
-        token: operation.domainChange.token,
+        anchor: {
+          domainId: operation.domainChange.domainId,
+          token: operation.domainChange.token,
+        },
         outcome: "failed",
       });
     }
@@ -1409,10 +1426,13 @@ export const failExpiredConfigurationDeployment = internalMutation({
       updatedAt: now,
     });
     if (operation.domainChange) {
-      await settleDomainDeploymentRow(ctx, {
-        domainId: operation.domainChange.domainId,
+      await settleDomainDeploymentRows(ctx, {
+        libraryId: operation.libraryId,
         operationId: operation._id,
-        token: operation.domainChange.token,
+        anchor: {
+          domainId: operation.domainChange.domainId,
+          token: operation.domainChange.token,
+        },
         outcome: "failed",
       });
     }
@@ -1450,40 +1470,42 @@ export const retryConfigurationDeployment = mutation({
     // so the retry never runs holding a lease that is no longer its own.
     if (operation?.domainChange) {
       const change = operation.domainChange;
-      const domain = await ctx.db.get(
-        "evidenceLibraryDomains",
-        change.domainId,
+      const domains = (
+        await readEvidenceLibraryDomains(ctx, args.libraryId)
+      ).filter(
+        (domain) => domain.pendingDeployment?.operationId === args.operationId,
       );
-      if (!domain) {
+      if (domains.length === 0) {
         throw createError("NOT_FOUND", "That domain is no longer there");
       }
-      // The failed attempt's own record does not stand in its way.
-      if (domain.pendingDeployment?.operationId === args.operationId) {
-        await ctx.db.patch(change.domainId, { pendingDeployment: undefined });
+      let anchorToken = change.token;
+      for (const domain of domains) {
+        const phase = domain.pendingDeployment!.phase;
+        await ctx.db.patch(domain._id, { pendingDeployment: undefined });
+        const fresh = (await ctx.db.get(domain._id))!;
+        const claimed = await claimDomainTransitionRow(
+          ctx,
+          fresh,
+          phase === "detach"
+            ? "remove"
+            : phase === "canonical"
+              ? "canonical"
+              : "attach",
+        );
+        await claimed.write();
+        await ctx.db.patch(domain._id, {
+          pendingDeployment: {
+            operationId: args.operationId,
+            token: claimed.token,
+            phase,
+          },
+          deploymentPending: undefined,
+          updatedAt: Date.now(),
+        });
+        if (domain._id === change.domainId) anchorToken = claimed.token;
       }
-      const fresh = await ctx.db.get("evidenceLibraryDomains", change.domainId);
-      // A detach is a removal: its domain has `removingAt` set, which only
-      // a removal is allowed to take.
-      const claimed = await claimDomainTransitionRow(
-        ctx,
-        fresh!,
-        change.reason === "detach"
-          ? "remove"
-          : change.reason === "canonical"
-            ? "canonical"
-            : "attach",
-      );
-      await claimed.write();
-      await ctx.db.patch(change.domainId, {
-        pendingDeployment: {
-          operationId: args.operationId,
-          phase: change.reason,
-        },
-        deploymentPending: undefined,
-        updatedAt: Date.now(),
-      });
       await ctx.db.patch(args.operationId, {
-        domainChange: { ...change, token: claimed.token },
+        domainChange: { ...change, token: anchorToken },
       });
     }
     return await claimAndScheduleConfigurationDeployment(ctx, args);

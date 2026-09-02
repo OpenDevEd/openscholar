@@ -78,9 +78,17 @@ export function verificationRecordValue(token: string): string {
 
 export type CustomDomainDnsRecord = {
   type: "A" | "CNAME" | "TXT";
+  /** What DNS-provider Name/Host fields expect inside this zone. */
+  label: string;
   name: string;
   value: string;
 };
+
+function recordLabel(name: string, zone: string): string {
+  if (name === zone) return "@";
+  const suffix = `.${zone}`;
+  return name.endsWith(suffix) ? name.slice(0, -suffix.length) : name;
+}
 
 /** Exact public DNS instructions for one custom host. */
 export function customDomainDnsRecords(input: {
@@ -95,11 +103,13 @@ export function customDomainDnsRecords(input: {
     input.isApex
       ? {
           type: "A",
+          label: recordLabel(input.host, input.verificationHost),
           name: input.host,
           value: readCustomDomainApexIpv4(input.env),
         }
       : {
           type: "CNAME",
+          label: recordLabel(input.host, input.verificationHost),
           name: input.host,
           value: readCustomDomainTarget(input.env),
         },
@@ -107,6 +117,7 @@ export function customDomainDnsRecords(input: {
   if (input.includeVerificationRecord) {
     records.push({
       type: "TXT",
+      label: VERIFICATION_RECORD_PREFIX,
       name: verificationRecordName(input.verificationHost),
       value: verificationRecordValue(input.token),
     });

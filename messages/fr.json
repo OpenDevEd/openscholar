@@ -2923,12 +2923,14 @@
       "colName": "Name",
       "colValue": "Value",
       "copyValue": "Copy {type} value",
+      "copyName": "Copier le nom {type}",
       "copied": "Copied",
       "checkDns": "Check DNS",
       "failed": "That did not work. Try again.",
       "status": {
         "none": "Not verified",
         "pending": "Not verified",
+        "pointing": "Enregistrement d’adresse trouvé",
         "checking": "Checking…",
         "verified": "Verified",
         "failed": "Records not found"
@@ -2940,7 +2942,8 @@
         "token-mismatch": "The ownership record holds a different value",
         "host-taken": "Another site already answers on that domain",
         "not-served": "The library is not running yet",
-        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org."
+        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org.",
+        "tls-timeout": "TLS n’a pas pu être activé. Vérifiez à nouveau le domaine."
       },
       "refused": {
         "invalid": "That does not look like a domain",
@@ -2956,10 +2959,13 @@
       "redirectDisabled": "Verify the domain first.",
       "redirectWaiting": "Wait until the domain is working.",
       "addAnother": "Add another domain",
-      "busy": "A check is already running for that domain",
+      "busy": "Ces domaines sont déjà en cours de vérification.",
+      "rateLimited": "Le DNS a été vérifié trop souvent. Réessayez dans une minute.",
       "removing": "Removing",
       "checkFailed": "We could not check the domain. Try again.",
       "deploying": "Applying the change to the library",
+      "checked": "DNS vérifié",
+      "recordsNeedAttention": "Certains enregistrements DNS nécessitent encore votre attention.",
       "removingNow": "That domain is being removed",
       "removeAgain": "Finish removing",
       "confirmOnTitle": "Send the platform address to this domain?",

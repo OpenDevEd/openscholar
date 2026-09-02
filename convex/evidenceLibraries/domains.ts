@@ -54,10 +54,26 @@ const domainRowValidator = v.object({
   records: v.array(
     v.object({
       type: v.union(v.literal("A"), v.literal("CNAME"), v.literal("TXT")),
+      label: v.string(),
       name: v.string(),
       value: v.string(),
     }),
   ),
+});
+
+const domainContextRowValidator = v.object({
+  domainId: v.id("evidenceLibraryDomains"),
+  host: v.string(),
+  role: v.union(v.literal("primary"), v.literal("redirect")),
+  state: evidenceLibraryDomainStateValidator,
+  verificationToken: v.string(),
+  verificationHost: v.string(),
+  isApex: v.boolean(),
+  attached: v.boolean(),
+  attachIntent: v.boolean(),
+  removing: v.boolean(),
+  deploymentPending: v.boolean(),
+  generation: v.number(),
 });
 
 export async function readEvidenceLibraryDomains(
@@ -199,7 +215,7 @@ type DomainContext = {
   liveRevisionKey: string | null;
   attachedHosts: string[];
   uncertainHosts: string[];
-  domain: {
+  domains: Array<{
     domainId: Id<"evidenceLibraryDomains">;
     host: string;
     role: "primary" | "redirect";
@@ -212,8 +228,27 @@ type DomainContext = {
     removing: boolean;
     deploymentPending: boolean;
     generation: number;
-  } | null;
+  }>;
+  domain: DomainContext["domains"][number] | null;
 };
+
+function presentDomainContextRow(row: Doc<"evidenceLibraryDomains">) {
+  return {
+    domainId: row._id,
+    host: row.host,
+    role: row.role,
+    state: row.state,
+    verificationToken: row.verificationToken,
+    verificationHost: row.verificationHost,
+    isApex: row.isApex === true,
+    attached: row.attachedAt !== undefined,
+    attachIntent: row.attachIntentAt !== undefined,
+    removing: row.removingAt !== undefined,
+    deploymentPending:
+      row.deploymentPending === true || row.pendingDeployment !== undefined,
+    generation: row.generation,
+  };
+}
 
 export const readDomainContext = internalQuery({
   args: {
@@ -227,23 +262,8 @@ export const readDomainContext = internalQuery({
     liveRevisionKey: v.union(v.string(), v.null()),
     attachedHosts: v.array(v.string()),
     uncertainHosts: v.array(v.string()),
-    domain: v.union(
-      v.object({
-        domainId: v.id("evidenceLibraryDomains"),
-        host: v.string(),
-        role: v.union(v.literal("primary"), v.literal("redirect")),
-        state: evidenceLibraryDomainStateValidator,
-        verificationToken: v.string(),
-        verificationHost: v.string(),
-        isApex: v.boolean(),
-        attached: v.boolean(),
-        attachIntent: v.boolean(),
-        removing: v.boolean(),
-        deploymentPending: v.boolean(),
-        generation: v.number(),
-      }),
-      v.null(),
-    ),
+    domains: v.array(domainContextRowValidator),
+    domain: v.union(domainContextRowValidator, v.null()),
   }),
   handler: async (ctx, args): Promise<DomainContext> => {
     const access = await requireEvidenceLibraryAccess(
@@ -286,29 +306,8 @@ export const readDomainContext = internalQuery({
         )
         .map((entry) => `https://${entry.host}`)
         .sort(),
-      domain: row
-        ? {
-            domainId: row._id,
-            host: row.host,
-            role: row.role,
-            state: row.state,
-            verificationToken: row.verificationToken,
-            verificationHost: row.verificationHost,
-            isApex: row.isApex === true,
-            attached: row.attachedAt !== undefined,
-            // The proxy was asked to hold this host and never confirmed, so
-            // a removal has to take it back out to be sure.
-            attachIntent: row.attachIntentAt !== undefined,
-            removing: row.removingAt !== undefined,
-            // Both halves: the proxy was written, or a deployment carrying
-            // that write has not succeeded yet. A failed deployment stays
-            // owed, so the next step retries it rather than probing.
-            deploymentPending:
-              row.deploymentPending === true ||
-              row.pendingDeployment !== undefined,
-            generation: row.generation,
-          }
-        : null,
+      domains: rows.map(presentDomainContextRow),
+      domain: row ? presentDomainContextRow(row) : null,
     };
   },
 });
@@ -483,6 +482,89 @@ export const claimDomainTransition = internalMutation({
       updatedAt: now,
     });
     return { status: "claimed" as const, token, generation };
+  },
+});
+
+/** Takes every incomplete domain together so one click cannot start races. */
+export const claimDomainTransitions = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    domainIds: v.array(v.id("evidenceLibraryDomains")),
+  },
+  returns: v.union(
+    v.object({
+      status: v.literal("claimed"),
+      claims: v.array(
+        v.object({
+          domainId: v.id("evidenceLibraryDomains"),
+          token: v.string(),
+          generation: v.number(),
+        }),
+      ),
+    }),
+    v.object({ status: v.literal("busy") }),
+  ),
+  handler: async (ctx, args) => {
+    if (
+      args.domainIds.length > MAX_EVIDENCE_LIBRARY_DOMAINS ||
+      new Set(args.domainIds).size !== args.domainIds.length
+    ) {
+      throw createError("VALIDATION_ERROR", "Invalid domain check request");
+    }
+    const access = await requireEvidenceLibraryAccess(
+      ctx,
+      args.libraryId,
+      "manage",
+    );
+    await requireLibraryNotBeingDeleted(ctx, args.libraryId);
+    const rows = await Promise.all(
+      args.domainIds.map((domainId) => ctx.db.get(domainId)),
+    );
+    if (rows.some((row) => !row || row.libraryId !== args.libraryId)) {
+      throw createError("NOT_FOUND", "That domain is not on this library");
+    }
+    const now = Date.now();
+    const claimable = rows.filter(
+      (row) =>
+        row!.removingAt === undefined &&
+        !(
+          row!.transition !== undefined &&
+          (row!.transition.expiresAt > now ||
+            row!.pendingDeployment !== undefined)
+        ),
+    );
+    if (claimable.length === 0) {
+      return { status: "busy" as const };
+    }
+    await rateLimit(ctx, {
+      name: "domain-check-user",
+      key: access.clerkUserId,
+      throws: true,
+    });
+    await rateLimit(ctx, {
+      name: "domain-check-library",
+      key: args.libraryId,
+      throws: true,
+    });
+    for (const row of claimable) {
+      await rateLimit(ctx, {
+        name: "domain-check-host",
+        key: row!.host,
+        throws: true,
+      });
+    }
+    const claims = await Promise.all(
+      claimable.map(async (row) => {
+        const claim = await claimDomainTransitionRow(ctx, row!, "check");
+        await claim.write();
+        return {
+          domainId: row!._id,
+          token: claim.token,
+          generation: claim.generation,
+        };
+      }),
+    );
+    return { status: "claimed" as const, claims };
   },
 });
 
@@ -743,6 +825,54 @@ export async function settleDomainDeploymentRow(
   });
 }
 
+/** Settles every domain carried by one batched proxy deployment. */
+export async function settleDomainDeploymentRows(
+  ctx: MutationCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    operationId: Id<"evidenceLibraryConfigOperations">;
+    anchor: {
+      domainId: Id<"evidenceLibraryDomains">;
+      token: string;
+    };
+    outcome: "succeeded" | "failed";
+  },
+): Promise<Id<"evidenceLibraryDomains">[]> {
+  const rows = (await readEvidenceLibraryDomains(ctx, args.libraryId)).filter(
+    (row) => row.pendingDeployment?.operationId === args.operationId,
+  );
+  const attached = rows
+    .filter((row) => row.pendingDeployment?.phase === "attach")
+    .map((row) => row._id);
+  if (rows.length === 0 && args.outcome === "succeeded") {
+    const anchor = await ctx.db.get(args.anchor.domainId);
+    if (anchor) {
+      throw createError(
+        "CONFLICT",
+        "Another change took that domain while this one was being applied",
+      );
+    }
+  }
+  for (const row of rows) {
+    if (
+      row._id === args.anchor.domainId &&
+      row.pendingDeployment!.token !== args.anchor.token
+    ) {
+      throw createError(
+        "CONFLICT",
+        "Another change took that domain while this one was being applied",
+      );
+    }
+    await settleDomainDeploymentRow(ctx, {
+      domainId: row._id,
+      operationId: args.operationId,
+      token: row.pendingDeployment!.token,
+      outcome: args.outcome,
+    });
+  }
+  return attached;
+}
+
 /**
  * Starts removing a domain. Refused for the domain the library calls its own,
  * before anything outside OpenScholar is touched: taking that one out of the
@@ -828,6 +958,51 @@ export const finishDomainRemoval = internalMutation({
     }
     await ctx.db.delete(args.domainId);
     return null;
+  },
+});
+
+/** Rows a finished deployment should prove over HTTPS without another click. */
+export const readDomainsForActivation = internalQuery({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    domainIds: v.array(v.id("evidenceLibraryDomains")),
+  },
+  returns: v.array(
+    v.object({
+      domainId: v.id("evidenceLibraryDomains"),
+      host: v.string(),
+      generation: v.number(),
+      liveRevisionKey: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    if (args.domainIds.length > MAX_EVIDENCE_LIBRARY_DOMAINS) return [];
+    const library = await ctx.db.get(args.libraryId);
+    const revision = library?.activeRevisionId
+      ? await ctx.db.get(library.activeRevisionId)
+      : null;
+    if (!library || library.state !== "active" || !revision) return [];
+    const rows = await Promise.all(
+      args.domainIds.map((domainId) => ctx.db.get(domainId)),
+    );
+    return rows.flatMap((row) =>
+      row &&
+      row.libraryId === args.libraryId &&
+      row.state === "verified" &&
+      row.attachedAt !== undefined &&
+      row.removingAt === undefined &&
+      row.pendingDeployment === undefined &&
+      row.deploymentPending !== true
+        ? [
+            {
+              domainId: row._id,
+              host: row.host,
+              generation: row.generation,
+              liveRevisionKey: revision.revisionKey,
+            },
+          ]
+        : [],
+    );
   },
 });
 
@@ -941,14 +1116,18 @@ export const writeSweptDomain = internalMutation({
     ) {
       return { written: false };
     }
+    const now = Date.now();
     await ctx.db.patch(args.domainId, {
       state: args.state,
       failure: args.failure,
+      ...(args.state === "active" && row.activatedAt === undefined
+        ? { activatedAt: now }
+        : {}),
       // The domain has moved on, so a second sweep still holding the old
       // count cannot land its answer on top of this one.
       generation: row.generation + 1,
-      checkedAt: Date.now(),
-      updatedAt: Date.now(),
+      checkedAt: now,
+      updatedAt: now,
     });
     return { written: true };
   },

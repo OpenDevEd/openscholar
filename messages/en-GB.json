@@ -2948,12 +2948,14 @@
       "colName": "Name",
       "colValue": "Value",
       "copyValue": "Copy {type} value",
+      "copyName": "Copy {type} name",
       "copied": "Copied",
       "checkDns": "Check DNS",
       "failed": "That did not work. Try again.",
       "status": {
         "none": "Not verified",
         "pending": "Not verified",
+        "pointing": "Address record found",
         "checking": "Checking…",
         "verified": "Verified",
         "failed": "Records not found"
@@ -2965,7 +2967,8 @@
         "token-mismatch": "The ownership record holds a different value",
         "host-taken": "Another site already answers on that domain",
         "not-served": "The library is not running yet",
-        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org."
+        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org.",
+        "tls-timeout": "TLS could not be activated. Check the domain again."
       },
       "refused": {
         "invalid": "That does not look like a domain",
@@ -2981,10 +2984,13 @@
       "redirectDisabled": "Verify the domain first.",
       "redirectWaiting": "Wait until the domain is working.",
       "addAnother": "Add another domain",
-      "busy": "A check is already running for that domain",
+      "busy": "These domains are already being checked.",
+      "rateLimited": "DNS was checked too often. Try again in a minute.",
       "removing": "Removing",
       "checkFailed": "We could not check the domain. Try again.",
       "deploying": "Applying the change to the library",
+      "checked": "DNS checked",
+      "recordsNeedAttention": "Some DNS records still need attention.",
       "removingNow": "That domain is being removed",
       "removeAgain": "Finish removing",
       "confirmOnTitle": "Send the platform address to this domain?",

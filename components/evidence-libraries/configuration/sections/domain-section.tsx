@@ -2,7 +2,6 @@
 
 import { useAction, useMutation } from "convex/react";
 import {
-  ArrowRight01Icon,
   Copy01Icon,
   Delete02Icon,
   Globe02Icon,
@@ -46,7 +45,8 @@ type DomainFailure =
   | "token-mismatch"
   | "host-taken"
   | "not-served"
-  | "caa-blocked";
+  | "caa-blocked"
+  | "tls-timeout";
 
 type DomainRow = {
   domainId: Id<"evidenceLibraryDomains">;
@@ -61,16 +61,18 @@ type DomainRow = {
   suggestedWwwHost?: string;
   records: Array<{
     type: "A" | "CNAME" | "TXT";
+    label: string;
     name: string;
     value: string;
   }>;
 };
 
 /** How the mock draws a domain's state. The server's five states map onto it. */
-type DnsStatus = "pending" | "checking" | "verified" | "failed";
+type DnsStatus = "pending" | "pointing" | "checking" | "verified" | "failed";
 
 const STATUS_TONE: Record<DnsStatus, StatusTone> = {
   pending: "neutral",
+  pointing: "running",
   checking: "running",
   verified: "success",
   failed: "danger",
@@ -79,6 +81,7 @@ const STATUS_TONE: Record<DnsStatus, StatusTone> = {
 function dnsStatusOf(row: DomainRow, checking: boolean): DnsStatus {
   if (checking) return "checking";
   if (row.state === "failed") return "failed";
+  if (row.state === "pointing") return "pointing";
   if (row.state === "verified" || row.state === "active") return "verified";
   return "pending";
 }
@@ -104,8 +107,8 @@ export const DomainSection = memo(function DomainSection({
     },
   );
   const addDomain = useAction(api.evidenceLibraries.domainActions.addDomain);
-  const checkDomain = useAction(
-    api.evidenceLibraries.domainActions.checkDomain,
+  const checkDomains = useAction(
+    api.evidenceLibraries.domainActions.checkDomains,
   );
   const removeDomain = useAction(
     api.evidenceLibraries.domainActions.removeDomain,
@@ -157,11 +160,13 @@ export const DomainSection = memo(function DomainSection({
     setCustom("");
   }
 
-  async function onCheck(row: DomainRow) {
-    const checked = await run(row.domainId, () =>
-      checkDomain({ libraryId, domainId: row.domainId }),
-    );
+  async function onCheck() {
+    const checked = await run("check", () => checkDomains({ libraryId }));
     if (!checked) return;
+    if (checked.status === "rate-limited") {
+      toast.error(t("rateLimited"));
+      return;
+    }
     if (checked.status === "busy") {
       toast.error(t("busy"));
       return;
@@ -174,19 +179,11 @@ export const DomainSection = memo(function DomainSection({
       toast.success(t("deploying"));
       return;
     }
-    if (checked.status === "removing") {
-      toast.error(t("removingNow"));
+    if (checked.results.some((result) => result.state === "failed")) {
+      toast.error(t("recordsNeedAttention"));
       return;
     }
-    if (checked.state === "failed") {
-      toast.error(
-        checked.failure ? t(`failure.${checked.failure}`) : t("failed"),
-      );
-      return;
-    }
-    toast.success(
-      t(`status.${dnsStatusOf({ ...row, state: checked.state }, false)}`),
-    );
+    toast.success(t("checked"));
   }
 
   function copy(value: string) {
@@ -256,16 +253,32 @@ export const DomainSection = memo(function DomainSection({
       {domains.length > 0 ? (
         <div className="space-y-2">
           {hasDnsSetup ? (
-            <div>
-              <p className="text-sm font-medium">{t("recordsHeading")}</p>
-              <p className="text-xs text-muted-foreground">
-                {t("recordsHint")}
-              </p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">{t("recordsHeading")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("recordsHint")}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy !== null}
+                onClick={() => void onCheck()}
+              >
+                {busy === "check" ? (
+                  <Spinner />
+                ) : (
+                  <HugeiconsIcon icon={Refresh01Icon} size={15} />
+                )}
+                {t("checkDns")}
+              </Button>
             </div>
           ) : null}
           <div className="overflow-hidden rounded-xl border border-border/60 bg-background">
             {domains.map((domain: DomainRow, index) => {
-              const checking = busy === domain.domainId;
+              const checking = busy === "check" && domain.state !== "active";
               const status = dnsStatusOf(domain, checking);
               const canChooseAsPrimary =
                 domain.role === "primary" ||
@@ -366,20 +379,6 @@ export const DomainSection = memo(function DomainSection({
                         </TooltipContent>
                       </Tooltip>
                     ) : null}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={busy !== null || domain.removing}
-                      onClick={() => void onCheck(domain)}
-                    >
-                      {checking ? (
-                        <Spinner />
-                      ) : (
-                        <HugeiconsIcon icon={Refresh01Icon} size={15} />
-                      )}
-                      {t("checkDns")}
-                    </Button>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -414,36 +413,48 @@ export const DomainSection = memo(function DomainSection({
                       {domain.records.map((record, recordIndex) => (
                         <div
                           key={record.type}
-                          className={`grid grid-cols-[3.25rem_minmax(0,1fr)_2rem] items-center gap-2 py-2 ${
+                          className={`grid grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1 py-2 sm:grid-cols-[3.25rem_minmax(0,1fr)_minmax(0,1.5fr)] ${
                             recordIndex === 0 ? "" : "border-t border-border/40"
                           }`}
                         >
                           <span className="w-fit rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
                             {record.type}
                           </span>
-                          <div className="grid min-w-0 items-center gap-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
-                            <span className="truncate font-mono text-xs">
-                              {record.name}
-                            </span>
-                            <HugeiconsIcon
-                              icon={ArrowRight01Icon}
-                              size={14}
-                              className="hidden text-muted-foreground/60 sm:block"
-                            />
-                            <span className="truncate font-mono text-xs text-muted-foreground">
+                          <div className="flex min-w-0 items-center gap-1">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-mono text-xs font-medium">
+                                {record.label}
+                              </p>
+                              <p className="truncate font-mono text-[10px] text-muted-foreground">
+                                {record.name}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 shrink-0"
+                              aria-label={t("copyName", { type: record.type })}
+                              onClick={() => copy(record.label)}
+                            >
+                              <HugeiconsIcon icon={Copy01Icon} size={15} />
+                            </Button>
+                          </div>
+                          <div className="col-start-2 flex min-w-0 items-center gap-1 sm:col-start-3">
+                            <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
                               {record.value}
                             </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 shrink-0"
+                              aria-label={t("copyValue", { type: record.type })}
+                              onClick={() => copy(record.value)}
+                            >
+                              <HugeiconsIcon icon={Copy01Icon} size={15} />
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-8"
-                            aria-label={t("copyValue", { type: record.type })}
-                            onClick={() => copy(record.value)}
-                          >
-                            <HugeiconsIcon icon={Copy01Icon} size={15} />
-                          </Button>
                         </div>
                       ))}
                     </div>

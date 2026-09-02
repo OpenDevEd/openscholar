@@ -19,6 +19,7 @@ type DomainRow = {
   suggestedWwwHost?: string;
   records: Array<{
     type: "A" | "CNAME" | "TXT";
+    label: string;
     name: string;
     value: string;
   }>;
@@ -32,17 +33,19 @@ const mocks = vi.hoisted(() => ({
     domains: [] as DomainRow[],
   },
   addDomain: vi.fn(),
-  checkDomain: vi.fn(),
+  checkDomains: vi.fn(),
   removeDomain: vi.fn(),
   setPrimary: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
 }));
 
 vi.mock("convex/react", () => ({
   useAction: (reference: string) =>
     reference === "addDomain"
       ? mocks.addDomain
-      : reference === "checkDomain"
-        ? mocks.checkDomain
+      : reference === "checkDomains"
+        ? mocks.checkDomains
         : mocks.removeDomain,
   useMutation: () => mocks.setPrimary,
 }));
@@ -53,7 +56,7 @@ vi.mock("@/convex/_generated/api", () => ({
       domains: { listDomains: "listDomains" },
       domainActions: {
         addDomain: "addDomain",
-        checkDomain: "checkDomain",
+        checkDomains: "checkDomains",
         removeDomain: "removeDomain",
       },
       versions: { setDomainPrimary: "setDomainPrimary" },
@@ -74,7 +77,7 @@ vi.mock("next-intl", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: mocks.toastSuccess, error: mocks.toastError },
 }));
 
 import type { Id } from "@/convex/_generated/dataModel";
@@ -95,11 +98,13 @@ function row(overrides: Partial<DomainRow> = {}): DomainRow {
     records: [
       {
         type: "CNAME",
+        label: "evidence",
         name: "evidence.example.org",
         value: "cname.openscholar.ai",
       },
       {
         type: "TXT",
+        label: "_openscholar",
         name: "_openscholar.evidence.example.org",
         value: "os-verify=7f3a9c1e5b2d4a8f",
       },
@@ -135,6 +140,7 @@ describe("DomainSection", () => {
     expect(domain).not.toBeNull();
     const contents = within(domain as HTMLElement);
     expect(contents.getByText("CNAME")).toBeInTheDocument();
+    expect(contents.getByText("evidence")).toBeInTheDocument();
     expect(contents.getAllByText("evidence.example.org")).toHaveLength(2);
     expect(contents.getByText("cname.openscholar.ai")).toBeInTheDocument();
     expect(contents.getByText("TXT")).toBeInTheDocument();
@@ -171,9 +177,15 @@ describe("DomainSection", () => {
         isApex: true,
         suggestedWwwHost: "www.example.org",
         records: [
-          { type: "A", name: "example.org", value: "203.0.113.80" },
+          {
+            type: "A",
+            label: "@",
+            name: "example.org",
+            value: "203.0.113.80",
+          },
           {
             type: "TXT",
+            label: "_openscholar",
             name: "_openscholar.example.org",
             value: "os-verify=7f3a9c1e5b2d4a8f",
           },
@@ -245,11 +257,37 @@ describe("DomainSection", () => {
     );
   });
 
-  it("checks the domain when the button is pressed", async () => {
+  it("checks every domain through one button", async () => {
+    mocks.data.domains = [
+      row(),
+      row({ domainId: "domain_2", host: "www.example.org" }),
+    ];
+    mocks.checkDomains.mockResolvedValue({ status: "checked", results: [] });
+    render(<DomainSection libraryId={libraryId} />);
+    expect(
+      screen.getAllByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.checkDns",
+      }),
+    ).toHaveLength(1);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.checkDns",
+      }),
+    );
+    expect(mocks.checkDomains).toHaveBeenCalledWith({ libraryId });
+  });
+
+  it("reports a completed check with failed records as an error", async () => {
     mocks.data.domains = [row()];
-    mocks.checkDomain.mockResolvedValue({
+    mocks.checkDomains.mockResolvedValue({
       status: "checked",
-      state: "pointing",
+      results: [
+        {
+          domainId: "domain_1",
+          state: "failed",
+          failure: "no-records",
+        },
+      ],
     });
     render(<DomainSection libraryId={libraryId} />);
     await userEvent.click(
@@ -257,10 +295,10 @@ describe("DomainSection", () => {
         name: "evidenceLibraryConfiguration.domain.checkDns",
       }),
     );
-    expect(mocks.checkDomain).toHaveBeenCalledWith({
-      libraryId,
-      domainId: "domain_1",
-    });
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "evidenceLibraryConfiguration.domain.recordsNeedAttention",
+    );
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 
   it("offers the primary-address action only when the domain is working", () => {
@@ -316,10 +354,10 @@ describe("DomainSection", () => {
     ];
     render(<DomainSection libraryId={libraryId} />);
     expect(
-      screen.getByRole("button", {
+      screen.queryByRole("button", {
         name: "evidenceLibraryConfiguration.domain.checkDns",
       }),
-    ).toBeDisabled();
+    ).toBeNull();
     // A removal that stopped halfway is finished by pressing again, so this
     // one stays usable.
     expect(

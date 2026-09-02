@@ -81,7 +81,7 @@ vi.mock("@/convex/_generated/api", () => ({
       domains: { listDomains: "listDomains" },
       domainActions: {
         addDomain: "addDomain",
-        checkDomain: "checkDomain",
+        checkDomains: "checkDomains",
         removeDomain: "removeDomain",
       },
       versions: {
