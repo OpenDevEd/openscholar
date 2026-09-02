@@ -1,9 +1,10 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 
 const mocks = vi.hoisted(() => ({
   organization: vi.fn(),
@@ -23,12 +24,17 @@ vi.mock("convex/react", () => ({
 }));
 
 vi.mock("next-intl", () => ({
-  useTranslations: (namespace: string) => (key: string, values?: Record<string, string>) =>
-    `${namespace.replace("evidenceLibraries.", "")}.${key}${values?.name ? `:${values.name}` : ""}`,
-  useFormatter: () => ({ dateTime: (date: Date) => date.toISOString().slice(0, 10) }),
+  useTranslations:
+    (namespace: string) => (key: string, values?: Record<string, string>) =>
+      `${namespace.replace("evidenceLibraries.", "")}.${key}${values?.name ? `:${values.name}` : ""}`,
+  useFormatter: () => ({
+    dateTime: (date: Date) => date.toISOString().slice(0, 10),
+  }),
 }));
 
-vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn() }) }));
+vi.mock("sonner", () => ({
+  toast: Object.assign(vi.fn(), { error: vi.fn() }),
+}));
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
@@ -45,7 +51,8 @@ vi.mock("@/convex/_generated/api", () => ({
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: (query: unknown, args: unknown) => mocks.query(query, args),
+  useProtectedQuery: (query: unknown, args: unknown) =>
+    mocks.query(query, args),
 }));
 
 vi.mock("@/components/auth/auth-state-panel", () => ({
@@ -135,43 +142,61 @@ describe("<LibraryList>", () => {
   it("shows each library with its status and the owner's actions", async () => {
     const user = userEvent.setup();
     mocks.organization.mockReturnValue(organization("org:admin"));
-    mocks.retrySetup.mockResolvedValue({ operationId: "op", status: "running" });
+    mocks.retrySetup.mockResolvedValue({
+      operationId: "op",
+      status: "running",
+    });
 
     render(<LibraryList />);
 
     const rows = screen.getAllByRole("listitem");
-    expect(rows.map((row) => row.dataset.status)).toEqual(["active", "setup_failed", "deleting"]);
+    expect(rows.map((row) => row.dataset.status)).toEqual([
+      "active",
+      "setup_failed",
+      "deleting",
+    ]);
 
     const activeRow = within(rows[0]);
-    expect(activeRow.getByRole("link", { name: "Climate Evidence" })).toHaveAttribute(
-      "href",
-      "/evidence-libraries/lib_active/configuration",
-    );
-    expect(activeRow.getByRole("link", { name: "list.configure" })).toBeInTheDocument();
-    expect(activeRow.getByRole("link", { name: "list.openAdmin" })).toHaveAttribute(
-      "href",
-      "/evidence-libraries/lib_active/admin",
-    );
+    expect(
+      activeRow.getByRole("link", { name: "Climate Evidence" }),
+    ).toHaveAttribute("href", "/evidence-libraries/lib_active/configuration");
+    expect(
+      activeRow.getByRole("link", { name: "list.configure" }),
+    ).toBeInTheDocument();
+    expect(
+      activeRow.getByRole("link", { name: "list.openAdmin" }),
+    ).toHaveAttribute("href", "/evidence-libraries/lib_active/admin");
     expect(activeRow.getByText("2026-08-26")).toBeInTheDocument();
     // The library's favicon fills the tile; without one the OpenScholar icon does.
     expect(rows[0].querySelector("[data-library-image]")).toHaveAttribute(
       "src",
       "https://assets.example.test/favicon.ico",
     );
-    expect(rows[1].querySelector("[data-library-image]")).toHaveAttribute("src", "/icon.svg");
+    expect(rows[1].querySelector("[data-library-image]")).toHaveAttribute(
+      "src",
+      "/icon.svg",
+    );
 
     const failedRow = within(rows[1]);
     expect(failedRow.getByText("stages.storage")).toBeInTheDocument();
     await user.click(failedRow.getByRole("button", { name: "list.retry" }));
     await waitFor(() =>
-      expect(mocks.retrySetup).toHaveBeenCalledWith({ libraryId: "lib_failed" }),
+      expect(mocks.retrySetup).toHaveBeenCalledWith({
+        libraryId: "lib_failed",
+      }),
     );
 
     const deletingRow = within(rows[2]);
-    expect(deletingRow.getByRole("progressbar", { name: "list.deleting" })).toBeInTheDocument();
-    expect(deletingRow.queryByRole("button")).not.toBeInTheDocument();
+    expect(
+      deletingRow.getByRole("progressbar", { name: "list.deleting" }),
+    ).toBeInTheDocument();
+    expect(
+      deletingRow.queryByRole("button", { name: "list.deleteRetry" }),
+    ).not.toBeInTheDocument();
 
-    expect(screen.getAllByRole("link", { name: "list.newLibrary" }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("link", { name: "list.newLibrary" }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("gives an editor only the admin link of live libraries", () => {
@@ -181,14 +206,24 @@ describe("<LibraryList>", () => {
 
     const rows = screen.getAllByRole("listitem");
     const activeRow = within(rows[0]);
-    expect(activeRow.getByRole("link", { name: "Climate Evidence" })).toHaveAttribute(
-      "href",
-      "/evidence-libraries/lib_active/admin",
-    );
-    expect(activeRow.queryByRole("link", { name: "list.configure" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "list.newLibrary" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "list.retry" })).not.toBeInTheDocument();
-    expect(within(rows[1]).queryByRole("link")).not.toBeInTheDocument();
+    expect(
+      activeRow.getByRole("link", { name: "Climate Evidence" }),
+    ).toHaveAttribute("href", "/evidence-libraries/lib_active/admin");
+    expect(
+      activeRow.queryByRole("link", { name: "list.configure" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "list.newLibrary" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "list.retry" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(rows[1]).getByText("health-lib.example.test").closest("a"),
+    ).toHaveAttribute("href", "https://health-lib.example.test");
+    expect(
+      within(rows[1]).queryByRole("link", { name: "list.openAdmin" }),
+    ).not.toBeInTheDocument();
   });
 
   it("tells the owner which address a library was moved away from", () => {
@@ -205,9 +240,15 @@ describe("<LibraryList>", () => {
     render(<LibraryList />);
 
     const rows = screen.getAllByRole("listitem");
-    expect(within(rows[1]).getByText("list.movedFromLabel")).toBeInTheDocument();
-    expect(within(rows[1]).getByText("health-old-lib.example.test")).toBeInTheDocument();
-    expect(within(rows[0]).queryByText("list.movedFromLabel")).not.toBeInTheDocument();
+    expect(
+      within(rows[1]).getByText("list.movedFromLabel"),
+    ).toBeInTheDocument();
+    expect(
+      within(rows[1]).getByText("health-old-lib.example.test"),
+    ).toBeInTheDocument();
+    expect(
+      within(rows[0]).queryByText("list.movedFromLabel"),
+    ).not.toBeInTheDocument();
   });
 
   it("tells the owner when another site answers a live library's address", () => {
@@ -228,7 +269,9 @@ describe("<LibraryList>", () => {
     expect(
       rows[0].querySelector('[data-address-state="not-ours"]'),
     ).not.toBeNull();
-    expect(within(rows[1]).queryByText("list.addressTaken")).not.toBeInTheDocument();
+    expect(
+      within(rows[1]).queryByText("list.addressTaken"),
+    ).not.toBeInTheDocument();
   });
 
   it("says plainly when nothing answers a live library's address", () => {
@@ -246,11 +289,17 @@ describe("<LibraryList>", () => {
 
     const rows = screen.getAllByRole("listitem");
     expect(within(rows[0]).getByText("list.addressSilent")).toBeInTheDocument();
-    expect(within(rows[0]).queryByText("list.addressTaken")).not.toBeInTheDocument();
+    expect(
+      within(rows[0]).queryByText("list.addressTaken"),
+    ).not.toBeInTheDocument();
   });
 
   it("asks for an organisation before listing anything", () => {
-    mocks.organization.mockReturnValue({ isLoaded: true, membership: undefined, organization: null });
+    mocks.organization.mockReturnValue({
+      isLoaded: true,
+      membership: undefined,
+      organization: null,
+    });
 
     render(<LibraryList />);
 
@@ -298,7 +347,11 @@ describe("<LibraryList>", () => {
       return {
         data: libraries.map((library) =>
           library._id === "lib_deleting"
-            ? { ...library, teardownStage: "storage", teardownFailedStep: "files" }
+            ? {
+                ...library,
+                teardownStage: "storage",
+                teardownFailedStep: "files",
+              }
             : library,
         ),
         isReady: true,
@@ -321,5 +374,4 @@ describe("<LibraryList>", () => {
       deletingRow.queryByRole("progressbar", { name: "list.deleting" }),
     ).toBeNull();
   });
-
 });
