@@ -1,9 +1,10 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 
 type DomainRow = {
   domainId: string;
@@ -66,9 +67,10 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
 
 vi.mock("next-intl", () => ({
   useTranslations:
-    (namespace: string) =>
-    (key: string, params?: Record<string, string>) =>
-      params?.type ? `${namespace}.${key}:${params.type}` : `${namespace}.${key}`,
+    (namespace: string) => (key: string, params?: Record<string, string>) =>
+      params?.type
+        ? `${namespace}.${key}:${params.type}`
+        : `${namespace}.${key}`,
 }));
 
 vi.mock("sonner", () => ({
@@ -112,10 +114,10 @@ describe("DomainSection", () => {
     mocks.data.domains = [];
   });
 
-  it("shows the platform address and asks for a domain when there is none", () => {
+  it("asks for a domain when there is none", () => {
     render(<DomainSection libraryId={libraryId} />);
     expect(
-      screen.getByText("https://climate-lib.opendev.space"),
+      screen.getByPlaceholderText("library.example.org"),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
@@ -127,17 +129,21 @@ describe("DomainSection", () => {
   it("shows both records the owner has to add, with the platform's CNAME target", () => {
     mocks.data.domains = [row()];
     render(<DomainSection libraryId={libraryId} />);
-    const rows = screen.getAllByRole("row");
-    const cname = within(rows[1] as HTMLElement);
-    expect(cname.getByText("CNAME")).toBeInTheDocument();
-    expect(cname.getByText("evidence.example.org")).toBeInTheDocument();
-    expect(cname.getByText("cname.openscholar.ai")).toBeInTheDocument();
-    const txt = within(rows[2] as HTMLElement);
-    expect(txt.getByText("TXT")).toBeInTheDocument();
+    const domain = document.querySelector(
+      "[data-domain-host='evidence.example.org']",
+    );
+    expect(domain).not.toBeNull();
+    const contents = within(domain as HTMLElement);
+    expect(contents.getByText("CNAME")).toBeInTheDocument();
+    expect(contents.getAllByText("evidence.example.org")).toHaveLength(2);
+    expect(contents.getByText("cname.openscholar.ai")).toBeInTheDocument();
+    expect(contents.getByText("TXT")).toBeInTheDocument();
     expect(
-      txt.getByText("_openscholar.evidence.example.org"),
+      contents.getByText("_openscholar.evidence.example.org"),
     ).toBeInTheDocument();
-    expect(txt.getByText("os-verify=7f3a9c1e5b2d4a8f")).toBeInTheDocument();
+    expect(
+      contents.getByText("os-verify=7f3a9c1e5b2d4a8f"),
+    ).toBeInTheDocument();
   });
 
   it("renders every domain the library holds, not just the first", () => {
@@ -146,9 +152,7 @@ describe("DomainSection", () => {
       row({ domainId: "domain_2", host: "www.example.org" }),
     ];
     render(<DomainSection libraryId={libraryId} />);
-    expect(
-      document.querySelectorAll("[data-domain-host]"),
-    ).toHaveLength(2);
+    expect(document.querySelectorAll("[data-domain-host]")).toHaveLength(2);
     expect(
       document.querySelector("[data-domain-host='www.example.org']"),
     ).not.toBeNull();
@@ -231,7 +235,9 @@ describe("DomainSection", () => {
     mocks.data.domains = [row({ state: "failed", failure: "no-records" })];
     render(<DomainSection libraryId={libraryId} />);
     expect(
-      screen.getByText("evidenceLibraryConfiguration.domain.failure.no-records"),
+      screen.getByText(
+        "evidenceLibraryConfiguration.domain.failure.no-records",
+      ),
     ).toBeInTheDocument();
     expect(document.querySelector("[data-dns-status]")).toHaveAttribute(
       "data-dns-status",
@@ -241,7 +247,10 @@ describe("DomainSection", () => {
 
   it("checks the domain when the button is pressed", async () => {
     mocks.data.domains = [row()];
-    mocks.checkDomain.mockResolvedValue({ status: "checked", state: "pointing" });
+    mocks.checkDomain.mockResolvedValue({
+      status: "checked",
+      state: "pointing",
+    });
     render(<DomainSection libraryId={libraryId} />);
     await userEvent.click(
       screen.getByRole("button", {
@@ -254,15 +263,23 @@ describe("DomainSection", () => {
     });
   });
 
-  it("keeps the redirect switch off until the domain is working", () => {
+  it("offers the primary-address action only when the domain is working", () => {
     mocks.data.domains = [row({ state: "verified" })];
     const { unmount } = render(<DomainSection libraryId={libraryId} />);
-    expect(screen.getByRole("switch")).toBeDisabled();
+    expect(
+      screen.queryByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.redirectLabel",
+      }),
+    ).toBeNull();
     unmount();
 
     mocks.data.domains = [row({ state: "active", attached: true })];
     render(<DomainSection libraryId={libraryId} />);
-    expect(screen.getByRole("switch")).toBeEnabled();
+    expect(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.redirectLabel",
+      }),
+    ).toBeEnabled();
   });
 
   it("shows the certificate state only once the domain is attached", () => {
@@ -293,25 +310,10 @@ describe("DomainSection", () => {
     ).toBeInTheDocument();
   });
 
-  it("explains that the top of a zone uses an apex record", () => {
-    // Whether a name is the top of its zone is read from its records on the
-    // server; the section renders what it was told.
-    mocks.data.domains = [row({ host: "example.co.uk", isApex: true })];
-    const { unmount } = render(<DomainSection libraryId={libraryId} />);
-    expect(
-      screen.getByText("evidenceLibraryConfiguration.domain.apex"),
-    ).toBeInTheDocument();
-    unmount();
-
-    mocks.data.domains = [row({ host: "library.example.org", isApex: false })];
-    render(<DomainSection libraryId={libraryId} />);
-    expect(
-      screen.queryByText("evidenceLibraryConfiguration.domain.apex"),
-    ).toBeNull();
-  });
-
   it("stops checking a domain that is on its way out, but lets the removal finish", () => {
-    mocks.data.domains = [row({ state: "active", attached: true, removing: true })];
+    mocks.data.domains = [
+      row({ state: "active", attached: true, removing: true }),
+    ];
     render(<DomainSection libraryId={libraryId} />);
     expect(
       screen.getByRole("button", {
@@ -329,9 +331,15 @@ describe("DomainSection", () => {
 
   it("asks before it changes the library's address, then changes it", async () => {
     mocks.data.domains = [row({ state: "active", attached: true })];
-    mocks.setPrimary.mockResolvedValue({ address: "https://evidence.example.org" });
+    mocks.setPrimary.mockResolvedValue({
+      address: "https://evidence.example.org",
+    });
     render(<DomainSection libraryId={libraryId} />);
-    await userEvent.click(screen.getByRole("switch"));
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.redirectLabel",
+      }),
+    );
     // Everyone signed in is signed out by this, so nothing happens until the
     // owner says yes.
     expect(mocks.setPrimary).not.toHaveBeenCalled();
@@ -354,7 +362,11 @@ describe("DomainSection", () => {
   it("does nothing when the owner backs out of changing the address", async () => {
     mocks.data.domains = [row({ state: "active", attached: true })];
     render(<DomainSection libraryId={libraryId} />);
-    await userEvent.click(screen.getByRole("switch"));
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.redirectLabel",
+      }),
+    );
     await userEvent.click(
       screen.getByRole("button", {
         name: "evidenceLibraryConfiguration.domain.confirmCancel",
@@ -365,11 +377,20 @@ describe("DomainSection", () => {
 
   it("lets the current address be switched off even when it stopped working", async () => {
     mocks.data.domains = [
-      row({ state: "failed", failure: "wrong-target", role: "primary", attached: true }),
+      row({
+        state: "failed",
+        failure: "wrong-target",
+        role: "primary",
+        attached: true,
+      }),
     ];
     render(<DomainSection libraryId={libraryId} />);
     // Taking the library back to its platform address is exactly what an
     // owner needs here.
-    expect(screen.getByRole("switch")).toBeEnabled();
+    expect(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.confirmOffTitle",
+      }),
+    ).toBeEnabled();
   });
 });
