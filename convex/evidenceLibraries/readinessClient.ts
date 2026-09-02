@@ -939,6 +939,13 @@ export async function handOffLibraryRuntime(
 ): Promise<{ status: "ready" }> {
   await requireLibraryRuntimeServicesReady(readiness);
   await changeLibraryRuntimeRoute("activation", route);
+  await requireRuntimeRouteMode(
+    readiness.targetFetchImpl ?? readiness.fetchImpl ?? fetch,
+    requireHttpsOrigin("Evidence Library URL", readiness.targetBaseUrl),
+    readiness.runtimeCommit,
+    readiness.revisionKey,
+    "marked",
+  );
   await requireLibraryRuntimePublicReady(readiness, "marked");
   await changeLibraryRuntimeRoute("finalization", route);
   await requireLibraryRuntimePublicReady(readiness, "native");

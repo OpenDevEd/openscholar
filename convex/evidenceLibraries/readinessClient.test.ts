@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   changeLibraryRuntimeRoute,
   classifyEvidenceLibraryAddress,
+  handOffLibraryRuntime,
   isRetryableReadinessError,
   probeEvidenceLibraryAddress,
   removeLibraryRuntimeRoute,
@@ -354,8 +355,9 @@ describe("Evidence Library readiness client", () => {
     });
 
     const readiness = requireLibraryRuntimeReady(input(fetchImpl));
+    const result = expect(readiness).resolves.toEqual({ status: "ready" });
     await vi.runAllTimersAsync();
-    await expect(readiness).resolves.toEqual({ status: "ready" });
+    await result;
     expect(healthRequests).toBe(3);
   });
 
@@ -553,16 +555,33 @@ describe("Evidence Library readiness client", () => {
     ).rejects.toMatchObject({ code: "ADDRESS_NOT_OURS" });
   });
 
-  it("accepts our marked fallback while the active route is changing", async () => {
+  it("waits for the new route before checking its active revision", async () => {
+    vi.useFakeTimers();
+    let finalized = false;
+    let healthRequests = 0;
     const fetchImpl = vi.fn<typeof fetch>(async (request) => {
       const url = String(request);
-      if (url.includes("runtime-verifier")) return json(readyVerifierBody());
+      if (url.endsWith("/v1/library-runtime/readiness")) {
+        return json(readyVerifierBody());
+      }
+      if (url.endsWith("/v1/library-runtime/activation")) {
+        return json({ status: "active" });
+      }
+      if (url.endsWith("/v1/library-runtime/finalization")) {
+        finalized = true;
+        return json({ status: "finalized" });
+      }
       if (url.endsWith("/api/library-config/health")) {
+        healthRequests += 1;
+        if (finalized) return json(activeHealth());
         return new Response(null, {
           status: 308,
           headers: {
             location: "https://climate.libraries.example.test/",
-            "X-OpenScholar-Route": `${RUNTIME_COMMIT}:${REVISION}`,
+            "X-OpenScholar-Route":
+              healthRequests === 1
+                ? `${"b".repeat(40)}:previous-revision`
+                : `${RUNTIME_COMMIT}:${REVISION}`,
           },
         });
       }
@@ -575,9 +594,24 @@ describe("Evidence Library readiness client", () => {
       return new Response("ready", { status: 200 });
     });
 
-    await expect(
-      requireLibraryRuntimeReady(input(fetchImpl)),
-    ).resolves.toEqual({ status: "ready" });
+    const readiness = handOffLibraryRuntime(
+      {
+        applicationUuid: APPLICATION_UUID,
+        customOrigins: ["https://climate.libraries.example.test"],
+        platformOrigins: ["https://climate-lib.opendev.space"],
+        revisionKey: REVISION,
+        runtimeCommit: RUNTIME_COMMIT,
+        runtimeImage: RUNTIME_IMAGE,
+        verifierUrl: "https://runtime-verifier.example.test",
+        verifierToken: "verifier-token-value",
+        fetchImpl,
+      },
+      input(fetchImpl),
+    );
+    const result = expect(readiness).resolves.toEqual({ status: "ready" });
+    await vi.runAllTimersAsync();
+    await result;
+    expect(finalized).toBe(true);
   });
 
   it("keeps waiting while the proxy has no server for the address", async () => {
