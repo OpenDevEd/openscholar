@@ -614,6 +614,36 @@ describe("Evidence Library readiness client", () => {
     expect(finalized).toBe(true);
   });
 
+  it("reports an oversized foreign page as another site during handoff", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (request) => {
+      const url = String(request);
+      if (url.endsWith("/v1/library-runtime/readiness")) {
+        return json(readyVerifierBody());
+      }
+      if (url.endsWith("/v1/library-runtime/activation")) {
+        return json({ status: "active" });
+      }
+      return new Response("x".repeat(256 * 1024 + 1), { status: 200 });
+    });
+
+    await expect(
+      handOffLibraryRuntime(
+        {
+          applicationUuid: APPLICATION_UUID,
+          customOrigins: [],
+          platformOrigins: ["https://climate.libraries.example.test"],
+          revisionKey: REVISION,
+          runtimeCommit: RUNTIME_COMMIT,
+          runtimeImage: RUNTIME_IMAGE,
+          verifierUrl: "https://runtime-verifier.example.test",
+          verifierToken: "verifier-token-value",
+          fetchImpl,
+        },
+        input(fetchImpl),
+      ),
+    ).rejects.toMatchObject({ code: "ADDRESS_NOT_OURS" });
+  });
+
   it("keeps waiting while the proxy has no server for the address", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async (request) => {
       if (String(request).includes("runtime-verifier")) {

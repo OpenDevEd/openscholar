@@ -683,9 +683,36 @@ async function requireRuntimeRouteMode(
       new URL("/api/library-config/health", targetOrigin),
       { headers: publicLibraryHeaders("application/json"), method: "GET" },
       async (response) => {
-        const matches =
-          response.headers.get(RUNTIME_ROUTE_HEADER) === expectedRoute;
-        return mode === "marked" ? matches : response.ok && matches;
+        const runtimeRoute = response.headers.get(RUNTIME_ROUTE_HEADER);
+        const matches = runtimeRoute === expectedRoute;
+        if (mode === "native") return response.ok && matches;
+        if (matches) return true;
+
+        let body = "";
+        try {
+          body = await readBoundedText(response, { allowEmpty: true });
+        } catch (error) {
+          if (
+            !(error instanceof ReadinessClientError) ||
+            error.code !== "READINESS_INVALID_RESPONSE"
+          ) {
+            throw error;
+          }
+        }
+        const address = classifyEvidenceLibraryAddress({
+          kind: "answer",
+          status: response.status,
+          body,
+          ...(runtimeRoute ? { runtimeRoute } : {}),
+        });
+        // A different marker can be the previous route draining after the
+        // activation command. Give it the bounded propagation window rather
+        // than moving an address that is still served by our proxy.
+        if (runtimeRoute || address.state !== "not-ours") return false;
+        throw new ReadinessClientError(
+          ADDRESS_NOT_OURS_CODE,
+          "Another site answers this Evidence Library address",
+        );
       },
     );
     if (active) return;
