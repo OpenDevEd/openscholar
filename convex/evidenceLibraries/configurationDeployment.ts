@@ -958,7 +958,10 @@ export const saveConfigurationDeploymentReceipt = internalMutation({
     const now = Date.now();
     await ctx.db.patch(deployment.operation._id, {
       receipt,
-      stage: "publishing",
+      stage:
+        deployment.operation.stage === "activating"
+          ? "activating"
+          : "publishing",
       configurationDeploymentPollCount: 0,
       configurationLeaseExpiresAt: await renewConfigurationLease(
         ctx,
@@ -1066,6 +1069,9 @@ export const prepareConfigurationActivation = internalMutation({
     const now = Date.now();
     await ctx.db.patch(deployment.operation._id, {
       stage: "activating",
+      ...(deployment.operation.stage === "activating"
+        ? {}
+        : { configurationReadinessPollCount: 0 }),
       configurationLeaseExpiresAt: await renewConfigurationLease(
         ctx,
         deployment.operation,
@@ -1109,7 +1115,11 @@ export const scheduleConfigurationReadinessPoll = internalMutation({
   ),
   handler: async (ctx, args) => {
     const deployment = await requireCurrentConfigurationDeployment(ctx, args);
-    if (deployment.operation.stage !== "activating") {
+    if (
+      deployment.operation.stage !== "assembling" &&
+      deployment.operation.stage !== "publishing" &&
+      deployment.operation.stage !== "activating"
+    ) {
       throw createError(
         "CONFLICT",
         "Evidence Library configuration is not waiting for readiness",
