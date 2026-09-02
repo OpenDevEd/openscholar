@@ -79,7 +79,7 @@ function createRuntimeNetwork(input: {
   // has to be answered on the new one.
   let publicDomain = input.publicAddress;
   let configHash = INITIAL_CONFIG_HASH;
-  let deployedConfigHash = INITIAL_CONFIG_HASH;
+  let deployedConfigHash: string | null = INITIAL_CONFIG_HASH;
   let deploymentStatus = "queued";
   let activeRevision = input.revisionKey;
   let healthUnavailable = false;
@@ -322,6 +322,11 @@ function createRuntimeNetwork(input: {
     finishDeployment() {
       deploymentStatus = "finished";
       deployedConfigHash = FINISHED_CONFIG_HASH;
+      configHash = FINISHED_CONFIG_HASH;
+    },
+    finishDeploymentWithoutHash() {
+      deploymentStatus = "finished";
+      deployedConfigHash = null;
       configHash = FINISHED_CONFIG_HASH;
     },
     failReadiness() {
@@ -799,7 +804,7 @@ describe("Evidence Library configuration deployment", () => {
         latestRevisionId: deployment.fixture.activated.revisionId,
       });
     });
-    network.finishDeployment();
+    network.finishDeploymentWithoutHash();
 
     expect(
       await deployment.fixture.t.action(

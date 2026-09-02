@@ -43,7 +43,10 @@ type World = {
   /** Hosts Coolify already serves for something else. */
   coolifyHosts?: string[];
   /** The health answer the custom domain gives. */
-  health?: { revision: string } | "none" | "other";
+  health?:
+    | { revision: string; redirect?: boolean; runtimeCommit?: string }
+    | "none"
+    | "other";
   resolverDisagrees?: boolean;
   dnsOffline?: boolean;
   coolifyConflict?: boolean;
@@ -297,6 +300,15 @@ function createWorld(world: World, tag = "openscholar-library-placeholder") {
         }
         if (!world.health || world.health === "none") {
           return new Response("no available server\n", { status: 503 });
+        }
+        if (world.health.redirect) {
+          return new Response(null, {
+            status: 308,
+            headers: {
+              location: `https://${PLATFORM_HOST}/api/library-config/health`,
+              "x-openscholar-route": `${world.health.runtimeCommit ?? "a".repeat(40)}:${world.health.revision}`,
+            },
+          });
         }
         return Response.json({
           state: "active",
@@ -1143,7 +1155,11 @@ describe("custom domains", () => {
     vi.stubGlobal(
       "fetch",
       createWorld(
-        { cname: TARGET, health: { revision: revisionKey }, anyHost: true },
+        {
+          cname: TARGET,
+          health: { revision: revisionKey, redirect: true },
+          anyHost: true,
+        },
         tag,
       ).fetchImpl,
     );
@@ -1159,6 +1175,77 @@ describe("custom domains", () => {
     expect(activeFirst?.state).toBe("active");
     expect(activeFirst?.activatedAt).toEqual(expect.any(Number));
     expect((await readRow(fixture, second.domainId))?.state).toBe("active");
+  });
+
+  it("waits for every domain before publishing any of them", async () => {
+    const fixture = await createReadySetupFixture("domain-batch-waits");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const ready = await addDomain(fixture);
+    const missing = await addDomain(fixture, "second.example.org");
+    if (ready.status !== "added" || missing.status !== "added") {
+      throw new Error("domains not added");
+    }
+    await markVerified(fixture, ready.domainId);
+
+    const world = createWorld({}, tag);
+    vi.stubGlobal("fetch", world.fetchImpl);
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.checkDomains, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toMatchObject({ status: "checked" });
+
+    expect(world.coolifyPatches).toHaveLength(0);
+    const readyRow = await readRow(fixture, ready.domainId);
+    expect(readyRow?.state).toBe("verified");
+    expect(readyRow).not.toHaveProperty("attachedAt");
+    expect(readyRow).not.toHaveProperty("pendingDeployment");
+    expect(await readRow(fixture, missing.domainId)).toMatchObject({
+      state: "failed",
+      failure: "no-records",
+    });
+  });
+
+  it("reconciles a live failed deployment without starting another build", async () => {
+    const fixture = await createReadySetupFixture("domain-live-recovery");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("domain not added");
+    await markVerified(fixture, added.domainId);
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        attachedAt: Date.now(),
+        deploymentPending: true,
+      });
+    });
+    const operationsBefore = (await readOperations(fixture)).length;
+    const revisionKey = await readLiveRevisionKey(fixture);
+    const world = createWorld(
+      {
+        cname: TARGET,
+        health: { revision: revisionKey, redirect: true },
+      },
+      tag,
+    );
+    vi.stubGlobal("fetch", world.fetchImpl);
+
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.checkDomains, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toMatchObject({
+      status: "checked",
+      results: [{ domainId: added.domainId, state: "active" }],
+    });
+
+    expect(world.coolifyPatches).toHaveLength(0);
+    expect((await readOperations(fixture)).length).toBe(operationsBefore);
+    const recovered = await readRow(fixture, added.domainId);
+    expect(recovered?.state).toBe("active");
+    expect(recovered).not.toHaveProperty("deploymentPending");
+    expect(recovered).not.toHaveProperty("pendingDeployment");
   });
 
   it("retries one transient non-200 before calling the domain taken", async () => {
@@ -1253,6 +1340,7 @@ describe("custom domains", () => {
 
     const world = createWorld(
       {
+        cname: TARGET,
         coolifyConflictHost: "https://taken.example.org",
         serving: [`https://${CUSTOM_HOST}`],
       },
@@ -1280,7 +1368,7 @@ describe("custom domains", () => {
     expect(takenRow?.pendingDeployment).toBeUndefined();
   });
 
-  it("checks available domains while another row is busy", async () => {
+  it("waits when any domain in the batch is busy", async () => {
     const fixture = await createReadySetupFixture("domain-batch-busy");
     const tag = await bindApplication(fixture);
     vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
@@ -1306,13 +1394,13 @@ describe("custom domains", () => {
       fixture.admin.action(api.evidenceLibraries.domainActions.checkDomains, {
         libraryId: fixture.created.libraryId,
       }),
-    ).resolves.toMatchObject({ status: "deploying" });
+    ).resolves.toMatchObject({ status: "busy" });
     expect(
       (await readRow(fixture, busy.domainId))?.pendingDeployment,
     ).toBeUndefined();
     expect(
       (await readRow(fixture, available.domainId))?.pendingDeployment,
-    ).toBeDefined();
+    ).toBeUndefined();
   });
 
   it("says the domain is taken when another site already serves it in the proxy", async () => {
@@ -2398,13 +2486,59 @@ describe("custom domains", () => {
     });
 
     // Switching it off is exactly what an owner needs here, so it is allowed.
-    await expect(
-      fixture.admin.mutation(api.evidenceLibraries.versions.setDomainPrimary, {
+    const changed = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.setDomainPrimary,
+      {
         libraryId: fixture.created.libraryId,
         domainId: added.domainId,
         primary: false,
-      }),
-    ).resolves.toMatchObject({ address: `https://${PLATFORM_HOST}` });
+      },
+    );
+    expect(changed).toMatchObject({ address: `https://${PLATFORM_HOST}` });
+
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(changed.operationId),
+    );
+    await fixture.t.mutation(
+      internal.evidenceLibraries.configurationDeployment
+        .failConfigurationDeployment,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: changed.operationId,
+        attemptToken: operation?.configurationAttemptToken ?? "",
+        attemptCount: operation?.attemptCount ?? 1,
+        error: { code: "TEST", message: "the address change failed" },
+      },
+    );
+    const claimed = await fixture.admin.mutation(
+      internal.evidenceLibraries.domains.claimDomainTransitions,
+      {
+        libraryId: fixture.created.libraryId,
+        domainIds: [added.domainId],
+      },
+    );
+    if (claimed.status !== "claimed") throw new Error("domain not claimed");
+    const [claim] = claimed.claims;
+    await expect(
+      fixture.admin.mutation(
+        internal.evidenceLibraries.domains.recoverLiveDomain,
+        {
+          libraryId: fixture.created.libraryId,
+          domainId: added.domainId,
+          token: claim!.token,
+          expectedGeneration: claim!.generation,
+        },
+      ),
+    ).rejects.toThrow(/another change pending/i);
+    await fixture.t.mutation(
+      internal.evidenceLibraries.domains.releaseDomainTransition,
+      { domainId: added.domainId, token: claim!.token },
+    );
+    expect(await readRow(fixture, added.domainId)).toMatchObject({
+      state: "failed",
+      role: "primary",
+      pendingDeployment: { phase: "canonical" },
+    });
   });
 
   it("marks a publish failed when its worker stops answering", async () => {

@@ -2338,6 +2338,7 @@ export function createCoolifyClient(input: {
       deploymentUuid: string;
       runtimeCommit: string;
       coolifyConfigHash: string;
+      allowMissingConfigurationHash?: boolean;
     }): Promise<CoolifyDeployment> {
       const deploymentUuid = requireInputIdentifier(
         "Coolify deployment UUID",
@@ -2348,7 +2349,11 @@ export function createCoolifyClient(input: {
       const deployment = await readDeployment(client, deploymentUuid);
       if (
         deployment.runtimeCommit !== runtimeCommit ||
-        deployment.coolifyConfigHash !== coolifyConfigHash
+        (deployment.coolifyConfigHash !== coolifyConfigHash &&
+          !(
+            input.allowMissingConfigurationHash &&
+            deployment.coolifyConfigHash === null
+          ))
       ) {
         throw new CoolifyClientError(
           "COOLIFY_DEPLOYMENT_CONFLICT",

@@ -485,6 +485,7 @@ async function queueDomainDeployment(
 /** Asks the domain itself whether this library answers on it. */
 async function readAnswerGate(input: {
   host: string;
+  runtimeCommit: string | null;
   liveRevisionKey: string | null;
   renewLease: () => Promise<void>;
 }): Promise<DomainOutcome> {
@@ -509,6 +510,14 @@ async function readAnswerGate(input: {
   const address = await probeEvidenceLibraryAddress({
     targetBaseUrl: `https://${input.host}`,
     fetchImpl: pinned,
+    ...(input.runtimeCommit && input.liveRevisionKey
+      ? {
+          expectedRuntimeRoute: {
+            runtimeCommit: input.runtimeCommit,
+            revisionKey: input.liveRevisionKey,
+          },
+        }
+      : {}),
   });
   // Nothing answered. That is not an answer about the domain, so nothing is
   // written and a working domain is never pushed back by a bad moment.
@@ -618,13 +627,53 @@ export const checkDomains = action({
           await release(row.domainId);
           continue;
         }
-        if (step === "deploy" || step === "attach") {
+        if (step === "attach") {
           deploymentChanges.push({
             domainId: row.domainId,
             token: claim.token,
             host: row.host,
             generation: claim.generation,
-            attach: step === "attach",
+            attach: true,
+          });
+          continue;
+        }
+        if (step === "deploy") {
+          let live: DomainOutcome | null = null;
+          try {
+            live = await readAnswerGate({
+              host: row.host,
+              runtimeCommit: context.runtimeCommit,
+              liveRevisionKey: context.liveRevisionKey,
+              renewLease,
+            });
+          } catch (error) {
+            if (!isUnavailable(error)) throw error;
+          }
+          if (live?.state === "active" && row.recoverableDeployment) {
+            await ctx.runMutation(
+              internal.evidenceLibraries.domains.recoverLiveDomain,
+              {
+                libraryId: args.libraryId,
+                domainId: row.domainId,
+                token: claim.token,
+                expectedGeneration: claim.generation,
+              },
+            );
+            held.delete(row.domainId);
+            results.push({ domainId: row.domainId, state: "active" });
+            continue;
+          }
+          if (live?.state === "failed") {
+            await write(row, live);
+            await release(row.domainId);
+            continue;
+          }
+          deploymentChanges.push({
+            domainId: row.domainId,
+            token: claim.token,
+            host: row.host,
+            generation: claim.generation,
+            attach: false,
           });
           continue;
         }
@@ -641,6 +690,7 @@ export const checkDomains = action({
                 )
               : await readAnswerGate({
                   host: row.host,
+                  runtimeCommit: context.runtimeCommit,
                   liveRevisionKey: context.liveRevisionKey,
                   renewLease,
                 });
@@ -665,6 +715,24 @@ export const checkDomains = action({
       }
 
       if (deploymentChanges.length === 0) {
+        return {
+          status:
+            results.length === 0 && unavailable > 0
+              ? "check-failed"
+              : "checked",
+          results,
+        };
+      }
+      const ready = new Set([
+        ...deploymentChanges.map((change) => change.domainId),
+        ...results
+          .filter((result) => result.state === "active")
+          .map((result) => result.domainId),
+      ]);
+      if (!targetIds.every((domainId) => ready.has(domainId))) {
+        for (const change of deploymentChanges) {
+          await release(change.domainId);
+        }
         return {
           status:
             results.length === 0 && unavailable > 0
@@ -897,6 +965,7 @@ export const activateDomains = internalAction({
       try {
         outcome = await readAnswerGate({
           host: row.host,
+          runtimeCommit: row.runtimeCommit,
           liveRevisionKey: row.liveRevisionKey,
           renewLease: async () => undefined,
         });
@@ -1026,6 +1095,7 @@ export const sweepWorkingDomains = internalAction({
       try {
         outcome = await readAnswerGate({
           host: row.host,
+          runtimeCommit: row.runtimeCommit,
           liveRevisionKey: row.liveRevisionKey,
           renewLease: async () => undefined,
         });

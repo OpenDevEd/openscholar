@@ -445,28 +445,24 @@ export const runConfigurationDeployment = internalAction({
           "Coolify could not deploy the Evidence Library",
         );
       }
-      if (!deployment.coolifyConfigHash) {
-        throw new CoolifyClientError(
-          "COOLIFY_DEPLOYMENT_CONFLICT",
-          "Coolify did not report the finished deployment configuration",
-        );
-      }
-      await coolify.requireBoundApplicationConfiguration({
-        applicationUuid: target.applicationId,
-        libraryId: args.libraryId,
-        publicDomain: target.targetBaseUrl,
-        customDomains: target.customDomains,
-        runtimeCommit: target.runtimeCommit,
-        runtimeImage,
-        libraryConfigJson: runtimeConfigJson,
-      });
+      const boundApplication =
+        await coolify.requireBoundApplicationConfiguration({
+          applicationUuid: target.applicationId,
+          libraryId: args.libraryId,
+          publicDomain: target.targetBaseUrl,
+          customDomains: target.customDomains,
+          runtimeCommit: target.runtimeCommit,
+          runtimeImage,
+          libraryConfigJson: runtimeConfigJson,
+        });
       await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .saveConfigurationDeploymentReceipt,
         {
           ...args,
           deploymentId,
-          coolifyConfigHash: deployment.coolifyConfigHash,
+          coolifyConfigHash:
+            deployment.coolifyConfigHash ?? boundApplication.coolifyConfigHash,
         },
       );
 
@@ -479,6 +475,7 @@ export const runConfigurationDeployment = internalAction({
         deploymentUuid: readiness.deploymentId,
         runtimeCommit: readiness.runtimeCommit,
         coolifyConfigHash: readiness.coolifyConfigHash,
+        allowMissingConfigurationHash: true,
       });
       // The address the runtime is read at may be a customer's domain, whose
       // records they can repoint at any moment. Every readiness request to
