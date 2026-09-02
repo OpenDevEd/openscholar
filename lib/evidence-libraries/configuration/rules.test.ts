@@ -61,7 +61,10 @@ const savedRows = [
   { sectionKey: "features", payload: {} },
   { sectionKey: "footer", payload: {} },
   { sectionKey: "contact", payload: {} },
-  { sectionKey: "email", payload: { takedownRecipient: "takedown@example.org" } },
+  {
+    sectionKey: "email",
+    payload: { takedownRecipient: "takedown@example.org" },
+  },
   { sectionKey: "legal", payload: {} },
   { sectionKey: "collections", payload: [] },
   { sectionKey: "search", payload: {} },
@@ -199,7 +202,8 @@ describe("changedSectionRows", () => {
   it("sends theme-specific favicons and leaves out missing uploads", () => {
     const draft = savedDraft();
     draft.identity.assets.favicon = "";
-    draft.identity.assets.logoLight = "https://assets.example.test/logo-light.svg";
+    draft.identity.assets.logoLight =
+      "https://assets.example.test/logo-light.svg";
     draft.identity.assets.faviconLight =
       "https://assets.example.test/favicon-light.svg";
     draft.identity.assets.faviconDark =
@@ -218,16 +222,22 @@ describe("changedSectionRows", () => {
     const faviconOnly = savedDraft();
     faviconOnly.identity.assets.logoDark = "";
     expect(
-      (changedSectionRows(faviconOnly, savedRows)[0]?.payload as { assets: unknown })
-        .assets,
+      (
+        changedSectionRows(faviconOnly, savedRows)[0]?.payload as {
+          assets: unknown;
+        }
+      ).assets,
     ).toEqual({ favicon: "https://assets.example.test/favicon.svg" });
 
     const nothing = savedDraft();
     nothing.identity.assets.logoDark = "";
     nothing.identity.assets.favicon = "";
     expect(
-      (changedSectionRows(nothing, savedRows)[0]?.payload as { assets: unknown })
-        .assets,
+      (
+        changedSectionRows(nothing, savedRows)[0]?.payload as {
+          assets: unknown;
+        }
+      ).assets,
     ).toEqual({});
   });
 
@@ -273,9 +283,9 @@ describe("changedSectionRows", () => {
   it("treats a section without a saved row as changed", () => {
     const rows = savedRows.filter((row) => row.sectionKey !== "theme");
     const draft = readDraft(rows);
-    expect(changedSectionRows(draft, rows).map((row) => row.sectionKey)).toEqual(
-      ["theme"],
-    );
+    expect(
+      changedSectionRows(draft, rows).map((row) => row.sectionKey),
+    ).toEqual(["theme"]);
   });
 
   it("drops the logo url from an institution when it is empty", () => {
@@ -296,7 +306,8 @@ describe("changedSectionRows", () => {
 describe("sectionState and reset", () => {
   it("shows the logo upload under theme even though it lives in identity", () => {
     const draft = savedDraft();
-    draft.identity.assets.logoLight = "https://assets.example.test/logo-light.svg";
+    draft.identity.assets.logoLight =
+      "https://assets.example.test/logo-light.svg";
     expect(sectionState(draft, savedRows, "theme")).toBe("edited");
     expect(sectionState(draft, savedRows, "identity")).toBe("complete");
   });
@@ -327,13 +338,18 @@ describe("sectionState and reset", () => {
 describe("staleUploads", () => {
   it("lists saved files the draft no longer points at", () => {
     const draft = savedDraft();
-    draft.identity.assets.logoDark = "https://assets.example.test/logo-dark-2.svg";
+    draft.identity.assets.logoDark =
+      "https://assets.example.test/logo-dark-2.svg";
     const rows = savedRows.map((row) =>
       row.sectionKey === "institutions"
         ? {
             sectionKey: "institutions",
             payload: [
-              { id: "inst_1", name: "EdTech Hub", logoUrl: "https://assets.example.test/edtech-hub.png" },
+              {
+                id: "inst_1",
+                name: "EdTech Hub",
+                logoUrl: "https://assets.example.test/edtech-hub.png",
+              },
             ],
           }
         : row,
@@ -348,7 +364,8 @@ describe("staleUploads", () => {
   it("keeps a file that is still used somewhere in the draft", () => {
     const draft = savedDraft();
     draft.identity.assets.logoLight = draft.identity.assets.logoDark;
-    draft.identity.assets.logoDark = "https://assets.example.test/logo-dark-2.svg";
+    draft.identity.assets.logoDark =
+      "https://assets.example.test/logo-dark-2.svg";
     expect(staleUploads(draft, savedRows)).toEqual([]);
   });
 });
@@ -358,7 +375,17 @@ describe("staleUploads", () => {
 /* ------------------------------------------------------------------ */
 
 const contentRows = [
-  ...savedRows.filter((row) => !["navigation", "features", "footer", "contact", "email", "legal"].includes(row.sectionKey)),
+  ...savedRows.filter(
+    (row) =>
+      ![
+        "navigation",
+        "features",
+        "footer",
+        "contact",
+        "email",
+        "legal",
+      ].includes(row.sectionKey),
+  ),
   {
     sectionKey: "navigation",
     payload: {
@@ -371,26 +398,55 @@ const contentRows = [
           target: "self",
           visible: true,
           children: [
-            { id: "nav_1a", label: "AI", href: "/lib?collections=COL1", target: "self", visible: true },
+            {
+              id: "nav_1a",
+              label: "AI",
+              href: "/lib?collections=COL1",
+              target: "self",
+              visible: true,
+            },
           ],
         },
       ],
     },
   },
-  { sectionKey: "features", payload: { navbarSearch: false, collections: true } },
+  {
+    sectionKey: "features",
+    payload: { navbarSearch: false, collections: true },
+  },
   {
     sectionKey: "footer",
     payload: {
-      sections: [{ id: "fs_1", title: "Explore", links: [{ id: "fl_1", label: "Map", href: "/map" }] }],
-      socialLinks: [{ provider: "github", href: "https://github.com/OpenDevEd" }],
-      funders: [{ id: "fu_1", name: "Jacobs Foundation", logoUrl: "https://assets.example.test/jacobs.svg" }],
+      sections: [
+        {
+          id: "fs_1",
+          title: "Explore",
+          links: [{ id: "fl_1", label: "Map", href: "/map" }],
+        },
+      ],
+      socialLinks: [
+        { provider: "github", href: "https://github.com/OpenDevEd" },
+      ],
+      funders: [
+        {
+          id: "fu_1",
+          name: "Jacobs Foundation",
+          logoUrl: "https://assets.example.test/jacobs.svg",
+        },
+      ],
       disclaimer: "Views are the authors' own.",
       attribution: "",
       poweredBy: true,
     },
   },
-  { sectionKey: "contact", payload: { email: "hello@example.org", phone: "+442071234567" } },
-  { sectionKey: "email", payload: { takedownRecipient: "takedown@example.org" } },
+  {
+    sectionKey: "contact",
+    payload: { email: "hello@example.org", phone: "+442071234567" },
+  },
+  {
+    sectionKey: "email",
+    payload: { takedownRecipient: "takedown@example.org" },
+  },
   {
     sectionKey: "legal",
     payload: {
@@ -403,7 +459,10 @@ const contentRows = [
 describe("readDraft for the content sections", () => {
   it("reads links as targets, the navbar search flag, and legal sources", () => {
     const draft = readDraft(contentRows);
-    expect(draft.navigation.links[0]?.target).toEqual({ kind: "page", page: "library" });
+    expect(draft.navigation.links[0]?.target).toEqual({
+      kind: "page",
+      page: "library",
+    });
     expect(draft.navigation.links[0]?.children[0]?.target).toEqual({
       kind: "collection",
       collectionId: "COL1",
@@ -411,7 +470,9 @@ describe("readDraft for the content sections", () => {
     expect(draft.features.navbarSearch).toBe(false);
     expect(draft.features.collections).toBe(true);
     expect(draft.features.downloads).toBe(false);
-    expect(draft.footer.social).toEqual({ github: "https://github.com/OpenDevEd" });
+    expect(draft.footer.social).toEqual({
+      github: "https://github.com/OpenDevEd",
+    });
     expect(draft.footer.funders[0]).toEqual({
       id: "fu_1",
       name: "Jacobs Foundation",
@@ -420,8 +481,14 @@ describe("readDraft for the content sections", () => {
     });
     expect(draft.contact.phone).toBe("+442071234567");
     expect(draft.email.takedownRecipient).toBe("takedown@example.org");
-    expect(draft.legal.privacy).toEqual({ kind: "text", text: "# Privacy\n\nWe keep little." });
-    expect(draft.legal.cookie).toEqual({ kind: "url", url: "https://example.org/cookies" });
+    expect(draft.legal.privacy).toEqual({
+      kind: "text",
+      text: "# Privacy\n\nWe keep little.",
+    });
+    expect(draft.legal.cookie).toEqual({
+      kind: "url",
+      url: "https://example.org/cookies",
+    });
     expect(draft.legal.terms).toEqual({ kind: "none" });
   });
 
@@ -441,7 +508,10 @@ describe("sectionProblems for the content sections", () => {
   it("flags links without a label, a bad address, or no collection", () => {
     const draft = readDraft(contentRows);
     draft.navigation.links[0]!.label = "";
-    draft.navigation.links[0]!.children[0]!.target = { kind: "collection", collectionId: "" };
+    draft.navigation.links[0]!.children[0]!.target = {
+      kind: "collection",
+      collectionId: "",
+    };
     draft.navigation.links.push({
       id: "nav_2",
       label: "About",
@@ -451,7 +521,11 @@ describe("sectionProblems for the content sections", () => {
       visible: true,
       children: [],
     });
-    expect(sectionProblems(draft, "navigation")).toEqual(["linkLabel", "linkCollection", "linkUrl"]);
+    expect(sectionProblems(draft, "navigation")).toEqual([
+      "linkLabel",
+      "linkCollection",
+      "linkUrl",
+    ]);
   });
 
   it("flags footer sections, social addresses and funders", () => {
@@ -470,16 +544,24 @@ describe("sectionProblems for the content sections", () => {
 
   it("checks a recipient only while its switch is on", () => {
     const draft = readDraft(contentRows);
-    expect(draft.email).toEqual({ contactRecipient: null, takedownRecipient: "takedown@example.org" });
+    expect(draft.email).toEqual({
+      contactRecipient: null,
+      takedownRecipient: "takedown@example.org",
+    });
     draft.email.takedownRecipient = null;
     expect(sectionProblems(draft, "contact")).toEqual([]);
-    expect(changedSectionRows(draft, contentRows)).toEqual([{ sectionKey: "email", payload: {} }]);
+    expect(changedSectionRows(draft, contentRows)).toEqual([
+      { sectionKey: "email", payload: {} },
+    ]);
     draft.email.contactRecipient = "";
     expect(sectionProblems(draft, "contact")).toEqual(["contactRecipient"]);
     draft.email.contactRecipient = "team@example.org";
     expect(sectionProblems(draft, "contact")).toEqual([]);
     expect(changedSectionRows(draft, contentRows)).toEqual([
-      { sectionKey: "email", payload: { contactRecipient: "team@example.org" } },
+      {
+        sectionKey: "email",
+        payload: { contactRecipient: "team@example.org" },
+      },
     ]);
   });
 
@@ -510,7 +592,11 @@ describe("changedSectionRows for the content sections", () => {
     draft.features.navbarSearch = true;
     const rows = changedSectionRows(draft, contentRows);
     expect(rows.map((row) => row.sectionKey)).toEqual(["features"]);
-    expect(rows[0]?.payload).toMatchObject({ navbarSearch: true, collections: true, downloads: false });
+    expect(rows[0]?.payload).toMatchObject({
+      navbarSearch: true,
+      collections: true,
+      downloads: false,
+    });
     expect(sectionState(draft, contentRows, "navigation")).toBe("edited");
   });
 
@@ -539,8 +625,20 @@ describe("changedSectionRows for the content sections", () => {
               target: "self",
               visible: true,
               children: [
-                { id: "nav_1a", label: "AI", href: "/lib?collections=COL1", target: "self", visible: true },
-                { id: "nav_1b", label: "About", href: "https://example.org/about", target: "blank", visible: true },
+                {
+                  id: "nav_1a",
+                  label: "AI",
+                  href: "/lib?collections=COL1",
+                  target: "self",
+                  visible: true,
+                },
+                {
+                  id: "nav_1b",
+                  label: "About",
+                  href: "https://example.org/about",
+                  target: "blank",
+                  visible: true,
+                },
               ],
             },
           ],
@@ -561,10 +659,30 @@ describe("changedSectionRows for the content sections", () => {
         sectionKey: "footer",
         payload: {
           sections: [
-            { id: "fs_1", title: "Explore", links: [{ id: "fl_1", label: "Map", href: "/map", target: "self", visible: true }] },
+            {
+              id: "fs_1",
+              title: "Explore",
+              links: [
+                {
+                  id: "fl_1",
+                  label: "Map",
+                  href: "/map",
+                  target: "self",
+                  visible: true,
+                },
+              ],
+            },
           ],
-          socialLinks: [{ provider: "bluesky", href: "https://bsky.app/profile/opendeved" }],
-          funders: [{ id: "fu_1", name: "Jacobs Foundation", href: "https://jacobsfoundation.org" }],
+          socialLinks: [
+            { provider: "bluesky", href: "https://bsky.app/profile/opendeved" },
+          ],
+          funders: [
+            {
+              id: "fu_1",
+              name: "Jacobs Foundation",
+              href: "https://jacobsfoundation.org",
+            },
+          ],
           disclaimer: "Views are the authors' own.",
           attribution: "",
           poweredBy: true,
@@ -584,11 +702,17 @@ describe("changedSectionRows for the content sections", () => {
     expect(rows).toEqual([
       {
         sectionKey: "email",
-        payload: { contactRecipient: "team@example.org", takedownRecipient: "takedown@example.org" },
+        payload: {
+          contactRecipient: "team@example.org",
+          takedownRecipient: "takedown@example.org",
+        },
       },
       {
         sectionKey: "legal",
-        payload: { privacyPolicy: "https://example.org/privacy", termsMarkdown: "# Terms" },
+        payload: {
+          privacyPolicy: "https://example.org/privacy",
+          termsMarkdown: "# Terms",
+        },
       },
     ]);
   });
@@ -607,15 +731,27 @@ describe("changedSectionRows for the content sections", () => {
   it("counts funder logos as uploads", () => {
     const draft = readDraft(contentRows);
     draft.footer.funders = [];
-    expect(staleUploads(draft, contentRows)).toEqual(["https://assets.example.test/jacobs.svg"]);
+    expect(staleUploads(draft, contentRows)).toEqual([
+      "https://assets.example.test/jacobs.svg",
+    ]);
   });
 
   it("sends a refused save to the card that owns the value", () => {
-    expect(saveRefusal("/identity/name", "/identity/name: This name is already taken.")).toEqual({
+    expect(
+      saveRefusal(
+        "/identity/name",
+        "/identity/name: This name is already taken.",
+      ),
+    ).toEqual({
       card: "identity",
       message: "This name is already taken.",
     });
-    expect(saveRefusal("/email/smtp", "/email/smtp: The mail server is set by the platform and cannot be saved.")).toEqual({
+    expect(
+      saveRefusal(
+        "/email/smtp",
+        "/email/smtp: The mail server is set by the platform and cannot be saved.",
+      ),
+    ).toEqual({
       card: "contact",
       message: "The mail server is set by the platform and cannot be saved.",
     });
@@ -628,7 +764,9 @@ describe("changedSectionRows for the content sections", () => {
       "/identity/assets/logoDark",
       "/identity/assets/shareImage",
     ]) {
-      expect(saveRefusal(pointer, `${pointer}: Value must match the uri format.`)).toEqual({
+      expect(
+        saveRefusal(pointer, `${pointer}: Value must match the uri format.`),
+      ).toEqual({
         card: "theme",
         message: "Value must match the uri format.",
       });
@@ -661,18 +799,54 @@ describe("changedSectionRows for the content sections", () => {
 /* ------------------------------------------------------------------ */
 
 const discoveryRows = [
-  ...savedRows.filter((row) => !["collections", "search", "filters", "sources", "content"].includes(row.sectionKey)),
-  { sectionKey: "collections", payload: [{ id: "COL2", title: "Health", order: 1 }, { id: "COL1", order: 0 }] },
-  { sectionKey: "search", payload: { fullText: false, scopes: ["title", "authors"], defaultScope: "title" } },
+  ...savedRows.filter(
+    (row) =>
+      !["collections", "search", "filters", "sources", "content"].includes(
+        row.sectionKey,
+      ),
+  ),
+  {
+    sectionKey: "collections",
+    payload: [
+      { id: "COL2", title: "Health", order: 1 },
+      { id: "COL1", order: 0 },
+    ],
+  },
+  {
+    sectionKey: "search",
+    payload: {
+      fullText: false,
+      scopes: ["title", "authors"],
+      defaultScope: "title",
+    },
+  },
   {
     sectionKey: "filters",
     payload: {
-      institution: { mode: "facet-with-featured-value", label: "Partners", featuredValue: "EdTech Hub" },
+      institution: {
+        mode: "facet-with-featured-value",
+        label: "Partners",
+        featuredValue: "EdTech Hub",
+      },
       years: { enabled: true },
     },
   },
-  { sectionKey: "sources", payload: [{ key: "zotero-42", provider: "zotero", groupId: "42", enabled: true, writebackEnabled: true }] },
-  { sectionKey: "content", payload: { tags: { publish: ["_publish"], hidden: [] } } },
+  {
+    sectionKey: "sources",
+    payload: [
+      {
+        key: "zotero-42",
+        provider: "zotero",
+        groupId: "42",
+        enabled: true,
+        writebackEnabled: true,
+      },
+    ],
+  },
+  {
+    sectionKey: "content",
+    payload: { tags: { publish: ["_publish"], hidden: [] } },
+  },
 ] as const;
 
 describe("readDraft for the discovery sections", () => {
@@ -682,14 +856,25 @@ describe("readDraft for the discovery sections", () => {
       fullText: false,
       tags: true,
       country: true,
-      authorCountry: true,
       scopes: ["title", "authors"],
       defaultScope: "title",
     });
-    expect(draft.filters.institution).toEqual({ mode: "facet-with-featured-value", label: "Partners", featuredValue: "EdTech Hub" });
+    expect(draft.filters.institution).toEqual({
+      mode: "facet-with-featured-value",
+      label: "Partners",
+      featuredValue: "EdTech Hub",
+    });
     expect(draft.filters.years).toEqual({ enabled: true });
     expect(draft.filters.collectionsExpanded).toBe(true);
-    expect(draft.sources).toEqual([{ key: "zotero-42", provider: "zotero", groupId: "42", enabled: true, writebackEnabled: true }]);
+    expect(draft.sources).toEqual([
+      {
+        key: "zotero-42",
+        provider: "zotero",
+        groupId: "42",
+        enabled: true,
+        writebackEnabled: true,
+      },
+    ]);
     expect(draft.content.tags).toEqual({ publish: ["_publish"], hidden: [] });
     expect(collectionOptions(draft)).toEqual([
       { id: "COL2", title: "Health" },
@@ -701,7 +886,11 @@ describe("readDraft for the discovery sections", () => {
     const draft = readDraft(savedRows);
     expect(draft.search.scopes).toEqual(SEARCH_SCOPES);
     expect(draft.search.defaultScope).toBe(SEARCH_SCOPES[0]);
-    expect(draft.filters.institution).toEqual({ mode: "facet", label: "institutions", featuredValue: "" });
+    expect(draft.filters.institution).toEqual({
+      mode: "facet",
+      label: "institutions",
+      featuredValue: "",
+    });
     expect(draft.filters.years).toEqual({ enabled: true });
     expect(draft.sources).toEqual([]);
     expect(draft.content.tags).toEqual({});
@@ -713,7 +902,10 @@ describe("sectionProblems for the discovery sections", () => {
     const draft = readDraft(discoveryRows);
     draft.search.defaultScope = "everywhere";
     draft.filters.institution.featuredValue = " ";
-    expect(sectionProblems(draft, "search")).toEqual(["defaultScope", "featuredInstitution"]);
+    expect(sectionProblems(draft, "search")).toEqual([
+      "defaultScope",
+      "featuredInstitution",
+    ]);
     draft.search.scopes = [];
     expect(sectionProblems(draft, "search")[0]).toBe("searchScopes");
   });
@@ -732,11 +924,13 @@ describe("sectionProblems for the discovery sections", () => {
     expect(sectionProblems(draft, "sources")).toEqual(["tagRules"]);
     const stray = readDraft([
       ...discoveryRows.filter((row) => row.sectionKey !== "content"),
-      { sectionKey: "content", payload: { tags: { hidden: ["hide"], bogus: ["x"] } } },
+      {
+        sectionKey: "content",
+        payload: { tags: { hidden: ["hide"], bogus: ["x"] } },
+      },
     ]);
     expect(stray.content.tags).toEqual({ hidden: ["hide"] });
   });
-
 });
 
 describe("changedSectionRows for the discovery sections", () => {
@@ -748,7 +942,13 @@ describe("changedSectionRows for the discovery sections", () => {
     expect(rows).toEqual([
       {
         sectionKey: "search",
-        payload: { fullText: true, tags: true, country: true, authorCountry: true, scopes: ["title", "authors"], defaultScope: "title" },
+        payload: {
+          fullText: true,
+          tags: true,
+          country: true,
+          scopes: ["title", "authors"],
+          defaultScope: "title",
+        },
       },
       {
         sectionKey: "filters",
@@ -768,7 +968,9 @@ describe("changedSectionRows for the discovery sections", () => {
     draft.content.tags.hidden = ["hide"];
     const rows = changedSectionRows(draft, discoveryRows);
     expect(rows.map((row) => row.sectionKey)).toEqual(["sources", "content"]);
-    expect(rows[1]?.payload).toEqual({ tags: { publish: ["_publish"], hidden: ["hide"] } });
+    expect(rows[1]?.payload).toEqual({
+      tags: { publish: ["_publish"], hidden: ["hide"] },
+    });
     const reset = resetSection(draft, discoveryRows, "sources");
     expect(reset.sources[0]?.writebackEnabled).toBe(true);
     expect(reset.content.tags.hidden).toEqual([]);
@@ -776,11 +978,20 @@ describe("changedSectionRows for the discovery sections", () => {
 
   it("writes collections as saved by the picker", () => {
     const draft = readDraft(discoveryRows);
-    draft.collections.push({ id: "COL3", title: "Policy", enabled: false, order: 2 });
+    draft.collections.push({
+      id: "COL3",
+      title: "Policy",
+      enabled: false,
+      order: 2,
+    });
     expect(changedSectionRows(draft, discoveryRows)).toEqual([
       {
         sectionKey: "collections",
-        payload: [{ id: "COL2", title: "Health", order: 1 }, { id: "COL1", order: 0 }, { id: "COL3", title: "Policy", enabled: false, order: 2 }],
+        payload: [
+          { id: "COL2", title: "Health", order: 1 },
+          { id: "COL1", order: 0 },
+          { id: "COL3", title: "Policy", enabled: false, order: 2 },
+        ],
       },
     ]);
     expect(cardForRow("filters")).toBe("search");
@@ -802,14 +1013,43 @@ describe("legal text chosen but not uploaded yet", () => {
 /* ------------------------------------------------------------------ */
 
 const platformRows = [
-  ...savedRows.filter((row) => !["features", "localization", "search", "filters", "citations", "exports", "analytics"].includes(row.sectionKey)),
+  ...savedRows.filter(
+    (row) =>
+      ![
+        "features",
+        "localization",
+        "search",
+        "filters",
+        "citations",
+        "exports",
+        "analytics",
+      ].includes(row.sectionKey),
+  ),
   { sectionKey: "search", payload: { country: false } },
   { sectionKey: "filters", payload: { years: { enabled: false } } },
-  { sectionKey: "features", payload: { collections: true, collectionNotes: true, downloads: true } },
+  {
+    sectionKey: "features",
+    payload: { collections: true, collectionNotes: true, downloads: true },
+  },
   { sectionKey: "citations", payload: { showUrl: true } },
   { sectionKey: "exports", payload: { ris: true, bibtex: false, atom: false } },
-  { sectionKey: "localization", payload: { locales: ["fr", "en-GB"], defaultLocale: "en-GB", localePriority: ["en-GB"] } },
-  { sectionKey: "analytics", payload: { posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" } } },
+  {
+    sectionKey: "localization",
+    payload: {
+      locales: ["fr", "en-GB"],
+      defaultLocale: "en-GB",
+      localePriority: ["en-GB"],
+    },
+  },
+  {
+    sectionKey: "analytics",
+    payload: {
+      posthog: {
+        host: "https://eu.i.posthog.com",
+        key: "phc_12345678901234567890",
+      },
+    },
+  },
 ] as const;
 
 describe("readDraft for the platform sections", () => {
@@ -839,14 +1079,21 @@ describe("readDraft for the platform sections", () => {
       uiHost: "",
       key: "",
     });
-    expect(readDraft(savedRows).exports).toEqual({ ris: true, bibtex: true, atom: false });
+    expect(readDraft(savedRows).exports).toEqual({
+      ris: true,
+      bibtex: true,
+      atom: false,
+    });
   });
 });
 
 describe("feature rules", () => {
   it("explains why a feature cannot be on and flags the card", () => {
     const draft = readDraft(platformRows);
-    expect(featureBlock(draft, "countryFocus")).toEqual({ kind: "search", option: "country" });
+    expect(featureBlock(draft, "countryFocus")).toEqual({
+      kind: "search",
+      option: "country",
+    });
     expect(featureBlock(draft, "yearsDropdown")).toEqual({ kind: "years" });
     expect(featureBlock(draft, "atomFeed")).toEqual({ kind: "atom" });
     expect(featureBlock(draft, "downloads")).toBeNull();
@@ -870,10 +1117,16 @@ describe("feature rules", () => {
     expect(afterCitations.features.languageSwitcher).toBe(true);
     const savedOneLanguage = platformRows.map((row) =>
       row.sectionKey === "localization"
-        ? { sectionKey: "localization", payload: { locales: ["en-GB"], defaultLocale: "en-GB" } }
+        ? {
+            sectionKey: "localization",
+            payload: { locales: ["en-GB"], defaultLocale: "en-GB" },
+          }
         : row,
     );
-    expect(resetSection(draft, savedOneLanguage, "languages").features.languageSwitcher).toBe(false);
+    expect(
+      resetSection(draft, savedOneLanguage, "languages").features
+        .languageSwitcher,
+    ).toBe(false);
   });
 
   it("turns dependent features off when their requirement goes away", () => {
@@ -891,13 +1144,19 @@ describe("changedSectionRows for the platform sections", () => {
   it("rewrites an exports row that still holds file addresses even when nothing else changed", () => {
     const stale = platformRows.map((row) =>
       row.sectionKey === "exports"
-        ? { sectionKey: "exports", payload: { ris: "https://feeds.example.test/library.ris" } }
+        ? {
+            sectionKey: "exports",
+            payload: { ris: "https://feeds.example.test/library.ris" },
+          }
         : row,
     );
     const draft = readDraft(stale);
     expect(draft.exports).toEqual({ ris: true, bibtex: true, atom: false });
     expect(changedSectionRows(draft, stale)).toEqual([
-      { sectionKey: "exports", payload: { ris: true, bibtex: true, atom: false } },
+      {
+        sectionKey: "exports",
+        payload: { ris: true, bibtex: true, atom: false },
+      },
     ]);
   });
 
@@ -908,9 +1167,18 @@ describe("changedSectionRows for the platform sections", () => {
     const rows = changedSectionRows(draft, platformRows);
     expect(rows).toEqual([
       { sectionKey: "citations", payload: { showUrl: false } },
-      { sectionKey: "exports", payload: { ris: true, bibtex: false, atom: true } },
+      {
+        sectionKey: "exports",
+        payload: { ris: true, bibtex: false, atom: true },
+      },
     ]);
-    const fresh = readDraft(platformRows.map((row) => (row.sectionKey === "exports" ? { sectionKey: "exports", payload: {} } : row)));
+    const fresh = readDraft(
+      platformRows.map((row) =>
+        row.sectionKey === "exports"
+          ? { sectionKey: "exports", payload: {} }
+          : row,
+      ),
+    );
     expect(fresh.exports).toEqual({ ris: true, bibtex: true, atom: false });
   });
 
@@ -921,7 +1189,9 @@ describe("changedSectionRows for the platform sections", () => {
     expect(sectionState(draft, platformRows, "features")).toBe("complete");
     draft.features.themeSwitcher = true;
     expect(sectionState(draft, platformRows, "features")).toBe("edited");
-    expect(changedSectionRows(draft, platformRows).map((row) => row.sectionKey)).toEqual(["features"]);
+    expect(
+      changedSectionRows(draft, platformRows).map((row) => row.sectionKey),
+    ).toEqual(["features"]);
     const reset = resetSection(draft, platformRows, "features");
     expect(reset.features.themeSwitcher).toBe(false);
     expect(reset.features.navbarSearch).toBe(false);
@@ -938,7 +1208,12 @@ describe("changedSectionRows for the platform sections", () => {
     expect(changedSectionRows(draft, platformRows)).toEqual([
       {
         sectionKey: "localization",
-        payload: { locales: ["fr"], defaultLocale: "fr", detectLocale: true, localePriority: ["fr"] },
+        payload: {
+          locales: ["fr"],
+          defaultLocale: "fr",
+          detectLocale: true,
+          localePriority: ["fr"],
+        },
       },
     ]);
   });
@@ -963,7 +1238,10 @@ describe("changedSectionRows for the platform sections", () => {
       {
         sectionKey: "analytics",
         payload: {
-          posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
+          posthog: {
+            host: "https://eu.i.posthog.com",
+            key: "phc_12345678901234567890",
+          },
           google: { measurementId: "G-12AB" },
         },
       },
@@ -977,7 +1255,9 @@ describe("changedSectionRows for the platform sections", () => {
     expect(sectionProblems(draft, "analytics")).toEqual(["posthog"]);
     draft.analytics.posthog.enabled = false;
     expect(sectionProblems(draft, "analytics")).toEqual([]);
-    expect(changedSectionRows(draft, platformRows)).toEqual([{ sectionKey: "analytics", payload: {} }]);
+    expect(changedSectionRows(draft, platformRows)).toEqual([
+      { sectionKey: "analytics", payload: {} },
+    ]);
     expect(cardForRow("exports")).toBe("citations");
     expect(cardForRow("localization")).toBe("languages");
     expect(cardForRow("features")).toBe("features");
@@ -1038,7 +1318,9 @@ describe("AI answers", () => {
     draft.ai.defaultModel = approvedModel;
     expect(sectionProblems(draft, "ai")).toEqual([]);
     const rows = changedSectionRows(draft, savedRows);
-    expect(rows.find((row) => row.sectionKey === "features")?.payload).toMatchObject({ ai: true });
+    expect(
+      rows.find((row) => row.sectionKey === "features")?.payload,
+    ).toMatchObject({ ai: true });
     expect(rows.find((row) => row.sectionKey === "ai")).toEqual({
       sectionKey: "ai",
       payload: {
@@ -1086,7 +1368,9 @@ describe("AI answers", () => {
   it("never lets a stored key reach a saved row", () => {
     const draft = readDraft(aiRows);
     draft.ai.keySaved = true;
-    expect(JSON.stringify(changedSectionRows(draft, aiRows))).not.toContain("apiKey");
+    expect(JSON.stringify(changedSectionRows(draft, aiRows))).not.toContain(
+      "apiKey",
+    );
     expect(cardForRow("ai")).toBe("ai");
     expect(sectionChanged(draft, aiRows, "ai")).toBe(false);
   });
@@ -1144,7 +1428,10 @@ describe("the analytics fields the runtime gained", () => {
       {
         sectionKey: "analytics",
         payload: {
-          posthog: { host: "https://eu.i.posthog.com", key: "phc_12345678901234567890" },
+          posthog: {
+            host: "https://eu.i.posthog.com",
+            key: "phc_12345678901234567890",
+          },
           consentPolicyVersion: 2,
         },
       },

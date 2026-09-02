@@ -201,9 +201,9 @@ export const SCHEMA_LIMITS = {
   },
 } as const;
 
-export const LOCALES = schemaEnum<"en-GB" | "en-US" | "de" | "ar" | "hi" | "fr" | "cn" | "sw" | "pt">(
-  "/localization/locales/*",
-);
+export const LOCALES = schemaEnum<
+  "en-GB" | "en-US" | "de" | "ar" | "hi" | "fr" | "cn" | "sw" | "pt"
+>("/localization/locales/*");
 export type Locale = (typeof LOCALES)[number];
 export const EXPORT_FORMATS = ["ris", "bibtex", "atom"] as const;
 type ExportFormat = (typeof EXPORT_FORMATS)[number];
@@ -215,7 +215,8 @@ const EXPORT_DEFAULTS: Record<ExportFormat, boolean> = {
 const POSTHOG_KEY_PATTERN = schemaPattern("/analytics/posthog/key");
 const POSTHOG_KEY_MIN_LENGTH = (() => {
   const value = schemaNode("/analytics/posthog/key").minLength;
-  if (typeof value !== "number") throw new Error("Configuration schema has no PostHog key length");
+  if (typeof value !== "number")
+    throw new Error("Configuration schema has no PostHog key length");
   return value;
 })();
 /** A PostHog project key the runtime accepts: `phc_` prefix and the schema's minimum length. */
@@ -234,9 +235,9 @@ export const SEARCH_SCOPES = schemaEnum<
   | "everywhere"
 >("/search/scopes/*");
 export type SearchScope = (typeof SEARCH_SCOPES)[number];
-export const INSTITUTION_MODES = schemaEnum<"hidden" | "facet" | "facet-with-featured-value">(
-  "/filters/institution/mode",
-);
+export const INSTITUTION_MODES = schemaEnum<
+  "hidden" | "facet" | "facet-with-featured-value"
+>("/filters/institution/mode");
 export type InstitutionMode = (typeof INSTITUTION_MODES)[number];
 /** The runtime's default scope list: every scope, minus full text when full-text search is off. */
 const defaultScopes = (fullText: boolean): SearchScope[] =>
@@ -337,8 +338,17 @@ export type ThemeDraft = {
 
 type InstitutionDraft = { id: string; name: string; logoUrl: string };
 
-export type FooterSectionDraft = { id: string; title: string; links: LinkDraft[] };
-export type FunderDraft = { id: string; name: string; logoUrl: string; href: string };
+export type FooterSectionDraft = {
+  id: string;
+  title: string;
+  links: LinkDraft[];
+};
+export type FunderDraft = {
+  id: string;
+  name: string;
+  logoUrl: string;
+  href: string;
+};
 export type FooterDraft = {
   sections: FooterSectionDraft[];
   social: Partial<Record<SocialProvider, string>>;
@@ -350,7 +360,10 @@ export type FooterDraft = {
 
 export type ContactDraft = { email: string; phone: string; address: string };
 /** A recipient is null while its switch is off; on and empty is a problem. */
-export type EmailDraft = { contactRecipient: string | null; takedownRecipient: string | null };
+export type EmailDraft = {
+  contactRecipient: string | null;
+  takedownRecipient: string | null;
+};
 
 /**
  * Where a legal page comes from: nothing, uploaded text, or an address
@@ -369,7 +382,6 @@ export type SearchDraft = {
   fullText: boolean;
   tags: boolean;
   country: boolean;
-  authorCountry: boolean;
   scopes: SearchScope[];
   defaultScope: SearchScope;
 };
@@ -378,7 +390,12 @@ export type FiltersDraft = {
   collectionsExpanded: boolean;
   years: { enabled: boolean };
 };
-type CollectionDraft = { id: string; title?: string; enabled?: boolean; order?: number };
+type CollectionDraft = {
+  id: string;
+  title?: string;
+  enabled?: boolean;
+  order?: number;
+};
 
 type LocalizationDraft = {
   locales: Locale[];
@@ -434,10 +451,19 @@ export const FEATURE_GROUPS = [
   { key: "appearance", features: ["themeSwitcher", "languageSwitcher"] },
   {
     key: "discovery",
-    features: ["collections", "collectionNotes", "countryFocus", "authorFilter", "authorLocation", "yearsDropdown"],
+    features: [
+      "collections",
+      "collectionNotes",
+      "countryFocus",
+      "authorFilter",
+      "yearsDropdown",
+    ],
   },
   { key: "exports", features: ["downloads", "atomFeed"] },
-] as const satisfies readonly { key: string; features: readonly FeatureKey[] }[];
+] as const satisfies readonly {
+  key: string;
+  features: readonly FeatureKey[];
+}[];
 export type ShownFeature = (typeof FEATURE_GROUPS)[number]["features"][number];
 
 /**
@@ -448,46 +474,57 @@ export type ShownFeature = (typeof FEATURE_GROUPS)[number]["features"][number];
  */
 export type FeatureBlock =
   | { kind: "feature"; feature: ShownFeature }
-  | { kind: "search"; option: "country" | "authorCountry" }
+  | { kind: "search"; option: "country" }
   | { kind: "years" }
   | { kind: "exports" }
   | { kind: "atom" }
   | { kind: "languages" };
 
-export function featureBlock(draft: ConfigurationDraft, feature: ShownFeature): FeatureBlock | null {
+export function featureBlock(
+  draft: ConfigurationDraft,
+  feature: ShownFeature,
+): FeatureBlock | null {
   switch (feature) {
     case "collectionNotes":
       // schema.ts:1702 "Collection notes require collections"
-      return draft.features.collections ? null : { kind: "feature", feature: "collections" };
+      return draft.features.collections
+        ? null
+        : { kind: "feature", feature: "collections" };
     case "countryFocus":
       // schema.ts:1710 "Country focus requires country search"
-      return draft.search.country ? null : { kind: "search", option: "country" };
-    case "authorLocation":
-      // schema.ts:1718 "Author location requires author-country search"
-      return draft.search.authorCountry ? null : { kind: "search", option: "authorCountry" };
+      return draft.search.country
+        ? null
+        : { kind: "search", option: "country" };
     case "yearsDropdown":
       // schema.ts:1726 "Years dropdown requires the years filter"
       return draft.filters.years.enabled ? null : { kind: "years" };
     case "downloads":
       // schema.ts "Downloads require RIS or BibTeX" (new-el 122a7e55)
-      return draft.exports.ris || draft.exports.bibtex ? null : { kind: "exports" };
+      return draft.exports.ris || draft.exports.bibtex
+        ? null
+        : { kind: "exports" };
     case "atomFeed":
       // schema.ts "Atom feed requires the Atom export" (new-el 122a7e55)
       return draft.exports.atom ? null : { kind: "atom" };
     case "languageSwitcher":
       // schema.ts:1595 "Language switcher requires at least two enabled locales"
-      return draft.localization.locales.length >= 2 ? null : { kind: "languages" };
+      return draft.localization.locales.length >= 2
+        ? null
+        : { kind: "languages" };
     default:
       return null;
   }
 }
 
-const SHOWN_FEATURES = FEATURE_GROUPS.flatMap((group) => group.features) as ShownFeature[];
+const SHOWN_FEATURES = FEATURE_GROUPS.flatMap(
+  (group) => group.features,
+) as ShownFeature[];
 
 /** Turns off every shown feature whose requirement no longer holds. Call after a change that can break one. */
 export function settleFeatures(draft: ConfigurationDraft): ConfigurationDraft {
   for (const feature of SHOWN_FEATURES) {
-    if (draft.features[feature] && featureBlock(draft, feature)) draft.features[feature] = false;
+    if (draft.features[feature] && featureBlock(draft, feature))
+      draft.features[feature] = false;
   }
   return draft;
 }
@@ -577,7 +614,10 @@ function readTheme(payload: unknown): ThemeDraft {
       THEME_DEFAULTS.defaultMode,
     ),
     colors: Object.fromEntries(
-      COLOUR_KEYS.map((key) => [key, text(colors[key], THEME_DEFAULTS.colors[key])]),
+      COLOUR_KEYS.map((key) => [
+        key,
+        text(colors[key], THEME_DEFAULTS.colors[key]),
+      ]),
     ) as Record<ColourKey, string>,
     fonts: {
       heading: readFont(fonts.heading, THEME_DEFAULTS.fonts.heading),
@@ -606,7 +646,9 @@ function readFeatures(payload: unknown): Record<FeatureKey, boolean> {
   return Object.fromEntries(
     FEATURE_KEYS.map((key) => [
       key,
-      typeof features[key] === "boolean" ? features[key] : FEATURE_DEFAULTS[key],
+      typeof features[key] === "boolean"
+        ? features[key]
+        : FEATURE_DEFAULTS[key],
     ]),
   ) as Record<FeatureKey, boolean>;
 }
@@ -710,15 +752,20 @@ function readSearch(payload: unknown): SearchDraft {
   const search = record(payload);
   const fullText = flag(search.fullText, true);
   const scopes = Array.isArray(search.scopes)
-    ? search.scopes.filter((scope): scope is SearchScope => SEARCH_SCOPES.includes(scope))
+    ? search.scopes.filter((scope): scope is SearchScope =>
+        SEARCH_SCOPES.includes(scope),
+      )
     : defaultScopes(fullText);
   return {
     fullText,
     tags: flag(search.tags, true),
     country: flag(search.country, true),
-    authorCountry: flag(search.authorCountry, true),
     scopes,
-    defaultScope: choice(search.defaultScope, SEARCH_SCOPES, scopes[0] ?? SEARCH_SCOPES[0]!),
+    defaultScope: choice(
+      search.defaultScope,
+      SEARCH_SCOPES,
+      scopes[0] ?? SEARCH_SCOPES[0]!,
+    ),
   };
 }
 
@@ -729,7 +776,10 @@ function readFilters(payload: unknown): FiltersDraft {
   return {
     institution: {
       mode: choice(institution.mode, INSTITUTION_MODES, "facet"),
-      label: text(institution.label, schemaDefault("/filters/institution/label")),
+      label: text(
+        institution.label,
+        schemaDefault("/filters/institution/label"),
+      ),
       featuredValue: text(institution.featuredValue),
     },
     collectionsExpanded: flag(filters.collectionsExpanded, true),
@@ -758,7 +808,10 @@ function readContent(payload: unknown): ConfigurationDraft["content"] {
   const known: TagRules = {};
   for (const key of TAG_RULE_KEYS) {
     const value = tags[key];
-    if (Array.isArray(value)) known[key] = value.filter((tag): tag is string => typeof tag === "string");
+    if (Array.isArray(value))
+      known[key] = value.filter(
+        (tag): tag is string => typeof tag === "string",
+      );
   }
   return { tags: known };
 }
@@ -769,7 +822,9 @@ export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
     identity: readIdentity(payloadOf(rows, "identity")),
     theme: readTheme(payloadOf(rows, "theme")),
     institutions: readInstitutions(payloadOf(rows, "institutions")),
-    navigation: { links: readLinks(record(payloadOf(rows, "navigation")).links, "nav") },
+    navigation: {
+      links: readLinks(record(payloadOf(rows, "navigation")).links, "nav"),
+    },
     features: readFeatures(payloadOf(rows, "features")),
     footer: readFooter(payloadOf(rows, "footer")),
     contact: readContact(payloadOf(rows, "contact")),
@@ -780,7 +835,9 @@ export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
     filters: readFilters(payloadOf(rows, "filters")),
     sources: readSources(payloadOf(rows, "sources")),
     content: readContent(payloadOf(rows, "content")),
-    citations: { showUrl: flag(record(payloadOf(rows, "citations")).showUrl, false) },
+    citations: {
+      showUrl: flag(record(payloadOf(rows, "citations")).showUrl, false),
+    },
     exports: readExports(payloadOf(rows, "exports")),
     localization: readLocalization(payloadOf(rows, "localization")),
     analytics: readAnalytics(payloadOf(rows, "analytics")),
@@ -791,23 +848,37 @@ export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
 function readExports(payload: unknown): Record<ExportFormat, boolean> {
   const exports = record(payload);
   return Object.fromEntries(
-    EXPORT_FORMATS.map((format) => [format, flag(exports[format], EXPORT_DEFAULTS[format])]),
+    EXPORT_FORMATS.map((format) => [
+      format,
+      flag(exports[format], EXPORT_DEFAULTS[format]),
+    ]),
   ) as Record<ExportFormat, boolean>;
 }
 
 function readLocales(value: unknown): Locale[] {
-  return list(value).filter((locale): locale is Locale => LOCALES.includes(locale as Locale));
+  return list(value).filter((locale): locale is Locale =>
+    LOCALES.includes(locale as Locale),
+  );
 }
 
 function readLocalization(payload: unknown): LocalizationDraft {
   const localization = record(payload);
   const locales = readLocales(localization.locales);
-  const priority = readLocales(localization.localePriority).filter((locale) => locales.includes(locale));
+  const priority = readLocales(localization.localePriority).filter((locale) =>
+    locales.includes(locale),
+  );
   return {
     locales,
-    defaultLocale: choice(localization.defaultLocale, LOCALES, locales[0] ?? LOCALES[0]!),
+    defaultLocale: choice(
+      localization.defaultLocale,
+      LOCALES,
+      locales[0] ?? LOCALES[0]!,
+    ),
     detectLocale: flag(localization.detectLocale, false),
-    localePriority: [...priority, ...locales.filter((locale) => !priority.includes(locale))],
+    localePriority: [
+      ...priority,
+      ...locales.filter((locale) => !priority.includes(locale)),
+    ],
   };
 }
 
@@ -929,7 +1000,11 @@ function institutionsPayload(institutions: InstitutionDraft[]) {
 }
 
 function navigationPayload(navigation: ConfigurationDraft["navigation"]) {
-  return { links: navigation.links.map((link) => linkPayload(link, { children: true })) };
+  return {
+    links: navigation.links.map((link) =>
+      linkPayload(link, { children: true }),
+    ),
+  };
 }
 
 function footerPayload(footer: FooterDraft) {
@@ -937,11 +1012,13 @@ function footerPayload(footer: FooterDraft) {
     sections: footer.sections.map((section) => ({
       id: section.id,
       title: section.title,
-      links: section.links.map((link) => linkPayload(link, { children: false })),
+      links: section.links.map((link) =>
+        linkPayload(link, { children: false }),
+      ),
     })),
-    socialLinks: SOCIAL_PROVIDERS.filter((provider) => footer.social[provider]).map(
-      (provider) => ({ provider, href: footer.social[provider] }),
-    ),
+    socialLinks: SOCIAL_PROVIDERS.filter(
+      (provider) => footer.social[provider],
+    ).map((provider) => ({ provider, href: footer.social[provider] })),
     funders: footer.funders.map((funder) =>
       compact({
         id: funder.id,
@@ -976,7 +1053,8 @@ function legalPayload(legal: LegalDraft) {
   const payload: Record<string, string> = {};
   for (const key of LEGAL_KEYS) {
     const source = legal[key];
-    if (source.kind === "text" && source.text) payload[LEGAL_FIELDS[key].markdown] = source.text;
+    if (source.kind === "text" && source.text)
+      payload[LEGAL_FIELDS[key].markdown] = source.text;
     if (source.kind === "url") payload[LEGAL_FIELDS[key].link] = source.url;
   }
   return payload;
@@ -1033,8 +1111,14 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
     case "exports":
       return { ...draft.exports };
     case "localization": {
-      const { locales, defaultLocale, detectLocale, localePriority } = draft.localization;
-      return { locales: [...locales], defaultLocale, detectLocale, localePriority: [...localePriority] };
+      const { locales, defaultLocale, detectLocale, localePriority } =
+        draft.localization;
+      return {
+        locales: [...locales],
+        defaultLocale,
+        detectLocale,
+        localePriority: [...localePriority],
+      };
     }
     case "analytics": {
       const { posthog, google, consentPolicyVersion } = draft.analytics;
@@ -1051,7 +1135,9 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
               key: posthog.key,
             })
           : undefined,
-        google: google.enabled ? { measurementId: google.measurementId } : undefined,
+        google: google.enabled
+          ? { measurementId: google.measurementId }
+          : undefined,
         consentPolicyVersion:
           consentPolicyVersion === CONSENT_POLICY_VERSION_DEFAULT
             ? undefined
@@ -1077,7 +1163,8 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
   }
 }
 
-const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+const same = (a: unknown, b: unknown) =>
+  JSON.stringify(a) === JSON.stringify(b);
 
 function hasRow(rows: readonly SectionRow[], rowKey: RowKey) {
   return rows.some((row) => row.sectionKey === rowKey);
@@ -1089,7 +1176,9 @@ function hasRow(rows: readonly SectionRow[], rowKey: RowKey) {
 function staleExportsRow(rows: readonly SectionRow[]): boolean {
   const row = rows.find((candidate) => candidate.sectionKey === "exports");
   if (!row) return false;
-  return Object.values(record(row.payload)).some((value) => typeof value !== "boolean");
+  return Object.values(record(row.payload)).some(
+    (value) => typeof value !== "boolean",
+  );
 }
 
 /** Rows to send on Save: every row whose payload differs from its saved row. */
@@ -1103,11 +1192,16 @@ export function changedSectionRows(
       !hasRow(rows, rowKey) ||
       !same(rowPayload(draft, rowKey), rowPayload(saved, rowKey)) ||
       (rowKey === "exports" && staleExportsRow(rows)),
-  ).map((rowKey) => ({ sectionKey: rowKey, payload: rowPayload(draft, rowKey) }));
+  ).map((rowKey) => ({
+    sectionKey: rowKey,
+    payload: rowPayload(draft, rowKey),
+  }));
 }
 
-export const isDirty = (draft: ConfigurationDraft, rows: readonly SectionRow[]) =>
-  changedSectionRows(draft, rows).length > 0;
+export const isDirty = (
+  draft: ConfigurationDraft,
+  rows: readonly SectionRow[],
+) => changedSectionRows(draft, rows).length > 0;
 
 /** Every uploaded file a draft points at: logos, favicon, share image, institution and funder logos. */
 function uploadUrls(draft: ConfigurationDraft): string[] {
@@ -1127,7 +1221,9 @@ export function staleUploads(
   rows: readonly SectionRow[],
 ): string[] {
   const kept = new Set(uploadUrls(draft));
-  return [...new Set(uploadUrls(readDraft(rows)))].filter((url) => !kept.has(url));
+  return [...new Set(uploadUrls(readDraft(rows)))].filter(
+    (url) => !kept.has(url),
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -1158,7 +1254,10 @@ function cardSlice(draft: ConfigurationDraft, sectionKey: PageSectionKey) {
     case "institutions":
       return draft.institutions;
     case "navigation":
-      return { links: draft.navigation.links, navbarSearch: draft.features.navbarSearch };
+      return {
+        links: draft.navigation.links,
+        navbarSearch: draft.features.navbarSearch,
+      };
     case "citations":
       return { citations: draft.citations, exports: draft.exports };
     case "features":
@@ -1220,7 +1319,10 @@ const BRAND_ASSET_POINTER = "/identity/assets";
 
 /** The card that edits the value a JSON pointer names, or null when the page has none. */
 export function cardForPointer(pointer: string): PageSectionKey | null {
-  if (pointer === BRAND_ASSET_POINTER || pointer.startsWith(`${BRAND_ASSET_POINTER}/`)) {
+  if (
+    pointer === BRAND_ASSET_POINTER ||
+    pointer.startsWith(`${BRAND_ASSET_POINTER}/`)
+  ) {
     return "theme";
   }
   return cardForRow(pointer.split("/")[1] ?? "");
@@ -1243,7 +1345,10 @@ export function saveRefusal(
   const prefix = `${path}: `;
   return {
     card: path ? cardForPointer(path) : null,
-    message: path && message.startsWith(prefix) ? message.slice(prefix.length) : message,
+    message:
+      path && message.startsWith(prefix)
+        ? message.slice(prefix.length)
+        : message,
   };
 }
 
@@ -1253,11 +1358,17 @@ export function sectionChanged(
   sectionKey: PageSectionKey,
 ): boolean {
   if (ROWS_FOR_CARD[sectionKey].some((key) => !hasRow(rows, key))) return true;
-  return !same(cardSlice(draft, sectionKey), cardSlice(readDraft(rows), sectionKey));
+  return !same(
+    cardSlice(draft, sectionKey),
+    cardSlice(readDraft(rows), sectionKey),
+  );
 }
 
 function allLinkProblems(links: readonly LinkDraft[]): LinkProblem[] {
-  return links.flatMap((link) => [...linkProblems(link), ...allLinkProblems(link.children)]);
+  return links.flatMap((link) => [
+    ...linkProblems(link),
+    ...allLinkProblems(link.children),
+  ]);
 }
 
 function unique<T>(items: T[]): T[] {
@@ -1272,12 +1383,16 @@ export function sectionProblems(
   switch (sectionKey) {
     case "identity":
       if (!draft.identity.name.trim()) problems.push("nameMissing");
-      if (draft.identity.fundingPartners.some((partner) => !partner.name.trim())) {
+      if (
+        draft.identity.fundingPartners.some((partner) => !partner.name.trim())
+      ) {
         problems.push("partnerName");
       }
       break;
     case "theme":
-      if (COLOUR_KEYS.some((key) => !HEX_COLOUR.test(draft.theme.colors[key]))) {
+      if (
+        COLOUR_KEYS.some((key) => !HEX_COLOUR.test(draft.theme.colors[key]))
+      ) {
         problems.push("badColour");
       }
       break;
@@ -1294,25 +1409,41 @@ export function sectionProblems(
       if (footer.sections.some((section) => !section.title.trim())) {
         problems.push("footerTitle");
       }
-      problems.push(...allLinkProblems(footer.sections.flatMap((section) => section.links)));
-      if (Object.values(footer.social).some((url) => url && !HTTPS_URL.test(url))) {
+      problems.push(
+        ...allLinkProblems(footer.sections.flatMap((section) => section.links)),
+      );
+      if (
+        Object.values(footer.social).some((url) => url && !HTTPS_URL.test(url))
+      ) {
         problems.push("socialUrl");
       }
-      if (footer.funders.some((funder) => !funder.name.trim())) problems.push("funderName");
-      if (footer.funders.some((funder) => funder.href && !HTTPS_URL.test(funder.href))) {
+      if (footer.funders.some((funder) => !funder.name.trim()))
+        problems.push("funderName");
+      if (
+        footer.funders.some(
+          (funder) => funder.href && !HTTPS_URL.test(funder.href),
+        )
+      ) {
         problems.push("funderUrl");
       }
       break;
     }
     case "contact": {
       const { contact, email, legal } = draft;
-      if (email.takedownRecipient !== null && !EMAIL.test(email.takedownRecipient)) {
+      if (
+        email.takedownRecipient !== null &&
+        !EMAIL.test(email.takedownRecipient)
+      ) {
         problems.push("takedownRecipient");
       }
-      if (email.contactRecipient !== null && !EMAIL.test(email.contactRecipient)) {
+      if (
+        email.contactRecipient !== null &&
+        !EMAIL.test(email.contactRecipient)
+      ) {
         problems.push("contactRecipient");
       }
-      if (contact.email && !EMAIL.test(contact.email)) problems.push("contactEmail");
+      if (contact.email && !EMAIL.test(contact.email))
+        problems.push("contactEmail");
       if (contact.phone && !PHONE.test(contact.phone)) problems.push("phone");
       if (
         LEGAL_KEYS.some((key) => {
@@ -1322,7 +1453,9 @@ export function sectionProblems(
       ) {
         problems.push("legalUrl");
       }
-      if (LEGAL_KEYS.some((key) => legal[key].kind === "text" && !legal[key].text)) {
+      if (
+        LEGAL_KEYS.some((key) => legal[key].kind === "text" && !legal[key].text)
+      ) {
         problems.push("legalText");
       }
       break;
@@ -1332,7 +1465,8 @@ export function sectionProblems(
     case "search": {
       const { search, filters } = draft;
       if (search.scopes.length === 0) problems.push("searchScopes");
-      else if (!search.scopes.includes(search.defaultScope)) problems.push("defaultScope");
+      else if (!search.scopes.includes(search.defaultScope))
+        problems.push("defaultScope");
       if (
         filters.institution.mode === "facet-with-featured-value" &&
         !filters.institution.featuredValue.trim()
@@ -1351,24 +1485,37 @@ export function sectionProblems(
       }
       break;
     case "features":
-      if (SHOWN_FEATURES.some((feature) => draft.features[feature] && featureBlock(draft, feature))) {
+      if (
+        SHOWN_FEATURES.some(
+          (feature) => draft.features[feature] && featureBlock(draft, feature),
+        )
+      ) {
         problems.push("featureDependency");
       }
       break;
     case "languages": {
       const { locales, defaultLocale } = draft.localization;
-      if (locales.length === 0 || !locales.includes(defaultLocale)) problems.push("languages");
+      if (locales.length === 0 || !locales.includes(defaultLocale))
+        problems.push("languages");
       break;
     }
     case "analytics": {
       const { posthog, google, consentPolicyVersion } = draft.analytics;
-      if (posthog.enabled && (!HTTPS_URL.test(posthog.host) || !isPosthogKey(posthog.key))) {
+      if (
+        posthog.enabled &&
+        (!HTTPS_URL.test(posthog.host) || !isPosthogKey(posthog.key))
+      ) {
         problems.push("posthog");
       }
-      if (posthog.enabled && posthog.uiHost !== "" && !HTTPS_URL.test(posthog.uiHost)) {
+      if (
+        posthog.enabled &&
+        posthog.uiHost !== "" &&
+        !HTTPS_URL.test(posthog.uiHost)
+      ) {
         problems.push("posthogUiHost");
       }
-      if (google.enabled && !MEASUREMENT_ID.test(google.measurementId)) problems.push("google");
+      if (google.enabled && !MEASUREMENT_ID.test(google.measurementId))
+        problems.push("google");
       if (
         !Number.isInteger(consentPolicyVersion) ||
         consentPolicyVersion < CONSENT_POLICY_VERSION_DEFAULT
@@ -1466,7 +1613,8 @@ export function resetSection(
       next.exports = saved.exports;
       break;
     case "features":
-      for (const feature of SHOWN_FEATURES) next.features[feature] = saved.features[feature];
+      for (const feature of SHOWN_FEATURES)
+        next.features[feature] = saved.features[feature];
       break;
     case "languages":
       next.localization = saved.localization;

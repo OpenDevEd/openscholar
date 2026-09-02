@@ -1,12 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  RUNTIME_READ_CACHE_MS,
   RuntimeReadError,
-  isFreshRuntimeRead,
   readRuntimeCollections,
   readRuntimeCollectionsByIds,
   readRuntimeInstitutions,
-  runtimeReadCacheKey,
 } from "./runtimeReadClient";
 
 const credential = `els_${"a".repeat(43)}`;
@@ -18,36 +15,29 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-describe("isFreshRuntimeRead", () => {
-  it("keeps an answer for five minutes", () => {
-    expect(isFreshRuntimeRead(1_000, 1_000 + RUNTIME_READ_CACHE_MS - 1)).toBe(true);
-    expect(isFreshRuntimeRead(1_000, 1_000 + RUNTIME_READ_CACHE_MS)).toBe(false);
-  });
-});
-
-describe("runtimeReadCacheKey", () => {
-  it("separates pages, searches and sorts", () => {
-    expect(runtimeReadCacheKey({})).toBe(runtimeReadCacheKey({ query: "", cursor: undefined }));
-    expect(runtimeReadCacheKey({ query: "cli" })).not.toBe(runtimeReadCacheKey({}));
-    expect(runtimeReadCacheKey({ cursor: "p2" })).not.toBe(runtimeReadCacheKey({}));
-    expect(runtimeReadCacheKey({ sort: "name" })).not.toBe(runtimeReadCacheKey({ sort: "count" }));
-    expect(runtimeReadCacheKey({ direction: "asc" })).not.toBe(runtimeReadCacheKey({ direction: "desc" }));
-    expect(runtimeReadCacheKey({ ids: ["b", "a"] })).toBe(runtimeReadCacheKey({ ids: ["a", "b"] }));
-    expect(runtimeReadCacheKey({ ids: ["a"] })).not.toBe(runtimeReadCacheKey({ ids: ["a", "b"] }));
-  });
-});
-
 describe("readRuntimeCollections", () => {
   it("asks the library with its machine credential and returns the page", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
       const url = new URL(String(input));
-      expect(url.origin + url.pathname).toBe("https://lib.example.test/api/openscholar/collections");
+      expect(url.origin + url.pathname).toBe(
+        "https://lib.example.test/api/openscholar/collections",
+      );
       expect(url.searchParams.get("query")).toBe("climate");
       expect(url.searchParams.get("cursor")).toBe("p2");
       expect(url.searchParams.get("pageSize")).toBe("50");
-      expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${credential}`);
+      expect(new Headers(init?.headers).get("authorization")).toBe(
+        `Bearer ${credential}`,
+      );
       return jsonResponse({
-        items: [{ id: "ABCD1234", title: "Climate", count: 12, source: "zotero-42", parentId: null }],
+        items: [
+          {
+            id: "ABCD1234",
+            title: "Climate",
+            count: 12,
+            source: "zotero-42",
+            parentId: null,
+          },
+        ],
         nextCursor: "p3",
       });
     });
@@ -59,19 +49,39 @@ describe("readRuntimeCollections", () => {
         cursor: "p2",
       }),
     ).resolves.toEqual({
-      items: [{ id: "ABCD1234", title: "Climate", count: 12, source: "zotero-42", parentId: null }],
+      items: [
+        {
+          id: "ABCD1234",
+          title: "Climate",
+          count: 12,
+          source: "zotero-42",
+          parentId: null,
+        },
+      ],
       nextCursor: "p3",
     });
   });
 
   it("reports a refused or broken answer", async () => {
-    const refused = vi.fn<typeof fetch>(async () => jsonResponse({ error: {} }, 401));
+    const refused = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ error: {} }, 401),
+    );
     await expect(
-      readRuntimeCollections(refused, { baseUrl: "https://lib.example.test", credential }),
-    ).rejects.toMatchObject({ code: "RUNTIME_READ_REFUSED" } satisfies Partial<RuntimeReadError>);
-    const broken = vi.fn<typeof fetch>(async () => jsonResponse({ items: [{ id: 1 }] }));
+      readRuntimeCollections(refused, {
+        baseUrl: "https://lib.example.test",
+        credential,
+      }),
+    ).rejects.toMatchObject({
+      code: "RUNTIME_READ_REFUSED",
+    } satisfies Partial<RuntimeReadError>);
+    const broken = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ items: [{ id: 1 }] }),
+    );
     await expect(
-      readRuntimeCollections(broken, { baseUrl: "https://lib.example.test", credential }),
+      readRuntimeCollections(broken, {
+        baseUrl: "https://lib.example.test",
+        credential,
+      }),
     ).rejects.toMatchObject({ code: "RUNTIME_READ_INVALID" });
   });
 });
@@ -80,14 +90,21 @@ describe("readRuntimeInstitutions", () => {
   it("asks for one page of names with the search text, cursor and sort", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
       const url = new URL(String(input));
-      expect(url.origin + url.pathname).toBe("https://lib.example.test/api/openscholar/institutions");
+      expect(url.origin + url.pathname).toBe(
+        "https://lib.example.test/api/openscholar/institutions",
+      );
       expect(url.searchParams.get("query")).toBe("nairobi");
       expect(url.searchParams.get("cursor")).toBe("p2");
       expect(url.searchParams.get("sort")).toBe("name");
       expect(url.searchParams.get("direction")).toBe("asc");
       expect(url.searchParams.get("pageSize")).toBe("50");
-      expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${credential}`);
-      return jsonResponse({ items: [{ name: "University of Nairobi", count: 4 }], nextCursor: "p3" });
+      expect(new Headers(init?.headers).get("authorization")).toBe(
+        `Bearer ${credential}`,
+      );
+      return jsonResponse({
+        items: [{ name: "University of Nairobi", count: 4 }],
+        nextCursor: "p3",
+      });
     });
     await expect(
       readRuntimeInstitutions(fetchImpl, {
@@ -98,7 +115,10 @@ describe("readRuntimeInstitutions", () => {
         sort: "name",
         direction: "asc",
       }),
-    ).resolves.toEqual({ items: [{ name: "University of Nairobi", count: 4 }], nextCursor: "p3" });
+    ).resolves.toEqual({
+      items: [{ name: "University of Nairobi", count: 4 }],
+      nextCursor: "p3",
+    });
   });
 
   it("treats a library that answers without a cursor as one page", async () => {
@@ -106,15 +126,28 @@ describe("readRuntimeInstitutions", () => {
       jsonResponse({ items: [{ name: "Makerere University", count: 2 }] }),
     );
     await expect(
-      readRuntimeInstitutions(fetchImpl, { baseUrl: "https://lib.example.test", credential }),
-    ).resolves.toEqual({ items: [{ name: "Makerere University", count: 2 }], nextCursor: null });
+      readRuntimeInstitutions(fetchImpl, {
+        baseUrl: "https://lib.example.test",
+        credential,
+      }),
+    ).resolves.toEqual({
+      items: [{ name: "Makerere University", count: 2 }],
+      nextCursor: null,
+    });
   });
 
   it("reports a broken answer", async () => {
-    const broken = vi.fn<typeof fetch>(async () => jsonResponse({ items: [{ name: 1, count: 1 }] }));
+    const broken = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ items: [{ name: 1, count: 1 }] }),
+    );
     await expect(
-      readRuntimeInstitutions(broken, { baseUrl: "https://lib.example.test", credential }),
-    ).rejects.toMatchObject({ code: "RUNTIME_READ_INVALID" } satisfies Partial<RuntimeReadError>);
+      readRuntimeInstitutions(broken, {
+        baseUrl: "https://lib.example.test",
+        credential,
+      }),
+    ).rejects.toMatchObject({
+      code: "RUNTIME_READ_INVALID",
+    } satisfies Partial<RuntimeReadError>);
   });
 });
 
@@ -129,8 +162,20 @@ describe("readRuntimeCollectionsByIds", () => {
       expect(url.searchParams.get("cursor")).toBeNull();
       return jsonResponse({
         items: [
-          { id: "COLL0001", title: "Climate", source: "zotero-42", count: 12, parentId: null },
-          { id: "COLL0002", title: "Health", source: "zotero-42", count: 3, parentId: null },
+          {
+            id: "COLL0001",
+            title: "Climate",
+            source: "zotero-42",
+            count: 12,
+            parentId: null,
+          },
+          {
+            id: "COLL0002",
+            title: "Health",
+            source: "zotero-42",
+            count: 3,
+            parentId: null,
+          },
         ],
         nextCursor: null,
       });
@@ -155,7 +200,15 @@ describe("readRuntimeCollectionsByIds", () => {
     // that were asked for are kept.
     const olderRuntime = vi.fn<typeof fetch>(async () =>
       jsonResponse({
-        items: [{ id: "OTHER", title: "Something else", count: 1, source: "s", parentId: null }],
+        items: [
+          {
+            id: "OTHER",
+            title: "Something else",
+            count: 1,
+            source: "s",
+            parentId: null,
+          },
+        ],
         nextCursor: "p2",
       }),
     );
@@ -169,7 +222,9 @@ describe("readRuntimeCollectionsByIds", () => {
   });
 
   it("refuses a batch larger than the library allows", async () => {
-    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ items: [] }));
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ items: [] }),
+    );
     await expect(
       readRuntimeCollectionsByIds(fetchImpl, {
         baseUrl: "https://lib.example.test",
@@ -184,8 +239,20 @@ describe("readRuntimeCollectionsByIds", () => {
     const broken = vi.fn<typeof fetch>(async () =>
       jsonResponse({
         items: [
-          { id: "COLL0001", title: "Climate", source: "zotero-42", count: 12, parentId: null },
-          { id: "COLL0002", title: 7, source: "zotero-42", count: 3, parentId: null },
+          {
+            id: "COLL0001",
+            title: "Climate",
+            source: "zotero-42",
+            count: 12,
+            parentId: null,
+          },
+          {
+            id: "COLL0002",
+            title: 7,
+            source: "zotero-42",
+            count: 3,
+            parentId: null,
+          },
         ],
         nextCursor: null,
       }),
@@ -196,11 +263,15 @@ describe("readRuntimeCollectionsByIds", () => {
         credential,
         ids: ["COLL0001", "COLL0002"],
       }),
-    ).rejects.toMatchObject({ code: "RUNTIME_READ_INVALID" } satisfies Partial<RuntimeReadError>);
+    ).rejects.toMatchObject({
+      code: "RUNTIME_READ_INVALID",
+    } satisfies Partial<RuntimeReadError>);
   });
 
   it("asks for nothing when there are no ids", async () => {
-    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ items: [] }));
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ items: [] }),
+    );
     await expect(
       readRuntimeCollectionsByIds(fetchImpl, {
         baseUrl: "https://lib.example.test",

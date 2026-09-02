@@ -2654,8 +2654,6 @@
       "tagsHint": "Let people filter by Zotero tags.",
       "country": "Country",
       "countryHint": "Let people filter by the country a record is about.",
-      "authorCountry": "Author country",
-      "authorCountryHint": "Let people filter by where the authors are based.",
       "scopesHeading": "Search scopes",
       "scope": {
         "title_abstract_author_and_keywords": "Title, abstract, authors and keywords",
@@ -2732,7 +2730,6 @@
         "collectionNotes": "Collection notes",
         "countryFocus": "Country map page",
         "authorFilter": "Author filter",
-        "authorLocation": "Author location",
         "yearsDropdown": "Year dropdown",
         "downloads": "Download buttons",
         "atomFeed": "Atom feed link"
@@ -2744,15 +2741,13 @@
         "collectionNotes": "Show the note attached to each collection.",
         "countryFocus": "A page with a map of records by country.",
         "authorFilter": "Let people filter by author.",
-        "authorLocation": "Show where authors are based.",
         "yearsDropdown": "Show a year picker in the search bar.",
         "downloads": "Show download buttons on record pages.",
         "atomFeed": "Show a link to the Atom feed."
       },
       "needs": "Turn on {feature} first.",
       "needsSearch": {
-        "country": "Turn on Country in Search & filters first.",
-        "authorCountry": "Turn on Author country in Search & filters first."
+        "country": "Turn on Country in Search & filters first."
       },
       "needsYears": "Turn on the year range filter in Search & filters first.",
       "needsExports": "Turn on RIS or BibTeX in Citations & exports first.",

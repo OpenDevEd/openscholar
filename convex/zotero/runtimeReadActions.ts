@@ -16,7 +16,6 @@ import {
   readRuntimeCollections,
   readRuntimeCollectionsByIds,
   readRuntimeInstitutions,
-  runtimeReadCacheKey,
 } from "./runtimeReadClient";
 
 const collectionValidator = v.object({
@@ -42,12 +41,20 @@ const notSetUpValidator = v.optional(v.literal("not-set-up"));
 type NotSetUp = { reason: "not-set-up" };
 
 async function readTarget(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">) {
-  const target: { targetBaseUrl: string; encryptedMachineCredential: string } | null =
-    await ctx.runQuery(internal.zotero.runtimeReads.readRuntimeReadTarget, { libraryId });
+  const target: {
+    targetBaseUrl: string;
+    encryptedMachineCredential: string;
+  } | null = await ctx.runQuery(
+    internal.zotero.runtimeReads.readRuntimeReadTarget,
+    { libraryId },
+  );
   if (!target) return null;
   const encryptionKey = process.env.ENCRYPTION_KEY;
   if (!encryptionKey) {
-    throw createError("API_KEY_ENCRYPTION_KEY_MISSING", "Encryption key not configured");
+    throw createError(
+      "API_KEY_ENCRYPTION_KEY_MISSING",
+      "Encryption key not configured",
+    );
   }
   return {
     baseUrl: target.targetBaseUrl,
@@ -55,27 +62,21 @@ async function readTarget(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">) {
   };
 }
 
-// Answers from the five-minute cache first; asks the library otherwise.
-async function cachedRead<T>(
+async function readRuntime<T>(
   ctx: ActionCtx,
-  args: { libraryId: Id<"evidenceLibraries">; kind: "collections" | "institutions"; cacheKey: string },
+  libraryId: Id<"evidenceLibraries">,
   read: (target: { baseUrl: string; credential: string }) => Promise<T>,
 ): Promise<T | NotSetUp> {
-  const cached: T | null = await ctx.runQuery(internal.zotero.runtimeReads.readRuntimeReadCache, args);
-  if (cached !== null) return cached;
-  const target = await readTarget(ctx, args.libraryId);
+  const target = await readTarget(ctx, libraryId);
   if (!target) return { reason: "not-set-up" };
-  let payload: T;
   try {
-    payload = await read(target);
+    return await read(target);
   } catch (error) {
     if (error instanceof RuntimeReadError) {
       throw createError("EVIDENCE_LIBRARY_RUNTIME_ERROR", error.message);
     }
     throw error;
   }
-  await ctx.runMutation(internal.zotero.runtimeReads.writeRuntimeReadCache, { ...args, payload });
-  return payload;
 }
 
 export const listLibraryCollections = action({
@@ -89,14 +90,23 @@ export const listLibraryCollections = action({
     items: v.array(collectionValidator),
     nextCursor: v.union(v.string(), v.null()),
   }),
-  handler: async (ctx, args): Promise<RuntimeCollectionsPage & { reason?: "not-set-up" }> => {
-    const result = await cachedRead<RuntimeCollectionsPage>(
+  handler: async (
+    ctx,
+    args,
+  ): Promise<RuntimeCollectionsPage & { reason?: "not-set-up" }> => {
+    const result = await readRuntime<RuntimeCollectionsPage>(
       ctx,
-      { libraryId: args.libraryId, kind: "collections", cacheKey: runtimeReadCacheKey(args) },
+      args.libraryId,
       (target) =>
-        readRuntimeCollections(fetch, { ...target, query: args.query, cursor: args.cursor }),
+        readRuntimeCollections(fetch, {
+          ...target,
+          query: args.query,
+          cursor: args.cursor,
+        }),
     );
-    return "reason" in result ? { ...result, items: [], nextCursor: null } : result;
+    return "reason" in result
+      ? { ...result, items: [], nextCursor: null }
+      : result;
   },
 });
 
@@ -113,10 +123,13 @@ export const listRecordInstitutions = action({
     items: v.array(institutionValidator),
     nextCursor: v.union(v.string(), v.null()),
   }),
-  handler: async (ctx, args): Promise<RuntimeInstitutionsPage & { reason?: "not-set-up" }> => {
-    const result = await cachedRead<RuntimeInstitutionsPage>(
+  handler: async (
+    ctx,
+    args,
+  ): Promise<RuntimeInstitutionsPage & { reason?: "not-set-up" }> => {
+    const result = await readRuntime<RuntimeInstitutionsPage>(
       ctx,
-      { libraryId: args.libraryId, kind: "institutions", cacheKey: runtimeReadCacheKey(args) },
+      args.libraryId,
       (target) =>
         readRuntimeInstitutions(fetch, {
           ...target,
@@ -126,7 +139,9 @@ export const listRecordInstitutions = action({
           direction: args.direction,
         }),
     );
-    return "reason" in result ? { ...result, items: [], nextCursor: null } : result;
+    return "reason" in result
+      ? { ...result, items: [], nextCursor: null }
+      : result;
   },
 });
 
@@ -156,30 +171,25 @@ export const resolveLibraryCollections = action({
         `A site shows at most ${RUNTIME_RESOLVE_MAX_TOTAL_IDS} collections`,
       );
     }
-    // A site may show more collections than the library answers at once, so
-    // the list is asked for in batches and put back together here.
-    const found = new Map<string, RuntimeCollectionFacts>();
-    for (let from = 0; from < ids.length; from += RUNTIME_RESOLVE_MAX_IDS) {
-      const batch = ids.slice(from, from + RUNTIME_RESOLVE_MAX_IDS);
-      const result = await cachedRead<{ items: RuntimeCollectionFacts[] }>(
-        ctx,
-        {
-          libraryId: args.libraryId,
-          kind: "collections",
-          cacheKey: runtimeReadCacheKey({ ids: batch }),
-        },
-        (target) => readRuntimeCollectionsByIds(fetch, { ...target, ids: batch }),
-      );
-      if ("reason" in result) return { reason: "not-set-up", items: [] };
-      for (const item of result.items) found.set(item.id, item);
-    }
-    // The answer follows the order that was asked for, whatever order the
-    // library or a warm cache row happened to use.
-    return {
-      items: ids.flatMap((id) => {
-        const item = found.get(id);
-        return item ? [item] : [];
-      }),
-    };
+    const result = await readRuntime(ctx, args.libraryId, async (target) => {
+      // A site may show more collections than the library answers at once, so
+      // the list is asked for in batches and put back together here.
+      const found = new Map<string, RuntimeCollectionFacts>();
+      for (let from = 0; from < ids.length; from += RUNTIME_RESOLVE_MAX_IDS) {
+        const batch = ids.slice(from, from + RUNTIME_RESOLVE_MAX_IDS);
+        const page = await readRuntimeCollectionsByIds(fetch, {
+          ...target,
+          ids: batch,
+        });
+        for (const item of page.items) found.set(item.id, item);
+      }
+      return {
+        items: ids.flatMap((id) => {
+          const item = found.get(id);
+          return item ? [item] : [];
+        }),
+      };
+    });
+    return "reason" in result ? { reason: "not-set-up", items: [] } : result;
   },
 });
