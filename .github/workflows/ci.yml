@@ -305,11 +305,11 @@ jobs:
         if: steps.billing-environment.outputs.available == 'true'
         run: npx playwright install chromium
 
-      - name: Finish Evidence Library draft migration
+      - name: Clear obsolete billing-test library drafts
         if: steps.billing-environment.outputs.available == 'true'
-        run: >-
-          npx convex run migrations/migrateEvidenceLibraryDraftsV4:run '{}'
-          --typecheck disable --codegen disable
+        run: |
+          node -e 'require("node:fs").writeFileSync("/tmp/empty-evidence-library-drafts.json", "[]")'
+          npx convex import --table evidenceLibraryConfigDrafts --replace --yes /tmp/empty-evidence-library-drafts.json
 
       - name: Run required live and browser billing checks
         if: steps.billing-environment.outputs.available == 'true'
