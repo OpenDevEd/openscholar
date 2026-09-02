@@ -108,6 +108,14 @@ describe("Evidence Library deployment setup", () => {
         if (url.origin === "https://verifier.example.test") {
           return Response.json({ status: "maintenance" });
         }
+        if (url.pathname === "/api/library-config/health") {
+          return new Response("maintenance", {
+            status: 503,
+            headers: {
+              "X-OpenScholar-Route": `${"a".repeat(40)}:${fixture.activated.revisionKey}`,
+            },
+          });
+        }
         return Response.json({ message: "unavailable" }, { status: 503 });
       }),
     );
@@ -134,6 +142,7 @@ describe("Evidence Library deployment setup", () => {
       },
     });
     expect(requests[0]!.url.pathname).toBe("/v1/library-runtime/maintenance");
+    expect(requests[1]!.url.pathname).toBe("/api/library-config/health");
   });
 
   it("saves one deployment, polls without sleeping, and queues readiness", async () => {

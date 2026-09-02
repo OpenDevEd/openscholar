@@ -7,7 +7,10 @@ import {
 } from "../../tests/helpers/evidence-library-setup-fixture";
 import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
 
-function runtimeRouteResponse(url: URL) {
+function runtimeRouteResponse(
+  url: URL,
+  onOperation?: (operation: string) => void,
+) {
   const statuses: Record<string, string> = {
     "/v1/library-runtime/activation": "active",
     "/v1/library-runtime/finalization": "finalized",
@@ -15,6 +18,7 @@ function runtimeRouteResponse(url: URL) {
     "/v1/library-runtime/protection": "protected",
   };
   const status = statuses[url.pathname];
+  if (status) onOperation?.(url.pathname);
   return status
     ? new Response(JSON.stringify({ status }), {
         status: 200,
@@ -156,6 +160,7 @@ describe("Evidence Library readiness completion", () => {
     const fixture = await createDeployedSetupFixture("readiness-delay");
     const applicationId = "app000000000000000000001";
     let verifierReady = false;
+    let runtimeRouteMarker: string | null = null;
     await fixture.t.run(async (ctx) => {
       const operation = await ctx.db.get(fixture.created.setupOperationId);
       const binding = await ctx.db.get(fixture.created.runtimeBindingId);
@@ -197,7 +202,12 @@ describe("Evidence Library readiness completion", () => {
           );
         }
         if (url.origin === "https://verifier.example.test") {
-          const route = runtimeRouteResponse(url);
+          const route = runtimeRouteResponse(url, (operation) => {
+            runtimeRouteMarker =
+              operation === "/v1/library-runtime/finalization"
+                ? null
+                : `${"a".repeat(40)}:${fixture.activated.revisionKey}`;
+          });
           if (route) return route;
           return new Response(
             verifierReady
@@ -234,7 +244,9 @@ describe("Evidence Library readiness completion", () => {
               status: 200,
               headers: {
                 "content-type": "application/json",
-                "X-OpenScholar-Route": `${"a".repeat(40)}:${fixture.activated.revisionKey}`,
+                ...(runtimeRouteMarker
+                  ? { "X-OpenScholar-Route": runtimeRouteMarker }
+                  : {}),
               },
             },
           );

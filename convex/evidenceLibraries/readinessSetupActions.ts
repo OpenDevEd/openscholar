@@ -7,12 +7,10 @@ import { v } from "convex/values";
 import { findFreeEvidenceLibraryAddress } from "./addressActions";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
-  changeLibraryRuntimeRoute,
+  handOffLibraryRuntime,
   isAddressNotOursError,
   isRetryableReadinessError,
   ReadinessClientError,
-  requireLibraryRuntimePublicReady,
-  requireLibraryRuntimeServicesReady,
   type LibraryRuntimeRouteInput,
 } from "./readinessClient";
 import { buildEvidenceLibraryLoginPageUrl } from "./runtimeConfiguration";
@@ -69,7 +67,6 @@ export const runReadinessSetup = internalAction({
     v.object({ status: v.literal("succeeded") }),
   ),
   handler: async (ctx, args): Promise<ReadinessSetupActionResult> => {
-    let routeTarget: LibraryRuntimeRouteInput | undefined;
     try {
       const prepared = await ctx.runMutation(
         internal.evidenceLibraries.readinessSetup.prepareReadinessSetup,
@@ -98,7 +95,7 @@ export const runReadinessSetup = internalAction({
         "EL_RUNTIME_VERIFIER_TOKEN",
         invalidReadinessConfig,
       );
-      routeTarget = {
+      const routeTarget: LibraryRuntimeRouteInput = {
         applicationUuid: prepared.applicationId,
         customOrigins: [],
         platformOrigins: [prepared.targetBaseUrl],
@@ -124,21 +121,13 @@ export const runReadinessSetup = internalAction({
         verifierUrl,
         verifierToken,
       };
-      await requireLibraryRuntimeServicesReady(readinessInput);
-      await changeLibraryRuntimeRoute("activation", routeTarget);
-      await requireLibraryRuntimePublicReady(readinessInput);
-      await changeLibraryRuntimeRoute("finalization", routeTarget);
+      await handOffLibraryRuntime(routeTarget, readinessInput);
       return await ctx.runMutation(
         internal.evidenceLibraries.readinessSetup.completeReadinessSetup,
         args,
       );
     } catch (error) {
       if (isRetryableReadinessError(error)) {
-        if (routeTarget) {
-          await changeLibraryRuntimeRoute("maintenance", routeTarget).catch(
-            () => undefined,
-          );
-        }
         const retry = await ctx.runMutation(
           internal.evidenceLibraries.readinessSetup.scheduleReadinessPoll,
           args,
@@ -161,6 +150,13 @@ export const runReadinessSetup = internalAction({
               code: "READINESS_CHECK_FAILED",
               message: "Evidence Library readiness could not be confirmed",
             };
+      if (safeError.code === "READINESS_CHECK_FAILED") {
+        console.error("[evidence-library] readiness setup failed", {
+          libraryId: args.libraryId,
+          operationId: args.operationId,
+          error,
+        });
+      }
       await ctx.runMutation(
         internal.evidenceLibraries.setupOperation.failSetupOperation,
         {
