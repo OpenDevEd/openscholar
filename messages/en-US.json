@@ -2936,6 +2936,7 @@
       "platformLabel": "Platform address",
       "platformHint": "Always works, even without a custom domain.",
       "customLabel": "Custom domain",
+      "customDomainsLabel": "Custom domains",
       "customHint": "Use a full domain such as example.org or library.example.org.",
       "add": "Add domain",
       "remove": "Remove",
