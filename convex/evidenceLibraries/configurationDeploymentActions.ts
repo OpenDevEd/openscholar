@@ -516,12 +516,23 @@ export const runConfigurationDeployment = internalAction({
       );
     } catch (error) {
       if (isRetryableReadinessError(error)) {
-        const retry = await ctx.runMutation(
-          internal.evidenceLibraries.configurationDeployment
-            .scheduleConfigurationReadinessPoll,
-          args,
-        );
-        if (retry.status === "running") return retry;
+        try {
+          const retry = await ctx.runMutation(
+            internal.evidenceLibraries.configurationDeployment
+              .scheduleConfigurationReadinessPoll,
+            args,
+          );
+          if (retry.status === "running") return retry;
+        } catch (retryError) {
+          console.error(
+            "[evidence-library] failed to schedule configuration readiness retry",
+            {
+              libraryId: args.libraryId,
+              operationId: args.operationId,
+              retryError,
+            },
+          );
+        }
       }
       if (protectionRoute) {
         await changeLibraryRuntimeRoute("protection", protectionRoute).catch(

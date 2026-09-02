@@ -82,7 +82,7 @@ function createRuntimeNetwork(input: {
   let deployedConfigHash: string | null = INITIAL_CONFIG_HASH;
   let deploymentStatus = "queued";
   let activeRevision = input.revisionKey;
-  let healthUnavailable = false;
+  let readinessUnavailable = false;
   let runtimeRouteMarker: string | null = null;
   const publicHealthMarkers: Array<string | null> = [];
   const requests: RecordedRequest[] = [];
@@ -241,6 +241,9 @@ function createRuntimeNetwork(input: {
         if (url.pathname !== "/v1/library-runtime/readiness") {
           return jsonResponse({ message: "Unexpected verifier request" }, 404);
         }
+        if (readinessUnavailable) {
+          return jsonResponse({ message: "Runtime is still starting" }, 503);
+        }
         return jsonResponse({
           ready: true,
           applicationUuid: APPLICATION_UUID,
@@ -264,9 +267,6 @@ function createRuntimeNetwork(input: {
         url.pathname === "/api/library-config/health"
       ) {
         publicHealthMarkers.push(runtimeRouteMarker);
-        if (healthUnavailable) {
-          return new Response("no available server", { status: 503 });
-        }
         return jsonResponse(
           {
             state: "active",
@@ -330,10 +330,10 @@ function createRuntimeNetwork(input: {
       configHash = FINISHED_CONFIG_HASH;
     },
     failReadiness() {
-      healthUnavailable = true;
+      readinessUnavailable = true;
     },
     restoreReadiness() {
-      healthUnavailable = false;
+      readinessUnavailable = false;
     },
     setActiveRevision(revisionKey: string) {
       activeRevision = revisionKey;
@@ -1112,6 +1112,18 @@ describe("Evidence Library configuration deployment", () => {
       stage: "activating",
       configurationReadinessPollCount: 1,
     });
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).resolves.toEqual({ pollCount: 2, status: "running" });
+    await expect(
+      deployment.fixture.t.run((ctx) =>
+        ctx.db.get(deployment.activated.operationId),
+      ),
+    ).resolves.toMatchObject({ configurationReadinessPollCount: 2 });
     network.restoreReadiness();
     await expect(
       deployment.fixture.t.action(
@@ -1120,6 +1132,75 @@ describe("Evidence Library configuration deployment", () => {
         actionArgs,
       ),
     ).resolves.toEqual({ status: "succeeded" });
+  });
+
+  it("retries while the protected traffic route is still catching up", async () => {
+    const deployment = await activateChangedConfiguration("route-catch-up");
+    const network = createRuntimeNetwork({
+      libraryId: deployment.fixture.created.libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    await deployment.fixture.t.run(async (ctx) => {
+      const scheduled = await ctx.db.system
+        .query("_scheduled_functions")
+        .order("desc")
+        .take(20);
+      for (const job of scheduled) {
+        if (
+          job.name.includes("runConfigurationDeployment") &&
+          JSON.stringify(job.args).includes(deployment.activated.operationId)
+        ) {
+          await ctx.scheduler.cancel(job._id);
+        }
+      }
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (request, init) => {
+        if (String(request).endsWith("/v1/library-runtime/protection")) {
+          return jsonResponse({ message: "Route is still updating" }, 503);
+        }
+        return await network.fetchImpl(request, init);
+      }),
+    );
+
+    const result = await deployment.fixture.t.action(
+      internal.evidenceLibraries.configurationDeploymentActions
+        .runConfigurationDeployment,
+      {
+        libraryId: deployment.fixture.created.libraryId,
+        operationId: deployment.activated.operationId,
+        attemptToken: deployment.attemptToken,
+        attemptCount: deployment.attemptCount,
+      },
+    );
+    expect(result).toEqual({
+      pollCount: 1,
+      status: "running",
+    });
+
+    const waiting = await deployment.fixture.t.run(async (ctx) => ({
+      operation: await ctx.db.get(deployment.activated.operationId),
+      scheduled: await ctx.db.system
+        .query("_scheduled_functions")
+        .order("desc")
+        .take(20),
+    }));
+    expect(waiting.operation).toMatchObject({
+      status: "running",
+      stage: "assembling",
+      configurationReadinessPollCount: 1,
+    });
+    expect(
+      waiting.scheduled.some(
+        (scheduled) =>
+          scheduled.name.includes("runConfigurationDeployment") &&
+          JSON.stringify(scheduled.args).includes(
+            deployment.activated.operationId,
+          ),
+      ),
+    ).toBe(true);
   });
 
   it("updates the software commit first, deploys the active revision at it, and records it on the binding", async () => {
