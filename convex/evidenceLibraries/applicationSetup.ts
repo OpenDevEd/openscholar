@@ -1,5 +1,5 @@
 import { internal } from "../_generated/api";
-import { internalMutation } from "../_generated/server";
+import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
@@ -59,6 +59,40 @@ function requireRuntimeImage(value: string): string {
   }
   return value;
 }
+
+export const readApplicationSetupRuntime = internalQuery({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({ runtimeCommit: v.string(), runtimeImage: v.string() }),
+  ),
+  handler: async (ctx, args) => {
+    const operation = await ctx.db.get(args.operationId);
+    if (
+      !operation ||
+      operation.kind !== "setup" ||
+      operation.libraryId !== args.libraryId
+    ) {
+      throw createError("NOT_FOUND", "Evidence Library setup not found");
+    }
+    const runtimeCommit = operation.setupRuntimeCommit;
+    const runtimeImage = operation.setupRuntimeImage;
+    if (!runtimeCommit && !runtimeImage) return null;
+    if (!runtimeCommit || !runtimeImage) {
+      throw createError(
+        "INVALID_DATA",
+        "Evidence Library setup runtime is incomplete",
+      );
+    }
+    return {
+      runtimeCommit: requireRuntimeCommit(runtimeCommit),
+      runtimeImage: requireRuntimeImage(runtimeImage),
+    };
+  },
+});
 
 export const prepareApplicationSetup = internalMutation({
   args: {

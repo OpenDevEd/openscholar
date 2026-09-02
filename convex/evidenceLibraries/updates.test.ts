@@ -40,7 +40,7 @@ function createGithub(input: {
   latest: string;
   imageStatus?: number;
   compareStatus?: number;
-  commitsStatus?: number;
+  releasesStatus?: number;
   addressAnswer?: Response;
 }) {
   const requests: RecordedRequest[] = [];
@@ -88,13 +88,18 @@ function createGithub(input: {
         return jsonResponse({ message: "Unexpected test request" }, 500);
       }
       if (url.pathname === "/user") return jsonResponse({ login: "builder" });
-      if (url.pathname === `${REPO}/commits/main`) {
-        if (input.commitsStatus && input.commitsStatus !== 200) {
-          return jsonResponse({ message: "Not Found" }, input.commitsStatus);
+      if (url.pathname === `${REPO}/actions/workflows/runtime-image.yml/runs`) {
+        if (input.releasesStatus && input.releasesStatus !== 200) {
+          return jsonResponse({ message: "Not Found" }, input.releasesStatus);
         }
         return jsonResponse({
-          sha: input.latest,
-          commit: { message: "Merge pull request #137" },
+          workflow_runs: [
+            {
+              conclusion: "success",
+              event: "workflow_run",
+              head_sha: input.latest,
+            },
+          ],
         });
       }
       if (url.pathname === `${REPO}/compare/${RUNNING}...${input.latest}`) {
@@ -162,7 +167,7 @@ describe("Evidence Library software release lookup", () => {
       ],
     });
     expect(github.requests.map(({ url }) => url.pathname)).toEqual([
-      `${REPO}/commits/main`,
+      `${REPO}/actions/workflows/runtime-image.yml/runs`,
       `/v2/opendeved/evidence-library-runtime/manifests/${LATEST}`,
       "/user",
       "/token",
@@ -183,7 +188,7 @@ describe("Evidence Library software release lookup", () => {
   });
 
   it("fails clearly when GitHub cannot be read", async () => {
-    const github = createGithub({ latest: LATEST, commitsStatus: 404 });
+    const github = createGithub({ latest: LATEST, releasesStatus: 404 });
     await expect(
       fetchRuntimeRelease({
         running: RUNNING,
@@ -201,9 +206,9 @@ describe("Evidence Library software release lookup", () => {
         token: "github-token",
         fetchImpl: github.fetchImpl,
       }),
-    ).rejects.toMatchObject({ code: "RUNTIME_IMAGE_PENDING" });
+    ).rejects.toMatchObject({ code: "RUNTIME_IMAGE_UNAVAILABLE" });
     expect(github.requests.map(({ url }) => url.pathname)).toEqual([
-      `${REPO}/commits/main`,
+      `${REPO}/actions/workflows/runtime-image.yml/runs`,
       `/v2/opendeved/evidence-library-runtime/manifests/${LATEST}`,
     ]);
   });
@@ -304,7 +309,7 @@ describe("Evidence Library update check", () => {
     expect(github.requests).toHaveLength(0);
   });
 
-  it("starts the last deployable update while the newest image is building", async () => {
+  it("starts the cached release when its published image is temporarily unavailable", async () => {
     const fixture = await createReadySetupFixture("update-check-image-pending");
     const newest = "e".repeat(40);
     const github = createGithub({ latest: newest, imageStatus: 404 });

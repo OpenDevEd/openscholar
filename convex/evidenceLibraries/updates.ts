@@ -120,7 +120,7 @@ async function refreshRuntimeRelease(
     release = await fetchRuntimeRelease({ running, token });
   } catch (error) {
     if (error instanceof RuntimeReleaseError) {
-      if (error.code === "RUNTIME_IMAGE_PENDING" && fallback) {
+      if (error.code === "RUNTIME_IMAGE_UNAVAILABLE" && fallback) {
         const checkedFallback = { ...fallback, checkedAt: Date.now() };
         await ctx.runMutation(
           internal.evidenceLibraries.updates.saveRuntimeRelease,

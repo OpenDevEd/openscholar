@@ -28,6 +28,10 @@ import {
   requireRuntimeEnvironment,
   requireRuntimeHttpsOrigin,
 } from "./runtimeActionConfig";
+import {
+  fetchRecommendedRuntimeRelease,
+  RuntimeReleaseError,
+} from "./runtimeReleases";
 
 const invalidData = (message: string) => createError("INVALID_DATA", message);
 
@@ -56,6 +60,24 @@ export const runApplicationSetup = internalAction({
   ),
   handler: async (ctx, args): Promise<ApplicationSetupActionResult> => {
     try {
+      const savedRuntime: {
+        runtimeCommit: string;
+        runtimeImage: string;
+      } | null = await ctx.runQuery(
+        internal.evidenceLibraries.applicationSetup.readApplicationSetupRuntime,
+        {
+          libraryId: args.libraryId,
+          operationId: args.operationId,
+        },
+      );
+      const runtime = savedRuntime
+        ? {
+            latest: savedRuntime.runtimeCommit,
+            image: savedRuntime.runtimeImage,
+          }
+        : await fetchRecommendedRuntimeRelease({
+            token: process.env.GITHUB_TOKEN ?? "",
+          });
       const encryptionKey = requireRuntimeEnvironment(
         "ENCRYPTION_KEY",
         invalidData,
@@ -79,14 +101,8 @@ export const runApplicationSetup = internalAction({
           candidateMachineCredentialDigest:
             await digestOpaqueToken(machineCredential),
           candidateMachineCredentialHint: getKeyPrefix(machineCredential),
-          candidateRuntimeCommit: requireRuntimeEnvironment(
-            "EL_RUNTIME_COMMIT_SHA",
-            invalidData,
-          ),
-          candidateRuntimeImage: requireRuntimeEnvironment(
-            "EL_RUNTIME_IMAGE",
-            invalidData,
-          ),
+          candidateRuntimeCommit: runtime.latest,
+          candidateRuntimeImage: runtime.image,
         },
       );
       const appOrigin = requireRuntimeHttpsOrigin(
@@ -203,24 +219,35 @@ export const runApplicationSetup = internalAction({
         },
       );
     } catch (error) {
+      if (error instanceof RuntimeReleaseError) {
+        console.error("Evidence Library runtime release lookup failed", {
+          code: error.code,
+          message: error.message,
+        });
+      }
       const safeError =
-        error instanceof CoolifyClientError
-          ? { code: error.code, message: error.message }
-          : error instanceof ConfigurationAssemblyError
-            ? {
-                code: "APPLICATION_CONFIG_INVALID",
-                message:
-                  "Evidence Library configuration could not be assembled",
-                issues: error.issues.map(({ pointer, message }) => ({
-                  pointer,
-                  message,
-                })),
-              }
-            : {
-                code: "APPLICATION_SETUP_FAILED",
-                message:
-                  "Application setup failed before Coolify was configured",
-              };
+        error instanceof RuntimeReleaseError
+          ? {
+              code: error.code,
+              message: "Evidence Library software could not be prepared",
+            }
+          : error instanceof CoolifyClientError
+            ? { code: error.code, message: error.message }
+            : error instanceof ConfigurationAssemblyError
+              ? {
+                  code: "APPLICATION_CONFIG_INVALID",
+                  message:
+                    "Evidence Library configuration could not be assembled",
+                  issues: error.issues.map(({ pointer, message }) => ({
+                    pointer,
+                    message,
+                  })),
+                }
+              : {
+                  code: "APPLICATION_SETUP_FAILED",
+                  message:
+                    "Application setup failed before Coolify was configured",
+                };
       await ctx.runMutation(
         internal.evidenceLibraries.setupOperation.failSetupOperation,
         {
