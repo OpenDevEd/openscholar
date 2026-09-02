@@ -2923,12 +2923,14 @@
       "colName": "Name",
       "colValue": "Value",
       "copyValue": "Copy {type} value",
+      "copyName": "{type} の名前をコピー",
       "copied": "Copied",
       "checkDns": "Check DNS",
       "failed": "That did not work. Try again.",
       "status": {
         "none": "Not verified",
         "pending": "Not verified",
+        "pointing": "アドレスレコードを確認済み",
         "checking": "Checking…",
         "verified": "Verified",
         "failed": "Records not found"
@@ -2940,7 +2942,8 @@
         "token-mismatch": "The ownership record holds a different value",
         "host-taken": "Another site already answers on that domain",
         "not-served": "The library is not running yet",
-        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org."
+        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org.",
+        "tls-timeout": "TLS を有効にできませんでした。ドメインをもう一度確認してください。"
       },
       "refused": {
         "invalid": "That does not look like a domain",
@@ -2956,10 +2959,13 @@
       "redirectDisabled": "Verify the domain first.",
       "redirectWaiting": "Wait until the domain is working.",
       "addAnother": "Add another domain",
-      "busy": "A check is already running for that domain",
+      "busy": "これらのドメインはすでに確認中です。",
+      "rateLimited": "DNS の確認回数が多すぎます。1 分後にもう一度お試しください。",
       "removing": "Removing",
       "checkFailed": "We could not check the domain. Try again.",
       "deploying": "Applying the change to the library",
+      "checked": "DNS を確認しました",
+      "recordsNeedAttention": "一部の DNS レコードを修正する必要があります。",
       "removingNow": "That domain is being removed",
       "removeAgain": "Finish removing",
       "confirmOnTitle": "Send the platform address to this domain?",

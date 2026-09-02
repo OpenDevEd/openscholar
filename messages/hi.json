@@ -2923,12 +2923,14 @@
       "colName": "Name",
       "colValue": "Value",
       "copyValue": "Copy {type} value",
+      "copyName": "{type} नाम कॉपी करें",
       "copied": "Copied",
       "checkDns": "Check DNS",
       "failed": "That did not work. Try again.",
       "status": {
         "none": "Not verified",
         "pending": "Not verified",
+        "pointing": "पता रिकॉर्ड मिल गया",
         "checking": "Checking…",
         "verified": "Verified",
         "failed": "Records not found"
@@ -2940,7 +2942,8 @@
         "token-mismatch": "The ownership record holds a different value",
         "host-taken": "Another site already answers on that domain",
         "not-served": "The library is not running yet",
-        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org."
+        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org.",
+        "tls-timeout": "TLS सक्रिय नहीं हो सका। डोमेन को फिर से जाँचें।"
       },
       "refused": {
         "invalid": "That does not look like a domain",
@@ -2956,10 +2959,13 @@
       "redirectDisabled": "Verify the domain first.",
       "redirectWaiting": "Wait until the domain is working.",
       "addAnother": "Add another domain",
-      "busy": "A check is already running for that domain",
+      "busy": "इन डोमेन की जाँच पहले से चल रही है।",
+      "rateLimited": "DNS की बहुत बार जाँच की गई। एक मिनट बाद फिर कोशिश करें।",
       "removing": "Removing",
       "checkFailed": "We could not check the domain. Try again.",
       "deploying": "Applying the change to the library",
+      "checked": "DNS की जाँच हो गई",
+      "recordsNeedAttention": "कुछ DNS रिकॉर्ड पर अभी ध्यान देना बाकी है।",
       "removingNow": "That domain is being removed",
       "removeAgain": "Finish removing",
       "confirmOnTitle": "Send the platform address to this domain?",

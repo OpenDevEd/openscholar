@@ -3,13 +3,12 @@
 /**
  * What the Domain section's buttons do.
  *
- * Every step is the owner's: adding a domain, checking it, and removing it.
- * Nothing runs in the background and nothing is written unless the step it
- * belongs to succeeded. A step that could not run answers `check-failed`,
- * the same rule the platform address check follows.
+ * Owners add, check, and remove domains here. One check verifies every row,
+ * publishes the verified hosts together, then finishes TLS checks in the
+ * background. A step that could not run answers `check-failed`.
  */
 
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { getDomain } from "tldts";
 import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -45,6 +44,12 @@ import {
   type DomainFailure,
   type DomainOutcome,
 } from "./domainGates";
+import { probeEvidenceLibraryAddress } from "./readinessClient";
+import { requireRuntimeEnvironment } from "./runtimeActionConfig";
+import {
+  evidenceLibraryDomainFailureValidator,
+  evidenceLibraryDomainStateValidator,
+} from "./validators";
 
 /** A step that could not run. Nothing is written and no state moves. */
 class DomainCheckUnavailable extends Error {
@@ -63,12 +68,17 @@ function isUnavailable(error: unknown): boolean {
     error instanceof CoolifyClientError
   );
 }
-import { probeEvidenceLibraryAddress } from "./readinessClient";
-import { requireRuntimeEnvironment } from "./runtimeActionConfig";
-import {
-  evidenceLibraryDomainFailureValidator,
-  evidenceLibraryDomainStateValidator,
-} from "./validators";
+
+function isRateLimited(error: unknown): boolean {
+  const data = error instanceof ConvexError ? error.data : undefined;
+  return (
+    (typeof data === "object" &&
+      data !== null &&
+      "kind" in data &&
+      data.kind === "RateLimited") ||
+    (error instanceof Error && error.message.includes('"kind":"RateLimited"'))
+  );
+}
 
 type AddDomainResult =
   | {
@@ -86,30 +96,33 @@ type AddDomainResult =
         | "check-failed";
     };
 
-type CheckDomainResult =
-  | {
-      status: "checked";
-      state: "added" | "pointing" | "verified" | "active" | "failed";
-      failure?: DomainFailure;
-    }
-  // The check could not run, or another one is already running, or the
-  // domain is mid-change. None of these moves the domain's state.
-  | { status: "check-failed" }
-  | { status: "busy" }
-  | { status: "deploying" }
-  | { status: "removing" };
+type CheckedDomain = {
+  domainId: Id<"evidenceLibraryDomains">;
+  state: "added" | "pointing" | "verified" | "active" | "failed";
+  failure?: DomainFailure;
+};
 
-const checkedValidator = v.union(
-  v.object({
-    status: v.literal("checked"),
-    state: evidenceLibraryDomainStateValidator,
-    failure: v.optional(evidenceLibraryDomainFailureValidator),
-  }),
-  v.object({ status: v.literal("check-failed") }),
-  v.object({ status: v.literal("busy") }),
-  v.object({ status: v.literal("deploying") }),
-  v.object({ status: v.literal("removing") }),
-);
+type CheckDomainsResult = {
+  status: "checked" | "check-failed" | "busy" | "deploying" | "rate-limited";
+  results: CheckedDomain[];
+};
+
+const checkedDomainsValidator = v.object({
+  status: v.union(
+    v.literal("checked"),
+    v.literal("check-failed"),
+    v.literal("busy"),
+    v.literal("deploying"),
+    v.literal("rate-limited"),
+  ),
+  results: v.array(
+    v.object({
+      domainId: v.id("evidenceLibraryDomains"),
+      state: evidenceLibraryDomainStateValidator,
+      failure: v.optional(evidenceLibraryDomainFailureValidator),
+    }),
+  ),
+});
 
 function coolify() {
   // The same reader every other Evidence Library action uses.
@@ -278,84 +291,165 @@ async function readRecordGates(
  * through leaves a record of what already happened and pressing Check again
  * carries on from there rather than starting over.
  */
-async function attachDomain(
+async function attachDomains(
   ctx: ActionCtx,
   input: {
     libraryId: Id<"evidenceLibraries">;
-    domainId: Id<"evidenceLibraryDomains">;
-    token: string;
-    host: string;
     platformAddress: string;
     applicationUuid: string;
     attachedHosts: readonly string[];
     /** Hosts the proxy was asked to hold and never confirmed. */
     uncertainHosts: readonly string[];
-    generation: number;
+    changes: Array<{
+      domainId: Id<"evidenceLibraryDomains">;
+      token: string;
+      host: string;
+      generation: number;
+      attach: boolean;
+    }>;
   },
-): Promise<DomainOutcome> {
-  // Running this again with the host already in the list
-  // writes nothing, so a retry is safe.
-  // A set, not a list: this host may already be in the proxy from an attempt
-  // that stopped before its receipt, and asking for it twice would be wrong.
+): Promise<{
+  deploying: boolean;
+  deployed: Id<"evidenceLibraryDomains">[];
+  failed: Id<"evidenceLibraryDomains">[];
+}> {
+  const newAttachments = input.changes.filter((change) => change.attach);
   const wanted = [
     ...new Set([
       ...input.attachedHosts,
       ...input.uncertainHosts,
-      `https://${input.host}`,
+      ...newAttachments.map((change) => `https://${change.host}`),
     ]),
   ].sort();
-  // Written before the call, so a crash between the proxy accepting the
-  // host and the receipt being saved is still visible: the next attempt
-  // sees the host may already be there and running it again writes nothing.
-  await ctx.runMutation(
-    internal.evidenceLibraries.domains.writeDomainAttachmentIntent,
-    { domainId: input.domainId, token: input.token },
-  );
-  await holdDomain(ctx, input.domainId, input.token);
-  try {
-    await coolify().setCustomDomains({
-      applicationUuid: input.applicationUuid,
-      libraryId: input.libraryId,
-      publicDomain: input.platformAddress,
-      // Either safe state: the proxy may already hold the hosts an earlier
-      // attempt asked about, or it may not.
-      currentCustomDomains: [
-        [...input.attachedHosts].sort(),
-        [...new Set([...input.attachedHosts, ...input.uncertainHosts])].sort(),
-      ],
-      customDomains: wanted,
-    });
-  } catch (error) {
-    if (
-      error instanceof CoolifyClientError &&
-      error.code === "COOLIFY_DOMAIN_TAKEN"
-    ) {
-      return { state: "failed", failure: "host-taken" };
+  if (newAttachments.length > 0) {
+    for (const change of newAttachments) {
+      await ctx.runMutation(
+        internal.evidenceLibraries.domains.writeDomainAttachmentIntent,
+        { domainId: change.domainId, token: change.token },
+      );
+      await holdDomain(ctx, change.domainId, change.token);
     }
-    throw error;
+    const accepted: typeof newAttachments = [];
+    const failed: typeof newAttachments = [];
+    try {
+      await coolify().setCustomDomains({
+        applicationUuid: input.applicationUuid,
+        libraryId: input.libraryId,
+        publicDomain: input.platformAddress,
+        currentCustomDomains: [
+          [...input.attachedHosts].sort(),
+          [
+            ...new Set([...input.attachedHosts, ...input.uncertainHosts]),
+          ].sort(),
+        ],
+        customDomains: wanted,
+      });
+      accepted.push(...newAttachments);
+    } catch (error) {
+      if (
+        !(error instanceof CoolifyClientError) ||
+        error.code !== "COOLIFY_DOMAIN_TAKEN"
+      ) {
+        throw error;
+      }
+      const kept = new Set([...input.attachedHosts, ...input.uncertainHosts]);
+      let possibleCurrent = [[...input.attachedHosts].sort(), [...kept].sort()];
+      for (const change of newAttachments) {
+        const next = [...kept, `https://${change.host}`].sort();
+        try {
+          await coolify().setCustomDomains({
+            applicationUuid: input.applicationUuid,
+            libraryId: input.libraryId,
+            publicDomain: input.platformAddress,
+            currentCustomDomains: possibleCurrent,
+            customDomains: next,
+          });
+          kept.add(`https://${change.host}`);
+          possibleCurrent = [[...kept].sort()];
+          accepted.push(change);
+        } catch (candidateError) {
+          if (
+            candidateError instanceof CoolifyClientError &&
+            candidateError.code === "COOLIFY_DOMAIN_TAKEN"
+          ) {
+            failed.push(change);
+            continue;
+          }
+          throw candidateError;
+        }
+      }
+    }
+    for (const change of accepted) {
+      await ctx.runMutation(
+        internal.evidenceLibraries.domains.writeDomainAttachment,
+        {
+          libraryId: input.libraryId,
+          domainId: change.domainId,
+          token: change.token,
+          attached: true,
+          deploymentPending: true,
+        },
+      );
+    }
+    for (const change of failed) {
+      await ctx.runMutation(
+        internal.evidenceLibraries.domains.writeDomainAttachment,
+        {
+          libraryId: input.libraryId,
+          domainId: change.domainId,
+          token: change.token,
+          attached: false,
+          deploymentPending: false,
+        },
+      );
+    }
+    const deployed = [
+      ...input.changes.filter((change) => !change.attach),
+      ...accepted,
+    ];
+    if (deployed.length === 0) {
+      return {
+        deploying: false,
+        deployed: [],
+        failed: failed.map((change) => change.domainId),
+      };
+    }
+    await ctx.runMutation(
+      internal.evidenceLibraries.versions.startDomainDeploymentBatch,
+      {
+        libraryId: input.libraryId,
+        changes: deployed.map(({ domainId, generation, host, token }) => ({
+          domainId,
+          generation,
+          host,
+          token,
+        })),
+      },
+    );
+    return {
+      deploying: true,
+      deployed: deployed.map((change) => change.domainId),
+      failed: failed.map((change) => change.domainId),
+    };
   }
-  // The proxy holds the host and a deployment is owed. Both are written
-  // together, so a crash here cannot look like a finished attach.
+  const deployed = input.changes;
   await ctx.runMutation(
-    internal.evidenceLibraries.domains.writeDomainAttachment,
+    internal.evidenceLibraries.versions.startDomainDeploymentBatch,
     {
       libraryId: input.libraryId,
-      domainId: input.domainId,
-      token: input.token,
-      attached: true,
-      deploymentPending: true,
+      changes: deployed.map(({ domainId, generation, host, token }) => ({
+        domainId,
+        generation,
+        host,
+        token,
+      })),
     },
   );
-
-  await queueDomainDeployment(ctx, {
-    libraryId: input.libraryId,
-    domainId: input.domainId,
-    token: input.token,
-    generation: input.generation,
-    host: input.host,
-    reason: "attach",
-  });
-  return { state: "verified" };
+  return {
+    deploying: true,
+    deployed: deployed.map((change) => change.domainId),
+    failed: [],
+  };
 }
 
 /**
@@ -426,141 +520,212 @@ async function readAnswerGate(input: {
   });
 }
 
-/**
- * One button, one step forward. Reads the records until the domain is
- * verified, then attaches it, then asks the domain itself.
- *
- * Only one check runs per domain at a time, and each one spends the owner's,
- * the library's and the domain's check budget.
- */
-export const checkDomain = action({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    domainId: v.id("evidenceLibraryDomains"),
-  },
-  returns: checkedValidator,
-  handler: async (ctx, args): Promise<CheckDomainResult> => {
-    const claimed = await ctx.runMutation(
-      internal.evidenceLibraries.domains.claimDomainTransition,
-      {
-        libraryId: args.libraryId,
-        domainId: args.domainId,
-        kind: "check",
-        spendBudget: true,
-      },
+/** Checks every incomplete domain and batches all verified hosts into one deploy. */
+export const checkDomains = action({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: checkedDomainsValidator,
+  handler: async (ctx, args): Promise<CheckDomainsResult> => {
+    const first = await ctx.runQuery(
+      internal.evidenceLibraries.domains.readDomainContext,
+      { libraryId: args.libraryId },
     );
-    if (claimed.status === "busy") return { status: "busy" as const };
-    const token = claimed.token;
-    // A step that hands the domain to a deployment keeps the lease: the
-    // deployment now holds it, and its own completion gives it back.
-    let heldByDeployment = false;
-    const renewLease = async () => {
+    const targetIds = first.domains
+      .filter((row) => row.state !== "active" && !row.removing)
+      .map((row) => row.domainId);
+    if (targetIds.length === 0) return { status: "checked", results: [] };
+
+    let claimed;
+    try {
+      claimed = await ctx.runMutation(
+        internal.evidenceLibraries.domains.claimDomainTransitions,
+        { libraryId: args.libraryId, domainIds: targetIds },
+      );
+    } catch (error) {
+      if (isRateLimited(error)) {
+        return { status: "rate-limited", results: [] };
+      }
+      throw error;
+    }
+    if (claimed.status === "busy") return { status: "busy", results: [] };
+
+    const context = await ctx.runQuery(
+      internal.evidenceLibraries.domains.readDomainContext,
+      { libraryId: args.libraryId },
+    );
+    const claims = new Map(
+      claimed.claims.map((claim) => [claim.domainId, claim]),
+    );
+    const held = new Set(claimed.claims.map((claim) => claim.domainId));
+    const results: CheckedDomain[] = [];
+    const deploymentChanges: Array<{
+      domainId: Id<"evidenceLibraryDomains">;
+      token: string;
+      host: string;
+      generation: number;
+      attach: boolean;
+    }> = [];
+    let unavailable = 0;
+
+    const release = async (domainId: Id<"evidenceLibraryDomains">) => {
+      const claim = claims.get(domainId);
+      if (!claim || !held.delete(domainId)) return;
       await ctx.runMutation(
-        internal.evidenceLibraries.domains.renewDomainTransition,
-        { domainId: args.domainId, token },
+        internal.evidenceLibraries.domains.releaseDomainTransition,
+        { domainId, token: claim.token },
       );
     };
-    try {
-      const context = await ctx.runQuery(
-        internal.evidenceLibraries.domains.readDomainContext,
-        { libraryId: args.libraryId, domainId: args.domainId },
-      );
-      const row = context.domain;
-      if (!row) throw new Error("That domain is not on this library");
-      const step = nextDomainStep({
-        state: row.state,
-        ...(row.attached ? { attachedAt: 1 } : {}),
-        ...(row.deploymentPending ? { deploymentPending: true } : {}),
-        ...(row.removing ? { removing: true } : {}),
-      });
-      // A domain on its way out is left alone: reattaching it would race the
-      // removal that is already running.
-      if (step === "blocked") return { status: "removing" as const };
-
-      let outcome: DomainOutcome;
-      try {
-        if (step === "deploy") {
-          // The proxy was changed but the deployment carrying it was never
-          // queued. Queue it and stop; the next check reads the result.
-          if (!context.applicationUuid || !context.liveRevisionKey) {
-            throw new DomainCheckUnavailable();
-          }
-          await queueDomainDeployment(ctx, {
-            libraryId: args.libraryId,
-            domainId: args.domainId,
-            token,
-            generation: row.generation,
-            host: row.host,
-            reason: row.attached ? "attach" : "detach",
-          });
-          heldByDeployment = true;
-          return { status: "deploying" as const };
-        }
-        if (step === "records") {
-          outcome = await readRecordGates(
-            row.host,
-            row.verificationHost,
-            row.isApex,
-            row.verificationToken,
-            renewLease,
-          );
-        } else if (step === "attach") {
-          if (!context.applicationUuid || !context.liveRevisionKey) {
-            outcome = { state: "failed", failure: "not-served" };
-          } else {
-            outcome = await attachDomain(ctx, {
-              libraryId: args.libraryId,
-              domainId: args.domainId,
-              token,
-              host: row.host,
-              platformAddress: context.platformAddress,
-              applicationUuid: context.applicationUuid,
-              attachedHosts: context.attachedHosts,
-              uncertainHosts: context.uncertainHosts,
-              generation: row.generation,
-            });
-            // Attaching queues a deployment, which now holds the domain.
-            if (outcome.state !== "failed") heldByDeployment = true;
-          }
-        } else {
-          outcome = await readAnswerGate({
-            host: row.host,
-            liveRevisionKey: context.liveRevisionKey,
-            renewLease,
-          });
-        }
-      } catch (error) {
-        // A check that could not run never advances and never fails the
-        // domain. Nothing is written: the row keeps exactly what the last
-        // check that did run found.
-        if (isUnavailable(error)) return { status: "check-failed" as const };
-        throw error;
-      }
-
-      const failure: DomainFailure | undefined =
-        outcome.state === "failed" ? outcome.failure : undefined;
+    const write = async (
+      row: (typeof context.domains)[number],
+      outcome: DomainOutcome,
+    ) => {
+      const claim = claims.get(row.domainId)!;
+      const failure = outcome.state === "failed" ? outcome.failure : undefined;
       await ctx.runMutation(
         internal.evidenceLibraries.domains.writeDomainCheck,
         {
           libraryId: args.libraryId,
-          domainId: args.domainId,
-          token,
+          domainId: row.domainId,
+          token: claim.token,
           state: outcome.state,
           ...(failure ? { failure } : {}),
         },
       );
-      return {
-        status: "checked" as const,
+      results.push({
+        domainId: row.domainId,
         state: outcome.state,
         ...(failure ? { failure } : {}),
+      });
+    };
+
+    try {
+      for (const row of context.domains.filter((entry) =>
+        claims.has(entry.domainId),
+      )) {
+        const claim = claims.get(row.domainId)!;
+        const renewLease = async () => {
+          await ctx.runMutation(
+            internal.evidenceLibraries.domains.renewDomainTransition,
+            { domainId: row.domainId, token: claim.token },
+          );
+        };
+        const step = nextDomainStep({
+          state: row.state,
+          ...(row.attached ? { attachedAt: 1 } : {}),
+          ...(row.deploymentPending ? { deploymentPending: true } : {}),
+          ...(row.removing ? { removing: true } : {}),
+        });
+        if (step === "blocked") {
+          await release(row.domainId);
+          continue;
+        }
+        if (step === "deploy" || step === "attach") {
+          deploymentChanges.push({
+            domainId: row.domainId,
+            token: claim.token,
+            host: row.host,
+            generation: claim.generation,
+            attach: step === "attach",
+          });
+          continue;
+        }
+        let outcome: DomainOutcome;
+        try {
+          outcome =
+            step === "records"
+              ? await readRecordGates(
+                  row.host,
+                  row.verificationHost,
+                  row.isApex,
+                  row.verificationToken,
+                  renewLease,
+                )
+              : await readAnswerGate({
+                  host: row.host,
+                  liveRevisionKey: context.liveRevisionKey,
+                  renewLease,
+                });
+        } catch (error) {
+          if (!isUnavailable(error)) throw error;
+          unavailable += 1;
+          await release(row.domainId);
+          continue;
+        }
+        await write(row, outcome);
+        if (step === "records" && outcome.state === "verified") {
+          deploymentChanges.push({
+            domainId: row.domainId,
+            token: claim.token,
+            host: row.host,
+            generation: claim.generation,
+            attach: true,
+          });
+        } else {
+          await release(row.domainId);
+        }
+      }
+
+      if (deploymentChanges.length === 0) {
+        return {
+          status:
+            results.length === 0 && unavailable > 0
+              ? "check-failed"
+              : "checked",
+          results,
+        };
+      }
+      if (!context.applicationUuid || !context.liveRevisionKey) {
+        for (const change of deploymentChanges) {
+          if (change.attach) {
+            const row = context.domains.find(
+              (entry) => entry.domainId === change.domainId,
+            )!;
+            await write(row, { state: "failed", failure: "not-served" });
+          } else {
+            unavailable += 1;
+          }
+          await release(change.domainId);
+        }
+        return {
+          status:
+            results.length === 0 && unavailable > 0
+              ? "check-failed"
+              : "checked",
+          results,
+        };
+      }
+      let attached: Awaited<ReturnType<typeof attachDomains>>;
+      try {
+        attached = await attachDomains(ctx, {
+          libraryId: args.libraryId,
+          platformAddress: context.platformAddress,
+          applicationUuid: context.applicationUuid,
+          attachedHosts: context.attachedHosts,
+          uncertainHosts: context.uncertainHosts,
+          changes: deploymentChanges,
+        });
+      } catch (error) {
+        if (!isUnavailable(error)) throw error;
+        return { status: "check-failed", results };
+      }
+      for (const domainId of attached.failed) {
+        const change = deploymentChanges.find(
+          (entry) => entry.domainId === domainId,
+        )!;
+        if (change.attach) {
+          const row = context.domains.find(
+            (entry) => entry.domainId === change.domainId,
+          )!;
+          await write(row, { state: "failed", failure: "host-taken" });
+          await release(change.domainId);
+        }
+      }
+      for (const domainId of attached.deployed) held.delete(domainId);
+      return {
+        status: attached.deploying ? "deploying" : "checked",
+        results,
       };
     } finally {
-      if (!heldByDeployment) {
-        await ctx.runMutation(
-          internal.evidenceLibraries.domains.releaseDomainTransition,
-          { domainId: args.domainId, token },
-        );
-      }
+      for (const domainId of [...held]) await release(domainId);
     }
   },
 });
@@ -703,6 +868,98 @@ async function holdDomain(
     { domainId, token },
   );
 }
+
+const DOMAIN_ACTIVATION_ATTEMPTS = 300;
+
+function domainActivationRetryMs(attempt: number): number {
+  return Math.min(5_000 * 2 ** Math.min(attempt, 6), 5 * 60_000);
+}
+
+/** Proves every host after its shared deployment and keeps trying while TLS starts. */
+export const activateDomains = internalAction({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    domainIds: v.array(v.id("evidenceLibraryDomains")),
+    attempt: v.number(),
+    suspectedTaken: v.optional(v.array(v.id("evidenceLibraryDomains"))),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const rows = await ctx.runQuery(
+      internal.evidenceLibraries.domains.readDomainsForActivation,
+      { libraryId: args.libraryId, domainIds: args.domainIds },
+    );
+    const retry: Id<"evidenceLibraryDomains">[] = [];
+    const suspectedTaken = new Set(args.suspectedTaken ?? []);
+    const nextSuspectedTaken: Id<"evidenceLibraryDomains">[] = [];
+    for (const row of rows) {
+      let outcome: DomainOutcome;
+      try {
+        outcome = await readAnswerGate({
+          host: row.host,
+          liveRevisionKey: row.liveRevisionKey,
+          renewLease: async () => undefined,
+        });
+      } catch (error) {
+        if (!isUnavailable(error)) throw error;
+        retry.push(row.domainId);
+        continue;
+      }
+      if (outcome.state === "verified") {
+        retry.push(row.domainId);
+        continue;
+      }
+      if (
+        outcome.state === "failed" &&
+        outcome.failure === "host-taken" &&
+        !suspectedTaken.has(row.domainId)
+      ) {
+        retry.push(row.domainId);
+        nextSuspectedTaken.push(row.domainId);
+        continue;
+      }
+      await ctx.runMutation(
+        internal.evidenceLibraries.domains.writeSweptDomain,
+        {
+          domainId: row.domainId,
+          expectedGeneration: row.generation,
+          state: outcome.state,
+          ...(outcome.state === "failed" ? { failure: outcome.failure } : {}),
+        },
+      );
+    }
+    if (retry.length > 0 && args.attempt + 1 < DOMAIN_ACTIVATION_ATTEMPTS) {
+      await ctx.scheduler.runAfter(
+        domainActivationRetryMs(args.attempt),
+        internal.evidenceLibraries.domainActions.activateDomains,
+        {
+          libraryId: args.libraryId,
+          domainIds: retry,
+          attempt: args.attempt + 1,
+          ...(nextSuspectedTaken.length > 0
+            ? { suspectedTaken: nextSuspectedTaken }
+            : {}),
+        },
+      );
+    } else if (retry.length > 0) {
+      // ponytail: retry for about 24 hours; use a persistent job only if real
+      // certificate issuance regularly exceeds this ceiling.
+      for (const domainId of retry) {
+        const row = rows.find((entry) => entry.domainId === domainId)!;
+        await ctx.runMutation(
+          internal.evidenceLibraries.domains.writeSweptDomain,
+          {
+            domainId,
+            expectedGeneration: row.generation,
+            state: "failed",
+            failure: "tls-timeout",
+          },
+        );
+      }
+    }
+    return null;
+  },
+});
 
 /** How many working domains one sweep re-checks before it hands over. */
 const SWEEP_BATCH = 20;

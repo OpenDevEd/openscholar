@@ -2923,12 +2923,14 @@
       "colName": "Name",
       "colValue": "Value",
       "copyValue": "Copy {type} value",
+      "copyName": "复制 {type} 名称",
       "copied": "Copied",
       "checkDns": "Check DNS",
       "failed": "That did not work. Try again.",
       "status": {
         "none": "Not verified",
         "pending": "Not verified",
+        "pointing": "已找到地址记录",
         "checking": "Checking…",
         "verified": "Verified",
         "failed": "Records not found"
@@ -2940,7 +2942,8 @@
         "token-mismatch": "The ownership record holds a different value",
         "host-taken": "Another site already answers on that domain",
         "not-served": "The library is not running yet",
-        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org."
+        "caa-blocked": "This domain only allows certain certificate providers. Add a CAA record allowing letsencrypt.org.",
+        "tls-timeout": "无法激活 TLS。请再次检查域名。"
       },
       "refused": {
         "invalid": "That does not look like a domain",
@@ -2956,10 +2959,13 @@
       "redirectDisabled": "Verify the domain first.",
       "redirectWaiting": "Wait until the domain is working.",
       "addAnother": "Add another domain",
-      "busy": "A check is already running for that domain",
+      "busy": "这些域名已在检查中。",
+      "rateLimited": "DNS 检查过于频繁。请一分钟后重试。",
       "removing": "Removing",
       "checkFailed": "We could not check the domain. Try again.",
       "deploying": "Applying the change to the library",
+      "checked": "DNS 已检查",
+      "recordsNeedAttention": "部分 DNS 记录仍需处理。",
       "removingNow": "That domain is being removed",
       "removeAgain": "Finish removing",
       "confirmOnTitle": "Send the platform address to this domain?",

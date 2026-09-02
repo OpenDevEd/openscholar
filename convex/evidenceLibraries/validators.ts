@@ -227,6 +227,7 @@ export const evidenceLibraryDomainFailureValidator = v.union(
   v.literal("host-taken"),
   v.literal("not-served"),
   v.literal("caa-blocked"),
+  v.literal("tls-timeout"),
 );
 
 export const evidenceLibraryDomainFields = {
@@ -263,6 +264,7 @@ export const evidenceLibraryDomainFields = {
   pendingDeployment: v.optional(
     v.object({
       operationId: v.id("evidenceLibraryConfigOperations"),
+      token: v.string(),
       phase: v.union(
         v.literal("attach"),
         v.literal("detach"),

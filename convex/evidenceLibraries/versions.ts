@@ -16,7 +16,11 @@ import {
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
-import { claimDomainTransitionRow, requireTransition } from "./domains";
+import {
+  claimDomainTransitionRow,
+  MAX_EVIDENCE_LIBRARY_DOMAINS,
+  requireTransition,
+} from "./domains";
 import {
   evidenceLibraryAddressCandidateValidator,
   moveIdentityBaseUrl,
@@ -982,11 +986,110 @@ export const startDomainDeployment = internalMutation({
     await ctx.db.patch(args.domainId, {
       pendingDeployment: {
         operationId: operation.operationId,
+        token: args.token,
         phase: args.reason,
       },
       deploymentPending: undefined,
       updatedAt: Date.now(),
     });
+    return await claimAndScheduleConfigurationDeployment(ctx, {
+      libraryId: args.libraryId,
+      operationId: operation.operationId,
+    });
+  },
+});
+
+/** Publishes every newly verified host in one proxy deployment. */
+export const startDomainDeploymentBatch = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    changes: v.array(
+      v.object({
+        domainId: v.id("evidenceLibraryDomains"),
+        generation: v.number(),
+        token: v.string(),
+        host: v.string(),
+      }),
+    ),
+  },
+  returns: v.object({
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    revisionId: v.id("evidenceLibraryConfigRevisions"),
+    status: v.literal("running"),
+  }),
+  handler: async (ctx, args) => {
+    if (
+      args.changes.length < 1 ||
+      args.changes.length > MAX_EVIDENCE_LIBRARY_DOMAINS
+    ) {
+      throw createError("VALIDATION_ERROR", "Invalid domain deployment batch");
+    }
+    const running = await requireRunningLibrary(ctx, args.libraryId);
+    const ordered = [...args.changes].sort((left, right) =>
+      left.host.localeCompare(right.host),
+    );
+    for (const change of ordered) {
+      const row = await ctx.db.get(change.domainId);
+      if (
+        !row ||
+        row.libraryId !== args.libraryId ||
+        row.host !== change.host
+      ) {
+        throw createError("NOT_FOUND", "That domain is no longer there");
+      }
+      requireTransition(row, change.token);
+      if (row.generation !== change.generation) {
+        throw createError(
+          "CONFLICT",
+          "Another change to that domain is running",
+        );
+      }
+    }
+    await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
+    const source = await loadRevisionConfigurationSnapshot(
+      ctx,
+      running.activeRevisionId,
+      { requireComplete: true },
+    );
+    requireValidCurrentSnapshot(
+      source.migration.snapshot,
+      running.binding.canonicalBaseUrl ?? running.binding.targetBaseUrl,
+    );
+    const signature = ordered
+      .map(
+        ({ domainId, generation, host }) => `${domainId}:${generation}:${host}`,
+      )
+      .join(",");
+    const anchor = ordered[0]!;
+    const operation = await queueCandidateOperation(ctx, {
+      libraryId: args.libraryId,
+      sourceRevisionId: running.activeRevisionId,
+      snapshot: source.migration.snapshot,
+      forceCandidate:
+        source.header.ownerConfigurationVersion !==
+        CURRENT_OWNER_CONFIGURATION_VERSION,
+      idempotencyKey:
+        `domains:${running.activeRevisionId}:` +
+        `v${CURRENT_OWNER_CONFIGURATION_VERSION}:${signature}`,
+      domainChange: {
+        host: anchor.host,
+        domainId: anchor.domainId,
+        reason: "attach",
+        token: anchor.token,
+      },
+    });
+    const now = Date.now();
+    for (const change of ordered) {
+      await ctx.db.patch(change.domainId, {
+        pendingDeployment: {
+          operationId: operation.operationId,
+          token: change.token,
+          phase: "attach",
+        },
+        deploymentPending: undefined,
+        updatedAt: now,
+      });
+    }
     return await claimAndScheduleConfigurationDeployment(ctx, {
       libraryId: args.libraryId,
       operationId: operation.operationId,
@@ -1084,6 +1187,7 @@ export const setDomainPrimary = mutation({
     await ctx.db.patch(args.domainId, {
       pendingDeployment: {
         operationId: operation.operationId,
+        token: claimed.token,
         phase: "canonical",
       },
       deploymentPending: undefined,
