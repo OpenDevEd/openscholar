@@ -9,6 +9,7 @@ import {
   BarChart3,
   Building2,
   Database,
+  ExternalLink,
   FolderTree,
   Globe,
   History,
@@ -107,6 +108,7 @@ import {
   type SectionProps,
 } from "./section-shell";
 import { LibraryAddressLink } from "../library-address-link";
+import { AdminAreaLink } from "../admin-area-link";
 import { PanelHeader } from "./panel-header";
 import { STATUS_DOT, StatusChip } from "./status-chip";
 import { FileUploadsProvider } from "./use-file-uploads";
@@ -265,6 +267,7 @@ function Workspace({
   setRefusal: (refusal: SaveRefusal | null) => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
+  const tList = useTranslations("evidenceLibraries.list");
   const tc = useTranslations("common");
   const router = useRouter();
   const saveDraftSections = useMutation(
@@ -460,6 +463,14 @@ function Workspace({
                 {saving ? <Spinner /> : <Save />}
                 {saving ? t("saving") : t("save")}
               </Button>
+              {libraryState === "active" && !operationRunning && !activating ? (
+                <Button asChild variant="outline">
+                  <AdminAreaLink libraryId={libraryId}>
+                    {tList("openAdmin")}
+                    <ExternalLink />
+                  </AdminAreaLink>
+                </Button>
+              ) : null}
               {operationLabel ? (
                 <span
                   role="status"
