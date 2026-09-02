@@ -632,12 +632,14 @@ export async function removeLibraryRuntimeRoute(input: {
 async function requireActiveRevision(
   fetchImpl: typeof fetch,
   targetOrigin: URL,
+  runtimeCommit: string,
   revisionKey: string,
 ) {
   for (let pollCount = 0; pollCount < MAX_RUNTIME_ROUTE_POLLS; pollCount += 1) {
     const address = await probeEvidenceLibraryAddress({
       targetBaseUrl: targetOrigin.origin,
       fetchImpl,
+      expectedRuntimeRoute: { runtimeCommit, revisionKey },
     });
     if (address.state === "not-ours") {
       throw new ReadinessClientError(
@@ -897,7 +899,12 @@ export async function requireLibraryRuntimePublicReady(
     "Evidence Library URL",
     input.targetBaseUrl,
   );
-  await requireActiveRevision(targetFetchImpl, targetOrigin, input.revisionKey);
+  await requireActiveRevision(
+    targetFetchImpl,
+    targetOrigin,
+    input.runtimeCommit,
+    input.revisionKey,
+  );
   await requireRuntimeRouteMode(
     targetFetchImpl,
     targetOrigin,
