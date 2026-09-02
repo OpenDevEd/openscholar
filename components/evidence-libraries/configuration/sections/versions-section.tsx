@@ -168,15 +168,24 @@ export function VersionsSection({
     ? runtimeCheck(check, libraryId, refreshKey, checkError)
     : null;
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [restoring, setRestoring] = useState<VersionRow | null>(null);
 
-  const blocked = busy || operationRunning;
+  const blocked = busy || checking || operationRunning;
 
   function checkAgain() {
-    runtimeCheck(check, libraryId, refreshKey, checkError, { fresh: true });
+    if (checking) return;
+    setChecking(true);
+    const request = runtimeCheck(check, libraryId, refreshKey, checkError, {
+      fresh: true,
+    });
     setCheckCount((count) => count + 1);
+    void Promise.all([
+      request,
+      new Promise((resolve) => setTimeout(resolve, 500)),
+    ]).then(() => setChecking(false));
   }
 
   function confirmUpdate() {
@@ -280,10 +289,13 @@ export function VersionsSection({
               variant="ghost"
               size="sm"
               onClick={checkAgain}
-              disabled={blocked}
+              disabled={busy || operationRunning}
+              aria-busy={checking}
+              aria-disabled={checking || undefined}
+              className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
             >
-              <RefreshCw />
-              {t("versions.checkAgain")}
+              {checking ? <Spinner aria-hidden="true" /> : <RefreshCw />}
+              {t(checking ? "versions.checking" : "versions.checkAgain")}
             </Button>
           ) : null
         }

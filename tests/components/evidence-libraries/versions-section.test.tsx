@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -192,6 +192,36 @@ describe("<VersionsSection>", () => {
     await renderSection();
     expect(screen.getByText("versions.upToDate")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "versions.update" })).toBeNull();
+  });
+
+  it("shows feedback for at least 500 ms while checking again", async () => {
+    await renderSection();
+    vi.useFakeTimers();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole("button", { name: "versions.checkAgain" }),
+      );
+      await Promise.resolve();
+    });
+    expect(
+      screen.getByRole("button", { name: "versions.checking" }),
+    ).toHaveAttribute("aria-disabled", "true");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(499);
+    });
+    expect(
+      screen.getByRole("button", { name: "versions.checking" }),
+    ).toHaveAttribute("aria-disabled", "true");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(
+      screen.getByRole("button", { name: "versions.checkAgain" }),
+    ).toBeEnabled();
+    vi.useRealTimers();
   });
 
   it("marks the live row and offers Restore only on previous and failed rows", async () => {
