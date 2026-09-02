@@ -44,6 +44,7 @@ function createGithub(input: {
   addressAnswer?: Response;
 }) {
   const requests: RecordedRequest[] = [];
+  const addressRequests: URL[] = [];
   const fetchImpl: typeof fetch = vi.fn(
     async (requestInput: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(
@@ -54,6 +55,7 @@ function createGithub(input: {
             : requestInput.url,
       );
       if (url.pathname === "/api/library-config/health") {
+        addressRequests.push(url);
         return input.addressAnswer ?? ourHealthAnswer();
       }
       requests.push({ url, headers: new Headers(init?.headers) });
@@ -121,7 +123,7 @@ function createGithub(input: {
       return jsonResponse({ message: "Not Found" }, 404);
     },
   );
-  return { fetchImpl, requests };
+  return { addressRequests, fetchImpl, requests };
 }
 
 describe("Evidence Library software release lookup", () => {
@@ -302,6 +304,29 @@ describe("Evidence Library update check", () => {
     expect(github.requests).toHaveLength(0);
   });
 
+  it("keeps the last deployable update while the newest image is building", async () => {
+    const fixture = await createReadySetupFixture("update-check-image-pending");
+    const newest = "e".repeat(40);
+    const github = createGithub({ latest: newest, imageStatus: 404 });
+    vi.stubGlobal("fetch", github.fetchImpl);
+    const cached = {
+      running: RUNNING,
+      latest: LATEST,
+      latestImage: IMAGE,
+      changes: [],
+      checkedAt: Date.now() - RUNTIME_RELEASE_CACHE_MS - 1,
+    };
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", cached);
+    });
+
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.updates.check, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toEqual(cached);
+  });
+
   it("keeps working when two cold checks left two rows for the same commit", async () => {
     const fixture = await createReadySetupFixture("update-check-duplicate");
     const github = createGithub({ latest: LATEST });
@@ -474,6 +499,32 @@ describe("Evidence Library address ownership check", () => {
     await expect(
       fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
     ).resolves.toEqual([]);
+  });
+
+  it("checks the canonical custom address instead of its redirecting platform address", async () => {
+    const fixture = await createReadySetupFixture("address-canonical");
+    const canonicalBaseUrl = "https://evidence.example.test";
+    const github = createGithub({ latest: LATEST });
+    vi.stubGlobal("fetch", github.fetchImpl);
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.runtimeBindingId, {
+        addressState: "not-ours",
+        canonicalBaseUrl,
+      });
+    });
+
+    await fixture.admin.action(api.evidenceLibraries.updates.check, {
+      libraryId: fixture.created.libraryId,
+    });
+    await fixture.t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(github.addressRequests.map(String)).toEqual([
+      `${canonicalBaseUrl}/api/library-config/health`,
+    ]);
+    const binding = await fixture.t.run((ctx) =>
+      ctx.db.get(fixture.created.runtimeBindingId),
+    );
+    expect(binding).toMatchObject({ addressState: "ours" });
   });
 
   it("stores that another site answers the address and tells the pages", async () => {

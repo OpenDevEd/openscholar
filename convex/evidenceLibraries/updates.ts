@@ -43,7 +43,7 @@ export const readRunningRelease = internalQuery({
   returns: v.object({
     running: v.string(),
     bindingId: v.id("evidenceLibraryRuntimeBindings"),
-    targetBaseUrl: v.string(),
+    address: v.string(),
     cached: v.union(v.null(), runtimeUpdateStateValidator),
   }),
   handler: async (ctx, args) => {
@@ -70,11 +70,9 @@ export const readRunningRelease = internalQuery({
     return {
       running,
       bindingId: binding._id,
-      targetBaseUrl: binding.targetBaseUrl,
+      address: binding.canonicalBaseUrl ?? binding.targetBaseUrl,
       cached:
-        cached &&
-        typeof cached.latestImage === "string" &&
-        isFreshRuntimeRelease(cached.checkedAt, Date.now())
+        cached && typeof cached.latestImage === "string"
           ? {
               running,
               latest: cached.latest,
@@ -109,6 +107,7 @@ export const saveRuntimeRelease = internalMutation({
 async function refreshRuntimeRelease(
   ctx: ActionCtx,
   running: string,
+  fallback?: RuntimeUpdateState,
 ): Promise<RuntimeUpdateState> {
   const token = process.env.GITHUB_TOKEN?.trim();
   if (!token) {
@@ -121,6 +120,7 @@ async function refreshRuntimeRelease(
     release = await fetchRuntimeRelease({ running, token });
   } catch (error) {
     if (error instanceof RuntimeReleaseError) {
+      if (error.code === "RUNTIME_IMAGE_PENDING" && fallback) return fallback;
       throw createError("INVALID_DATA", error.message, { reason: error.code });
     }
     throw error;
@@ -154,7 +154,12 @@ export const saveAddressState = internalMutation({
       "evidenceLibraryRuntimeBindings",
       args.bindingId,
     );
-    if (!binding || binding.targetBaseUrl !== args.askedAddress) return null;
+    if (
+      !binding ||
+      (binding.canonicalBaseUrl ?? binding.targetBaseUrl) !== args.askedAddress
+    ) {
+      return null;
+    }
     // `updatedAt` stays as it is: a running publish compares it against the
     // binding it started from.
     await ctx.db.patch(args.bindingId, {
@@ -170,16 +175,16 @@ export const saveAddressState = internalMutation({
 export const checkAddress = internalAction({
   args: {
     bindingId: v.id("evidenceLibraryRuntimeBindings"),
-    targetBaseUrl: v.string(),
+    address: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const address = await probeEvidenceLibraryAddress({
-      targetBaseUrl: args.targetBaseUrl,
+      targetBaseUrl: args.address,
     });
     await ctx.runMutation(internal.evidenceLibraries.updates.saveAddressState, {
       bindingId: args.bindingId,
-      askedAddress: args.targetBaseUrl,
+      askedAddress: args.address,
       addressState: address.state,
       checkedAt: Date.now(),
     });
@@ -204,10 +209,19 @@ export const check = action({
     await ctx.scheduler.runAfter(
       0,
       internal.evidenceLibraries.updates.checkAddress,
-      { bindingId: state.bindingId, targetBaseUrl: state.targetBaseUrl },
+      { address: state.address, bindingId: state.bindingId },
     );
-    if (state.cached) return state.cached;
-    return await refreshRuntimeRelease(ctx, state.running);
+    if (
+      state.cached &&
+      isFreshRuntimeRelease(state.cached.checkedAt, Date.now())
+    ) {
+      return state.cached;
+    }
+    return await refreshRuntimeRelease(
+      ctx,
+      state.running,
+      state.cached ?? undefined,
+    );
   },
 });
 
@@ -237,7 +251,8 @@ export const listAddressNotices = query({
               library.runtimeBindingId,
             )
           : null;
-        const address = binding?.targetBaseUrl ?? "";
+        const address =
+          binding?.canonicalBaseUrl ?? binding?.targetBaseUrl ?? "";
         if (library.state === "active") {
           const addressState = binding?.addressState;
           return addressState && addressState !== "ours"
