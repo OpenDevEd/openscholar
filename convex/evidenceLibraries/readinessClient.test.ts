@@ -553,6 +553,33 @@ describe("Evidence Library readiness client", () => {
     ).rejects.toMatchObject({ code: "ADDRESS_NOT_OURS" });
   });
 
+  it("accepts our marked fallback while the active route is changing", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (request) => {
+      const url = String(request);
+      if (url.includes("runtime-verifier")) return json(readyVerifierBody());
+      if (url.endsWith("/api/library-config/health")) {
+        return new Response(null, {
+          status: 308,
+          headers: {
+            location: "https://climate.libraries.example.test/",
+            "X-OpenScholar-Route": `${RUNTIME_COMMIT}:${REVISION}`,
+          },
+        });
+      }
+      if (url.endsWith("/admin")) {
+        return new Response(null, {
+          status: 307,
+          headers: { location: LOGIN_PAGE_URL },
+        });
+      }
+      return new Response("ready", { status: 200 });
+    });
+
+    await expect(
+      requireLibraryRuntimeReady(input(fetchImpl)),
+    ).resolves.toEqual({ status: "ready" });
+  });
+
   it("keeps waiting while the proxy has no server for the address", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async (request) => {
       if (String(request).includes("runtime-verifier")) {
