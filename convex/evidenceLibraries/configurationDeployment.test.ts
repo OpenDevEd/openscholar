@@ -82,6 +82,9 @@ function createRuntimeNetwork(input: {
   let deployedConfigHash = INITIAL_CONFIG_HASH;
   let deploymentStatus = "queued";
   let activeRevision = input.revisionKey;
+  let healthUnavailable = false;
+  let runtimeRouteMarker: string | null = null;
+  const publicHealthMarkers: Array<string | null> = [];
   const requests: RecordedRequest[] = [];
   const environments = [
     runtimeEnvironment(
@@ -229,6 +232,10 @@ function createRuntimeNetwork(input: {
           "/v1/library-runtime/protection": "protected",
         };
         if (routeStatus[url.pathname]) {
+          runtimeRouteMarker =
+            url.pathname === "/v1/library-runtime/finalization"
+              ? null
+              : `${(body as { commit: string }).commit}:${(body as { revision: string }).revision}`;
           return jsonResponse({ status: routeStatus[url.pathname] });
         }
         if (url.pathname !== "/v1/library-runtime/readiness") {
@@ -256,6 +263,10 @@ function createRuntimeNetwork(input: {
         method === "GET" &&
         url.pathname === "/api/library-config/health"
       ) {
+        publicHealthMarkers.push(runtimeRouteMarker);
+        if (healthUnavailable) {
+          return new Response("no available server", { status: 503 });
+        }
         return jsonResponse(
           {
             state: "active",
@@ -263,7 +274,9 @@ function createRuntimeNetwork(input: {
             active: { revision: activeRevision },
           },
           200,
-          { "X-OpenScholar-Route": `${commit}:${activeRevision}` },
+          runtimeRouteMarker
+            ? { "X-OpenScholar-Route": runtimeRouteMarker }
+            : undefined,
         );
       }
       if (
@@ -299,6 +312,7 @@ function createRuntimeNetwork(input: {
     fetchImpl,
     requests,
     environments,
+    publicHealthMarkers,
     get commit() {
       return commit;
     },
@@ -311,10 +325,10 @@ function createRuntimeNetwork(input: {
       configHash = FINISHED_CONFIG_HASH;
     },
     failReadiness() {
-      activeRevision = "another-revision";
+      healthUnavailable = true;
     },
     restoreReadiness() {
-      activeRevision = input.revisionKey;
+      healthUnavailable = false;
     },
     setActiveRevision(revisionKey: string) {
       activeRevision = revisionKey;
@@ -843,15 +857,26 @@ describe("Evidence Library configuration deployment", () => {
         ({ method, url }) => method !== "GET" && url.pathname.endsWith("/envs"),
       ),
     );
+    expect(paths.indexOf("/api/library-config/health")).toBeLessThan(
+      network.requests.findIndex(
+        ({ method, url }) => method !== "GET" && url.pathname.endsWith("/envs"),
+      ),
+    );
     expect(paths.indexOf("/v1/library-runtime/readiness")).toBeLessThan(
       paths.indexOf("/v1/library-runtime/activation"),
     );
-    expect(paths.indexOf("/v1/library-runtime/activation")).toBeLessThan(
-      paths.indexOf("/api/library-config/health"),
+    const activationIndex = paths.indexOf("/v1/library-runtime/activation");
+    const finalizationIndex = paths.indexOf("/v1/library-runtime/finalization");
+    const activatedHealthIndex = paths.indexOf(
+      "/api/library-config/health",
+      activationIndex + 1,
     );
-    expect(paths.indexOf("/api/library-config/health")).toBeLessThan(
-      paths.indexOf("/v1/library-runtime/finalization"),
+    expect(activationIndex).toBeLessThan(activatedHealthIndex);
+    expect(activatedHealthIndex).toBeLessThan(finalizationIndex);
+    expect(paths.slice(finalizationIndex + 1)).toContain(
+      "/api/library-config/health",
     );
+    expect(network.publicHealthMarkers.at(-1)).toBeNull();
     expect(
       paths.filter((path) => path === "/v1/library-runtime/protection"),
     ).toHaveLength(1);

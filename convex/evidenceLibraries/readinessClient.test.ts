@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   changeLibraryRuntimeRoute,
   classifyEvidenceLibraryAddress,
+  isRetryableReadinessError,
   probeEvidenceLibraryAddress,
   removeLibraryRuntimeRoute,
   requireLibraryRuntimeReady,
@@ -133,26 +134,40 @@ describe("Evidence Library readiness client", () => {
     },
   );
 
-  it("retries one temporary route failure", async () => {
-    const fetchImpl = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(json({ error: "temporary" }, 502))
-      .mockResolvedValueOnce(json({ status: "protected" }));
+  it("preserves a temporary route failure for the scheduled retry", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      json(
+        {
+          error: {
+            code: "runtime_route_not_loaded",
+            message: "The proxy has not loaded the route.",
+          },
+        },
+        409,
+      ),
+    );
 
-    await expect(
-      changeLibraryRuntimeRoute("protection", {
-        applicationUuid: APPLICATION_UUID,
-        customOrigins: [],
-        platformOrigins: ["https://climate.libraries.example.test"],
-        revisionKey: REVISION,
-        runtimeCommit: RUNTIME_COMMIT,
-        runtimeImage: RUNTIME_IMAGE,
-        verifierUrl: "https://runtime-verifier.example.test",
-        verifierToken: "verifier-token-value",
-        fetchImpl,
-      }),
-    ).resolves.toEqual({ status: "protected" });
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    const error = await changeLibraryRuntimeRoute("protection", {
+      applicationUuid: APPLICATION_UUID,
+      customOrigins: [],
+      platformOrigins: ["https://climate.libraries.example.test"],
+      revisionKey: REVISION,
+      runtimeCommit: RUNTIME_COMMIT,
+      runtimeImage: RUNTIME_IMAGE,
+      verifierUrl: "https://runtime-verifier.example.test",
+      verifierToken: "verifier-token-value",
+      fetchImpl,
+    }).then(
+      () => null,
+      (failure: unknown) => failure,
+    );
+    expect(error).toMatchObject({
+      code: "RUNTIME_ROUTE_UNAVAILABLE",
+      message:
+        "Evidence Library traffic could not be updated: runtime_route_not_loaded: The proxy has not loaded the route.",
+    });
+    expect(isRetryableReadinessError(error)).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it("removes one library route with no caller-controlled runtime fields", async () => {
@@ -231,9 +246,7 @@ describe("Evidence Library readiness client", () => {
         expect(new Headers(init?.headers).get("cookie")).toBeNull();
         return json(readyVerifierBody());
       }
-      if (
-        new Headers(init?.headers).get("cookie") !== "ode_browser_check=1"
-      ) {
+      if (new Headers(init?.headers).get("cookie") !== "ode_browser_check=1") {
         return new Response("Forbidden", { status: 403 });
       }
       seen.push(url.href);
@@ -271,17 +284,26 @@ describe("Evidence Library readiness client", () => {
     ]);
   });
 
-  it("rejects the old six-service runtime contract", async () => {
-    const fetchImpl = vi.fn<typeof fetch>(async () => {
-      const body = readyVerifierBody();
-      return json({ ...body, services: body.services.slice(0, -1) });
-    });
+  it("preserves the verifier reason when runtime services are not ready", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      json(
+        {
+          error: {
+            code: "runtime_service_not_ready",
+            message: "The web service is restarting.",
+            service: "web",
+          },
+        },
+        409,
+      ),
+    );
 
     await expect(
       requireLibraryRuntimeReady(input(fetchImpl)),
     ).rejects.toMatchObject({
-      code: "READINESS_INVALID_RESPONSE",
-      message: "The runtime verifier returned an invalid response",
+      code: "RUNTIME_NOT_READY",
+      message:
+        "The Evidence Library services are not ready: runtime_service_not_ready: The web service is restarting. (web)",
     });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });

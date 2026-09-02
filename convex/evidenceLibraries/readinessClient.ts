@@ -44,6 +44,7 @@ export class ReadinessClientError extends Error {
 
 const RETRYABLE_READINESS_CODES = new Set([
   "READINESS_UNAVAILABLE",
+  "RUNTIME_ROUTE_UNAVAILABLE",
   "RUNTIME_NOT_READY",
   "CONFIG_NOT_READY",
   "PAGE_NOT_READY",
@@ -245,6 +246,30 @@ async function readBoundedJson(response: Response): Promise<unknown> {
   }
 }
 
+async function readVerifierFailure(response: Response, fallback: string) {
+  const serialized = await readBoundedText(response, { allowEmpty: true });
+  let body: unknown;
+  try {
+    body = JSON.parse(serialized);
+  } catch {
+    return fallback;
+  }
+  const error = isRecord(body) && isRecord(body.error) ? body.error : null;
+  if (
+    typeof error?.code !== "string" ||
+    !error.code.trim() ||
+    typeof error.message !== "string" ||
+    !error.message.trim()
+  ) {
+    return fallback;
+  }
+  const service =
+    typeof error.service === "string" && error.service.trim()
+      ? ` (${error.service.trim()})`
+      : "";
+  return `${fallback}: ${error.code.trim()}: ${error.message.trim()}${service}`;
+}
+
 // Our proxy answers this when no container serves the host yet.
 const FREE_ADDRESS_SIGNAL = "no available server";
 
@@ -368,7 +393,10 @@ async function requireVerifierReady(
       if (response.status !== 200) {
         throw new ReadinessClientError(
           "RUNTIME_NOT_READY",
-          "The Evidence Library services are not ready",
+          await readVerifierFailure(
+            response,
+            "The Evidence Library services are not ready",
+          ),
         );
       }
       return await readBoundedJson(response);
@@ -379,9 +407,7 @@ async function requireVerifierReady(
     body.ready !== true ||
     body.applicationUuid !== input.applicationUuid ||
     body.commit !== input.runtimeCommit ||
-    body.runtimeImage !== input.runtimeImage ||
-    !Array.isArray(body.services) ||
-    body.services.length !== 7
+    body.runtimeImage !== input.runtimeImage
   ) {
     throw new ReadinessClientError(
       "READINESS_INVALID_RESPONSE",
@@ -490,42 +516,26 @@ export async function changeLibraryRuntimeRoute(
       runtimeImage: input.runtimeImage,
     }),
   } satisfies RequestInit;
-  let body: unknown;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      body = await fetchWithTimeout(
-        fetchImpl,
-        url,
-        init,
-        async (response) => {
-          if (response.status !== 200) {
-            throw new ReadinessClientError(
-              response.status === 409 || response.status >= 500
-                ? "RUNTIME_ROUTE_UNAVAILABLE"
-                : "RUNTIME_ROUTE_FAILED",
-              "Evidence Library traffic could not be updated",
-            );
-          }
-          return await readBoundedJson(response);
-        },
-        ROUTE_REQUEST_TIMEOUT_MS,
-      );
-      break;
-    } catch (error) {
-      const transient =
-        error instanceof ReadinessClientError &&
-        (error.code === "READINESS_UNAVAILABLE" ||
-          error.code === "RUNTIME_ROUTE_UNAVAILABLE");
-      if (transient && attempt === 0) continue;
-      if (transient) {
+  const body = await fetchWithTimeout(
+    fetchImpl,
+    url,
+    init,
+    async (response) => {
+      if (response.status !== 200) {
         throw new ReadinessClientError(
-          "RUNTIME_ROUTE_FAILED",
-          "Evidence Library traffic could not be updated",
+          response.status === 409 || response.status >= 500
+            ? "RUNTIME_ROUTE_UNAVAILABLE"
+            : "RUNTIME_ROUTE_FAILED",
+          await readVerifierFailure(
+            response,
+            "Evidence Library traffic could not be updated",
+          ),
         );
       }
-      throw error;
-    }
-  }
+      return await readBoundedJson(response);
+    },
+    ROUTE_REQUEST_TIMEOUT_MS,
+  );
   if (!isRecord(body) || body.status !== expectedStatus) {
     throw new ReadinessClientError(
       "READINESS_INVALID_RESPONSE",
@@ -628,20 +638,27 @@ async function requireActiveRevision(
   );
 }
 
-async function requireActiveRuntimeRoute(
+type LibraryRuntimeRouteMode = "marked" | "native";
+
+async function requireRuntimeRouteMode(
   fetchImpl: typeof fetch,
   targetOrigin: URL,
   runtimeCommit: string,
   revisionKey: string,
+  mode: LibraryRuntimeRouteMode,
 ) {
-  const expectedRoute = `${runtimeCommit}:${revisionKey}`;
+  const expectedRoute =
+    mode === "marked" ? `${runtimeCommit}:${revisionKey}` : null;
   for (let pollCount = 0; pollCount < MAX_RUNTIME_ROUTE_POLLS; pollCount += 1) {
     const active = await fetchWithTimeout(
       fetchImpl,
       new URL("/api/library-config/health", targetOrigin),
       { headers: publicLibraryHeaders("application/json"), method: "GET" },
-      async (response) =>
-        response.headers.get(RUNTIME_ROUTE_HEADER) === expectedRoute,
+      async (response) => {
+        const matches =
+          response.headers.get(RUNTIME_ROUTE_HEADER) === expectedRoute;
+        return mode === "marked" ? matches : response.ok && matches;
+      },
     );
     if (active) return;
     if (pollCount < MAX_RUNTIME_ROUTE_POLLS - 1) {
@@ -652,8 +669,25 @@ async function requireActiveRuntimeRoute(
   }
   throw new ReadinessClientError(
     "CONFIG_NOT_READY",
-    "The Evidence Library traffic route is not active",
+    mode === "marked"
+      ? "The Evidence Library traffic route is not active"
+      : "The Evidence Library native traffic route is not active",
   );
+}
+
+export async function requireLibraryRuntimeRouteReady(
+  input: LibraryRuntimeRouteInput,
+  targetBaseUrl: string,
+): Promise<{ status: "ready" }> {
+  requireRuntimeRouteInput(input);
+  await requireRuntimeRouteMode(
+    input.fetchImpl ?? fetch,
+    requireHttpsOrigin("Evidence Library URL", targetBaseUrl),
+    input.runtimeCommit,
+    input.revisionKey,
+    "marked",
+  );
+  return { status: "ready" };
 }
 
 async function requirePage(
@@ -828,6 +862,7 @@ export async function requireLibraryRuntimeServicesReady(
 
 export async function requireLibraryRuntimePublicReady(
   input: ReadinessCheckInput,
+  routeMode: LibraryRuntimeRouteMode = "marked",
 ): Promise<{ status: "ready" }> {
   requireInput(input);
   const fetchImpl = input.fetchImpl ?? fetch;
@@ -837,11 +872,12 @@ export async function requireLibraryRuntimePublicReady(
     input.targetBaseUrl,
   );
   await requireActiveRevision(targetFetchImpl, targetOrigin, input.revisionKey);
-  await requireActiveRuntimeRoute(
+  await requireRuntimeRouteMode(
     targetFetchImpl,
     targetOrigin,
     input.runtimeCommit,
     input.revisionKey,
+    routeMode,
   );
   if (input.platformBaseUrl && input.platformBaseUrl !== targetOrigin.origin) {
     await requireRedirectToCanonical(
@@ -861,5 +897,17 @@ export async function requireLibraryRuntimePublicReady(
       input.loginPageUrl,
     ),
   ]);
+  return { status: "ready" };
+}
+
+export async function handOffLibraryRuntime(
+  route: LibraryRuntimeRouteInput,
+  readiness: ReadinessCheckInput,
+): Promise<{ status: "ready" }> {
+  await requireLibraryRuntimeServicesReady(readiness);
+  await changeLibraryRuntimeRoute("activation", route);
+  await requireLibraryRuntimePublicReady(readiness, "marked");
+  await changeLibraryRuntimeRoute("finalization", route);
+  await requireLibraryRuntimePublicReady(readiness, "native");
   return { status: "ready" };
 }

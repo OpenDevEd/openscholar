@@ -13,7 +13,11 @@ import {
   requireRuntimeEnvironment,
   requireRuntimeHttpsOrigin,
 } from "./runtimeActionConfig";
-import { changeLibraryRuntimeRoute } from "./readinessClient";
+import {
+  changeLibraryRuntimeRoute,
+  ReadinessClientError,
+  requireLibraryRuntimeRouteReady,
+} from "./readinessClient";
 
 const invalidCoolifyConfig = (message: string) =>
   new CoolifyClientError("INVALID_COOLIFY_CONFIG", message);
@@ -44,7 +48,7 @@ export const runDeploymentSetup = internalAction({
         internal.evidenceLibraries.deploymentSetup.prepareDeploymentSetup,
         args,
       );
-      await changeLibraryRuntimeRoute("maintenance", {
+      const maintenanceRoute = {
         applicationUuid: prepared.applicationId,
         customOrigins: [],
         platformOrigins: [prepared.targetBaseUrl],
@@ -59,7 +63,12 @@ export const runDeploymentSetup = internalAction({
           "EL_RUNTIME_VERIFIER_TOKEN",
           invalidCoolifyConfig,
         ),
-      });
+      };
+      await changeLibraryRuntimeRoute("maintenance", maintenanceRoute);
+      await requireLibraryRuntimeRouteReady(
+        maintenanceRoute,
+        prepared.targetBaseUrl,
+      );
       const client = createCoolifyClient({
         origin: requireRuntimeEnvironment(
           "EL_COOLIFY_URL",
@@ -153,12 +162,20 @@ export const runDeploymentSetup = internalAction({
       );
     } catch (error) {
       const safeError =
-        error instanceof CoolifyClientError
+        error instanceof CoolifyClientError ||
+        error instanceof ReadinessClientError
           ? { code: error.code, message: error.message }
           : {
               code: "DEPLOYMENT_SETUP_FAILED",
               message: "Evidence Library deployment could not be checked",
             };
+      if (safeError.code === "DEPLOYMENT_SETUP_FAILED") {
+        console.error("[evidence-library] deployment setup failed", {
+          libraryId: args.libraryId,
+          operationId: args.operationId,
+          error,
+        });
+      }
       await ctx.runMutation(
         internal.evidenceLibraries.setupOperation.failSetupOperation,
         {

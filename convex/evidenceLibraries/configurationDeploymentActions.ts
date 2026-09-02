@@ -21,10 +21,10 @@ import {
 import { openPinnedDomainClient } from "./domainEgressNode";
 import {
   changeLibraryRuntimeRoute,
+  handOffLibraryRuntime,
   isRetryableReadinessError,
   ReadinessClientError,
-  requireLibraryRuntimePublicReady,
-  requireLibraryRuntimeServicesReady,
+  requireLibraryRuntimeRouteReady,
   type LibraryRuntimeRouteInput,
 } from "./readinessClient";
 import {
@@ -155,6 +155,10 @@ export const runConfigurationDeployment = internalAction({
       };
       if (!savedDeployment) {
         await changeLibraryRuntimeRoute("protection", protectionRoute);
+        await requireLibraryRuntimeRouteReady(
+          protectionRoute,
+          prepared.continuity.platformOrigin,
+        );
       }
       if (prepared.state === "saved") {
         target = prepared.target;
@@ -507,21 +511,13 @@ export const runConfigurationDeployment = internalAction({
         verifierUrl,
         verifierToken,
       };
-      await requireLibraryRuntimeServicesReady(readinessInput);
-      await changeLibraryRuntimeRoute("activation", targetRoute);
-      await requireLibraryRuntimePublicReady(readinessInput);
-      await changeLibraryRuntimeRoute("finalization", targetRoute);
+      await handOffLibraryRuntime(targetRoute, readinessInput);
       return await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .completeConfigurationDeployment,
         { ...args, checkedAt: Date.now() },
       );
     } catch (error) {
-      if (protectionRoute) {
-        await changeLibraryRuntimeRoute("protection", protectionRoute).catch(
-          () => undefined,
-        );
-      }
       if (isRetryableReadinessError(error)) {
         const retry = await ctx.runMutation(
           internal.evidenceLibraries.configurationDeployment
@@ -529,6 +525,20 @@ export const runConfigurationDeployment = internalAction({
           args,
         );
         if (retry.status === "running") return retry;
+      }
+      if (protectionRoute) {
+        await changeLibraryRuntimeRoute("protection", protectionRoute).catch(
+          (recoveryError: unknown) => {
+            console.error(
+              "[evidence-library] failed to restore protected traffic",
+              {
+                libraryId: args.libraryId,
+                operationId: args.operationId,
+                recoveryError,
+              },
+            );
+          },
+        );
       }
       const safeError =
         error instanceof CoolifyClientError ||
@@ -549,6 +559,13 @@ export const runConfigurationDeployment = internalAction({
                 code: "CONFIGURATION_DEPLOYMENT_FAILED",
                 message: "Evidence Library configuration could not be deployed",
               };
+      if (safeError.code === "CONFIGURATION_DEPLOYMENT_FAILED") {
+        console.error("[evidence-library] configuration deployment failed", {
+          libraryId: args.libraryId,
+          operationId: args.operationId,
+          error,
+        });
+      }
       await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .failConfigurationDeployment,
