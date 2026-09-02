@@ -367,6 +367,37 @@ describe("<ConfigurationWorkspace>", () => {
     });
   });
 
+  it("shows the admin link only while an active library is idle", async () => {
+    const { unmount } = await renderWorkspace();
+    expect(
+      screen.getByRole("link", { name: "evidenceLibraries.list.openAdmin" }),
+    ).toHaveAttribute("href", "/evidence-libraries/library_123/admin");
+
+    unmount();
+    queryMock.mockReturnValue(draftResult({ state: "provisioning" }));
+    const draftWorkspace = await renderWorkspace();
+    expect(
+      screen.queryByRole("link", { name: "evidenceLibraries.list.openAdmin" }),
+    ).toBeNull();
+
+    draftWorkspace.unmount();
+    queryMock.mockReturnValue(
+      draftResult({
+        operation: {
+          _id: "operation_123",
+          kind: "configuration",
+          status: "running",
+          stage: "deployment",
+          updatedAt: 1,
+        },
+      }),
+    );
+    await renderWorkspace();
+    expect(
+      screen.queryByRole("link", { name: "evidenceLibraries.list.openAdmin" }),
+    ).toBeNull();
+  });
+
   it("puts Domain in the rail beside Versions, with its own card", async () => {
     await renderWorkspace();
     const rail = within(
