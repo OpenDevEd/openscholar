@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  activateLibraryRuntimeConfiguration,
   changeLibraryRuntimeRoute,
   classifyEvidenceLibraryAddress,
   handOffLibraryRuntime,
   isRetryableReadinessError,
   probeEvidenceLibraryAddress,
   removeLibraryRuntimeRoute,
+  restoreLibraryRuntimeConfiguration,
   requireLibraryRuntimeReady,
 } from "./readinessClient";
 
@@ -95,6 +97,58 @@ function adminAnswer(answer: Response) {
 describe("Evidence Library readiness client", () => {
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("activates the exact assembled configuration through the library", async () => {
+    const runtimeConfigJson = JSON.stringify({ revision: REVISION });
+    const runtimeConfigSha256 = "b".repeat(64);
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      json({
+        revision: REVISION,
+        sourceSha256: runtimeConfigSha256,
+        status: "active",
+      }),
+    );
+
+    await expect(
+      activateLibraryRuntimeConfiguration({
+        baseUrl: "https://climate.libraries.example.test",
+        machineCredential: `els_${"a".repeat(43)}`,
+        revisionKey: REVISION,
+        runtimeConfigJson,
+        runtimeConfigSha256,
+        fetchImpl,
+      }),
+    ).resolves.toEqual({
+      revision: REVISION,
+      sourceSha256: runtimeConfigSha256,
+      status: "active",
+    });
+    const [url, init] = fetchImpl.mock.calls[0]!;
+    expect(String(url)).toBe(
+      "https://climate.libraries.example.test/api/openscholar/configuration",
+    );
+    expect(init?.method).toBe("PUT");
+    expect(init?.body).toBe(runtimeConfigJson);
+  });
+
+  it("restores the exact previous revision through the library", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      json({ revision: REVISION, status: "active" }),
+    );
+
+    await expect(
+      restoreLibraryRuntimeConfiguration({
+        baseUrl: "https://climate.libraries.example.test",
+        machineCredential: `els_${"a".repeat(43)}`,
+        revisionKey: REVISION,
+        fetchImpl,
+      }),
+    ).resolves.toEqual({ revision: REVISION, status: "active" });
+    expect(fetchImpl.mock.calls[0]?.[1]?.method).toBe("DELETE");
+    expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toEqual({
+      revision: REVISION,
+    });
   });
 
   it.each([

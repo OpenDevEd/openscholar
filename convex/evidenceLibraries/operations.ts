@@ -270,6 +270,17 @@ type OperationReceipt = {
   activatedAt?: number;
 };
 
+export function configurationOperationRequiresDeployment(
+  operation: Pick<
+    Doc<"evidenceLibraryConfigOperations">,
+    "addressMove" | "domainChange" | "runtimeUpdate"
+  >,
+) {
+  return Boolean(
+    operation.runtimeUpdate || operation.addressMove || operation.domainChange,
+  );
+}
+
 export function validateOperationReceipt(
   receipt: OperationReceipt | undefined,
 ): OperationReceipt | undefined {
