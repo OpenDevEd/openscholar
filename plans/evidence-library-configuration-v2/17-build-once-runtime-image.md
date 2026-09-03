@@ -680,11 +680,12 @@ type RuntimeReleaseIdentity = {
 };
 ```
 
-The setup env uses `EL_RUNTIME_COMMIT_SHA` and `EL_RUNTIME_IMAGE`. Startup
-refuses a missing, mutable or mismatched pair before it creates a Coolify
-application. Runtime bindings, setup receipts, version receipts, release cache
-rows and runtime-update operations store the pair. No optional old shape,
-fallback tag or missing image remains after the narrow deployment.
+Setup reads the newest successful `new-el/main` runtime-image workflow and
+resolves that commit's immutable GHCR digest before it creates an application.
+The setup operation saves that pair before any external work so retries keep
+using the same release. Runtime bindings, setup receipts, version receipts,
+release cache rows and runtime-update operations store the pair. There is no
+separate configured "recommended" commit, fallback tag, or missing-image path.
 
 ### 3. Pull the image through the current Compose application
 
@@ -1068,8 +1069,9 @@ can run two configurations and shows the measured break-even point.
 
 ### OpenScholar lane gate
 
-1. Re-pin the runtime contract to the merged `new-el/main` head. Set the lane's
-   `EL_RUNTIME_COMMIT_SHA` and `EL_RUNTIME_IMAGE` to the first release pair.
+1. Re-pin the runtime contract to the merged `new-el/main` head. Wait for its
+   runtime-image workflow, then prove the release resolver returns that exact
+   commit and digest pair.
 2. Run `npx convex dev --once`; it must end with `Convex functions ready!`.
 3. Create one lane-only library. Setup must finish without a source build. A
    config-only Activate must change `runtimeConfigSha256`, keep the image
@@ -1080,17 +1082,17 @@ can run two configurations and shows the measured break-even point.
 
 ### Shared-platform gate
 
-1. From `dev-self`, set the approved release pair, confirm the existing
-   `GITHUB_TOKEN` still resolves its exact private GHCR digest, run
+1. From `dev-self`, confirm the existing `GITHUB_TOKEN` resolves the newest
+   successful runtime-image workflow to its exact private GHCR digest, run
    `npm run convex:push`, and confirm `✔ Convex functions ready!`. Keep
    `npm run logs:convex` open.
 2. Create `el-gate-<date><letter>`. Record the Coolify deployment start/end
    timestamps. Its deployment log must show a registry pull or local image
    reuse and contain no `docker build`, `npm install`, or `next build` step.
-3. Read the runtime verifier result: six expected services; five exact runtime
-   image references; one shared image ID whose `RepoDigests` contains the
-   expected digest; matching release commit; web, search, publication and
-   Meilisearch healthy; both source workers running.
+3. Read the runtime verifier result: seven expected services; five exact
+   runtime image references; one shared image ID whose `RepoDigests` contains
+   the expected digest; matching release commit; web, search, publication,
+   Redis, and Meilisearch healthy; both source workers running.
 4. Change one visible configuration value and Activate. Prove the revision and
    `runtimeConfigSha256` changed, the image reference did not, the deployment
    log contains no source build, and `/api/library-config/health`, `/lib` and
