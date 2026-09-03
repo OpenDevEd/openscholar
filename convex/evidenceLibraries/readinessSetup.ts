@@ -8,6 +8,7 @@ import {
   evidenceLibraryAddressCandidateValidator,
   requireFreeEvidenceLibraryAddress,
 } from "./addressRecovery";
+import { evidenceLibraryOperationAttemptArgsValidatorFields } from "./validators";
 import {
   EVIDENCE_LIBRARY_SETUP_ACTION_DELAY_MS,
   EVIDENCE_LIBRARY_SETUP_LEASE_MS,
@@ -45,10 +46,7 @@ function requireReadinessReceipts(
 
 export const prepareReadinessSetup = internalMutation({
   args: {
-    libraryId: v.id("evidenceLibraries"),
-    operationId: v.id("evidenceLibraryConfigOperations"),
-    attemptToken: v.string(),
-    attemptCount: v.number(),
+    ...evidenceLibraryOperationAttemptArgsValidatorFields,
   },
   returns: v.object({
     applicationId: v.string(),

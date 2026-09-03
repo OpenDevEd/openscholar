@@ -4,11 +4,41 @@
 
 Build one Evidence Library image for each approved `new-el/main` commit. Every
 library on that release pulls the same immutable image. Activating a library
-configuration changes `LIBRARY_CONFIG_JSON` and replaces the containers, but it
-does not run `npm install`, `next build`, or a Docker source build.
+configuration originally changed `LIBRARY_CONFIG_JSON` and replaced the
+containers. The 2026-09-03 decision below replaces that configuration path.
 
 Estimate: three working days across the build server, `new-el` and OpenScholar,
 followed by one shared-platform gate.
+
+### Configuration activation decision, 2026-09-03
+
+Ordinary configuration activation must not redeploy the Compose application.
+The current path took 4 minutes 4.686 seconds for a configuration-only change;
+about 174 seconds were spent removing old containers even though the runtime
+image was already built.
+
+Reuse the runtime's existing atomic configuration activation, revision checks,
+backup and rollback code:
+
+- The runtime stores the active file in one named volume mounted by the web app
+  and all four workers. The Compose config remains the seed used when the stack
+  starts or receives a software update.
+- OpenScholar sends the assembled manifest to one authenticated runtime route.
+  The route validates it and atomically replaces the active file.
+- The web app reloads the file without restarting. Each worker watches the
+  active file, finishes or aborts its current cycle, exits, and is restarted by
+  Compose with the new revision.
+- OpenScholar checks the runtime services and the public revision before it
+  marks the revision active. A failed check rolls the runtime file back to the
+  previous valid revision.
+- Software updates and domain-routing changes continue through the full
+  deployment path. Existing libraries need one software update to install this
+  runtime support; no saved configuration rows change.
+
+Completion requires focused runtime and OpenScholar tests, the full disposable
+runtime acceptance flow, one isolated live library activation with measured
+duration, and successful rollback proof. Follow the shared working agreement
+for the final review, CI and deployment gates.
 
 ## Decision
 
@@ -650,11 +680,12 @@ type RuntimeReleaseIdentity = {
 };
 ```
 
-The setup env uses `EL_RUNTIME_COMMIT_SHA` and `EL_RUNTIME_IMAGE`. Startup
-refuses a missing, mutable or mismatched pair before it creates a Coolify
-application. Runtime bindings, setup receipts, version receipts, release cache
-rows and runtime-update operations store the pair. No optional old shape,
-fallback tag or missing image remains after the narrow deployment.
+Setup reads the newest successful `new-el/main` runtime-image workflow and
+resolves that commit's immutable GHCR digest before it creates an application.
+The setup operation saves that pair before any external work so retries keep
+using the same release. Runtime bindings, setup receipts, version receipts,
+release cache rows and runtime-update operations store the pair. There is no
+separate configured "recommended" commit, fallback tag, or missing-image path.
 
 ### 3. Pull the image through the current Compose application
 
@@ -1038,8 +1069,9 @@ can run two configurations and shows the measured break-even point.
 
 ### OpenScholar lane gate
 
-1. Re-pin the runtime contract to the merged `new-el/main` head. Set the lane's
-   `EL_RUNTIME_COMMIT_SHA` and `EL_RUNTIME_IMAGE` to the first release pair.
+1. Re-pin the runtime contract to the merged `new-el/main` head. Wait for its
+   runtime-image workflow, then prove the release resolver returns that exact
+   commit and digest pair.
 2. Run `npx convex dev --once`; it must end with `Convex functions ready!`.
 3. Create one lane-only library. Setup must finish without a source build. A
    config-only Activate must change `runtimeConfigSha256`, keep the image
@@ -1050,17 +1082,17 @@ can run two configurations and shows the measured break-even point.
 
 ### Shared-platform gate
 
-1. From `dev-self`, set the approved release pair, confirm the existing
-   `GITHUB_TOKEN` still resolves its exact private GHCR digest, run
+1. From `dev-self`, confirm the existing `GITHUB_TOKEN` resolves the newest
+   successful runtime-image workflow to its exact private GHCR digest, run
    `npm run convex:push`, and confirm `✔ Convex functions ready!`. Keep
    `npm run logs:convex` open.
 2. Create `el-gate-<date><letter>`. Record the Coolify deployment start/end
    timestamps. Its deployment log must show a registry pull or local image
    reuse and contain no `docker build`, `npm install`, or `next build` step.
-3. Read the runtime verifier result: six expected services; five exact runtime
-   image references; one shared image ID whose `RepoDigests` contains the
-   expected digest; matching release commit; web, search, publication and
-   Meilisearch healthy; both source workers running.
+3. Read the runtime verifier result: seven expected services; five exact
+   runtime image references; one shared image ID whose `RepoDigests` contains
+   the expected digest; matching release commit; web, search, publication,
+   Redis, and Meilisearch healthy; both source workers running.
 4. Change one visible configuration value and Activate. Prove the revision and
    `runtimeConfigSha256` changed, the image reference did not, the deployment
    log contains no source build, and `/api/library-config/health`, `/lib` and

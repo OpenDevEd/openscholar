@@ -7,6 +7,13 @@ import {
 
 export type { SectionKey };
 
+export const evidenceLibraryOperationAttemptArgsValidatorFields = {
+  libraryId: v.id("evidenceLibraries"),
+  operationId: v.id("evidenceLibraryConfigOperations"),
+  attemptToken: v.string(),
+  attemptCount: v.number(),
+};
+
 /**
  * What a publish saw of the AI provider key: which row it read and when that
  * row last changed, or the fact that there was none. Carried through the

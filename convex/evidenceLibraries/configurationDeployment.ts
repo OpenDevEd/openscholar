@@ -22,7 +22,6 @@ import { requireEvidenceLibraryAccess } from "./access";
 import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "./credentials";
 import { readLibraryZoteroGroupCredentials } from "../zotero/libraryGroups";
 import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
-import { aiProviderKeySourceValidator } from "./validators";
 import { isDeploymentLeaseHeld } from "./operationLeases";
 import {
   readAiProviderKeySource,
@@ -33,6 +32,7 @@ import {
   sanitizeConfigurationIssues,
   sanitizeOperationError,
   validateOperationReceipt,
+  configurationOperationRequiresDeployment,
 } from "./operations";
 import { readRevisionDefaultLocale } from "./revisionConfiguration";
 import {
@@ -45,8 +45,10 @@ import { applyEvidenceLibraryAddressMove } from "./addressRecovery";
 import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import {
+  aiProviderKeySourceValidator,
   evidenceLibraryAddressMoveValidator,
   evidenceLibraryConfigurationDeploymentTargetValidator,
+  evidenceLibraryOperationAttemptArgsValidatorFields,
   evidenceLibraryOperationFailureValidator,
   evidenceLibraryRuntimeUpdateValidator,
   sectionRowValidator,
@@ -464,6 +466,7 @@ export const prepareConfigurationDeployment = internalMutation({
       deployment: v.optional(savedDeploymentValidator),
       runtimeUpdate: v.optional(evidenceLibraryRuntimeUpdateValidator),
       continuity: runtimeContinuityValidator,
+      requiresDeployment: v.boolean(),
     }),
     v.object({
       state: v.literal("new"),
@@ -517,6 +520,7 @@ export const prepareConfigurationDeployment = internalMutation({
       runtimeCommit: v.string(),
       runtimeImage: v.string(),
       continuity: runtimeContinuityValidator,
+      requiresDeployment: v.boolean(),
     }),
   ),
   handler: async (ctx, args) => {
@@ -554,6 +558,9 @@ export const prepareConfigurationDeployment = internalMutation({
       runtimeImage: requireRuntimeImage(deployment.runtimeBinding.runtimeImage),
     };
     const savedTarget = deployment.operation.configurationDeploymentTarget;
+    const requiresDeployment = configurationOperationRequiresDeployment(
+      deployment.operation,
+    );
     if (savedTarget) {
       if (
         !(await isAcceptableSavedConfigurationTarget(ctx, deployment.operation))
@@ -571,8 +578,8 @@ export const prepareConfigurationDeployment = internalMutation({
           receipt.targetConfigSha256 !== savedTarget.runtimeConfigSha256 ||
           receipt.runtimeCommit !== savedTarget.runtimeCommit ||
           receipt.runtimeImage !== savedTarget.runtimeImage ||
-          !receipt.runtimeReceiptId ||
-          !receipt.coolifyConfigHash)
+          (requiresDeployment &&
+            (!receipt.runtimeReceiptId || !receipt.coolifyConfigHash)))
       ) {
         throw createError(
           "INVALID_DATA",
@@ -583,14 +590,15 @@ export const prepareConfigurationDeployment = internalMutation({
         state: "saved" as const,
         target: savedTarget,
         continuity,
+        requiresDeployment,
         ...(deployment.operation.runtimeUpdate
           ? { runtimeUpdate: deployment.operation.runtimeUpdate }
           : {}),
-        ...(receipt
+        ...(receipt?.runtimeReceiptId && receipt.coolifyConfigHash
           ? {
               deployment: {
-                deploymentId: receipt.runtimeReceiptId!,
-                coolifyConfigHash: receipt.coolifyConfigHash!,
+                deploymentId: receipt.runtimeReceiptId,
+                coolifyConfigHash: receipt.coolifyConfigHash,
               },
             }
           : {}),
@@ -790,6 +798,7 @@ export const prepareConfigurationDeployment = internalMutation({
         runtimeUpdate?.toImage ?? deployment.runtimeBinding.runtimeImage,
       ),
       continuity,
+      requiresDeployment,
     };
   },
 });
@@ -974,6 +983,66 @@ export const saveConfigurationDeploymentReceipt = internalMutation({
   },
 });
 
+export const saveConfigurationActivationReceipt = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    operationId: v.id("evidenceLibraryConfigOperations"),
+    attemptToken: v.string(),
+    attemptCount: v.number(),
+  },
+  returns: v.object({ status: v.literal("running") }),
+  handler: async (ctx, args) => {
+    const deployment = await requireCurrentConfigurationDeployment(ctx, args);
+    const target = deployment.operation.configurationDeploymentTarget;
+    if (
+      !target ||
+      configurationOperationRequiresDeployment(deployment.operation)
+    ) {
+      throw createError(
+        "CONFLICT",
+        "Evidence Library configuration is not ready for direct activation",
+      );
+    }
+    const receipt = validateOperationReceipt({
+      revisionKey: target.revisionKey,
+      targetConfigSha256: target.runtimeConfigSha256,
+      runtimeCommit: target.runtimeCommit,
+      runtimeImage: target.runtimeImage,
+    })!;
+    const existing = deployment.operation.receipt;
+    if (
+      existing &&
+      (!("runtimeCommit" in existing) ||
+        existing.revisionKey !== receipt.revisionKey ||
+        existing.targetConfigSha256 !== receipt.targetConfigSha256 ||
+        existing.runtimeCommit !== receipt.runtimeCommit ||
+        existing.runtimeImage !== receipt.runtimeImage ||
+        existing.runtimeReceiptId !== undefined ||
+        existing.coolifyConfigHash !== undefined)
+    ) {
+      throw createError(
+        "CONFLICT",
+        "Evidence Library configuration activation receipt changed",
+      );
+    }
+    const now = Date.now();
+    await ctx.db.patch(deployment.operation._id, {
+      receipt,
+      stage: "activating",
+      ...(deployment.operation.stage === "activating"
+        ? {}
+        : { configurationReadinessPollCount: 0 }),
+      configurationLeaseExpiresAt: await renewConfigurationLease(
+        ctx,
+        deployment.operation,
+        args.attemptToken,
+      ),
+      updatedAt: now,
+    });
+    return { status: "running" as const };
+  },
+});
+
 export const scheduleConfigurationDeploymentPoll = internalMutation({
   args: {
     libraryId: v.id("evidenceLibraries"),
@@ -1023,17 +1092,15 @@ export const scheduleConfigurationDeploymentPoll = internalMutation({
 
 export const prepareConfigurationActivation = internalMutation({
   args: {
-    libraryId: v.id("evidenceLibraries"),
-    operationId: v.id("evidenceLibraryConfigOperations"),
-    attemptToken: v.string(),
-    attemptCount: v.number(),
+    ...evidenceLibraryOperationAttemptArgsValidatorFields,
   },
   returns: v.object({
     applicationId: v.string(),
-    deploymentId: v.string(),
+    deploymentId: v.optional(v.string()),
     runtimeCommit: v.string(),
     runtimeImage: v.string(),
-    coolifyConfigHash: v.string(),
+    coolifyConfigHash: v.optional(v.string()),
+    requiresDeployment: v.boolean(),
     revisionKey: v.string(),
     targetBaseUrl: v.string(),
     platformBaseUrl: v.string(),
@@ -1043,6 +1110,9 @@ export const prepareConfigurationActivation = internalMutation({
     const deployment = await requireCurrentConfigurationDeployment(ctx, args);
     const target = deployment.operation.configurationDeploymentTarget;
     const receipt = deployment.operation.receipt;
+    const requiresDeployment = configurationOperationRequiresDeployment(
+      deployment.operation,
+    );
     if (
       !target ||
       !receipt ||
@@ -1051,8 +1121,8 @@ export const prepareConfigurationActivation = internalMutation({
       receipt.targetConfigSha256 !== target.runtimeConfigSha256 ||
       receipt.runtimeCommit !== target.runtimeCommit ||
       receipt.runtimeImage !== target.runtimeImage ||
-      !receipt.runtimeReceiptId ||
-      !receipt.coolifyConfigHash
+      (requiresDeployment &&
+        (!receipt.runtimeReceiptId || !receipt.coolifyConfigHash))
     ) {
       throw createError(
         "INVALID_DATA",
@@ -1081,10 +1151,15 @@ export const prepareConfigurationActivation = internalMutation({
     });
     return {
       applicationId: target.applicationId,
-      deploymentId: receipt.runtimeReceiptId,
+      ...(receipt.runtimeReceiptId
+        ? { deploymentId: receipt.runtimeReceiptId }
+        : {}),
       runtimeCommit: target.runtimeCommit,
       runtimeImage: requireRuntimeImage(target.runtimeImage),
-      coolifyConfigHash: receipt.coolifyConfigHash,
+      ...(receipt.coolifyConfigHash
+        ? { coolifyConfigHash: receipt.coolifyConfigHash }
+        : {}),
+      requiresDeployment,
       revisionKey: target.revisionKey,
       // Readiness reads the address the library calls its own, which is the
       // custom domain once one is primary. When a change of address is
@@ -1259,8 +1334,8 @@ export const completeConfigurationDeployment = internalMutation({
       receipt.targetConfigSha256 !== target.runtimeConfigSha256 ||
       receipt.runtimeCommit !== target.runtimeCommit ||
       receipt.runtimeImage !== target.runtimeImage ||
-      !receipt.runtimeReceiptId ||
-      !receipt.coolifyConfigHash
+      (configurationOperationRequiresDeployment(deployment.operation) &&
+        (!receipt.runtimeReceiptId || !receipt.coolifyConfigHash))
     ) {
       throw createError(
         "INVALID_DATA",

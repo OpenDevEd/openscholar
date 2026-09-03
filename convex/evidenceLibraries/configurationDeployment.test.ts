@@ -263,6 +263,25 @@ function createRuntimeNetwork(input: {
       }
       if (
         url.origin === new URL(publicDomain).origin &&
+        url.pathname === "/api/openscholar/configuration"
+      ) {
+        if (method === "PUT") {
+          activeRevision = (body as { revision: string }).revision;
+          return jsonResponse({
+            revision: activeRevision,
+            sourceSha256: createHash("sha256")
+              .update(String(init?.body))
+              .digest("hex"),
+            status: "active",
+          });
+        }
+        if (method === "DELETE") {
+          activeRevision = (body as { revision: string }).revision;
+          return jsonResponse({ revision: activeRevision, status: "active" });
+        }
+      }
+      if (
+        url.origin === new URL(publicDomain).origin &&
         method === "GET" &&
         url.pathname === "/api/library-config/health"
       ) {
@@ -318,6 +337,9 @@ function createRuntimeNetwork(input: {
     },
     get publicDomain() {
       return publicDomain;
+    },
+    get activeRevision() {
+      return activeRevision;
     },
     finishDeployment() {
       deploymentStatus = "finished";
@@ -703,11 +725,11 @@ describe("Evidence Library configuration deployment", () => {
       },
     );
 
-    // Coolify received the embedder, with the platform key inside it.
-    const runtimeJson = network.environments.find(
-      ({ key }) => key === "LIBRARY_CONFIG_JSON",
-    )!.value;
-    expect(JSON.parse(runtimeJson)).toMatchObject({
+    const runtimeConfigWrite = network.requests.find(
+      ({ method, url }) =>
+        method === "PUT" && url.pathname === "/api/openscholar/configuration",
+    );
+    expect(runtimeConfigWrite?.body).toMatchObject({
       features: { ai: true, aiSearch: true, deepResearch: false },
       search: {
         embedder: {
@@ -740,7 +762,7 @@ describe("Evidence Library configuration deployment", () => {
     }
   });
 
-  it("saves one immutable target, polls Coolify, verifies the runtime, and activates it", async () => {
+  it("activates a configuration without rebuilding or changing traffic", async () => {
     const deployment = await activateChangedConfiguration("action-success");
     const network = createRuntimeNetwork({
       libraryId: deployment.fixture.created.libraryId,
@@ -755,64 +777,12 @@ describe("Evidence Library configuration deployment", () => {
       attemptCount: deployment.attemptCount,
     };
 
-    const firstResult = await deployment.fixture.t.action(
+    const result = await deployment.fixture.t.action(
       internal.evidenceLibraries.configurationDeploymentActions
         .runConfigurationDeployment,
       actionArgs,
     );
-    expect(firstResult).toEqual({ pollCount: 1, status: "running" });
-    const afterStart = await deployment.fixture.t.run((ctx) =>
-      ctx.db.get(deployment.activated.operationId),
-    );
-    expect(afterStart).toMatchObject({
-      status: "running",
-      stage: "publishing",
-      configurationDeploymentTarget: {
-        applicationId: APPLICATION_UUID,
-        revisionKey: deployment.activated.revisionKey,
-        runtimeCommit: RUNTIME_COMMIT,
-        runtimeImage: TEST_RUNTIME_IMAGE,
-      },
-      receipt: {
-        revisionKey: deployment.activated.revisionKey,
-        runtimeReceiptId: "deployment-configuration-65",
-        runtimeCommit: RUNTIME_COMMIT,
-        runtimeImage: TEST_RUNTIME_IMAGE,
-        coolifyConfigHash: UPDATED_CONFIG_HASH,
-      },
-    });
-    const firstRuntimeJson = network.environments.find(
-      ({ key }) => key === "LIBRARY_CONFIG_JSON",
-    )!.value;
-    expect(JSON.parse(firstRuntimeJson)).toMatchObject({
-      revision: deployment.activated.revisionKey,
-      services: { search: { key: expect.any(String) } },
-    });
-
-    await deployment.fixture.t.run(async (ctx) => {
-      const credentials = await ctx.db
-        .query("evidenceLibraryCredentials")
-        .withIndex("by_libraryId", (query) =>
-          query.eq("libraryId", deployment.fixture.created.libraryId),
-        )
-        .collect();
-      await ctx.db.patch(credentials[0]!._id, {
-        encryptedValue: encrypt("changed-after-start", ENCRYPTION_KEY),
-        updatedAt: 999,
-      });
-      await ctx.db.patch(deployment.fixture.created.libraryId, {
-        latestRevisionId: deployment.fixture.activated.revisionId,
-      });
-    });
-    network.finishDeploymentWithoutHash();
-
-    expect(
-      await deployment.fixture.t.action(
-        internal.evidenceLibraries.configurationDeploymentActions
-          .runConfigurationDeployment,
-        actionArgs,
-      ),
-    ).toEqual({ status: "succeeded" });
+    expect(result).toEqual({ status: "succeeded" });
     const completed = await deployment.fixture.t.run(async (ctx) => ({
       library: await ctx.db.get(deployment.fixture.created.libraryId),
       binding: await ctx.db.get(deployment.fixture.created.runtimeBindingId),
@@ -831,21 +801,29 @@ describe("Evidence Library configuration deployment", () => {
     expect(completed.operation).toMatchObject({
       status: "succeeded",
       stage: "completed",
-      receipt: { coolifyConfigHash: FINISHED_CONFIG_HASH },
+      receipt: {
+        revisionKey: deployment.activated.revisionKey,
+        runtimeCommit: RUNTIME_COMMIT,
+        runtimeImage: TEST_RUNTIME_IMAGE,
+      },
     });
+    expect(completed.operation?.receipt).not.toHaveProperty("runtimeReceiptId");
+    expect(completed.operation?.receipt).not.toHaveProperty(
+      "coolifyConfigHash",
+    );
     expect(completed.operation).not.toHaveProperty("configurationAttemptToken");
     expect(
       network.requests.filter(
         ({ method, url }) =>
           method === "PATCH" && url.pathname.endsWith("/envs"),
       ),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
     expect(
       network.requests.filter(
         ({ method, url }) =>
           method === "POST" && url.pathname === "/api/v1/deploy",
       ),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
     expect(
       network.requests.some(
         ({ url }) => url.pathname === "/v1/library-runtime/readiness",
@@ -856,39 +834,24 @@ describe("Evidence Library configuration deployment", () => {
         ({ url }) => url.pathname === "/api/library-config/health",
       ),
     ).toBe(true);
+    const configurationWrites = network.requests.filter(
+      ({ method, url }) =>
+        method === "PUT" && url.pathname === "/api/openscholar/configuration",
+    );
+    expect(configurationWrites).toHaveLength(1);
+    expect(configurationWrites[0]?.body).toMatchObject({
+      revision: deployment.activated.revisionKey,
+      services: { search: { key: expect.any(String) } },
+    });
     const paths = network.requests.map(({ url }) => url.pathname);
-    expect(paths.indexOf("/v1/library-runtime/protection")).toBeLessThan(
-      network.requests.findIndex(
-        ({ method, url }) => method !== "GET" && url.pathname.endsWith("/envs"),
-      ),
-    );
-    expect(paths.indexOf("/api/library-config/health")).toBeLessThan(
-      network.requests.findIndex(
-        ({ method, url }) => method !== "GET" && url.pathname.endsWith("/envs"),
-      ),
-    );
-    expect(paths.indexOf("/v1/library-runtime/readiness")).toBeLessThan(
-      paths.indexOf("/v1/library-runtime/activation"),
-    );
-    const activationIndex = paths.indexOf("/v1/library-runtime/activation");
-    const finalizationIndex = paths.indexOf("/v1/library-runtime/finalization");
-    const activatedHealthIndex = paths.indexOf(
-      "/api/library-config/health",
-      activationIndex + 1,
-    );
-    expect(activationIndex).toBeLessThan(activatedHealthIndex);
-    expect(activatedHealthIndex).toBeLessThan(finalizationIndex);
-    expect(paths.slice(finalizationIndex + 1)).toContain(
-      "/api/library-config/health",
-    );
+    expect(paths).not.toContain("/v1/library-runtime/protection");
+    expect(paths).not.toContain("/v1/library-runtime/activation");
+    expect(paths).not.toContain("/v1/library-runtime/finalization");
     expect(network.publicHealthMarkers.at(-1)).toBeNull();
-    expect(
-      paths.filter((path) => path === "/v1/library-runtime/protection"),
-    ).toHaveLength(1);
     expect(
       network.environments.find(({ key }) => key === "LIBRARY_CONFIG_JSON")!
         .value,
-    ).toBe(firstRuntimeJson);
+    ).toBe(JSON.stringify({ revision: "old" }));
     await expect(
       deployment.fixture.admin.action(
         api.evidenceLibraries.adminHandoffActions.issueAdminHandoff,
@@ -911,6 +874,7 @@ describe("Evidence Library configuration deployment", () => {
       attemptToken: deployment.attemptToken,
       attemptCount: deployment.attemptCount,
     };
+    network.failReadiness();
 
     await expect(
       deployment.fixture.t.action(
@@ -920,7 +884,7 @@ describe("Evidence Library configuration deployment", () => {
       ),
     ).resolves.toEqual({ pollCount: 1, status: "running" });
     await failSavedConfigurationDeployment(deployment);
-    network.finishDeployment();
+    network.restoreReadiness();
     const writesBeforeRetry = network.requests.filter(
       ({ method, url }) =>
         method === "PATCH" || url.pathname === "/api/v1/deploy",
@@ -987,6 +951,7 @@ describe("Evidence Library configuration deployment", () => {
       attemptToken: deployment.attemptToken,
       attemptCount: deployment.attemptCount,
     };
+    network.failReadiness();
 
     await expect(
       deployment.fixture.t.action(
@@ -996,6 +961,7 @@ describe("Evidence Library configuration deployment", () => {
       ),
     ).resolves.toEqual({ pollCount: 1, status: "running" });
     await failSavedConfigurationDeployment(deployment);
+    network.restoreReadiness();
 
     const failed = await deployment.fixture.t.run(async (ctx) => ({
       draft: await ctx.db
@@ -1054,16 +1020,6 @@ describe("Evidence Library configuration deployment", () => {
           .runConfigurationDeployment,
         secondActionArgs,
       ),
-    ).resolves.toEqual({ pollCount: 1, status: "running" });
-
-    network.finishDeployment();
-    network.setActiveRevision(second.revisionKey);
-    await expect(
-      deployment.fixture.t.action(
-        internal.evidenceLibraries.configurationDeploymentActions
-          .runConfigurationDeployment,
-        secondActionArgs,
-      ),
     ).resolves.toEqual({ status: "succeeded" });
     await expect(
       deployment.fixture.t.run((ctx) => ctx.db.get(libraryId)),
@@ -1085,12 +1041,6 @@ describe("Evidence Library configuration deployment", () => {
       attemptToken: deployment.attemptToken,
       attemptCount: deployment.attemptCount,
     };
-    await deployment.fixture.t.action(
-      internal.evidenceLibraries.configurationDeploymentActions
-        .runConfigurationDeployment,
-      actionArgs,
-    );
-    network.finishDeployment();
     network.failReadiness();
 
     expect(
@@ -1134,73 +1084,57 @@ describe("Evidence Library configuration deployment", () => {
     ).resolves.toEqual({ status: "succeeded" });
   });
 
-  it("retries while the protected traffic route is still catching up", async () => {
-    const deployment = await activateChangedConfiguration("route-catch-up");
+  it("restores the previous runtime configuration when readiness retries are exhausted", async () => {
+    const deployment = await activateChangedConfiguration("rollback-exhausted");
     const network = createRuntimeNetwork({
       libraryId: deployment.fixture.created.libraryId,
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    await deployment.fixture.t.run(async (ctx) => {
-      const scheduled = await ctx.db.system
-        .query("_scheduled_functions")
-        .order("desc")
-        .take(20);
-      for (const job of scheduled) {
-        if (
-          job.name.includes("runConfigurationDeployment") &&
-          JSON.stringify(job.args).includes(deployment.activated.operationId)
-        ) {
-          await ctx.scheduler.cancel(job._id);
-        }
-      }
-    });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn<typeof fetch>(async (request, init) => {
-        if (String(request).endsWith("/v1/library-runtime/protection")) {
-          return jsonResponse({ message: "Route is still updating" }, 503);
-        }
-        return await network.fetchImpl(request, init);
+    network.failReadiness();
+    vi.stubGlobal("fetch", network.fetchImpl);
+    const actionArgs = {
+      libraryId: deployment.fixture.created.libraryId,
+      operationId: deployment.activated.operationId,
+      attemptToken: deployment.attemptToken,
+      attemptCount: deployment.attemptCount,
+    };
+
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).resolves.toEqual({ pollCount: 1, status: "running" });
+    await deployment.fixture.t.run((ctx) =>
+      ctx.db.patch(deployment.activated.operationId, {
+        configurationReadinessPollCount: 24,
       }),
     );
 
-    const result = await deployment.fixture.t.action(
-      internal.evidenceLibraries.configurationDeploymentActions
-        .runConfigurationDeployment,
-      {
-        libraryId: deployment.fixture.created.libraryId,
-        operationId: deployment.activated.operationId,
-        attemptToken: deployment.attemptToken,
-        attemptCount: deployment.attemptCount,
-      },
-    );
-    expect(result).toEqual({
-      pollCount: 1,
-      status: "running",
-    });
-
-    const waiting = await deployment.fixture.t.run(async (ctx) => ({
-      operation: await ctx.db.get(deployment.activated.operationId),
-      scheduled: await ctx.db.system
-        .query("_scheduled_functions")
-        .order("desc")
-        .take(20),
-    }));
-    expect(waiting.operation).toMatchObject({
-      status: "running",
-      stage: "assembling",
-      configurationReadinessPollCount: 1,
-    });
-    expect(
-      waiting.scheduled.some(
-        (scheduled) =>
-          scheduled.name.includes("runConfigurationDeployment") &&
-          JSON.stringify(scheduled.args).includes(
-            deployment.activated.operationId,
-          ),
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
       ),
-    ).toBe(true);
+    ).resolves.toEqual({ status: "failed" });
+    expect(network.activeRevision).toBe(
+      deployment.fixture.activated.revisionKey,
+    );
+    expect(
+      network.requests.filter(
+        ({ method, url }) =>
+          method === "DELETE" &&
+          url.pathname === "/api/openscholar/configuration",
+      ),
+    ).toHaveLength(1);
+    await expect(
+      deployment.fixture.t.run((ctx) =>
+        ctx.db.get(deployment.activated.operationId),
+      ),
+    ).resolves.toMatchObject({ status: "failed" });
   });
 
   it("updates the software commit first, deploys the active revision at it, and records it on the binding", async () => {
@@ -2188,15 +2122,6 @@ describe("Evidence Library configuration deployment", () => {
       attemptToken: deployment.attemptToken,
       attemptCount: deployment.attemptCount,
     };
-    expect(
-      await deployment.fixture.t.action(
-        internal.evidenceLibraries.configurationDeploymentActions
-          .runConfigurationDeployment,
-        actionArgs,
-      ),
-    ).toEqual({ pollCount: 1, status: "running" });
-
-    network.finishDeployment();
     // The key changes at the very last moment: after the runtime has been
     // asked whether it is ready, and before the library is told it is live.
     const replaceKey = async () => {

@@ -60,7 +60,9 @@ describe("Evidence Library admin handoff", () => {
     expect(result.status).toBe("allowed");
     if (result.status !== "allowed") return;
     const launchUrl = new URL(result.launchUrl);
-    expect(launchUrl.origin).toBe(new URL(fixture.created.publicAddress).origin);
+    expect(launchUrl.origin).toBe(
+      new URL(fixture.created.publicAddress).origin,
+    );
     expect(launchUrl.pathname).toBe("/api/admin/session");
     expect(launchUrl.searchParams.get("return")).toBe("/admin/items?page=2");
     const code = launchUrl.searchParams.get("code") ?? "";
@@ -134,6 +136,26 @@ describe("Evidence Library admin handoff", () => {
         { libraryId: fixture.created.libraryId },
       ),
     ).resolves.toMatchObject({ status: "allowed" });
+  });
+
+  it("keeps setup libraries closed until their deployment receipt exists", async () => {
+    const fixture = await createReadySetupFixture(
+      "admin_handoff_setup_receipt",
+    );
+    await fixture.t.run(async (ctx) => {
+      const operation = await ctx.db.get(fixture.created.setupOperationId);
+      if (!operation?.receipt) throw new Error("Setup receipt is missing");
+      await ctx.db.patch(operation._id, {
+        receipt: { ...operation.receipt, runtimeReceiptId: undefined },
+      });
+    });
+
+    await expect(
+      signedInElsewhere(fixture).query(
+        api.evidenceLibraries.adminHandoff.readAdminHandoffState,
+        { libraryId: fixture.created.libraryId },
+      ),
+    ).resolves.toEqual({ status: "not_ready", isOwner: true });
   });
 
   it("refuses a signed-in person who is not a member, and names the organisation", async () => {
@@ -240,7 +262,10 @@ describe("Evidence Library admin handoff", () => {
 
     const result = await signedInElsewhere(fixture).action(
       api.evidenceLibraries.adminHandoffActions.issueAdminHandoff,
-      { libraryId: fixture.created.libraryId, returnPath: "/en-GB/admin/files" },
+      {
+        libraryId: fixture.created.libraryId,
+        returnPath: "/en-GB/admin/files",
+      },
     );
 
     expect(result.status).toBe("allowed");

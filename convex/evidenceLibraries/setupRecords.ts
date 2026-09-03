@@ -1,6 +1,7 @@
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
+import { configurationOperationRequiresDeployment } from "./operations";
 
 type SetupReadCtx = Pick<QueryCtx | MutationCtx, "db">;
 
@@ -99,7 +100,9 @@ export async function readEvidenceLibraryAdminLaunchTarget(
     deploymentOperation.status !== "succeeded" ||
     deploymentOperation.stage !== "completed" ||
     deploymentOperation.receipt?.revisionKey !== activeRevision.revisionKey ||
-    !deploymentOperation.receipt.runtimeReceiptId ||
+    ((deploymentOperation.kind === "setup" ||
+      configurationOperationRequiresDeployment(deploymentOperation)) &&
+      !deploymentOperation.receipt.runtimeReceiptId) ||
     deploymentOperation.receipt.activatedAt === undefined
   ) {
     return null;

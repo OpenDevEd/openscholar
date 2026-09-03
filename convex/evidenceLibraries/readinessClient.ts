@@ -6,6 +6,7 @@ const ROUTE_REQUEST_TIMEOUT_MS = 30_000;
 const RUNTIME_ROUTE_POLL_DELAY_MS = 500;
 const MAX_RUNTIME_ROUTE_POLLS = 10;
 const MAX_JSON_RESPONSE_BYTES = 256 * 1024;
+const MAX_RUNTIME_CONFIG_BYTES = 1024 * 1024;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const RUNTIME_ROUTE_HEADER = "x-openscholar-route";
 const BROWSER_CHECK_COOKIE = "ode_browser_check=1";
@@ -40,6 +41,126 @@ export class ReadinessClientError extends Error {
     super(message);
     this.name = "ReadinessClientError";
   }
+}
+
+export type LibraryRuntimeConfigurationInput = {
+  baseUrl: string;
+  machineCredential: string;
+  fetchImpl?: typeof fetch;
+};
+
+function requireMachineCredential(value: string) {
+  if (!/^els_[A-Za-z0-9_-]{43}$/u.test(value)) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library machine credential is invalid",
+    );
+  }
+  return value;
+}
+
+async function writeRuntimeConfiguration(
+  input: LibraryRuntimeConfigurationInput,
+  method: "DELETE" | "PUT",
+  body: string,
+) {
+  const origin = requireHttpsOrigin("Evidence Library URL", input.baseUrl);
+  const responseBody = await fetchWithTimeout(
+    input.fetchImpl ?? fetch,
+    new URL("/api/openscholar/configuration", origin),
+    {
+      body,
+      headers: {
+        accept: "application/json",
+        authorization: `Bearer ${requireMachineCredential(input.machineCredential)}`,
+        "content-type": "application/json",
+      },
+      method,
+    },
+    async (response) => {
+      if (response.status !== 200) {
+        throw new ReadinessClientError(
+          response.status === 409 || response.status >= 500
+            ? "CONFIG_NOT_READY"
+            : "CONFIGURATION_ACTIVATION_FAILED",
+          "The Evidence Library configuration could not be changed",
+        );
+      }
+      return readBoundedJson(response);
+    },
+  );
+  if (
+    !isRecord(responseBody) ||
+    responseBody.status !== "active" ||
+    typeof responseBody.revision !== "string"
+  ) {
+    throw new ReadinessClientError(
+      "READINESS_INVALID_RESPONSE",
+      "The Evidence Library returned an invalid configuration response",
+    );
+  }
+  return responseBody;
+}
+
+export async function activateLibraryRuntimeConfiguration(
+  input: LibraryRuntimeConfigurationInput & {
+    runtimeConfigJson: string;
+    runtimeConfigSha256: string;
+    revisionKey: string;
+  },
+): Promise<{ revision: string; sourceSha256: string; status: "active" }> {
+  if (
+    Buffer.byteLength(input.runtimeConfigJson) > MAX_RUNTIME_CONFIG_BYTES ||
+    !/^[a-f0-9]{64}$/u.test(input.runtimeConfigSha256) ||
+    !input.revisionKey.trim()
+  ) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library configuration is invalid",
+    );
+  }
+  const response = await writeRuntimeConfiguration(
+    input,
+    "PUT",
+    input.runtimeConfigJson,
+  );
+  if (
+    response.revision !== input.revisionKey ||
+    response.sourceSha256 !== input.runtimeConfigSha256
+  ) {
+    throw new ReadinessClientError(
+      "READINESS_INVALID_RESPONSE",
+      "The Evidence Library did not activate the requested configuration",
+    );
+  }
+  return {
+    revision: response.revision,
+    sourceSha256: response.sourceSha256,
+    status: "active",
+  };
+}
+
+export async function restoreLibraryRuntimeConfiguration(
+  input: LibraryRuntimeConfigurationInput & { revisionKey: string },
+): Promise<{ revision: string; status: "active" }> {
+  if (!input.revisionKey.trim()) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Previous Evidence Library revision is missing",
+    );
+  }
+  const response = await writeRuntimeConfiguration(
+    input,
+    "DELETE",
+    JSON.stringify({ revision: input.revisionKey }),
+  );
+  if (response.revision !== input.revisionKey) {
+    throw new ReadinessClientError(
+      "READINESS_INVALID_RESPONSE",
+      "The Evidence Library did not restore the previous configuration",
+    );
+  }
+  return { revision: response.revision, status: "active" };
 }
 
 const RETRYABLE_READINESS_CODES = new Set([

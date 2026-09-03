@@ -9,7 +9,10 @@ import {
   featuresAiEnabled,
   selectedAiModelIds,
 } from "../../lib/evidence-libraries/configuration/ai";
-import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
+import {
+  ConfigurationAssemblyError,
+  type AssembledEvidenceLibraryConfiguration,
+} from "../../lib/evidence-libraries/configuration/assembly";
 import { decrypt, encrypt } from "../lib/crypto";
 import {
   CoolifyClientError,
@@ -20,11 +23,15 @@ import {
 } from "./coolifyClient";
 import { openPinnedDomainClient } from "./domainEgressNode";
 import {
+  activateLibraryRuntimeConfiguration,
   changeLibraryRuntimeRoute,
   handOffLibraryRuntime,
   isRetryableReadinessError,
   ReadinessClientError,
+  requireLibraryRuntimePublicReady,
   requireLibraryRuntimeRouteReady,
+  requireLibraryRuntimeServicesReady,
+  restoreLibraryRuntimeConfiguration,
   type LibraryRuntimeRouteInput,
 } from "./readinessClient";
 import {
@@ -80,26 +87,29 @@ export const runConfigurationDeployment = internalAction({
   ),
   handler: async (ctx, args): Promise<ConfigurationDeploymentActionResult> => {
     let protectionRoute: LibraryRuntimeRouteInput | undefined;
+    let restoreDirectConfiguration: (() => Promise<void>) | undefined;
     try {
       const encryptionKey = requireRuntimeEnvironment(
         "ENCRYPTION_KEY",
         invalidConfiguration,
       );
-      const coolify = createCoolifyClient({
-        origin: requireRuntimeEnvironment(
-          "EL_COOLIFY_URL",
-          invalidConfiguration,
-        ),
-        token: requireRuntimeEnvironment(
-          "EL_COOLIFY_TOKEN",
-          invalidConfiguration,
-        ),
-      });
       let prepared = await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .prepareConfigurationDeployment,
         args,
       );
+      const coolify = prepared.requiresDeployment
+        ? createCoolifyClient({
+            origin: requireRuntimeEnvironment(
+              "EL_COOLIFY_URL",
+              invalidConfiguration,
+            ),
+            token: requireRuntimeEnvironment(
+              "EL_COOLIFY_TOKEN",
+              invalidConfiguration,
+            ),
+          })
+        : null;
 
       let target: ConfigurationDeploymentTarget;
       const savedDeployment =
@@ -153,7 +163,7 @@ export const runConfigurationDeployment = internalAction({
         verifierToken,
         verifierUrl,
       };
-      if (!savedDeployment) {
+      if (prepared.requiresDeployment && !savedDeployment) {
         await changeLibraryRuntimeRoute("protection", protectionRoute);
         await requireLibraryRuntimeRouteReady(
           protectionRoute,
@@ -167,6 +177,8 @@ export const runConfigurationDeployment = internalAction({
         // answers on the new address do the records take it, so a failure
         // here leaves the library on the address it has.
         if (prepared.addressMove && !prepared.addressMove.applied) {
+          if (!coolify)
+            throw invalidConfiguration("Deployment client is missing");
           await coolify.setApplicationDomain({
             applicationUuid: prepared.applicationId,
             libraryId: args.libraryId,
@@ -175,50 +187,54 @@ export const runConfigurationDeployment = internalAction({
             customDomains: prepared.customDomains,
           });
         }
-        const application = await coolify.readBoundApplication({
-          applicationUuid: prepared.applicationId,
-          libraryId: args.libraryId,
-          publicDomain: prepared.targetBaseUrl,
-          customDomains: prepared.customDomains,
-          ...(runtimeUpdate
-            ? {}
-            : {
-                runtimeCommit: prepared.runtimeCommit,
-                runtimeImage: prepared.runtimeImage,
-              }),
-        });
-        const runningRuntimeImage = application.runtimeImage;
-        const runsUpdateSource =
-          runtimeUpdate !== undefined &&
-          application.runtimeCommit === runtimeUpdate.from &&
-          runningRuntimeImage === runtimeUpdate.fromImage;
-        const runsUpdateTarget =
-          runtimeUpdate !== undefined &&
-          application.runtimeCommit === runtimeUpdate.to &&
-          runningRuntimeImage === runtimeUpdate.toImage;
-        const runsFailedTarget =
-          runtimeUpdate !== undefined &&
-          !runsUpdateSource &&
-          !runsUpdateTarget &&
-          (await ctx.runQuery(
-            internal.evidenceLibraries.configurationDeployment
-              .isFailedRuntimeTarget,
-            {
-              libraryId: args.libraryId,
-              runtimeCommit: application.runtimeCommit,
-              runtimeImage: runningRuntimeImage,
-            },
-          ));
-        if (
-          runtimeUpdate &&
-          !runsUpdateSource &&
-          !runsUpdateTarget &&
-          !runsFailedTarget
-        ) {
-          throw new CoolifyClientError(
-            "COOLIFY_APPLICATION_CONFLICT",
-            "The bound Coolify application runs unexpected software",
-          );
+        if (prepared.requiresDeployment) {
+          if (!coolify)
+            throw invalidConfiguration("Deployment client is missing");
+          const application = await coolify.readBoundApplication({
+            applicationUuid: prepared.applicationId,
+            libraryId: args.libraryId,
+            publicDomain: prepared.targetBaseUrl,
+            customDomains: prepared.customDomains,
+            ...(runtimeUpdate
+              ? {}
+              : {
+                  runtimeCommit: prepared.runtimeCommit,
+                  runtimeImage: prepared.runtimeImage,
+                }),
+          });
+          const runningRuntimeImage = application.runtimeImage;
+          const runsUpdateSource =
+            runtimeUpdate !== undefined &&
+            application.runtimeCommit === runtimeUpdate.from &&
+            runningRuntimeImage === runtimeUpdate.fromImage;
+          const runsUpdateTarget =
+            runtimeUpdate !== undefined &&
+            application.runtimeCommit === runtimeUpdate.to &&
+            runningRuntimeImage === runtimeUpdate.toImage;
+          const runsFailedTarget =
+            runtimeUpdate !== undefined &&
+            !runsUpdateSource &&
+            !runsUpdateTarget &&
+            (await ctx.runQuery(
+              internal.evidenceLibraries.configurationDeployment
+                .isFailedRuntimeTarget,
+              {
+                libraryId: args.libraryId,
+                runtimeCommit: application.runtimeCommit,
+                runtimeImage: runningRuntimeImage,
+              },
+            ));
+          if (
+            runtimeUpdate &&
+            !runsUpdateSource &&
+            !runsUpdateTarget &&
+            !runsFailedTarget
+          ) {
+            throw new CoolifyClientError(
+              "COOLIFY_APPLICATION_CONFLICT",
+              "The bound deployment runs unexpected software",
+            );
+          }
         }
         const sections = Object.fromEntries(
           prepared.sections.map((row) => [row.sectionKey, row.payload]),
@@ -302,6 +318,84 @@ export const runConfigurationDeployment = internalAction({
         verifierToken,
         verifierUrl,
       };
+
+      if (!prepared.requiresDeployment) {
+        const machineCredential = (
+          JSON.parse(runtimeConfigJson) as AssembledEvidenceLibraryConfiguration
+        ).authentication.openScholar.machineCredential;
+        const configurationInput = {
+          baseUrl: target.targetBaseUrl,
+          machineCredential,
+        };
+        restoreDirectConfiguration = async () => {
+          await restoreLibraryRuntimeConfiguration({
+            ...configurationInput,
+            revisionKey: prepared.continuity.revisionKey,
+          });
+        };
+        await activateLibraryRuntimeConfiguration({
+          ...configurationInput,
+          revisionKey: target.revisionKey,
+          runtimeConfigJson,
+          runtimeConfigSha256: target.runtimeConfigSha256,
+        });
+        await ctx.runMutation(
+          internal.evidenceLibraries.configurationDeployment
+            .saveConfigurationActivationReceipt,
+          args,
+        );
+        const readiness = await ctx.runMutation(
+          internal.evidenceLibraries.configurationDeployment
+            .prepareConfigurationActivation,
+          args,
+        );
+        const targetFetchImpl =
+          readiness.targetBaseUrl === readiness.platformBaseUrl
+            ? undefined
+            : await openPinnedDomainClient({
+                host: new URL(readiness.targetBaseUrl).hostname,
+              });
+        const readinessInput = {
+          ...(targetFetchImpl ? { targetFetchImpl } : {}),
+          applicationUuid: readiness.applicationId,
+          runtimeCommit: readiness.runtimeCommit,
+          runtimeImage: readiness.runtimeImage,
+          revisionKey: readiness.revisionKey,
+          targetBaseUrl: readiness.targetBaseUrl,
+          platformBaseUrl: readiness.platformBaseUrl,
+          loginPageUrl: buildEvidenceLibraryLoginPageUrl({
+            libraryId: args.libraryId,
+            appOrigin: requireRuntimeHttpsOrigin(
+              "EL_OPENSCHOLAR_URL",
+              invalidConfiguration,
+            ),
+          }),
+          verifierUrl,
+          verifierToken,
+        };
+        restoreDirectConfiguration = async () => {
+          await restoreLibraryRuntimeConfiguration({
+            ...configurationInput,
+            revisionKey: prepared.continuity.revisionKey,
+          });
+          const previousReadiness = {
+            ...readinessInput,
+            revisionKey: prepared.continuity.revisionKey,
+          };
+          await requireLibraryRuntimePublicReady(previousReadiness, "native");
+        };
+        await requireLibraryRuntimeServicesReady(readinessInput);
+        await requireLibraryRuntimePublicReady(readinessInput, "native");
+        const result = await ctx.runMutation(
+          internal.evidenceLibraries.configurationDeployment
+            .completeConfigurationDeployment,
+          { ...args, checkedAt: Date.now() },
+        );
+        restoreDirectConfiguration = undefined;
+        return result;
+      }
+
+      if (!coolify) throw invalidConfiguration("Deployment client is missing");
 
       let application: CoolifyConfigurationUpdateResult;
       if (savedDeployment) {
@@ -471,6 +565,11 @@ export const runConfigurationDeployment = internalAction({
           .prepareConfigurationActivation,
         args,
       );
+      if (!readiness.deploymentId || !readiness.coolifyConfigHash) {
+        throw invalidConfiguration(
+          "Evidence Library deployment receipt is incomplete",
+        );
+      }
       await coolify.requireFinishedDeployment({
         deploymentUuid: readiness.deploymentId,
         runtimeCommit: readiness.runtimeCommit,
@@ -533,6 +632,18 @@ export const runConfigurationDeployment = internalAction({
             },
           );
         }
+      }
+      if (restoreDirectConfiguration) {
+        await restoreDirectConfiguration().catch((recoveryError: unknown) => {
+          console.error(
+            "[evidence-library] failed to restore the previous configuration",
+            {
+              libraryId: args.libraryId,
+              operationId: args.operationId,
+              recoveryError,
+            },
+          );
+        });
       }
       if (protectionRoute) {
         await changeLibraryRuntimeRoute("protection", protectionRoute).catch(
