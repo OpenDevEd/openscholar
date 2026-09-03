@@ -4,11 +4,41 @@
 
 Build one Evidence Library image for each approved `new-el/main` commit. Every
 library on that release pulls the same immutable image. Activating a library
-configuration changes `LIBRARY_CONFIG_JSON` and replaces the containers, but it
-does not run `npm install`, `next build`, or a Docker source build.
+configuration originally changed `LIBRARY_CONFIG_JSON` and replaced the
+containers. The 2026-09-03 decision below replaces that configuration path.
 
 Estimate: three working days across the build server, `new-el` and OpenScholar,
 followed by one shared-platform gate.
+
+### Configuration activation decision, 2026-09-03
+
+Ordinary configuration activation must not redeploy the Compose application.
+The current path took 4 minutes 4.686 seconds for a configuration-only change;
+about 174 seconds were spent removing old containers even though the runtime
+image was already built.
+
+Reuse the runtime's existing atomic configuration activation, revision checks,
+backup and rollback code:
+
+- The runtime stores the active file in one named volume mounted by the web app
+  and all four workers. The Compose config remains the seed used when the stack
+  starts or receives a software update.
+- OpenScholar sends the assembled manifest to one authenticated runtime route.
+  The route validates it and atomically replaces the active file.
+- The web app reloads the file without restarting. Each worker watches the
+  active file, finishes or aborts its current cycle, exits, and is restarted by
+  Compose with the new revision.
+- OpenScholar checks the runtime services and the public revision before it
+  marks the revision active. A failed check rolls the runtime file back to the
+  previous valid revision.
+- Software updates and domain-routing changes continue through the full
+  deployment path. Existing libraries need one software update to install this
+  runtime support; no saved configuration rows change.
+
+Completion requires focused runtime and OpenScholar tests, the full disposable
+runtime acceptance flow, one isolated live library activation with measured
+duration, and successful rollback proof. Follow the shared working agreement
+for the final review, CI and deployment gates.
 
 ## Decision
 
