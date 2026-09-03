@@ -234,7 +234,7 @@
 					"additionalProperties": false
 				},
 				"defaultMode": {
-					"default": "dark",
+					"default": "light",
 					"type": "string",
 					"enum": [
 						"light",
