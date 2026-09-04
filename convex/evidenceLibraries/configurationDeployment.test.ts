@@ -17,6 +17,10 @@ import {
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
 
+vi.mock("./domainEgressNode", () => ({
+  openPinnedDomainClient: async () => globalThis.fetch,
+}));
+
 const ENCRYPTION_KEY = "33".repeat(32);
 const APPLICATION_UUID = "app000000000000000000001";
 const COOLIFY_ORIGIN = "http://coolify:8080";
@@ -70,6 +74,7 @@ function runtimeEnvironment(key: string, value: string) {
 function createRuntimeNetwork(input: {
   libraryId: string;
   publicAddress: string;
+  canonicalAddress?: string;
   revisionKey: string;
   runtimeCommit?: string;
   runtimeImage?: string;
@@ -262,7 +267,7 @@ function createRuntimeNetwork(input: {
         });
       }
       if (
-        url.origin === new URL(publicDomain).origin &&
+        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
         url.pathname === "/api/openscholar/configuration"
       ) {
         if (method === "PUT") {
@@ -281,7 +286,7 @@ function createRuntimeNetwork(input: {
         }
       }
       if (
-        url.origin === new URL(publicDomain).origin &&
+        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
         method === "GET" &&
         url.pathname === "/api/library-config/health"
       ) {
@@ -299,16 +304,29 @@ function createRuntimeNetwork(input: {
         );
       }
       if (
-        url.origin === new URL(publicDomain).origin &&
+        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
         method === "HEAD" &&
         url.pathname === "/lib"
       ) {
         return new Response("ready", { status: 200 });
       }
+      if (
+        input.canonicalAddress &&
+        url.origin === new URL(publicDomain).origin &&
+        method === "GET" &&
+        url.pathname === "/lib"
+      ) {
+        return new Response(null, {
+          status: 307,
+          headers: {
+            location: new URL("/lib", input.canonicalAddress).href,
+          },
+        });
+      }
       // A live library sends a signed-out visitor of its admin area to
       // OpenScholar, and readiness checks exactly that.
       if (
-        url.origin === new URL(publicDomain).origin &&
+        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
         method === "GET" &&
         url.pathname === "/admin"
       ) {
@@ -427,13 +445,26 @@ async function readMoveOperation(
   return operation;
 }
 
-async function activateChangedConfiguration(suffix: string) {
+async function activateChangedConfiguration(
+  suffix: string,
+  options: { canonicalBaseUrl?: string } = {},
+) {
   const fixture = await createReadyLibrary(suffix);
+  if (options.canonicalBaseUrl) {
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.runtimeBindingId, {
+        canonicalBaseUrl: options.canonicalBaseUrl,
+      });
+    });
+  }
   const sections = {
     ...essentialSetupSections,
     identity: {
       ...essentialSetupSections.identity,
       name: `Changed ${suffix}`,
+      ...(options.canonicalBaseUrl
+        ? { baseUrl: options.canonicalBaseUrl }
+        : {}),
     },
   };
   const saved = await fixture.admin.mutation(
@@ -858,6 +889,39 @@ describe("Evidence Library configuration deployment", () => {
         { libraryId: deployment.fixture.created.libraryId },
       ),
     ).resolves.toMatchObject({ status: "allowed" });
+  });
+
+  it("writes a configuration through the canonical custom address", async () => {
+    const canonicalAddress = "https://evidence.example.org";
+    const deployment = await activateChangedConfiguration("custom-domain", {
+      canonicalBaseUrl: canonicalAddress,
+    });
+    const network = createRuntimeNetwork({
+      libraryId: deployment.fixture.created.libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      canonicalAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: deployment.fixture.created.libraryId,
+          operationId: deployment.activated.operationId,
+          attemptToken: deployment.attemptToken,
+          attemptCount: deployment.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "succeeded" });
+    expect(
+      network.requests.find(
+        ({ method, url }) =>
+          method === "PUT" && url.pathname === "/api/openscholar/configuration",
+      )?.url.origin,
+    ).toBe(canonicalAddress);
   });
 
   it("retries a failed current deployment by reusing its saved target", async () => {
