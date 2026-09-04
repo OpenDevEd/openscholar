@@ -71,7 +71,7 @@ async function writeRuntimeConfiguration(
     {
       body,
       headers: {
-        accept: "application/json",
+        ...publicLibraryHeaders("application/json"),
         authorization: `Bearer ${requireMachineCredential(input.machineCredential)}`,
         "content-type": "application/json",
       },

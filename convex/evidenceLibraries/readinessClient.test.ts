@@ -130,6 +130,9 @@ describe("Evidence Library readiness client", () => {
     );
     expect(init?.method).toBe("PUT");
     expect(init?.body).toBe(runtimeConfigJson);
+    expect(new Headers(init?.headers).get("cookie")).toBe(
+      "ode_browser_check=1",
+    );
   });
 
   it("restores the exact previous revision through the library", async () => {
@@ -146,6 +149,9 @@ describe("Evidence Library readiness client", () => {
       }),
     ).resolves.toEqual({ revision: REVISION, status: "active" });
     expect(fetchImpl.mock.calls[0]?.[1]?.method).toBe("DELETE");
+    expect(
+      new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get("cookie"),
+    ).toBe("ode_browser_check=1");
     expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toEqual({
       revision: REVISION,
     });

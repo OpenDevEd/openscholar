@@ -320,12 +320,27 @@ export const runConfigurationDeployment = internalAction({
       };
 
       if (!prepared.requiresDeployment) {
-        const machineCredential = (
-          JSON.parse(runtimeConfigJson) as AssembledEvidenceLibraryConfiguration
-        ).authentication.openScholar.machineCredential;
+        const runtimeConfiguration = JSON.parse(
+          runtimeConfigJson,
+        ) as AssembledEvidenceLibraryConfiguration & {
+          identity: { baseUrl: string };
+        };
+        const configurationBaseUrl = new URL(
+          runtimeConfiguration.identity.baseUrl,
+        ).origin;
+        const configurationFetchImpl =
+          configurationBaseUrl === new URL(target.targetBaseUrl).origin
+            ? undefined
+            : await openPinnedDomainClient({
+                host: new URL(configurationBaseUrl).hostname,
+              });
         const configurationInput = {
-          baseUrl: target.targetBaseUrl,
-          machineCredential,
+          ...(configurationFetchImpl
+            ? { fetchImpl: configurationFetchImpl }
+            : {}),
+          baseUrl: configurationBaseUrl,
+          machineCredential:
+            runtimeConfiguration.authentication.openScholar.machineCredential,
         };
         restoreDirectConfiguration = async () => {
           await restoreLibraryRuntimeConfiguration({
