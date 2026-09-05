@@ -2819,7 +2819,6 @@
     },
     "versions": {
       "description": "Every activation makes a version. Restore an older one at any time.",
-      "softwareHeading": "Evidence Library software",
       "checking": "Checking for updates…",
       "checkAgain": "Check again",
       "checkError": "Updates could not be checked. Try again.",
@@ -2830,6 +2829,20 @@
       "latestLabel": "Latest",
       "checkedLabel": "Checked",
       "changesHeading": "What changed",
+      "technicalChanges": "Show technical changes",
+      "showing": "Showing {shown} of {total}",
+      "showMore": "Show {count} more",
+      "areas": {
+        "search": "Search",
+        "records": "Records",
+        "collections": "Collections",
+        "sources": "Sources",
+        "exports": "Exports",
+        "appearance": "Appearance",
+        "administration": "Admin",
+        "speed": "Speed",
+        "reliability": "Fixes"
+      },
       "update": "Update",
       "updateTitle": "Update this library?",
       "updateBody": "The library is rebuilt on the latest Evidence Library software. Records, settings and the address stay the same. It takes about a minute.",

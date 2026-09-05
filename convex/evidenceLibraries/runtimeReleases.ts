@@ -1,6 +1,9 @@
-// Reads the newest successfully published Evidence Library runtime from
-// GitHub and the commits between a library's runtime and that release.
-// The repository is private, so every request carries a token.
+// Reads the newest published Evidence Library release from GitHub, the notes
+// written for each release since a library's runtime, and the commits between
+// the two. The repository is private, so every request carries a token.
+//
+// A release is a GitHub Release tagged `runtime-<commit>`. new-el publishes
+// one only after the runtime image and its plain-language notes both exist.
 
 import {
   resolveRuntimeImage,
@@ -10,24 +13,34 @@ import {
 
 const GITHUB_ORIGIN = "https://api.github.com";
 const RUNTIME_REPOSITORY = "OpenDevEd/new-el";
-const RUNTIME_RELEASE_WORKFLOW = "runtime-image.yml";
+const RUNTIME_RELEASE_TAG = /^runtime-([a-f0-9]{40})$/u;
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_CHANGES = 250;
 const MAX_MESSAGE_LENGTH = 200;
+const MAX_RELEASES = 100;
+const MAX_NOTES = 40;
+const MAX_NOTE_LENGTH = 300;
 const COMMIT = /^[a-f0-9]{40}$/u;
 
 export const RUNTIME_RELEASE_CACHE_MS = 10 * 60 * 1_000;
 
 export type RuntimeReleaseChange = { sha: string; message: string };
+export type RuntimeReleaseNotes = {
+  commit: string;
+  summary: string;
+  notes: string[];
+};
 export type RecommendedRuntimeRelease = {
   latest: string;
   image: RuntimeImageReference;
+  releases: RuntimeReleaseNotes[];
 };
 export type RuntimeRelease = {
   latest: string;
   image: RuntimeImageReference;
   changes: RuntimeReleaseChange[];
+  releases: RuntimeReleaseNotes[];
 };
 
 export class RuntimeReleaseError extends Error {
@@ -62,6 +75,30 @@ function firstLine(message: unknown): string {
   if (typeof message !== "string") return "";
   const line = message.split("\n", 1)[0]?.trim() ?? "";
   return line.slice(0, MAX_MESSAGE_LENGTH);
+}
+
+/**
+ * The release body as new-el writes it: a one-line summary, then one `- `
+ * line per note. Any other line, such as the image reference, is ignored.
+ */
+export function parseReleaseNotes(body: unknown): {
+  summary: string;
+  notes: string[];
+} {
+  const lines =
+    typeof body === "string"
+      ? body
+          .split(/\r?\n/u)
+          .map((line) => line.trim())
+          .filter((line) => line !== "")
+      : [];
+  const summary = lines.find((line) => !line.startsWith("- ")) ?? "";
+  const notes = lines
+    .filter((line) => line.startsWith("- "))
+    .map((line) => line.slice(2).trim().slice(0, MAX_NOTE_LENGTH))
+    .filter((line) => line !== "")
+    .slice(0, MAX_NOTES);
+  return { summary: summary.slice(0, MAX_NOTE_LENGTH), notes };
 }
 
 async function readGithub(
@@ -131,27 +168,32 @@ export async function fetchRecommendedRuntimeRelease(input: {
     );
   }
   const fetchImpl = input.fetchImpl ?? fetch;
-  const releases = await readGithub(
+  const response = await readGithub(
     fetchImpl,
     token,
-    `/repos/${RUNTIME_REPOSITORY}/actions/workflows/${RUNTIME_RELEASE_WORKFLOW}/runs?branch=main&event=workflow_run&status=success&per_page=1`,
+    `/repos/${RUNTIME_REPOSITORY}/releases?per_page=${MAX_RELEASES}`,
   );
-  const runs =
-    releases.status === 200 && isRecord(releases.body)
-      ? releases.body.workflow_runs
-      : null;
-  const newest = Array.isArray(runs) ? runs[0] : null;
-  if (
-    !isRecord(newest) ||
-    newest.event !== "workflow_run" ||
-    newest.conclusion !== "success"
-  ) {
+  // GitHub lists releases newest first.
+  const releases: RuntimeReleaseNotes[] = [];
+  if (response.status === 200 && Array.isArray(response.body)) {
+    for (const entry of response.body) {
+      if (!isRecord(entry) || entry.draft === true) continue;
+      const commit =
+        typeof entry.tag_name === "string"
+          ? RUNTIME_RELEASE_TAG.exec(entry.tag_name)?.[1]
+          : undefined;
+      if (!commit) continue;
+      releases.push({ commit, ...parseReleaseNotes(entry.body) });
+    }
+  }
+  const newest = releases[0];
+  if (!newest) {
     throw new RuntimeReleaseError(
       "GITHUB_UNAVAILABLE",
       "The latest Evidence Library release could not be read",
     );
   }
-  const latest = requireCommit("latest release commit", newest.head_sha);
+  const latest = newest.commit;
   let image: RuntimeImageReference | null;
   try {
     image = await resolveRuntimeImage({
@@ -171,7 +213,7 @@ export async function fetchRecommendedRuntimeRelease(input: {
       "The Evidence Library software image could not be read right now",
     );
   }
-  return { latest, image };
+  return { latest, image, releases };
 }
 
 export async function fetchRuntimeRelease(input: {
@@ -182,11 +224,11 @@ export async function fetchRuntimeRelease(input: {
   const running = requireCommit("running commit", input.running);
   const token = input.token.trim();
   const fetchImpl = input.fetchImpl ?? fetch;
-  const { latest, image } = await fetchRecommendedRuntimeRelease({
+  const { latest, image, releases } = await fetchRecommendedRuntimeRelease({
     token,
     fetchImpl,
   });
-  if (latest === running) return { latest, image, changes: [] };
+  if (latest === running) return { latest, image, changes: [], releases: [] };
 
   const compare = await readGithub(
     fetchImpl,
@@ -194,8 +236,15 @@ export async function fetchRuntimeRelease(input: {
     `/repos/${RUNTIME_REPOSITORY}/compare/${running}...${latest}`,
   );
   // 404 means the running commit is no longer on the branch. The update is
-  // still available; only the change list is unknown.
-  if (compare.status === 404) return { latest, image, changes: [] };
+  // still available; only the newest notes are known to apply.
+  if (compare.status === 404) {
+    return {
+      latest,
+      image,
+      changes: [],
+      releases: releases.filter((release) => release.commit === latest),
+    };
+  }
   if (
     compare.status !== 200 ||
     !isRecord(compare.body) ||
@@ -214,5 +263,14 @@ export async function fetchRuntimeRelease(input: {
       message: firstLine(entry.commit.message),
     });
   }
-  return { latest, image, changes };
+  // The releases the library has not applied yet are the ones whose commits
+  // lie between its runtime and the latest release. A library that runs a
+  // commit which was never released is covered the same way.
+  const ahead = new Set(changes.map((change) => change.sha));
+  return {
+    latest,
+    image,
+    changes,
+    releases: releases.filter((release) => ahead.has(release.commit)),
+  };
 }

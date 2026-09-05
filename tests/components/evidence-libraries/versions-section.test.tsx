@@ -147,6 +147,7 @@ describe("<VersionsSection>", () => {
       running: "aaaaaaa1234",
       latest: "bbbbbbb1234",
       changes: [{ sha: "bbbbbbb1234", message: "Faster search" }],
+      releases: [],
       checkedAt: Date.UTC(2026, 7, 26, 12, 0),
     });
     mocks.listVersions.mockReturnValue(rows);
@@ -174,6 +175,30 @@ describe("<VersionsSection>", () => {
     });
   });
 
+  it("shows each release's notes with its area, and keeps the commits behind a disclosure", async () => {
+    mocks.check.mockResolvedValue({
+      running: "aaaaaaa1234",
+      latest: "bbbbbbb1234",
+      changes: [{ sha: "bbbbbbb1234", message: "feat: faster search index" }],
+      releases: [
+        {
+          commit: "bbbbbbb1234",
+          summary: "Search is faster.",
+          notes: ["Speed: Search results load faster on large libraries."],
+        },
+      ],
+      checkedAt: Date.UTC(2026, 7, 26, 12, 0),
+    });
+    await renderSection();
+
+    expect(screen.getByText("Search is faster.")).toBeInTheDocument();
+    expect(screen.getByText("Search results load faster on large libraries.")).toBeInTheDocument();
+    expect(document.querySelector('[data-area="speed"]')).toHaveTextContent("versions.areas.speed");
+    const disclosure = screen.getByText("versions.technicalChanges").closest("details");
+    expect(disclosure).not.toHaveAttribute("open");
+    expect(within(disclosure as HTMLElement).getByText("feat: faster search index")).toBeInTheDocument();
+  });
+
   it("disables Update and Restore while an operation runs", async () => {
     await renderSection({ operationRunning: true });
     expect(screen.getByRole("button", { name: "versions.update" })).toBeDisabled();
@@ -187,6 +212,7 @@ describe("<VersionsSection>", () => {
       running: "aaaaaaa1234",
       latest: "aaaaaaa1234",
       changes: [],
+      releases: [],
       checkedAt: Date.UTC(2026, 7, 26, 12, 0),
     });
     await renderSection();
@@ -233,9 +259,11 @@ describe("<VersionsSection>", () => {
     expect(row("r3").queryByRole("button", { name: "versions.restore" })).toBeNull();
     expect(row("r2").getByRole("button", { name: "versions.restore" })).toBeInTheDocument();
     expect(row("r1").getByRole("button", { name: "versions.restore" })).toBeInTheDocument();
-    // Changed rows are named by their page card; a software update names the commit.
-    expect(row("r3").getByText("sections.identity, sections.contact")).toBeInTheDocument();
-    expect(row("r2").getByText("versions.softwareUpdate bbbbbbb")).toBeInTheDocument();
+    // Changed rows name their page cards; a software update names the commit.
+    expect(row("r3").getByText("sections.identity")).toBeInTheDocument();
+    expect(row("r3").getByText("sections.contact")).toBeInTheDocument();
+    expect(row("r2").getByText("versions.softwareUpdate")).toBeInTheDocument();
+    expect(row("r2").getByText("bbbbbbb")).toBeInTheDocument();
   });
 
   it("restores a version after confirming", async () => {
@@ -346,12 +374,14 @@ describe("<VersionsSection>", () => {
         running: "old-commit",
         latest: "new-commit",
         changes: [],
+        releases: [],
         checkedAt: 1,
       })
       .mockResolvedValueOnce({
         running: "new-commit",
         latest: "new-commit",
         changes: [],
+        releases: [],
         checkedAt: 2,
       });
 

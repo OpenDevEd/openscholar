@@ -465,6 +465,14 @@ export const runtimeReleaseChangeValidator = v.object({
   message: v.string(),
 });
 
+// One published Evidence Library release: its commit and the plain-language
+// notes written for library owners.
+export const runtimeReleaseNotesValidator = v.object({
+  commit: v.string(),
+  summary: v.string(),
+  notes: v.array(v.string()),
+});
+
 // The newest Evidence Library software commit, checked against GitHub and
 // kept for ten minutes. One row per running commit.
 export const evidenceLibraryRuntimeReleaseFields = {
@@ -472,6 +480,9 @@ export const evidenceLibraryRuntimeReleaseFields = {
   latest: v.string(),
   latestImage: v.string(),
   changes: v.array(runtimeReleaseChangeValidator),
+  // Rows written before release notes existed have no list; the check treats
+  // them as stale and asks GitHub again.
+  releases: v.optional(v.array(runtimeReleaseNotesValidator)),
   checkedAt: v.number(),
 };
 

@@ -236,17 +236,15 @@ describe("Evidence Library application setup", () => {
         requests.push(url);
         if (
           url.href ===
-          "https://api.github.com/repos/OpenDevEd/new-el/actions/workflows/runtime-image.yml/runs?branch=main&event=workflow_run&status=success&per_page=1"
+          "https://api.github.com/repos/OpenDevEd/new-el/releases?per_page=100"
         ) {
-          return Response.json({
-            workflow_runs: [
-              {
-                conclusion: "success",
-                event: "workflow_run",
-                head_sha: LATEST_RUNTIME_COMMIT,
-              },
-            ],
-          });
+          return Response.json([
+            {
+              tag_name: `runtime-${LATEST_RUNTIME_COMMIT}`,
+              draft: false,
+              body: "Search is faster.\n\n- Speed: Search results load faster.\n",
+            },
+          ]);
         }
         if (
           url.href ===
@@ -281,7 +279,7 @@ describe("Evidence Library application setup", () => {
       setupRuntimeImage: LATEST_RUNTIME_IMAGE,
     });
     expect(requests.slice(0, 2).map(String)).toEqual([
-      "https://api.github.com/repos/OpenDevEd/new-el/actions/workflows/runtime-image.yml/runs?branch=main&event=workflow_run&status=success&per_page=1",
+      "https://api.github.com/repos/OpenDevEd/new-el/releases?per_page=100",
       `https://ghcr.io/v2/opendeved/evidence-library-runtime/manifests/${LATEST_RUNTIME_COMMIT}`,
     ]);
   });

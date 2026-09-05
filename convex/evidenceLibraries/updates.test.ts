@@ -18,6 +18,24 @@ const IMAGE = `ghcr.io/opendeved/evidence-library-runtime@${DIGEST}`;
 const GITHUB = "https://api.github.com";
 const GHCR = "https://ghcr.io";
 const REPO = "/repos/OpenDevEd/new-el";
+// A release body as new-el writes it: summary, notes, then the image line.
+const LATEST_NOTES = [
+  "Import problems are easier to manage.",
+  "",
+  "- Sources: Import issues can be dismissed and restored.",
+  "- Speed: Search results load faster.",
+  "",
+  `Image: \`${IMAGE}\``,
+  "",
+].join("\n");
+const LATEST_RELEASE = {
+  commit: LATEST,
+  summary: "Import problems are easier to manage.",
+  notes: [
+    "Sources: Import issues can be dismissed and restored.",
+    "Speed: Search results load faster.",
+  ],
+};
 
 type RecordedRequest = { url: URL; headers: Headers };
 
@@ -88,19 +106,23 @@ function createGithub(input: {
         return jsonResponse({ message: "Unexpected test request" }, 500);
       }
       if (url.pathname === "/user") return jsonResponse({ login: "builder" });
-      if (url.pathname === `${REPO}/actions/workflows/runtime-image.yml/runs`) {
+      if (url.pathname === `${REPO}/releases`) {
         if (input.releasesStatus && input.releasesStatus !== 200) {
           return jsonResponse({ message: "Not Found" }, input.releasesStatus);
         }
-        return jsonResponse({
-          workflow_runs: [
-            {
-              conclusion: "success",
-              event: "workflow_run",
-              head_sha: input.latest,
-            },
-          ],
-        });
+        // Newest first, as GitHub lists them. The draft and the foreign tag
+        // are skipped, and the release the library already runs is older
+        // than the running commit's range.
+        return jsonResponse([
+          { tag_name: `runtime-${"9".repeat(40)}`, draft: true, body: "Draft" },
+          { tag_name: "v1.0.0", draft: false, body: "Not a runtime release" },
+          { tag_name: `runtime-${input.latest}`, draft: false, body: LATEST_NOTES },
+          {
+            tag_name: `runtime-${RUNNING}`,
+            draft: false,
+            body: "Older notes.\n\n- Records: Older note.\n",
+          },
+        ]);
       }
       if (url.pathname === `${REPO}/compare/${RUNNING}...${input.latest}`) {
         if (input.compareStatus && input.compareStatus !== 200) {
@@ -108,8 +130,8 @@ function createGithub(input: {
         }
         return jsonResponse({
           status: "ahead",
-          ahead_by: 2,
-          total_commits: 2,
+          ahead_by: 3,
+          total_commits: 3,
           commits: [
             {
               sha: "c".repeat(40),
@@ -121,6 +143,10 @@ function createGithub(input: {
             {
               sha: "d".repeat(40),
               commit: { message: "  fix: trim whitespace  " },
+            },
+            {
+              sha: input.latest,
+              commit: { message: "Dismiss source import issues (#183)" },
             },
           ],
         });
@@ -140,14 +166,19 @@ describe("Evidence Library software release lookup", () => {
         token: "github-token",
         fetchImpl: github.fetchImpl,
       }),
-    ).resolves.toEqual({ latest: RUNNING, image: IMAGE, changes: [] });
+    ).resolves.toEqual({
+      latest: RUNNING,
+      image: IMAGE,
+      changes: [],
+      releases: [],
+    });
     expect(github.requests).toHaveLength(5);
     expect(github.requests[0]?.headers.get("authorization")).toBe(
       "Bearer github-token",
     );
   });
 
-  it("lists the commits between the running and latest commit as one line each", async () => {
+  it("lists the notes of each newer release and the commits behind them", async () => {
     const github = createGithub({ latest: LATEST });
     await expect(
       fetchRuntimeRelease({
@@ -164,10 +195,12 @@ describe("Evidence Library software release lookup", () => {
           message: "feat(config): add tagline and share image",
         },
         { sha: "d".repeat(40), message: "fix: trim whitespace" },
+        { sha: LATEST, message: "Dismiss source import issues (#183)" },
       ],
+      releases: [LATEST_RELEASE],
     });
     expect(github.requests.map(({ url }) => url.pathname)).toEqual([
-      `${REPO}/actions/workflows/runtime-image.yml/runs`,
+      `${REPO}/releases`,
       `/v2/opendeved/evidence-library-runtime/manifests/${LATEST}`,
       "/user",
       "/token",
@@ -176,7 +209,7 @@ describe("Evidence Library software release lookup", () => {
     ]);
   });
 
-  it("still reports the latest commit when the running commit is no longer on the branch", async () => {
+  it("still offers the latest release when the running commit is no longer on the branch", async () => {
     const github = createGithub({ latest: LATEST, compareStatus: 404 });
     await expect(
       fetchRuntimeRelease({
@@ -184,7 +217,12 @@ describe("Evidence Library software release lookup", () => {
         token: "github-token",
         fetchImpl: github.fetchImpl,
       }),
-    ).resolves.toEqual({ latest: LATEST, image: IMAGE, changes: [] });
+    ).resolves.toEqual({
+      latest: LATEST,
+      image: IMAGE,
+      changes: [],
+      releases: [LATEST_RELEASE],
+    });
   });
 
   it("fails clearly when GitHub cannot be read", async () => {
@@ -208,7 +246,7 @@ describe("Evidence Library software release lookup", () => {
       }),
     ).rejects.toMatchObject({ code: "RUNTIME_IMAGE_UNAVAILABLE" });
     expect(github.requests.map(({ url }) => url.pathname)).toEqual([
-      `${REPO}/actions/workflows/runtime-image.yml/runs`,
+      `${REPO}/releases`,
       `/v2/opendeved/evidence-library-runtime/manifests/${LATEST}`,
     ]);
   });
@@ -262,7 +300,9 @@ describe("Evidence Library update check", () => {
           message: "feat(config): add tagline and share image",
         },
         { sha: "d".repeat(40), message: "fix: trim whitespace" },
+        { sha: LATEST, message: "Dismiss source import issues (#183)" },
       ],
+      releases: [LATEST_RELEASE],
       checkedAt: Date.now(),
     });
     expect(github.requests).toHaveLength(6);
@@ -319,6 +359,7 @@ describe("Evidence Library update check", () => {
       latest: LATEST,
       latestImage: IMAGE,
       changes: [],
+      releases: [],
       checkedAt: Date.now() - RUNTIME_RELEASE_CACHE_MS - 1,
     };
     await fixture.t.run(async (ctx) => {
@@ -363,6 +404,7 @@ describe("Evidence Library update check", () => {
           latest,
           latestImage: IMAGE,
           changes: [],
+          releases: [],
           checkedAt: stale,
         });
       }

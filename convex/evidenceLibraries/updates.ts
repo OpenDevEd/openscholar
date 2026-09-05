@@ -20,6 +20,7 @@ import {
 import {
   evidenceLibraryAddressStateValidator,
   runtimeReleaseChangeValidator,
+  runtimeReleaseNotesValidator,
 } from "./validators";
 
 const runtimeUpdateStateValidator = v.object({
@@ -27,6 +28,7 @@ const runtimeUpdateStateValidator = v.object({
   latest: v.string(),
   latestImage: v.string(),
   changes: v.array(runtimeReleaseChangeValidator),
+  releases: v.array(runtimeReleaseNotesValidator),
   checkedAt: v.number(),
 });
 
@@ -35,6 +37,7 @@ type RuntimeUpdateState = {
   latest: string;
   latestImage: string;
   changes: { sha: string; message: string }[];
+  releases: { commit: string; summary: string; notes: string[] }[];
   checkedAt: number;
 };
 
@@ -72,12 +75,15 @@ export const readRunningRelease = internalQuery({
       bindingId: binding._id,
       address: binding.canonicalBaseUrl ?? binding.targetBaseUrl,
       cached:
-        cached && typeof cached.latestImage === "string"
+        cached &&
+        typeof cached.latestImage === "string" &&
+        cached.releases !== undefined
           ? {
               running,
               latest: cached.latest,
               latestImage: cached.latestImage,
               changes: cached.changes,
+              releases: cached.releases,
               checkedAt: cached.checkedAt,
             }
           : null,
@@ -137,6 +143,7 @@ async function refreshRuntimeRelease(
     latest: release.latest,
     latestImage: release.image,
     changes: release.changes,
+    releases: release.releases,
     checkedAt: Date.now(),
   };
   await ctx.runMutation(

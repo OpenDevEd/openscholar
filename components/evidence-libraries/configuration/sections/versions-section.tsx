@@ -5,7 +5,7 @@ import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { History, RefreshCw } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { Suspense, use, useState } from "react";
+import { Suspense, use, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -19,27 +19,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import {
-  canRestore,
-  changedCards,
   runtimeUpdateState,
   shortCommit,
-  type VersionStatus,
 } from "@/lib/evidence-libraries/configuration/versions";
-import { EmptyList, FieldGroup, Panel } from "../fields";
+import { FieldGroup, Panel } from "../fields";
 import { InlineNotice, SectionCard } from "../section-card";
-import { StatusChip, type StatusTone } from "../status-chip";
+import { StatusChip } from "../status-chip";
+import { ReleaseNotes, VersionHistory } from "./versions-views";
 
 type RuntimeState = FunctionReturnType<typeof api.evidenceLibraries.updates.check>;
 type VersionRow = FunctionReturnType<
@@ -56,13 +46,6 @@ const ADDRESS_STATE_MESSAGE = {
   "not-ours": "versions.addressTaken",
   unreachable: "versions.addressSilent",
 } as const;
-
-const VERSION_TONE: Record<VersionStatus, StatusTone> = {
-  live: "success",
-  previous: "neutral",
-  failed: "danger",
-  deploying: "running",
-};
 
 function errorMessage(error: unknown, fallback: string) {
   if (error instanceof ConvexError) {
@@ -280,26 +263,7 @@ export function VersionsSection({
         </InlineNotice>
       ) : null}
 
-      <FieldGroup
-        title={t("versions.softwareHeading")}
-        action={
-          checkPromise ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={checkAgain}
-              disabled={busy || operationRunning}
-              aria-busy={checking}
-              aria-disabled={checking || undefined}
-              className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
-            >
-              {checking ? <Spinner aria-hidden="true" /> : <RefreshCw />}
-              {t(checking ? "versions.checking" : "versions.checkAgain")}
-            </Button>
-          ) : null
-        }
-      >
+      <div data-section-part="software">
         {checkPromise ? (
           <Suspense
             fallback={
@@ -317,6 +281,21 @@ export function VersionsSection({
               promise={checkPromise}
               blocked={blocked}
               onUpdate={() => setUpdateOpen(true)}
+              checkAgain={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={checkAgain}
+                  disabled={busy || operationRunning}
+                  aria-busy={checking}
+                  aria-disabled={checking || undefined}
+                  className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
+                >
+                  {checking ? <Spinner aria-hidden="true" /> : <RefreshCw />}
+                  {t(checking ? "versions.checking" : "versions.checkAgain")}
+                </Button>
+              }
             />
           </Suspense>
         ) : (
@@ -326,7 +305,7 @@ export function VersionsSection({
             </p>
           </Panel>
         )}
-      </FieldGroup>
+      </div>
 
       <FieldGroup title={t("versions.historyHeading")}>
         {versions.data === undefined ? (
@@ -338,10 +317,8 @@ export function VersionsSection({
             <Spinner className="h-4 w-4" />
             {t("versions.loading")}
           </Panel>
-        ) : versions.data.length === 0 ? (
-          <EmptyList>{t("versions.empty")}</EmptyList>
         ) : (
-          <VersionTable
+          <VersionHistory
             rows={versions.data}
             blocked={blocked}
             onRestore={setRestoring}
@@ -416,22 +393,31 @@ function SoftwarePanel({
   promise,
   blocked,
   onUpdate,
+  checkAgain,
 }: {
   promise: Promise<RuntimeCheck>;
   blocked: boolean;
   onUpdate: () => void;
+  /** The "Check again" button; it lives inside the panel, next to Update. */
+  checkAgain: ReactNode;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const format = useFormatter();
   const result = use(promise);
   if (!result.ok) {
     return (
-      <Panel tone="muted" role="alert" data-runtime-state="check-failed">
+      <Panel
+        tone="muted"
+        role="alert"
+        data-runtime-state="check-failed"
+        className="flex flex-wrap items-center justify-between gap-3"
+      >
         <p className="text-sm text-destructive">{result.message}</p>
+        {checkAgain}
       </Panel>
     );
   }
-  const { running, latest, changes, checkedAt } = result.state;
+  const { running, latest, changes, releases, checkedAt } = result.state;
   const state = runtimeUpdateState({ running, latest });
   const updateAvailable = state === "update-available";
   return (
@@ -442,12 +428,15 @@ function SoftwarePanel({
         ) : (
           <StatusChip tone="success">{t("versions.upToDate")}</StatusChip>
         )}
-        {updateAvailable ? (
-          <Button type="button" size="sm" disabled={blocked} onClick={onUpdate}>
-            <RefreshCw />
-            {t("versions.update")}
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-1">
+          {checkAgain}
+          {updateAvailable ? (
+            <Button type="button" size="sm" disabled={blocked} onClick={onUpdate}>
+              <RefreshCw />
+              {t("versions.update")}
+            </Button>
+          ) : null}
+        </div>
       </div>
       <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
         <dt className="text-xs font-medium text-muted-foreground">
@@ -472,106 +461,14 @@ function SoftwarePanel({
           })}
         </dd>
       </dl>
-      {updateAvailable && changes.length > 0 ? (
-        <div className="space-y-1">
+      {updateAvailable && (releases.length > 0 || changes.length > 0) ? (
+        <div className="space-y-2 border-t border-border/50 pt-3">
           <p className="text-xs font-medium text-muted-foreground">
             {t("versions.changesHeading")}
           </p>
-          <ul className="list-disc space-y-0.5 pl-4 text-sm">
-            {changes.map((change) => (
-              <li key={change.sha}>
-                <span className="mr-2 font-mono text-xs text-muted-foreground">
-                  {shortCommit(change.sha)}
-                </span>
-                {change.message}
-              </li>
-            ))}
-          </ul>
+          <ReleaseNotes releases={releases} changes={changes} />
         </div>
       ) : null}
     </Panel>
-  );
-}
-
-function VersionTable({
-  rows,
-  blocked,
-  onRestore,
-}: {
-  rows: readonly VersionRow[];
-  blocked: boolean;
-  onRestore: (row: VersionRow) => void;
-}) {
-  const t = useTranslations("evidenceLibraryConfiguration");
-  const format = useFormatter();
-
-  function changed(row: VersionRow) {
-    if (row.kind === "runtime") {
-      return row.runtimeCommit
-        ? `${t("versions.softwareUpdate")} ${shortCommit(row.runtimeCommit)}`
-        : t("versions.softwareUpdate");
-    }
-    const cards = changedCards(row.changedSections);
-    return cards.length === 0
-      ? t("versions.everything")
-      : cards.map((card) => t(`sections.${card}`)).join(", ");
-  }
-
-  return (
-    <div className="rounded-lg border border-border/50 bg-background">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("versions.colVersion")}</TableHead>
-            <TableHead>{t("versions.colWhen")}</TableHead>
-            <TableHead>{t("versions.colBy")}</TableHead>
-            <TableHead>{t("versions.colChanged")}</TableHead>
-            <TableHead>{t("versions.colStatus")}</TableHead>
-            <TableHead className="w-28">
-              <span className="sr-only">{t("versions.restore")}</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow
-              key={row.operationId}
-              data-version-status={row.status}
-              data-revision={row.revisionKey}
-            >
-              <TableCell className="font-mono text-xs">{row.revisionKey}</TableCell>
-              <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                {format.dateTime(new Date(row.createdAt), {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
-              </TableCell>
-              <TableCell className="text-sm">{row.by}</TableCell>
-              <TableCell className="text-xs text-muted-foreground">
-                {changed(row)}
-              </TableCell>
-              <TableCell>
-                <StatusChip tone={VERSION_TONE[row.status]}>
-                  {t(`versions.status.${row.status}`)}
-                </StatusChip>
-              </TableCell>
-              <TableCell className="text-right">
-                {canRestore(row.status) ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={blocked}
-                    onClick={() => onRestore(row)}
-                  >
-                    {t("versions.restore")}
-                  </Button>
-                ) : null}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
   );
 }
