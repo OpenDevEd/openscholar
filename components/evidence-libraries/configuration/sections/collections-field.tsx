@@ -25,7 +25,14 @@ export type CollectionEntry = {
 
 type CataloguePage = {
   reason?: "not-set-up";
-  items: { id: string; title: string; count: number; source: string; parentId: string | null }[];
+  items: {
+    id: string;
+    title: string;
+    count: number;
+    source: string;
+    parentId: string | null;
+    hasChildren: boolean;
+  }[];
   nextCursor: string | null;
 };
 
@@ -89,6 +96,12 @@ function CollectionsBody({
   const [source, setSource] = useState<string | null>(null);
   const [sources, setSources] = useState<string[]>([]);
   const [hideShown, setHideShown] = useState(true);
+  // The site shows a collection as a heading over its sub-collections, so one
+  // without any never appears. Those are hidden like already-shown rows, so a
+  // page of nothing but leaves reads as "no match", not as an empty database.
+  // ponytail: a parent whose children hold no indexed records is also dropped
+  // by the site; the catalogue cannot tell, so the picker does not either.
+  const [leafIds, setLeafIds] = useState<Set<string>>(() => new Set());
   const shown = sortedEntries(value);
   const shownIds = shown.map((entry) => entry.id);
 
@@ -98,6 +111,8 @@ function CollectionsBody({
       query: query || undefined,
       cursor: cursor ?? undefined,
     });
+    const leaves = page.items.filter((item) => !item.hasChildren).map((item) => item.id);
+    if (leaves.length) setLeafIds((current) => new Set([...current, ...leaves]));
     return {
       reason: page.reason,
       items: page.items.map((item) => ({
@@ -164,9 +179,12 @@ function CollectionsBody({
             setSource(null);
             setSources([]);
             setHideShown(true);
+            setLeafIds(new Set());
           }}
           rowFilter={(row) =>
-            (!source || row.meta === source) && (!hideShown || !shownIds.includes(row.id))
+            !leafIds.has(row.id) &&
+            (!source || row.meta === source) &&
+            (!hideShown || !shownIds.includes(row.id))
           }
           controls={() => (
             <>

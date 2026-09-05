@@ -36,6 +36,7 @@ describe("readRuntimeCollections", () => {
             count: 12,
             source: "zotero-42",
             parentId: null,
+            hasChildren: true,
           },
         ],
         nextCursor: "p3",
@@ -56,6 +57,7 @@ describe("readRuntimeCollections", () => {
           count: 12,
           source: "zotero-42",
           parentId: null,
+          hasChildren: true,
         },
       ],
       nextCursor: "p3",
@@ -79,6 +81,29 @@ describe("readRuntimeCollections", () => {
     );
     await expect(
       readRuntimeCollections(broken, {
+        baseUrl: "https://lib.example.test",
+        credential,
+      }),
+    ).rejects.toMatchObject({ code: "RUNTIME_READ_INVALID" });
+  });
+
+  it("treats a row that does not say whether it has children as broken", async () => {
+    const silent = vi.fn<typeof fetch>(async () =>
+      jsonResponse({
+        items: [
+          {
+            id: "ABCD1234",
+            title: "Climate",
+            count: 12,
+            source: "zotero-42",
+            parentId: null,
+          },
+        ],
+        nextCursor: null,
+      }),
+    );
+    await expect(
+      readRuntimeCollections(silent, {
         baseUrl: "https://lib.example.test",
         credential,
       }),
@@ -168,6 +193,7 @@ describe("readRuntimeCollectionsByIds", () => {
             source: "zotero-42",
             count: 12,
             parentId: null,
+            hasChildren: true,
           },
           {
             id: "COLL0002",
@@ -175,6 +201,7 @@ describe("readRuntimeCollectionsByIds", () => {
             source: "zotero-42",
             count: 3,
             parentId: null,
+            hasChildren: true,
           },
         ],
         nextCursor: null,
@@ -207,6 +234,7 @@ describe("readRuntimeCollectionsByIds", () => {
             count: 1,
             source: "s",
             parentId: null,
+            hasChildren: true,
           },
         ],
         nextCursor: "p2",
@@ -245,6 +273,7 @@ describe("readRuntimeCollectionsByIds", () => {
             source: "zotero-42",
             count: 12,
             parentId: null,
+            hasChildren: true,
           },
           {
             id: "COLL0002",
@@ -252,6 +281,7 @@ describe("readRuntimeCollectionsByIds", () => {
             source: "zotero-42",
             count: 3,
             parentId: null,
+            hasChildren: true,
           },
         ],
         nextCursor: null,
