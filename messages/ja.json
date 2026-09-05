@@ -2819,7 +2819,6 @@
     },
     "versions": {
       "description": "Every activation makes a version. Restore an older one at any time.",
-      "softwareHeading": "Evidence Library software",
       "checking": "Checking for updates…",
       "checkAgain": "Check again",
       "checkError": "Updates could not be checked. Try again.",
@@ -2831,7 +2830,6 @@
       "checkedLabel": "Checked",
       "changesHeading": "What changed",
       "technicalChanges": "Show technical changes",
-      "configChange": "Settings change",
       "showing": "Showing {shown} of {total}",
       "showMore": "Show {count} more",
       "areas": {

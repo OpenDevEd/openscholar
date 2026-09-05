@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Package, SlidersHorizontal } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
 } from "@/lib/evidence-libraries/configuration/versions";
 import { cn } from "@/lib/utils";
 import { EmptyList } from "../fields";
-import { STATUS_DOT, StatusChip, type StatusTone } from "../status-chip";
+import { StatusChip, type StatusTone } from "../status-chip";
 
 /*
  * The two views on the Versions card: the notes of the releases an owner has
@@ -183,58 +183,47 @@ export function VersionHistory<Row extends VersionHistoryRow>({
   const remaining = rows.length - visible.length;
 
   return (
-    <div className="space-y-3">
-      <ol className="ml-1.5 border-l border-border/60">
+    <div className="space-y-2">
+      <ol className="divide-y divide-border/50 rounded-lg border border-border/50 bg-background">
         {visible.map((row) => {
-          const Icon = row.kind === "runtime" ? Package : SlidersHorizontal;
           const cards = row.kind === "config" ? changedCards(row.changedSections) : [];
           return (
             <li
               key={row.operationId}
-              className="relative flex flex-wrap items-center gap-x-4 gap-y-2 py-3 pl-5 sm:flex-nowrap"
+              className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto_5rem] items-center gap-x-3 px-3 py-2.5"
               data-version-status={row.status}
               data-revision={row.revisionKey}
             >
-              <span
-                aria-hidden
-                className={cn(
-                  "absolute top-1/2 -left-px h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-4 ring-background",
-                  STATUS_DOT[VERSION_TONE[row.status]],
-                )}
-              />
-              <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground">
+              <span className="font-mono text-xs text-muted-foreground">
                 {row.revisionKey}
               </span>
-              <div className="min-w-0 flex-1 space-y-1">
+              <div className="min-w-0 space-y-0.5">
                 <div className="flex flex-wrap items-center gap-1.5 text-sm">
-                  <Icon
-                    aria-hidden
-                    className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                  />
-                  <span className="font-medium">
-                    {row.kind === "runtime"
-                      ? t("versions.softwareUpdate")
-                      : cards.length === 0
-                        ? t("versions.everything")
-                        : t("versions.configChange")}
-                  </span>
-                  {row.kind === "runtime" && row.runtimeCommit ? (
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {shortCommit(row.runtimeCommit)}
-                    </span>
-                  ) : null}
-                  {cards.map((card) => (
-                    <span
-                      key={card}
-                      className="rounded-full border border-border/50 bg-muted px-2 py-0.5 text-[11px] font-medium leading-4 text-muted-foreground"
-                    >
-                      {t(`sections.${card}`)}
-                    </span>
-                  ))}
+                  {row.kind === "runtime" ? (
+                    <>
+                      <span className="font-medium">{t("versions.softwareUpdate")}</span>
+                      {row.runtimeCommit ? (
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {shortCommit(row.runtimeCommit)}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : cards.length === 0 ? (
+                    <span className="font-medium">{t("versions.everything")}</span>
+                  ) : (
+                    cards.map((card) => (
+                      <span
+                        key={card}
+                        className="rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium"
+                      >
+                        {t(`sections.${card}`)}
+                      </span>
+                    ))
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-foreground/80">{row.by}</span>
-                  <span className="mx-2" aria-hidden>
+                <p className="truncate text-xs text-muted-foreground">
+                  {row.by}
+                  <span className="mx-1.5" aria-hidden>
                     ·
                   </span>
                   <time dateTime={new Date(row.createdAt).toISOString()}>
@@ -245,14 +234,14 @@ export function VersionHistory<Row extends VersionHistoryRow>({
                   </time>
                 </p>
               </div>
-              <StatusChip tone={VERSION_TONE[row.status]} className="shrink-0">
+              <StatusChip tone={VERSION_TONE[row.status]}>
                 {t(`versions.status.${row.status}`)}
               </StatusChip>
-              <div className="w-20 shrink-0 text-right">
+              <div className="text-right">
                 {canRestore(row.status) ? (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     disabled={blocked}
                     onClick={() => onRestore(row)}
@@ -265,7 +254,7 @@ export function VersionHistory<Row extends VersionHistoryRow>({
           );
         })}
       </ol>
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <div className="flex items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
         <span>
           {t("versions.showing", { shown: visible.length, total: rows.length })}
         </span>

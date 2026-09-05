@@ -5,7 +5,7 @@ import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { History, RefreshCw } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { Suspense, use, useState } from "react";
+import { Suspense, use, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -263,26 +263,7 @@ export function VersionsSection({
         </InlineNotice>
       ) : null}
 
-      <FieldGroup
-        title={t("versions.softwareHeading")}
-        action={
-          checkPromise ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={checkAgain}
-              disabled={busy || operationRunning}
-              aria-busy={checking}
-              aria-disabled={checking || undefined}
-              className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
-            >
-              {checking ? <Spinner aria-hidden="true" /> : <RefreshCw />}
-              {t(checking ? "versions.checking" : "versions.checkAgain")}
-            </Button>
-          ) : null
-        }
-      >
+      <div data-section-part="software">
         {checkPromise ? (
           <Suspense
             fallback={
@@ -300,6 +281,21 @@ export function VersionsSection({
               promise={checkPromise}
               blocked={blocked}
               onUpdate={() => setUpdateOpen(true)}
+              checkAgain={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={checkAgain}
+                  disabled={busy || operationRunning}
+                  aria-busy={checking}
+                  aria-disabled={checking || undefined}
+                  className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
+                >
+                  {checking ? <Spinner aria-hidden="true" /> : <RefreshCw />}
+                  {t(checking ? "versions.checking" : "versions.checkAgain")}
+                </Button>
+              }
             />
           </Suspense>
         ) : (
@@ -309,7 +305,7 @@ export function VersionsSection({
             </p>
           </Panel>
         )}
-      </FieldGroup>
+      </div>
 
       <FieldGroup title={t("versions.historyHeading")}>
         {versions.data === undefined ? (
@@ -397,18 +393,27 @@ export function SoftwarePanel({
   promise,
   blocked,
   onUpdate,
+  checkAgain,
 }: {
   promise: Promise<RuntimeCheck>;
   blocked: boolean;
   onUpdate: () => void;
+  /** The "Check again" button; it lives inside the panel, next to Update. */
+  checkAgain: ReactNode;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const format = useFormatter();
   const result = use(promise);
   if (!result.ok) {
     return (
-      <Panel tone="muted" role="alert" data-runtime-state="check-failed">
+      <Panel
+        tone="muted"
+        role="alert"
+        data-runtime-state="check-failed"
+        className="flex flex-wrap items-center justify-between gap-3"
+      >
         <p className="text-sm text-destructive">{result.message}</p>
+        {checkAgain}
       </Panel>
     );
   }
@@ -423,12 +428,15 @@ export function SoftwarePanel({
         ) : (
           <StatusChip tone="success">{t("versions.upToDate")}</StatusChip>
         )}
-        {updateAvailable ? (
-          <Button type="button" size="sm" disabled={blocked} onClick={onUpdate}>
-            <RefreshCw />
-            {t("versions.update")}
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-1">
+          {checkAgain}
+          {updateAvailable ? (
+            <Button type="button" size="sm" disabled={blocked} onClick={onUpdate}>
+              <RefreshCw />
+              {t("versions.update")}
+            </Button>
+          ) : null}
+        </div>
       </div>
       <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
         <dt className="text-xs font-medium text-muted-foreground">
