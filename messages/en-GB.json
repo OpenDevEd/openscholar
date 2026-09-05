@@ -2855,6 +2855,7 @@
       "latestLabel": "Latest",
       "checkedLabel": "Checked",
       "changesHeading": "What changed",
+      "technicalChanges": "Show technical changes",
       "update": "Update",
       "updateTitle": "Update this library?",
       "updateBody": "The library is rebuilt on the latest Evidence Library software. Records, settings and the address stay the same. It takes about a minute.",

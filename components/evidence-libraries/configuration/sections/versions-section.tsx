@@ -431,7 +431,7 @@ function SoftwarePanel({
       </Panel>
     );
   }
-  const { running, latest, changes, checkedAt } = result.state;
+  const { running, latest, changes, releases, checkedAt } = result.state;
   const state = runtimeUpdateState({ running, latest });
   const updateAvailable = state === "update-available";
   return (
@@ -472,24 +472,63 @@ function SoftwarePanel({
           })}
         </dd>
       </dl>
-      {updateAvailable && changes.length > 0 ? (
-        <div className="space-y-1">
+      {updateAvailable && releases.length > 0 ? (
+        <div className="space-y-3" data-release-notes={releases.length}>
           <p className="text-xs font-medium text-muted-foreground">
             {t("versions.changesHeading")}
           </p>
-          <ul className="list-disc space-y-0.5 pl-4 text-sm">
-            {changes.map((change) => (
-              <li key={change.sha}>
-                <span className="mr-2 font-mono text-xs text-muted-foreground">
-                  {shortCommit(change.sha)}
-                </span>
-                {change.message}
-              </li>
-            ))}
-          </ul>
+          {releases.map((release) => (
+            <div key={release.commit} className="space-y-1 text-sm">
+              <p>{release.summary}</p>
+              {release.notes.length > 0 ? (
+                <ul className="list-disc space-y-0.5 pl-4">
+                  {release.notes.map((note, index) => (
+                    <li key={`${release.commit}-${index}`}>{note}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ))}
         </div>
       ) : null}
+      {updateAvailable && changes.length > 0 ? (
+        releases.length > 0 ? (
+          <details className="text-sm">
+            <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+              {t("versions.technicalChanges")}
+            </summary>
+            <CommitList changes={changes} />
+          </details>
+        ) : (
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">
+              {t("versions.changesHeading")}
+            </p>
+            <CommitList changes={changes} />
+          </div>
+        )
+      ) : null}
     </Panel>
+  );
+}
+
+/** The commit subjects behind an update, for owners who want the detail. */
+function CommitList({
+  changes,
+}: {
+  changes: { sha: string; message: string }[];
+}) {
+  return (
+    <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm">
+      {changes.map((change) => (
+        <li key={change.sha}>
+          <span className="mr-2 font-mono text-xs text-muted-foreground">
+            {shortCommit(change.sha)}
+          </span>
+          {change.message}
+        </li>
+      ))}
+    </ul>
   );
 }
 
