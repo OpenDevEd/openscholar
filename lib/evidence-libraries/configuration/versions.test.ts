@@ -4,6 +4,7 @@ import {
   changedCards,
   runtimeUpdateState,
   shortCommit,
+  splitNoteArea,
 } from "./versions";
 
 describe("shortCommit", () => {
@@ -19,6 +20,19 @@ describe("runtimeUpdateState", () => {
     expect(runtimeUpdateState({ running: "a", latest: "b" })).toBe(
       "update-available",
     );
+  });
+});
+
+describe("splitNoteArea", () => {
+  it("separates the area prefix from the note text", () => {
+    expect(splitNoteArea("Sources: Zotero imports keep going.")).toEqual({
+      area: "sources",
+      text: "Zotero imports keep going.",
+    });
+    expect(splitNoteArea("Search results load faster: even on large libraries.")).toEqual({
+      area: null,
+      text: "Search results load faster: even on large libraries.",
+    });
   });
 });
 

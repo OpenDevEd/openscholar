@@ -31,6 +31,37 @@ export function changedCards(rows: readonly string[]): PageSectionKey[] {
   return PAGE_SECTION_KEYS.filter((card) => cards.has(card));
 }
 
+/** The areas new-el files each release note under, in the order shown. */
+export const RELEASE_NOTE_AREAS = [
+  "search",
+  "records",
+  "collections",
+  "sources",
+  "exports",
+  "appearance",
+  "administration",
+  "speed",
+  "reliability",
+] as const;
+export type ReleaseNoteArea = (typeof RELEASE_NOTE_AREAS)[number];
+
+/**
+ * A note as new-el writes it, "Sources: Zotero imports keep going.", split
+ * into its area and text. A note without a known area prefix keeps its text.
+ */
+export function splitNoteArea(note: string): {
+  area: ReleaseNoteArea | null;
+  text: string;
+} {
+  const separator = note.indexOf(":");
+  if (separator > 0) {
+    const prefix = note.slice(0, separator).trim().toLowerCase();
+    const area = RELEASE_NOTE_AREAS.find((known) => known === prefix);
+    if (area) return { area, text: note.slice(separator + 1).trim() };
+  }
+  return { area: null, text: note.trim() };
+}
+
 /** Live and still-applying versions cannot be restored. */
 export function canRestore(status: VersionStatus): boolean {
   return status === "previous" || status === "failed";

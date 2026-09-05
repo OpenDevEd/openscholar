@@ -19,27 +19,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import {
-  canRestore,
-  changedCards,
   runtimeUpdateState,
   shortCommit,
-  type VersionStatus,
 } from "@/lib/evidence-libraries/configuration/versions";
-import { EmptyList, FieldGroup, Panel } from "../fields";
+import { FieldGroup, Panel } from "../fields";
 import { InlineNotice, SectionCard } from "../section-card";
-import { StatusChip, type StatusTone } from "../status-chip";
+import { StatusChip } from "../status-chip";
+import { ReleaseNotes, VersionHistory } from "./versions-views";
 
 type RuntimeState = FunctionReturnType<typeof api.evidenceLibraries.updates.check>;
 type VersionRow = FunctionReturnType<
@@ -47,7 +37,7 @@ type VersionRow = FunctionReturnType<
 >[number];
 
 /** The check never throws into render; a failure becomes a message in the panel. */
-type RuntimeCheck =
+export type RuntimeCheck =
   | { ok: true; state: RuntimeState }
   | { ok: false; message: string };
 
@@ -56,13 +46,6 @@ const ADDRESS_STATE_MESSAGE = {
   "not-ours": "versions.addressTaken",
   unreachable: "versions.addressSilent",
 } as const;
-
-const VERSION_TONE: Record<VersionStatus, StatusTone> = {
-  live: "success",
-  previous: "neutral",
-  failed: "danger",
-  deploying: "running",
-};
 
 function errorMessage(error: unknown, fallback: string) {
   if (error instanceof ConvexError) {
@@ -338,10 +321,8 @@ export function VersionsSection({
             <Spinner className="h-4 w-4" />
             {t("versions.loading")}
           </Panel>
-        ) : versions.data.length === 0 ? (
-          <EmptyList>{t("versions.empty")}</EmptyList>
         ) : (
-          <VersionTable
+          <VersionHistory
             rows={versions.data}
             blocked={blocked}
             onRestore={setRestoring}
@@ -412,7 +393,7 @@ export function VersionsSection({
   );
 }
 
-function SoftwarePanel({
+export function SoftwarePanel({
   promise,
   blocked,
   onUpdate,
@@ -472,145 +453,14 @@ function SoftwarePanel({
           })}
         </dd>
       </dl>
-      {updateAvailable && releases.length > 0 ? (
-        <div className="space-y-3" data-release-notes={releases.length}>
+      {updateAvailable && (releases.length > 0 || changes.length > 0) ? (
+        <div className="space-y-2 border-t border-border/50 pt-3">
           <p className="text-xs font-medium text-muted-foreground">
             {t("versions.changesHeading")}
           </p>
-          {releases.map((release) => (
-            <div key={release.commit} className="space-y-1 text-sm">
-              <p>{release.summary}</p>
-              {release.notes.length > 0 ? (
-                <ul className="list-disc space-y-0.5 pl-4">
-                  {release.notes.map((note, index) => (
-                    <li key={`${release.commit}-${index}`}>{note}</li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ))}
+          <ReleaseNotes releases={releases} changes={changes} />
         </div>
       ) : null}
-      {updateAvailable && changes.length > 0 ? (
-        releases.length > 0 ? (
-          <details className="text-sm">
-            <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
-              {t("versions.technicalChanges")}
-            </summary>
-            <CommitList changes={changes} />
-          </details>
-        ) : (
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">
-              {t("versions.changesHeading")}
-            </p>
-            <CommitList changes={changes} />
-          </div>
-        )
-      ) : null}
     </Panel>
-  );
-}
-
-/** The commit subjects behind an update, for owners who want the detail. */
-function CommitList({
-  changes,
-}: {
-  changes: { sha: string; message: string }[];
-}) {
-  return (
-    <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm">
-      {changes.map((change) => (
-        <li key={change.sha}>
-          <span className="mr-2 font-mono text-xs text-muted-foreground">
-            {shortCommit(change.sha)}
-          </span>
-          {change.message}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function VersionTable({
-  rows,
-  blocked,
-  onRestore,
-}: {
-  rows: readonly VersionRow[];
-  blocked: boolean;
-  onRestore: (row: VersionRow) => void;
-}) {
-  const t = useTranslations("evidenceLibraryConfiguration");
-  const format = useFormatter();
-
-  function changed(row: VersionRow) {
-    if (row.kind === "runtime") {
-      return row.runtimeCommit
-        ? `${t("versions.softwareUpdate")} ${shortCommit(row.runtimeCommit)}`
-        : t("versions.softwareUpdate");
-    }
-    const cards = changedCards(row.changedSections);
-    return cards.length === 0
-      ? t("versions.everything")
-      : cards.map((card) => t(`sections.${card}`)).join(", ");
-  }
-
-  return (
-    <div className="rounded-lg border border-border/50 bg-background">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("versions.colVersion")}</TableHead>
-            <TableHead>{t("versions.colWhen")}</TableHead>
-            <TableHead>{t("versions.colBy")}</TableHead>
-            <TableHead>{t("versions.colChanged")}</TableHead>
-            <TableHead>{t("versions.colStatus")}</TableHead>
-            <TableHead className="w-28">
-              <span className="sr-only">{t("versions.restore")}</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow
-              key={row.operationId}
-              data-version-status={row.status}
-              data-revision={row.revisionKey}
-            >
-              <TableCell className="font-mono text-xs">{row.revisionKey}</TableCell>
-              <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                {format.dateTime(new Date(row.createdAt), {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
-              </TableCell>
-              <TableCell className="text-sm">{row.by}</TableCell>
-              <TableCell className="text-xs text-muted-foreground">
-                {changed(row)}
-              </TableCell>
-              <TableCell>
-                <StatusChip tone={VERSION_TONE[row.status]}>
-                  {t(`versions.status.${row.status}`)}
-                </StatusChip>
-              </TableCell>
-              <TableCell className="text-right">
-                {canRestore(row.status) ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={blocked}
-                    onClick={() => onRestore(row)}
-                  >
-                    {t("versions.restore")}
-                  </Button>
-                ) : null}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
   );
 }
