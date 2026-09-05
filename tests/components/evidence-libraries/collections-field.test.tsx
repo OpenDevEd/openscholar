@@ -41,9 +41,9 @@ const ns = "evidenceLibraryConfiguration.collections";
 const pickerNs = "evidenceLibraryConfiguration.picker";
 
 const catalogue = [
-  { id: "COLL0001", title: "Climate", count: 12, source: "Climate group", parentId: null },
-  { id: "COLL0002", title: "Health", count: 3, source: "Health group", parentId: null },
-  { id: "COLL0003", title: "Water", count: 7, source: "Climate group", parentId: null },
+  { id: "COLL0001", title: "Climate", count: 12, source: "Climate group", parentId: null, hasChildren: true },
+  { id: "COLL0002", title: "Health", count: 3, source: "Health group", parentId: null, hasChildren: true },
+  { id: "COLL0003", title: "Water", count: 7, source: "Climate group", parentId: null, hasChildren: true },
 ];
 
 type Entry = { id: string; order?: number; title?: string };
@@ -114,7 +114,7 @@ describe("<CollectionsField>", () => {
     const user = userEvent.setup();
     mocks.listCollections.mockImplementation(async ({ query }: { query?: string }) => ({
       items: query
-        ? [{ id: "FOUND1", title: "Amber studies", count: 4, source: "Amber group", parentId: null }]
+        ? [{ id: "FOUND1", title: "Amber studies", count: 4, source: "Amber group", parentId: null, hasChildren: true }]
         : catalogue,
       nextCursor: null,
     }));
@@ -179,6 +179,21 @@ describe("<CollectionsField>", () => {
       { id: "COLL0001", enabled: true, order: 1 },
       { id: "COLL0003", enabled: true, order: 2 },
     ]);
+  });
+
+  it("leaves out collections that have no sub-collections", async () => {
+    const user = userEvent.setup();
+    mocks.listCollections.mockResolvedValue({
+      items: [
+        ...catalogue,
+        { id: "LEAF0001", title: "Loose leaf", count: 9, source: "Climate group", parentId: null, hasChildren: false },
+      ],
+      nextCursor: null,
+    });
+    await renderField({ value: [], onChange: vi.fn() });
+    const table = await openPicker(user);
+    expect(await within(table).findByText("Climate")).toBeInTheDocument();
+    expect(within(table).queryByText("Loose leaf")).not.toBeInTheDocument();
   });
 
   it("filters the loaded page by source", async () => {

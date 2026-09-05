@@ -24,6 +24,7 @@ const collectionValidator = v.object({
   count: v.number(),
   source: v.string(),
   parentId: v.union(v.string(), v.null()),
+  hasChildren: v.boolean(),
 });
 
 const institutionValidator = v.object({ name: v.string(), count: v.number() });

@@ -27,6 +27,7 @@ function runtime() {
         count: 12,
         source: "zotero-42",
         parentId: null,
+      hasChildren: true,
       },
     ],
     institutions: [
@@ -153,6 +154,7 @@ describe("Evidence Library runtime reads", () => {
           count: 12,
           source: "zotero-42",
           parentId: null,
+        hasChildren: true,
         },
       ],
       nextCursor: null,
@@ -266,6 +268,7 @@ describe("Evidence Library runtime reads", () => {
       count: index,
       source: "zotero-42",
       parentId: null,
+    hasChildren: true,
     }));
     vi.stubGlobal("fetch", fetchImpl);
     const result = await fixture.admin.action(
@@ -303,6 +306,7 @@ describe("Evidence Library runtime reads", () => {
         count: index,
         source: "zotero-42",
         parentId: null,
+      hasChildren: true,
       }),
     );
     vi.stubGlobal("fetch", fetchImpl);

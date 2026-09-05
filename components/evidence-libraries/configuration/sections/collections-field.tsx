@@ -25,7 +25,14 @@ export type CollectionEntry = {
 
 type CataloguePage = {
   reason?: "not-set-up";
-  items: { id: string; title: string; count: number; source: string; parentId: string | null }[];
+  items: {
+    id: string;
+    title: string;
+    count: number;
+    source: string;
+    parentId: string | null;
+    hasChildren: boolean;
+  }[];
   nextCursor: string | null;
 };
 
@@ -98,9 +105,11 @@ function CollectionsBody({
       query: query || undefined,
       cursor: cursor ?? undefined,
     });
+    // The site shows a collection as a heading over its sub-collections, so
+    // one without any would never appear. Leave those out of the picker.
     return {
       reason: page.reason,
-      items: page.items.map((item) => ({
+      items: page.items.filter((item) => item.hasChildren).map((item) => ({
         id: item.id,
         title: item.title,
         meta: item.source,

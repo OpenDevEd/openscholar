@@ -10,6 +10,8 @@ export type RuntimeCollection = {
   count: number;
   source: string;
   parentId: string | null;
+  /** True when a live collection sits under this one. Only those render on the site. */
+  hasChildren: boolean;
 };
 
 export type RuntimeCollectionsPage = {
@@ -62,7 +64,8 @@ function readCollection(value: unknown): RuntimeCollection | null {
     typeof value.title !== "string" ||
     typeof value.count !== "number" ||
     typeof value.source !== "string" ||
-    (value.parentId !== null && typeof value.parentId !== "string")
+    (value.parentId !== null && typeof value.parentId !== "string") ||
+    typeof value.hasChildren !== "boolean"
   ) {
     return null;
   }
@@ -72,6 +75,7 @@ function readCollection(value: unknown): RuntimeCollection | null {
     count: value.count,
     source: value.source,
     parentId: value.parentId ?? null,
+    hasChildren: value.hasChildren,
   };
 }
 
