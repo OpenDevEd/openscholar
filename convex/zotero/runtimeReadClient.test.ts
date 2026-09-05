@@ -86,6 +86,29 @@ describe("readRuntimeCollections", () => {
       }),
     ).rejects.toMatchObject({ code: "RUNTIME_READ_INVALID" });
   });
+
+  it("treats a row that does not say whether it has children as broken", async () => {
+    const silent = vi.fn<typeof fetch>(async () =>
+      jsonResponse({
+        items: [
+          {
+            id: "ABCD1234",
+            title: "Climate",
+            count: 12,
+            source: "zotero-42",
+            parentId: null,
+          },
+        ],
+        nextCursor: null,
+      }),
+    );
+    await expect(
+      readRuntimeCollections(silent, {
+        baseUrl: "https://lib.example.test",
+        credential,
+      }),
+    ).rejects.toMatchObject({ code: "RUNTIME_READ_INVALID" });
+  });
 });
 
 describe("readRuntimeInstitutions", () => {
