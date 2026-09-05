@@ -37,7 +37,7 @@ type VersionRow = FunctionReturnType<
 >[number];
 
 /** The check never throws into render; a failure becomes a message in the panel. */
-export type RuntimeCheck =
+type RuntimeCheck =
   | { ok: true; state: RuntimeState }
   | { ok: false; message: string };
 
@@ -389,7 +389,7 @@ export function VersionsSection({
   );
 }
 
-export function SoftwarePanel({
+function SoftwarePanel({
   promise,
   blocked,
   onUpdate,
