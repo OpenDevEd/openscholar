@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Users,
   Plus,
@@ -91,8 +91,17 @@ export function TeamAccess({
   onResend: (member: AccessMember) => Promise<void>;
 }) {
   const isProfile = scope === "profile";
+  const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
+  async function runChange(action: () => Promise<void>) {
+    if (pendingRef.current) return;
+    pendingRef.current = true;
+    setPending(true);
+    try { await action(); }
+    finally { pendingRef.current = false; setPending(false); }
+  }
   const setMembers = (change: (current: AccessMember[]) => AccessMember[]) =>
-    onMembersChange(change(members));
+    runChange(() => onMembersChange(change(members)));
   const [invite, setInvite] = useState(false),
     [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("Creator"),
@@ -160,6 +169,7 @@ export function TeamAccess({
                 </span>
               ) : (
                 <RoleSelect
+                  disabled={pending}
                   label={`Role for ${member.name}`}
                   value={member.role}
                   onChange={(value) => updateRole(member.id, value)}
@@ -172,6 +182,7 @@ export function TeamAccess({
                       variant="ghost"
                       size="icon"
                       className="size-8 text-muted-foreground"
+                      disabled={pending}
                       aria-label={`Actions for ${member.name}`}
                     >
                       <MoreHorizontal className="size-4" />
@@ -181,7 +192,7 @@ export function TeamAccess({
                     {member.invited && (
                       <DropdownMenuItem
                         onSelect={() => {
-                          void onResend(member).then(() => setNotice(`Invitation sent to ${member.email}.`)).catch((error: unknown) => setNotice(error instanceof Error ? error.message : "Unable to send invitation"));
+                          void runChange(() => onResend(member)).then(() => setNotice(`Invitation sent to ${member.email}.`)).catch((error: unknown) => setNotice(error instanceof Error ? error.message : "Unable to send invitation"));
                         }}
                       >
                         <RotateCcw />
@@ -223,6 +234,7 @@ export function TeamAccess({
                   <Button
                     size="sm"
                     variant="destructive"
+                    disabled={pending}
                     onClick={async () => {
                     try {
                       await setMembers((current) =>
@@ -250,7 +262,7 @@ export function TeamAccess({
     );
   }
   return (
-    <Dialog open={invite} onOpenChange={setInvite}>
+    <Dialog open={invite} onOpenChange={(open) => { if (!pending) setInvite(open); }}>
       <SectionCard
         id={isProfile ? "sec-profile-access" : "sec-team"}
         className="scroll-mt-40"
@@ -293,6 +305,7 @@ export function TeamAccess({
             className="space-y-4"
             onSubmit={async (event) => {
               event.preventDefault();
+              if (pendingRef.current) return;
               try {
               if (addMode === "existing") {
                 const person = availablePeople.find(
@@ -520,7 +533,8 @@ export function TeamAccess({
               </DialogClose>
               <Button
                 type="submit"
-                disabled={addMode === "existing" && !selectedPerson}
+                disabled={pending || (addMode === "existing" && !selectedPerson)}
+                aria-busy={pending}
               >
                 {addMode === "existing" ? <Plus /> : <Mail />}
                 {addMode === "existing" ? `Add to ${scope}` : "Send invitation"}
@@ -654,7 +668,9 @@ function RoleSelect({
   value,
   onChange,
   className,
+  disabled,
 }: {
+  disabled?: boolean;
   id?: string;
   className?: string;
   label: string;
@@ -662,7 +678,7 @@ function RoleSelect({
   onChange: (role: Role) => void;
 }) {
   return (
-    <Select value={value} onValueChange={(value) => onChange(value as Role)}>
+    <Select disabled={disabled} value={value} onValueChange={(value) => onChange(value as Role)}>
       <SelectTrigger
         id={id}
         aria-label={label}

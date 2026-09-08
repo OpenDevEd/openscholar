@@ -59,7 +59,7 @@ import {
 import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "./library-page-shell";
 import { LibraryStatusChip } from "./library-status-chip";
-import { Field } from "./configuration/section-card";
+import { Field, FieldError } from "./configuration/section-card";
 import { EmptyList } from "./configuration/fields";
 
 type Role = "Owner" | "Editor" | "Creator";
@@ -108,6 +108,8 @@ export function LibraryList() {
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState("");
   const [creating, setCreating] = useState(false);
+  const [createPending, setCreatePending] = useState(false);
+  const [createError, setCreateError] = useState("");
   const [name, setName] = useState("");
   const [declining, setDeclining] = useState<Library | null>(null);
   const organizations = [
@@ -368,7 +370,7 @@ export function LibraryList() {
           })}
         </ul>
       )}
-      <Dialog open={creating} onOpenChange={setCreating}>
+      <Dialog open={creating} onOpenChange={(open) => { if (!createPending) { setCreating(open); setCreateError(""); } }}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>New library</DialogTitle>
@@ -380,13 +382,17 @@ export function LibraryList() {
             className="space-y-4"
             onSubmit={async (event) => {
               event.preventDefault();
-              if (!name.trim()) return;
+              if (!name.trim() || createPending) return;
+              setCreatePending(true);
+              setCreateError("");
               try {
                 const result = await reserve({ name: name.trim() });
-                if (result.status !== "reserved") { setNotice("The library could not be created. Check its name and try again."); return; }
+                if (result.status !== "reserved") { setCreateError("The library could not be created. Check its name and try again."); return; }
                 setCreating(false);
                 router.push(`/evidence-libraries/${result.libraryId}/configuration`);
-              } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to create library"); }
+              } catch {
+                setCreateError("Unable to create the library. Please try again.");
+              } finally { setCreatePending(false); }
             }}
           >
             <Field label="Organization">
@@ -412,17 +418,19 @@ export function LibraryList() {
                   required
                   value={name}
                   onChange={(event) => setName(event.target.value)}
+                  disabled={createPending}
                   placeholder="Name your library"
                 />
               )}
             </Field>
+            {createError && <FieldError>{createError}</FieldError>}
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="outline">
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit">
+              <Button type="submit" disabled={createPending} aria-busy={createPending}>
                 <Plus />
                 Create library
               </Button>
