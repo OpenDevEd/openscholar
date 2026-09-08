@@ -4,7 +4,7 @@ Library assignments, invitations, configuration Team and cross-organization list
 
 Owner access is inherited from organization ownership. Editor and Creator access is library-specific and may be granted without organization membership. Ordinary organization membership alone grants no editorial access. The same identity may have different roles across libraries. Existing role changes and revocations must affect established admin sessions.
 
-Use the existing Clerk identity, Convex projections, library credential and admin handoff. Keep team management in library configuration and preserve the approved mock layout. Do not ship mock transport, fixtures or role selection as authorization. Creators prepare drafts, files and references; only Editors/Owners publish or activate providers.
+Use the existing Clerk identity, Convex projections, library credential and admin handoff. Keep team management in library configuration and use the actual approved mock components, preserving their markup and styles while replacing fixtures and callbacks with real data and interactions. The only permitted redesign is the checkbox and its surrounding text beneath the Crossref/Zenodo tabs. Do not ship mock transport, fixtures or role selection as authorization. Creators prepare drafts, files and references; only Editors/Owners publish or activate providers.
 
 ## Verification and delivery
 

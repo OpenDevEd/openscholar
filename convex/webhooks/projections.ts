@@ -163,6 +163,26 @@ export async function applyMembershipProjection(
           }
         }
       }
+      if (args.membership.state === "revoked") {
+        const assignments = await ctx.db.query("evidenceLibraryMembers")
+          .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.membership.clerkUserId))
+          .collect();
+        for (const assignment of assignments) {
+          const library = await ctx.db.get("evidenceLibraries", assignment.libraryId);
+          if (library?.organizationId === organizationId) {
+            await ctx.db.delete("evidenceLibraryMembers", assignment._id);
+          }
+        }
+        const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.membership.clerkUserId)).unique();
+        if (user) {
+          const invitations = await ctx.db.query("evidenceLibraryInvitations")
+            .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).collect();
+          for (const invitation of invitations) {
+            const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
+            if (library?.organizationId === organizationId) await ctx.db.patch("evidenceLibraryInvitations", invitation._id, { state: "cancelled" });
+          }
+        }
+      }
       const membershipFields = {
         organizationId,
         clerkMembershipId: args.membership.clerkMembershipId,

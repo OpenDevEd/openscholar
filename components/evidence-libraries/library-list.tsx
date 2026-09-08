@@ -1,473 +1,469 @@
 "use client";
 
-import { OrganizationSwitcher, useOrganization } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
-import type { FunctionReturnType } from "convex/server";
-import { ExternalLink, MoreHorizontal, Plus, RotateCcw, Trash2 } from "lucide-react";
-import Link from "next/link";
-import { useFormatter, useTranslations } from "next-intl";
-import { type ReactNode, useState } from "react";
-import { toast } from "sonner";
+import { useAction } from "convex/react";
+import { useOrganization } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
+import { AdminAreaLink } from "./admin-area-link";
+import { useState } from "react";
+import Link from "next/link";
+import {
+  Building2,
+  Check,
+  Crown,
+  ExternalLink,
+  Layers,
+  Mail,
+  PenLine,
+  Plus,
+  Search,
+  Settings2,
+  MoreHorizontal,
+  ShieldCheck,
+} from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Progress } from "@/components/ui/progress";
-import { api } from "@/convex/_generated/api";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { shortCommit } from "@/lib/evidence-libraries/configuration/versions";
-import { initialsOf } from "@/lib/evidence-libraries/initials";
-import { cn } from "@/lib/utils";
-import { AdminAreaLink } from "./admin-area-link";
-import { DeleteLibraryDialog } from "./configuration/delete-library-dialog";
-import { ActivationControl } from "./configuration/activation-control";
-import { EmptyList, MetaList, type MetaItem } from "./configuration/fields";
-import { OPERATION_STAGE_ICONS } from "./configuration/operation-stage-icons";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { LibraryAddressLink } from "./library-address-link";
-import { LibraryImage } from "./library-image";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "./library-page-shell";
 import { LibraryStatusChip } from "./library-status-chip";
-import { StatusChip } from "./configuration/status-chip";
+import { Field } from "./configuration/section-card";
+import { EmptyList } from "./configuration/fields";
 
-type Overview = FunctionReturnType<
-  typeof api.evidenceLibraries.queries.listLibraryOverviews
->[number];
-
-type AddressNotice = FunctionReturnType<
-  typeof api.evidenceLibraries.updates.listAddressNotices
->[number];
-
-/** The short state word for an address that is not answering as ours. */
-const ADDRESS_STATE_MESSAGE = {
-  "not-ours": "addressTaken",
-  unreachable: "addressSilent",
-} as const;
-
-/** How far the teardown is, by the stage it reports. */
-const TEARDOWN_PERCENT: Record<NonNullable<Overview["teardownStage"]>, number> = {
-  queued: 5,
-  coolify: 30,
-  storage: 50,
-  database: 70,
-  convex: 85,
-  completed: 100,
+type Role = "Owner" | "Editor" | "Creator";
+type Library = {
+  id: string;
+  invitationId?: Id<"evidenceLibraryInvitations">;
+  organizationImageUrl?: string | null;
+  status?: "draft" | "setting_up" | "setup_failed" | "active" | "deleting";
+  name: string;
+  organization: string;
+  role: Role;
+  address: string;
+  pending?: boolean;
+  draft?: boolean;
+  configuration?: string;
 };
+function OrganizationAvatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
+  return (
+    <Avatar className="size-5 rounded-md" aria-hidden="true">
+      {imageUrl && <AvatarImage src={imageUrl} alt="" />}
+      <AvatarFallback
+        className={cn("rounded-md text-[9px] font-semibold")}
+      >
+        {name.slice(0, 2)}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+const roleIcons = { Owner: Crown, Editor: ShieldCheck, Creator: PenLine };
 
 export function LibraryList() {
-  const t = useTranslations("evidenceLibraries.list");
-  const tGate = useTranslations("evidenceLibraries.gate");
-  const { isLoaded, membership, organization } = useOrganization();
-  const access = useProtectedQuery(
-    api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
-    organization ? {} : "skip",
+  const router = useRouter();
+  const { organization: activeOrganization } = useOrganization();
+  const access = useProtectedQuery(api.evidenceLibraries.queries.getEvidenceLibrariesAccess, {});
+  const overviews = useProtectedQuery(api.evidenceLibraries.queries.listLibraryOverviews, {});
+  const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listMine, {});
+  const respond = useAction(api.evidenceLibraries.invitationActions.respond);
+  const reserve = useAction(api.evidenceLibraries.addressActions.reserveAddress);
+  const roles = { owner: "Owner", editor: "Editor", creator: "Creator" } as const;
+  const libraries: Library[] = [
+    ...(overviews.data ?? []).map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) })),
+    ...(invitations.data ?? []).map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true })),
+  ];
+  const [view, setView] = useState<"libraries" | "invitations">("libraries");
+  const [organization, setOrganization] = useState("all");
+  const [search, setSearch] = useState("");
+  const [notice, setNotice] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [declining, setDeclining] = useState<Library | null>(null);
+  const organizations = [
+    ...new Set(libraries.map((library) => library.organization)),
+  ];
+  const visible = libraries.filter(
+    (library) =>
+      Boolean(library.pending) === (view === "invitations") &&
+      (organization === "all" || library.organization === organization) &&
+      `${library.name} ${library.organization}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase()),
   );
-  const overviews = useProtectedQuery(
-    api.evidenceLibraries.queries.listLibraryOverviews,
-    organization ? {} : "skip",
-  );
-  const addressNotices = useProtectedQuery(
-    api.evidenceLibraries.updates.listAddressNotices,
-    organization ? {} : "skip",
-  );
-  const [deleteTarget, setDeleteTarget] = useState<Overview | null>(null);
-  const notices = new Map(
-    (addressNotices.data ?? []).map((notice) => [notice.libraryId, notice]),
-  );
-
-  if (!isLoaded) {
-    return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
-  }
-  if (!organization) {
-    return (
-      <AuthStatePanel
-        variant="no_access"
-        title={t("noOrganizationTitle")}
-        description={t("noOrganizationDescription")}
-      />
-    );
-  }
-  if (access.data === undefined) {
-    return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
-  }
-  // Evidence Libraries are switched on per organisation in Clerk.
-  if (!access.data.enabled) {
-    return (
-      <AuthStatePanel
-        variant="no_access"
-        title={tGate("title")}
-        description={tGate("description")}
-      />
-    );
-  }
-  const isOwner = membership?.role === "org:admin";
-
-  const newButton = (
-    <Button asChild>
-      <Link href="/evidence-libraries/new">
-        <Plus />
-        {t("newLibrary")}
-      </Link>
-    </Button>
-  );
-
+  if (!overviews.data || !invitations.data || !access.data) return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   return (
     <LibraryPageShell
-      title={t("title")}
-      description={t("description")}
-      actions={
-        <>
-          <OrganisationPill />
-          {isOwner ? newButton : null}
-        </>
+      title="Evidence libraries"
+      description="Libraries you manage and contribute to."
+      actions={access.data?.canCreate ?
+        <Button
+          onClick={() => {
+            setCreating(true);
+            setName("");
+          }}
+        >
+          <Plus />
+          New library
+        </Button> : null
       }
     >
-      {overviews.data === undefined ? (
-        <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />
-      ) : overviews.data.length === 0 ? (
-        <div className="space-y-3 p-4 md:p-6" data-library-empty>
-          <EmptyList>{t("empty")}</EmptyList>
-          {isOwner ? <div className="flex justify-center">{newButton}</div> : null}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 p-4">
+        <div className="flex items-center gap-1" aria-label="Library view">
+          {(["libraries", "invitations"] as const).map((tab) => {
+            const Icon = tab === "libraries" ? Layers : Mail;
+            return (
+              <Button
+                key={tab}
+                size="sm"
+                variant="ghost"
+                aria-pressed={view === tab}
+                className={cn(
+                  "gap-2 text-muted-foreground",
+                  view === tab && "bg-muted text-foreground",
+                )}
+                onClick={() => setView(tab)}
+              >
+                <Icon className="size-3.5" />
+                {tab === "libraries" ? "Your libraries" : "Invitations"}
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {
+                    libraries.filter(
+                      (library) =>
+                        Boolean(library.pending) === (tab === "invitations"),
+                    ).length
+                  }
+                </span>
+              </Button>
+            );
+          })}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              aria-label="Search libraries"
+              placeholder="Find a library…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="h-8 w-44 border-transparent bg-muted/40 pl-8 text-xs shadow-none"
+            />
+          </div>
+          <Select value={organization} onValueChange={setOrganization}>
+            <SelectTrigger
+              size="sm"
+              aria-label="Filter by owning organization"
+              className="min-w-48 border-transparent bg-muted/40 shadow-none"
+            >
+              {organization === "all" && <Building2 className="size-3.5" />}
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All organizations</SelectItem>
+              {organizations.map((org) => (
+                <SelectItem key={org} value={org}>
+                  <OrganizationAvatar name={org} imageUrl={libraries.find(l => l.organization === org)?.organizationImageUrl} />
+                  {org}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      {notice && (
+        <p
+          role="status"
+          className="flex items-center gap-2 border-b border-border/50 bg-muted/20 px-4 py-3 text-xs text-muted-foreground"
+        >
+          <Check className="size-3.5" />
+          {notice}
+        </p>
+      )}
+      {view === "invitations" && (
+        <p className="border-b border-border/50 px-4 py-3 text-xs text-muted-foreground">
+          Accept access to a library without joining its organization.
+        </p>
+      )}
+      {!visible.length ? (
+        <div className="p-6">
+          <EmptyList>
+            {search || organization !== "all"
+              ? "No libraries match these filters."
+              : view === "invitations"
+                ? "No pending invitations."
+                : "Your libraries will appear here when you receive access."}
+          </EmptyList>
         </div>
       ) : (
         <ul className="divide-y divide-border/50" data-library-list>
-          {overviews.data.map((library) => (
-            <LibraryRow
-              key={library._id}
-              library={library}
-              isOwner={isOwner}
-              notice={notices.get(library._id) ?? null}
-              onDelete={() => setDeleteTarget(library)}
-            />
-          ))}
+          {visible.map((library) => {
+            const RoleIcon = roleIcons[library.role];
+            return (
+              <li
+                key={library.id}
+                data-library-row={library.id}
+                data-status={library.status}
+                className="flex flex-wrap items-center gap-3 p-4 hover:bg-muted/15 sm:flex-nowrap"
+              >
+                <div className="relative mr-1 flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-muted/30 text-primary">
+                  <Layers className="size-5" />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={`Organization: ${library.organization}`}
+                        className="absolute -bottom-1 -right-1 rounded-md bg-background ring-2 ring-background outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
+                      >
+                        <OrganizationAvatar name={library.organization} imageUrl={library.organizationImageUrl} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{library.organization}</TooltipContent>
+                  </Tooltip>
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {library.pending || library.draft ? (
+                      library.configuration ? <Link href={library.configuration} className="text-sm font-medium">
+                        {library.name}
+                      </Link> : <span className="text-sm font-medium">{library.name}</span>
+                    ) : (
+                      <a
+                        href={
+                          library.configuration ?? `/evidence-libraries/${library.id}/admin`
+                        }
+                        className="truncate text-sm font-medium hover:underline"
+                      >
+                        {library.name}
+                      </a>
+                    )}
+                    {!library.pending && (
+                      <LibraryStatusChip
+                        status={library.status ?? "active"}
+                      />
+                    )}
+                    <span
+                      className="ml-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+                      title={
+                        library.role === "Owner"
+                          ? "Inherited from organization ownership"
+                          : "Assigned to this library"
+                      }
+                    >
+                      <RoleIcon className="size-3.5" />
+                      {library.role}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    {library.address && (
+                      <LibraryAddressLink
+                        address={`https://${library.address}`}
+                        className="max-w-full [&_button]:size-5"
+                      />
+                    )}
+                  </div>
+                </div>
+                <div className="ml-auto flex shrink-0 items-center gap-2">
+                  {library.pending ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDeclining(library)}
+                      >
+                        Decline
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          if (!library.invitationId) return;
+                          try {
+                            await respond({ invitationId: library.invitationId, accept: true });
+                            setNotice(`Accepted ${library.name}.`);
+                            setView("libraries");
+                          } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to accept invitation"); }
+                        }}
+                      >
+                        <Check />
+                        Accept invitation
+                      </Button>
+                    </>
+                  ) : library.draft ? (
+                    <span className="text-xs text-muted-foreground">
+                      Setup pending
+                    </span>
+                  ) : (
+                    <ButtonGroup aria-label={`Actions for ${library.name}`}>
+                      {library.configuration && (
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={library.configuration}>
+                            <Settings2 />
+                            Configure
+                          </Link>
+                        </Button>
+                      )}
+                      <Button asChild size="sm" variant="outline">
+                        <AdminAreaLink libraryId={library.id}>
+                          <ExternalLink />
+                          Open admin
+                        </AdminAreaLink>
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            aria-label={`More actions for ${library.name}`}
+                          >
+                            <MoreHorizontal />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <a
+                              href={`https://${library.address}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink />
+                              View public library
+                            </a>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </ButtonGroup>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
-
-      {deleteTarget ? (
-        <DeleteLibraryDialog
-          libraryId={deleteTarget._id}
-          name={deleteTarget.name}
-          address={deleteTarget.publicAddress}
-          open
-          onOpenChange={(open) => {
-            if (!open) setDeleteTarget(null);
-          }}
-        />
-      ) : null}
-    </LibraryPageShell>
-  );
-}
-
-/**
- * Clerk owns both the organisation switcher behaviour and its current image.
- */
-function OrganisationPill() {
-  return (
-    <div className="inline-flex h-9 items-center rounded-md border border-input bg-background shadow-xs">
-      <OrganizationSwitcher
-        hidePersonal
-        appearance={{
-          elements: {
-            rootBox: "flex",
-            organizationSwitcherTrigger:
-              "h-9 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent focus:shadow-none",
-            organizationPreviewAvatarBox: "size-5 rounded-md",
-            organizationPreviewMainIdentifier: "text-sm font-medium text-foreground",
-            organizationSwitcherTriggerIcon: "text-muted-foreground",
-          },
+      <Dialog open={creating} onOpenChange={setCreating}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>New library</DialogTitle>
+            <DialogDescription>
+              Create a library in an organization you own.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (!name.trim()) return;
+              try {
+                const result = await reserve({ name: name.trim() });
+                if (result.status !== "reserved") { setNotice("The library could not be created. Check its name and try again."); return; }
+                setCreating(false);
+                router.push(`/evidence-libraries/${result.libraryId}/configuration`);
+              } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to create library"); }
+            }}
+          >
+            <Field label="Organization">
+              {(id) => (
+                <Select defaultValue="owned">
+                  <SelectTrigger id={id} className="w-full">
+                    <Building2 />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="owned">
+                      <OrganizationAvatar name={activeOrganization?.name ?? ""} imageUrl={activeOrganization?.imageUrl} />
+                      {activeOrganization?.name}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </Field>
+            <Field label="Library name">
+              {(id) => (
+                <Input
+                  id={id}
+                  required
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Name your library"
+                />
+              )}
+            </Field>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit">
+                <Plus />
+                Create library
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(declining)}
+        onOpenChange={(open) => {
+          if (!open) setDeclining(null);
         }}
-      />
-    </div>
-  );
-}
-
-function LibraryRow({
-  library,
-  isOwner,
-  notice,
-  onDelete,
-}: {
-  library: Overview;
-  isOwner: boolean;
-  /** What the last address check found for this library, if anything. */
-  notice: AddressNotice | null;
-  onDelete: () => void;
-}) {
-  const t = useTranslations("evidenceLibraries.list");
-  const tConfiguration = useTranslations("evidenceLibraryConfiguration");
-  const restartTeardown = useMutation(
-    api.evidenceLibraries.teardown.restartDevelopmentTeardown,
-  );
-  const tStages = useTranslations("evidenceLibraries.stages");
-  const format = useFormatter();
-  const isDeleting = library.status === "deleting";
-  const base = `/evidence-libraries/${library._id}`;
-  // Owners land on the configuration; editors only get the admin area once it is live.
-  const titleGoesToAdmin = !isOwner && library.status === "active";
-  const titleHref = isOwner ? `${base}/configuration` : null;
-  const operationLabel = library.operation
-    ? `${library.operation.runtimeUpdate
-        ? tConfiguration("updatingSoftware", {
-            rev: shortCommit(library.operation.runtimeUpdate.to),
-          })
-        : tConfiguration("applying")} · ${tConfiguration(
-        `stages.${library.operation.stage}`,
-      )}`
-    : null;
-
-  const meta: MetaItem[] = [
-    {
-      key: "address",
-      label: t("addressLabel"),
-      value: (
-        <LibraryAddressLink
-          address={library.publicAddress}
-          className="font-mono"
-        />
-      ),
-    },
-    library.lastActivatedAt
-      ? {
-          key: "activated",
-          label: t("lastActivatedLabel"),
-          value: format.dateTime(new Date(library.lastActivatedAt), {
-            dateStyle: "medium",
-          }),
-        }
-      : { key: "activated", value: t("neverActivated") },
-  ];
-  if (notice?.movedFrom) {
-    meta.push({
-      key: "moved",
-      label: t("movedFromLabel"),
-      value: (
-        <span className="font-mono" data-moved-from={notice.movedFrom}>
-          {notice.movedFrom.replace(/^https?:\/\//, "")}
-        </span>
-      ),
-    });
-  }
-  if (library.setupStage) {
-    meta.push({
-      key: "step",
-      label: library.status === "setup_failed" ? t("failedAtLabel") : t("currentStepLabel"),
-      value: tStages(library.setupStage),
-    });
-  }
-  const operationControl =
-    library.operation && operationLabel ? (
-      <ActivationControl
-        busy={{
-          accessibleLabel: operationLabel,
-          icon: OPERATION_STAGE_ICONS[library.operation.stage],
-          label: tConfiguration(`operationFlow.${library.operation.stage}`),
-        }}
-        className="w-auto bg-background shadow-xs dark:bg-input/30"
-        disabled
-        idleLabel=""
-        onActivate={() => undefined}
-        size="sm"
-      />
-    ) : null;
-
-  return (
-    <li
-      data-library-row={library._id}
-      data-status={library.status}
-      className={cn("flex flex-wrap items-center gap-3 p-4", isDeleting && "bg-muted/30")}
-    >
-      <LibraryImage
-        src={library.faviconUrl ?? "/icon.svg"}
-        className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-muted/40"
-        imageClassName="size-6 object-contain"
-        fallback={<InitialsTile library={library} />}
-      />
-
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <div className="flex flex-wrap items-center gap-2">
-          {titleHref && !isDeleting ? (
-            <Link href={titleHref} className="truncate text-sm font-medium hover:underline">
-              {library.name}
-            </Link>
-          ) : titleGoesToAdmin && !isDeleting ? (
-            <AdminAreaLink
-              libraryId={library._id}
-              className="truncate text-sm font-medium hover:underline"
-            >
-              {library.name}
-            </AdminAreaLink>
-          ) : (
-            <span className={cn("truncate text-sm font-medium", isDeleting && "text-muted-foreground")}>
-              {library.name}
-            </span>
-          )}
-          <LibraryStatusChip status={library.status} />
-          {notice?.addressState ? (
-            <StatusChip tone="danger" data-address-state={notice.addressState}>
-              {t(ADDRESS_STATE_MESSAGE[notice.addressState])}
-            </StatusChip>
-          ) : null}
-        </div>
-        <MetaList items={meta} />
-        {isDeleting && !library.teardownFailedStep ? (
-          <Progress
-            aria-label={t("deleting")}
-            // The part being removed, so the page can be checked on meaning
-            // rather than on how far along a bar looks.
-            data-teardown-stage={library.teardownStage ?? "queued"}
-            value={library.teardownStage ? TEARDOWN_PERCENT[library.teardownStage] : 5}
-            className="h-1.5 max-w-xs bg-destructive/20 [&>[data-slot=progress-indicator]]:bg-destructive"
-          />
-        ) : null}
-        {isDeleting && library.teardownFailedStep ? (
-          <div className="space-y-2" data-teardown-error>
-            <p className="max-w-xl text-sm text-destructive" role="status">
-              {t(`deleteFailed.${library.teardownFailedStep}`)}
-            </p>
+      >
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Decline invitation?</DialogTitle>
+            <DialogDescription>
+              You won’t receive access to {declining?.name}. Your other
+              libraries are unaffected.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Keep invitation</Button>
+            </DialogClose>
             <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                restartTeardown({ libraryId: library._id })
-                  .then(() => toast.success(t("deleteRetryStarted")))
-                  .catch(() => toast.error(t("deleteRetryError")));
+              variant="destructive"
+              onClick={async () => {
+                if (!declining?.invitationId) return;
+                try {
+                  await respond({ invitationId: declining.invitationId, accept: false });
+                  setDeclining(null);
+                  setNotice("Invitation declined.");
+                } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to decline invitation"); }
               }}
             >
-              {t("deleteRetry")}
+              Decline invitation
             </Button>
-          </div>
-        ) : null}
-      </div>
-
-      {!isDeleting ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {isOwner ? (
-            <OwnerActions
-              library={library}
-              base={base}
-              onDelete={onDelete}
-              operationControl={operationControl}
-            />
-          ) : library.status === "active" ? (
-            operationControl ?? (
-              <Button asChild size="sm" variant="outline">
-                <AdminAreaLink libraryId={library._id}>
-                  {t("openAdmin")}
-                  <ExternalLink />
-                </AdminAreaLink>
-              </Button>
-            )
-          ) : null}
-        </div>
-      ) : null}
-    </li>
-  );
-}
-
-function OwnerActions({
-  library,
-  base,
-  onDelete,
-  operationControl,
-}: {
-  library: Overview;
-  base: string;
-  onDelete: () => void;
-  operationControl: ReactNode;
-}) {
-  const t = useTranslations("evidenceLibraries.list");
-  const retrySetup = useMutation(api.evidenceLibraries.mutations.retrySetup);
-  const [retrying, setRetrying] = useState(false);
-
-  function retry() {
-    if (retrying) return;
-    setRetrying(true);
-    void retrySetup({ libraryId: library._id })
-      .then(() => toast(t("retrying"), { description: library.name }))
-      .catch(() => toast.error(t("retryError")))
-      .finally(() => setRetrying(false));
-  }
-
-  const configure = (
-    <Button asChild size="sm" variant="outline">
-      <Link href={`${base}/configuration`}>{t("configure")}</Link>
-    </Button>
-  );
-  const viewProgress = (
-    <Button asChild size="sm" variant="outline">
-      <Link href={`${base}/setup`}>{t("viewProgress")}</Link>
-    </Button>
-  );
-
-  return (
-    <>
-      {library.status === "active" ? (
-        <>
-          {configure}
-          {operationControl ?? (
-            <Button asChild size="sm" variant="ghost">
-              <AdminAreaLink libraryId={library._id}>
-                {t("openAdmin")}
-                <ExternalLink />
-              </AdminAreaLink>
-            </Button>
-          )}
-        </>
-      ) : null}
-      {library.status === "setting_up" ? viewProgress : null}
-      {library.status === "setup_failed" ? (
-        <>
-          <Button size="sm" onClick={retry} disabled={retrying}>
-            <RotateCcw />
-            {t("retry")}
-          </Button>
-          {viewProgress}
-        </>
-      ) : null}
-      {library.status === "draft" ? (
-        <>
-          <Button asChild size="sm">
-            <Link href={`${base}/configuration`}>{t("continueSetup")}</Link>
-          </Button>
-          {configure}
-        </>
-      ) : null}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label={t("moreActions", { name: library.name })}>
-            <MoreHorizontal />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onSelect={onDelete}
-          >
-            <Trash2 />
-            {t("deleteLibrary")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
-  );
-}
-
-/** The coloured initials tile, shown only when the favicon image fails to load. */
-function InitialsTile({ library }: { library: Pick<Overview, "name" | "accentColor"> }) {
-  return (
-    <div
-      aria-hidden="true"
-      className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white",
-        !library.accentColor && "bg-primary",
-      )}
-      style={library.accentColor ? { background: library.accentColor } : undefined}
-    >
-      {initialsOf(library.name)}
-    </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </LibraryPageShell>
   );
 }

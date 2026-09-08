@@ -75,7 +75,7 @@ export function NewLibraryForm() {
     return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
   // Evidence Libraries are switched on per organisation in Clerk.
-  if (!access.data.enabled) {
+  if (!access.data.canCreate) {
     return (
       <AuthStatePanel
         variant="no_access"

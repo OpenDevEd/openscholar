@@ -14,10 +14,12 @@ import { evidenceLibraryTeardownStepValidator } from "./validators";
 import {
   hasEvidenceLibrariesSwitchedOn,
   readOrganizationAccess,
+  readLibraryRole,
   requireEvidenceLibraryAccess,
   requireOrganizationAccess,
 } from "./access";
 import {
+  evidenceLibraryAdminRoleValidator,
   configProvenanceValidator,
   evidenceLibraryConfigDraftFields,
   evidenceLibraryConfigRevisionFields,
@@ -110,13 +112,23 @@ export function projectRevisionConfigurationSections(
 }
 
 export async function readEvidenceLibraries(ctx: QueryCtx) {
-  const access = await requireOrganizationAccess(ctx, "read");
-  return await ctx.db
-    .query("evidenceLibraries")
-    .withIndex("by_organizationId", (query) =>
-      query.eq("organizationId", access.organization._id),
-    )
-    .collect();
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return [];
+  const [memberships, assignments] = await Promise.all([
+    ctx.db.query("organizationMemberships")
+      .withIndex("by_clerkUserId_and_state", q => q.eq("clerkUserId", identity.subject).eq("state", "active"))
+      .collect(),
+    ctx.db.query("evidenceLibraryMembers")
+      .withIndex("by_clerkUserId", q => q.eq("clerkUserId", identity.subject))
+      .collect(),
+  ]);
+  const owned = await Promise.all(memberships.filter(m => m.role === "org:admin").map(m =>
+    ctx.db.query("evidenceLibraries").withIndex("by_organizationId", q => q.eq("organizationId", m.organizationId)).collect()));
+  const assigned = await Promise.all(assignments.map(m => ctx.db.get("evidenceLibraries", m.libraryId)));
+  const candidates = new Map([...owned.flat(), ...assigned].filter((library): library is Doc<"evidenceLibraries"> => library !== null).map(library => [library._id, library]));
+  const accessible = await Promise.all([...candidates.values()].map(async library =>
+    await readLibraryRole(ctx, library, identity.subject) ? library : null));
+  return accessible.filter((library): library is Doc<"evidenceLibraries"> => library !== null);
 }
 
 export const libraryOverviewStatusValidator = v.union(
@@ -176,6 +188,8 @@ function libraryOverviewStatus(
 
 const libraryOverviewValidator = v.object({
   _id: v.id("evidenceLibraries"),
+  role: evidenceLibraryAdminRoleValidator,
+  organization: v.object({ name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
   name: v.string(),
   publicAddress: v.string(),
   status: libraryOverviewStatusValidator,
@@ -319,30 +333,31 @@ async function readLibraryOverview(
   };
 }
 
-/**
- * Whether the active organisation may use the Evidence Library owner pages.
- * The sidebar renders on every page and the pages render before anyone picks
- * an organisation, so this never throws: no sign-in, no active organisation,
- * no settled membership, or a role that no longer matches the token all
- * answer "off". It reads through the same helper as the gate itself, so the
- * pages can never show a form the server would refuse.
- */
+/** Library access includes direct collaborators with no active organization. */
 export const getEvidenceLibrariesAccess = query({
   args: {},
-  returns: v.object({ enabled: v.boolean() }),
-  handler: async (ctx) => ({
-    enabled: hasEvidenceLibrariesSwitchedOn(await readOrganizationAccess(ctx)),
-  }),
+  returns: v.object({ enabled: v.boolean(), canCreate: v.boolean() }),
+  handler: async (ctx) => {
+    const organizationAccess = await readOrganizationAccess(ctx);
+    const canCreate = hasEvidenceLibrariesSwitchedOn(organizationAccess) && organizationAccess?.role === "org:admin";
+    return { enabled: Boolean(await ctx.auth.getUserIdentity()), canCreate };
+  },
 });
 
 export const listLibraryOverviews = query({
   args: {},
   returns: v.array(libraryOverviewValidator),
   handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
     const libraries = await readEvidenceLibraries(ctx);
-    return await Promise.all(
-      libraries.map((library) => readLibraryOverview(ctx, library)),
-    );
+    return await Promise.all(libraries.map(async library => {
+      const role = await readLibraryRole(ctx, library, identity.subject);
+      const organization = await ctx.db.get("organizations", library.organizationId);
+      if (!role || !organization) throw createError("FORBIDDEN", "Library access denied");
+      return { ...await readLibraryOverview(ctx, library), role,
+        organization: { name: organization.name, imageUrl: organization.imageUrl ?? null } };
+    }));
   },
 });
 
@@ -710,50 +725,43 @@ const teamPersonValidator = v.object({
   email: v.string(),
 });
 
-/**
- * The people who can work on this library: organisation admins own it and
- * change every setting, organisation members edit records in its /admin.
- * Names and emails come from the projected users table; someone whose user
- * row has not arrived yet is listed by Clerk id with an empty name and email.
- */
+/** Owners manage explicit library grants and inherited organization owners. */
 export const listTeam = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.object({
     organizationName: v.string(),
     owners: v.array(teamPersonValidator),
     editors: v.array(teamPersonValidator),
+    creators: v.array(teamPersonValidator),
+    availablePeople: v.array(teamPersonValidator),
+    invitations: v.array(v.object({ invitationId: v.id("evidenceLibraryInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.string() })),
   }),
   handler: async (ctx, args) => {
-    const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "read");
-    const memberships = await ctx.db
-      .query("organizationMemberships")
-      .withIndex("by_organizationId_and_state", (query) =>
-        query.eq("organizationId", access.organization._id).eq("state", "active"),
-      )
-      .collect();
-    const people = await Promise.all(
-      memberships.map(async (membership) => {
-        const user = await ctx.db
-          .query("users")
-          .withIndex("by_clerk_id", (query) => query.eq("clerkId", membership.clerkUserId))
-          .unique();
-        return {
-          role: membership.role,
-          person: {
-            clerkUserId: membership.clerkUserId,
-            name: [user?.firstName, user?.lastName].filter(Boolean).join(" "),
-            email: user?.email ?? "",
-          },
-        };
-      }),
-    );
-    const byName = (left: { person: { name: string; email: string } }, right: { person: { name: string; email: string } }) =>
-      (left.person.name || left.person.email).localeCompare(right.person.name || right.person.email);
-    people.sort(byName);
+    const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    const [memberships, assignments] = await Promise.all([
+      ctx.db.query("organizationMemberships")
+        .withIndex("by_organizationId_and_state", q => q.eq("organizationId", access.organization._id).eq("state", "active")).collect(),
+      ctx.db.query("evidenceLibraryMembers")
+        .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", args.libraryId)).collect(),
+    ]);
+    const userIds = new Set([...memberships.map(m => m.clerkUserId), ...assignments.map(m => m.clerkUserId)]);
+    const people = await Promise.all([...userIds].map(async clerkUserId => {
+      const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
+      return {
+        role: await readLibraryRole(ctx, access.library, clerkUserId),
+        person: { clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "" },
+      };
+    }));
+    people.sort((a, b) => (a.person.name || a.person.email).localeCompare(b.person.name || b.person.email));
     return {
+      invitations: (await ctx.db.query("evidenceLibraryInvitations").withIndex("by_libraryId_and_email", q => q.eq("libraryId", args.libraryId)).collect())
+        .filter(i => i.state === "pending" && i.expiresAt > Date.now())
+        .map(i => ({ invitationId: i._id, email: i.email, role: i.role, delivery: i.delivery })),
       organizationName: access.organization.name,
-      owners: people.filter((entry) => entry.role === "org:admin").map((entry) => entry.person),
-      editors: people.filter((entry) => entry.role === "org:member").map((entry) => entry.person),
+      owners: people.filter(p => p.role === "owner").map(p => p.person),
+      editors: people.filter(p => p.role === "editor").map(p => p.person),
+      creators: people.filter(p => p.role === "creator").map(p => p.person),
+      availablePeople: people.filter(p => !p.role).map(p => p.person),
     };
   },
 });

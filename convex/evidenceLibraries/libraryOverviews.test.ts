@@ -50,6 +50,8 @@ describe("library overviews", () => {
     expect(settingUp).toEqual([
       {
         _id: libraryId,
+        role: "owner",
+        organization: { name: "Team overview_status", imageUrl: null },
         name: "Climate Evidence",
         publicAddress: "https://climate-evidence-lib.libraries.example.test",
         status: "setting_up",
@@ -106,6 +108,8 @@ describe("library overviews", () => {
     );
     expect(overviews.find((row) => row._id === draft.libraryId)).toEqual({
       _id: draft.libraryId,
+      role: "owner",
+      organization: { name: "Team overview_draft", imageUrl: null },
       name: "Second Library",
       publicAddress: "https://second-library-lib.libraries.example.test",
       status: "draft",
@@ -206,7 +210,7 @@ describe("library overviews", () => {
     ]);
   });
 
-  it("tells the pages whether Evidence Libraries are switched on", async () => {
+  it("keeps the library list available while gating creation with the organization switch", async () => {
     const fixture = await createDraftSetupFixture("overview_switch");
 
     await expect(
@@ -214,7 +218,7 @@ describe("library overviews", () => {
         api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
         {},
       ),
-    ).resolves.toEqual({ enabled: true });
+    ).resolves.toEqual({ enabled: true, canCreate: true });
 
     // The real switch is Clerk public metadata via the webhook; the test flips
     // the projected row directly.
@@ -236,10 +240,10 @@ describe("library overviews", () => {
         api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
         {},
       ),
-    ).resolves.toEqual({ enabled: false });
+    ).resolves.toEqual({ enabled: true, canCreate: false });
   });
 
-  it("answers 'off' when the token role no longer matches the stored role", async () => {
+  it("disables creation when the token role no longer matches the stored role", async () => {
     const fixture = await createDraftSetupFixture("overview_switch_role");
     // The stored membership is an admin; the token claims plain membership.
     const drifted = fixture.t.withIdentity({
@@ -252,7 +256,7 @@ describe("library overviews", () => {
         api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
         {},
       ),
-    ).resolves.toEqual({ enabled: false });
+    ).resolves.toEqual({ enabled: true, canCreate: false });
   });
 
   it("answers 'off' instead of throwing when nobody is signed in", async () => {
@@ -263,7 +267,7 @@ describe("library overviews", () => {
         api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
         {},
       ),
-    ).resolves.toEqual({ enabled: false });
+    ).resolves.toEqual({ enabled: false, canCreate: false });
   });
   it("says which part of a deletion stopped, for each part", async () => {
     const fixture = await createActivatedSetupFixture("overview_teardown");

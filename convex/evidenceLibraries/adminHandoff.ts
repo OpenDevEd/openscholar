@@ -8,7 +8,7 @@ import {
 import type { Doc } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import {
-  mapOrganizationRoleToAdminRole,
+  readLibraryRole,
   type EvidenceLibraryAdminRole,
 } from "./access";
 import { storeIssuedAdminLoginCode } from "./adminLoginCodes";
@@ -77,20 +77,8 @@ async function readAdminHandoffDecision(
     };
   }
 
-  const memberships = await ctx.db
-    .query("organizationMemberships")
-    .withIndex("by_organizationId_and_clerkUserId_and_state", (byMember) =>
-      byMember
-        .eq("organizationId", organization._id)
-        .eq("clerkUserId", clerkUserId)
-        .eq("state", "active"),
-    )
-    .take(2);
-  const membership = memberships.length === 1 ? memberships[0] : null;
-  if (!membership) {
-    return { status: "no_access", organisationName: organization.name };
-  }
-  const role = mapOrganizationRoleToAdminRole(membership.role);
+  const role = await readLibraryRole(ctx, library, clerkUserId);
+  if (!role) return { status: "no_access", organisationName: organization.name };
 
   const targetBaseUrl = await readEvidenceLibraryAdminLaunchTarget(ctx, library);
   if (!targetBaseUrl) {

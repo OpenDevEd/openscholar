@@ -92,3 +92,21 @@ export const redeemAdminLoginCode = httpAction(async (ctx, request) => {
     consumedAt: result.consumedAt,
   });
 });
+
+/** Machine-authenticated revalidation of an already signed runtime session. */
+export const checkAdminSession = httpAction(async (ctx, request) => {
+  const credential = readBearerCredential(request);
+  if (!credential) return jsonResponse(401, { error: "invalid_service_credential" });
+  let body: unknown;
+  try { body = await request.json(); } catch { return jsonResponse(400, { error: "invalid_request" }); }
+  if (!body || typeof body !== "object" || !("libraryId" in body) || !("clerkUserId" in body) ||
+    typeof body.libraryId !== "string" || typeof body.clerkUserId !== "string" ||
+    body.libraryId.length > 128 || body.clerkUserId.length > 512 || !body.clerkUserId) {
+    return jsonResponse(400, { error: "invalid_request" });
+  }
+  const result = await ctx.runQuery(internal.evidenceLibraries.sessionAccess.readSessionAccess, {
+    libraryId: body.libraryId, clerkUserId: body.clerkUserId,
+    credentialDigest: await digestOpaqueToken(credential),
+  });
+  return result ? jsonResponse(200, result) : jsonResponse(403, { error: "access_revoked" });
+});

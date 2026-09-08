@@ -13,7 +13,7 @@ describe("listTeam", () => {
     vi.unstubAllEnvs();
   });
 
-  it("lists organisation admins as owners and members as editors with name and email", async () => {
+  it("lists inherited owners and keeps unassigned organization members outside the library", async () => {
     const fixture = await createActivatedSetupFixture("team");
     const libraryId = fixture.created.libraryId;
     await fixture.t.run(async (ctx) => {
@@ -66,12 +66,42 @@ describe("listTeam", () => {
       fixture.admin.query(api.evidenceLibraries.queries.listTeam, { libraryId }),
     ).resolves.toEqual({
       organizationName: "Team team",
+      invitations: [],
       owners: [{ clerkUserId: "user_team", name: "Ada Lovelace", email: "ada@example.org" }],
-      editors: [
+      editors: [],
+      creators: [],
+      availablePeople: [
         { clerkUserId: "user_new", name: "", email: "" },
         { clerkUserId: "user_editor", name: "Grace", email: "grace@example.org" },
       ],
     });
+  });
+
+  it("grants and revokes a library role without relying on an active organization", async () => {
+    const fixture = await createActivatedSetupFixture("team_grants");
+    const libraryId = fixture.created.libraryId;
+    await fixture.t.run(async ctx => {
+      const library = (await ctx.db.get("evidenceLibraries", libraryId))!;
+      await ctx.db.insert("organizationMemberships", {
+        organizationId: library.organizationId, clerkMembershipId: "orgmem_creator",
+        clerkUserId: "user_creator", role: "org:member", state: "active",
+        clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1,
+      });
+    });
+    const creator = fixture.t.withIdentity({ subject: "user_creator" });
+    expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([]);
+    await fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_creator", role: "creator" });
+    expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([
+      expect.objectContaining({ _id: libraryId, role: "creator" }),
+    ]);
+    await expect(creator.query(api.evidenceLibraries.queries.listTeam, { libraryId })).rejects.toThrow();
+    await expect(creator.mutation(api.evidenceLibraries.team.changeRole, { libraryId, clerkUserId: "user_creator", role: "editor" })).rejects.toThrow();
+    await fixture.admin.mutation(api.evidenceLibraries.team.changeRole, { libraryId, clerkUserId: "user_creator", role: "editor" });
+    expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([
+      expect.objectContaining({ _id: libraryId, role: "editor" }),
+    ]);
+    await fixture.admin.mutation(api.evidenceLibraries.team.removeMember, { libraryId, clerkUserId: "user_creator" });
+    expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([]);
   });
 
   it("refuses a library from another organisation", async () => {
