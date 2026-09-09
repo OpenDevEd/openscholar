@@ -19,7 +19,6 @@ export async function requireFeature(
   flagKey: string,
   userId?: Id<"users">,
 ): Promise<void> {
-  if (flagKey === "extraction.enabled") await requireOrganizationFeature(ctx, "extraction");
   const flag = await ctx.db
     .query("featureFlags")
     .withIndex("by_key", (q) => q.eq("key", flagKey))
@@ -28,6 +27,8 @@ export async function requireFeature(
   if (!flag || !flag.enabled) {
     throw createError("FEATURE_DISABLED", `Feature "${flagKey}" is disabled`);
   }
+
+  if (flagKey === "extraction.enabled") await requireOrganizationFeature(ctx, "extraction");
 
   if (flag.minimumTier > 0) {
     if (!userId) {

@@ -1,3 +1,4 @@
+import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 /**
  * Integration tests for the chatPapers bridge-table lifecycle (plan-01).
  *
@@ -46,6 +47,7 @@ async function seedFlags(
   flags: { chat?: boolean } = {},
 ): Promise<void> {
   await t.run(async (ctx) => {
+    await seedOrganizationFeatures(ctx, ["clerk_chatpapers"], { extraction: true });
     const now = Date.now();
     await ctx.db.insert("featureFlags", {
       key: "extraction.enabled",

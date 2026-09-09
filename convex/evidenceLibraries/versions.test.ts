@@ -1,3 +1,4 @@
+import { seedFeatureUser } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
@@ -622,7 +623,7 @@ describe("Evidence Library versions", () => {
         activeRevisionId: fixture.activated.revisionId,
         activeDeploymentOperationId: fixture.created.setupOperationId,
       });
-      await ctx.db.insert("users", {
+      await ctx.db.patch("users", await seedFeatureUser(ctx, fixture.clerkUserId), {
         clerkId: fixture.clerkUserId,
         email: "owner@example.test",
         firstName: "Ada",
