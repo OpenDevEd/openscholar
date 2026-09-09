@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
+import { applyUserDeleteProjection } from "../users/internal";
 import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
 describe("listTeam", () => {
@@ -102,6 +103,21 @@ describe("listTeam", () => {
     ]);
     await fixture.admin.mutation(api.evidenceLibraries.team.removeMember, { libraryId, clerkUserId: "user_creator" });
     expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([]);
+  });
+
+  it("removes deleted users' grants and never offers them as organization candidates", async () => {
+    const fixture = await createActivatedSetupFixture("deleted_team_user");
+    const libraryId = fixture.created.libraryId;
+    await fixture.t.run(async ctx => {
+      const library = (await ctx.db.get("evidenceLibraries", libraryId))!;
+      await ctx.db.insert("users", {clerkId: "deleted_user", email: "deleted@example.org", state: "active", createdAt: 1, updatedAt: 1});
+      await ctx.db.insert("organizationMemberships", {organizationId: library.organizationId, clerkMembershipId: "deleted_membership", clerkUserId: "deleted_user", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
+      await ctx.db.insert("evidenceLibraryMembers", {libraryId, clerkUserId: "deleted_user", role: "creator", grantedBy: "owner", grantedAt: 1});
+      await applyUserDeleteProjection(ctx, {entityId: "deleted_user", entityType: "user", clerkId: "deleted_user", eventId: "delete-user", eventType: "user.deleted", instanceId: "instance", occurredAt: 2, processedAt: 2, payloadSha256: "a".repeat(64)});
+    });
+    const team = await fixture.admin.query(api.evidenceLibraries.queries.listTeam, {libraryId});
+    expect([...team.creators, ...team.availablePeople].map(person => person.clerkUserId)).not.toContain("deleted_user");
+    expect(await fixture.t.run(ctx => ctx.db.query("evidenceLibraryMembers").withIndex("by_clerkUserId", q => q.eq("clerkUserId", "deleted_user")).collect())).toEqual([]);
   });
 
   it("refuses a library from another organisation", async () => {

@@ -1,4 +1,5 @@
 import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
+import { readConvexErrorData } from "../lib/errors";
 import { httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
@@ -80,9 +81,17 @@ export const checkAdminSession = httpAction(async (ctx, request) => {
     body.libraryId.length > 128 || body.clerkUserId.length > 512 || !body.clerkUserId) {
     return jsonResponse(400, { error: "invalid_request" });
   }
-  const result = await ctx.runQuery(internal.evidenceLibraries.sessionAccess.readSessionAccess, {
-    libraryId: body.libraryId, clerkUserId: body.clerkUserId,
-    credentialDigest: await digestOpaqueToken(credential),
-  });
-  return result ? jsonResponse(200, result) : jsonResponse(403, { error: "access_revoked" });
+  try {
+    const result = await ctx.runQuery(internal.evidenceLibraries.sessionAccess.readSessionAccess, {
+      libraryId: body.libraryId, clerkUserId: body.clerkUserId,
+      credentialDigest: await digestOpaqueToken(credential),
+    });
+    return result ? jsonResponse(200, result) : jsonResponse(403, { error: "access_revoked" });
+  } catch (error) {
+    if (readConvexErrorData(error)?.code === "UNAUTHENTICATED") {
+      return jsonResponse(401, { error: "invalid_service_credential" });
+    }
+    console.error("Library session check failed", {libraryId: body.libraryId, error});
+    return jsonResponse(503, { error: "session_check_unavailable" });
+  }
 });

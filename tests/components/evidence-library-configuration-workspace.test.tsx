@@ -63,6 +63,9 @@ vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
       queries: { getDraft: "getDraft", listTeam: "listTeam" },
+      team: { addOrganizationMember: "addOrganizationMember", changeRole: "changeRole", removeMember: "removeMember" },
+      invitations: { change: "changeInvitation" },
+      invitationActions: { invite: "inviteMember" },
       credentials: { listCredentialMetadata: "listCredentialMetadata" },
       credentialActions: { writeCredential: "writeCredential" },
       aiProviderKey: { removeAiProviderKey: "removeAiProviderKey" },
@@ -167,7 +170,7 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
           ? { data: storedCredentials, isReady: true }
           : query === "listTeam"
             ? {
-                data: { organizationName: "Test Org", owners: [], editors: [] },
+                data: { organizationName: "Test Org", owners: [], editors: [], creators: [], invitations: [], availablePeople: [] },
                 isReady: true,
               }
             : query === "listDomains"

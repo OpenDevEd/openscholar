@@ -83,3 +83,14 @@ export function createError(
   if (extra) Object.assign(data, extra);
   return new ConvexError(data as ErrorData);
 }
+
+/** Convex serializes error data when one function calls another. */
+export function readConvexErrorData(error: unknown): {code: string; message?: string} | null {
+  if (!(error instanceof ConvexError)) return null;
+  let data: unknown = error.data;
+  if (typeof data === "string") {
+    try { data = JSON.parse(data); } catch { return null; }
+  }
+  if (!data || typeof data !== "object" || !("code" in data) || typeof data.code !== "string") return null;
+  return {code: data.code, ...("message" in data && typeof data.message === "string" ? {message: data.message} : {})};
+}

@@ -1,6 +1,7 @@
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
+import { createError } from "../lib/errors";
 import { findMatchingLibraryServiceCredential } from "./credentials";
 import { readLibraryRole } from "./access";
 import { evidenceLibraryAdminRoleValidator } from "./validators";
@@ -13,9 +14,9 @@ export const readSessionAccess = internalQuery({
 
 export async function readLibrarySessionAccess(ctx: QueryCtx | MutationCtx, args: {libraryId: string; clerkUserId: string; credentialDigest: string}) {
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
-    if (!libraryId) return null;
+    if (!libraryId) throw createError("UNAUTHENTICATED", "Invalid library service credential");
     const credential = await findMatchingLibraryServiceCredential(ctx, { libraryId, credentialDigest: args.credentialDigest });
-    if (!credential) return null;
+    if (!credential) throw createError("UNAUTHENTICATED", "Invalid library service credential");
     const library = await ctx.db.get("evidenceLibraries", libraryId);
     if (!library || library.state === "disabled") return null;
     const role = await readLibraryRole(ctx, library, args.clerkUserId);

@@ -238,7 +238,7 @@ describe("Evidence Library admin login redemption", () => {
     let response = await check();
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ role: "creator" });
-    expect((await check(secondLibraryId)).status).toBe(403);
+    expect((await check(secondLibraryId)).status).toBe(401);
     await owner.mutation(api.evidenceLibraries.team.changeRole, { libraryId, clerkUserId: "external_creator", role: "editor" });
     response = await check();
     expect(await response.json()).toEqual({ role: "editor" });
