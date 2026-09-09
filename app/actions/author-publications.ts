@@ -23,9 +23,9 @@ const readCard = unstable_cache(async (libraryId: string, itemKey: string, baseU
   return cardSchema.parse(body.item);
 }, ["author-publication-card"], {revalidate: 60});
 
-export async function readAuthorPublications(profileId: Id<"authorProfiles">): Promise<AuthorPublication[]> {
+export async function readAuthorPublications(profileId: Id<"authorProfiles">): Promise<{papers: AuthorPublication[]; unavailableCount: number}> {
   const references = await fetchQuery(api.authors.publications.list, {profileId});
-  const cards = await Promise.all(references.map(async reference => {
+  const cards = await Promise.allSettled(references.map(async reference => {
     const card = await readCard(reference.library.id, reference.itemKey, reference.library.url);
     if (!card) return null;
     return {
@@ -38,5 +38,16 @@ export async function readAuthorPublications(profileId: Id<"authorProfiles">): P
       library: reference.library,
     } satisfies AuthorPublication;
   }));
-  return cards.filter(card => card !== null);
+  const papers: AuthorPublication[] = [];
+  let unavailableCount = 0;
+  for (const [index, result] of cards.entries()) {
+    if (result.status === "rejected") {
+      unavailableCount++;
+      console.error("Author publication could not be loaded", {
+        profileId, libraryId: references[index].library.id,
+        itemKey: references[index].itemKey, error: result.reason,
+      });
+    } else if (result.value) papers.push(result.value);
+  }
+  return { papers, unavailableCount };
 }

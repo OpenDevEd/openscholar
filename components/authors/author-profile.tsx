@@ -16,7 +16,7 @@ export function AuthorProfileView({profileId, configuration = false}: {profileId
   const convex = useConvex();
   const record = useQuery(api.authors.profiles.get, {profileId});
   const references = useQuery(api.authors.publications.list, {profileId});
-  const publications = useSWR(references ? ["author-publications", profileId, JSON.stringify(references)] : null, () => readAuthorPublications(profileId));
+  const publications = useSWR(references ? ["author-publications", profileId, JSON.stringify(references)] : null, () => readAuthorPublications(profileId), {refreshInterval: data => data?.unavailableCount ? 15000 : 0});
   const save = useAction(api.authors.photos.save);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
@@ -35,7 +35,7 @@ export function AuthorProfileView({profileId, configuration = false}: {profileId
   };
   return <AuthorPage key={`${record._id}:${configuration}`} profile={profile} configuration={configuration}
     canEdit={Boolean(record.role)} accessSection={configuration && record.role === "owner" ? <ProfileAccess profileId={profileId} /> : null}
-    papers={publications.data ?? []} publicationStatus={publications.error ? "Publications could not be loaded. Try again shortly." : publications.isLoading ? "Loading publications…" : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
+    papers={publications.data?.papers ?? []} publicationStatus={publications.error ? "Publications could not be loaded. Try again shortly." : publications.isLoading ? "Loading publications…" : publications.data?.unavailableCount ? "Some publications could not be loaded. Try again shortly." : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
     openAlexError={authors.error || match.error || works.error ? "OpenAlex is unavailable. Try again." : null}
     onSearchAuthors={value => { setSearch(value); if (value === search) void authors.mutate(); }}
     hasMoreWorks={(works.data?.flatMap(page => page.results).length ?? 0) < (works.data?.[0]?.meta.count ?? 0)}

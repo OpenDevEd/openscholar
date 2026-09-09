@@ -525,7 +525,7 @@ export default function AuthorPage({
                       </span>
                     </label>
                   ))}
-                  {!papers.length && (
+                  {(publicationStatus || !papers.length) && (
                     <p className="py-3 text-sm text-muted-foreground">
                       {publicationStatus ?? "No published works are linked to this author yet."}
                     </p>
@@ -849,7 +849,7 @@ export default function AuthorPage({
                         </Button>
                       </article>
                     ))}
-                    {!filtered.length && (
+                    {(publicationStatus || !filtered.length) && (
                       <p className="p-6 text-center text-sm text-muted-foreground">
                         {publicationStatus ?? (featured.length
                           ? "No publications match your search."
