@@ -23,4 +23,3 @@ export function readBearerCredential(request: Request): string | null {
     ? credential
     : null;
 }
-
