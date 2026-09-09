@@ -63,7 +63,7 @@ export type PlatformMailService = {
 };
 
 export const PLATFORM_MAIL_MISSING_MESSAGE =
-  "Contact and takedown emails need the platform mail service, which is not set up yet. Remove the recipients or ask support.";
+  "Email delivery needs the platform mail service, which is not set up yet. Disable email updates and remove recipients, or ask support.";
 
 const BRAND_ASSET_KEYS = ["logoDark", "favicon"] as const;
 
@@ -250,6 +250,8 @@ export function assembleEvidenceLibraryConfiguration({
       identity,
       email,
       services: {
+        // Every managed runtime has this private Compose service.
+        redis: { url: "redis://redis:6379" },
         database: { url: managed.databaseUrl },
         search: {
           host: managed.searchHost,
@@ -331,7 +333,7 @@ export function assembleEvidenceLibraryConfiguration({
   // The runtime refuses to start when recipients exist without a mail
   // server. Catch it here so setup stops before anything is created.
   const mailIssues: ValidationIssue[] =
-    !managed.mail && emailWantsPlatformMail(email)
+    !managed.mail && (emailWantsPlatformMail(email) || (isObject(owner.notifications) && owner.notifications.enabled === true))
       ? [
           {
             pointer: "/email/smtp/host",

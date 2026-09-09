@@ -186,6 +186,13 @@ export const SECTION_REGISTRY = [
     authority: "catalogDerived",
   },
   {
+    key: "notifications",
+    pointer: "/notifications",
+    label: "Email updates",
+    description: "Reader subscriptions and weekly digest schedule.",
+    authority: "ownerEdited",
+  },
+  {
     key: "generation",
     pointer: "/generation",
     label: "Generation",

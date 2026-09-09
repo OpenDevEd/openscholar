@@ -66,6 +66,7 @@ const savedRows = [
     payload: { takedownRecipient: "takedown@example.org" },
   },
   { sectionKey: "legal", payload: {} },
+  { sectionKey: "notifications", payload: {} },
   { sectionKey: "collections", payload: [] },
   { sectionKey: "search", payload: {} },
   { sectionKey: "filters", payload: {} },
@@ -1436,5 +1437,18 @@ describe("the analytics fields the runtime gained", () => {
         },
       },
     ]);
+  });
+});
+
+describe("notification configuration", () => {
+  it("saves and resets the schedule with the contact section and rejects invalid schedules", () => {
+    const draft = savedDraft();
+    draft.notifications = {enabled: true, weekly: {weekday: 5, time: "16:30", timezone: "Europe/London"}};
+    expect(changedSectionRows(draft, savedRows)).toEqual([{sectionKey: "notifications", payload: draft.notifications}]);
+    expect(resetSection(draft, savedRows, "contact").notifications).toEqual(savedDraft().notifications);
+    expect(sectionProblems(draft, "contact")).toEqual([]);
+    draft.notifications.weekly.timezone = "Not/AZone";
+    expect(sectionProblems(draft, "contact")).toContain("notificationSchedule");
+    expect(hasProblems(draft)).toBe(true);
   });
 });
