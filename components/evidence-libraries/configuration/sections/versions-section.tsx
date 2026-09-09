@@ -5,7 +5,7 @@ import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { History, RefreshCw } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { Suspense, use, useState, type ReactNode } from "react";
+import { Suspense, use, useDeferredValue, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -74,8 +74,8 @@ type CheckAction = (args: { libraryId: Id<"evidenceLibraries"> }) => Promise<Run
  * One update check per page open, shared with `use()` across renders. The
  * outer key is the action callback, which Convex creates once per mounted
  * section, so opening the page again checks again and Strict Mode's second
- * render reuses the first call. "Check again" and a started update replace
- * the entry.
+ * render reuses the first call. Each refresh uses a new key so React observes
+ * the new promise instead of retaining the previous result.
  */
 const runtimeChecks = new WeakMap<CheckAction, Map<string, Promise<RuntimeCheck>>>();
 
@@ -84,7 +84,6 @@ function runtimeCheck(
   libraryId: Id<"evidenceLibraries">,
   refreshKey: string,
   fallback: string,
-  { fresh = false } = {},
 ): Promise<RuntimeCheck> {
   let byLibrary = runtimeChecks.get(check);
   if (!byLibrary) {
@@ -93,7 +92,7 @@ function runtimeCheck(
   }
   const cacheKey = `${libraryId}:${refreshKey}`;
   const cached = byLibrary.get(cacheKey);
-  if (cached && !fresh) return cached;
+  if (cached) return cached;
   const promise = settle(check({ libraryId }), fallback);
   byLibrary.set(cacheKey, promise);
   return promise;
@@ -145,13 +144,15 @@ export function VersionsSection({
     null;
 
   // Opening the page checks for updates once; "Check again" asks once more.
-  const [, setCheckCount] = useState(0);
+  const [checkCount, setCheckCount] = useState(0);
   const checkError = t("versions.checkError");
   const checkPromise = live
-    ? runtimeCheck(check, libraryId, refreshKey, checkError)
+    ? runtimeCheck(check, libraryId, `${refreshKey}:${checkCount}`, checkError)
     : null;
+  // Keep the last result visible while a manual or post-update check suspends.
+  const deferredCheckPromise = useDeferredValue(checkPromise);
+  const checking = checkPromise !== deferredCheckPromise;
   const [busy, setBusy] = useState(false);
-  const [checking, setChecking] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [restoring, setRestoring] = useState<VersionRow | null>(null);
@@ -159,16 +160,7 @@ export function VersionsSection({
   const blocked = busy || checking || operationRunning;
 
   function checkAgain() {
-    if (checking) return;
-    setChecking(true);
-    const request = runtimeCheck(check, libraryId, refreshKey, checkError, {
-      fresh: true,
-    });
     setCheckCount((count) => count + 1);
-    void Promise.all([
-      request,
-      new Promise((resolve) => setTimeout(resolve, 500)),
-    ]).then(() => setChecking(false));
   }
 
   function confirmUpdate() {
@@ -176,7 +168,6 @@ export function VersionsSection({
     setBusy(true);
     void startRuntimeUpdate({ libraryId })
       .then((result) => {
-        checkAgain();
         toast(t("versions.updateStarted"), {
           description: t("versions.updateStartedDescription", {
             rev: shortCommit(result.to),
@@ -278,7 +269,7 @@ export function VersionsSection({
             }
           >
             <SoftwarePanel
-              promise={checkPromise}
+              promise={deferredCheckPromise ?? checkPromise}
               blocked={blocked}
               onUpdate={() => setUpdateOpen(true)}
               checkAgain={
@@ -287,13 +278,11 @@ export function VersionsSection({
                   variant="ghost"
                   size="sm"
                   onClick={checkAgain}
-                  disabled={busy || operationRunning}
+                  disabled={blocked}
                   aria-busy={checking}
-                  aria-disabled={checking || undefined}
-                  className="aria-disabled:pointer-events-none aria-disabled:opacity-50"
                 >
                   {checking ? <Spinner aria-hidden="true" /> : <RefreshCw />}
-                  {t(checking ? "versions.checking" : "versions.checkAgain")}
+                  {t("versions.checkAgain")}
                 </Button>
               }
             />

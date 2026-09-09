@@ -220,34 +220,52 @@ describe("<VersionsSection>", () => {
     expect(screen.queryByRole("button", { name: "versions.update" })).toBeNull();
   });
 
-  it("shows feedback for at least 500 ms while checking again", async () => {
+  it("keeps the previous release visible and blocks actions until a fresh check settles", async () => {
     await renderSection();
-    vi.useFakeTimers();
+    const next = {
+      running: "aaaaaaa1234",
+      latest: "ccccccc1234",
+      changes: [{ sha: "ccccccc1234", message: "Updated search" }],
+      releases: [],
+      checkedAt: Date.UTC(2026, 7, 26, 13, 0),
+    };
+    let resolve!: (value: typeof next) => void;
+    mocks.check.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
 
     await act(async () => {
-      fireEvent.click(
-        screen.getByRole("button", { name: "versions.checkAgain" }),
-      );
-      await Promise.resolve();
+      fireEvent.click(screen.getByRole("button", { name: "versions.checkAgain" }));
     });
-    expect(
-      screen.getByRole("button", { name: "versions.checking" }),
-    ).toHaveAttribute("aria-disabled", "true");
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(499);
-    });
-    expect(
-      screen.getByRole("button", { name: "versions.checking" }),
-    ).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByText("Faster search")).toBeVisible();
+    expect(screen.queryByText("versions.checking")).toBeNull();
+    expect(screen.getByRole("button", { name: "versions.checkAgain" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "versions.update" })).toBeDisabled();
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1);
-    });
-    expect(
-      screen.getByRole("button", { name: "versions.checkAgain" }),
-    ).toBeEnabled();
-    vi.useRealTimers();
+    await act(async () => { resolve(next); });
+
+    expect(screen.getByText("Updated search")).toBeVisible();
+    expect(screen.queryByText("Faster search")).toBeNull();
+    expect(screen.getByRole("button", { name: "versions.checkAgain" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "versions.update" })).toBeEnabled();
+  });
+
+  it("shows the loading panel only before the first release result arrives", async () => {
+    const state = {
+      running: "aaaaaaa1234",
+      latest: "aaaaaaa1234",
+      changes: [],
+      releases: [],
+      checkedAt: 1,
+    };
+    let resolve!: (value: typeof state) => void;
+    mocks.check.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    await renderSection();
+    expect(screen.getByText("versions.checking")).toBeVisible();
+
+    await act(async () => { resolve(state); });
+
+    expect(screen.getByText("versions.upToDate")).toBeVisible();
+    expect(screen.queryByText("versions.checking")).toBeNull();
   });
 
   it("marks the live row and offers Restore only on previous and failed rows", async () => {
@@ -368,52 +386,43 @@ describe("<VersionsSection>", () => {
     expect(screen.getByText("versions.notRunning")).toBeInTheDocument();
   });
 
-  it("checks again when a runtime update finishes", async () => {
-    mocks.check
-      .mockResolvedValueOnce({
-        running: "old-commit",
-        latest: "new-commit",
-        changes: [],
-        releases: [],
-        checkedAt: 1,
-      })
-      .mockResolvedValueOnce({
-        running: "new-commit",
-        latest: "new-commit",
-        changes: [],
-        releases: [],
-        checkedAt: 2,
-      });
-
+  it("keeps the release and disabled actions through an update and its final check", async () => {
+    const updated = {
+      running: "bbbbbbb1234",
+      latest: "bbbbbbb1234",
+      changes: [],
+      releases: [],
+      checkedAt: 2,
+    };
+    const props = {
+      libraryId: "library_123" as never,
+      live: true,
+      operationRunning: true,
+      refreshKey: "base",
+    };
     let rerender!: ReturnType<typeof render>["rerender"];
     await act(async () => {
-      ({ rerender } = render(
-        <VersionsSection
-          libraryId={"library_123" as never}
-          live
-          operationRunning
-          refreshKey="base"
-        />,
-      ));
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      ({ rerender } = render(<VersionsSection {...props} />));
     });
-    expect(screen.getByText("versions.updateAvailable")).toBeInTheDocument();
+    expect(screen.getByText("Faster search")).toBeVisible();
+    expect(screen.getByRole("button", { name: "versions.update" })).toBeDisabled();
 
+    let resolve!: (value: typeof updated) => void;
+    mocks.check.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
     await act(async () => {
-      rerender(
-        <VersionsSection
-          libraryId={"library_123" as never}
-          live
-          operationRunning={false}
-          refreshKey="runtime-update-succeeded"
-        />,
-      );
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      rerender(<VersionsSection {...props} operationRunning={false} refreshKey="runtime-update-succeeded" />);
     });
 
-    expect(screen.getByText("versions.upToDate")).toBeInTheDocument();
+    expect(screen.getByText("Faster search")).toBeVisible();
+    expect(screen.queryByText("versions.checking")).toBeNull();
+    expect(screen.getByRole("button", { name: "versions.update" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "versions.checkAgain" })).toBeDisabled();
+
+    await act(async () => { resolve(updated); });
+
+    expect(screen.getByText("versions.upToDate")).toBeVisible();
     expect(screen.queryByRole("button", { name: "versions.update" })).toBeNull();
-    expect(mocks.check).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("button", { name: "versions.checkAgain" })).toBeEnabled();
   });
 
 });
