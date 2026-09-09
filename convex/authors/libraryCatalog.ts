@@ -4,7 +4,7 @@ import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { readLibrarySessionAccess } from "../evidenceLibraries/sessionAccess";
 import { createError } from "../lib/errors";
 import { profileRoleForUser } from "./access";
-import { cleanContent } from "./profiles";
+import { createProfile } from "./profiles";
 
 const serviceArgs = {libraryId: v.string(), clerkUserId: v.string(), credentialDigest: v.string()};
 async function requireLibraryUser(ctx: QueryCtx | MutationCtx, args: {libraryId: string; clerkUserId: string; credentialDigest: string}) {
@@ -32,22 +32,11 @@ export const search = internalQuery({
   },
 });
 
-export const save = internalMutation({
-  args: {...serviceArgs, profileId: v.optional(v.string()), expectedRevision: v.optional(v.number()),
-    name: v.string(), affiliation: v.string(), bio: v.string(), website: v.string(), orcid: v.string()},
+export const create = internalMutation({
+  args: {...serviceArgs, name: v.string()},
+  returns: v.id("authorProfiles"),
   handler: async (ctx, args) => {
     const user = await requireLibraryUser(ctx, args);
-    const id = args.profileId ? ctx.db.normalizeId("authorProfiles", args.profileId) : null;
-    const profile = id ? await ctx.db.get("authorProfiles", id) : null;
-    if (args.profileId && !profile) throw createError("NOT_FOUND", "Author profile not found");
-    if (profile && !await profileRoleForUser(ctx, profile, user._id)) throw createError("FORBIDDEN", "Profile edit access required");
-    if (profile && profile.revision !== args.expectedRevision) throw createError("CONFLICT", "The author profile changed. Reload it before saving.");
-    const content = cleanContent({name: args.name, affiliation: args.affiliation, bio: args.bio, website: args.website, orcid: args.orcid,
-      headline: profile?.headline ?? "", linkedin: profile?.linkedin ?? "", openalex: profile?.openalex ?? ""});
-    if (profile) {
-      await ctx.db.patch("authorProfiles", profile._id, {...content, revision: profile.revision+1, updatedAt: Date.now()});
-      return profile._id;
-    }
-    return await ctx.db.insert("authorProfiles", {...content, ownerId: user._id, revision: 1, updatedAt: Date.now()});
+    return await createProfile(ctx, user._id, args.name);
   },
 });

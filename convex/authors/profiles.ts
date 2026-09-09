@@ -30,12 +30,16 @@ export function cleanContent(content: { [K in keyof typeof authorContentFields]:
   return next;
 }
 
+export async function createProfile(ctx: MutationCtx, ownerId: Id<"users">, name: string) {
+  const content = cleanContent({name, headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: ""});
+  return await ctx.db.insert("authorProfiles", {...content, ownerId, revision: 1, updatedAt: Date.now()});
+}
+
 export const create = mutation({
   args: {name: v.string()},
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
-    const content = cleanContent({name: args.name, headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: ""});
-    return await ctx.db.insert("authorProfiles", {...content, ownerId: user._id, revision: 1, updatedAt: Date.now()});
+    return await createProfile(ctx, user._id, args.name);
   },
 });
 
