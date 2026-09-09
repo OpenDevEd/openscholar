@@ -173,19 +173,31 @@ export async function fetchRecommendedRuntimeRelease(input: {
     token,
     `/repos/${RUNTIME_REPOSITORY}/releases?per_page=${MAX_RELEASES}`,
   );
-  // GitHub lists releases newest first.
-  const releases: RuntimeReleaseNotes[] = [];
+  const published: { publishedAt: number; release: RuntimeReleaseNotes }[] = [];
   if (response.status === 200 && Array.isArray(response.body)) {
     for (const entry of response.body) {
-      if (!isRecord(entry) || entry.draft === true) continue;
+      if (!isRecord(entry) || entry.draft === true || entry.prerelease === true)
+        continue;
       const commit =
         typeof entry.tag_name === "string"
           ? RUNTIME_RELEASE_TAG.exec(entry.tag_name)?.[1]
           : undefined;
       if (!commit) continue;
-      releases.push({ commit, ...parseReleaseNotes(entry.body) });
+      const publishedAt =
+        typeof entry.published_at === "string"
+          ? Date.parse(entry.published_at)
+          : NaN;
+      if (!Number.isFinite(publishedAt)) continue;
+      published.push({
+        publishedAt,
+        release: { commit, ...parseReleaseNotes(entry.body) },
+      });
     }
   }
+  // The API can list an older release first. Use publication dates.
+  const releases = published
+    .sort((a, b) => b.publishedAt - a.publishedAt)
+    .map(({ release }) => release);
   const newest = releases[0];
   if (!newest) {
     throw new RuntimeReleaseError(

@@ -110,17 +110,28 @@ function createGithub(input: {
         if (input.releasesStatus && input.releasesStatus !== 200) {
           return jsonResponse({ message: "Not Found" }, input.releasesStatus);
         }
-        // Newest first, as GitHub lists them. The draft and the foreign tag
-        // are skipped, and the release the library already runs is older
-        // than the running commit's range.
+        // GitHub can put an older release first. Publication dates determine
+        // the newest stable runtime, regardless of response order.
         return jsonResponse([
           { tag_name: `runtime-${"9".repeat(40)}`, draft: true, body: "Draft" },
           { tag_name: "v1.0.0", draft: false, body: "Not a runtime release" },
-          { tag_name: `runtime-${input.latest}`, draft: false, body: LATEST_NOTES },
           {
             tag_name: `runtime-${RUNNING}`,
             draft: false,
+            published_at: "2026-09-08T10:00:00Z",
             body: "Older notes.\n\n- Records: Older note.\n",
+          },
+          {
+            tag_name: `runtime-${"8".repeat(40)}`,
+            prerelease: true,
+            published_at: "2026-09-10T10:00:00Z",
+            body: "Not ready",
+          },
+          {
+            tag_name: `runtime-${input.latest}`,
+            draft: false,
+            published_at: "2026-09-09T10:00:00Z",
+            body: LATEST_NOTES,
           },
         ]);
       }
@@ -178,7 +189,7 @@ describe("Evidence Library software release lookup", () => {
     );
   });
 
-  it("lists the notes of each newer release and the commits behind them", async () => {
+  it("selects the newest stable release even when an older release is listed first", async () => {
     const github = createGithub({ latest: LATEST });
     await expect(
       fetchRuntimeRelease({

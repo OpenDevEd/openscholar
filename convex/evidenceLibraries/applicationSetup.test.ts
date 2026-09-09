@@ -242,6 +242,7 @@ describe("Evidence Library application setup", () => {
             {
               tag_name: `runtime-${LATEST_RUNTIME_COMMIT}`,
               draft: false,
+              published_at: "2026-09-09T10:00:00Z",
               body: "Search is faster.\n\n- Speed: Search results load faster.\n",
             },
           ]);
