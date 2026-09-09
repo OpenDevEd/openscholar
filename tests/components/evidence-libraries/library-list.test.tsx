@@ -3,12 +3,13 @@ import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
-const mocks = vi.hoisted(() => ({ query: vi.fn(), reserve: vi.fn(), respond: vi.fn(), push: vi.fn() }));
+const mocks = vi.hoisted(() => ({ query: vi.fn(), reserve: vi.fn(), respond: vi.fn(), restart: vi.fn(), push: vi.fn() }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock("@clerk/nextjs", () => ({ useOrganization: () => ({ organization: { name: "Research team" } }) }));
-vi.mock("convex/react", () => ({ useAction: (name: string) => name === "reserve" ? mocks.reserve : mocks.respond }));
+vi.mock("convex/react", () => ({ useMutation: () => mocks.restart, useAction: (name: string) => name === "reserve" ? mocks.reserve : mocks.respond }));
 vi.mock("@/convex/_generated/api", () => ({ api: { evidenceLibraries: {
+  teardown: { restartDevelopmentTeardown: "restart" },
   queries: { listLibraryOverviews: "libraries", getEvidenceLibrariesAccess: "access" },
   invitations: { listMine: "invitations" }, invitationActions: { respond: "respond" }, addressActions: { reserveAddress: "reserve" },
 } } }));
@@ -28,6 +29,18 @@ describe("Library access list", () => {
       if (role === "owner") expect(row.getByRole("link", { name: "Configure" })).toHaveAttribute("href", "/evidence-libraries/owner/configuration");
       else expect(row.queryByRole("link", { name: "Configure" })).not.toBeInTheDocument();
     }
+  });
+  it("keeps setup and failed-deletion recovery in the owner row", async () => {
+    const rows = [
+      {...libraries[0], _id: "setup", name: "Setting up", status: "setup_failed"},
+      {...libraries[0], _id: "delete", name: "Deleting library", status: "deleting", teardownFailedStep: "database"},
+    ];
+    mocks.query.mockImplementation((name: string) => ({data: name === "libraries" ? rows : name === "access" ? {enabled: true, canCreate: true} : []}));
+    mocks.restart.mockResolvedValue({status: "queued"});
+    render(<LibraryList />);
+    expect(screen.getByRole("link", {name: "View setup"})).toHaveAttribute("href", "/evidence-libraries/setup/setup");
+    await userEvent.setup().click(screen.getByRole("button", {name: "Retry deletion"}));
+    expect(mocks.restart).toHaveBeenCalledWith({libraryId: "delete"});
   });
   it("prevents repeated creation while pending and exposes failure inside the still-open dialog", async () => {
     let reject!: (reason: Error) => void;

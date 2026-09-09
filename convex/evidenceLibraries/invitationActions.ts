@@ -29,7 +29,7 @@ export const invite = action({
       await transport.sendMail({
         from: mail.from, to: invitation.email,
         subject: `Invitation to ${invitation.libraryName}`,
-        text: `You have been invited to ${invitation.libraryName} as an ${invitation.role}.\n\nSign in with ${invitation.email} and accept the invitation:\n${new URL("/evidence-libraries", origin)}\n\nThis invitation expires in seven days. It grants access to this library only.`,
+        text: `You have been invited to ${invitation.libraryName} with the ${invitation.role} role.\n\nSign in with ${invitation.email} and accept the invitation:\n${new URL("/evidence-libraries", origin)}\n\nThis invitation expires in seven days. It grants access to this library only.`,
       });
     } catch (error) {
       console.error("Library invitation email failed", { invitationId, error });

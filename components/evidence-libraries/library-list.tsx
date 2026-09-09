@@ -1,6 +1,6 @@
 "use client";
 
-import { useAction } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { useOrganization } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
@@ -23,6 +23,7 @@ import {
   Settings2,
   MoreHorizontal,
   ShieldCheck,
+  RotateCcw,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,7 @@ type Library = {
   address: string;
   pending?: boolean;
   draft?: boolean;
+  deletionFailed?: boolean;
   configuration?: string;
 };
 function OrganizationAvatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
@@ -97,10 +99,12 @@ export function LibraryList() {
   const overviews = useProtectedQuery(api.evidenceLibraries.queries.listLibraryOverviews, {});
   const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listMine, {});
   const respond = useAction(api.evidenceLibraries.invitationActions.respond);
+  const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
+  const [retrying, setRetrying] = useState<string | null>(null);
   const reserve = useAction(api.evidenceLibraries.addressActions.reserveAddress);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator" } as const;
   const libraries: Library[] = [
-    ...(overviews.data ?? []).map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) })),
+    ...(overviews.data ?? []).map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) })),
     ...(invitations.data ?? []).map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true })),
   ];
   const [view, setView] = useState<"libraries" | "invitations">("libraries");
@@ -320,9 +324,22 @@ export function LibraryList() {
                       </Button>
                     </>
                   ) : library.draft ? (
-                    <span className="text-xs text-muted-foreground">
-                      Setup pending
-                    </span>
+                    library.role !== "Owner" || (library.status === "deleting" && !library.deletionFailed) ? (
+                      <span className="text-xs text-muted-foreground">{library.status === "deleting" ? "Deleting" : "Setup pending"}</span>
+                    ) : library.status === "deleting" ? (
+                      <Button size="sm" variant="outline" disabled={retrying === library.id} onClick={async () => {
+                        setRetrying(library.id);
+                        try { await restartTeardown({libraryId: library.id as Id<"evidenceLibraries">}); setNotice(`Deletion restarted for ${library.name}.`); }
+                        catch (error) { setNotice(error instanceof Error ? error.message : "Could not restart deletion"); }
+                        finally { setRetrying(null); }
+                      }}><RotateCcw />Retry deletion</Button>
+                    ) : (
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={library.status === "draft" ? library.configuration! : `/evidence-libraries/${library.id}/setup`}>
+                          <Settings2 />{library.status === "draft" ? "Configure" : "View setup"}
+                        </Link>
+                      </Button>
+                    )
                   ) : (
                     <ButtonGroup aria-label={`Actions for ${library.name}`}>
                       {library.configuration && (

@@ -18,7 +18,7 @@ export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> 
     ...data.owners.map(person => ({ ...person, id: person.clerkUserId, role: "Owner" as const, invited: false })),
     ...data.editors.map(person => ({ ...person, id: person.clerkUserId, role: "Editor" as const, invited: false })),
     ...data.creators.map(person => ({ ...person, id: person.clerkUserId, role: "Creator" as const, invited: false })),
-    ...data.invitations.map(person => ({ id: person.invitationId, name: person.email.split("@")[0], email: person.email, role: person.role === "editor" ? "Editor" as const : "Creator" as const, invited: true })),
+    ...data.invitations.map(person => ({ id: person.invitationId, delivery: person.delivery, name: person.email.split("@")[0], email: person.email, role: person.role === "editor" ? "Editor" as const : "Creator" as const, invited: true })),
   ];
   const roleOf = (member: AccessMember) => member.role === "Editor" ? "editor" as const : "creator" as const;
   const resend = async (member: AccessMember) => { await invite({ libraryId, email: member.email, role: roleOf(member) }); };

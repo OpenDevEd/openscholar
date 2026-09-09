@@ -734,7 +734,7 @@ export const listTeam = query({
     editors: v.array(teamPersonValidator),
     creators: v.array(teamPersonValidator),
     availablePeople: v.array(teamPersonValidator),
-    invitations: v.array(v.object({ invitationId: v.id("evidenceLibraryInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.string() })),
+    invitations: v.array(v.object({ invitationId: v.id("evidenceLibraryInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
   }),
   handler: async (ctx, args) => {
     const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
@@ -744,11 +744,13 @@ export const listTeam = query({
       ctx.db.query("evidenceLibraryMembers")
         .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", args.libraryId)).collect(),
     ]);
-    const userIds = new Set([...memberships.map(m => m.clerkUserId), ...assignments.map(m => m.clerkUserId)]);
+    const memberIds = new Set(memberships.map(m => m.clerkUserId));
+    const userIds = new Set([...memberIds, ...assignments.map(m => m.clerkUserId)]);
     const people = await Promise.all([...userIds].map(async clerkUserId => {
       const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
       return {
         role: await readLibraryRole(ctx, access.library, clerkUserId),
+        canAdd: memberIds.has(clerkUserId) && user?.state !== "deleted" && access.library.state !== "disabled",
         person: { clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "" },
       };
     }));
@@ -761,7 +763,7 @@ export const listTeam = query({
       owners: people.filter(p => p.role === "owner").map(p => p.person),
       editors: people.filter(p => p.role === "editor").map(p => p.person),
       creators: people.filter(p => p.role === "creator").map(p => p.person),
-      availablePeople: people.filter(p => !p.role).map(p => p.person),
+      availablePeople: people.filter(p => !p.role && p.canAdd).map(p => p.person),
     };
   },
 });

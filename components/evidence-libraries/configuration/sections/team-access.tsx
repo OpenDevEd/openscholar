@@ -68,6 +68,7 @@ export type AccessMember = {
   email: string;
   role: Role | "Manager";
   invited: boolean;
+  delivery?: "queued" | "sent" | "failed";
   protected?: boolean;
 };
 const roleHint: Record<Role, string> = {
@@ -156,6 +157,7 @@ export function TeamAccess({
                 <p className="truncate text-xs text-muted-foreground">
                   {member.email}
                 </p>
+                {member.invited && member.delivery === "failed" && <p className="text-xs text-destructive">Invitation not delivered</p>}
               </div>
               {member.role === "Manager" ? (
                 <span className="flex w-36 items-center gap-2 px-3 text-xs text-muted-foreground">
