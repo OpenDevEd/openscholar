@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ConvexError } from "convex/values";
+import { readConvexErrorData } from "../lib/errors";
 import { httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
@@ -23,8 +23,9 @@ export const replacePublicationAssociations = httpAction(async (ctx, request) =>
     });
     return jsonResponse(200, {ok: true});
   } catch (error) {
-    if (error instanceof ConvexError && typeof error.data === "object" && error.data) {
-      const code = error.data.code;
+    const data = readConvexErrorData(error);
+    if (data) {
+      const code = data.code;
       if (code === "FORBIDDEN") return jsonResponse(403, {error: "invalid_service_credential"});
       if (code === "NOT_FOUND" || code === "VALIDATION_ERROR") return jsonResponse(400, {error: "invalid_request"});
     }
@@ -56,10 +57,11 @@ export const authorProfileCatalog = httpAction(async (ctx, request) => {
     const profiles = await ctx.runQuery(internal.authors.libraryCatalog.search, {libraryId: args.libraryId, clerkUserId: args.clerkUserId, credentialDigest, search: "", profileId});
     return jsonResponse(200, {profiles});
   } catch (error) {
-    if (error instanceof ConvexError && typeof error.data === "object" && error.data) {
-      const code = error.data.code;
-      const status = code === "FORBIDDEN" ? 403 : code === "CONFLICT" ? 409 : code === "NOT_FOUND" ? 404 : code === "VALIDATION_ERROR" ? 400 : null;
-      if (status) return jsonResponse(status, {error: typeof error.data.message === "string" ? error.data.message : "Unable to update author profile"});
+    const data = readConvexErrorData(error);
+    if (data) {
+      const code = data.code;
+      const status = code === "UNAUTHENTICATED" ? 401 : code === "FORBIDDEN" ? 403 : code === "CONFLICT" ? 409 : code === "NOT_FOUND" ? 404 : code === "VALIDATION_ERROR" ? 400 : null;
+      if (status) return jsonResponse(status, {error: typeof data.message === "string" ? data.message : "Unable to update author profile"});
     }
     console.error("Author profile catalog failed", {libraryId: body.data.libraryId, operation: body.data.operation, error});
     return jsonResponse(503, {error: "Author profiles are unavailable. Try again shortly."});

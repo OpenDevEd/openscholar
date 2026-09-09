@@ -12,7 +12,7 @@ export function ProfileAccess({profileId}: {profileId: Id<"authorProfiles">}) {
   if (!data || data.role !== "owner") return null;
   const members: AccessMember[] = [
     ...data.members.map(person => ({id: person.userId, name: person.name, email: person.email, role: person.role === "owner" ? "Owner" as const : "Editor" as const, invited: false})),
-    ...data.invitations.map(invitation => ({id: invitation._id, name: invitation.email.split("@")[0], email: invitation.email, role: "Editor" as const, invited: true})),
+    ...data.invitations.map(invitation => ({id: invitation._id, name: invitation.email.split("@")[0], email: invitation.email, role: "Editor" as const, invited: true, delivery: invitation.delivery})),
   ];
   return <TeamAccess scope="profile" members={members} organizationPeople={[]}
     onResend={async member => { await invite({profileId, email: member.email}); }}
