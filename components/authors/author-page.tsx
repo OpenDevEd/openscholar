@@ -87,13 +87,14 @@ const safeUrl = (value?: string) => {
 };
 
 export default function AuthorPage({
-  profile, configuration, canEdit, onSave, accessSection, papers, publicationStatus,
+  profile, configuration, canEdit, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus,
   openAlexAuthors, openAlexPapers, onSearchAuthors, openAlexError,
   hasMoreWorks, workCount, loadingWorks, onLoadMoreWorks,
 }: {
   profile: AuthorProfile;
   configuration: boolean;
   canEdit: boolean;
+  canBrowseAuthors?: boolean;
   onSave: (profile: AuthorProfile) => Promise<AuthorProfile>;
   accessSection: ReactNode;
   papers: AuthorPublication[];
@@ -171,7 +172,7 @@ export default function AuthorPage({
         <div className="!mt-0 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Users className="size-4" />
-            <Link href="/authors" className="hover:text-foreground">Authors</Link>
+            {canBrowseAuthors ? <Link href="/authors" className="hover:text-foreground">Authors</Link> : <span>Authors</span>}
             <ChevronRight className="size-3" />
             <span className="truncate text-foreground">
               {profile?.name ?? "Profile not found"}

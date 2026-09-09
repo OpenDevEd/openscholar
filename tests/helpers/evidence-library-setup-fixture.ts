@@ -1,4 +1,6 @@
+import { seedFeatureUser } from "../../convex/organizationFeatures.test-support";
 import { convexTest } from "convex-test";
+import type { Id } from "../../convex/_generated/dataModel";
 import { api, internal } from "../../convex/_generated/api";
 
 export const TEST_RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"e".repeat(64)}`;
@@ -37,22 +39,25 @@ type TestClient = Pick<ReturnType<typeof convexTest>, "mutation" | "query">;
 export async function reserveLibraryAddressByName(
   as: TestClient,
   name: string,
+  organizationId?: Id<"organizations">,
 ) {
+  const selectedOrganizationId = organizationId ?? (await as.query(api.organizationFeatures.libraryOrganizations, {}))[0]?.id;
+  if (!selectedOrganizationId) throw new Error("No eligible test organization");
   const state = await as.query(
     internal.evidenceLibraries.queries.readAddressCandidates,
-    { name },
+    { name, organizationId: selectedOrganizationId },
   );
   const candidate =
     state.status === "candidates" ? state.candidates[0] : undefined;
   if (!candidate) throw new Error(`No address is free for ${name}`);
-  return await reserveLibraryAddress(as, { name, ...candidate });
+  return await reserveLibraryAddress(as, { name, organizationId: selectedOrganizationId, ...candidate });
 }
 
 // Reserves an address the way the address action does, without the Coolify
 // and HTTP checks that only the action can run.
 async function reserveLibraryAddress(
   as: TestClient,
-  args: { name: string; publicAddress: string; slug: string },
+  args: { name: string; publicAddress: string; slug: string; organizationId: Id<"organizations"> },
 ) {
   const reserved = await as.mutation(
     internal.evidenceLibraries.mutations.reserveAddress,
@@ -98,6 +103,7 @@ export async function createDraftSetupFixture(suffix: string) {
       updatedAt: 1,
       evidenceLibrariesEnabled: true,
     });
+    await seedFeatureUser(ctx, clerkUserId);
     const membershipId = await ctx.db.insert("organizationMemberships", {
       organizationId,
       clerkMembershipId: `orgmem_${suffix}`,
@@ -116,6 +122,7 @@ export async function createDraftSetupFixture(suffix: string) {
     o: { id: clerkOrganizationId, rol: "org:admin" },
   });
   const created = await reserveLibraryAddress(admin, {
+    organizationId,
     name: essentialSetupSections.identity.name,
     publicAddress: essentialSetupSections.identity.baseUrl,
     slug: "climate-evidence",

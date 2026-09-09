@@ -1,3 +1,4 @@
+import { requireOrganizationFeature } from "../organizationFeatures";
 import { paginationOptsValidator } from "convex/server";
 import { v, type Infer } from "convex/values";
 import { mutation, query, internalQuery, internalMutation } from "../_generated/server";
@@ -39,6 +40,7 @@ export const create = mutation({
   args: {name: v.string()},
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
+    await requireOrganizationFeature(ctx, "authors");
     return await createProfile(ctx, user._id, args.name);
   },
 });
@@ -57,6 +59,7 @@ export const get = query({
 export const list = query({
   args: {search: v.string(), paginationOpts: paginationOptsValidator},
   handler: async (ctx, args) => {
+    await requireOrganizationFeature(ctx, "authors");
     const search = args.search.trim().slice(0, 200);
     const rows = search
       ? await ctx.db.query("authorProfiles").withSearchIndex("search_name", q => q.search("name", search)).paginate(args.paginationOpts)

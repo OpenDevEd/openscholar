@@ -1,3 +1,4 @@
+import { assert } from "vitest";
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
@@ -3217,6 +3218,7 @@ describe("custom domains", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId: fixture.created.libraryId },
     );
+    assert(draft, "Expected an accessible draft");
     expect(draft.operation?.teardownFailedStep).toBe("files");
   });
   it.each([

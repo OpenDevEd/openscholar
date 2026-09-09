@@ -1,3 +1,4 @@
+import { requireOrganizationFeature } from "../organizationFeatures";
 import type { MutationCtx, QueryCtx, ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -26,6 +27,8 @@ export async function requireFeature(
   if (!flag || !flag.enabled) {
     throw createError("FEATURE_DISABLED", `Feature "${flagKey}" is disabled`);
   }
+
+  if (flagKey === "extraction.enabled") await requireOrganizationFeature(ctx, "extraction");
 
   if (flag.minimumTier > 0) {
     if (!userId) {

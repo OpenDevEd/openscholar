@@ -1,3 +1,5 @@
+import { seedFeatureUser } from "../organizationFeatures.test-support";
+import { assert } from "vitest";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
@@ -45,6 +47,7 @@ describe("Evidence Library draft storage", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId: fixture.created.libraryId },
     );
+    assert(currentDraft, "Expected an accessible draft");
     const currentRevision = await fixture.admin.query(
       api.evidenceLibraries.queries.getRevision,
       {
@@ -99,6 +102,7 @@ describe("Evidence Library draft storage", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId: fixture.created.libraryId },
     );
+    assert(rolloutDraft, "Expected an accessible draft");
     const storedRolloutDraft = await fixture.t.run((ctx) =>
       ctx.db.get(fixture.created.draftId),
     );
@@ -225,7 +229,8 @@ describe("Evidence Library draft storage", () => {
         updatedAt: 1,
         evidenceLibrariesEnabled: true,
       });
-      await ctx.db.insert("organizationMemberships", {
+      await seedFeatureUser(ctx, "user_identity_contract");
+    await ctx.db.insert("organizationMemberships", {
         organizationId,
         clerkMembershipId: "orgmem_identity_contract",
         clerkUserId: "user_identity_contract",
@@ -241,8 +246,8 @@ describe("Evidence Library draft storage", () => {
       subject: "user_identity_contract",
       o: { id: "org_identity_contract", rol: "org:admin" },
     });
-    const created = await admin.run((ctx) =>
-      createEvidenceLibrarySetup(ctx, {
+    const created = await admin.run(async (ctx) =>
+      createEvidenceLibrarySetup(ctx, { organizationId: (await admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
         name: "Identity Library",
         slug: "identity-library",
         publicAddress: "https://identity-library.example.org",
@@ -283,6 +288,7 @@ describe("Evidence Library draft storage", () => {
     const stored = await admin.run((ctx) =>
       readEvidenceLibraryDraft(ctx, { libraryId: created.libraryId }),
     );
+    assert(stored);
     expect(stored.draft.editVersion).toBe(0);
     expect(stored.sections).toEqual([
       expect.objectContaining({
@@ -315,7 +321,8 @@ describe("Evidence Library draft storage", () => {
         updatedAt: 1,
         evidenceLibrariesEnabled: true,
       });
-      await ctx.db.insert("organizationMemberships", {
+      await seedFeatureUser(ctx, "user_generic_sections");
+    await ctx.db.insert("organizationMemberships", {
         organizationId,
         clerkMembershipId: "orgmem_generic_sections",
         clerkUserId: "user_generic_sections",
@@ -331,8 +338,8 @@ describe("Evidence Library draft storage", () => {
       subject: "user_generic_sections",
       o: { id: "org_generic_sections", rol: "org:admin" },
     });
-    const created = await admin.run((ctx) =>
-      createEvidenceLibrarySetup(ctx, {
+    const created = await admin.run(async (ctx) =>
+      createEvidenceLibrarySetup(ctx, { organizationId: (await admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
         name: "Generic Library",
         slug: "generic-library",
         publicAddress: "https://generic-library.example.org",
@@ -360,6 +367,7 @@ describe("Evidence Library draft storage", () => {
     const reloaded = await admin.query(api.evidenceLibraries.queries.getDraft, {
       libraryId: created.libraryId,
     });
+    assert(reloaded, "Expected an accessible draft");
 
     expect(saved.editVersion).toBe(1);
     expect(reloaded.operation).toMatchObject({
@@ -441,6 +449,7 @@ describe("Evidence Library draft storage", () => {
     const unchanged = await admin.run((ctx) =>
       readEvidenceLibraryDraft(ctx, { libraryId: created.libraryId }),
     );
+    assert(unchanged);
     expect(unchanged.draft.editVersion).toBe(1);
     expect(
       unchanged.sections.map((section) => section.sectionKey).sort(),
@@ -461,7 +470,8 @@ describe("Evidence Library draft storage", () => {
         updatedAt: 1,
         evidenceLibrariesEnabled: true,
       });
-      await ctx.db.insert("organizationMemberships", {
+      await seedFeatureUser(ctx, "user_admin");
+    await ctx.db.insert("organizationMemberships", {
         organizationId,
         clerkMembershipId: "orgmem_admin",
         clerkUserId: "user_admin",
@@ -472,7 +482,8 @@ describe("Evidence Library draft storage", () => {
         createdAt: 1,
         updatedAt: 1,
       });
-      await ctx.db.insert("organizationMemberships", {
+      await seedFeatureUser(ctx, "user_member");
+    await ctx.db.insert("organizationMemberships", {
         organizationId,
         clerkMembershipId: "orgmem_member",
         clerkUserId: "user_member",
@@ -493,8 +504,8 @@ describe("Evidence Library draft storage", () => {
       o: { id: "org_123", rol: "org:member" },
     });
 
-    const created = await asAdmin.run((ctx) =>
-      createEvidenceLibrarySetup(ctx, {
+    const created = await asAdmin.run(async (ctx) =>
+      createEvidenceLibrarySetup(ctx, { organizationId: (await asAdmin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
         name: "Climate Evidence",
         slug: "climate-evidence",
         publicAddress: "https://climate-evidence.example.org",
@@ -516,6 +527,7 @@ describe("Evidence Library draft storage", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId: created.libraryId },
     );
+    assert(reloaded, "Expected an accessible draft");
     const libraries = await asMember.run((ctx) => readEvidenceLibraries(ctx));
 
     expect(saved.editVersion).toBe(1);
@@ -534,7 +546,7 @@ describe("Evidence Library draft storage", () => {
       asMember.query(api.evidenceLibraries.queries.getDraft, {
         libraryId: created.libraryId,
       }),
-    ).rejects.toThrow(/FORBIDDEN/);
+    ).resolves.toBeNull();
     await expect(
       asMember.mutation(api.evidenceLibraries.mutations.saveDraftSections, {
         libraryId: created.libraryId,
@@ -586,7 +598,8 @@ describe("Evidence Library draft storage", () => {
         updatedAt: 1,
         evidenceLibrariesEnabled: true,
       });
-      await ctx.db.insert("organizationMemberships", {
+      await seedFeatureUser(ctx, "user_revision");
+    await ctx.db.insert("organizationMemberships", {
         organizationId,
         clerkMembershipId: "orgmem_revision",
         clerkUserId: "user_revision",
@@ -597,7 +610,8 @@ describe("Evidence Library draft storage", () => {
         createdAt: 1,
         updatedAt: 1,
       });
-      await ctx.db.insert("organizationMemberships", {
+      await seedFeatureUser(ctx, "user_revision_member");
+    await ctx.db.insert("organizationMemberships", {
         organizationId,
         clerkMembershipId: "orgmem_revision_member",
         clerkUserId: "user_revision_member",
@@ -617,8 +631,8 @@ describe("Evidence Library draft storage", () => {
       subject: "user_revision_member",
       o: { id: "org_revision", rol: "org:member" },
     });
-    const created = await admin.run((ctx) =>
-      createEvidenceLibrarySetup(ctx, {
+    const created = await admin.run(async (ctx) =>
+      createEvidenceLibrarySetup(ctx, { organizationId: (await admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
         name: "Revision Library",
         slug: "revision-library",
         publicAddress: "https://revision-library.example.org",

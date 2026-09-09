@@ -1,3 +1,4 @@
+import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
@@ -19,6 +20,7 @@ const OWNER_IDENTITY = {
 async function seedPreProjectionJob(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
     const now = Date.now();
+    await seedOrganizationFeatures(ctx, [CLERK_OWNER], { extraction: true });
     const userId = await ctx.db.insert("users", {
       clerkId: CLERK_OWNER,
       email: "rebuild-projection@test.com",

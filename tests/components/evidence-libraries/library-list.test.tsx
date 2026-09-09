@@ -8,9 +8,9 @@ vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock("@clerk/nextjs", () => ({ useOrganization: () => ({ organization: { name: "Research team" }, membership: {role: "org:admin"} }) }));
 vi.mock("convex/react", () => ({ useMutation: () => mocks.restart, useAction: (name: string) => name === "reserve" ? mocks.reserve : mocks.respond }));
-vi.mock("@/convex/_generated/api", () => ({ api: { evidenceLibraries: {
+vi.mock("@/convex/_generated/api", () => ({ api: { organizationFeatures: {libraryOrganizations: "organizations"}, evidenceLibraries: {
   teardown: { restartDevelopmentTeardown: "restart" },
-  queries: { listLibraryOverviews: "libraries", getEvidenceLibrariesAccess: "access" },
+  queries: { listLibraryOverviews: "libraries" },
   invitations: { listMine: "invitations" }, invitationActions: { respond: "respond" }, addressActions: { reserveAddress: "reserve" },
 } } }));
 vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: (name: string) => mocks.query(name) }));
@@ -18,7 +18,7 @@ import { LibraryList } from "@/components/evidence-libraries/library-list";
 const libraries = ["owner", "editor", "creator"].map(role => ({ _id: role, name: `${role} library`, role, status: "active", publicAddress: `https://${role}.example.org`, organization: { name: `${role} organization` } }));
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.query.mockImplementation((name: string) => ({ data: name === "libraries" ? libraries : name === "access" ? { enabled: true } : [] }));
+  mocks.query.mockImplementation((name: string) => ({ isReady: true, data: name === "libraries" ? libraries : name === "organizations" ? [{id: "org_1", name: "Research team"}] : [] }));
 });
 describe("Library access list", () => {
   it("uses each library role for configuration access and each library id for admin navigation", () => {
@@ -35,7 +35,7 @@ describe("Library access list", () => {
       {...libraries[0], _id: "setup", name: "Setting up", status: "setup_failed"},
       {...libraries[0], _id: "delete", name: "Deleting library", status: "deleting", teardownFailedStep: "database"},
     ];
-    mocks.query.mockImplementation((name: string) => ({data: name === "libraries" ? rows : name === "access" ? {enabled: true} : []}));
+    mocks.query.mockImplementation((name: string) => ({isReady: true, data: name === "libraries" ? rows : name === "organizations" ? [{id: "org_1", name: "Research team"}] : []}));
     mocks.restart.mockResolvedValue({status: "queued"});
     render(<LibraryList />);
     expect(screen.getByRole("link", {name: "View setup"})).toHaveAttribute("href", "/evidence-libraries/setup/setup");
@@ -53,7 +53,7 @@ describe("Library access list", () => {
     const submit = within(dialog).getByRole("button", { name: "Create library" });
     await user.click(submit);
     expect(submit).toBeDisabled();
-    expect(mocks.reserve).toHaveBeenCalledWith({ name: "Learning evidence" });
+    expect(mocks.reserve).toHaveBeenCalledWith({ name: "Learning evidence", organizationId: "org_1" });
     await act(async () => { reject(new Error("Internal service failure")); });
     expect(within(dialog).getByRole("alert")).toBeVisible();
     expect(submit).toBeEnabled();

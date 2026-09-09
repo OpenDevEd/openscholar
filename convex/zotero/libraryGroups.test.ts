@@ -1,3 +1,5 @@
+import { seedFeatureUser } from "../organizationFeatures.test-support";
+import { assert } from "vitest";
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
@@ -85,13 +87,7 @@ function zoteroNetwork(otherGroups = 130) {
 async function ownerWithZotero(suffix: string) {
   const fixture = await createActivatedSetupFixture(suffix);
   await fixture.t.run(async (ctx) => {
-    const userId = await ctx.db.insert("users", {
-      clerkId: fixture.clerkUserId,
-      email: `${fixture.clerkUserId}@example.test`,
-      state: "active",
-      createdAt: 1,
-      updatedAt: 1,
-    });
+    const userId = await seedFeatureUser(ctx, fixture.clerkUserId);
     await ctx.db.insert("zoteroConnections", {
       userId,
       zoteroUserId: "15294942",
@@ -233,6 +229,7 @@ describe("Evidence Library Zotero groups", () => {
     const draft = await fixture.admin.query(api.evidenceLibraries.queries.getDraft, {
       libraryId,
     });
+    assert(draft, "Expected an accessible draft");
     const savedSources = draft.sections.find((row) => row.sectionKey === "sources");
     expect(savedSources?.payload).toEqual(sources);
     expect(JSON.stringify(draft)).not.toContain(OWNER_KEY);

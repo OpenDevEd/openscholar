@@ -1,3 +1,4 @@
+import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { beforeEach, afterEach, describe, it, test, expect, vi } from "vitest";
@@ -125,6 +126,7 @@ async function seedUserAndFlags(
 ): Promise<{ userId: Id<"users"> }> {
   return await t.run(async (ctx) => {
     const now = Date.now();
+    await seedOrganizationFeatures(ctx, [STARTJOB_CLERK], { extraction: true });
     const userId = await ctx.db.insert("users", {
       clerkId: STARTJOB_CLERK,
       email: "startjob@test.com",

@@ -1,3 +1,4 @@
+import { seedFeatureUser } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
@@ -20,7 +21,7 @@ describe("listTeam", () => {
     await fixture.t.run(async (ctx) => {
       const organizationId = (await ctx.db.get("evidenceLibraries", libraryId))!.organizationId;
       const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
-      await ctx.db.insert("users", {
+      await ctx.db.patch("users", await seedFeatureUser(ctx, "user_team"), {
         clerkId: "user_team",
         email: "ada@example.org",
         firstName: "Ada",

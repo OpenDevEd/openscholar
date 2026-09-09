@@ -222,6 +222,7 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   if (draftQuery.data === undefined) {
     return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
+  if (draftQuery.data === null) return <AuthStatePanel variant="no_access" layout="fullscreen" />;
   const {
     draft,
     hasUnpublishedChanges,

@@ -90,12 +90,16 @@ export const clerkOrganizationSnapshotFields = {
    * The webhook always computes it, so the snapshot always carries it.
    */
   evidenceLibrariesEnabled: v.boolean(),
+  authorsEnabled: v.boolean(),
+  extractionEnabled: v.boolean(),
   clerkCreatedAt: v.number(),
   clerkUpdatedAt: v.number(),
 };
 
 export const organizationFields = {
   ...clerkOrganizationSnapshotFields,
+  authorsEnabled: v.optional(v.boolean()),
+  extractionEnabled: v.optional(v.boolean()),
   state: organizationStateValidator,
   createdAt: v.number(),
   updatedAt: v.number(),

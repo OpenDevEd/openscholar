@@ -1,3 +1,4 @@
+import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { convexTest } from "convex-test";
 import { describe, test, expect } from "vitest";
 import { api, internal } from "../_generated/api";
@@ -22,6 +23,7 @@ async function seedAndAuth() {
   const ids = await seedFullJobGraph(t);
   const FLAG_KEYS = ["extraction.enabled"] as const;
   await t.run(async (ctx) => {
+    await seedOrganizationFeatures(ctx, [SEED_IDENTITY.subject], { extraction: true });
     for (const key of FLAG_KEYS) {
       await ctx.db.insert("featureFlags", {
         key,

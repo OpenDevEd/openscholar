@@ -256,6 +256,9 @@
     "downgradeScheduledTo": "计划降级至"
   },
   "auth": {
+    "organizationFeatureTitle": "无权访问",
+    "organizationFeatureDescription": "您所属的组织均未启用此功能。",
+    "backToSearch": "返回搜索",
     "loadingTitle": "加载工作区",
     "loadingDescription": "准备您的认证工作区。",
     "loadingSession": "加载认证会话",

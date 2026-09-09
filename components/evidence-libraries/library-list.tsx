@@ -1,7 +1,7 @@
 "use client";
 
 import { useAction, useMutation } from "convex/react";
-import { useOrganization } from "@clerk/nextjs";
+import { LibraryOrganizationPicker, OrganizationAvatar, useLibraryOrganizationChoice } from "./organization-picker";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -78,24 +78,11 @@ type Library = {
   deletionFailed?: boolean;
   configuration?: string;
 };
-function OrganizationAvatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
-  return (
-    <Avatar className="size-5 rounded-md" aria-hidden="true">
-      {imageUrl && <AvatarImage src={imageUrl} alt="" />}
-      <AvatarFallback
-        className={cn("rounded-md text-[9px] font-semibold")}
-      >
-        {name.slice(0, 2)}
-      </AvatarFallback>
-    </Avatar>
-  );
-}
 const roleIcons = { Owner: Crown, Editor: ShieldCheck, Creator: PenLine };
 
 export function LibraryList() {
   const router = useRouter();
-  const { organization: activeOrganization, membership } = useOrganization();
-  const access = useProtectedQuery(api.evidenceLibraries.queries.getEvidenceLibrariesAccess, {});
+  const owner = useLibraryOrganizationChoice();
   const overviews = useProtectedQuery(api.evidenceLibraries.queries.listLibraryOverviews, {});
   const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listMine, {});
   const respond = useAction(api.evidenceLibraries.invitationActions.respond);
@@ -127,12 +114,12 @@ export function LibraryList() {
         .toLowerCase()
         .includes(search.trim().toLowerCase()),
   );
-  if (!overviews.data || !invitations.data || !access.data) return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
+  if (!overviews.data || !invitations.data || !owner.isReady) return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   return (
     <LibraryPageShell
       title="Evidence libraries"
       description="Libraries you manage and contribute to."
-      actions={access.data.enabled && membership?.role === "org:admin" ?
+      actions={owner.organizations.length > 0 ?
         <Button
           onClick={() => {
             setCreating(true);
@@ -399,11 +386,11 @@ export function LibraryList() {
             className="space-y-4"
             onSubmit={async (event) => {
               event.preventDefault();
-              if (!name.trim() || createPending) return;
+              if (!name.trim() || createPending || !owner.selected) return;
               setCreatePending(true);
               setCreateError("");
               try {
-                const result = await reserve({ name: name.trim() });
+                const result = await reserve({ name: name.trim(), organizationId: owner.selected.id });
                 if (result.status !== "reserved") { setCreateError("The library could not be created. Check its name and try again."); return; }
                 setCreating(false);
                 router.push(`/evidence-libraries/${result.libraryId}/configuration`);
@@ -413,20 +400,7 @@ export function LibraryList() {
             }}
           >
             <Field label="Organization">
-              {(id) => (
-                <Select defaultValue="owned">
-                  <SelectTrigger id={id} className="w-full">
-                    <Building2 />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="owned">
-                      <OrganizationAvatar name={activeOrganization?.name ?? ""} imageUrl={activeOrganization?.imageUrl} />
-                      {activeOrganization?.name}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
+              {id => <LibraryOrganizationPicker id={id} organizations={owner.organizations} value={owner.selected?.id} onChange={owner.choose} disabled={createPending} />}
             </Field>
             <Field label="Library name">
               {(id) => (
