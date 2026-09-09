@@ -1,3 +1,4 @@
+import { hasPublicationProviderChanges } from "./publicationProviders";
 import { readMemberOrganizations, requireLibraryOrganization } from "../organizationFeatures";
 import {
   internalQuery,
@@ -586,7 +587,7 @@ export async function readEvidenceLibraryDraft(
     },
     library: access.library,
     operation,
-    hasUnpublishedChanges,
+    hasUnpublishedChanges: hasUnpublishedChanges || await hasPublicationProviderChanges(ctx, access.library),
     sections,
   };
 }

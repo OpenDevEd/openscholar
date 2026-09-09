@@ -1,3 +1,5 @@
+import { readPublicationProviderSource, readPublicationProviderPayload, requireUnchangedPublicationProviders } from "./publicationProviders";
+import { publicationPayloadValidator } from "./publicationValidators";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
@@ -45,7 +47,7 @@ import { applyEvidenceLibraryAddressMove } from "./addressRecovery";
 import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import {
-  aiProviderKeySourceValidator,
+  libraryCredentialSourceValidator,
   evidenceLibraryAddressMoveValidator,
   evidenceLibraryConfigurationDeploymentTargetValidator,
   evidenceLibraryOperationAttemptArgsValidatorFields,
@@ -511,11 +513,13 @@ export const prepareConfigurationDeployment = internalMutation({
         database: sourceCredentialValidator,
         search: sourceCredentialValidator,
         storage: sourceCredentialValidator,
-        aiProviderKey: aiProviderKeySourceValidator,
+        aiProviderKey: libraryCredentialSourceValidator,
+        publicationProviders: v.optional(libraryCredentialSourceValidator),
       }),
       // The key itself, for the action that builds the configuration. It is
       // never written to the operation, which owners can read.
       aiProviderKey: v.optional(v.object({ encryptedApiKey: v.string() })),
+      publicationPayload: v.optional(publicationPayloadValidator),
       defaultLocale: v.string(),
       runtimeCommit: v.string(),
       runtimeImage: v.string(),
@@ -707,6 +711,8 @@ export const prepareConfigurationDeployment = internalMutation({
       ),
     };
     const aiProviderKey = await readAiProviderKeySource(ctx, args.libraryId);
+    const publicationProviders = await readPublicationProviderSource(ctx, args.libraryId);
+    const publicationPayload = await readPublicationProviderPayload(ctx, args.libraryId);
     const aiProviderApiKey = await readLibraryAiProviderKey(
       ctx,
       args.libraryId,
@@ -755,6 +761,7 @@ export const prepareConfigurationDeployment = internalMutation({
         args.libraryId,
       ),
       ...(aiProviderApiKey ? { aiProviderKey: aiProviderApiKey } : {}),
+      ...(publicationPayload ? {publicationPayload} : {}),
       source: {
         runtimeBindingId: deployment.runtimeBinding._id,
         bindingUpdatedAt: deployment.runtimeBinding.updatedAt,
@@ -762,6 +769,7 @@ export const prepareConfigurationDeployment = internalMutation({
           deployment.runtimeBinding,
         ),
         aiProviderKey,
+        publicationProviders,
         machine: {
           id: required.machine._id,
           encryptedValue: required.machine.encryptedValue,
@@ -818,7 +826,8 @@ export const saveConfigurationDeploymentTarget = internalMutation({
       database: sourceCredentialValidator,
       search: sourceCredentialValidator,
       storage: sourceCredentialValidator,
-      aiProviderKey: aiProviderKeySourceValidator,
+      aiProviderKey: libraryCredentialSourceValidator,
+        publicationProviders: v.optional(libraryCredentialSourceValidator),
     }),
     target: v.object({
       applicationId: v.string(),
@@ -845,6 +854,11 @@ export const saveConfigurationDeploymentTarget = internalMutation({
       ctx,
       args.libraryId,
       args.source.aiProviderKey,
+    );
+    await requireUnchangedPublicationProviders(
+      ctx,
+      args.libraryId,
+      args.source.publicationProviders,
     );
     const sourceVersions = [
       args.source.machine,
@@ -887,6 +901,7 @@ export const saveConfigurationDeploymentTarget = internalMutation({
         args.target.applicationId,
       ),
       aiProviderKey: args.source.aiProviderKey,
+      publicationProviders: args.source.publicationProviders,
       runtimeBindingId: deployment.runtimeBinding._id,
       targetBaseUrl: requireNonBlank(
         "targetBaseUrl",
@@ -1136,6 +1151,11 @@ export const prepareConfigurationActivation = internalMutation({
       args.libraryId,
       target.aiProviderKey,
     );
+    await requireUnchangedPublicationProviders(
+      ctx,
+      args.libraryId,
+      target.publicationProviders,
+    );
     const now = Date.now();
     await ctx.db.patch(deployment.operation._id, {
       stage: "activating",
@@ -1323,6 +1343,11 @@ export const completeConfigurationDeployment = internalMutation({
         args.libraryId,
         target.aiProviderKey,
       );
+      await requireUnchangedPublicationProviders(
+        ctx,
+        args.libraryId,
+        target.publicationProviders,
+      );
     }
     const receipt = validateOperationReceipt({
       ...deployment.operation.receipt,
@@ -1374,6 +1399,7 @@ export const completeConfigurationDeployment = internalMutation({
     });
     await ctx.db.patch(deployment.library._id, {
       activeRevisionId: deployment.revision._id,
+      activePublicationConfigDigest: target.publicationProviders?.present ? target.publicationProviders.digest : undefined,
       activeDeploymentOperationId: deployment.operation._id,
       updatedByClerkUserId: deployment.operation.requestedByClerkUserId,
       updatedAt: now,

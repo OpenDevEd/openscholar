@@ -1,3 +1,5 @@
+import { readPublicationProviderSource, readPublicationProviderPayload, requireUnchangedPublicationProviders } from "./publicationProviders";
+import { publicationPayloadValidator } from "./publicationValidators";
 import { internal } from "../_generated/api";
 import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
@@ -35,7 +37,7 @@ import {
   requireUnchangedAiProviderKey,
 } from "./aiProviderKey";
 import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
-import { aiProviderKeySourceValidator } from "./validators";
+import { libraryCredentialSourceValidator } from "./validators";
 import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
 
@@ -134,10 +136,12 @@ export const prepareApplicationSetup = internalMutation({
         scopes: zoteroGroupScopesValidator,
       }),
     ),
-    aiProviderKey: aiProviderKeySourceValidator,
+    aiProviderKey: libraryCredentialSourceValidator,
+        publicationProviders: v.optional(libraryCredentialSourceValidator),
     // The key itself, for the action that builds the configuration. It is
     // never written to the operation, which owners can read.
     aiProviderApiKey: v.optional(v.object({ encryptedApiKey: v.string() })),
+      publicationPayload: v.optional(publicationPayloadValidator),
   }),
   handler: async (ctx, args) => {
     const setup = await requireCurrentEvidenceLibrarySetupAttempt(ctx, {
@@ -302,6 +306,8 @@ export const prepareApplicationSetup = internalMutation({
       }));
 
     const aiProviderKey = await readAiProviderKeySource(ctx, args.libraryId);
+    const publicationProviders = await readPublicationProviderSource(ctx, args.libraryId);
+    const publicationPayload = await readPublicationProviderPayload(ctx, args.libraryId);
     const aiProviderApiKey = await readLibraryAiProviderKey(
       ctx,
       args.libraryId,
@@ -330,7 +336,9 @@ export const prepareApplicationSetup = internalMutation({
         args.libraryId,
       ),
       aiProviderKey,
+        publicationProviders,
       ...(aiProviderApiKey ? { aiProviderApiKey } : {}),
+      ...(publicationPayload ? {publicationPayload} : {}),
     };
   },
 });
@@ -357,7 +365,8 @@ export const completeApplicationSetup = internalMutation({
     databaseCredentialId: v.id("evidenceLibraryCredentials"),
     searchCredentialId: v.id("evidenceLibraryCredentials"),
     storageCredentialId: v.id("evidenceLibraryCredentials"),
-    aiProviderKey: aiProviderKeySourceValidator,
+    aiProviderKey: libraryCredentialSourceValidator,
+        publicationProviders: v.optional(libraryCredentialSourceValidator),
   },
   returns: v.object({
     bindingId: v.id("evidenceLibraryRuntimeBindings"),
@@ -452,8 +461,14 @@ export const completeApplicationSetup = internalMutation({
       args.libraryId,
       args.aiProviderKey,
     );
+    await requireUnchangedPublicationProviders(
+      ctx,
+      args.libraryId,
+      args.publicationProviders,
+    );
     await ctx.db.patch(setup.setupOperation._id, {
       setupAiProviderKey: args.aiProviderKey,
+      setupPublicationProviders: args.publicationProviders,
     });
     if (occupied && occupied._id !== setup.runtimeBinding._id) {
       throw createError(

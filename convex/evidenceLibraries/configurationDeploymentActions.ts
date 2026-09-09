@@ -267,6 +267,7 @@ export const runConfigurationDeployment = internalAction({
           embeddingApiKey: optionalPlatformEmbeddingKey(),
           zoteroGroups: prepared.zoteroGroups,
           aiProviderKey: prepared.aiProviderKey,
+          publicationProviders: prepared.publicationPayload,
           allowedAiModels: modelCatalog.allowedModelIds,
           aiModelCatalogReady: modelCatalog.catalogReady,
         });

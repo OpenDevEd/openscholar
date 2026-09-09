@@ -19,7 +19,7 @@ import {
   isSetupLeaseHeld,
 } from "./operationLeases";
 import { requireEvidenceLibraryAccess } from "./access";
-import type { AiProviderKeySource } from "./validators";
+import type { LibraryCredentialSource } from "./validators";
 
 /**
  * One row per library holds the OpenRouter key. The owner writes it through
@@ -105,7 +105,7 @@ export function createAiProviderKey(
 export async function readAiProviderKeySource(
   ctx: ReadCtx,
   libraryId: Id<"evidenceLibraries">,
-): Promise<AiProviderKeySource> {
+): Promise<LibraryCredentialSource> {
   const credential = await findAiProviderCredential(ctx, libraryId);
   return credential
     ? {
@@ -135,6 +135,7 @@ export const AI_PROVIDER_KEY_BUSY_MESSAGE =
 export async function requireNoRunningOperation(
   ctx: ReadCtx,
   libraryId: Id<"evidenceLibraries">,
+  message = AI_PROVIDER_KEY_BUSY_MESSAGE,
 ): Promise<void> {
   const now = Date.now();
   const running = ctx.db
@@ -151,7 +152,7 @@ export async function requireNoRunningOperation(
         : operation.kind === "publish"
           ? isDeploymentLeaseHeld(operation, now)
           : false;
-    if (held) throw createError("CONFLICT", AI_PROVIDER_KEY_BUSY_MESSAGE);
+    if (held) throw createError("CONFLICT", message);
   }
 }
 
@@ -162,7 +163,7 @@ export const AI_PROVIDER_KEY_CHANGED_MESSAGE =
 export async function requireUnchangedAiProviderKey(
   ctx: ReadCtx,
   libraryId: Id<"evidenceLibraries">,
-  source: AiProviderKeySource,
+  source: LibraryCredentialSource,
 ): Promise<void> {
   const current = await readAiProviderKeySource(ctx, libraryId);
   const same =

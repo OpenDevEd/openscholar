@@ -1,3 +1,4 @@
+import { hasPublicationProviderChanges } from "./publicationProviders";
 import { requireLibraryOrganization } from "../organizationFeatures";
 import {
   internalMutation,
@@ -657,7 +658,7 @@ export async function activateEvidenceLibraryConfiguration(
       configurationSnapshotsEqual(
         persisted.migration.snapshot,
         active.migration.snapshot,
-      )
+      ) && !await hasPublicationProviderChanges(ctx, access.library)
     ) {
       throw createError("CONFLICT", "There are no saved changes to activate");
     }

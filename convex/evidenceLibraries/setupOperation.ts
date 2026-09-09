@@ -532,6 +532,7 @@ export async function recordEvidenceLibrarySetupStep(
   await ctx.db.patch(setup.library._id, {
     state: "active",
     activeRevisionId: setup.revision._id,
+    activePublicationConfigDigest: operation.setupPublicationProviders?.present ? operation.setupPublicationProviders.digest : undefined,
     activeDeploymentOperationId: operation._id,
     updatedByClerkUserId: operation.requestedByClerkUserId,
     updatedAt: now,

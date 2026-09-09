@@ -1,3 +1,4 @@
+import { publicationSettingsValidator } from "./publicationValidators";
 import type { GenericId } from "convex/values";
 import { v, type Infer } from "convex/values";
 import {
@@ -21,7 +22,7 @@ export const evidenceLibraryOperationAttemptArgsValidatorFields = {
  * instead of shipping the old key. Never the key itself, encrypted or not:
  * this travels on the operation, which owners can read.
  */
-export const aiProviderKeySourceValidator = v.union(
+export const libraryCredentialSourceValidator = v.union(
   v.object({ present: v.literal(false) }),
   v.object({
     present: v.literal(true),
@@ -31,7 +32,7 @@ export const aiProviderKeySourceValidator = v.union(
     digest: v.string(),
   }),
 );
-export type AiProviderKeySource = Infer<typeof aiProviderKeySourceValidator>;
+export type LibraryCredentialSource = Infer<typeof libraryCredentialSourceValidator>;
 
 export const organizationStateValidator = v.union(
   v.literal("active"),
@@ -182,6 +183,7 @@ export const evidenceLibraryStateValidator = v.union(
 );
 
 export const evidenceLibraryFields = {
+  activePublicationConfigDigest: v.optional(v.string()),
   organizationId: v.id("organizations"),
   name: v.string(),
   slug: v.string(),
@@ -492,6 +494,7 @@ export const evidenceLibraryRuntimeReleaseFields = {
 };
 
 export const evidenceLibraryCredentialFields = {
+  publicationSettings: v.optional(publicationSettingsValidator),
   libraryId: v.id("evidenceLibraries"),
   credentialKey: v.string(),
   pathPattern: v.optional(v.string()),
@@ -687,7 +690,8 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   applicationId: v.string(),
   // The AI key row this configuration was built from, so a Replace or a
   // Remove during the publish is caught before the library goes live.
-  aiProviderKey: aiProviderKeySourceValidator,
+  aiProviderKey: libraryCredentialSourceValidator,
+  publicationProviders: v.optional(libraryCredentialSourceValidator),
   runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
   targetBaseUrl: v.string(),
   // The custom domains the proxy serves beside the platform address, taken
@@ -758,7 +762,8 @@ export const evidenceLibraryOperationFields = {
   setupEncryptedDatabasePassword: v.optional(v.string()),
   // What the setup saw of the AI key. Kept until the library is live so the
   // last step can refuse a key that moved on the way.
-  setupAiProviderKey: v.optional(aiProviderKeySourceValidator),
+  setupAiProviderKey: v.optional(libraryCredentialSourceValidator),
+  setupPublicationProviders: v.optional(libraryCredentialSourceValidator),
   setupRuntimeCommit: v.optional(v.string()),
   setupRuntimeImage: v.optional(v.string()),
   setupDeploymentId: v.optional(v.string()),
