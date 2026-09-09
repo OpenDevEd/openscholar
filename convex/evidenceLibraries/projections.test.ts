@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import schema from "../schema";
+import type { Id } from "../_generated/dataModel";
 import {
   applyMembershipProjection,
   applyOrganizationProjection,
@@ -304,6 +305,30 @@ describe("Evidence Library identity projections", () => {
         .unique(),
     );
     expect(stored).toMatchObject({ evidenceLibrariesEnabled: true });
+  });
+
+  it("removes library grants and pending invitations only under the revoked organization", async () => {
+    const t = convexTest(schema);
+    const ids = await t.run(async ctx => {
+      await ctx.db.insert("users", { clerkId: "user_123", email: "person@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+      const organizationId = await ctx.db.insert("organizations", { ...organizationSnapshot, state: "active", createdAt: 1, updatedAt: 1 });
+      const otherOrganizationId = await ctx.db.insert("organizations", { ...organizationSnapshot, clerkOrganizationId: "other_org", slug: "other", state: "active", createdAt: 1, updatedAt: 1 });
+      const libraryIds: Id<"evidenceLibraries">[] = [];
+      for (const org of [organizationId, organizationId, otherOrganizationId]) {
+        const libraryId = await ctx.db.insert("evidenceLibraries", { organizationId: org, name: "Library", slug: `library-${libraryIds.length}`, state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+        libraryIds.push(libraryId);
+        await ctx.db.insert("evidenceLibraryMembers", { libraryId, clerkUserId: "user_123", role: "editor", grantedBy: "owner", grantedAt: 1 });
+        await ctx.db.insert("evidenceLibraryInvitations", { libraryId, email: "person@example.org", role: "creator", invitedBy: "owner", expiresAt: Date.now() + 100000, state: "pending", delivery: "sent" });
+      }
+      return libraryIds;
+    });
+    await t.run(ctx => applyMembershipProjection(ctx, {
+      ...eventMetadata("remove_member_grants", 200), eventType: "organizationMembership.deleted", action: "delete",
+      membership: { organization: organizationSnapshot, clerkMembershipId: "orgmem_removed", clerkUserId: "user_123", role: "org:member", state: "revoked", clerkCreatedAt: 1, clerkUpdatedAt: 2 },
+    }));
+    expect(await t.run(ctx => ctx.db.query("evidenceLibraryMembers").collect())).toEqual([expect.objectContaining({ libraryId: ids[2] })]);
+    const pending = await t.run(ctx => ctx.db.query("evidenceLibraryInvitations").withIndex("by_email_and_state", q => q.eq("email", "person@example.org").eq("state", "pending")).collect());
+    expect(pending).toEqual([expect.objectContaining({ libraryId: ids[2] })]);
   });
 
   it("projects a membership and its organization atomically", async () => {

@@ -4,7 +4,7 @@ import { createError } from "../lib/errors";
 
 export type OrganizationRole = "org:admin" | "org:member";
 export type OrganizationAction = "read" | "manage";
-export type EvidenceLibraryAdminRole = "owner" | "editor";
+export type EvidenceLibraryAdminRole = "owner" | "editor" | "creator";
 
 export type OrganizationClaims = {
   organizationId: string;
@@ -21,12 +21,6 @@ export function canPerformOrganizationAction(
   action: OrganizationAction,
 ): boolean {
   return action === "read" || role === "org:admin";
-}
-
-export function mapOrganizationRoleToAdminRole(
-  role: OrganizationRole,
-): EvidenceLibraryAdminRole {
-  return role === "org:admin" ? "owner" : "editor";
 }
 
 export function parseOrganizationClaims(identity: unknown): OrganizationClaims | null {
@@ -63,8 +57,8 @@ function denyOrganizationAccess(): never {
  *   pages immediately.
  * - Reading asks for `"read"`, so libraries that already exist keep working.
  *   The public Evidence Library runtime never calls this helper at all, and
- *   the admin handoff does not call it either: a member of an active
- *   library's organisation can still open its `/admin` area.
+ *   the admin handoff does not call it either: an authorized collaborator of an active
+ *   library can still open its `/admin` area.
  *
  * Anything but `true` is off, including a row written before the switch
  * existed.
@@ -158,15 +152,42 @@ export async function requireOrganizationAccess(
   return access;
 }
 
+/** Current library access does not depend on the active Clerk organization. */
+export async function readLibraryRole(
+  ctx: Pick<QueryCtx | MutationCtx, "db">,
+  library: Doc<"evidenceLibraries">,
+  clerkUserId: string,
+): Promise<EvidenceLibraryAdminRole | null> {
+  const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
+  if (user?.state === "deleted") return null;
+  const organization = await ctx.db.get("organizations", library.organizationId);
+  if (!organization || organization.state !== "active") return null;
+  const membership = await ctx.db.query("organizationMemberships")
+    .withIndex("by_organizationId_and_clerkUserId_and_state", q => q
+      .eq("organizationId", library.organizationId).eq("clerkUserId", clerkUserId).eq("state", "active"))
+    .unique();
+  if (membership?.role === "org:admin") return "owner";
+  if (library.state === "disabled") return null;
+  const assignment = await ctx.db.query("evidenceLibraryMembers")
+    .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id).eq("clerkUserId", clerkUserId))
+    .unique();
+  if (!assignment) return null;
+  return assignment.role;
+}
+
 export async function requireEvidenceLibraryAccess(
   ctx: OrganizationAccessCtx,
   libraryId: Id<"evidenceLibraries">,
   action: OrganizationAction,
 ) {
-  const access = await requireOrganizationAccess(ctx, action);
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw createError("UNAUTHENTICATED", "Sign in to access this library");
   const library = await ctx.db.get("evidenceLibraries", libraryId);
-  if (!library || library.organizationId !== access.organization._id) {
-    return denyOrganizationAccess();
-  }
-  return { ...access, library };
+  if (!library) return denyOrganizationAccess();
+  const role = await readLibraryRole(ctx, library, identity.subject);
+  if (!role || (action === "manage" && role !== "owner")) return denyOrganizationAccess();
+  const organization = await ctx.db.get("organizations", library.organizationId);
+  if (!organization) return denyOrganizationAccess();
+  if (action === "manage" && organization.evidenceLibrariesEnabled !== true) return denyEvidenceLibrariesSwitchedOff();
+  return { clerkUserId: identity.subject, organization, role, library };
 }

@@ -114,6 +114,9 @@ export async function applyUserDeleteProjection(
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
 
+    const grants = await ctx.db.query("evidenceLibraryMembers")
+      .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.clerkId)).collect();
+    for (const grant of grants) await ctx.db.delete("evidenceLibraryMembers", grant._id);
     if (!user) return;
 
     await ctx.db.patch("users", user._id, {

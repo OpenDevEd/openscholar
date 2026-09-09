@@ -81,6 +81,8 @@ import type * as evidenceLibraries_domainEgressNode from "../evidenceLibraries/d
 import type * as evidenceLibraries_domainGates from "../evidenceLibraries/domainGates.js";
 import type * as evidenceLibraries_domains from "../evidenceLibraries/domains.js";
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
+import type * as evidenceLibraries_invitationActions from "../evidenceLibraries/invitationActions.js";
+import type * as evidenceLibraries_invitations from "../evidenceLibraries/invitations.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
 import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
@@ -98,12 +100,14 @@ import type * as evidenceLibraries_runtimeImageRegistry from "../evidenceLibrari
 import type * as evidenceLibraries_runtimeReleases from "../evidenceLibraries/runtimeReleases.js";
 import type * as evidenceLibraries_sectionPayload from "../evidenceLibraries/sectionPayload.js";
 import type * as evidenceLibraries_serviceHttp from "../evidenceLibraries/serviceHttp.js";
+import type * as evidenceLibraries_sessionAccess from "../evidenceLibraries/sessionAccess.js";
 import type * as evidenceLibraries_setupNaming from "../evidenceLibraries/setupNaming.js";
 import type * as evidenceLibraries_setupOperation from "../evidenceLibraries/setupOperation.js";
 import type * as evidenceLibraries_setupRecords from "../evidenceLibraries/setupRecords.js";
 import type * as evidenceLibraries_storageSetup from "../evidenceLibraries/storageSetup.js";
 import type * as evidenceLibraries_storageSetupActions from "../evidenceLibraries/storageSetupActions.js";
 import type * as evidenceLibraries_storageSetupClient from "../evidenceLibraries/storageSetupClient.js";
+import type * as evidenceLibraries_team from "../evidenceLibraries/team.js";
 import type * as evidenceLibraries_teardown from "../evidenceLibraries/teardown.js";
 import type * as evidenceLibraries_teardownActions from "../evidenceLibraries/teardownActions.js";
 import type * as evidenceLibraries_updates from "../evidenceLibraries/updates.js";
@@ -352,6 +356,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/domainGates": typeof evidenceLibraries_domainGates;
   "evidenceLibraries/domains": typeof evidenceLibraries_domains;
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
+  "evidenceLibraries/invitationActions": typeof evidenceLibraries_invitationActions;
+  "evidenceLibraries/invitations": typeof evidenceLibraries_invitations;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
   "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
@@ -369,12 +375,14 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/runtimeReleases": typeof evidenceLibraries_runtimeReleases;
   "evidenceLibraries/sectionPayload": typeof evidenceLibraries_sectionPayload;
   "evidenceLibraries/serviceHttp": typeof evidenceLibraries_serviceHttp;
+  "evidenceLibraries/sessionAccess": typeof evidenceLibraries_sessionAccess;
   "evidenceLibraries/setupNaming": typeof evidenceLibraries_setupNaming;
   "evidenceLibraries/setupOperation": typeof evidenceLibraries_setupOperation;
   "evidenceLibraries/setupRecords": typeof evidenceLibraries_setupRecords;
   "evidenceLibraries/storageSetup": typeof evidenceLibraries_storageSetup;
   "evidenceLibraries/storageSetupActions": typeof evidenceLibraries_storageSetupActions;
   "evidenceLibraries/storageSetupClient": typeof evidenceLibraries_storageSetupClient;
+  "evidenceLibraries/team": typeof evidenceLibraries_team;
   "evidenceLibraries/teardown": typeof evidenceLibraries_teardown;
   "evidenceLibraries/teardownActions": typeof evidenceLibraries_teardownActions;
   "evidenceLibraries/updates": typeof evidenceLibraries_updates;

@@ -3,7 +3,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { writeAuditLogRecord } from "../lib/audit";
 import {
-  mapOrganizationRoleToAdminRole,
+  readLibraryRole,
   type EvidenceLibraryAdminRole,
 } from "./access";
 import { findMatchingLibraryServiceCredential } from "./credentials";
@@ -18,7 +18,7 @@ export type AdminLoginRedemptionResult =
       libraryId: Id<"evidenceLibraries">;
       clerkUserId: string;
       clerkOrganizationId: string;
-      role: "owner" | "editor";
+      role: EvidenceLibraryAdminRole;
       consumedAt: number;
     };
 
@@ -103,22 +103,8 @@ export async function redeemAdminLoginCode(
     return { kind: "invalid_code" };
   }
 
-  const memberships = await ctx.db
-    .query("organizationMemberships")
-    .withIndex("by_organizationId_and_clerkUserId_and_state", (query) =>
-      query
-        .eq("organizationId", code.organizationId)
-        .eq("clerkUserId", code.clerkUserId)
-        .eq("state", "active"),
-    )
-    .take(2);
-  const membership = memberships.length === 1 ? memberships[0] : null;
-  if (
-    !membership ||
-    mapOrganizationRoleToAdminRole(membership.role) !== code.role
-  ) {
-    return { kind: "invalid_code" };
-  }
+  const role = await readLibraryRole(ctx, library, code.clerkUserId);
+  if (!role || role !== code.role) return { kind: "invalid_code" };
 
   await ctx.db.patch("evidenceLibraryAdminLoginCodes", code._id, {
     consumedAt,

@@ -75,6 +75,27 @@ export default defineSchema({
     .index("by_organizationId_and_slug", ["organizationId", "slug"])
     .index("by_organizationId_and_state", ["organizationId", "state"]),
 
+  evidenceLibraryInvitations: defineTable({
+    libraryId: v.id("evidenceLibraries"),
+    email: v.string(),
+    role: v.union(v.literal("editor"), v.literal("creator")),
+    invitedBy: v.string(),
+    expiresAt: v.number(),
+    state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled")),
+    delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
+  }).index("by_libraryId_and_email", ["libraryId", "email"])
+    .index("by_email_and_state", ["email", "state"]),
+
+  evidenceLibraryMembers: defineTable({
+    libraryId: v.id("evidenceLibraries"),
+    clerkUserId: v.string(),
+    role: v.union(v.literal("editor"), v.literal("creator")),
+    grantedBy: v.string(),
+    grantedAt: v.number(),
+  })
+    .index("by_libraryId_and_clerkUserId", ["libraryId", "clerkUserId"])
+    .index("by_clerkUserId", ["clerkUserId"]),
+
   evidenceLibraryConfigDrafts: defineTable(evidenceLibraryConfigDraftFields)
     .index("by_libraryId", ["libraryId"])
     .index("by_ownerConfigurationVersion", ["ownerConfigurationVersion"]),

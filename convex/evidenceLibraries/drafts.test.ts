@@ -519,12 +519,7 @@ describe("Evidence Library draft storage", () => {
     const libraries = await asMember.run((ctx) => readEvidenceLibraries(ctx));
 
     expect(saved.editVersion).toBe(1);
-    expect(libraries).toEqual([
-      expect.objectContaining({
-        _id: created.libraryId,
-        slug: "climate-evidence",
-      }),
-    ]);
+    expect(libraries).toEqual([]);
     expect(reloaded.draft.editVersion).toBe(1);
     expect(reloaded.library.name).toBe("Climate Evidence");
     expect(
