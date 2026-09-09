@@ -249,15 +249,20 @@ export function LibraryList() {
                       library.configuration ? <Link href={library.configuration} className="text-sm font-medium">
                         {library.name}
                       </Link> : <span className="text-sm font-medium">{library.name}</span>
-                    ) : (
-                      <a
-                        href={
-                          library.configuration ?? `/evidence-libraries/${library.id}/admin`
-                        }
+                    ) : library.configuration ? (
+                      <Link
+                        href={library.configuration}
                         className="truncate text-sm font-medium hover:underline"
                       >
                         {library.name}
-                      </a>
+                      </Link>
+                    ) : (
+                      <AdminAreaLink
+                        libraryId={library.id}
+                        className="truncate text-sm font-medium hover:underline"
+                      >
+                        {library.name}
+                      </AdminAreaLink>
                     )}
                     {!library.pending && (
                       <LibraryStatusChip
