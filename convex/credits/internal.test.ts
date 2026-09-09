@@ -154,7 +154,7 @@ describe("grantUpgradeProRataCredits", () => {
 
     expect(result.outcome).toBe("granted");
     expect(result.grantedCredits).toBeGreaterThan(0);
-  });
+  }, 15_000); // Building all 500 ledger rows and aggregate counters can exceed 5s in CI.
 
   it("R2: returns already_granted when a matching upgrade_prorate exists inside the current period", async () => {
     const t = convexTest(schema);
