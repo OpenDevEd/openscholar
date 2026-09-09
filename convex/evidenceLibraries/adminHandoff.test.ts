@@ -106,9 +106,13 @@ describe("Evidence Library admin handoff", () => {
     ]);
   });
 
-  it("binds an editor of the library's organisation to the editor role", async () => {
+  it("binds an explicit library grant to the editor role", async () => {
     const fixture = await createReadySetupFixture("admin_handoff_editor");
     await setMembershipRole(fixture, "org:member");
+    await fixture.t.run(ctx => ctx.db.insert("evidenceLibraryMembers", {
+      libraryId: fixture.created.libraryId, clerkUserId: fixture.clerkUserId,
+      role: "editor", grantedBy: "owner", grantedAt: Date.now(),
+    }));
 
     const result = await signedInElsewhere(fixture).action(
       api.evidenceLibraries.adminHandoffActions.issueAdminHandoff,
@@ -217,6 +221,10 @@ describe("Evidence Library admin handoff", () => {
 
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(fixture.membershipId, { role: "org:member" });
+      await ctx.db.insert("evidenceLibraryMembers", {
+        libraryId: fixture.created.libraryId, clerkUserId: fixture.clerkUserId,
+        role: "editor", grantedBy: "owner", grantedAt: Date.now(),
+      });
     });
     await expect(
       signedInElsewhere(fixture).action(

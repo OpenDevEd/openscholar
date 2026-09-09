@@ -51,6 +51,7 @@ export const organizationMembershipStateValidator = v.union(
 export const evidenceLibraryAdminRoleValidator = v.union(
   v.literal("owner"),
   v.literal("editor"),
+  v.literal("creator"),
 );
 
 export const clerkEventOutcomeValidator = v.union(

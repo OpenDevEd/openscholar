@@ -180,7 +180,8 @@ async function checkEvidenceLibraryAddress(
   let free: { publicAddress: string; slug: string } | null;
   try {
     free = await findFreeEvidenceLibraryAddress(ctx, state.candidates);
-  } catch {
+  } catch (error) {
+    console.warn("Evidence Library address check failed", error instanceof Error ? error.message : "Unknown error");
     return { status: "unavailable", reason: "check-failed" };
   }
   if (free) {

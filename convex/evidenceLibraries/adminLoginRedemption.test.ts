@@ -189,7 +189,7 @@ describe("Evidence Library admin login redemption", () => {
     ]);
   });
 
-  it("returns Editor for a current Clerk member", async () => {
+  it("returns Editor for an explicit library collaborator", async () => {
     vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
     const { libraryId, membershipId, owner, t } =
       await seedRedemptionScenario();
@@ -198,6 +198,10 @@ describe("Evidence Library admin login redemption", () => {
       { libraryId },
     );
     await updateMembership(t, membershipId, { role: "org:member" });
+    await t.run(ctx => ctx.db.insert("evidenceLibraryMembers", {
+      libraryId, clerkUserId: "user_admin_login_redemption", role: "editor",
+      grantedBy: "owner", grantedAt: Date.now(),
+    }));
     const editor = t.withIdentity({
       subject: "user_admin_login_redemption",
       o: { id: "org_admin_login_redemption", rol: "org:member" },
@@ -218,6 +222,29 @@ describe("Evidence Library admin login redemption", () => {
       role: "editor",
       consumedAt: expect.any(Number),
     });
+  });
+
+  it("checks current access with a library-bound machine credential", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
+    const { libraryId, secondLibraryId, owner, t } = await seedRedemptionScenario();
+    const { machineCredential } = await issueRedemptionPair(owner, libraryId);
+    const assignmentId = await t.run(ctx => ctx.db.insert("evidenceLibraryMembers", {
+      libraryId, clerkUserId: "external_creator", role: "creator", grantedBy: "owner", grantedAt: Date.now(),
+    }));
+    const check = (targetLibrary = libraryId) => t.fetch("/api/v1/evidence-libraries/admin-session/check", {
+      method: "POST", headers: { Authorization: `Bearer ${machineCredential.credential}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ libraryId: targetLibrary, clerkUserId: "external_creator" }),
+    });
+    let response = await check();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ role: "creator" });
+    expect((await check(secondLibraryId)).status).toBe(401);
+    await owner.mutation(api.evidenceLibraries.team.changeRole, { libraryId, clerkUserId: "external_creator", role: "editor" });
+    response = await check();
+    expect(await response.json()).toEqual({ role: "editor" });
+    await owner.mutation(api.evidenceLibraries.team.removeMember, { libraryId, clerkUserId: "external_creator" });
+    expect((await check()).status).toBe(403);
+    expect(await t.run(ctx => ctx.db.get("evidenceLibraryMembers", assignmentId))).toBeNull();
   });
 
   it("rejects a replay and records one redemption", async () => {

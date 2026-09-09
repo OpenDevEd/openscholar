@@ -3,7 +3,7 @@ import { httpAction } from "./_generated/server";
 import { components, internal, api } from "./_generated/api";
 import { registerRoutes } from "@convex-dev/stripe";
 import { clerkWebhook } from "./webhooks/clerk";
-import { redeemAdminLoginCode } from "./evidenceLibraries/serviceHttp";
+import { redeemAdminLoginCode, checkAdminSession } from "./evidenceLibraries/serviceHttp";
 import { normalizeStripeWebhookSecret } from "./lib/stripeWebhookSecret";
 import { requireAppUrl } from "./lib/env";
 import {
@@ -53,6 +53,12 @@ function processInvoiceForGrantNonBlocking(
 }
 
 // Clerk webhook for user sync
+http.route({
+  path: "/api/v1/evidence-libraries/admin-session/check",
+  method: "POST",
+  handler: checkAdminSession,
+});
+
 http.route({
   path: "/webhooks/clerk",
   method: "POST",

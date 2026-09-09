@@ -626,7 +626,7 @@ describe("Evidence Library setup draft", () => {
       subject: "user_access_member",
       o: { id: "org_access", rol: "org:admin" },
     });
-    const wrongActiveOrganization = t.withIdentity({
+    const otherActiveOrganization = t.withIdentity({
       subject: "user_access_admin",
       o: { id: "org_other", rol: "org:admin" },
     });
@@ -654,10 +654,10 @@ describe("Evidence Library setup draft", () => {
       }),
     ).rejects.toThrow(/FORBIDDEN/);
     await expect(
-      wrongActiveOrganization.query(
+      otherActiveOrganization.query(
         api.evidenceLibraries.queries.getSetupDraft,
         { libraryId: created.libraryId },
       ),
-    ).rejects.toThrow(/FORBIDDEN/);
+    ).resolves.toMatchObject({ library: { _id: created.libraryId } });
   });
 });
