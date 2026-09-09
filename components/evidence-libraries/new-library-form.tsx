@@ -84,7 +84,7 @@ export function NewLibraryForm() {
     );
   }
   // Evidence Libraries are switched on per organisation in Clerk.
-  if (!access.data.canCreate) {
+  if (!access.data.enabled) {
     return (
       <AuthStatePanel
         variant="no_access"

@@ -210,7 +210,7 @@ describe("library overviews", () => {
     ]);
   });
 
-  it("keeps the library list available while gating creation with the organization switch", async () => {
+  it("gates library creation with the organization switch", async () => {
     const fixture = await createDraftSetupFixture("overview_switch");
 
     await expect(
@@ -218,7 +218,7 @@ describe("library overviews", () => {
         api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
         {},
       ),
-    ).resolves.toEqual({ enabled: true, canCreate: true });
+    ).resolves.toEqual({ enabled: true });
 
     // The real switch is Clerk public metadata via the webhook; the test flips
     // the projected row directly.
@@ -240,7 +240,7 @@ describe("library overviews", () => {
         api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
         {},
       ),
-    ).resolves.toEqual({ enabled: true, canCreate: false });
+    ).resolves.toEqual({ enabled: false });
   });
 
   it("disables creation when the token role no longer matches the stored role", async () => {
@@ -256,7 +256,7 @@ describe("library overviews", () => {
         api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
         {},
       ),
-    ).resolves.toEqual({ enabled: true, canCreate: false });
+    ).resolves.toEqual({ enabled: false });
   });
 
   it("answers 'off' instead of throwing when nobody is signed in", async () => {
@@ -267,7 +267,7 @@ describe("library overviews", () => {
         api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
         {},
       ),
-    ).resolves.toEqual({ enabled: false, canCreate: false });
+    ).resolves.toEqual({ enabled: false });
   });
   it("says which part of a deletion stopped, for each part", async () => {
     const fixture = await createActivatedSetupFixture("overview_teardown");

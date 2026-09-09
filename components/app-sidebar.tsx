@@ -402,14 +402,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const extractionEnabled = useFeatureFlag("extraction.enabled");
   const canStartExtraction = useFeatureFlag("extraction.start");
   const hasExtractionAccess = extractionEnabled && canStartExtraction;
-  // Evidence Libraries are switched on per organisation in Clerk.
-  const evidenceLibrariesAccess = useProtectedQuery(
-    api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
-    {},
-  );
-  const hasEvidenceLibrariesAccess =
-    evidenceLibrariesAccess.data?.enabled === true;
   const { phase } = useAuthReadiness();
+  const hasEvidenceLibrariesAccess = phase === "authenticated";
   const goToSignIn = useSignInRedirect();
   const [isScreeningJobsOpen, setIsScreeningJobsOpen] = useState(false);
   const router = useRouter();

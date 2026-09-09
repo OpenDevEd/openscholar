@@ -200,14 +200,14 @@ describe("<AppSidebar> Evidence Libraries nav item", () => {
     protectedQueryMock.mockReset();
   });
 
-  it("hides the item when the organisation is not switched on", () => {
+  it("shows library navigation without an enabled organization", () => {
     answerQueries(false);
 
     render(<AppSidebar />);
 
     expect(
       screen.queryByRole("link", { name: "evidenceLibraries" }),
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
   });
 
   it("shows the item when the organisation is switched on", () => {
