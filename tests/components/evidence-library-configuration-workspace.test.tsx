@@ -236,6 +236,7 @@ const savedRows = [
   { sectionKey: "contact", payload: {} },
   { sectionKey: "email", payload: { takedownRecipient: "takedown@example.org" } },
   { sectionKey: "legal", payload: {} },
+  { sectionKey: "notifications", payload: {} },
   { sectionKey: "collections", payload: [] },
   { sectionKey: "search", payload: {} },
   { sectionKey: "filters", payload: {} },
