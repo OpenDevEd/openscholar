@@ -32,3 +32,36 @@ export const replacePublicationAssociations = httpAction(async (ctx, request) =>
     return jsonResponse(503, {error: "association_update_failed"});
   }
 });
+
+const profileCatalogBody = z.discriminatedUnion("operation", [
+  z.object({operation: z.literal("search"), libraryId: z.string().max(128), clerkUserId: z.string().max(512), search: z.string().max(200), profileId: z.string().max(128).optional()}).strict(),
+  z.object({operation: z.literal("save"), libraryId: z.string().max(128), clerkUserId: z.string().max(512), profileId: z.string().max(128).optional(), expectedRevision: z.number().int().positive().optional(),
+    name: z.string().max(500), affiliation: z.string().max(500), bio: z.string().max(12000), website: z.string().max(500), orcid: z.string().max(500)}).strict(),
+]);
+
+export const authorProfileCatalog = httpAction(async (ctx, request) => {
+  const credential = readBearerCredential(request);
+  if (!credential) return jsonResponse(401, {error: "invalid_service_credential"});
+  const body = profileCatalogBody.safeParse(await request.json().catch(() => null));
+  if (!body.success) return jsonResponse(400, {error: "invalid_request"});
+  try {
+    const args = body.data;
+    const credentialDigest = await digestOpaqueToken(credential);
+    if (body.data.operation === "search") {
+      const {operation: _operation, ...search} = body.data;
+      return jsonResponse(200, {profiles: await ctx.runQuery(internal.authors.libraryCatalog.search, {...search, credentialDigest})});
+    }
+    const {operation: _operation, ...save} = body.data;
+    const profileId = await ctx.runMutation(internal.authors.libraryCatalog.save, {...save, credentialDigest});
+    const profiles = await ctx.runQuery(internal.authors.libraryCatalog.search, {libraryId: args.libraryId, clerkUserId: args.clerkUserId, credentialDigest, search: "", profileId});
+    return jsonResponse(200, {profiles});
+  } catch (error) {
+    if (error instanceof ConvexError && typeof error.data === "object" && error.data) {
+      const code = error.data.code;
+      const status = code === "FORBIDDEN" ? 403 : code === "CONFLICT" ? 409 : code === "NOT_FOUND" ? 404 : code === "VALIDATION_ERROR" ? 400 : null;
+      if (status) return jsonResponse(status, {error: typeof error.data.message === "string" ? error.data.message : "Unable to update author profile"});
+    }
+    console.error("Author profile catalog failed", {libraryId: body.data.libraryId, operation: body.data.operation, error});
+    return jsonResponse(503, {error: "Author profiles are unavailable. Try again shortly."});
+  }
+});

@@ -8,7 +8,7 @@ import { createError } from "../lib/errors";
 import { authorContentFields } from "./validators";
 import { profileRole, requireProfileAccess } from "./access";
 
-function cleanContent(content: { [K in keyof typeof authorContentFields]: string }) {
+export function cleanContent(content: { [K in keyof typeof authorContentFields]: string }) {
   const next = {...content};
   for (const key of Object.keys(next) as (keyof typeof next)[]) {
     next[key] = next[key].trim();

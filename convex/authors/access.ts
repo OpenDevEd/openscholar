@@ -6,9 +6,13 @@ import { createError } from "../lib/errors";
 export async function profileRole(ctx: QueryCtx | MutationCtx, profile: Doc<"authorProfiles">) {
   const user = await getCurrentUser(ctx);
   if (!user) return null;
-  if (profile.ownerId === user._id) return "owner" as const;
+  return profileRoleForUser(ctx, profile, user._id);
+}
+
+export async function profileRoleForUser(ctx: QueryCtx | MutationCtx, profile: Doc<"authorProfiles">, userId: Id<"users">) {
+  if (profile.ownerId === userId) return "owner" as const;
   const member = await ctx.db.query("authorProfileMembers")
-    .withIndex("by_profileId_and_userId", q => q.eq("profileId", profile._id).eq("userId", user._id)).unique();
+    .withIndex("by_profileId_and_userId", q => q.eq("profileId", profile._id).eq("userId", userId)).unique();
   return member ? "editor" as const : null;
 }
 

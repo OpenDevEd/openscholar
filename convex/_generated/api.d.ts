@@ -23,6 +23,7 @@ import type * as apiKeys_queries from "../apiKeys/queries.js";
 import type * as authors_access from "../authors/access.js";
 import type * as authors_invitationActions from "../authors/invitationActions.js";
 import type * as authors_invitations from "../authors/invitations.js";
+import type * as authors_libraryCatalog from "../authors/libraryCatalog.js";
 import type * as authors_members from "../authors/members.js";
 import type * as authors_photos from "../authors/photos.js";
 import type * as authors_profiles from "../authors/profiles.js";
@@ -309,6 +310,7 @@ declare const fullApi: ApiFromModules<{
   "authors/access": typeof authors_access;
   "authors/invitationActions": typeof authors_invitationActions;
   "authors/invitations": typeof authors_invitations;
+  "authors/libraryCatalog": typeof authors_libraryCatalog;
   "authors/members": typeof authors_members;
   "authors/photos": typeof authors_photos;
   "authors/profiles": typeof authors_profiles;
