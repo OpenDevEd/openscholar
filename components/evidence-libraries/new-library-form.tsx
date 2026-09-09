@@ -74,6 +74,15 @@ export function NewLibraryForm() {
   if (membership === undefined || access.data === undefined) {
     return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
+  if (membership?.role !== "org:admin") {
+    return (
+      <AuthStatePanel
+        variant="no_access"
+        title={t("ownerOnlyTitle")}
+        description={t("ownerOnlyDescription")}
+      />
+    );
+  }
   // Evidence Libraries are switched on per organisation in Clerk.
   if (!access.data.enabled) {
     return (
@@ -81,15 +90,6 @@ export function NewLibraryForm() {
         variant="no_access"
         title={tGate("title")}
         description={tGate("description")}
-      />
-    );
-  }
-  if (membership?.role !== "org:admin") {
-    return (
-      <AuthStatePanel
-        variant="no_access"
-        title={t("ownerOnlyTitle")}
-        description={t("ownerOnlyDescription")}
       />
     );
   }

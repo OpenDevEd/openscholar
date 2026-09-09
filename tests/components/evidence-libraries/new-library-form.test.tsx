@@ -264,6 +264,7 @@ describe("<NewLibraryForm>", () => {
 
   it("does not offer the form to an editor", () => {
     mocks.organization.mockReturnValue({ ...owner, membership: { role: "org:member" } });
+    mocks.query.mockReturnValue({ data: { enabled: false }, isReady: true });
 
     render(<NewLibraryForm />);
 
