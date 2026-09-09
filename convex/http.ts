@@ -1,3 +1,4 @@
+import { generate as generateLibraryDigest } from "./evidenceLibraries/digests/service";
 import { replacePublicationAssociations, authorProfileCatalog } from "./authors/serviceHttp";
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
@@ -22,6 +23,7 @@ import {
 } from "./wallet/gateway/handler";
 
 const http = httpRouter();
+http.route({path: "/api/v1/evidence-libraries/digests/generate", method: "POST", handler: generateLibraryDigest});
 http.route({path: "/api/v1/evidence-libraries/author-profiles", method: "POST", handler: authorProfileCatalog});
 http.route({path: "/api/v1/evidence-libraries/author-associations", method: "POST", handler: replacePublicationAssociations});
 const STRIPE_WEBHOOK_SECRET = normalizeStripeWebhookSecret(

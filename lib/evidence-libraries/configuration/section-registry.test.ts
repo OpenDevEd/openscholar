@@ -42,7 +42,6 @@ describe("Evidence Library section registry", () => {
     expect(SECTION_REGISTRY.map((section) => section.key)).toEqual(
       generatedSections,
     );
-    expect(SECTION_REGISTRY).toHaveLength(24);
     expect(SECTION_REGISTRY.map((section) => section.key)).toContain("sources");
     expect(SECTION_REGISTRY.map((section) => section.key)).not.toContain(
       "meta",

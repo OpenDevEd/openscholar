@@ -2204,6 +2204,7 @@
       "completed": "Live"
     },
     "problems": {
+      "notificationSchedule": "Choose a valid digest day, time and timezone.",
       "nameMissing": "Give the library a name.",
       "partnerName": "Every funding partner needs a name.",
       "badColour": "One of the colours is not valid.",

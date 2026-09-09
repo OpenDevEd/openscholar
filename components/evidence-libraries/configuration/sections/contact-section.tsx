@@ -1,5 +1,7 @@
 "use client";
 
+import { NotificationsFields } from "./notifications-fields";
+
 import { Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -173,6 +175,8 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
           );
         })}
       </FieldGroup>
+
+      <NotificationsFields draft={draft} patch={patch} />
 
       <FieldGroup title={t("legalHeading")} hint={t("legalHint")}>
         {LEGAL_KEYS.map((key) => {

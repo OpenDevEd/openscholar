@@ -62,6 +62,7 @@ const ROW_KEYS = [
   "footer",
   "contact",
   "email",
+  "notifications",
   "legal",
   "collections",
   "search",
@@ -90,6 +91,7 @@ type SectionProblem =
   | "funderUrl"
   | "takedownRecipient"
   | "contactRecipient"
+  | "notificationSchedule"
   | "contactEmail"
   | "phone"
   | "legalUrl"
@@ -431,6 +433,7 @@ export type ConfigurationDraft = {
   footer: FooterDraft;
   contact: ContactDraft;
   email: EmailDraft;
+  notifications: {enabled: boolean; weekly: {weekday: number; time: string; timezone: string}};
   legal: LegalDraft;
   collections: CollectionDraft[];
   search: SearchDraft;
@@ -701,6 +704,12 @@ function readRecipient(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
+function readNotifications(payload: unknown): ConfigurationDraft["notifications"] {
+  const value = record(payload);
+  const weekly = record(value.weekly);
+  return {enabled: flag(value.enabled, false), weekly: {weekday: typeof weekly.weekday === "number" ? weekly.weekday : 1, time: text(weekly.time) || "09:00", timezone: text(weekly.timezone) || "UTC"}};
+}
+
 function readEmail(payload: unknown): EmailDraft {
   const email = record(payload);
   return {
@@ -829,6 +838,7 @@ export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
     footer: readFooter(payloadOf(rows, "footer")),
     contact: readContact(payloadOf(rows, "contact")),
     email: readEmail(payloadOf(rows, "email")),
+    notifications: readNotifications(payloadOf(rows, "notifications")),
     legal: readLegal(payloadOf(rows, "legal")),
     collections: readCollections(payloadOf(rows, "collections")),
     search: readSearch(payloadOf(rows, "search")),
@@ -1083,6 +1093,8 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
       return contactPayload(draft.contact);
     case "email":
       return emailPayload(draft.email);
+    case "notifications":
+      return draft.notifications;
     case "legal":
       return legalPayload(draft.legal);
     case "collections":
@@ -1275,7 +1287,7 @@ function cardSlice(draft: ConfigurationDraft, sectionKey: PageSectionKey) {
     case "footer":
       return draft.footer;
     case "contact":
-      return { contact: draft.contact, email: draft.email, legal: draft.legal };
+      return { contact: draft.contact, email: draft.email, legal: draft.legal, notifications: draft.notifications };
     case "collections":
       return draft.collections;
     case "search":
@@ -1291,7 +1303,7 @@ const ROWS_FOR_CARD: Record<PageSectionKey, readonly RowKey[]> = {
   institutions: ["institutions"],
   navigation: ["navigation", "features"],
   footer: ["footer"],
-  contact: ["contact", "email", "legal"],
+  contact: ["contact", "email", "legal", "notifications"],
   collections: ["collections"],
   search: ["search", "filters"],
   sources: ["sources", "content"],
@@ -1430,6 +1442,10 @@ export function sectionProblems(
     }
     case "contact": {
       const { contact, email, legal } = draft;
+      const {weekday, time, timezone} = draft.notifications.weekly;
+      let validTimezone = true;
+      try {new Intl.DateTimeFormat("en", {timeZone: timezone});} catch {validTimezone = false;}
+      if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) || !timezone || !validTimezone) problems.push("notificationSchedule");
       if (
         email.takedownRecipient !== null &&
         !EMAIL.test(email.takedownRecipient)
@@ -1595,6 +1611,7 @@ export function resetSection(
     case "contact":
       next.contact = saved.contact;
       next.email = saved.email;
+      next.notifications = saved.notifications;
       next.legal = saved.legal;
       break;
     case "collections":

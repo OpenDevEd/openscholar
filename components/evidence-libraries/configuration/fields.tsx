@@ -1066,7 +1066,7 @@ export function FieldGroup({
   children,
   className,
   ...rest
-}: React.HTMLAttributes<HTMLElement> & {
+}: Omit<React.HTMLAttributes<HTMLElement>, "title"> & {
   title: ReactNode;
   hint?: ReactNode;
   action?: ReactNode;

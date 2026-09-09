@@ -202,10 +202,26 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "services.publication.crossref.environment",
+				"values": [
+					"test",
+					"production"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "services.publication.zenodo.defaultIdentifierPolicy",
 				"values": [
 					"reuse-crossref",
 					"mint-zenodo"
+				]
+			},
+			{
+				"allowCustom": false,
+				"path": "services.publication.zenodo.environment",
+				"values": [
+					"sandbox",
+					"production"
 				]
 			},
 			{
