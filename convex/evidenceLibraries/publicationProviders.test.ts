@@ -174,7 +174,7 @@ test("refuses invalid tokens and Crossref without Zenodo without saving anything
   ).rejects.toThrow(/Crossref requires Zenodo/);
   expect(fetch).not.toHaveBeenCalled();
   settings.zenodo.mode = "sandbox";
-  vi.stubEnv("EVIDENCE_LIBRARY_ZENODO_SANDBOX_TOKEN", "platform-token");
+  vi.stubEnv("EL_ZENODO_SANDBOX_TOKEN", "platform-token");
   await expect(
     fixture.admin.action(api.evidenceLibraries.publicationProviderActions.verifyAndSave,
       { libraryId, settings, credentials: {}, expectedUpdatedAt: null }),
@@ -193,7 +193,7 @@ test("uses platform sandbox accounts and rejects a failed Crossref check after c
     CROSSREF_SANDBOX_REGISTRANT: "OpenScholar",
   };
   for (const [name, value] of Object.entries(env))
-    vi.stubEnv(`EVIDENCE_LIBRARY_${name}`, value);
+    vi.stubEnv(`EL_${name}`, value);
   const fixture = await createDraftSetupFixture("sandbox_publication");
   const libraryId = fixture.created.libraryId;
   const settings = structuredClone(EMPTY_PUBLICATION_SETTINGS);
