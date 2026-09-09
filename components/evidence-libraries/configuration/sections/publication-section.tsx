@@ -179,8 +179,7 @@ function PublicationForm({
         <FieldGroup
           title={
             <span className="inline-flex items-center gap-2">
-              <img src="/brands/zenodo.svg" alt="" className="size-5" />
-              Zenodo
+              <img src="/brands/zenodo.svg" alt="Zenodo" className="h-7 w-auto" />
             </span>
           }
           hint={crossref ? t("zenodoRequired") : t("zenodoHint")}
@@ -279,7 +278,7 @@ function PublicationForm({
               <img
                 src="/brands/crossref.svg"
                 alt="Crossref"
-                className="h-6 w-auto rounded bg-white p-0.5"
+                className="h-7 w-auto rounded bg-white p-0.5"
               />
             </span>
           }
