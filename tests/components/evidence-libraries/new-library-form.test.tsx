@@ -78,7 +78,7 @@ describe("<NewLibraryForm>", () => {
     mocks.organization.mockReset();
     mocks.push.mockReset();
     mocks.query.mockReset();
-    mocks.query.mockReturnValue({ data: { enabled: true }, isReady: true });
+    mocks.query.mockReturnValue({ data: { enabled: true, canCreate: true }, isReady: true });
     mocks.reserveAddress.mockReset();
   });
 
@@ -264,6 +264,7 @@ describe("<NewLibraryForm>", () => {
 
   it("does not offer the form to an editor", () => {
     mocks.organization.mockReturnValue({ ...owner, membership: { role: "org:member" } });
+    mocks.query.mockReturnValue({ data: { enabled: true, canCreate: false }, isReady: true });
 
     render(<NewLibraryForm />);
 
@@ -273,7 +274,7 @@ describe("<NewLibraryForm>", () => {
 
   it("shows one plain panel instead of the form when the organisation is not switched on", () => {
     mocks.organization.mockReturnValue(owner);
-    mocks.query.mockReturnValue({ data: { enabled: false }, isReady: true });
+    mocks.query.mockReturnValue({ data: { enabled: true, canCreate: false }, isReady: true });
 
     render(<NewLibraryForm />);
 
