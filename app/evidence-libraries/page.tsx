@@ -1,10 +1,11 @@
+import { OrganizationFeatureGate } from "@/components/auth/organization-feature-gate";
 import { LibraryList } from "@/components/evidence-libraries/library-list";
 import { PageWrapper } from "@/components/PageWrapper";
 
 export default function EvidenceLibrariesPage() {
   return (
-    <PageWrapper>
+    <OrganizationFeatureGate feature="evidenceLibraries"><PageWrapper>
       <LibraryList />
-    </PageWrapper>
+    </PageWrapper></OrganizationFeatureGate>
   );
 }

@@ -256,6 +256,9 @@
     "downgradeScheduledTo": "Rétrogradation planifiée vers"
   },
   "auth": {
+    "organizationFeatureTitle": "Accès non autorisé",
+    "organizationFeatureDescription": "Cette fonctionnalité n’est activée pour aucune de vos organisations.",
+    "backToSearch": "Retour à la recherche",
     "loadingTitle": "Chargement de l'espace de travail",
     "loadingDescription": "Préparation de votre espace de travail authentifié.",
     "loadingSession": "Chargement de la session authentifiée",

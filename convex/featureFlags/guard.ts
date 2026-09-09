@@ -1,3 +1,4 @@
+import { requireOrganizationFeature } from "../organizationFeatures";
 import type { MutationCtx, QueryCtx, ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -18,6 +19,7 @@ export async function requireFeature(
   flagKey: string,
   userId?: Id<"users">,
 ): Promise<void> {
+  if (flagKey === "extraction.enabled") await requireOrganizationFeature(ctx, "extraction");
   const flag = await ctx.db
     .query("featureFlags")
     .withIndex("by_key", (q) => q.eq("key", flagKey))

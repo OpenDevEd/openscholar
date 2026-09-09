@@ -169,11 +169,11 @@ export async function findFreeEvidenceLibraryAddress(
 
 async function checkEvidenceLibraryAddress(
   ctx: ActionCtx,
-  args: { name: string },
+  args: { name: string; organizationId: Id<"organizations"> },
 ): Promise<AddressCheckResult> {
   const state = await ctx.runQuery(
     internal.evidenceLibraries.queries.readAddressCandidates,
-    { name: args.name },
+    { name: args.name, organizationId: args.organizationId },
   );
   if (state.status === "name-taken") return state;
 
@@ -203,17 +203,17 @@ async function checkEvidenceLibraryAddress(
  * a library with this name, or the check could not run.
  */
 export const checkAddress = action({
-  args: { name: v.string() },
+  args: { name: v.string(), organizationId: v.id("organizations") },
   returns: addressCheckValidator,
   handler: async (ctx, args): Promise<AddressCheckResult> =>
-    await checkEvidenceLibraryAddress(ctx, { name: args.name }),
+    await checkEvidenceLibraryAddress(ctx, { name: args.name, organizationId: args.organizationId }),
 });
 
 /**
  * Runs the same check and keeps the address it found, in one transaction.
  */
 export const reserveAddress = action({
-  args: { name: v.string() },
+  args: { name: v.string(), organizationId: v.id("organizations") },
   returns: v.union(
     v.object({
       status: v.literal("reserved"),
@@ -225,12 +225,13 @@ export const reserveAddress = action({
     unavailableValidator,
   ),
   handler: async (ctx, args): Promise<AddressReservationResult> => {
-    const checked = await checkEvidenceLibraryAddress(ctx, { name: args.name });
+    const checked = await checkEvidenceLibraryAddress(ctx, { name: args.name, organizationId: args.organizationId });
     if (checked.status !== "available") return checked;
     const reserved = await ctx.runMutation(
       internal.evidenceLibraries.mutations.reserveAddress,
       {
         name: checked.name,
+        organizationId: args.organizationId,
         publicAddress: checked.publicAddress,
         slug: checked.slug,
       },

@@ -40,6 +40,7 @@ vi.mock("@clerk/nextjs", () => ({
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
+    organizationFeatures: { get: "organizationFeatures:get" },
     screening: {
       queries: {
         getActiveScreeningJobProgress: "screening:getActiveScreeningJobProgress",

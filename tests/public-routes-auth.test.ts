@@ -16,7 +16,7 @@ describe("public route auth matrix", () => {
   });
 
   it("makes author profiles readable without making their configuration public", () => {
-    expect(isPublicPath("/authors")).toBe(true);
+    expect(isPublicPath("/authors")).toBe(false);
     expect(isPublicPath("/authors/profile-id")).toBe(true);
     expect(isPublicPath("/authors/profile-id/configuration")).toBe(false);
   });

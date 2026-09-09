@@ -1,3 +1,4 @@
+import { assert } from "vitest";
 /// <reference types="vite/client" />
 import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -589,6 +590,7 @@ describe("Evidence Library configuration deployment", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId: fixture.created.libraryId },
     );
+    assert(unchanged, "Expected an accessible draft");
     expect(unchanged.hasUnpublishedChanges).toBe(false);
 
     await expect(
@@ -619,6 +621,7 @@ describe("Evidence Library configuration deployment", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId: fixture.created.libraryId },
     );
+    assert(changed, "Expected an accessible draft");
     expect(changed.hasUnpublishedChanges).toBe(true);
     expect(saved.editVersion).toBe(changed.draft.editVersion);
   });
@@ -777,6 +780,7 @@ describe("Evidence Library configuration deployment", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId },
     );
+    assert(draft, "Expected an accessible draft");
     const overviews = await fixture.admin.query(
       api.evidenceLibraries.queries.listLibraryOverviews,
       {},
@@ -1881,6 +1885,7 @@ describe("Evidence Library configuration deployment", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId },
     );
+    assert(projected, "Expected an accessible draft");
     expect(projected.operation).toMatchObject({
       status: "failed",
       retryable: false,
@@ -1915,6 +1920,7 @@ describe("Evidence Library configuration deployment", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId },
     );
+    assert(projected, "Expected an accessible draft");
     expect(projected.operation).toMatchObject({
       status: "failed",
       retryable: false,
@@ -1937,6 +1943,7 @@ describe("Evidence Library configuration deployment", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId },
     );
+    assert(before, "Expected an accessible draft");
     expect(before.operation).toMatchObject({ retryable: true });
 
     await deployment.fixture.t.run(async (ctx) => {
@@ -1970,6 +1977,7 @@ describe("Evidence Library configuration deployment", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId },
     );
+    assert(after, "Expected an accessible draft");
     expect(after.operation).toMatchObject({ retryable: false });
     await expect(
       deployment.fixture.admin.mutation(
@@ -2028,6 +2036,7 @@ describe("Evidence Library configuration deployment", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId },
     );
+    assert(before, "Expected an accessible draft");
     expect(before.operation).toMatchObject({ retryable: true });
 
     await deployment.fixture.t.run(async (ctx) => {
@@ -2044,6 +2053,7 @@ describe("Evidence Library configuration deployment", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId },
     );
+    assert(after, "Expected an accessible draft");
     expect(after.operation).toMatchObject({ retryable: false });
     await expect(
       deployment.fixture.admin.mutation(

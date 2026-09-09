@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
 import { ResultsTranslationControl } from "./components/results-translation-control";
 import { ScreeningDialog } from "@/components/screening/screening-dialog";
+import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
@@ -105,7 +106,9 @@ export function SearchCommandFooter({
   );
   const pullCap = livePullCap ?? 200;
   const pullDefault = livePullDefault ?? 200;
-  const chatFlagEnabled = useFeatureFlag("extraction.chat");
+  const chatFlag = useFeatureFlag("extraction.chat");
+  const { data: features } = useOrganizationFeatures();
+  const chatFlagEnabled = chatFlag && features?.extraction === true;
 
   const linkedChatJobIdsByAccountId = useSearchHistoryStore((state) =>
     state.searchHistory.find((item) => item.id === searchId)

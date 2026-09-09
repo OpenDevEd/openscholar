@@ -1,3 +1,4 @@
+import { requireOrganizationFeature } from "../../organizationFeatures";
 /**
  * Plan-06 resume mutation, queue-runtime version.
  *
@@ -72,6 +73,7 @@ export const resumeExtraction = mutation({
   }> => {
     const user = await requireAuth(ctx);
     const job = await assertJobOwnership(ctx, user._id, jobId);
+    await requireOrganizationFeature(ctx, "extraction");
 
     if (job.mode !== "extraction") {
       throw createError(

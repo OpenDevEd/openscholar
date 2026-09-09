@@ -1,6 +1,6 @@
 "use client";
 
-import { useOrganization } from "@clerk/nextjs";
+import { LibraryOrganizationPicker, useLibraryOrganizationChoice } from "./organization-picker";
 import { useAction } from "convex/react";
 import { Building2, Check, Lock, RotateCw } from "lucide-react";
 import Link from "next/link";
@@ -9,13 +9,11 @@ import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import {
   createInitialEvidenceLibraryShortName,
   MAX_EVIDENCE_LIBRARY_NAME_LENGTH,
@@ -51,64 +49,17 @@ type AddressCheck =
 const CHECK_DELAY_MS = 300;
 
 export function NewLibraryForm() {
+  const owner = useLibraryOrganizationChoice();
   const t = useTranslations("evidenceLibraries.new");
-  const tGate = useTranslations("evidenceLibraries.gate");
-  const { isLoaded, membership, organization } = useOrganization();
-  const access = useProtectedQuery(
-    api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
-    organization ? {} : "skip",
-  );
-
-  if (!isLoaded) {
-    return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
-  }
-  if (!organization) {
-    return (
-      <AuthStatePanel
-        variant="no_access"
-        title={t("noOrganizationTitle")}
-        description={t("noOrganizationDescription")}
-      />
-    );
-  }
-  if (membership === undefined || access.data === undefined) {
-    return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
-  }
-  if (membership?.role !== "org:admin") {
-    return (
-      <AuthStatePanel
-        variant="no_access"
-        title={t("ownerOnlyTitle")}
-        description={t("ownerOnlyDescription")}
-      />
-    );
-  }
-  // Evidence Libraries are switched on per organisation in Clerk.
-  if (!access.data.enabled) {
-    return (
-      <AuthStatePanel
-        variant="no_access"
-        title={tGate("title")}
-        description={tGate("description")}
-      />
-    );
-  }
-  // Switching organisation starts a fresh form.
-  return (
-    <OwnerForm
-      key={organization.id}
-      organizationName={organization.name}
-      organizationImageUrl={organization.imageUrl}
-    />
-  );
+  if (!owner.isReady) return <AuthStatePanel variant="loading" layout="fullscreen" />;
+  if (!owner.selected) return <AuthStatePanel variant="no_access" layout="fullscreen" title={t("ownerOnlyTitle")} description={t("ownerOnlyDescription")} />;
+  return <OwnerForm key={owner.selected.id} organizationId={owner.selected.id}
+    organizationPicker={<LibraryOrganizationPicker organizations={owner.organizations} value={owner.selected.id} onChange={owner.choose} />} />;
 }
 
-function OwnerForm({
-  organizationName,
-  organizationImageUrl,
-}: {
-  organizationName: string;
-  organizationImageUrl: string;
+function OwnerForm({ organizationId, organizationPicker }: {
+  organizationId: Id<"organizations">;
+  organizationPicker: React.ReactNode;
 }) {
   const t = useTranslations("evidenceLibraries.new");
   const tc = useTranslations("common");
@@ -164,7 +115,7 @@ function OwnerForm({
   function runCheck(wanted: string) {
     wantedName.current = wanted;
     setCheck({ status: "checking", name: wanted });
-    void checkAddress({ name: wanted })
+    void checkAddress({ organizationId, name: wanted })
       .then((result) => {
         if (wantedName.current !== wanted) return;
         if (result.status === "available") {
@@ -212,7 +163,7 @@ function OwnerForm({
       return;
     }
     setReserving(true);
-    void reserveAddress({ name: trimmed })
+    void reserveAddress({ organizationId, name: trimmed })
       .then((result) => {
         if (result.status === "name-taken") {
           setCheck({
@@ -265,22 +216,7 @@ function OwnerForm({
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-5 p-4 md:p-6">
         <FieldGroup title={t("ownerTitle")}>
-          <PanelRow
-            leading={
-              <Avatar className="size-7 rounded-md">
-                <AvatarImage
-                  src={organizationImageUrl}
-                  alt=""
-                  className="rounded-md object-cover"
-                />
-                <AvatarFallback className="rounded-md">
-                  <Building2 className="size-4" aria-hidden />
-                </AvatarFallback>
-              </Avatar>
-            }
-            title={t("ownedBy", { organization: organizationName })}
-            hint={t("ownerHint")}
-          />
+          {organizationPicker}
         </FieldGroup>
 
         <FieldGroup title={t("libraryTitle")} hint={t("libraryDescription")}>

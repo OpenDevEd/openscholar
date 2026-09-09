@@ -25,7 +25,7 @@ describe("library overviews", () => {
     await expect(
       fixture.admin.query(
         internal.evidenceLibraries.queries.readAddressCandidates,
-        { name: "Climate Evidence" },
+        { organizationId: (await fixture.admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id, name: "Climate Evidence" },
       ),
     ).resolves.toEqual({
       status: "name-taken",
@@ -34,7 +34,7 @@ describe("library overviews", () => {
     await expect(
       fixture.admin.query(
         internal.evidenceLibraries.queries.readAddressCandidates,
-        { name: "   " },
+        { organizationId: (await fixture.admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id, name: "   " },
       ),
     ).rejects.toThrow(/VALIDATION_ERROR/);
   });
@@ -210,65 +210,6 @@ describe("library overviews", () => {
     ]);
   });
 
-  it("gates library creation with the organization switch", async () => {
-    const fixture = await createDraftSetupFixture("overview_switch");
-
-    await expect(
-      fixture.admin.query(
-        api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
-        {},
-      ),
-    ).resolves.toEqual({ enabled: true });
-
-    // The real switch is Clerk public metadata via the webhook; the test flips
-    // the projected row directly.
-    await fixture.t.run(async (ctx) => {
-      const organization = await ctx.db
-        .query("organizations")
-        .withIndex("by_clerkOrganizationId", (query) =>
-          query.eq("clerkOrganizationId", fixture.clerkOrganizationId),
-        )
-        .unique();
-      if (!organization) throw new Error("organization row missing");
-      await ctx.db.patch("organizations", organization._id, {
-        evidenceLibrariesEnabled: false,
-      });
-    });
-
-    await expect(
-      fixture.admin.query(
-        api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
-        {},
-      ),
-    ).resolves.toEqual({ enabled: false });
-  });
-
-  it("disables creation when the token role no longer matches the stored role", async () => {
-    const fixture = await createDraftSetupFixture("overview_switch_role");
-    // The stored membership is an admin; the token claims plain membership.
-    const drifted = fixture.t.withIdentity({
-      subject: fixture.clerkUserId,
-      o: { id: fixture.clerkOrganizationId, rol: "org:member" },
-    });
-
-    await expect(
-      drifted.query(
-        api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
-        {},
-      ),
-    ).resolves.toEqual({ enabled: false });
-  });
-
-  it("answers 'off' instead of throwing when nobody is signed in", async () => {
-    const fixture = await createDraftSetupFixture("overview_switch_anon");
-
-    await expect(
-      fixture.t.query(
-        api.evidenceLibraries.queries.getEvidenceLibrariesAccess,
-        {},
-      ),
-    ).resolves.toEqual({ enabled: false });
-  });
   it("says which part of a deletion stopped, for each part", async () => {
     const fixture = await createActivatedSetupFixture("overview_teardown");
     const libraryId = fixture.created.libraryId;

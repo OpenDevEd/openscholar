@@ -16,7 +16,7 @@ import {
 } from "./domains";
 import {
   requireEvidenceLibraryAccess,
-  requireOrganizationAccess,
+  readEvidenceLibraryAccess,
 } from "./access";
 
 /**
@@ -225,7 +225,7 @@ export const getDevelopmentTeardownStatus = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const access = await requireOrganizationAccess(ctx, "manage");
+    if (!await ctx.auth.getUserIdentity()) return null;
     const operationId = ctx.db.normalizeId(
       "evidenceLibraryConfigOperations",
       args.operationId,
@@ -242,7 +242,7 @@ export const getDevelopmentTeardownStatus = query({
     }
     const library = await ctx.db.get("evidenceLibraries", operation.libraryId);
     if (!library) return { status: "complete" as const };
-    if (library.organizationId !== access.organization._id) return null;
+    if (!await readEvidenceLibraryAccess(ctx, library._id, "manage")) return null;
     return {
       ...(operation.error
         ? {

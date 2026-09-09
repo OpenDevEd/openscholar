@@ -7,7 +7,8 @@ import {
   applyMembershipProjection,
   applyOrganizationProjection,
 } from "../webhooks/projections";
-import { requireOrganizationAccess } from "./access";
+import { readMemberOrganizations } from "../organizationFeatures";
+import { seedFeatureUser } from "../organizationFeatures.test-support";
 
 const organizationSnapshot = {
   clerkOrganizationId: "org_123",
@@ -15,6 +16,8 @@ const organizationSnapshot = {
   slug: "evidence-team",
   imageUrl: "https://img.example/org.png",
   evidenceLibrariesEnabled: false,
+  authorsEnabled: false,
+  extractionEnabled: false,
   clerkCreatedAt: 1_700_000_000_000,
   clerkUpdatedAt: 1_700_000_001_000,
 };
@@ -450,7 +453,9 @@ describe("Evidence Library identity projections", () => {
         o: { id: "org_123", rol: "org:member" },
       });
       return await member.run(async (ctx) => {
-        const access = await requireOrganizationAccess(ctx, "read");
+        await seedFeatureUser(ctx, "user_rejoin");
+        const [access] = await readMemberOrganizations(ctx);
+        if (!access) throw new Error("Active membership missing");
         const memberships = await ctx.db
           .query("organizationMemberships")
           .collect();

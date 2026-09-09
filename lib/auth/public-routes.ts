@@ -1,7 +1,6 @@
 export const PUBLIC_UNAUTHENTICATED_PATHS = [
   "/",
   "/pricing",
-  "/authors",
   "/privacy",
   "/cookie-policy",
   "/results/:path*",

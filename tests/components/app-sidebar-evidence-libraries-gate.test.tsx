@@ -41,6 +41,7 @@ vi.mock("@clerk/nextjs", () => ({
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
+    organizationFeatures: { get: "organizationFeatures:get" },
     screening: {
       queries: {
         getActiveScreeningJobProgress: "screening:getActiveScreeningJobProgress",
@@ -190,8 +191,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 describe("<AppSidebar> Evidence Libraries nav item", () => {
   function answerQueries(enabled: boolean) {
     protectedQueryMock.mockImplementation((queryRef: unknown) =>
-      queryRef === "evidenceLibraries:getEvidenceLibrariesAccess"
-        ? { data: { enabled }, isReady: true }
+      queryRef === "organizationFeatures:get"
+        ? { data: { evidenceLibraries: enabled, authors: enabled, extraction: enabled }, isReady: true }
         : { data: undefined, isReady: true },
     );
   }
@@ -200,14 +201,16 @@ describe("<AppSidebar> Evidence Libraries nav item", () => {
     protectedQueryMock.mockReset();
   });
 
-  it("shows library navigation without an enabled organization", () => {
+  it("hides gated tools without an enabled organization", () => {
     answerQueries(false);
 
     render(<AppSidebar />);
 
     expect(
       screen.queryByRole("link", { name: "evidenceLibraries" }),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Authors" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "extraction" })).not.toBeInTheDocument();
   });
 
   it("shows the item when the organisation is switched on", () => {

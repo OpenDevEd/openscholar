@@ -1,3 +1,4 @@
+import { assert } from "vitest";
 /// <reference types="vite/client" />
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
@@ -65,6 +66,7 @@ describe("the OpenRouter key", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId },
     );
+    assert(draft, "Expected an accessible draft");
     expect(JSON.stringify(draft)).not.toContain(OPENROUTER_KEY);
 
     const stored = await fixture.t.run((ctx) =>
@@ -286,6 +288,7 @@ describe("the OpenRouter key", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId: fixture.created.libraryId },
     );
+    assert(draft, "Expected an accessible draft");
     expect(
       draft.sections.find((row) => row.sectionKey === "ai")?.payload,
     ).toEqual(ai);
@@ -341,6 +344,7 @@ describe("the OpenRouter key", () => {
       api.evidenceLibraries.queries.getDraft,
       { libraryId },
     );
+    assert(draft, "Expected an accessible draft");
     const seen = JSON.stringify(draft);
     expect(seen).not.toContain(encryptedRuntimeConfig);
     expect(seen).not.toContain(OPENROUTER_KEY);
@@ -574,6 +578,7 @@ describe("the OpenRouter key", () => {
         api.evidenceLibraries.queries.getDraft,
         { libraryId },
       );
+    assert(draft, "Expected an accessible draft");
       expect(
         draft.sections.find((row) => row.sectionKey === "ai")?.payload,
       ).toEqual(ai);

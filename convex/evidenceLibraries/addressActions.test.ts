@@ -1,3 +1,4 @@
+import { seedFeatureUser } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -49,7 +50,7 @@ async function seedOwner(
   t: ReturnType<typeof convexTest>,
   suffix: string,
 ) {
-  await t.run(async (ctx) => {
+  const organizationId = await t.run(async (ctx) => {
     const organizationId = await ctx.db.insert("organizations", {
       clerkOrganizationId: `org_${suffix}`,
       name: `Team ${suffix}`,
@@ -61,6 +62,7 @@ async function seedOwner(
       updatedAt: 1,
       evidenceLibrariesEnabled: true,
     });
+    await seedFeatureUser(ctx, `user_${suffix}`);
     await ctx.db.insert("organizationMemberships", {
       organizationId,
       clerkMembershipId: `orgmem_${suffix}`,
@@ -72,17 +74,18 @@ async function seedOwner(
       createdAt: 1,
       updatedAt: 1,
     });
+    return organizationId;
   });
-  return t.withIdentity({
+  return { organizationId, owner: t.withIdentity({
     subject: `user_${suffix}`,
     o: { id: `org_${suffix}`, rol: "org:admin" },
-  });
+  }) };
 }
 
 async function createWorld(world: FakeWorld) {
   vi.stubGlobal("fetch", createFetch(world));
   const t = convexTest(schema, modules);
-  return { t, world, owner: await seedOwner(t, "address") };
+  return { t, world, ...await seedOwner(t, "address") };
 }
 
 describe("free host signal", () => {
@@ -109,10 +112,10 @@ describe("Evidence Library address reservation", () => {
   });
 
   it("gives a free name the address that matches it", async () => {
-    const { owner } = await createWorld({ coolifyHosts: [], servedHosts: [] });
+    const { owner, organizationId } = await createWorld({ coolifyHosts: [], servedHosts: [] });
 
     await expect(
-      owner.action(api.evidenceLibraries.addressActions.checkAddress, {
+      owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
         name: "Climate Evidence",
       }),
     ).resolves.toEqual({
@@ -125,7 +128,7 @@ describe("Evidence Library address reservation", () => {
 
     const reserved = await owner.action(
       api.evidenceLibraries.addressActions.reserveAddress,
-      { name: "Climate Evidence" },
+      { organizationId: organizationId, name: "Climate Evidence" },
     );
     expect(reserved).toMatchObject({
       status: "reserved",
@@ -136,18 +139,18 @@ describe("Evidence Library address reservation", () => {
   });
 
   it("refuses a second library with the same name and points at the first", async () => {
-    const { t, owner } = await createWorld({
+    const { t, owner, organizationId } = await createWorld({
       coolifyHosts: [],
       servedHosts: [],
     });
     const first = await owner.action(
       api.evidenceLibraries.addressActions.reserveAddress,
-      { name: "Climate Evidence" },
+      { organizationId: organizationId, name: "Climate Evidence" },
     );
     if (first.status !== "reserved") throw new Error("first not reserved");
 
     await expect(
-      owner.action(api.evidenceLibraries.addressActions.checkAddress, {
+      owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
         name: " Climate   Evidence ",
       }),
     ).resolves.toEqual({
@@ -155,7 +158,7 @@ describe("Evidence Library address reservation", () => {
       libraryId: first.libraryId,
     });
     await expect(
-      owner.action(api.evidenceLibraries.addressActions.reserveAddress, {
+      owner.action(api.evidenceLibraries.addressActions.reserveAddress, { organizationId: organizationId,
         name: "Climate Evidence",
       }),
     ).resolves.toEqual({ status: "name-taken", libraryId: first.libraryId });
@@ -165,18 +168,18 @@ describe("Evidence Library address reservation", () => {
   });
 
   it("numbers the address when our database already holds it", async () => {
-    const { t, owner } = await createWorld({
+    const { t, owner, organizationId } = await createWorld({
       coolifyHosts: [],
       servedHosts: [],
     });
-    const otherOwner = await seedOwner(t, "address_other");
+    const { owner: otherOwner, organizationId: otherOrganizationId } = await seedOwner(t, "address_other");
     await otherOwner.action(
       api.evidenceLibraries.addressActions.reserveAddress,
-      { name: "Climate Evidence" },
+      { organizationId: otherOrganizationId, name: "Climate Evidence" },
     );
 
     await expect(
-      owner.action(api.evidenceLibraries.addressActions.checkAddress, {
+      owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
         name: "Climate Evidence",
       }),
     ).resolves.toMatchObject({
@@ -187,13 +190,13 @@ describe("Evidence Library address reservation", () => {
   });
 
   it("numbers the address when Coolify already serves the host", async () => {
-    const { owner } = await createWorld({
+    const { owner, organizationId } = await createWorld({
       coolifyHosts: [CLIMATE_HOST],
       servedHosts: [],
     });
 
     await expect(
-      owner.action(api.evidenceLibraries.addressActions.checkAddress, {
+      owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
         name: "Climate Evidence",
       }),
     ).resolves.toMatchObject({
@@ -203,13 +206,13 @@ describe("Evidence Library address reservation", () => {
   });
 
   it("numbers the address when something answers on the host", async () => {
-    const { owner } = await createWorld({
+    const { owner, organizationId } = await createWorld({
       coolifyHosts: [],
       servedHosts: [CLIMATE_HOST],
     });
 
     await expect(
-      owner.action(api.evidenceLibraries.addressActions.checkAddress, {
+      owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
         name: "Climate Evidence",
       }),
     ).resolves.toMatchObject({
@@ -219,19 +222,19 @@ describe("Evidence Library address reservation", () => {
   });
 
   it("reserves nothing when Coolify cannot be asked", async () => {
-    const { t, owner } = await createWorld({
+    const { t, owner, organizationId } = await createWorld({
       coolifyHosts: [],
       servedHosts: [],
       coolifyFails: true,
     });
 
     await expect(
-      owner.action(api.evidenceLibraries.addressActions.checkAddress, {
+      owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
         name: "Climate Evidence",
       }),
     ).resolves.toEqual({ status: "unavailable", reason: "check-failed" });
     await expect(
-      owner.action(api.evidenceLibraries.addressActions.reserveAddress, {
+      owner.action(api.evidenceLibraries.addressActions.reserveAddress, { organizationId: organizationId,
         name: "Climate Evidence",
       }),
     ).resolves.toEqual({ status: "unavailable", reason: "check-failed" });
@@ -241,14 +244,14 @@ describe("Evidence Library address reservation", () => {
   });
 
   it("reserves nothing when the host cannot be reached", async () => {
-    const { t, owner } = await createWorld({
+    const { t, owner, organizationId } = await createWorld({
       coolifyHosts: [],
       servedHosts: [],
       probeFails: true,
     });
 
     await expect(
-      owner.action(api.evidenceLibraries.addressActions.reserveAddress, {
+      owner.action(api.evidenceLibraries.addressActions.reserveAddress, { organizationId: organizationId,
         name: "Climate Evidence",
       }),
     ).resolves.toEqual({ status: "unavailable", reason: "check-failed" });
@@ -258,17 +261,17 @@ describe("Evidence Library address reservation", () => {
   });
 
   it("refuses a name that is too long", async () => {
-    const { owner } = await createWorld({ coolifyHosts: [], servedHosts: [] });
+    const { owner, organizationId } = await createWorld({ coolifyHosts: [], servedHosts: [] });
 
     await expect(
-      owner.action(api.evidenceLibraries.addressActions.checkAddress, {
+      owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
         name: "a".repeat(101),
       }),
     ).rejects.toThrow(/VALIDATION_ERROR/);
   });
 
   it("only an owner of the organisation may check or reserve", async () => {
-    const { t } = await createWorld({ coolifyHosts: [], servedHosts: [] });
+    const { t, organizationId } = await createWorld({ coolifyHosts: [], servedHosts: [] });
     await t.run(async (ctx) => {
       const organization = await ctx.db
         .query("organizations")
@@ -277,7 +280,8 @@ describe("Evidence Library address reservation", () => {
         )
         .unique();
       if (!organization) throw new Error("missing organization");
-      await ctx.db.insert("organizationMemberships", {
+      await seedFeatureUser(ctx, "user_address_member");
+    await ctx.db.insert("organizationMemberships", {
         organizationId: organization._id,
         clerkMembershipId: "orgmem_address_member",
         clerkUserId: "user_address_member",
@@ -295,12 +299,12 @@ describe("Evidence Library address reservation", () => {
     });
 
     await expect(
-      member.action(api.evidenceLibraries.addressActions.checkAddress, {
+      member.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
         name: "Climate Evidence",
       }),
     ).rejects.toThrow(/FORBIDDEN/);
     await expect(
-      member.action(api.evidenceLibraries.addressActions.reserveAddress, {
+      member.action(api.evidenceLibraries.addressActions.reserveAddress, { organizationId: organizationId,
         name: "Climate Evidence",
       }),
     ).rejects.toThrow(/FORBIDDEN/);
@@ -308,18 +312,18 @@ describe("Evidence Library address reservation", () => {
 
 
   it("asks Coolify once for a burst of checks and the reservation that follows", async () => {
-    const { owner, world } = await createWorld({
+    const { owner, world, organizationId } = await createWorld({
       coolifyHosts: [],
       servedHosts: [],
     });
 
-    await owner.action(api.evidenceLibraries.addressActions.checkAddress, {
+    await owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
       name: "Climate Evidence",
     });
-    await owner.action(api.evidenceLibraries.addressActions.checkAddress, {
+    await owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
       name: "Climate Evidenc",
     });
-    await owner.action(api.evidenceLibraries.addressActions.reserveAddress, {
+    await owner.action(api.evidenceLibraries.addressActions.reserveAddress, { organizationId: organizationId,
       name: "Climate Evidence",
     });
 
@@ -328,11 +332,11 @@ describe("Evidence Library address reservation", () => {
   });
 
   it("refuses to reserve when the served hosts are stale and Coolify is silent", async () => {
-    const { t, owner } = await createWorld({
+    const { t, owner, organizationId } = await createWorld({
       coolifyHosts: [],
       servedHosts: [],
     });
-    await owner.action(api.evidenceLibraries.addressActions.checkAddress, {
+    await owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
       name: "Climate Evidence",
     });
     await t.run(async (ctx) => {
@@ -348,7 +352,7 @@ describe("Evidence Library address reservation", () => {
     );
 
     await expect(
-      owner.action(api.evidenceLibraries.addressActions.reserveAddress, {
+      owner.action(api.evidenceLibraries.addressActions.reserveAddress, { organizationId: organizationId,
         name: "Climate Evidence",
       }),
     ).resolves.toEqual({ status: "unavailable", reason: "check-failed" });
@@ -358,14 +362,14 @@ describe("Evidence Library address reservation", () => {
   });
 
   it("says so when the address was taken between the check and the write", async () => {
-    const { t, owner } = await createWorld({
+    const { t, owner, organizationId } = await createWorld({
       coolifyHosts: [],
       servedHosts: [],
     });
-    const otherOwner = await seedOwner(t, "address_racer");
+    const { owner: otherOwner, organizationId: otherOrganizationId } = await seedOwner(t, "address_racer");
     await otherOwner.mutation(
       internal.evidenceLibraries.mutations.reserveAddress,
-      {
+      { organizationId: otherOrganizationId,
         name: "Coastal Evidence",
         publicAddress: CLIMATE_ADDRESS,
         slug: "climate-evidence",
@@ -373,7 +377,7 @@ describe("Evidence Library address reservation", () => {
     );
     // The check ran before that write, so it still offers the first address.
     await expect(
-      owner.mutation(internal.evidenceLibraries.mutations.reserveAddress, {
+      owner.mutation(internal.evidenceLibraries.mutations.reserveAddress, { organizationId: organizationId,
         name: "Climate Evidence",
         publicAddress: CLIMATE_ADDRESS,
         slug: "climate-evidence",

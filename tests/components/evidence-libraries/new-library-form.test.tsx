@@ -28,12 +28,12 @@ vi.mock("sonner", () => ({
 }));
 vi.mock("@/convex/_generated/api", () => ({
   api: {
+    organizationFeatures: {libraryOrganizations: "libraryOrganizations"},
     evidenceLibraries: {
       addressActions: {
         checkAddress: "checkAddress",
         reserveAddress: "reserveAddress",
       },
-      queries: { getEvidenceLibrariesAccess: "getEvidenceLibrariesAccess" },
     },
   },
 }));
@@ -78,7 +78,7 @@ describe("<NewLibraryForm>", () => {
     mocks.organization.mockReset();
     mocks.push.mockReset();
     mocks.query.mockReset();
-    mocks.query.mockReturnValue({ data: { enabled: true }, isReady: true });
+    mocks.query.mockReturnValue({ data: [{id: "org_1", name: "Climate Team"}], isReady: true });
     mocks.reserveAddress.mockReset();
   });
 
@@ -108,7 +108,7 @@ describe("<NewLibraryForm>", () => {
     expect(screen.getByRole("button", { name: "reserve" })).toBeDisabled();
 
     await waitFor(() =>
-      expect(mocks.checkAddress).toHaveBeenCalledWith({ name: "Climate Evidence" }),
+      expect(mocks.checkAddress).toHaveBeenCalledWith({ name: "Climate Evidence", organizationId: "org_1" }),
     );
     // One answer for one pause in the typing.
     expect(mocks.checkAddress).toHaveBeenCalledTimes(1);
@@ -118,7 +118,7 @@ describe("<NewLibraryForm>", () => {
 
     await user.click(screen.getByRole("button", { name: "reserve" }));
     await waitFor(() =>
-      expect(mocks.reserveAddress).toHaveBeenCalledWith({ name: "Climate Evidence" }),
+      expect(mocks.reserveAddress).toHaveBeenCalledWith({ name: "Climate Evidence", organizationId: "org_1" }),
     );
     expect(await screen.findByRole("status")).toHaveAttribute("data-address-state", "reserved");
     expect(addressField).toHaveTextContent("climate-evidence-lib.example.test");
@@ -264,7 +264,7 @@ describe("<NewLibraryForm>", () => {
 
   it("does not offer the form to an editor", () => {
     mocks.organization.mockReturnValue({ ...owner, membership: { role: "org:member" } });
-    mocks.query.mockReturnValue({ data: { enabled: false }, isReady: true });
+    mocks.query.mockReturnValue({ data: [], isReady: true });
 
     render(<NewLibraryForm />);
 
@@ -274,12 +274,12 @@ describe("<NewLibraryForm>", () => {
 
   it("shows one plain panel instead of the form when the organisation is not switched on", () => {
     mocks.organization.mockReturnValue(owner);
-    mocks.query.mockReturnValue({ data: { enabled: false }, isReady: true });
+    mocks.query.mockReturnValue({ data: [], isReady: true });
 
     render(<NewLibraryForm />);
 
-    expect(screen.getByText("gate.title")).toBeInTheDocument();
-    expect(screen.getByText("gate.description")).toBeInTheDocument();
+    expect(screen.getByText("ownerOnlyTitle")).toBeInTheDocument();
+    expect(screen.getByText("ownerOnlyDescription")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 });

@@ -1,3 +1,4 @@
+import { assert } from "vitest";
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
@@ -233,6 +234,7 @@ describe("Evidence Library Zotero groups", () => {
     const draft = await fixture.admin.query(api.evidenceLibraries.queries.getDraft, {
       libraryId,
     });
+    assert(draft, "Expected an accessible draft");
     const savedSources = draft.sections.find((row) => row.sectionKey === "sources");
     expect(savedSources?.payload).toEqual(sources);
     expect(JSON.stringify(draft)).not.toContain(OWNER_KEY);

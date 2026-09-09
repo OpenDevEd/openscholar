@@ -1,3 +1,4 @@
+import { readMemberOrganizations, requireLibraryOrganization } from "../organizationFeatures";
 import {
   internalQuery,
   query,
@@ -12,11 +13,9 @@ import {
 import { createError } from "../lib/errors";
 import { evidenceLibraryTeardownStepValidator } from "./validators";
 import {
-  hasEvidenceLibrariesSwitchedOn,
-  readOrganizationAccess,
   readLibraryRole,
   requireEvidenceLibraryAccess,
-  requireOrganizationAccess,
+  readEvidenceLibraryAccess,
 } from "./access";
 import {
   evidenceLibraryAdminRoleValidator,
@@ -115,15 +114,13 @@ export async function readEvidenceLibraries(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return [];
   const [memberships, assignments] = await Promise.all([
-    ctx.db.query("organizationMemberships")
-      .withIndex("by_clerkUserId_and_state", q => q.eq("clerkUserId", identity.subject).eq("state", "active"))
-      .collect(),
+    readMemberOrganizations(ctx),
     ctx.db.query("evidenceLibraryMembers")
       .withIndex("by_clerkUserId", q => q.eq("clerkUserId", identity.subject))
       .collect(),
   ]);
-  const owned = await Promise.all(memberships.filter(m => m.role === "org:admin").map(m =>
-    ctx.db.query("evidenceLibraries").withIndex("by_organizationId", q => q.eq("organizationId", m.organizationId)).collect()));
+  const owned = await Promise.all(memberships.filter(({membership}) => membership.role === "org:admin").map(({membership}) =>
+    ctx.db.query("evidenceLibraries").withIndex("by_organizationId", q => q.eq("organizationId", membership.organizationId)).collect()));
   const assigned = await Promise.all(assignments.map(m => ctx.db.get("evidenceLibraries", m.libraryId)));
   const candidates = new Map([...owned.flat(), ...assigned].filter((library): library is Doc<"evidenceLibraries"> => library !== null).map(library => [library._id, library]));
   const accessible = await Promise.all([...candidates.values()].map(async library =>
@@ -333,15 +330,6 @@ async function readLibraryOverview(
   };
 }
 
-/** Library access includes direct collaborators with no active organization. */
-export const getEvidenceLibrariesAccess = query({
-  args: {},
-  returns: v.object({ enabled: v.boolean() }),
-  handler: async (ctx) => ({
-    enabled: hasEvidenceLibrariesSwitchedOn(await readOrganizationAccess(ctx)),
-  }),
-});
-
 export const listLibraryOverviews = query({
   args: {},
   returns: v.array(libraryOverviewValidator),
@@ -365,7 +353,8 @@ export const listLibraryOverviews = query({
  * address action checks Coolify and the host itself before answering.
  */
 export const readAddressCandidates = internalQuery({
-  args: { name: v.string() },
+  args: {
+    organizationId: v.id("organizations"), name: v.string() },
   returns: v.union(
     v.object({
       status: v.literal("name-taken"),
@@ -381,7 +370,7 @@ export const readAddressCandidates = internalQuery({
     }),
   ),
   handler: async (ctx, args) => {
-    const access = await requireOrganizationAccess(ctx, "manage");
+    const access = await requireLibraryOrganization(ctx, args.organizationId);
     const named = await readEvidenceLibraryByName(ctx, {
       organizationId: access.organization._id,
       name: normalizeEvidenceLibraryName(args.name),
@@ -522,15 +511,12 @@ export const getSetupDraftSelection = query({
   args: { libraryId: v.string() },
   returns: v.union(v.null(), evidenceLibrarySetupResultValidator),
   handler: async (ctx, args) => {
-    const access = await requireOrganizationAccess(ctx, "manage");
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
     if (!libraryId) return null;
 
-    const library = await ctx.db.get("evidenceLibraries", libraryId);
-    if (!library || library.organizationId !== access.organization._id) {
-      return null;
-    }
-    return await readEvidenceLibrarySetupForLibrary(ctx, library);
+    const access = await readEvidenceLibraryAccess(ctx, libraryId, "manage");
+    if (!access) return null;
+    return await readEvidenceLibrarySetupForLibrary(ctx, access.library);
   },
 });
 
@@ -538,11 +524,12 @@ export async function readEvidenceLibraryDraft(
   ctx: QueryCtx,
   args: { libraryId: Id<"evidenceLibraries"> },
 ) {
-  const access = await requireEvidenceLibraryAccess(
+  const access = await readEvidenceLibraryAccess(
     ctx,
     args.libraryId,
     "manage",
   );
+  if (!access) return null;
   const draft = await ctx.db
     .query("evidenceLibraryConfigDrafts")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
@@ -636,8 +623,8 @@ export async function readEvidenceLibraryRevision(
 }
 
 export const getDraft = query({
-  args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.object({
+  args: { libraryId: v.string() },
+  returns: v.union(v.null(), v.object({
     library: v.object({
       _id: v.id("evidenceLibraries"),
       _creationTime: v.number(),
@@ -675,8 +662,11 @@ export const getDraft = query({
         updatedAt: v.number(),
       }),
     ),
-  }),
-  handler: readEvidenceLibraryDraft,
+  })),
+  handler: async (ctx, args) => {
+    const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
+    return libraryId ? readEvidenceLibraryDraft(ctx, { libraryId }) : null;
+  },
 });
 
 export const getRevision = query({

@@ -1,3 +1,5 @@
+import { seedFeatureUser } from "../organizationFeatures.test-support";
+import { assert } from "vitest";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
@@ -43,6 +45,7 @@ async function createOperationFixture(
       updatedAt: 1,
       evidenceLibrariesEnabled: true,
     });
+    await seedFeatureUser(ctx, clerkUserId);
     await ctx.db.insert("organizationMemberships", {
       organizationId,
       clerkMembershipId: `orgmem_${suffix}`,
@@ -110,6 +113,7 @@ async function createActivationFixture(
       updatedAt: 1,
       evidenceLibrariesEnabled: true,
     });
+    await seedFeatureUser(ctx, clerkUserId);
     await ctx.db.insert("organizationMemberships", {
       organizationId,
       clerkMembershipId: `orgmem_${suffix}`,
@@ -126,8 +130,8 @@ async function createActivationFixture(
     subject: clerkUserId,
     o: { id: clerkOrganizationId, rol: "org:admin" },
   });
-  const created = await admin.run((ctx) =>
-    createEvidenceLibrarySetup(ctx, {
+  const created = await admin.run(async (ctx) =>
+    createEvidenceLibrarySetup(ctx, { organizationId: (await admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
       name: "Activation Library",
       slug: "activation-library",
       publicAddress: essentialSections.identity.baseUrl,
@@ -402,6 +406,7 @@ describe("Evidence Library operation state", () => {
     const draft = await admin.query(api.evidenceLibraries.queries.getDraft, {
       libraryId: created.libraryId,
     });
+    assert(draft, "Expected an accessible draft");
     expect(draft.operation).toMatchObject({
       _id: activated.operationId,
       status: "failed",

@@ -1,3 +1,4 @@
+import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { createHash } from "node:crypto";
 import { convexTest } from "convex-test";
@@ -9,6 +10,7 @@ const modules = import.meta.glob("/convex/**/*.ts");
 it("creates profiles for the library caller but does not give library owners edit access to other profiles", async () => {
   const t = convexTest(schema, modules);
   const libraryId = await t.run(async ctx => {
+    await seedOrganizationFeatures(ctx, ["profile-owner", "library-owner"], { authors: true });
     for (const clerkId of ["profile-owner", "library-owner"]) {
       await ctx.db.insert("users", {clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1});
     }

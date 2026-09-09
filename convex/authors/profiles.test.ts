@@ -1,3 +1,4 @@
+import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
@@ -9,6 +10,7 @@ const content = {name: "Caitlin Mills", headline: "Learning scientist", affiliat
 async function setup() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async ctx => {
+    await seedOrganizationFeatures(ctx, ["owner", "editor"], { authors: true });
     const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
     return {
       owner: await ctx.db.insert("users", {...fields, clerkId: "owner", email: "owner@example.org"}),
@@ -22,7 +24,7 @@ async function setup() {
 }
 
 describe("author profiles", () => {
-  it("lets an account own duplicate profiles without an organization and keeps other profiles private to their editors", async () => {
+  it("keeps profile ownership separate from organization roles", async () => {
     const {t, owner, editor, profileId} = await setup();
     await expect(t.mutation(api.authors.profiles.create, {name: content.name})).rejects.toThrow();
     const duplicate = await editor.mutation(api.authors.profiles.create, {name: content.name});

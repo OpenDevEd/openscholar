@@ -256,6 +256,9 @@
     "downgradeScheduledTo": "Downgrade scheduled to"
   },
   "auth": {
+    "organizationFeatureTitle": "Not allowed",
+    "organizationFeatureDescription": "None of your organisations has this feature enabled.",
+    "backToSearch": "Back to search",
     "loadingTitle": "Loading workspace",
     "loadingDescription": "Preparing your authenticated workspace.",
     "loadingSession": "Loading authenticated session",

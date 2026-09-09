@@ -1,3 +1,4 @@
+import { OrganizationFeatureGate } from "@/components/auth/organization-feature-gate";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { ExtractionAccessGate } from "@/components/extraction/extraction-access-gate";
@@ -23,5 +24,5 @@ export default function ExtractionLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <ExtractionAccessGate>{children}</ExtractionAccessGate>;
+  return <OrganizationFeatureGate feature="extraction"><ExtractionAccessGate>{children}</ExtractionAccessGate></OrganizationFeatureGate>;
 }

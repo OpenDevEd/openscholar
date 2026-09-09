@@ -1,3 +1,4 @@
+import { requireLibraryOrganization } from "../organizationFeatures";
 import {
   internalMutation,
   mutation,
@@ -26,7 +27,6 @@ import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import {
   requireEvidenceLibraryAccess,
-  requireOrganizationAccess,
 } from "./access";
 import { nextDraftEditVersion } from "./draftVersion";
 import {
@@ -94,9 +94,9 @@ function toSetupDraftResult(
 
 export async function createEvidenceLibrarySetup(
   ctx: MutationCtx,
-  args: { name: string; slug: string; publicAddress: string },
+  args: { name: string; slug: string; publicAddress: string; organizationId: Id<"organizations"> },
 ) {
-  const access = await requireOrganizationAccess(ctx, "manage");
+  const access = await requireLibraryOrganization(ctx, args.organizationId);
   const name = validateEvidenceLibrarySetupName(args.name);
   const shortName = createInitialEvidenceLibraryShortName(name);
   const slug = args.slug.trim();
@@ -786,6 +786,7 @@ export const writeServedHostsCache = internalMutation({
  */
 export const reserveAddress = internalMutation({
   args: {
+    organizationId: v.id("organizations"),
     name: v.string(),
     publicAddress: v.string(),
     slug: v.string(),
@@ -809,7 +810,7 @@ export const reserveAddress = internalMutation({
     v.object({ status: v.literal("address-taken") }),
   ),
   handler: async (ctx, args) => {
-    const access = await requireOrganizationAccess(ctx, "manage");
+    const access = await requireLibraryOrganization(ctx, args.organizationId);
     const name = validateEvidenceLibrarySetupName(args.name);
     const named = await readEvidenceLibraryByName(ctx, {
       organizationId: access.organization._id,
@@ -831,6 +832,7 @@ export const reserveAddress = internalMutation({
       status: "reserved" as const,
       ...(await createEvidenceLibrarySetup(ctx, {
         name,
+        organizationId: args.organizationId,
         publicAddress: args.publicAddress,
         slug: args.slug,
       })),

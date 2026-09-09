@@ -1,5 +1,8 @@
 "use client";
+
 "use no memo"; // try/finally in handlers
+
+import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
 
 import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
@@ -401,9 +404,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const extractionEnabled = useFeatureFlag("extraction.enabled");
   const canStartExtraction = useFeatureFlag("extraction.start");
-  const hasExtractionAccess = extractionEnabled && canStartExtraction;
+  const { data: organizationFeatures } = useOrganizationFeatures();
+  const hasExtractionAccess = organizationFeatures?.extraction && extractionEnabled && canStartExtraction;
   const { phase } = useAuthReadiness();
-  const hasEvidenceLibrariesAccess = phase === "authenticated";
+  const hasEvidenceLibrariesAccess = organizationFeatures?.evidenceLibraries;
   const goToSignIn = useSignInRedirect();
   const [isScreeningJobsOpen, setIsScreeningJobsOpen] = useState(false);
   const router = useRouter();
@@ -555,7 +559,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             />
           )}
 
-          <NavItem
+          {organizationFeatures?.authors && <NavItem
             href="/authors"
             icon={Users}
             label="Authors"
@@ -563,7 +567,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             isCollapsed={isCollapsed && !isMobile}
             onClick={handleNavClick}
             index={5}
-          />
+          />}
 
           {hasEvidenceLibrariesAccess && (
             <NavItem

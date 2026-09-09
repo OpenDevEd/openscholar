@@ -1,3 +1,4 @@
+import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { expect, it } from "vitest";
@@ -8,6 +9,7 @@ const modules = import.meta.glob("/convex/**/*.ts");
 it("keeps associations tenant scoped and does not let old retries restore removed works", async () => {
   const t = convexTest(schema, modules);
   const libraryId = await t.run(async ctx => {
+    await seedOrganizationFeatures(ctx, ["profile-owner"], { authors: true });
     await ctx.db.insert("users", {clerkId: "profile-owner", email: "owner@example.org", state: "active", createdAt: 1, updatedAt: 1});
     const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: "org_library", evidenceLibrariesEnabled: true, name: "Library team", slug: "library-team", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
     const libraryId = await ctx.db.insert("evidenceLibraries", {organizationId, name: "Learning", slug: "learning", state: "active", createdByClerkUserId: "library-owner", updatedByClerkUserId: "library-owner", createdAt: 1, updatedAt: 1});
