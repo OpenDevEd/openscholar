@@ -38,7 +38,48 @@ import {
 } from "./evidenceLibraries/validators";
 import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidators";
 
+import { authorContentFields } from "./authors/validators";
+
 export default defineSchema({
+  authorPublicationReceipts: defineTable({
+    libraryId: v.id("evidenceLibraries"),
+    itemKey: v.string(),
+    revision: v.number(),
+  }).index("by_libraryId_and_itemKey", ["libraryId", "itemKey"]),
+
+  authorPublications: defineTable({
+    profileId: v.id("authorProfiles"),
+    libraryId: v.id("evidenceLibraries"),
+    itemKey: v.string(),
+    rank: v.optional(v.number()),
+  }).index("by_profileId", ["profileId"])
+    .index("by_libraryId_and_itemKey", ["libraryId", "itemKey"]),
+
+  authorProfiles: defineTable({
+    ...authorContentFields,
+    ownerId: v.id("users"),
+    photoId: v.optional(v.id("_storage")),
+    revision: v.number(),
+    updatedAt: v.number(),
+  }).index("by_ownerId", ["ownerId"])
+    .searchIndex("search_name", {searchField: "name"}),
+
+  authorProfileMembers: defineTable({
+    profileId: v.id("authorProfiles"),
+    userId: v.id("users"),
+  }).index("by_profileId_and_userId", ["profileId", "userId"])
+    .index("by_userId", ["userId"]),
+
+  authorProfileInvitations: defineTable({
+    profileId: v.id("authorProfiles"),
+    email: v.string(),
+    invitedBy: v.id("users"),
+    expiresAt: v.number(),
+    state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled")),
+    delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
+  }).index("by_profileId_and_email", ["profileId", "email"])
+    .index("by_email_and_state", ["email", "state"]),
+
   clerkEventLogs: defineTable(clerkEventLogFields)
     .index("by_instanceId_and_eventId", ["instanceId", "eventId"])
     .index("by_entity_outcome_time_and_eventId", [

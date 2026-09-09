@@ -45,8 +45,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
-import { CommandCenterContainer } from "@/components/command-center/command-center-container";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfigurationLayout, ConfigurationNavigation } from "./configuration-layout";
+import { RailGroup, RailLink } from "./navigation-rail";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
@@ -435,10 +436,8 @@ function Workspace({
 
   return (
     <FileUploadsProvider libraryId={libraryId}>
-      <div className="w-full pb-16">
-        {/* Sticky header: full width, same bar treatment as other sticky bars in the app */}
-        <div className="sticky top-14 z-20 border-b border-border/40 bg-background lg:top-0">
-          <div className="container mx-auto max-w-6xl px-4 sm:px-6">
+      <ConfigurationLayout
+        header={<>
             <PanelHeader
               icon={Layers}
               image={draft.identity.assets.favicon || null}
@@ -500,20 +499,9 @@ function Workspace({
                 onJump={jumpTo}
               />
             ) : null}
-          </div>
-        </div>
-
-        <div className="container mx-auto max-w-6xl p-4 sm:p-6">
-          <CommandCenterContainer
-            allowOverflow
-            className="flex flex-col md:flex-row"
-          >
-            {/* Anchor rail, same look as the settings sidebar */}
-            <aside className="w-full border-b border-border/40 bg-muted/20 md:w-60 md:border-b-0 md:border-r md:bg-transparent">
-              <nav
-                aria-label={t("rail.aria")}
-                className="space-y-5 p-4 md:sticky md:top-24 md:max-h-[calc(100vh-7rem)] md:overflow-y-auto md:p-5"
-              >
+        </>}
+        navigation={
+              <ConfigurationNavigation label={t("rail.aria")}>
                 {RAIL_GROUPS.map((group) => (
                   <RailGroup key={group.key} label={t(`rail.${group.key}`)}>
                     {group.sections.map((key) => {
@@ -547,54 +535,8 @@ function Workspace({
                     })}
                   </RailGroup>
                 ))}
-              </nav>
-            </aside>
-
-            {/* Sections */}
-            <div className="min-w-0 flex-1 space-y-4 p-4 md:p-6">
-              {refusal && refusal.card === null ? (
-                <InlineNotice
-                  tone="danger"
-                  role="alert"
-                  title={t("saveRefusedAll")}
-                  data-save-refused
-                >
-                  {refusal.message}
-                </InlineNotice>
-              ) : null}
-              <CollectionFactsProvider
-                libraryId={libraryId}
-                ids={draft.collections.map((collection) => collection.id)}
-              >
-                <SaveRefusalProvider refusal={refusal}>
-                  {PAGE_SECTION_KEYS.map((key) => {
-                    const Section = SECTION_COMPONENTS[key];
-                    return (
-                      <Section
-                        key={key}
-                        libraryId={libraryId}
-                        draft={draft}
-                        saved={saved}
-                        patch={patch}
-                        reset={reset}
-                      />
-                    );
-                  })}
-                </SaveRefusalProvider>
-              </CollectionFactsProvider>
-              <DomainSection libraryId={libraryId} />
-              <VersionsSection
-                libraryId={libraryId}
-                live={libraryState === "active"}
-                operationRunning={operationRunning}
-                refreshKey={runtimeRefreshKey}
-              />
-              <TeamSection libraryId={libraryId} />
-              <DangerSection onDelete={() => setDeleteOpen(true)} />
-            </div>
-          </CommandCenterContainer>
-        </div>
-
+              </ConfigurationNavigation>        }
+        footer={<>
         <Button
           variant="outline"
           size="sm"
@@ -639,7 +581,48 @@ function Workspace({
           onOpenChange={setDeleteOpen}
           onDeleted={() => router.push(LIBRARIES_HREF)}
         />
-      </div>
+        </>}
+      >
+              {refusal && refusal.card === null ? (
+                <InlineNotice
+                  tone="danger"
+                  role="alert"
+                  title={t("saveRefusedAll")}
+                  data-save-refused
+                >
+                  {refusal.message}
+                </InlineNotice>
+              ) : null}
+              <CollectionFactsProvider
+                libraryId={libraryId}
+                ids={draft.collections.map((collection) => collection.id)}
+              >
+                <SaveRefusalProvider refusal={refusal}>
+                  {PAGE_SECTION_KEYS.map((key) => {
+                    const Section = SECTION_COMPONENTS[key];
+                    return (
+                      <Section
+                        key={key}
+                        libraryId={libraryId}
+                        draft={draft}
+                        saved={saved}
+                        patch={patch}
+                        reset={reset}
+                      />
+                    );
+                  })}
+                </SaveRefusalProvider>
+              </CollectionFactsProvider>
+              <DomainSection libraryId={libraryId} />
+              <VersionsSection
+                libraryId={libraryId}
+                live={libraryState === "active"}
+                operationRunning={operationRunning}
+                refreshKey={runtimeRefreshKey}
+              />
+              <TeamSection libraryId={libraryId} />
+              <DangerSection onDelete={() => setDeleteOpen(true)} />
+      </ConfigurationLayout>
     </FileUploadsProvider>
   );
 }
@@ -751,71 +734,5 @@ function OperationFailureNotice({
         </ul>
       ) : null}
     </InlineNotice>
-  );
-}
-
-function RailGroup({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div>
-      <p className="mb-1.5 px-3 text-xs font-medium text-muted-foreground">
-        {label}
-      </p>
-      <div className="space-y-1">{children}</div>
-    </div>
-  );
-}
-
-function RailLink({
-  href,
-  icon: Icon,
-  active,
-  danger,
-  onClick,
-  children,
-}: {
-  href: string;
-  icon: LucideIcon;
-  active: boolean;
-  danger?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <a
-      href={href}
-      aria-current={active ? "location" : undefined}
-      onClick={(e) => {
-        e.preventDefault();
-        onClick();
-      }}
-      className={cn(
-        buttonVariants({ variant: "ghost", size: "sm" }),
-        "group relative w-full justify-start gap-3 overflow-hidden transition-all duration-200",
-        active
-          ? "bg-sidebar-accent/80 font-medium text-sidebar-primary shadow-sm hover:bg-sidebar-accent/90"
-          : "text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground",
-        danger && "text-destructive hover:text-destructive",
-      )}
-    >
-      {active ? (
-        <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary/80 to-primary/50" />
-      ) : null}
-      <Icon
-        className={cn(
-          "h-4 w-4 shrink-0 transition-colors",
-          active
-            ? "text-primary"
-            : "text-muted-foreground group-hover:text-foreground",
-          danger && "text-destructive group-hover:text-destructive",
-        )}
-      />
-      {children}
-    </a>
   );
 }

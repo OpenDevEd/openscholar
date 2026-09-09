@@ -15,6 +15,12 @@ describe("public route auth matrix", () => {
     expect(isPublicPath("/extraction/new")).toBe(false);
   });
 
+  it("makes author profiles readable without making their configuration public", () => {
+    expect(isPublicPath("/authors")).toBe(true);
+    expect(isPublicPath("/authors/profile-id")).toBe(true);
+    expect(isPublicPath("/authors/profile-id/configuration")).toBe(false);
+  });
+
   it("normalizes trailing slashes and hash/query segments", () => {
     expect(isPublicPath("/sign-in/")).toBe(true);
     expect(isPublicPath("/sign-up/?return_url=%2Fsettings")).toBe(true);

@@ -1,35 +1,11 @@
+import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
 import { readConvexErrorData } from "../lib/errors";
 import { httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import type { AdminLoginRedemptionResult } from "./adminLoginCodes";
 
-const MACHINE_CREDENTIAL_PATTERN = /^els_[A-Za-z0-9_-]{43}$/;
 const ADMIN_LOGIN_CODE_PATTERN = /^elc_[A-Za-z0-9_-]{43}$/;
-
-function jsonResponse(
-  status: number,
-  body: Record<string, unknown>,
-  headers?: Record<string, string>,
-) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Cache-Control": "no-store",
-      "Content-Type": "application/json; charset=utf-8",
-      ...headers,
-    },
-  });
-}
-
-function readBearerCredential(request: Request): string | null {
-  const authorization = request.headers.get("Authorization");
-  const match = authorization?.match(/^Bearer ([^\s]+)$/i);
-  const credential = match?.[1];
-  return credential && MACHINE_CREDENTIAL_PATTERN.test(credential)
-    ? credential
-    : null;
-}
 
 function readRedemptionBody(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;

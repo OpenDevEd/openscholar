@@ -66,7 +66,7 @@ export type AccessMember = {
   id: string;
   name: string;
   email: string;
-  role: Role | "Manager";
+  role: Role;
   invited: boolean;
   delivery?: "queued" | "sent" | "failed";
   protected?: boolean;
@@ -110,7 +110,7 @@ export function TeamAccess({
   const [removing, setRemoving] = useState<string | null>(null),
     [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [addMode, setAddMode] = useState<"existing" | "new">("existing");
+  const [addMode, setAddMode] = useState<"existing" | "new">(scope === "profile" ? "new" : "existing");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState("");
   const availablePeople = organizationPeople.filter(
@@ -159,10 +159,10 @@ export function TeamAccess({
                 </p>
                 {member.invited && member.delivery === "failed" && <p className="text-xs text-destructive">Invitation not delivered</p>}
               </div>
-              {member.role === "Manager" ? (
+              {isProfile && member.role === "Editor" ? (
                 <span className="flex w-36 items-center gap-2 px-3 text-xs text-muted-foreground">
                   <ShieldCheck className="size-3.5" />
-                  {member.protected ? "Manager · You" : "Manager"}
+                  Editor
                 </span>
               ) : member.role === "Owner" ? (
                 <span className="flex w-36 items-center gap-2 px-3 text-xs text-muted-foreground">
@@ -272,7 +272,7 @@ export function TeamAccess({
         title={isProfile ? "Profile access" : "Team"}
         description={
           isProfile
-            ? "Managers can edit this profile. Library access is separate."
+            ? "The owner manages access. Editors can edit this profile."
             : "Manage access to this library."
         }
         bodyClassName="space-y-0 p-0"
@@ -289,7 +289,7 @@ export function TeamAccess({
               }}
             >
               <Plus />
-              {isProfile ? "Add manager" : "Add member"}
+              {isProfile ? "Add editor" : "Add member"}
             </Button>
           </DialogTrigger>
         }
@@ -297,7 +297,7 @@ export function TeamAccess({
         <DialogContent showCloseButton={false} className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>
-              {isProfile ? "Add profile manager" : "Add member"}
+              {isProfile ? "Invite profile editor" : "Add member"}
             </DialogTitle>
             <DialogDescription>
               Choose who can manage this {scope}.
@@ -325,7 +325,7 @@ export function TeamAccess({
                   ...current,
                   {
                     ...person,
-                    role: isProfile ? "Manager" : role,
+                    role: isProfile ? "Editor" : role,
                     invited: false,
                   },
                 ]);
@@ -367,7 +367,7 @@ export function TeamAccess({
                   id: crypto.randomUUID(),
                   name: email.trim().split("@")[0]!,
                   email: email.trim(),
-                  role: isProfile ? "Manager" : role,
+                  role: isProfile ? "Editor" : role,
                   invited: true,
                 },
               ]);
@@ -386,7 +386,7 @@ export function TeamAccess({
                 className="flex flex-wrap items-center gap-1"
                 aria-label="Add member method"
               >
-                {(["existing", "new"] as const).map((mode) => (
+                {(isProfile ? ["new"] as const : ["existing", "new"] as const).map((mode) => (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -521,7 +521,7 @@ export function TeamAccess({
             </div>
             <p className="text-xs leading-relaxed text-muted-foreground">
               {isProfile
-                ? "Managers can edit profile details, select publications and manage profile access."
+                ? "Editors can edit profile details and select publications."
                 : addMode === "existing"
                   ? "Access applies to this library only."
                   : "They’ll receive access to this library only. Organization membership is unchanged."}
@@ -578,7 +578,7 @@ export function TeamAccess({
               const Icon = tab === "members" ? Users : Mail;
               const count = members.filter(
                 (member) =>
-                  member.role !== "Owner" &&
+                  (isProfile || member.role !== "Owner") &&
                   member.invited === (tab === "invitations"),
               ).length;
               return (
@@ -599,7 +599,7 @@ export function TeamAccess({
                   <Icon className="size-3.5" />
                   {tab === "members"
                     ? isProfile
-                      ? "Managers"
+                      ? "Profile members"
                       : "Library members"
                     : "Invitations"}
                   <span className="text-xs tabular-nums text-muted-foreground">
@@ -629,7 +629,7 @@ export function TeamAccess({
         {people(
           filtered.filter(
             (member) =>
-              member.role !== "Owner" &&
+              (isProfile || member.role !== "Owner") &&
               member.invited === (view === "invitations"),
           ),
           view === "invitations"
