@@ -336,12 +336,10 @@ async function readLibraryOverview(
 /** Library access includes direct collaborators with no active organization. */
 export const getEvidenceLibrariesAccess = query({
   args: {},
-  returns: v.object({ enabled: v.boolean(), canCreate: v.boolean() }),
-  handler: async (ctx) => {
-    const organizationAccess = await readOrganizationAccess(ctx);
-    const canCreate = hasEvidenceLibrariesSwitchedOn(organizationAccess) && organizationAccess?.role === "org:admin";
-    return { enabled: Boolean(await ctx.auth.getUserIdentity()), canCreate };
-  },
+  returns: v.object({ enabled: v.boolean() }),
+  handler: async (ctx) => ({
+    enabled: hasEvidenceLibrariesSwitchedOn(await readOrganizationAccess(ctx)),
+  }),
 });
 
 export const listLibraryOverviews = query({

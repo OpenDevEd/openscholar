@@ -94,7 +94,7 @@ const roleIcons = { Owner: Crown, Editor: ShieldCheck, Creator: PenLine };
 
 export function LibraryList() {
   const router = useRouter();
-  const { organization: activeOrganization } = useOrganization();
+  const { organization: activeOrganization, membership } = useOrganization();
   const access = useProtectedQuery(api.evidenceLibraries.queries.getEvidenceLibrariesAccess, {});
   const overviews = useProtectedQuery(api.evidenceLibraries.queries.listLibraryOverviews, {});
   const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listMine, {});
@@ -132,7 +132,7 @@ export function LibraryList() {
     <LibraryPageShell
       title="Evidence libraries"
       description="Libraries you manage and contribute to."
-      actions={access.data?.canCreate ?
+      actions={access.data.enabled && membership?.role === "org:admin" ?
         <Button
           onClick={() => {
             setCreating(true);
