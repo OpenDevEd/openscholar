@@ -41,6 +41,20 @@ import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidator
 import { authorContentFields } from "./authors/validators";
 
 export default defineSchema({
+  authorPublicationReceipts: defineTable({
+    libraryId: v.id("evidenceLibraries"),
+    itemKey: v.string(),
+    revision: v.number(),
+  }).index("by_libraryId_and_itemKey", ["libraryId", "itemKey"]),
+
+  authorPublications: defineTable({
+    profileId: v.id("authorProfiles"),
+    libraryId: v.id("evidenceLibraries"),
+    itemKey: v.string(),
+    rank: v.optional(v.number()),
+  }).index("by_profileId", ["profileId"])
+    .index("by_libraryId_and_itemKey", ["libraryId", "itemKey"]),
+
   authorProfiles: defineTable({
     ...authorContentFields,
     ownerId: v.id("users"),

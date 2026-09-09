@@ -1,3 +1,4 @@
+import { replacePublicationAssociations } from "./authors/serviceHttp";
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { components, internal, api } from "./_generated/api";
@@ -21,6 +22,7 @@ import {
 } from "./wallet/gateway/handler";
 
 const http = httpRouter();
+http.route({path: "/api/v1/evidence-libraries/author-associations", method: "POST", handler: replacePublicationAssociations});
 const STRIPE_WEBHOOK_SECRET = normalizeStripeWebhookSecret(
   process.env.STRIPE_WEBHOOK_SECRET,
 );
