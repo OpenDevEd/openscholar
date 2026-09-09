@@ -139,7 +139,8 @@ export default function AuthorPage({
     setMatchDialog(true);
   };
   const libraries = [...new Map(papers.map(paper => [paper.library.id, paper.library])).values()];
-  const featured = papers.filter((p) => profile?.featured?.includes(p.id));
+  const papersById = new Map(papers.map(paper => [paper.id, paper]));
+  const featured = (profile.featured ?? []).flatMap(id => papersById.get(id) ?? []);
   const filtered = featured.filter((p) =>
     p.title.toLowerCase().includes(search.toLowerCase()),
   );
@@ -471,10 +472,11 @@ export default function AuthorPage({
                     type="button"
                     variant="ghost"
                     size="sm"
+                    disabled={Boolean(publicationStatus) || papers.length === 0}
                     onClick={() =>
                       setDraft({
                         ...draft,
-                        featured: papers.map((paper) => paper.id),
+                        featured: [...new Set([...(draft.featured ?? []), ...papers.map((paper) => paper.id)])],
                       })
                     }
                   >
