@@ -36,8 +36,7 @@ export const replacePublicationAssociations = httpAction(async (ctx, request) =>
 
 const profileCatalogBody = z.discriminatedUnion("operation", [
   z.object({operation: z.literal("search"), libraryId: z.string().max(128), clerkUserId: z.string().max(512), search: z.string().max(200), profileId: z.string().max(128).optional()}).strict(),
-  z.object({operation: z.literal("save"), libraryId: z.string().max(128), clerkUserId: z.string().max(512), profileId: z.string().max(128).optional(), expectedRevision: z.number().int().positive().optional(),
-    name: z.string().max(500), affiliation: z.string().max(500), bio: z.string().max(12000), website: z.string().max(500), orcid: z.string().max(500)}).strict(),
+  z.object({operation: z.literal("create"), libraryId: z.string().max(128), clerkUserId: z.string().max(512), name: z.string().min(1).max(500)}).strict(),
 ]);
 
 export const authorProfileCatalog = httpAction(async (ctx, request) => {
@@ -52,8 +51,8 @@ export const authorProfileCatalog = httpAction(async (ctx, request) => {
       const {operation: _operation, ...search} = body.data;
       return jsonResponse(200, {profiles: await ctx.runQuery(internal.authors.libraryCatalog.search, {...search, credentialDigest})});
     }
-    const {operation: _operation, ...save} = body.data;
-    const profileId = await ctx.runMutation(internal.authors.libraryCatalog.save, {...save, credentialDigest});
+    const {operation: _operation, ...create} = body.data;
+    const profileId = await ctx.runMutation(internal.authors.libraryCatalog.create, {...create, credentialDigest});
     const profiles = await ctx.runQuery(internal.authors.libraryCatalog.search, {libraryId: args.libraryId, clerkUserId: args.clerkUserId, credentialDigest, search: "", profileId});
     return jsonResponse(200, {profiles});
   } catch (error) {
