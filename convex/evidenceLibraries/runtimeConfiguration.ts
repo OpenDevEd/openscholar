@@ -1,5 +1,8 @@
 "use node";
 
+import { buildPublicationConfiguration } from "../../lib/evidence-libraries/configuration/publication";
+import type { PublicationSettings } from "./publicationValidators";
+
 import { createHash } from "node:crypto";
 import {
   assembleEvidenceLibraryConfiguration,
@@ -60,6 +63,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
     scopes: ZoteroGroupScopes;
   }[];
   aiProviderKey?: { encryptedApiKey: string };
+  publicationProviders?: { settings: PublicationSettings; encryptedCredentials: string };
   allowedAiModels: readonly string[];
   aiModelCatalogReady: boolean;
 }): {
@@ -107,6 +111,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       mail: input.mail,
       brand: input.brand,
       embeddingApiKey: input.embeddingApiKey,
+      publication: input.publicationProviders ? buildPublicationConfiguration(input.publicationProviders.settings, JSON.parse(decrypt(input.publicationProviders.encryptedCredentials, input.encryptionKey))) : undefined,
     },
     // Each Zotero source gets its group's key here and nowhere earlier.
     applySourceCredentials: createZoteroSourceCredentials(

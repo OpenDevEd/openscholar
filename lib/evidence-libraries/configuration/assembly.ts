@@ -13,6 +13,7 @@ import {
 import { type SectionKey, isPlatformSection } from "./section-registry";
 
 export type ManagedEvidenceLibraryConfiguration = {
+  publication?: Record<string, unknown>;
   revision: string;
   updatedAt: string;
   libraryId: string;
@@ -268,7 +269,7 @@ export function assembleEvidenceLibraryConfiguration({
         zotero: managed.zoteroTranslationUrl
           ? { translationUrl: managed.zoteroTranslationUrl }
           : {},
-        publication: {},
+        publication: managed.publication ?? {},
       },
       authentication: {
         google: {},

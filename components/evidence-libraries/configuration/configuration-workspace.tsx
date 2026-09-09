@@ -23,6 +23,7 @@ import {
   PanelBottom,
   Quote,
   Save,
+  Send,
   Search,
   Sparkles,
   ToggleRight,
@@ -89,6 +90,7 @@ import { CollectionFactsProvider } from "./sections/collection-facts";
 import { CollectionsSection } from "./sections/collections-section";
 import { ContactSection } from "./sections/contact-section";
 import { DangerSection } from "./sections/danger-section";
+import { PublicationSection } from "./sections/publication-section";
 import { DomainSection } from "./sections/domain-section";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
 import { FeaturesSection } from "./sections/features-section";
@@ -132,7 +134,7 @@ function isOperationRunning(operation: Operation): boolean {
 }
 
 /** Rail entries: the page cards in their groups, then versions, the team and the danger zone. */
-type RailKey = PageSectionKey | "domain" | "versions" | "team" | "danger";
+type RailKey = PageSectionKey | "publication" | "domain" | "versions" | "team" | "danger";
 const RAIL_GROUPS: {
   key: "brand" | "content" | "discovery" | "platform" | "team" | "danger";
   sections: readonly RailKey[];
@@ -140,7 +142,7 @@ const RAIL_GROUPS: {
   { key: "brand", sections: ["identity", "theme", "institutions"] },
   { key: "content", sections: ["navigation", "footer", "contact", "collections"] },
   { key: "discovery", sections: ["search", "citations", "features", "sources", "ai"] },
-  { key: "platform", sections: ["languages", "analytics", "domain", "versions"] },
+  { key: "platform", sections: ["languages", "analytics", "publication", "domain", "versions"] },
   { key: "team", sections: ["team"] },
   { key: "danger", sections: ["danger"] },
 ];
@@ -161,6 +163,7 @@ const SECTION_ICONS: Record<RailKey, LucideIcon> = {
   languages: Languages,
   analytics: BarChart3,
   domain: Link2,
+  publication: Send,
   versions: History,
   team: Users,
   danger: Trash2,
@@ -206,6 +209,7 @@ function isPageSection(value: string): value is PageSectionKey {
 
 const RAIL_KEYS: readonly RailKey[] = [
   ...PAGE_SECTION_KEYS,
+  "publication",
   "domain",
   "versions",
   "team",
@@ -614,6 +618,7 @@ function Workspace({
                   })}
                 </SaveRefusalProvider>
               </CollectionFactsProvider>
+              <PublicationSection libraryId={libraryId} operationRunning={operationRunning} />
               <DomainSection libraryId={libraryId} />
               <VersionsSection
                 libraryId={libraryId}

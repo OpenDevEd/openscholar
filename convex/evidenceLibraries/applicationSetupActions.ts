@@ -164,6 +164,7 @@ export const runApplicationSetup = internalAction({
         embeddingApiKey: optionalPlatformEmbeddingKey(),
         zoteroGroups: prepared.zoteroGroups,
         aiProviderKey: prepared.aiProviderApiKey,
+          publicationProviders: prepared.publicationPayload,
         allowedAiModels: modelCatalog.allowedModelIds,
         aiModelCatalogReady: modelCatalog.catalogReady,
       });
@@ -210,6 +211,7 @@ export const runApplicationSetup = internalAction({
           storagePublicBucket: prepared.storagePublicBucket,
           storageMaxPdfBytes,
           aiProviderKey: prepared.aiProviderKey,
+          publicationProviders: prepared.publicationProviders,
           zoteroTranslationUrl: optionalRuntimeEnvironment(
             "EL_ZOTERO_TRANSLATION_URL",
           ),

@@ -101,6 +101,10 @@ import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/op
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
 import type * as evidenceLibraries_platformMail from "../evidenceLibraries/platformMail.js";
 import type * as evidenceLibraries_provisioning from "../evidenceLibraries/provisioning.js";
+import type * as evidenceLibraries_publicationCredentialVerification from "../evidenceLibraries/publicationCredentialVerification.js";
+import type * as evidenceLibraries_publicationProviderActions from "../evidenceLibraries/publicationProviderActions.js";
+import type * as evidenceLibraries_publicationProviders from "../evidenceLibraries/publicationProviders.js";
+import type * as evidenceLibraries_publicationValidators from "../evidenceLibraries/publicationValidators.js";
 import type * as evidenceLibraries_queries from "../evidenceLibraries/queries.js";
 import type * as evidenceLibraries_readinessClient from "../evidenceLibraries/readinessClient.js";
 import type * as evidenceLibraries_readinessSetup from "../evidenceLibraries/readinessSetup.js";
@@ -392,6 +396,10 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
   "evidenceLibraries/platformMail": typeof evidenceLibraries_platformMail;
   "evidenceLibraries/provisioning": typeof evidenceLibraries_provisioning;
+  "evidenceLibraries/publicationCredentialVerification": typeof evidenceLibraries_publicationCredentialVerification;
+  "evidenceLibraries/publicationProviderActions": typeof evidenceLibraries_publicationProviderActions;
+  "evidenceLibraries/publicationProviders": typeof evidenceLibraries_publicationProviders;
+  "evidenceLibraries/publicationValidators": typeof evidenceLibraries_publicationValidators;
   "evidenceLibraries/queries": typeof evidenceLibraries_queries;
   "evidenceLibraries/readinessClient": typeof evidenceLibraries_readinessClient;
   "evidenceLibraries/readinessSetup": typeof evidenceLibraries_readinessSetup;

@@ -1,3 +1,4 @@
+import { requireUnchangedPublicationProviders } from "./publicationProviders";
 import { internal } from "../_generated/api";
 import { requireUnchangedAiProviderKey } from "./aiProviderKey";
 import { internalMutation } from "../_generated/server";
@@ -210,6 +211,11 @@ export const completeReadinessSetup = internalMutation({
       ctx,
       args.libraryId,
       setup.setupOperation.setupAiProviderKey ?? { present: false },
+    );
+    await requireUnchangedPublicationProviders(
+      ctx,
+      args.libraryId,
+      setup.setupOperation.setupPublicationProviders ?? { present: false },
     );
     const transition = await recordEvidenceLibrarySetupStep(ctx, {
       libraryId: args.libraryId,

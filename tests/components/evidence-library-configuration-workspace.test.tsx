@@ -62,6 +62,8 @@ vi.mock("@clerk/nextjs", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
+      publicationProviders: {get: "getPublicationProviders"},
+      publicationProviderActions: {verifyAndSave: "verifyPublicationProviders"},
       queries: { getDraft: "getDraft", listTeam: "listTeam" },
       team: { addOrganizationMember: "addOrganizationMember", changeRole: "changeRole", removeMember: "removeMember" },
       invitations: { change: "changeInvitation" },
@@ -160,7 +162,7 @@ vi.mock("convex/react", () => ({
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: (query: unknown, args: unknown) =>
-    query === "getConnectionStatus"
+    query === "getPublicationProviders" ? {data: undefined, isReady: false} : query === "getConnectionStatus"
       ? { data: { connected: false }, isReady: true }
       : query === "listLibraryZoteroGroups" ||
           query === "listVersions" ||
