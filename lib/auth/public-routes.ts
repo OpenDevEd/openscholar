@@ -1,6 +1,7 @@
 export const PUBLIC_UNAUTHENTICATED_PATHS = [
   "/",
   "/pricing",
+  "/authors",
   "/privacy",
   "/cookie-policy",
   "/results/:path*",
@@ -34,6 +35,8 @@ function matchesPublicPattern(pathname: string, pattern: string) {
 
 export function isPublicPath(pathname: string) {
   const normalizedPath = normalizePathname(pathname);
+
+  if (/^\/authors\/[^/]+$/.test(normalizedPath)) return true;
 
   return PUBLIC_UNAUTHENTICATED_PATHS.some((pattern) =>
     matchesPublicPattern(normalizedPath, pattern),

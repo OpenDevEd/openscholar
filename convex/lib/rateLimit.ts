@@ -15,6 +15,7 @@ const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 
 export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
+  "profile-invitation": { kind: "token bucket", rate: 20, period: HOUR, capacity: 20 },
   "library-invitation": { kind: "token bucket", rate: 20, period: HOUR, capacity: 20 },
   "start-extraction": {
     kind: "token bucket",

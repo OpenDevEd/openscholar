@@ -44,6 +44,7 @@ import {
   Clock,
   Database,
   Layers,
+  Users,
   PanelLeft,
   ChevronLeft,
   ChevronRight,
@@ -457,6 +458,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
   const getCurrentPage = () => {
     if (!pathname) return null;
+    if (pathname.startsWith("/authors")) return "authors";
     if (pathname.startsWith("/evidence-libraries")) return "evidence-libraries";
     if (pathname === "/") return "home";
     if (pathname.includes("/bookmarks")) return "bookmarks";
@@ -558,6 +560,16 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               index={4}
             />
           )}
+
+          <NavItem
+            href="/authors"
+            icon={Users}
+            label="Authors"
+            isActive={currentPageValue === "authors"}
+            isCollapsed={isCollapsed && !isMobile}
+            onClick={handleNavClick}
+            index={5}
+          />
 
           {hasEvidenceLibrariesAccess && (
             <NavItem
