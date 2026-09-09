@@ -23,13 +23,14 @@ export const replaceFromLibrary = internalMutation({
     const receipt = await ctx.db.query("authorPublicationReceipts")
       .withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", libraryId).eq("itemKey", args.itemKey)).unique();
     if (receipt && receipt.revision >= args.revision) return null;
-    const profileIds = new Set(args.profileIds.map(value => {
+    const profileIds = new Set<Id<"authorProfiles">>();
+    for (const value of new Set(args.profileIds)) {
       const id = ctx.db.normalizeId("authorProfiles", value);
-      if (!id) throw createError("VALIDATION_ERROR", "Invalid author profile ID");
-      return id;
-    }));
-    for (const profileId of profileIds) {
-      if (!await ctx.db.get("authorProfiles", profileId)) throw createError("NOT_FOUND", "Author profile not found");
+      if (!id || !await ctx.db.get("authorProfiles", id)) {
+        console.error("Ignoring unavailable author profile association", {libraryId, itemKey: args.itemKey, profileId: value});
+        continue;
+      }
+      profileIds.add(id);
     }
     const previous = await ctx.db.query("authorPublications")
       .withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", libraryId).eq("itemKey", args.itemKey)).collect();
@@ -47,8 +48,10 @@ export const replaceFromLibrary = internalMutation({
 });
 
 export const list = query({
-  args: {profileId: v.id("authorProfiles")},
-  handler: async (ctx, {profileId}) => {
+  args: {profileId: v.string()},
+  handler: async (ctx, args) => {
+    const profileId = ctx.db.normalizeId("authorProfiles", args.profileId);
+    if (!profileId) return [];
     const references = await ctx.db.query("authorPublications").withIndex("by_profileId", q => q.eq("profileId", profileId)).take(1000);
     const libraries = new Map<Id<"evidenceLibraries">, {id: Id<"evidenceLibraries">; name: string; url: string}>();
     for (const libraryId of new Set(references.map(reference => reference.libraryId))) {

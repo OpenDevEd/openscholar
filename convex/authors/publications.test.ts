@@ -16,7 +16,7 @@ it("keeps associations tenant scoped and does not let old retries restore remove
   });
   const owner = t.withIdentity({subject: "profile-owner"});
   const profileId = await owner.mutation(api.authors.profiles.create, {name: "Caitlin Mills"});
-  const args = {libraryId, credentialDigest: "correct-digest", itemKey: "ABCD2345", revision: 2, profileIds: [profileId, profileId]};
+  const args = {libraryId, credentialDigest: "correct-digest", itemKey: "ABCD2345", revision: 2, profileIds: [profileId, profileId, "invalid-profile"]};
   await expect(t.mutation(internal.authors.publications.replaceFromLibrary, {...args, credentialDigest: "another-library"})).rejects.toThrow();
   await t.mutation(internal.authors.publications.replaceFromLibrary, args);
   await t.mutation(internal.authors.publications.replaceFromLibrary, args);
@@ -32,4 +32,9 @@ it("keeps associations tenant scoped and does not let old retries restore remove
   await t.mutation(internal.authors.publications.replaceFromLibrary, {...args, revision: 3, profileIds: []});
   await t.mutation(internal.authors.publications.replaceFromLibrary, args);
   expect(await read()).toEqual([]);
+});
+
+it("returns no publications for a malformed profile URL", async () => {
+  const t = convexTest(schema, modules);
+  expect(await t.query(api.authors.publications.list, {profileId: "not-an-id"})).toEqual([]);
 });

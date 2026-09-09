@@ -138,9 +138,9 @@ export default function AuthorPage({
     setCandidate(null);
     setMatchDialog(true);
   };
-  const libraries = [...new Map(papers.map(paper => [paper.library.id, paper.library])).values()];
   const papersById = new Map(papers.map(paper => [paper.id, paper]));
   const featured = (profile.featured ?? []).flatMap(id => papersById.get(id) ?? []);
+  const libraries = [...new Map(featured.map(paper => [paper.library.id, paper.library])).values()];
   const filtered = featured.filter((p) =>
     p.title.toLowerCase().includes(search.toLowerCase()),
   );
@@ -729,7 +729,7 @@ export default function AuthorPage({
                         <TooltipContent side="bottom" sideOffset={8}>
                           <p>{library.url}</p>
                           <p className="mt-1 opacity-70">
-                            {papers.filter(paper => paper.library.id === library.id).length} published works in this library
+                            {featured.filter(paper => paper.library.id === library.id).length} published works in this library
                           </p>
                         </TooltipContent>
                       </Tooltip>)}
