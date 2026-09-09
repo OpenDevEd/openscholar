@@ -24,6 +24,11 @@ it("keeps associations tenant scoped and does not let old retries restore remove
   const references = await read();
   expect(references).toHaveLength(1);
   expect(references[0]).toMatchObject({profileId, libraryId, itemKey: "ABCD2345"});
+  const content = {name: "Caitlin Mills", headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: ""};
+  await owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content, featured: [references[0]!._id]});
+  expect((await read())[0]?.rank).toBe(0);
+  const other = await owner.mutation(api.authors.profiles.create, {name: "Another profile"});
+  await expect(owner.action(api.authors.photos.save, {profileId: other, expectedRevision: 1, content, featured: [references[0]!._id]})).rejects.toThrow();
   await t.mutation(internal.authors.publications.replaceFromLibrary, {...args, revision: 3, profileIds: []});
   await t.mutation(internal.authors.publications.replaceFromLibrary, args);
   expect(await read()).toEqual([]);

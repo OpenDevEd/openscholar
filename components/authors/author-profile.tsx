@@ -1,4 +1,5 @@
 "use client";
+import { readAuthorPublications } from "@/app/actions/author-publications";
 import { useAction, useQuery, useConvex } from "convex/react";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useState } from "react";
@@ -14,6 +15,8 @@ import type { AuthorProfile } from "./types";
 export function AuthorProfileView({profileId, configuration = false}: {profileId: Id<"authorProfiles">; configuration?: boolean}) {
   const convex = useConvex();
   const record = useQuery(api.authors.profiles.get, {profileId});
+  const references = useQuery(api.authors.publications.list, {profileId});
+  const publications = useSWR(references ? ["author-publications", profileId, JSON.stringify(references)] : null, () => readAuthorPublications(profileId));
   const save = useAction(api.authors.photos.save);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
@@ -23,16 +26,16 @@ export function AuthorProfileView({profileId, configuration = false}: {profileId
     if (!record?.openalex || (previous && previous.results.length < 10)) return null;
     return ["author-profile-works", record.openalex, page + 1] as const;
   }, ([, id, page]) => readProfileAuthorWorks(id, page));
-  if (record === undefined) return <p className="p-6 text-sm text-muted-foreground">Loading author profile…</p>;
+  if (record === undefined || references === undefined) return <p className="p-6 text-sm text-muted-foreground">Loading author profile…</p>;
   if (!record) return <p className="p-6">Author profile not found.</p>;
   if (configuration && !record.role) return <p className="p-6">You do not have access to edit this profile.</p>;
   const profile: AuthorProfile = {
-    ...record, id: record._id, photo: record.photo ?? undefined, featured: [],
+    ...record, id: record._id, photo: record.photo ?? undefined, featured: (references ?? []).filter(reference => reference.rank !== undefined).sort((a, b) => a.rank! - b.rank!).map(reference => reference.id),
     match: match.data ?? (record.openalex ? {id: record.openalex, name: record.name, affiliation: "", topics: "", works: []} : undefined),
   };
   return <AuthorPage key={`${record._id}:${configuration}`} profile={profile} configuration={configuration}
     canEdit={Boolean(record.role)} accessSection={configuration && record.role === "owner" ? <ProfileAccess profileId={profileId} /> : null}
-    papers={[]} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
+    papers={publications.data ?? []} publicationStatus={publications.error ? "Publications could not be loaded. Try again shortly." : publications.isLoading ? "Loading publications…" : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
     openAlexError={authors.error || match.error || works.error ? "OpenAlex is unavailable. Try again." : null}
     onSearchAuthors={value => { setSearch(value); if (value === search) void authors.mutate(); }}
     hasMoreWorks={(works.data?.flatMap(page => page.results).length ?? 0) < (works.data?.[0]?.meta.count ?? 0)}
@@ -40,7 +43,7 @@ export function AuthorProfileView({profileId, configuration = false}: {profileId
     onLoadMoreWorks={() => { void works.setSize(works.size + 1); }}
     onSave={async next => {
       const {name, headline, affiliation, bio, website, linkedin, orcid, openalex} = next;
-      await save({profileId, expectedRevision: record.revision, content: {name, headline, affiliation, bio, website, linkedin, orcid, openalex}, ...(next.photo !== profile.photo ? {photo: next.photo ?? ""} : {})});
+      await save({profileId, featured: next.featured as Id<"authorPublications">[], expectedRevision: record.revision, content: {name, headline, affiliation, bio, website, linkedin, orcid, openalex}, ...(next.photo !== profile.photo ? {photo: next.photo ?? ""} : {})});
       const saved = await convex.query(api.authors.profiles.get, {profileId});
       if (!saved) throw new Error("Author profile not found");
       return {...next, ...saved, id: saved._id, photo: saved.photo ?? undefined};

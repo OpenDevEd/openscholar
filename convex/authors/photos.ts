@@ -8,7 +8,7 @@ import { createError } from "../lib/errors";
 import type { Id } from "../_generated/dataModel";
 
 export const save = action({
-  args: {profileId: v.id("authorProfiles"), expectedRevision: v.number(), content: v.object(authorContentFields), photo: v.optional(v.string())},
+  args: {profileId: v.id("authorProfiles"), expectedRevision: v.number(), content: v.object(authorContentFields), photo: v.optional(v.string()), featured: v.optional(v.array(v.id("authorPublications")))},
   returns: v.number(),
   handler: async (ctx, args): Promise<number> => {
     const previous = await ctx.runQuery(internal.authors.profiles.editable, {profileId: args.profileId});
@@ -25,7 +25,7 @@ export const save = action({
     let revision: number;
     try {
       revision = await ctx.runMutation(internal.authors.profiles.saveWithPhoto, {
-        profileId: args.profileId, expectedRevision: args.expectedRevision, content: args.content,
+        profileId: args.profileId, expectedRevision: args.expectedRevision, content: args.content, featured: args.featured,
         ...(args.photo !== undefined ? {photo: {storageId: photoId}} : {}),
       });
 

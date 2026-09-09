@@ -87,7 +87,7 @@ const safeUrl = (value?: string) => {
 };
 
 export default function AuthorPage({
-  profile, configuration, canEdit, onSave, accessSection, papers,
+  profile, configuration, canEdit, onSave, accessSection, papers, publicationStatus,
   openAlexAuthors, openAlexPapers, onSearchAuthors, openAlexError,
   hasMoreWorks, workCount, loadingWorks, onLoadMoreWorks,
 }: {
@@ -97,6 +97,7 @@ export default function AuthorPage({
   onSave: (profile: AuthorProfile) => Promise<AuthorProfile>;
   accessSection: ReactNode;
   papers: AuthorPublication[];
+  publicationStatus: string | null;
   openAlexAuthors: OpenAlexMatch[];
   openAlexPapers: PaperResult[];
   onSearchAuthors: (search: string) => void;
@@ -524,7 +525,7 @@ export default function AuthorPage({
                   ))}
                   {!papers.length && (
                     <p className="py-3 text-sm text-muted-foreground">
-                      No published works are linked to this author yet.
+                      {publicationStatus ?? "No published works are linked to this author yet."}
                     </p>
                   )}
                 </div>
@@ -848,9 +849,9 @@ export default function AuthorPage({
                     ))}
                     {!filtered.length && (
                       <p className="p-6 text-center text-sm text-muted-foreground">
-                        {featured.length
+                        {publicationStatus ?? (featured.length
                           ? "No publications match your search."
-                          : "No publications selected yet."}
+                          : "No publications selected yet.")}
                       </p>
                     )}
                   </div>

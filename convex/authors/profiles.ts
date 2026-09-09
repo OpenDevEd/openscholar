@@ -62,9 +62,20 @@ export const list = query({
 });
 
 const contentValidator = v.object(authorContentFields);
-async function saveContent(ctx: MutationCtx, args: {profileId: Id<"authorProfiles">; expectedRevision: number; content: Infer<typeof contentValidator>; photo?: {storageId?: Id<"_storage">}}) {
+async function saveContent(ctx: MutationCtx, args: {profileId: Id<"authorProfiles">; expectedRevision: number; content: Infer<typeof contentValidator>; photo?: {storageId?: Id<"_storage">}; featured?: Id<"authorPublications">[]}) {
   const {profile} = await requireProfileAccess(ctx, args.profileId);
   if (profile.revision !== args.expectedRevision) throw createError("CONFLICT", "This profile changed while you were editing. Reload it before saving.");
+  if (args.featured) {
+    if (args.featured.length > 1000 || new Set(args.featured).size !== args.featured.length) throw createError("VALIDATION_ERROR", "Invalid publication selection");
+    const associations = await ctx.db.query("authorPublications").withIndex("by_profileId", q => q.eq("profileId", args.profileId)).collect();
+    const available = new Set(associations.map(row => row._id));
+    if (args.featured.some(id => !available.has(id))) throw createError("VALIDATION_ERROR", "Only associated publications can be selected");
+    const ranks = new Map(args.featured.map((id, rank) => [id, rank]));
+    for (const association of associations) {
+      const rank = ranks.get(association._id);
+      if (association.rank !== rank) await ctx.db.patch("authorPublications", association._id, {rank});
+    }
+  }
   const revision = profile.revision + 1;
   await ctx.db.patch("authorProfiles", args.profileId, {...cleanContent(args.content), revision, updatedAt: Date.now(), ...(args.photo ? {photoId: args.photo.storageId} : {})});
   return revision;
@@ -82,7 +93,7 @@ export const editable = internalQuery({
 });
 
 export const saveWithPhoto = internalMutation({
-  args: {profileId: v.id("authorProfiles"), expectedRevision: v.number(), content: v.object(authorContentFields), photo: v.optional(v.object({storageId: v.optional(v.id("_storage"))}))},
+  args: {profileId: v.id("authorProfiles"), expectedRevision: v.number(), content: v.object(authorContentFields), photo: v.optional(v.object({storageId: v.optional(v.id("_storage"))})), featured: v.optional(v.array(v.id("authorPublications")))},
   returns: v.number(),
   handler: saveContent,
 });
