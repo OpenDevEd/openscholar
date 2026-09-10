@@ -36,7 +36,7 @@ import {
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useId, useState } from "react";
+import { Children, type ReactNode, useId, useState } from "react";
 import { type DropzoneState, useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1071,6 +1071,7 @@ export function FieldGroup({
   hint?: ReactNode;
   action?: ReactNode;
 }) {
+  const hasContent = Children.toArray(children).length > 0;
   return (
     <section
       className={cn(
@@ -1079,14 +1080,14 @@ export function FieldGroup({
       )}
       {...rest}
     >
-      <div className="mb-3 flex items-start justify-between gap-3">
+      <div className={cn("flex items-start justify-between gap-3", hasContent && "mb-3")}>
         <div className="min-w-0 space-y-0.5">
           <h4 className="text-sm font-semibold">{title}</h4>
           {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      <div className="space-y-4">{children}</div>
+      {hasContent ? <div className="space-y-4">{children}</div> : null}
     </section>
   );
 }
