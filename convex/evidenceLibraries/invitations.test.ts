@@ -38,7 +38,7 @@ describe("library invitations", () => {
     expect(await fixture.outside.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([expect.objectContaining({ _id: fixture.libraryId, role: "creator" })]);
     expect(await fixture.t.run(ctx => ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", q => q.eq("clerkUserId", "outside").eq("state", "active")).collect())).toEqual([]);
     expect(await fixture.outside.query(api.evidenceLibraries.invitations.listMine, {})).toEqual([]);
-    expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-libraries") });
+    expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ from: {name: "Climate Evidence", address: "libraries@example.test"}, to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-libraries") });
   });
 
   it("rejects an unverified email and a cancelled invitation", async () => {
