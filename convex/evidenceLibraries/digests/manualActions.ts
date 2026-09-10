@@ -25,7 +25,7 @@ export const send = action({
     const target = await ctx.runQuery(internal.evidenceLibraries.digests.manual.target, args);
     const key = requireRuntimeEnvironment("ENCRYPTION_KEY", message => createError("INVALID_DATA", message));
     try {
-      const response = await fetch(new URL("/api/openscholar/digests", target.targetBaseUrl), {
+      const response = await fetch(new URL("/api/v1/openscholar/digests", target.targetBaseUrl), {
         method: "POST",
         headers: {Authorization: `Bearer ${decrypt(target.encryptedMachineCredential, key)}`},
         signal: AbortSignal.timeout(30_000),

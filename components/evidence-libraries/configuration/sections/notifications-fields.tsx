@@ -14,7 +14,7 @@ import { FieldGroup, PanelRow, ToggleRow } from "../fields";
 import type { SectionProps } from "../section-shell";
 
 export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps, "libraryId" | "draft" | "patch">) {
-  const canSend = useProtectedQuery(api.evidenceLibraries.digests.manual.available, {libraryId});
+  const canSend = useProtectedQuery(api.evidenceLibraries.digests.manual.available, {libraryId}).data === true;
   const send = useAction(api.evidenceLibraries.digests.manualActions.send);
   const [sending, setSending] = useState(false);
   async function sendNow() {

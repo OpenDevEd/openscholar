@@ -32,7 +32,7 @@ test("requires the library owner's own organization dev flag before calling its 
   });
   expect(await f.admin.query(api.evidenceLibraries.digests.manual.available, args)).toBe(true);
   expect(await f.admin.action(api.evidenceLibraries.digests.manualActions.send, args)).toEqual({status: "queued", editionId: "5e9558ce-ed55-4dc4-a44b-d1cbd3f9af64", publicationCount: 2});
-  expect(fetch).toHaveBeenCalledWith(new URL("https://climate-evidence-lib.libraries.example.test/api/openscholar/digests"), expect.objectContaining({method: "POST", headers: {Authorization: "Bearer library-machine-token"}, redirect: "error"}));
+  expect(fetch).toHaveBeenCalledWith(new URL("https://climate-evidence-lib.libraries.example.test/api/v1/openscholar/digests"), expect.objectContaining({method: "POST", headers: {Authorization: "Bearer library-machine-token"}, redirect: "error"}));
   fetch.mockClear();
   await f.t.run(ctx => ctx.db.patch("organizationMemberships", f.membershipId, {role: "org:member"}));
   expect(await f.admin.query(api.evidenceLibraries.digests.manual.available, args)).toBe(false);

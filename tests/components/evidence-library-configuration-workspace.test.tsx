@@ -21,6 +21,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 vi.setConfig({ testTimeout: 20_000 });
 
 const queryMock = vi.hoisted(() => vi.fn());
+let manualDigestAvailable: boolean | undefined = false;
 
 const mutationMock = vi.hoisted(() => vi.fn());
 // The Versions section checks for software updates when the page opens.
@@ -62,6 +63,7 @@ vi.mock("@clerk/nextjs", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
+      digests: { manual: { available: "manualDigestAvailable" }, manualActions: { send: "sendManualDigest" } },
       publicationProviders: {get: "getPublicationProviders"},
       publicationProviderActions: {verifyAndSave: "verifyPublicationProviders"},
       queries: { getDraft: "getDraft", listTeam: "listTeam" },
@@ -162,7 +164,7 @@ vi.mock("convex/react", () => ({
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: (query: unknown, args: unknown) =>
-    query === "getPublicationProviders" ? {data: undefined, isReady: false} : query === "getConnectionStatus"
+    query === "manualDigestAvailable" ? {data: manualDigestAvailable, isReady: manualDigestAvailable !== undefined} : query === "getPublicationProviders" ? {data: undefined, isReady: false} : query === "getConnectionStatus"
       ? { data: { connected: false }, isReady: true }
       : query === "listLibraryZoteroGroups" ||
           query === "listVersions" ||
@@ -348,6 +350,7 @@ describe("<ConfigurationWorkspace>", () => {
     saved = [];
     activated = [];
     storedCredentials = [];
+    manualDigestAvailable = false;
     checkAction = () => checkMock();
     queryMock.mockReset();
     mutationMock.mockReset();
@@ -371,6 +374,19 @@ describe("<ConfigurationWorkspace>", () => {
       }
       return async () => null;
     });
+  });
+
+  it.each([undefined, false, true])("shows manual digest sending only after access is granted: %s", async (available) => {
+    manualDigestAvailable = available;
+    queryMock.mockReturnValue(draftResult({
+      sections: savedRows.map(row => row.sectionKey === "notifications"
+        ? { sectionKey: "notifications", payload: { enabled: true } }
+        : row),
+    }));
+    await renderWorkspace();
+    const button = screen.queryByRole("button", { name: "Send digest now" });
+    if (available === true) expect(button).toBeEnabled();
+    else expect(button).toBeNull();
   });
 
   it("shows the admin link only while an active library is idle", async () => {
