@@ -1,8 +1,7 @@
 "use client";
 
 import { useAction, useMutation } from "convex/react";
-import { LibraryOrganizationPicker, OrganizationAvatar, useLibraryOrganizationChoice } from "./organization-picker";
-import { useRouter } from "next/navigation";
+import { OrganizationAvatar, useLibraryOrganizationChoice } from "./organization-picker";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -59,7 +58,6 @@ import {
 import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "./library-page-shell";
 import { LibraryStatusChip } from "./library-status-chip";
-import { Field, FieldError } from "./configuration/section-card";
 import { EmptyList } from "./configuration/fields";
 
 type Role = "Owner" | "Editor" | "Creator";
@@ -80,14 +78,12 @@ type Library = {
 const roleIcons = { Owner: Crown, Editor: ShieldCheck, Creator: PenLine };
 
 export function LibraryList() {
-  const router = useRouter();
   const owner = useLibraryOrganizationChoice();
   const overviews = useProtectedQuery(api.evidenceLibraries.queries.listLibraryOverviews, {});
   const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listMine, {});
   const respond = useAction(api.evidenceLibraries.invitationActions.respond);
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState<string | null>(null);
-  const reserve = useAction(api.evidenceLibraries.addressActions.reserveAddress);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator" } as const;
   const libraries: Library[] = [
     ...(overviews.data ?? []).map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) })),
@@ -97,10 +93,6 @@ export function LibraryList() {
   const [organization, setOrganization] = useState("all");
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [createPending, setCreatePending] = useState(false);
-  const [createError, setCreateError] = useState("");
-  const [name, setName] = useState("");
   const [declining, setDeclining] = useState<Library | null>(null);
   const organizations = [
     ...new Set(libraries.map((library) => library.organization)),
@@ -119,14 +111,11 @@ export function LibraryList() {
       title="Evidence libraries"
       description="Libraries you manage and contribute to."
       actions={owner.organizations.length > 0 ?
-        <Button
-          onClick={() => {
-            setCreating(true);
-            setName("");
-          }}
-        >
-          <Plus />
-          New library
+        <Button asChild>
+          <Link href="/evidence-libraries/new">
+            <Plus />
+            New library
+          </Link>
         </Button> : null
       }
     >
@@ -378,61 +367,6 @@ export function LibraryList() {
           })}
         </ul>
       )}
-      <Dialog open={creating} onOpenChange={(open) => { if (!createPending) { setCreating(open); setCreateError(""); } }}>
-        <DialogContent showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>New library</DialogTitle>
-            <DialogDescription>
-              Create a library in an organization you own.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            className="space-y-4"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              if (!name.trim() || createPending || !owner.selected) return;
-              setCreatePending(true);
-              setCreateError("");
-              try {
-                const result = await reserve({ name: name.trim(), organizationId: owner.selected.id });
-                if (result.status !== "reserved") { setCreateError("The library could not be created. Check its name and try again."); return; }
-                setCreating(false);
-                router.push(`/evidence-libraries/${result.libraryId}/configuration`);
-              } catch {
-                setCreateError("Unable to create the library. Please try again.");
-              } finally { setCreatePending(false); }
-            }}
-          >
-            <Field label="Organization">
-              {id => <LibraryOrganizationPicker id={id} organizations={owner.organizations} value={owner.selected?.id} onChange={owner.choose} disabled={createPending} />}
-            </Field>
-            <Field label="Library name">
-              {(id) => (
-                <Input
-                  id={id}
-                  required
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  disabled={createPending}
-                  placeholder="Name your library"
-                />
-              )}
-            </Field>
-            {createError && <FieldError>{createError}</FieldError>}
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline">
-                  Cancel
-                </Button>
-              </DialogClose>
-              <Button type="submit" disabled={createPending} aria-busy={createPending}>
-                <Plus />
-                Create library
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
       <Dialog
         open={Boolean(declining)}
         onOpenChange={(open) => {
