@@ -1,7 +1,7 @@
+import { requireAvailableModel } from "../models/catalog";
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
-import { createError } from "../lib/errors";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 
@@ -60,10 +60,7 @@ export const setCustomModel = mutation({
     const user = await requireAuth(ctx);
 
     // Custom accepts any catalog model (isServed is curation, not a runtime gate).
-    const model = await ctx.db.get("models", args.serverModelId);
-    if (!model) {
-      throw createError("VALIDATION_ERROR", "Selected model was not found");
-    }
+    await requireAvailableModel(ctx, args.serverModelId);
 
     await writeUserConfig(ctx, user._id, { serverPreset: "custom", serverModelId: args.serverModelId });
     return null;

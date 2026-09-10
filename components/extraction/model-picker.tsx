@@ -54,7 +54,7 @@ export function ModelPicker({ value, onChange, disabled }: ModelPickerProps) {
     <div className="space-y-2" data-model-id={value ?? ""}>
       <Label htmlFor="model-picker">{t("modelPickerLabel")}</Label>
       <Select
-        value={value ?? ""}
+        value={sortedModels.some(model => model._id === value) ? value ?? "" : ""}
         onValueChange={(v) => onChange(v as Id<"models">)}
         disabled={disabled || sortedModels.length === 0}
       >

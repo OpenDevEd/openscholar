@@ -337,13 +337,13 @@ describe("models.queries.getPricing", () => {
   });
 });
 
-// ─── Mutation: upsertBatch ───────────────────────────────────
+// ─── Mutation: reconcileCatalog ───────────────────────────────────
 
-describe("models.mutations.upsertBatch", () => {
+describe("models.mutations.reconcileCatalog", () => {
   it("inserts new models with correct defaults", async () => {
     const t = convexTest(schema);
 
-    const written = await t.mutation(internal.models.mutations.upsertBatch, {
+    const written = await t.mutation(internal.models.mutations.reconcileCatalog, {
       entries: [
         {
           modelId: "openai/gpt-4o",
@@ -382,7 +382,7 @@ describe("models.mutations.upsertBatch", () => {
     });
 
     // Now upsert with updated pricing (simulating a sync)
-    await t.mutation(internal.models.mutations.upsertBatch, {
+    await t.mutation(internal.models.mutations.reconcileCatalog, {
       entries: [
         {
           modelId: "openai/gpt-4o",
@@ -414,7 +414,7 @@ describe("models.mutations.upsertBatch", () => {
   it("handles batch of multiple models", async () => {
     const t = convexTest(schema);
 
-    const written = await t.mutation(internal.models.mutations.upsertBatch, {
+    const written = await t.mutation(internal.models.mutations.reconcileCatalog, {
       entries: [
         { modelId: "openai/gpt-4o", name: "GPT-4o", provider: "openai", inputPricePerMillion: 2.5, outputPricePerMillion: 10.0 },
         { modelId: "anthropic/claude-sonnet-4-5", name: "Claude Sonnet 4.5", provider: "anthropic", inputPricePerMillion: 3.0, outputPricePerMillion: 15.0 },
@@ -431,7 +431,7 @@ describe("models.mutations.upsertBatch", () => {
   it("stores all optional architecture fields", async () => {
     const t = convexTest(schema);
 
-    await t.mutation(internal.models.mutations.upsertBatch, {
+    await t.mutation(internal.models.mutations.reconcileCatalog, {
       entries: [
         {
           modelId: "anthropic/claude-sonnet-4-5",
@@ -553,7 +553,7 @@ describe("cross-provider model scenarios", () => {
   it("handles models from many providers", async () => {
     const t = convexTest(schema);
 
-    await t.mutation(internal.models.mutations.upsertBatch, {
+    await t.mutation(internal.models.mutations.reconcileCatalog, {
       entries: [
         { modelId: "openai/gpt-4o", name: "GPT-4o", provider: "openai", inputPricePerMillion: 2.5, outputPricePerMillion: 10.0 },
         { modelId: "anthropic/claude-sonnet-4-5", name: "Claude Sonnet 4.5", provider: "anthropic", inputPricePerMillion: 3.0, outputPricePerMillion: 15.0 },

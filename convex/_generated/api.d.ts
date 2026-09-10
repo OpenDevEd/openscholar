@@ -235,6 +235,7 @@ import type * as migrations_backfillBillingTypes from "../migrations/backfillBil
 import type * as migrations_backfillSearchableText from "../migrations/backfillSearchableText.js";
 import type * as migrations_backfillTransactionCounters from "../migrations/backfillTransactionCounters.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
+import type * as models_catalog from "../models/catalog.js";
 import type * as models_mutations from "../models/mutations.js";
 import type * as models_queries from "../models/queries.js";
 import type * as models_sync from "../models/sync.js";
@@ -530,6 +531,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillSearchableText": typeof migrations_backfillSearchableText;
   "migrations/backfillTransactionCounters": typeof migrations_backfillTransactionCounters;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
+  "models/catalog": typeof models_catalog;
   "models/mutations": typeof models_mutations;
   "models/queries": typeof models_queries;
   "models/sync": typeof models_sync;

@@ -1,5 +1,6 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { activeModels, MAX_CATALOG_MODELS } from "./catalog";
 
 /** Shape of a single model entry from the sync action. */
 const modelEntryValidator = v.object({
@@ -41,17 +42,28 @@ const modelEntryValidator = v.object({
 });
 
 /**
- * Upsert a batch of models from the sync action.
+ * Apply one complete catalog atomically; keep retired rows for saved references.
  * Preserves business-layer overrides (isServed, costMarkup, sortOrder, category)
  * when updating existing models. New models default to isServed: false.
  */
-export const upsertBatch = internalMutation({
+export const reconcileCatalog = internalMutation({
   args: {
     entries: v.array(modelEntryValidator),
   },
   returns: v.number(),
   handler: async (ctx, { entries }) => {
     const now = Date.now();
+    if (entries.length === 0 || entries.length > MAX_CATALOG_MODELS) {
+      throw new Error("Catalog size is outside the sync limit");
+    }
+    const ids = new Set(entries.map(entry => entry.modelId));
+    if (ids.size !== entries.length) throw new Error("Catalog contains duplicate model ids");
+    const current = await activeModels(ctx).take(MAX_CATALOG_MODELS + 1);
+    if (current.length > MAX_CATALOG_MODELS) throw new Error("Stored catalog exceeds the sync limit");
+    const retiring = current.filter(model => !ids.has(model.modelId));
+    if (retiring.length > Math.max(20, current.length / 2)) {
+      throw new Error("OpenRouter catalog unexpectedly shrank; keeping the previous catalog");
+    }
     let written = 0;
 
     for (const entry of entries) {
@@ -62,7 +74,7 @@ export const upsertBatch = internalMutation({
 
       if (existing) {
         // Update synced fields, preserve business overrides
-        await ctx.db.patch(existing._id, {
+        await ctx.db.replace(existing._id, {
           ...entry,
           // Preserve business-layer fields
           isServed: existing.isServed,
@@ -88,6 +100,9 @@ export const upsertBatch = internalMutation({
       written++;
     }
 
+    for (const model of retiring) {
+      await ctx.db.patch(model._id, {retiredAt: now, updatedAt: now});
+    }
     return written;
   },
 });

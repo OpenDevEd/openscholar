@@ -11,4 +11,13 @@ crons.interval(
   {},
 );
 
+// Convex allows only one executing run of this cron. The action never
+// schedules a continuation; a failed run waits for the next daily tick.
+crons.interval(
+  "sync openrouter models",
+  { hours: 24 },
+  internal.models.sync.syncFromOpenRouter,
+  {},
+);
+
 export default crons;
