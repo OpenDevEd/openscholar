@@ -9,6 +9,7 @@ import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Field, FieldError } from "@/components/evidence-libraries/configuration/section-card";
@@ -42,8 +43,10 @@ export function AuthorList() {
       <div className="min-w-0 flex-1"><p className="truncate font-semibold">{profile.name}</p><p className="mt-1 truncate text-sm text-muted-foreground">{profile.headline || profile.affiliation}</p></div>
       <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
     </Link>)}
-    {!results.length && <p className="p-6 text-sm text-muted-foreground">{status === "LoadingFirstPage" ? "Loading authors…" : "No authors found."}</p>}
-    {status === "CanLoadMore" && <div className="flex justify-center border-t border-border/50 p-3"><Button variant="ghost" size="sm" onClick={() => loadMore(20)}>Show more</Button></div>}
+    {!results.length && (status === "LoadingFirstPage"
+      ? <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading authors" className="size-6 text-primary" /></div>
+      : <p className="p-6 text-sm text-muted-foreground">No authors found.</p>)}
+    {(status === "CanLoadMore" || status === "LoadingMore") && <div className="flex justify-center border-t border-border/50 p-3"><Button variant="ghost" size="sm" disabled={status === "LoadingMore"} onClick={() => loadMore(20)}>{status === "LoadingMore" && <Spinner />}Show more</Button></div>}
     <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>Create author profile</DialogTitle></DialogHeader><form className="space-y-4" onSubmit={async event => {
       event.preventDefault(); if (pending) return; setPending(true); setError("");
       try { const id = await create({name}); router.push(`/authors/${id}/configuration`); setOpen(false); }

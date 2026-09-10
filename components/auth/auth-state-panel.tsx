@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion, type Variants } from "motion/react";
-import { Loader2, LogIn, RefreshCw, ShieldAlert } from "lucide-react";
+import { LogIn, RefreshCw, ShieldAlert } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -105,7 +106,7 @@ const ICON_TREATMENT: Record<AuthStateVariant, string> = {
 
 function AuthStateVariantIcon({ variant }: { variant: AuthStateVariant }) {
   if (variant === "loading") {
-    return <Loader2 className="h-5 w-5 animate-spin" aria-hidden />;
+    return <Spinner className="h-5 w-5" aria-hidden />;
   }
   if (variant === "sign_in_required") {
     return <LogIn className="h-5 w-5" aria-hidden />;
@@ -169,7 +170,7 @@ export function AuthStatePanel({
         <div className="relative mx-auto flex items-center justify-center">
           <div className="absolute -z-10 h-24 w-24 rounded-full bg-primary/16 blur-2xl" />
           <div className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/25 bg-card/95 shadow-lg">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden />
+            <Spinner className="h-6 w-6 text-primary" aria-hidden />
           </div>
           <span className="sr-only">{resolvedTitle || t("loadingSession")}</span>
         </div>

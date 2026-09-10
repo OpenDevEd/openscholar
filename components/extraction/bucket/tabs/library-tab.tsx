@@ -7,13 +7,13 @@ import {
   Folder,
   Globe,
   Inbox,
-  Loader2,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -173,7 +173,7 @@ export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
 
         {list.status === "LoadingFirstPage" ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground p-6">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading your library…
+            <Spinner className="h-4 w-4" aria-label="Loading your library" />
           </div>
         ) : (list.results ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground p-6 text-center border border-border rounded-xl bg-muted/30">
@@ -358,8 +358,7 @@ function SourceSidebar({ collections, view, onChange }: SourceSidebarProps) {
 
       {collections === undefined && (
         <div className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          {!collapsed && <span>Loading…</span>}
+          <Spinner aria-label="Loading collections" className="h-3 w-3" />
         </div>
       )}
     </motion.aside>
