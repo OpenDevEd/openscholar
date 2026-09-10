@@ -2790,7 +2790,7 @@
       }
     },
     "features": {
-      "description": "Turn parts of the library on or off. Accounts and AI features come in a later version.",
+      "description": "Choose which features visitors can use.",
       "groups": {
         "appearance": "Appearance",
         "discovery": "Discovery",
@@ -3134,7 +3134,7 @@
       "namePlaceholder": "Example: Climate Education Evidence",
       "nameError": "Enter a name for the library.",
       "shortNameLabel": "Short name",
-      "shortNameHint": "Set from the name. You can change it during configuration.",
+      "shortNameHint": "Set from the name. Fixed once you reserve the address.",
       "addressLabel": "Public address",
       "addressHint": "Follows the name. Reserve it to make sure nobody else takes it.",
       "addressPending": "Type a name to see the address.",
