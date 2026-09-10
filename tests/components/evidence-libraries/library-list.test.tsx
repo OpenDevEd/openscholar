@@ -1,17 +1,15 @@
 /** @vitest-environment jsdom */
-import { act, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
-const mocks = vi.hoisted(() => ({ query: vi.fn(), reserve: vi.fn(), respond: vi.fn(), restart: vi.fn(), push: vi.fn() }));
+const mocks = vi.hoisted(() => ({ query: vi.fn(), respond: vi.fn(), restart: vi.fn() }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
-vi.mock("@clerk/nextjs", () => ({ useOrganization: () => ({ organization: { name: "Research team" }, membership: {role: "org:admin"} }) }));
-vi.mock("convex/react", () => ({ useMutation: () => mocks.restart, useAction: (name: string) => name === "reserve" ? mocks.reserve : mocks.respond }));
+vi.mock("convex/react", () => ({ useMutation: () => mocks.restart, useAction: () => mocks.respond }));
 vi.mock("@/convex/_generated/api", () => ({ api: { organizationFeatures: {libraryOrganizations: "organizations"}, evidenceLibraries: {
   teardown: { restartDevelopmentTeardown: "restart" },
   queries: { listLibraryOverviews: "libraries" },
-  invitations: { listMine: "invitations" }, invitationActions: { respond: "respond" }, addressActions: { reserveAddress: "reserve" },
+  invitations: { listMine: "invitations" }, invitationActions: { respond: "respond" },
 } } }));
 vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: (name: string) => mocks.query(name) }));
 import { LibraryList } from "@/components/evidence-libraries/library-list";
@@ -42,21 +40,10 @@ describe("Library access list", () => {
     await userEvent.setup().click(screen.getByRole("button", {name: "Retry deletion"}));
     expect(mocks.restart).toHaveBeenCalledWith({libraryId: "delete"});
   });
-  it("prevents repeated creation while pending and exposes failure inside the still-open dialog", async () => {
-    let reject!: (reason: Error) => void;
-    mocks.reserve.mockReturnValue(new Promise((_, no) => { reject = no; }));
+  it("links New library to the creation page", () => {
     render(<LibraryList />);
-    const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "New library" }));
-    const dialog = screen.getByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Library name"), "Learning evidence");
-    const submit = within(dialog).getByRole("button", { name: "Create library" });
-    await user.click(submit);
-    expect(submit).toBeDisabled();
-    expect(mocks.reserve).toHaveBeenCalledWith({ name: "Learning evidence", organizationId: "org_1" });
-    await act(async () => { reject(new Error("Internal service failure")); });
-    expect(within(dialog).getByRole("alert")).toBeVisible();
-    expect(submit).toBeEnabled();
-    expect(mocks.push).not.toHaveBeenCalled();
+    expect(screen.getByRole("link", { name: "New library" })).toHaveAttribute(
+      "href", "/evidence-libraries/new",
+    );
   });
 });
