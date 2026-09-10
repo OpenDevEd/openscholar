@@ -16,6 +16,7 @@ export const invite = action({
     if (!invitation) throw createError("CONFLICT", "Invitation is no longer available");
     try {
       await sendInvitationEmail(mail, {
+        senderName: `${invitation.profileName} via OpenScholar`,
         to: invitation.email, subject: `Invitation to edit ${invitation.profileName}`,
         text: `You have been invited to edit the author profile for ${invitation.profileName}.\n\nSign in with ${invitation.email} to accept:\n${new URL("/authors", requireAppUrl())}\n\nThis invitation expires in seven days. It grants access to this profile only.`,
       });

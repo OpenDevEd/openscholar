@@ -6,8 +6,8 @@ import { createActivatedSetupFixture } from "../../tests/helpers/evidence-librar
 const mail = vi.hoisted(() => ({ sendMail: vi.fn(), close: vi.fn() }));
 vi.mock("nodemailer", () => ({ default: { createTransport: () => mail } }));
 
-async function setup() {
-  const fixture = await createActivatedSetupFixture("invitations");
+async function setup(extraSections: Record<string, unknown> = {}) {
+  const fixture = await createActivatedSetupFixture("invitations", extraSections);
   const libraryId = fixture.created.libraryId;
   await fixture.t.run(ctx => ctx.db.insert("users", { clerkId: "outside", email: "outside@example.org", state: "active", createdAt: 1, updatedAt: 1 }));
   const outside = fixture.t.withIdentity({ subject: "outside" });
@@ -38,7 +38,7 @@ describe("library invitations", () => {
     expect(await fixture.outside.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([expect.objectContaining({ _id: fixture.libraryId, role: "creator" })]);
     expect(await fixture.t.run(ctx => ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", q => q.eq("clerkUserId", "outside").eq("state", "active")).collect())).toEqual([]);
     expect(await fixture.outside.query(api.evidenceLibraries.invitations.listMine, {})).toEqual([]);
-    expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-libraries") });
+    expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ from: {name: "Climate Evidence", address: "libraries@example.test"}, to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-libraries") });
   });
 
   it("rejects an unverified email and a cancelled invitation", async () => {
@@ -51,6 +51,14 @@ describe("library invitations", () => {
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ email_addresses: [{ email_address: "outside@example.org", verification: { status: "verified" } }] })));
     await expect(fixture.outside.action(api.evidenceLibraries.invitationActions.respond, { invitationId: invitation.invitationId, accept: true })).rejects.toThrow();
     expect(await fixture.outside.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([]);
+  });
+
+  it("uses the library contact address and rejects a formatted platform sender", async () => {
+    const fixture = await setup({contact: {email: "contact@climate.example"}});
+    await fixture.invite();
+    expect(mail.sendMail.mock.lastCall?.[0]).toMatchObject({from: {name: "Climate Evidence", address: "contact@climate.example"}, replyTo: "contact@climate.example"});
+    vi.stubEnv("EL_SMTP_FROM", "Platform <mail@example.org>");
+    await expect(fixture.invite()).rejects.toThrow("EL_SMTP_FROM must be a bare email address");
   });
 
   it("refuses invitations from a collaborator and records delivery failure for the Owner", async () => {

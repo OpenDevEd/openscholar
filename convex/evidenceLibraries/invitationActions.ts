@@ -18,6 +18,8 @@ export const invite = action({
     if (!invitation) throw createError("CONFLICT", "Invitation is no longer available");
     try {
       await sendInvitationEmail(mail, {
+        senderName: invitation.libraryName,
+        senderEmail: invitation.contactEmail,
         to: invitation.email,
         subject: `Invitation to ${invitation.libraryName}`,
         text: `You have been invited to ${invitation.libraryName} with the ${invitation.role} role.\n\nSign in with ${invitation.email} and accept the invitation:\n${new URL("/evidence-libraries", origin)}\n\nThis invitation expires in seven days. It grants access to this library only.`,
