@@ -17,7 +17,7 @@ import {
   ChevronsUpDown,
   Check,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { initialsOf } from "@/lib/evidence-libraries/initials";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -66,6 +65,7 @@ export type AccessMember = {
   id: string;
   name: string;
   email: string;
+  imageUrl?: string;
   role: Role;
   invited: boolean;
   delivery?: "queued" | "sent" | "failed";
@@ -88,7 +88,7 @@ export function TeamAccess({
   scope: "library" | "profile";
   members: AccessMember[];
   onMembersChange: (members: AccessMember[]) => Promise<void>;
-  organizationPeople: { id: string; name: string; email: string }[];
+  organizationPeople: Pick<AccessMember, "id" | "name" | "email" | "imageUrl">[];
   onResend: (member: AccessMember) => Promise<void>;
 }) {
   const isProfile = scope === "profile";
@@ -147,11 +147,7 @@ export function TeamAccess({
         {list.map((member) => (
           <li key={member.id} className="px-4 py-4 hover:bg-muted/20">
             <div className="flex flex-wrap items-center gap-3">
-              <Avatar className="size-10 rounded-xl">
-                <AvatarFallback className="rounded-xl bg-primary/8 text-xs font-medium text-primary">
-                  {initialsOf(member.name, member.email)}
-                </AvatarFallback>
-              </Avatar>
+              <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-10 rounded-xl" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{member.name}</p>
                 <p className="truncate text-xs text-muted-foreground">
@@ -433,11 +429,7 @@ export function TeamAccess({
                       >
                         {selected ? (
                           <span className="flex min-w-0 items-center gap-2">
-                            <Avatar className="size-6">
-                              <AvatarFallback className="bg-primary/10 text-[10px] text-primary">
-                                {initialsOf(selected.name, selected.email)}
-                              </AvatarFallback>
-                            </Avatar>
+                            <IdentityAvatar name={selected.name} imageUrl={selected.imageUrl} className="size-6" />
                             <span className="truncate">{selected.name}</span>
                             <span className="hidden truncate text-xs text-muted-foreground lg:inline">
                               {selected.email}
@@ -472,11 +464,7 @@ export function TeamAccess({
                                 }}
                                 className="gap-3 py-2.5"
                               >
-                                <Avatar className="size-8">
-                                  <AvatarFallback className="bg-primary/8 text-xs text-primary">
-                                    {initialsOf(person.name, person.email)}
-                                  </AvatarFallback>
-                                </Avatar>
+                                <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-8" />
                                 <span className="min-w-0 flex-1">
                                   <span className="block truncate text-sm font-medium">
                                     {person.name}

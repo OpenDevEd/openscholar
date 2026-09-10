@@ -25,7 +25,6 @@ import {
   ShieldCheck,
   RotateCcw,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

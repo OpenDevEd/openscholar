@@ -4,7 +4,7 @@ import { useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { FunctionReturnType } from "convex/server";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import {
   Select,
   SelectContent,
@@ -21,12 +21,7 @@ export function OrganizationAvatar({
   imageUrl?: string | null;
 }) {
   return (
-    <Avatar className="size-5 rounded-md" aria-hidden="true">
-      {imageUrl && <AvatarImage src={imageUrl} alt="" />}
-      <AvatarFallback className="rounded-md text-[9px] font-semibold">
-        {name.slice(0, 2)}
-      </AvatarFallback>
-    </Avatar>
+    <IdentityAvatar name={name} imageUrl={imageUrl} kind="organization" className="size-5 rounded-md" />
   );
 }
 

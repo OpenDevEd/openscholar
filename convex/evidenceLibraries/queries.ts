@@ -712,6 +712,7 @@ const teamPersonValidator = v.object({
   clerkUserId: v.string(),
   name: v.string(),
   email: v.string(),
+  imageUrl: v.optional(v.string()),
 });
 
 /** Owners manage explicit library grants and inherited organization owners. */
@@ -740,7 +741,7 @@ export const listTeam = query({
       return {
         role: await readLibraryRole(ctx, access.library, clerkUserId),
         canAdd: memberIds.has(clerkUserId) && user?.state !== "deleted" && access.library.state !== "disabled",
-        person: { clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "" },
+        person: { clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "", imageUrl: user?.avatarUrl },
       };
     }));
     people.sort((a, b) => (a.person.name || a.person.email).localeCompare(b.person.name || b.person.email));

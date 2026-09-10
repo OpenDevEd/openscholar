@@ -26,6 +26,7 @@ describe("listTeam", () => {
         email: "ada@example.org",
         firstName: "Ada",
         lastName: "Lovelace",
+        avatarUrl: "https://images.example.org/ada.png",
         state: "active",
         createdAt: 1,
         updatedAt: 1,
@@ -34,6 +35,7 @@ describe("listTeam", () => {
         clerkId: "user_editor",
         email: "grace@example.org",
         firstName: "Grace",
+        avatarUrl: "https://images.example.org/grace.png",
         state: "active",
         createdAt: 1,
         updatedAt: 1,
@@ -69,12 +71,12 @@ describe("listTeam", () => {
     ).resolves.toEqual({
       organizationName: "Team team",
       invitations: [],
-      owners: [{ clerkUserId: "user_team", name: "Ada Lovelace", email: "ada@example.org" }],
+      owners: [{ clerkUserId: "user_team", name: "Ada Lovelace", email: "ada@example.org", imageUrl: "https://images.example.org/ada.png" }],
       editors: [],
       creators: [],
       availablePeople: [
         { clerkUserId: "user_new", name: "", email: "" },
-        { clerkUserId: "user_editor", name: "Grace", email: "grace@example.org" },
+        { clerkUserId: "user_editor", name: "Grace", email: "grace@example.org", imageUrl: "https://images.example.org/grace.png" },
       ],
     });
   });
