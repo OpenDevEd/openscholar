@@ -36,7 +36,10 @@ export const readDelivery = internalQuery({
     const invitation = await ctx.db.get("evidenceLibraryInvitations", args.invitationId);
     if (!invitation || invitation.state !== "pending" || invitation.expiresAt <= Date.now()) return null;
     const access = await requireEvidenceLibraryAccess(ctx, invitation.libraryId, "manage");
-    return { email: invitation.email, libraryName: access.library.name, role: invitation.role };
+    const revisionId = access.library.activeRevisionId ?? access.library.latestRevisionId;
+    const contact = revisionId ? await ctx.db.query("evidenceLibraryConfigSections")
+      .withIndex("by_revisionId_and_sectionKey", q => q.eq("revisionId", revisionId).eq("sectionKey", "contact")).unique() : null;
+    return { email: invitation.email, libraryName: access.library.name, contactEmail: typeof contact?.payload.email === "string" ? contact.payload.email : null, role: invitation.role };
   },
 });
 
