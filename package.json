@@ -12,6 +12,7 @@
     "start": "next start",
     "test": "vitest run",
     "schema:sync:evidence-library-config": "node scripts/sync-evidence-library-config-contract.mjs",
+    "check:email-template": "node scripts/sync-library-email-template.mjs --check",
     "schema:check:evidence-library-config": "node scripts/sync-evidence-library-config-contract.mjs --check",
     "test:perf": "vitest bench --config vitest.perf.config.ts",
     "bench:transactions": "vitest bench --config vitest.perf.config.ts tests/perf/billing-transactions.bench.ts",

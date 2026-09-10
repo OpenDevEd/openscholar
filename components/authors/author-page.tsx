@@ -11,6 +11,7 @@ import { PanelHeader } from "@/components/evidence-libraries/configuration/panel
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { ConfigurationLayout } from "@/components/evidence-libraries/configuration/configuration-layout";
 
+import { AuthorAvatar } from "./author-avatar";
 import { StickyAuthorHeader } from "./sticky-author-header";
 import { useRef, useState, type ReactNode } from "react";
 import {
@@ -72,12 +73,6 @@ import { toast } from "sonner";
 import { readProfileAuthor } from "@/app/actions/authors";
 import type {AuthorProfile, OpenAlexMatch, AuthorPublication} from "./types";
 
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join("");
 const safeUrl = (value?: string) => {
   try {
     const url = new URL(value ?? "");
@@ -293,16 +288,7 @@ export default function AuthorPage({
                 className="scroll-mt-28"
               >
                 <div className="flex items-center gap-4 rounded-xl bg-muted/20 p-3">
-                  <Avatar className="size-16 rounded-xl border border-border/50">
-                    <AvatarImage
-                      src={draft.photo}
-                      alt="Profile photo preview"
-                      className="object-cover"
-                    />
-                    <AvatarFallback className="rounded-xl">
-                      {initials(draft.name)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <AuthorAvatar photo={draft.photo} className="size-16 border border-border/50" />
                   <div className="min-w-0 flex-1">
                     <p className="mb-2 text-sm font-medium">Profile photo</p>
                     <div className="flex flex-wrap items-center gap-2">
@@ -523,8 +509,9 @@ export default function AuthorPage({
                         <span className="block text-sm font-medium">
                           {paper.title}
                         </span>
-                        <span className="mt-1 block text-xs text-muted-foreground">
-                          {paper.year} · {paper.type}
+                        <span className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                          <span>{paper.year}</span>
+                          <span>{paper.type}</span>
                         </span>
                       </span>
                     </label>
@@ -643,16 +630,7 @@ export default function AuthorPage({
               <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.85fr)] lg:gap-14">
                 <div>
                   <div className="flex items-center gap-5">
-                    <Avatar className="size-24 shrink-0 rounded-xl border border-border/50 sm:size-28">
-                      <AvatarImage
-                        src={profile.photo}
-                        alt={profile.name}
-                        className="object-cover"
-                      />
-                      <AvatarFallback className="rounded-xl bg-primary/10 text-3xl font-semibold text-primary">
-                        {initials(profile.name)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <AuthorAvatar photo={profile.photo} className="size-24 border border-border/50 sm:size-28" />
                     <div className="min-w-0">
                       <h1 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
                         {profile.name}
@@ -840,7 +818,8 @@ export default function AuthorPage({
                             </a>
                             {p.pages !== undefined && <span className="flex items-center gap-1.5">
                               <FileText className="size-3" />
-                              PDF · {p.pages} pages
+                              <span>PDF</span>
+                              <span>{p.pages} pages</span>
                             </span>}
                           </div>
                         </div>
@@ -1004,9 +983,7 @@ export default function AuthorPage({
                             catch { toast.error("Could not load this author’s publications"); }
                           }}
                         >
-                          <Avatar className="size-9">
-                            <AvatarFallback>{initials(m.name)}</AvatarFallback>
-                          </Avatar>
+                          <AuthorAvatar className="size-9" />
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm font-medium">
                               {m.name}

@@ -35,7 +35,8 @@ export const replacePublicationAssociations = httpAction(async (ctx, request) =>
 });
 
 const profileCatalogBody = z.discriminatedUnion("operation", [
-  z.object({operation: z.literal("search"), libraryId: z.string().max(128), clerkUserId: z.string().max(512), search: z.string().max(200), profileId: z.string().max(128).optional()}).strict(),
+  z.object({operation: z.literal("resolve"), libraryId: z.string().min(1).max(128), profileIds: z.array(z.string().min(1).max(128)).max(100)}).strict(),
+  z.object({operation: z.literal("search"), libraryId: z.string().max(128), clerkUserId: z.string().max(512), search: z.string().max(200), paginationOpts: z.object({cursor: z.string().max(8192).nullable(), numItems: z.number().int().min(1).max(30)}).strict()}).strict(),
   z.object({operation: z.literal("create"), libraryId: z.string().max(128), clerkUserId: z.string().max(512), name: z.string().min(1).max(500)}).strict(),
 ]);
 
@@ -47,14 +48,17 @@ export const authorProfileCatalog = httpAction(async (ctx, request) => {
   try {
     const args = body.data;
     const credentialDigest = await digestOpaqueToken(credential);
-    if (body.data.operation === "search") {
-      const {operation: _operation, ...search} = body.data;
-      return jsonResponse(200, {profiles: await ctx.runQuery(internal.authors.libraryCatalog.search, {...search, credentialDigest})});
+    if (args.operation === "resolve") {
+      const {operation: _operation, ...resolve} = args;
+      return jsonResponse(200, {profiles: await ctx.runQuery(internal.authors.libraryCatalog.resolve, {...resolve, credentialDigest})});
     }
-    const {operation: _operation, ...create} = body.data;
-    const profileId = await ctx.runMutation(internal.authors.libraryCatalog.create, {...create, credentialDigest});
-    const profiles = await ctx.runQuery(internal.authors.libraryCatalog.search, {libraryId: args.libraryId, clerkUserId: args.clerkUserId, credentialDigest, search: "", profileId});
-    return jsonResponse(200, {profiles});
+    if (args.operation === "search") {
+      const {operation: _operation, ...search} = args;
+      return jsonResponse(200, await ctx.runQuery(internal.authors.libraryCatalog.search, {...search, credentialDigest}));
+    }
+    const {operation: _operation, ...create} = args;
+    const profile = await ctx.runMutation(internal.authors.libraryCatalog.create, {...create, credentialDigest});
+    return jsonResponse(200, {profiles: [profile]});
   } catch (error) {
     const data = readConvexErrorData(error);
     if (data) {

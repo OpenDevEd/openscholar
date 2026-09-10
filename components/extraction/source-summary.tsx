@@ -1,15 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ComponentType, type SVGProps } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
-  BookMarked,
   BookOpen,
   FileUp,
   Folder,
   Layers,
   Search,
-  type LucideIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -17,6 +15,7 @@ import { useBucketStore } from "@/lib/store/bucket";
 import { BUCKET_SOURCE_LABELS } from "@/lib/bucket/source-labels";
 import type { BucketSource } from "@/lib/bucket/bucketItem";
 import { AnimatedCount } from "./bucket/animated-count";
+import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { cn } from "@/lib/utils";
 
 const SOURCE_KEYS: BucketSource[] = [
@@ -27,15 +26,11 @@ const SOURCE_KEYS: BucketSource[] = [
   "upload",
 ];
 
-// Picked to match the icon the user already sees inside each source's
-// own selector header (history-selector / collections-tab / bulk-pdf-upload).
-// Library and Zotero have no dedicated selector header icon today, so we
-// use two distinct book glyphs to keep them visually separable.
-const SOURCE_ICONS: Record<BucketSource, LucideIcon> = {
+const SOURCE_ICONS: Record<BucketSource, ComponentType<SVGProps<SVGSVGElement>>> = {
   history: Search,
   library: BookOpen,
   collection: Folder,
-  zotero: BookMarked,
+  zotero: ZoteroIcon,
   upload: FileUp,
 };
 

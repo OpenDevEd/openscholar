@@ -1,5 +1,7 @@
 "use client";
 
+import { ZoteroIcon } from "@/components/icons/zotero-icon";
+
 import { useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
@@ -327,6 +329,7 @@ export function ZoteroSelector({ paperLimit }: { paperLimit?: number }) {
                 }
               }}
             >
+              <ZoteroIcon className="size-4 shrink-0" aria-hidden />
               {t('connectZotero')}
             </Button>
           </div>
