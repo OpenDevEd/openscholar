@@ -1,12 +1,36 @@
 "use client";
-import { CalendarDays, Clock3, Globe2, Mail } from "lucide-react";
+import { useState } from "react";
+import { useAction } from "convex/react";
+import { CalendarDays, Clock3, Globe2, Mail, Send, TimerReset } from "lucide-react";
+import { toast } from "sonner";
+import { api } from "@/convex/_generated/api";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Field } from "../section-card";
-import { FieldGroup, ToggleRow } from "../fields";
+import { FieldGroup, PanelRow, ToggleRow } from "../fields";
 import type { SectionProps } from "../section-shell";
 
-export function NotificationsFields({draft, patch}: Pick<SectionProps, "draft" | "patch">) {
+export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps, "libraryId" | "draft" | "patch">) {
+  const canSend = useProtectedQuery(api.evidenceLibraries.digests.manual.available, {libraryId}).data === true;
+  const send = useAction(api.evidenceLibraries.digests.manualActions.send);
+  const [sending, setSending] = useState(false);
+  async function sendNow() {
+    if (sending) return;
+    setSending(true);
+    try {
+      const result = await send({libraryId});
+      if (result.status === "queued") toast.success(`Digest queued for ${result.publicationCount} ${result.publicationCount === 1 ? "publication" : "publications"}.`);
+      else if (result.status === "empty") toast.info("No new publications. Nothing was sent.");
+      else toast.error("Publish the library configuration with reader subscriptions enabled first.");
+    } catch {
+      toast.error("The digest request could not be confirmed. Try again; existing editions will not be sent twice.");
+    } finally {
+      setSending(false);
+    }
+  }
   const {notifications} = draft;
   const weekly = notifications.weekly;
   const setWeekly = (value: Partial<typeof weekly>) => patch(draft => {draft.notifications.weekly = {...draft.notifications.weekly, ...value};return draft;});
@@ -25,5 +49,14 @@ export function NotificationsFields({draft, patch}: Pick<SectionProps, "draft" |
         {(id, invalid) => <Input id={id} className="bg-background" value={weekly.timezone} placeholder="Europe/London" aria-invalid={invalid || undefined} onChange={event => setWeekly({timezone: event.target.value})} />}
       </Field>
     </div>}
+    {canSend && notifications.enabled && <PanelRow
+      className="flex-col items-stretch sm:flex-row sm:items-center"
+      title={<span className="inline-flex items-center gap-2"><TimerReset className="size-4 text-muted-foreground" />Manual digest</span>}
+      hint="Includes new publications since the last digest. The next scheduled edition starts from this one."
+      action={<Button type="button" variant="outline" className="w-full sm:w-auto" onClick={sendNow} disabled={sending}>
+        {sending ? <Spinner className="size-4" /> : <Send className="size-4" />}
+        {sending ? "Queuing digest" : "Send digest now"}
+      </Button>}
+    />}
   </FieldGroup>;
 }

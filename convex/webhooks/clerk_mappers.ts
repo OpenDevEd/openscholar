@@ -33,6 +33,7 @@ export type ClerkOrganizationSnapshot = {
   evidenceLibrariesEnabled: boolean;
   authorsEnabled: boolean;
   extractionEnabled: boolean;
+  devEnabled?: boolean;
   clerkCreatedAt: number;
   clerkUpdatedAt: number;
 };
@@ -101,6 +102,7 @@ function mapOrganizationSnapshot(value: unknown): ClerkOrganizationSnapshot | nu
     evidenceLibrariesEnabled: features?.evidenceLibraries === true,
     authorsEnabled: features?.authors === true,
     extractionEnabled: features?.extraction === true,
+    devEnabled: features?.dev === true,
     clerkCreatedAt: organization.created_at,
     clerkUpdatedAt: organization.updated_at,
   };

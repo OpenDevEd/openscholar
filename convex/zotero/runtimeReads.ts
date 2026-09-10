@@ -1,8 +1,7 @@
 import { v } from "convex/values";
 import { internalQuery } from "../_generated/server";
 import { requireEvidenceLibraryAccess } from "../evidenceLibraries/access";
-import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "../evidenceLibraries/credentials";
-import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
+import { readLibraryRuntimeTarget } from "../evidenceLibraries/runtimeTarget";
 
 // Answering anything about a library starts with the right to manage it,
 // even when the caller asked about nothing at all.
@@ -32,23 +31,6 @@ export const readRuntimeReadTarget = internalQuery({
       args.libraryId,
       "manage",
     );
-    const targetBaseUrl = await readEvidenceLibraryAdminLaunchTarget(
-      ctx,
-      access.library,
-    );
-    if (!targetBaseUrl) return null;
-    const credential = await ctx.db
-      .query("evidenceLibraryCredentials")
-      .withIndex("by_libraryId_and_credentialKey", (q) =>
-        q
-          .eq("libraryId", args.libraryId)
-          .eq("credentialKey", LIBRARY_SERVICE_CREDENTIAL_KEY),
-      )
-      .unique();
-    if (!credential) return null;
-    return {
-      targetBaseUrl,
-      encryptedMachineCredential: credential.encryptedValue,
-    };
+    return await readLibraryRuntimeTarget(ctx, access.library);
   },
 });
