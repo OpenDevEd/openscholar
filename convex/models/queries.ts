@@ -1,6 +1,7 @@
 import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
+import { activeModels, MAX_CATALOG_MODELS } from "./catalog";
 import type { Doc } from "../_generated/dataModel";
 
 const catalogOptionValidator = v.object({
@@ -40,7 +41,7 @@ async function modelsById(ctx: QueryCtx, modelIds: readonly string[]) {
       .query("models")
       .withIndex("by_model_id", (q) => q.eq("modelId", modelId))
       .unique();
-    if (model) models.push(model);
+    if (model && model.retiredAt === undefined) models.push(model);
   }
   return models;
 }
@@ -53,13 +54,7 @@ async function modelsById(ctx: QueryCtx, modelIds: readonly string[]) {
 export const list = query({
   args: { provider: v.optional(v.string()) },
   handler: async (ctx, { provider }) => {
-    if (provider) {
-      return await ctx.db
-        .query("models")
-        .withIndex("by_provider", (q) => q.eq("provider", provider))
-        .collect();
-    }
-    return await ctx.db.query("models").collect();
+    return await activeModels(ctx, provider).take(MAX_CATALOG_MODELS);
   },
 });
 
@@ -71,12 +66,7 @@ export const listCatalogOptions = query({
   args: { provider: v.optional(v.string()) },
   returns: v.array(catalogOptionValidator),
   handler: async (ctx, { provider }) => {
-    const rows = provider
-      ? await ctx.db
-          .query("models")
-          .withIndex("by_provider", (q) => q.eq("provider", provider))
-          .take(500)
-      : await ctx.db.query("models").take(1000);
+    const rows = await activeModels(ctx, provider).take(MAX_CATALOG_MODELS);
 
     return rows.map(catalogOption);
   },
@@ -86,7 +76,7 @@ export const listCatalogOptions = query({
 export const paginateCatalogOptions = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, { paginationOpts }) => {
-    const result = await ctx.db.query("models").paginate(paginationOpts);
+    const result = await activeModels(ctx).paginate(paginationOpts);
     return { ...result, page: result.page.map(catalogOption) };
   },
 });
@@ -115,8 +105,8 @@ export const listServed = internalQuery({
   handler: async (ctx) => {
     return await ctx.db
       .query("models")
-      .withIndex("by_served_sort", (q) => q.eq("isServed", true))
-      .collect();
+      .withIndex("by_isServed_and_retiredAt_and_sortOrder", (q) => q.eq("isServed", true).eq("retiredAt", undefined))
+      .take(MAX_CATALOG_MODELS);
   },
 });
 
@@ -132,7 +122,7 @@ export const getServedByModelId = internalQuery({
       .withIndex("by_model_id", (q) => q.eq("modelId", modelId))
       .unique();
 
-    if (!model || !model.isServed) return null;
+    if (!model || model.retiredAt !== undefined || !model.isServed) return null;
     return model;
   },
 });
@@ -158,7 +148,7 @@ export const getById = internalQuery({
   ),
   handler: async (ctx, { modelId }) => {
     const row = await ctx.db.get(modelId);
-    if (!row) return null;
+    if (!row || row.retiredAt !== undefined) return null;
     return {
       _id: row._id,
       modelId: row.modelId,

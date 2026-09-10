@@ -5,6 +5,7 @@
 
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { activeModels, MAX_CATALOG_MODELS } from "../models/catalog";
 
 export const listChatModels = query({
   args: {},
@@ -22,7 +23,7 @@ export const listChatModels = query({
   handler: async (ctx) => {
     // Chat lets you pick ANY catalog model (isServed is curation, not a runtime
     // gate). Served models keep their curated sortOrder; the rest sort last.
-    const rows = await ctx.db.query("models").collect();
+    const rows = await activeModels(ctx).take(MAX_CATALOG_MODELS);
     return rows.map((m) => ({
       _id: m._id,
       modelId: m.modelId,

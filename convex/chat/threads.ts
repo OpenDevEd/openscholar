@@ -620,7 +620,7 @@ export const getModelForThread = internalQuery({
     let modelSupportedParameters: string[] | null = null;
     if (job.chatModelId) {
       const modelRow = await ctx.db.get(job.chatModelId);
-      modelSupportedParameters = modelRow?.supportedParameters ?? null;
+      modelSupportedParameters = modelRow?.retiredAt === undefined ? modelRow?.supportedParameters ?? null : null;
     }
 
     return {

@@ -39,6 +39,7 @@ import type { ToolSet } from "ai";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
+import { requireAvailableModel } from "../models/catalog";
 import { paperChat } from "./agent";
 import { authorizeThreadAccess } from "./auth";
 import { resolveOpenRouterModel } from "./provider";
@@ -220,6 +221,7 @@ export const sendMessage = mutation({
       throw createError("VALIDATION_ERROR", "Prompt must not be empty");
     }
     const { job } = await authorizeThreadAccess(ctx, threadId);
+    if (job.chatModelId) await requireAvailableModel(ctx, job.chatModelId);
 
     // Zero-included guard (D9). Defensive second gate — the composer
     // should already have Send disabled via its reactive `includedCount`
@@ -1499,6 +1501,7 @@ export const swapModel = mutation({
   returns: v.null(),
   handler: async (ctx, { threadId, modelId }) => {
     const { job } = await authorizeThreadAccess(ctx, threadId);
+    await requireAvailableModel(ctx, modelId);
     await ctx.db.patch(job._id, {
       chatModelId: modelId,
       updatedAt: Date.now(),
@@ -1572,6 +1575,7 @@ export const getChatWebSearchPricing = query({
     let modelWebSearchPriceUsd: number | null = null;
     if (job.chatModelId) {
       const modelRow = await ctx.db.get(job.chatModelId);
+      if (modelRow?.retiredAt !== undefined) return UNSUPPORTED_PRICING;
       modelSupportedParameters = modelRow?.supportedParameters ?? null;
       modelWebSearchPriceUsd = modelRow?.webSearchPrice ?? null;
     }
