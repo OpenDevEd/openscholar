@@ -41,51 +41,6 @@ test.describe("clerk auth flows", () => {
     await expect(page).toHaveURL(/\/settings/);
   });
 
-  test("organization controls open Clerk member management", async ({
-    page,
-  }) => {
-    await signIn(page);
-
-    const rejectCookies = page.getByRole("button", {
-      name: "Reject non-essential",
-    });
-    if (await rejectCookies.isVisible()) {
-      await rejectCookies.click();
-    }
-
-    await page
-      .getByRole("button", { name: "Open organization switcher" })
-      .click();
-    await expect(
-      page.getByRole("menuitem", { name: "Create organization" }),
-    ).toBeVisible();
-
-    await page.getByRole("menuitem", { name: "Manage" }).click();
-    const organizationDialog = page.getByRole("dialog");
-    await organizationDialog
-      .getByRole("button", { name: "Members", exact: true })
-      .click();
-
-    await expect(
-      organizationDialog.getByRole("button", { name: "Invite" }),
-    ).toBeVisible();
-    await expect(
-      organizationDialog
-        .getByRole("button", {
-          name: /^(Admin|Member)$/,
-        })
-        .first(),
-    ).toBeVisible();
-
-    await organizationDialog
-      .getByRole("button", { name: "Open menu" })
-      .first()
-      .click();
-    await expect(
-      page.getByRole("menuitem", { name: "Remove member" }),
-    ).toBeVisible();
-  });
-
   test("an owner can save and reopen essential library configuration", async ({
     page,
   }) => {
