@@ -1,6 +1,7 @@
 "use client";
 "use no memo"; // PDF sync effects: initial page, text layer, page proxy reset on deps change
 
+import { Spinner } from "@/components/ui/spinner";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
@@ -399,7 +400,7 @@ export function PdfViewer({
           >
             <Document
               file={pdfUrl}
-              loading={<div className="rounded-md border border-border/60 bg-card px-4 py-3 text-sm text-muted-foreground">{t('pdfViewer.loadingPdf')}</div>}
+              loading={<div className="flex min-h-40 items-center justify-center"><Spinner aria-label={t("pdfViewer.loadingPdf")} className="size-6 text-primary" /></div>}
               onLoadSuccess={({ numPages: totalPages }) => {
                 const safePages = Math.max(1, totalPages);
                 setNumPages(safePages);

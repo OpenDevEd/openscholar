@@ -5,6 +5,7 @@ import { useMutation, useAction, useQuery } from "convex/react";
 import { useState, useCallback } from "react";
 import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { SignIn } from "@clerk/nextjs";
 
 type ConnectState = "consent" | "creating" | "show_key" | "done" | "error";
@@ -99,7 +100,7 @@ export default function ConnectPage() {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         {phase === "initializing" ? (
-          <div className="text-muted-foreground">Loading...</div>
+          <AuthStatePanel variant="loading" />
         ) : (
           <div className="flex flex-col items-center gap-6">
             <div className="text-center space-y-2">

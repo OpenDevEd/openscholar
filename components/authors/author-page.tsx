@@ -53,6 +53,7 @@ import {
   Field,
   FieldError,
 } from "@/components/evidence-libraries/configuration/section-card";
+import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -87,7 +88,7 @@ const safeUrl = (value?: string) => {
 };
 
 export default function AuthorPage({
-  profile, configuration, canEdit, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus,
+  profile, configuration, canEdit, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
   openAlexAuthors, openAlexPapers, onSearchAuthors, openAlexError,
   hasMoreWorks, workCount, loadingWorks, onLoadMoreWorks,
 }: {
@@ -99,6 +100,8 @@ export default function AuthorPage({
   accessSection: ReactNode;
   papers: AuthorPublication[];
   publicationStatus: string | null;
+  loadingPublications: boolean;
+  loadingAuthors: boolean;
   openAlexAuthors: OpenAlexMatch[];
   openAlexPapers: PaperResult[];
   onSearchAuthors: (search: string) => void;
@@ -473,7 +476,7 @@ export default function AuthorPage({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    disabled={Boolean(publicationStatus) || papers.length === 0}
+                    disabled={loadingPublications || Boolean(publicationStatus) || papers.length === 0}
                     onClick={() =>
                       setDraft({
                         ...draft,
@@ -526,7 +529,9 @@ export default function AuthorPage({
                       </span>
                     </label>
                   ))}
-                  {(publicationStatus || !papers.length) && (
+                  {loadingPublications ? (
+                    <div className="flex min-h-24 items-center justify-center"><Spinner aria-label="Loading publications" className="size-5 text-primary" /></div>
+                  ) : (publicationStatus || !papers.length) && (
                     <p className="py-3 text-sm text-muted-foreground">
                       {publicationStatus ?? "No published works are linked to this author yet."}
                     </p>
@@ -850,7 +855,9 @@ export default function AuthorPage({
                         </Button>
                       </article>
                     ))}
-                    {(publicationStatus || !filtered.length) && (
+                    {loadingPublications ? (
+                      <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading publications" className="size-6 text-primary" /></div>
+                    ) : (publicationStatus || !filtered.length) && (
                       <p className="p-6 text-center text-sm text-muted-foreground">
                         {publicationStatus ?? (featured.length
                           ? "No publications match your search."
@@ -873,6 +880,7 @@ export default function AuthorPage({
                         onDownloadEssentialItem={downloadLibraryEssentialItem}
                       />
                       <div className="flex flex-col gap-4 p-4">
+                        {loadingWorks && !openAlexPapers.length && <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading OpenAlex publications" className="size-6 text-primary" /></div>}
                         {openAlexPapers
                           .map((paper, index) => (
                             <PaperCard
@@ -899,10 +907,8 @@ export default function AuthorPage({
                             onClick={onLoadMoreWorks}
                             disabled={loadingWorks}
                           >
-                            {loadingWorks ? "Loading…" : "Show more"}
-                            <ChevronRight
-                              className="size-3.5 rotate-90"
-                            />
+                            Show more
+                            {loadingWorks ? <Spinner /> : <ChevronRight className="size-3.5 rotate-90" />}
                           </Button>
                         </div>
                       )}
@@ -980,8 +986,9 @@ export default function AuthorPage({
                         variant="outline"
                         size="sm"
                         onClick={() => onSearchAuthors(matchSearch)}
+                        disabled={loadingAuthors}
                       >
-                        Try again
+                        {loadingAuthors && <Spinner />}Try again
                       </Button>
                     </div>
                   ) : (
@@ -1014,10 +1021,11 @@ export default function AuthorPage({
                           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                         </button>
                       ))}
-                      {!matches.length && (
+                      {loadingAuthors ? (
+                        <div className={matches.length ? "flex justify-center p-3" : "flex min-h-24 items-center justify-center"}><Spinner aria-label="Searching OpenAlex authors" className="size-5 text-primary" /></div>
+                      ) : !matches.length && (
                         <p className="p-5 text-sm text-muted-foreground">
-                          No sample authors match. Try Maya Chen, Caitlin Mills
-                          or Alex Rivera.
+                          {matchSearch.trim() ? "No authors match your search." : "Search for an author by name, affiliation or OpenAlex ID."}
                         </p>
                       )}
                     </div>

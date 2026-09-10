@@ -30,7 +30,7 @@ export function AuthorProfileView({profileId, configuration = false}: {profileId
     if (!record?.openalex || (previous && previous.results.length < 10)) return null;
     return ["author-profile-works", record.openalex, page + 1] as const;
   }, ([, id, page]) => readProfileAuthorWorks(id, page));
-  if (record === undefined || references === undefined) return <p className="p-6 text-sm text-muted-foreground">Loading author profile…</p>;
+  if (record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title="Loading author profile" /></PageWrapper>;
   if (!record) return <p className="p-6">Author profile not found.</p>;
   if (configuration && !record.role) return <PageWrapper><AuthStatePanel layout="fullscreen" variant="no_access" /></PageWrapper>;
   const profile: AuthorProfile = {
@@ -39,7 +39,7 @@ export function AuthorProfileView({profileId, configuration = false}: {profileId
   };
   return <AuthorPage key={`${record._id}:${configuration}`} profile={profile} configuration={configuration}
     canBrowseAuthors={features?.authors === true} canEdit={Boolean(record.role && features?.authors)} accessSection={configuration && record.role === "owner" ? <ProfileAccess profileId={profileId} /> : null}
-    papers={publications.data?.papers ?? []} publicationStatus={publications.error ? "Publications could not be loaded. Try again shortly." : publications.isLoading ? "Loading publications…" : publications.data?.unavailableCount ? "Some publications could not be loaded. Try again shortly." : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
+    papers={publications.data?.papers ?? []} loadingPublications={publications.isLoading} loadingAuthors={authors.isValidating || search !== debouncedSearch} publicationStatus={publications.error ? "Publications could not be loaded. Try again shortly." : publications.data?.unavailableCount ? "Some publications could not be loaded. Try again shortly." : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
     openAlexError={authors.error || match.error || works.error ? "OpenAlex is unavailable. Try again." : null}
     onSearchAuthors={value => { setSearch(value); if (value === search) void authors.mutate(); }}
     hasMoreWorks={(works.data?.flatMap(page => page.results).length ?? 0) < (works.data?.[0]?.meta.count ?? 0)}
