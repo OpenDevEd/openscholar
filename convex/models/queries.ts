@@ -101,9 +101,11 @@ export const resolveEvidenceLibrarySelection = internalQuery({
       modelMetadata: Object.fromEntries(
         models.map((model) => {
           const separator = model.name.indexOf(": ");
+          const name = (separator > 0 ? model.name.slice(separator + 2) : model.name).trim();
+          const company = (separator > 0 ? model.name.slice(0, separator) : model.provider).trim();
           return [model.modelId, {
-            name: separator > 0 ? model.name.slice(separator + 2) : model.name,
-            company: separator > 0 ? model.name.slice(0, separator) : model.provider,
+            name: (name || model.modelId).slice(0, 256),
+            company: (company || "OpenRouter").slice(0, 128),
           }];
         }),
       ),
