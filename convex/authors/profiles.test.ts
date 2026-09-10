@@ -1,10 +1,12 @@
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 const modules = import.meta.glob("/convex/**/*.ts");
+const mail = vi.hoisted(() => ({sendMail: vi.fn().mockResolvedValue({}), close: vi.fn()}));
+vi.mock("nodemailer", () => ({default: {createTransport: () => mail}}));
 const content = {name: "Caitlin Mills", headline: "Learning scientist", affiliation: "University of Minnesota", bio: "Research on attention and learning.", website: "", linkedin: "", orcid: "0000-0002-1825-0097", openalex: "A123456"};
 
 async function setup() {
@@ -24,6 +26,16 @@ async function setup() {
 }
 
 describe("author profiles", () => {
+  it("sends profile invitations from the profile identity and platform contact address", async () => {
+    vi.stubEnv("EL_SMTP_HOST", "smtp.example.org");
+    vi.stubEnv("EL_SMTP_FROM", "contact@platform.example");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.example.org");
+    try {
+      const {owner, profileId} = await setup();
+      await owner.action(api.authors.invitationActions.invite, {profileId, email: "editor@example.org"});
+      expect(mail.sendMail.mock.lastCall?.[0]).toMatchObject({from: {name: "Caitlin Mills via OpenScholar", address: "contact@platform.example"}, replyTo: "contact@platform.example", to: "editor@example.org"});
+    } finally { vi.unstubAllEnvs(); }
+  });
   it("keeps profile ownership separate from organization roles", async () => {
     const {t, owner, editor, profileId} = await setup();
     await expect(t.mutation(api.authors.profiles.create, {name: content.name})).rejects.toThrow();

@@ -1,4 +1,5 @@
 "use node";
+import { z } from "zod";
 
 import {
   platformEmbeddingKey,
@@ -71,6 +72,7 @@ export function optionalPlatformMailService(
   const host = optionalRuntimeEnvironment("EL_SMTP_HOST");
   if (!host) return undefined;
   const from = requireRuntimeEnvironment("EL_SMTP_FROM", createError);
+  if (!z.email().safeParse(from).success) throw createError("EL_SMTP_FROM must be a bare email address");
   const port = optionalRuntimeEnvironment("EL_SMTP_PORT")
     ? requirePositiveRuntimeInteger("EL_SMTP_PORT", createError)
     : 587;
