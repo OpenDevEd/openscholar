@@ -88,8 +88,32 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit --no-fund
 
+      - name: Read the pinned email source revision
+        id: email-source
+        run: echo "commit=$(node -p 'require("./lib/emails/source-lock.json").commit')" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the shared email source
+        uses: actions/checkout@v6
+        with:
+          repository: OpenDevEd/new-el
+          ref: ${{ steps.email-source.outputs.commit }}
+          ssh-key: ${{ secrets.EVIDENCE_LIBRARY_SOURCE_KEY }}
+          path: .email-source
+          sparse-checkout: |
+            src/lib/emails/library-template.ts
+            src/lib/escape-html.ts
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Verify the shared email source
+        run: npm run check:email-template -- .email-source
+
+      - name: Remove the source checkout
+        if: always()
+        run: rm -rf .email-source
+
       - name: Run unit and contract tests
-        run: npm run check:email-template && npm run test
+        run: npm run test
 
   build:
     name: Build

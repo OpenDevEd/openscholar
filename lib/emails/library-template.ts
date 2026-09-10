@@ -14,8 +14,26 @@ export const emailStyles = {
 	link: "color:#994b0d;text-decoration:underline;text-underline-offset:3px",
 };
 
+// Email clients need opaque colours. Composite an alpha accent over the white message surface.
+function emailAccent(color: string) {
+	if (!/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(color)) return "#f58220";
+	if (color.length === 7) return color;
+	const alpha = parseInt(color.slice(7, 9), 16) / 255;
+	return (
+		"#" +
+		[1, 3, 5]
+			.map((offset) => {
+				const channel = parseInt(color.slice(offset, offset + 2), 16);
+				return Math.round(channel * alpha + 255 * (1 - alpha))
+					.toString(16)
+					.padStart(2, "0");
+			})
+			.join("")
+	);
+}
+
 export function emailButton(label: string, href: string, color: string) {
-	const accent = /^#[0-9a-f]{6}$/i.test(color) ? color : "#f58220";
+	const accent = emailAccent(color);
 	const [r, g, b] = [1, 3, 5].map((offset) => {
 		const value = parseInt(accent.slice(offset, offset + 2), 16) / 255;
 		return value <= 0.04045
@@ -23,7 +41,12 @@ export function emailButton(label: string, href: string, color: string) {
 			: ((value + 0.055) / 1.055) ** 2.4;
 	});
 	const light = r! * 0.2126 + g! * 0.7152 + b! * 0.0722;
- const text = (light + 0.05) / 0.0575 >= 4.5 ? "#151515" : 1.05 / (light + 0.05) >= 4.5 ? "#ffffff" : "#000000";
+	const text =
+		(light + 0.05) / 0.0575 >= 4.5
+			? "#151515"
+			: 1.05 / (light + 0.05) >= 4.5
+				? "#ffffff"
+				: "#000000";
 	return `<table role="presentation" cellspacing="0" cellpadding="0"><tr><td bgcolor="${escapeHtml(accent)}" style="border-radius:10px"><a href="${escapeHtml(href)}" style="display:inline-block;padding:14px 22px;font-size:15px;font-weight:700;color:${text};text-decoration:none;border:1px solid ${escapeHtml(accent)};border-radius:10px">${escapeHtml(label)}</a></td></tr></table>`;
 }
 
