@@ -16,6 +16,11 @@ const paths = ['lib/emails/library-template.ts', 'lib/escape-html.ts'];
 const lockPath = resolve(root, 'lib/emails/source-lock.json');
 const lock = check ? JSON.parse(await readFile(lockPath, 'utf8')) : {repository, commit: git('rev-parse', 'HEAD').trim()};
 if (lock.repository !== repository || !/^[0-9a-f]{40}$/.test(lock.commit)) throw new Error('The email source lock requires the canonical repository and an exact commit.');
+if (!check && git('status', '--porcelain', '--', ...paths.map(path => 'src/' + path)).trim()) throw new Error('Commit the shared email source changes before synchronizing.');
+if (check) {
+  try { git('merge-base', '--is-ancestor', lock.commit, 'refs/remotes/origin/main'); }
+  catch { throw new Error('The pinned email source must be present in origin/main. Fetch main before checking.'); }
+}
 for (const path of paths) {
   const content = '// Generated from OpenDevEd/new-el src/' + path + '.\n// Regenerate with: node scripts/sync-library-email-template.mjs <new-el checkout>\n' + git('show', `${lock.commit}:src/${path}`);
   const destination = resolve(root, path);

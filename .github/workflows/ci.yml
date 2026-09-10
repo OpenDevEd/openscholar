@@ -88,15 +88,33 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit --no-fund
 
+      - name: Check email source access
+        id: email-source-access
+        env:
+          SOURCE_KEY: ${{ secrets.EVIDENCE_LIBRARY_SOURCE_KEY }}
+        run: |
+          if [ -n "$SOURCE_KEY" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Shared email source verification needs repository secrets; unit tests will still run."
+          else
+            echo "::error::The shared email source key is missing."
+            exit 1
+          fi
+
       - name: Read the pinned email source revision
+        if: steps.email-source-access.outputs.available == 'true'
         id: email-source
         run: echo "commit=$(node -p 'require("./lib/emails/source-lock.json").commit')" >> "$GITHUB_OUTPUT"
 
       - name: Check out the shared email source
+        if: steps.email-source-access.outputs.available == 'true'
         uses: actions/checkout@v6
         with:
           repository: OpenDevEd/new-el
           ref: ${{ steps.email-source.outputs.commit }}
+          fetch-depth: 0
           ssh-key: ${{ secrets.EVIDENCE_LIBRARY_SOURCE_KEY }}
           path: .email-source
           sparse-checkout: |
@@ -106,6 +124,7 @@ jobs:
           persist-credentials: false
 
       - name: Verify the shared email source
+        if: steps.email-source-access.outputs.available == 'true'
         run: npm run check:email-template -- .email-source
 
       - name: Remove the source checkout
