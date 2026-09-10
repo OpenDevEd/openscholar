@@ -321,7 +321,7 @@ export async function saveEvidenceLibraryDraftSections(
         .query("models")
         .withIndex("by_model_id", (q) => q.eq("modelId", modelId))
         .unique();
-      if (model) allowedAiModels.add(model.modelId);
+      if (model && model.retiredAt === undefined) allowedAiModels.add(model.modelId);
     }
   }
   throwFirstIssue(

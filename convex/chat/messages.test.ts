@@ -2364,3 +2364,20 @@ describe("chat.messages.getChatWebSearchPricing", () => {
     vi.unstubAllEnvs();
   });
 });
+
+
+describe("retired chat model selection", () => {
+  it("rejects stale selections and sends before changing the thread or queue", async () => {
+    const t = createTestConvex();
+    const {userId, jobId, threadId} = await seedUserAndChatJob(t);
+    const {modelId} = await seedModelAndCredits(t, userId);
+    await t.run(ctx => ctx.db.patch(modelId, {retiredAt: Date.now()}));
+    const caller = asCaller(t, "c_msg");
+    await expect(caller.mutation(api.chat.messages.swapModel, {threadId, modelId})).rejects.toThrow("Choose another model");
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.chatModelId).toBeUndefined();
+    await t.run(ctx => ctx.db.patch(jobId, {chatModelId: modelId}));
+    await expect(caller.mutation(api.chat.messages.sendMessage, {threadId, prompt: "Explain this paper"})).rejects.toThrow("Choose another model");
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.isGenerating).toBeUndefined();
+    expect((await t.query(internal.chat.threads.getModelForThread, {threadId}))?.modelSupportedParameters).toBeNull();
+  });
+});

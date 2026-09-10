@@ -254,6 +254,7 @@ export default defineSchema({
     knowledgeCutoff: v.optional(v.string()),
     expirationDate: v.optional(v.string()),
     createdOnOpenRouter: v.optional(v.number()),
+    retiredAt: v.optional(v.number()),
 
     // ── Defaults ──
     defaultTemperature: v.optional(v.number()),
@@ -272,8 +273,9 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_model_id", ["modelId"])
-    .index("by_provider", ["provider"])
-    .index("by_served_sort", ["isServed", "sortOrder"])
+    .index("by_provider_and_retiredAt", ["provider", "retiredAt"])
+    .index("by_retiredAt", ["retiredAt"])
+    .index("by_isServed_and_retiredAt_and_sortOrder", ["isServed", "retiredAt", "sortOrder"])
     .index("by_synced", ["syncedAt"]),
 
   // ═══════════════════════════════════════════════════════════════

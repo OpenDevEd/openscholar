@@ -6,56 +6,51 @@ import { internal } from "../_generated/api";
 
 const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
 
-/** Batch size for mutations to stay within Convex limits. */
-const BATCH_SIZE = 50;
+import { z } from "zod";
+import { MAX_CATALOG_MODELS } from "./catalog";
 
-interface OpenRouterPricing {
-  prompt?: string;
-  completion?: string;
-  input_cache_read?: string;
-  input_cache_write?: string;
-  internal_reasoning?: string;
-  web_search?: string;
-  image?: string;
-  audio?: string;
-}
-
-interface OpenRouterModel {
-  id: string;
-  canonical_slug?: string;
-  name: string;
-  hugging_face_id?: string | null;
-  description?: string;
-  created?: number;
-  pricing?: OpenRouterPricing;
-  context_length?: number;
-  architecture?: {
-    modality?: string;
-    input_modalities?: string[];
-    output_modalities?: string[];
-    tokenizer?: string;
-    instruct_type?: string | null;
-  };
-  top_provider?: {
-    context_length?: number;
-    max_completion_tokens?: number | null;
-    is_moderated?: boolean;
-  };
-  supported_parameters?: string[];
-  knowledge_cutoff?: string | null;
-  expiration_date?: string | null;
-  default_parameters?: {
-    temperature?: number | null;
-    top_p?: number | null;
-    top_k?: number | null;
-  };
-}
+const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
+const optionalText = z.string().nullish();
+const optionalNumber = z.number().finite().nullish();
+const rawModelSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  canonical_slug: optionalText,
+  hugging_face_id: optionalText,
+  description: optionalText,
+  created: optionalNumber,
+  pricing: z.object({
+    prompt: optionalText, completion: optionalText,
+    input_cache_read: optionalText, input_cache_write: optionalText,
+    internal_reasoning: optionalText, web_search: optionalText,
+    image: optionalText, audio: optionalText,
+  }).optional(),
+  context_length: optionalNumber,
+  architecture: z.object({
+    modality: optionalText,
+    input_modalities: z.array(z.string()).optional(),
+    output_modalities: z.array(z.string()).optional(),
+    tokenizer: optionalText, instruct_type: optionalText,
+  }).optional(),
+  top_provider: z.object({
+    max_completion_tokens: optionalNumber,
+    is_moderated: z.boolean().optional(),
+  }).optional(),
+  supported_parameters: z.array(z.string()).optional(),
+  knowledge_cutoff: optionalText,
+  expiration_date: optionalText,
+  default_parameters: z.object({
+    temperature: optionalNumber, top_p: optionalNumber, top_k: optionalNumber,
+  }).optional(),
+});
+type OpenRouterModel = z.infer<typeof rawModelSchema>;
+const catalogSchema = z.object({data: z.array(rawModelSchema).min(1).max(MAX_CATALOG_MODELS)});
 
 /**
  * Parse a pricing string (USD per token) into USD per million tokens.
  * Returns null for missing, non-finite, or meta-model values ("-1").
  */
-function parsePerMillion(value?: string): number | null {
+function parsePerMillion(value?: string | null): number | null {
   if (!value) return null;
   const n = parseFloat(value);
   if (!Number.isFinite(n) || n < 0) return null;
@@ -69,7 +64,7 @@ function parsePerMillion(value?: string): number | null {
  * per-token fractions. Cross-ref openrouter.ai docs:
  *   "web_search: string — Cost per web search operation"
  */
-function parseDollars(value?: string): number | null {
+function parseDollars(value?: string | null): number | null {
   if (!value) return null;
   const n = parseFloat(value);
   if (!Number.isFinite(n) || n < 0) return null;
@@ -137,46 +132,49 @@ export function transformModel(raw: OpenRouterModel) {
   };
 }
 
-/**
- * Fetch all models from OpenRouter and upsert into the models table.
- * Runs daily via cron. Preserves business-layer overrides (isServed, costMarkup, sortOrder).
- */
+async function readCatalogResponse(response: Response): Promise<string> {
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("OpenRouter catalog response is empty");
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  try {
+    // Bound reads too: even a stream of empty chunks cannot spin forever.
+    for (let reads = 0; reads < 8192; reads++) {
+      const {done, value} = await reader.read();
+      if (done) return Buffer.concat(chunks).toString("utf8");
+      bytes += value.byteLength;
+      if (bytes > MAX_RESPONSE_BYTES) throw new Error("OpenRouter catalog exceeds the response size limit");
+      chunks.push(value);
+    }
+    throw new Error("OpenRouter catalog exceeds the response chunk limit");
+  } finally {
+    await reader.cancel();
+    reader.releaseLock();
+  }
+}
+
+/** One HTTP request and one atomic write. Never schedules itself or retries. */
 export const syncFromOpenRouter = internalAction({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
-    const response = await fetch(OPENROUTER_MODELS_URL);
-    if (!response.ok) {
-      console.error(`[syncFromOpenRouter] OpenRouter API returned ${response.status}`);
-      return 0;
+    const response = await fetch(OPENROUTER_MODELS_URL, {
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) throw new Error(`OpenRouter catalog returned HTTP ${response.status}`);
+    if (Number(response.headers.get("content-length")) > MAX_RESPONSE_BYTES) {
+      await response.body?.cancel();
+      throw new Error("OpenRouter catalog exceeds the response size limit");
     }
-
-    const json = (await response.json()) as { data: OpenRouterModel[] };
-    if (!Array.isArray(json.data)) {
-      console.error("[syncFromOpenRouter] Unexpected response shape");
-      return 0;
+    const text = await readCatalogResponse(response);
+    const {data} = catalogSchema.parse(JSON.parse(text));
+    if (new Set(data.map(model => model.id)).size !== data.length) {
+      throw new Error("OpenRouter catalog contains duplicate model ids");
     }
-
-    const entries = json.data
-      .map(transformModel)
-      .filter((e): e is NonNullable<typeof e> => e !== null);
-
-    if (entries.length === 0) {
-      console.warn("[syncFromOpenRouter] No entries to write");
-      return 0;
-    }
-
-    let total = 0;
-    for (let i = 0; i < entries.length; i += BATCH_SIZE) {
-      const batch = entries.slice(i, i + BATCH_SIZE);
-      const written = await ctx.runMutation(
-        internal.models.mutations.upsertBatch,
-        { entries: batch },
-      );
-      total += written;
-    }
-
-    console.log(`[syncFromOpenRouter] Synced ${total} models from OpenRouter (${entries.length} total)`);
+    const entries = data.map(transformModel).filter(entry => entry !== null);
+    if (entries.length === 0) throw new Error("OpenRouter catalog contains no models with usable pricing");
+    const total: number = await ctx.runMutation(internal.models.mutations.reconcileCatalog, {entries});
+    console.log(`[syncFromOpenRouter] Synced ${total} models in one pass`);
     return total;
   },
 });

@@ -17,6 +17,7 @@ import type { Id } from "../_generated/dataModel";
 import { getProviderModel } from "../../lib/ai/server/providers";
 import { SERVER_AI_CONFIG } from "../ai/config";
 import { createError } from "../lib/errors";
+import { MODEL_UNAVAILABLE_MESSAGE } from "../models/catalog";
 import type { LanguageModel } from "ai";
 import {
   withGenerationIdCapture,
@@ -63,7 +64,7 @@ export async function resolveOpenRouterModel(
     if (!row) {
       throw createError(
         "VALIDATION_ERROR",
-        "Selected model was not found.",
+        MODEL_UNAVAILABLE_MESSAGE,
       );
     }
     modelSlug = row.modelId;
