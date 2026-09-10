@@ -317,7 +317,7 @@ describe("owner configuration migrations", () => {
     });
   });
 
-  it("migrates version 2 AI selections to the active ordered model contract", () => {
+  it("preserves configured model choices and order without a baked-in catalog", () => {
     const result = migrateOwnerConfiguration({
       ownerConfigurationVersion: 2,
       sections: [
@@ -349,8 +349,8 @@ describe("owner configuration migrations", () => {
             {
               provider: "openrouter",
               enabled: true,
-              models: [TEST_AI_MODELS[2]],
-              defaultModel: TEST_AI_MODELS[2],
+              models: ["anthropic/claude-sonnet-5", TEST_AI_MODELS[2]],
+              defaultModel: "anthropic/claude-sonnet-5",
             },
           ],
         },
@@ -392,7 +392,7 @@ describe("owner configuration migrations", () => {
     });
   });
 
-  it("switches AI off when no selected model remains active", () => {
+  it("switches AI off when no model was selected", () => {
     const result = migrateOwnerConfiguration({
       ownerConfigurationVersion: 2,
       sections: [
@@ -404,7 +404,6 @@ describe("owner configuration migrations", () => {
               {
                 provider: "openrouter",
                 enabled: true,
-                defaultModel: "anthropic/claude-sonnet-5",
               },
             ],
           },

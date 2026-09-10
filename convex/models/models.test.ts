@@ -162,6 +162,9 @@ describe("models.queries.listCatalogOptions", () => {
     ).toEqual({
       catalogReady: true,
       allowedModelIds: ["provider/model-1000"],
+      modelMetadata: {
+        "provider/model-1000": { name: "Model 1000", company: "provider" },
+      },
     });
   });
 

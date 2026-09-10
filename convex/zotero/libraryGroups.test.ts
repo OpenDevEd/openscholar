@@ -268,6 +268,7 @@ describe("Evidence Library Zotero groups", () => {
       },
       zoteroGroups: prepared,
       allowedAiModels: [],
+      aiModelMetadata: {},
       aiModelCatalogReady: true,
     });
     expect(payload.runtimeConfig.sources).toEqual([

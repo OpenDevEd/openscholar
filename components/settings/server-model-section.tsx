@@ -15,9 +15,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  OpenAIIcon, GoogleIcon, AnthropicIcon, OpenRouterIcon, DeepSeekIcon,
-} from "@/components/icons/provider-icons";
+import { getModelIcon } from "@/components/icons/provider-icons";
 import {
   Coins, Zap, Scale, Brain, SlidersHorizontal, Check, Search,
   ChevronDown, Loader2, ArrowRight,
@@ -33,14 +31,6 @@ const PRESET_META: Record<PresetKey, { icon: Ico; ico: string; dot: string; bg: 
 };
 const ORDER: PresetKey[] = ["fast", "balanced", "intelligent"];
 
-function brandFor(modelId: string): Ico {
-  const id = modelId.toLowerCase();
-  if (id.startsWith("openai/") || id.includes("gpt")) return OpenAIIcon;
-  if (id.startsWith("anthropic/") || id.includes("claude")) return AnthropicIcon;
-  if (id.startsWith("google/") || id.includes("gemini") || id.includes("gemma")) return GoogleIcon;
-  if (id.startsWith("deepseek/")) return DeepSeekIcon;
-  return OpenRouterIcon;
-}
 const price = (i: number, o: number) => (i === 0 && o === 0 ? "free" : `$${i.toFixed(2)} / $${o.toFixed(2)} /1M`);
 // Catalog names are "Vendor: Model" — the brand icon already conveys the vendor.
 const stripProvider = (name: string) => name.replace(/^[^:]{1,24}:\s+/, "");
@@ -120,7 +110,7 @@ export function ServerModelSection({
                 const meta = PRESET_META[pst.key];
                 const Icon = meta.icon;
                 const m = bySlug.get(pst.slug);
-                const Brand = brandFor(pst.slug);
+                const Brand = getModelIcon(pst.slug);
                 const on = activeKey === pst.key;
                 return (
                   <button
@@ -162,7 +152,7 @@ export function ServerModelSection({
                     <div className="py-8 text-center text-sm text-muted-foreground">{tc("noModelsFound")}</div>
                   ) : (
                     filtered.map((m) => {
-                      const Brand = brandFor(m.modelId);
+                      const Brand = getModelIcon(m.modelId);
                       const sel = activeKey === "custom" && cfg?.serverModelId === m._id;
                       return (
                         <button

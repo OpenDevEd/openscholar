@@ -87,13 +87,27 @@ export const resolveEvidenceLibrarySelection = internalQuery({
   returns: v.object({
     catalogReady: v.boolean(),
     allowedModelIds: v.array(v.string()),
+    modelMetadata: v.record(
+      v.string(),
+      v.object({ name: v.string(), company: v.string() }),
+    ),
   }),
   handler: async (ctx, { modelIds }) => {
     const catalogReady = (await ctx.db.query("models").first()) !== null;
-    const allowedModelIds = (await modelsById(ctx, modelIds)).map(
-      (model) => model.modelId,
-    );
-    return { catalogReady, allowedModelIds };
+    const models = await modelsById(ctx, modelIds);
+    return {
+      catalogReady,
+      allowedModelIds: models.map((model) => model.modelId),
+      modelMetadata: Object.fromEntries(
+        models.map((model) => {
+          const separator = model.name.indexOf(": ");
+          return [model.modelId, {
+            name: separator > 0 ? model.name.slice(separator + 2) : model.name,
+            company: separator > 0 ? model.name.slice(0, separator) : model.provider,
+          }];
+        }),
+      ),
+    };
   },
 });
 

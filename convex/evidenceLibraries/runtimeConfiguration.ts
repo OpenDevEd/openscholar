@@ -65,6 +65,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
   aiProviderKey?: { encryptedApiKey: string };
   publicationProviders?: { settings: PublicationSettings; encryptedCredentials: string };
   allowedAiModels: readonly string[];
+  aiModelMetadata: Record<string, { name: string; company: string }>;
   aiModelCatalogReady: boolean;
 }): {
   runtimeConfig: AssembledEvidenceLibraryConfiguration;
@@ -106,6 +107,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       storagePublicBucket: input.storage.publicBucket,
       storageMaxPdfBytes: input.storage.maxPdfBytes,
       allowedAiModels: input.allowedAiModels,
+      aiModelMetadata: input.aiModelMetadata,
       aiModelCatalogReady: input.aiModelCatalogReady,
       zoteroTranslationUrl: input.zoteroTranslationUrl,
       mail: input.mail,

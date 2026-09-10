@@ -1,10 +1,4 @@
-import catalogs from "./generated/library-config.client.catalogs.json";
-
-/** Stable historical ids for configuration fixtures. Not used by the app. */
-export const TEST_AI_MODELS =
-  (
-    catalogs.options.aiProviders as readonly {
-      provider: string;
-      active: readonly string[];
-    }[]
-  ).find((entry) => entry.provider === "openrouter")?.active ?? [];
+/** Fixed inputs for configuration tests. The app uses the synced OpenRouter catalog. */
+export const TEST_AI_MODELS = [
+  "openai/gpt-5.6-luna", "google/gemini-3.7-flash", "x-ai/grok-4.6",
+] as const;

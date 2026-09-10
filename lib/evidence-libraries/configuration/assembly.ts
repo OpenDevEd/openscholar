@@ -32,6 +32,7 @@ export type ManagedEvidenceLibraryConfiguration = {
   storageMaxPdfBytes: number;
   // OpenScholar model ids from the OpenRouter-backed models table.
   allowedAiModels: readonly string[];
+  aiModelMetadata: Record<string, { name: string; company: string }>;
   aiModelCatalogReady: boolean;
   zoteroTranslationUrl?: string;
   // The platform pays for meaning-based search. Assembly builds the embedder
@@ -327,7 +328,14 @@ export function assembleEvidenceLibraryConfiguration({
         Array.isArray(candidate.ai.providers)
           ? candidate.ai.providers.filter(isObject)
           : [],
-      ),
+      ).map((provider) => ({
+        ...provider,
+        modelMetadata: Object.fromEntries(
+          Object.entries(managed.aiModelMetadata).filter(
+            ([id]) => Array.isArray(provider.models) && provider.models.includes(id),
+          ),
+        ),
+      })),
     };
   }
   const structuralValidation = validateLibraryConfigStructure(candidate);
