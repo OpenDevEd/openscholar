@@ -1,7 +1,4 @@
 {
   "repository": "https://github.com/OpenDevEd/new-el",
-  "files": {
-    "lib/emails/library-template.ts": "a239061bb7145ce3607e9aac22911b56452efa00f9b9ed7dbbf5735e4601f804",
-    "lib/escape-html.ts": "20a6530261cef78db6a283e162391e5d704fae2a920d66f6a182651405b3cdd4"
-  }
+  "commit": "9c0fa147837f0028cf8d70bf22f0c67f92aee8be"
 }
