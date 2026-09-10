@@ -29,7 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { api } from "@/convex/_generated/api";
 import { useState } from "react";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
@@ -188,13 +188,6 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
     ? `${profile.firstName}${profile.lastName ? ` ${profile.lastName}` : ""}`
     : profile.email?.split("@")[0] || tc("user");
 
-  const initials =
-    profile.firstName && profile.lastName
-      ? `${profile.firstName[0]}${profile.lastName[0]}`
-      : profile.firstName
-        ? profile.firstName[0]
-        : profile.email?.[0]?.toUpperCase() || "U";
-
   // Determine plan label and upgrade status
   const planLabel = resolvedPlan
     ? resolvedPlan.charAt(0).toUpperCase() + resolvedPlan.slice(1)
@@ -223,7 +216,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
         isCollapsed ? "h-8 w-8 px-0" : "w-full justify-start px-2 h-8 gap-2",
       )}
     >
-      <User className="h-[1.2rem] w-[1.2rem] shrink-0" />
+      <IdentityAvatar name={displayName} imageUrl={profile.profilePictureUrl} className="size-6" />
       {!isCollapsed && (
         <span className="truncate text-sm font-medium">{displayName}</span>
       )}
@@ -250,13 +243,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
       >
         <DropdownMenuLabel className="font-normal">
           <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9">
-              <AvatarImage
-                src={profile.profilePictureUrl || undefined}
-                alt={displayName}
-              />
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
+            <IdentityAvatar name={displayName} imageUrl={profile.profilePictureUrl} className="size-9" />
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">{displayName}</p>
               <p className="text-xs leading-none text-muted-foreground truncate max-w-[160px]">
