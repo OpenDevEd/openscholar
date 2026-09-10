@@ -5,6 +5,7 @@ import { parseAsStringEnum, useQueryState } from "nuqs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslations } from "next-intl";
 import { HistorySelector } from "./history-selector";
+import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { ZoteroSelector } from "./zotero-selector";
 import { LibraryTab } from "./bucket/tabs/library-tab";
 import { BulkPdfUpload } from "./bucket/bulk-pdf-upload";
@@ -45,7 +46,7 @@ export function SourceSelector({ paperLimit }: { paperLimit: number }) {
       <TabsList className="mb-4">
         <TabsTrigger value="history">{tc("searchHistory")}</TabsTrigger>
         <TabsTrigger value="library">Library</TabsTrigger>
-        <TabsTrigger value="zotero">{t("zotero")}</TabsTrigger>
+        <TabsTrigger value="zotero"><ZoteroIcon className="size-4 shrink-0" aria-hidden />{t("zotero")}</TabsTrigger>
         {uploadEnabled && <TabsTrigger value="upload">Upload</TabsTrigger>}
       </TabsList>
       <TabsContent value="history">

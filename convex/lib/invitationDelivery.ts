@@ -11,7 +11,7 @@ export function requireInvitationMail() {
   return mail;
 }
 
-export async function sendInvitationEmail(mail: ReturnType<typeof requireInvitationMail>, {senderName, senderEmail, ...message}: {senderName: string; senderEmail?: string | null; to: string; subject: string; text: string}) {
+export async function sendInvitationEmail(mail: ReturnType<typeof requireInvitationMail>, {senderName, senderEmail, ...message}: {senderName: string; senderEmail?: string | null; to: string; subject: string; text: string; html?: string}) {
   const transport = nodemailer.createTransport({
     host: mail.host, port: mail.port, secure: mail.security === "tls",
     requireTLS: mail.security === "starttls", ignoreTLS: mail.security === "none",

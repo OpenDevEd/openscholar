@@ -1,5 +1,6 @@
 import type { ComponentType, CSSProperties } from "react";
-import { CircleHelp, Layers, Library } from "lucide-react";
+import { CircleHelp, Layers } from "lucide-react";
+import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import type { ChatSourceType } from "@/lib/chat/source-type";
 import type { SourceChip } from "@/lib/chat/source-chips";
@@ -18,7 +19,7 @@ export const CHAT_SOURCE_ICON: Record<
 > = {
   all: Layers,
   openalex: OpenAlexIcon,
-  zotero: Library,
+  zotero: ZoteroIcon,
   unknown: CircleHelp,
 };
 

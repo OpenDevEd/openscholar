@@ -1,8 +1,8 @@
 import { requireOrganizationFeature } from "../organizationFeatures";
-import { paginationOptsValidator } from "convex/server";
+import { paginationOptsValidator, type PaginationOptions } from "convex/server";
 import { v, type Infer } from "convex/values";
 import { mutation, query, internalQuery, internalMutation } from "../_generated/server";
-import type { MutationCtx } from "../_generated/server";
+import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -56,14 +56,19 @@ export const get = query({
   },
 });
 
+export function searchProfilePage(ctx: QueryCtx, term: string, paginationOpts: PaginationOptions) {
+  const search = term.trim().slice(0, 200);
+  const query = search
+    ? ctx.db.query("authorProfiles").withSearchIndex("search_name", q => q.search("name", search))
+    : ctx.db.query("authorProfiles").order("desc");
+  return query.paginate({...paginationOpts, numItems: Math.max(1, Math.min(30, Math.floor(paginationOpts.numItems)))});
+}
+
 export const list = query({
   args: {search: v.string(), paginationOpts: paginationOptsValidator},
   handler: async (ctx, args) => {
     await requireOrganizationFeature(ctx, "authors");
-    const search = args.search.trim().slice(0, 200);
-    const rows = search
-      ? await ctx.db.query("authorProfiles").withSearchIndex("search_name", q => q.search("name", search)).paginate(args.paginationOpts)
-      : await ctx.db.query("authorProfiles").order("desc").paginate(args.paginationOpts);
+    const rows = await searchProfilePage(ctx, args.search, args.paginationOpts);
     return {...rows, page: await Promise.all(rows.page.map(async profile => ({...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null})))};
   },
 });

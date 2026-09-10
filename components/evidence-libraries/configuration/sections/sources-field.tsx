@@ -1,5 +1,6 @@
 "use client";
 
+import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { useAction, useMutation } from "convex/react";
 import {
   ChevronDown,
@@ -305,7 +306,7 @@ function AccountPanel({
         className="flex size-9 shrink-0 items-center justify-center rounded-md bg-[#cc2936] text-sm font-bold text-white"
         aria-hidden
       >
-        Z
+        <ZoteroIcon className="size-5" />
       </span>
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="text-sm font-medium">

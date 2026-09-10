@@ -1,5 +1,6 @@
 "use node";
 
+import { renderLibraryInvitation } from "../../lib/emails/library-template";
 import { v } from "convex/values";
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -22,6 +23,10 @@ export const invite = action({
         senderEmail: invitation.contactEmail,
         to: invitation.email,
         subject: `Invitation to ${invitation.libraryName}`,
+        html: renderLibraryInvitation({
+          identity: {...invitation.emailIdentity, baseUrl: invitation.emailIdentity.baseUrl ?? origin},
+          role: invitation.role, acceptUrl: new URL("/evidence-libraries", origin).href,
+        }),
         text: `You have been invited to ${invitation.libraryName} with the ${invitation.role} role.\n\nSign in with ${invitation.email} and accept the invitation:\n${new URL("/evidence-libraries", origin)}\n\nThis invitation expires in seven days. It grants access to this library only.`,
       });
     } catch (error) {
