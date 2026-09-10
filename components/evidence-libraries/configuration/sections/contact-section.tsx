@@ -29,7 +29,7 @@ const RECIPIENT_KEYS = [
   "takedownRecipient",
 ] as const satisfies readonly (keyof EmailDraft)[];
 
-export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
+export function ContactSection({ libraryId, draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.contact");
   const tf = useTranslations("evidenceLibraryConfiguration.fields");
   const { contact, email, legal } = draft;
@@ -176,7 +176,7 @@ export function ContactSection({ draft, saved, patch, reset }: SectionProps) {
         })}
       </FieldGroup>
 
-      <NotificationsFields draft={draft} patch={patch} />
+      <NotificationsFields libraryId={libraryId} draft={draft} patch={patch} />
 
       <FieldGroup title={t("legalHeading")} hint={t("legalHint")}>
         {LEGAL_KEYS.map((key) => {

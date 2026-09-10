@@ -85,6 +85,8 @@ import type * as evidenceLibraries_deploymentSetup from "../evidenceLibraries/de
 import type * as evidenceLibraries_deploymentSetupActions from "../evidenceLibraries/deploymentSetupActions.js";
 import type * as evidenceLibraries_digests_contract from "../evidenceLibraries/digests/contract.js";
 import type * as evidenceLibraries_digests_generate from "../evidenceLibraries/digests/generate.js";
+import type * as evidenceLibraries_digests_manual from "../evidenceLibraries/digests/manual.js";
+import type * as evidenceLibraries_digests_manualActions from "../evidenceLibraries/digests/manualActions.js";
 import type * as evidenceLibraries_digests_service from "../evidenceLibraries/digests/service.js";
 import type * as evidenceLibraries_dnsClient from "../evidenceLibraries/dnsClient.js";
 import type * as evidenceLibraries_domainActions from "../evidenceLibraries/domainActions.js";
@@ -115,6 +117,7 @@ import type * as evidenceLibraries_runtimeConfiguration from "../evidenceLibrari
 import type * as evidenceLibraries_runtimeCredentials from "../evidenceLibraries/runtimeCredentials.js";
 import type * as evidenceLibraries_runtimeImageRegistry from "../evidenceLibraries/runtimeImageRegistry.js";
 import type * as evidenceLibraries_runtimeReleases from "../evidenceLibraries/runtimeReleases.js";
+import type * as evidenceLibraries_runtimeTarget from "../evidenceLibraries/runtimeTarget.js";
 import type * as evidenceLibraries_sectionPayload from "../evidenceLibraries/sectionPayload.js";
 import type * as evidenceLibraries_serviceHttp from "../evidenceLibraries/serviceHttp.js";
 import type * as evidenceLibraries_sessionAccess from "../evidenceLibraries/sessionAccess.js";
@@ -381,6 +384,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/deploymentSetupActions": typeof evidenceLibraries_deploymentSetupActions;
   "evidenceLibraries/digests/contract": typeof evidenceLibraries_digests_contract;
   "evidenceLibraries/digests/generate": typeof evidenceLibraries_digests_generate;
+  "evidenceLibraries/digests/manual": typeof evidenceLibraries_digests_manual;
+  "evidenceLibraries/digests/manualActions": typeof evidenceLibraries_digests_manualActions;
   "evidenceLibraries/digests/service": typeof evidenceLibraries_digests_service;
   "evidenceLibraries/dnsClient": typeof evidenceLibraries_dnsClient;
   "evidenceLibraries/domainActions": typeof evidenceLibraries_domainActions;
@@ -411,6 +416,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/runtimeCredentials": typeof evidenceLibraries_runtimeCredentials;
   "evidenceLibraries/runtimeImageRegistry": typeof evidenceLibraries_runtimeImageRegistry;
   "evidenceLibraries/runtimeReleases": typeof evidenceLibraries_runtimeReleases;
+  "evidenceLibraries/runtimeTarget": typeof evidenceLibraries_runtimeTarget;
   "evidenceLibraries/sectionPayload": typeof evidenceLibraries_sectionPayload;
   "evidenceLibraries/serviceHttp": typeof evidenceLibraries_serviceHttp;
   "evidenceLibraries/sessionAccess": typeof evidenceLibraries_sessionAccess;

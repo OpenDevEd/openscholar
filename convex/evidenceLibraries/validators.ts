@@ -93,6 +93,7 @@ export const clerkOrganizationSnapshotFields = {
   evidenceLibrariesEnabled: v.boolean(),
   authorsEnabled: v.boolean(),
   extractionEnabled: v.boolean(),
+  devEnabled: v.optional(v.boolean()),
   clerkCreatedAt: v.number(),
   clerkUpdatedAt: v.number(),
 };
