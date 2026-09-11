@@ -2608,7 +2608,7 @@
       "notSetUp": "Set up the library first, then create collections in its admin page or sync them from Zotero.",
       "noneInDatabase": "No collections yet. Create them in the library admin page or sync them from Zotero.",
       "empty": "No collections shown yet.",
-      "records": "{count, plural, one {# record} other {# records}}",
+      "records": "{count, plural, =1 {# record} other {# records}}",
       "titleLabel": "Title on the site",
       "titleHint": "Leave empty to use the database name.",
       "remove": "Remove collection",
