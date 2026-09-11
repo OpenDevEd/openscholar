@@ -1,4 +1,3 @@
-import { requireOrganizationFeature } from "../organizationFeatures";
 import type { Id, Doc } from "../_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { getCurrentUser, requireAuth } from "../lib/auth";
@@ -19,10 +18,9 @@ export async function profileRoleForUser(ctx: QueryCtx | MutationCtx, profile: D
 
 export async function requireProfileAccess(ctx: QueryCtx | MutationCtx, profileId: Id<"authorProfiles">, ownerOnly = false) {
   const user = await requireAuth(ctx);
-  await requireOrganizationFeature(ctx, "authors");
   const profile = await ctx.db.get("authorProfiles", profileId);
   if (!profile) throw createError("NOT_FOUND", "Author profile not found");
-  const role = await profileRole(ctx, profile);
+  const role = await profileRoleForUser(ctx, profile, user._id);
   if (!role || (ownerOnly && role !== "owner")) throw createError("FORBIDDEN", "You do not have permission to change this profile");
   return {profile, user, role};
 }

@@ -26,7 +26,7 @@ async function setup() {
 }
 
 describe("author profiles", () => {
-  it("sends profile invitations from the profile identity and platform contact address", async () => {
+  it("sends profile invitations with the profile identity and a direct invitation link", async () => {
     vi.stubEnv("EL_SMTP_HOST", "smtp.example.org");
     vi.stubEnv("EL_SMTP_FROM", "contact@platform.example");
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.example.org");
@@ -34,6 +34,8 @@ describe("author profiles", () => {
       const {owner, profileId} = await setup();
       await owner.action(api.authors.invitationActions.invite, {profileId, email: "editor@example.org"});
       expect(mail.sendMail.mock.lastCall?.[0]).toMatchObject({from: {name: "Caitlin Mills via OpenScholar", address: "contact@platform.example"}, replyTo: "contact@platform.example", to: "editor@example.org"});
+      expect(mail.sendMail.mock.lastCall?.[0].text).toContain(`https://app.example.org/authors/${profileId}/invitation`);
+      expect(mail.sendMail.mock.lastCall?.[0].html).toContain(`href="https://app.example.org/authors/${profileId}/invitation"`);
     } finally { vi.unstubAllEnvs(); }
   });
   it("keeps profile ownership separate from organization roles", async () => {
@@ -47,18 +49,29 @@ describe("author profiles", () => {
     await expect(editor.action(api.authors.photos.save, {profileId, expectedRevision: 2, content: {...content, bio: "Overwrite"}})).rejects.toThrow();
   });
 
-  it("requires the invited address, restricts access management to the owner and revokes editing immediately", async () => {
+  it("allows profile members without an organization, requires the invited address and revokes editing immediately", async () => {
     const {t, owner, editor, ids, profileId} = await setup();
+    await t.run(async ctx => {
+      for (const membership of await ctx.db.query("organizationMemberships").collect()) {
+        await ctx.db.delete("organizationMemberships", membership._id);
+      }
+    });
+    await expect(owner.mutation(api.authors.profiles.create, {name: "Another profile"})).rejects.toThrow('"code":"FORBIDDEN"');
+    await expect(owner.query(api.authors.profiles.list, {search: "", paginationOpts: {numItems: 10, cursor: null}})).rejects.toThrow('"code":"FORBIDDEN"');
+    await owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content});
     const invitationId = await owner.mutation(internal.authors.invitations.prepare, {profileId, email: "Editor@example.org"});
+    expect(await editor.query(api.authors.invitations.listMine, {profileId})).toEqual([{invitationId, profileId, name: content.name}]);
+    expect(await owner.query(api.authors.invitations.listMine, {profileId})).toEqual([]);
     await expect(editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: [], accept: true})).rejects.toThrow();
     await editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true});
+    expect(await editor.query(api.authors.invitations.listMine, {profileId})).toEqual([]);
     expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBe("editor");
-    await editor.action(api.authors.photos.save, {profileId, expectedRevision: 1, content});
+    await editor.action(api.authors.photos.save, {profileId, expectedRevision: 2, content: {...content, bio: "Edited by a profile collaborator"}});
     await expect(editor.mutation(internal.authors.invitations.prepare, {profileId, email: "third@example.org"})).rejects.toThrow();
     await expect(editor.mutation(api.authors.members.remove, {profileId, userId: ids.owner})).rejects.toThrow();
     await owner.mutation(api.authors.members.remove, {profileId, userId: ids.editor});
-    await expect(editor.action(api.authors.photos.save, {profileId, expectedRevision: 2, content})).rejects.toThrow();
-    expect((await t.query(api.authors.profiles.get, {profileId}))?.bio).toBe(content.bio);
+    await expect(editor.action(api.authors.photos.save, {profileId, expectedRevision: 3, content})).rejects.toThrow();
+    expect((await t.query(api.authors.profiles.get, {profileId}))?.bio).toBe("Edited by a profile collaborator");
   });
 
   it("rejects cancelled invitations and concurrent overwrites", async () => {

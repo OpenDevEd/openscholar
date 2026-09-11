@@ -5,6 +5,7 @@ import { internal } from "../_generated/api";
 import { requireAppUrl } from "../lib/env";
 import { createError } from "../lib/errors";
 import { requireInvitationMail, sendInvitationEmail, verifiedInvitationEmails } from "../lib/invitationDelivery";
+import { authorInvitationMessage } from "../../lib/emails/author-invitation";
 
 export const invite = action({
   args: {profileId: v.id("authorProfiles"), email: v.string()},
@@ -17,8 +18,8 @@ export const invite = action({
     try {
       await sendInvitationEmail(mail, {
         senderName: `${invitation.profileName} via OpenScholar`,
-        to: invitation.email, subject: `Invitation to edit ${invitation.profileName}`,
-        text: `You have been invited to edit the author profile for ${invitation.profileName}.\n\nSign in with ${invitation.email} to accept:\n${new URL("/authors", requireAppUrl())}\n\nThis invitation expires in seven days. It grants access to this profile only.`,
+        to: invitation.email,
+        ...authorInvitationMessage({ origin: requireAppUrl(), profileId: args.profileId, profileName: invitation.profileName, email: invitation.email }),
       });
     } catch (error) {
       console.error("Author profile invitation email failed", {invitationId, error});
