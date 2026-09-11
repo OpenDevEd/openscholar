@@ -35,6 +35,7 @@ describe("author profiles", () => {
       await owner.action(api.authors.invitationActions.invite, {profileId, email: "editor@example.org"});
       expect(mail.sendMail.mock.lastCall?.[0]).toMatchObject({from: {name: "Caitlin Mills via OpenScholar", address: "contact@platform.example"}, replyTo: "contact@platform.example", to: "editor@example.org"});
       expect(mail.sendMail.mock.lastCall?.[0].text).toContain(`https://app.example.org/authors/${profileId}/invitation`);
+      expect(mail.sendMail.mock.lastCall?.[0].html).toContain(`href="https://app.example.org/authors/${profileId}/invitation"`);
     } finally { vi.unstubAllEnvs(); }
   });
   it("keeps profile ownership separate from organization roles", async () => {
