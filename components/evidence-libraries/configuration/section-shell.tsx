@@ -79,7 +79,6 @@ export function SectionShell({
   return (
     <SectionCard
       id={`sec-${sectionKey}`}
-      className="scroll-mt-40"
       icon={icon}
       title={t(`sections.${sectionKey}`)}
       description={description}

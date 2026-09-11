@@ -263,7 +263,6 @@ export function TeamAccess({
     <Dialog open={invite} onOpenChange={(open) => { if (!pending) setInvite(open); }}>
       <SectionCard
         id={isProfile ? "sec-profile-access" : "sec-team"}
-        className="scroll-mt-40"
         icon={Users}
         title={isProfile ? "Profile access" : "Team"}
         description={

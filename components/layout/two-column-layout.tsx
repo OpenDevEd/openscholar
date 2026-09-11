@@ -27,7 +27,7 @@ export function TwoColumnLayout({
   sidebarSide = "left",
 }: TwoColumnLayoutProps) {
   const sidebar = (
-    <div className="shrink-0 sticky top-0 h-screen overflow-hidden">
+    <div className="shrink-0 sticky top-[var(--app-navbar-height)] h-[calc(100dvh-var(--app-navbar-height))] overflow-hidden">
       {leftColumn}
     </div>
   );
