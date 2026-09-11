@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query, type QueryCtx, type MutationCtx } from "./_generated/server";
 import { getCurrentUser } from "./lib/auth";
 import { createError } from "./lib/errors";
+import { hasDirectLibraryAccess } from "./evidenceLibraries/access";
 
 export const organizationFeatureFields = {
   evidenceLibraries: v.boolean(),
@@ -47,6 +48,10 @@ export async function readOrganizationFeatures(
     access.evidenceLibraries ||= organization.evidenceLibrariesEnabled === true;
     access.authors ||= organization.authorsEnabled === true;
     access.extraction ||= organization.extractionEnabled === true;
+  }
+  if (!access.evidenceLibraries) {
+    const user = await getCurrentUser(ctx);
+    access.evidenceLibraries = user !== null && await hasDirectLibraryAccess(ctx, user);
   }
   return access;
 }

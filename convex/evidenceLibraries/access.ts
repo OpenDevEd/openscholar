@@ -10,6 +10,37 @@ function denyOrganizationAccess(): never {
   throw createError("FORBIDDEN", "Evidence Library access denied");
 }
 
+/** Pending invitations open the library list, but do not grant a library role. */
+export async function readPendingLibraryInvitations(
+  ctx: Pick<QueryCtx | MutationCtx, "db">,
+  user: Doc<"users">,
+) {
+  if (user.state !== "active") return [];
+  const invitations = await ctx.db.query("evidenceLibraryInvitations")
+    .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).collect();
+  const rows = await Promise.all(invitations.filter(i => i.expiresAt > Date.now()).map(async invitation => {
+    const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
+    if (!library || library.state === "disabled") return null;
+    const organization = await ctx.db.get("organizations", library.organizationId);
+    if (organization?.state !== "active") return null;
+    return { invitationId: invitation._id, libraryId: library._id, name: library.name, role: invitation.role, organization: { name: organization.name, imageUrl: organization.imageUrl ?? null } };
+  }));
+  return rows.filter(row => row !== null);
+}
+
+export async function hasDirectLibraryAccess(
+  ctx: Pick<QueryCtx | MutationCtx, "db">,
+  user: Doc<"users">,
+) {
+  if (user.state !== "active") return false;
+  for await (const assignment of ctx.db.query("evidenceLibraryMembers")
+    .withIndex("by_clerkUserId", q => q.eq("clerkUserId", user.clerkId))) {
+    const library = await ctx.db.get("evidenceLibraries", assignment.libraryId);
+    if (library && await readLibraryRole(ctx, library, user.clerkId)) return true;
+  }
+  return (await readPendingLibraryInvitations(ctx, user)).length > 0;
+}
+
 /** Current library access does not depend on the active Clerk organization. */
 export async function readLibraryRole(
   ctx: Pick<QueryCtx | MutationCtx, "db">,

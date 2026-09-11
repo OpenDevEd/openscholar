@@ -30,7 +30,10 @@ describe("library invitations", () => {
 
   it("accepts external access only after verified email confirmation without joining the organization", async () => {
     const fixture = await setup();
+    const features = () => fixture.outside.query(api.organizationFeatures.get, {});
+    expect(await features()).toEqual({ evidenceLibraries: false, authors: false, extraction: false });
     await fixture.invite();
+    expect(await features()).toEqual({ evidenceLibraries: true, authors: false, extraction: false });
     const invitations = await fixture.outside.query(api.evidenceLibraries.invitations.listMine, {});
     expect(invitations).toEqual([expect.objectContaining({ libraryId: fixture.libraryId, role: "creator" })]);
     expect(await fixture.outside.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([]);
@@ -38,7 +41,35 @@ describe("library invitations", () => {
     expect(await fixture.outside.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([expect.objectContaining({ _id: fixture.libraryId, role: "creator" })]);
     expect(await fixture.t.run(ctx => ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", q => q.eq("clerkUserId", "outside").eq("state", "active")).collect())).toEqual([]);
     expect(await fixture.outside.query(api.evidenceLibraries.invitations.listMine, {})).toEqual([]);
+    expect(await features()).toEqual({ evidenceLibraries: true, authors: false, extraction: false });
+    expect(await fixture.outside.query(api.organizationFeatures.libraryOrganizations, {})).toEqual([]);
+    await fixture.t.run(async ctx => {
+      const assignment = await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", fixture.libraryId).eq("clerkUserId", "outside")).unique();
+      await ctx.db.delete("evidenceLibraryMembers", assignment!._id);
+    });
+    expect(await features()).toEqual({ evidenceLibraries: false, authors: false, extraction: false });
     expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ from: {name: "Climate Evidence", address: "libraries@example.test"}, to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-libraries") });
+  });
+
+  it.each(["expired", "cancelled", "disabled-library", "deleted-organization", "suspended-account"] as const)("does not open library navigation for an %s invitation", async reason => {
+    const fixture = await setup();
+    await fixture.invite();
+    const [invitation] = await fixture.outside.query(api.evidenceLibraries.invitations.listMine, {});
+    await fixture.t.run(async ctx => {
+      if (reason === "expired") await ctx.db.patch("evidenceLibraryInvitations", invitation.invitationId, { expiresAt: Date.now() - 1 });
+      if (reason === "cancelled") await ctx.db.patch("evidenceLibraryInvitations", invitation.invitationId, { state: "cancelled" });
+      if (reason === "disabled-library") await ctx.db.patch("evidenceLibraries", fixture.libraryId, { state: "disabled" });
+      if (reason === "deleted-organization") {
+        const library = await ctx.db.get("evidenceLibraries", fixture.libraryId);
+        await ctx.db.patch("organizations", library!.organizationId, { state: "deleted" });
+      }
+      if (reason === "suspended-account") {
+        const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", "outside")).unique();
+        await ctx.db.patch("users", user!._id, { state: "suspended" });
+      }
+    });
+    expect(await fixture.outside.query(api.organizationFeatures.get, {})).toEqual({ evidenceLibraries: false, authors: false, extraction: false });
+    expect(await fixture.outside.query(api.evidenceLibraries.invitations.listMine, {})).toEqual([]);
   });
 
   it("rejects an unverified email and a cancelled invitation", async () => {

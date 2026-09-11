@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { v } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "../_generated/server";
-import { requireEvidenceLibraryAccess, readLibraryRole } from "./access";
+import { requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvitations } from "./access";
+import { getCurrentUser } from "../lib/auth";
 import { rateLimit } from "../lib/rateLimit";
 import { createError } from "../lib/errors";
 
@@ -83,20 +84,8 @@ export const change = mutation({
 export const listMine = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique();
-    if (!user) return [];
-    const invitations = await ctx.db.query("evidenceLibraryInvitations")
-      .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).collect();
-    const rows = await Promise.all(invitations.filter(i => i.expiresAt > Date.now()).map(async invitation => {
-      const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
-      if (!library || library.state === "disabled") return null;
-      const organization = await ctx.db.get("organizations", library.organizationId);
-      if (organization?.state !== "active") return null;
-      return { invitationId: invitation._id, libraryId: library._id, name: library.name, role: invitation.role, organization: { name: organization.name, imageUrl: organization.imageUrl ?? null } };
-    }));
-    return rows.filter(row => row !== null);
+    const user = await getCurrentUser(ctx);
+    return user ? await readPendingLibraryInvitations(ctx, user) : [];
   },
 });
 
