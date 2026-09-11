@@ -2818,7 +2818,7 @@
         "countryFocus": "A page with a map of records by country.",
         "authorFilter": "Let people filter by author.",
         "yearsDropdown": "Show a year picker in the search bar.",
-        "downloads": "Offer RIS and BibTeX downloads for publications and the whole library.",
+        "downloads": "Offer citation downloads for publications and the whole library.",
         "atomFeed": "Show a link to the Atom feed."
       },
       "needs": "Turn on {feature} first.",
