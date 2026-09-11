@@ -194,7 +194,6 @@ export const DomainSection = memo(function DomainSection({
   return (
     <SectionCard
       id="sec-domain"
-      className="scroll-mt-40"
       icon={Link2}
       title={ts("domain")}
       description={t("description")}

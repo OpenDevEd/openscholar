@@ -308,8 +308,7 @@ function Workspace({
     "section",
     parseAsStringLiteral(RAIL_KEYS).withDefault("identity"),
   );
-  // Matches the sections' scroll-mt-40 (160px) so a clicked section is the one highlighted.
-  const { active: spied, jumpTo: scrollToSection } = useScrollSpy(RAIL_KEYS, 160);
+  const { active: spied, jumpTo: scrollToSection } = useScrollSpy(RAIL_KEYS);
   const current = spied ?? section;
 
   const dirty = isDirty(draft, saved);

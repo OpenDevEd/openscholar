@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 
 /** Shared geometry for library configuration and author profile settings. */
@@ -16,10 +17,8 @@ export function ConfigurationLayout({
   footer?: ReactNode;
 }) {
   return (
-    <div className="w-full pb-16">
-      <div className="sticky top-14 z-20 border-b border-border/40 bg-background lg:top-0">
-        <div className="container mx-auto max-w-6xl px-4 sm:px-6">{header}</div>
-      </div>
+    <div className="w-full pb-16 [--configuration-offset:calc(var(--app-navbar-height)+var(--page-header-height,6rem)+1rem)] [&_section[id^=sec-]]:scroll-mt-[var(--configuration-offset)]">
+      <StickyPageHeader>{header}</StickyPageHeader>
       <div className="container mx-auto max-w-6xl p-4 sm:p-6">
         <CommandCenterContainer
           allowOverflow
@@ -46,7 +45,7 @@ export function ConfigurationNavigation({
   return (
     <nav
       aria-label={label}
-      className="space-y-5 p-4 md:sticky md:top-24 md:max-h-[calc(100vh-7rem)] md:overflow-y-auto md:p-5"
+      className="space-y-5 p-4 md:sticky md:top-[var(--configuration-offset)] md:max-h-[calc(100dvh-var(--configuration-offset)-1rem)] md:overflow-y-auto md:p-5"
     >
       {children}
     </nav>

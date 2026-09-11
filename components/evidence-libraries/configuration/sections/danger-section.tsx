@@ -12,7 +12,6 @@ export function DangerSection({ onDelete }: { onDelete: () => void }) {
   return (
     <SectionCard
       id="sec-danger"
-      className="scroll-mt-40"
       icon={Trash2}
       tone="danger"
       title={t("sections.danger")}

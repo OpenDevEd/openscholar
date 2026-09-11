@@ -479,16 +479,8 @@ export default function JobDetailPage() {
     }
     return (
       <div
-        // The app shell uses `min-h-screen` + page-level scroll for every
-        // other route, so there is no definite-height anchor for a
-        // `flex-1` chat shell to resolve against — the message list just
-        // grows the column and the composer rides the page scroll down.
-        // We bind the chat surface directly to the viewport with an
-        // explicit height. On mobile the sticky MobileNavbar (`h-14` =
-        // 3.5rem) sits above this, so we subtract it; above `lg` the
-        // navbar is `lg:hidden` and the sidebar is the only sibling, so
-        // the chat takes the full dynamic viewport.
-        className="flex h-[calc(100dvh-3.5rem)] w-full flex-col overflow-hidden lg:h-dvh"
+        // Fit the chat below whichever navigation the app shell is showing.
+        className="flex h-[calc(100dvh-var(--app-navbar-height))] w-full flex-col overflow-hidden"
         data-job-mode="chat"
       >
         <ChatJobView job={shellJob} threadId={shellJob.chatThreadId} />

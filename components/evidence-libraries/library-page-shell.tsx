@@ -3,6 +3,7 @@
 import { Layers, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
+import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { PanelHeader } from "./configuration/panel-header";
 
 /**
@@ -33,22 +34,20 @@ export function LibraryPageShell({
 }) {
   return (
     <div className="w-full pb-16">
-      <div className="sticky top-14 z-20 border-b border-border/40 bg-background lg:top-0">
-        <div className="container mx-auto max-w-6xl px-4 sm:px-6">
-          <PanelHeader
-            icon={icon}
-            image={image}
-            className="border-b-0 px-0 md:px-0"
-            title={title}
-            description={description}
-            backHref={backHref}
-            backLabel={backLabel}
-            titleAside={titleAside}
-          >
-            {actions}
-          </PanelHeader>
-        </div>
-      </div>
+      <StickyPageHeader>
+        <PanelHeader
+          icon={icon}
+          image={image}
+          className="border-b-0 px-0 md:px-0"
+          title={title}
+          description={description}
+          backHref={backHref}
+          backLabel={backLabel}
+          titleAside={titleAside}
+        >
+          {actions}
+        </PanelHeader>
+      </StickyPageHeader>
 
       <div className="container mx-auto max-w-6xl p-4 sm:p-6">
         <CommandCenterContainer>{children}</CommandCenterContainer>

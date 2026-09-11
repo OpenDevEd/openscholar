@@ -15,7 +15,7 @@ export function MobileNavbar() {
   if (CHROMELESS_ROUTES.some((r) => pathname?.startsWith(r))) return null;
 
   return (
-    <header className="lg:hidden sticky top-0 z-50 flex h-14 shrink-0 items-center justify-between gap-4 border-b bg-background/95 px-4">
+    <header className="md:hidden sticky top-0 z-50 flex h-[var(--app-navbar-height)] shrink-0 items-center justify-between gap-4 border-b bg-background/95 px-4">
       <div className="flex items-center gap-3">
         <MobileSidebarTrigger />
         <Logo size="sm" context="general" clickable={true} />

@@ -48,7 +48,7 @@ export function StickyAuthorHeader({
   }, [headerRef]);
 
   return (
-    <div className="pointer-events-none sticky top-3 z-30 !m-0 h-0">
+    <div className="pointer-events-none sticky top-[calc(var(--app-navbar-height)+0.75rem)] z-30 !m-0 h-0">
       <AnimatePresence initial={false}>
         {collapsed && (
           <motion.div

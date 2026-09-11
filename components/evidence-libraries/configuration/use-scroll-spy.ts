@@ -9,9 +9,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * Effect justification: window scroll position is an outside system with no
  * React value to derive from. Listeners are passive and removed on cleanup.
  * `ids` must be a stable array (a module constant) so the listener attaches once.
- * `headerOffset` must match the sections' `scroll-margin-top`.
+ * The active line follows each section's actual scroll margin.
  */
-export function useScrollSpy(ids: readonly string[], headerOffset: number) {
+export function useScrollSpy(ids: readonly string[]) {
   const [active, setActive] = useState<string | null>(null);
   const locked = useRef<string | null>(null);
 
@@ -20,11 +20,11 @@ export function useScrollSpy(ids: readonly string[], headerOffset: number) {
     const measure = () => {
       frame = 0;
       if (locked.current) return;
-      const line = headerOffset + 8;
       let current: string | null = null;
       for (const id of ids) {
         const el = document.getElementById(`sec-${id}`);
         if (!el) continue;
+        const line = Number.parseFloat(getComputedStyle(el).scrollMarginTop) + 8;
         if (el.getBoundingClientRect().top <= line) current = id;
         else break;
       }
@@ -44,7 +44,7 @@ export function useScrollSpy(ids: readonly string[], headerOffset: number) {
       window.removeEventListener("resize", onScroll);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [ids, headerOffset]);
+  }, [ids]);
 
   const jumpTo = useCallback((id: string) => {
     const el = document.getElementById(`sec-${id}`);

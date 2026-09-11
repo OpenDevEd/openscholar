@@ -20,7 +20,7 @@ const editorIds = editorSections.map(([id]) => id);
 export function AuthorSettingsNavigation({canManageAccess}: {canManageAccess: boolean}) {
   const visibleSections = canManageAccess ? sections : editorSections;
   const ids = canManageAccess ? ownerIds : editorIds;
-  const { active, jumpTo } = useScrollSpy(ids, 112);
+  const { active, jumpTo } = useScrollSpy(ids);
   return (
     <ConfigurationNavigation label="Profile settings">
       <RailGroup label="Author profile">

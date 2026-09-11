@@ -91,7 +91,7 @@ export default async function RootLayout({
                         <AppSidebar />
 
                         {/* Main Content Area */}
-                        <div className="flex-1 flex flex-col min-w-0 min-h-0">
+                        <div className="flex-1 flex flex-col min-w-0 min-h-0 [--app-navbar-height:3.5rem] md:[--app-navbar-height:0px]">
                           {/* Mobile Navbar */}
                           <MobileNavbar />
 

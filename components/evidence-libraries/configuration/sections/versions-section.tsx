@@ -225,7 +225,6 @@ export function VersionsSection({
   return (
     <SectionCard
       id="sec-versions"
-      className="scroll-mt-40"
       icon={History}
       title={t("sections.versions")}
       description={t("versions.description")}

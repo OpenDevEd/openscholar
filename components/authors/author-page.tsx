@@ -313,7 +313,6 @@ export default function AuthorPage({
                 icon={UserRound}
                 title="Profile details"
                 id="sec-profile-details"
-                className="scroll-mt-28"
               >
                 <div className="flex items-center gap-4 rounded-xl bg-muted/20 p-3">
                   <AuthorAvatar photo={draft.photo} className="size-16 border border-border/50" />
@@ -435,7 +434,6 @@ export default function AuthorPage({
                 id="sec-profile-links"
                 icon={Link2}
                 title="Links & identifiers"
-                className="scroll-mt-28"
               >
                 <div className="grid gap-4 sm:grid-cols-2">
                   {(
@@ -480,7 +478,6 @@ export default function AuthorPage({
                 title="Selected publications"
                 icon={BookOpen}
                 description="Choose the published works to feature on this profile."
-                className="scroll-mt-28"
               >
                 <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                   <span>
@@ -555,7 +552,6 @@ export default function AuthorPage({
               </SectionCard>
               <SectionCard
                 id="sec-profile-openalex"
-                className="scroll-mt-28"
                 icon={OpenAlexIcon}
                 title="OpenAlex"
                 description="Connect the author's research record to display their publications."
