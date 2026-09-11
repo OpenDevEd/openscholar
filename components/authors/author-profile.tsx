@@ -3,7 +3,7 @@ import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { PageWrapper } from "@/components/PageWrapper";
 import { readAuthorPublications } from "@/app/actions/author-publications";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useState } from "react";
 import useSWR from "swr";
@@ -17,6 +17,7 @@ import type { AuthorProfile } from "./types";
 import { readConvexErrorData } from "@/convex/lib/errors";
 
 export function AuthorProfileView({profileId, configuration = false}: {profileId: Id<"authorProfiles">; configuration?: boolean}) {
+  const { isLoading: authLoading } = useConvexAuth();
   const { data: features } = useOrganizationFeatures();
   const record = useQuery(api.authors.profiles.get, {profileId});
   const references = useQuery(api.authors.publications.list, {profileId});
@@ -30,7 +31,7 @@ export function AuthorProfileView({profileId, configuration = false}: {profileId
     if (!record?.openalex || (previous && previous.results.length < 10)) return null;
     return ["author-profile-works", record.openalex, page + 1] as const;
   }, ([, id, page]) => readProfileAuthorWorks(id, page));
-  if (record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title="Loading author profile" /></PageWrapper>;
+  if ((configuration && authLoading) || record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title="Loading author profile" /></PageWrapper>;
   if (!record) return <p className="p-6">Author profile not found.</p>;
   if (configuration && !record.role) return <PageWrapper><AuthStatePanel layout="fullscreen" variant="no_access" /></PageWrapper>;
   const profile: AuthorProfile = {
@@ -38,7 +39,7 @@ export function AuthorProfileView({profileId, configuration = false}: {profileId
     match: match.data ?? (record.openalex ? {id: record.openalex, name: record.name, affiliation: "", topics: "", works: []} : undefined),
   };
   return <AuthorPage key={`${record._id}:${configuration}`} profile={profile} configuration={configuration}
-    canBrowseAuthors={features?.authors === true} canEdit={Boolean(record.role && features?.authors)} accessSection={configuration && record.role === "owner" ? <ProfileAccess profileId={profileId} /> : null}
+    canBrowseAuthors={features?.authors === true} canEdit={Boolean(record.role)} accessSection={configuration && record.role === "owner" ? <ProfileAccess profileId={profileId} /> : null}
     papers={publications.data?.papers ?? []} loadingPublications={publications.isLoading} loadingAuthors={authors.isValidating || search !== debouncedSearch} publicationStatus={publications.error ? "Publications could not be loaded. Try again shortly." : publications.data?.unavailableCount ? "Some publications could not be loaded. Try again shortly." : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
     openAlexError={authors.error || match.error || works.error ? "OpenAlex is unavailable. Try again." : null}
     onSearchAuthors={value => { setSearch(value); if (value === search) void authors.mutate(); }}
