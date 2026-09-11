@@ -18,7 +18,7 @@ export const invite = action({
       await sendInvitationEmail(mail, {
         senderName: `${invitation.profileName} via OpenScholar`,
         to: invitation.email, subject: `Invitation to edit ${invitation.profileName}`,
-        text: `You have been invited to edit the author profile for ${invitation.profileName}.\n\nSign in with ${invitation.email} to accept:\n${new URL("/authors", requireAppUrl())}\n\nThis invitation expires in seven days. It grants access to this profile only.`,
+        text: `You have been invited to edit the author profile for ${invitation.profileName}.\n\nSign in with ${invitation.email} to accept:\n${new URL(`/authors/${args.profileId}/invitation`, requireAppUrl())}\n\nThis invitation expires in seven days. It grants access to this profile only.`,
       });
     } catch (error) {
       console.error("Author profile invitation email failed", {invitationId, error});

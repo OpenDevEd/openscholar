@@ -86,7 +86,7 @@ const safeUrl = (value?: string) => {
 export default function AuthorPage({
   profile, configuration, canEdit, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
   openAlexAuthors, openAlexPapers, onSearchAuthors, openAlexError,
-  hasMoreWorks, workCount, loadingWorks, onLoadMoreWorks,
+  hasMoreWorks, workCount, loadingWorks, onLoadMoreWorks, invitationSection,
 }: {
   profile: AuthorProfile;
   configuration: boolean;
@@ -94,6 +94,7 @@ export default function AuthorPage({
   canBrowseAuthors?: boolean;
   onSave: (profile: AuthorProfile, previous: AuthorProfile) => Promise<AuthorProfile>;
   accessSection: ReactNode;
+  invitationSection?: ReactNode;
   papers: AuthorPublication[];
   publicationStatus: string | null;
   loadingPublications: boolean;
@@ -172,6 +173,7 @@ export default function AuthorPage({
           : "relative isolate mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8"
       }
     >
+      {invitationSection}
       {profile && !draft && (
         <StickyAuthorHeader
           profile={profile}

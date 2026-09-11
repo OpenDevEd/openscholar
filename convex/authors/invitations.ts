@@ -53,12 +53,15 @@ export const cancel = mutation({
 });
 
 export const listMine = query({
-  args: {},
-  handler: async ctx => {
+  args: {profileId: v.optional(v.id("authorProfiles"))},
+  handler: async (ctx, {profileId}) => {
     const user = await requireAuth(ctx);
-    const invitations = await ctx.db.query("authorProfileInvitations")
-      .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(100);
-    return (await Promise.all(invitations.filter(i => i.expiresAt > Date.now()).map(async invitation => {
+    const email = user.email.toLowerCase();
+    const invitation = profileId ? await ctx.db.query("authorProfileInvitations")
+      .withIndex("by_profileId_and_email", q => q.eq("profileId", profileId).eq("email", email)).unique() : null;
+    const invitations = profileId ? invitation ? [invitation] : [] : await ctx.db.query("authorProfileInvitations")
+      .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(100);
+    return (await Promise.all(invitations.filter(i => i.state === "pending" && i.expiresAt > Date.now()).map(async invitation => {
       const profile = await ctx.db.get("authorProfiles", invitation.profileId);
       return profile ? {invitationId: invitation._id, profileId: profile._id, name: profile.name} : null;
     }))).filter(row => row !== null);

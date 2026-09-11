@@ -1,20 +1,19 @@
 "use client";
 import { useState } from "react";
-import { useMutation, usePaginatedQuery, useAction } from "convex/react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Users, Plus, Search, ArrowUpRight, Mail, Check, X } from "lucide-react";
+import { Users, Plus, Search, ArrowUpRight } from "lucide-react";
 import { api } from "@/convex/_generated/api";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { AuthorAvatar } from "./author-avatar";
+import { AuthorInvitations } from "./author-invitations";
 import { Field, FieldError } from "@/components/evidence-libraries/configuration/section-card";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from "@/components/ui/dialog";
-import { toast } from "sonner";
 
 export function AuthorList() {
   const {isSignedIn} = useUser();
@@ -25,18 +24,11 @@ export function AuthorList() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const create = useMutation(api.authors.profiles.create);
-  const respond = useAction(api.authors.invitationActions.respond);
-  const {data: invitations} = useProtectedQuery(api.authors.invitations.listMine, {});
   const {results, status, loadMore} = usePaginatedQuery(api.authors.profiles.list, {search}, {initialNumItems: 20});
   return <LibraryPageShell icon={Users} title="Authors" actions={isSignedIn
     ? <Button onClick={() => {setError(""); setOpen(true);}}><Plus />Create author</Button>
     : <SignInButton mode="modal"><Button><Plus />Create author</Button></SignInButton>}>
-    {invitations?.map(invitation => <div key={invitation.invitationId} className="flex items-center gap-3 border-b border-border/50 bg-muted/20 px-4 py-3">
-      <Mail className="size-4 shrink-0 text-primary" /><p className="min-w-0 flex-1 text-sm">Invitation to edit <span className="font-medium">{invitation.name}</span></p>
-      {[true, false].map(accept => <Button key={String(accept)} size="sm" variant="outline" disabled={pending} onClick={async () => {
-        setPending(true); try { await respond({invitationId: invitation.invitationId, accept}); } catch (error) { toast.error(error instanceof Error ? error.message : "Could not respond to invitation"); } finally { setPending(false); }
-      }}>{accept ? <Check /> : <X />}{accept ? "Accept" : "Decline"}</Button>)}
-    </div>)}
+    <AuthorInvitations />
     <div className="border-b border-border/50 p-4"><div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" aria-label="Find authors" placeholder="Find an author" value={search} onChange={event => setSearch(event.target.value)} /></div></div>
     {results.map(profile => <Link key={profile._id} href={`/authors/${profile._id}`} className="flex items-center gap-4 border-b border-border/50 px-4 py-4 transition-colors last:border-b-0 hover:bg-muted/20 sm:px-6">
       <AuthorAvatar photo={profile.photo} className="size-12" />
