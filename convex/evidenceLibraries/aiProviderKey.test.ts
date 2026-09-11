@@ -620,6 +620,9 @@ describe("the OpenRouter key", () => {
         aiProviderKey: aiProviderKey ?? undefined,
         embeddingApiKey: EMBEDDING_KEY as string | undefined,
         allowedAiModels: TEST_AI_MODELS,
+        aiModelMetadata: {
+          [TEST_AI_MODELS[0]]: { name: "GPT-5.6 Luna", company: "OpenAI" },
+        },
         aiModelCatalogReady: true,
       };
       const payload = assembleEvidenceLibraryRuntimePayload(payloadInput);
@@ -650,6 +653,9 @@ describe("the OpenRouter key", () => {
             models: [TEST_AI_MODELS[0]],
             defaultModel: TEST_AI_MODELS[0],
             apiKey: OPENROUTER_KEY,
+            modelMetadata: {
+              [TEST_AI_MODELS[0]]: { name: "GPT-5.6 Luna", company: "OpenAI" },
+            },
           },
         ],
         prompts: {},

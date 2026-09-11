@@ -131,7 +131,7 @@ export function aiProviderIssues(
     for (const [index, model] of models.entries()) {
       if (
         typeof model !== "string" ||
-        !/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(model) ||
+        !/^~?[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(model) ||
         (allowedModelIds !== undefined && !allowedModelIds.has(model))
       ) {
         issues.push(

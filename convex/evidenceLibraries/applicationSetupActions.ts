@@ -164,8 +164,9 @@ export const runApplicationSetup = internalAction({
         embeddingApiKey: optionalPlatformEmbeddingKey(),
         zoteroGroups: prepared.zoteroGroups,
         aiProviderKey: prepared.aiProviderApiKey,
-          publicationProviders: prepared.publicationPayload,
+        publicationProviders: prepared.publicationPayload,
         allowedAiModels: modelCatalog.allowedModelIds,
+        aiModelMetadata: modelCatalog.modelMetadata,
         aiModelCatalogReady: modelCatalog.catalogReady,
       });
       const application = await reconcileCoolifyApplication({

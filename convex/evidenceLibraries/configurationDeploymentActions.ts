@@ -269,6 +269,7 @@ export const runConfigurationDeployment = internalAction({
           aiProviderKey: prepared.aiProviderKey,
           publicationProviders: prepared.publicationPayload,
           allowedAiModels: modelCatalog.allowedModelIds,
+          aiModelMetadata: modelCatalog.modelMetadata,
           aiModelCatalogReady: modelCatalog.catalogReady,
         });
         target = await ctx.runMutation(

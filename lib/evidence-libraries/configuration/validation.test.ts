@@ -61,6 +61,7 @@ const managedConfiguration = {
   storagePublicBucket: "climate-public",
   storageMaxPdfBytes: 52_428_800,
   allowedAiModels: TEST_AI_MODELS,
+  aiModelMetadata: {},
   aiModelCatalogReady: true,
   zoteroTranslationUrl: "https://translation.example.test",
 };
@@ -545,7 +546,14 @@ describe("assembleEvidenceLibraryConfiguration", () => {
             ],
           },
         },
-        managed: { ...managedConfiguration, embeddingApiKey: "sk-or-embed" },
+        managed: {
+          ...managedConfiguration,
+          embeddingApiKey: "sk-or-embed",
+          aiModelMetadata: {
+            [TEST_AI_MODELS[0]]: { name: "GPT-5.6 Luna", company: "OpenAI" },
+            "not/selected": { name: "Not selected", company: "Other" },
+          },
+        },
         applyAiProviderKey: createAiProviderKey("sk-or-stored"),
       });
       expect(validateLibraryConfigStructure(configuration)).toEqual({
@@ -560,6 +568,9 @@ describe("assembleEvidenceLibraryConfiguration", () => {
             models: [TEST_AI_MODELS[0]],
             defaultModel: TEST_AI_MODELS[0],
             apiKey: "sk-or-stored",
+            modelMetadata: {
+              [TEST_AI_MODELS[0]]: { name: "GPT-5.6 Luna", company: "OpenAI" },
+            },
           },
         ],
         prompts: {},

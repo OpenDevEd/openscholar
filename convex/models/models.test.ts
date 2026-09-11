@@ -127,6 +127,20 @@ describe("models.queries.list", () => {
 });
 
 describe("models.queries.listCatalogOptions", () => {
+  it("fits catalog labels into the runtime contract without dropping model choices", async () => {
+    const t = convexTest(schema);
+    await seedModel(t, {modelId: "provider/long", name: `${"C".repeat(150)}: ${"M".repeat(300)}`});
+    await seedModel(t, {modelId: "provider/blank", name: "Publisher: "});
+    const result = await t.query(internal.models.queries.resolveEvidenceLibrarySelection, {
+      modelIds: ["provider/long", "provider/blank"],
+    });
+    expect(result.modelMetadata).toEqual({
+      "provider/long": {name: "M".repeat(256), company: "C".repeat(128)},
+      "provider/blank": {name: "provider/blank", company: "Publisher"},
+    });
+    expect(result.allowedModelIds).toEqual(["provider/long", "provider/blank"]);
+  });
+
   it("returns the whole synced catalog without a fixed row ceiling", async () => {
     const t = convexTest(schema);
     await t.run(async (ctx) => {
@@ -162,6 +176,9 @@ describe("models.queries.listCatalogOptions", () => {
     ).toEqual({
       catalogReady: true,
       allowedModelIds: ["provider/model-1000"],
+      modelMetadata: {
+        "provider/model-1000": { name: "Model 1000", company: "provider" },
+      },
     });
   });
 

@@ -5,23 +5,12 @@ import {
 } from "../../../convex/evidenceLibraries/sectionPayload";
 import { EXPORT_FORMATS, readDraft, type SectionRow } from "./rules";
 import { AI_PROVIDER } from "./ai";
-import catalogs from "./generated/library-config.client.catalogs.json";
 import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
 export const CURRENT_OWNER_CONFIGURATION_VERSION = 4 as const;
 export const MAX_CHANGED_POINTERS = 100;
-
-// Version 3 used the runtime catalog pinned when that migration shipped.
-// Keep that historical input stable even though the current picker is live.
-const VERSION_THREE_AI_MODELS =
-  (
-    catalogs.options.aiProviders as readonly {
-      provider: string;
-      active: readonly string[];
-    }[]
-  ).find((entry) => entry.provider === AI_PROVIDER)?.active ?? [];
 
 export type OwnerConfigurationSnapshotRow = {
   // Historical migrations may receive a section that no longer exists in the
@@ -423,7 +412,6 @@ function migrateVersionTwoToThree(
   snapshot: OwnerConfigurationMigrationSnapshot,
 ): OwnerConfigurationMigrationSnapshot {
   const next = cloneJson(snapshot);
-  const activeModels = new Set(VERSION_THREE_AI_MODELS);
   let disableAiAnswers = false;
   next.ownerConfigurationVersion = 3;
   for (const row of next.sections) {
@@ -454,7 +442,7 @@ function migrateVersionTwoToThree(
         const selectedModels = new Set<string>();
         const models: string[] = [];
         for (const model of candidates) {
-          if (!activeModels.has(model) || selectedModels.has(model)) continue;
+          if (selectedModels.has(model)) continue;
           selectedModels.add(model);
           models.push(model);
         }
