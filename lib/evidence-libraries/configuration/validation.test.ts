@@ -948,5 +948,5 @@ test("assembles enabled notification delivery with the runtime private Redis ser
     sections: {...ownerSections, notifications: {enabled: true, schedule: {frequency: "weekly", weekday: 1, time: "09:00", timezone: "UTC"}}},
     managed: {...managedConfiguration, mail: platformMail},
   });
-  expect(result.services).toMatchObject({redis: {url: "redis://redis:6379"}});
+  expect(result.services).toMatchObject({redis: {url: "redis://evidence-library-redis:6379"}});
 });
