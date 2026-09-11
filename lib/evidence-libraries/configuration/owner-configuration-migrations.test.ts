@@ -174,11 +174,15 @@ describe("owner configuration migrations", () => {
     );
   });
 
-  it("preserves the saved weekly schedule when adding monthly support", () => {
-    const original = {ownerConfigurationVersion: 4, sections: [{sectionKey: "notifications", payload: {enabled: true, weekly: {weekday: 5, time: "16:30", timezone: "Asia/Kolkata"}}}]};
+  it.each([
+    {weekly: {weekday: 5, time: "16:30", timezone: "Asia/Kolkata"}, expected: {weekday: 5, time: "16:30", timezone: "Asia/Kolkata"}},
+    {weekly: {}, expected: {weekday: 1, time: "09:00", timezone: "UTC"}},
+    {weekly: {time: "16:30"}, expected: {weekday: 1, time: "16:30", timezone: "UTC"}},
+  ])("preserves saved weekly fields and their defaults when adding monthly support: $weekly", ({weekly, expected}) => {
+    const original = {ownerConfigurationVersion: 4, sections: [{sectionKey: "notifications", payload: {enabled: true, weekly}}]};
     const before = structuredClone(original);
     const result = migrateOwnerConfiguration(original);
-    expect(result.snapshot.sections.find(row => row.sectionKey === "notifications")?.payload).toEqual({enabled: true, schedule: {frequency: "weekly", weekday: 5, time: "16:30", timezone: "Asia/Kolkata"}});
+    expect(result.snapshot.sections.find(row => row.sectionKey === "notifications")?.payload).toEqual({enabled: true, schedule: {frequency: "weekly", ...expected}});
     expect(original).toEqual(before);
   });
 

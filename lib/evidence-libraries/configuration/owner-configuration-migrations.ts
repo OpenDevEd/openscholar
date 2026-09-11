@@ -498,7 +498,7 @@ function migrateVersionFourToFive(
   for (const row of next.sections) {
     if (row.sectionKey !== "notifications" || !isRecord(row.payload)) continue;
     const {weekly, ...payload} = row.payload;
-    row.payload = {...payload, ...(isRecord(weekly) ? {schedule: {...weekly, frequency: "weekly"}} : {})};
+    row.payload = {...payload, ...(isRecord(weekly) ? {schedule: {weekday: 1, time: "09:00", timezone: "UTC", ...weekly, frequency: "weekly"}} : {})};
   }
   return completeOwnerConfigurationSnapshot(next);
 }
