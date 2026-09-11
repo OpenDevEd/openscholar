@@ -2078,29 +2078,73 @@
 					"default": false,
 					"type": "boolean"
 				},
-				"weekly": {
-					"default": {},
-					"type": "object",
-					"properties": {
-						"weekday": {
-							"default": 1,
-							"type": "integer",
-							"minimum": 0,
-							"maximum": 6
-						},
-						"time": {
-							"default": "09:00",
-							"type": "string",
-							"pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
-						},
-						"timezone": {
-							"default": "UTC",
-							"type": "string",
-							"minLength": 1,
-							"maxLength": 100
-						}
+				"schedule": {
+					"default": {
+						"frequency": "weekly",
+						"weekday": 1
 					},
-					"additionalProperties": false
+					"oneOf": [
+						{
+							"type": "object",
+							"properties": {
+								"frequency": {
+									"type": "string",
+									"const": "weekly"
+								},
+								"weekday": {
+									"type": "integer",
+									"minimum": 0,
+									"maximum": 6
+								},
+								"time": {
+									"default": "09:00",
+									"type": "string",
+									"pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+								},
+								"timezone": {
+									"default": "UTC",
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 100
+								}
+							},
+							"required": [
+								"frequency",
+								"weekday"
+							],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"frequency": {
+									"type": "string",
+									"const": "monthly"
+								},
+								"dayOfMonth": {
+									"type": "integer",
+									"minimum": 1,
+									"maximum": 31
+								},
+								"time": {
+									"default": "09:00",
+									"type": "string",
+									"pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+								},
+								"timezone": {
+									"default": "UTC",
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 100
+								}
+							},
+							"required": [
+								"frequency",
+								"dayOfMonth"
+							],
+							"additionalProperties": false
+						}
+					]
 				}
 			},
 			"additionalProperties": false

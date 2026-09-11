@@ -170,12 +170,14 @@ export const ownerConfigurationVersionValidator = v.union(
   v.literal(2),
   v.literal(3),
   v.literal(4),
+  v.literal(5),
 );
 export const draftOwnerConfigurationVersionValidator = v.union(
   v.literal(3),
   v.literal(4),
+  v.literal(5),
 );
-export const currentOwnerConfigurationVersionValidator = v.literal(4);
+export const currentOwnerConfigurationVersionValidator = v.literal(5);
 
 export const evidenceLibraryStateValidator = v.union(
   v.literal("provisioning"),

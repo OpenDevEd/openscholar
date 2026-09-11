@@ -9,7 +9,7 @@ import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 4 as const;
+export const CURRENT_OWNER_CONFIGURATION_VERSION = 5 as const;
 export const MAX_CHANGED_POINTERS = 100;
 
 export type OwnerConfigurationSnapshotRow = {
@@ -490,6 +490,24 @@ function migrateVersionThreeToFour(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+function migrateVersionFourToFive(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 5;
+  for (const row of next.sections) {
+    if (row.sectionKey !== "notifications" || !isRecord(row.payload)) continue;
+    const {weekly, ...payload} = row.payload;
+    row.payload = {...payload, ...(isRecord(weekly) ? {schedule: {...weekly, frequency: "weekly"}} : {})};
+  }
+  return completeOwnerConfigurationSnapshot(next);
+}
+
+const disabledAiDefaults: OwnerConfigurationDefaultRow[] = [{
+  sectionKey: "ai",
+  payload: () => ({providers: [{provider: AI_PROVIDER, enabled: false, models: []}]}),
+}];
+
 export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
   {
     from: 1,
@@ -508,27 +526,19 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 2,
     to: 3,
     migrate: migrateVersionTwoToThree,
-    defaultRows: [
-      {
-        sectionKey: "ai",
-        payload: () => ({
-          providers: [{ provider: AI_PROVIDER, enabled: false, models: [] }],
-        }),
-      },
-    ],
+    defaultRows: disabledAiDefaults,
   },
   {
     from: 3,
     to: 4,
     migrate: migrateVersionThreeToFour,
-    defaultRows: [
-      {
-        sectionKey: "ai",
-        payload: () => ({
-          providers: [{ provider: AI_PROVIDER, enabled: false, models: [] }],
-        }),
-      },
-    ],
+    defaultRows: disabledAiDefaults,
+  },
+  {
+    from: 4,
+    to: 5,
+    migrate: migrateVersionFourToFive,
+    defaultRows: disabledAiDefaults,
   },
 ];
 
