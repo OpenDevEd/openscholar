@@ -2756,7 +2756,7 @@
         "facet": "Searchable dropdown",
         "facet-with-featured-value": "Dropdown with a quick filter"
       },
-      "institutionLabel": "Filter heading",
+      "institutionLabel": "Dropdown label",
       "institutionLabelHint": "The label on the dropdown, for example Institutions or Partners.",
       "featuredInstitution": "Pinned institution",
       "featuredInstitutionHint": "Adds a button above the filters for this institution. Must match an institution on the records.",
