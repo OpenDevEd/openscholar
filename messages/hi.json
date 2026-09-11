@@ -2727,13 +2727,13 @@
       "institutionModeHint": "Lets visitors narrow results to the institutions behind the records.",
       "institutionModes": {
         "hidden": "Hidden",
-        "facet": "Shown as a checkbox list",
-        "facet-with-featured-value": "Shown, with one institution pinned at the top"
+        "facet": "Searchable dropdown",
+        "facet-with-featured-value": "Dropdown with a quick filter"
       },
       "institutionLabel": "Filter heading",
-      "institutionLabelHint": "The heading above the list, for example Institutions or Partners.",
+      "institutionLabelHint": "The label on the dropdown, for example Institutions or Partners.",
       "featuredInstitution": "Pinned institution",
-      "featuredInstitutionHint": "Shown first so visitors can pick it in one click. Must match an institution on the records.",
+      "featuredInstitutionHint": "Adds a button above the filters for this institution. Must match an institution on the records.",
       "featuredInstitutionError": "Name the pinned institution.",
       "years": "Year range filter",
       "yearsHint": "Let people narrow results to a range of years.",
