@@ -2435,6 +2435,7 @@
       "pages": {
         "home": "Home",
         "library": "Library",
+        "digests": "文库摘要",
         "map": "Map",
         "contact": "Contact",
         "privacy": "Privacy",
@@ -2561,6 +2562,8 @@
       "legalFile": "File",
       "legalUrl": "Address",
       "legalUrlError": "Use a full address that starts with https://.",
+      "legalStandard": "标准页面",
+      "legalNoneTerms": "上传文件或添加链接后，才会显示使用条款页面。",
       "legalNone": "The site shows its standard page."
     },
     "picker": {

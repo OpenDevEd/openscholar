@@ -2435,6 +2435,7 @@
       "pages": {
         "home": "Home",
         "library": "Library",
+        "digests": "Synthèses de la bibliothèque",
         "map": "Map",
         "contact": "Contact",
         "privacy": "Privacy",
@@ -2561,6 +2562,8 @@
       "legalFile": "File",
       "legalUrl": "Address",
       "legalUrlError": "Use a full address that starts with https://.",
+      "legalStandard": "Page standard",
+      "legalNoneTerms": "Aucune page de conditions n’est affichée tant que vous n’avez pas importé de fichier ou ajouté de lien.",
       "legalNone": "The site shows its standard page."
     },
     "picker": {

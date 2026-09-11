@@ -202,7 +202,9 @@ export function ContactSection({ libraryId, draft, saved, patch, reset }: Sectio
                   >
                     {LEGAL_KINDS.map((kind) => (
                       <TabsTrigger key={kind} value={kind}>
-                        {t(`legalKinds.${kind}`)}
+                        {kind === "none" && key !== "terms"
+                          ? t("legalStandard")
+                          : t(`legalKinds.${kind}`)}
                       </TabsTrigger>
                     ))}
                   </TabsList>
@@ -242,7 +244,7 @@ export function ContactSection({ libraryId, draft, saved, patch, reset }: Sectio
               ) : null}
               {source.kind === "none" ? (
                 <p className="text-xs text-muted-foreground">
-                  {t("legalNone")}
+                  {t(key === "terms" ? "legalNoneTerms" : "legalNone")}
                 </p>
               ) : null}
             </Panel>
