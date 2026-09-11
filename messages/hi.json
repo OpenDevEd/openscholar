@@ -2323,7 +2323,7 @@
       "copyAddress": "Copy address",
       "copied": "Copied",
       "taglineLabel": "Tagline",
-      "taglineHint": "One short line under the name.",
+      "taglineHint": "The heading above the library search. Leave empty to show Search.",
       "taglinePlaceholder": "Evidence for better decisions",
       "descriptionLabel": "Description",
       "descriptionHint": "Shown on the home page and in search results.",
