@@ -33,6 +33,7 @@ import {
   Unlink,
   Users,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
@@ -91,7 +92,7 @@ export default function AuthorPage({
   configuration: boolean;
   canEdit: boolean;
   canBrowseAuthors?: boolean;
-  onSave: (profile: AuthorProfile) => Promise<AuthorProfile>;
+  onSave: (profile: AuthorProfile, previous: AuthorProfile) => Promise<AuthorProfile>;
   accessSection: ReactNode;
   papers: AuthorPublication[];
   publicationStatus: string | null;
@@ -113,9 +114,15 @@ export default function AuthorPage({
   const [draft, setDraft] = useState<AuthorProfile | null>(() =>
     configuration ? structuredClone(profile) : null,
   );
+  const [savedProfile, setSavedProfile] = useState(profile);
   const editableFields = ["name", "headline", "affiliation", "bio", "website", "linkedin", "orcid", "openalex", "photo", "featured"] as const;
-  const dirty = draft !== null && editableFields.some(field => JSON.stringify(draft[field]) !== JSON.stringify(profile[field]));
+  const dirty = draft !== null && editableFields.some(field => JSON.stringify(draft[field]) !== JSON.stringify(savedProfile[field]));
   const [saving, setSaving] = useState(false);
+  if (draft && !dirty && !saving && profile.revision > savedProfile.revision) {
+    setDraft(structuredClone(profile));
+    setSavedProfile(profile);
+  }
+  const profileChanged = !saving && profile.revision > savedProfile.revision;
   const [search, setSearch] = useState("");
   const [matchDialog, setMatchDialog] = useState(false);
   const [matchSearch, setMatchSearch] = useState("");
@@ -127,7 +134,13 @@ export default function AuthorPage({
   const publicationsRef = useRef<HTMLDivElement>(null);
   const update = async (next: AuthorProfile) => {
     setSaving(true);
-    try { setDraft(await onSave(next)); return true; }
+    try {
+      const saved = await onSave(next, savedProfile);
+      setDraft(saved);
+      setSavedProfile(saved);
+      setFormError("");
+      return true;
+    }
     catch (error) { setFormError(error instanceof Error ? error.message : "Could not save this profile"); return false; }
     finally { setSaving(false); }
   };
@@ -233,7 +246,7 @@ export default function AuthorPage({
                 variant="outline"
                 type="submit"
                 form="author-profile-form"
-                disabled={!dirty || saving}
+                disabled={!dirty || saving || profileChanged}
               >
                 <Save className="size-4" />
                 Save
@@ -247,7 +260,7 @@ export default function AuthorPage({
             className="space-y-4"
             onSubmit={async (e) => {
               e.preventDefault();
-              if (saving) return;
+              if (saving || profileChanged) return;
               if (!draft.name.trim()) {
                 setFormError("Enter the author's name.");
                 return;
@@ -281,6 +294,19 @@ export default function AuthorPage({
             }}
           >
             <div className="space-y-4">
+              {profileChanged ? (
+                <FieldError action={
+                  <Button type="button" variant="outline" size="sm" onClick={() => {
+                    setDraft(structuredClone(profile));
+                    setSavedProfile(profile);
+                    setFormError("");
+                  }}>
+                    <RefreshCw /> Load latest version
+                  </Button>
+                }>
+                  This profile changed while you were editing. Loading the latest version replaces your unsaved changes.
+                </FieldError>
+              ) : formError ? <FieldError>{formError}</FieldError> : null}
               <SectionCard
                 icon={UserRound}
                 title="Profile details"
@@ -338,7 +364,7 @@ export default function AuthorPage({
                           type="button"
                           variant="ghost"
                           size="xs"
-                          onClick={() => setDraft({ ...draft, photo: "" })}
+                          onClick={() => setDraft({ ...draft, photo: undefined })}
                         >
                           <Trash2 className="size-3.5" />
                           Remove
@@ -581,7 +607,6 @@ export default function AuthorPage({
                 </div>
               </SectionCard>
 
-              {formError && <FieldError>{formError}</FieldError>}
             </div>
           </form>
           {accessSection}

@@ -3,7 +3,7 @@ import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { PageWrapper } from "@/components/PageWrapper";
 import { readAuthorPublications } from "@/app/actions/author-publications";
-import { useAction, useQuery, useConvex } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useState } from "react";
 import useSWR from "swr";
@@ -14,9 +14,9 @@ import { readProfileAuthor, readProfileAuthorWorks, searchProfileAuthors } from 
 import AuthorPage from "./author-page";
 import { ProfileAccess } from "./profile-access";
 import type { AuthorProfile } from "./types";
+import { readConvexErrorData } from "@/convex/lib/errors";
 
 export function AuthorProfileView({profileId, configuration = false}: {profileId: Id<"authorProfiles">; configuration?: boolean}) {
-  const convex = useConvex();
   const { data: features } = useOrganizationFeatures();
   const record = useQuery(api.authors.profiles.get, {profileId});
   const references = useQuery(api.authors.publications.list, {profileId});
@@ -45,11 +45,13 @@ export function AuthorProfileView({profileId, configuration = false}: {profileId
     hasMoreWorks={(works.data?.flatMap(page => page.results).length ?? 0) < (works.data?.[0]?.meta.count ?? 0)}
     workCount={works.data?.[0]?.meta.count ?? 0} loadingWorks={works.isLoading || works.isValidating}
     onLoadMoreWorks={() => { void works.setSize(works.size + 1); }}
-    onSave={async next => {
+    onSave={async (next, previous) => {
       const {name, headline, affiliation, bio, website, linkedin, orcid, openalex} = next;
-      await save({profileId, featured: next.featured as Id<"authorPublications">[], expectedRevision: record.revision, content: {name, headline, affiliation, bio, website, linkedin, orcid, openalex}, ...(next.photo !== profile.photo ? {photo: next.photo ?? ""} : {})});
-      const saved = await convex.query(api.authors.profiles.get, {profileId});
-      if (!saved) throw new Error("Author profile not found");
-      return {...next, ...saved, id: saved._id, photo: saved.photo ?? undefined};
+      try {
+        const saved = await save({profileId, featured: next.featured as Id<"authorPublications">[], expectedRevision: next.revision, content: {name, headline, affiliation, bio, website, linkedin, orcid, openalex}, ...(next.photo !== previous.photo ? {photo: next.photo ?? ""} : {})});
+        return {...next, ...saved, photo: saved.photo ?? undefined};
+      } catch (error) {
+        throw new Error(readConvexErrorData(error)?.message ?? "Could not save this profile. Try again.");
+      }
     }} />;
 }

@@ -40,11 +40,11 @@ describe("author profiles", () => {
     const {t, owner, editor, profileId} = await setup();
     await expect(t.mutation(api.authors.profiles.create, {name: content.name})).rejects.toThrow();
     const duplicate = await editor.mutation(api.authors.profiles.create, {name: content.name});
-    await owner.mutation(api.authors.profiles.update, {profileId, expectedRevision: 1, content});
-    await editor.mutation(api.authors.profiles.update, {profileId: duplicate, expectedRevision: 1, content});
+    await owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content});
+    await editor.action(api.authors.photos.save, {profileId: duplicate, expectedRevision: 1, content});
     expect((await t.query(api.authors.profiles.get, {profileId}))?.bio).toBe(content.bio);
     expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBeNull();
-    await expect(editor.mutation(api.authors.profiles.update, {profileId, expectedRevision: 2, content: {...content, bio: "Overwrite"}})).rejects.toThrow();
+    await expect(editor.action(api.authors.photos.save, {profileId, expectedRevision: 2, content: {...content, bio: "Overwrite"}})).rejects.toThrow();
   });
 
   it("requires the invited address, restricts access management to the owner and revokes editing immediately", async () => {
@@ -53,11 +53,11 @@ describe("author profiles", () => {
     await expect(editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: [], accept: true})).rejects.toThrow();
     await editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true});
     expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBe("editor");
-    await editor.mutation(api.authors.profiles.update, {profileId, expectedRevision: 1, content});
+    await editor.action(api.authors.photos.save, {profileId, expectedRevision: 1, content});
     await expect(editor.mutation(internal.authors.invitations.prepare, {profileId, email: "third@example.org"})).rejects.toThrow();
     await expect(editor.mutation(api.authors.members.remove, {profileId, userId: ids.owner})).rejects.toThrow();
     await owner.mutation(api.authors.members.remove, {profileId, userId: ids.editor});
-    await expect(editor.mutation(api.authors.profiles.update, {profileId, expectedRevision: 2, content})).rejects.toThrow();
+    await expect(editor.action(api.authors.photos.save, {profileId, expectedRevision: 2, content})).rejects.toThrow();
     expect((await t.query(api.authors.profiles.get, {profileId}))?.bio).toBe(content.bio);
   });
 
@@ -66,14 +66,15 @@ describe("author profiles", () => {
     const invitationId = await owner.mutation(internal.authors.invitations.prepare, {profileId, email: "editor@example.org"});
     await owner.mutation(api.authors.invitations.cancel, {invitationId});
     await expect(editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true})).rejects.toThrow();
-    await owner.mutation(api.authors.profiles.update, {profileId, expectedRevision: 1, content});
-    await expect(owner.mutation(api.authors.profiles.update, {profileId, expectedRevision: 1, content: {...content, bio: "Stale edit"}})).rejects.toThrow();
+    await owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content});
+    await expect(owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content: {...content, bio: "Stale edit"}})).rejects.toThrow();
     expect((await owner.query(api.authors.profiles.get, {profileId}))?.bio).toBe(content.bio);
   });
   it("stores a photo without allowing stale saves to delete the current file", async () => {
     const {t, owner, editor, profileId} = await setup();
     const photo = "data:image/png;base64,iVBORw0KGgo=";
-    await owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content, photo});
+    const result = await owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content: {...content, website: "https://example.org"}, photo});
+    expect(result).toMatchObject({revision: 2, website: "https://example.org/", photo: expect.stringMatching(/^https?:/)});
     const saved = await t.query(api.authors.profiles.get, {profileId});
     expect(saved?.photo).toMatch(/^https?:/);
     const stored = await t.run(ctx => ctx.db.get("authorProfiles", profileId));
@@ -81,7 +82,8 @@ describe("author profiles", () => {
     await expect(owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content, photo})).rejects.toThrow();
     await expect(editor.action(api.authors.photos.save, {profileId, expectedRevision: 2, content, photo: ""})).rejects.toThrow();
     expect(await t.run(async ctx => Boolean(await ctx.storage.get(stored!.photoId!)))).toBe(true);
-    await owner.action(api.authors.photos.save, {profileId, expectedRevision: 2, content, photo: ""});
+    const removed = await owner.action(api.authors.photos.save, {profileId, expectedRevision: 2, content, photo: ""});
+    expect(removed).toMatchObject({revision: 3, photo: null});
     expect((await t.query(api.authors.profiles.get, {profileId}))?.photo).toBeNull();
     expect(await t.run(async ctx => Boolean(await ctx.storage.get(stored!.photoId!)))).toBe(false);
   });

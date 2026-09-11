@@ -1,5 +1,5 @@
 "use node";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { authorContentFields } from "./validators";
@@ -7,10 +7,16 @@ import { checkEvidenceLibraryUploadContent } from "../../lib/evidence-libraries/
 import { createError } from "../lib/errors";
 import type { Id } from "../_generated/dataModel";
 
+const savedProfileValidator = v.object({
+  ...authorContentFields,
+  revision: v.number(),
+  photo: v.union(v.string(), v.null()),
+});
+
 export const save = action({
   args: {profileId: v.id("authorProfiles"), expectedRevision: v.number(), content: v.object(authorContentFields), photo: v.optional(v.string()), featured: v.optional(v.array(v.id("authorPublications")))},
-  returns: v.number(),
-  handler: async (ctx, args): Promise<number> => {
+  returns: savedProfileValidator,
+  handler: async (ctx, args): Promise<Infer<typeof savedProfileValidator>> => {
     const previous = await ctx.runQuery(internal.authors.profiles.editable, {profileId: args.profileId});
     let photoId: Id<"_storage"> | undefined;
     if (args.photo) {
@@ -22,20 +28,17 @@ export const save = action({
       if (!checked.ok || bytes.length > 500000) throw createError("VALIDATION_ERROR", "Choose a PNG, JPEG or WebP under 500 KB");
       photoId = await ctx.storage.store(new Blob([bytes], {type: match[1]}));
     }
-    let revision: number;
-    try {
-      revision = await ctx.runMutation(internal.authors.profiles.saveWithPhoto, {
-        profileId: args.profileId, expectedRevision: args.expectedRevision, content: args.content, featured: args.featured,
-        ...(args.photo !== undefined ? {photo: {storageId: photoId}} : {}),
-      });
-
-    } catch (error) {
+    const saved = await ctx.runMutation(internal.authors.profiles.saveWithPhoto, {
+      profileId: args.profileId, expectedRevision: args.expectedRevision, content: args.content, featured: args.featured,
+      ...(args.photo !== undefined ? {photo: {storageId: photoId}} : {}),
+    }).catch(async (error) => {
       if (photoId) await ctx.storage.delete(photoId);
       throw error;
-    }
+    });
     if (args.photo !== undefined && previous.photoId) {
       await ctx.storage.delete(previous.photoId).catch(error => console.error("Old author photo cleanup failed", {profileId: args.profileId, storageId: previous.photoId, error}));
     }
-    return revision;
+    const savedPhotoId = args.photo === undefined ? previous.photoId : photoId;
+    return {...saved, photo: savedPhotoId ? await ctx.storage.getUrl(savedPhotoId) : null};
   },
 });
