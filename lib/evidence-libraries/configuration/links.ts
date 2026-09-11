@@ -12,6 +12,7 @@ import { isNavbarIconId } from "./icons";
 export const BUILT_IN_PAGES = [
   { key: "home", path: "/" },
   { key: "library", path: "/lib" },
+  { key: "digests", path: "/digests" },
   { key: "map", path: "/map" },
   { key: "contact", path: "/contact" },
   { key: "privacy", path: "/privacy" },

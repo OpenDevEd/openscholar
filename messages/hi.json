@@ -2435,6 +2435,7 @@
       "pages": {
         "home": "Home",
         "library": "Library",
+        "digests": "लाइब्रेरी सारांश",
         "map": "Map",
         "contact": "Contact",
         "privacy": "Privacy",
@@ -2561,6 +2562,8 @@
       "legalFile": "File",
       "legalUrl": "Address",
       "legalUrlError": "Use a full address that starts with https://.",
+      "legalStandard": "मानक पेज",
+      "legalNoneTerms": "फ़ाइल अपलोड करने या लिंक जोड़ने तक उपयोग की शर्तों का पेज नहीं दिखाया जाएगा।",
       "legalNone": "The site shows its standard page."
     },
     "picker": {

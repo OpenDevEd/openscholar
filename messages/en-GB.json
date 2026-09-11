@@ -2460,6 +2460,7 @@
       "pages": {
         "home": "Home",
         "library": "Library",
+        "digests": "Library digests",
         "map": "Map",
         "contact": "Contact",
         "privacy": "Privacy",
@@ -2586,6 +2587,8 @@
       "legalFile": "File",
       "legalUrl": "Address",
       "legalUrlError": "Use a full address that starts with https://.",
+      "legalStandard": "Standard page",
+      "legalNoneTerms": "No terms page is shown until you upload a file or add a link.",
       "legalNone": "The site shows its standard page."
     },
     "picker": {
