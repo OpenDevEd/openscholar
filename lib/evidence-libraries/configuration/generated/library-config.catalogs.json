@@ -121,6 +121,14 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "notifications.schedule.frequency",
+				"values": [
+					"weekly",
+					"monthly"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "processing.pdfRules[].action",
 				"values": [
 					"append-system-instruction"

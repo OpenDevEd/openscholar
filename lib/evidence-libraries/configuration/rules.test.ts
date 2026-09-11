@@ -1443,11 +1443,17 @@ describe("the analytics fields the runtime gained", () => {
 describe("notification configuration", () => {
   it("saves and resets the schedule with the contact section and rejects invalid schedules", () => {
     const draft = savedDraft();
-    draft.notifications = {enabled: true, weekly: {weekday: 5, time: "16:30", timezone: "Europe/London"}};
+    draft.notifications = {enabled: true, schedule: {frequency: "weekly", weekday: 5, time: "16:30", timezone: "Europe/London"}};
     expect(changedSectionRows(draft, savedRows)).toEqual([{sectionKey: "notifications", payload: draft.notifications}]);
     expect(resetSection(draft, savedRows, "contact").notifications).toEqual(savedDraft().notifications);
     expect(sectionProblems(draft, "contact")).toEqual([]);
-    draft.notifications.weekly.timezone = "Not/AZone";
+    draft.notifications.schedule = {frequency: "monthly", dayOfMonth: 31, time: "23:15", timezone: "Asia/Kolkata"};
+    expect(sectionProblems(draft, "contact")).toEqual([]);
+    expect(readDraft(changedSectionRows(draft, savedRows)).notifications).toEqual(draft.notifications);
+    draft.notifications.schedule.dayOfMonth = 32;
+    expect(sectionProblems(draft, "contact")).toContain("notificationSchedule");
+    draft.notifications.schedule.dayOfMonth = 31;
+    draft.notifications.schedule.timezone = "Not/AZone";
     expect(sectionProblems(draft, "contact")).toContain("notificationSchedule");
     expect(hasProblems(draft)).toBe(true);
   });

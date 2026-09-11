@@ -174,6 +174,18 @@ describe("owner configuration migrations", () => {
     );
   });
 
+  it.each([
+    {weekly: {weekday: 5, time: "16:30", timezone: "Asia/Kolkata"}, expected: {weekday: 5, time: "16:30", timezone: "Asia/Kolkata"}},
+    {weekly: {}, expected: {weekday: 1, time: "09:00", timezone: "UTC"}},
+    {weekly: {time: "16:30"}, expected: {weekday: 1, time: "16:30", timezone: "UTC"}},
+  ])("preserves saved weekly fields and their defaults when adding monthly support: $weekly", ({weekly, expected}) => {
+    const original = {ownerConfigurationVersion: 4, sections: [{sectionKey: "notifications", payload: {enabled: true, weekly}}]};
+    const before = structuredClone(original);
+    const result = migrateOwnerConfiguration(original);
+    expect(result.snapshot.sections.find(row => row.sectionKey === "notifications")?.payload).toEqual({enabled: true, schedule: {frequency: "weekly", ...expected}});
+    expect(original).toEqual(before);
+  });
+
   it("removes the temporary author-location settings from version 3", () => {
     const result = migrateOwnerConfiguration({
       ownerConfigurationVersion: 3,
@@ -194,7 +206,7 @@ describe("owner configuration migrations", () => {
     });
 
     expect(result.snapshot).toEqual({
-      ownerConfigurationVersion: 4,
+      ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
       sections: [
         {
           sectionKey: "search",
@@ -299,6 +311,7 @@ describe("owner configuration migrations", () => {
       [1, 2],
       [2, 3],
       [3, 4],
+      [4, 5],
     ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
@@ -531,6 +544,7 @@ describe("owner configuration migrations", () => {
       [1, 2],
       [2, 3],
       [3, 4],
+      [4, 5],
     ]);
   });
 
@@ -903,7 +917,7 @@ describe("owner configuration migrations", () => {
   });
 
   it("rejects missing, unknown, newer, and gapped versions", () => {
-    for (const version of [undefined, 0, 5]) {
+    for (const version of [undefined, 0, CURRENT_OWNER_CONFIGURATION_VERSION + 1]) {
       const error = expectMigrationError(() =>
         migrateOwnerConfiguration({
           ownerConfigurationVersion: version as never,

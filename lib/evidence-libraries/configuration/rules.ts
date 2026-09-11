@@ -424,6 +424,11 @@ export type AiDraft = {
   defaultModel: string;
 };
 
+export type DigestScheduleDraft = {time: string; timezone: string} & (
+  | {frequency: "weekly"; weekday: number}
+  | {frequency: "monthly"; dayOfMonth: number}
+);
+
 export type ConfigurationDraft = {
   identity: IdentityDraft;
   theme: ThemeDraft;
@@ -433,7 +438,7 @@ export type ConfigurationDraft = {
   footer: FooterDraft;
   contact: ContactDraft;
   email: EmailDraft;
-  notifications: {enabled: boolean; weekly: {weekday: number; time: string; timezone: string}};
+  notifications: {enabled: boolean; schedule: DigestScheduleDraft};
   legal: LegalDraft;
   collections: CollectionDraft[];
   search: SearchDraft;
@@ -706,8 +711,11 @@ function readRecipient(value: unknown): string | null {
 
 function readNotifications(payload: unknown): ConfigurationDraft["notifications"] {
   const value = record(payload);
-  const weekly = record(value.weekly);
-  return {enabled: flag(value.enabled, false), weekly: {weekday: typeof weekly.weekday === "number" ? weekly.weekday : 1, time: text(weekly.time) || "09:00", timezone: text(weekly.timezone) || "UTC"}};
+  const schedule = record(value.schedule);
+  const clock = {time: text(schedule.time) || "09:00", timezone: text(schedule.timezone) || "UTC"};
+  return {enabled: flag(value.enabled, false), schedule: schedule.frequency === "monthly"
+    ? {...clock, frequency: "monthly", dayOfMonth: typeof schedule.dayOfMonth === "number" ? schedule.dayOfMonth : 1}
+    : {...clock, frequency: "weekly", weekday: typeof schedule.weekday === "number" ? schedule.weekday : 1}};
 }
 
 function readEmail(payload: unknown): EmailDraft {
@@ -1442,10 +1450,14 @@ export function sectionProblems(
     }
     case "contact": {
       const { contact, email, legal } = draft;
-      const {weekday, time, timezone} = draft.notifications.weekly;
+      const schedule = draft.notifications.schedule;
+      const {time, timezone} = schedule;
+      const validDay = schedule.frequency === "weekly"
+        ? Number.isInteger(schedule.weekday) && schedule.weekday >= 0 && schedule.weekday <= 6
+        : Number.isInteger(schedule.dayOfMonth) && schedule.dayOfMonth >= 1 && schedule.dayOfMonth <= 31;
       let validTimezone = true;
       try {new Intl.DateTimeFormat("en", {timeZone: timezone});} catch {validTimezone = false;}
-      if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) || !timezone || !validTimezone) problems.push("notificationSchedule");
+      if (!validDay || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) || !timezone || !validTimezone) problems.push("notificationSchedule");
       if (
         email.takedownRecipient !== null &&
         !EMAIL.test(email.takedownRecipient)

@@ -945,7 +945,7 @@ describe("platform-owned fields an owner may not save", () => {
 
 test("assembles enabled notification delivery with the runtime private Redis service", () => {
   const result = assembleEvidenceLibraryConfiguration({
-    sections: {...ownerSections, notifications: {enabled: true, weekly: {weekday: 1, time: "09:00", timezone: "UTC"}}},
+    sections: {...ownerSections, notifications: {enabled: true, schedule: {frequency: "weekly", weekday: 1, time: "09:00", timezone: "UTC"}}},
     managed: {...managedConfiguration, mail: platformMail},
   });
   expect(result.services).toMatchObject({redis: {url: "redis://redis:6379"}});

@@ -55,8 +55,8 @@ describe("Evidence Library draft storage", () => {
         revisionId: fixture.created.revisionId,
       },
     );
-    expect(currentDraft.draft.ownerConfigurationVersion).toBe(4);
-    expect(currentRevision.revision.ownerConfigurationVersion).toBe(4);
+    expect(currentDraft.draft.ownerConfigurationVersion).toBe(5);
+    expect(currentRevision.revision.ownerConfigurationVersion).toBe(5);
 
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(fixture.created.draftId, {
@@ -106,7 +106,7 @@ describe("Evidence Library draft storage", () => {
     const storedRolloutDraft = await fixture.t.run((ctx) =>
       ctx.db.get(fixture.created.draftId),
     );
-    expect(rolloutDraft.draft.ownerConfigurationVersion).toBe(4);
+    expect(rolloutDraft.draft.ownerConfigurationVersion).toBe(5);
     expect(storedRolloutDraft?.ownerConfigurationVersion).toBe(3);
     expect(
       rolloutDraft.sections.find((row) => row.sectionKey === "features")
@@ -127,7 +127,7 @@ describe("Evidence Library draft storage", () => {
     const migratedDraft = await fixture.t.run((ctx) =>
       ctx.db.get(fixture.created.draftId),
     );
-    expect(migratedDraft?.ownerConfigurationVersion).toBe(4);
+    expect(migratedDraft?.ownerConfigurationVersion).toBe(5);
 
     await expect(
       fixture.t.run((ctx) =>

@@ -189,7 +189,7 @@ export const SECTION_REGISTRY = [
     key: "notifications",
     pointer: "/notifications",
     label: "Email updates",
-    description: "Reader subscriptions and weekly digest schedule.",
+    description: "Reader subscriptions and library digest schedule.",
     authority: "ownerEdited",
   },
   {
