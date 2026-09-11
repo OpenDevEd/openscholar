@@ -13,7 +13,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Globe, ChevronRight, Check, X, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { COUNTRY_HIERARCHY, COUNTRIES, getCountryCodesForRegions } from "@/lib/constants";
+import { COUNTRY_HIERARCHY, COUNTRIES, COUNTRY_NAME_CHANGES, getCountryCodesForRegions } from "@/lib/constants";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
 
@@ -170,7 +170,8 @@ export function CountrySelector({
     
     // For countries, check both the country code and the localized display name
     const nodeMatchesSearch = node.isCountry ? 
-      (node.label.toLowerCase().includes(searchTerm) || displayName.includes(searchTerm)) :
+      (node.label.toLowerCase().includes(searchTerm) || displayName.includes(searchTerm) ||
+        COUNTRY_NAME_CHANGES[node.label]?.some(name => name.toLowerCase().includes(searchTerm))) :
       displayName.includes(searchTerm);
 
     // If this node matches, return it with all its children

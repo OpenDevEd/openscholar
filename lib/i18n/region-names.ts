@@ -4,7 +4,7 @@
  */
 
 import { toBcp47Locale } from "./locale-map";
-import { COUNTRIES } from "@/lib/constants";
+import { COUNTRIES, COUNTRY_NAME_CHANGES } from "@/lib/constants";
 
 /**
  * Map internal region IDs (lowercase with underscores) to UN M49 codes.
@@ -79,6 +79,9 @@ export function getRegionDisplayName(
   // Country code (2-letter uppercase)
   if (codeOrRegionId.length === 2) {
     const code = codeOrRegionId.toUpperCase();
+    // Browser ICU data can lag behind an official name change.
+    const currentName = COUNTRY_NAME_CHANGES[code]?.[0];
+    if (currentName && bcp47.split("-")[0] === "en") return currentName;
     if (COUNTRIES[code] || FALLBACK_COUNTRY_NAMES[code]) {
       try {
         const name = regionNames.of(code);

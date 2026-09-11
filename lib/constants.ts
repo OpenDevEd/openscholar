@@ -35,7 +35,20 @@ type Entry = {
 	children?: Entry[];
 }
 
+// Current English names followed by former names used in publication metadata.
+// https://metadata.un.org/skosmos/thesaurus/en/page/1004349
+// https://unstats.un.org/unsd/mbs/countryarea.aspx
+export const COUNTRY_NAME_CHANGES: Record<string, readonly [string, ...string[]]> = {
+  NR: ["Naoero", "Nauru"],
+  CV: ["Cabo Verde", "Cape Verde"],
+  TR: ["Türkiye", "Turkey", "Turkiye"],
+  CZ: ["Czechia", "Czech Republic"],
+  SZ: ["Eswatini", "Swaziland"],
+  MK: ["North Macedonia", "Republic of Macedonia", "FYROM"],
+};
+
 export const COUNTRIES: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(COUNTRY_NAME_CHANGES).map(([code, [name]]) => [code, name])),
 	AF: 'Afghanistan',
 	AL: 'Albania',
 	DZ: 'Algeria',
@@ -75,7 +88,6 @@ export const COUNTRIES: Record<string, string> = {
 	KH: 'Cambodia',
 	CM: 'Cameroon',
 	CA: 'Canada',
-	CV: 'Cape Verde',
 	KY: 'Cayman Islands',
 	CF: 'Central African Republic',
 	TD: 'Chad',
@@ -94,7 +106,6 @@ export const COUNTRIES: Record<string, string> = {
 	CU: 'Cuba',
 	CW: 'Curacao',
 	CY: 'Cyprus',
-	CZ: 'Czech Republic',
 	DK: 'Denmark',
 	DJ: 'Djibouti',
 	DM: 'Dominica',
@@ -105,7 +116,6 @@ export const COUNTRIES: Record<string, string> = {
 	GQ: 'Equatorial Guinea',
 	ER: 'Eritrea',
 	EE: 'Estonia',
-	SZ: 'Eswatini / Swaziland',
 	ET: 'Ethiopia',
 	FK: 'Falkland Islands (Malvinas)',
 	FO: 'Faroe Islands',
@@ -167,7 +177,6 @@ export const COUNTRIES: Record<string, string> = {
 	LT: 'Lithuania',
 	LU: 'Luxembourg',
 	MO: 'Macao',
-	MK: 'Macedonia, The Republic of North',
 	MG: 'Madagascar',
 	MW: 'Malawi',
 	MY: 'Malaysia',
@@ -190,7 +199,6 @@ export const COUNTRIES: Record<string, string> = {
 	MZ: 'Mozambique',
 	MM: 'Myanmar',
 	NA: 'Namibia',
-	NR: 'Nauru',
 	NP: 'Nepal',
 	NL: 'Netherlands',
 	AN: 'Netherlands Antilles',
@@ -263,7 +271,6 @@ export const COUNTRIES: Record<string, string> = {
 	TO: 'Tonga',
 	TT: 'Trinidad and Tobago',
 	TN: 'Tunisia',
-	TR: 'Turkey',
 	TM: 'Turkmenistan',
 	TC: 'Turks and Caicos Islands',
 	TV: 'Tuvalu',
@@ -351,7 +358,7 @@ export const COUNTRY_HIERARCHY: Entry = {
 					label: "Southern Africa",
 					children: [
 						{ label: "BW" }, // Botswana
-						{ label: "SZ" }, // Eswatini / Swaziland
+						{ label: "SZ" }, // Eswatini
 						{ label: "LS" }, // Lesotho
 						{ label: "NA" }, // Namibia
 						{ label: "ZA" }, // South Africa
@@ -362,7 +369,7 @@ export const COUNTRY_HIERARCHY: Entry = {
 					children: [
 						{ label: "BJ" }, // Benin
 						{ label: "BF" }, // Burkina Faso
-						{ label: "CV" }, // Cape Verde
+						{ label: "CV" }, // Cabo Verde
 						{ label: "CI" }, // Cote d'Ivoire / Ivory Coast
 						{ label: "GM" }, // Gambia
 						{ label: "GH" }, // Ghana
@@ -537,7 +544,7 @@ export const COUNTRY_HIERARCHY: Entry = {
 						{ label: "QA" }, // Qatar
 						{ label: "SA" }, // Saudi Arabia
 						{ label: "SY" }, // Syrian Arab Republic
-						{ label: "TR" }, // Turkey
+						{ label: "TR" }, // Türkiye
 						{ label: "AE" }, // United Arab Emirates
 						{ label: "YE" }, // Yemen
 					]
@@ -552,7 +559,7 @@ export const COUNTRY_HIERARCHY: Entry = {
 					children: [
 						{ label: "BY" }, // Belarus
 						{ label: "BG" }, // Bulgaria
-						{ label: "CZ" }, // Czech Republic
+						{ label: "CZ" }, // Czechia
 						{ label: "HU" }, // Hungary
 						{ label: "MD" }, // Moldova, Republic of
 						{ label: "PL" }, // Poland
@@ -601,7 +608,7 @@ export const COUNTRY_HIERARCHY: Entry = {
 						{ label: "RS" }, // Serbia
 						{ label: "SI" }, // Slovenia
 						{ label: "ES" }, // Spain
-						{ label: "MK" }, // Macedonia, The Republic of North
+						{ label: "MK" }, // North Macedonia
 						{ label: "XK" } // Kosovo
 					]
 				},
@@ -652,7 +659,7 @@ export const COUNTRY_HIERARCHY: Entry = {
 						{ label: "KI" }, // Kiribati
 						{ label: "MH" }, // Marshall Islands
 						{ label: "FM" }, // Micronesia, Federated States of
-						{ label: "NR" }, // Nauru
+						{ label: "NR" }, // Naoero
 						{ label: "MP" }, // Northern Mariana Islands
 						{ label: "PW" }, // Palau
 					]

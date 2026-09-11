@@ -2,7 +2,7 @@ import { getSearchResults } from '@/app/actions/openalex';
 import { SearchError } from './search/search-error';
 import type { Works } from '@sickrin/openalex-sdk/dist/src/types/work';
 import { isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive } from './utils';
-import { getCountryCodesForRegions, COUNTRIES } from './constants';
+import { getCountryCodesForRegions, COUNTRIES, COUNTRY_NAME_CHANGES } from './constants';
 import { validateAndExpandKeywords } from './keyword-validation';
 import type { SearchFilters, SearchField } from './types';
 
@@ -83,9 +83,9 @@ export async function getSearchResultsWithFilters(
     
     countryData.countries.forEach(code => {
       if (COUNTRIES[code]) {
-        const cleanedName = cleanCountryNameForAPI(COUNTRIES[code]);
-        if (!countryNames.includes(cleanedName)) {
-          countryNames.push(cleanedName);
+        for (const name of COUNTRY_NAME_CHANGES[code] ?? [COUNTRIES[code]]) {
+          const cleanedName = cleanCountryNameForAPI(name);
+          if (!countryNames.includes(cleanedName)) countryNames.push(cleanedName);
         }
       }
     });
