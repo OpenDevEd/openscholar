@@ -2727,7 +2727,7 @@
       "fullText": "Full text",
       "fullTextHint": "Search inside the text of attached documents.",
       "tags": "Tags",
-      "tagsHint": "Let people filter by tags.",
+      "tagsHint": "Include tags when searching record metadata.",
       "country": "Country",
       "countryHint": "Let people filter by the country a record is about.",
       "scopesHeading": "Search scopes",
