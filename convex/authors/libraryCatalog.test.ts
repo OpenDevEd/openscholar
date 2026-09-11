@@ -54,13 +54,13 @@ it("creates profiles for the library caller but does not give library owners edi
 it("resolves current public profile metadata without a reader account or profile edit access", async () => {
   const {t, profileOwner, otherProfile, request} = await setupCatalog();
   const content = {name: "Caitlin Mills", headline: "Professor", affiliation: "University of Minnesota", bio: "Research on learning", website: "https://example.org", linkedin: "", orcid: "0000-0002-1825-0097", openalex: "A123456"};
-  await profileOwner.mutation(api.authors.profiles.update, {profileId: otherProfile, expectedRevision: 1, content});
+  await profileOwner.action(api.authors.photos.save, {profileId: otherProfile, expectedRevision: 1, content});
   const read = () => request({operation: "resolve", profileIds: [otherProfile, otherProfile, "missing"]});
   const response = await read();
   expect(response.status).toBe(200);
   expect(response.headers.get("Cache-Control")).toContain("no-store");
   expect(await response.json()).toEqual({profiles: [{id: otherProfile, revision: 2, photo: null, ...content, website: "https://example.org/"}]});
-  await profileOwner.mutation(api.authors.profiles.update, {profileId: otherProfile, expectedRevision: 2, content: {...content, name: "Updated name", affiliation: "Updated affiliation"}});
+  await profileOwner.action(api.authors.photos.save, {profileId: otherProfile, expectedRevision: 2, content: {...content, name: "Updated name", affiliation: "Updated affiliation"}});
   expect((await (await read()).json()).profiles[0]).toMatchObject({revision: 3, name: "Updated name", affiliation: "Updated affiliation"});
   expect((await request({operation: "resolve", profileIds: [otherProfile]}, "els_" + "b".repeat(43))).status).toBe(403);
   expect((await request({operation: "resolve", profileIds: Array(101).fill(otherProfile)})).status).toBe(400);

@@ -89,15 +89,10 @@ async function saveContent(ctx: MutationCtx, args: {profileId: Id<"authorProfile
     }
   }
   const revision = profile.revision + 1;
-  await ctx.db.patch("authorProfiles", args.profileId, {...cleanContent(args.content), revision, updatedAt: Date.now(), ...(args.photo ? {photoId: args.photo.storageId} : {})});
-  return revision;
+  const content = cleanContent(args.content);
+  await ctx.db.patch("authorProfiles", args.profileId, {...content, revision, updatedAt: Date.now(), ...(args.photo ? {photoId: args.photo.storageId} : {})});
+  return {...content, revision};
 }
-
-export const update = mutation({
-  args: {profileId: v.id("authorProfiles"), expectedRevision: v.number(), content: contentValidator},
-  returns: v.number(),
-  handler: saveContent,
-});
 
 export const editable = internalQuery({
   args: {profileId: v.id("authorProfiles")},
@@ -106,6 +101,6 @@ export const editable = internalQuery({
 
 export const saveWithPhoto = internalMutation({
   args: {profileId: v.id("authorProfiles"), expectedRevision: v.number(), content: v.object(authorContentFields), photo: v.optional(v.object({storageId: v.optional(v.id("_storage"))})), featured: v.optional(v.array(v.id("authorPublications")))},
-  returns: v.number(),
+  returns: v.object({...authorContentFields, revision: v.number()}),
   handler: saveContent,
 });
