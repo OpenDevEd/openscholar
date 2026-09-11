@@ -253,7 +253,7 @@ export function assembleEvidenceLibraryConfiguration({
       email,
       services: {
         // Every managed runtime has this private Compose service.
-        redis: { url: "redis://redis:6379" },
+        redis: { url: "redis://evidence-library-redis:6379" },
         database: { url: managed.databaseUrl },
         search: {
           host: managed.searchHost,
