@@ -101,181 +101,139 @@ function NavItem({
   customTooltipContent,
 }: NavItemProps) {
   const content = (
-    <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{
-        duration: 0.2,
-        delay: index * staggerDelay,
-        ease: [0.32, 0.72, 0, 1],
-      }}
+    <Link
+      href={href}
+      aria-label={label}
+      aria-current={isActive ? "page" : undefined}
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-lg h-auto",
+        "group relative overflow-hidden",
+        isActive
+          ? "bg-sidebar-accent/80"
+          : "hover:bg-sidebar-accent/60",
+        isActive
+          ? "text-sidebar-primary font-medium"
+          : "text-sidebar-foreground",
+        isCollapsed && "justify-center",
+        "transition-all duration-200 ease-out",
+        isActive && "nav-active",
+      )}
     >
-      <Link
-        href={href}
-        onClick={onClick}
-        className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-lg h-auto",
-          "group relative overflow-hidden",
-          isActive
-            ? "bg-sidebar-accent/80"
-            : "hover:bg-sidebar-accent/60",
-          isActive
-            ? "text-sidebar-primary font-medium"
-            : "text-sidebar-foreground",
-          isCollapsed && "justify-center",
-          "transition-all duration-200 ease-out",
-          isActive && "nav-active",
-        )}
+      <motion.div
+        whileHover={{ scale: isCollapsed ? 1.15 : 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        transition={hoverSpring}
+        className="relative z-10"
+        tabIndex={-1}
       >
-        <motion.div
-          whileHover={{ scale: isCollapsed ? 1.15 : 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          transition={hoverSpring}
-          className="relative z-10"
-        >
-          <Icon
-            className={cn(
-              "h-5 w-5 flex-shrink-0 transition-colors duration-200",
-              isActive
-                ? "text-sidebar-primary drop-shadow-sm"
-                : "text-muted-foreground group-hover:text-sidebar-foreground",
-            )}
-          />
-          {/* Badge overlay when collapsed */}
-          {isCollapsed && badge !== undefined && badge > 0 && (
-            <motion.span
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1 }}
-              className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center text-[10px] font-bold bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white rounded-full"
-            >
-              {badge > 9 ? "9+" : badge}
-            </motion.span>
+        <Icon
+          className={cn(
+            "h-5 w-5 flex-shrink-0 transition-colors duration-200",
+            isActive
+              ? "text-sidebar-primary drop-shadow-sm"
+              : "text-muted-foreground group-hover:text-sidebar-foreground",
           )}
-        </motion.div>
-
-        <AnimatePresence mode="wait">
-          {!isCollapsed && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{
-                duration: 0.2,
-                delay: index * staggerDelay,
-                ease: [0.32, 0.72, 0, 1],
-              }}
-              className="flex-1 flex items-center gap-2 relative z-10"
-            >
-              <span className="flex-1 truncate">{label}</span>
-              {badge !== undefined && badge > 0 && (
-                <motion.span
-                  initial={{ scale: 0.6, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  whileHover={{ scale: 1.1 }}
-                  transition={{
-                    delay: 0.1 + index * staggerDelay,
-                    type: "spring",
-                    stiffness: 400,
-                    damping: 20,
-                  }}
-                  className={cn(
-                    "text-xs px-2 py-0.5 rounded-full font-medium badge-glow",
-                    isActive
-                      ? "bg-gradient-to-r from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)] text-white shadow-md"
-                      : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {badge}
-                </motion.span>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {isActive && !isCollapsed && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.1 }}
-            className="absolute inset-0 bg-gradient-to-r from-[oklch(0.70_0.17_54)] to-transparent pointer-events-none"
-          />
+        />
+        {/* Badge overlay when collapsed */}
+        {isCollapsed && badge !== undefined && badge > 0 && (
+          <motion.span
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1 }}
+            className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center text-[10px] font-bold bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white rounded-full"
+          >
+            {badge > 9 ? "9+" : badge}
+          </motion.span>
         )}
-      </Link>
-    </motion.div>
+      </motion.div>
+
+      <AnimatePresence mode="wait">
+        {!isCollapsed && (
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{
+              duration: 0.2,
+              delay: index * staggerDelay,
+              ease: [0.32, 0.72, 0, 1],
+            }}
+            className="flex-1 flex items-center gap-2 relative z-10"
+          >
+            <span className="flex-1 truncate">{label}</span>
+            {badge !== undefined && badge > 0 && (
+              <motion.span
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                whileHover={{ scale: 1.1 }}
+                transition={{
+                  delay: 0.1 + index * staggerDelay,
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 20,
+                }}
+                className={cn(
+                  "text-xs px-2 py-0.5 rounded-full font-medium badge-glow",
+                  isActive
+                    ? "bg-gradient-to-r from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)] text-white shadow-md"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {badge}
+              </motion.span>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {isActive && !isCollapsed && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.1 }}
+          className="absolute inset-0 bg-gradient-to-r from-[oklch(0.70_0.17_54)] to-transparent pointer-events-none"
+        />
+      )}
+    </Link>
   );
-
-  if (isCollapsed) {
-    return (
-      <Tooltip delayDuration={0}>
-        <TooltipTrigger asChild>
-          <motion.div
-            whileHover={{ x: 2 }}
-            whileTap={{ scale: 0.95 }}
-            transition={hoverSpring}
-          >
-            {content}
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent
-          side="right"
-          className={
-            customTooltipContent
-              ? "w-80 bg-background text-foreground border shadow-lg p-0 max-w-xs max-h-96 overflow-y-auto"
-              : "flex items-center gap-2"
-          }
-          arrowClassName={customTooltipContent ? "bg-background fill-background" : undefined}
-        >
-          {customTooltipContent ? (
-            <div className="p-3">{customTooltipContent}</div>
-          ) : (
-            <>
-              {label}
-              {badge !== undefined && badge > 0 && (
-                <motion.span
-                  initial={{ scale: 0.95, opacity: 0 }}
-                  animate={{ scale: 1 }}
-                  className="text-xs bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white px-1.5 py-0.5 rounded-full"
-                >
-                  {badge}
-                </motion.span>
-              )}
-            </>
-          )}
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  // When expanded with custom tooltip, show tooltip on hover
-  if (customTooltipContent) {
-    return (
-      <Tooltip delayDuration={0}>
-        <TooltipTrigger asChild>
-          <motion.div
-            whileHover={{ x: 4 }}
-            whileTap={{ x: 2, scale: 0.98 }}
-            transition={hoverSpring}
-          >
-            {content}
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent
-          side="right"
-          className="w-80 bg-background text-foreground border shadow-lg p-0 max-w-xs max-h-96 overflow-y-auto"
-          arrowClassName="bg-background fill-background"
-        >
-          <div className="p-3">{customTooltipContent}</div>
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
 
   return (
     <motion.div
-      whileHover={{ x: 4 }}
-      whileTap={{ x: 2, scale: 0.98 }}
-      transition={hoverSpring}
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.2, delay: index * staggerDelay, ease: [0.32, 0.72, 0, 1] }}
     >
-      {content}
+      <motion.div
+        tabIndex={-1}
+        whileHover={{ x: isCollapsed ? 2 : 4 }}
+        whileTap={isCollapsed ? { scale: 0.95 } : { x: 2, scale: 0.98 }}
+        transition={hoverSpring}
+      >
+        {isCollapsed || customTooltipContent ? (
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>{content}</TooltipTrigger>
+            <TooltipContent
+              side="right"
+              className={customTooltipContent
+                ? "w-80 bg-background text-foreground border shadow-lg p-0 max-w-xs max-h-96 overflow-y-auto"
+                : "flex items-center gap-2"}
+              arrowClassName={customTooltipContent ? "bg-background fill-background" : undefined}
+            >
+              {customTooltipContent ? <div className="p-3">{customTooltipContent}</div> : (
+                <>
+                  {label}
+                  {badge !== undefined && badge > 0 && (
+                    <motion.span
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1 }}
+                      className="text-xs bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white px-1.5 py-0.5 rounded-full"
+                    >{badge}</motion.span>
+                  )}
+                </>
+              )}
+            </TooltipContent>
+          </Tooltip>
+        ) : content}
+      </motion.div>
     </motion.div>
   );
 }
@@ -337,6 +295,7 @@ function ScreeningFooterButton({
             variant="ghost"
             size="icon"
             onClick={onClick}
+            aria-label={label}
             className="h-8 w-8 px-0 transition-all duration-200 hover:bg-sidebar-accent/80"
           >
             {icon}
@@ -359,6 +318,7 @@ function ScreeningFooterButton({
       variant="ghost"
       size="sm"
       onClick={onClick}
+      aria-label={label}
       className="h-8 w-auto px-2 transition-all duration-200 hover:bg-sidebar-accent/80"
     >
       {icon}
@@ -517,6 +477,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             label={tc("history")}
             isActive={currentPageValue === "history"}
             isCollapsed={isCollapsed && !isMobile}
+            onClick={handleNavClick}
             index={3}
           />
 
@@ -946,17 +907,20 @@ export function AppSidebar() {
 
         {/* Toggle button - always visible, animates rotation */}
         <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              transition={hoverSpring}
-              className="shrink-0"
-            >
+          <motion.div
+            tabIndex={-1}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            transition={hoverSpring}
+            className="shrink-0"
+          >
+            <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => toggle(isMobile)}
+                aria-label={isCollapsed ? ts("expandSidebar") : ts("collapseSidebar")}
+                aria-expanded={!isCollapsed}
                 className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
               >
                 <motion.div
@@ -966,12 +930,10 @@ export function AppSidebar() {
                   <PanelLeft className="h-4 w-4" />
                 </motion.div>
               </Button>
-            </motion.div>
-          </TooltipTrigger>
+            </TooltipTrigger>
+          </motion.div>
           <TooltipContent side="right">
-            {isCollapsed
-              ? ts("expandSidebar")
-              : ts("collapseSidebar")}
+            {isCollapsed ? ts("expandSidebar") : ts("collapseSidebar")}
           </TooltipContent>
         </Tooltip>
       </div>
@@ -987,12 +949,15 @@ export function AppSidebar() {
 
 export function MobileSidebarTrigger() {
   const isMobile = useIsMobile();
+  const t = useTranslations("accessibility");
+  const isOpen = useSidebarStore((s) => s.isOpen);
   const toggle = useSidebarStore((s) => s.toggle);
 
   if (!isMobile) return null;
 
   return (
     <motion.div
+      tabIndex={-1}
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       transition={hoverSpring}
@@ -1001,6 +966,8 @@ export function MobileSidebarTrigger() {
         variant="ghost"
         size="icon"
         onClick={() => toggle(true)}
+        aria-label={isOpen ? t("collapsePanel") : t("expandPanel")}
+        aria-expanded={isOpen}
         className="lg:hidden"
       >
         <PanelLeft className="h-5 w-5" />

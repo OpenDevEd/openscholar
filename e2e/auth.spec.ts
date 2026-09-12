@@ -19,6 +19,47 @@ async function signIn(page: Page) {
   });
 }
 
+test("sidebar links keep their names and a single keyboard stop when collapsed or expanded", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+  await clerk.loaded({ page });
+  const expand = page.getByRole("button", { name: "Expand sidebar (Ctrl+B)", exact: true });
+  await expect(expand).toHaveAttribute("aria-expanded", "false");
+  const home = page.getByRole("link", { name: "Home", exact: true });
+  const bookmarks = page.getByRole("link", { name: "Bookmarks", exact: true });
+  await expect(home).toHaveAttribute("aria-current", "page");
+  await home.focus();
+  await expect(page.getByRole("tooltip")).toContainText("Home");
+  await page.keyboard.press("Tab");
+  await expect(bookmarks).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Library", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Screening", exact: true })).toBeVisible();
+  const language = page.getByRole("button", { name: /^Language:/ });
+  await language.focus();
+  await page.keyboard.press("Enter");
+  await expect(language).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Escape");
+  await expect(language).toBeFocused();
+  await expand.click();
+  await expect(page.getByRole("button", { name: "Collapse sidebar (Ctrl+B)", exact: true })).toHaveAttribute("aria-expanded", "true");
+  await home.focus();
+  await page.keyboard.press("Tab");
+  await expect(bookmarks).toBeFocused();
+});
+
+test("choosing History dismisses the mobile navigation", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await clerk.loaded({ page });
+  await page.getByRole("button", { name: "Expand panel", exact: true }).click();
+  const drawer = page.getByRole("dialog");
+  await expect(drawer).toBeVisible();
+  await drawer.getByRole("link", { name: "History", exact: true }).click();
+  await expect(page).toHaveURL(/\/history(?:\?|$)/);
+  await expect(drawer).toHaveCount(0);
+});
+
 test.describe("clerk auth flows", () => {
   test("anonymous user is redirected from protected route to /sign-in", async ({
     page,

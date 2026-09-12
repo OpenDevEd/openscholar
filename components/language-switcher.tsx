@@ -58,6 +58,7 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
     return (
       <Button
         variant="ghost"
+        aria-label={t("language")}
         size={isCollapsed ? "icon" : "sm"}
         className={cn(
           "h-8 transition-all duration-200",
@@ -74,12 +75,14 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
+      <motion.div
+        tabIndex={-1}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <PopoverTrigger asChild>
           <Button
+            aria-label={`${t("language")}: ${getLocaleLabel(currentLocale)}`}
             variant="ghost"
             size={isCollapsed ? "icon" : "sm"}
             className={cn(
@@ -95,8 +98,8 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
               <span className="ml-2 text-sm">{getLocaleLabel(currentLocale)}</span>
             )}
           </Button>
-        </motion.div>
-      </PopoverTrigger>
+        </PopoverTrigger>
+      </motion.div>
       <PopoverContent
         align={isCollapsed ? "end" : "start"}
         className="w-48 p-1"
