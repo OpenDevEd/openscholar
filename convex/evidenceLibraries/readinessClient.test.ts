@@ -615,7 +615,7 @@ describe("Evidence Library readiness client", () => {
     ).rejects.toMatchObject({ code: "ADDRESS_NOT_OURS" });
   });
 
-  it("waits for the new route before checking its active revision", async () => {
+  it.each(["previous route", "maintenance page"])("waits for %s to clear during handoff", async (initialAnswer) => {
     vi.useFakeTimers();
     let finalized = false;
     let healthRequests = 0;
@@ -634,6 +634,12 @@ describe("Evidence Library readiness client", () => {
       if (url.endsWith("/api/library-config/health")) {
         healthRequests += 1;
         if (finalized) return json(activeHealth());
+        if (initialAnswer === "maintenance page" && healthRequests <= 3) {
+          return new Response("Library setup in progress", {
+            status: 503,
+            headers: { "X-OpenScholar-Route": `${RUNTIME_COMMIT}:${REVISION}` },
+          });
+        }
         return new Response(null, {
           status: 308,
           headers: {
@@ -672,6 +678,22 @@ describe("Evidence Library readiness client", () => {
     await vi.runAllTimersAsync();
     await result;
     expect(finalized).toBe(true);
+  });
+
+  it("keeps a persistently unavailable route retryable without moving its address", async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn<typeof fetch>(async (request) => {
+      if (String(request).includes("runtime-verifier")) return json(readyVerifierBody());
+      return new Response("Library setup in progress", {
+        status: 503,
+        headers: { "X-OpenScholar-Route": `${RUNTIME_COMMIT}:${REVISION}` },
+      });
+    });
+    const result = expect(requireLibraryRuntimeReady(input(fetchImpl))).rejects.toMatchObject({
+      code: "CONFIG_NOT_READY",
+    });
+    await vi.runAllTimersAsync();
+    await result;
   });
 
   it("reports an oversized foreign page as another site during handoff", async () => {

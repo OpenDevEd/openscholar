@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import {
   createDeployedSetupFixture,
   TEST_RUNTIME_IMAGE,
@@ -415,6 +415,10 @@ describe("Evidence Library address recovery during setup", () => {
   it("moves the library to the next free address and starts Coolify again", async () => {
     const fixture = await createHijackedAddressFixture("address-move");
     const movedTo = "https://climate-evidence-2-lib.libraries.example.test";
+    const before = await fixture.admin.query(api.evidenceLibraries.queries.getDraft, {
+      libraryId: fixture.created.libraryId,
+    });
+    if (!before) throw new Error("Expected the setup draft");
 
     await expect(
       fixture.t.action(
@@ -456,6 +460,17 @@ describe("Evidence Library address recovery during setup", () => {
     });
     expect(saved.revisionIdentity?.payload).toMatchObject({ baseUrl: movedTo });
     expect(saved.draftIdentity?.payload).toMatchObject({ baseUrl: movedTo });
+    const after = await fixture.admin.query(api.evidenceLibraries.queries.getDraft, {
+      libraryId: fixture.created.libraryId,
+    });
+    expect(after?.draft.editVersion).toBe(before.draft.editVersion + 1);
+    await expect(fixture.admin.mutation(api.evidenceLibraries.mutations.activateConfiguration, {
+      libraryId: fixture.created.libraryId,
+      expectedEditVersion: before.draft.editVersion - 1,
+    })).resolves.toMatchObject({
+      operationId: fixture.created.setupOperationId,
+      editVersion: after?.draft.editVersion,
+    });
   });
 
   it("keeps the name and only numbers the address", async () => {

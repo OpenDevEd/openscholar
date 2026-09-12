@@ -539,10 +539,9 @@ async function readCompletedActivation(
     library: Doc<"evidenceLibraries">;
   },
 ) {
-  if (
-    args.draft.editVersion !== args.expectedEditVersion + 1 ||
-    !args.draft.baseRevisionId
-  ) {
+  // Address recovery may advance the draft after activation. The recorded
+  // activation and base revision still identify a retry of the same command.
+  if (!args.draft.baseRevisionId) {
     return null;
   }
 

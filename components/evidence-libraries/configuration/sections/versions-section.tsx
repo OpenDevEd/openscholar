@@ -2,7 +2,7 @@
 
 import { ConvexError } from "convex/values";
 import { useAction, useMutation } from "convex/react";
-import type { FunctionReturnType } from "convex/server";
+import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import { History, RefreshCw } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { Suspense, use, useDeferredValue, useState, type ReactNode } from "react";
@@ -68,7 +68,7 @@ function settle(
   );
 }
 
-type CheckAction = (args: { libraryId: Id<"evidenceLibraries"> }) => Promise<RuntimeState>;
+type CheckAction = (args: FunctionArgs<typeof api.evidenceLibraries.updates.check>) => Promise<RuntimeState>;
 
 /**
  * One update check per page open, shared with `use()` across renders. The
@@ -84,6 +84,7 @@ function runtimeCheck(
   libraryId: Id<"evidenceLibraries">,
   refreshKey: string,
   fallback: string,
+  refresh: boolean,
 ): Promise<RuntimeCheck> {
   let byLibrary = runtimeChecks.get(check);
   if (!byLibrary) {
@@ -93,7 +94,7 @@ function runtimeCheck(
   const cacheKey = `${libraryId}:${refreshKey}`;
   const cached = byLibrary.get(cacheKey);
   if (cached) return cached;
-  const promise = settle(check({ libraryId }), fallback);
+  const promise = settle(check({ libraryId, refresh }), fallback);
   byLibrary.set(cacheKey, promise);
   return promise;
 }
@@ -147,7 +148,7 @@ export function VersionsSection({
   const [checkCount, setCheckCount] = useState(0);
   const checkError = t("versions.checkError");
   const checkPromise = live
-    ? runtimeCheck(check, libraryId, `${refreshKey}:${checkCount}`, checkError)
+    ? runtimeCheck(check, libraryId, `${refreshKey}:${checkCount}`, checkError, checkCount > 0)
     : null;
   // Keep the last result visible while a manual or post-update check suspends.
   const deferredCheckPromise = useDeferredValue(checkPromise);

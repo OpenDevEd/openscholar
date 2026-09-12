@@ -439,14 +439,16 @@ export function classifyEvidenceLibraryAddress(
   if (
     expectedRuntimeRoute &&
     probe.status >= 300 &&
-    probe.status < 400 &&
     probe.runtimeRoute ===
       `${expectedRuntimeRoute.runtimeCommit}:${expectedRuntimeRoute.revisionKey}`
   ) {
+    // Our proxy also marks its maintenance/error responses while traffic
+    // switches. The address is ours, but only a redirect is already ready.
+    const redirect = probe.status < 400;
     return {
       state: "ours",
-      revision: expectedRuntimeRoute.revisionKey,
-      activeAndAccepted: true,
+      revision: redirect ? expectedRuntimeRoute.revisionKey : null,
+      activeAndAccepted: redirect,
     };
   }
   if (probe.status !== 200) {

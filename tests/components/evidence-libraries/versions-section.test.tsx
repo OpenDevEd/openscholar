@@ -222,6 +222,7 @@ describe("<VersionsSection>", () => {
 
   it("keeps the previous release visible and blocks actions until a fresh check settles", async () => {
     await renderSection();
+    expect(mocks.check).toHaveBeenCalledWith({ libraryId: "library_123", refresh: false });
     const next = {
       running: "aaaaaaa1234",
       latest: "ccccccc1234",
@@ -240,6 +241,8 @@ describe("<VersionsSection>", () => {
     expect(screen.queryByText("versions.checking")).toBeNull();
     expect(screen.getByRole("button", { name: "versions.checkAgain" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "versions.update" })).toBeDisabled();
+    expect(mocks.check).toHaveBeenLastCalledWith({ libraryId: "library_123", refresh: true });
+    expect(mocks.check).toHaveBeenCalledTimes(2);
 
     await act(async () => { resolve(next); });
 
@@ -247,6 +250,7 @@ describe("<VersionsSection>", () => {
     expect(screen.queryByText("Faster search")).toBeNull();
     expect(screen.getByRole("button", { name: "versions.checkAgain" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "versions.update" })).toBeEnabled();
+    expect(mocks.check).toHaveBeenCalledTimes(2);
   });
 
   it("shows the loading panel only before the first release result arrives", async () => {
