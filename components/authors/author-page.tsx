@@ -83,6 +83,15 @@ const safeUrl = (value?: string) => {
   }
 };
 
+function PublicationMetadata({year, type}: Pick<AuthorPublication, "year" | "type">) {
+  return <>
+    {year && <span className="font-medium tabular-nums">{year}</span>}
+    <span className="inline-flex items-center gap-1.5">
+      <FileText aria-hidden className="size-3" />{type}
+    </span>
+  </>;
+}
+
 export default function AuthorPage({
   profile, configuration, canEdit, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
   openAlexAuthors, openAlexPapers, onSearchAuthors, openAlexError,
@@ -535,8 +544,7 @@ export default function AuthorPage({
                           {paper.title}
                         </span>
                         <span className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                          <span>{paper.year}</span>
-                          <span>{paper.type}</span>
+                          <PublicationMetadata year={paper.year} type={paper.type} />
                         </span>
                       </span>
                     </label>
@@ -814,11 +822,7 @@ export default function AuthorPage({
                         </button>
                         <div className="min-w-0">
                           <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="font-medium tabular-nums">
-                              {p.year}
-                            </span>
-                            <span className="size-0.5 rounded-full bg-muted-foreground" />
-                            {p.type}
+                            <PublicationMetadata year={p.year} type={p.type} />
                           </p>
                           <button
                             className="text-left text-base font-semibold leading-snug hover:text-primary sm:text-lg"
