@@ -2830,7 +2830,7 @@
       }
     },
     "analytics": {
-      "description": "Where visitor statistics go. Nothing is recorded until a visitor accepts cookies.",
+      "description": "PostHog receives anonymous totals when cookies are declined. Visitor profiles and session recordings require consent.",
       "posthogLabel": "PostHog",
       "posthogHint": "PostHog cloud or your own PostHog server.",
       "googleLabel": "Google Analytics",
