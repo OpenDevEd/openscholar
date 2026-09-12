@@ -338,6 +338,37 @@ describe("Evidence Library update check", () => {
     expect(rows[0]).toMatchObject({ running: RUNNING, latest: LATEST });
   });
 
+  it("refreshes a recent cached release when the owner explicitly checks again", async () => {
+    const fixture = await createReadySetupFixture("update-manual-refresh");
+    vi.stubGlobal("fetch", createGithub({ latest: LATEST }).fetchImpl);
+    const args = { libraryId: fixture.created.libraryId };
+    const cached = await fixture.admin.action(api.evidenceLibraries.updates.check, args);
+
+    vi.setSystemTime(Date.now() + 1_000);
+    const newer = "e".repeat(40);
+    const github = createGithub({ latest: newer });
+    vi.stubGlobal("fetch", github.fetchImpl);
+    await expect(fixture.admin.action(api.evidenceLibraries.updates.check, args))
+      .resolves.toEqual(cached);
+    expect(github.requests).toHaveLength(0);
+
+    const refreshed = await fixture.admin.action(api.evidenceLibraries.updates.check, {
+      ...args,
+      refresh: true,
+    });
+    expect(refreshed).toMatchObject({ latest: newer, latestImage: IMAGE, checkedAt: Date.now() });
+    const requestCount = github.requests.length;
+    expect(requestCount).toBeGreaterThan(0);
+    await expect(fixture.admin.action(api.evidenceLibraries.updates.check, args))
+      .resolves.toEqual(refreshed);
+    expect(github.requests).toHaveLength(requestCount);
+    const rows = await fixture.t.run((ctx) =>
+      ctx.db.query("evidenceLibraryRuntimeReleases").collect(),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ running: RUNNING, latest: newer });
+  });
+
   it("tells the owner plainly when the deployment cannot reach GitHub", async () => {
     vi.stubEnv("GITHUB_TOKEN", "");
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});

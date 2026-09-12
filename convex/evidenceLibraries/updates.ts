@@ -208,17 +208,17 @@ export const checkAddress = internalAction({
 
 /**
  * Called when the configuration page opens. Answers from the release row when
- * it is under ten minutes old, otherwise asks GitHub and saves the row. The
+ * it is under ten minutes old, unless the owner explicitly refreshes. The
  * address check is started here but never waited for; its answer reaches the
  * page through the binding row.
  */
 export const check = action({
-  args: { libraryId: v.id("evidenceLibraries") },
+  args: { libraryId: v.id("evidenceLibraries"), refresh: v.optional(v.boolean()) },
   returns: runtimeUpdateStateValidator,
   handler: async (ctx, args): Promise<RuntimeUpdateState> => {
     const state = await ctx.runQuery(
       internal.evidenceLibraries.updates.readRunningRelease,
-      args,
+      { libraryId: args.libraryId },
     );
     await ctx.scheduler.runAfter(
       0,
@@ -226,6 +226,7 @@ export const check = action({
       { address: state.address, bindingId: state.bindingId },
     );
     if (
+      !args.refresh &&
       state.cached &&
       isFreshRuntimeRelease(state.cached.checkedAt, Date.now())
     ) {

@@ -126,6 +126,7 @@ export async function moveIdentityBaseUrl(
       "Evidence Library identity configuration is invalid",
     );
   }
+  if ((payload as Record<string, unknown>).baseUrl === nextAddress) return;
   const nextPayload = {
     ...(payload as Record<string, unknown>),
     baseUrl: nextAddress,
@@ -133,7 +134,16 @@ export async function moveIdentityBaseUrl(
   await ctx.db.patch(section._id, {
     payload: nextPayload,
     payloadByteLength: validateSectionPayload(nextPayload),
+    ...(section.kind === "draft" ? { updatedAt: Date.now() } : {}),
   });
+  if (section.kind === "draft") {
+    const draft = await ctx.db.get(section.draftId);
+    if (!draft) throw createError("NOT_FOUND", "Evidence Library draft not found");
+    await ctx.db.patch(draft._id, {
+      editVersion: draft.editVersion + 1,
+      updatedAt: Date.now(),
+    });
+  }
 }
 
 /**
