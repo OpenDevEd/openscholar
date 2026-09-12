@@ -250,6 +250,9 @@ function ScreeningFooterButton({
   label: string;
 }) {
   const circumference = 2 * Math.PI * 10;
+  const accessibleLabel = progressPercent === null
+    ? label
+    : `${label} ${Math.round(progressPercent)}%`;
 
   const icon = (
     <span className="relative inline-flex items-center justify-center">
@@ -295,7 +298,7 @@ function ScreeningFooterButton({
             variant="ghost"
             size="icon"
             onClick={onClick}
-            aria-label={label}
+            aria-label={accessibleLabel}
             className="h-8 w-8 px-0 transition-all duration-200 hover:bg-sidebar-accent/80"
           >
             {icon}
@@ -318,7 +321,7 @@ function ScreeningFooterButton({
       variant="ghost"
       size="sm"
       onClick={onClick}
-      aria-label={label}
+      aria-label={accessibleLabel}
       className="h-8 w-auto px-2 transition-all duration-200 hover:bg-sidebar-accent/80"
     >
       {icon}
