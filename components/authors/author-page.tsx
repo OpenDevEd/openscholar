@@ -83,6 +83,18 @@ const safeUrl = (value?: string) => {
   }
 };
 
+function PublicationMetadata({year, type, className}: Pick<AuthorPublication, "year" | "type"> & {className: string}) {
+  const publicationYear = year.trim();
+  const publicationType = type.trim();
+  if (!publicationYear && !publicationType) return null;
+  return <span className={className}>
+    {publicationYear && <span className="font-medium tabular-nums">{publicationYear}</span>}
+    {publicationType && <span className="inline-flex items-center gap-1.5">
+      <FileText aria-hidden className="size-3" />{publicationType}
+    </span>}
+  </span>;
+}
+
 export default function AuthorPage({
   profile, configuration, canEdit, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
   openAlexAuthors, openAlexPapers, onSearchAuthors, openAlexError,
@@ -534,10 +546,7 @@ export default function AuthorPage({
                         <span className="block text-sm font-medium">
                           {paper.title}
                         </span>
-                        <span className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                          <span>{paper.year}</span>
-                          <span>{paper.type}</span>
-                        </span>
+                        <PublicationMetadata year={paper.year} type={paper.type} className="mt-1 flex items-center gap-3 text-xs text-muted-foreground" />
                       </span>
                     </label>
                   ))}
@@ -813,13 +822,7 @@ export default function AuthorPage({
                           </Avatar>
                         </button>
                         <div className="min-w-0">
-                          <p className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="font-medium tabular-nums">
-                              {p.year}
-                            </span>
-                            <span className="size-0.5 rounded-full bg-muted-foreground" />
-                            {p.type}
-                          </p>
+                          <PublicationMetadata year={p.year} type={p.type} className="mb-2 flex items-center gap-2 text-xs text-muted-foreground" />
                           <button
                             className="text-left text-base font-semibold leading-snug hover:text-primary sm:text-lg"
                             onClick={() => window.open(p.url, "_blank", "noopener,noreferrer")}
