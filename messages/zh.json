@@ -2414,7 +2414,7 @@
     },
     "deleteDialog": {
       "title": "Delete this library?",
-      "body": "This removes {name}, its app, its files, and its address {address}. This is a development library, so nothing public is lost. You cannot undo this.",
+      "body": "This removes {name}, its app, its files, and its address {address}. You cannot undo this.",
       "typeToConfirm": "Type {name} to confirm",
       "confirm": "Delete library",
       "startedTitle": "Deleting library",

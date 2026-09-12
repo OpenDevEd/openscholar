@@ -1727,7 +1727,7 @@ describe("Evidence Library configuration deployment", () => {
     expect(state.identity?.payload).toMatchObject({ baseUrl: movedTo });
     expect(state.draft).toMatchObject({
       baseRevisionId: operation.revisionId,
-      editVersion: fixture.activated.editVersion,
+      editVersion: fixture.activated.editVersion + 1,
     });
     expect(state.operation).toMatchObject({
       status: "succeeded",
