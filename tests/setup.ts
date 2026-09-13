@@ -47,3 +47,18 @@ afterEach(async () => {
     cleanup();
   }
 });
+
+// JSDOM has no media-query engine. Browser tests cover responsive layout and
+// reduced motion; component tests default to no matching media queries.
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  window.matchMedia = (media: string): MediaQueryList => ({
+    matches: false,
+    media,
+    onchange: null,
+    addListener() {},
+    removeListener() {},
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent() { return true; },
+  });
+}
