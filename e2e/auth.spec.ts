@@ -120,6 +120,15 @@ test.describe("clerk auth flows", () => {
       libraryName,
     );
     await expect(page.getByLabel("Tagline")).toHaveValue(tagline);
+
+    await page.goto(`${configurationUrl}?section=versions`);
+    const versions = page.locator("#sec-versions");
+    await expect(versions).toBeInViewport();
+    await page.reload();
+    await expect(versions).toBeInViewport();
+    await page.getByRole("navigation", { name: "Configuration sections" })
+      .getByRole("link", { name: /^Identity/ }).click();
+    await expect(page.locator("#sec-identity")).toBeInViewport();
   });
 
   test("sign out returns session to anonymous behavior", async ({ page }) => {
