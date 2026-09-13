@@ -440,11 +440,11 @@ export function ColourField({
                         <button
                           type="button"
                           aria-label={tp(p.key)}
-                          onClick={() => onChange(p.accent)}
+                          onClick={() => onChange(p.colors.accent)}
                           className="flex size-6 items-center justify-center rounded-md border border-border/40"
-                          style={{ background: p.accent }}
+                          style={{ background: p.colors.accent }}
                         >
-                          {p.accent.toLowerCase() === value.toLowerCase() ? (
+                          {p.colors.accent.toLowerCase() === value.toLowerCase() ? (
                             <Check className="h-3 w-3 text-white" />
                           ) : null}
                         </button>
