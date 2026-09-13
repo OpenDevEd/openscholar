@@ -181,10 +181,9 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
           <p className="text-xs text-muted-foreground">{t("presetsLabel")}</p>
           <div className="flex flex-wrap gap-2" role="group" aria-label={t("presetsLabel")}>
             {COLOUR_PRESETS.map((p) => {
-              const active =
-                p.accent === theme.colors.accent &&
-                p.tertiary === theme.colors.tertiary &&
-                p.link === theme.colors.link;
+              const active = Object.entries(p.colors).every(
+                ([key, value]) => value.toLowerCase() === theme.colors[key as ColourKey].toLowerCase(),
+              );
               return (
                 <Button
                   key={p.key}
@@ -196,15 +195,13 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
                   className="gap-2"
                   onClick={() =>
                     patch((d) => {
-                      d.theme.colors.accent = p.accent;
-                      d.theme.colors.tertiary = p.tertiary;
-                      d.theme.colors.link = p.link;
+                      d.theme.colors = { ...p.colors };
                       return d;
                     })
                   }
                 >
                   <span className="flex gap-0.5">
-                    {[p.accent, p.tertiary, p.link].map((c) => (
+                    {[p.colors.accent, p.colors.tertiary, p.colors.link].map((c) => (
                       <span
                         key={c}
                         className="size-3 rounded-sm border border-border/40"

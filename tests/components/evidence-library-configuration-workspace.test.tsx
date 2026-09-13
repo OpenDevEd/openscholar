@@ -472,6 +472,47 @@ describe("<ConfigurationWorkspace>", () => {
     expect(request.sections[0]?.payload).toEqual({ ...savedTheme, layout: "wide" });
   });
 
+  it("restores background and card colours with a preset and saves the complete palette", async () => {
+    const user = userEvent.setup();
+    await renderWorkspace();
+    const theme = within(document.getElementById("sec-theme")!);
+    const sunrise = theme.getByRole("button", { name: "theme.presets.sunrise" });
+    expect(sunrise).toHaveAttribute("aria-pressed", "true");
+    await user.click(theme.getByRole("button", { name: "theme.advanced" }));
+
+    for (const key of ["backgroundDark", "backgroundLight", "cardDark", "cardLight"]) {
+      const field = theme.getByLabelText(`theme.advancedColour.${key}`);
+      await user.clear(field);
+      await fillField(user, field, "#123456");
+    }
+    expect(sunrise).toHaveAttribute("aria-pressed", "false");
+
+    const ocean = theme.getByRole("button", { name: "theme.presets.ocean" });
+    await user.click(ocean);
+    expect(ocean).toHaveAttribute("aria-pressed", "true");
+    for (const [key, value] of Object.entries({
+      backgroundDark: "#0f0f0f",
+      backgroundLight: "#F4F2EE",
+      cardDark: "#141414",
+      cardLight: "#FFFFFF",
+    })) {
+      expect(theme.getByLabelText(`theme.advancedColour.${key}`)).toHaveValue(value);
+    }
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(saved[0]).toEqual({
+      libraryId: "library_123",
+      expectedEditVersion: 4,
+      sections: [{
+        sectionKey: "theme",
+        payload: {
+          ...savedTheme,
+          colors: { ...savedTheme.colors, accent: "#2563eb", tertiary: "#1e293b", link: "#1d4ed8" },
+        },
+      }],
+    });
+  });
+
   it("shows Needs attention for a section with a problem and blocks Activate and Save", async () => {
     const user = userEvent.setup();
     await renderWorkspace();
