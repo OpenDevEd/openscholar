@@ -129,6 +129,9 @@ test.describe("clerk auth flows", () => {
     await page.getByRole("navigation", { name: "Configuration sections" })
       .getByRole("link", { name: /^Identity/ }).click();
     await expect(page.locator("#sec-identity")).toBeInViewport();
+    await page.goto(`${configurationUrl}?section=team`);
+    await expect(page.getByRole("button", { name: "Add member", exact: true })).toBeVisible();
+    await expect(page.locator("#sec-team")).toBeInViewport();
   });
 
   test("sign out returns session to anonymous behavior", async ({ page }) => {
