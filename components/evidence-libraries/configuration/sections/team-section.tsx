@@ -1,5 +1,8 @@
 "use client";
 
+import { Users } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { SectionCard } from "../section-card";
 import { useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -13,7 +16,11 @@ export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> 
   const remove = useMutation(api.evidenceLibraries.team.removeMember);
   const changeInvitation = useMutation(api.evidenceLibraries.invitations.change);
   const invite = useAction(api.evidenceLibraries.invitationActions.invite);
-  if (!data) return null;
+  if (!data) return (
+    <SectionCard id="sec-team" icon={Users} title="Team" description="Manage access to this library." aria-busy="true">
+      <Spinner aria-label="Loading team" />
+    </SectionCard>
+  );
   const members: AccessMember[] = [
     ...data.owners.map(person => ({ ...person, id: person.clerkUserId, role: "Owner" as const, invited: false })),
     ...data.editors.map(person => ({ ...person, id: person.clerkUserId, role: "Editor" as const, invited: false })),

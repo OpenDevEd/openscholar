@@ -308,7 +308,7 @@ function Workspace({
     "section",
     parseAsStringLiteral(RAIL_KEYS).withDefault("identity"),
   );
-  const { active: spied, jumpTo: scrollToSection } = useScrollSpy(RAIL_KEYS);
+  const { active: spied, jumpTo: scrollToSection } = useScrollSpy(RAIL_KEYS, section);
   const current = spied ?? section;
 
   const dirty = isDirty(draft, saved);
