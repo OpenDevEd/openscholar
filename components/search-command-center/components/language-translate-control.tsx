@@ -88,7 +88,7 @@ export function LanguageTranslateControl({
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        flagOnly
+        compact
         className="border-0 rounded-none min-w-[2.5rem] shrink-0"
       />
     </div>
