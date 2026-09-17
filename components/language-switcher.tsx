@@ -24,15 +24,6 @@ const LOCALE_TO_LABEL_KEY: Record<Locale, string> = {
   ja: "ja",
 };
 
-const localeFlags: Record<Locale, string> = {
-  "en-US": "🇺🇸",
-  "en-GB": "🇬🇧",
-  zh: "🇨🇳",
-  fr: "🇫🇷",
-  hi: "🇮🇳",
-  ja: "🇯🇵",
-};
-
 interface LanguageSwitcherProps {
   isCollapsed?: boolean;
 }
@@ -88,9 +79,7 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
             )}
             title={t("language")}
           >
-            <span className="text-base leading-none">
-              {localeFlags[currentLocale]}
-            </span>
+            <Globe className="h-[1.2rem] w-[1.2rem]" />
             {!isCollapsed && (
               <span className="ml-2 text-sm">{getLocaleLabel(currentLocale)}</span>
             )}
@@ -117,7 +106,6 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
               whileHover={{ x: 2 }}
               whileTap={{ scale: 0.98 }}
             >
-              <span className="text-base leading-none">{localeFlags[locale]}</span>
               <span className="flex-1 text-left">{getLocaleLabel(locale)}</span>
               <AnimatePresence>
                 {currentLocale === locale && (
