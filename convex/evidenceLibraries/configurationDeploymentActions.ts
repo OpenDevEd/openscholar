@@ -631,7 +631,14 @@ export const runConfigurationDeployment = internalAction({
         { ...args, checkedAt: Date.now() },
       );
     } catch (error) {
-      if (isRetryableReadinessError(error)) {
+      // Coolify goes quiet for a moment while it redeploys an app or reloads
+      // its proxy for a new domain. The run is safe to repeat, so an outage
+      // waits on the same bounded poll as readiness instead of failing.
+      if (
+        isRetryableReadinessError(error) ||
+        (error instanceof CoolifyClientError &&
+          error.code === "COOLIFY_UNAVAILABLE")
+      ) {
         try {
           const retry = await ctx.runMutation(
             internal.evidenceLibraries.configurationDeployment
