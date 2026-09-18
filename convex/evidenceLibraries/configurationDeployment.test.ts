@@ -1735,6 +1735,58 @@ describe("Evidence Library configuration deployment", () => {
     });
   });
 
+  it("waits out a Coolify outage instead of failing the publish", async () => {
+    const fixture = await createReadyLibrary("coolify-outage");
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: fixture.activated.revisionKey,
+    });
+    let coolifyDown = false;
+    const flaky: typeof fetch = async (requestInput, init) => {
+      const url = new URL(String(requestInput));
+      if (coolifyDown && url.pathname.startsWith("/api/v1/")) {
+        return jsonResponse({ message: "Bad gateway" }, 502);
+      }
+      return await network.fetchImpl(requestInput, init);
+    };
+    vi.stubGlobal("fetch", flaky);
+
+    await fixture.admin.action(
+      api.evidenceLibraries.addressActions.moveLibraryAddress,
+      { libraryId: fixture.created.libraryId },
+    );
+    const operation = await readMoveOperation(fixture);
+    const revision = await fixture.t.run((ctx) =>
+      ctx.db.get(operation.revisionId!),
+    );
+    if (!revision) throw new Error("The moved revision is missing");
+    network.setActiveRevision(revision.revisionKey);
+    const args = {
+      libraryId: fixture.created.libraryId,
+      operationId: operation._id,
+      attemptToken: operation.configurationAttemptToken!,
+      attemptCount: operation.attemptCount,
+    };
+    const run = () =>
+      fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        args,
+      );
+
+    await expect(run()).resolves.toMatchObject({ status: "running" });
+    network.finishDeployment();
+    coolifyDown = true;
+    await expect(run()).resolves.toMatchObject({ status: "running" });
+    await expect(
+      fixture.t.run((ctx) => ctx.db.get(operation._id)),
+    ).resolves.toMatchObject({ status: "running" });
+
+    coolifyDown = false;
+    await expect(run()).resolves.toEqual({ status: "succeeded" });
+  });
+
   it("keeps the old address when Coolify refuses the new domain", async () => {
     const fixture = await createReadyLibrary("address-move-refused");
     const network = createRuntimeNetwork({
