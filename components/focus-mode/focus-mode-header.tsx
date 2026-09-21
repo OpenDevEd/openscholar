@@ -1,3 +1,4 @@
+import { CitationControl } from "@/components/citation-control";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -236,6 +237,7 @@ export function FocusModeHeader({
               O
             </span>
           </div>
+          <CitationControl paper={currentPaper} compact={false} />
           <div className="flex items-center gap-1">
             <DownloadMenu
               variant="icon"

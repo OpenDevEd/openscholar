@@ -1,4 +1,14 @@
 {
+  "citation": {
+    "cite": "Cite",
+    "style": "Citation style",
+    "copy": "Copy",
+    "copied": "Copied",
+    "loading": "Loading citation…",
+    "failed": "Could not load this citation.",
+    "retry": "Retry",
+    "citation": "citation"
+  },
   "common": {
     "search": "Search",
     "home": "Home",

@@ -1,4 +1,14 @@
 {
+  "citation": {
+    "cite": "Citer",
+    "style": "Style de citation",
+    "copy": "Copier",
+    "copied": "Copié",
+    "loading": "Chargement de la référence…",
+    "failed": "Impossible de charger cette référence.",
+    "retry": "Réessayer",
+    "citation": "référence"
+  },
   "common": {
     "search": "Rechercher",
     "home": "Accueil",

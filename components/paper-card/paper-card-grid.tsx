@@ -1,5 +1,7 @@
 "use client";
 
+import { CitationControl } from "@/components/citation-control";
+
 import React from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations, useFormatter } from "next-intl";
@@ -109,6 +111,7 @@ export function PaperCardGrid({
                 compact
               />
               <DOIBadge doi={result.doi} compact />
+              <CitationControl paper={result} />
               <DownloadMenuCompact
                 onDownloadJSON={() => onDownloadItem(result, "json")}
                 onDownloadCSV={() => onDownloadItem(result, "csv")}

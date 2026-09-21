@@ -1,5 +1,7 @@
 "use client";
 
+import { CitationControl } from "@/components/citation-control";
+
 import React from "react";
 import { usePathname } from "next/navigation";
 import { useTranslations, useFormatter } from "next-intl";
@@ -168,6 +170,8 @@ export function PaperCardListSimple({
               />
             </div>
           </div>
+
+          <CitationControl paper={result} />
 
           {/* Mobile citation count */}
           <div
