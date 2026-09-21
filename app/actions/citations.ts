@@ -1,7 +1,7 @@
 "use server";
 
-import { getPaperCitations } from "@/lib/citations/server";
+import { getPaperCitationMetadata } from "@/lib/citations/server";
 
-export async function createPaperCitations(data: unknown, locale: string) {
-  return getPaperCitations(data, locale);
+export async function enrichPaperCitationMetadata(data: unknown) {
+  return getPaperCitationMetadata(data);
 }

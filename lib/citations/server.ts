@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { formatCitations } from "./formatter";
 import type { CitationData } from "./formats";
 import { normalizeCitationType } from "./paper-data";
 
@@ -17,9 +16,8 @@ const metadataSchema = z.object({
 });
 const inputSchema = metadataSchema.extend({ id: z.string().regex(/^W\d+$/), "citation-key": z.string().regex(/^os_W\d+$/) });
 
-export async function getPaperCitations(input: unknown, language: unknown) {
+export async function getPaperCitationMetadata(input: unknown) {
   const data: CitationData = inputSchema.parse(input);
-  const locale = z.enum(["en-GB", "en-US", "fr", "hi", "ja", "zh"]).catch("en-GB").parse(language);
   const doi = typeof data.DOI === "string" && /^10\.\d{4,9}\/\S+$/i.test(data.DOI) ? data.DOI : null;
   let record = data;
   if (doi) {
@@ -49,5 +47,5 @@ export async function getPaperCitations(input: unknown, language: unknown) {
       console.warn("Citation DOI metadata lookup failed", { doi, error });
     }
   }
-  return { citations: await formatCitations(record, locale) };
+  return record;
 }

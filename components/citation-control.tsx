@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import useSWR from "swr";
+import useSWR, { preload } from "swr";
 import { Check, Copy, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createPaperCitations } from "@/app/actions/citations";
+import { enrichPaperCitationMetadata } from "@/app/actions/citations";
+import { loadPaperCitations } from "@/lib/citations/client";
 import { paperToCitationData } from "@/lib/citations/paper-data";
 import { CITATION_FORMATS, type CitationFormat, type CitationData } from "@/lib/citations/formats";
 import { useAppToast } from "@/lib/toast/use-app-toast";
@@ -19,9 +20,11 @@ function CitationPanel({ data }: { data: CitationData }) {
   const toast = useAppToast();
   const [format, setFormat] = useState<CitationFormat>("apa");
   const [copied, setCopied] = useState<string | null>(null);
-  const { data: result, error, isLoading, mutate } = useSWR(["citations", data, locale],
-    () => createPaperCitations(data, locale),
-    { revalidateOnFocus: false, revalidateOnReconnect: false, revalidateIfStale: false });
+  const { data: enriched } = useSWR(data.DOI ? ["citation-metadata", data] : null,
+    () => enrichPaperCitationMetadata(data),
+    { revalidateOnFocus: false, revalidateOnReconnect: false, revalidateIfStale: false, shouldRetryOnError: false });
+  const { data: result, error, isLoading, mutate } = useSWR(["paper-citations", enriched ?? data, locale], loadPaperCitations,
+    { revalidateOnFocus: false, revalidateOnReconnect: false, revalidateIfStale: false, keepPreviousData: true });
   const text = result?.citations[format];
   return <div className="space-y-3">
     <div className="flex items-center justify-between gap-2">
@@ -41,7 +44,7 @@ function CitationPanel({ data }: { data: CitationData }) {
         {copied === text && text ? t("copied") : t("copy")}
       </Button>
     </div>
-    {isLoading ? <p className="py-5 text-sm text-muted-foreground" role="status">{t("loading")}</p> : error ?
+    {isLoading && !text ? <p className="py-5 text-sm text-muted-foreground" role="status">{t("loading")}</p> : error ?
       <div role="alert" className="space-y-2 text-sm"><p>{t("failed")}</p><Button size="sm" variant="outline" onClick={() => void mutate()}>{t("retry")}</Button></div> :
       <p aria-live="polite" className={`max-h-72 overflow-y-auto whitespace-pre-wrap break-words text-muted-foreground ${format === "bibtex" ? "font-mono text-xs" : "text-sm leading-relaxed"}`}>{text}</p>}
   </div>;
@@ -50,12 +53,17 @@ function CitationPanel({ data }: { data: CitationData }) {
 export function CitationControl({ paper, compact = true }: { paper: PaperResult; compact?: boolean }) {
   const t = useTranslations("citation");
   const [open, setOpen] = useState(false);
+  const locale = useLocale();
   const data = paperToCitationData(paper);
   if (!data) return null;
+  const prepare = () => {
+    void preload(["paper-citations", data, locale], loadPaperCitations).catch(() => { /* The panel exposes retry. */ });
+    if (data.DOI) void preload(["citation-metadata", data], () => enrichPaperCitationMetadata(data)).catch(() => { /* Loaded metadata remains usable. */ });
+  };
   return <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant={compact ? "ghost" : "outline"} size={compact ? "icon" : "sm"} className={compact ? "size-8" : ""} aria-label={t("cite")} title={t("cite")}>
+        <Button onPointerEnter={prepare} onFocus={prepare} variant={compact ? "ghost" : "outline"} size={compact ? "icon" : "sm"} className={compact ? "size-8" : ""} aria-label={t("cite")} title={t("cite")}>
           <Quote className="size-4" />{!compact && t("cite")}
         </Button>
       </PopoverTrigger>

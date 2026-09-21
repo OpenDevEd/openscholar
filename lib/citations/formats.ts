@@ -9,7 +9,6 @@ export const CITATION_FORMATS = [
 
 export type CitationFormat = (typeof CITATION_FORMATS)[number]["id"];
 export type Citations = Record<CitationFormat, string>;
-export type CitationResponse = { citations: Citations | null };
 
 export type CitationName = { literal: string } | { family: string; given?: string };
 export type CitationDate = { "date-parts": number[][] } | { literal: string };
