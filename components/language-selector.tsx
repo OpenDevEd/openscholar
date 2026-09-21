@@ -15,8 +15,8 @@ import { languageOptions } from "@/lib/ai/core/languages";
 import { useTranslations } from "next-intl";
 import { submitButtonMorphTransition } from "@/lib/animation-config";
 
-// Subtle rotate + blur for flag/icon transitions (softer than submit button)
-const flagIconVariants = {
+// Subtle rotate + blur for code/icon transitions (softer than submit button)
+const iconVariants = {
   enter: { rotate: -8, filter: "blur(2px)", opacity: 0 },
   animate: { rotate: 0, filter: "blur(0px)", opacity: 1 },
   exit: { rotate: 8, filter: "blur(2px)", opacity: 0 },
@@ -30,8 +30,8 @@ interface LanguageSelectorProps {
   disabled?: boolean;
   className?: string;
   placeholder?: string;
-  /** When true, trigger shows only the flag (no text). Useful with a separate translate button. */
-  flagOnly?: boolean;
+  /** When true, trigger shows only the language code (no name). Useful with a separate translate button. */
+  compact?: boolean;
 }
 
 export function LanguageSelector({
@@ -40,7 +40,7 @@ export function LanguageSelector({
   disabled = false,
   className,
   placeholder,
-  flagOnly = false,
+  compact = false,
 }: LanguageSelectorProps) {
   const tl = useTranslations("languages");
   const tc = useTranslations("common");
@@ -58,7 +58,7 @@ export function LanguageSelector({
         size="sm"
         className={cn(
           "w-auto flex-1",
-          flagOnly ? "min-w-[2.5rem] px-2" : "min-w-[120px] max-w-[220px]",
+          compact ? "min-w-[2.5rem] px-2" : "min-w-[120px] max-w-[220px]",
           "bg-ai-bg border-ai-border text-ai shadow-xs",
           "hover:bg-ai-bg-hover hover:border-ai-border-hover hover:shadow-[var(--ai-glow)]",
           "dark:bg-ai-bg dark:border-ai-border dark:text-ai",
@@ -67,14 +67,15 @@ export function LanguageSelector({
           "[&_svg:not([class*='text-'])]:text-ai",
           className,
         )}
+        aria-label={compact ? selectedLabel || resolvedPlaceholder : undefined}
       >
-        {flagOnly ? (
-          <span className="relative flex h-3 w-4 shrink-0 items-center justify-center">
+        {compact ? (
+          <span className="relative flex h-4 w-5 shrink-0 items-center justify-center">
             <AnimatePresence mode="popLayout">
               {selectedLanguage ? (
                 <motion.span
-                  key={`flag-${selectedLanguage.code}`}
-                  variants={flagIconVariants}
+                  key={`code-${selectedLanguage.code}`}
+                  variants={iconVariants}
                   initial="enter"
                   animate="animate"
                   exit="exit"
@@ -82,17 +83,15 @@ export function LanguageSelector({
                   className="absolute inset-0 flex items-center justify-center"
                 >
                   <SelectValue>
-                    <img
-                      src={selectedLanguage.flagUrl}
-                      alt={`${selectedLanguage.name} flag`}
-                      className="h-3 w-4 rounded-sm border border-gray-200 object-cover"
-                    />
+                    <span className="text-[11px] font-medium uppercase leading-none">
+                      {selectedLanguage.code}
+                    </span>
                   </SelectValue>
                 </motion.span>
               ) : (
                 <motion.span
                   key="icon"
-                  variants={flagIconVariants}
+                  variants={iconVariants}
                   initial="enter"
                   animate="animate"
                   exit="exit"
@@ -106,14 +105,7 @@ export function LanguageSelector({
             </AnimatePresence>
           </span>
         ) : selectedLanguage ? (
-          <div className="flex items-center gap-2 min-w-0">
-            <img
-              src={selectedLanguage.flagUrl}
-              alt={`${selectedLanguage.name} flag`}
-              className="w-4 h-3 rounded-sm border border-gray-200"
-            />
-            <SelectValue>{selectedLabel}</SelectValue>
-          </div>
+          <SelectValue>{selectedLabel}</SelectValue>
         ) : (
           <SelectValue placeholder={resolvedPlaceholder} />
         )}
@@ -131,14 +123,7 @@ export function LanguageSelector({
       >
         {languageOptions.map((language) => (
           <SelectItem key={language.code} value={language.code}>
-            <div className="flex items-center gap-2">
-              <img
-                src={language.flagUrl}
-                alt={`${language.name} flag`}
-                className="w-4 h-3 rounded-sm border border-gray-200"
-              />
-              <span>{tl(language.code as never) || language.name}</span>
-            </div>
+            {tl(language.code as never) || language.name}
           </SelectItem>
         ))}
       </SelectContent>
