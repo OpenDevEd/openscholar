@@ -141,7 +141,7 @@ export function HistoryItem({
           "bg-card/40 dark:bg-card/30",
           "border border-border/40",
           "hover:bg-card/70 hover:border-border/60 hover:shadow-sm",
-          "transition-all duration-200"
+          "transition-[background-color,border-color,box-shadow] duration-200"
         )}
       >
         {/* Main row */}
@@ -290,7 +290,7 @@ export function HistoryItem({
           "bg-card/50 dark:bg-card/40",
           "border border-border/40",
           "hover:border-border/60 hover:shadow-md",
-          "transition-all duration-200"
+          "transition-[background-color,border-color,box-shadow] duration-200"
         )}
       >
         {isQueryHistoryOpen && queryHistoryCount > 1 ? (
@@ -517,7 +517,7 @@ export function HistoryItem({
         "bg-card/50 dark:bg-card/40",
         "border border-border/40",
         "hover:border-border/60 hover:shadow-md",
-        "transition-all duration-200"
+        "transition-[background-color,border-color,box-shadow] duration-200"
       )}
     >
       <div className="p-4">

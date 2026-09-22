@@ -82,7 +82,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
             "bg-card/40 dark:bg-card/30",
             "border border-border/40",
             "hover:bg-card/70 hover:border-border/60 hover:shadow-sm",
-            "transition-all duration-200"
+            "transition-[background-color,border-color,box-shadow] duration-200"
           )}
         >
           {/* Status dot (hidden in chat mode — no pipeline state) */}
@@ -139,7 +139,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
             "bg-card/50 dark:bg-card/40",
             "border border-border/40",
             "hover:border-border/60 hover:shadow-md",
-            "transition-all duration-200"
+            "transition-[background-color,border-color,box-shadow] duration-200"
           )}
         >
           <div className="p-4">
@@ -235,7 +235,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           "bg-card/50 dark:bg-card/40",
           "border border-border/40",
           "hover:border-border/60 hover:shadow-md",
-          "transition-all duration-200"
+          "transition-[background-color,border-color,box-shadow] duration-200"
         )}
       >
         {/* Colored top stripe */}
