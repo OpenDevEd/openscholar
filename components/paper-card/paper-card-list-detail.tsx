@@ -1,5 +1,7 @@
 "use client";
 
+import { CitationControl } from "@/components/citation-control";
+
 import React, { useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { workToCoins } from "@/lib/utils";
@@ -335,6 +337,7 @@ export function PaperCardListDetail({
             <div className="flex items-center justify-between">
               <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
               <div className="flex items-center gap-2">
+                <CitationControl paper={result} />
                 <DownloadMenu
                   variant="icon"
                   onDownloadJSON={() => onDownloadItem(result, "json")}
@@ -412,6 +415,7 @@ export function PaperCardListDetail({
                 oaUrl={result.open_access?.oa_url}
               />
               <DOIBadge doi={result.doi} />
+              <CitationControl paper={result} />
               <DownloadMenu
                 variant="icon"
                 onDownloadJSON={() => onDownloadItem(result, "json")}

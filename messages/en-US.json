@@ -1,4 +1,20 @@
 {
+  "citation": {
+    "cite": "Cite",
+    "style": "Citation style",
+    "copy": "Copy",
+    "copied": "Copied",
+    "loading": "Loading citation…",
+    "failed": "Could not load this citation.",
+    "retry": "Retry",
+    "citation": "citation",
+    "searchStyles": "Search styles or journals…",
+    "loadingStyles": "Loading styles…",
+    "stylesFailed": "Could not load styles.",
+    "noStyles": "No matching styles.",
+    "commonStyles": "Common styles",
+    "otherStyles": "Other styles"
+  },
   "common": {
     "search": "Search",
     "home": "Home",

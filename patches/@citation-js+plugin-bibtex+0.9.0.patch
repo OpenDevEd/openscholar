@@ -1,0 +1,128 @@
+diff --git a/node_modules/@citation-js/plugin-bibtex/lib-mjs/config.js b/node_modules/@citation-js/plugin-bibtex/lib-mjs/config.js
+index 806bae3..d974d09 100644
+--- a/node_modules/@citation-js/plugin-bibtex/lib-mjs/config.js
++++ b/node_modules/@citation-js/plugin-bibtex/lib-mjs/config.js
+@@ -15,7 +15,7 @@ export default {
+   format: {
+     useIdAsLabel: false,
+     checkLabel: true,
+-    asciiOnly: true
++    asciiOnly: false
+   },
+   biber: {
+     annotationMarker: '+an',
+diff --git a/node_modules/@citation-js/plugin-bibtex/lib-mjs/mapping/bibtex.js b/node_modules/@citation-js/plugin-bibtex/lib-mjs/mapping/bibtex.js
+index 68afa12..2edf621 100644
+--- a/node_modules/@citation-js/plugin-bibtex/lib-mjs/mapping/bibtex.js
++++ b/node_modules/@citation-js/plugin-bibtex/lib-mjs/mapping/bibtex.js
+@@ -16,6 +16,21 @@ export default new util.Translator([{
+       return `[Online; accessed ${formatDate(accessed)}]`;
+     }
+   }
++}, {
++  source: 'abstract',
++  target: 'abstract'
++}, {
++  source: 'language',
++  target: 'language',
++  convert: Converters.PICK
++}, {
++  source: 'keywords',
++  target: 'keyword',
++  convert: Converters.KEYWORDS
++}, {
++  source: 'translator',
++  target: 'translator',
++  convert: Converters.NAMES
+ }, {
+   source: 'annote',
+   target: 'annote'
+diff --git a/node_modules/@citation-js/plugin-bibtex/lib-mjs/output/value.js b/node_modules/@citation-js/plugin-bibtex/lib-mjs/output/value.js
+index 1a86eb1..bb1804a 100644
+--- a/node_modules/@citation-js/plugin-bibtex/lib-mjs/output/value.js
++++ b/node_modules/@citation-js/plugin-bibtex/lib-mjs/output/value.js
+@@ -43,7 +43,7 @@ function escapeCharacter(char) {
+ }
+ function escapeValue(value) {
+   if (!config.format.asciiOnly) {
+-    return value;
++    return value.replace(/[\\&%$#_{}^~]/g, char => ({ '\\': '\\textbackslash{}', '^': '\\textasciicircum{}', '~': '\\textasciitilde{}' })[char] || `\\${char}`);
+   }
+   return value.normalize('NFKD').replace(UNSAFE_UNICODE, char => escapeCharacter(char)).replace(DIACRITIC_PATTERN, match => Array.from(match).reduce((subject, diacritic) => `{\\${unicode[diacritic]} ${subject}}`)).replace(LONE_DIACRITIC_PATTERN, '');
+ }
+@@ -66,8 +66,9 @@ function formatRichText(value) {
+   return tokens.join('');
+ }
+ function formatName(name) {
+-  if (name.family && !name.prefix && !name.given & !name.suffix) {
+-    return name.family.includes(listDelimiters.list) ? name.family : `{${name.family}}`;
++  if (name.family && !name.prefix && !name.given && !name.suffix) {
++    const family = escapeValue(name.family);
++    return family.includes(listDelimiters.list) ? family : `{${family}}`;
+   }
+   const parts = [''];
+   if (name.prefix && name.family) {
+diff --git a/node_modules/@citation-js/plugin-bibtex/lib/config.js b/node_modules/@citation-js/plugin-bibtex/lib/config.js
+index 7b821b1..a5ff407 100644
+--- a/node_modules/@citation-js/plugin-bibtex/lib/config.js
++++ b/node_modules/@citation-js/plugin-bibtex/lib/config.js
+@@ -23,7 +23,7 @@ var _default = exports.default = {
+   format: {
+     useIdAsLabel: false,
+     checkLabel: true,
+-    asciiOnly: true
++    asciiOnly: false
+   },
+   biber: {
+     annotationMarker: '+an',
+diff --git a/node_modules/@citation-js/plugin-bibtex/lib/mapping/bibtex.js b/node_modules/@citation-js/plugin-bibtex/lib/mapping/bibtex.js
+index 0593af9..99985d4 100644
+--- a/node_modules/@citation-js/plugin-bibtex/lib/mapping/bibtex.js
++++ b/node_modules/@citation-js/plugin-bibtex/lib/mapping/bibtex.js
+@@ -23,6 +23,21 @@ var _default = exports.default = new _core.util.Translator([{
+       return `[Online; accessed ${(0, _date.format)(accessed)}]`;
+     }
+   }
++}, {
++  source: 'abstract',
++  target: 'abstract'
++}, {
++  source: 'language',
++  target: 'language',
++  convert: _shared.Converters.PICK
++}, {
++  source: 'keywords',
++  target: 'keyword',
++  convert: _shared.Converters.KEYWORDS
++}, {
++  source: 'translator',
++  target: 'translator',
++  convert: _shared.Converters.NAMES
+ }, {
+   source: 'annote',
+   target: 'annote'
+diff --git a/node_modules/@citation-js/plugin-bibtex/lib/output/value.js b/node_modules/@citation-js/plugin-bibtex/lib/output/value.js
+index 9c817cf..2d5dcd6 100644
+--- a/node_modules/@citation-js/plugin-bibtex/lib/output/value.js
++++ b/node_modules/@citation-js/plugin-bibtex/lib/output/value.js
+@@ -51,7 +51,7 @@ function escapeCharacter(char) {
+ }
+ function escapeValue(value) {
+   if (!_config.default.format.asciiOnly) {
+-    return value;
++    return value.replace(/[\\&%$#_{}^~]/g, char => ({ '\\': '\\textbackslash{}', '^': '\\textasciicircum{}', '~': '\\textasciitilde{}' })[char] || `\\${char}`);
+   }
+   return value.normalize('NFKD').replace(UNSAFE_UNICODE, char => escapeCharacter(char)).replace(DIACRITIC_PATTERN, match => Array.from(match).reduce((subject, diacritic) => `{\\${unicode[diacritic]} ${subject}}`)).replace(LONE_DIACRITIC_PATTERN, '');
+ }
+@@ -74,8 +74,9 @@ function formatRichText(value) {
+   return tokens.join('');
+ }
+ function formatName(name) {
+-  if (name.family && !name.prefix && !name.given & !name.suffix) {
+-    return name.family.includes(listDelimiters.list) ? name.family : `{${name.family}}`;
++  if (name.family && !name.prefix && !name.given && !name.suffix) {
++    const family = escapeValue(name.family);
++    return family.includes(listDelimiters.list) ? family : `{${family}}`;
+   }
+   const parts = [''];
+   if (name.prefix && name.family) {

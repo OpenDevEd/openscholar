@@ -5,6 +5,7 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  serverExternalPackages: ["citeproc-ts"],
   devIndicators: false,
   poweredByHeader: false,
   typescript: {

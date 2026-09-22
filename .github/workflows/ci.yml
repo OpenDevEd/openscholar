@@ -141,6 +141,7 @@ jobs:
     timeout-minutes: 20
     needs: changes
     env:
+      NODE_OPTIONS: --max-old-space-size=4096
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
       CLERK_SECRET_KEY: sk_test_placeholder
       NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
@@ -239,9 +240,9 @@ jobs:
         if: steps.auth-environment.outputs.available == 'true'
         run: npx playwright install chromium
 
-      - name: Run auth E2E
+      - name: Run auth and citation E2E
         if: steps.auth-environment.outputs.available == 'true'
-        run: npm run test:e2e:auth
+        run: npx playwright test e2e/auth.spec.ts e2e/citations.spec.ts --config=playwright.config.ts
 
       - name: Upload Playwright report
         if: failure() && steps.auth-environment.outputs.available == 'true'

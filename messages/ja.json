@@ -1,4 +1,20 @@
 {
+  "citation": {
+    "cite": "引用",
+    "style": "引用スタイル",
+    "copy": "コピー",
+    "copied": "コピーしました",
+    "loading": "引用を読み込み中…",
+    "failed": "引用を読み込めませんでした。",
+    "retry": "再試行",
+    "citation": "引用",
+    "searchStyles": "スタイルや学術誌を検索…",
+    "loadingStyles": "スタイルを読み込み中…",
+    "stylesFailed": "スタイルを読み込めませんでした。",
+    "noStyles": "一致するスタイルはありません。",
+    "commonStyles": "よく使うスタイル",
+    "otherStyles": "その他のスタイル"
+  },
   "common": {
     "search": "検索",
     "home": "ホーム",

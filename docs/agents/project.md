@@ -117,8 +117,10 @@ Read `docs/test-quality.md` and use `test-decision` before touching tests.
 - Documentation-only work needs link checks and `git diff --check`, not the
   application test suite.
 
-GitHub CI owns the full final suite. Local lanes and commits use focused checks.
-The primary agent performs the one final browser or shared-service gate.
+GitHub CI owns the full pre-merge suite. Follow the CI section in `AGENTS.md`:
+ordinary edits and PR updates finish after targeted checks, while automatic CI
+runs in the background. The primary agent checks the changed browser or
+shared-service behavior when that boundary needs verification.
 
 ## Plans and current references
 

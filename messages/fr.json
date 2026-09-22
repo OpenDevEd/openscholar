@@ -1,4 +1,20 @@
 {
+  "citation": {
+    "cite": "Citer",
+    "style": "Style de citation",
+    "copy": "Copier",
+    "copied": "Copié",
+    "loading": "Chargement de la référence…",
+    "failed": "Impossible de charger cette référence.",
+    "retry": "Réessayer",
+    "citation": "référence",
+    "searchStyles": "Rechercher un style ou une revue…",
+    "loadingStyles": "Chargement des styles…",
+    "stylesFailed": "Impossible de charger les styles.",
+    "noStyles": "Aucun style correspondant.",
+    "commonStyles": "Styles courants",
+    "otherStyles": "Autres styles"
+  },
   "common": {
     "search": "Rechercher",
     "home": "Accueil",
