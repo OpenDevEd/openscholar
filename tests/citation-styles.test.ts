@@ -58,7 +58,7 @@ describe("additional citation styles", () => {
         style,
       ),
     ]);
-    expect(first.text).toContain("[1]");
+    expect(first.text).toMatch(/^J\. Smith/);
     expect(first.text).toContain("J. Smith");
     expect(first.text).toContain("Evidence and education");
     expect(second.text).toContain("Changed evidence");

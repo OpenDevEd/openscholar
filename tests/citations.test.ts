@@ -66,3 +66,15 @@ it("preserves styled bibliography text and clickable DOI links alongside plain t
   expect(apa.text).toContain("Evidence & education");
   expect(apa.text).not.toMatch(/<[^>]+>/);
 });
+
+
+it("omits reference numbering from a standalone numeric citation without stripping title numbers", async () => {
+ const { formatCitations } = await import("@/lib/citations/formatter");
+ const { vancouver } = await formatCitations({
+  id: "standalone", "citation-key": "standalone", type: "report", title: "2026 education outcomes",
+  author: [{ family: "Smith", given: "Jane" }], issued: { "date-parts": [[2026]] },
+ }, "en-GB");
+ expect(vancouver.text).toMatch(/^Smith J\./);
+ expect(vancouver.text).toContain("2026 education outcomes");
+ expect(vancouver.html?.replace(/<[^>]+>/g, "").trim()).toMatch(/^Smith J\./);
+});
