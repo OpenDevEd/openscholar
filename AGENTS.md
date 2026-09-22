@@ -8,6 +8,19 @@ For any non-trivial task, read `docs/agents/project.md` before acting. Read a
 named plan or specification when the request points to one. Do not load every
 plan or document by default.
 
+## CI is a pre-merge gate
+
+Standing user instruction, updated 2026-09-22:
+
+- During ordinary edits, run the smallest relevant test, type/lint check, or browser flow. After those checks pass, finish the authorized commit/push and hand the result back immediately.
+- Let automatically triggered CI run in the background. Pending CI does not block handing back a fix or updating a PR. Do not start CI watchers, poll/sleep loops, or repeated status updates during ordinary iteration, including watchers whose output goes to a background log.
+- Wait for full CI only while carrying out an authorized merge of that PR, or when the user explicitly asks to wait for or monitor CI. A code change, commit, push, PR creation/update, or calling a commit the final head is not such a request.
+- Run full required CI on the exact head before merging. Preserve required checks and failure visibility. Never merge with required checks failing or pending, or weaken/cancel checks to avoid waiting.
+- Do not launch a full local suite or manually dispatch full CI just to finish an ordinary edit. Use targeted checks for an observed failure. Report unrelated failures without turning the task into a CI repair or monitoring session.
+- A valid handoff is: "Fixed; targeted checks passed. CI is running in the background." State CI status only if already known; do not poll merely to fill in the handoff. Never claim a pending run passed.
+
+This separates implementation completion from merge readiness and supersedes older instructions that require green CI merely because a PR exists.
+
 ## Write for normal people
 
 Use plain, everyday language in replies, plans, reviews, documents, commit
@@ -84,9 +97,9 @@ handoff.
   one bounded command or parallel tool call over a long sequence of tiny
   calls. Reaching 50 completed tool calls in one phase is a trigger to
   consolidate the remaining work, not to pause or stop.
-- Start a slow external gate as soon as its exact inputs are stable. Use one
-  watcher instead of repeated polling, and continue other independent work
-  while the gate runs.
+- During an authorized merge or explicit CI-monitoring task, use one watcher
+  and continue independent work. During ordinary edits, follow the CI handoff
+  rule above and return after targeted verification.
 - Do not delegate routine work or delegate merely because an investigation has
   several reads or searches.
 - Parallelize only when there are at least two independent workstreams and doing
@@ -137,11 +150,9 @@ handoff.
   service state. Never test CSS class strings.
 - Do not add tests for copy-only, style-only, comment-only, documentation-only,
   or behavior-preserving refactors.
-- Run the repository's full required suite once in CI on the final PR head.
-  Do not make every lane or commit repeat it.
-- Use focused checks for intermediate branch commits. Run expensive acceptance
-  and live-service jobs only for the final ready head when the workflow can
-  distinguish it.
+- Use focused checks for edits, commits and PR updates. The CI section above
+  defines when to run or wait for the full pre-merge suite; an implementation
+  handoff does not require that suite to finish.
 - When a change needs runtime proof, test the unmerged commit in an isolated or
   preview deployment before merge. Merge must not be the first way to exercise
   the real boundary.
@@ -196,11 +207,16 @@ handoff.
 
 ## Completion
 
-Work is complete when the requested behavior is present at the real boundary,
-focused checks pass, the final required CI passes when a PR is in scope, and no
-known dead path or hidden fallback remains. Report the exact checks, commit,
-deployment state, and remaining risk. Never call a unit test alone proof of a
-browser or deployed service.
+An implementation task is complete when the requested behavior is present at
+the real boundary, targeted checks pass, and no known dead path or hidden
+fallback remains. Hand it back with any authorized commit/push complete; CI
+may still be running or may not have been checked. Report the checks actually
+run, commit, deployment state, and remaining risk. Never call a unit test alone
+proof of a browser or deployed service.
+
+Merge readiness is separate: before an authorized merge, require green CI on
+the exact head. Do not turn this merge gate into a condition for finishing an
+ordinary implementation turn.
 
 ## Bad and good examples
 
@@ -209,7 +225,7 @@ browser or deployed service.
 | Spawn a subagent because the fourth file needs reading. | Read the connected flow in the primary session. Spawn lanes only for independent work that can run at the same time. |
 | Let two agents edit the same schema or API contract. | Give the shared contract one owner. Parallelize callers only after that contract is fixed. |
 | Copy all standing rules and model choices into every `PROMPTS.md`. | Put task decisions and checks in the plan. Link to `AGENTS.md` for workflow. |
-| Run the full suite and a review after every commit. | Run one focused check while coding, one phase review, and the full CI gate once on the final head. |
+| Wait for full CI after a fix or PR update. | Run targeted checks, hand back the result, and leave CI in the background. Wait for the exact-head CI gate only for an authorized merge or explicit CI-monitoring request. |
 | Run related reads, checks, and repository work one after another. | Batch related tool calls and run independent work at the same time. |
 | Release one patch for every error exposed by the previous patch. | After the first failure, inspect the connected boundary once and ship one combined root-cause fix. |
 | A reviewer is silent for eight minutes, so start another review. | Check that the process is alive and keep waiting for the same review. |
