@@ -240,9 +240,9 @@ jobs:
         if: steps.auth-environment.outputs.available == 'true'
         run: npx playwright install chromium
 
-      - name: Run auth E2E
+      - name: Run auth and citation E2E
         if: steps.auth-environment.outputs.available == 'true'
-        run: npm run test:e2e:auth
+        run: npx playwright test e2e/auth.spec.ts e2e/citations.spec.ts --config=playwright.config.ts
 
       - name: Upload Playwright report
         if: failure() && steps.auth-environment.outputs.available == 'true'
