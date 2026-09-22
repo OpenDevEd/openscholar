@@ -41,3 +41,14 @@ describe("paper citations", () => {
     expect(paperToCitationData(paper)?.author).toEqual([{ literal: "Jane Smith" }]);
   });
 });
+
+it("exports Unicode names and TeX characters as reusable BibTeX", async () => {
+  const { Cite } = await import("@citation-js/core");
+  const name = "研究 & Development 50% $5 #1_A";
+  const result = await loadPaperCitations(["paper-citations", paperToCitationData({
+    ...paper, title: "Éducation au Sénégal et 教育", language: "fr",
+    authorships: [{ author: { id: "https://openalex.org/A1", display_name: name } }],
+  })!, "en-GB"]);
+  const [parsed] = new Cite(result.citations.bibtex).data;
+  expect(parsed).toMatchObject({ title: "Éducation au Sénégal et 教育", language: "fr", author: [{ family: name }] });
+});
