@@ -7,7 +7,12 @@
     "loading": "正在加载引用…",
     "failed": "无法加载此引用。",
     "retry": "重试",
-    "citation": "引用"
+    "citation": "引用",
+    "searchStyles": "搜索样式或期刊…",
+    "loadingStyles": "正在加载样式…",
+    "stylesFailed": "无法加载样式。",
+    "noStyles": "没有匹配的样式。",
+    "refineStyles": "共 {count} 个结果。继续输入以缩小范围。"
   },
   "common": {
     "search": "搜索",

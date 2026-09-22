@@ -7,7 +7,12 @@
     "loading": "Loading citation…",
     "failed": "Could not load this citation.",
     "retry": "Retry",
-    "citation": "citation"
+    "citation": "citation",
+    "searchStyles": "Search styles or journals…",
+    "loadingStyles": "Loading styles…",
+    "stylesFailed": "Could not load styles.",
+    "noStyles": "No matching styles.",
+    "refineStyles": "{count} matches. Keep typing to narrow the list."
   },
   "common": {
     "search": "Search",

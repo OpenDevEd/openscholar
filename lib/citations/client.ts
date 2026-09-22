@@ -6,3 +6,10 @@ export async function loadPaperCitations([, data, locale]: PaperCitationRequest)
   const { formatCitations } = await import("./formatter");
   return { citations: await formatCitations(data, locale) };
 }
+
+export async function loadAdditionalCitation([, record, locale, style]: readonly [
+  "citation-style", import("./formats").CitationData, string, import("./formats").CitationStyle,
+]): Promise<string> {
+  const { formatAdditionalCitation } = await import("./formatter");
+  return formatAdditionalCitation(record, locale, style);
+}

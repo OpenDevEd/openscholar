@@ -6,11 +6,11 @@ import useSWR, { preload } from "swr";
 import { Check, Copy, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CitationStylePicker } from "@/components/citation-style-picker";
 import { enrichPaperCitationMetadata } from "@/app/actions/citations";
-import { loadPaperCitations } from "@/lib/citations/client";
+import { loadPaperCitations, loadAdditionalCitation } from "@/lib/citations/client";
 import { paperToCitationData } from "@/lib/citations/paper-data";
-import { CITATION_FORMATS, type CitationFormat, type CitationData } from "@/lib/citations/formats";
+import { CITATION_FORMATS, type CitationStyle, type CitationData } from "@/lib/citations/formats";
 import { useAppToast } from "@/lib/toast/use-app-toast";
 import type { PaperResult } from "@/lib/types";
 
@@ -18,23 +18,21 @@ function CitationPanel({ data }: { data: CitationData }) {
   const t = useTranslations("citation");
   const locale = useLocale();
   const toast = useAppToast();
-  const [format, setFormat] = useState<CitationFormat>("apa");
+  const [format, setFormat] = useState<CitationStyle>(CITATION_FORMATS[0]);
   const [copied, setCopied] = useState<string | null>(null);
   const { data: enriched } = useSWR(data.DOI ? ["citation-metadata", data] : null,
     () => enrichPaperCitationMetadata(data),
     { revalidateOnFocus: false, revalidateOnReconnect: false, revalidateIfStale: false, shouldRetryOnError: false });
   const { data: result, error, isLoading, mutate } = useSWR(["paper-citations", enriched ?? data, locale], loadPaperCitations,
     { revalidateOnFocus: false, revalidateOnReconnect: false, revalidateIfStale: false, keepPreviousData: true });
-  const text = result?.citations[format];
+  const extra = useSWR(format.asset ? ["citation-style", enriched ?? data, locale, format] as const : null, loadAdditionalCitation,
+    { revalidateOnFocus: false, revalidateOnReconnect: false, revalidateIfStale: false });
+  const text = format.asset !== undefined ? extra.data : result?.citations[format.id];
+  const loading = format.asset ? extra.isLoading : isLoading;
+  const failed = format.asset ? extra.error : error;
   return <div className="space-y-3">
     <div className="flex items-center justify-between gap-2">
-      <Select value={format} onValueChange={(value) => {
-        const selected = CITATION_FORMATS.find((option) => option.id === value);
-        if (selected) { setFormat(selected.id); setCopied(null); }
-      }}>
-        <SelectTrigger className="min-w-0 flex-1" aria-label={t("style")}><SelectValue /></SelectTrigger>
-        <SelectContent>{CITATION_FORMATS.map((option) => <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>)}</SelectContent>
-      </Select>
+      <CitationStylePicker selected={format} onSelect={style => { setFormat(style); setCopied(null); }} />
       <Button size="sm" variant="outline" disabled={!text} onClick={async () => {
         if (!text) return;
         try { await navigator.clipboard.writeText(text); setCopied(text); }
@@ -44,9 +42,9 @@ function CitationPanel({ data }: { data: CitationData }) {
         {copied === text && text ? t("copied") : t("copy")}
       </Button>
     </div>
-    {isLoading && !text ? <p className="py-5 text-sm text-muted-foreground" role="status">{t("loading")}</p> : error ?
-      <div role="alert" className="space-y-2 text-sm"><p>{t("failed")}</p><Button size="sm" variant="outline" onClick={() => void mutate()}>{t("retry")}</Button></div> :
-      <p aria-live="polite" className={`max-h-72 overflow-y-auto whitespace-pre-wrap break-words text-muted-foreground ${format === "bibtex" ? "font-mono text-xs" : "text-sm leading-relaxed"}`}>{text}</p>}
+    {loading && !text ? <p className="py-5 text-sm text-muted-foreground" role="status">{t("loading")}</p> : failed ?
+      <div role="alert" className="space-y-2 text-sm"><p>{t("failed")}</p><Button size="sm" variant="outline" onClick={() => { void (format.asset ? extra.mutate() : mutate()); }}>{t("retry")}</Button></div> :
+      <p aria-live="polite" className={`max-h-72 overflow-y-auto whitespace-pre-wrap break-words text-muted-foreground ${format.id === "bibtex" ? "font-mono text-xs" : "text-sm leading-relaxed"}`}>{text}</p>}
   </div>;
 }
 

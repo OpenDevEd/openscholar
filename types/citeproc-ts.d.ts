@@ -7,6 +7,7 @@ declare module "citeproc-ts" {
 		}, style: unknown, locale?: string) => {
 			setOutputFormat(format: "text" | "html"): void;
 			updateItems(ids: string[]): void;
+			makeCitationCluster(items: { id: string }[]): string;
 			makeBibliography(): [Record<string, unknown>, string[]] | false;
 		};
 	};

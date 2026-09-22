@@ -7,7 +7,12 @@
     "loading": "Chargement de la référence…",
     "failed": "Impossible de charger cette référence.",
     "retry": "Réessayer",
-    "citation": "référence"
+    "citation": "référence",
+    "searchStyles": "Rechercher un style ou une revue…",
+    "loadingStyles": "Chargement des styles…",
+    "stylesFailed": "Impossible de charger les styles.",
+    "noStyles": "Aucun style correspondant.",
+    "refineStyles": "{count} résultats. Précisez votre recherche."
   },
   "common": {
     "search": "Rechercher",

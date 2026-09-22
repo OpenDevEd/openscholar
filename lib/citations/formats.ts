@@ -7,6 +7,11 @@ export const CITATION_FORMATS = [
 	{ id: "bibtex", label: "BibTeX", style: null },
 ] as const;
 
+export type CitationStyle = { label: string } & (
+  | { id: CitationFormat; asset?: undefined }
+  | { id: string; asset: string }
+);
+
 export type CitationFormat = (typeof CITATION_FORMATS)[number]["id"];
 export type Citations = Record<CitationFormat, string>;
 
