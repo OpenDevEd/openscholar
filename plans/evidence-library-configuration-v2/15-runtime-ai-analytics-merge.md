@@ -118,7 +118,7 @@ runtime manifest uses one provider entry shaped as
 `{ provider: "openrouter", enabled, apiKey, models, defaultModel }`.
 `models` is the exact public picker allowlist. The runtime rejects request
 models outside it. The fixed starter-question model is
-`openai/gpt-5.6-luna`; it is an internal runtime choice and does not need to
+`openai/gpt-6-luna`; it is an internal runtime choice and does not need to
 appear in the owner's list.
 
 The runtime removes the old `largeModel` and `smallModel` slots. Its generated

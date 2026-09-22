@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const DIGEST_MODEL = "openai/gpt-5.6-luna";
+export const DIGEST_MODEL = "openai/gpt-6-luna";
 export const DIGEST_REASONING = "max";
 export const digestRequestSchema = z.object({
   libraryId: z.string().min(1).max(128),
