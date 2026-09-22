@@ -73,6 +73,7 @@
     "exceljs": "^4.4.0",
     "glob": "^13.0.6",
     "gpt-tokenizer": "^3.4.0",
+    "html-react-parser": "^6.1.8",
     "jsonrepair": "^3.13.2",
     "lucide-react": "^0.487.0",
     "motion": "^12.38.0",

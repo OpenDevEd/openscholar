@@ -58,11 +58,11 @@ describe("additional citation styles", () => {
         style,
       ),
     ]);
-    expect(first).toContain("[1]");
-    expect(first).toContain("J. Smith");
-    expect(first).toContain("Evidence and education");
-    expect(second).toContain("Changed evidence");
-    expect(second).not.toContain("Evidence and education");
+    expect(first.text).toContain("[1]");
+    expect(first.text).toContain("J. Smith");
+    expect(first.text).toContain("Evidence and education");
+    expect(second.text).toContain("Changed evidence");
+    expect(second.text).not.toContain("Evidence and education");
     await formatAdditionalCitation(record, "en-GB", style);
     expect(fetch).toHaveBeenCalledTimes(1);
   });
@@ -76,9 +76,9 @@ describe("additional citation styles", () => {
     )!;
     vi.stubGlobal("fetch", bytesFor);
     const text = await formatAdditionalCitation(record, "en-GB", style);
-    expect(text).toContain("Jane Smith");
-    expect(text).toContain("Evidence and Education");
-    expect(text).toContain("2026");
+    expect(text.text).toContain("Jane Smith");
+    expect(text.text).toContain("Evidence and Education");
+    expect(text.text).toContain("2026");
   });
   it("retries a failed style download instead of caching the rejection", async () => {
     vi.resetModules();
@@ -93,7 +93,7 @@ describe("additional citation styles", () => {
     await expect(
       formatAdditionalCitation(record, "en-GB", style),
     ).rejects.toThrow("Offline");
-    expect(await formatAdditionalCitation(record, "en-GB", style)).toContain(
+    expect((await formatAdditionalCitation(record, "en-GB", style)).text).toContain(
       "Evidence and education",
     );
     expect(fetch).toHaveBeenCalledTimes(2);

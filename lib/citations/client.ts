@@ -9,7 +9,7 @@ export async function loadPaperCitations([, data, locale]: PaperCitationRequest)
 
 export async function loadAdditionalCitation([, record, locale, style]: readonly [
   "citation-style", import("./formats").CitationData, string, import("./formats").CitationStyle,
-]): Promise<string> {
+]): Promise<import("./formats").FormattedCitation> {
   const { formatAdditionalCitation } = await import("./formatter");
   return formatAdditionalCitation(record, locale, style);
 }

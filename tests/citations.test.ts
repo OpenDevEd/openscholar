@@ -14,8 +14,8 @@ describe("paper citations", () => {
   it("formats a loaded DOI record without waiting for any network request", async () => {
     const fetch = vi.fn(() => { throw new Error("Network unavailable"); }); vi.stubGlobal("fetch", fetch);
     const result = await loadPaperCitations(["paper-citations", paperToCitationData({ ...paper, doi: "10.1234/education" })!, "en-GB"]);
-    expect(result.citations.apa).toBe("Jane Smith. (2025). Schools in Kenya. Education, 4(2), 12–20. https://doi.org/10.1234/education");
-    expect(result.citations.bibtex).toMatch(/^@article\{os_W12345,/);
+    expect(result.citations.apa.text).toBe("Jane Smith. (2025). Schools in Kenya. Education, 4(2), 12–20. https://doi.org/10.1234/education");
+    expect(result.citations.bibtex.text).toMatch(/^@article\{os_W12345,/);
     expect(fetch).not.toHaveBeenCalled();
   });
   it("uses structured publisher author names when the DOI supplies them", async () => {
@@ -26,15 +26,15 @@ describe("paper citations", () => {
     })));
     const data = await getPaperCitationMetadata(paperToCitationData({ ...paper, doi: "https://doi.org/10.1234/education" })!);
     const result = await loadPaperCitations(["paper-citations", data, "en-GB"]);
-    expect(result.citations.apa).toContain("Smith, J. (2025).");
-    expect(result.citations.apa).toContain("Education, 4(2), 12–20.");
-    expect(result.citations.bibtex).toMatch(/^@article\{os_W12345,/);
+    expect(result.citations.apa.text).toContain("Smith, J. (2025).");
+    expect(result.citations.apa.text).toContain("Education, 4(2), 12–20.");
+    expect(result.citations.bibtex.text).toMatch(/^@article\{os_W12345,/);
   });
   it("still provides a citation when DOI metadata is unavailable", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Offline")));
     const data = await getPaperCitationMetadata(paperToCitationData({ ...paper, doi: "10.1234/education" })!);
     const result = await loadPaperCitations(["paper-citations", data, "en-GB"]);
-    expect(result.citations.apa).toContain("Schools in Kenya.");
+    expect(result.citations.apa.text).toContain("Schools in Kenya.");
   });
   it("does not fabricate missing names or display a citation action without a title", () => {
     expect(paperToCitationData({ ...paper, title: undefined })).toBeNull();
@@ -49,6 +49,20 @@ it("exports Unicode names and TeX characters as reusable BibTeX", async () => {
     ...paper, title: "Éducation au Sénégal et 教育", language: "fr",
     authorships: [{ author: { id: "https://openalex.org/A1", display_name: name } }],
   })!, "en-GB"]);
-  const [parsed] = new Cite(result.citations.bibtex).data;
+  const [parsed] = new Cite(result.citations.bibtex.text).data;
   expect(parsed).toMatchObject({ title: "Éducation au Sénégal et 教育", language: "fr", author: [{ family: name }] });
+});
+
+
+it("preserves styled bibliography text and clickable DOI links alongside plain text", async () => {
+  const { formatCitations } = await import("@/lib/citations/formatter");
+  const { apa } = await formatCitations({
+    id: "rich", "citation-key": "rich", type: "article-journal", title: "Evidence & education",
+    author: [{ family: "Smith", given: "Jane" }], issued: { "date-parts": [[2026]] },
+    "container-title": "Journal of Education", volume: "42", DOI: "10.1234/evidence",
+  }, "en-GB");
+  expect(apa.html).toContain("<i>Journal of Education</i>");
+  expect(apa.html).toContain('href="https://doi.org/10.1234/evidence"');
+  expect(apa.text).toContain("Evidence & education");
+  expect(apa.text).not.toMatch(/<[^>]+>/);
 });

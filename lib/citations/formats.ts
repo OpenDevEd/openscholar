@@ -13,7 +13,8 @@ export type CitationStyle = { label: string } & (
 );
 
 export type CitationFormat = (typeof CITATION_FORMATS)[number]["id"];
-export type Citations = Record<CitationFormat, string>;
+export type FormattedCitation = { text: string; html: string | null };
+export type Citations = Record<CitationFormat, FormattedCitation>;
 
 export type CitationName = { literal: string } | { family: string; given?: string };
 export type CitationDate = { "date-parts": number[][] } | { literal: string };

@@ -11,6 +11,7 @@ import {
   PopoverContent,
 } from "@/components/ui/popover";
 import { CitationStylePicker } from "@/components/citation-style-picker";
+import { CitationText } from "@/components/citation-text";
 import { enrichPaperCitationMetadata } from "@/app/actions/citations";
 import {
   loadPaperCitations,
@@ -69,19 +70,16 @@ function CitationPanel({ data }: { data: CitationData }) {
       revalidateIfStale: false,
     },
   );
-  const text = !format
+  const citation = !format
     ? undefined
     : format.asset !== undefined
       ? extra.data
       : result?.citations[format.id];
   const loading = !format || (format.asset ? extra.isLoading : isLoading);
   const failed = styleError || (format?.asset ? extra.error : error);
-  const [displayed, setDisplayed] = useState({ text, format: format?.id });
-  if (
-    text !== undefined &&
-    (text !== displayed.text || format?.id !== displayed.format)
-  )
-    setDisplayed({ text, format: format?.id });
+  const text = citation?.text;
+  const [displayed, setDisplayed] = useState(citation);
+  if (citation && citation !== displayed) setDisplayed(citation);
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -114,7 +112,7 @@ function CitationPanel({ data }: { data: CitationData }) {
           {copied === text && text ? t("copied") : t("copy")}
         </Button>
       </div>
-      {loading && !failed && !displayed.text ? (
+      {loading && !failed && !displayed ? (
         <p className="py-5 text-sm text-muted-foreground" role="status">
           {t("loading")}
         </p>
@@ -133,13 +131,13 @@ function CitationPanel({ data }: { data: CitationData }) {
           </Button>
         </div>
       ) : (
-        <p
+        <div
           aria-live="polite"
           aria-busy={loading}
-          className={`max-h-72 overflow-y-auto whitespace-pre-wrap break-words text-muted-foreground ${displayed.format === "bibtex" ? "font-mono text-xs" : "text-sm leading-relaxed"}`}
+          className="max-h-72 overflow-y-auto text-sm text-foreground/80"
         >
-          {displayed.text}
-        </p>
+          {displayed && <CitationText citation={displayed} />}
+        </div>
       )}
     </div>
   );
