@@ -12,7 +12,8 @@
     "loadingStyles": "Loading styles…",
     "stylesFailed": "Could not load styles.",
     "noStyles": "No matching styles.",
-    "refineStyles": "{count} matches. Keep typing to narrow the list."
+    "commonStyles": "Common styles",
+    "otherStyles": "Other styles"
   },
   "common": {
     "search": "Search",

@@ -12,7 +12,8 @@
     "loadingStyles": "正在加载样式…",
     "stylesFailed": "无法加载样式。",
     "noStyles": "没有匹配的样式。",
-    "refineStyles": "共 {count} 个结果。继续输入以缩小范围。"
+    "commonStyles": "常用格式",
+    "otherStyles": "其他格式"
   },
   "common": {
     "search": "搜索",

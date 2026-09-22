@@ -12,7 +12,8 @@
     "loadingStyles": "Chargement des styles…",
     "stylesFailed": "Impossible de charger les styles.",
     "noStyles": "Aucun style correspondant.",
-    "refineStyles": "{count} résultats. Précisez votre recherche."
+    "commonStyles": "Styles courants",
+    "otherStyles": "Autres styles"
   },
   "common": {
     "search": "Rechercher",

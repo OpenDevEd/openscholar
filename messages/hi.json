@@ -12,7 +12,8 @@
     "loadingStyles": "शैलियाँ लोड हो रही हैं…",
     "stylesFailed": "शैलियाँ लोड नहीं हो सकीं।",
     "noStyles": "कोई मिलती-जुलती शैली नहीं मिली।",
-    "refineStyles": "{count} नतीजे। सूची छोटी करने के लिए और लिखें।"
+    "commonStyles": "प्रचलित शैलियाँ",
+    "otherStyles": "अन्य शैलियाँ"
   },
   "common": {
     "search": "खोजें",
