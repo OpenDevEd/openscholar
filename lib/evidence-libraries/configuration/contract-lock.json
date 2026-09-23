@@ -2,7 +2,7 @@
   "formatVersion": 3,
   "source": {
     "repository": "https://github.com/OpenDevEd/new-el",
-    "commit": "c08a80b0969d8f9317f87aaad3f532c0f4946d25"
+    "commit": "f431d5590800aebb935386901715674faf1edc48"
   },
   "contract": {
     "schemaVersion": 1,
