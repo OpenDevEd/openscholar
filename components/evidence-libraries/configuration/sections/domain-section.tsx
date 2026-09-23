@@ -337,12 +337,14 @@ export const DomainSection = memo(function DomainSection({
               // The address visitors reach now is taken away at the next
               // activation, like any other change; every other domain goes
               // straight away.
+              // A removal already under way can only be finished.
               const removeLater =
-                domain.role === "primary" || domain.removeOnActivate;
-              const removeLabel = domain.removeOnActivate
-                ? t("keep")
-                : domain.removing
-                  ? t("removeAgain")
+                !domain.removing &&
+                (domain.role === "primary" || domain.removeOnActivate);
+              const removeLabel = domain.removing
+                ? t("removeAgain")
+                : domain.removeOnActivate
+                  ? t("keep")
                   : t("remove");
 
               return (
@@ -460,7 +462,7 @@ export const DomainSection = memo(function DomainSection({
                         >
                           <HugeiconsIcon
                             icon={
-                              domain.removeOnActivate
+                              domain.removeOnActivate && !domain.removing
                                 ? Undo02Icon
                                 : Delete02Icon
                             }

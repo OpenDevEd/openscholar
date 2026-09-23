@@ -58,6 +58,7 @@ export async function readDomainActivationPlan(
   const usable =
     chosen !== null &&
     chosen.state === "active" &&
+    chosen.removingAt === undefined &&
     chosen.removeOnActivateAt === undefined;
   const leaving = rows.find((row) => row.role === "primary");
   // A main address the owner removed cannot stay the main address, so with

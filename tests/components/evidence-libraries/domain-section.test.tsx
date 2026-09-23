@@ -534,6 +534,28 @@ describe("DomainSection", () => {
     });
   });
 
+  it("finishes a removal that stopped halfway instead of offering to keep it", async () => {
+    mocks.data.domains = [
+      row({
+        state: "active",
+        attached: true,
+        removing: true,
+        removeOnActivate: true,
+      }),
+    ];
+    render(<DomainSection libraryId={libraryId} />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.removeAgain",
+      }),
+    );
+    expect(mocks.stageRemoval).not.toHaveBeenCalled();
+    expect(mocks.removeDomain).toHaveBeenCalledWith({
+      libraryId,
+      domainId: "domain_1",
+    });
+  });
+
   it("removes any other domain straight away", async () => {
     mocks.data.domains = [row({ state: "active", attached: true })];
     render(<DomainSection libraryId={libraryId} />);

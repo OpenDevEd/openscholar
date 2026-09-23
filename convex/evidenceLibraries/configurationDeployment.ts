@@ -1442,10 +1442,14 @@ export const completeConfigurationDeployment = internalMutation({
     // them, which this activation may just have done.
     // Only removals staged before this activation started are its own; a
     // later one waits for the next activation.
+    // Only an owner's activation carries them: a software update or an
+    // address changed straight away does not.
     const stagedBefore = deployment.operation.createdAt;
-    const stagedRemovals = (
-      await readEvidenceLibraryDomains(ctx, args.libraryId)
-    ).some((row) => isStagedBefore(row, stagedBefore));
+    const stagedRemovals =
+      deployment.operation.activationEditVersion !== undefined &&
+      (await readEvidenceLibraryDomains(ctx, args.libraryId)).some((row) =>
+        isStagedBefore(row, stagedBefore),
+      );
     if (stagedRemovals) {
       await ctx.scheduler.runAfter(
         0,

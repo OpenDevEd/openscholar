@@ -292,7 +292,11 @@ export const chooseMainAddress = mutation({
       if (!row || row.libraryId !== args.libraryId) {
         throw createError("NOT_FOUND", "That domain is not on this library");
       }
-      if (row.state !== "active" || row.removeOnActivateAt !== undefined) {
+      if (
+        row.state !== "active" ||
+        row.removingAt !== undefined ||
+        row.removeOnActivateAt !== undefined
+      ) {
         throw createError(
           "CONFLICT",
           "Only a working domain can be the main address",
@@ -352,6 +356,7 @@ export const stageMainDomainRemoval = mutation({
         (entry) =>
           entry._id !== args.domainId &&
           entry.state === "active" &&
+          entry.removingAt === undefined &&
           entry.removeOnActivateAt === undefined,
       )
       .sort((left, right) => left.createdAt - right.createdAt)[0];
