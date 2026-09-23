@@ -299,7 +299,8 @@ function createRuntimeNetwork(input: {
             );
           }
         }
-        if (method === "DELETE") rolledBackAt = Date.now();
+        // The runtime's clock runs half a minute ahead of the platform's.
+        if (method === "DELETE") rolledBackAt = Date.now() + 30_000;
         if (method === "PUT" && configurationRejected) {
           return jsonResponse({ message: "Configuration refused" }, 400);
         }
@@ -353,7 +354,12 @@ function createRuntimeNetwork(input: {
           {
             state: "active",
             rejected: null,
-            active: { revision: activeRevision },
+            active: {
+              revision: activeRevision,
+              ...(rolledBackAt === null
+                ? {}
+                : { updatedAt: new Date(rolledBackAt).toISOString() }),
+            },
           },
           200,
           runtimeRouteMarker
@@ -2439,7 +2445,8 @@ describe("Evidence Library configuration deployment", () => {
       ),
     ).toBe(true);
 
-    vi.setSystemTime(new Date("2026-08-25T00:05:00Z"));
+    // Retried a second later, which the runtime's clock still calls earlier.
+    vi.setSystemTime(Date.now() + 1_000);
     network.restoreReadiness();
     await deployment.fixture.admin.mutation(
       api.evidenceLibraries.configurationDeployment

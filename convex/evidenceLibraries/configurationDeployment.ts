@@ -528,6 +528,8 @@ export const prepareConfigurationDeployment = internalMutation({
       runtimeImage: v.string(),
       continuity: runtimeContinuityValidator,
       requiresDeployment: v.boolean(),
+      /** The last attempt rolled the site back; stamp above its clock. */
+      rolledBack: v.boolean(),
     }),
   ),
   handler: async (ctx, args) => {
@@ -725,6 +727,7 @@ export const prepareConfigurationDeployment = internalMutation({
     );
     return {
       state: "new" as const,
+      rolledBack: deployment.operation.rolledBackAt !== undefined,
       ...(runtimeUpdate ? { runtimeUpdate } : {}),
       ...(deployment.operation.addressMove
         ? { addressMove: deployment.operation.addressMove }
@@ -1647,12 +1650,12 @@ export const retryConfigurationDeployment = mutation({
       });
     }
     // The saved copy is older than the configuration a rollback put back, so
-    // the runtime would refuse it: the retry builds a fresh one.
+    // the runtime would refuse it: the retry builds a fresh one, stamped
+    // after that configuration by the runtime's own clock.
     if (operation.rolledBackAt !== undefined) {
       await ctx.db.patch(args.operationId, {
         configurationDeploymentTarget: undefined,
         receipt: undefined,
-        rolledBackAt: undefined,
       });
     }
     return await claimAndScheduleConfigurationDeployment(ctx, args);
