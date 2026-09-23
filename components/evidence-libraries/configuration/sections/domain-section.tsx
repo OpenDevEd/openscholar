@@ -120,6 +120,10 @@ export const DomainSection = memo(function DomainSection({
   const customId = useId();
 
   const domains = data?.domains ?? [];
+  // The page and the backend are deployed separately; a backend that does
+  // not report the chosen address yet means the live one.
+  const mainAddress: string | undefined =
+    data?.mainAddress ?? data?.canonicalAddress;
   const canAdd = domains.length < 5;
   const suggestedWwwHost = domains.find(
     (domain) => domain.suggestedWwwHost,
@@ -218,13 +222,13 @@ export const DomainSection = memo(function DomainSection({
               className="max-w-full font-mono text-sm font-medium"
             />
           </div>
-          {data.mainAddress === data.platformAddress ? (
+          {mainAddress === data.platformAddress ? (
             <StatusChip tone="success" data-main-address>
               {t("mainLabel")}
             </StatusChip>
           ) : null}
           <MainAddressButton
-            main={data.mainAddress === data.platformAddress}
+            main={mainAddress === data.platformAddress}
             label={t("mainLabel")}
             chooseLabel={t("redirectLabel")}
             disabled={busy !== null}
@@ -235,14 +239,14 @@ export const DomainSection = memo(function DomainSection({
         </div>
       ) : null}
 
-      {data && data.mainNeedsAttention ? (
+      {data?.mainNeedsAttention ? (
         <InlineNotice tone="warning" data-main-attention>
           {t("mainNeedsAttention")}
         </InlineNotice>
-      ) : data && data.mainAddress !== data.canonicalAddress ? (
+      ) : mainAddress && mainAddress !== data?.canonicalAddress ? (
         <InlineNotice tone="info" data-main-pending>
           {t("mainPending", {
-            host: data.mainAddress.replace(/^https?:\/\//, ""),
+            host: mainAddress.replace(/^https?:\/\//, ""),
           })}
         </InlineNotice>
       ) : null}
