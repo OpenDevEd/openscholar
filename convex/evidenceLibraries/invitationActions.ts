@@ -26,7 +26,7 @@ export const invite = action({
         subject: `Invitation to ${invitation.libraryName}`,
         html: renderLibraryInvitation({
           identity: {...invitation.emailIdentity, baseUrl: invitation.emailIdentity.baseUrl ?? origin},
-          role: invitation.role, invitationsUrl,
+          role: invitation.role, acceptUrl: invitationsUrl,
         }),
         text: `You have been invited to ${invitation.libraryName} with the ${invitation.role} role.\n\nSign in with ${invitation.email} to view and accept the invitation:\n${invitationsUrl}\n\nThis invitation expires in seven days. It grants access to this library only.`,
       });

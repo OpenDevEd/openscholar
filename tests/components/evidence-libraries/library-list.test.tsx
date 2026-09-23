@@ -2,7 +2,9 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
+import type { ReactElement } from "react";
+import { renderWithTooltip } from "../../helpers/render-with-tooltip";
 const mocks = vi.hoisted(() => ({ query: vi.fn(), respond: vi.fn(), restart: vi.fn() }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("convex/react", () => ({ useMutation: () => mocks.restart, useAction: () => mocks.respond }));
@@ -13,6 +15,7 @@ vi.mock("@/convex/_generated/api", () => ({ api: { organizationFeatures: {librar
 } } }));
 vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: (name: string) => mocks.query(name) }));
 import { LibraryList } from "@/components/evidence-libraries/library-list";
+const render = (ui: ReactElement, searchParams = "") => renderWithTooltip(<NuqsTestingAdapter searchParams={searchParams}>{ui}</NuqsTestingAdapter>);
 const libraries = ["owner", "editor", "creator"].map(role => ({ _id: role, name: `${role} library`, role, status: "active", publicAddress: `https://${role}.example.org`, organization: { name: `${role} organization` } }));
 beforeEach(() => {
   vi.clearAllMocks();
@@ -39,6 +42,12 @@ describe("Library access list", () => {
     expect(screen.getByRole("link", {name: "View setup"})).toHaveAttribute("href", "/evidence-libraries/setup/setup");
     await userEvent.setup().click(screen.getByRole("button", {name: "Retry deletion"}));
     expect(mocks.restart).toHaveBeenCalledWith({libraryId: "delete"});
+  });
+  it("opens pending invitations from the invitation email link", () => {
+    mocks.query.mockImplementation((name: string) => ({isReady: true, data: name === "libraries" ? libraries : name === "invitations" ? [{invitationId: "invite_1", libraryId: "invited", name: "Invited library", role: "editor", organization: {name: "Partner organization", imageUrl: null}}] : []}));
+    render(<LibraryList />, "?view=invitations");
+    expect(screen.getByText("Invited library")).toBeInTheDocument();
+    expect(screen.queryByText("owner library")).not.toBeInTheDocument();
   });
   it("links New library to the creation page", () => {
     render(<LibraryList />);
