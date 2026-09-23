@@ -21,7 +21,10 @@ import {
   type CoolifyConfigurationUpdateResult,
   type CoolifyDeployment,
 } from "./coolifyClient";
-import { openPinnedDomainClient } from "./domainEgressNode";
+import {
+  openOwnProxyClient,
+  openPinnedDomainClient,
+} from "./domainEgressNode";
 import {
   activateLibraryRuntimeConfiguration,
   changeLibraryRuntimeRoute,
@@ -327,31 +330,47 @@ export const runConfigurationDeployment = internalAction({
         ) as AssembledEvidenceLibraryConfiguration & {
           identity: { baseUrl: string };
         };
-        const configurationBaseUrl = new URL(
-          runtimeConfiguration.identity.baseUrl,
-        ).origin;
-        const configurationFetchImpl =
-          configurationBaseUrl === new URL(target.targetBaseUrl).origin
-            ? undefined
-            : await openPinnedDomainClient({
-                host: new URL(configurationBaseUrl).hostname,
+        // The running site answers its configuration only on the address it
+        // calls its own, and redirects every other. A change of that address
+        // is sent to the old one; once it lands, the site answers on the new
+        // one, which is where a restore has to go first. A custom domain is
+        // reached through our own proxy, so one whose records were deleted
+        // can still be switched away from.
+        const platformOrigin = new URL(target.targetBaseUrl).origin;
+        const liveOrigin = new URL(prepared.continuity.liveOrigin).origin;
+        const nextOrigin = new URL(runtimeConfiguration.identity.baseUrl)
+          .origin;
+        const machineCredential =
+          runtimeConfiguration.authentication.openScholar.machineCredential;
+        const configurationInputFor = async (origin: string) => ({
+          ...(origin === platformOrigin
+            ? {}
+            : {
+                fetchImpl: await openOwnProxyClient({
+                  host: new URL(origin).hostname,
+                }),
+              }),
+          baseUrl: origin,
+          machineCredential,
+        });
+        const restorePreviousConfiguration = async () => {
+          let lastError: unknown;
+          for (const origin of new Set([nextOrigin, liveOrigin])) {
+            try {
+              await restoreLibraryRuntimeConfiguration({
+                ...(await configurationInputFor(origin)),
+                revisionKey: prepared.continuity.revisionKey,
               });
-        const configurationInput = {
-          ...(configurationFetchImpl
-            ? { fetchImpl: configurationFetchImpl }
-            : {}),
-          baseUrl: configurationBaseUrl,
-          machineCredential:
-            runtimeConfiguration.authentication.openScholar.machineCredential,
+              return;
+            } catch (error) {
+              lastError = error;
+            }
+          }
+          throw lastError;
         };
-        restoreDirectConfiguration = async () => {
-          await restoreLibraryRuntimeConfiguration({
-            ...configurationInput,
-            revisionKey: prepared.continuity.revisionKey,
-          });
-        };
+        restoreDirectConfiguration = restorePreviousConfiguration;
         await activateLibraryRuntimeConfiguration({
-          ...configurationInput,
+          ...(await configurationInputFor(liveOrigin)),
           revisionKey: target.revisionKey,
           runtimeConfigJson,
           runtimeConfigSha256: target.runtimeConfigSha256,
@@ -391,10 +410,7 @@ export const runConfigurationDeployment = internalAction({
           verifierToken,
         };
         restoreDirectConfiguration = async () => {
-          await restoreLibraryRuntimeConfiguration({
-            ...configurationInput,
-            revisionKey: prepared.continuity.revisionKey,
-          });
+          await restorePreviousConfiguration();
           const previousReadiness = {
             ...readinessInput,
             revisionKey: prepared.continuity.revisionKey,

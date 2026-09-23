@@ -20,7 +20,11 @@
 import { Agent, request as httpsRequest } from "node:https";
 import type { LookupAddress } from "node:dns";
 import type { TLSSocket } from "node:tls";
-import { DomainEgressRefused, readSafeDomainAddresses } from "./domainEgress";
+import {
+  DomainEgressRefused,
+  readOwnProxyAddresses,
+  readSafeDomainAddresses,
+} from "./domainEgress";
 
 const REQUEST_DEADLINE_MS = 15_000;
 const MAX_BODY_BYTES = 256 * 1024;
@@ -197,6 +201,20 @@ export function createPinnedFetch(input: {
  * Checks the domain and returns a client that can only reach what passed.
  * Every request the platform makes to a customer's domain goes through one.
  */
+/**
+ * Reaches a host through our own proxy, whatever the host's records say now.
+ * For talking to a running library under the name it answers to, including a
+ * custom domain its owner has since repointed or deleted: the proxy still
+ * routes that name until the library lets it go.
+ */
+export async function openOwnProxyClient(input: {
+  host: string;
+  fetchImpl?: typeof fetch;
+}): Promise<typeof fetch> {
+  const addresses = await readOwnProxyAddresses(input.fetchImpl);
+  return createPinnedFetch({ host: input.host, addresses });
+}
+
 export async function openPinnedDomainClient(input: {
   host: string;
   fetchImpl?: typeof fetch;

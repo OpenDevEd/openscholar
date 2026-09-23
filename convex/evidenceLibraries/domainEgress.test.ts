@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DomainEgressRefused,
   DomainEgressUnavailable,
+  readOwnProxyAddresses,
   readSafeDomainAddresses,
 } from "./domainEgress";
 
@@ -153,6 +154,31 @@ describe("readSafeDomainAddresses", () => {
     // not read as "that domain is wrong".
     await expect(
       readSafeDomainAddresses({ host: HOST, fetchImpl: createFetch({ offline: true }) }),
+    ).rejects.toBeInstanceOf(DomainEgressUnavailable);
+  });
+});
+
+describe("readOwnProxyAddresses", () => {
+  beforeEach(() => {
+    vi.stubEnv("EL_CUSTOM_DOMAIN_TARGET", TARGET);
+  });
+
+  it("reaches our own proxy even when the customer's domain no longer exists", async () => {
+    const fetchImpl = createFetch({ targetV6: TARGET_V6 });
+    await expect(readOwnProxyAddresses(fetchImpl)).resolves.toEqual([
+      ...TARGET_ADDRESSES,
+      ...TARGET_V6,
+    ]);
+    // Only the platform's own name is asked about.
+    const asked = vi
+      .mocked(fetchImpl)
+      .mock.calls.map(([input]) => new URL(String(input)).searchParams.get("name"));
+    expect(new Set(asked)).toEqual(new Set([TARGET]));
+  });
+
+  it("says so when the proxy's name cannot be read", async () => {
+    await expect(
+      readOwnProxyAddresses(createFetch({ offline: true })),
     ).rejects.toBeInstanceOf(DomainEgressUnavailable);
   });
 });
