@@ -286,3 +286,36 @@ export async function fetchRuntimeRelease(input: {
     releases: releases.filter((release) => ahead.has(release.commit)),
   };
 }
+
+/**
+ * Whether a runtime commit is `commit` or comes after it on new-el's branch,
+ * so it reads every configuration field `commit` introduced. A runtime commit
+ * GitHub cannot place, such as one no longer on the branch, counts as older.
+ */
+export async function runtimeIncludesCommit(input: {
+  runtime: string;
+  commit: string;
+  token: string;
+  fetchImpl?: typeof fetch;
+}): Promise<boolean> {
+  const runtime = requireCommit("runtime commit", input.runtime);
+  const commit = requireCommit("contract commit", input.commit);
+  if (runtime === commit) return true;
+  const compare = await readGithub(
+    input.fetchImpl ?? fetch,
+    input.token.trim(),
+    `/repos/${RUNTIME_REPOSITORY}/compare/${commit}...${runtime}`,
+  );
+  if (compare.status === 404) return false;
+  if (
+    compare.status !== 200 ||
+    !isRecord(compare.body) ||
+    typeof compare.body.status !== "string"
+  ) {
+    throw new RuntimeReleaseError(
+      "GITHUB_UNAVAILABLE",
+      "The Evidence Library software history could not be read",
+    );
+  }
+  return compare.body.status === "ahead" || compare.body.status === "identical";
+}

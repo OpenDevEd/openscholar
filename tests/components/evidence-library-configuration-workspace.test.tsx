@@ -22,6 +22,8 @@ vi.setConfig({ testTimeout: 20_000 });
 
 const queryMock = vi.hoisted(() => vi.fn());
 let manualDigestAvailable: boolean | undefined = false;
+// What the platform says a publish needs from the library's software.
+let publishRuntimeAnswer: "current" | "update" | "unreleased" | undefined;
 
 const mutationMock = vi.hoisted(() => vi.fn());
 // The Versions section checks for software updates when the page opens.
@@ -80,7 +82,7 @@ vi.mock("@/convex/_generated/api", () => ({
       teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
       uploads: { generateUploadUrl: "generateUploadUrl" },
       uploadActions: { upload: "upload", remove: "remove" },
-      updates: { check: "check", listAddressNotices: "listAddressNotices" },
+      updates: { check: "check", listAddressNotices: "listAddressNotices", publishRuntime: "publishRuntime" },
       addressActions: { moveLibraryAddress: "moveLibraryAddress" },
       configurationDeployment: {
         retryConfigurationDeployment: "retryConfigurationDeployment",
@@ -136,7 +138,9 @@ const reviewedPublicationsMock = vi.hoisted(() => vi.fn(async () => ({ items: []
 vi.mock("convex/react", () => ({
   useMutation: (mutation: unknown) => mutationMock(mutation),
   useQuery: (query: unknown) =>
-    query === "listCatalogOptions"
+    query === "publishRuntime"
+      ? publishRuntimeAnswer
+      : query === "listCatalogOptions"
       ? TEST_AI_MODELS.map((modelId, index) => ({
           _id: `display_model_${index}`,
           modelId,
@@ -363,6 +367,7 @@ describe("<ConfigurationWorkspace>", () => {
     activated = [];
     storedCredentials = [];
     manualDigestAvailable = false;
+    publishRuntimeAnswer = undefined;
     checkAction = () => checkMock();
     queryMock.mockReset();
     mutationMock.mockReset();
@@ -692,6 +697,21 @@ describe("<ConfigurationWorkspace>", () => {
     const refusal = await waitFor(() => identityCard().getByRole("alert"));
     expect(refusal).toHaveTextContent("saveRefused");
     expect(refusal).toHaveTextContent("This name is already taken.");
+  });
+
+  it.each([
+    ["update", true],
+    ["current", false],
+  ] as const)("says when activating also updates the library software: %s", async (answer, mentioned) => {
+    const user = userEvent.setup();
+    publishRuntimeAnswer = answer;
+    await renderWorkspace();
+    await user.type(identityCard().getByLabelText("identity.nameLabel"), " 2");
+    await user.click(screen.getByRole("button", { name: "activate" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("activateBody");
+    if (mentioned) expect(dialog).toHaveTextContent("activateBodySoftware");
+    else expect(dialog).not.toHaveTextContent("activateBodySoftware");
   });
 
   it("shows a refusal that belongs to no card above the sections", async () => {

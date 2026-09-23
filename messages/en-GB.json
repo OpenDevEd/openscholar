@@ -2232,6 +2232,7 @@
     "activateDraftConfirm": "Start setup",
     "activateTitle": "Activate this version?",
     "activateBody": "This publishes the new version. Takes about 2 minutes.",
+    "activateBodySoftware": "It also updates the library to the latest Evidence Library software, which these settings need, so it can take a few minutes longer.",
     "activateBodyUnsaved": "Your unsaved changes will be saved first.",
     "activateConfirm": "Activate",
     "activationStarted": "Activation started",

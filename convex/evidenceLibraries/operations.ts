@@ -493,6 +493,12 @@ export async function queueConfigurationDeploymentOperation(
     idempotencyKey: string;
     revisionId: Id<"evidenceLibraryConfigRevisions">;
     activationEditVersion: number;
+    runtimeUpdate?: {
+      from: string;
+      to: string;
+      fromImage: string;
+      toImage: string;
+    };
   },
 ) {
   return await queueOperationRecord(ctx, { ...args, kind: "publish" });

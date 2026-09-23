@@ -1,7 +1,7 @@
 "use client";
 
 import { ConvexError } from "convex/values";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import {
   AlertCircle,
@@ -323,6 +323,11 @@ function Workspace({
       ? `${operation._id}:${operation.status}:${operation.updatedAt}`
       : "base";
   const isDraftLibrary = libraryState === "provisioning";
+  // Software older than the settings page's contract is updated by the publish.
+  const publishRuntime = useQuery(
+    api.evidenceLibraries.updates.publishRuntime,
+    isDraftLibrary ? "skip" : { libraryId },
+  );
   const canActivate =
     (isDraftLibrary || dirty || hasUnpublishedChanges) &&
     !activating &&
@@ -567,7 +572,11 @@ function Workspace({
                       name: draft.identity.name,
                       address: draft.identity.baseUrl,
                     })
-                  : `${t("activateBody")} ${dirty ? t("activateBodyUnsaved") : ""}`}
+                  : [
+                      t("activateBody"),
+                      publishRuntime === "update" ? t("activateBodySoftware") : "",
+                      dirty ? t("activateBodyUnsaved") : "",
+                    ].filter(Boolean).join(" ")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

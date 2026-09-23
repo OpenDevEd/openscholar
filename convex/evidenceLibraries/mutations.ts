@@ -68,6 +68,7 @@ import {
   evidenceLibrarySetupIdentityFields,
   sectionRowValidator,
 } from "./validators";
+import { readPublishRuntime, type PublishRuntime } from "./updates";
 
 const SETUP_OPERATION_IDEMPOTENCY_KEY = "library-setup";
 
@@ -675,8 +676,16 @@ export async function activateEvidenceLibraryConfiguration(
       },
     ).issues,
   );
+  let publishRuntime: PublishRuntime = { kind: "current" };
   if (access.library.state === "active") {
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
+    publishRuntime = await readPublishRuntime(ctx, access.library);
+    if (publishRuntime.kind === "unreleased") {
+      throw createError(
+        "CONFLICT",
+        "These changes need Evidence Library software that is still being released. Try again in a few minutes.",
+      );
+    }
   }
 
   const frozen = await finalizeEvidenceLibraryDraft(ctx, args);
@@ -710,6 +719,10 @@ export async function activateEvidenceLibraryConfiguration(
     revisionId: frozen.revisionId,
     idempotencyKey: `activate:${args.expectedEditVersion}`,
     activationEditVersion: args.expectedEditVersion,
+    // Software older than OpenScholar's contract would refuse this revision.
+    ...(publishRuntime.kind === "update"
+      ? { runtimeUpdate: publishRuntime.runtimeUpdate }
+      : {}),
   });
   const started = await claimAndScheduleConfigurationDeployment(ctx, {
     libraryId: args.libraryId,
