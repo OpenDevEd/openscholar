@@ -98,6 +98,9 @@ function createRuntimeNetwork(input: {
   let previousCanonical = canonical;
   let readinessUnavailable = false;
   let configurationRejected = false;
+  // A rollback stamps what it restores with the time it ran, and the runtime
+  // then refuses any other configuration that is not newer than that.
+  let rolledBackAt: number | null = null;
   let configurationBusy = false;
   let runtimeRouteMarker: string | null = null;
   const publicHealthMarkers: Array<string | null> = [];
@@ -284,6 +287,19 @@ function createRuntimeNetwork(input: {
         if (method === "PUT" && configurationBusy) {
           return jsonResponse({ message: "Configuration is locked" }, 409);
         }
+        if (method === "PUT" && rolledBackAt !== null) {
+          const next = body as { revision: string; updatedAt?: string };
+          if (
+            next.revision !== activeRevision &&
+            !(Date.parse(next.updatedAt ?? "") > rolledBackAt)
+          ) {
+            return jsonResponse(
+              { error: { code: "REVISION_NOT_NEWER" } },
+              400,
+            );
+          }
+        }
+        if (method === "DELETE") rolledBackAt = Date.now();
         if (method === "PUT" && configurationRejected) {
           return jsonResponse({ message: "Configuration refused" }, 400);
         }
@@ -2384,6 +2400,70 @@ describe("Evidence Library configuration deployment", () => {
         { libraryId, operationId: deployment.activated.operationId },
       ),
     ).rejects.toThrow(/cannot be retried/i);
+  });
+
+  it("retries an activation that was rolled back with a newer copy", async () => {
+    const deployment = await activateChangedConfiguration("retry-rolled-back");
+    const { libraryId } = deployment.fixture.created;
+    const operationId = deployment.activated.operationId;
+    const network = createRuntimeNetwork({
+      libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    // The configuration lands, readiness never answers, and the last allowed
+    // check puts the previous configuration back.
+    network.failReadiness();
+    let result: { status: string } = { status: "running" };
+    for (let poll = 0; poll < 30 && result.status === "running"; poll += 1) {
+      const current = await deployment.fixture.t.run((ctx) =>
+        ctx.db.get(operationId),
+      );
+      result = await deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId,
+          operationId,
+          attemptToken: current!.configurationAttemptToken!,
+          attemptCount: current!.attemptCount,
+        },
+      );
+    }
+    expect(result).toEqual({ status: "failed" });
+    expect(
+      network.requests.some(
+        ({ method, url }) =>
+          method === "DELETE" && url.pathname === "/api/openscholar/configuration",
+      ),
+    ).toBe(true);
+
+    vi.setSystemTime(new Date("2026-08-25T00:05:00Z"));
+    network.restoreReadiness();
+    await deployment.fixture.admin.mutation(
+      api.evidenceLibraries.configurationDeployment
+        .retryConfigurationDeployment,
+      { libraryId, operationId },
+    );
+    const claimed = await deployment.fixture.t.run((ctx) =>
+      ctx.db.get(operationId),
+    );
+    if (!claimed?.configurationAttemptToken) {
+      throw new Error("The retry did not claim the deployment");
+    }
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId,
+          operationId,
+          attemptToken: claimed.configurationAttemptToken,
+          attemptCount: claimed.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "succeeded" });
   });
 
   it("refuses a claimed retry before doing any Coolify work when its target goes stale", async () => {

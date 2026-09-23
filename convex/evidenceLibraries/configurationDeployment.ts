@@ -1479,6 +1479,7 @@ export const failConfigurationDeployment = internalMutation({
     attemptToken: v.string(),
     attemptCount: v.number(),
     error: evidenceLibraryOperationFailureValidator,
+    rolledBack: v.optional(v.boolean()),
   },
   returns: v.union(v.literal("failed"), v.literal("ignored")),
   handler: async (ctx, args) => {
@@ -1502,6 +1503,7 @@ export const failConfigurationDeployment = internalMutation({
       configurationAttemptToken: undefined,
       configurationLeaseExpiresAt: undefined,
       configurationReadinessPollCount: undefined,
+      ...(args.rolledBack ? { rolledBackAt: now } : {}),
       updatedAt: now,
     });
     // A domain change that failed gives the domain back, so the owner can
@@ -1642,6 +1644,15 @@ export const retryConfigurationDeployment = mutation({
       }
       await ctx.db.patch(args.operationId, {
         domainChange: { ...change, token: anchorToken },
+      });
+    }
+    // The saved copy is older than the configuration a rollback put back, so
+    // the runtime would refuse it: the retry builds a fresh one.
+    if (operation.rolledBackAt !== undefined) {
+      await ctx.db.patch(args.operationId, {
+        configurationDeploymentTarget: undefined,
+        receipt: undefined,
+        rolledBackAt: undefined,
       });
     }
     return await claimAndScheduleConfigurationDeployment(ctx, args);

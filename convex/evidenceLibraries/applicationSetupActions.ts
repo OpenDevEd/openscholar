@@ -125,6 +125,7 @@ export const runApplicationSetup = internalAction({
         { modelIds: selectedAiModelIds(sections.ai) },
       );
       const configuration = assembleEvidenceLibraryRuntimePayload({
+        assembledAt: Date.now(),
         encryptionKey,
         libraryId: args.libraryId,
         revision: {

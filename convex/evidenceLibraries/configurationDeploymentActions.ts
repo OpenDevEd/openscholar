@@ -251,6 +251,7 @@ export const runConfigurationDeployment = internalAction({
           { modelIds: selectedAiModelIds(sections.ai) },
         );
         const payload = assembleEvidenceLibraryRuntimePayload({
+          assembledAt: Date.now(),
           encryptionKey,
           libraryId: args.libraryId,
           revision: prepared.revision,
@@ -770,7 +771,11 @@ export const runConfigurationDeployment = internalAction({
       await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .failConfigurationDeployment,
-        { ...args, error: safeError },
+        {
+          ...args,
+          error: safeError,
+          ...(restoreDirectConfiguration ? { rolledBack: true } : {}),
+        },
       );
       return { status: "failed" as const };
     }
