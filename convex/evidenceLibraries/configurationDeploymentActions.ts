@@ -30,6 +30,7 @@ import {
   changeLibraryRuntimeRoute,
   handOffLibraryRuntime,
   isRetryableReadinessError,
+  probeEvidenceLibraryAddress,
   ReadinessClientError,
   requireLibraryRuntimePublicReady,
   requireLibraryRuntimeRouteReady,
@@ -371,6 +372,28 @@ export const runConfigurationDeployment = internalAction({
           }
           throw lastError;
         };
+        // Once the site takes a new address it redirects everything else
+        // there, so that address has to answer as this library over HTTPS
+        // first — a domain can count as working with an expired certificate.
+        // Nothing has changed yet if it does not.
+        if (nextOrigin !== liveOrigin && nextOrigin !== platformOrigin) {
+          const answer = await probeEvidenceLibraryAddress({
+            targetBaseUrl: nextOrigin,
+            fetchImpl: await openPinnedDomainClient({
+              host: new URL(nextOrigin).hostname,
+            }),
+          });
+          if (
+            answer.state !== "ours" ||
+            (answer.revision !== prepared.continuity.revisionKey &&
+              answer.revision !== target.revisionKey)
+          ) {
+            throw new ReadinessClientError(
+              "CONFIGURATION_ACTIVATION_FAILED",
+              "The new address does not answer as this library",
+            );
+          }
+        }
         restoreDirectConfiguration = restorePreviousConfiguration;
         // A retry after an attempt that landed finds the site already on the
         // new address, so the new one is tried when the old one refuses.

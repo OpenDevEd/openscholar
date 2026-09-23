@@ -78,6 +78,8 @@ function createRuntimeNetwork(input: {
   libraryId: string;
   publicAddress: string;
   canonicalAddress?: string;
+  /** Other hosts the proxy routes to this library. */
+  servedAddresses?: string[];
   revisionKey: string;
   runtimeCommit?: string;
   runtimeImage?: string;
@@ -320,8 +322,13 @@ function createRuntimeNetwork(input: {
           },
         });
       }
+      // The health check answers on every host the library is served on,
+      // never redirected, so a new address can be read before it is used.
       if (
-        url.origin === new URL(canonical ?? publicDomain).origin &&
+        (url.origin === new URL(canonical ?? publicDomain).origin ||
+          (input.servedAddresses ?? []).some(
+            (address) => new URL(address).origin === url.origin,
+          )) &&
         method === "GET" &&
         url.pathname === "/api/library-config/health"
       ) {
@@ -546,6 +553,7 @@ async function switchCustomDomain(
   suffix: string,
   domainState: "active" | "failed",
   direction: "on" | "off",
+  { served = true }: { served?: boolean } = {},
 ) {
   const customAddress = "https://evidence.example.org";
   const fixture = await createReadyLibrary(suffix);
@@ -576,7 +584,15 @@ async function switchCustomDomain(
     libraryId: fixture.created.libraryId,
     publicAddress: fixture.created.publicAddress,
     ...(direction === "off" ? { canonicalAddress: customAddress } : {}),
-    revisionKey: "before-switch",
+    ...(direction === "on" && served ? { servedAddresses: [customAddress] } : {}),
+    // The running site reports the revision it is live on.
+    revisionKey: await fixture.t.run(async (ctx) => {
+      const library = await ctx.db.get(fixture.created.libraryId);
+      const revision = library?.activeRevisionId
+        ? await ctx.db.get(library.activeRevisionId)
+        : null;
+      return revision?.revisionKey ?? "";
+    }),
   });
   vi.stubGlobal("fetch", network.fetchImpl);
   const off = await fixture.admin.mutation(
@@ -1090,6 +1106,29 @@ describe("Evidence Library configuration deployment", () => {
       { libraryId: fixture.created.libraryId },
     );
     expect(listed.canonicalAddress).toBe(customAddress);
+  });
+
+  it("does not switch onto a domain that does not answer as this library", async () => {
+    // Its certificate may have expired while it still counts as working.
+    // Taking it would send every visitor there with no way back.
+    const { fixture, network, run } = await switchCustomDomain(
+      "canonical-on-unserved",
+      "active",
+      "on",
+      { served: false },
+    );
+    await expect(run()).resolves.toEqual({ status: "failed" });
+    expect(
+      network.requests.some(
+        ({ method, url }) =>
+          method === "PUT" && url.pathname === "/api/openscholar/configuration",
+      ),
+    ).toBe(false);
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.canonicalAddress).toBe(fixture.created.publicAddress);
   });
 
   it("waits out a busy runtime rather than trying the other address", async () => {
