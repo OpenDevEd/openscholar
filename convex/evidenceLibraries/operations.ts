@@ -282,7 +282,9 @@ export function configurationOperationRequiresDeployment(
   return Boolean(
     operation.runtimeUpdate ||
       operation.addressMove ||
-      (operation.domainChange && operation.domainChange.reason !== "canonical"),
+      (operation.domainChange &&
+        (operation.domainChange.reason !== "canonical" ||
+          operation.domainChange.redeploy === true)),
   );
 }
 
@@ -586,6 +588,7 @@ export async function queueDomainChangeOperation(
       domainId: Id<"evidenceLibraryDomains">;
       reason: "attach" | "detach" | "canonical";
       address?: string;
+      redeploy?: true;
       token: string;
     };
   },
