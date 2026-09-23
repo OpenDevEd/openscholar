@@ -108,8 +108,8 @@ handoff.
   or other invariant.
 - Give every lane a bounded goal, exact paths, expected evidence, and a clear
   stop condition.
-- Codex and ChatGPT primaries delegate to GPT-5.6 Sol at high reasoning.
-- Claude primaries delegate to Opus-5 at high reasoning.
+- Codex and ChatGPT primaries delegate to GPT-6 Astra at xhigh reasoning.
+- Claude primaries delegate to Opus 5.5 at high reasoning.
 - Every delegated prompt requires `ponytail` and `unslop`.
 - Implementation lanes use isolated worktrees and isolated development
   services. They do not start or change shared deployments.
@@ -165,17 +165,17 @@ handoff.
 
 - Use one read-only review from the other agent family on the final integrated
   diff for each complete phase. Do not review every commit.
-- A Codex or ChatGPT primary uses Fable-5 at high effort:
+- A Codex or ChatGPT primary uses Opus 5.5 at high effort:
 
   ```sh
-  claudeekitabu -p --model claude-fable-5 --effort high \
+  claudeekitabu -p --model claude-opus-5-5 --effort high \
     --permission-mode plan --tools Read,Glob,Grep --no-session-persistence
   ```
 
-- A Claude primary uses GPT-5.6 Sol at high reasoning:
+- A Claude primary uses GPT-6 Astra at xhigh reasoning:
 
   ```sh
-  codex exec -m gpt-5.6-sol -c model_reasoning_effort=high -s read-only -
+  codex exec -m gpt-6-astra -c model_reasoning_effort=xhigh -s read-only -
   ```
 
 - Send the review prompt on standard input. Include the exact integrated diff,
