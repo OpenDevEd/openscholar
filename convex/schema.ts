@@ -28,6 +28,7 @@ import {
   evidenceLibraryConfigSectionValidator,
   evidenceLibraryCredentialFields,
   evidenceLibraryDomainFields,
+  evidenceLibraryDomainRouteLeaseFields,
   evidenceLibraryFields,
   evidenceLibraryOperationFields,
   evidenceLibraryRuntimeBindingValidator,
@@ -178,6 +179,10 @@ export default defineSchema({
     .index("by_libraryId", ["libraryId"])
     // The sweep walks working domains oldest check first, so none starves.
     .index("by_state_and_checkedAt", ["state", "checkedAt"]),
+
+  evidenceLibraryDomainRouteLeases: defineTable(
+    evidenceLibraryDomainRouteLeaseFields,
+  ).index("by_libraryId", ["libraryId"]),
 
   evidenceLibraryRuntimeReleases: defineTable(
     evidenceLibraryRuntimeReleaseFields,
