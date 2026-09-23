@@ -156,7 +156,10 @@ export const runConfigurationDeployment = internalAction({
           ...pendingTarget.customDomains,
         ]),
       ].filter((origin) => !platformOriginSet.has(origin));
-      protectionRoute = {
+      // Only a deployment puts traffic behind the guard, so only a deployment
+      // puts it back there when it fails. A direct activation never does:
+      // no later direct activation would ever take it down again.
+      protectionRoute = prepared.requiresDeployment ? {
         applicationUuid: prepared.continuity.applicationId,
         customOrigins,
         platformOrigins,
@@ -165,8 +168,8 @@ export const runConfigurationDeployment = internalAction({
         runtimeImage: prepared.continuity.runtimeImage,
         verifierToken,
         verifierUrl,
-      };
-      if (prepared.requiresDeployment && !savedDeployment) {
+      } : undefined;
+      if (protectionRoute && !savedDeployment) {
         await changeLibraryRuntimeRoute("protection", protectionRoute);
         await requireLibraryRuntimeRouteReady(
           protectionRoute,
@@ -369,12 +372,25 @@ export const runConfigurationDeployment = internalAction({
           throw lastError;
         };
         restoreDirectConfiguration = restorePreviousConfiguration;
-        await activateLibraryRuntimeConfiguration({
-          ...(await configurationInputFor(liveOrigin)),
-          revisionKey: target.revisionKey,
-          runtimeConfigJson,
-          runtimeConfigSha256: target.runtimeConfigSha256,
-        });
+        // A retry after an attempt that landed finds the site already on the
+        // new address, so the new one is tried when the old one refuses.
+        let activated = false;
+        let activationError: unknown;
+        for (const origin of new Set([liveOrigin, nextOrigin])) {
+          try {
+            await activateLibraryRuntimeConfiguration({
+              ...(await configurationInputFor(origin)),
+              revisionKey: target.revisionKey,
+              runtimeConfigJson,
+              runtimeConfigSha256: target.runtimeConfigSha256,
+            });
+            activated = true;
+            break;
+          } catch (error) {
+            activationError = error;
+          }
+        }
+        if (!activated) throw activationError;
         await ctx.runMutation(
           internal.evidenceLibraries.configurationDeployment
             .saveConfigurationActivationReceipt,

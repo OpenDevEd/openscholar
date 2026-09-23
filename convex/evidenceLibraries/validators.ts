@@ -761,6 +761,9 @@ export const evidenceLibraryDomainChangeValidator = v.object({
   // For a canonical change: the address the library should call its own once
   // this deployment is live. Nothing is written until it is.
   address: v.optional(v.string()),
+  // For a canonical change away from a domain that stopped working: carried
+  // by a deployment, which never has to reach that domain or its certificate.
+  redeploy: v.optional(v.literal(true)),
   // The lease this change holds on the domain. Checked when the deployment
   // finishes, so a change that was overtaken cannot land. Every domain
   // change carries one.

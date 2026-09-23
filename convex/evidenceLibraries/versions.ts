@@ -92,6 +92,7 @@ type CandidateIntent = {
     domainId: Id<"evidenceLibraryDomains">;
     reason: "attach" | "detach" | "canonical";
     address?: string;
+    redeploy?: true;
     token: string;
   };
 };
@@ -1161,6 +1162,18 @@ export const setDomainPrimary = mutation({
     const idempotencyKey =
       `domain:${running.activeRevisionId}:v${CURRENT_OWNER_CONFIGURATION_VERSION}:` +
       `${args.domainId}:canonical:${claimed.generation}:${row.host}:${address}`;
+    // The running site takes a new address through the one it answers on
+    // now. When that is a domain that stopped working, it may no longer be
+    // reachable at all, so a deployment carries the change instead.
+    const leaving = (
+      await ctx.db
+        .query("evidenceLibraryDomains")
+        .withIndex("by_libraryId", (index) =>
+          index.eq("libraryId", args.libraryId),
+        )
+        .collect()
+    ).find((entry) => entry.role === "primary");
+    const redeploy = leaving !== undefined && leaving.state !== "active";
     // The lease is taken now, and held until the deployment carrying this
     // change settles the row.
     await claimed.write();
@@ -1178,6 +1191,7 @@ export const setDomainPrimary = mutation({
         domainId: args.domainId,
         reason: "canonical",
         address,
+        ...(redeploy ? { redeploy: true as const } : {}),
         token: claimed.token,
       },
     });
