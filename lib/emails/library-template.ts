@@ -91,7 +91,7 @@ export function renderLibraryInvitation({
 	return renderLibraryEmail({
 		identity,
 		title: "You’re invited to join the library",
-		content: `<p style="${emailStyles.paragraph}">You’ve been invited to contribute to <strong style="color:#202822">${escapeHtml(identity.name)}</strong>.</p>${emailPanel(role === "editor" ? "Editor" : "Creator", description, "Your library role")}${emailButton("Accept invitation", acceptUrl, identity.accent)}<p style="font-size:13px;line-height:1.7;color:#797b73;margin:22px 0 0">Sign in with the email address that received this invitation. Your invitation expires in 7 days.</p>`,
+		content: `<p style="${emailStyles.paragraph}">You’ve been invited to contribute to <strong style="color:#202822">${escapeHtml(identity.name)}</strong>.</p>${emailPanel(role === "editor" ? "Editor" : "Creator", description, "Your library role")}${emailButton("View invitation", acceptUrl, identity.accent)}<p style="font-size:13px;line-height:1.7;color:#797b73;margin:22px 0 0">Sign in with the email address that received this invitation. Your invitation expires in 7 days.</p>`,
 		footerHtml:
 			"You received this email because you were invited to the library.",
 	});
