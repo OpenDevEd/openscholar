@@ -787,8 +787,12 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     expect(odd.home).toMatchObject({ directory: [{ id: "user_lines", name: "Ada Lovelace" }], people: [] });
     expect((odd.home as { directory: object[] }).directory[0]).not.toHaveProperty("photo");
 
+    // The last member edits a step, so the capped directory names them first.
     const crowded = assembleEvidenceLibraryConfiguration({
-      sections: { ...ownerSections, home: { people: [] } },
+      sections: {
+        ...ownerSections,
+        home: { people: [], curation: { steps: [{ type: "check", editor: "user_500" }] } },
+      },
       managed: {
         ...managedConfiguration,
         team: Array.from({ length: 501 }, (_, index) => ({
@@ -799,10 +803,11 @@ describe("assembleEvidenceLibraryConfiguration", () => {
       },
     });
     expect(validateLibraryConfigStructure(crowded).valid).toBe(true);
-    const directory = (crowded.home as { directory: { name: string; photo?: string }[] }).directory;
+    const directory = (crowded.home as { directory: { id: string; name: string; photo?: string }[] }).directory;
     expect(directory).toHaveLength(500);
-    expect(directory[0]!.name).toHaveLength(120);
-    expect(directory[0]).not.toHaveProperty("photo");
+    expect(directory[0]!.id).toBe("user_500");
+    expect(directory[1]!.name).toHaveLength(120);
+    expect(directory[1]).not.toHaveProperty("photo");
 
     const withoutHome = assembleEvidenceLibraryConfiguration({
       sections: ownerSections,

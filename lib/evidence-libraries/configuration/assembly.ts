@@ -144,9 +144,20 @@ function fillHomeTeam(
     return fields ? [{ id: member.id, ...fields }] : [];
   });
   const members = new Map(shown.map((member) => [member.id, member]));
+  // The steps' editors go first, so a capped directory still names them.
+  const editors = new Set(
+    isObject(home.curation) && Array.isArray(home.curation.steps)
+      ? home.curation.steps.flatMap((step) =>
+          isObject(step) && typeof step.editor === "string" ? [step.editor] : [],
+        )
+      : [],
+  );
   const filled: Record<string, unknown> = {
     ...home,
-    directory: shown.slice(0, HOME_DIRECTORY_MAX),
+    directory: [
+      ...shown.filter((member) => editors.has(member.id)),
+      ...shown.filter((member) => !editors.has(member.id)),
+    ].slice(0, HOME_DIRECTORY_MAX),
   };
   if (Array.isArray(home.people)) {
     filled.people = home.people.flatMap((person) => {

@@ -58,8 +58,11 @@ const APPROVER = "approver";
 
 const QUESTION_FALLBACK = "Leave empty to keep the page's own question";
 
-const approvalDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
-const exampleDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
+// In UTC, so the server's render and the browser's agree whatever their time zones.
+const approvalDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const exampleDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+/** The preview's steps end on this fixed day, one day apart, so every render shows the same example dates. */
+const EXAMPLE_LAST_DAY = Date.UTC(2026, 2, 12);
 
 export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionProps) {
   const home = draft.home;
@@ -145,8 +148,9 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
         ) : (
           <>
             <Field label="Publication followed" hint="The steps are drawn from what happened to this publication.">
-              {() => (
+              {(id) => (
                 <PublicationChoice
+                  id={id}
                   libraryId={libraryId}
                   value={home.followed}
                   onChange={(followed) => setHome(() => ({ followed }))}
@@ -389,7 +393,7 @@ function TimelinePreview({ steps, team }: { steps: HomeStepDraft[]; team: TeamPe
       <ol className="grid gap-x-6 gap-y-5" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
         {steps.map((step, index) => {
           const editor = team.find((person) => person.id === step.editor) ?? team[0];
-          const day = exampleDate.format(new Date(Date.now() - (steps.length - index) * 86_400_000));
+          const day = exampleDate.format(new Date(EXAMPLE_LAST_DAY - (steps.length - 1 - index) * 86_400_000));
           return (
             <li key={step.id} className="min-w-0">
               <p className="h-4 text-xs font-semibold">{step.type === "text" ? null : day}</p>
@@ -604,10 +608,13 @@ const publicationRow = (publication: ReviewedPublication): PickerRow => ({
 
 /** Which publication the journey follows: the latest reviewed one, or one chosen from the library. */
 function PublicationChoice({
+  id,
   libraryId,
   value,
   onChange,
 }: {
+  /** The field's id, so its label names and opens the picker. */
+  id: string;
   libraryId: Id<"evidenceLibraries">;
   value: string;
   onChange: (value: string) => void;
@@ -638,7 +645,7 @@ function PublicationChoice({
     <RemotePickerDialog
       mode="single"
       trigger={
-        <Button type="button" variant="outline" className="h-auto w-full justify-start gap-3 bg-background px-3 py-2 text-left font-normal">
+        <Button id={id} type="button" variant="outline" className="h-auto w-full justify-start gap-3 bg-background px-3 py-2 text-left font-normal">
           <span className="grid h-12 w-9 shrink-0 place-items-center rounded-sm bg-muted text-muted-foreground" aria-hidden>
             {shown ? <FileText className="size-4" /> : <RefreshCw className="size-4" />}
           </span>

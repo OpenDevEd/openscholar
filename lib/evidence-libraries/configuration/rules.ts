@@ -1231,9 +1231,11 @@ function homePayload(home: HomeDraft) {
     questions: questions.map((question) => (question.trim() === "" ? "" : question)),
     followed: optional(home.followed),
     involvement: { ...home.involvement },
-    extra: optional(home.extra.text)
-      ? compact({ title: optional(home.extra.title), text: home.extra.text })
-      : undefined,
+    // A heading without its text is kept, so Save can say what is missing.
+    extra:
+      optional(home.extra.text) || optional(home.extra.title)
+        ? compact({ title: optional(home.extra.title), text: optional(home.extra.text) })
+        : undefined,
     headings: compact({
       curation: optional(home.headings.curation),
       team: optional(home.headings.team),
@@ -1255,8 +1257,11 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
     case "features": {
       // The platform writes aiSearch and deepResearch at assembly, so the
       // row the page saves never carries them.
-      const saved = { ...draft.features };
+      const saved: Partial<Record<FeatureKey, boolean>> = { ...draft.features };
       for (const key of PLATFORM_FEATURE_KEYS) delete saved[key];
+      // Off is the default. Leaving it out keeps the row readable by
+      // backends and library software from before the home page existed.
+      if (!saved.homePage) delete saved.homePage;
       return saved;
     }
     case "footer":

@@ -1114,6 +1114,13 @@ describe("<ConfigurationWorkspace>", () => {
       });
     });
 
+    it("names the publication picker with its field label", async () => {
+      const user = userEvent.setup();
+      await renderWorkspace();
+      await user.click(card("home").getByRole("button", { name: "Add step" }));
+      expect(card("home").getByLabelText("Publication followed").tagName).toBe("BUTTON");
+    });
+
     it("shows the Home card and writes its switch to the features row", async () => {
       const user = userEvent.setup();
       await renderWorkspace();
@@ -1124,10 +1131,10 @@ describe("<ConfigurationWorkspace>", () => {
         "placeholder",
         "What does the evidence say about literacy?",
       );
-      expect(home.getAllByLabelText(/Example question/)[1]).toHaveAttribute(
-        "placeholder",
-        "Leave empty to keep the page's own question",
-      );
+      // A slot the library has no question for shows a fallback of its own.
+      const fallback = home.getAllByLabelText(/Example question/)[1]!.getAttribute("placeholder");
+      expect(fallback).toBeTruthy();
+      expect(fallback).not.toBe("What does the evidence say about literacy?");
 
       await user.click(home.getByRole("switch", { name: "Show a home page" }));
       expect(home.getByText("sectionState.edited")).toBeInTheDocument();

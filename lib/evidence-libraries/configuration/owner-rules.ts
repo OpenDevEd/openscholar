@@ -174,15 +174,25 @@ function ownerRuleIssues(
   return issues;
 }
 
+/** Schema messages an owner could not place on the card, said in the card's words. */
+const OWNER_WORDING: Record<string, string> = {
+  "/home/extra/text": "Write the licence and reuse text, or clear its heading.",
+};
+
+function ownerWording(issue: ValidationIssue): ValidationIssue {
+  const message = issue.keyword === "required" ? OWNER_WORDING[issue.pointer] : undefined;
+  return message ? { ...issue, message } : issue;
+}
+
 export function validateOwnerSection(
   sectionKey: SectionKey,
   payload: unknown,
   options: OwnerRuleOptions = {},
 ): { valid: boolean; issues: ValidationIssue[] } {
   const issues = [
-    ...validateSectionStructure(sectionKey, payload).issues.filter(
-      (issue) => !isMissingPlatformValue(issue),
-    ),
+    ...validateSectionStructure(sectionKey, payload).issues
+      .filter((issue) => !isMissingPlatformValue(issue))
+      .map(ownerWording),
     ...ownerRuleIssues(sectionKey, payload, options),
   ];
   return { valid: issues.length === 0, issues };

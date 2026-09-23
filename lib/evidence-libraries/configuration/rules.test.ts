@@ -619,6 +619,18 @@ describe("changedSectionRows for the content sections", () => {
     expect(sectionState(draft, contentRows, "navigation")).toBe("edited");
   });
 
+  it("writes the home page switch only when it is on", () => {
+    const draft = readDraft(contentRows);
+    draft.features.navbarSearch = true;
+    const [off] = changedSectionRows(draft, contentRows);
+    // Off is the default; older backends and library software refuse the key.
+    expect(off?.payload).not.toHaveProperty("homePage");
+
+    draft.features.homePage = true;
+    const [on] = changedSectionRows(draft, contentRows);
+    expect(on?.payload).toMatchObject({ homePage: true });
+  });
+
   it("writes links with runtime hrefs and dropdown children", () => {
     const draft = readDraft(contentRows);
     draft.navigation.links[0]!.children.push({
@@ -1557,7 +1569,7 @@ describe("home page", () => {
       people: [{ id: "user_ada", name: "Ada", photo: "", title: "", location: "" }],
       questions: ["", "What works?", " "],
       followed: "",
-      extra: { title: "Using it", text: " " },
+      extra: { title: " ", text: " " },
       headings: { curation: "", team: "", involvement: "" },
     };
     const [row] = changedSectionRows(draft, rows);
@@ -1574,6 +1586,21 @@ describe("home page", () => {
     expect(
       validateOwnerSections([{ sectionKey: "home", payload: row!.payload }]).issues,
     ).toEqual([]);
+  });
+
+  it("keeps a closing heading without its text and asks for the text", () => {
+    const draft = readDraft(rows);
+    draft.home.extra = { title: "Reuse", text: " " };
+    const [row] = changedSectionRows(draft, rows).filter((entry) => entry.sectionKey === "home");
+    expect(row?.payload).toMatchObject({ extra: { title: "Reuse" } });
+    expect(
+      validateOwnerSections([{ sectionKey: "home", payload: row!.payload }]).issues,
+    ).toEqual([
+      expect.objectContaining({
+        pointer: "/home/extra/text",
+        message: "Write the licence and reuse text, or clear its heading.",
+      }),
+    ]);
   });
 
   it("owns the home page switch and flags a text step without a name", () => {
