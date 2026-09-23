@@ -748,6 +748,23 @@ describe("assembleEvidenceLibraryConfiguration", () => {
       (partial.identity as { assets: Record<string, unknown> }).assets.icons,
     ).toEqual([]);
 
+    const lightOnly = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        identity: {
+          ...identityWithoutAssets,
+          assets: { logoLight: "https://assets.example.test/own-logo.svg" },
+        },
+      },
+      managed: { ...managedConfiguration, brand: platformBrand },
+    });
+    expect(lightOnly.identity).toMatchObject({
+      assets: {
+        logoLight: "https://assets.example.test/own-logo.svg",
+        logoDark: "https://assets.example.test/own-logo.svg",
+      },
+    });
+
     const own = assembleEvidenceLibraryConfiguration({
       sections: ownerSections,
       managed: { ...managedConfiguration, brand: platformBrand },

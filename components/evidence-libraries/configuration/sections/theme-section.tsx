@@ -55,7 +55,7 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
   }
 
   function setLogo(
-    key: "logoDark" | "logoLight" | "favicon" | "faviconLight" | "faviconDark",
+    key: "logoLight" | "logoDark" | "favicon" | "faviconDark",
     url: string | null,
   ) {
     patch((d) => {
@@ -137,13 +137,6 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
       <FieldGroup title={t("logosHeading")}>
         <div className="grid gap-4 lg:grid-cols-2">
           <UploadField
-            label={t("logoDarkLabel")}
-            hint={t("logoDefaultHint")}
-            kind="image"
-            value={assets.logoDark || null}
-            onChange={(url) => setLogo("logoDark", url)}
-          />
-          <UploadField
             label={t("logoLightLabel")}
             hint={t("logoLightHint")}
             kind="image"
@@ -151,19 +144,19 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
             onChange={(url) => setLogo("logoLight", url)}
           />
           <UploadField
+            label={t("logoDarkLabel")}
+            hint={t("logoDarkHint")}
+            kind="image"
+            value={assets.logoDark || null}
+            onChange={(url) => setLogo("logoDark", url)}
+            optional
+          />
+          <UploadField
             label={t("faviconLabel")}
             hint={t("faviconHint")}
             kind="icon"
             value={assets.favicon || null}
             onChange={(url) => setLogo("favicon", url)}
-          />
-          <UploadField
-            label={t("faviconLightLabel")}
-            hint={t("faviconLightHint")}
-            kind="icon"
-            value={assets.faviconLight || null}
-            onChange={(url) => setLogo("faviconLight", url)}
-            optional
           />
           <UploadField
             label={t("faviconDarkLabel")}
