@@ -31,6 +31,7 @@ import {
   handOffLibraryRuntime,
   isRetryableReadinessError,
   probeEvidenceLibraryAddress,
+  readActiveConfigurationUpdatedAt,
   ReadinessClientError,
   requireLibraryRuntimePublicReady,
   requireLibraryRuntimeRouteReady,
@@ -250,7 +251,22 @@ export const runConfigurationDeployment = internalAction({
           internal.models.queries.resolveEvidenceLibrarySelection,
           { modelIds: selectedAiModelIds(sections.ai) },
         );
+        // After a rollback the runtime's clock decides what counts as newer.
+        const liveOrigin = new URL(prepared.continuity.liveOrigin).origin;
+        const rolledBackTo = prepared.rolledBack
+          ? await readActiveConfigurationUpdatedAt({
+              baseUrl: liveOrigin,
+              ...(liveOrigin === new URL(prepared.targetBaseUrl).origin
+                ? {}
+                : {
+                    fetchImpl: await openOwnProxyClient({
+                      host: new URL(liveOrigin).hostname,
+                    }),
+                  }),
+            })
+          : 0;
         const payload = assembleEvidenceLibraryRuntimePayload({
+          assembledAt: Math.max(Date.now(), rolledBackTo + 1),
           encryptionKey,
           libraryId: args.libraryId,
           revision: prepared.revision,
@@ -770,7 +786,11 @@ export const runConfigurationDeployment = internalAction({
       await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .failConfigurationDeployment,
-        { ...args, error: safeError },
+        {
+          ...args,
+          error: safeError,
+          ...(restoreDirectConfiguration ? { rolledBack: true } : {}),
+        },
       );
       return { status: "failed" as const };
     }

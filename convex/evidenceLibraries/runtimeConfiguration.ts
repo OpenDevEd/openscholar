@@ -35,6 +35,8 @@ export function buildEvidenceLibraryLoginPageUrl(input: {
 }
 
 export function assembleEvidenceLibraryRuntimePayload(input: {
+  /** When this configuration is built; the runtime takes only newer ones. */
+  assembledAt: number;
   encryptionKey: string;
   libraryId: Id<"evidenceLibraries">;
   revision: { key: string; createdAt: number };
@@ -76,7 +78,10 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
     sections: input.sections,
     managed: {
       revision: input.revision.key,
-      updatedAt: new Date(input.revision.createdAt).toISOString(),
+      // When this copy was built, not when its version was frozen: a rollback
+      // stamps the configuration it restores with the time it ran, and the
+      // runtime only takes a configuration newer than the one it has.
+      updatedAt: new Date(input.assembledAt).toISOString(),
       libraryId: input.libraryId,
       convexSiteUrl: input.origins.convexSite,
       loginPageUrl: buildEvidenceLibraryLoginPageUrl({
