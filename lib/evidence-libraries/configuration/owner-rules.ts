@@ -93,6 +93,20 @@ function ownerRuleIssues(
       message: "The mail server is set by the platform and cannot be saved.",
     });
   }
+  // The directory names everyone on the team. The platform fills it from the
+  // team at assembly, so an owner row never carries one.
+  if (
+    sectionKey === "home" &&
+    record?.directory !== undefined &&
+    !(Array.isArray(record.directory) && record.directory.length === 0)
+  ) {
+    issues.push({
+      pointer: "/home/directory",
+      section: "home",
+      keyword: "platformValue",
+      message: "The team directory is set by the platform and cannot be saved.",
+    });
+  }
   // The platform decides these two switches and the search embedder. A saved
   // row must not carry them, or a stale value would sit in the draft while
   // the library runs on something else.

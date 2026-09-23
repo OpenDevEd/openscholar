@@ -715,6 +715,29 @@ const teamPersonValidator = v.object({
   imageUrl: v.optional(v.string()),
 });
 
+/**
+ * Everyone who is, or could be added to, the library's team: active members of
+ * its organization and people with a library grant, each with their role.
+ */
+async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
+  const [memberships, assignments] = await Promise.all([
+    ctx.db.query("organizationMemberships")
+      .withIndex("by_organizationId_and_state", q => q.eq("organizationId", library.organizationId).eq("state", "active")).collect(),
+    ctx.db.query("evidenceLibraryMembers")
+      .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id)).collect(),
+  ]);
+  const memberIds = new Set(memberships.map(m => m.clerkUserId));
+  const userIds = new Set([...memberIds, ...assignments.map(m => m.clerkUserId)]);
+  return await Promise.all([...userIds].map(async clerkUserId => {
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
+    return {
+      role: await readLibraryRole(ctx, library, clerkUserId),
+      canAdd: memberIds.has(clerkUserId) && user?.state !== "deleted" && library.state !== "disabled",
+      person: { clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "", imageUrl: user?.avatarUrl },
+    };
+  }));
+}
+
 /** Owners manage explicit library grants and inherited organization owners. */
 export const listTeam = query({
   args: { libraryId: v.id("evidenceLibraries") },
@@ -728,22 +751,7 @@ export const listTeam = query({
   }),
   handler: async (ctx, args) => {
     const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    const [memberships, assignments] = await Promise.all([
-      ctx.db.query("organizationMemberships")
-        .withIndex("by_organizationId_and_state", q => q.eq("organizationId", access.organization._id).eq("state", "active")).collect(),
-      ctx.db.query("evidenceLibraryMembers")
-        .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", args.libraryId)).collect(),
-    ]);
-    const memberIds = new Set(memberships.map(m => m.clerkUserId));
-    const userIds = new Set([...memberIds, ...assignments.map(m => m.clerkUserId)]);
-    const people = await Promise.all([...userIds].map(async clerkUserId => {
-      const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
-      return {
-        role: await readLibraryRole(ctx, access.library, clerkUserId),
-        canAdd: memberIds.has(clerkUserId) && user?.state !== "deleted" && access.library.state !== "disabled",
-        person: { clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "", imageUrl: user?.avatarUrl },
-      };
-    }));
+    const people = await readLibraryPeople(ctx, access.library);
     people.sort((a, b) => (a.person.name || a.person.email).localeCompare(b.person.name || b.person.email));
     return {
       invitations: (await ctx.db.query("evidenceLibraryInvitations").withIndex("by_libraryId_and_email", q => q.eq("libraryId", args.libraryId)).collect())
@@ -755,5 +763,23 @@ export const listTeam = query({
       creators: people.filter(p => p.role === "creator").map(p => p.person),
       availablePeople: people.filter(p => !p.role && p.canAdd).map(p => p.person),
     };
+  },
+});
+
+/**
+ * Everyone with a role on the library, as the published home page names them.
+ * A person without a name shows as their email; one with neither is left out.
+ */
+export const readLibraryTeamForAssembly = internalQuery({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.array(v.object({ id: v.string(), name: v.string(), photo: v.optional(v.string()) })),
+  handler: async (ctx, args) => {
+    const library = await ctx.db.get("evidenceLibraries", args.libraryId);
+    if (!library) return [];
+    return (await readLibraryPeople(ctx, library)).flatMap(({ role, person }) => {
+      const name = person.name || person.email;
+      if (!role || !name) return [];
+      return [person.imageUrl ? { id: person.clerkUserId, name, photo: person.imageUrl } : { id: person.clerkUserId, name }];
+    });
   },
 });

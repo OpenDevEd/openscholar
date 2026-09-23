@@ -38,6 +38,7 @@ export const PAGE_SECTION_KEYS = [
   "identity",
   "theme",
   "institutions",
+  "home",
   "navigation",
   "footer",
   "contact",
@@ -74,6 +75,7 @@ const ROW_KEYS = [
   "localization",
   "analytics",
   "ai",
+  "home",
 ] as const;
 type RowKey = (typeof ROW_KEYS)[number];
 
@@ -108,7 +110,9 @@ type SectionProblem =
   | "aiKey"
   | "aiModel"
   | "aiModelUnknown"
-  | "legalText";
+  | "legalText"
+  | "homeStepName"
+  | "homeLimit";
 
 /* ------------------------------------------------------------------ */
 /* Schema facts                                                        */
@@ -200,6 +204,26 @@ export const SCHEMA_LIMITS = {
   },
   filters: {
     institutionLabel: schemaNumber("/filters/institution/label", "maxLength"),
+  },
+  home: {
+    intro: schemaNumber("/home/intro", "maxLength"),
+    statement: schemaNumber("/home/curation/text", "maxLength"),
+    steps: schemaNumber("/home/curation/steps", "maxItems"),
+    stepTitle: schemaNumber("/home/curation/steps/*/title", "maxLength"),
+    stepText: schemaNumber("/home/curation/steps/*/text", "maxLength"),
+    team: schemaNumber("/home/team", "maxLength"),
+    people: schemaNumber("/home/people", "maxItems"),
+    personTitle: schemaNumber("/home/people/*/title", "maxLength"),
+    personLocation: schemaNumber("/home/people/*/location", "maxLength"),
+    questions: schemaNumber("/home/questions", "maxItems"),
+    question: schemaNumber("/home/questions/*", "maxLength"),
+    extraTitle: schemaNumber("/home/extra/title", "maxLength"),
+    extra: schemaNumber("/home/extra/text", "maxLength"),
+    headings: {
+      curation: schemaNumber("/home/headings/curation", "maxLength"),
+      team: schemaNumber("/home/headings/team", "maxLength"),
+      involvement: schemaNumber("/home/headings/involvement", "maxLength"),
+    },
   },
 } as const;
 
@@ -307,6 +331,15 @@ const FEATURE_DEFAULTS = Object.fromEntries(
   ]),
 ) as Record<FeatureKey, boolean>;
 export const FEATURE_KEYS = Object.keys(FEATURE_DEFAULTS) as FeatureKey[];
+
+export const HOME_STEP_TYPES = schemaEnum<
+  "arrival" | "check" | "publication" | "text"
+>("/home/curation/steps/*/type");
+export type HomeStepType = (typeof HOME_STEP_TYPES)[number];
+const HOME_INVOLVEMENT_DEFAULTS = {
+  suggestions: schemaBoolean("/home/involvement/suggestions", "default"),
+  editors: schemaBoolean("/home/involvement/editors", "default"),
+};
 
 /* ------------------------------------------------------------------ */
 /* Draft shape                                                         */
@@ -424,6 +457,39 @@ export type AiDraft = {
   defaultModel: string;
 };
 
+/** `editor` is a team member's id; empty shows whoever approved the publication. */
+export type HomeStepDraft = {
+  id: string;
+  type: HomeStepType;
+  title: string;
+  text: string;
+  editor: string;
+};
+/** Name and photo are as last seen on the team; the platform refreshes them at publish. */
+export type HomePersonDraft = {
+  id: string;
+  name: string;
+  photo: string;
+  title: string;
+  location: string;
+};
+export type HomeHeadingKey = "curation" | "team" | "involvement";
+export type HomeDraft = {
+  intro: string;
+  /** `curation.text` */
+  statement: string;
+  steps: HomeStepDraft[];
+  team: string;
+  people: HomePersonDraft[];
+  /** Always one entry per slot; an empty slot keeps the page's own question. */
+  questions: string[];
+  /** The item key of the publication the steps follow; empty follows the latest reviewed one. */
+  followed: string;
+  involvement: { suggestions: boolean; editors: boolean };
+  extra: { title: string; text: string };
+  headings: Record<HomeHeadingKey, string>;
+};
+
 export type DigestScheduleDraft = {time: string; timezone: string} & (
   | {frequency: "weekly"; weekday: number}
   | {frequency: "monthly"; dayOfMonth: number}
@@ -452,6 +518,7 @@ export type ConfigurationDraft = {
   localization: LocalizationDraft;
   analytics: AnalyticsDraft;
   ai: AiDraft;
+  home: HomeDraft;
 };
 
 /** Feature switches the page shows, in their groups. Accounts and AI come later. */
@@ -833,6 +900,54 @@ function readContent(payload: unknown): ConfigurationDraft["content"] {
   return { tags: known };
 }
 
+function readHome(payload: unknown): HomeDraft {
+  const home = record(payload);
+  const curation = record(home.curation);
+  const involvement = record(home.involvement);
+  const extra = record(home.extra);
+  const headings = record(home.headings);
+  const questions = list(home.questions);
+  return {
+    intro: text(home.intro),
+    statement: text(curation.text),
+    steps: list(curation.steps).map((entry) => {
+      const row = record(entry);
+      return {
+        id: newId("st"),
+        type: choice(row.type, HOME_STEP_TYPES, "text"),
+        title: text(row.title),
+        text: text(row.text),
+        editor: text(row.editor),
+      };
+    }),
+    team: text(home.team),
+    people: list(home.people).map((entry) => {
+      const row = record(entry);
+      return {
+        id: text(row.id),
+        name: text(row.name),
+        photo: text(row.photo),
+        title: text(row.title),
+        location: text(row.location),
+      };
+    }),
+    questions: Array.from({ length: SCHEMA_LIMITS.home.questions }, (_, index) =>
+      text(questions[index]),
+    ),
+    followed: text(home.followed),
+    involvement: {
+      suggestions: flag(involvement.suggestions, HOME_INVOLVEMENT_DEFAULTS.suggestions),
+      editors: flag(involvement.editors, HOME_INVOLVEMENT_DEFAULTS.editors),
+    },
+    extra: { title: text(extra.title), text: text(extra.text) },
+    headings: {
+      curation: text(headings.curation),
+      team: text(headings.team),
+      involvement: text(headings.involvement),
+    },
+  };
+}
+
 /** Builds the page draft from the saved rows. Missing rows get defaults. */
 export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
   return {
@@ -860,6 +975,7 @@ export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
     localization: readLocalization(payloadOf(rows, "localization")),
     analytics: readAnalytics(payloadOf(rows, "analytics")),
     ai: readAi(payloadOf(rows, "ai")),
+    home: readHome(payloadOf(rows, "home")),
   };
 }
 
@@ -1078,6 +1194,50 @@ function legalPayload(legal: LegalDraft) {
   return payload;
 }
 
+// Every optional string in the runtime row needs at least one character, so
+// a blank box writes no key. Question slots are the exception: a blank slot
+// keeps the page's own question, so only trailing blanks are dropped.
+// `directory` is never written here; the platform fills it at assembly.
+function homePayload(home: HomeDraft) {
+  const questions = [...home.questions];
+  while (questions.length > 0 && questions.at(-1)!.trim() === "") questions.pop();
+  return compact({
+    intro: optional(home.intro),
+    curation: compact({
+      text: optional(home.statement),
+      steps: home.steps.map((step) =>
+        compact({
+          type: step.type,
+          title: optional(step.title),
+          text: optional(step.text),
+          editor: optional(step.editor),
+        }),
+      ),
+    }),
+    team: optional(home.team),
+    people: home.people.map((person) =>
+      compact({
+        id: person.id,
+        name: person.name,
+        photo: optional(person.photo),
+        title: optional(person.title),
+        location: optional(person.location),
+      }),
+    ),
+    questions: questions.map((question) => (question.trim() === "" ? "" : question)),
+    followed: optional(home.followed),
+    involvement: { ...home.involvement },
+    extra: optional(home.extra.text)
+      ? compact({ title: optional(home.extra.title), text: home.extra.text })
+      : undefined,
+    headings: compact({
+      curation: optional(home.headings.curation),
+      team: optional(home.headings.team),
+      involvement: optional(home.headings.involvement),
+    }),
+  });
+}
+
 function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
   switch (rowKey) {
     case "identity":
@@ -1180,6 +1340,8 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
           }),
         ],
       };
+    case "home":
+      return homePayload(draft.home);
   }
 }
 
@@ -1302,6 +1464,15 @@ function cardSlice(draft: ConfigurationDraft, sectionKey: PageSectionKey) {
       return { search: draft.search, filters: draft.filters };
     case "sources":
       return { sources: draft.sources, tags: draft.content.tags };
+    // Step ids are made up on every read, so they never count as a change.
+    case "home":
+      return {
+        home: {
+          ...draft.home,
+          steps: draft.home.steps.map(({ id: _id, ...step }) => step),
+        },
+        homePage: draft.features.homePage,
+      };
   }
 }
 
@@ -1309,6 +1480,7 @@ const ROWS_FOR_CARD: Record<PageSectionKey, readonly RowKey[]> = {
   identity: ["identity"],
   theme: ["theme", "identity"],
   institutions: ["institutions"],
+  home: ["home", "features"],
   navigation: ["navigation", "features"],
   footer: ["footer"],
   contact: ["contact", "email", "legal", "notifications"],
@@ -1324,7 +1496,8 @@ const ROWS_FOR_CARD: Record<PageSectionKey, readonly RowKey[]> = {
 
 /** The card that edits a runtime row, or null when the page has none for it. */
 export function cardForRow(rowKey: string): PageSectionKey | null {
-  // Two cards write `features` (Navigation owns navbarSearch); issues go to the Features card.
+  // Several cards write `features` (Navigation owns navbarSearch, Home owns
+  // homePage); issues go to the Features card.
   if (rowKey === "features") return "features";
   return (
     PAGE_SECTION_KEYS.find((card) =>
@@ -1552,6 +1725,37 @@ export function sectionProblems(
       }
       break;
     }
+    case "home": {
+      const { home } = draft;
+      const limits = SCHEMA_LIMITS.home;
+      if (home.steps.some((step) => step.type === "text" && !step.title.trim()))
+        problems.push("homeStepName");
+      const over = (value: string, limit: number) => value.length > limit;
+      if (
+        over(home.intro, limits.intro) ||
+        over(home.statement, limits.statement) ||
+        over(home.team, limits.team) ||
+        over(home.extra.title, limits.extraTitle) ||
+        over(home.extra.text, limits.extra) ||
+        home.steps.length > limits.steps ||
+        home.steps.some(
+          (step) => over(step.title, limits.stepTitle) || over(step.text, limits.stepText),
+        ) ||
+        home.people.length > limits.people ||
+        home.people.some(
+          (person) =>
+            over(person.title, limits.personTitle) ||
+            over(person.location, limits.personLocation),
+        ) ||
+        home.questions.some((question) => over(question, limits.question)) ||
+        (Object.keys(limits.headings) as HomeHeadingKey[]).some((key) =>
+          over(home.headings[key], limits.headings[key]),
+        )
+      ) {
+        problems.push("homeLimit");
+      }
+      break;
+    }
     // schema.ts "Enabled AI providers require an API key" and "require a
     // default model"; the model must be one the runtime catalog approves.
     case "ai": {
@@ -1616,6 +1820,10 @@ export function resetSection(
     case "navigation":
       next.navigation = saved.navigation;
       next.features.navbarSearch = saved.features.navbarSearch;
+      break;
+    case "home":
+      next.home = saved.home;
+      next.features.homePage = saved.features.homePage;
       break;
     case "footer":
       next.footer = saved.footer;

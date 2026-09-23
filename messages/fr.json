@@ -2226,6 +2226,7 @@
       "platform": "Platform"
     },
     "sections": {
+      "home": "Home page",
       "identity": "Identity",
       "theme": "Theme",
       "institutions": "Institutions",
@@ -2298,7 +2299,9 @@
       "consentVersion": "The consent version is a whole number, 1 or higher.",
       "aiKey": "Add your OpenRouter key.",
       "aiModel": "Choose the model that answers questions.",
-      "aiModelUnknown": "That model is not one your library software offers. Choose another."
+      "aiModelUnknown": "That model is not one your library software offers. Choose another.",
+      "homeStepName": "Donnez un nom à chaque étape de texte seul.",
+      "homeLimit": "Un texte de la page d'accueil dépasse la longueur autorisée, ou une liste a trop d'entrées. Raccourcissez-le."
     },
     "fields": {
       "optional": "optional",

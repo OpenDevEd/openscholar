@@ -15,7 +15,7 @@ import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Every test here renders all fourteen configuration sections and types into
+// Every test here renders all fifteen configuration sections and types into
 // them one key at a time, so a single case can pass five seconds on a busy
 // machine. The whole file still finishes in about thirty seconds.
 vi.setConfig({ testTimeout: 20_000 });
@@ -108,6 +108,8 @@ vi.mock("@/convex/_generated/api", () => ({
         listLibraryCollections: "listLibraryCollections",
         listRecordInstitutions: "listRecordInstitutions",
         resolveLibraryCollections: "resolveLibraryCollections",
+        listReviewedPublications: "listReviewedPublications",
+        readHomeQuestions: "readHomeQuestions",
       },
     },
     models: {
@@ -125,6 +127,11 @@ let checkAction: (args: unknown) => unknown;
 
 // The page asks the library to name the collections it shows.
 const resolveCollectionsMock = vi.hoisted(() => vi.fn(async () => ({ items: [] })));
+// The Home card asks the library for its own questions and reviewed publications.
+const homeQuestionsMock = vi.hoisted(() =>
+  vi.fn(async () => ({ questions: ["What does the evidence say about literacy?", null, null] })),
+);
+const reviewedPublicationsMock = vi.hoisted(() => vi.fn(async () => ({ items: [], nextCursor: null })));
 
 vi.mock("convex/react", () => ({
   useMutation: (mutation: unknown) => mutationMock(mutation),
@@ -159,7 +166,11 @@ vi.mock("convex/react", () => ({
       ? checkAction
       : action === "resolveLibraryCollections"
         ? resolveCollectionsMock
-        : mutationMock(action),
+        : action === "readHomeQuestions"
+          ? homeQuestionsMock
+          : action === "listReviewedPublications"
+            ? reviewedPublicationsMock
+            : mutationMock(action),
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
@@ -250,6 +261,7 @@ const savedRows = [
   { sectionKey: "exports", payload: {} },
   { sectionKey: "analytics", payload: {} },
   { sectionKey: "ai", payload: {} },
+  { sectionKey: "home", payload: {} },
 ];
 
 function draftResult(
@@ -1049,6 +1061,32 @@ describe("<ConfigurationWorkspace>", () => {
         collections: true,
         downloads: false,
       });
+    });
+
+    it("shows the Home card and writes its switch to the features row", async () => {
+      const user = userEvent.setup();
+      await renderWorkspace();
+      const home = card("home");
+      expect(home.getByText("sections.home")).toBeInTheDocument();
+      expect(home.getByText("sectionState.complete")).toBeInTheDocument();
+      expect(home.getAllByLabelText(/Example question/)[0]).toHaveAttribute(
+        "placeholder",
+        "What does the evidence say about literacy?",
+      );
+      expect(home.getAllByLabelText(/Example question/)[1]).toHaveAttribute(
+        "placeholder",
+        "Leave empty to keep the page's own question",
+      );
+
+      await user.click(home.getByRole("switch", { name: "Show a home page" }));
+      expect(home.getByText("sectionState.edited")).toBeInTheDocument();
+      expect(card("features").getByText("sectionState.complete")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "save" }));
+
+      await waitFor(() => expect(saved).toHaveLength(1));
+      const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
+      expect(request.sections.map((row) => row.sectionKey)).toEqual(["features"]);
+      expect(request.sections[0]?.payload).toMatchObject({ homePage: true });
     });
 
     it("asks for an address once a link goes to an external site", async () => {

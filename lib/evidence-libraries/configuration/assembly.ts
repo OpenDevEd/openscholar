@@ -44,7 +44,12 @@ export type ManagedEvidenceLibraryConfiguration = {
   // The OpenScholar logo and browser icon set, used when the owner uploads nothing.
   // Undefined means the platform brand is not set up yet.
   brand?: PlatformBrandAssets;
+  // Everyone with a role on the library. The home page names approvers and
+  // shows people from this list.
+  team: readonly TeamMember[];
 };
+
+export type TeamMember = { id: string; name: string; photo?: string };
 
 export type PlatformBrandAssets = {
   logoUrl: string;
@@ -104,6 +109,49 @@ export function fillBrandAssets(
 export function emailWantsPlatformMail(email: unknown): boolean {
   if (!isObject(email)) return false;
   return Boolean(email.contactRecipient) || Boolean(email.takedownRecipient);
+}
+
+/** A team member as the home page shows them; no photo means no key. */
+function personFields(member: TeamMember) {
+  return member.photo
+    ? { name: member.name, photo: member.photo }
+    : { name: member.name };
+}
+
+/**
+ * The owner's home row with the team filled in: the directory the runtime
+ * names approvers from, people refreshed from their accounts, and nobody who
+ * has left the team, as a person shown or as a step's editor.
+ */
+function fillHomeTeam(
+  home: Record<string, unknown>,
+  team: readonly TeamMember[],
+): Record<string, unknown> {
+  const members = new Map(team.map((member) => [member.id, member]));
+  const filled: Record<string, unknown> = {
+    ...home,
+    directory: team.map((member) => ({ id: member.id, ...personFields(member) })),
+  };
+  if (Array.isArray(home.people)) {
+    filled.people = home.people.flatMap((person) => {
+      const member = isObject(person) && members.get(person.id as string);
+      if (!member) return [];
+      const { photo: _stale, ...rest } = person;
+      return [{ ...rest, ...personFields(member) }];
+    });
+  }
+  if (isObject(home.curation) && Array.isArray(home.curation.steps)) {
+    filled.curation = {
+      ...home.curation,
+      steps: home.curation.steps.map((step) => {
+        if (!isObject(step) || step.editor === undefined) return step;
+        if (members.has(step.editor as string)) return step;
+        const { editor: _gone, ...rest } = step;
+        return rest;
+      }),
+    };
+  }
+  return filled;
 }
 
 export type OwnerSections = Partial<Record<SectionKey, unknown>>;
@@ -251,6 +299,10 @@ export function assembleEvidenceLibraryConfiguration({
       ...owner,
       identity,
       email,
+      // The home row is the owner's; who is on the team is the platform's.
+      ...(isObject(owner.home)
+        ? { home: fillHomeTeam(owner.home, managed.team) }
+        : {}),
       services: {
         // Every managed runtime has this private Compose service.
         redis: { url: "redis://evidence-library-redis:6379" },

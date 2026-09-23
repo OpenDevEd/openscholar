@@ -1,4 +1,5 @@
-// Reads the library's own data (collections, institutions) through the
+// Reads the library's own data (collections, institutions, reviewed
+// publications, home page questions) through the
 // runtime's OpenScholar read API, using the library's machine credential.
 
 export const RUNTIME_READ_PAGE_SIZE = 50;
@@ -37,6 +38,19 @@ export type RuntimeInstitutionSort = "count" | "name";
 
 export type RuntimeInstitutionsPage = {
   items: RuntimeInstitution[];
+  nextCursor: string | null;
+};
+
+/** A publication an editor approved. `reviewer` is the approver's Clerk user id. */
+export type RuntimeReviewedPublication = {
+  key: string;
+  title: string;
+  publishedAt: string;
+  reviewer: string;
+};
+
+export type RuntimeReviewedPublicationsPage = {
+  items: RuntimeReviewedPublication[];
   nextCursor: string | null;
 };
 
@@ -101,6 +115,27 @@ function readInstitution(value: unknown): RuntimeInstitution | null {
     return null;
   }
   return { name: value.name, count: value.count };
+}
+
+function readReviewedPublication(
+  value: unknown,
+): RuntimeReviewedPublication | null {
+  if (
+    !isRecord(value) ||
+    typeof value.key !== "string" ||
+    typeof value.title !== "string" ||
+    typeof value.publishedAt !== "string" ||
+    Number.isNaN(Date.parse(value.publishedAt)) ||
+    typeof value.reviewer !== "string"
+  ) {
+    return null;
+  }
+  return {
+    key: value.key,
+    title: value.title,
+    publishedAt: value.publishedAt,
+    reviewer: value.reviewer,
+  };
 }
 
 async function runtimeGet(
@@ -284,4 +319,62 @@ export async function readRuntimeCollectionsByIds(
       asked.has(row.id),
     ),
   };
+}
+
+/**
+ * One page of the publications editors approved, newest first. With `ids`
+ * the library answers just those publications; it does not combine them
+ * with a search or a cursor.
+ */
+export async function readRuntimeReviewedPublications(
+  fetchImpl: typeof fetch,
+  input: {
+    baseUrl: string;
+    credential: string;
+    query?: string;
+    cursor?: string;
+    ids?: readonly string[];
+  },
+): Promise<RuntimeReviewedPublicationsPage> {
+  const body = await runtimeGet(
+    fetchImpl,
+    input,
+    "/api/openscholar/reviewed-publications",
+    input.ids
+      ? { ids: input.ids.join(",") }
+      : {
+          query: input.query,
+          cursor: input.cursor,
+          pageSize: String(RUNTIME_READ_PAGE_SIZE),
+        },
+  );
+  return readPage(body, readReviewedPublication, "reviewed publication list");
+}
+
+/**
+ * The questions the home page asks when the owner leaves a slot empty, one
+ * per slot. `null` means the library has nothing to ask in that slot.
+ */
+export async function readRuntimeHomeQuestions(
+  fetchImpl: typeof fetch,
+  target: { baseUrl: string; credential: string },
+): Promise<(string | null)[]> {
+  const body = await runtimeGet(
+    fetchImpl,
+    target,
+    "/api/openscholar/home-questions",
+    {},
+  );
+  const questions =
+    isRecord(body) && Array.isArray(body.questions) ? body.questions : null;
+  if (
+    !questions ||
+    questions.some((question) => question !== null && typeof question !== "string")
+  ) {
+    throw new RuntimeReadError(
+      "RUNTIME_READ_INVALID",
+      "The library's home page questions have an unexpected shape",
+    );
+  }
+  return questions as (string | null)[];
 }

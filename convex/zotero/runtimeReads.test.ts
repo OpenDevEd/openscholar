@@ -130,6 +130,17 @@ describe("Evidence Library runtime reads", () => {
         { libraryId },
       ),
     ).resolves.toEqual({ reason: "not-set-up", items: [], nextCursor: null });
+    await expect(
+      fixture.admin.action(
+        api.zotero.runtimeReadActions.listReviewedPublications,
+        { libraryId },
+      ),
+    ).resolves.toEqual({ reason: "not-set-up", items: [], nextCursor: null });
+    await expect(
+      fixture.admin.action(api.zotero.runtimeReadActions.readHomeQuestions, {
+        libraryId,
+      }),
+    ).resolves.toEqual({ reason: "not-set-up", questions: [] });
   });
 
   it("reads collections and institutions from the library with its machine credential", async () => {

@@ -243,6 +243,10 @@ export const runConfigurationDeployment = internalAction({
           internal.models.queries.resolveEvidenceLibrarySelection,
           { modelIds: selectedAiModelIds(sections.ai) },
         );
+        const team = await ctx.runQuery(
+          internal.evidenceLibraries.queries.readLibraryTeamForAssembly,
+          { libraryId: args.libraryId },
+        );
         const payload = assembleEvidenceLibraryRuntimePayload({
           encryptionKey,
           libraryId: args.libraryId,
@@ -271,6 +275,7 @@ export const runConfigurationDeployment = internalAction({
           allowedAiModels: modelCatalog.allowedModelIds,
           aiModelMetadata: modelCatalog.modelMetadata,
           aiModelCatalogReady: modelCatalog.catalogReady,
+          team,
         });
         target = await ctx.runMutation(
           internal.evidenceLibraries.configurationDeployment

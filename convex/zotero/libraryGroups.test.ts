@@ -270,6 +270,7 @@ describe("Evidence Library Zotero groups", () => {
       allowedAiModels: [],
       aiModelMetadata: {},
       aiModelCatalogReady: true,
+      team: [],
     });
     expect(payload.runtimeConfig.sources).toEqual([
       expect.objectContaining({

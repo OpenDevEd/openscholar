@@ -64,6 +64,7 @@ const managedConfiguration = {
   aiModelMetadata: {},
   aiModelCatalogReady: true,
   zoteroTranslationUrl: "https://translation.example.test",
+  team: [] as { id: string; name: string; photo?: string }[],
 };
 
 const platformMail = {
@@ -245,6 +246,19 @@ describe("validateOwnerSection email rules", () => {
         platformMailConfigured: true,
       }).valid,
     ).toBe(true);
+  });
+});
+
+describe("validateOwnerSection home rules", () => {
+  test("refuses a team directory in the owner row", () => {
+    expect(validateOwnerSection("home", { directory: [] }).issues).toEqual([]);
+    expect(
+      validateOwnerSection("home", {
+        directory: [{ id: "user_a", name: "Ada Lovelace" }],
+      }).issues,
+    ).toEqual([
+      expect.objectContaining({ pointer: "/home/directory", keyword: "platformValue" }),
+    ]);
   });
 });
 
@@ -696,6 +710,74 @@ describe("assembleEvidenceLibraryConfiguration", () => {
       aiSearch: true,
       deepResearch: false,
     });
+  });
+
+  test("fills the home page from the team and leaves out whoever left it", () => {
+    const configuration = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        home: {
+          curation: {
+            steps: [
+              { type: "check", editor: "user_ada" },
+              { type: "check", editor: "user_gone" },
+              { type: "text", title: "Read" },
+            ],
+          },
+          people: [
+            { id: "user_gone", name: "Gone", title: "Founder" },
+            {
+              id: "user_ada",
+              name: "Old name",
+              photo: "https://img.example.test/old.png",
+              title: "Editor in chief",
+              location: "London",
+            },
+            { id: "user_alan", name: "Alan", photo: "https://img.example.test/stale.png" },
+          ],
+        },
+      },
+      managed: {
+        ...managedConfiguration,
+        team: [
+          { id: "user_ada", name: "Ada Lovelace", photo: "https://img.example.test/ada.png" },
+          { id: "user_alan", name: "Alan Turing" },
+        ],
+      },
+    });
+    expect(validateLibraryConfigStructure(configuration).valid).toBe(true);
+    expect(configuration.home).toMatchObject({
+      directory: [
+        { id: "user_ada", name: "Ada Lovelace", photo: "https://img.example.test/ada.png" },
+        { id: "user_alan", name: "Alan Turing" },
+      ],
+      people: [
+        {
+          id: "user_ada",
+          name: "Ada Lovelace",
+          photo: "https://img.example.test/ada.png",
+          title: "Editor in chief",
+          location: "London",
+        },
+        { id: "user_alan", name: "Alan Turing" },
+      ],
+      curation: {
+        steps: [
+          { type: "check", editor: "user_ada" },
+          { type: "check" },
+          { type: "text", title: "Read" },
+        ],
+      },
+    });
+    const home = configuration.home as { people: object[]; directory: object[] };
+    expect(home.people[1]).not.toHaveProperty("photo");
+    expect(home.directory[1]).not.toHaveProperty("photo");
+
+    const withoutHome = assembleEvidenceLibraryConfiguration({
+      sections: ownerSections,
+      managed: { ...managedConfiguration, team: [{ id: "user_ada", name: "Ada" }] },
+    });
+    expect(withoutHome).not.toHaveProperty("home");
   });
 
   test("adds the platform mail service under the owner's recipients", () => {
