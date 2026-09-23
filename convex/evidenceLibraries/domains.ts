@@ -12,6 +12,7 @@ import { v } from "convex/values";
 import {
   internalMutation,
   internalQuery,
+  mutation,
   query,
   type MutationCtx,
   type QueryCtx,
@@ -22,6 +23,7 @@ import { requireEvidenceLibraryAccess } from "./access";
 import { rateLimit } from "../lib/rateLimit";
 import { internal } from "../_generated/api";
 import { customDomainDnsRecords } from "./domainConfig";
+import { readDomainActivationPlan } from "./domainPlan";
 import {
   evidenceLibraryDomainFailureValidator,
   evidenceLibraryDomainStateValidator,
@@ -51,6 +53,10 @@ const domainRowValidator = v.object({
   isApex: v.boolean(),
   checkedAt: v.optional(v.number()),
   suggestedWwwHost: v.optional(v.string()),
+  /** The main address the owner chose, applied by the next activation. */
+  main: v.boolean(),
+  /** Removed by the owner; goes once the next activation is live. */
+  removeOnActivate: v.boolean(),
   records: v.array(
     v.object({
       type: v.union(v.literal("A"), v.literal("CNAME"), v.literal("TXT")),
@@ -88,6 +94,26 @@ export async function readEvidenceLibraryDomains(
 }
 
 /**
+ * The platform's own work on a library — finishing a removal the owner asked
+ * for once their activation is live — runs with no signed-in owner. Only
+ * internal functions accept `platform`, so no browser can ask for it.
+ */
+async function requireDomainLibraryAccess(
+  ctx: QueryCtx | MutationCtx,
+  libraryId: Id<"evidenceLibraries">,
+  platform: true | undefined,
+): Promise<{ library: Doc<"evidenceLibraries">; clerkUserId: string }> {
+  if (!platform) {
+    return await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
+  }
+  const library = await ctx.db.get("evidenceLibraries", libraryId);
+  if (!library) {
+    throw createError("NOT_FOUND", "Evidence Library not found");
+  }
+  return { library, clerkUserId: "platform" };
+}
+
+/**
  * The custom domains the proxy should be serving for this library: the ones
  * we have handed to it and not yet taken back. Every Coolify call compares
  * the complete map against this list.
@@ -114,6 +140,7 @@ function presentDomain(
   row: Doc<"evidenceLibraryDomains">,
   existingHosts: ReadonlySet<string>,
   includeVerificationRecord: boolean,
+  mainAddress: string,
 ) {
   const isApex = row.isApex === true;
   const suggestedWwwHost = `www.${row.host}`;
@@ -132,6 +159,8 @@ function presentDomain(
     ...(isApex && !existingHosts.has(suggestedWwwHost)
       ? { suggestedWwwHost }
       : {}),
+    main: mainAddress === `https://${row.host}`,
+    removeOnActivate: row.removeOnActivateAt !== undefined,
     records: customDomainDnsRecords({
       host: row.host,
       isApex,
@@ -167,6 +196,10 @@ export const listDomains = query({
   returns: v.object({
     platformAddress: v.string(),
     canonicalAddress: v.string(),
+    /** The address the library calls its own after the next activation. */
+    mainAddress: v.string(),
+    /** The chosen main domain stopped working, so it will not be applied. */
+    mainNeedsAttention: v.boolean(),
     live: v.boolean(),
     domains: v.array(domainRowValidator),
   }),
@@ -186,9 +219,22 @@ export const listDomains = query({
       rows.filter((row) => row.isApex).map(({ host }) => host),
     );
     const shownVerificationHosts = new Set<string>();
+    const draft = await readLibraryDraft(ctx, args.libraryId);
+    const plan = await readDomainActivationPlan(ctx, {
+      library: access.library,
+      binding,
+      draft,
+    });
+    const chosenId = draft?.mainDomainId;
+    const chosen = chosenId ? rows.find((row) => row._id === chosenId) : null;
     return {
       platformAddress: binding.targetBaseUrl,
       canonicalAddress: binding.canonicalBaseUrl ?? binding.targetBaseUrl,
+      mainAddress: plan.mainAddress,
+      mainNeedsAttention:
+        chosen !== null &&
+        chosen !== undefined &&
+        plan.mainAddress !== `https://${chosen.host}`,
       live: access.library.state === "active" && binding.state === "ready",
       domains: sortedRows.map((row) => {
         const verificationHost = row.verificationHost;
@@ -198,10 +244,163 @@ export const listDomains = query({
         if (includeVerificationRecord) {
           shownVerificationHosts.add(verificationHost);
         }
-        return presentDomain(row, existingHosts, includeVerificationRecord);
+        return presentDomain(
+          row,
+          existingHosts,
+          includeVerificationRecord,
+          plan.mainAddress,
+        );
       }),
     };
   },
+});
+
+async function readLibraryDraft(
+  ctx: QueryCtx | MutationCtx,
+  libraryId: Id<"evidenceLibraries">,
+) {
+  return await ctx.db
+    .query("evidenceLibraryConfigDrafts")
+    .withIndex("by_libraryId", (index) => index.eq("libraryId", libraryId))
+    .unique();
+}
+
+/**
+ * Chooses the address the library calls its own. Saved at once, applied by
+ * the next activation, so it goes live together with everything else and
+ * signs visitors out only then.
+ */
+export const chooseMainAddress = mutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    /** A working domain of this library, or null for the platform address. */
+    domainId: v.union(v.id("evidenceLibraryDomains"), v.null()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const access = await requireEvidenceLibraryAccess(
+      ctx,
+      args.libraryId,
+      "manage",
+    );
+    const draft = await readLibraryDraft(ctx, args.libraryId);
+    if (!draft) {
+      throw createError("NOT_FOUND", "Evidence Library draft not found");
+    }
+    if (args.domainId !== null) {
+      const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+      if (!row || row.libraryId !== args.libraryId) {
+        throw createError("NOT_FOUND", "That domain is not on this library");
+      }
+      if (row.state !== "active" || row.removeOnActivateAt !== undefined) {
+        throw createError(
+          "CONFLICT",
+          "Only a working domain can be the main address",
+        );
+      }
+    }
+    await ctx.db.patch(draft._id, {
+      mainDomainId: args.domainId,
+      updatedByClerkUserId: access.clerkUserId,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+/**
+ * Removes the library's main address the way every other setting changes:
+ * the next activation moves the library to another address, then the domain
+ * goes by itself. Pressed again, it keeps the domain.
+ */
+export const stageMainDomainRemoval = mutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    domainId: v.id("evidenceLibraryDomains"),
+    remove: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const access = await requireEvidenceLibraryAccess(
+      ctx,
+      args.libraryId,
+      "manage",
+    );
+    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+    if (!row || row.libraryId !== args.libraryId) {
+      throw createError("NOT_FOUND", "That domain is not on this library");
+    }
+    const now = Date.now();
+    await ctx.db.patch(args.domainId, {
+      removeOnActivateAt: args.remove ? (row.removeOnActivateAt ?? now) : undefined,
+      updatedAt: now,
+    });
+    if (!args.remove) return null;
+    // The library needs another address to move to: the next working domain,
+    // or the platform address.
+    const draft = await readLibraryDraft(ctx, args.libraryId);
+    if (!draft) return null;
+    const chosenIsThis =
+      draft.mainDomainId === args.domainId ||
+      (draft.mainDomainId === undefined && row.role === "primary");
+    if (!chosenIsThis) return null;
+    const next = (await readEvidenceLibraryDomains(ctx, args.libraryId))
+      .filter(
+        (entry) =>
+          entry._id !== args.domainId &&
+          entry.state === "active" &&
+          entry.removeOnActivateAt === undefined,
+      )
+      .sort((left, right) => left.createdAt - right.createdAt)[0];
+    await ctx.db.patch(draft._id, {
+      mainDomainId: next?._id ?? null,
+      updatedByClerkUserId: access.clerkUserId,
+      updatedAt: now,
+    });
+    return null;
+  },
+});
+
+/**
+ * The first domain a library gets working becomes its main address at the
+ * next activation, unless the owner already chose one.
+ */
+export async function suggestFirstMainAddress(
+  ctx: MutationCtx,
+  domainId: Id<"evidenceLibraryDomains">,
+): Promise<void> {
+  const row = await ctx.db.get("evidenceLibraryDomains", domainId);
+  if (!row || row.state !== "active" || row.removeOnActivateAt !== undefined) {
+    return;
+  }
+  const library = await ctx.db.get("evidenceLibraries", row.libraryId);
+  const binding = library?.runtimeBindingId
+    ? await ctx.db.get(
+        "evidenceLibraryRuntimeBindings",
+        library.runtimeBindingId,
+      )
+    : null;
+  if (!library || library.state !== "active" || !binding) return;
+  if (binding.canonicalBaseUrl !== undefined) return;
+  const draft = await readLibraryDraft(ctx, row.libraryId);
+  if (!draft || draft.mainDomainId !== undefined) return;
+  const others = (await readEvidenceLibraryDomains(ctx, row.libraryId)).some(
+    (entry) => entry._id !== row._id && entry.state === "active",
+  );
+  if (others) return;
+  await ctx.db.patch(draft._id, { mainDomainId: row._id });
+}
+
+/** Removed main addresses the library no longer calls its own. */
+export const readStagedRemovals = internalQuery({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.array(v.id("evidenceLibraryDomains")),
+  handler: async (ctx, args) =>
+    (await readEvidenceLibraryDomains(ctx, args.libraryId))
+      .filter(
+        (row) => row.removeOnActivateAt !== undefined && row.role !== "primary",
+      )
+      .map((row) => row._id),
 });
 
 /**
@@ -260,6 +459,7 @@ export const readDomainContext = internalQuery({
   args: {
     libraryId: v.id("evidenceLibraries"),
     domainId: v.optional(v.id("evidenceLibraryDomains")),
+    platform: v.optional(v.literal(true)),
   },
   returns: v.object({
     platformAddress: v.string(),
@@ -273,10 +473,10 @@ export const readDomainContext = internalQuery({
     domain: v.union(domainContextRowValidator, v.null()),
   }),
   handler: async (ctx, args): Promise<DomainContext> => {
-    const access = await requireEvidenceLibraryAccess(
+    const access = await requireDomainLibraryAccess(
       ctx,
       args.libraryId,
-      "manage",
+      args.platform,
     );
     const binding = await readRuntimeBinding(ctx, access.library);
     const rows = await readEvidenceLibraryDomains(ctx, args.libraryId);
@@ -433,6 +633,7 @@ export const claimDomainTransition = internalMutation({
     kind: transitionKindValidator,
     /** Only a check spends the owner's budget; the rest follow one. */
     spendBudget: v.optional(v.boolean()),
+    platform: v.optional(v.literal(true)),
   },
   returns: v.union(
     v.object({
@@ -443,10 +644,10 @@ export const claimDomainTransition = internalMutation({
     v.object({ status: v.literal("busy"), kind: transitionKindValidator }),
   ),
   handler: async (ctx, args) => {
-    const access = await requireEvidenceLibraryAccess(
+    const access = await requireDomainLibraryAccess(
       ctx,
       args.libraryId,
-      "manage",
+      args.platform,
     );
     await requireLibraryNotBeingDeleted(ctx, args.libraryId);
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
@@ -730,6 +931,9 @@ export const writeDomainCheck = internalMutation({
         ? { activatedAt: now }
         : {}),
     });
+    if (args.state === "active") {
+      await suggestFirstMainAddress(ctx, args.domainId);
+    }
     return null;
   },
 });
@@ -781,6 +985,7 @@ export const recoverLiveDomain = internalMutation({
       activatedAt: row.activatedAt ?? now,
       updatedAt: now,
     });
+    await suggestFirstMainAddress(ctx, args.domainId);
     return null;
   },
 });
@@ -798,10 +1003,11 @@ export const writeDomainAttachment = internalMutation({
     token: v.string(),
     attached: v.boolean(),
     deploymentPending: v.boolean(),
+    platform: v.optional(v.literal(true)),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    await requireDomainLibraryAccess(ctx, args.libraryId, args.platform);
     await requireLibraryNotBeingDeleted(ctx, args.libraryId);
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.libraryId !== args.libraryId) {
@@ -942,13 +1148,14 @@ export const beginDomainRemoval = internalMutation({
     libraryId: v.id("evidenceLibraries"),
     domainId: v.id("evidenceLibraryDomains"),
     token: v.string(),
+    platform: v.optional(v.literal(true)),
   },
   returns: v.union(
     v.object({ status: v.literal("removing"), attached: v.boolean() }),
     v.object({ status: v.literal("gone") }),
   ),
   handler: async (ctx, args) => {
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    await requireDomainLibraryAccess(ctx, args.libraryId, args.platform);
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.libraryId !== args.libraryId) {
       return { status: "gone" as const };
@@ -1209,6 +1416,9 @@ export const writeSweptDomain = internalMutation({
       checkedAt: now,
       updatedAt: now,
     });
+    if (args.state === "active") {
+      await suggestFirstMainAddress(ctx, args.domainId);
+    }
     return { written: true };
   },
 });

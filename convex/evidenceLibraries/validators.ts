@@ -304,6 +304,10 @@ export const evidenceLibraryDomainFields = {
   // Set once the owner asked for the domain to go. The row survives until
   // the proxy has been redeployed without it.
   removingAt: v.optional(v.number()),
+  // Set when the owner removed the library's main address. It stays until
+  // the next activation has moved the library to another address, and then
+  // goes by itself.
+  removeOnActivateAt: v.optional(v.number()),
   // Set just before the proxy is asked to hold this host, so a crash between
   // the proxy accepting it and the receipt being saved is still visible.
   attachIntentAt: v.optional(v.number()),
@@ -327,6 +331,10 @@ export const evidenceLibraryConfigDraftFields = {
   editVersion: v.number(),
   ownerConfigurationVersion: draftOwnerConfigurationVersionValidator,
   contractProvenance: configProvenanceValidator,
+  // The address the owner chose for the library, applied by the next
+  // activation like any other change: a domain, or null for the platform
+  // address. Absent means the address stays as it is.
+  mainDomainId: v.optional(v.union(v.id("evidenceLibraryDomains"), v.null())),
   createdByClerkUserId: v.string(),
   updatedByClerkUserId: v.string(),
   createdAt: v.number(),
