@@ -145,10 +145,11 @@ const checkedDomainsValidator = v.object({
 async function syncDomainRoutes(
   ctx: ActionCtx,
   libraryId: Id<"evidenceLibraries">,
+  platform?: true,
 ): Promise<"routed" | "unsupported" | "busy"> {
   const claim = await ctx.runMutation(
     internal.evidenceLibraries.domains.claimDomainRoutes,
-    { libraryId },
+    { libraryId, ...(platform ? { platform } : {}) },
   );
   if (claim.status === "busy") return "busy";
   try {
@@ -932,127 +933,186 @@ export const removeDomain = action({
   handler: async (
     ctx,
     args,
-  ): Promise<{ status: "removed" | "removing" | "busy" }> => {
-    // The same lease every other change to this domain takes, so a removal
-    // never starts under a running check or attach.
-    const claimed = await ctx.runMutation(
-      internal.evidenceLibraries.domains.claimDomainTransition,
-      { libraryId: args.libraryId, domainId: args.domainId, kind: "remove" },
+  ): Promise<{ status: "removed" | "removing" | "busy" }> =>
+    await removeLibraryDomain(ctx, args),
+});
+
+/**
+ * Takes off the main addresses an owner removed, once their activation has
+ * moved the library to another address. Runs with no owner signed in; a
+ * domain it cannot finish is left for the owner's Remove button.
+ */
+export const removeStagedDomains = internalAction({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const staged = await ctx.runQuery(
+      internal.evidenceLibraries.domains.readStagedRemovals,
+      { libraryId: args.libraryId },
     );
-    if (claimed.status === "busy") return { status: "busy" as const };
-    const token = claimed.token;
-    let releaseLease = true;
-    try {
-      // Nothing outside OpenScholar has been touched yet. A domain the
-      // library calls its own is refused here, before it can be taken out of
-      // the proxy.
-      const started = await ctx.runMutation(
-        internal.evidenceLibraries.domains.beginDomainRemoval,
-        { libraryId: args.libraryId, domainId: args.domainId, token },
-      );
-      if (started.status === "gone") return { status: "removed" as const };
-
-      const context = await ctx.runQuery(
-        internal.evidenceLibraries.domains.readDomainContext,
-        { libraryId: args.libraryId, domainId: args.domainId },
-      );
-      const row = context.domain;
-      if (!row) return { status: "removed" as const };
-
-      // An attach that asked the proxy and stopped before saving its
-      // receipt is taken back out too, so no host is left behind there.
-      const wasKnownToProxy = row.attached || row.attachIntent;
-      if (wasKnownToProxy && context.applicationUuid) {
-        await holdDomain(ctx, args.domainId, token);
-        await coolify().setCustomDomains({
-          applicationUuid: context.applicationUuid,
+    for (const domainId of staged) {
+      try {
+        await removeLibraryDomain(
+          ctx,
+          { libraryId: args.libraryId, domainId },
+          true,
+        );
+      } catch (error) {
+        console.error("[evidence-library] staged domain removal failed", {
           libraryId: args.libraryId,
-          publicDomain: context.platformAddress,
-          currentCustomDomains: [
-            [...context.attachedHosts].sort(),
-            [
-              ...new Set([...context.attachedHosts, ...context.uncertainHosts]),
-            ].sort(),
-          ],
-          customDomains: [
-            ...new Set([...context.attachedHosts, ...context.uncertainHosts]),
-          ]
-            .filter((entry: string) => entry !== `https://${row.host}`)
-            .sort(),
+          domainId,
+          error,
         });
-        // The proxy no longer holds the host and a deployment is owed.
-        // Written together, so a crash here cannot look like a finished
-        // removal.
+      }
+    }
+    return null;
+  },
+});
+
+async function removeLibraryDomain(
+  ctx: ActionCtx,
+  args: {
+    libraryId: Id<"evidenceLibraries">;
+    domainId: Id<"evidenceLibraryDomains">;
+  },
+  platform?: true,
+): Promise<{ status: "removed" | "removing" | "busy" }> {
+  // The same lease every other change to this domain takes, so a removal
+  // never starts under a running check or attach.
+  const claimed = await ctx.runMutation(
+    internal.evidenceLibraries.domains.claimDomainTransition,
+    {
+      libraryId: args.libraryId,
+      domainId: args.domainId,
+      kind: "remove",
+      ...(platform ? { platform } : {}),
+    },
+  );
+  if (claimed.status === "busy") return { status: "busy" as const };
+  const token = claimed.token;
+  let releaseLease = true;
+  try {
+    // Nothing outside OpenScholar has been touched yet. A domain the
+    // library calls its own is refused here, before it can be taken out of
+    // the proxy.
+    const started = await ctx.runMutation(
+      internal.evidenceLibraries.domains.beginDomainRemoval,
+      {
+        libraryId: args.libraryId,
+        domainId: args.domainId,
+        token,
+        ...(platform ? { platform } : {}),
+      },
+    );
+    if (started.status === "gone") return { status: "removed" as const };
+
+    const context = await ctx.runQuery(
+      internal.evidenceLibraries.domains.readDomainContext,
+      {
+        libraryId: args.libraryId,
+        domainId: args.domainId,
+        ...(platform ? { platform } : {}),
+      },
+    );
+    const row = context.domain;
+    if (!row) return { status: "removed" as const };
+
+    // An attach that asked the proxy and stopped before saving its
+    // receipt is taken back out too, so no host is left behind there.
+    const wasKnownToProxy = row.attached || row.attachIntent;
+    if (wasKnownToProxy && context.applicationUuid) {
+      await holdDomain(ctx, args.domainId, token);
+      await coolify().setCustomDomains({
+        applicationUuid: context.applicationUuid,
+        libraryId: args.libraryId,
+        publicDomain: context.platformAddress,
+        currentCustomDomains: [
+          [...context.attachedHosts].sort(),
+          [
+            ...new Set([...context.attachedHosts, ...context.uncertainHosts]),
+          ].sort(),
+        ],
+        customDomains: [
+          ...new Set([...context.attachedHosts, ...context.uncertainHosts]),
+        ]
+          .filter((entry: string) => entry !== `https://${row.host}`)
+          .sort(),
+      });
+      // The proxy no longer holds the host and a deployment is owed.
+      // Written together, so a crash here cannot look like a finished
+      // removal.
+      await ctx.runMutation(
+        internal.evidenceLibraries.domains.writeDomainAttachment,
+        {
+          libraryId: args.libraryId,
+          domainId: args.domainId,
+          token,
+          attached: false,
+          deploymentPending: true,
+          ...(platform ? { platform } : {}),
+        },
+      );
+    }
+
+    // Either the proxy just lost the host, or a previous attempt got that
+    // far and stopped before the deployment finished. A host the proxy was
+    // only asked about counts too: it was just taken back out, and that
+    // has to reach the running site.
+    const owed = wasKnownToProxy || row.deploymentPending;
+    if (owed && context.applicationUuid) {
+      // The row already says the proxy lost the host, so the route file
+      // written from the records leaves it out.
+      await holdDomain(ctx, args.domainId, token);
+      const synced = await syncDomainRoutes(ctx, args.libraryId, platform);
+      if (synced === "routed") {
         await ctx.runMutation(
-          internal.evidenceLibraries.domains.writeDomainAttachment,
+          internal.evidenceLibraries.domains.settleRoutedDomain,
           {
             libraryId: args.libraryId,
             domainId: args.domainId,
             token,
             attached: false,
-            deploymentPending: true,
+            ...(platform ? { platform } : {}),
           },
         );
-      }
-
-      // Either the proxy just lost the host, or a previous attempt got that
-      // far and stopped before the deployment finished. A host the proxy was
-      // only asked about counts too: it was just taken back out, and that
-      // has to reach the running site.
-      const owed = wasKnownToProxy || row.deploymentPending;
-      if (owed && context.applicationUuid) {
-        // The row already says the proxy lost the host, so the route file
-        // written from the records leaves it out.
-        await holdDomain(ctx, args.domainId, token);
-        const synced = await syncDomainRoutes(ctx, args.libraryId);
-        if (synced === "routed") {
-          await ctx.runMutation(
-            internal.evidenceLibraries.domains.settleRoutedDomain,
-            {
-              libraryId: args.libraryId,
-              domainId: args.domainId,
-              token,
-              attached: false,
-            },
-          );
-          await ctx.runMutation(
-            internal.evidenceLibraries.domains.finishDomainRemoval,
-            { domainId: args.domainId, token },
-          );
-          return { status: "removed" as const };
-        }
-        // Pressing Remove again carries on from here.
-        if (synced === "busy") return { status: "busy" as const };
-        await queueDomainDeployment(ctx, {
-          libraryId: args.libraryId,
-          domainId: args.domainId,
-          token,
-          generation: row.generation,
-          host: row.host,
-          reason: "detach",
-        });
-        // The row survives until that deployment is live, and the lease is
-        // held until then so nothing else touches it.
-        releaseLease = false;
-        return { status: "removing" as const };
-      }
-
-      // The proxy never had it, so nothing has to be redeployed.
-      await ctx.runMutation(
-        internal.evidenceLibraries.domains.finishDomainRemoval,
-        { domainId: args.domainId, token },
-      );
-      return { status: "removed" as const };
-    } finally {
-      if (releaseLease) {
         await ctx.runMutation(
-          internal.evidenceLibraries.domains.releaseDomainTransition,
+          internal.evidenceLibraries.domains.finishDomainRemoval,
           { domainId: args.domainId, token },
         );
+        return { status: "removed" as const };
       }
+      // Pressing Remove again carries on from here. The platform's own work
+      // has no owner to queue a deployment for, so it leaves the rest to them.
+      if (synced === "busy" || platform) return { status: "busy" as const };
+      await queueDomainDeployment(ctx, {
+        libraryId: args.libraryId,
+        domainId: args.domainId,
+        token,
+        generation: row.generation,
+        host: row.host,
+        reason: "detach",
+      });
+      // The row survives until that deployment is live, and the lease is
+      // held until then so nothing else touches it.
+      releaseLease = false;
+      return { status: "removing" as const };
     }
-  },
-});
+
+    // The proxy never had it, so nothing has to be redeployed.
+    await ctx.runMutation(
+      internal.evidenceLibraries.domains.finishDomainRemoval,
+      { domainId: args.domainId, token },
+    );
+    return { status: "removed" as const };
+  } finally {
+    if (releaseLease) {
+      await ctx.runMutation(
+        internal.evidenceLibraries.domains.releaseDomainTransition,
+        { domainId: args.domainId, token },
+      );
+    }
+  }
+}
 
 /**
  * Proves this change still owns the domain, immediately before writing

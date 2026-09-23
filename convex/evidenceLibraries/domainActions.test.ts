@@ -3551,4 +3551,140 @@ describe("custom domains", () => {
     expect(readTeardownStep("storage")).toBe("files");
     expect(readTeardownStep("database")).toBe("database");
   });
+
+  describe("addresses chosen in the draft", () => {
+    async function makeWorking(
+      fixture: Fixture,
+      domainId: Id<"evidenceLibraryDomains">,
+    ) {
+      const generation = await fixture.t.run(async (ctx) => {
+        await ctx.db.patch(domainId, {
+          state: "verified",
+          attachedAt: Date.now(),
+        });
+        return (await ctx.db.get(domainId))!.generation;
+      });
+      await fixture.t.mutation(
+        internal.evidenceLibraries.domains.writeSweptDomain,
+        { domainId, expectedGeneration: generation, state: "active" },
+      );
+    }
+
+    async function readDraft(fixture: Fixture) {
+      const draft = await fixture.admin.query(
+        api.evidenceLibraries.queries.getDraft,
+        { libraryId: fixture.created.libraryId },
+      );
+      if (!draft) throw new Error("draft missing");
+      return draft;
+    }
+
+    async function activateAndComplete(fixture: Fixture) {
+      const draft = await readDraft(fixture);
+      const activated = await fixture.admin.mutation(
+        api.evidenceLibraries.mutations.activateConfiguration,
+        {
+          libraryId: fixture.created.libraryId,
+          expectedEditVersion: draft.draft.editVersion,
+        },
+      );
+      await saveDeploymentTarget(fixture, activated.operationId);
+      await runDeploymentCompletion(fixture, activated.operationId);
+      return activated;
+    }
+
+    it("moves a library from one domain to another through two activations", async () => {
+      const fixture = await createReadySetupFixture("draft-addresses");
+      const tag = await bindApplication(fixture);
+      const secondHost = "second.example.org";
+      const routes: string[][] = [];
+      vi.stubGlobal(
+        "fetch",
+        createWorld(
+          {
+            routesDomains: routes,
+            serving: [`https://${CUSTOM_HOST}`, `https://${secondHost}`],
+          },
+          tag,
+        ).fetchImpl,
+      );
+      const libraryId = fixture.created.libraryId;
+      const first = await addDomain(fixture);
+      if (first.status !== "added") throw new Error("not added");
+      await makeWorking(fixture, first.domainId);
+
+      // The first working domain is proposed as the main address, and only the
+      // next activation applies it.
+      let listed = await fixture.admin.query(
+        api.evidenceLibraries.domains.listDomains,
+        { libraryId },
+      );
+      expect(listed.canonicalAddress).toBe(`https://${PLATFORM_HOST}`);
+      expect(listed.mainAddress).toBe(`https://${CUSTOM_HOST}`);
+      expect((await readDraft(fixture)).hasUnpublishedChanges).toBe(true);
+
+      await activateAndComplete(fixture);
+      listed = await fixture.admin.query(
+        api.evidenceLibraries.domains.listDomains,
+        { libraryId },
+      );
+      expect(listed.canonicalAddress).toBe(`https://${CUSTOM_HOST}`);
+      expect(listed.domains[0]).toMatchObject({ role: "primary", main: true });
+      expect(await readIdentityBaseUrl(fixture)).toBe(`https://${CUSTOM_HOST}`);
+      expect((await readDraft(fixture)).hasUnpublishedChanges).toBe(false);
+
+      // A second working domain changes nothing on its own.
+      const second = await addDomain(fixture, secondHost);
+      if (second.status !== "added") throw new Error("not added");
+      await makeWorking(fixture, second.domainId);
+      expect((await readDraft(fixture)).hasUnpublishedChanges).toBe(false);
+
+      await fixture.admin.mutation(
+        api.evidenceLibraries.domains.chooseMainAddress,
+        { libraryId, domainId: second.domainId },
+      );
+      await fixture.admin.mutation(
+        api.evidenceLibraries.domains.stageMainDomainRemoval,
+        { libraryId, domainId: first.domainId, remove: true },
+      );
+      listed = await fixture.admin.query(
+        api.evidenceLibraries.domains.listDomains,
+        { libraryId },
+      );
+      expect(listed.mainAddress).toBe(`https://${secondHost}`);
+      expect(
+        listed.domains.find((row) => row.domainId === first.domainId),
+      ).toMatchObject({ role: "primary", removeOnActivate: true });
+
+      await activateAndComplete(fixture);
+      listed = await fixture.admin.query(
+        api.evidenceLibraries.domains.listDomains,
+        { libraryId },
+      );
+      expect(listed.canonicalAddress).toBe(`https://${secondHost}`);
+      expect(await readIdentityBaseUrl(fixture)).toBe(`https://${secondHost}`);
+
+      // The removed domain goes by itself once the library has moved off it.
+      await fixture.t.action(
+        internal.evidenceLibraries.domainActions.removeStagedDomains,
+        { libraryId },
+      );
+      expect(await readRow(fixture, first.domainId)).toBeNull();
+      expect(routes.at(-1)).toEqual([`https://${secondHost}`]);
+    });
+
+    it("only takes a working domain as the main address", async () => {
+      const fixture = await createReadySetupFixture("draft-main-refused");
+      const tag = await bindApplication(fixture);
+      vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+      const added = await addDomain(fixture);
+      if (added.status !== "added") throw new Error("not added");
+      await expect(
+        fixture.admin.mutation(api.evidenceLibraries.domains.chooseMainAddress, {
+          libraryId: fixture.created.libraryId,
+          domainId: added.domainId,
+        }),
+      ).rejects.toThrow(/working domain/);
+    });
+  });
 });

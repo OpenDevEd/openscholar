@@ -7,22 +7,13 @@ import {
   Globe02Icon,
   Home01Icon,
   Refresh01Icon,
+  Undo02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Link2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { memo, useEffect, useId, useState } from "react";
+import { memo, useId, useState } from "react";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -36,7 +27,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { readConvexErrorData } from "@/convex/lib/errors";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { LibraryAddressLink } from "../../library-address-link";
-import { SectionCard } from "../section-card";
+import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip, type StatusTone } from "../status-chip";
 
 type DomainFailure =
@@ -60,6 +51,8 @@ type DomainRow = {
   deploymentPending: boolean;
   isApex: boolean;
   suggestedWwwHost?: string;
+  main: boolean;
+  removeOnActivate: boolean;
   records: Array<{
     type: "A" | "CNAME" | "TXT";
     label: string;
@@ -91,8 +84,10 @@ function dnsStatusOf(row: DomainRow, checking: boolean): DnsStatus {
  * The library's own web address. The owner adds two records where they manage
  * the domain, presses Check DNS, and the library answers on the address.
  *
- * Domain is not part of Save or Activate: every button here applies straight
- * away.
+ * Adding, checking and removing a domain apply straight away: none of that
+ * changes what visitors see. Which address is the library's own, and taking
+ * that one away, are changes like any other setting: saved at once, applied
+ * by the next activation.
  */
 export const DomainSection = memo(function DomainSection({
   libraryId,
@@ -114,23 +109,15 @@ export const DomainSection = memo(function DomainSection({
   const removeDomain = useAction(
     api.evidenceLibraries.domainActions.removeDomain,
   );
-  const setPrimary = useMutation(
-    api.evidenceLibraries.versions.setDomainPrimary,
+  const chooseMain = useMutation(
+    api.evidenceLibraries.domains.chooseMainAddress,
+  );
+  const stageRemoval = useMutation(
+    api.evidenceLibraries.domains.stageMainDomainRemoval,
   );
   const [custom, setCustom] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const customId = useId();
-  // Switching the library's address signs everyone out, so it is confirmed
-  // first — in both directions. Removing the main address is the same switch,
-  // followed by the removal.
-  const [confirming, setConfirming] = useState<{
-    domainId: Id<"evidenceLibraryDomains">;
-    host: string;
-    primary: boolean;
-    remove?: boolean;
-  } | null>(null);
-  const [removeAfterSwitch, setRemoveAfterSwitch] =
-    useState<Id<"evidenceLibraryDomains"> | null>(null);
 
   const domains = data?.domains ?? [];
   const canAdd = domains.length < 5;
@@ -158,23 +145,6 @@ export const DomainSection = memo(function DomainSection({
       setBusy(null);
     }
   }
-
-  // The main address is removed once the library is back on its platform
-  // address. ponytail: the page carries the second step; closing it first
-  // leaves the domain as a plain redirect the owner can remove later.
-  const switchedBackId = domains.find(
-    (domain) =>
-      domain.domainId === removeAfterSwitch &&
-      domain.role === "redirect" &&
-      !domain.deploymentPending,
-  )?.domainId;
-  useEffect(() => {
-    if (!switchedBackId) return;
-    setRemoveAfterSwitch(null);
-    removeDomain({ libraryId, domainId: switchedBackId }).catch(() =>
-      toast.error(t("failed")),
-    );
-  }, [switchedBackId, libraryId, removeDomain, t]);
 
   async function onAdd(host = custom) {
     const typed = host.trim();
@@ -248,7 +218,33 @@ export const DomainSection = memo(function DomainSection({
               className="max-w-full font-mono text-sm font-medium"
             />
           </div>
+          {data.mainAddress === data.platformAddress ? (
+            <StatusChip tone="success" data-main-address>
+              {t("mainLabel")}
+            </StatusChip>
+          ) : null}
+          <MainAddressButton
+            main={data.mainAddress === data.platformAddress}
+            label={t("mainLabel")}
+            chooseLabel={t("redirectLabel")}
+            disabled={busy !== null}
+            onChoose={() =>
+              void run("main", () => chooseMain({ libraryId, domainId: null }))
+            }
+          />
         </div>
+      ) : null}
+
+      {data && data.mainNeedsAttention ? (
+        <InlineNotice tone="warning" data-main-attention>
+          {t("mainNeedsAttention")}
+        </InlineNotice>
+      ) : data && data.mainAddress !== data.canonicalAddress ? (
+        <InlineNotice tone="info" data-main-pending>
+          {t("mainPending", {
+            host: data.mainAddress.replace(/^https?:\/\//, ""),
+          })}
+        </InlineNotice>
       ) : null}
 
       <p className="text-sm font-medium">{t("customDomainsLabel")}</p>
@@ -333,9 +329,20 @@ export const DomainSection = memo(function DomainSection({
             {domains.map((domain: DomainRow, index) => {
               const checking = busy === "check" && domain.state !== "active";
               const status = dnsStatusOf(domain, checking);
-              const canChooseAsPrimary =
-                domain.role === "primary" ||
-                (domain.state === "active" && !domain.removing);
+              const canBeMain =
+                domain.main ||
+                (domain.state === "active" &&
+                  !domain.removing &&
+                  !domain.removeOnActivate);
+              // The address visitors reach now is taken away at the next
+              // activation, like any other change; every other domain goes
+              // straight away.
+              const removeLater = domain.role === "primary";
+              const removeLabel = domain.removeOnActivate
+                ? t("keep")
+                : domain.removing
+                  ? t("removeAgain")
+                  : t("remove");
 
               return (
                 <article
@@ -375,6 +382,15 @@ export const DomainSection = memo(function DomainSection({
                       ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
+                      {domain.removeOnActivate ? (
+                        <StatusChip tone="warning" data-remove-on-activate>
+                          {t("removeOnActivate")}
+                        </StatusChip>
+                      ) : domain.main ? (
+                        <StatusChip tone="success" data-main-address>
+                          {t("mainLabel")}
+                        </StatusChip>
+                      ) : null}
                       {status === "verified" ? (
                         <StatusChip
                           tone={STATUS_TONE.verified}
@@ -398,39 +414,21 @@ export const DomainSection = memo(function DomainSection({
                         </StatusChip>
                       ) : null}
                     </div>
-                    {canChooseAsPrimary ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant={
-                              domain.role === "primary" ? "secondary" : "ghost"
-                            }
-                            size="icon"
-                            className="size-8"
-                            aria-label={
-                              domain.role === "primary"
-                                ? t("confirmOffTitle")
-                                : t("redirectLabel")
-                            }
-                            disabled={busy !== null}
-                            onClick={() =>
-                              setConfirming({
-                                domainId: domain.domainId,
-                                host: domain.host,
-                                primary: domain.role !== "primary",
-                              })
-                            }
-                          >
-                            <HugeiconsIcon icon={Home01Icon} size={16} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {domain.role === "primary"
-                            ? t("confirmOffTitle")
-                            : t("redirectLabel")}
-                        </TooltipContent>
-                      </Tooltip>
+                    {canBeMain ? (
+                      <MainAddressButton
+                        main={domain.main}
+                        label={t("mainLabel")}
+                        chooseLabel={t("redirectLabel")}
+                        disabled={busy !== null}
+                        onChoose={() =>
+                          void run("main", () =>
+                            chooseMain({
+                              libraryId,
+                              domainId: domain.domainId,
+                            }),
+                          )
+                        }
+                      />
                     ) : null}
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -439,32 +437,37 @@ export const DomainSection = memo(function DomainSection({
                           variant="ghost"
                           size="icon"
                           className="size-8 text-muted-foreground hover:text-destructive"
-                          aria-label={
-                            domain.removing ? t("removeAgain") : t("remove")
+                          aria-label={removeLabel}
+                          aria-pressed={
+                            removeLater ? domain.removeOnActivate : undefined
                           }
                           disabled={busy !== null}
                           onClick={() =>
-                            domain.role === "primary"
-                              ? setConfirming({
-                                  domainId: domain.domainId,
-                                  host: domain.host,
-                                  primary: false,
-                                  remove: true,
-                                })
-                              : void run(domain.domainId, () =>
-                                  removeDomain({
+                            void run(domain.domainId, () =>
+                              removeLater
+                                ? stageRemoval({
+                                    libraryId,
+                                    domainId: domain.domainId,
+                                    remove: !domain.removeOnActivate,
+                                  })
+                                : removeDomain({
                                     libraryId,
                                     domainId: domain.domainId,
                                   }),
-                                )
+                            )
                           }
                         >
-                          <HugeiconsIcon icon={Delete02Icon} size={16} />
+                          <HugeiconsIcon
+                            icon={
+                              domain.removeOnActivate
+                                ? Undo02Icon
+                                : Delete02Icon
+                            }
+                            size={16}
+                          />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        {domain.removing ? t("removeAgain") : t("remove")}
-                      </TooltipContent>
+                      <TooltipContent>{removeLabel}</TooltipContent>
                     </Tooltip>
                   </header>
 
@@ -526,58 +529,45 @@ export const DomainSection = memo(function DomainSection({
         </div>
       ) : null}
 
-      <AlertDialog
-        open={confirming !== null}
-        onOpenChange={(open) => {
-          if (!open) setConfirming(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirming?.remove
-                ? t("confirmRemoveTitle", { host: confirming.host })
-                : confirming?.primary
-                  ? t("confirmOnTitle")
-                  : t("confirmOffTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirming?.remove
-                ? t("confirmRemoveBody", {
-                    address: data?.platformAddress ?? "",
-                  })
-                : confirming?.primary
-                  ? t("confirmOnBody", { host: confirming?.host ?? "" })
-                  : t("confirmOffBody", {
-                      address: data?.platformAddress ?? "",
-                    })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("confirmCancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                const change = confirming;
-                setConfirming(null);
-                if (!change) return;
-                void run(change.domainId, () =>
-                  setPrimary({
-                    libraryId,
-                    domainId: change.domainId,
-                    primary: change.primary,
-                  }),
-                ).then((started) => {
-                  if (started && change.remove) {
-                    setRemoveAfterSwitch(change.domainId);
-                  }
-                });
-              }}
-            >
-              {confirming?.remove ? t("remove") : t("confirmAction")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </SectionCard>
   );
 });
+
+/**
+ * Chooses the library's main address. Pressed on the one chosen; pressing it
+ * again goes back to the platform address. Nothing changes for visitors
+ * until the next activation.
+ */
+function MainAddressButton({
+  main,
+  label,
+  chooseLabel,
+  disabled,
+  onChoose,
+}: {
+  main: boolean;
+  label: string;
+  chooseLabel: string;
+  disabled: boolean;
+  onChoose: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant={main ? "secondary" : "ghost"}
+          size="icon"
+          className="size-8"
+          aria-label={main ? label : chooseLabel}
+          aria-pressed={main}
+          disabled={disabled || main}
+          onClick={onChoose}
+        >
+          <HugeiconsIcon icon={Home01Icon} size={16} />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{main ? label : chooseLabel}</TooltipContent>
+    </Tooltip>
+  );
+}

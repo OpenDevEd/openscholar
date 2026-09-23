@@ -18,6 +18,11 @@ export type DomainActivationPlan = {
     /** The domain the change is held on: the new main, or the old one. */
     domain: Doc<"evidenceLibraryDomains">;
     address: string;
+    /**
+     * The address being left is a domain that stopped working, so the change
+     * travels on a deployment rather than through that domain.
+     */
+    redeploy: boolean;
   } | null;
   /** Main addresses the owner removed, taken off once the activation is live. */
   removals: Doc<"evidenceLibraryDomains">[];
@@ -62,11 +67,15 @@ export async function readDomainActivationPlan(
         : live;
   let canonical: DomainActivationPlan["canonical"] = null;
   if (mainAddress !== live) {
-    const domain =
-      mainAddress === platform
-        ? rows.find((row) => row.role === "primary")
-        : chosen;
-    if (domain) canonical = { domain, address: mainAddress };
+    const leaving = rows.find((row) => row.role === "primary");
+    const domain = mainAddress === platform ? leaving : chosen;
+    if (domain) {
+      canonical = {
+        domain,
+        address: mainAddress,
+        redeploy: leaving !== undefined && leaving.state !== "active",
+      };
+    }
   }
   const removals = rows.filter((row) => row.removeOnActivateAt !== undefined);
   return {

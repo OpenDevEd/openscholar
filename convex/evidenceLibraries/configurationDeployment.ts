@@ -1437,6 +1437,20 @@ export const completeConfigurationDeployment = internalMutation({
       }
     }
     await updateDraftBaseRevision(ctx, deployment);
+    // Main addresses the owner removed go once the library has moved off
+    // them, which this activation may just have done.
+    const stagedRemovals = (
+      await readEvidenceLibraryDomains(ctx, args.libraryId)
+    ).some(
+      (row) => row.removeOnActivateAt !== undefined && row.role !== "primary",
+    );
+    if (stagedRemovals) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.evidenceLibraries.domainActions.removeStagedDomains,
+        { libraryId: args.libraryId },
+      );
+    }
     if (domainsToActivate.length > 0) {
       await ctx.scheduler.runAfter(
         0,

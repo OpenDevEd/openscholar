@@ -1210,7 +1210,10 @@ const DOMAIN_ROUTE_LEASE_MS = 60_000;
  * deployment writes the same file from its own copy when it finishes.
  */
 export const claimDomainRoutes = internalMutation({
-  args: { libraryId: v.id("evidenceLibraries") },
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    platform: v.optional(v.literal(true)),
+  },
   returns: v.union(
     v.object({
       status: v.literal("claimed"),
@@ -1221,10 +1224,10 @@ export const claimDomainRoutes = internalMutation({
     v.object({ status: v.literal("busy") }),
   ),
   handler: async (ctx, args) => {
-    const access = await requireEvidenceLibraryAccess(
+    const access = await requireDomainLibraryAccess(
       ctx,
       args.libraryId,
-      "manage",
+      args.platform,
     );
     await requireLibraryNotBeingDeleted(ctx, args.libraryId);
     const binding = await readRuntimeBinding(ctx, access.library);
@@ -1303,10 +1306,11 @@ export const settleRoutedDomain = internalMutation({
     domainId: v.id("evidenceLibraryDomains"),
     token: v.string(),
     attached: v.boolean(),
+    platform: v.optional(v.literal(true)),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    await requireDomainLibraryAccess(ctx, args.libraryId, args.platform);
     await requireLibraryNotBeingDeleted(ctx, args.libraryId);
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.libraryId !== args.libraryId) {
