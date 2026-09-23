@@ -35,6 +35,7 @@ import {
 } from "@/lib/evidence-libraries/configuration/rules";
 import { AddButton, EmptyList, FieldGroup, ListRow, move, SortableList, ToggleRow } from "../fields";
 import { RichTextField } from "../rich-text-field";
+import { publicName, publicPhoto } from "@/lib/evidence-libraries/configuration/home-people";
 import { Field } from "../section-card";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { localPickerSource, type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
@@ -450,11 +451,13 @@ type TeamPerson = { id: string; name: string; imageUrl?: string; role: string };
 function useTeam(libraryId: Id<"evidenceLibraries">): TeamPerson[] | undefined {
   const { data } = useProtectedQuery(api.evidenceLibraries.queries.listTeam, { libraryId });
   if (!data) return undefined;
-  return [
-    ...data.owners.map((person) => ({ id: person.clerkUserId, name: person.name, imageUrl: person.imageUrl, role: "Owner" })),
-    ...data.editors.map((person) => ({ id: person.clerkUserId, name: person.name, imageUrl: person.imageUrl, role: "Editor" })),
-    ...data.creators.map((person) => ({ id: person.clerkUserId, name: person.name, imageUrl: person.imageUrl, role: "Creator" })),
-  ];
+  // Only people the page can name, as it will name them; an email is never shown instead of a name.
+  const shown = (people: typeof data.owners, role: string) =>
+    people.flatMap((person) => {
+      const name = publicName(person.name);
+      return name ? [{ id: person.clerkUserId, name, imageUrl: publicPhoto(person.imageUrl), role }] : [];
+    });
+  return [...shown(data.owners, "Owner"), ...shown(data.editors, "Editor"), ...shown(data.creators, "Creator")];
 }
 
 /** The questions the page asks in empty slots, as the running library makes them. Empty until it answers. */

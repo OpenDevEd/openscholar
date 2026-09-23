@@ -1,3 +1,4 @@
+import { publicName, publicPhoto } from "../../lib/evidence-libraries/configuration/home-people";
 import { hasPublicationProviderChanges } from "./publicationProviders";
 import { readMemberOrganizations, requireLibraryOrganization } from "../organizationFeatures";
 import {
@@ -768,7 +769,7 @@ export const listTeam = query({
 
 /**
  * Everyone with a role on the library, as the published home page names them.
- * A person without a name shows as their email; one with neither is left out.
+ * A person without a name is left out: an email is private and never a name.
  */
 export const readLibraryTeamForAssembly = internalQuery({
   args: { libraryId: v.id("evidenceLibraries") },
@@ -777,9 +778,10 @@ export const readLibraryTeamForAssembly = internalQuery({
     const library = await ctx.db.get("evidenceLibraries", args.libraryId);
     if (!library) return [];
     return (await readLibraryPeople(ctx, library)).flatMap(({ role, person }) => {
-      const name = person.name || person.email;
+      const name = publicName(person.name);
       if (!role || !name) return [];
-      return [person.imageUrl ? { id: person.clerkUserId, name, photo: person.imageUrl } : { id: person.clerkUserId, name }];
+      const photo = publicPhoto(person.imageUrl);
+      return [photo ? { id: person.clerkUserId, name, photo } : { id: person.clerkUserId, name }];
     });
   },
 });

@@ -107,6 +107,22 @@ function ownerRuleIssues(
       message: "The team directory is set by the platform and cannot be saved.",
     });
   }
+  // The runtime's one rule the schema cannot state: a text-only step is only
+  // its name and words, so it needs a name.
+  const steps = sectionKey === "home" ? objectValue(record?.curation)?.steps : undefined;
+  if (Array.isArray(steps)) {
+    steps.forEach((entry, index) => {
+      const step = objectValue(entry);
+      if (step?.type === "text" && !(typeof step.title === "string" && step.title.trim())) {
+        issues.push({
+          pointer: `/home/curation/steps/${index}/title`,
+          section: "home",
+          keyword: "required",
+          message: "A text-only step needs a name.",
+        });
+      }
+    });
+  }
   // The platform decides these two switches and the search embedder. A saved
   // row must not carry them, or a stale value would sit in the draft while
   // the library runs on something else.

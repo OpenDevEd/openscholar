@@ -81,6 +81,11 @@ describe("listTeam", () => {
     });
 
     // The published home page names everyone with a role, and nobody else.
+    // An email is private: a member with an email but no name is left off, never shown by their address.
+    await fixture.t.run(async ctx => {
+      await ctx.db.insert("users", { clerkId: "user_unnamed", email: "private@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("evidenceLibraryMembers", { libraryId, clerkUserId: "user_unnamed", role: "editor", grantedBy: "owner", grantedAt: 1 });
+    });
     await fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_new", role: "creator" });
     await fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_editor", role: "editor" });
     const team = await fixture.t.query(internal.evidenceLibraries.queries.readLibraryTeamForAssembly, { libraryId });

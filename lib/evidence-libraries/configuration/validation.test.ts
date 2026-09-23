@@ -773,6 +773,20 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     expect(home.people[1]).not.toHaveProperty("photo");
     expect(home.directory[1]).not.toHaveProperty("photo");
 
+    const odd = assembleEvidenceLibraryConfiguration({
+      sections: { ...ownerSections, home: { people: [{ id: "user_nameless", name: "Old name" }] } },
+      managed: {
+        ...managedConfiguration,
+        team: [
+          { id: "user_lines", name: "Ada\nLovelace", photo: "https://img.example.test/ada.png#photo" },
+          { id: "user_nameless", name: "   " },
+        ],
+      },
+    });
+    expect(validateLibraryConfigStructure(odd).valid).toBe(true);
+    expect(odd.home).toMatchObject({ directory: [{ id: "user_lines", name: "Ada Lovelace" }], people: [] });
+    expect((odd.home as { directory: object[] }).directory[0]).not.toHaveProperty("photo");
+
     const crowded = assembleEvidenceLibraryConfiguration({
       sections: { ...ownerSections, home: { people: [] } },
       managed: {
@@ -795,6 +809,14 @@ describe("assembleEvidenceLibraryConfiguration", () => {
       managed: { ...managedConfiguration, team: [{ id: "user_ada", name: "Ada" }] },
     });
     expect(withoutHome).not.toHaveProperty("home");
+  });
+
+  test("refuses a text-only step without a name, as the runtime would", () => {
+    const result = validateOwnerSection("home", {
+      curation: { steps: [{ type: "arrival" }, { type: "text", text: "Words only" }] },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.issues).toContainEqual(expect.objectContaining({ pointer: "/home/curation/steps/1/title" }));
   });
 
   test("adds the platform mail service under the owner's recipients", () => {

@@ -1,3 +1,4 @@
+import { publicName, publicPhoto } from "./home-people";
 import {
   aiProviderIssues,
   type ApplyAiProviderKey,
@@ -111,17 +112,15 @@ export function emailWantsPlatformMail(email: unknown): boolean {
   return Boolean(email.contactRecipient) || Boolean(email.takedownRecipient);
 }
 
-// The runtime's limits for a person on the home page: a name of 120
-// characters, an https photo, and a directory of 500 people.
-const HOME_NAME_MAX = 120;
+// The runtime lists at most 500 people in the directory.
 const HOME_DIRECTORY_MAX = 500;
 
-/** A team member as the home page shows them; no usable photo means no key. */
+/** A team member as the home page shows them, or nothing without a usable name; no usable photo means no key. */
 function personFields(member: TeamMember) {
-  const name = member.name.trim().slice(0, HOME_NAME_MAX);
-  return member.photo?.startsWith("https://")
-    ? { name, photo: member.photo }
-    : { name };
+  const name = publicName(member.name);
+  if (!name) return undefined;
+  const photo = publicPhoto(member.photo);
+  return photo ? { name, photo } : { name };
 }
 
 /**
@@ -133,19 +132,23 @@ function fillHomeTeam(
   home: Record<string, unknown>,
   team: readonly TeamMember[],
 ): Record<string, unknown> {
-  const members = new Map(team.map((member) => [member.id, member]));
+  // Only people the page can name: a member without a usable name is on neither list.
+  const shown = team.flatMap((member) => {
+    const fields = personFields(member);
+    return fields ? [{ id: member.id, ...fields }] : [];
+  });
+  const members = new Map(shown.map((member) => [member.id, member]));
   const filled: Record<string, unknown> = {
     ...home,
-    directory: team
-      .slice(0, HOME_DIRECTORY_MAX)
-      .map((member) => ({ id: member.id, ...personFields(member) })),
+    directory: shown.slice(0, HOME_DIRECTORY_MAX),
   };
   if (Array.isArray(home.people)) {
     filled.people = home.people.flatMap((person) => {
       const member = isObject(person) && members.get(person.id as string);
       if (!member) return [];
       const { photo: _stale, ...rest } = person;
-      return [{ ...rest, ...personFields(member) }];
+      const { id: _id, ...fields } = member;
+      return [{ ...rest, ...fields }];
     });
   }
   if (isObject(home.curation) && Array.isArray(home.curation.steps)) {
