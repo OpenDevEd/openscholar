@@ -1163,8 +1163,9 @@ export const setDomainPrimary = mutation({
       `domain:${running.activeRevisionId}:v${CURRENT_OWNER_CONFIGURATION_VERSION}:` +
       `${args.domainId}:canonical:${claimed.generation}:${row.host}:${address}`;
     // The running site takes a new address through the one it answers on
-    // now. When that is a domain that stopped working, it may no longer be
-    // reachable at all, so a deployment carries the change instead.
+    // now. Only the platform address is always reachable: a custom domain
+    // can have lost its records or its certificate while still counting as
+    // working, so leaving one goes through a deployment.
     const leaving = (
       await ctx.db
         .query("evidenceLibraryDomains")
@@ -1173,7 +1174,7 @@ export const setDomainPrimary = mutation({
         )
         .collect()
     ).find((entry) => entry.role === "primary");
-    const redeploy = leaving !== undefined && leaving.state !== "active";
+    const redeploy = leaving !== undefined;
     // The lease is taken now, and held until the deployment carrying this
     // change settles the row.
     await claimed.write();
