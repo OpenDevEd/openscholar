@@ -276,8 +276,15 @@ export function configurationOperationRequiresDeployment(
     "addressMove" | "domainChange" | "runtimeUpdate"
   >,
 ) {
+  // Changing which address the library calls its own only changes its
+  // configuration, which the running site takes without a restart. Adding or
+  // removing a host changes the proxy's routes, which only a deployment does.
   return Boolean(
-    operation.runtimeUpdate || operation.addressMove || operation.domainChange,
+    operation.runtimeUpdate ||
+      operation.addressMove ||
+      (operation.domainChange &&
+        (operation.domainChange.reason !== "canonical" ||
+          operation.domainChange.redeploy === true)),
   );
 }
 
@@ -582,11 +589,14 @@ export async function queueDomainChangeOperation(
     libraryId: Id<"evidenceLibraries">;
     idempotencyKey: string;
     revisionId: Id<"evidenceLibraryConfigRevisions">;
+    /** Set when an owner's activation carries the change. */
+    activationEditVersion?: number;
     domainChange: {
       host: string;
       domainId: Id<"evidenceLibraryDomains">;
       reason: "attach" | "detach" | "canonical";
       address?: string;
+      redeploy?: true;
       token: string;
     };
   },

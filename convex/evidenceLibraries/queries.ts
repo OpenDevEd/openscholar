@@ -1,5 +1,6 @@
 import { publicName, publicPhoto } from "../../lib/evidence-libraries/configuration/home-people";
 import { hasPublicationProviderChanges } from "./publicationProviders";
+import { readDomainActivationPlan } from "./domainPlan";
 import { readMemberOrganizations, requireLibraryOrganization } from "../organizationFeatures";
 import {
   internalQuery,
@@ -588,7 +589,10 @@ export async function readEvidenceLibraryDraft(
     },
     library: access.library,
     operation,
-    hasUnpublishedChanges: hasUnpublishedChanges || await hasPublicationProviderChanges(ctx, access.library),
+    hasUnpublishedChanges:
+      hasUnpublishedChanges ||
+      (await hasPublicationProviderChanges(ctx, access.library)) ||
+      (await hasDomainChanges(ctx, access.library, draft)),
     sections,
   };
 }
@@ -640,6 +644,9 @@ export const getDraft = query({
       editVersion: v.number(),
       ownerConfigurationVersion: currentOwnerConfigurationVersionValidator,
       contractProvenance: configProvenanceValidator,
+      mainDomainId: v.optional(
+        v.union(v.id("evidenceLibraryDomains"), v.null()),
+      ),
       createdByClerkUserId: v.string(),
       updatedByClerkUserId: v.string(),
       createdAt: v.number(),
@@ -785,3 +792,17 @@ export const readLibraryTeamForAssembly = internalQuery({
     });
   },
 });
+
+/** Address choices saved for the next activation count as changes too. */
+async function hasDomainChanges(
+  ctx: QueryCtx,
+  library: Doc<"evidenceLibraries">,
+  draft: Doc<"evidenceLibraryConfigDrafts">,
+): Promise<boolean> {
+  if (library.state !== "active" || !library.runtimeBindingId) return false;
+  const binding = await ctx.db.get(library.runtimeBindingId);
+  if (!binding) return false;
+  return (
+    await readDomainActivationPlan(ctx, { library, binding, draft })
+  ).changed;
+}

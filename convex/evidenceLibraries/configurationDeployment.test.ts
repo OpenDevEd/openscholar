@@ -12,6 +12,7 @@ import {
   PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
 } from "../../lib/evidence-libraries/configuration/ai";
 import { createCoolifyLibraryTag } from "./coolifyClient";
+import { configurationOperationRequiresDeployment } from "./operations";
 import {
   createDeployedSetupFixture,
   essentialSetupSections,
@@ -21,6 +22,7 @@ import {
 
 vi.mock("./domainEgressNode", () => ({
   openPinnedDomainClient: async () => globalThis.fetch,
+  openOwnProxyClient: async () => globalThis.fetch,
 }));
 
 const ENCRYPTION_KEY = "33".repeat(32);
@@ -77,6 +79,8 @@ function createRuntimeNetwork(input: {
   libraryId: string;
   publicAddress: string;
   canonicalAddress?: string;
+  /** Other hosts the proxy routes to this library. */
+  servedAddresses?: string[];
   revisionKey: string;
   runtimeCommit?: string;
   runtimeImage?: string;
@@ -89,7 +93,13 @@ function createRuntimeNetwork(input: {
   let deployedConfigHash: string | null = INITIAL_CONFIG_HASH;
   let deploymentStatus = "queued";
   let activeRevision = input.revisionKey;
+  // The address the running site calls its own. It follows the configuration
+  // it was given, as the real runtime does, and redirects every other host.
+  let canonical = input.canonicalAddress ?? null;
+  let previousCanonical = canonical;
   let readinessUnavailable = false;
+  let configurationRejected = false;
+  let configurationBusy = false;
   let runtimeRouteMarker: string | null = null;
   const publicHealthMarkers: Array<string | null> = [];
   const requests: RecordedRequest[] = [];
@@ -269,11 +279,26 @@ function createRuntimeNetwork(input: {
         });
       }
       if (
-        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
+        url.origin === new URL(canonical ?? publicDomain).origin &&
         url.pathname === "/api/openscholar/configuration"
       ) {
+        if (method === "PUT" && configurationBusy) {
+          return jsonResponse({ message: "Configuration is locked" }, 409);
+        }
+        if (method === "PUT" && configurationRejected) {
+          return jsonResponse({ message: "Configuration refused" }, 400);
+        }
         if (method === "PUT") {
           activeRevision = (body as { revision: string }).revision;
+          const baseUrl = (body as { identity?: { baseUrl?: string } })
+            .identity?.baseUrl;
+          previousCanonical = canonical;
+          if (baseUrl) {
+            canonical =
+              new URL(baseUrl).origin === new URL(publicDomain).origin
+                ? null
+                : baseUrl;
+          }
           return jsonResponse({
             revision: activeRevision,
             sourceSha256: createHash("sha256")
@@ -284,11 +309,27 @@ function createRuntimeNetwork(input: {
         }
         if (method === "DELETE") {
           activeRevision = (body as { revision: string }).revision;
+          canonical = previousCanonical;
           return jsonResponse({ revision: activeRevision, status: "active" });
         }
       }
+      // The runtime answers its configuration only on the address it calls
+      // its own and redirects every other.
+      if (url.pathname === "/api/openscholar/configuration") {
+        return new Response(null, {
+          status: 307,
+          headers: {
+            location: new URL(url.pathname, canonical ?? publicDomain).href,
+          },
+        });
+      }
+      // The health check answers on every host the library is served on,
+      // never redirected, so a new address can be read before it is used.
       if (
-        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
+        (url.origin === new URL(canonical ?? publicDomain).origin ||
+          (input.servedAddresses ?? []).some(
+            (address) => new URL(address).origin === url.origin,
+          )) &&
         method === "GET" &&
         url.pathname === "/api/library-config/health"
       ) {
@@ -306,14 +347,14 @@ function createRuntimeNetwork(input: {
         );
       }
       if (
-        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
+        url.origin === new URL(canonical ?? publicDomain).origin &&
         method === "HEAD" &&
         url.pathname === "/lib"
       ) {
         return new Response("ready", { status: 200 });
       }
       if (
-        input.canonicalAddress &&
+        canonical &&
         url.origin === new URL(publicDomain).origin &&
         method === "GET" &&
         url.pathname === "/lib"
@@ -321,14 +362,14 @@ function createRuntimeNetwork(input: {
         return new Response(null, {
           status: 307,
           headers: {
-            location: new URL("/lib", input.canonicalAddress).href,
+            location: new URL("/lib", canonical).href,
           },
         });
       }
       // A live library sends a signed-out visitor of its admin area to
       // OpenScholar, and readiness checks exactly that.
       if (
-        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
+        url.origin === new URL(canonical ?? publicDomain).origin &&
         method === "GET" &&
         url.pathname === "/admin"
       ) {
@@ -373,6 +414,12 @@ function createRuntimeNetwork(input: {
     },
     failReadiness() {
       readinessUnavailable = true;
+    },
+    rejectConfiguration() {
+      configurationRejected = true;
+    },
+    holdConfiguration() {
+      configurationBusy = true;
     },
     restoreReadiness() {
       readinessUnavailable = false;
@@ -518,6 +565,83 @@ async function activateChangedConfiguration(
     attemptToken: operation.configurationAttemptToken,
     attemptCount: operation.attemptCount,
   };
+}
+
+/**
+ * A live library and a working custom domain, with a switch of its main
+ * address onto that domain, or back off it, already queued.
+ */
+async function switchCustomDomain(
+  suffix: string,
+  domainState: "active" | "failed",
+  direction: "on" | "off",
+  { served = true }: { served?: boolean } = {},
+) {
+  const customAddress = "https://evidence.example.org";
+  const fixture = await createReadyLibrary(suffix);
+  const domainId = await fixture.t.run(async (ctx) => {
+    if (direction === "off") {
+      await ctx.db.patch(fixture.created.runtimeBindingId, {
+        canonicalBaseUrl: customAddress,
+      });
+    }
+    const now = Date.now();
+    return await ctx.db.insert("evidenceLibraryDomains", {
+      generation: 0,
+      libraryId: fixture.created.libraryId,
+      host: new URL(customAddress).hostname,
+      isApex: false,
+      verificationHost: "example.org",
+      verificationToken: "0".repeat(32),
+      role: direction === "off" ? "primary" : "redirect",
+      state: domainState,
+      ...(domainState === "failed" ? { failure: "no-name" as const } : {}),
+      attachedAt: now,
+      createdByClerkUserId: "user_owner",
+      createdAt: now,
+      updatedAt: now,
+    });
+  });
+  const network = createRuntimeNetwork({
+    libraryId: fixture.created.libraryId,
+    publicAddress: fixture.created.publicAddress,
+    ...(direction === "off" ? { canonicalAddress: customAddress } : {}),
+    ...(direction === "on" && served ? { servedAddresses: [customAddress] } : {}),
+    // The running site reports the revision it is live on.
+    revisionKey: await fixture.t.run(async (ctx) => {
+      const library = await ctx.db.get(fixture.created.libraryId);
+      const revision = library?.activeRevisionId
+        ? await ctx.db.get(library.activeRevisionId)
+        : null;
+      return revision?.revisionKey ?? "";
+    }),
+  });
+  vi.stubGlobal("fetch", network.fetchImpl);
+  const off = await fixture.admin.mutation(
+    api.evidenceLibraries.versions.setDomainPrimary,
+    {
+      libraryId: fixture.created.libraryId,
+      domainId,
+      primary: direction === "on",
+    },
+  );
+  const run = async () => {
+    const operation = await fixture.t.run((ctx) => ctx.db.get(off.operationId));
+    if (!operation?.configurationAttemptToken) {
+      throw new Error("The address change did not start an attempt");
+    }
+    return await fixture.t.action(
+      internal.evidenceLibraries.configurationDeploymentActions
+        .runConfigurationDeployment,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: off.operationId,
+        attemptToken: operation.configurationAttemptToken,
+        attemptCount: operation.attemptCount,
+      },
+    );
+  };
+  return { customAddress, domainId, fixture, network, off, run };
 }
 
 type ChangedConfiguration = Awaited<
@@ -948,6 +1072,152 @@ describe("Evidence Library configuration deployment", () => {
           method === "PUT" && url.pathname === "/api/openscholar/configuration",
       )?.url.origin,
     ).toBe(canonicalAddress);
+  });
+
+  it("switches a library onto a working custom domain without a deployment", async () => {
+    const { customAddress, fixture, network, run } = await switchCustomDomain(
+      "canonical-on",
+      "active",
+      "on",
+    );
+
+    await expect(run()).resolves.toEqual({ status: "succeeded" });
+
+    // Nothing was redeployed: the change reached the running site directly,
+    // on the platform address it answered to until then.
+    expect(
+      network.requests.some(({ url }) => url.pathname === "/api/v1/deploy"),
+    ).toBe(false);
+    expect(
+      network.requests.find(
+        ({ method, url }) =>
+          method === "PUT" && url.pathname === "/api/openscholar/configuration",
+      )?.url.origin,
+    ).toBe(fixture.created.publicAddress);
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.canonicalAddress).toBe(customAddress);
+    expect(listed.domains[0]).toMatchObject({
+      role: "primary",
+      deploymentPending: false,
+    });
+  });
+
+  it("finishes an address switch that landed before a check failed", async () => {
+    const { customAddress, fixture, network, run } = await switchCustomDomain(
+      "canonical-on-retry",
+      "active",
+      "on",
+    );
+    network.failReadiness();
+    await expect(run()).resolves.toEqual({ pollCount: 1, status: "running" });
+    network.restoreReadiness();
+
+    // The site already answers on the new address, so the retry reaches it
+    // there instead of failing on the old one.
+    await expect(run()).resolves.toEqual({ status: "succeeded" });
+    const writes = network.requests.filter(
+      ({ method, url }) =>
+        method === "PUT" && url.pathname === "/api/openscholar/configuration",
+    );
+    expect(writes.at(-1)?.url.origin).toBe(customAddress);
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.canonicalAddress).toBe(customAddress);
+  });
+
+  it("does not switch onto a domain that does not answer as this library", async () => {
+    // Its certificate may have expired while it still counts as working.
+    // Taking it would send every visitor there with no way back.
+    const { fixture, network, run } = await switchCustomDomain(
+      "canonical-on-unserved",
+      "active",
+      "on",
+      { served: false },
+    );
+    await expect(run()).resolves.toEqual({ status: "failed" });
+    expect(
+      network.requests.some(
+        ({ method, url }) =>
+          method === "PUT" && url.pathname === "/api/openscholar/configuration",
+      ),
+    ).toBe(false);
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.canonicalAddress).toBe(fixture.created.publicAddress);
+  });
+
+  it("waits out a busy runtime rather than trying the other address", async () => {
+    const { network, run } = await switchCustomDomain(
+      "canonical-on-busy",
+      "active",
+      "on",
+    );
+    network.holdConfiguration();
+    await expect(run()).resolves.toEqual({ pollCount: 1, status: "running" });
+    expect(
+      network.requests.filter(
+        ({ method, url }) =>
+          method === "PUT" && url.pathname === "/api/openscholar/configuration",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it.each(["active", "failed"] as const)(
+    "switches a library off a %s custom domain through a deployment",
+    async (domainState) => {
+      // A custom domain can have lost its records or its certificate while
+      // still counting as working, so the site may not be reachable on it:
+      // a deployment carries the change instead.
+      const { fixture, off } = await switchCustomDomain(
+        `canonical-off-${domainState}`,
+        domainState,
+        "off",
+      );
+      const operation = await fixture.t.run((ctx) =>
+        ctx.db.get(off.operationId),
+      );
+      expect(operation?.domainChange).toMatchObject({
+        reason: "canonical",
+        redeploy: true,
+      });
+      expect(configurationOperationRequiresDeployment(operation!)).toBe(true);
+    },
+  );
+
+  it("leaves a failed direct activation out from behind the guard", async () => {
+    const deployment = await activateChangedConfiguration("direct-refused");
+    const network = createRuntimeNetwork({
+      libraryId: deployment.fixture.created.libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    network.rejectConfiguration();
+
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: deployment.fixture.created.libraryId,
+          operationId: deployment.activated.operationId,
+          attemptToken: deployment.attemptToken,
+          attemptCount: deployment.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "failed" });
+    expect(
+      network.requests.some(
+        ({ url }) => url.pathname === "/v1/library-runtime/protection",
+      ),
+    ).toBe(false);
   });
 
   it("retries a failed current deployment by reusing its saved target", async () => {

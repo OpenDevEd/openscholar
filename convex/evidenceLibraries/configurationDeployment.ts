@@ -16,6 +16,7 @@ import { createError } from "../lib/errors";
 import {
   claimDomainTransitionRow,
   readAttachedDomainOrigins,
+  isStagedBefore,
   readEvidenceLibraryDomains,
   settleDomainDeploymentRows,
 } from "./domains";
@@ -448,6 +449,8 @@ const savedDeploymentValidator = v.object({
 const runtimeContinuityValidator = v.object({
   applicationId: v.string(),
   platformOrigin: v.string(),
+  /** The address the running site calls its own before this operation. */
+  liveOrigin: v.string(),
   customOrigins: v.array(v.string()),
   revisionKey: v.string(),
   runtimeCommit: v.string(),
@@ -556,6 +559,9 @@ export const prepareConfigurationDeployment = internalMutation({
     const continuity = {
       applicationId: deployment.runtimeBinding.targetRuntimeId,
       platformOrigin: deployment.runtimeBinding.targetBaseUrl,
+      liveOrigin:
+        deployment.runtimeBinding.canonicalBaseUrl ??
+        deployment.runtimeBinding.targetBaseUrl,
       customOrigins: attachedDomainOrigins,
       revisionKey: activeRevision.revisionKey,
       runtimeCommit: deployment.runtimeBinding.runtimeCommit,
@@ -1432,6 +1438,25 @@ export const completeConfigurationDeployment = internalMutation({
       }
     }
     await updateDraftBaseRevision(ctx, deployment);
+    // Main addresses the owner removed go once the library has moved off
+    // them, which this activation may just have done.
+    // Only removals staged before this activation started are its own; a
+    // later one waits for the next activation.
+    // Only an owner's activation carries them: a software update or an
+    // address changed straight away does not.
+    const stagedBefore = deployment.operation.createdAt;
+    const stagedRemovals =
+      deployment.operation.activationEditVersion !== undefined &&
+      (await readEvidenceLibraryDomains(ctx, args.libraryId)).some((row) =>
+        isStagedBefore(row, stagedBefore),
+      );
+    if (stagedRemovals) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.evidenceLibraries.domainActions.removeStagedDomains,
+        { libraryId: args.libraryId, stagedBefore },
+      );
+    }
     if (domainsToActivate.length > 0) {
       await ctx.scheduler.runAfter(
         0,

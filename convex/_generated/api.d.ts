@@ -94,6 +94,7 @@ import type * as evidenceLibraries_domainConfig from "../evidenceLibraries/domai
 import type * as evidenceLibraries_domainEgress from "../evidenceLibraries/domainEgress.js";
 import type * as evidenceLibraries_domainEgressNode from "../evidenceLibraries/domainEgressNode.js";
 import type * as evidenceLibraries_domainGates from "../evidenceLibraries/domainGates.js";
+import type * as evidenceLibraries_domainPlan from "../evidenceLibraries/domainPlan.js";
 import type * as evidenceLibraries_domains from "../evidenceLibraries/domains.js";
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
 import type * as evidenceLibraries_invitationActions from "../evidenceLibraries/invitationActions.js";
@@ -393,6 +394,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/domainEgress": typeof evidenceLibraries_domainEgress;
   "evidenceLibraries/domainEgressNode": typeof evidenceLibraries_domainEgressNode;
   "evidenceLibraries/domainGates": typeof evidenceLibraries_domainGates;
+  "evidenceLibraries/domainPlan": typeof evidenceLibraries_domainPlan;
   "evidenceLibraries/domains": typeof evidenceLibraries_domains;
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
   "evidenceLibraries/invitationActions": typeof evidenceLibraries_invitationActions;

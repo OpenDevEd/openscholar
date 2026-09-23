@@ -87,7 +87,11 @@ vi.mock("@/convex/_generated/api", () => ({
       configurationDeployment: {
         retryConfigurationDeployment: "retryConfigurationDeployment",
       },
-      domains: { listDomains: "listDomains" },
+      domains: {
+        listDomains: "listDomains",
+        chooseMainAddress: "chooseMainAddress",
+        stageMainDomainRemoval: "stageMainDomainRemoval",
+      },
       domainActions: {
         addDomain: "addDomain",
         checkDomains: "checkDomains",
@@ -197,6 +201,8 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
                   data: {
                     platformAddress: savedIdentity.baseUrl,
                     canonicalAddress: savedIdentity.baseUrl,
+                    mainAddress: savedIdentity.baseUrl,
+                    mainNeedsAttention: false,
                     live: true,
                     domains: [],
                   },
@@ -220,7 +226,7 @@ const savedIdentity = {
   shortName: "saved-library",
   baseUrl: "https://saved-library.libraries.example.test",
   assets: {
-    logoDark: "https://assets.example.test/logo-dark.svg",
+    logoLight: "https://assets.example.test/logo-light.svg",
     favicon: "https://assets.example.test/favicon.svg",
   },
 };
@@ -1680,7 +1686,7 @@ describe("<ConfigurationWorkspace>", () => {
   });
 
   describe("replaced files", () => {
-    const newLogo = "https://assets.example.test/logo-dark-2.png";
+    const newLogo = "https://assets.example.test/logo-light-2.png";
     let removed: unknown[];
 
     beforeEach(() => {
@@ -1717,10 +1723,10 @@ describe("<ConfigurationWorkspace>", () => {
     async function replaceLogo(user: ReturnType<typeof userEvent.setup>) {
       const theme = within(document.getElementById("sec-theme")!);
       await user.upload(
-        theme.getByLabelText("theme.logoDarkLabel"),
+        theme.getByLabelText("theme.logoLightLabel"),
         new File(["png"], "logo.png", { type: "image/png" }),
       );
-      await waitFor(() => expect(theme.getByText("logo-dark-2.png")).toBeInTheDocument());
+      await waitFor(() => expect(theme.getByText("logo-light-2.png")).toBeInTheDocument());
       return theme;
     }
 
@@ -1732,7 +1738,7 @@ describe("<ConfigurationWorkspace>", () => {
 
       await user.click(theme.getByRole("button", { name: "fields.reset" }));
 
-      expect(theme.getByText("logo-dark.svg")).toBeInTheDocument();
+      expect(theme.getByText("logo-light.svg")).toBeInTheDocument();
       expect(removed).toEqual([]);
     });
 
@@ -1746,7 +1752,7 @@ describe("<ConfigurationWorkspace>", () => {
       await waitFor(() => expect(saved).toHaveLength(1));
       await waitFor(() =>
         expect(removed).toEqual([
-          { libraryId: "library_123", url: "https://assets.example.test/logo-dark.svg" },
+          { libraryId: "library_123", url: "https://assets.example.test/logo-light.svg" },
         ]),
       );
     });

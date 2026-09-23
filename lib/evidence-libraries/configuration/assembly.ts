@@ -86,8 +86,14 @@ export function fillBrandAssets(
 ): { assets: Record<string, unknown>; missing: (typeof BRAND_ASSET_KEYS)[number][] } {
   const own = isObject(assets) ? assets : {};
   const hasOwnerFavicon = typeof own.favicon === "string" && own.favicon !== "";
+  const ownLogoLight =
+    typeof own.logoLight === "string" && own.logoLight !== ""
+      ? own.logoLight
+      : undefined;
   const defaults: Record<(typeof BRAND_ASSET_KEYS)[number], string | undefined> = {
-    logoDark: brand?.logoUrl,
+    // The light logo is the owner's main one; dark mode uses it until a dark
+    // logo is uploaded.
+    logoDark: ownLogoLight ?? brand?.logoUrl,
     favicon: brand?.faviconUrl,
   };
   const filled: Record<string, unknown> = { ...own };

@@ -355,10 +355,9 @@ type IdentityDraft = {
   description: string;
   fundingPartners: FundingPartner[];
   assets: {
-    logoDark: string;
     logoLight: string;
+    logoDark: string;
     favicon: string;
-    faviconLight: string;
     faviconDark: string;
     shareImage: string;
   };
@@ -654,6 +653,13 @@ function readIdentity(payload: unknown): IdentityDraft {
     const row = record(partner);
     return { id: text(row.id) || newId("fp"), name: text(row.name) };
   });
+  // The light file is the main one and dark mode falls back to it. Older rows
+  // could hold only a dark logo or a separate light icon; read them into the
+  // same files visitors already see.
+  const logoLight = text(assets.logoLight) || text(assets.logoDark);
+  const logoDark = text(assets.logoDark);
+  const favicon = text(assets.faviconLight) || text(assets.favicon);
+  const faviconDark = text(assets.faviconDark) || text(assets.favicon);
   return {
     name: text(identity.name),
     shortName: text(identity.shortName),
@@ -662,11 +668,10 @@ function readIdentity(payload: unknown): IdentityDraft {
     description: text(identity.description),
     fundingPartners: partners,
     assets: {
-      logoDark: text(assets.logoDark),
-      logoLight: text(assets.logoLight),
-      favicon: text(assets.favicon),
-      faviconLight: text(assets.faviconLight),
-      faviconDark: text(assets.faviconDark),
+      logoLight,
+      logoDark: logoDark === logoLight ? "" : logoDark,
+      favicon,
+      faviconDark: faviconDark === favicon ? "" : faviconDark,
       shareImage: text(assets.shareImage),
     },
   };
@@ -1101,10 +1106,9 @@ function identityPayload(identity: IdentityDraft) {
           }))
         : undefined,
     assets: compact({
-      logoDark: optional(identity.assets.logoDark),
       logoLight: optional(identity.assets.logoLight),
+      logoDark: optional(identity.assets.logoDark),
       favicon: optional(identity.assets.favicon),
-      faviconLight: optional(identity.assets.faviconLight),
       faviconDark: optional(identity.assets.faviconDark),
       shareImage: optional(identity.assets.shareImage),
     }),
@@ -1426,13 +1430,7 @@ export function staleUploads(
 
 // The logos live in `identity.assets` on the runtime but the owner edits
 // them on the Theme card, so the card slices differ from the saved rows.
-const LOGO_KEYS = [
-  "logoDark",
-  "logoLight",
-  "favicon",
-  "faviconLight",
-  "faviconDark",
-] as const;
+const LOGO_KEYS = ["logoLight", "logoDark", "favicon", "faviconDark"] as const;
 
 function cardSlice(draft: ConfigurationDraft, sectionKey: PageSectionKey) {
   switch (sectionKey) {
