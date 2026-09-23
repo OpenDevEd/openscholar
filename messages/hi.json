@@ -2944,6 +2944,7 @@
       "addressTaken": "Another site now answers {host}.",
       "addressSilent": "Nothing is answering at {host}.",
       "addressMove": "Move to a new address",
+      "addressBack": "Go back to the platform address",
       "addressMoveTitle": "Move this library to a new address?",
       "addressMoveBody": "The library takes the next free address. Records and settings stay the same. Anyone using the old address will not reach it.",
       "addressMoveConfirm": "Move now",
@@ -3051,6 +3052,8 @@
       "confirmOnBody": "The library will answer on {host}. Everyone signed in is signed out, and visitors to the platform address land on the new one. The platform address keeps working.",
       "confirmOffTitle": "Take the library back to its platform address?",
       "confirmOffBody": "The library will answer on {address} again. Everyone signed in is signed out, and visitors to the custom domain land on the platform address.",
+      "confirmRemoveTitle": "Remove {host}?",
+      "confirmRemoveBody": "This is the library's main address. The library goes back to {address} first, and the domain is removed once that is live. Everyone signed in is signed out.",
       "confirmCancel": "Cancel",
       "confirmAction": "Change the address"
     },

@@ -10,7 +10,9 @@ const mocks = vi.hoisted(() => ({
   startRuntimeUpdate: vi.fn(),
   startAddressMove: vi.fn(),
   restoreRevision: vi.fn(),
+  setDomainPrimary: vi.fn(),
   listVersions: vi.fn(),
+  listDomains: vi.fn(),
   addressNotices: vi.fn(),
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
 }));
@@ -19,6 +21,7 @@ vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
       addressActions: { moveLibraryAddress: "moveLibraryAddress" },
+      domains: { listDomains: "listDomains" },
       updates: {
         check: "check",
         listAddressNotices: "listAddressNotices",
@@ -27,6 +30,7 @@ vi.mock("@/convex/_generated/api", () => ({
         listVersions: "listVersions",
         startRuntimeUpdate: "startRuntimeUpdate",
         restoreRevision: "restoreRevision",
+        setDomainPrimary: "setDomainPrimary",
       },
     },
   },
@@ -42,7 +46,9 @@ vi.mock("convex/react", () => ({
   useMutation: (reference: string) =>
     reference === "startRuntimeUpdate"
       ? mocks.startRuntimeUpdate
-      : mocks.restoreRevision,
+      : reference === "setDomainPrimary"
+        ? mocks.setDomainPrimary
+        : mocks.restoreRevision,
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
@@ -50,7 +56,9 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
     data:
       reference === "listAddressNotices"
         ? mocks.addressNotices()
-        : mocks.listVersions(),
+        : reference === "listDomains"
+          ? mocks.listDomains()
+          : mocks.listVersions(),
     isReady: true,
   }),
 }));
@@ -138,6 +146,11 @@ describe("<VersionsSection>", () => {
     mocks.startRuntimeUpdate.mockReset();
     mocks.startAddressMove.mockReset();
     mocks.restoreRevision.mockReset();
+    mocks.setDomainPrimary.mockReset();
+    mocks.listDomains.mockReturnValue({
+      platformAddress: "https://climate-lib.example.test",
+      domains: [],
+    });
     mocks.listVersions.mockReset();
     mocks.addressNotices.mockReset();
     mocks.addressNotices.mockReturnValue([]);
@@ -367,6 +380,44 @@ describe("<VersionsSection>", () => {
     expect(
       screen.getByText("versions.addressSilent:climate-lib.example.test"),
     ).toBeInTheDocument();
+  });
+
+  it("sends the library back to its platform address when its custom domain went silent", async () => {
+    const user = userEvent.setup();
+    mocks.addressNotices.mockReturnValue([
+      {
+        libraryId: "library_123",
+        address: "https://evidence.example.org",
+        movedFrom: null,
+        addressState: "unreachable",
+      },
+    ]);
+    mocks.listDomains.mockReturnValue({
+      platformAddress: "https://climate-lib.example.test",
+      domains: [
+        { domainId: "domain_1", host: "evidence.example.org", role: "primary" },
+      ],
+    });
+    mocks.setDomainPrimary.mockResolvedValue({
+      address: "https://climate-lib.example.test",
+    });
+    await renderSection();
+
+    // Moving the platform address cannot bring a dead custom domain back.
+    expect(
+      screen.queryByRole("button", { name: "versions.addressMove" }),
+    ).toBeNull();
+    await user.click(screen.getByRole("button", { name: "versions.addressBack" }));
+    await user.click(screen.getByRole("button", { name: "domain.confirmAction" }));
+
+    await waitFor(() =>
+      expect(mocks.setDomainPrimary).toHaveBeenCalledWith({
+        libraryId: "library_123",
+        domainId: "domain_1",
+        primary: false,
+      }),
+    );
+    expect(mocks.startAddressMove).not.toHaveBeenCalled();
   });
 
   it("does not offer a move while an operation runs", async () => {

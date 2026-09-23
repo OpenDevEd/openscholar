@@ -127,6 +127,9 @@ export function VersionsSection({
   const moveAddress = useAction(
     api.evidenceLibraries.addressActions.moveLibraryAddress,
   );
+  const setDomainPrimary = useMutation(
+    api.evidenceLibraries.versions.setDomainPrimary,
+  );
   const restoreRevision = useMutation(
     api.evidenceLibraries.versions.restoreRevision,
   );
@@ -143,6 +146,17 @@ export function VersionsSection({
   const addressNotice =
     addressNotices.data?.find((notice) => notice.libraryId === libraryId) ??
     null;
+  // A silent custom domain is not fixed by moving the platform address: the
+  // way out is to send the library back to it.
+  const domains = useProtectedQuery(
+    api.evidenceLibraries.domains.listDomains,
+    addressNotice ? { libraryId } : "skip",
+  );
+  const deadDomain = domains.data?.domains.find(
+    (domain) =>
+      domain.role === "primary" &&
+      `https://${domain.host}` === addressNotice?.address,
+  );
 
   // Opening the page checks for updates once; "Check again" asks once more.
   const [checkCount, setCheckCount] = useState(0);
@@ -184,6 +198,25 @@ export function VersionsSection({
   function confirmMove() {
     setMoveOpen(false);
     setBusy(true);
+    if (deadDomain) {
+      void setDomainPrimary({
+        libraryId,
+        domainId: deadDomain.domainId,
+        primary: false,
+      })
+        .then((result) => {
+          toast(t("versions.addressMoveStarted"), {
+            description: t("versions.addressMoveStartedDescription", {
+              address: result.address.replace(/^https?:\/\//, ""),
+            }),
+          });
+        })
+        .catch((error: unknown) =>
+          toast.error(errorMessage(error, t("versions.addressMoveError"))),
+        )
+        .finally(() => setBusy(false));
+      return;
+    }
     void moveAddress({ libraryId })
       .then((result) => {
         checkAgain();
@@ -244,7 +277,9 @@ export function VersionsSection({
               disabled={blocked}
               onClick={() => setMoveOpen(true)}
             >
-              {t("versions.addressMove")}
+              {deadDomain
+                ? t("versions.addressBack")
+                : t("versions.addressMove")}
             </Button>
           }
         >
@@ -336,16 +371,24 @@ export function VersionsSection({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("versions.addressMoveTitle")}
+              {deadDomain
+                ? t("domain.confirmOffTitle")
+                : t("versions.addressMoveTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t("versions.addressMoveBody")}
+              {deadDomain
+                ? t("domain.confirmOffBody", {
+                    address: domains.data?.platformAddress ?? "",
+                  })
+                : t("versions.addressMoveBody")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmMove}>
-              {t("versions.addressMoveConfirm")}
+              {deadDomain
+                ? t("domain.confirmAction")
+                : t("versions.addressMoveConfirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
