@@ -24,6 +24,7 @@ import { rateLimit } from "../lib/rateLimit";
 import { internal } from "../_generated/api";
 import { customDomainDnsRecords } from "./domainConfig";
 import { readDomainActivationPlan } from "./domainPlan";
+import { isConfigurationDeploymentOperation } from "./operations";
 import {
   evidenceLibraryDomainFailureValidator,
   evidenceLibraryDomainStateValidator,
@@ -1194,6 +1195,141 @@ export const writeDomainAttachmentIntent = internalMutation({
     requireTransition(row, args.token);
     await ctx.db.patch(args.domainId, {
       attachIntentAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+const DOMAIN_ROUTE_LEASE_MS = 60_000;
+
+/**
+ * Takes the right to write this library's custom-domain route file and hands
+ * back what it should say: every attached domain that is not on its way out,
+ * read now. Refused while a configuration deployment runs, because that
+ * deployment writes the same file from its own copy when it finishes.
+ */
+export const claimDomainRoutes = internalMutation({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.union(
+    v.object({
+      status: v.literal("claimed"),
+      token: v.string(),
+      applicationUuid: v.string(),
+      hosts: v.array(v.string()),
+    }),
+    v.object({ status: v.literal("busy") }),
+  ),
+  handler: async (ctx, args) => {
+    const access = await requireEvidenceLibraryAccess(
+      ctx,
+      args.libraryId,
+      "manage",
+    );
+    await requireLibraryNotBeingDeleted(ctx, args.libraryId);
+    const binding = await readRuntimeBinding(ctx, access.library);
+    if (!("targetRuntimeId" in binding) || !binding.targetRuntimeId) {
+      throw createError("CONFLICT", "This library is not running yet");
+    }
+    for (const status of ["queued", "running"] as const) {
+      const operations = ctx.db
+        .query("evidenceLibraryConfigOperations")
+        .withIndex("by_libraryId_and_status_and_updatedAt", (index) =>
+          index.eq("libraryId", args.libraryId).eq("status", status),
+        );
+      for await (const operation of operations) {
+        if (isConfigurationDeploymentOperation(operation)) {
+          return { status: "busy" as const };
+        }
+      }
+    }
+    const now = Date.now();
+    const held = await ctx.db
+      .query("evidenceLibraryDomainRouteLeases")
+      .withIndex("by_libraryId", (index) =>
+        index.eq("libraryId", args.libraryId),
+      )
+      .unique();
+    if (held && held.expiresAt > now) return { status: "busy" as const };
+    const token = createTransitionToken();
+    if (held) {
+      await ctx.db.patch(held._id, {
+        token,
+        expiresAt: now + DOMAIN_ROUTE_LEASE_MS,
+      });
+    } else {
+      await ctx.db.insert("evidenceLibraryDomainRouteLeases", {
+        libraryId: args.libraryId,
+        token,
+        expiresAt: now + DOMAIN_ROUTE_LEASE_MS,
+      });
+    }
+    const hosts = (await readEvidenceLibraryDomains(ctx, args.libraryId))
+      .filter((row) => row.attachedAt !== undefined && row.removingAt === undefined)
+      .map((row) => `https://${row.host}`)
+      .sort();
+    return {
+      status: "claimed" as const,
+      token,
+      applicationUuid: binding.targetRuntimeId,
+      hosts,
+    };
+  },
+});
+
+export const releaseDomainRoutes = internalMutation({
+  args: { libraryId: v.id("evidenceLibraries"), token: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const held = await ctx.db
+      .query("evidenceLibraryDomainRouteLeases")
+      .withIndex("by_libraryId", (index) =>
+        index.eq("libraryId", args.libraryId),
+      )
+      .unique();
+    if (held && held.token === args.token) await ctx.db.delete(held._id);
+    return null;
+  },
+});
+
+/**
+ * Records that the route file now carries this domain's change, so nothing
+ * is owed any more — including a deployment that failed earlier and was
+ * still on record for it.
+ */
+export const settleRoutedDomain = internalMutation({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    domainId: v.id("evidenceLibraryDomains"),
+    token: v.string(),
+    attached: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    await requireLibraryNotBeingDeleted(ctx, args.libraryId);
+    const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
+    if (!row || row.libraryId !== args.libraryId) {
+      throw createError("NOT_FOUND", "That domain is not on this library");
+    }
+    requireTransition(row, args.token);
+    if (row.pendingDeployment) {
+      const operation = await ctx.db.get(row.pendingDeployment.operationId);
+      if (
+        operation &&
+        (operation.status === "queued" || operation.status === "running")
+      ) {
+        throw createError(
+          "CONFLICT",
+          "That domain's deployment is still running",
+        );
+      }
+    }
+    await ctx.db.patch(args.domainId, {
+      attachedAt: args.attached ? (row.attachedAt ?? Date.now()) : undefined,
+      deploymentPending: undefined,
+      pendingDeployment: undefined,
+      attachIntentAt: undefined,
       updatedAt: Date.now(),
     });
     return null;

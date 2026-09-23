@@ -318,6 +318,15 @@ export const evidenceLibraryDomainFields = {
   updatedAt: v.number(),
 };
 
+// One writer at a time for a library's custom-domain route file. Each writer
+// reads the attached domains after it takes this, so the last write always
+// carries the newest set.
+export const evidenceLibraryDomainRouteLeaseFields = {
+  libraryId: v.id("evidenceLibraries"),
+  token: v.string(),
+  expiresAt: v.number(),
+};
+
 export const evidenceLibrarySetupIdentityFields = {
   name: v.string(),
   publicAddress: v.string(),
