@@ -11,7 +11,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Link2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { memo, useId, useState } from "react";
+import { memo, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { readConvexErrorData } from "@/convex/lib/errors";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { LibraryAddressLink } from "../../library-address-link";
 import { SectionCard } from "../section-card";
@@ -120,12 +121,16 @@ export const DomainSection = memo(function DomainSection({
   const [busy, setBusy] = useState<string | null>(null);
   const customId = useId();
   // Switching the library's address signs everyone out, so it is confirmed
-  // first — in both directions.
+  // first — in both directions. Removing the main address is the same switch,
+  // followed by the removal.
   const [confirming, setConfirming] = useState<{
     domainId: Id<"evidenceLibraryDomains">;
     host: string;
     primary: boolean;
+    remove?: boolean;
   } | null>(null);
+  const [removeAfterSwitch, setRemoveAfterSwitch] =
+    useState<Id<"evidenceLibraryDomains"> | null>(null);
 
   const domains = data?.domains ?? [];
   const canAdd = domains.length < 5;
@@ -138,15 +143,38 @@ export const DomainSection = memo(function DomainSection({
     setBusy(key);
     try {
       return await work();
-    } catch {
-      // Never a message written by another service: the page says it in
-      // this library's own words.
-      toast.error(t("failed"));
+    } catch (error) {
+      // Never a message written by another service: only a refusal of our
+      // own is shown as written, everything else in this library's words.
+      const refusal = readConvexErrorData(error);
+      toast.error(
+        refusal?.message &&
+          (refusal.code === "CONFLICT" || refusal.code === "NOT_FOUND")
+          ? refusal.message
+          : t("failed"),
+      );
       return undefined;
     } finally {
       setBusy(null);
     }
   }
+
+  // The main address is removed once the library is back on its platform
+  // address. ponytail: the page carries the second step; closing it first
+  // leaves the domain as a plain redirect the owner can remove later.
+  const switchedBackId = domains.find(
+    (domain) =>
+      domain.domainId === removeAfterSwitch &&
+      domain.role === "redirect" &&
+      !domain.deploymentPending,
+  )?.domainId;
+  useEffect(() => {
+    if (!switchedBackId) return;
+    setRemoveAfterSwitch(null);
+    removeDomain({ libraryId, domainId: switchedBackId }).catch(() =>
+      toast.error(t("failed")),
+    );
+  }, [switchedBackId, libraryId, removeDomain, t]);
 
   async function onAdd(host = custom) {
     const typed = host.trim();
@@ -416,12 +444,19 @@ export const DomainSection = memo(function DomainSection({
                           }
                           disabled={busy !== null}
                           onClick={() =>
-                            void run(domain.domainId, () =>
-                              removeDomain({
-                                libraryId,
-                                domainId: domain.domainId,
-                              }),
-                            )
+                            domain.role === "primary"
+                              ? setConfirming({
+                                  domainId: domain.domainId,
+                                  host: domain.host,
+                                  primary: false,
+                                  remove: true,
+                                })
+                              : void run(domain.domainId, () =>
+                                  removeDomain({
+                                    libraryId,
+                                    domainId: domain.domainId,
+                                  }),
+                                )
                           }
                         >
                           <HugeiconsIcon icon={Delete02Icon} size={16} />
@@ -500,14 +535,22 @@ export const DomainSection = memo(function DomainSection({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirming?.primary ? t("confirmOnTitle") : t("confirmOffTitle")}
+              {confirming?.remove
+                ? t("confirmRemoveTitle", { host: confirming.host })
+                : confirming?.primary
+                  ? t("confirmOnTitle")
+                  : t("confirmOffTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirming?.primary
-                ? t("confirmOnBody", { host: confirming?.host ?? "" })
-                : t("confirmOffBody", {
+              {confirming?.remove
+                ? t("confirmRemoveBody", {
                     address: data?.platformAddress ?? "",
-                  })}
+                  })
+                : confirming?.primary
+                  ? t("confirmOnBody", { host: confirming?.host ?? "" })
+                  : t("confirmOffBody", {
+                      address: data?.platformAddress ?? "",
+                    })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -523,10 +566,14 @@ export const DomainSection = memo(function DomainSection({
                     domainId: change.domainId,
                     primary: change.primary,
                   }),
-                );
+                ).then((started) => {
+                  if (started && change.remove) {
+                    setRemoveAfterSwitch(change.domainId);
+                  }
+                });
               }}
             >
-              {t("confirmAction")}
+              {confirming?.remove ? t("remove") : t("confirmAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { screen, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
@@ -38,6 +38,9 @@ const mocks = vi.hoisted(() => ({
   setPrimary: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  // A live query re-renders its reader when the server answers again.
+  listeners: new Set<() => void>(),
+  version: 0,
 }));
 
 vi.mock("convex/react", () => ({
@@ -64,9 +67,27 @@ vi.mock("@/convex/_generated/api", () => ({
   },
 }));
 
-vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: () => ({ data: mocks.data, isReady: true }),
-}));
+vi.mock("@/lib/auth/use-auth-query", async () => {
+  const { useSyncExternalStore } = await import("react");
+  return {
+    useProtectedQuery: () => {
+      useSyncExternalStore(
+        (listener) => {
+          mocks.listeners.add(listener);
+          return () => mocks.listeners.delete(listener);
+        },
+        () => mocks.version,
+      );
+      return { data: mocks.data, isReady: true };
+    },
+  };
+});
+
+function serverAnswers(domains: DomainRow[]) {
+  mocks.data.domains = domains;
+  mocks.version += 1;
+  act(() => mocks.listeners.forEach((listener) => listener()));
+}
 
 vi.mock("next-intl", () => ({
   useTranslations:
@@ -446,5 +467,45 @@ describe("DomainSection", () => {
         name: "evidenceLibraryConfiguration.domain.confirmOffTitle",
       }),
     ).toBeEnabled();
+  });
+
+  it("removes the main address by switching back first, then removing once that is live", async () => {
+    mocks.data.domains = [
+      row({ state: "failed", failure: "no-name", role: "primary", attached: true }),
+    ];
+    mocks.setPrimary.mockResolvedValue({
+      address: "https://climate-lib.opendev.space",
+    });
+    mocks.removeDomain.mockResolvedValue({ status: "removing" });
+    render(<DomainSection libraryId={libraryId} />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.remove",
+      }),
+    );
+    await userEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.remove",
+      }),
+    );
+    expect(mocks.setPrimary).toHaveBeenCalledWith({
+      libraryId,
+      domainId: "domain_1",
+      primary: false,
+    });
+    // The server refuses to remove the main address, so nothing is removed
+    // while the switch back is still being applied.
+    serverAnswers([
+      row({ role: "primary", attached: true, deploymentPending: true }),
+    ]);
+    expect(mocks.removeDomain).not.toHaveBeenCalled();
+
+    serverAnswers([row({ role: "redirect", attached: true })]);
+    await waitFor(() =>
+      expect(mocks.removeDomain).toHaveBeenCalledWith({
+        libraryId,
+        domainId: "domain_1",
+      }),
+    );
   });
 });
