@@ -448,6 +448,8 @@ const savedDeploymentValidator = v.object({
 const runtimeContinuityValidator = v.object({
   applicationId: v.string(),
   platformOrigin: v.string(),
+  /** The address the running site calls its own before this operation. */
+  liveOrigin: v.string(),
   customOrigins: v.array(v.string()),
   revisionKey: v.string(),
   runtimeCommit: v.string(),
@@ -556,6 +558,9 @@ export const prepareConfigurationDeployment = internalMutation({
     const continuity = {
       applicationId: deployment.runtimeBinding.targetRuntimeId,
       platformOrigin: deployment.runtimeBinding.targetBaseUrl,
+      liveOrigin:
+        deployment.runtimeBinding.canonicalBaseUrl ??
+        deployment.runtimeBinding.targetBaseUrl,
       customOrigins: attachedDomainOrigins,
       revisionKey: activeRevision.revisionKey,
       runtimeCommit: deployment.runtimeBinding.runtimeCommit,

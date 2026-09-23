@@ -92,6 +92,7 @@ type CandidateIntent = {
     domainId: Id<"evidenceLibraryDomains">;
     reason: "attach" | "detach" | "canonical";
     address?: string;
+    redeploy?: true;
     token: string;
   };
 };
@@ -1161,6 +1162,19 @@ export const setDomainPrimary = mutation({
     const idempotencyKey =
       `domain:${running.activeRevisionId}:v${CURRENT_OWNER_CONFIGURATION_VERSION}:` +
       `${args.domainId}:canonical:${claimed.generation}:${row.host}:${address}`;
+    // The running site takes a new address through the one it answers on
+    // now. Only the platform address is always reachable: a custom domain
+    // can have lost its records or its certificate while still counting as
+    // working, so leaving one goes through a deployment.
+    const leaving = (
+      await ctx.db
+        .query("evidenceLibraryDomains")
+        .withIndex("by_libraryId", (index) =>
+          index.eq("libraryId", args.libraryId),
+        )
+        .collect()
+    ).find((entry) => entry.role === "primary");
+    const redeploy = leaving !== undefined;
     // The lease is taken now, and held until the deployment carrying this
     // change settles the row.
     await claimed.write();
@@ -1178,6 +1192,7 @@ export const setDomainPrimary = mutation({
         domainId: args.domainId,
         reason: "canonical",
         address,
+        ...(redeploy ? { redeploy: true as const } : {}),
         token: claimed.token,
       },
     });

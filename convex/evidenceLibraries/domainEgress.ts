@@ -56,6 +56,33 @@ async function readFamily(
 }
 
 /**
+ * The addresses of our own proxy: what the CNAME target every custom domain
+ * points at resolves to. Only ours, so nothing a customer writes can move it.
+ */
+export async function readOwnProxyAddresses(
+  fetchImpl: typeof fetch = fetch,
+): Promise<string[]> {
+  const target = readCustomDomainTarget();
+  let families: string[][];
+  try {
+    families = await Promise.all([
+      readFamily(fetchImpl, target, "A").then((read) => read.addresses),
+      readFamily(fetchImpl, target, "AAAA").then((read) => read.addresses),
+    ]);
+  } catch (error) {
+    if (error instanceof DnsLookupError) {
+      throw new DomainEgressUnavailable("The platform proxy could not be read");
+    }
+    throw error;
+  }
+  const addresses = families.flat().filter(isPublicInternetAddress);
+  if (addresses.length === 0) {
+    throw new DomainEgressUnavailable("The platform proxy answers no address");
+  }
+  return addresses;
+}
+
+/**
  * The addresses we will connect to for this host, or a refusal.
  *
  * Each address family is compared against the target's own answer for the
