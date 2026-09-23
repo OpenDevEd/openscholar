@@ -48,7 +48,7 @@ describe("library invitations", () => {
       await ctx.db.delete("evidenceLibraryMembers", assignment!._id);
     });
     expect(await features()).toEqual({ evidenceLibraries: false, authors: false, extraction: false });
-    expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ from: {name: "Climate Evidence", address: "libraries@example.test"}, to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-libraries") });
+    expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ from: {name: "Climate Evidence", address: "libraries@example.test"}, to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-libraries?view=invitations") });
   });
 
   it.each(["expired", "cancelled", "disabled-library", "deleted-organization", "suspended-account"] as const)("does not open library navigation for an %s invitation", async reason => {

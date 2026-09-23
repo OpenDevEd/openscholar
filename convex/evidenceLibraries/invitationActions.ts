@@ -14,6 +14,7 @@ export const invite = action({
   handler: async (ctx, args): Promise<null> => {
     const mail = requireInvitationMail();
     const origin = requireAppUrl();
+    const invitationsUrl = new URL("/evidence-libraries?view=invitations", origin).href;
     const invitationId = await ctx.runMutation(internal.evidenceLibraries.invitations.prepare, args);
     const invitation = await ctx.runQuery(internal.evidenceLibraries.invitations.readDelivery, { invitationId });
     if (!invitation) throw createError("CONFLICT", "Invitation is no longer available");
@@ -25,9 +26,9 @@ export const invite = action({
         subject: `Invitation to ${invitation.libraryName}`,
         html: renderLibraryInvitation({
           identity: {...invitation.emailIdentity, baseUrl: invitation.emailIdentity.baseUrl ?? origin},
-          role: invitation.role, acceptUrl: new URL("/evidence-libraries", origin).href,
+          role: invitation.role, acceptUrl: invitationsUrl,
         }),
-        text: `You have been invited to ${invitation.libraryName} with the ${invitation.role} role.\n\nSign in with ${invitation.email} and accept the invitation:\n${new URL("/evidence-libraries", origin)}\n\nThis invitation expires in seven days. It grants access to this library only.`,
+        text: `You have been invited to ${invitation.libraryName} with the ${invitation.role} role.\n\nSign in with ${invitation.email} to view and accept the invitation:\n${invitationsUrl}\n\nThis invitation expires in seven days. It grants access to this library only.`,
       });
     } catch (error) {
       console.error("Library invitation email failed", { invitationId, error });
