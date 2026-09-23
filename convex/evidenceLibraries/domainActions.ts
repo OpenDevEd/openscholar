@@ -135,25 +135,43 @@ const checkedDomainsValidator = v.object({
 });
 
 /**
- * Hands the proxy this library's complete set of custom domains as a route
- * file it reloads by itself, so the change is live in seconds. False when the
- * runtime verifier predates that, and a deployment has to carry the change.
+ * Writes this library's custom-domain route file, which the proxy reloads by
+ * itself, so a change is live in seconds. It says what is recorded at the
+ * moment of writing, and only one writer runs at a time, so the last write
+ * always carries the newest set. "unsupported": the runtime verifier predates
+ * route files, and a deployment has to carry the change. "busy": another
+ * write, or a configuration deployment, is running.
  */
-async function routeDomains(
-  applicationUuid: string,
-  hosts: readonly string[],
-): Promise<boolean> {
-  const missing = (message: string) => new Error(message);
-  const routed = await setLibraryDomainRoutes({
-    applicationUuid,
-    customOrigins: hosts,
-    verifierUrl: requireRuntimeHttpsOrigin("EL_RUNTIME_VERIFIER_URL", missing),
-    verifierToken: requireRuntimeEnvironment(
-      "EL_RUNTIME_VERIFIER_TOKEN",
-      missing,
-    ),
-  });
-  return routed.status === "routed";
+async function syncDomainRoutes(
+  ctx: ActionCtx,
+  libraryId: Id<"evidenceLibraries">,
+): Promise<"routed" | "unsupported" | "busy"> {
+  const claim = await ctx.runMutation(
+    internal.evidenceLibraries.domains.claimDomainRoutes,
+    { libraryId },
+  );
+  if (claim.status === "busy") return "busy";
+  try {
+    const missing = (message: string) => new Error(message);
+    const routed = await setLibraryDomainRoutes({
+      applicationUuid: claim.applicationUuid,
+      customOrigins: claim.hosts,
+      verifierUrl: requireRuntimeHttpsOrigin(
+        "EL_RUNTIME_VERIFIER_URL",
+        missing,
+      ),
+      verifierToken: requireRuntimeEnvironment(
+        "EL_RUNTIME_VERIFIER_TOKEN",
+        missing,
+      ),
+    });
+    return routed.status === "routed" ? "routed" : "unsupported";
+  } finally {
+    await ctx.runMutation(
+      internal.evidenceLibraries.domains.releaseDomainRoutes,
+      { libraryId, token: claim.token },
+    );
+  }
 }
 
 function coolify() {
@@ -349,24 +367,26 @@ async function attachDomains(
 }> {
   const newAttachments = input.changes.filter((change) => change.attach);
   // Coolify keeps the list too, so its check that no other site holds a host
-  // still runs, and its own routes catch up at the next deployment.
+  // still runs, and its own routes catch up at the next deployment. The route
+  // file is written from the records, so every receipt above lands first.
   const routeInstead = async (
-    hosts: readonly string[],
     changes: typeof input.changes,
   ): Promise<boolean> => {
     for (const change of changes) {
       await holdDomain(ctx, change.domainId, change.token);
     }
-    if (!(await routeDomains(input.applicationUuid, hosts))) return false;
+    const synced = await syncDomainRoutes(ctx, input.libraryId);
+    if (synced === "unsupported") return false;
+    // Recorded as owing a deployment, so the next check carries on from here.
+    if (synced === "busy") throw new DomainCheckUnavailable();
     for (const change of changes) {
       await ctx.runMutation(
-        internal.evidenceLibraries.domains.writeDomainAttachment,
+        internal.evidenceLibraries.domains.settleRoutedDomain,
         {
           libraryId: input.libraryId,
           domainId: change.domainId,
           token: change.token,
           attached: true,
-          deploymentPending: false,
         },
       );
     }
@@ -389,7 +409,6 @@ async function attachDomains(
     }
     const accepted: typeof newAttachments = [];
     const failed: typeof newAttachments = [];
-    let proxyHosts: string[] = wanted;
     try {
       await coolify().setCustomDomains({
         applicationUuid: input.applicationUuid,
@@ -426,7 +445,6 @@ async function attachDomains(
           kept.add(`https://${change.host}`);
           possibleCurrent = [[...kept].sort()];
           accepted.push(change);
-          proxyHosts = [...kept].sort();
         } catch (candidateError) {
           if (
             candidateError instanceof CoolifyClientError &&
@@ -463,11 +481,6 @@ async function attachDomains(
         },
       );
     }
-    if (accepted.length === 0 && failed.length > 0) {
-      proxyHosts = [
-        ...new Set([...input.attachedHosts, ...input.uncertainHosts]),
-      ].sort();
-    }
     const deployed = [
       ...input.changes.filter((change) => !change.attach),
       ...accepted,
@@ -480,7 +493,7 @@ async function attachDomains(
         routed: [],
       };
     }
-    if (await routeInstead(proxyHosts, deployed)) {
+    if (await routeInstead(deployed)) {
       return {
         deploying: false,
         deployed: [],
@@ -508,12 +521,7 @@ async function attachDomains(
     };
   }
   const deployed = input.changes;
-  if (
-    await routeInstead(
-      [...new Set([...input.attachedHosts, ...input.uncertainHosts])].sort(),
-      deployed,
-    )
-  ) {
+  if (await routeInstead(deployed)) {
     return {
       deploying: false,
       deployed: [],
@@ -993,22 +1001,18 @@ export const removeDomain = action({
       // has to reach the running site.
       const owed = wasKnownToProxy || row.deploymentPending;
       if (owed && context.applicationUuid) {
+        // The row already says the proxy lost the host, so the route file
+        // written from the records leaves it out.
         await holdDomain(ctx, args.domainId, token);
-        const routed = await routeDomains(
-          context.applicationUuid,
-          [...new Set([...context.attachedHosts, ...context.uncertainHosts])]
-            .filter((entry) => entry !== `https://${row.host}`)
-            .sort(),
-        );
-        if (routed) {
+        const synced = await syncDomainRoutes(ctx, args.libraryId);
+        if (synced === "routed") {
           await ctx.runMutation(
-            internal.evidenceLibraries.domains.writeDomainAttachment,
+            internal.evidenceLibraries.domains.settleRoutedDomain,
             {
               libraryId: args.libraryId,
               domainId: args.domainId,
               token,
               attached: false,
-              deploymentPending: false,
             },
           );
           await ctx.runMutation(
@@ -1017,6 +1021,8 @@ export const removeDomain = action({
           );
           return { status: "removed" as const };
         }
+        // Pressing Remove again carries on from here.
+        if (synced === "busy") return { status: "busy" as const };
         await queueDomainDeployment(ctx, {
           libraryId: args.libraryId,
           domainId: args.domainId,
