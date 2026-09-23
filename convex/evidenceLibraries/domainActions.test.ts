@@ -3664,13 +3664,96 @@ describe("custom domains", () => {
       expect(listed.canonicalAddress).toBe(`https://${secondHost}`);
       expect(await readIdentityBaseUrl(fixture)).toBe(`https://${secondHost}`);
 
-      // The removed domain goes by itself once the library has moved off it.
+      // The removed domain goes by itself once the library has moved off it:
+      // the activation's completion booked the job that takes it away.
+      const booked = await fixture.t.run(async (ctx) =>
+        (await ctx.db.system.query("_scheduled_functions").collect()).find(
+          (job) =>
+            job.name.includes("removeStagedDomains") &&
+            job.state.kind === "pending",
+        ),
+      );
+      if (!booked) throw new Error("the removal was not booked");
       await fixture.t.action(
         internal.evidenceLibraries.domainActions.removeStagedDomains,
-        { libraryId },
+        booked.args[0] as { libraryId: typeof libraryId; stagedBefore: number },
       );
       expect(await readRow(fixture, first.domainId)).toBeNull();
       expect(routes.at(-1)).toEqual([`https://${secondHost}`]);
+    });
+
+    it("removes only what is still staged from before the activation", async () => {
+      const fixture = await createReadySetupFixture("draft-staged-only");
+      const tag = await bindApplication(fixture);
+      const routes: string[][] = [];
+      vi.stubGlobal(
+        "fetch",
+        createWorld(
+          {
+            routesDomains: routes,
+            serving: [`https://${CUSTOM_HOST}`, "https://late.example.org"],
+          },
+          tag,
+        ).fetchImpl,
+      );
+      const libraryId = fixture.created.libraryId;
+      const kept = await addDomain(fixture);
+      const late = await addDomain(fixture, "late.example.org");
+      if (kept.status !== "added" || late.status !== "added") {
+        throw new Error("not added");
+      }
+      const stagedBefore = Date.now();
+      await fixture.t.run(async (ctx) => {
+        const now = Date.now();
+        for (const domainId of [kept.domainId, late.domainId]) {
+          await ctx.db.patch(domainId, { state: "active", attachedAt: now });
+        }
+        // Kept again before the job ran, and staged only after the
+        // activation started: neither belongs to it.
+        await ctx.db.patch(late.domainId, {
+          removeOnActivateAt: stagedBefore + 60_000,
+        });
+      });
+      await fixture.t.action(
+        internal.evidenceLibraries.domainActions.removeStagedDomains,
+        { libraryId, stagedBefore },
+      );
+      expect(await readRow(fixture, kept.domainId)).not.toBeNull();
+      expect(await readRow(fixture, late.domainId)).not.toBeNull();
+      expect(routes).toEqual([]);
+    });
+
+    it("goes back to the platform address when the chosen replacement is gone", async () => {
+      const fixture = await createReadySetupFixture("draft-choice-gone");
+      const tag = await bindApplication(fixture);
+      vi.stubGlobal(
+        "fetch",
+        createWorld(
+          { routesDomains: [], serving: [`https://${CUSTOM_HOST}`] },
+          tag,
+        ).fetchImpl,
+      );
+      const libraryId = fixture.created.libraryId;
+      const current = await addDomain(fixture);
+      if (current.status !== "added") throw new Error("not added");
+      await makeWorking(fixture, current.domainId);
+      await activateAndComplete(fixture);
+      const next = await addDomain(fixture, "next.example.org");
+      if (next.status !== "added") throw new Error("not added");
+      await makeWorking(fixture, next.domainId);
+      await fixture.admin.mutation(
+        api.evidenceLibraries.domains.stageMainDomainRemoval,
+        { libraryId, domainId: current.domainId, remove: true },
+      );
+      // The replacement the owner chose is removed before they activate.
+      await fixture.t.run(async (ctx) => ctx.db.delete(next.domainId));
+
+      const listed = await fixture.admin.query(
+        api.evidenceLibraries.domains.listDomains,
+        { libraryId },
+      );
+      expect(listed.mainAddress).toBe(`https://${PLATFORM_HOST}`);
+      expect(listed.mainNeedsAttention).toBe(true);
     });
 
     it("only takes a working domain as the main address", async () => {

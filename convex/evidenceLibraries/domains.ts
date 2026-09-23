@@ -233,9 +233,8 @@ export const listDomains = query({
       canonicalAddress: binding.canonicalBaseUrl ?? binding.targetBaseUrl,
       mainAddress: plan.mainAddress,
       mainNeedsAttention:
-        chosen !== null &&
-        chosen !== undefined &&
-        plan.mainAddress !== `https://${chosen.host}`,
+        typeof chosenId === "string" &&
+        (!chosen || plan.mainAddress !== `https://${chosen.host}`),
       live: access.library.state === "active" && binding.state === "ready",
       domains: sortedRows.map((row) => {
         const verificationHost = row.verificationHost;
@@ -331,6 +330,9 @@ export const stageMainDomainRemoval = mutation({
     if (!row || row.libraryId !== args.libraryId) {
       throw createError("NOT_FOUND", "That domain is not on this library");
     }
+    if (!args.remove && row.removingAt !== undefined) {
+      throw createError("CONFLICT", "That domain is already being removed");
+    }
     const now = Date.now();
     await ctx.db.patch(args.domainId, {
       removeOnActivateAt: args.remove ? (row.removeOnActivateAt ?? now) : undefined,
@@ -394,15 +396,29 @@ export async function suggestFirstMainAddress(
 
 /** Removed main addresses the library no longer calls its own. */
 export const readStagedRemovals = internalQuery({
-  args: { libraryId: v.id("evidenceLibraries") },
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    /** Only removals the activation that just finished carried. */
+    stagedBefore: v.number(),
+  },
   returns: v.array(v.id("evidenceLibraryDomains")),
   handler: async (ctx, args) =>
     (await readEvidenceLibraryDomains(ctx, args.libraryId))
-      .filter(
-        (row) => row.removeOnActivateAt !== undefined && row.role !== "primary",
-      )
+      .filter((row) => isStagedBefore(row, args.stagedBefore))
       .map((row) => row._id),
 });
+
+/** Removed by the owner before that moment, and no longer the main address. */
+export function isStagedBefore(
+  row: Doc<"evidenceLibraryDomains">,
+  stagedBefore: number,
+): boolean {
+  return (
+    row.removeOnActivateAt !== undefined &&
+    row.removeOnActivateAt <= stagedBefore &&
+    row.role !== "primary"
+  );
+}
 
 /**
  * The whole picture one domain action needs, read in one go: the row, the
@@ -1150,10 +1166,13 @@ export const beginDomainRemoval = internalMutation({
     domainId: v.id("evidenceLibraryDomains"),
     token: v.string(),
     platform: v.optional(v.literal(true)),
+    /** The platform removes only what the owner still has staged. */
+    stagedBefore: v.optional(v.number()),
   },
   returns: v.union(
     v.object({ status: v.literal("removing"), attached: v.boolean() }),
     v.object({ status: v.literal("gone") }),
+    v.object({ status: v.literal("kept") }),
   ),
   handler: async (ctx, args) => {
     await requireDomainLibraryAccess(ctx, args.libraryId, args.platform);
@@ -1162,6 +1181,12 @@ export const beginDomainRemoval = internalMutation({
       return { status: "gone" as const };
     }
     requireTransition(row, args.token);
+    if (
+      args.stagedBefore !== undefined &&
+      !isStagedBefore(row, args.stagedBefore)
+    ) {
+      return { status: "kept" as const };
+    }
     if (row.role === "primary") {
       throw createError(
         "CONFLICT",

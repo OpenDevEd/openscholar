@@ -337,7 +337,8 @@ export const DomainSection = memo(function DomainSection({
               // The address visitors reach now is taken away at the next
               // activation, like any other change; every other domain goes
               // straight away.
-              const removeLater = domain.role === "primary";
+              const removeLater =
+                domain.role === "primary" || domain.removeOnActivate;
               const removeLabel = domain.removeOnActivate
                 ? t("keep")
                 : domain.removing

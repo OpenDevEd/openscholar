@@ -514,6 +514,26 @@ describe("DomainSection", () => {
     });
   });
 
+  it("keeps a removed domain even after the activation moved off it", async () => {
+    // The library no longer calls it its own, but the owner can still keep it
+    // until the platform has taken it away.
+    mocks.data.domains = [
+      row({ state: "active", attached: true, removeOnActivate: true }),
+    ];
+    render(<DomainSection libraryId={libraryId} />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.keep",
+      }),
+    );
+    expect(mocks.removeDomain).not.toHaveBeenCalled();
+    expect(mocks.stageRemoval).toHaveBeenCalledWith({
+      libraryId,
+      domainId: "domain_1",
+      remove: false,
+    });
+  });
+
   it("removes any other domain straight away", async () => {
     mocks.data.domains = [row({ state: "active", attached: true })];
     render(<DomainSection libraryId={libraryId} />);

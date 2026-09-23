@@ -943,19 +943,23 @@ export const removeDomain = action({
  * domain it cannot finish is left for the owner's Remove button.
  */
 export const removeStagedDomains = internalAction({
-  args: { libraryId: v.id("evidenceLibraries") },
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    /** When the activation that carried these removals started. */
+    stagedBefore: v.number(),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     const staged = await ctx.runQuery(
       internal.evidenceLibraries.domains.readStagedRemovals,
-      { libraryId: args.libraryId },
+      { libraryId: args.libraryId, stagedBefore: args.stagedBefore },
     );
     for (const domainId of staged) {
       try {
         await removeLibraryDomain(
           ctx,
           { libraryId: args.libraryId, domainId },
-          true,
+          { stagedBefore: args.stagedBefore },
         );
       } catch (error) {
         console.error("[evidence-library] staged domain removal failed", {
@@ -975,8 +979,10 @@ async function removeLibraryDomain(
     libraryId: Id<"evidenceLibraries">;
     domainId: Id<"evidenceLibraryDomains">;
   },
-  platform?: true,
+  /** Set for the platform's own work, which only takes what is still staged. */
+  staged?: { stagedBefore: number },
 ): Promise<{ status: "removed" | "removing" | "busy" }> {
+  const platform = staged ? (true as const) : undefined;
   // The same lease every other change to this domain takes, so a removal
   // never starts under a running check or attach.
   const claimed = await ctx.runMutation(
@@ -1001,10 +1007,12 @@ async function removeLibraryDomain(
         libraryId: args.libraryId,
         domainId: args.domainId,
         token,
-        ...(platform ? { platform } : {}),
+        ...(staged ? { platform, stagedBefore: staged.stagedBefore } : {}),
       },
     );
     if (started.status === "gone") return { status: "removed" as const };
+    // The owner kept it after all.
+    if (started.status === "kept") return { status: "busy" as const };
 
     const context = await ctx.runQuery(
       internal.evidenceLibraries.domains.readDomainContext,

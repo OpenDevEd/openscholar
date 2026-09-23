@@ -16,6 +16,7 @@ import { createError } from "../lib/errors";
 import {
   claimDomainTransitionRow,
   readAttachedDomainOrigins,
+  isStagedBefore,
   readEvidenceLibraryDomains,
   settleDomainDeploymentRows,
 } from "./domains";
@@ -1439,16 +1440,17 @@ export const completeConfigurationDeployment = internalMutation({
     await updateDraftBaseRevision(ctx, deployment);
     // Main addresses the owner removed go once the library has moved off
     // them, which this activation may just have done.
+    // Only removals staged before this activation started are its own; a
+    // later one waits for the next activation.
+    const stagedBefore = deployment.operation.createdAt;
     const stagedRemovals = (
       await readEvidenceLibraryDomains(ctx, args.libraryId)
-    ).some(
-      (row) => row.removeOnActivateAt !== undefined && row.role !== "primary",
-    );
+    ).some((row) => isStagedBefore(row, stagedBefore));
     if (stagedRemovals) {
       await ctx.scheduler.runAfter(
         0,
         internal.evidenceLibraries.domainActions.removeStagedDomains,
-        { libraryId: args.libraryId },
+        { libraryId: args.libraryId, stagedBefore },
       );
     }
     if (domainsToActivate.length > 0) {

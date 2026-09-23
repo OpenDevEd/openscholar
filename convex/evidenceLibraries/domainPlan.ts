@@ -59,15 +59,19 @@ export async function readDomainActivationPlan(
     chosen !== null &&
     chosen.state === "active" &&
     chosen.removeOnActivateAt === undefined;
+  const leaving = rows.find((row) => row.role === "primary");
+  // A main address the owner removed cannot stay the main address, so with
+  // no usable choice the library goes back to its platform address.
   const mainAddress =
     choice === null
       ? platform
       : usable
         ? `https://${chosen.host}`
-        : live;
+        : leaving?.removeOnActivateAt !== undefined
+          ? platform
+          : live;
   let canonical: DomainActivationPlan["canonical"] = null;
   if (mainAddress !== live) {
-    const leaving = rows.find((row) => row.role === "primary");
     const domain = mainAddress === platform ? leaving : chosen;
     if (domain) {
       canonical = {
