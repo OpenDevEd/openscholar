@@ -44,8 +44,15 @@ import {
   type DomainFailure,
   type DomainOutcome,
 } from "./domainGates";
-import { probeEvidenceLibraryAddress } from "./readinessClient";
-import { requireRuntimeEnvironment } from "./runtimeActionConfig";
+import {
+  probeEvidenceLibraryAddress,
+  ReadinessClientError,
+  setLibraryDomainRoutes,
+} from "./readinessClient";
+import {
+  requireRuntimeEnvironment,
+  requireRuntimeHttpsOrigin,
+} from "./runtimeActionConfig";
 import {
   evidenceLibraryDomainFailureValidator,
   evidenceLibraryDomainStateValidator,
@@ -65,7 +72,10 @@ function isUnavailable(error: unknown): boolean {
     error instanceof DomainCheckUnavailable ||
     error instanceof DomainEgressUnavailable ||
     error instanceof DnsLookupError ||
-    error instanceof CoolifyClientError
+    error instanceof CoolifyClientError ||
+    (error instanceof ReadinessClientError &&
+      (error.code === "READINESS_UNAVAILABLE" ||
+        error.code === "RUNTIME_ROUTE_UNAVAILABLE"))
   );
 }
 
@@ -123,6 +133,28 @@ const checkedDomainsValidator = v.object({
     }),
   ),
 });
+
+/**
+ * Hands the proxy this library's complete set of custom domains as a route
+ * file it reloads by itself, so the change is live in seconds. False when the
+ * runtime verifier predates that, and a deployment has to carry the change.
+ */
+async function routeDomains(
+  applicationUuid: string,
+  hosts: readonly string[],
+): Promise<boolean> {
+  const missing = (message: string) => new Error(message);
+  const routed = await setLibraryDomainRoutes({
+    applicationUuid,
+    customOrigins: hosts,
+    verifierUrl: requireRuntimeHttpsOrigin("EL_RUNTIME_VERIFIER_URL", missing),
+    verifierToken: requireRuntimeEnvironment(
+      "EL_RUNTIME_VERIFIER_TOKEN",
+      missing,
+    ),
+  });
+  return routed.status === "routed";
+}
 
 function coolify() {
   // The same reader every other Evidence Library action uses.
@@ -312,8 +344,34 @@ async function attachDomains(
   deploying: boolean;
   deployed: Id<"evidenceLibraryDomains">[];
   failed: Id<"evidenceLibraryDomains">[];
+  /** Live through a route file, with no deployment: still to be proven. */
+  routed: Id<"evidenceLibraryDomains">[];
 }> {
   const newAttachments = input.changes.filter((change) => change.attach);
+  // Coolify keeps the list too, so its check that no other site holds a host
+  // still runs, and its own routes catch up at the next deployment.
+  const routeInstead = async (
+    hosts: readonly string[],
+    changes: typeof input.changes,
+  ): Promise<boolean> => {
+    for (const change of changes) {
+      await holdDomain(ctx, change.domainId, change.token);
+    }
+    if (!(await routeDomains(input.applicationUuid, hosts))) return false;
+    for (const change of changes) {
+      await ctx.runMutation(
+        internal.evidenceLibraries.domains.writeDomainAttachment,
+        {
+          libraryId: input.libraryId,
+          domainId: change.domainId,
+          token: change.token,
+          attached: true,
+          deploymentPending: false,
+        },
+      );
+    }
+    return true;
+  };
   const wanted = [
     ...new Set([
       ...input.attachedHosts,
@@ -331,6 +389,7 @@ async function attachDomains(
     }
     const accepted: typeof newAttachments = [];
     const failed: typeof newAttachments = [];
+    let proxyHosts: string[] = wanted;
     try {
       await coolify().setCustomDomains({
         applicationUuid: input.applicationUuid,
@@ -367,6 +426,7 @@ async function attachDomains(
           kept.add(`https://${change.host}`);
           possibleCurrent = [[...kept].sort()];
           accepted.push(change);
+          proxyHosts = [...kept].sort();
         } catch (candidateError) {
           if (
             candidateError instanceof CoolifyClientError &&
@@ -403,6 +463,11 @@ async function attachDomains(
         },
       );
     }
+    if (accepted.length === 0 && failed.length > 0) {
+      proxyHosts = [
+        ...new Set([...input.attachedHosts, ...input.uncertainHosts]),
+      ].sort();
+    }
     const deployed = [
       ...input.changes.filter((change) => !change.attach),
       ...accepted,
@@ -412,6 +477,15 @@ async function attachDomains(
         deploying: false,
         deployed: [],
         failed: failed.map((change) => change.domainId),
+        routed: [],
+      };
+    }
+    if (await routeInstead(proxyHosts, deployed)) {
+      return {
+        deploying: false,
+        deployed: [],
+        failed: failed.map((change) => change.domainId),
+        routed: deployed.map((change) => change.domainId),
       };
     }
     await ctx.runMutation(
@@ -430,9 +504,23 @@ async function attachDomains(
       deploying: true,
       deployed: deployed.map((change) => change.domainId),
       failed: failed.map((change) => change.domainId),
+      routed: [],
     };
   }
   const deployed = input.changes;
+  if (
+    await routeInstead(
+      [...new Set([...input.attachedHosts, ...input.uncertainHosts])].sort(),
+      deployed,
+    )
+  ) {
+    return {
+      deploying: false,
+      deployed: [],
+      failed: [],
+      routed: deployed.map((change) => change.domainId),
+    };
+  }
   await ctx.runMutation(
     internal.evidenceLibraries.versions.startDomainDeploymentBatch,
     {
@@ -449,6 +537,7 @@ async function attachDomains(
     deploying: true,
     deployed: deployed.map((change) => change.domainId),
     failed: [],
+    routed: [],
   };
 }
 
@@ -788,8 +877,21 @@ export const checkDomains = action({
         }
       }
       for (const domainId of attached.deployed) held.delete(domainId);
+      if (attached.routed.length > 0) {
+        // Nothing holds these any more; the HTTPS proof below writes their
+        // final state once the proxy serves them with a certificate.
+        for (const domainId of attached.routed) await release(domainId);
+        await ctx.scheduler.runAfter(
+          0,
+          internal.evidenceLibraries.domainActions.activateDomains,
+          { libraryId: args.libraryId, domainIds: attached.routed, attempt: 0 },
+        );
+      }
       return {
-        status: attached.deploying ? "deploying" : "checked",
+        status:
+          attached.deploying || attached.routed.length > 0
+            ? "deploying"
+            : "checked",
         results,
       };
     } finally {
@@ -891,6 +993,30 @@ export const removeDomain = action({
       // has to reach the running site.
       const owed = wasKnownToProxy || row.deploymentPending;
       if (owed && context.applicationUuid) {
+        await holdDomain(ctx, args.domainId, token);
+        const routed = await routeDomains(
+          context.applicationUuid,
+          [...new Set([...context.attachedHosts, ...context.uncertainHosts])]
+            .filter((entry) => entry !== `https://${row.host}`)
+            .sort(),
+        );
+        if (routed) {
+          await ctx.runMutation(
+            internal.evidenceLibraries.domains.writeDomainAttachment,
+            {
+              libraryId: args.libraryId,
+              domainId: args.domainId,
+              token,
+              attached: false,
+              deploymentPending: false,
+            },
+          );
+          await ctx.runMutation(
+            internal.evidenceLibraries.domains.finishDomainRemoval,
+            { domainId: args.domainId, token },
+          );
+          return { status: "removed" as const };
+        }
         await queueDomainDeployment(ctx, {
           libraryId: args.libraryId,
           domainId: args.domainId,

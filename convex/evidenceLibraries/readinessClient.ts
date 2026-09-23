@@ -748,6 +748,93 @@ export async function removeLibraryRuntimeRoute(input: {
 }
 
 /**
+ * Hands the proxy the library's complete set of custom domains, as a route
+ * file it reloads on its own: attaching or removing a domain takes effect in
+ * seconds, with no deployment. "unsupported" means the verifier predates the
+ * endpoint, and the caller falls back to a deployment.
+ */
+export async function setLibraryDomainRoutes(input: {
+  applicationUuid: string;
+  customOrigins: readonly string[];
+  verifierUrl: string;
+  verifierToken: string;
+  fetchImpl?: typeof fetch;
+}): Promise<{ status: "routed" | "unsupported" }> {
+  if (!isCoolifyApplicationUuid(input.applicationUuid)) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library application ID is invalid",
+    );
+  }
+  const customOrigins = [
+    ...new Set(
+      input.customOrigins.map(
+        (origin) =>
+          requireHttpsOrigin("Evidence Library custom URL", origin).origin,
+      ),
+    ),
+  ].sort();
+  if (customOrigins.length > 20) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Evidence Library custom addresses are invalid",
+    );
+  }
+  if (!input.verifierToken.trim()) {
+    throw new ReadinessClientError(
+      "READINESS_CONFIG_INVALID",
+      "Runtime verifier token is missing",
+    );
+  }
+  const verifierOrigin = requireHttpsOrigin(
+    "Runtime verifier URL",
+    input.verifierUrl,
+  );
+  const body = await fetchWithTimeout(
+    input.fetchImpl ?? fetch,
+    new URL("/v1/library-runtime/domains", verifierOrigin),
+    {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        authorization: `Bearer ${input.verifierToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        applicationUuid: input.applicationUuid,
+        customOrigins,
+      }),
+    },
+    async (response) => {
+      if (response.status === 404) return { status: "unsupported" };
+      if (response.status !== 200) {
+        throw new ReadinessClientError(
+          response.status === 409 || response.status >= 500
+            ? "RUNTIME_ROUTE_UNAVAILABLE"
+            : "RUNTIME_ROUTE_FAILED",
+          await readVerifierFailure(
+            response,
+            "Evidence Library domains could not be routed",
+          ),
+        );
+      }
+      return await readBoundedJson(response);
+    },
+    ROUTE_REQUEST_TIMEOUT_MS,
+  );
+  if (isRecord(body) && body.status === "unsupported") {
+    return { status: "unsupported" };
+  }
+  if (!isRecord(body) || body.status !== "routed") {
+    throw new ReadinessClientError(
+      "READINESS_INVALID_RESPONSE",
+      "The runtime verifier returned an invalid route response",
+    );
+  }
+  return { status: "routed" };
+}
+
+/**
  * The address must answer as this library. The Coolify application is already
  * running by the time this runs, so an answer from anything else means the
  * address belongs to another site and the library has to move.

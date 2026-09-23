@@ -69,6 +69,11 @@ type World = {
   anyHost?: boolean;
   /** What the proxy already serves for this library. */
   serving?: string[];
+  /**
+   * A runtime verifier that routes custom domains by file. Each set it is
+   * handed is recorded here. Left out, the verifier predates that endpoint.
+   */
+  routesDomains?: string[][];
 };
 
 function dnsAnswer(world: World, name: string, type: string, google: boolean) {
@@ -199,6 +204,14 @@ function createWorld(world: World, tag = "openscholar-library-placeholder") {
       }
 
       if (url.hostname === "runtime-verifier.example.test") {
+        if (url.pathname === "/v1/library-runtime/domains") {
+          if (!world.routesDomains) {
+            return Response.json({ message: "not found" }, { status: 404 });
+          }
+          const origins = (body as { customOrigins: string[] }).customOrigins;
+          world.routesDomains.push(origins);
+          return Response.json({ status: "routed", customOrigins: origins });
+        }
         const statuses: Record<string, string> = {
           "/v1/library-runtime/activation": "active",
           "/v1/library-runtime/finalization": "finalized",
@@ -1120,6 +1133,99 @@ describe("custom domains", () => {
         (operation) => operation.domainChange?.reason === "attach",
       ),
     ).toBe(true);
+  });
+
+  it("attaches a verified domain through a route file, with no deployment", async () => {
+    const fixture = await createReadySetupFixture("domain-route-attach");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await markVerified(fixture, added.domainId);
+
+    const routes: string[][] = [];
+    vi.stubGlobal(
+      "fetch",
+      createWorld({ routesDomains: routes }, tag).fetchImpl,
+    );
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.checkDomains, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toMatchObject({ status: "deploying" });
+
+    expect(routes).toEqual([[`https://${CUSTOM_HOST}`]]);
+    const row = await readRow(fixture, added.domainId);
+    expect(row?.attachedAt).toBeTypeOf("number");
+    expect(row?.deploymentPending).toBeUndefined();
+    expect(row?.pendingDeployment).toBeUndefined();
+    expect(row?.transition).toBeUndefined();
+    const operations = await fixture.t.run(
+      async (ctx) =>
+        await ctx.db
+          .query("evidenceLibraryConfigOperations")
+          .withIndex("by_libraryId_and_createdAt", (query) =>
+            query.eq("libraryId", fixture.created.libraryId),
+          )
+          .collect(),
+    );
+    expect(operations.some((operation) => operation.domainChange)).toBe(false);
+
+    // Proven over HTTPS once the proxy serves it, without another click.
+    const revisionKey = await readLiveRevisionKey(fixture);
+    vi.stubGlobal(
+      "fetch",
+      createWorld(
+        {
+          cname: TARGET,
+          health: { revision: revisionKey, redirect: true },
+          anyHost: true,
+        },
+        tag,
+      ).fetchImpl,
+    );
+    await fixture.t.action(
+      internal.evidenceLibraries.domainActions.activateDomains,
+      {
+        libraryId: fixture.created.libraryId,
+        domainIds: [added.domainId],
+        attempt: 0,
+      },
+    );
+    expect((await readRow(fixture, added.domainId))?.state).toBe("active");
+  });
+
+  it("removes a live domain through a route file, with no deployment", async () => {
+    const fixture = await createReadySetupFixture("domain-route-remove");
+    const tag = await bindApplication(fixture);
+    vi.stubGlobal("fetch", createWorld({}, tag).fetchImpl);
+    const added = await addDomain(fixture);
+    if (added.status !== "added") throw new Error("not added");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(added.domainId, {
+        state: "active",
+        attachedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    });
+
+    const routes: string[][] = [];
+    vi.stubGlobal(
+      "fetch",
+      createWorld(
+        { serving: [`https://${CUSTOM_HOST}`], routesDomains: routes },
+        tag,
+      ).fetchImpl,
+    );
+    await expect(
+      fixture.admin.action(api.evidenceLibraries.domainActions.removeDomain, {
+        libraryId: fixture.created.libraryId,
+        domainId: added.domainId,
+      }),
+    ).resolves.toEqual({ status: "removed" });
+
+    expect(routes).toEqual([[]]);
+    expect(await readRow(fixture, added.domainId)).toBeNull();
   });
 
   it("checks every domain, publishes once, and activates them without another click", async () => {
