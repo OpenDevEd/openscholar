@@ -1196,6 +1196,17 @@ export const setDomainPrimary = mutation({
         token: claimed.token,
       },
     });
+    // An address changed straight away replaces whatever the owner had
+    // chosen for the next activation.
+    const draft = await ctx.db
+      .query("evidenceLibraryConfigDrafts")
+      .withIndex("by_libraryId", (index) =>
+        index.eq("libraryId", args.libraryId),
+      )
+      .unique();
+    if (draft && draft.mainDomainId !== undefined) {
+      await ctx.db.patch(draft._id, { mainDomainId: undefined });
+    }
     // The deployment is recorded on the domain before the worker is booked,
     // exactly as attaching and removing do, so the change holds it for as
     // long as the deployment runs rather than for an action's lease.

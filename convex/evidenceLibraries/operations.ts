@@ -583,6 +583,8 @@ export async function queueDomainChangeOperation(
     libraryId: Id<"evidenceLibraries">;
     idempotencyKey: string;
     revisionId: Id<"evidenceLibraryConfigRevisions">;
+    /** Set when an owner's activation carries the change. */
+    activationEditVersion?: number;
     domainChange: {
       host: string;
       domainId: Id<"evidenceLibraryDomains">;

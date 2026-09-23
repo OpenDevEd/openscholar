@@ -85,7 +85,11 @@ vi.mock("@/convex/_generated/api", () => ({
       configurationDeployment: {
         retryConfigurationDeployment: "retryConfigurationDeployment",
       },
-      domains: { listDomains: "listDomains" },
+      domains: {
+        listDomains: "listDomains",
+        chooseMainAddress: "chooseMainAddress",
+        stageMainDomainRemoval: "stageMainDomainRemoval",
+      },
       domainActions: {
         addDomain: "addDomain",
         checkDomains: "checkDomains",
@@ -182,6 +186,8 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
                   data: {
                     platformAddress: savedIdentity.baseUrl,
                     canonicalAddress: savedIdentity.baseUrl,
+                    mainAddress: savedIdentity.baseUrl,
+                    mainNeedsAttention: false,
                     live: true,
                     domains: [],
                   },
