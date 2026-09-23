@@ -20,6 +20,7 @@ import {
 
 vi.mock("./domainEgressNode", () => ({
   openPinnedDomainClient: async () => globalThis.fetch,
+  openOwnProxyClient: async () => globalThis.fetch,
 }));
 
 const ENCRYPTION_KEY = "33".repeat(32);
@@ -88,6 +89,10 @@ function createRuntimeNetwork(input: {
   let deployedConfigHash: string | null = INITIAL_CONFIG_HASH;
   let deploymentStatus = "queued";
   let activeRevision = input.revisionKey;
+  // The address the running site calls its own. It follows the configuration
+  // it was given, as the real runtime does, and redirects every other host.
+  let canonical = input.canonicalAddress ?? null;
+  let previousCanonical = canonical;
   let readinessUnavailable = false;
   let runtimeRouteMarker: string | null = null;
   const publicHealthMarkers: Array<string | null> = [];
@@ -268,11 +273,20 @@ function createRuntimeNetwork(input: {
         });
       }
       if (
-        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
+        url.origin === new URL(canonical ?? publicDomain).origin &&
         url.pathname === "/api/openscholar/configuration"
       ) {
         if (method === "PUT") {
           activeRevision = (body as { revision: string }).revision;
+          const baseUrl = (body as { identity?: { baseUrl?: string } })
+            .identity?.baseUrl;
+          previousCanonical = canonical;
+          if (baseUrl) {
+            canonical =
+              new URL(baseUrl).origin === new URL(publicDomain).origin
+                ? null
+                : baseUrl;
+          }
           return jsonResponse({
             revision: activeRevision,
             sourceSha256: createHash("sha256")
@@ -283,11 +297,12 @@ function createRuntimeNetwork(input: {
         }
         if (method === "DELETE") {
           activeRevision = (body as { revision: string }).revision;
+          canonical = previousCanonical;
           return jsonResponse({ revision: activeRevision, status: "active" });
         }
       }
       if (
-        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
+        url.origin === new URL(canonical ?? publicDomain).origin &&
         method === "GET" &&
         url.pathname === "/api/library-config/health"
       ) {
@@ -305,14 +320,14 @@ function createRuntimeNetwork(input: {
         );
       }
       if (
-        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
+        url.origin === new URL(canonical ?? publicDomain).origin &&
         method === "HEAD" &&
         url.pathname === "/lib"
       ) {
         return new Response("ready", { status: 200 });
       }
       if (
-        input.canonicalAddress &&
+        canonical &&
         url.origin === new URL(publicDomain).origin &&
         method === "GET" &&
         url.pathname === "/lib"
@@ -320,14 +335,14 @@ function createRuntimeNetwork(input: {
         return new Response(null, {
           status: 307,
           headers: {
-            location: new URL("/lib", input.canonicalAddress).href,
+            location: new URL("/lib", canonical).href,
           },
         });
       }
       // A live library sends a signed-out visitor of its admin area to
       // OpenScholar, and readiness checks exactly that.
       if (
-        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
+        url.origin === new URL(canonical ?? publicDomain).origin &&
         method === "GET" &&
         url.pathname === "/admin"
       ) {
@@ -926,6 +941,82 @@ describe("Evidence Library configuration deployment", () => {
           method === "PUT" && url.pathname === "/api/openscholar/configuration",
       )?.url.origin,
     ).toBe(canonicalAddress);
+  });
+
+  it("sends a library on a dead custom domain back to its platform address without a deployment", async () => {
+    const deadAddress = "https://evidence.example.org";
+    const fixture = await createReadyLibrary("canonical-off");
+    const domainId = await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.runtimeBindingId, {
+        canonicalBaseUrl: deadAddress,
+      });
+      const now = Date.now();
+      return await ctx.db.insert("evidenceLibraryDomains", {
+        generation: 0,
+        libraryId: fixture.created.libraryId,
+        host: new URL(deadAddress).hostname,
+        isApex: false,
+        verificationHost: "example.org",
+        verificationToken: "0".repeat(32),
+        role: "primary",
+        state: "failed",
+        failure: "no-name",
+        attachedAt: now,
+        createdByClerkUserId: "user_owner",
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      canonicalAddress: deadAddress,
+      revisionKey: "before-switch",
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+
+    const off = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.setDomainPrimary,
+      { libraryId: fixture.created.libraryId, domainId, primary: false },
+    );
+    const operation = await fixture.t.run((ctx) => ctx.db.get(off.operationId));
+    if (!operation?.configurationAttemptToken) {
+      throw new Error("The address change did not start an attempt");
+    }
+
+    await expect(
+      fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: fixture.created.libraryId,
+          operationId: off.operationId,
+          attemptToken: operation.configurationAttemptToken,
+          attemptCount: operation.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "succeeded" });
+
+    // Nothing was redeployed: the change reached the running site directly,
+    // on the address it answered to until then.
+    expect(
+      network.requests.some(({ url }) => url.pathname === "/api/v1/deploy"),
+    ).toBe(false);
+    expect(
+      network.requests.find(
+        ({ method, url }) =>
+          method === "PUT" && url.pathname === "/api/openscholar/configuration",
+      )?.url.origin,
+    ).toBe(deadAddress);
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.canonicalAddress).toBe(fixture.created.publicAddress);
+    expect(listed.domains[0]).toMatchObject({
+      role: "redirect",
+      deploymentPending: false,
+    });
   });
 
   it("retries a failed current deployment by reusing its saved target", async () => {
