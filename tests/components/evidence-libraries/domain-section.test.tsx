@@ -17,6 +17,8 @@ type DomainRow = {
   deploymentPending: boolean;
   isApex: boolean;
   suggestedWwwHost?: string;
+  main: boolean;
+  removeOnActivate: boolean;
   records: Array<{
     type: "A" | "CNAME" | "TXT";
     label: string;
@@ -29,13 +31,16 @@ const mocks = vi.hoisted(() => ({
   data: {
     platformAddress: "https://climate-lib.opendev.space",
     canonicalAddress: "https://climate-lib.opendev.space",
+    mainAddress: "https://climate-lib.opendev.space",
+    mainNeedsAttention: false,
     live: true,
     domains: [] as DomainRow[],
   },
   addDomain: vi.fn(),
   checkDomains: vi.fn(),
   removeDomain: vi.fn(),
-  setPrimary: vi.fn(),
+  chooseMain: vi.fn(),
+  stageRemoval: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   // A live query re-renders its reader when the server answers again.
@@ -50,19 +55,23 @@ vi.mock("convex/react", () => ({
       : reference === "checkDomains"
         ? mocks.checkDomains
         : mocks.removeDomain,
-  useMutation: () => mocks.setPrimary,
+  useMutation: (reference: string) =>
+    reference === "chooseMainAddress" ? mocks.chooseMain : mocks.stageRemoval,
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
-      domains: { listDomains: "listDomains" },
+      domains: {
+        listDomains: "listDomains",
+        chooseMainAddress: "chooseMainAddress",
+        stageMainDomainRemoval: "stageMainDomainRemoval",
+      },
       domainActions: {
         addDomain: "addDomain",
         checkDomains: "checkDomains",
         removeDomain: "removeDomain",
       },
-      versions: { setDomainPrimary: "setDomainPrimary" },
     },
   },
 }));
@@ -116,6 +125,8 @@ function row(overrides: Partial<DomainRow> = {}): DomainRow {
     removing: false,
     deploymentPending: false,
     isApex: false,
+    main: false,
+    removeOnActivate: false,
     records: [
       {
         type: "CNAME",
@@ -138,6 +149,9 @@ describe("DomainSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.data.domains = [];
+    mocks.data.canonicalAddress = mocks.data.platformAddress;
+    mocks.data.mainAddress = mocks.data.platformAddress;
+    mocks.data.mainNeedsAttention = false;
   });
 
   it("asks for a domain when there is none", () => {
@@ -404,108 +418,114 @@ describe("DomainSection", () => {
     ).toBeEnabled();
   });
 
-  it("asks before it changes the library's address, then changes it", async () => {
+  it("chooses the main address for the next activation, without asking", async () => {
     mocks.data.domains = [row({ state: "active", attached: true })];
-    mocks.setPrimary.mockResolvedValue({
-      address: "https://evidence.example.org",
-    });
     render(<DomainSection libraryId={libraryId} />);
     await userEvent.click(
       screen.getByRole("button", {
         name: "evidenceLibraryConfiguration.domain.redirectLabel",
       }),
     );
-    // Everyone signed in is signed out by this, so nothing happens until the
-    // owner says yes.
-    expect(mocks.setPrimary).not.toHaveBeenCalled();
-    expect(
-      screen.getByText("evidenceLibraryConfiguration.domain.confirmOnTitle"),
-    ).toBeInTheDocument();
-
-    await userEvent.click(
-      screen.getByRole("button", {
-        name: "evidenceLibraryConfiguration.domain.confirmAction",
-      }),
-    );
-    expect(mocks.setPrimary).toHaveBeenCalledWith({
+    // Nothing reaches visitors until the owner activates, so there is
+    // nothing to confirm here.
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(mocks.chooseMain).toHaveBeenCalledWith({
       libraryId,
       domainId: "domain_1",
-      primary: true,
     });
   });
 
-  it("does nothing when the owner backs out of changing the address", async () => {
-    mocks.data.domains = [row({ state: "active", attached: true })];
+  it("says when the main address changes at the next activation", () => {
+    mocks.data.domains = [
+      row({ state: "active", attached: true, main: true }),
+    ];
+    mocks.data.mainAddress = "https://evidence.example.org";
     render(<DomainSection libraryId={libraryId} />);
-    await userEvent.click(
+    expect(document.querySelector("[data-main-pending]")).not.toBeNull();
+    expect(
       screen.getByRole("button", {
-        name: "evidenceLibraryConfiguration.domain.redirectLabel",
+        name: "evidenceLibraryConfiguration.domain.mainLabel",
       }),
-    );
-    await userEvent.click(
-      screen.getByRole("button", {
-        name: "evidenceLibraryConfiguration.domain.confirmCancel",
-      }),
-    );
-    expect(mocks.setPrimary).not.toHaveBeenCalled();
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("lets the current address be switched off even when it stopped working", async () => {
+  it("goes back to the platform address even from a domain that stopped working", async () => {
     mocks.data.domains = [
       row({
         state: "failed",
         failure: "wrong-target",
         role: "primary",
         attached: true,
+        main: true,
       }),
     ];
+    mocks.data.canonicalAddress = "https://evidence.example.org";
+    mocks.data.mainAddress = "https://evidence.example.org";
     render(<DomainSection libraryId={libraryId} />);
-    // Taking the library back to its platform address is exactly what an
-    // owner needs here.
-    expect(
-      screen.getByRole("button", {
-        name: "evidenceLibraryConfiguration.domain.confirmOffTitle",
+    const platform = screen.getByRole("group", {
+      name: "evidenceLibraryConfiguration.domain.platformLabel",
+    });
+    await userEvent.click(
+      within(platform).getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.redirectLabel",
       }),
-    ).toBeEnabled();
+    );
+    expect(mocks.chooseMain).toHaveBeenCalledWith({
+      libraryId,
+      domainId: null,
+    });
   });
 
-  it("removes the main address by switching back first, then removing once that is live", async () => {
+  it("removes the main address at the next activation, and can keep it again", async () => {
     mocks.data.domains = [
-      row({ state: "failed", failure: "no-name", role: "primary", attached: true }),
+      row({ state: "active", attached: true, role: "primary", main: true }),
     ];
-    mocks.setPrimary.mockResolvedValue({
-      address: "https://climate-lib.opendev.space",
-    });
-    mocks.removeDomain.mockResolvedValue({ status: "removing" });
     render(<DomainSection libraryId={libraryId} />);
     await userEvent.click(
       screen.getByRole("button", {
         name: "evidenceLibraryConfiguration.domain.remove",
       }),
     );
+    expect(mocks.removeDomain).not.toHaveBeenCalled();
+    expect(mocks.stageRemoval).toHaveBeenCalledWith({
+      libraryId,
+      domainId: "domain_1",
+      remove: true,
+    });
+
+    serverAnswers([
+      row({
+        state: "active",
+        attached: true,
+        role: "primary",
+        removeOnActivate: true,
+      }),
+    ]);
+    expect(document.querySelector("[data-remove-on-activate]")).not.toBeNull();
     await userEvent.click(
-      within(screen.getByRole("alertdialog")).getByRole("button", {
+      screen.getByRole("button", {
+        name: "evidenceLibraryConfiguration.domain.keep",
+      }),
+    );
+    expect(mocks.stageRemoval).toHaveBeenLastCalledWith({
+      libraryId,
+      domainId: "domain_1",
+      remove: false,
+    });
+  });
+
+  it("removes any other domain straight away", async () => {
+    mocks.data.domains = [row({ state: "active", attached: true })];
+    render(<DomainSection libraryId={libraryId} />);
+    await userEvent.click(
+      screen.getByRole("button", {
         name: "evidenceLibraryConfiguration.domain.remove",
       }),
     );
-    expect(mocks.setPrimary).toHaveBeenCalledWith({
+    expect(mocks.stageRemoval).not.toHaveBeenCalled();
+    expect(mocks.removeDomain).toHaveBeenCalledWith({
       libraryId,
       domainId: "domain_1",
-      primary: false,
     });
-    // The server refuses to remove the main address, so nothing is removed
-    // while the switch back is still being applied.
-    serverAnswers([
-      row({ role: "primary", attached: true, deploymentPending: true }),
-    ]);
-    expect(mocks.removeDomain).not.toHaveBeenCalled();
-
-    serverAnswers([row({ role: "redirect", attached: true })]);
-    await waitFor(() =>
-      expect(mocks.removeDomain).toHaveBeenCalledWith({
-        libraryId,
-        domainId: "domain_1",
-      }),
-    );
   });
 });

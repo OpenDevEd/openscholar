@@ -19,8 +19,8 @@ export type DomainActivationPlan = {
     domain: Doc<"evidenceLibraryDomains">;
     address: string;
     /**
-     * The address being left is a domain that stopped working, so the change
-     * travels on a deployment rather than through that domain.
+     * The address being left is a custom domain, which may no longer be
+     * reachable, so the change travels on a deployment.
      */
     redeploy: boolean;
   } | null;
@@ -73,7 +73,7 @@ export async function readDomainActivationPlan(
       canonical = {
         domain,
         address: mainAddress,
-        redeploy: leaving !== undefined && leaving.state !== "active",
+        redeploy: leaving !== undefined,
       };
     }
   }
