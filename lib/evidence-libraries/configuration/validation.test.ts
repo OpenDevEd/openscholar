@@ -773,6 +773,23 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     expect(home.people[1]).not.toHaveProperty("photo");
     expect(home.directory[1]).not.toHaveProperty("photo");
 
+    const crowded = assembleEvidenceLibraryConfiguration({
+      sections: { ...ownerSections, home: { people: [] } },
+      managed: {
+        ...managedConfiguration,
+        team: Array.from({ length: 501 }, (_, index) => ({
+          id: `user_${index}`,
+          name: index === 0 ? "A".repeat(200) : `Person ${index}`,
+          photo: index === 0 ? "http://img.example.test/plain.png" : undefined,
+        })),
+      },
+    });
+    expect(validateLibraryConfigStructure(crowded).valid).toBe(true);
+    const directory = (crowded.home as { directory: { name: string; photo?: string }[] }).directory;
+    expect(directory).toHaveLength(500);
+    expect(directory[0]!.name).toHaveLength(120);
+    expect(directory[0]).not.toHaveProperty("photo");
+
     const withoutHome = assembleEvidenceLibraryConfiguration({
       sections: ownerSections,
       managed: { ...managedConfiguration, team: [{ id: "user_ada", name: "Ada" }] },

@@ -1491,6 +1491,15 @@ describe("home page", () => {
   } as const;
   const rows = [...savedRows.filter((row) => row.sectionKey !== "home"), homeRow];
 
+  it("writes no home row until the owner answers something", () => {
+    const withoutHome = savedRows.filter((row) => row.sectionKey !== "home");
+    const draft = readDraft(withoutHome);
+    expect(changedSectionRows(draft, withoutHome)).toEqual([]);
+    expect(sectionState(draft, withoutHome, "home")).toBe("complete");
+    draft.home.intro = "Research on literacy.";
+    expect(changedSectionRows(draft, withoutHome).map((row) => row.sectionKey)).toEqual(["home"]);
+  });
+
   it("starts empty with the schema's involvement defaults when there is no row", () => {
     const draft = readDraft(savedRows.filter((row) => row.sectionKey !== "home"));
     expect(draft.home).toEqual({

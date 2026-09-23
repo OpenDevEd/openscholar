@@ -1352,6 +1352,18 @@ function hasRow(rows: readonly SectionRow[], rowKey: RowKey) {
   return rows.some((row) => row.sectionKey === rowKey);
 }
 
+/**
+ * Rows a library may go without: the home page's answers exist once an owner
+ * gives one. Until then the page writes no row, and the runtime shows what is
+ * true of every library instead of an empty page.
+ */
+const OPTIONAL_ROWS: ReadonlySet<RowKey> = new Set(["home"]);
+
+/** A row the page must write because the library has none, as opposed to a row that may stay absent. */
+function missingRow(rows: readonly SectionRow[], rowKey: RowKey) {
+  return !OPTIONAL_ROWS.has(rowKey) && !hasRow(rows, rowKey);
+}
+
 // A saved exports row from before Evidence Library 122a7e55 holds file
 // addresses, which the runtime now rejects. It reads as the defaults, so it
 // must be rewritten even when nothing else changed.
@@ -1371,7 +1383,7 @@ export function changedSectionRows(
   const saved = readDraft(rows);
   return ROW_KEYS.filter(
     (rowKey) =>
-      !hasRow(rows, rowKey) ||
+      missingRow(rows, rowKey) ||
       !same(rowPayload(draft, rowKey), rowPayload(saved, rowKey)) ||
       (rowKey === "exports" && staleExportsRow(rows)),
   ).map((rowKey) => ({
@@ -1550,7 +1562,7 @@ export function sectionChanged(
   rows: readonly SectionRow[],
   sectionKey: PageSectionKey,
 ): boolean {
-  if (ROWS_FOR_CARD[sectionKey].some((key) => !hasRow(rows, key))) return true;
+  if (ROWS_FOR_CARD[sectionKey].some((key) => missingRow(rows, key))) return true;
   return !same(
     cardSlice(draft, sectionKey),
     cardSlice(readDraft(rows), sectionKey),

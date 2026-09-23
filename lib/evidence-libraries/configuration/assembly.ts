@@ -111,11 +111,17 @@ export function emailWantsPlatformMail(email: unknown): boolean {
   return Boolean(email.contactRecipient) || Boolean(email.takedownRecipient);
 }
 
-/** A team member as the home page shows them; no photo means no key. */
+// The runtime's limits for a person on the home page: a name of 120
+// characters, an https photo, and a directory of 500 people.
+const HOME_NAME_MAX = 120;
+const HOME_DIRECTORY_MAX = 500;
+
+/** A team member as the home page shows them; no usable photo means no key. */
 function personFields(member: TeamMember) {
-  return member.photo
-    ? { name: member.name, photo: member.photo }
-    : { name: member.name };
+  const name = member.name.trim().slice(0, HOME_NAME_MAX);
+  return member.photo?.startsWith("https://")
+    ? { name, photo: member.photo }
+    : { name };
 }
 
 /**
@@ -130,7 +136,9 @@ function fillHomeTeam(
   const members = new Map(team.map((member) => [member.id, member]));
   const filled: Record<string, unknown> = {
     ...home,
-    directory: team.map((member) => ({ id: member.id, ...personFields(member) })),
+    directory: team
+      .slice(0, HOME_DIRECTORY_MAX)
+      .map((member) => ({ id: member.id, ...personFields(member) })),
   };
   if (Array.isArray(home.people)) {
     filled.people = home.people.flatMap((person) => {
