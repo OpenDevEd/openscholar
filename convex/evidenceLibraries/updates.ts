@@ -117,7 +117,9 @@ export const saveRuntimeRelease = internalMutation({
       .withIndex("by_running", (query) => query.eq("running", args.running))
       .first();
     if (existing) {
-      await ctx.db.patch(existing._id, args);
+      // Replaced whole, so a contract answer never outlives the release it
+      // was about.
+      await ctx.db.replace(existing._id, args);
     } else {
       await ctx.db.insert("evidenceLibraryRuntimeReleases", args);
     }
@@ -351,11 +353,15 @@ export const check = action({
     );
     // A row checked against another contract, or before contracts were
     // checked, cannot tell a publish what it needs, so GitHub is asked again.
+    // So is one where no release reads the contract yet: the owner was told
+    // to try again in a few minutes, and the release may be out by then.
+    const support = state.cached?.contractSupport;
     if (
       !args.refresh &&
       state.cached &&
       isFreshRuntimeRelease(state.cached.checkedAt, Date.now()) &&
-      state.cached.contractSupport?.commit === CONTRACT_COMMIT
+      support?.commit === CONTRACT_COMMIT &&
+      (support.running || support.latest)
     ) {
       return state.cached;
     }

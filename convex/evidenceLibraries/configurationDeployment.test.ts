@@ -1667,10 +1667,19 @@ describe("Evidence Library configuration deployment", () => {
       library: await ctx.db.get(fixture.created.libraryId),
       binding: await ctx.db.get(fixture.created.runtimeBindingId),
     }));
-    expect(completed.binding).toMatchObject({ runtimeCommit: NEWER_COMMIT });
+    expect(completed.binding).toMatchObject({
+      runtimeCommit: NEWER_COMMIT,
+      previousRuntime: { commit: RUNTIME_COMMIT },
+    });
     expect(completed.library).toMatchObject({
       activeRevisionId: activated.revisionId,
     });
+    // The earlier software could not read these settings, so it is not put back under them.
+    await expect(
+      fixture.t.mutation(internal.evidenceLibraries.versions.startRuntimeRollback, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).rejects.toThrow(/live settings need the current software/);
   });
 
   it("publishes on the running software when it already reads the contract", async () => {

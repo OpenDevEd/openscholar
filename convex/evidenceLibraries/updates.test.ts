@@ -66,7 +66,7 @@ function createGithub(input: {
   // How GitHub places each runtime against OpenScholar's contract commit:
   // "ahead" reads it, "behind" predates it. The running one reads it unless
   // a test says otherwise.
-  contract?: { running?: string; latest?: string };
+  contract?: { running?: string | number; latest?: string | number };
 }) {
   const requests: RecordedRequest[] = [];
   const addressRequests: URL[] = [];
@@ -142,11 +142,16 @@ function createGithub(input: {
           },
         ]);
       }
+      // A number is an HTTP failure instead of a placement.
+      const placement = (answer: string | number) =>
+        typeof answer === "number"
+          ? jsonResponse({ message: "Server Error" }, answer)
+          : jsonResponse({ status: answer });
       if (url.pathname === `${REPO}/compare/${CONTRACT}...${RUNNING}`) {
-        return jsonResponse({ status: input.contract?.running ?? "ahead" });
+        return placement(input.contract?.running ?? "ahead");
       }
       if (url.pathname === `${REPO}/compare/${CONTRACT}...${input.latest}`) {
-        return jsonResponse({ status: input.contract?.latest ?? "ahead" });
+        return placement(input.contract?.latest ?? "ahead");
       }
       if (url.pathname === `${REPO}/compare/${RUNNING}...${input.latest}`) {
         if (input.compareStatus && input.compareStatus !== 200) {
@@ -550,6 +555,51 @@ describe("Evidence Library update check", () => {
       contractSupport: { commit: CONTRACT, running: true },
     });
     expect(github.requests.length).toBeGreaterThan(0);
+  });
+
+  it("forgets an old release's contract answer when the new one cannot be checked", async () => {
+    const fixture = await createReadySetupFixture("update-check-contract-unknown");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNNING,
+        latest: "9".repeat(40),
+        latestImage: IMAGE,
+        changes: [],
+        releases: [],
+        checkedAt: Date.now() - RUNTIME_RELEASE_CACHE_MS - 1,
+        contractSupport: { commit: CONTRACT, running: false, latest: false },
+      });
+    });
+    vi.stubGlobal(
+      "fetch",
+      createGithub({ latest: LATEST, contract: { running: "behind", latest: 500 } }).fetchImpl,
+    );
+    const args = { libraryId: fixture.created.libraryId };
+    const checked = await fixture.admin.action(api.evidenceLibraries.updates.check, args);
+    expect(checked).toMatchObject({ latest: LATEST });
+    expect(checked).not.toHaveProperty("contractSupport");
+    const [row] = await fixture.t.run((ctx) =>
+      ctx.db.query("evidenceLibraryRuntimeReleases").collect(),
+    );
+    expect(row).not.toHaveProperty("contractSupport");
+    await expect(
+      fixture.admin.query(api.evidenceLibraries.updates.publishRuntime, args),
+    ).resolves.toBe("current");
+  });
+
+  it("asks GitHub again within ten minutes while no release reads the contract", async () => {
+    const fixture = await createReadySetupFixture("update-check-unreleased");
+    const github = createGithub({ latest: LATEST, contract: { running: "behind", latest: "behind" } });
+    vi.stubGlobal("fetch", github.fetchImpl);
+    const args = { libraryId: fixture.created.libraryId };
+    await fixture.admin.action(api.evidenceLibraries.updates.check, args);
+    await expect(
+      fixture.admin.query(api.evidenceLibraries.updates.publishRuntime, args),
+    ).resolves.toBe("unreleased");
+    const asked = github.requests.length;
+
+    await fixture.admin.action(api.evidenceLibraries.updates.check, args);
+    expect(github.requests.length).toBeGreaterThan(asked);
   });
 
   it("refuses the check for a member who cannot manage the library", async () => {
