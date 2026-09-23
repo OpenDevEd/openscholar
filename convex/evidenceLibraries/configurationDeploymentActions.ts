@@ -387,6 +387,9 @@ export const runConfigurationDeployment = internalAction({
             activated = true;
             break;
           } catch (error) {
+            // A refusal worth waiting out is the answer, not a reason to try
+            // the other address.
+            if (isRetryableReadinessError(error)) throw error;
             activationError = error;
           }
         }
