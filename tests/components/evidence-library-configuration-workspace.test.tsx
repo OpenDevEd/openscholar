@@ -844,6 +844,31 @@ describe("<ConfigurationWorkspace>", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
+  it("checks the software before publishing, and publishes even when the check fails", async () => {
+    const user = userEvent.setup();
+    const order: string[] = [];
+    checkAction = async () => {
+      order.push("check");
+      throw new Error("GitHub cannot be reached");
+    };
+    mutationMock.mockImplementation((reference: unknown) =>
+      reference === "activateConfiguration"
+        ? async () => {
+            order.push("activate");
+            return { editVersion: 6, kind: "publish", revisionKey: "r2", status: "queued" };
+          }
+        : async () => ({ editVersion: 5 }),
+    );
+    await renderWorkspace();
+    await fillField(user, identityCard().getByLabelText("identity.nameLabel"), " again");
+    order.length = 0;
+
+    await user.click(screen.getByRole("button", { name: "activate" }));
+    await user.click(screen.getByRole("button", { name: "activateConfirm" }));
+
+    await waitFor(() => expect(order).toEqual(["check", "activate"]));
+  });
+
   it("sends a new library to the setup page after activation", async () => {
     const user = userEvent.setup();
     queryMock.mockReturnValue(draftResult({ state: "provisioning" }));
