@@ -67,7 +67,7 @@ const EXAMPLE_LAST_DAY = Date.UTC(2026, 2, 12);
 export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionProps) {
   const home = draft.home;
   const team = useTeam(libraryId);
-  const generatedQuestions = useHomeQuestions(libraryId);
+  const generatedQuestions = useHomeQuestions(libraryId, draft.features.homePage);
   // Changes read the draft they are applied to, not the one rendered, so an
   // editor's late update cannot undo a newer one.
   const setHome = (change: (home: HomeDraft) => Partial<HomeDraft>) =>
@@ -101,254 +101,259 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
         }
       />
 
-      <FilledIn draft={draft} />
+      {/* Like the other switches, off shows nothing more; the answers stay saved. */}
+      {draft.features.homePage ? (
+        <div className="space-y-6 border-l-2 border-primary/20 pl-4 sm:pl-5">
+          <FilledIn draft={draft} />
 
-      <FieldGroup title="Introduction" hint="Shown in the hero, under the library's name and tagline.">
-        <RichTextField
-          label="What the library is for"
-          value={home.intro}
-          onChange={(intro) => setHome(() => ({ intro }))}
-          maxLength={LIMITS.intro}
-          lists={false}
-          placeholder="What does this library collect, and for whom?"
-        />
-      </FieldGroup>
+          <FieldGroup title="Introduction" hint="Shown in the hero, under the library's name and tagline.">
+            <RichTextField
+              label="What the library is for"
+              value={home.intro}
+              onChange={(intro) => setHome(() => ({ intro }))}
+              maxLength={LIMITS.intro}
+              lists={false}
+              placeholder="What does this library collect, and for whom?"
+            />
+          </FieldGroup>
 
-      <FieldGroup
-        title="How publications get in"
-        hint="Steps with a type are filled in from the library's latest reviewed publication."
-        action={
-          <AddButton
-            disabled={home.steps.length >= LIMITS.steps}
-            onClick={() =>
-              setHome((h) => ({ steps: [...h.steps, { id: newId("st"), type: "text", title: "", text: "", editor: "" }] }))
+          <FieldGroup
+            title="How publications get in"
+            hint="Steps with a type are filled in from the library's latest reviewed publication."
+            action={
+              <AddButton
+                disabled={home.steps.length >= LIMITS.steps}
+                onClick={() =>
+                  setHome((h) => ({ steps: [...h.steps, { id: newId("st"), type: "text", title: "", text: "", editor: "" }] }))
+                }
+              >
+                Add step
+              </AddButton>
             }
           >
-            Add step
-          </AddButton>
-        }
-      >
-        <HeadingField
-          value={home.headings.curation}
-          limit={LIMITS.headings.curation}
-          fallback="How the library is curated"
-          onChange={(value) => setHeading("curation", value)}
-        />
-        <RichTextField
-          label="Statement"
-          suffix="Optional"
-          value={home.statement}
-          onChange={(statement) => setHome(() => ({ statement }))}
-          maxLength={LIMITS.statement}
-          lists={false}
-          minRows={2}
-        />
-        {home.steps.length === 0 ? (
-          <EmptyList>No steps. The section shows the statement on its own.</EmptyList>
-        ) : (
-          <>
-            <Field label="Publication followed" hint="The steps are drawn from what happened to this publication.">
-              {(id) => (
-                <PublicationChoice
-                  id={id}
-                  libraryId={libraryId}
-                  value={home.followed}
-                  onChange={(followed) => setHome(() => ({ followed }))}
-                />
-              )}
-            </Field>
-            <TimelinePreview steps={home.steps} team={team ?? []} />
-            <SortableList
-              ids={home.steps.map((step) => step.id)}
-              onMove={(from, to) => setHome((h) => ({ steps: move(h.steps, from, to) }))}
-            >
-              {home.steps.map((step, index) => (
-                <ListRow
-                  key={step.id}
-                  id={step.id}
-                  removeLabel="Remove step"
-                  onRemove={() => setHome((h) => ({ steps: h.steps.filter((each) => each.id !== step.id) }))}
-                >
-                  <div className="grid gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
-                    <Field label={`Step ${index + 1}`}>
-                      {(id) => (
-                        <Select value={step.type} onValueChange={(type) => updateStep(step.id, { type: type as HomeStepType })}>
-                          <SelectTrigger id={id} className="w-full bg-background">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {HOME_STEP_TYPES.map((type) => {
-                              const Icon = STEP_TYPES[type].icon;
-                              return (
-                                <SelectItem key={type} value={type} textValue={STEP_TYPES[type].label}>
-                                  <span className="flex h-5 items-center self-start" aria-hidden>
-                                    <Icon className="text-muted-foreground" />
-                                  </span>
-                                  <span className="flex flex-col">
-                                    <span>{STEP_TYPES[type].label}</span>
-                                    <span className="text-xs text-muted-foreground in-data-[slot=select-value]:hidden">
-                                      {STEP_TYPES[type].hint}
-                                    </span>
-                                  </span>
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </Field>
-                    <Field label="Name" counter={`${step.title.length} / ${LIMITS.stepTitle}`}>
-                      {(id) => (
-                        <Input
-                          id={id}
-                          className="bg-background"
-                          maxLength={LIMITS.stepTitle}
-                          placeholder={STEP_TYPES[step.type].fallback}
-                          value={step.title}
-                          onChange={(event) => updateStep(step.id, { title: event.target.value })}
-                        />
-                      )}
-                    </Field>
-                  </div>
-                  {step.type === "check" ? (
-                    <Field label="Editor shown">
-                      {(id) => (
-                        <Select
-                          value={step.editor || APPROVER}
-                          onValueChange={(editor) => updateStep(step.id, { editor: editor === APPROVER ? "" : editor })}
-                        >
-                          <SelectTrigger id={id} className="w-full bg-background sm:w-72">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={APPROVER}>Whoever approved it</SelectItem>
-                            {(team ?? []).map((person) => (
-                              <SelectItem key={person.id} value={person.id}>
-                                <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-5" />
-                                {person.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </Field>
-                  ) : null}
-                  <Field label="What happens" suffix="Optional" counter={`${step.text.length} / ${LIMITS.stepText}`}>
-                    {(id) => (
-                      <Textarea
-                        id={id}
-                        className="bg-background"
-                        rows={2}
-                        maxLength={LIMITS.stepText}
-                        value={step.text}
-                        onChange={(event) => updateStep(step.id, { text: event.target.value })}
-                      />
-                    )}
-                  </Field>
-                </ListRow>
-              ))}
-            </SortableList>
-          </>
-        )}
-      </FieldGroup>
-
-      <FieldGroup title="Who runs the library" hint="People come from the library's team and pass by in the order set here.">
-        <HeadingField
-          value={home.headings.team}
-          limit={LIMITS.headings.team}
-          fallback="Who is behind it"
-          onChange={(value) => setHeading("team", value)}
-        />
-        <RichTextField
-          label="About the team"
-          suffix="Optional"
-          value={home.team}
-          onChange={(team) => setHome(() => ({ team }))}
-          maxLength={LIMITS.team}
-          lists={false}
-          minRows={2}
-        />
-        <EditorsField team={team} value={home.people} onChange={(people) => setHome(() => ({ people }))} />
-        <HeadingField
-          value={home.headings.involvement}
-          limit={LIMITS.headings.involvement}
-          fallback="Get involved"
-          hint="Used instead when there is no team sentence."
-          onChange={(value) => setHeading("involvement", value)}
-        />
-        <div className="grid gap-2 sm:grid-cols-2">
-          <ToggleRow
-            label="Suggest a publication"
-            hint={draft.contact.email ? `Opens an email to ${draft.contact.email}` : "Needs a contact email"}
-            checked={home.involvement.suggestions && Boolean(draft.contact.email)}
-            disabled={!draft.contact.email}
-            onChange={(suggestions) => setHome((h) => ({ involvement: { ...h.involvement, suggestions } }))}
-          />
-          <ToggleRow
-            label="Join as an editor"
-            hint={draft.contact.email ? `Opens an email to ${draft.contact.email}` : "Needs a contact email"}
-            checked={home.involvement.editors && Boolean(draft.contact.email)}
-            disabled={!draft.contact.email}
-            onChange={(editors) => setHome((h) => ({ involvement: { ...h.involvement, editors } }))}
-          />
-        </div>
-      </FieldGroup>
-
-      <FieldGroup
-        title="Ask the library"
-        hint={
-          draft.features.ai
-            ? "Typed into the question box one after another. An empty box keeps the question made from the library's topics."
-            : "Shown when AI answers are on in Features. An empty box keeps the question made from the library's topics."
-        }
-      >
-        <div className="space-y-2">
-          {home.questions.map((question, index) => (
-            <Field
-              key={index}
-              label={`Example question ${index + 1}`}
+            <HeadingField
+              value={home.headings.curation}
+              limit={LIMITS.headings.curation}
+              fallback="How the library is curated"
+              onChange={(value) => setHeading("curation", value)}
+            />
+            <RichTextField
+              label="Statement"
               suffix="Optional"
-              counter={`${question.length} / ${LIMITS.question}`}
-            >
-              {(id) => (
-                <div className="relative">
-                  <Sparkles
-                    className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <Input
-                    id={id}
-                    className="bg-background pl-9"
-                    maxLength={LIMITS.question}
-                    placeholder={generatedQuestions[index] || QUESTION_FALLBACK}
-                    value={question}
-                    onChange={(event) =>
-                      setHome((h) => ({ questions: h.questions.map((each, at) => (at === index ? event.target.value : each)) }))
-                    }
-                  />
-                </div>
-              )}
-            </Field>
-          ))}
-        </div>
-      </FieldGroup>
+              value={home.statement}
+              onChange={(statement) => setHome(() => ({ statement }))}
+              maxLength={LIMITS.statement}
+              lists={false}
+              minRows={2}
+            />
+            {home.steps.length === 0 ? (
+              <EmptyList>No steps. The section shows the statement on its own.</EmptyList>
+            ) : (
+              <>
+                <Field label="Publication followed" hint="The steps are drawn from what happened to this publication.">
+                  {(id) => (
+                    <PublicationChoice
+                      id={id}
+                      libraryId={libraryId}
+                      value={home.followed}
+                      onChange={(followed) => setHome(() => ({ followed }))}
+                    />
+                  )}
+                </Field>
+                <TimelinePreview steps={home.steps} team={team ?? []} />
+                <SortableList
+                  ids={home.steps.map((step) => step.id)}
+                  onMove={(from, to) => setHome((h) => ({ steps: move(h.steps, from, to) }))}
+                >
+                  {home.steps.map((step, index) => (
+                    <ListRow
+                      key={step.id}
+                      id={step.id}
+                      removeLabel="Remove step"
+                      onRemove={() => setHome((h) => ({ steps: h.steps.filter((each) => each.id !== step.id) }))}
+                    >
+                      <div className="grid gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
+                        <Field label={`Step ${index + 1}`}>
+                          {(id) => (
+                            <Select value={step.type} onValueChange={(type) => updateStep(step.id, { type: type as HomeStepType })}>
+                              <SelectTrigger id={id} className="w-full bg-background">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {HOME_STEP_TYPES.map((type) => {
+                                  const Icon = STEP_TYPES[type].icon;
+                                  return (
+                                    <SelectItem key={type} value={type} textValue={STEP_TYPES[type].label}>
+                                      <span className="flex h-5 items-center self-start" aria-hidden>
+                                        <Icon className="text-muted-foreground" />
+                                      </span>
+                                      <span className="flex flex-col">
+                                        <span>{STEP_TYPES[type].label}</span>
+                                        <span className="text-xs text-muted-foreground in-data-[slot=select-value]:hidden">
+                                          {STEP_TYPES[type].hint}
+                                        </span>
+                                      </span>
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </Field>
+                        <Field label="Name" counter={`${step.title.length} / ${LIMITS.stepTitle}`}>
+                          {(id) => (
+                            <Input
+                              id={id}
+                              className="bg-background"
+                              maxLength={LIMITS.stepTitle}
+                              placeholder={STEP_TYPES[step.type].fallback}
+                              value={step.title}
+                              onChange={(event) => updateStep(step.id, { title: event.target.value })}
+                            />
+                          )}
+                        </Field>
+                      </div>
+                      {step.type === "check" ? (
+                        <Field label="Editor shown">
+                          {(id) => (
+                            <Select
+                              value={step.editor || APPROVER}
+                              onValueChange={(editor) => updateStep(step.id, { editor: editor === APPROVER ? "" : editor })}
+                            >
+                              <SelectTrigger id={id} className="w-full bg-background sm:w-72">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={APPROVER}>Whoever approved it</SelectItem>
+                                {(team ?? []).map((person) => (
+                                  <SelectItem key={person.id} value={person.id}>
+                                    <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-5" />
+                                    {person.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </Field>
+                      ) : null}
+                      <Field label="What happens" suffix="Optional" counter={`${step.text.length} / ${LIMITS.stepText}`}>
+                        {(id) => (
+                          <Textarea
+                            id={id}
+                            className="bg-background"
+                            rows={2}
+                            maxLength={LIMITS.stepText}
+                            value={step.text}
+                            onChange={(event) => updateStep(step.id, { text: event.target.value })}
+                          />
+                        )}
+                      </Field>
+                    </ListRow>
+                  ))}
+                </SortableList>
+              </>
+            )}
+          </FieldGroup>
 
-      <FieldGroup title="Using and citing" hint="Shown beside the citation of the library, which is made from its name and address.">
-        <HeadingField
-          value={home.extra.title}
-          limit={LIMITS.extraTitle}
-          fallback="Using and citing the library"
-          onChange={(title) => setHome((h) => ({ extra: { ...h.extra, title } }))}
-        />
-        <RichTextField
-          label="Licence and reuse"
-          suffix="Optional"
-          value={home.extra.text}
-          onChange={(text) => setHome((h) => ({ extra: { ...h.extra, text } }))}
-          maxLength={LIMITS.extra}
-          placeholder="How may people reuse what they find here?"
-        />
-      </FieldGroup>
+          <FieldGroup title="Who runs the library" hint="People come from the library's team and pass by in the order set here.">
+            <HeadingField
+              value={home.headings.team}
+              limit={LIMITS.headings.team}
+              fallback="Who is behind it"
+              onChange={(value) => setHeading("team", value)}
+            />
+            <RichTextField
+              label="About the team"
+              suffix="Optional"
+              value={home.team}
+              onChange={(team) => setHome(() => ({ team }))}
+              maxLength={LIMITS.team}
+              lists={false}
+              minRows={2}
+            />
+            <EditorsField team={team} value={home.people} onChange={(people) => setHome(() => ({ people }))} />
+            <HeadingField
+              value={home.headings.involvement}
+              limit={LIMITS.headings.involvement}
+              fallback="Get involved"
+              hint="Used instead when there is no team sentence."
+              onChange={(value) => setHeading("involvement", value)}
+            />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <ToggleRow
+                label="Suggest a publication"
+                hint={draft.contact.email ? `Opens an email to ${draft.contact.email}` : "Needs a contact email"}
+                checked={home.involvement.suggestions && Boolean(draft.contact.email)}
+                disabled={!draft.contact.email}
+                onChange={(suggestions) => setHome((h) => ({ involvement: { ...h.involvement, suggestions } }))}
+              />
+              <ToggleRow
+                label="Join as an editor"
+                hint={draft.contact.email ? `Opens an email to ${draft.contact.email}` : "Needs a contact email"}
+                checked={home.involvement.editors && Boolean(draft.contact.email)}
+                disabled={!draft.contact.email}
+                onChange={(editors) => setHome((h) => ({ involvement: { ...h.involvement, editors } }))}
+              />
+            </div>
+          </FieldGroup>
+
+          <FieldGroup
+            title="Ask the library"
+            hint={
+              draft.features.ai
+                ? "Typed into the question box one after another. An empty box keeps the question made from the library's topics."
+                : "Shown when AI answers are on in Features. An empty box keeps the question made from the library's topics."
+            }
+          >
+            <div className="space-y-2">
+              {home.questions.map((question, index) => (
+                <Field
+                  key={index}
+                  label={`Example question ${index + 1}`}
+                  suffix="Optional"
+                  counter={`${question.length} / ${LIMITS.question}`}
+                >
+                  {(id) => (
+                    <div className="relative">
+                      <Sparkles
+                        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                        aria-hidden
+                      />
+                      <Input
+                        id={id}
+                        className="bg-background pl-9"
+                        maxLength={LIMITS.question}
+                        placeholder={generatedQuestions[index] || QUESTION_FALLBACK}
+                        value={question}
+                        onChange={(event) =>
+                          setHome((h) => ({ questions: h.questions.map((each, at) => (at === index ? event.target.value : each)) }))
+                        }
+                      />
+                    </div>
+                  )}
+                </Field>
+              ))}
+            </div>
+          </FieldGroup>
+
+          <FieldGroup title="Using and citing" hint="Shown beside the citation of the library, which is made from its name and address.">
+            <HeadingField
+              value={home.extra.title}
+              limit={LIMITS.extraTitle}
+              fallback="Using and citing the library"
+              onChange={(title) => setHome((h) => ({ extra: { ...h.extra, title } }))}
+            />
+            <RichTextField
+              label="Licence and reuse"
+              suffix="Optional"
+              value={home.extra.text}
+              onChange={(text) => setHome((h) => ({ extra: { ...h.extra, text } }))}
+              maxLength={LIMITS.extra}
+              placeholder="How may people reuse what they find here?"
+            />
+          </FieldGroup>
+        </div>
+      ) : null}
     </SectionShell>
   );
 }
@@ -464,11 +469,12 @@ function useTeam(libraryId: Id<"evidenceLibraries">): TeamPerson[] | undefined {
   return [...shown(data.owners, "Owner"), ...shown(data.editors, "Editor"), ...shown(data.creators, "Creator")];
 }
 
-/** The questions the page asks in empty slots, as the running library makes them. Empty until it answers. */
-function useHomeQuestions(libraryId: Id<"evidenceLibraries">): (string | null)[] {
+/** The questions the page asks in empty slots, as the running library makes them. Empty until it answers; not asked while the home page is off. */
+function useHomeQuestions(libraryId: Id<"evidenceLibraries">, enabled: boolean): (string | null)[] {
   const readQuestions = useAction(api.zotero.runtimeReadActions.readHomeQuestions);
   const [questions, setQuestions] = useState<(string | null)[]>([]);
   useEffect(() => {
+    if (!enabled) return;
     let current = true;
     readQuestions({ libraryId })
       .then((result) => current && setQuestions(result.questions))
@@ -477,7 +483,7 @@ function useHomeQuestions(libraryId: Id<"evidenceLibraries">): (string | null)[]
     return () => {
       current = false;
     };
-  }, [readQuestions, libraryId]);
+  }, [readQuestions, libraryId, enabled]);
   return questions;
 }
 
