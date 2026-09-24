@@ -57,7 +57,7 @@ Memberships:
 
 | Role | Clerk user | Email |
 |---|---|---|
-| `org:admin` | `user_3A70omzDavdapdpmawZp5cd1O7B` | `e2e-clerk-user@example.com` |
+| `org:admin` | `user_3A70omzDavdapdpmawZp5cd1O7B` | `e2e-clerk-user+clerk_test@example.com` |
 | `org:member` | `user_3HlfUXmRozaabiOTDoAiMwRtuzr` | `e2e-clerk-member@example.com` |
 
 The ignored local `.env.local` stores the organization ID/slug and both fixture credentials under `E2E_CLERK_*` variables. No credentials are committed.

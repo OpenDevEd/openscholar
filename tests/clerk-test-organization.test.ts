@@ -7,13 +7,13 @@ describe("cleanupStaleBillingClerkUsers", () => {
       data: [
         {
           publicUserData: {
-            identifier: "billing-e2e-1788271000000-abc123@test.example.com",
+            identifier: "billing-e2e-1788271000000-abc123+clerk_test@example.com",
             userId: "user_stale",
           },
         },
         {
           publicUserData: {
-            identifier: "library-e2e-1788271000000-def456@test.example.com",
+            identifier: "library-e2e-1788271000000-def456+clerk_test@example.com",
             userId: "user_library",
           },
         },
