@@ -712,6 +712,50 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     });
   });
 
+  test("keeps people written in by hand, cleaned as the runtime reads them, as people a step may name", () => {
+    const configuration = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        home: {
+          curation: { steps: [{ type: "check", editor: "custom_laila" }] },
+          people: [
+            { id: "custom_laila", name: "  Laila\nFriese ", photo: "https://photos.example.test/laila.webp", title: "Senior Editor" },
+            { id: "custom_blank", name: "   " },
+            { id: "custom_yomna", name: "Yomna El-Serafy", photo: "http://photos.example.test/yomna.webp" },
+          ],
+        },
+      },
+      managed: { ...managedConfiguration, team: [] },
+    });
+    expect(validateLibraryConfigStructure(configuration).valid).toBe(true);
+    expect(configuration.home).toMatchObject({
+      people: [
+        { id: "custom_laila", name: "Laila Friese", photo: "https://photos.example.test/laila.webp", title: "Senior Editor" },
+        { id: "custom_yomna", name: "Yomna El-Serafy" },
+      ],
+      curation: { steps: [{ type: "check", editor: "custom_laila" }] },
+    });
+    // A photo the page could not show is left out rather than breaking it.
+    expect((configuration.home as { people: object[] }).people[1]).not.toHaveProperty("photo");
+  });
+
+  test("asks for a name and an https photo for people written in by hand", () => {
+    const issues = validateOwnerSection("home", {
+      people: [{ id: "custom_x", name: "", photo: "http://photos.example.test/x.webp" }],
+    }).issues;
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ pointer: "/home/people/0/name", message: "Write the name of each person shown." }),
+        expect.objectContaining({ pointer: "/home/people/0/photo", message: "Use a photo address that starts with https://." }),
+      ]),
+    );
+    // A team member's photo is their account's and is never checked here.
+    expect(
+      validateOwnerSection("home", { people: [{ id: "user_ada", name: "Ada", photo: "http://img.example.test/a.png" }] }).issues
+        .filter((issue) => issue.pointer.endsWith("/photo") && issue.keyword === "format" && issue.message.includes("https://")),
+    ).toEqual([]);
+  });
+
   test("fills the home page from the team and leaves out whoever left it", () => {
     const configuration = assembleEvidenceLibraryConfiguration({
       sections: {

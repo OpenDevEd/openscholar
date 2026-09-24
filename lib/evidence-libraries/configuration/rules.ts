@@ -30,6 +30,7 @@ import {
   type TagRules,
   tagRuleIssue,
 } from "@/components/evidence-libraries/configuration/sections/tag-rules";
+import { isHandEntered } from "./home-people";
 
 export type SectionRow = { sectionKey: string; payload: unknown };
 
@@ -213,6 +214,7 @@ export const SCHEMA_LIMITS = {
     stepText: schemaNumber("/home/curation/steps/*/text", "maxLength"),
     team: schemaNumber("/home/team", "maxLength"),
     people: schemaNumber("/home/people", "maxItems"),
+    personName: schemaNumber("/home/people/*/name", "maxLength"),
     personTitle: schemaNumber("/home/people/*/title", "maxLength"),
     personLocation: schemaNumber("/home/people/*/location", "maxLength"),
     questions: schemaNumber("/home/questions", "maxItems"),
@@ -1412,6 +1414,8 @@ function uploadUrls(draft: ConfigurationDraft): string[] {
     ...Object.values(draft.identity.assets),
     ...draft.institutions.map((institution) => institution.logoUrl),
     ...draft.footer.funders.map((funder) => funder.logoUrl),
+    // Photos uploaded for people written in by hand; a team member's photo is their account's, not ours to delete.
+    ...draft.home.people.filter((person) => isHandEntered(person.id)).map((person) => person.photo),
   ].filter((url) => url !== "");
 }
 

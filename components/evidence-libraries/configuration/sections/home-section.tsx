@@ -3,16 +3,20 @@
 import { useAction } from "convex/react";
 import {
   BookCheck,
+  Camera,
   ChevronsUpDown,
   FileText,
   House,
   Inbox,
+  Loader2,
   type LucideIcon,
+  Pencil,
   Plus,
   RefreshCw,
   Sparkles,
   Text,
   UserRoundCheck,
+  X,
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -35,10 +39,13 @@ import {
 } from "@/lib/evidence-libraries/configuration/rules";
 import { AddButton, EmptyList, FieldGroup, ListRow, move, SortableList, ToggleRow } from "../fields";
 import { RichTextField } from "../rich-text-field";
-import { publicName, publicPhoto } from "@/lib/evidence-libraries/configuration/home-people";
+import { HAND_ENTERED_PREFIX, isHandEntered, publicName, publicPhoto } from "@/lib/evidence-libraries/configuration/home-people";
 import { Field } from "../section-card";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { localPickerSource, type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
+import { PHOTO_ACCEPT, toPersonPhoto } from "../photo-upload";
+import { useDropzone } from "react-dropzone";
+import { useFileUploads } from "../use-file-uploads";
 
 const LIMITS = SCHEMA_LIMITS.home;
 
@@ -67,6 +74,13 @@ const EXAMPLE_LAST_DAY = Date.UTC(2026, 2, 12);
 export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionProps) {
   const home = draft.home;
   const team = useTeam(libraryId);
+  // A step may name anyone shown: the team, and people written in by hand.
+  const editors: TeamPerson[] = [
+    ...(team ?? []),
+    ...home.people
+      .filter((person) => isHandEntered(person.id) && person.name.trim())
+      .map((person) => ({ id: person.id, name: person.name.trim(), imageUrl: publicPhoto(person.photo), role: "Added by hand" })),
+  ];
   const generatedQuestions = useHomeQuestions(libraryId, draft.features.homePage);
   // Changes read the draft they are applied to, not the one rendered, so an
   // editor's late update cannot undo a newer one.
@@ -160,7 +174,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
                     />
                   )}
                 </Field>
-                <TimelinePreview steps={home.steps} team={team ?? []} />
+                <TimelinePreview steps={home.steps} team={editors} />
                 <SortableList
                   ids={home.steps.map((step) => step.id)}
                   onMove={(from, to) => setHome((h) => ({ steps: move(h.steps, from, to) }))}
@@ -225,7 +239,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value={APPROVER}>Whoever approved it</SelectItem>
-                                {(team ?? []).map((person) => (
+                                {editors.map((person) => (
                                   <SelectItem key={person.id} value={person.id}>
                                     <IdentityAvatar name={person.name} imageUrl={person.imageUrl} className="size-5" />
                                     {person.name}
@@ -255,7 +269,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
             )}
           </FieldGroup>
 
-          <FieldGroup title="Who runs the library" hint="People come from the library's team and pass by in the order set here.">
+          <FieldGroup title="Who runs the library" hint="People from the library's team, or added by hand, pass by in the order set here.">
             <HeadingField
               value={home.headings.team}
               limit={LIMITS.headings.team}
@@ -487,7 +501,10 @@ function useHomeQuestions(libraryId: Id<"evidenceLibraries">, enabled: boolean):
   return questions;
 }
 
-/** The people who pass by in the home page's team band: chosen from the team, in order, each with a title and place. */
+/**
+ * The people who pass by in the home page's team band, in order, each with a title and place: chosen from the team,
+ * with the name and photo of their account, or written in by hand for anyone without one.
+ */
 function EditorsField({
   team,
   value,
@@ -504,12 +521,13 @@ function EditorsField({
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm">People shown</p>
+        <div className="flex flex-wrap items-center gap-2">
         <RemotePickerDialog
           mode="multi"
           trigger={
             <Button type="button" variant="outline" size="sm" disabled={value.length >= LIMITS.people}>
               <Plus />
-              Add people
+              Add from the team
             </Button>
           }
           title="Add people from the team"
@@ -543,16 +561,28 @@ function EditorsField({
           noMatchLabel="Nobody on the team matches."
           notSetUpLabel="Nobody is on the team yet."
         />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={value.length >= LIMITS.people}
+          onClick={() => onChange([...value, { id: newId(HAND_ENTERED_PREFIX), name: "", photo: "", title: "", location: "" }])}
+        >
+          <Plus />
+          Add someone
+        </Button>
+        </div>
       </div>
       {value.length === 0 ? (
-        <EmptyList>Nobody is shown. Add people from the team.</EmptyList>
+        <EmptyList>Nobody is shown. Add people from the team, or add someone who has no account.</EmptyList>
       ) : (
         <SortableList ids={value.map((person) => person.id)} onMove={(from, to) => onChange(move(value, from, to))}>
           {value.map((person) => {
-            const member = team?.find((each) => each.id === person.id);
-            const name = member?.name || person.name;
+            const byHand = isHandEntered(person.id);
+            const member = byHand ? undefined : team?.find((each) => each.id === person.id);
+            const name = member?.name || person.name || "Someone new";
             // While the team loads nobody counts as removed.
-            const removed = team !== undefined && !member;
+            const removed = !byHand && team !== undefined && !member;
             return (
               <ListRow
                 key={person.id}
@@ -560,15 +590,36 @@ function EditorsField({
                 removeLabel={`Stop showing ${name}`}
                 onRemove={() => onChange(value.filter((each) => each.id !== person.id))}
               >
-                <div className="flex items-center gap-3">
-                  <IdentityAvatar name={name} imageUrl={member?.imageUrl ?? (person.photo || undefined)} className="size-9 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {removed ? "Removed from the team, so not shown" : member ? `${member.role} on the team` : null}
-                    </p>
+                {byHand ? (
+                  <PhotoPerson name={name} photo={person.photo} onChange={(photo) => update(person.id, { photo })} />
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <IdentityAvatar name={name} imageUrl={member?.imageUrl} className="size-9 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {removed ? "Removed from the team, so not shown" : member ? `${member.role} on the team` : null}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
+                {byHand ? (
+                  <div className="grid gap-3">
+                    <Field label="Name" counter={`${person.name.length} / ${LIMITS.personName}`}>
+                      {(id) => (
+                        <Input
+                          id={id}
+                          className="bg-background"
+                          maxLength={LIMITS.personName}
+                          placeholder="Amina Yusuf"
+                          value={person.name}
+                          onChange={(event) => update(person.id, { name: event.target.value })}
+                        />
+                      )}
+                    </Field>
+
+                  </div>
+                ) : null}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Title" suffix="Optional" counter={`${person.title.length} / ${LIMITS.personTitle}`}>
                     {(id) => (
@@ -600,6 +651,78 @@ function EditorsField({
           })}
         </SortableList>
       )}
+    </div>
+  );
+}
+
+/**
+ * A person written in by hand, as their row opens: their picture is where their photo is chosen. Click it, press
+ * Enter on it or drop an image on it; the photo is cropped to a square and made small before it is stored.
+ */
+function PhotoPerson({ name, photo, onChange }: { name: string; photo: string; onChange: (photo: string) => void }) {
+  const { uploadFile } = useFileUploads();
+  const [uploading, setUploading] = useState(false);
+  const [failed, setFailed] = useState(false);
+  async function upload(files: File[]) {
+    const file = files[0];
+    if (!file) return;
+    setFailed(false);
+    setUploading(true);
+    try {
+      const result = await uploadFile("image", await toPersonPhoto(file));
+      if (result.ok && result.kind === "file") onChange(result.url);
+      else setFailed(true);
+    } catch {
+      setFailed(true);
+    } finally {
+      setUploading(false);
+    }
+  }
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: PHOTO_ACCEPT,
+    multiple: false,
+    disabled: uploading,
+    onDrop: upload,
+    onDropRejected: () => setFailed(true),
+  });
+  const label = photo ? `Change the photo of ${name}` : `Add a photo of ${name}`;
+  return (
+    <div className="flex items-center gap-3">
+      <div className="relative shrink-0">
+        <button type="button" {...getRootProps({ role: "button" })} aria-label={label} title={label} className="group relative block rounded-full outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+          <input {...getInputProps()} />
+          <IdentityAvatar name={name} imageUrl={publicPhoto(photo)} className="size-12" />
+          <span
+            aria-hidden
+            data-active={isDragActive || uploading || undefined}
+            className="absolute inset-0 grid place-items-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 data-[active]:opacity-100 motion-reduce:transition-none"
+          >
+            {uploading ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" /> : <Camera className="size-4" />}
+          </span>
+          {/* Without a photo, a pen says the picture can be changed before anyone hovers it. */}
+          {photo ? null : (
+            <span aria-hidden className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full border border-border bg-background text-muted-foreground shadow-sm">
+              <Pencil className="size-3" />
+            </span>
+          )}
+        </button>
+        {photo && !uploading ? (
+          <button
+            type="button"
+            aria-label={`Remove the photo of ${name}`}
+            title="Remove the photo"
+            onClick={() => onChange("")}
+            className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-foreground"
+          >
+            <X className="size-3" />
+          </button>
+        ) : null}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium">{name}</p>
+        <p className="text-xs text-muted-foreground">{photo ? "Added by hand" : "Added by hand. Click the picture to add a photo."}</p>
+        {failed ? <p role="alert" className="text-xs text-destructive">That photo could not be used. Try a JPEG, PNG or WebP image.</p> : null}
+      </div>
     </div>
   );
 }

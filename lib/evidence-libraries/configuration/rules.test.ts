@@ -355,6 +355,25 @@ describe("sectionState and reset", () => {
 });
 
 describe("staleUploads", () => {
+  it("deletes a removed photo of someone written in by hand, never a team member's", () => {
+    const rows = [
+      ...savedRows.filter((row) => row.sectionKey !== "home"),
+      {
+        sectionKey: "home",
+        payload: {
+          people: [
+            { id: "custom_amina", name: "Amina", photo: "https://assets.example.test/amina.webp" },
+            { id: "user_ada", name: "Ada", photo: "https://img.clerk.example/ada.png" },
+          ],
+        },
+      },
+    ];
+    const draft = readDraft(rows);
+    draft.home.people = [];
+    expect(staleUploads(draft, rows)).toEqual(["https://assets.example.test/amina.webp"]);
+  });
+
+
   it("lists saved files the draft no longer points at", () => {
     const draft = savedDraft();
     draft.identity.assets.logoLight =
