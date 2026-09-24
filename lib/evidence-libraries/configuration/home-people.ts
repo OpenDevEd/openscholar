@@ -20,8 +20,14 @@ export function publicName(name: string | undefined): string | undefined {
 
 /** The photo's address as the runtime will validate it: parsed and written out in its canonical, encoded form. */
 export function publicPhoto(url: string | undefined): string | undefined {
-  if (!url || /[<>]/u.test(url) || !URL.canParse(url.trim())) return undefined;
-  const parsed = new URL(url.trim());
+  if (!url || /[<>]/u.test(url)) return undefined;
+  // Not URL.canParse: Convex's query runtime does not have it.
+  let parsed: URL;
+  try {
+    parsed = new URL(url.trim());
+  } catch {
+    return undefined;
+  }
   const accepted = parsed.protocol === "https:" && !parsed.username && !parsed.password && !parsed.hash;
   return accepted && parsed.href.length <= URL_MAX ? parsed.href : undefined;
 }
