@@ -1,4 +1,8 @@
-import { readPublicationProviderSource, readPublicationProviderPayload, requireUnchangedPublicationProviders } from "./publicationProviders";
+import {
+  readPublicationProviderSource,
+  readPublicationProviderPayload,
+  requireUnchangedPublicationProviders,
+} from "./publicationProviders";
 import { publicationPayloadValidator } from "./publicationValidators";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -31,6 +35,11 @@ import {
   readLibraryAiProviderKey,
   requireUnchangedAiProviderKey,
 } from "./aiProviderKey";
+import {
+  readOpenAlexEncryptedKey,
+  readOpenAlexKeySource,
+  requireUnchangedOpenAlexKey,
+} from "./openAlexSourceKey";
 import {
   sanitizeConfigurationIssues,
   sanitizeOperationError,
@@ -517,11 +526,13 @@ export const prepareConfigurationDeployment = internalMutation({
         search: sourceCredentialValidator,
         storage: sourceCredentialValidator,
         aiProviderKey: libraryCredentialSourceValidator,
+        openAlexApiKey: libraryCredentialSourceValidator,
         publicationProviders: v.optional(libraryCredentialSourceValidator),
       }),
       // The key itself, for the action that builds the configuration. It is
       // never written to the operation, which owners can read.
       aiProviderKey: v.optional(v.object({ encryptedApiKey: v.string() })),
+      openAlexApiKey: v.optional(v.object({ encryptedApiKey: v.string() })),
       publicationPayload: v.optional(publicationPayloadValidator),
       defaultLocale: v.string(),
       runtimeCommit: v.string(),
@@ -719,12 +730,23 @@ export const prepareConfigurationDeployment = internalMutation({
       ),
     };
     const aiProviderKey = await readAiProviderKeySource(ctx, args.libraryId);
-    const publicationProviders = await readPublicationProviderSource(ctx, args.libraryId);
-    const publicationPayload = await readPublicationProviderPayload(ctx, args.libraryId);
+    const openAlexApiKeySource = await readOpenAlexKeySource(
+      ctx,
+      args.libraryId,
+    );
+    const publicationProviders = await readPublicationProviderSource(
+      ctx,
+      args.libraryId,
+    );
+    const publicationPayload = await readPublicationProviderPayload(
+      ctx,
+      args.libraryId,
+    );
     const aiProviderApiKey = await readLibraryAiProviderKey(
       ctx,
       args.libraryId,
     );
+    const openAlexApiKey = await readOpenAlexEncryptedKey(ctx, args.libraryId);
     return {
       state: "new" as const,
       rolledBack: deployment.operation.rolledBackAt !== undefined,
@@ -770,7 +792,8 @@ export const prepareConfigurationDeployment = internalMutation({
         args.libraryId,
       ),
       ...(aiProviderApiKey ? { aiProviderKey: aiProviderApiKey } : {}),
-      ...(publicationPayload ? {publicationPayload} : {}),
+      ...(openAlexApiKey ? { openAlexApiKey } : {}),
+      ...(publicationPayload ? { publicationPayload } : {}),
       source: {
         runtimeBindingId: deployment.runtimeBinding._id,
         bindingUpdatedAt: deployment.runtimeBinding.updatedAt,
@@ -778,6 +801,7 @@ export const prepareConfigurationDeployment = internalMutation({
           deployment.runtimeBinding,
         ),
         aiProviderKey,
+        openAlexApiKey: openAlexApiKeySource,
         publicationProviders,
         machine: {
           id: required.machine._id,
@@ -836,7 +860,8 @@ export const saveConfigurationDeploymentTarget = internalMutation({
       search: sourceCredentialValidator,
       storage: sourceCredentialValidator,
       aiProviderKey: libraryCredentialSourceValidator,
-        publicationProviders: v.optional(libraryCredentialSourceValidator),
+      openAlexApiKey: libraryCredentialSourceValidator,
+      publicationProviders: v.optional(libraryCredentialSourceValidator),
     }),
     target: v.object({
       applicationId: v.string(),
@@ -863,6 +888,11 @@ export const saveConfigurationDeploymentTarget = internalMutation({
       ctx,
       args.libraryId,
       args.source.aiProviderKey,
+    );
+    await requireUnchangedOpenAlexKey(
+      ctx,
+      args.libraryId,
+      args.source.openAlexApiKey,
     );
     await requireUnchangedPublicationProviders(
       ctx,
@@ -910,6 +940,7 @@ export const saveConfigurationDeploymentTarget = internalMutation({
         args.target.applicationId,
       ),
       aiProviderKey: args.source.aiProviderKey,
+      openAlexApiKey: args.source.openAlexApiKey,
       publicationProviders: args.source.publicationProviders,
       runtimeBindingId: deployment.runtimeBinding._id,
       targetBaseUrl: requireNonBlank(
@@ -1160,6 +1191,11 @@ export const prepareConfigurationActivation = internalMutation({
       args.libraryId,
       target.aiProviderKey,
     );
+    await requireUnchangedOpenAlexKey(
+      ctx,
+      args.libraryId,
+      target.openAlexApiKey,
+    );
     await requireUnchangedPublicationProviders(
       ctx,
       args.libraryId,
@@ -1352,6 +1388,11 @@ export const completeConfigurationDeployment = internalMutation({
         args.libraryId,
         target.aiProviderKey,
       );
+      await requireUnchangedOpenAlexKey(
+        ctx,
+        args.libraryId,
+        target.openAlexApiKey,
+      );
       await requireUnchangedPublicationProviders(
         ctx,
         args.libraryId,
@@ -1408,7 +1449,9 @@ export const completeConfigurationDeployment = internalMutation({
     });
     await ctx.db.patch(deployment.library._id, {
       activeRevisionId: deployment.revision._id,
-      activePublicationConfigDigest: target.publicationProviders?.present ? target.publicationProviders.digest : undefined,
+      activePublicationConfigDigest: target.publicationProviders?.present
+        ? target.publicationProviders.digest
+        : undefined,
       activeDeploymentOperationId: deployment.operation._id,
       updatedByClerkUserId: deployment.operation.requestedByClerkUserId,
       updatedAt: now,

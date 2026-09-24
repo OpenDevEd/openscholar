@@ -30,6 +30,11 @@ const legacySnapshot: OwnerConfigurationSnapshot = {
   ],
 };
 
+const TOPICS_DEFAULT = {
+  sectionKey: "topics" as const,
+  payload: { enabled: false },
+};
+
 function expectMigrationError(run: () => unknown) {
   try {
     run();
@@ -65,6 +70,7 @@ describe("owner configuration migrations", () => {
             providers: [{ provider: "openrouter", enabled: false, models: [] }],
           },
         },
+        TOPICS_DEFAULT,
       ],
     });
     expect(result.changedPointers).toEqual([
@@ -74,6 +80,7 @@ describe("owner configuration migrations", () => {
       "/exports",
       "/ai",
       "/ai/providers/0/models",
+      "/topics",
     ]);
     expect(legacySnapshot.sections[0]?.payload).toEqual({
       ai: false,
@@ -107,12 +114,14 @@ describe("owner configuration migrations", () => {
           providers: [{ provider: "openrouter", enabled: false, models: [] }],
         },
       },
+      TOPICS_DEFAULT,
     ]);
     expect(missingAssets.changedPointers).toEqual([
       "/ownerConfigurationVersion",
       "/identity/assets",
       "/ai",
       "/ai/providers/0/models",
+      "/topics",
     ]);
 
     const existingAssets = {
@@ -135,6 +144,7 @@ describe("owner configuration migrations", () => {
           providers: [{ provider: "openrouter", enabled: false, models: [] }],
         },
       },
+      TOPICS_DEFAULT,
     ]);
 
     const invalidAssets = expectMigrationError(() =>
@@ -226,6 +236,7 @@ describe("owner configuration migrations", () => {
             providers: [{ provider: "openrouter", enabled: false, models: [] }],
           },
         },
+        TOPICS_DEFAULT,
       ],
     });
     expect(result.changedPointers).toEqual([
@@ -234,6 +245,7 @@ describe("owner configuration migrations", () => {
       "/filters/countryLibrary",
       "/features/authorLocation",
       "/ai",
+      "/topics",
     ]);
   });
 
@@ -268,6 +280,7 @@ describe("owner configuration migrations", () => {
           providers: [{ provider: "openrouter", enabled: false, models: [] }],
         },
       },
+      TOPICS_DEFAULT,
       { sectionKey: "analytics", payload: {} },
     ]);
     expect(
@@ -312,6 +325,7 @@ describe("owner configuration migrations", () => {
       [2, 3],
       [3, 4],
       [4, 5],
+      [5, 6],
     ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
@@ -368,6 +382,7 @@ describe("owner configuration migrations", () => {
           ],
         },
       },
+      TOPICS_DEFAULT,
     ]);
   });
 
@@ -432,6 +447,7 @@ describe("owner configuration migrations", () => {
           providers: [{ provider: "openrouter", enabled: false, models: [] }],
         },
       },
+      TOPICS_DEFAULT,
     ]);
   });
 
@@ -545,6 +561,7 @@ describe("owner configuration migrations", () => {
       [2, 3],
       [3, 4],
       [4, 5],
+      [5, 6],
     ]);
   });
 
@@ -714,6 +731,7 @@ describe("owner configuration migrations", () => {
               groupId: "77",
               enabled: true,
               writebackEnabled: false,
+              settings: {},
             },
           ],
         },

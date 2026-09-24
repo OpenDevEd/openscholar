@@ -68,6 +68,7 @@ import type * as evidenceLibraries_adminHandoff from "../evidenceLibraries/admin
 import type * as evidenceLibraries_adminHandoffActions from "../evidenceLibraries/adminHandoffActions.js";
 import type * as evidenceLibraries_adminLoginCodes from "../evidenceLibraries/adminLoginCodes.js";
 import type * as evidenceLibraries_aiProviderKey from "../evidenceLibraries/aiProviderKey.js";
+import type * as evidenceLibraries_openAlexSourceKey from "../evidenceLibraries/openAlexSourceKey.js";
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
 import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibraries/applicationSetupActions.js";
 import type * as evidenceLibraries_configurationDeployment from "../evidenceLibraries/configurationDeployment.js";
@@ -368,6 +369,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/adminHandoffActions": typeof evidenceLibraries_adminHandoffActions;
   "evidenceLibraries/adminLoginCodes": typeof evidenceLibraries_adminLoginCodes;
   "evidenceLibraries/aiProviderKey": typeof evidenceLibraries_aiProviderKey;
+  "evidenceLibraries/openAlexSourceKey": typeof evidenceLibraries_openAlexSourceKey;
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
   "evidenceLibraries/applicationSetupActions": typeof evidenceLibraries_applicationSetupActions;
   "evidenceLibraries/configurationDeployment": typeof evidenceLibraries_configurationDeployment;

@@ -25,7 +25,8 @@ function isMissingPlatformValue(issue: ValidationIssue): boolean {
   return (
     WRITE_ONLY_POINTER_PATTERNS.some((pattern) =>
       jsonPointerPatternMatches(pattern, issue.pointer),
-    ) || (PLATFORM_DEFAULT_POINTERS as readonly string[]).includes(issue.pointer)
+    ) ||
+    (PLATFORM_DEFAULT_POINTERS as readonly string[]).includes(issue.pointer)
   );
 }
 
@@ -51,6 +52,16 @@ function objectValue(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : undefined;
+}
+
+// The runtime source union requires apiKey to choose a provider branch. Owner
+// rows deliberately omit it, so validate a temporary projection and discard it.
+function structuralOwnerPayload(sectionKey: SectionKey, payload: unknown) {
+  if (sectionKey !== "sources" || !Array.isArray(payload)) return payload;
+  return payload.map((source) => {
+    const record = objectValue(source);
+    return record ? { ...record, apiKey: "owner-managed" } : source;
+  });
 }
 
 // Rules the runtime schema cannot express. Everything else comes from the
@@ -127,11 +138,15 @@ function ownerRuleIssues(
   }
   // The runtime's one rule the schema cannot state: a text-only step is only
   // its name and words, so it needs a name.
-  const steps = sectionKey === "home" ? objectValue(record?.curation)?.steps : undefined;
+  const steps =
+    sectionKey === "home" ? objectValue(record?.curation)?.steps : undefined;
   if (Array.isArray(steps)) {
     steps.forEach((entry, index) => {
       const step = objectValue(entry);
-      if (step?.type === "text" && !(typeof step.title === "string" && step.title.trim())) {
+      if (
+        step?.type === "text" &&
+        !(typeof step.title === "string" && step.title.trim())
+      ) {
         issues.push({
           pointer: `/home/curation/steps/${index}/title`,
           section: "home",
@@ -161,8 +176,7 @@ function ownerRuleIssues(
       pointer: "/search/embedder",
       section: "search",
       keyword: "platformValue",
-      message:
-        "Search by meaning is set by the platform and cannot be saved.",
+      message: "Search by meaning is set by the platform and cannot be saved.",
     });
   }
   // Reaching here means the row is being saved, so it must hold one provider.
@@ -210,8 +224,11 @@ export function validateOwnerSection(
   options: OwnerRuleOptions = {},
 ): { valid: boolean; issues: ValidationIssue[] } {
   const issues = [
-    ...validateSectionStructure(sectionKey, payload).issues
-      .filter((issue) => !isMissingPlatformValue(issue))
+    ...validateSectionStructure(
+      sectionKey,
+      structuralOwnerPayload(sectionKey, payload),
+    )
+      .issues.filter((issue) => !isMissingPlatformValue(issue))
       .map(ownerWording),
     ...ownerRuleIssues(sectionKey, payload, options),
   ];
@@ -232,9 +249,7 @@ export function validateOwnerSections(
     ...options,
     featuresAi:
       options.featuresAi ??
-      (featuresRow
-        ? objectValue(featuresRow.payload)?.ai === true
-        : undefined),
+      (featuresRow ? objectValue(featuresRow.payload)?.ai === true : undefined),
   };
   for (const row of rows) {
     if (seen.has(row.sectionKey)) {
@@ -263,7 +278,11 @@ export function validateOwnerSections(
   // AI answers on with no AI row at all leaves the runtime without a
   // provider. Only the complete set can tell; a partial save has no `ai` row
   // simply because that card did not change.
-  if (options.requireComplete && ruleOptions.featuresAi === true && !seen.has("ai")) {
+  if (
+    options.requireComplete &&
+    ruleOptions.featuresAi === true &&
+    !seen.has("ai")
+  ) {
     issues.push(
       ...aiProviderIssues(
         undefined,

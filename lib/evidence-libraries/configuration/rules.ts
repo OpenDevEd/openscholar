@@ -24,6 +24,7 @@ import {
 } from "./links";
 import { resolveSchemaPointer } from "./section-registry";
 import type { ZoteroSourceEntry } from "@/convex/zotero/sourceEntry";
+import type { EvidenceSourceEntry, OpenAlexSourceEntry } from "./sources";
 import {
   TAG_RULE_KEYS,
   type TagRuleKey,
@@ -69,6 +70,7 @@ const ROW_KEYS = [
   "collections",
   "search",
   "filters",
+  "topics",
   "sources",
   "content",
   "citations",
@@ -491,9 +493,9 @@ export type HomeDraft = {
   headings: Record<HomeHeadingKey, string>;
 };
 
-export type DigestScheduleDraft = {time: string; timezone: string} & (
-  | {frequency: "weekly"; weekday: number}
-  | {frequency: "monthly"; dayOfMonth: number}
+export type DigestScheduleDraft = { time: string; timezone: string } & (
+  | { frequency: "weekly"; weekday: number }
+  | { frequency: "monthly"; dayOfMonth: number }
 );
 
 export type ConfigurationDraft = {
@@ -505,12 +507,13 @@ export type ConfigurationDraft = {
   footer: FooterDraft;
   contact: ContactDraft;
   email: EmailDraft;
-  notifications: {enabled: boolean; schedule: DigestScheduleDraft};
+  notifications: { enabled: boolean; schedule: DigestScheduleDraft };
   legal: LegalDraft;
   collections: CollectionDraft[];
   search: SearchDraft;
   filters: FiltersDraft;
-  sources: ZoteroSourceEntry[];
+  topics: { enabled: boolean };
+  sources: EvidenceSourceEntry[];
   /** `content.tags`: which Zotero tags mean hidden, coming soon, and so on. Edited on the Sources card. */
   content: { tags: TagRules };
   citations: { showUrl: boolean };
@@ -783,13 +786,32 @@ function readRecipient(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
-function readNotifications(payload: unknown): ConfigurationDraft["notifications"] {
+function readNotifications(
+  payload: unknown,
+): ConfigurationDraft["notifications"] {
   const value = record(payload);
   const schedule = record(value.schedule);
-  const clock = {time: text(schedule.time) || "09:00", timezone: text(schedule.timezone) || "UTC"};
-  return {enabled: flag(value.enabled, false), schedule: schedule.frequency === "monthly"
-    ? {...clock, frequency: "monthly", dayOfMonth: typeof schedule.dayOfMonth === "number" ? schedule.dayOfMonth : 1}
-    : {...clock, frequency: "weekly", weekday: typeof schedule.weekday === "number" ? schedule.weekday : 1}};
+  const clock = {
+    time: text(schedule.time) || "09:00",
+    timezone: text(schedule.timezone) || "UTC",
+  };
+  return {
+    enabled: flag(value.enabled, false),
+    schedule:
+      schedule.frequency === "monthly"
+        ? {
+            ...clock,
+            frequency: "monthly",
+            dayOfMonth:
+              typeof schedule.dayOfMonth === "number" ? schedule.dayOfMonth : 1,
+          }
+        : {
+            ...clock,
+            frequency: "weekly",
+            weekday:
+              typeof schedule.weekday === "number" ? schedule.weekday : 1,
+          },
+  };
 }
 
 function readEmail(payload: unknown): EmailDraft {
@@ -880,17 +902,54 @@ function readFilters(payload: unknown): FiltersDraft {
   };
 }
 
-function readSources(payload: unknown): ZoteroSourceEntry[] {
+function readTopics(payload: unknown): ConfigurationDraft["topics"] {
+  return { enabled: flag(record(payload).enabled, false) };
+}
+
+function readSources(payload: unknown): EvidenceSourceEntry[] {
   return list(payload)
     .map((entry) => record(entry))
-    .filter((row) => typeof row.groupId === "string" && row.groupId !== "")
-    .map((row) => ({
-      key: text(row.key) || `zotero-${text(row.groupId)}`,
-      provider: "zotero" as const,
-      groupId: text(row.groupId),
-      enabled: flag(row.enabled, true),
-      writebackEnabled: flag(row.writebackEnabled, false),
-    }));
+    .flatMap((row): EvidenceSourceEntry[] => {
+      if (row.provider === "openalex") {
+        const settings = record(row.settings);
+        const approvedQuery = record(settings.approvedQuery);
+        const query = record(approvedQuery.query);
+        const parsed: OpenAlexSourceEntry = {
+          key: text(row.key),
+          provider: "openalex",
+          enabled: flag(row.enabled, true),
+          writebackEnabled: false,
+          settings: {
+            approvedQuery: {
+              version: text(approvedQuery.version),
+              approvedAt: text(approvedQuery.approvedAt),
+              query: {
+                ...(text(query.filter) ? { filter: text(query.filter) } : {}),
+                ...(text(query.search) ? { search: text(query.search) } : {}),
+              },
+            },
+            downloadPdfs: flag(settings.downloadPdfs, false),
+          },
+        };
+        return parsed.key &&
+          parsed.settings.approvedQuery.version &&
+          parsed.settings.approvedQuery.approvedAt &&
+          (parsed.settings.approvedQuery.query.search ||
+            parsed.settings.approvedQuery.query.filter)
+          ? [parsed]
+          : [];
+      }
+      const groupId = text(row.groupId);
+      if (!groupId) return [];
+      const parsed: ZoteroSourceEntry = {
+        key: text(row.key) || `zotero-${groupId}`,
+        provider: "zotero",
+        groupId,
+        enabled: flag(row.enabled, true),
+        writebackEnabled: flag(row.writebackEnabled, false),
+      };
+      return [parsed];
+    });
 }
 
 // Only the tag rules the runtime knows; anything else would fail the strict `content` row.
@@ -938,12 +997,16 @@ function readHome(payload: unknown): HomeDraft {
         location: text(row.location),
       };
     }),
-    questions: Array.from({ length: SCHEMA_LIMITS.home.questions }, (_, index) =>
-      text(questions[index]),
+    questions: Array.from(
+      { length: SCHEMA_LIMITS.home.questions },
+      (_, index) => text(questions[index]),
     ),
     followed: text(home.followed),
     involvement: {
-      suggestions: flag(involvement.suggestions, HOME_INVOLVEMENT_DEFAULTS.suggestions),
+      suggestions: flag(
+        involvement.suggestions,
+        HOME_INVOLVEMENT_DEFAULTS.suggestions,
+      ),
       editors: flag(involvement.editors, HOME_INVOLVEMENT_DEFAULTS.editors),
     },
     extra: { title: text(extra.title), text: text(extra.text) },
@@ -973,6 +1036,7 @@ export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
     collections: readCollections(payloadOf(rows, "collections")),
     search: readSearch(payloadOf(rows, "search")),
     filters: readFilters(payloadOf(rows, "filters")),
+    topics: readTopics(payloadOf(rows, "topics")),
     sources: readSources(payloadOf(rows, "sources")),
     content: readContent(payloadOf(rows, "content")),
     citations: {
@@ -1206,7 +1270,8 @@ function legalPayload(legal: LegalDraft) {
 // `directory` is never written here; the platform fills it at assembly.
 function homePayload(home: HomeDraft) {
   const questions = [...home.questions];
-  while (questions.length > 0 && questions.at(-1)!.trim() === "") questions.pop();
+  while (questions.length > 0 && questions.at(-1)!.trim() === "")
+    questions.pop();
   return compact({
     intro: optional(home.intro),
     curation: compact({
@@ -1230,13 +1295,18 @@ function homePayload(home: HomeDraft) {
         location: optional(person.location),
       }),
     ),
-    questions: questions.map((question) => (question.trim() === "" ? "" : question)),
+    questions: questions.map((question) =>
+      question.trim() === "" ? "" : question,
+    ),
     followed: optional(home.followed),
     involvement: { ...home.involvement },
     // A heading without its text is kept, so Save can say what is missing.
     extra:
       optional(home.extra.text) || optional(home.extra.title)
-        ? compact({ title: optional(home.extra.title), text: optional(home.extra.text) })
+        ? compact({
+            title: optional(home.extra.title),
+            text: optional(home.extra.text),
+          })
         : undefined,
     headings: compact({
       curation: optional(home.headings.curation),
@@ -1476,11 +1546,20 @@ function cardSlice(draft: ConfigurationDraft, sectionKey: PageSectionKey) {
     case "footer":
       return draft.footer;
     case "contact":
-      return { contact: draft.contact, email: draft.email, legal: draft.legal, notifications: draft.notifications };
+      return {
+        contact: draft.contact,
+        email: draft.email,
+        legal: draft.legal,
+        notifications: draft.notifications,
+      };
     case "collections":
       return draft.collections;
     case "search":
-      return { search: draft.search, filters: draft.filters };
+      return {
+        search: draft.search,
+        filters: draft.filters,
+        topics: draft.topics,
+      };
     case "sources":
       return { sources: draft.sources, tags: draft.content.tags };
     // Step ids are made up on every read, so they never count as a change.
@@ -1504,7 +1583,7 @@ const ROWS_FOR_CARD: Record<PageSectionKey, readonly RowKey[]> = {
   footer: ["footer"],
   contact: ["contact", "email", "legal", "notifications"],
   collections: ["collections"],
-  search: ["search", "filters"],
+  search: ["search", "filters", "topics"],
   sources: ["sources", "content"],
   citations: ["citations", "exports"],
   features: ["features"],
@@ -1569,7 +1648,8 @@ export function sectionChanged(
   rows: readonly SectionRow[],
   sectionKey: PageSectionKey,
 ): boolean {
-  if (ROWS_FOR_CARD[sectionKey].some((key) => missingRow(rows, key))) return true;
+  if (ROWS_FOR_CARD[sectionKey].some((key) => missingRow(rows, key)))
+    return true;
   return !same(
     cardSlice(draft, sectionKey),
     cardSlice(readDraft(rows), sectionKey),
@@ -1643,13 +1723,28 @@ export function sectionProblems(
     case "contact": {
       const { contact, email, legal } = draft;
       const schedule = draft.notifications.schedule;
-      const {time, timezone} = schedule;
-      const validDay = schedule.frequency === "weekly"
-        ? Number.isInteger(schedule.weekday) && schedule.weekday >= 0 && schedule.weekday <= 6
-        : Number.isInteger(schedule.dayOfMonth) && schedule.dayOfMonth >= 1 && schedule.dayOfMonth <= 31;
+      const { time, timezone } = schedule;
+      const validDay =
+        schedule.frequency === "weekly"
+          ? Number.isInteger(schedule.weekday) &&
+            schedule.weekday >= 0 &&
+            schedule.weekday <= 6
+          : Number.isInteger(schedule.dayOfMonth) &&
+            schedule.dayOfMonth >= 1 &&
+            schedule.dayOfMonth <= 31;
       let validTimezone = true;
-      try {new Intl.DateTimeFormat("en", {timeZone: timezone});} catch {validTimezone = false;}
-      if (!validDay || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) || !timezone || !validTimezone) problems.push("notificationSchedule");
+      try {
+        new Intl.DateTimeFormat("en", { timeZone: timezone });
+      } catch {
+        validTimezone = false;
+      }
+      if (
+        !validDay ||
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) ||
+        !timezone ||
+        !validTimezone
+      )
+        problems.push("notificationSchedule");
       if (
         email.takedownRecipient !== null &&
         !EMAIL.test(email.takedownRecipient)
@@ -1758,7 +1853,9 @@ export function sectionProblems(
         over(home.extra.text, limits.extra) ||
         home.steps.length > limits.steps ||
         home.steps.some(
-          (step) => over(step.title, limits.stepTitle) || over(step.text, limits.stepText),
+          (step) =>
+            over(step.title, limits.stepTitle) ||
+            over(step.text, limits.stepText),
         ) ||
         home.people.length > limits.people ||
         home.people.some(

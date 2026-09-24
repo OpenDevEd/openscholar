@@ -522,6 +522,7 @@ async function runDeploymentCompletion(
     const target = operation.configurationDeploymentTarget ?? {
       applicationId: COOLIFY_APPLICATION_UUID,
       aiProviderKey: { present: false as const },
+      openAlexApiKey: { present: false as const },
       runtimeBindingId: binding._id,
       targetBaseUrl,
       customDomains,

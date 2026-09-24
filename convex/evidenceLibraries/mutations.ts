@@ -8,6 +8,7 @@ import {
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
+import { assertImmutableOpenAlexQueryVersions } from "../../lib/evidence-libraries/configuration/sources";
 import { createInitialEvidenceLibraryShortName } from "../../lib/evidence-libraries/setup/naming";
 import {
   aiProviderIssues,
@@ -21,14 +22,10 @@ import {
   type OwnerSectionRow,
   validateOwnerSections,
 } from "../../lib/evidence-libraries/configuration/owner-rules";
-import {
-  CURRENT_OWNER_CONFIGURATION_VERSION,
-} from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
+import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
-import {
-  requireEvidenceLibraryAccess,
-} from "./access";
+import { requireEvidenceLibraryAccess } from "./access";
 import { nextDraftEditVersion } from "./draftVersion";
 import {
   attachRevisionToSetupOperation,
@@ -74,7 +71,11 @@ import {
   evidenceLibrarySetupIdentityFields,
   sectionRowValidator,
 } from "./validators";
-import { readPublishRuntime, type PublishRuntime } from "./updates";
+import {
+  readPublishRuntime,
+  readRunningContractSupport,
+  type PublishRuntime,
+} from "./updates";
 
 const SETUP_OPERATION_IDEMPOTENCY_KEY = "library-setup";
 
@@ -102,7 +103,12 @@ function toSetupDraftResult(
 
 export async function createEvidenceLibrarySetup(
   ctx: MutationCtx,
-  args: { name: string; slug: string; publicAddress: string; organizationId: Id<"organizations"> },
+  args: {
+    name: string;
+    slug: string;
+    publicAddress: string;
+    organizationId: Id<"organizations">;
+  },
 ) {
   const access = await requireLibraryOrganization(ctx, args.organizationId);
   const name = validateEvidenceLibrarySetupName(args.name);
@@ -176,7 +182,11 @@ export async function createEvidenceLibrarySetup(
   const seededSections: OwnerSectionRow[] = [
     {
       sectionKey: "identity",
-      payload: initialIdentityPayload({ baseUrl: publicAddress, name, shortName }),
+      payload: initialIdentityPayload({
+        baseUrl: publicAddress,
+        name,
+        shortName,
+      }),
     },
     { sectionKey: "localization", payload: initialLocalizationPayload() },
   ];
@@ -318,6 +328,32 @@ export async function saveEvidenceLibraryDraftSections(
     (args.sections.some((section) => section.sectionKey === "features") &&
       storedFeaturesAi !== featuresAi);
   const effectiveAi = effectivePayload("ai");
+  const nextSources = args.sections.find(
+    (section) => section.sectionKey === "sources",
+  )?.payload;
+  if (nextSources !== undefined) {
+    const historicalSources = (
+      await ctx.db
+        .query("evidenceLibraryConfigSections")
+        .withIndex("by_libraryId_and_kind", (query) =>
+          query.eq("libraryId", args.libraryId).eq("kind", "revision"),
+        )
+        .collect()
+    )
+      .filter((section) => section.sectionKey === "sources")
+      .map((section) => section.payload);
+    try {
+      assertImmutableOpenAlexQueryVersions(historicalSources, nextSources);
+    } catch (error) {
+      throw createError(
+        "VALIDATION_ERROR",
+        error instanceof Error
+          ? error.message
+          : "An approved OpenAlex query version cannot be changed",
+        { pointer: "/sources" },
+      );
+    }
+  }
   let modelCatalogReady: boolean | undefined;
   let allowedAiModels: Set<string> | undefined;
   if (validatesAi) {
@@ -328,7 +364,8 @@ export async function saveEvidenceLibraryDraftSections(
         .query("models")
         .withIndex("by_model_id", (q) => q.eq("modelId", modelId))
         .unique();
-      if (model && model.retiredAt === undefined) allowedAiModels.add(model.modelId);
+      if (model && model.retiredAt === undefined)
+        allowedAiModels.add(model.modelId);
     }
   }
   throwFirstIssue(
@@ -721,6 +758,24 @@ export async function activateEvidenceLibraryConfiguration(
       throw createError(
         "CONFLICT",
         "These changes need Evidence Library software that is still being released. Try again in a few minutes.",
+      );
+    }
+    const topicsPayload = persisted.migration.snapshot.sections.find(
+      (row) => row.sectionKey === "topics",
+    )?.payload;
+    const topicsEnabled =
+      typeof topicsPayload === "object" &&
+      topicsPayload !== null &&
+      !Array.isArray(topicsPayload) &&
+      (topicsPayload as { enabled?: unknown }).enabled === true;
+    if (
+      topicsEnabled &&
+      publishRuntime.kind === "current" &&
+      (await readRunningContractSupport(ctx, access.library)) !== true
+    ) {
+      throw createError(
+        "CONFLICT",
+        "Topics need a newer Evidence Library software version. Check for software updates, then activate again.",
       );
     }
   }

@@ -32,7 +32,9 @@ export const libraryCredentialSourceValidator = v.union(
     digest: v.string(),
   }),
 );
-export type LibraryCredentialSource = Infer<typeof libraryCredentialSourceValidator>;
+export type LibraryCredentialSource = Infer<
+  typeof libraryCredentialSourceValidator
+>;
 
 export const organizationStateValidator = v.union(
   v.literal("active"),
@@ -171,13 +173,15 @@ export const ownerConfigurationVersionValidator = v.union(
   v.literal(3),
   v.literal(4),
   v.literal(5),
+  v.literal(6),
 );
 export const draftOwnerConfigurationVersionValidator = v.union(
   v.literal(3),
   v.literal(4),
   v.literal(5),
+  v.literal(6),
 );
-export const currentOwnerConfigurationVersionValidator = v.literal(5);
+export const currentOwnerConfigurationVersionValidator = v.literal(6);
 
 export const evidenceLibraryStateValidator = v.union(
   v.literal("provisioning"),
@@ -740,6 +744,7 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   // The AI key row this configuration was built from, so a Replace or a
   // Remove during the publish is caught before the library goes live.
   aiProviderKey: libraryCredentialSourceValidator,
+  openAlexApiKey: libraryCredentialSourceValidator,
   publicationProviders: v.optional(libraryCredentialSourceValidator),
   runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
   targetBaseUrl: v.string(),

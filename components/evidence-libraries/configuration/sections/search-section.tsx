@@ -153,6 +153,17 @@ export function SearchSection({
       </FieldGroup>
 
       <FieldGroup title={t("filtersHeading")}>
+        <ToggleRow
+          label="Topics"
+          hint="Show topic filters, assignments, statistics, and public topic pages."
+          checked={draft.topics.enabled}
+          onChange={(enabled) =>
+            patch((next) => {
+              next.topics.enabled = enabled;
+              return next;
+            })
+          }
+        />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t("institutionMode")} hint={t("institutionModeHint")}>
             {(id) => (
