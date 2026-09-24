@@ -1548,6 +1548,19 @@
 							"settings": {
 								"type": "object",
 								"properties": {
+									"apiKeyMode": {
+										"default": "platform",
+										"type": "string",
+										"enum": [
+											"platform",
+											"custom"
+										]
+									},
+									"name": {
+										"type": "string",
+										"minLength": 1,
+										"maxLength": 80
+									},
 									"approvedQuery": {
 										"type": "object",
 										"properties": {
@@ -1591,6 +1604,7 @@
 									}
 								},
 								"required": [
+									"name",
 									"approvedQuery"
 								],
 								"additionalProperties": false

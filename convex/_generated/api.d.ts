@@ -62,13 +62,13 @@ import type * as credits_queries from "../credits/queries.js";
 import type * as crons from "../crons.js";
 import type * as debug_papers from "../debug_papers.js";
 import type * as evidenceLibraries_access from "../evidenceLibraries/access.js";
+import type * as evidenceLibraries_activeTopics from "../evidenceLibraries/activeTopics.js";
 import type * as evidenceLibraries_addressActions from "../evidenceLibraries/addressActions.js";
 import type * as evidenceLibraries_addressRecovery from "../evidenceLibraries/addressRecovery.js";
 import type * as evidenceLibraries_adminHandoff from "../evidenceLibraries/adminHandoff.js";
 import type * as evidenceLibraries_adminHandoffActions from "../evidenceLibraries/adminHandoffActions.js";
 import type * as evidenceLibraries_adminLoginCodes from "../evidenceLibraries/adminLoginCodes.js";
 import type * as evidenceLibraries_aiProviderKey from "../evidenceLibraries/aiProviderKey.js";
-import type * as evidenceLibraries_openAlexSourceKey from "../evidenceLibraries/openAlexSourceKey.js";
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
 import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibraries/applicationSetupActions.js";
 import type * as evidenceLibraries_configurationDeployment from "../evidenceLibraries/configurationDeployment.js";
@@ -101,6 +101,7 @@ import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draft
 import type * as evidenceLibraries_invitationActions from "../evidenceLibraries/invitationActions.js";
 import type * as evidenceLibraries_invitations from "../evidenceLibraries/invitations.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
+import type * as evidenceLibraries_openAlexSourceKey from "../evidenceLibraries/openAlexSourceKey.js";
 import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
 import type * as evidenceLibraries_platformMail from "../evidenceLibraries/platformMail.js";
@@ -126,6 +127,7 @@ import type * as evidenceLibraries_sessionAccess from "../evidenceLibraries/sess
 import type * as evidenceLibraries_setupNaming from "../evidenceLibraries/setupNaming.js";
 import type * as evidenceLibraries_setupOperation from "../evidenceLibraries/setupOperation.js";
 import type * as evidenceLibraries_setupRecords from "../evidenceLibraries/setupRecords.js";
+import type * as evidenceLibraries_sourceCredentials from "../evidenceLibraries/sourceCredentials.js";
 import type * as evidenceLibraries_storageSetup from "../evidenceLibraries/storageSetup.js";
 import type * as evidenceLibraries_storageSetupActions from "../evidenceLibraries/storageSetupActions.js";
 import type * as evidenceLibraries_storageSetupClient from "../evidenceLibraries/storageSetupClient.js";
@@ -305,7 +307,6 @@ import type * as zotero_queries from "../zotero/queries.js";
 import type * as zotero_runtimeReadActions from "../zotero/runtimeReadActions.js";
 import type * as zotero_runtimeReadClient from "../zotero/runtimeReadClient.js";
 import type * as zotero_runtimeReads from "../zotero/runtimeReads.js";
-import type * as zotero_sourceCredentials from "../zotero/sourceCredentials.js";
 import type * as zotero_sourceEntry from "../zotero/sourceEntry.js";
 
 import type {
@@ -369,13 +370,13 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   debug_papers: typeof debug_papers;
   "evidenceLibraries/access": typeof evidenceLibraries_access;
+  "evidenceLibraries/activeTopics": typeof evidenceLibraries_activeTopics;
   "evidenceLibraries/addressActions": typeof evidenceLibraries_addressActions;
   "evidenceLibraries/addressRecovery": typeof evidenceLibraries_addressRecovery;
   "evidenceLibraries/adminHandoff": typeof evidenceLibraries_adminHandoff;
   "evidenceLibraries/adminHandoffActions": typeof evidenceLibraries_adminHandoffActions;
   "evidenceLibraries/adminLoginCodes": typeof evidenceLibraries_adminLoginCodes;
   "evidenceLibraries/aiProviderKey": typeof evidenceLibraries_aiProviderKey;
-  "evidenceLibraries/openAlexSourceKey": typeof evidenceLibraries_openAlexSourceKey;
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
   "evidenceLibraries/applicationSetupActions": typeof evidenceLibraries_applicationSetupActions;
   "evidenceLibraries/configurationDeployment": typeof evidenceLibraries_configurationDeployment;
@@ -408,6 +409,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/invitationActions": typeof evidenceLibraries_invitationActions;
   "evidenceLibraries/invitations": typeof evidenceLibraries_invitations;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
+  "evidenceLibraries/openAlexSourceKey": typeof evidenceLibraries_openAlexSourceKey;
   "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
   "evidenceLibraries/platformMail": typeof evidenceLibraries_platformMail;
@@ -433,6 +435,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/setupNaming": typeof evidenceLibraries_setupNaming;
   "evidenceLibraries/setupOperation": typeof evidenceLibraries_setupOperation;
   "evidenceLibraries/setupRecords": typeof evidenceLibraries_setupRecords;
+  "evidenceLibraries/sourceCredentials": typeof evidenceLibraries_sourceCredentials;
   "evidenceLibraries/storageSetup": typeof evidenceLibraries_storageSetup;
   "evidenceLibraries/storageSetupActions": typeof evidenceLibraries_storageSetupActions;
   "evidenceLibraries/storageSetupClient": typeof evidenceLibraries_storageSetupClient;
@@ -612,7 +615,6 @@ declare const fullApi: ApiFromModules<{
   "zotero/runtimeReadActions": typeof zotero_runtimeReadActions;
   "zotero/runtimeReadClient": typeof zotero_runtimeReadClient;
   "zotero/runtimeReads": typeof zotero_runtimeReads;
-  "zotero/sourceCredentials": typeof zotero_sourceCredentials;
   "zotero/sourceEntry": typeof zotero_sourceEntry;
 }>;
 
