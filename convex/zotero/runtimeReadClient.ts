@@ -131,7 +131,9 @@ function readReviewedPublication(
     typeof value.title !== "string" ||
     typeof value.publishedAt !== "string" ||
     Number.isNaN(Date.parse(value.publishedAt)) ||
-    typeof value.reviewer !== "string"
+    typeof value.reviewer !== "string" ||
+    // Older libraries list only what editors approved, without saying so.
+    ("reviewed" in value && typeof value.reviewed !== "boolean")
   ) {
     return null;
   }
@@ -140,7 +142,6 @@ function readReviewedPublication(
     title: value.title,
     publishedAt: value.publishedAt,
     reviewer: value.reviewer,
-    // Older libraries list only what editors approved, without saying so.
     reviewed: typeof value.reviewed === "boolean" ? value.reviewed : true,
   };
 }

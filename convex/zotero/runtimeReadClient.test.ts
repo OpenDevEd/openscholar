@@ -370,10 +370,13 @@ describe("readRuntimeReviewedPublications", () => {
     ).resolves.toEqual({ items: [publication], nextCursor: null });
   });
 
-  it("reports a row without its reviewer as broken", async () => {
-    const { reviewer: _reviewer, ...silent } = publication;
+  const { reviewer: _reviewer, ...silent } = publication;
+  it.each([
+    ["without its reviewer", silent],
+    ["with a reviewed flag that is not true or false", { ...publication, reviewed: null }],
+  ])("reports a row %s as broken", async (_case, row) => {
     const fetchImpl = vi.fn<typeof fetch>(async () =>
-      jsonResponse({ items: [silent], nextCursor: null }),
+      jsonResponse({ items: [row], nextCursor: null }),
     );
     await expect(
       readRuntimeReviewedPublications(fetchImpl, {
