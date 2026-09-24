@@ -6,22 +6,32 @@ import {
   internalQuery,
   query,
   type ActionCtx,
+  type QueryCtx,
 } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
-import { requireEvidenceLibraryAccess } from "./access";
+import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
+import {
+  readEvidenceLibraryAccess,
+  requireEvidenceLibraryAccess,
+} from "./access";
 import { readEvidenceLibraries } from "./queries";
 import { probeEvidenceLibraryAddress } from "./readinessClient";
 import {
   fetchRuntimeRelease,
   isFreshRuntimeRelease,
   RuntimeReleaseError,
+  runtimeIncludesCommit,
 } from "./runtimeReleases";
 import {
   evidenceLibraryAddressStateValidator,
+  runtimeContractSupportValidator,
   runtimeReleaseChangeValidator,
   runtimeReleaseNotesValidator,
 } from "./validators";
+
+const CONTRACT_COMMIT = EVIDENCE_LIBRARY_CONFIG_PROVENANCE.commit;
 
 const runtimeUpdateStateValidator = v.object({
   running: v.string(),
@@ -30,6 +40,7 @@ const runtimeUpdateStateValidator = v.object({
   changes: v.array(runtimeReleaseChangeValidator),
   releases: v.array(runtimeReleaseNotesValidator),
   checkedAt: v.number(),
+  contractSupport: v.optional(runtimeContractSupportValidator),
 });
 
 type RuntimeUpdateState = {
@@ -39,6 +50,7 @@ type RuntimeUpdateState = {
   changes: { sha: string; message: string }[];
   releases: { commit: string; summary: string; notes: string[] }[];
   checkedAt: number;
+  contractSupport?: { commit: string; running: boolean; latest: boolean };
 };
 
 export const readRunningRelease = internalQuery({
@@ -85,6 +97,9 @@ export const readRunningRelease = internalQuery({
               changes: cached.changes,
               releases: cached.releases,
               checkedAt: cached.checkedAt,
+              ...(cached.contractSupport
+                ? { contractSupport: cached.contractSupport }
+                : {}),
             }
           : null,
     };
@@ -102,7 +117,9 @@ export const saveRuntimeRelease = internalMutation({
       .withIndex("by_running", (query) => query.eq("running", args.running))
       .first();
     if (existing) {
-      await ctx.db.patch(existing._id, args);
+      // Replaced whole, so a contract answer never outlives the release it
+      // was about.
+      await ctx.db.replace(existing._id, args);
     } else {
       await ctx.db.insert("evidenceLibraryRuntimeReleases", args);
     }
@@ -138,6 +155,11 @@ async function refreshRuntimeRelease(
     }
     throw error;
   }
+  const contractSupport = await readContractSupport(
+    running,
+    release.latest,
+    token,
+  );
   const state = {
     running,
     latest: release.latest,
@@ -145,6 +167,7 @@ async function refreshRuntimeRelease(
     changes: release.changes,
     releases: release.releases,
     checkedAt: Date.now(),
+    ...(contractSupport ? { contractSupport } : {}),
   };
   await ctx.runMutation(
     internal.evidenceLibraries.updates.saveRuntimeRelease,
@@ -152,6 +175,109 @@ async function refreshRuntimeRelease(
   );
   return state;
 }
+
+/**
+ * Whether the running software, and failing that the latest release, read
+ * OpenScholar's configuration contract. Unknown when GitHub cannot say; the
+ * update check itself still answers.
+ */
+async function readContractSupport(
+  running: string,
+  latest: string,
+  token: string,
+): Promise<RuntimeUpdateState["contractSupport"]> {
+  try {
+    const reads = (runtime: string) =>
+      runtimeIncludesCommit({ runtime, commit: CONTRACT_COMMIT, token });
+    const runningReads = await reads(running);
+    return {
+      commit: CONTRACT_COMMIT,
+      running: runningReads,
+      // Only asked when the running software is too old: it names the release
+      // a publish would move the library to.
+      latest: runningReads || latest === running ? runningReads : await reads(latest),
+    };
+  } catch (error) {
+    if (!(error instanceof RuntimeReleaseError)) throw error;
+    console.error("[evidence-library] contract support check failed", {
+      code: error.code,
+    });
+    return undefined;
+  }
+}
+
+export type PublishRuntime =
+  | { kind: "current" }
+  | { kind: "unreleased" }
+  | {
+      kind: "update";
+      runtimeUpdate: {
+        from: string;
+        to: string;
+        fromImage: string;
+        toImage: string;
+      };
+    };
+
+/**
+ * What a publish needs from the library's software. Software older than
+ * OpenScholar's configuration contract refuses the fields it does not know,
+ * so the publish moves the library to the latest release in the same step.
+ * When the release row has not been checked against this contract, the
+ * publish goes ahead on the software the library runs.
+ */
+export async function readPublishRuntime(
+  ctx: QueryCtx,
+  library: Doc<"evidenceLibraries">,
+): Promise<PublishRuntime> {
+  const binding = library.runtimeBindingId
+    ? await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId)
+    : null;
+  if (
+    !binding ||
+    binding.libraryId !== library._id ||
+    binding.state !== "ready"
+  ) {
+    return { kind: "current" };
+  }
+  const release = await ctx.db
+    .query("evidenceLibraryRuntimeReleases")
+    .withIndex("by_running", (query) =>
+      query.eq("running", binding.runtimeCommit),
+    )
+    .first();
+  const support = release?.contractSupport;
+  if (!release || support?.commit !== CONTRACT_COMMIT || support.running) {
+    return { kind: "current" };
+  }
+  if (!support.latest || release.latest === binding.runtimeCommit) {
+    return { kind: "unreleased" };
+  }
+  return {
+    kind: "update",
+    runtimeUpdate: {
+      from: binding.runtimeCommit,
+      to: release.latest,
+      fromImage: binding.runtimeImage,
+      toImage: release.latestImage,
+    },
+  };
+}
+
+/** For the publish dialog: whether publishing also updates the software. */
+export const publishRuntime = query({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.union(
+    v.literal("current"),
+    v.literal("update"),
+    v.literal("unreleased"),
+  ),
+  handler: async (ctx, args) => {
+    const access = await readEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    if (!access || access.library.state !== "active") return "current";
+    return (await readPublishRuntime(ctx, access.library)).kind;
+  },
+});
 
 export const saveAddressState = internalMutation({
   args: {
@@ -225,10 +351,17 @@ export const check = action({
       internal.evidenceLibraries.updates.checkAddress,
       { address: state.address, bindingId: state.bindingId },
     );
+    // A row checked against another contract, or before contracts were
+    // checked, cannot tell a publish what it needs, so GitHub is asked again.
+    // So is one where no release reads the contract yet: the owner was told
+    // to try again in a few minutes, and the release may be out by then.
+    const support = state.cached?.contractSupport;
     if (
       !args.refresh &&
       state.cached &&
-      isFreshRuntimeRelease(state.cached.checkedAt, Date.now())
+      isFreshRuntimeRelease(state.cached.checkedAt, Date.now()) &&
+      support?.commit === CONTRACT_COMMIT &&
+      (support.running || support.latest)
     ) {
       return state.cached;
     }

@@ -60,6 +60,16 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "home.curation.steps[].type",
+				"values": [
+					"arrival",
+					"check",
+					"publication",
+					"text"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "localization.defaultLocale",
 				"values": [
 					"en-GB",

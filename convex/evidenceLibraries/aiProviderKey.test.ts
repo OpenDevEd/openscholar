@@ -625,6 +625,7 @@ describe("the OpenRouter key", () => {
           [TEST_AI_MODELS[0]]: { name: "GPT-5.6 Luna", company: "OpenAI" },
         },
         aiModelCatalogReady: true,
+        team: [],
       };
       const payload = assembleEvidenceLibraryRuntimePayload(payloadInput);
       expect(payload.runtimeConfig.search).toMatchObject({

@@ -124,6 +124,10 @@ export const runApplicationSetup = internalAction({
         internal.models.queries.resolveEvidenceLibrarySelection,
         { modelIds: selectedAiModelIds(sections.ai) },
       );
+      const team = await ctx.runQuery(
+        internal.evidenceLibraries.queries.readLibraryTeamForAssembly,
+        { libraryId: args.libraryId },
+      );
       const configuration = assembleEvidenceLibraryRuntimePayload({
         assembledAt: Date.now(),
         encryptionKey,
@@ -169,6 +173,7 @@ export const runApplicationSetup = internalAction({
         allowedAiModels: modelCatalog.allowedModelIds,
         aiModelMetadata: modelCatalog.modelMetadata,
         aiModelCatalogReady: modelCatalog.catalogReady,
+        team,
       });
       const application = await reconcileCoolifyApplication({
         coolifyUrl: requireRuntimeEnvironment("EL_COOLIFY_URL", invalidData),

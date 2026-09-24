@@ -15,13 +15,15 @@ import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Every test here renders all fourteen configuration sections and types into
+// Every test here renders all fifteen configuration sections and types into
 // them one key at a time, so a single case can pass five seconds on a busy
 // machine. The whole file still finishes in about thirty seconds.
 vi.setConfig({ testTimeout: 20_000 });
 
 const queryMock = vi.hoisted(() => vi.fn());
 let manualDigestAvailable: boolean | undefined = false;
+// What the platform says a publish needs from the library's software.
+let publishRuntimeAnswer: "current" | "update" | "unreleased" | undefined;
 
 const mutationMock = vi.hoisted(() => vi.fn());
 // The Versions section checks for software updates when the page opens.
@@ -80,7 +82,7 @@ vi.mock("@/convex/_generated/api", () => ({
       teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
       uploads: { generateUploadUrl: "generateUploadUrl" },
       uploadActions: { upload: "upload", remove: "remove" },
-      updates: { check: "check", listAddressNotices: "listAddressNotices" },
+      updates: { check: "check", listAddressNotices: "listAddressNotices", publishRuntime: "publishRuntime" },
       addressActions: { moveLibraryAddress: "moveLibraryAddress" },
       configurationDeployment: {
         retryConfigurationDeployment: "retryConfigurationDeployment",
@@ -112,6 +114,8 @@ vi.mock("@/convex/_generated/api", () => ({
         listLibraryCollections: "listLibraryCollections",
         listRecordInstitutions: "listRecordInstitutions",
         resolveLibraryCollections: "resolveLibraryCollections",
+        listReviewedPublications: "listReviewedPublications",
+        readHomeQuestions: "readHomeQuestions",
       },
     },
     models: {
@@ -129,11 +133,18 @@ let checkAction: (args: unknown) => unknown;
 
 // The page asks the library to name the collections it shows.
 const resolveCollectionsMock = vi.hoisted(() => vi.fn(async () => ({ items: [] })));
+// The Home card asks the library for its own questions and reviewed publications.
+const homeQuestionsMock = vi.hoisted(() =>
+  vi.fn(async () => ({ questions: ["What does the evidence say about literacy?", null, null] })),
+);
+const reviewedPublicationsMock = vi.hoisted(() => vi.fn(async () => ({ items: [], nextCursor: null })));
 
 vi.mock("convex/react", () => ({
   useMutation: (mutation: unknown) => mutationMock(mutation),
   useQuery: (query: unknown) =>
-    query === "listCatalogOptions"
+    query === "publishRuntime"
+      ? publishRuntimeAnswer
+      : query === "listCatalogOptions"
       ? TEST_AI_MODELS.map((modelId, index) => ({
           _id: `display_model_${index}`,
           modelId,
@@ -163,7 +174,11 @@ vi.mock("convex/react", () => ({
       ? checkAction
       : action === "resolveLibraryCollections"
         ? resolveCollectionsMock
-        : mutationMock(action),
+        : action === "readHomeQuestions"
+          ? homeQuestionsMock
+          : action === "listReviewedPublications"
+            ? reviewedPublicationsMock
+            : mutationMock(action),
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
@@ -256,6 +271,7 @@ const savedRows = [
   { sectionKey: "exports", payload: {} },
   { sectionKey: "analytics", payload: {} },
   { sectionKey: "ai", payload: {} },
+  { sectionKey: "home", payload: {} },
 ];
 
 function draftResult(
@@ -357,6 +373,7 @@ describe("<ConfigurationWorkspace>", () => {
     activated = [];
     storedCredentials = [];
     manualDigestAvailable = false;
+    publishRuntimeAnswer = undefined;
     checkAction = () => checkMock();
     queryMock.mockReset();
     mutationMock.mockReset();
@@ -688,6 +705,21 @@ describe("<ConfigurationWorkspace>", () => {
     expect(refusal).toHaveTextContent("This name is already taken.");
   });
 
+  it.each([
+    ["update", true],
+    ["current", false],
+  ] as const)("says when activating also updates the library software: %s", async (answer, mentioned) => {
+    const user = userEvent.setup();
+    publishRuntimeAnswer = answer;
+    await renderWorkspace();
+    await user.type(identityCard().getByLabelText("identity.nameLabel"), " 2");
+    await user.click(screen.getByRole("button", { name: "activate" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("activateBody");
+    if (mentioned) expect(dialog).toHaveTextContent("activateBodySoftware");
+    else expect(dialog).not.toHaveTextContent("activateBodySoftware");
+  });
+
   it("shows a refusal that belongs to no card above the sections", async () => {
     const user = userEvent.setup();
     mutationMock.mockImplementation((reference: unknown) => {
@@ -810,6 +842,31 @@ describe("<ConfigurationWorkspace>", () => {
     );
     expect(saved).toHaveLength(1);
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("checks the software before publishing, and publishes even when the check fails", async () => {
+    const user = userEvent.setup();
+    const order: string[] = [];
+    checkAction = async () => {
+      order.push("check");
+      throw new Error("GitHub cannot be reached");
+    };
+    mutationMock.mockImplementation((reference: unknown) =>
+      reference === "activateConfiguration"
+        ? async () => {
+            order.push("activate");
+            return { editVersion: 6, kind: "publish", revisionKey: "r2", status: "queued" };
+          }
+        : async () => ({ editVersion: 5 }),
+    );
+    await renderWorkspace();
+    await fillField(user, identityCard().getByLabelText("identity.nameLabel"), " again");
+    order.length = 0;
+
+    await user.click(screen.getByRole("button", { name: "activate" }));
+    await user.click(screen.getByRole("button", { name: "activateConfirm" }));
+
+    await waitFor(() => expect(order).toEqual(["check", "activate"]));
   });
 
   it("sends a new library to the setup page after activation", async () => {
@@ -1055,6 +1112,39 @@ describe("<ConfigurationWorkspace>", () => {
         collections: true,
         downloads: false,
       });
+    });
+
+    it("names the publication picker with its field label", async () => {
+      const user = userEvent.setup();
+      await renderWorkspace();
+      await user.click(card("home").getByRole("button", { name: "Add step" }));
+      expect(card("home").getByLabelText("Publication followed").tagName).toBe("BUTTON");
+    });
+
+    it("shows the Home card and writes its switch to the features row", async () => {
+      const user = userEvent.setup();
+      await renderWorkspace();
+      const home = card("home");
+      expect(home.getByText("sections.home")).toBeInTheDocument();
+      expect(home.getByText("sectionState.complete")).toBeInTheDocument();
+      expect(home.getAllByLabelText(/Example question/)[0]).toHaveAttribute(
+        "placeholder",
+        "What does the evidence say about literacy?",
+      );
+      // A slot the library has no question for shows a fallback of its own.
+      const fallback = home.getAllByLabelText(/Example question/)[1]!.getAttribute("placeholder");
+      expect(fallback).toBeTruthy();
+      expect(fallback).not.toBe("What does the evidence say about literacy?");
+
+      await user.click(home.getByRole("switch", { name: "Show a home page" }));
+      expect(home.getByText("sectionState.edited")).toBeInTheDocument();
+      expect(card("features").getByText("sectionState.complete")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "save" }));
+
+      await waitFor(() => expect(saved).toHaveLength(1));
+      const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
+      expect(request.sections.map((row) => row.sectionKey)).toEqual(["features"]);
+      expect(request.sections[0]?.payload).toMatchObject({ homePage: true });
     });
 
     it("asks for an address once a link goes to an external site", async () => {

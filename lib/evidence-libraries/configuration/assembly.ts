@@ -1,3 +1,4 @@
+import { publicName, publicPhoto } from "./home-people";
 import {
   aiProviderIssues,
   type ApplyAiProviderKey,
@@ -44,7 +45,12 @@ export type ManagedEvidenceLibraryConfiguration = {
   // The OpenScholar logo and browser icon set, used when the owner uploads nothing.
   // Undefined means the platform brand is not set up yet.
   brand?: PlatformBrandAssets;
+  // Everyone with a role on the library. The home page names approvers and
+  // shows people from this list.
+  team: readonly TeamMember[];
 };
+
+export type TeamMember = { id: string; name: string; photo?: string };
 
 export type PlatformBrandAssets = {
   logoUrl: string;
@@ -110,6 +116,70 @@ export function fillBrandAssets(
 export function emailWantsPlatformMail(email: unknown): boolean {
   if (!isObject(email)) return false;
   return Boolean(email.contactRecipient) || Boolean(email.takedownRecipient);
+}
+
+// The runtime lists at most 500 people in the directory.
+const HOME_DIRECTORY_MAX = 500;
+
+/** A team member as the home page shows them, or nothing without a usable name; no usable photo means no key. */
+function personFields(member: TeamMember) {
+  const name = publicName(member.name);
+  if (!name) return undefined;
+  const photo = publicPhoto(member.photo);
+  return photo ? { name, photo } : { name };
+}
+
+/**
+ * The owner's home row with the team filled in: the directory the runtime
+ * names approvers from, people refreshed from their accounts, and nobody who
+ * has left the team, as a person shown or as a step's editor.
+ */
+function fillHomeTeam(
+  home: Record<string, unknown>,
+  team: readonly TeamMember[],
+): Record<string, unknown> {
+  // Only people the page can name: a member without a usable name is on neither list.
+  const shown = team.flatMap((member) => {
+    const fields = personFields(member);
+    return fields ? [{ id: member.id, ...fields }] : [];
+  });
+  const members = new Map(shown.map((member) => [member.id, member]));
+  // The steps' editors go first, so a capped directory still names them.
+  const editors = new Set(
+    isObject(home.curation) && Array.isArray(home.curation.steps)
+      ? home.curation.steps.flatMap((step) =>
+          isObject(step) && typeof step.editor === "string" ? [step.editor] : [],
+        )
+      : [],
+  );
+  const filled: Record<string, unknown> = {
+    ...home,
+    directory: [
+      ...shown.filter((member) => editors.has(member.id)),
+      ...shown.filter((member) => !editors.has(member.id)),
+    ].slice(0, HOME_DIRECTORY_MAX),
+  };
+  if (Array.isArray(home.people)) {
+    filled.people = home.people.flatMap((person) => {
+      const member = isObject(person) && members.get(person.id as string);
+      if (!member) return [];
+      const { photo: _stale, ...rest } = person;
+      const { id: _id, ...fields } = member;
+      return [{ ...rest, ...fields }];
+    });
+  }
+  if (isObject(home.curation) && Array.isArray(home.curation.steps)) {
+    filled.curation = {
+      ...home.curation,
+      steps: home.curation.steps.map((step) => {
+        if (!isObject(step) || step.editor === undefined) return step;
+        if (members.has(step.editor as string)) return step;
+        const { editor: _gone, ...rest } = step;
+        return rest;
+      }),
+    };
+  }
+  return filled;
 }
 
 export type OwnerSections = Partial<Record<SectionKey, unknown>>;
@@ -257,6 +327,10 @@ export function assembleEvidenceLibraryConfiguration({
       ...owner,
       identity,
       email,
+      // The home row is the owner's; who is on the team is the platform's.
+      ...(isObject(owner.home)
+        ? { home: fillHomeTeam(owner.home, managed.team) }
+        : {}),
       services: {
         // Every managed runtime has this private Compose service.
         redis: { url: "redis://evidence-library-redis:6379" },

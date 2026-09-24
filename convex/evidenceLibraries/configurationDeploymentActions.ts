@@ -251,6 +251,10 @@ export const runConfigurationDeployment = internalAction({
           internal.models.queries.resolveEvidenceLibrarySelection,
           { modelIds: selectedAiModelIds(sections.ai) },
         );
+        const team = await ctx.runQuery(
+          internal.evidenceLibraries.queries.readLibraryTeamForAssembly,
+          { libraryId: args.libraryId },
+        );
         // After a rollback the runtime's clock decides what counts as newer.
         const liveOrigin = new URL(prepared.continuity.liveOrigin).origin;
         const rolledBackTo = prepared.rolledBack
@@ -294,6 +298,7 @@ export const runConfigurationDeployment = internalAction({
           allowedAiModels: modelCatalog.allowedModelIds,
           aiModelMetadata: modelCatalog.modelMetadata,
           aiModelCatalogReady: modelCatalog.catalogReady,
+          team,
         });
         target = await ctx.runMutation(
           internal.evidenceLibraries.configurationDeployment

@@ -76,6 +76,7 @@ const savedRows = [
   { sectionKey: "exports", payload: {} },
   { sectionKey: "analytics", payload: {} },
   { sectionKey: "ai", payload: {} },
+  { sectionKey: "home", payload: {} },
 ] as const;
 
 function savedDraft() {
@@ -616,6 +617,18 @@ describe("changedSectionRows for the content sections", () => {
       downloads: false,
     });
     expect(sectionState(draft, contentRows, "navigation")).toBe("edited");
+  });
+
+  it("writes the home page switch only when it is on", () => {
+    const draft = readDraft(contentRows);
+    draft.features.navbarSearch = true;
+    const [off] = changedSectionRows(draft, contentRows);
+    // Off is the default; older backends and library software refuse the key.
+    expect(off?.payload).not.toHaveProperty("homePage");
+
+    draft.features.homePage = true;
+    const [on] = changedSectionRows(draft, contentRows);
+    expect(on?.payload).toMatchObject({ homePage: true });
   });
 
   it("writes links with runtime hrefs and dropdown children", () => {
@@ -1473,5 +1486,140 @@ describe("notification configuration", () => {
     draft.notifications.schedule.timezone = "Not/AZone";
     expect(sectionProblems(draft, "contact")).toContain("notificationSchedule");
     expect(hasProblems(draft)).toBe(true);
+  });
+});
+
+describe("home page", () => {
+  const homeRow = {
+    sectionKey: "home",
+    payload: {
+      intro: "What the library is **for**.",
+      curation: {
+        text: "Every entry is checked.",
+        steps: [
+          { type: "arrival", title: "Submitted" },
+          { type: "check", editor: "user_ada" },
+          { type: "text", title: "Read", text: "We read it." },
+        ],
+      },
+      team: "A small team.",
+      people: [
+        {
+          id: "user_ada",
+          name: "Ada Lovelace",
+          photo: "https://img.example.test/ada.png",
+          title: "Editor",
+        },
+      ],
+      questions: ["", "What works?"],
+      followed: "ABCD1234",
+      involvement: { suggestions: false, editors: true },
+      extra: { text: "Free to read." },
+      headings: { team: "Who we are" },
+    },
+  } as const;
+  const rows = [...savedRows.filter((row) => row.sectionKey !== "home"), homeRow];
+
+  it("writes no home row until the owner answers something", () => {
+    const withoutHome = savedRows.filter((row) => row.sectionKey !== "home");
+    const draft = readDraft(withoutHome);
+    expect(changedSectionRows(draft, withoutHome)).toEqual([]);
+    expect(sectionState(draft, withoutHome, "home")).toBe("complete");
+    draft.home.intro = "Research on literacy.";
+    expect(changedSectionRows(draft, withoutHome).map((row) => row.sectionKey)).toEqual(["home"]);
+  });
+
+  it("starts empty with the schema's involvement defaults when there is no row", () => {
+    const draft = readDraft(savedRows.filter((row) => row.sectionKey !== "home"));
+    expect(draft.home).toEqual({
+      intro: "",
+      statement: "",
+      steps: [],
+      team: "",
+      people: [],
+      questions: ["", "", ""],
+      followed: "",
+      involvement: { suggestions: true, editors: false },
+      extra: { title: "", text: "" },
+      headings: { curation: "", team: "", involvement: "" },
+    });
+    expect(draft.features.homePage).toBe(false);
+  });
+
+  it("reads a saved row back to the same payload", () => {
+    const draft = readDraft(rows);
+    expect(draft.home.steps.map((step) => step.editor)).toEqual(["", "user_ada", ""]);
+    expect(draft.home.questions).toEqual(["", "What works?", ""]);
+    expect(changedSectionRows(draft, rows)).toEqual([]);
+    expect(sectionState(draft, rows, "home")).toBe("complete");
+    draft.home.intro = "Changed.";
+    expect(changedSectionRows(draft, rows)).toEqual([
+      { sectionKey: "home", payload: { ...homeRow.payload, intro: "Changed." } },
+    ]);
+  });
+
+  it("leaves blank values out, keeps inner blank questions and never writes a directory", () => {
+    const draft = readDraft(rows);
+    draft.home = {
+      ...draft.home,
+      intro: " ",
+      statement: "",
+      team: "",
+      steps: [{ id: "st_1", type: "check", title: "", text: "", editor: "" }],
+      people: [{ id: "user_ada", name: "Ada", photo: "", title: "", location: "" }],
+      questions: ["", "What works?", " "],
+      followed: "",
+      extra: { title: " ", text: " " },
+      headings: { curation: "", team: "", involvement: "" },
+    };
+    const [row] = changedSectionRows(draft, rows);
+    expect(row).toEqual({
+      sectionKey: "home",
+      payload: {
+        curation: { steps: [{ type: "check" }] },
+        people: [{ id: "user_ada", name: "Ada" }],
+        questions: ["", "What works?"],
+        involvement: { suggestions: false, editors: true },
+        headings: {},
+      },
+    });
+    expect(
+      validateOwnerSections([{ sectionKey: "home", payload: row!.payload }]).issues,
+    ).toEqual([]);
+  });
+
+  it("keeps a closing heading without its text and asks for the text", () => {
+    const draft = readDraft(rows);
+    draft.home.extra = { title: "Reuse", text: " " };
+    const [row] = changedSectionRows(draft, rows).filter((entry) => entry.sectionKey === "home");
+    expect(row?.payload).toMatchObject({ extra: { title: "Reuse" } });
+    expect(
+      validateOwnerSections([{ sectionKey: "home", payload: row!.payload }]).issues,
+    ).toEqual([
+      expect.objectContaining({
+        pointer: "/home/extra/text",
+        message: "Write the licence and reuse text, or clear its heading.",
+      }),
+    ]);
+  });
+
+  it("owns the home page switch and flags a text step without a name", () => {
+    const draft = readDraft(rows);
+    draft.features.homePage = true;
+    expect(sectionState(draft, rows, "home")).toBe("edited");
+    expect(sectionState(draft, rows, "features")).toBe("complete");
+    expect(changedSectionRows(draft, rows).map((row) => row.sectionKey)).toEqual(["features"]);
+    expect(cardForRow("home")).toBe("home");
+    expect(cardForRow("features")).toBe("features");
+
+    draft.home.steps[2]!.title = " ";
+    expect(sectionProblems(draft, "home")).toEqual(["homeStepName"]);
+    draft.home.intro = "x".repeat(SCHEMA_LIMITS.home.intro + 1);
+    expect(sectionProblems(draft, "home")).toEqual(["homeStepName", "homeLimit"]);
+
+    const reset = resetSection(draft, rows, "home");
+    expect(reset.features.homePage).toBe(false);
+    expect(reset.home.intro).toBe(homeRow.payload.intro);
+    expect(sectionProblems(reset, "home")).toEqual([]);
   });
 });

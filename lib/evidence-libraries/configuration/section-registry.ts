@@ -206,6 +206,13 @@ export const SECTION_REGISTRY = [
     description: "Catalog-backed processing rules.",
     authority: "catalogDerived",
   },
+  {
+    key: "home",
+    pointer: "/home",
+    label: "Home page",
+    description: "The page visitors land on and who runs the library.",
+    authority: "ownerEdited",
+  },
 ] as const satisfies readonly SectionDefinition[];
 
 export type SectionKey = (typeof SECTION_REGISTRY)[number]["key"];

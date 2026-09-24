@@ -2207,6 +2207,7 @@
     "activateDraftConfirm": "Start setup",
     "activateTitle": "Activate this version?",
     "activateBody": "This publishes the new version. Takes about 2 minutes.",
+    "activateBodySoftware": "It also updates the library to the latest Evidence Library software, which these settings need, so it can take a few minutes longer.",
     "activateBodyUnsaved": "Your unsaved changes will be saved first.",
     "activateConfirm": "Activate",
     "activationStarted": "Activation started",
@@ -2226,6 +2227,7 @@
       "platform": "Platform"
     },
     "sections": {
+      "home": "Home page",
       "identity": "Identity",
       "theme": "Theme",
       "institutions": "Institutions",
@@ -2298,7 +2300,9 @@
       "consentVersion": "The consent version is a whole number, 1 or higher.",
       "aiKey": "Add your OpenRouter key.",
       "aiModel": "Choose the model that answers questions.",
-      "aiModelUnknown": "That model is not one your library software offers. Choose another."
+      "aiModelUnknown": "That model is not one your library software offers. Choose another.",
+      "homeStepName": "请为每个纯文本步骤填写名称。",
+      "homeLimit": "首页的某些文字超出了长度限制，或某个列表的条目过多。请缩短。"
     },
     "fields": {
       "optional": "optional",

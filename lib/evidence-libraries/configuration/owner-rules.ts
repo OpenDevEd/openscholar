@@ -93,6 +93,36 @@ function ownerRuleIssues(
       message: "The mail server is set by the platform and cannot be saved.",
     });
   }
+  // The directory names everyone on the team. The platform fills it from the
+  // team at assembly, so an owner row never carries one.
+  if (
+    sectionKey === "home" &&
+    record?.directory !== undefined &&
+    !(Array.isArray(record.directory) && record.directory.length === 0)
+  ) {
+    issues.push({
+      pointer: "/home/directory",
+      section: "home",
+      keyword: "platformValue",
+      message: "The team directory is set by the platform and cannot be saved.",
+    });
+  }
+  // The runtime's one rule the schema cannot state: a text-only step is only
+  // its name and words, so it needs a name.
+  const steps = sectionKey === "home" ? objectValue(record?.curation)?.steps : undefined;
+  if (Array.isArray(steps)) {
+    steps.forEach((entry, index) => {
+      const step = objectValue(entry);
+      if (step?.type === "text" && !(typeof step.title === "string" && step.title.trim())) {
+        issues.push({
+          pointer: `/home/curation/steps/${index}/title`,
+          section: "home",
+          keyword: "required",
+          message: "A text-only step needs a name.",
+        });
+      }
+    });
+  }
   // The platform decides these two switches and the search embedder. A saved
   // row must not carry them, or a stale value would sit in the draft while
   // the library runs on something else.
@@ -144,15 +174,25 @@ function ownerRuleIssues(
   return issues;
 }
 
+/** Schema messages an owner could not place on the card, said in the card's words. */
+const OWNER_WORDING: Record<string, string> = {
+  "/home/extra/text": "Write the licence and reuse text, or clear its heading.",
+};
+
+function ownerWording(issue: ValidationIssue): ValidationIssue {
+  const message = issue.keyword === "required" ? OWNER_WORDING[issue.pointer] : undefined;
+  return message ? { ...issue, message } : issue;
+}
+
 export function validateOwnerSection(
   sectionKey: SectionKey,
   payload: unknown,
   options: OwnerRuleOptions = {},
 ): { valid: boolean; issues: ValidationIssue[] } {
   const issues = [
-    ...validateSectionStructure(sectionKey, payload).issues.filter(
-      (issue) => !isMissingPlatformValue(issue),
-    ),
+    ...validateSectionStructure(sectionKey, payload).issues
+      .filter((issue) => !isMissingPlatformValue(issue))
+      .map(ownerWording),
     ...ownerRuleIssues(sectionKey, payload, options),
   ];
   return { valid: issues.length === 0, issues };

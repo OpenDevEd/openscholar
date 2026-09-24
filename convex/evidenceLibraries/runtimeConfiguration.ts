@@ -10,6 +10,7 @@ import {
   type OwnerSections,
   type PlatformBrandAssets,
   type PlatformMailService,
+  type TeamMember,
 } from "../../lib/evidence-libraries/configuration/assembly";
 import type { Id } from "../_generated/dataModel";
 import { decrypt } from "../lib/crypto";
@@ -69,6 +70,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
   allowedAiModels: readonly string[];
   aiModelMetadata: Record<string, { name: string; company: string }>;
   aiModelCatalogReady: boolean;
+  team: readonly TeamMember[];
 }): {
   runtimeConfig: AssembledEvidenceLibraryConfiguration;
   runtimeConfigJson: string;
@@ -118,6 +120,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       mail: input.mail,
       brand: input.brand,
       embeddingApiKey: input.embeddingApiKey,
+      team: input.team,
       publication: input.publicationProviders ? buildPublicationConfiguration(input.publicationProviders.settings, JSON.parse(decrypt(input.publicationProviders.encryptedCredentials, input.encryptionKey))) : undefined,
     },
     // Each Zotero source gets its group's key here and nowhere earlier.

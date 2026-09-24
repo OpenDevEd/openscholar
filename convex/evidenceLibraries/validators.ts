@@ -502,6 +502,17 @@ export const runtimeReleaseNotesValidator = v.object({
 
 // The newest Evidence Library software commit, checked against GitHub and
 // kept for ten minutes. One row per running commit.
+/**
+ * Whether the running software and the latest release read the configuration
+ * contract OpenScholar is pinned to (`commit`). Rows checked against another
+ * contract say nothing about this one.
+ */
+export const runtimeContractSupportValidator = v.object({
+  commit: v.string(),
+  running: v.boolean(),
+  latest: v.boolean(),
+});
+
 export const evidenceLibraryRuntimeReleaseFields = {
   running: v.string(),
   latest: v.string(),
@@ -511,6 +522,7 @@ export const evidenceLibraryRuntimeReleaseFields = {
   // them as stale and asks GitHub again.
   releases: v.optional(v.array(runtimeReleaseNotesValidator)),
   checkedAt: v.number(),
+  contractSupport: v.optional(runtimeContractSupportValidator),
 };
 
 export const evidenceLibraryCredentialFields = {

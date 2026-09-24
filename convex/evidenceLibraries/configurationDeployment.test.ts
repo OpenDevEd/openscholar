@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { encrypt } from "../lib/crypto";
 import { TEST_AI_MODELS } from "../../lib/evidence-libraries/configuration/test-models";
+import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import {
   AI_PROVIDER,
   AI_PROVIDER_CREDENTIAL_KEY,
@@ -517,9 +518,30 @@ async function readMoveOperation(
 
 async function activateChangedConfiguration(
   suffix: string,
-  options: { canonicalBaseUrl?: string } = {},
+  options: {
+    canonicalBaseUrl?: string;
+    // What the last update check found about OpenScholar's contract.
+    contractSupport?: { running: boolean; latest: boolean };
+  } = {},
 ) {
   const fixture = await createReadyLibrary(suffix);
+  if (options.contractSupport) {
+    const contractSupport = {
+      commit: EVIDENCE_LIBRARY_CONFIG_PROVENANCE.commit,
+      ...options.contractSupport,
+    };
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: NEWER_COMMIT,
+        latestImage: NEWER_RUNTIME_IMAGE,
+        changes: [{ sha: NEWER_COMMIT, message: "feat: home page" }],
+        releases: [],
+        checkedAt: Date.now(),
+        contractSupport,
+      });
+    });
+  }
   if (options.canonicalBaseUrl) {
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(fixture.created.runtimeBindingId, {
@@ -1606,6 +1628,124 @@ describe("Evidence Library configuration deployment", () => {
       status: "succeeded",
       receipt: { runtimeCommit: NEWER_COMMIT },
     });
+  });
+
+  it("publishes changes the running software cannot read on the latest release, in the same step", async () => {
+    const { activated, fixture, attemptToken, attemptCount } =
+      await activateChangedConfiguration("publish-with-update", {
+        contractSupport: { running: false, latest: true },
+      });
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(activated.operationId),
+    );
+    expect(operation).toMatchObject({
+      kind: "publish",
+      revisionId: activated.revisionId,
+      activationEditVersion: expect.any(Number),
+      runtimeUpdate: {
+        from: RUNTIME_COMMIT,
+        to: NEWER_COMMIT,
+        fromImage: TEST_RUNTIME_IMAGE,
+        toImage: NEWER_RUNTIME_IMAGE,
+      },
+    });
+
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    const actionArgs = {
+      libraryId: fixture.created.libraryId,
+      operationId: activated.operationId,
+      attemptToken,
+      attemptCount,
+    };
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).toEqual({ pollCount: 1, status: "running" });
+    expect(network.commit).toBe(NEWER_COMMIT);
+    expect(
+      JSON.parse(
+        network.environments.find(({ key }) => key === "LIBRARY_CONFIG_JSON")!
+          .value,
+      ),
+    ).toMatchObject({ revision: activated.revisionKey });
+
+    network.finishDeployment();
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).toEqual({ status: "succeeded" });
+    const completed = await fixture.t.run(async (ctx) => ({
+      library: await ctx.db.get(fixture.created.libraryId),
+      binding: await ctx.db.get(fixture.created.runtimeBindingId),
+    }));
+    expect(completed.binding).toMatchObject({
+      runtimeCommit: NEWER_COMMIT,
+      previousRuntime: { commit: RUNTIME_COMMIT },
+    });
+    expect(completed.library).toMatchObject({
+      activeRevisionId: activated.revisionId,
+    });
+    // The earlier software could not read these settings, so it is not put back under them.
+    await expect(
+      fixture.t.mutation(internal.evidenceLibraries.versions.startRuntimeRollback, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).rejects.toThrow(/live settings need the current software/);
+
+    // Once the settings from before that publish are restored, the earlier
+    // software can take them again.
+    await fixture.t.run(async (ctx) => {
+      const published = (await ctx.db.get(activated.revisionId))!;
+      const original = await ctx.db
+        .query("evidenceLibraryConfigRevisions")
+        .withIndex("by_libraryId_and_revisionNumber", (query) =>
+          query.eq("libraryId", fixture.created.libraryId),
+        )
+        .first();
+      const { _id, _creationTime, ...fields } = published;
+      const restore = await ctx.db.insert("evidenceLibraryConfigRevisions", {
+        ...fields,
+        revisionKey: `r${published.revisionNumber + 1}`,
+        revisionNumber: published.revisionNumber + 1,
+        rollbackOfRevisionId: original!._id,
+      });
+      await ctx.db.patch(fixture.created.libraryId, { activeRevisionId: restore });
+    });
+    await expect(
+      fixture.t.mutation(internal.evidenceLibraries.versions.startRuntimeRollback, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toMatchObject({ from: NEWER_COMMIT, to: RUNTIME_COMMIT });
+  });
+
+  it("publishes on the running software when it already reads the contract", async () => {
+    const { activated, fixture } = await activateChangedConfiguration(
+      "publish-current-software",
+      { contractSupport: { running: true, latest: true } },
+    );
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(activated.operationId),
+    );
+    expect(operation).not.toHaveProperty("runtimeUpdate");
+  });
+
+  it("refuses to publish while no release reads the contract yet", async () => {
+    await expect(
+      activateChangedConfiguration("publish-unreleased-software", {
+        contractSupport: { running: false, latest: false },
+      }),
+    ).rejects.toThrow(/still being released/);
   });
 
   it("continues from the exact target of this library's failed software update", async () => {
