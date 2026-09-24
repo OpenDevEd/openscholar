@@ -31,6 +31,7 @@ interface SearchCommandHeaderProps {
   onDownloadAllEssentialJSON?: () => void;
   onDownloadAllEssentialCSV?: () => void;
   isLoading?: boolean;
+  queryOnly?: boolean;
 }
 
 export function SearchCommandHeader({
@@ -41,6 +42,7 @@ export function SearchCommandHeader({
   onDownloadAllEssentialJSON,
   onDownloadAllEssentialCSV,
   isLoading,
+  queryOnly = false,
 }: SearchCommandHeaderProps) {
   const tc = useTranslations("common");
   const td = useTranslations("downloads");
@@ -84,7 +86,7 @@ export function SearchCommandHeader({
         {!isMobile && <ViewModeToggleCompact />}
 
         {/* Download dropdown */}
-        {hasDownloadHandlers && (
+        {hasDownloadHandlers && !queryOnly && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -121,25 +123,27 @@ export function SearchCommandHeader({
         )}
 
         {/* Share button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleCopyShareLink}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            >
-              {isCopied ? (
-                <Check className="h-4 w-4 text-green-500" />
-              ) : (
-                <Share2 className="h-4 w-4" />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{isCopied ? tsc("copied") : tsc("copyShareLink")}</p>
-          </TooltipContent>
-        </Tooltip>
+        {!queryOnly && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCopyShareLink}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              >
+                {isCopied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Share2 className="h-4 w-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{isCopied ? tsc("copied") : tsc("copyShareLink")}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     </div>
   );

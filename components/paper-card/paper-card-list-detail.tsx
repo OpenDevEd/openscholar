@@ -49,6 +49,7 @@ export function PaperCardListDetail({
   resultIndex,
   onDownloadItem,
   onDownloadEssentialItem,
+  hide,
 }: PaperCardProps) {
   const tp = useTranslations("paperCard");
   const tc = useTranslations("common");
@@ -97,6 +98,7 @@ export function PaperCardListDetail({
   } = useTranslate(result);
 
   const isExpanded = expandedAbstracts[result.id];
+  const TitleContainer = hide?.focusMode ? "div" : "button";
 
   return (
     <CardContainer className="overflow-hidden">
@@ -143,9 +145,9 @@ export function PaperCardListDetail({
           )}
 
           {/* Title Button */}
-          <button
-            onClick={handlePaperOpened}
-            className="text-left w-full group/title"
+          <TitleContainer
+            onClick={hide?.focusMode ? undefined : handlePaperOpened}
+            className={cn("text-left w-full", !hide?.focusMode && "group/title")}
           >
             <h3 className="font-semibold text-lg leading-snug text-wrap-anywhere group-hover/title:text-primary transition-colors">
               {showTranslated && translatedContent
@@ -155,7 +157,7 @@ export function PaperCardListDetail({
                 ({result.publication_year})
               </span>
             </h3>
-          </button>
+          </TitleContainer>
         </div>
 
         {/* Authors */}
@@ -336,20 +338,24 @@ export function PaperCardListDetail({
           /* Mobile Layout */
           <div className="space-y-3 pt-3 border-t border-border/50">
             <div className="flex items-center justify-between">
-              <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+              {!hide?.rating && (
+                <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+              )}
               <div className="flex items-center gap-2">
                 <CitationControl paper={result} />
-                <DownloadMenu
-                  variant="icon"
-                  onDownloadJSON={() => onDownloadItem(result, "json")}
-                  onDownloadCSV={() => onDownloadItem(result, "csv")}
-                  onDownloadEssentialJSON={() =>
-                    onDownloadEssentialItem(result, "json")
-                  }
-                  onDownloadEssentialCSV={() =>
-                    onDownloadEssentialItem(result, "csv")
-                  }
-                />
+                {!hide?.download && (
+                  <DownloadMenu
+                    variant="icon"
+                    onDownloadJSON={() => onDownloadItem(result, "json")}
+                    onDownloadCSV={() => onDownloadItem(result, "csv")}
+                    onDownloadEssentialJSON={() =>
+                      onDownloadEssentialItem(result, "json")
+                    }
+                    onDownloadEssentialCSV={() =>
+                      onDownloadEssentialItem(result, "csv")
+                    }
+                  />
+                )}
                 <OpenAccessBadge
                   isOA={result.open_access?.is_oa}
                   oaUrl={result.open_access?.oa_url}
@@ -407,7 +413,9 @@ export function PaperCardListDetail({
           /* Desktop Layout */
           <div className="flex items-center justify-between gap-4 flex-wrap pt-3 border-t border-border/50">
             <div className="flex items-center gap-3">
-              <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+              {!hide?.rating && (
+                <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -417,17 +425,19 @@ export function PaperCardListDetail({
               />
               <DOIBadge doi={result.doi} />
               <CitationControl paper={result} />
-              <DownloadMenu
-                variant="icon"
-                onDownloadJSON={() => onDownloadItem(result, "json")}
-                onDownloadCSV={() => onDownloadItem(result, "csv")}
-                onDownloadEssentialJSON={() =>
-                  onDownloadEssentialItem(result, "json")
-                }
-                onDownloadEssentialCSV={() =>
-                  onDownloadEssentialItem(result, "csv")
-                }
-              />
+              {!hide?.download && (
+                <DownloadMenu
+                  variant="icon"
+                  onDownloadJSON={() => onDownloadItem(result, "json")}
+                  onDownloadCSV={() => onDownloadItem(result, "csv")}
+                  onDownloadEssentialJSON={() =>
+                    onDownloadEssentialItem(result, "json")
+                  }
+                  onDownloadEssentialCSV={() =>
+                    onDownloadEssentialItem(result, "csv")
+                  }
+                />
+              )}
             </div>
 
             {/* Citation buttons bar */}

@@ -44,3 +44,38 @@ describe("createSearchParameters — wildcard field routing", () => {
     });
   });
 });
+
+describe("createSearchParameters source filters", () => {
+  it("retains query, date and institution filters alongside nested source filters", () => {
+    const params = createSearchParameters("education", {
+      ...baseFilters,
+      yearRange: [2020, 2025],
+      selectedRegions: ["GB"],
+      extraApiFilters: {
+        topics: { subfield: { id: "3304" } },
+        open_access: { is_oa: true },
+        sustainable_development_goals: { id: "4" },
+      },
+    });
+
+    expect(params.filter).toEqual({
+      title_and_abstract: { search: "education" },
+      from_publication_date: "2020-01-01",
+      to_publication_date: "2025-12-31",
+      authorships: { countries: "GB" },
+      topics: { subfield: { id: "3304" } },
+      open_access: { is_oa: true },
+      sustainable_development_goals: { id: "4" },
+    });
+  });
+  it("supports an empty query scoped only by source filters", () => {
+    const params = createSearchParameters("", {
+      ...baseFilters,
+      extraApiFilters: { topics: { id: "T10001" } },
+    });
+
+    expect(params.filter).toEqual({ topics: { id: "T10001" } });
+    expect(params.search).toBeUndefined();
+  });
+
+});

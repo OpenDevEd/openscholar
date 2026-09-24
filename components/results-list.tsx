@@ -26,6 +26,7 @@ import {
 } from "@/lib/store";
 import { ViewMode, type PaperResult } from "@/lib/types";
 import { PaperCard } from "./paper-card";
+import type { PaperCardHide } from "./paper-card/shared";
 import { useSearch } from "@/lib/search";
 import { SearchCommandCenter } from "./search-command-center";
 
@@ -56,6 +57,7 @@ interface PapersListProps {
   onPageChange: (page: number) => void;
   resultsContainerRef: React.RefObject<HTMLDivElement | null>;
   viewMode: ViewMode;
+  hide?: PaperCardHide;
 }
 
 interface ResultsListProps {
@@ -71,6 +73,12 @@ interface ResultsListProps {
   isValidating?: boolean;
   currentQuery?: string;
   onBackToHome?: () => void;
+  /**
+   * Shows what a search finds without acting on it: no screening, results
+   * translation, focus mode, ratings or downloads. Used where a search is
+   * being set up, such as an Evidence Library import.
+   */
+  preview?: boolean;
 }
 
 function PapersGrid({
@@ -84,6 +92,7 @@ function PapersGrid({
   onPageChange,
   resultsContainerRef,
   viewMode,
+  hide,
 }: PapersListProps) {
   const gridClasses = {
     "list-simple": "flex flex-col gap-2",
@@ -107,6 +116,7 @@ function PapersGrid({
               onDownloadItem={onDownloadItem}
               onDownloadEssentialItem={onDownloadEssentialItem}
               viewMode={viewMode}
+              hide={hide}
             />
           );
         })}
@@ -243,6 +253,7 @@ export function ResultsList({
   isValidating = false,
   currentQuery,
   onBackToHome,
+  preview = false,
 }: ResultsListProps) {
   // Use the new search context
   const search = useSearch();
@@ -298,7 +309,7 @@ export function ResultsList({
   }, []);
 
   // Get the current search ID from the URL
-  const searchId = getEffectiveSearchId(pathname, undefined);
+  const searchId = getEffectiveSearchId(pathname, search.searchId || undefined);
 
   // Get the current search result
   const currentSearchResult = useSearchHistoryStore((state) =>
@@ -322,7 +333,7 @@ export function ResultsList({
   // Filter results based on rating filter
   const filteredResults = results.filter((result) => {
     // Rating filter
-    if (isRatingFilterActive(ratingRange, onlyRatedPapers)) {
+    if (!preview && isRatingFilterActive(ratingRange, onlyRatedPapers)) {
       const paperRating = ratings[result.id];
 
       if (paperRating === undefined) {
@@ -418,7 +429,7 @@ export function ResultsList({
     papers: papersForBatchScreening,
     missingResponses,
     questionSetKey,
-    canStart: canStartScreening && !!searchId && isScreeningPanelOpen,
+    canStart: !preview && canStartScreening && !!searchId && isScreeningPanelOpen,
     onResults: handleBatchResults,
   });
 
@@ -439,7 +450,7 @@ export function ResultsList({
   } = useBatchTranslation({
     searchId: searchId || "",
     papers: papersForBatchTranslation,
-    canStart: !!searchId,
+    canStart: !preview && !!searchId,
     isSearchLoading: isLoading || isValidating,
     autoTranslateResults,
     manualRunRequestId,
@@ -487,13 +498,13 @@ export function ResultsList({
         setScreeningResponses: (paperId, responses) => {
           setScreeningResponses(searchId || "", paperId, responses);
         },
-        canStartScreening,
-        isScreeningPanelOpen,
+        canStartScreening: canStartScreening && !preview,
+        isScreeningPanelOpen: isScreeningPanelOpen && !preview,
       }}
     >
       <FocusMode
         key={isFocusModeOpen ? "open" : "closed"}
-        isOpen={isFocusModeOpen}
+        isOpen={isFocusModeOpen && !preview}
         onClose={() => useUIStore.getState().setIsFocusModeOpen(false)}
         papers={filteredResults}
         onDownloadItem={onDownloadItem}
@@ -512,6 +523,7 @@ export function ResultsList({
             onDownloadAllCSV={onDownloadAllCSV}
             onDownloadAllEssentialJSON={onDownloadAllEssentialJSON}
             onDownloadAllEssentialCSV={onDownloadAllEssentialCSV}
+            queryOnly={preview}
           />
         </div>
 
@@ -594,6 +606,7 @@ export function ResultsList({
                   onPageChange={handlePageChange}
                   resultsContainerRef={resultsContainerRef}
                   viewMode={effectiveViewMode}
+                  hide={preview ? { rating: true, download: true, focusMode: true } : undefined}
                 />
               )}
             </>

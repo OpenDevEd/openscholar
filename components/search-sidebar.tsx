@@ -430,6 +430,10 @@ interface SidebarContentProps {
   isCitedByActive: boolean;
   isRelatedToActive: boolean;
   onClearAllFilters: () => void;
+  /** Panels to leave out where they cannot apply, such as an import. */
+  hidePanels?: readonly ("rating" | "sort")[];
+  /** Extra panels, shown after the scope and review filters. */
+  children?: React.ReactNode;
 }
 
 export const SidebarContent = React.memo(function SidebarContent({
@@ -440,6 +444,8 @@ export const SidebarContent = React.memo(function SidebarContent({
   isCitedByActive,
   isRelatedToActive,
   onClearAllFilters,
+  hidePanels = [],
+  children,
 }: SidebarContentProps) {
   const tf = useTranslations("searchFilters");
   const tc = useTranslations("common");
@@ -473,7 +479,7 @@ export const SidebarContent = React.memo(function SidebarContent({
       <DateFilterPanel />
 
       {/* Rating Filter */}
-      <RatingFilterPanel />
+      {!hidePanels.includes("rating") && <RatingFilterPanel />}
 
       {/* Institution Location Filter */}
       <InstitutionLocationFilterPanel />
@@ -485,10 +491,12 @@ export const SidebarContent = React.memo(function SidebarContent({
       <SearchFieldPanel />
 
       {/* Sort Options - Dropdown */}
-      <SortOptionsPanel />
+      {!hidePanels.includes("sort") && <SortOptionsPanel />}
 
       {/* Review Filter */}
       <ReviewFilterPanel />
+
+      {children}
 
       {/* Cites Filter (when not active) */}
       {!isCitesActive && <CitesFilterPanel />}

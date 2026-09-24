@@ -31,6 +31,7 @@ interface HistoryQueryExpansionProps {
   searchId: string;
   onQuerySelect?: (query: string) => void;
   hideHeader?: boolean;
+  readOnly?: boolean;
 }
 
 export function HistoryQueryExpansion({
@@ -39,6 +40,7 @@ export function HistoryQueryExpansion({
   searchId,
   onQuerySelect,
   hideHeader = false,
+  readOnly = false,
 }: HistoryQueryExpansionProps) {
   const toast = useAppToast();
   const th = useTranslations("historyPage");
@@ -144,7 +146,7 @@ export function HistoryQueryExpansion({
             const originalIndex = queryHistory.length - 1 - index;
             const date = new Date(entry.timestamp);
             const timeAgo = format.relativeTime(date, now);
-            const canDelete = !isCurrent;
+            const canDelete = !isCurrent && !readOnly;
             const isBookmarking = bookmarkingIndex === originalIndex;
 
             return (
@@ -275,19 +277,21 @@ export function HistoryQueryExpansion({
                             <TooltipContent>{tc("copy")}</TooltipContent>
                           </Tooltip>
 
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => setBookmarkingIndex(originalIndex)}
-                              >
-                                <BookmarkPlus className="h-3 w-3" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{tc("bookmark")}</TooltipContent>
-                          </Tooltip>
+                          {!readOnly && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => setBookmarkingIndex(originalIndex)}
+                                >
+                                  <BookmarkPlus className="h-3 w-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{tc("bookmark")}</TooltipContent>
+                            </Tooltip>
+                          )}
 
                           {!isCurrent && onQuerySelect && (
                             <Tooltip>

@@ -58,6 +58,7 @@ interface SearchCommandFooterProps {
   screeningQuestionCount: number;
   searchId: string;
   isLoading?: boolean;
+  queryOnly?: boolean;
 }
 
 export function SearchCommandFooter({
@@ -69,6 +70,7 @@ export function SearchCommandFooter({
   screeningQuestionCount,
   searchId,
   isLoading,
+  queryOnly = false,
 }: SearchCommandFooterProps) {
   const toast = useAppToast();
   const t = useTranslations();
@@ -425,132 +427,137 @@ Return a more targeted version of this query.`;
                       : tsc("makeSpecific")}
                   </span>
                 </Button>
-                <div className="mx-1 h-6 w-px bg-border/70" />
+                {!queryOnly && <div className="mx-1 h-6 w-px bg-border/70" />}
               </motion.div>
             )}
           </AnimatePresence>
 
-          <ResultsTranslationControl
-            disabled={isLoading}
-            triggerVariant="ghost"
-            compactTrigger
-            triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
-          />
+          {/* Acting on results: translation, screening */}
+          {!queryOnly && (
+            <>
+              <ResultsTranslationControl
+                disabled={isLoading}
+                triggerVariant="ghost"
+                compactTrigger
+                triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+              />
 
-          <div className="mx-1 h-6 w-px bg-border/70" />
+              <div className="mx-1 h-6 w-px bg-border/70" />
 
-          {/* AI-actions sub-group: Start Chat + Screen All grouped together; trailing coin glyph signals credit-bearing actions */}
-          <div
-            className="inline-flex items-center gap-0.5 rounded-xl bg-accent pr-1.5"
-            data-group="ai-actions"
-          >
-            {chatFlagEnabled && (
+              {/* AI-actions sub-group: Start Chat + Screen All grouped together; trailing coin glyph signals credit-bearing actions */}
+              <div
+                className="inline-flex items-center gap-0.5 rounded-xl bg-accent pr-1.5"
+                data-group="ai-actions"
+              >
+                {chatFlagEnabled && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    onClick={handleStartChat}
+                    disabled={Boolean(isLoading) || isStartingChat}
+                    title={
+                      chatButtonState.mode === "continue"
+                        ? tsc("continueChat")
+                        : tsc("startChat")
+                    }
+                    aria-label={
+                      chatButtonState.mode === "continue"
+                        ? tsc("continueChat")
+                        : tsc("startChat")
+                    }
+                    data-chat-button-mode={chatButtonState.mode}
+                    className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+                  >
+                    {isStartingChat ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    )}
+                    <span className="hidden text-sm font-medium sm:inline">
+                      {chatButtonState.mode === "continue"
+                        ? tsc("continueChat")
+                        : tsc("startChat")}
+                    </span>
+                  </Button>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  onClick={() => phase === "authenticated" ? setIsScreeningDialogOpen(true) : goToSignIn()}
+                  disabled={Boolean(isLoading)}
+                  title={tsc("screenAll")}
+                  aria-label={tsc("screenAll")}
+                  className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+                >
+                  <ListChecks className="h-3.5 w-3.5" />
+                  <span className="hidden text-sm font-medium sm:inline">
+                    {tsc("screenAll")}
+                  </span>
+                </Button>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={tsc("screenAllCredits")}
+                      className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      <Coins className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[220px] text-center">
+                    <p className="font-semibold">{tsc("screenAllCredits")}</p>
+                    <p className="text-xs opacity-90">{tsc("creditsTooltip")}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+
+              <div className="mx-1 h-6 w-px bg-border/70" />
+
+              {/* Right: Screen toggle */}
               <Button
                 variant="ghost"
                 size="sm"
                 type="button"
-                onClick={handleStartChat}
-                disabled={Boolean(isLoading) || isStartingChat}
-                title={
-                  chatButtonState.mode === "continue"
-                    ? tsc("continueChat")
-                    : tsc("startChat")
-                }
-                aria-label={
-                  chatButtonState.mode === "continue"
-                    ? tsc("continueChat")
-                    : tsc("startChat")
-                }
-                data-chat-button-mode={chatButtonState.mode}
-                className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
-              >
-                {isStartingChat ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <MessageSquare className="h-3.5 w-3.5" />
+                onClick={handleScreeningToggle}
+                aria-expanded={isScreeningOpen}
+                aria-controls={screeningPanelId}
+                className={cn(
+                  "h-9 min-w-[130px] justify-between gap-2 rounded-xl border border-transparent px-2.5",
+                  "text-muted-foreground hover:bg-muted/55 hover:text-foreground",
+                  isScreeningOpen &&
+                    "border-border/70 bg-card text-foreground shadow-[0_10px_22px_-18px_var(--color-primary)]"
                 )}
-                <span className="hidden text-sm font-medium sm:inline">
-                  {chatButtonState.mode === "continue"
-                    ? tsc("continueChat")
-                    : tsc("startChat")}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Eye className="h-4 w-4" />
+                  <span className="text-sm font-medium">{t("common.screen")}</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Badge
+                    variant={isScreeningOpen ? "default" : "outline"}
+                    className={cn(
+                      "h-5 min-w-5 rounded-full px-1.5 text-[10px] font-semibold tabular-nums",
+                      isScreeningOpen
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground"
+                    )}
+                  >
+                    {screeningQuestionCount}
+                  </Badge>
+                  <motion.div
+                    animate={{ rotate: isScreeningOpen ? 180 : 0 }}
+                    transition={subtleSpring}
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </motion.div>
                 </span>
               </Button>
-            )}
-
-            <Button
-              variant="ghost"
-              size="sm"
-              type="button"
-              onClick={() => phase === "authenticated" ? setIsScreeningDialogOpen(true) : goToSignIn()}
-              disabled={Boolean(isLoading)}
-              title={tsc("screenAll")}
-              aria-label={tsc("screenAll")}
-              className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
-            >
-              <ListChecks className="h-3.5 w-3.5" />
-              <span className="hidden text-sm font-medium sm:inline">
-                {tsc("screenAll")}
-              </span>
-            </Button>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={tsc("screenAllCredits")}
-                  className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <Coins className="h-3.5 w-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-[220px] text-center">
-                <p className="font-semibold">{tsc("screenAllCredits")}</p>
-                <p className="text-xs opacity-90">{tsc("creditsTooltip")}</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-
-          <div className="mx-1 h-6 w-px bg-border/70" />
-
-          {/* Right: Screen toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            type="button"
-            onClick={handleScreeningToggle}
-            aria-expanded={isScreeningOpen}
-            aria-controls={screeningPanelId}
-            className={cn(
-              "h-9 min-w-[130px] justify-between gap-2 rounded-xl border border-transparent px-2.5",
-              "text-muted-foreground hover:bg-muted/55 hover:text-foreground",
-              isScreeningOpen &&
-                "border-border/70 bg-card text-foreground shadow-[0_10px_22px_-18px_var(--color-primary)]"
-            )}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Eye className="h-4 w-4" />
-              <span className="text-sm font-medium">{t("common.screen")}</span>
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Badge
-                variant={isScreeningOpen ? "default" : "outline"}
-                className={cn(
-                  "h-5 min-w-5 rounded-full px-1.5 text-[10px] font-semibold tabular-nums",
-                  isScreeningOpen
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-background text-muted-foreground"
-                )}
-              >
-                {screeningQuestionCount}
-              </Badge>
-              <motion.div
-                animate={{ rotate: isScreeningOpen ? 180 : 0 }}
-                transition={subtleSpring}
-              >
-                <ChevronDown className="h-3.5 w-3.5" />
-              </motion.div>
-            </span>
-          </Button>
+            </>
+          )}
         </motion.div>
       </div>
 

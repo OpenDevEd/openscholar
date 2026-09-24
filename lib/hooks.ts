@@ -82,8 +82,10 @@ export function useQueryChangeHandler(setQuery: (query: string) => void) {
  */
 export function useEffectiveSearchId(): string | undefined {
   const pathname = usePathname();
-  
-  return getEffectiveSearchId(pathname, undefined);
+  // A search running away from the results page names itself.
+  const search = useSearchOptional();
+
+  return getEffectiveSearchId(pathname, search?.searchId || undefined);
 }
 
 /**
@@ -154,11 +156,13 @@ export function useQueryHistory(
  */
 export function useCurrentSearchFormState() {
   const pathname = usePathname();
+  // A search provider mounted away from the results page owns the state too.
+  const localSearch = useSearchOptional();
   const isOnResultsPage = pathname?.startsWith('/results');
   
   // Only use URL-based state on results pages
   // For other pages, use store defaults
-  if (!isOnResultsPage) {
+  if (!isOnResultsPage && !localSearch) {
     return useCurrentSearchFormStateFromStore();
   }
   
@@ -246,10 +250,11 @@ function useCurrentSearchFormStateFromStore() {
  */
 export function useUpdateSearchFilter() {
   const pathname = usePathname();
+  const localSearch = useSearchOptional();
   const isOnResultsPage = pathname?.startsWith('/results');
   
-  // On results pages, use URL-based state
-  if (isOnResultsPage) {
+  // On results pages, and inside a local search provider, use its state
+  if (isOnResultsPage || localSearch) {
     return useUpdateSearchFilterFromUrl();
   }
   

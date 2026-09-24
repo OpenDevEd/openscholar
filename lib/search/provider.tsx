@@ -44,7 +44,19 @@ import {
 // Create context with undefined default (must be used within provider)
 const SearchContext = createContext<SearchContextValue | undefined>(undefined);
 
+/**
+ * Runs the search away from the results page: the caller owns the id and the
+ * params that the URL would otherwise hold.
+ */
+export interface LocalSearchState {
+  searchId: string;
+  params: SearchParams;
+  onParamsChange: (updates: Partial<SearchParams>) => void;
+  extraApiFilters?: Record<string, unknown>;
+}
+
 interface SearchProviderProps {
+  local?: LocalSearchState;
   children: ReactNode;
 }
 
@@ -83,17 +95,27 @@ function cloneSearchParams(params: SearchParams): SearchParams {
 /**
  * SearchProvider - Wrap your results pages with this
  */
-export function SearchProvider({ children }: SearchProviderProps) {
+export function SearchProvider({ children, local }: SearchProviderProps) {
   const toast = useAppToast();
   const tValidation = useTranslations("validation");
   const routeParams = useParams<{ searchId: string }>();
-  const searchId = routeParams?.searchId ?? '';
+  const searchId = local?.searchId ?? routeParams?.searchId ?? '';
   
   // Read URL params via nuqs - THIS IS THE SOURCE OF TRUTH
-  const [urlParams, setUrlParams] = useQueryStates(searchParamsParsers, {
+  const [routeUrlParams, setRouteUrlParams] = useQueryStates(searchParamsParsers, {
     history: 'push',
     shallow: false,
   });
+  const urlParams = local ? local.params : routeUrlParams;
+  const onLocalParamsChange = local?.onParamsChange;
+  const setUrlParams = useCallback(
+    (updates: Partial<SearchParams>, options?: { scroll?: boolean }) => {
+      if (onLocalParamsChange) onLocalParamsChange(updates);
+      else void setRouteUrlParams(updates as Parameters<typeof setRouteUrlParams>[0], options);
+    },
+    [onLocalParamsChange, setRouteUrlParams],
+  );
+  const extraApiFiltersKey = local?.extraApiFilters ? JSON.stringify(local.extraApiFilters) : '';
 
   const currentParams = urlParams as SearchParams;
   const previousTrackedParamsRef = useRef<SearchParams | null>(null);
@@ -134,6 +156,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
       citedBy: urlParams.citedBy,
       rel: urlParams.rel,
       review: urlParams.review,
+      ...(extraApiFiltersKey ? { extra: extraApiFiltersKey } : {}),
     });
 
     paramsSnapshotByKey.set(key, cloneSearchParams(currentParams));
@@ -167,6 +190,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
     urlParams.rmax,
     urlParams.rated,
     urlParams.lang,
+    extraApiFiltersKey,
   ]);
   
   // Build SWR key - null means don't fetch
@@ -178,7 +202,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
   
   // Single SWR fetcher - all data comes from the key
   const fetcher = useCallback(async ([, paramsJson]: readonly [string, string]) => {
-    const parsedParams = JSON.parse(paramsJson) as Partial<SearchParams>;
+    const parsedParams = JSON.parse(paramsJson) as Partial<SearchParams> & { extra?: string };
     const snapshotParams = paramsSnapshotByKey.get(paramsJson);
     const params: SearchParams = snapshotParams
       ? cloneSearchParams(snapshotParams)
@@ -249,6 +273,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
       citedByItemId: params.citedBy || '',
       relatedToItemId: params.rel || '',
       reviewFilter: params.review || false,
+      ...(parsedParams.extra ? { extraApiFilters: JSON.parse(parsedParams.extra) } : {}),
     };
     
     const searchParams: SearchWithFiltersParams = {
@@ -616,7 +641,8 @@ export function SearchProvider({ children }: SearchProviderProps) {
     citedByItemId: urlParams.citedBy,
     relatedToItemId: urlParams.rel,
     reviewFilter: urlParams.review,
-  }), [urlParams]);
+    ...(extraApiFiltersKey ? { extraApiFilters: JSON.parse(extraApiFiltersKey) } : {}),
+  }), [urlParams, extraApiFiltersKey]);
   
   // Build context value
   const value: SearchContextValue = useMemo(() => ({

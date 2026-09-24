@@ -30,6 +30,7 @@ export function PaperCardGrid({
   resultIndex,
   onDownloadItem,
   onDownloadEssentialItem,
+  hide,
   viewMode = "grid-2",
 }: PaperCardProps) {
   const pathname = usePathname();
@@ -76,11 +77,11 @@ export function PaperCardGrid({
       )}
       
       <div
-        role="button"
-        tabIndex={0}
-        onClick={() => openFocusMode(isMobile, resultIndex, result.id)}
-        onKeyDown={(e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex, result.id)}
-        className="flex-1 w-full text-left flex flex-col cursor-pointer"
+        role={hide?.focusMode ? undefined : "button"}
+        tabIndex={hide?.focusMode ? undefined : 0}
+        onClick={hide?.focusMode ? undefined : () => openFocusMode(isMobile, resultIndex, result.id)}
+        onKeyDown={hide?.focusMode ? undefined : (e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex, result.id)}
+        className={cn("flex-1 w-full text-left flex flex-col", !hide?.focusMode && "cursor-pointer")}
       >
         <div className={cn("flex flex-col h-full", isCompact ? "p-3" : "p-4")}>
           {/* Header: Year badge and quick actions */}
@@ -112,12 +113,14 @@ export function PaperCardGrid({
               />
               <DOIBadge doi={result.doi} compact />
               <CitationControl paper={result} />
-              <DownloadMenuCompact
-                onDownloadJSON={() => onDownloadItem(result, "json")}
-                onDownloadCSV={() => onDownloadItem(result, "csv")}
-                onDownloadEssentialJSON={() => onDownloadEssentialItem(result, "json")}
-                onDownloadEssentialCSV={() => onDownloadEssentialItem(result, "csv")}
-              />
+              {!hide?.download && (
+                <DownloadMenuCompact
+                  onDownloadJSON={() => onDownloadItem(result, "json")}
+                  onDownloadCSV={() => onDownloadItem(result, "csv")}
+                  onDownloadEssentialJSON={() => onDownloadEssentialItem(result, "json")}
+                  onDownloadEssentialCSV={() => onDownloadEssentialItem(result, "csv")}
+                />
+              )}
             </div>
           </div>
 
@@ -187,7 +190,9 @@ export function PaperCardGrid({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+            {!hide?.rating && (
+              <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+            )}
             
             <div className="flex items-center gap-2">
               {/* Cited by count */}

@@ -332,6 +332,8 @@ export function createSearchParameters(
     };
   }
 
+  if (filters.extraApiFilters) Object.assign(apiFilters, filters.extraApiFilters);
+
   // Add filters to search params if we have any
   if (Object.keys(apiFilters).length > 0) {
     searchParams.filter = apiFilters;

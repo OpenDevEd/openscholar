@@ -125,6 +125,13 @@ export interface SearchFilters {
   
   // Content type filters
   reviewFilter: boolean;
+
+  /**
+   * OpenAlex filters the search page has no control for, in the SDK's nested
+   * form, such as `{ topics: { subfield: { id: "3304" } } }`. An Evidence
+   * Library import uses them for research areas, goals and open access.
+   */
+  extraApiFilters?: Record<string, unknown>;
 }
 
 /**
