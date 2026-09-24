@@ -41,12 +41,17 @@ export type RuntimeInstitutionsPage = {
   nextCursor: string | null;
 };
 
-/** A publication an editor approved. `reviewer` is the approver's Clerk user id. */
+/**
+ * A publication with a PDF the home timeline can follow. When `reviewed`,
+ * `publishedAt` is the approval and `reviewer` the approver's Clerk user id;
+ * otherwise `publishedAt` is when it was added and `reviewer` is empty.
+ */
 export type RuntimeReviewedPublication = {
   key: string;
   title: string;
   publishedAt: string;
   reviewer: string;
+  reviewed: boolean;
 };
 
 export type RuntimeReviewedPublicationsPage = {
@@ -135,6 +140,8 @@ function readReviewedPublication(
     title: value.title,
     publishedAt: value.publishedAt,
     reviewer: value.reviewer,
+    // Older libraries list only what editors approved, without saying so.
+    reviewed: typeof value.reviewed === "boolean" ? value.reviewed : true,
   };
 }
 

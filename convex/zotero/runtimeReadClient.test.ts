@@ -321,6 +321,16 @@ describe("readRuntimeReviewedPublications", () => {
     title: "Teachers in the lead",
     publishedAt: "2026-08-04T10:00:00.000Z",
     reviewer: "user_ada",
+    reviewed: true,
+  };
+  // A library that lists only reviewed publications does not say so.
+  const { reviewed: _reviewed, ...legacy } = publication;
+  const added = {
+    key: "EFGH5678",
+    title: "Synced from Zotero",
+    publishedAt: "2026-08-02T09:00:00.000Z",
+    reviewer: "",
+    reviewed: false,
   };
 
   it("asks for one page with the search text and cursor", async () => {
@@ -331,7 +341,7 @@ describe("readRuntimeReviewedPublications", () => {
       expect(url.searchParams.get("cursor")).toBe("p2");
       expect(url.searchParams.get("pageSize")).toBe("50");
       expect(url.searchParams.has("ids")).toBe(false);
-      return jsonResponse({ items: [publication], nextCursor: "p3" });
+      return jsonResponse({ items: [legacy, added], nextCursor: "p3" });
     });
     await expect(
       readRuntimeReviewedPublications(fetchImpl, {
@@ -340,7 +350,7 @@ describe("readRuntimeReviewedPublications", () => {
         query: "teachers",
         cursor: "p2",
       }),
-    ).resolves.toEqual({ items: [publication], nextCursor: "p3" });
+    ).resolves.toEqual({ items: [publication, added], nextCursor: "p3" });
   });
 
   it("asks for chosen publications by key alone", async () => {

@@ -133,7 +133,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
 
           <FieldGroup
             title="How publications get in"
-            hint="Steps with a type are filled in from the library's latest reviewed publication."
+            hint="Steps with a type are filled in from the publication followed."
             action={
               <AddButton
                 disabled={home.steps.length >= LIMITS.steps}
@@ -727,15 +727,15 @@ function PhotoPerson({ name, photo, onChange }: { name: string; photo: string; o
   );
 }
 
-type ReviewedPublication = { key: string; title: string; publishedAt: string };
+type ReviewedPublication = { key: string; title: string; publishedAt: string; reviewed: boolean };
 
 const publicationRow = (publication: ReviewedPublication): PickerRow => ({
   id: publication.key,
   title: publication.title,
-  meta: approvalDate.format(new Date(publication.publishedAt)),
+  meta: `${publication.reviewed ? "Reviewed" : "Added"} ${approvalDate.format(new Date(publication.publishedAt))}`,
 });
 
-/** Which publication the journey follows: the latest reviewed one, or one chosen from the library. */
+/** Which publication the journey follows: the latest one, or one with a PDF chosen from the library, reviewed or not. */
 function PublicationChoice({
   id,
   libraryId,
@@ -779,18 +779,18 @@ function PublicationChoice({
             {shown ? <FileText className="size-4" /> : <RefreshCw className="size-4" />}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-medium">{shown ? shown.title : "Latest reviewed publication"}</span>
+            <span className="block truncate text-sm font-medium">{shown ? shown.title : "Latest publication"}</span>
             <span className="block text-xs text-muted-foreground">
-              {shown ? (shown.meta ? `Reviewed ${shown.meta}` : "Chosen publication") : "Changes each time an editor approves one"}
+              {shown ? (shown.meta ?? "Chosen publication") : "The latest an editor approved, or the latest added if none were reviewed"}
             </span>
           </span>
           <ChevronsUpDown className="shrink-0 text-muted-foreground" />
         </Button>
       }
       title="Publication followed"
-      description="Choose a reviewed publication to always show, or follow the latest one."
-      searchLabel="Search reviewed publications"
-      columns={{ title: "Publication", meta: "Reviewed" }}
+      description="Choose a publication with a PDF to always show, or follow the latest one."
+      searchLabel="Search publications"
+      columns={{ title: "Publication", meta: "Date" }}
       source={source}
       renderLeading={() => (
         <span className="grid h-10 w-7 shrink-0 place-items-center rounded-sm bg-muted text-muted-foreground" aria-hidden>
@@ -802,11 +802,11 @@ function PublicationChoice({
         setChosen(row);
         onChange(row?.id ?? "");
       }}
-      noneLabel="Latest reviewed publication"
-      loadingLabel="Loading reviewed publications"
+      noneLabel="Latest publication"
+      loadingLabel="Loading publications"
       failedLabel="The library's publications could not be read."
-      emptyLabel="Nothing has been reviewed yet."
-      noMatchLabel="No reviewed publication matches."
+      emptyLabel="No publication has a PDF yet."
+      noMatchLabel="No publication matches."
       notSetUpLabel="The library is not set up yet."
     />
   );
