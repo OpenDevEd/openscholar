@@ -1322,6 +1322,7 @@ function homePayload(home: HomeDraft) {
 
 function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
   switch (rowKey) {
+    case "topics": return { ...draft.topics };
     case "identity":
       return identityPayload(draft.identity);
     case "theme":

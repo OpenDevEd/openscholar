@@ -1,5 +1,6 @@
 "use server";
 
+import { auth } from "@clerk/nextjs/server";
 import type { OpenAlexTopicLevel } from "@/lib/evidence-libraries/openalex-source-query";
 
 export type OpenAlexTopicOption = {
@@ -23,6 +24,8 @@ export async function searchOpenAlexTopicOptions(
   level: OpenAlexTopicLevel,
   search: string,
 ): Promise<OpenAlexTopicOption[]> {
+  if (!(await auth()).userId) throw new Error("Sign in to choose source topics");
+  if (!Object.hasOwn(ENDPOINT, level) || typeof search !== "string" || search.length > 200) throw new Error("Invalid topic search");
   const url = new URL(`https://api.openalex.org/${ENDPOINT[level]}`);
   url.searchParams.set("per_page", "40");
   url.searchParams.set("sort", "works_count:desc");

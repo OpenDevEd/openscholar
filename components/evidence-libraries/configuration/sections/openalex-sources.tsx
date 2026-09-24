@@ -104,7 +104,7 @@ export function useOpenAlexSources({
     setEditingKey(null);
   }
 
-  async function useCustomCredential() {
+  async function saveCustomCredential() {
     const key = apiKey.trim();
     if (!key) return;
     await writeCredential({
@@ -171,7 +171,7 @@ export function useOpenAlexSources({
     customCredential,
     apiKey,
     setApiKey,
-    useCustomCredential,
+    saveCustomCredential,
     removeCustomCredential,
   };
 }
@@ -265,7 +265,7 @@ export function OpenAlexAccessSettings({
           type="button"
           size="sm"
           disabled={!source.apiKey.trim()}
-          onClick={() => void source.useCustomCredential()}
+          onClick={() => void source.saveCustomCredential()}
         >
           Save API key
         </Button>

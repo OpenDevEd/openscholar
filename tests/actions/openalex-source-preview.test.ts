@@ -1,10 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+const {session} = vi.hoisted(() => ({session: {userId: "test-user" as string | null}}));
+vi.mock("@clerk/nextjs/server", () => ({auth: async () => session}));
+import { searchOpenAlexTopicOptions } from "@/app/actions/openalex-topic-options";
 import { previewOpenAlexSource } from "@/app/actions/openalex-source-preview";
 
 describe("previewOpenAlexSource", () => {
   afterEach(() => {
+    session.userId = "test-user";
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
+  });
+
+  it("requires a signed-in session before source preview or topic lookup", async () => {
+    session.userId = null;
+    const request = vi.fn(); vi.stubGlobal("fetch", request);
+    await expect(previewOpenAlexSource({search: "education"})).resolves.toEqual({ok: false, message: "Sign in to preview a source"});
+    await expect(searchOpenAlexTopicOptions("topic", "education")).rejects.toThrow("Sign in");
+    expect(request).not.toHaveBeenCalled();
   });
 
   it("previews the exact search and filter without fetching a count", async () => {

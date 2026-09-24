@@ -1,5 +1,6 @@
 "use server";
 
+import { auth } from "@clerk/nextjs/server";
 import type { OpenAlexQuery } from "@/lib/evidence-libraries/configuration/sources";
 
 type PreviewWork = {
@@ -24,6 +25,7 @@ function cleanQuery(query: OpenAlexQuery): OpenAlexQuery {
 export async function previewOpenAlexSource(
   input: OpenAlexQuery,
 ): Promise<OpenAlexSourcePreview> {
+  if (!(await auth()).userId) return {ok: false, message: "Sign in to preview a source"};
   let query: OpenAlexQuery;
   try {
     query = cleanQuery(input);

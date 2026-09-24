@@ -18,10 +18,12 @@ import {
   OPENALEX_WORK_TYPES,
   parseOpenAlexSourceQuery,
 } from "@/lib/evidence-libraries/openalex-source-query";
+import { useSourceTopicNames } from "./use-source-topic-names";
 import { SEARCH_FIELDS } from "@/lib/types";
 
 export function OpenAlexQuerySummary({ query }: { query: OpenAlexQuery }) {
   const parsed = parseOpenAlexSourceQuery(query);
+  const topicNames = useSourceTopicNames(parsed.topicLevel, parsed.topicIds);
   const scope =
     parsed.scope === "all"
       ? "All fields"
@@ -59,7 +61,7 @@ export function OpenAlexQuerySummary({ query }: { query: OpenAlexQuery }) {
           : parsed.topicLevel === "subfield"
             ? "Subfield"
             : "Field",
-      value: id,
+      value: topicNames[id] ?? id,
     })),
     ...parsed.sdgs.map((id) => ({
       key: `sdg-${id}`,

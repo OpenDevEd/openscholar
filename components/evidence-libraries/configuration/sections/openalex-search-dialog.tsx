@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
+import useSWR from "swr";
 import {
   CalendarRange,
   Check,
@@ -15,10 +16,7 @@ import {
   Target,
   X,
 } from "lucide-react";
-import {
-  searchOpenAlexTopicOptions,
-  type OpenAlexTopicOption,
-} from "@/app/actions/openalex-topic-options";
+import { searchOpenAlexTopicOptions } from "@/app/actions/openalex-topic-options";
 import {
   previewOpenAlexSource,
   type OpenAlexSourcePreview,
@@ -67,11 +65,20 @@ import {
   OPENALEX_WORK_TYPES,
   parseOpenAlexSourceQuery,
   type OpenAlexSearchScope,
-  type OpenAlexSourceQueryBuilder,
   type OpenAlexTopicLevel,
+  type OpenAlexSourceQueryBuilder,
 } from "@/lib/evidence-libraries/openalex-source-query";
 import { SEARCH_FIELDS } from "@/lib/types";
+import { useSourceTopicNames } from "./use-source-topic-names";
 import { cn } from "@/lib/utils";
+import { useIsTablet } from "@/lib/hooks";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 type Choice = { id: string; name: string; hint?: string };
 
@@ -82,6 +89,7 @@ function OptionPicker({
   selected,
   names,
   loading,
+  error,
   onSearch,
   onToggle,
 }: {
@@ -91,6 +99,7 @@ function OptionPicker({
   selected: string[];
   names: Record<string, string>;
   loading?: boolean;
+  error?: boolean;
   onSearch?: (value: string) => void;
   onToggle: (option: Choice) => void;
 }) {
@@ -131,7 +140,11 @@ function OptionPicker({
             />
             <CommandList>
               <CommandEmpty>
-                {loading ? "Searching" : "Nothing found"}
+                {loading
+                  ? "Searching"
+                  : error
+                    ? "Could not load research areas. Try another search."
+                    : "Nothing found"}
               </CommandEmpty>
               <CommandGroup>
                 {options.map((option) => (
@@ -212,26 +225,20 @@ function Filters({
     update: (value: Record<string, string>) => Record<string, string>,
   ) => void;
 }) {
-  const [topicOptions, setTopicOptions] = useState<OpenAlexTopicOption[]>([]);
-  const [topicsLoading, setTopicsLoading] = useState(false);
+  const [topicSearch, setTopicSearch] = useState("");
+  const deferredSearch = useDeferredValue(topicSearch);
+  const topics = useSWR(
+    ["source-research-areas", builder.topicLevel, deferredSearch],
+    ([, level, search]) => searchOpenAlexTopicOptions(level, search),
+    { revalidateOnFocus: false },
+  );
+  const topicOptions = topics.data ?? [];
   const workTypeNames = Object.fromEntries(
     OPENALEX_WORK_TYPES.map((type) => [type.id, type.name]),
   );
   const sdgNames = Object.fromEntries(
     OPENALEX_SDGS.map((goal) => [goal.id, goal.name]),
   );
-
-  async function loadTopics(level: OpenAlexTopicLevel, search: string) {
-    setTopicsLoading(true);
-    try {
-      setTopicOptions(await searchOpenAlexTopicOptions(level, search));
-    } catch {
-      setTopicOptions([]);
-    } finally {
-      setTopicsLoading(false);
-    }
-  }
-
   return (
     <aside
       aria-label="Filters"
@@ -329,19 +336,14 @@ function Filters({
                   className="h-7 px-2 text-xs"
                   onClick={() => {
                     onChange({ topicLevel: level.value, topicIds: [] });
-                    void loadTopics(level.value, "");
+                    setTopicSearch("");
                   }}
                 >
                   {level.label}
                 </Button>
               ))}
             </div>
-            <div
-              onPointerDownCapture={() => {
-                if (!topicOptions.length)
-                  void loadTopics(builder.topicLevel, "");
-              }}
-            >
+            <div>
               <OptionPicker
                 label="Research areas"
                 placeholder="Any research area"
@@ -352,10 +354,9 @@ function Filters({
                 }))}
                 selected={builder.topicIds}
                 names={topicNames}
-                loading={topicsLoading}
-                onSearch={(search) =>
-                  void loadTopics(builder.topicLevel, search)
-                }
+                loading={topics.isLoading}
+                error={Boolean(topics.error)}
+                onSearch={setTopicSearch}
                 onToggle={(option) => {
                   setTopicNames((value) => ({
                     ...value,
@@ -413,6 +414,8 @@ export function OpenAlexSearchDialog({
   onClose: () => void;
   onApprove: (source: OpenAlexSourceEntry) => void;
 }) {
+  const narrow = useIsTablet();
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const startingBuilder = useMemo(
     () =>
       initial
@@ -426,6 +429,7 @@ export function OpenAlexSearchDialog({
     initial?.settings.downloadPdfs ?? false,
   );
   const [topicNames, setTopicNames] = useState<Record<string, string>>({});
+  const savedTopicNames = useSourceTopicNames(builder.topicLevel, builder.topicIds);
   const [preview, setPreview] = useState<OpenAlexSourcePreview | null>(null);
   const [previewedQuery, setPreviewedQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -443,10 +447,18 @@ export function OpenAlexSearchDialog({
 
   async function runPreview() {
     setLoading(true);
-    const result = await previewOpenAlexSource(query);
-    setPreview(result);
-    setPreviewedQuery(queryKey);
-    setLoading(false);
+    try {
+      const result = await previewOpenAlexSource(query);
+      setPreview(result);
+      setPreviewedQuery(queryKey);
+    } catch {
+      setPreview({
+        ok: false,
+        message: "The preview could not be loaded. Try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
   }
 
   function save() {
@@ -469,6 +481,15 @@ export function OpenAlexSearchDialog({
     });
   }
 
+  const filters = (
+    <Filters
+      builder={builder}
+      onChange={(change) => setBuilder((value) => ({ ...value, ...change }))}
+      topicNames={{ ...savedTopicNames, ...topicNames }}
+      setTopicNames={setTopicNames}
+    />
+  );
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
@@ -482,16 +503,9 @@ export function OpenAlexSearchDialog({
         <DialogDescription className="sr-only">
           Choose the records that OpenAlex should keep up to date.
         </DialogDescription>
-        <div className="mx-auto flex min-h-0 w-full max-w-[96rem] flex-1 flex-col gap-2 px-4 lg:flex-row">
-          <Filters
-            builder={builder}
-            onChange={(change) =>
-              setBuilder((value) => ({ ...value, ...change }))
-            }
-            topicNames={topicNames}
-            setTopicNames={setTopicNames}
-          />
-          <main className="my-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-xl">
+        <div className="mx-auto flex min-h-0 w-full max-w-[96rem] flex-1 gap-2 lg:px-4">
+          {!narrow && filters}
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card lg:my-4 lg:rounded-2xl lg:border lg:border-border/60 lg:shadow-xl">
             <header className="flex items-center gap-3 border-b border-border/60 p-4 sm:px-6">
               <Input
                 aria-label="Name of this search"
@@ -501,6 +515,24 @@ export function OpenAlexSearchDialog({
                 onChange={(event) => setName(event.target.value)}
                 className="h-10 min-w-0 flex-1 border-transparent bg-transparent px-0 text-lg font-semibold shadow-none focus-visible:border-transparent focus-visible:ring-0"
               />
+              {narrow && (
+                <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+                  <SheetTrigger asChild>
+                    <Button type="button" variant="outline" size="icon" aria-label="Filters">
+                      <Filter />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="flex w-full max-w-full flex-col gap-0 p-0 sm:max-w-md">
+                    <SheetHeader className="shrink-0 border-b p-4">
+                      <SheetTitle>Filters</SheetTitle>
+                    </SheetHeader>
+                    <div className="min-h-0 flex-1 overflow-y-auto">{filters}</div>
+                    <div className="shrink-0 border-t p-4">
+                      <Button className="w-full" onClick={() => setFiltersOpen(false)}>Done</Button>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              )}
               <Button
                 type="button"
                 variant="ghost"
