@@ -155,3 +155,59 @@ it("finishes a bounded identity rebuild without reporting incomplete groups as a
     expect([...page.locations, ...next.locations]).toHaveLength(23);
   } finally {vi.useRealTimers();}
 });
+
+it("tears down topic records in batches and rebuilds surviving DOI and OpenAlex groups", async () => {
+  vi.useFakeTimers();
+  vi.stubEnv("EL_ALLOW_DEVELOPMENT_TEARDOWN", "true");
+  vi.stubEnv("EL_COOLIFY_ENVIRONMENT", "development");
+  try {
+    const {t, a, b, request, send} = await fixture();
+    await send(request());
+    await send(request(b.libraryId, {doi: "10.1234/surviving"}), "second-credential");
+    for (let index = 0; index < 22; index++) {
+      await send(request(b.libraryId, {itemKey: `TEST${String(index).padStart(4, "0")}`, idempotencyKey: `surviving-${index}`, doi: null}), "second-credential");
+    }
+    await send(request(a.libraryId, {itemKey: "SHARED01", idempotencyKey: "shared", doi: "10.1234/surviving", topicIds: []}));
+    await send(request(a.libraryId, {itemKey: "ANCHOR02", idempotencyKey: "only-anchor", doi: "10.1234/only", openalexId: "W5678"}));
+    await send(request(b.libraryId, {itemKey: "NODOI002", idempotencyKey: "fallback", doi: null, openalexId: "W5678"}), "second-credential");
+    await send(request(a.libraryId, {itemKey: "REMOVED1", idempotencyKey: "tombstone", state: "unpublished", topicIds: [], metadata: null}));
+    for (let index = 0; index < 22; index++) {
+      await send(request(a.libraryId, {itemKey: `TEST${String(index).padStart(4, "0")}`, idempotencyKey: `manual-${index}`, doi: null, openalexId: null}));
+    }
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const args = await t.run(async ctx => {
+      await ctx.db.patch("evidenceLibraries", a.libraryId, {state: "disabled"});
+      const operationId = await ctx.db.insert("evidenceLibraryConfigOperations", {
+        libraryId: a.libraryId, kind: "teardown", status: "running", stage: "convex",
+        idempotencyKey: "topic-teardown", attemptCount: 1, requestedByClerkUserId: "topic-test",
+        teardownAttemptToken: "topic-teardown", createdAt: Date.now(), updatedAt: Date.now(),
+      });
+      return {libraryId: a.libraryId, operationId, attemptToken: "topic-teardown"};
+    });
+    const remainingLocations = () => t.run(ctx => ctx.db.query("topicLocations").withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", a.libraryId)).take(100));
+    const originalCount = (await remainingLocations()).length;
+    let complete = false;
+    let sawPartialTopicBatch = false;
+    for (let batch = 0; batch < 30 && !complete; batch++) {
+      ({complete} = await t.mutation(internal.evidenceLibraries.teardown.deleteDevelopmentTeardownBatch, args));
+      const count = (await remainingLocations()).length;
+      sawPartialTopicBatch ||= count > 0 && count < originalCount;
+    }
+    expect(complete).toBe(true);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await remainingLocations()).toEqual([]);
+    expect(sawPartialTopicBatch).toBe(true);
+    expect(await t.run(ctx => ctx.db.get("evidenceLibraries", a.libraryId))).toBeNull();
+    expect(await t.run(ctx => ctx.db.query("topicDeliveryReceipts").withIndex("by_libraryId_and_idempotencyKey", q => q.eq("libraryId", a.libraryId)).take(100))).toEqual([]);
+    expect(await t.run(ctx => ctx.db.query("topicOpenAlexDois").withIndex("by_openalexId_and_doi", q => q.eq("openalexId", "W1234")).take(10))).toMatchObject([{doi: "10.1234/surviving", count: 1}]);
+    expect(await t.run(ctx => ctx.db.query("topicOpenAlexDois").withIndex("by_openalexId_and_doi", q => q.eq("openalexId", "W5678")).take(10))).toEqual([]);
+    expect(await t.run(ctx => ctx.db.query("topicPublicationGroups").withIndex("by_topicId_and_groupKey", q => q.eq("topicId", topicId)).take(100))).toMatchObject([
+      {groupKey: "doi:10.1234/surviving", count: 23},
+      {groupKey: "openalex:W5678", count: 1},
+    ]);
+    expect(await t.query(api.topics.publications.list, {topicId, cursor: null, limit: 10})).toMatchObject({groups: [{key: "doi:10.1234/surviving"}, {key: "openalex:W5678"}], updating: false, nextCursor: null});
+    const locations = await t.query(api.topics.publications.locations, {groupKey: "doi:10.1234/surviving", paginationOpts: {cursor: null, numItems: 100}});
+    expect(locations.locations).toHaveLength(23);
+    expect(locations.locations.every(row => row.library.id === b.libraryId)).toBe(true);
+  } finally {vi.useRealTimers();}
+});

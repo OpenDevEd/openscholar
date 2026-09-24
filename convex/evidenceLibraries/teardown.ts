@@ -9,6 +9,7 @@ import {
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
+import { deleteLibraryTopicsBatch } from "../topics/publications";
 import { evidenceLibraryTeardownStepValidator } from "./validators";
 import {
   readAttachedDomainOrigins,
@@ -652,6 +653,9 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       throw createError("NOT_FOUND", "Evidence Library teardown not found");
     }
     requireTeardownAttempt(operation, args.attemptToken);
+    if (await deleteLibraryTopicsBatch(ctx, args.libraryId)) {
+      return { complete: false };
+    }
     const sections = await ctx.db
       .query("evidenceLibraryConfigSections")
       .withIndex("by_libraryId_and_kind", (query) =>

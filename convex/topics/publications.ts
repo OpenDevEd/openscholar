@@ -66,6 +66,33 @@ export const reconcileOpenAlex = internalMutation({
   args: {openalexId: v.string(), cursor: v.union(v.string(), v.null())},
   handler: async (ctx, args) => { await reconcilePage(ctx, args.openalexId, args.cursor); await pendingReconciliation(ctx, -1); return null; },
 });
+
+/** Deletes one library batch, preserving other libraries' publication counters. */
+export async function deleteLibraryTopicsBatch(ctx: MutationCtx, libraryId: Location["libraryId"]) {
+  const rows = await ctx.db.query("topicLocations")
+    .withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", libraryId)).take(20);
+  if (rows.length > 0) {
+    const affectedOpenAlexIds = new Set<string>();
+    for (const row of rows) {
+      await changeGroups(ctx, row, -1);
+      await changeDoiLink(ctx, row, -1);
+      await ctx.db.delete("topicLocations", row._id);
+      if (row.state === "published" && row.doi && row.openalexId) affectedOpenAlexIds.add(row.openalexId);
+    }
+    await changed(ctx);
+    // Rekey surviving records separately so a large group cannot overflow teardown.
+    for (const openalexId of affectedOpenAlexIds) {
+      await pendingReconciliation(ctx, 1);
+      await ctx.scheduler.runAfter(0, internal.topics.publications.reconcileOpenAlex, {openalexId, cursor: null});
+    }
+    return true;
+  }
+  const receipts = await ctx.db.query("topicDeliveryReceipts")
+    .withIndex("by_libraryId_and_idempotencyKey", q => q.eq("libraryId", libraryId)).take(50);
+  await Promise.all(receipts.map(row => ctx.db.delete("topicDeliveryReceipts", row._id)));
+  return receipts.length > 0;
+}
+
 export const replaceFromLibrary = internalMutation({
   args: {body: v.string(), credentialDigest: v.string()},
   handler: async (ctx, args) => {
