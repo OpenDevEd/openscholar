@@ -129,6 +129,7 @@ export const runApplicationSetup = internalAction({
         { libraryId: args.libraryId },
       );
       const configuration = assembleEvidenceLibraryRuntimePayload({
+        assembledAt: Date.now(),
         encryptionKey,
         libraryId: args.libraryId,
         revision: {

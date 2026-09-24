@@ -479,6 +479,41 @@ export function classifyEvidenceLibraryAddress(
   };
 }
 
+/**
+ * When the running site's active configuration was stamped, by the runtime's
+ * own clock. A configuration sent after a rollback has to be newer than that.
+ */
+export async function readActiveConfigurationUpdatedAt(input: {
+  baseUrl: string;
+  fetchImpl?: typeof fetch;
+}): Promise<number> {
+  const origin = requireHttpsOrigin("Evidence Library URL", input.baseUrl);
+  const body = await fetchWithTimeout(
+    input.fetchImpl ?? fetch,
+    new URL("/api/library-config/health", origin),
+    { headers: publicLibraryHeaders("application/json"), method: "GET" },
+    async (response) => {
+      if (response.status !== 200) {
+        throw new ReadinessClientError(
+          "READINESS_UNAVAILABLE",
+          "Evidence Library readiness could not be checked",
+        );
+      }
+      return await readBoundedJson(response);
+    },
+  );
+  const updatedAt =
+    isRecord(body) && isRecord(body.active) ? body.active.updatedAt : null;
+  const stamp = typeof updatedAt === "string" ? Date.parse(updatedAt) : NaN;
+  if (!Number.isFinite(stamp)) {
+    throw new ReadinessClientError(
+      "READINESS_INVALID_RESPONSE",
+      "The Evidence Library did not report its active configuration",
+    );
+  }
+  return stamp;
+}
+
 /** Asks one address who serves it. Never throws; a failure is "unreachable". */
 export async function probeEvidenceLibraryAddress(input: {
   targetBaseUrl: string;

@@ -828,6 +828,10 @@ export const evidenceLibraryOperationFields = {
   teardownFailedStep: v.optional(evidenceLibraryTeardownStepValidator),
   configurationDeploymentPollCount: v.optional(v.number()),
   configurationReadinessPollCount: v.optional(v.number()),
+  // A direct activation that failed after it may have landed, and put the
+  // previous configuration back. The runtime stamped that one with the time
+  // it ran, so a retry has to build a newer copy than the one saved here.
+  rolledBackAt: v.optional(v.number()),
   status: v.union(
     v.literal("queued"),
     v.literal("running"),

@@ -588,6 +588,7 @@ describe("the OpenRouter key", () => {
         readLibraryAiProviderKey(ctx, libraryId),
       );
       const payloadInput = {
+        assembledAt: Date.now(),
         encryptionKey: ENCRYPTION_KEY,
         libraryId,
         revision: { key: "r2", createdAt: 10 },
