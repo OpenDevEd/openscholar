@@ -37,6 +37,7 @@ const reviewedPublicationValidator = v.object({
   title: v.string(),
   publishedAt: v.string(),
   reviewer: v.string(),
+  reviewed: v.boolean(),
 });
 
 const collectionFactsValidator = v.object({
@@ -206,8 +207,8 @@ export const resolveLibraryCollections = action({
 });
 
 /**
- * Publications editors approved, for the home page's "publication followed"
- * choice. `ids` names chosen publications instead of searching.
+ * Publications with a PDF, reviewed or not, for the home page's "publication
+ * followed" choice. `ids` names chosen publications instead of searching.
  */
 export const listReviewedPublications = action({
   args: {
