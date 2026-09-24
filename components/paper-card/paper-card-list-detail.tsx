@@ -1,4 +1,5 @@
 "use client";
+import { TopicLink } from "@/components/topics/topic-link";
 
 import { CitationControl } from "@/components/citation-control";
 
@@ -216,7 +217,7 @@ export function PaperCardListDetail({
                     <Target className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">{tp("topicLabel")}</span>
                     <span className="text-foreground">
-                      {result.primary_topic.display_name}
+                      <TopicLink topic={result.primary_topic} />
                     </span>
                   </div>
                 )}
@@ -227,7 +228,7 @@ export function PaperCardListDetail({
                     <Layers className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">{tp("subfieldLabel")}</span>
                     <span className="text-foreground">
-                      {result.primary_topic.subfield.display_name}
+                      <TopicLink topic={result.primary_topic.subfield} />
                     </span>
                   </div>
                 )}
@@ -238,7 +239,7 @@ export function PaperCardListDetail({
                     <BookOpen className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">{tp("fieldLabel")}</span>
                     <span className="text-foreground">
-                      {result.primary_topic.field.display_name}
+                      <TopicLink topic={result.primary_topic.field} />
                     </span>
                   </div>
                 )}
@@ -249,7 +250,7 @@ export function PaperCardListDetail({
                     <Building className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">{tp("domainLabel")}</span>
                     <span className="text-foreground">
-                      {result.primary_topic.domain.display_name}
+                      <TopicLink topic={result.primary_topic.domain} />
                     </span>
                   </div>
                 )}

@@ -265,6 +265,12 @@ import type * as subscriptions_lib_stripeStatus from "../subscriptions/lib/strip
 import type * as subscriptions_queries from "../subscriptions/queries.js";
 import type * as testing_billing from "../testing/billing.js";
 import type * as testing_evidenceLibraryAddresses from "../testing/evidenceLibraryAddresses.js";
+import type * as topics_auth from "../topics/auth.js";
+import type * as topics_catalog from "../topics/catalog.js";
+import type * as topics_details from "../topics/details.js";
+import type * as topics_publications from "../topics/publications.js";
+import type * as topics_serviceHttp from "../topics/serviceHttp.js";
+import type * as topics_validators from "../topics/validators.js";
 import type * as userAiConfig_mutations from "../userAiConfig/mutations.js";
 import type * as userAiConfig_queries from "../userAiConfig/queries.js";
 import type * as users_internal from "../users/internal.js";
@@ -566,6 +572,12 @@ declare const fullApi: ApiFromModules<{
   "subscriptions/queries": typeof subscriptions_queries;
   "testing/billing": typeof testing_billing;
   "testing/evidenceLibraryAddresses": typeof testing_evidenceLibraryAddresses;
+  "topics/auth": typeof topics_auth;
+  "topics/catalog": typeof topics_catalog;
+  "topics/details": typeof topics_details;
+  "topics/publications": typeof topics_publications;
+  "topics/serviceHttp": typeof topics_serviceHttp;
+  "topics/validators": typeof topics_validators;
   "userAiConfig/mutations": typeof userAiConfig_mutations;
   "userAiConfig/queries": typeof userAiConfig_queries;
   "users/internal": typeof users_internal;
