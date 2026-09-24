@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { assertImmutableOpenAlexQueryVersions } from "./sources";
+import {
+  approveOpenAlexQuery,
+  assertImmutableOpenAlexQueryVersions,
+} from "./sources";
 
 const source = (
   version: string,
@@ -20,6 +23,13 @@ const source = (
 });
 
 describe("OpenAlex approved query versions", () => {
+  it("keeps the approved version when only source settings change", () => {
+    const approved = source("v1", { search: "education" }).settings
+      .approvedQuery;
+    expect(approveOpenAlexQuery(approved, { search: "education" })).toBe(
+      approved,
+    );
+  });
   it("allows a new immutable version for a changed query", () => {
     expect(() =>
       assertImmutableOpenAlexQueryVersions(

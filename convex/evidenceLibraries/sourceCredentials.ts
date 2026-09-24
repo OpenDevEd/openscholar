@@ -14,19 +14,31 @@ export type ConnectedZoteroGroup = {
 /** Adds provider credentials only during runtime assembly. */
 export function createSourceCredentials(
   groups: readonly ConnectedZoteroGroup[],
-  openAlexApiKey: string | undefined,
+  openAlexKeys: { custom?: string; platform?: string },
 ): ApplySourceCredentials {
   const byGroupId = new Map(groups.map((group) => [group.groupId, group]));
   return (sources: readonly SourceEntry[]) =>
     sources.map((source, index) => {
       if (source.provider === "openalex") {
+        const settings =
+          source.settings &&
+          typeof source.settings === "object" &&
+          !Array.isArray(source.settings)
+            ? (source.settings as Record<string, unknown>)
+            : {};
+        const mode = settings.apiKeyMode;
+        const openAlexApiKey =
+          mode === "custom" ? openAlexKeys.custom : openAlexKeys.platform;
         if (!openAlexApiKey) {
           throw new ConfigurationAssemblyError([
             {
               pointer: `/sources/${index}/apiKey`,
               section: "sources",
               keyword: "credential",
-              message: "OpenAlex access is not configured.",
+              message:
+                mode === "custom"
+                  ? "Add an OpenAlex API key or use OpenScholar access."
+                  : "OpenScholar OpenAlex access is not configured.",
             },
           ]);
         }

@@ -11,6 +11,7 @@ import type {
   EvidenceSourceEntry,
   OpenAlexSourceEntry,
 } from "@/lib/evidence-libraries/configuration/sources";
+import { OPENALEX_API_CREDENTIAL_KEY } from "@/lib/evidence-libraries/configuration/sources";
 
 const mocks = vi.hoisted(() => ({
   action: vi.fn(),
@@ -60,6 +61,8 @@ const openAlexSource: OpenAlexSourceEntry = {
   enabled: true,
   writebackEnabled: false,
   settings: {
+    name: "Education evidence",
+    apiKeyMode: "platform",
     approvedQuery: {
       version: "query-v1",
       approvedAt: "2026-09-24T12:00:00.000Z",
@@ -113,15 +116,18 @@ describe("<SourcesField>", () => {
       screen.getByRole("list", { name: "Connected sources" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Climate evidence")).toBeInTheDocument();
-    expect(screen.getAllByText("education")).toHaveLength(2);
-    expect(screen.getByText("publication_year:2020-2026")).toBeInTheDocument();
+    expect(screen.getByText("Education evidence")).toBeInTheDocument();
+    expect(screen.getByText("education")).toBeInTheDocument();
+    expect(
+      screen.getByRole("list", { name: "Search filters" }),
+    ).toHaveTextContent("Years 2020–2026");
     expect(screen.queryByText(/2 sources/i)).not.toBeInTheDocument();
   });
 
   it("pauses an approved OpenAlex source in the saved draft", async () => {
     render(<Harness initial={[openAlexSource]} />);
     await userEvent.click(
-      screen.getByRole("button", { name: "Pause education" }),
+      screen.getByRole("button", { name: "Pause Education evidence" }),
     );
     expect(screen.getByText("Paused")).toBeInTheDocument();
   });
@@ -134,6 +140,37 @@ describe("<SourcesField>", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Zotero/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /OpenAlex/ })).toBeInTheDocument();
+  });
+
+  it("keeps a saved API key when switching a source to OpenScholar access", async () => {
+    mocks.query.mockImplementation((reference: string) => ({
+      data:
+        reference === "credentials"
+          ? [
+              {
+                credentialKey: OPENALEX_API_CREDENTIAL_KEY,
+                maskedHint: "••••abcd",
+              },
+            ]
+          : reference === "account"
+            ? { connected: true, zoteroUserId: "1", username: "owner" }
+            : [],
+      isReady: true,
+    }));
+    render(
+      <Harness
+        initial={[
+          {
+            ...openAlexSource,
+            settings: { ...openAlexSource.settings, apiKeyMode: "custom" },
+          },
+        ]}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Connections" }));
+    await userEvent.click(screen.getByRole("tab", { name: /OpenAlex/ }));
+    await userEvent.click(screen.getByRole("tab", { name: /OpenScholar/ }));
+    expect(mocks.mutation).not.toHaveBeenCalled();
   });
 
   it("offers both source types from one Add source menu", async () => {

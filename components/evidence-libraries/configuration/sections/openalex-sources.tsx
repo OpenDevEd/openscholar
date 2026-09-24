@@ -8,6 +8,17 @@ import { toast } from "sonner";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -61,16 +72,34 @@ export function useOpenAlexSources({
   const customCredential = (credentials.data ?? []).find(
     (credential) => credential.credentialKey === OPENALEX_API_CREDENTIAL_KEY,
   );
+  const inferredMode = sources.some(
+    (source) => source.settings.apiKeyMode === "custom",
+  )
+    ? "custom"
+    : "openscholar";
+  const mode = selectedMode ?? inferredMode;
   const editing =
     editingKey === "new"
       ? "new"
       : (sources.find((source) => source.key === editingKey) ?? null);
 
   function replaceSource(source: OpenAlexSourceEntry) {
+    const nextSource: OpenAlexSourceEntry =
+      editingKey === "new"
+        ? {
+            ...source,
+            settings: {
+              ...source.settings,
+              apiKeyMode: mode === "custom" ? "custom" : "platform",
+            },
+          }
+        : source;
     onChange(
-      value.some((entry) => entry.key === source.key)
-        ? value.map((entry) => (entry.key === source.key ? source : entry))
-        : [...value, source],
+      value.some((entry) => entry.key === nextSource.key)
+        ? value.map((entry) =>
+            entry.key === nextSource.key ? nextSource : entry,
+          )
+        : [...value, nextSource],
     );
     setEditingKey(null);
   }
@@ -85,15 +114,38 @@ export function useOpenAlexSources({
       value: key,
     });
     setApiKey("");
-    setSelectedMode("custom");
+    changeMode("custom");
     toast.success("OpenAlex API key saved");
   }
 
-  async function useOpenScholarCredential() {
-    if (customCredential) await removeCredential({ libraryId });
+  function changeMode(mode: "openscholar" | "custom") {
+    setSelectedMode(mode);
+    onChange(
+      value.map((entry) =>
+        entry.provider === "openalex"
+          ? {
+              ...entry,
+              settings: {
+                ...entry.settings,
+                apiKeyMode: mode === "custom" ? "custom" : "platform",
+              },
+            }
+          : entry,
+      ),
+    );
+  }
+
+  function selectMode(mode: "openscholar" | "custom") {
+    setSelectedMode(mode);
+    if (mode === "openscholar") setApiKey("");
+    if (mode === "openscholar" || customCredential) changeMode(mode);
+  }
+
+  async function removeCustomCredential() {
+    await removeCredential({ libraryId });
+    changeMode("openscholar");
     setApiKey("");
-    setSelectedMode("openscholar");
-    toast.success("Using OpenScholar OpenAlex access");
+    toast.success("OpenAlex API key removed");
   }
 
   return {
@@ -114,15 +166,13 @@ export function useOpenAlexSources({
       ),
     remove: (key: string) =>
       onChange(value.filter((source) => source.key !== key)),
-    mode:
-      selectedMode ??
-      (customCredential ? ("custom" as const) : ("openscholar" as const)),
-    setMode: setSelectedMode,
+    mode,
+    selectMode,
     customCredential,
     apiKey,
     setApiKey,
     useCustomCredential,
-    useOpenScholarCredential,
+    removeCustomCredential,
   };
 }
 
@@ -135,7 +185,7 @@ export function OpenAlexSourceRow({
 }) {
   return (
     <SourceRow
-      name={source.settings.approvedQuery.query.search || "OpenAlex search"}
+      name={source.settings.name}
       provider="OpenAlex search"
       icon={<OpenAlexIcon className="size-4" />}
       status={
@@ -173,8 +223,7 @@ export function OpenAlexAccessSettings({
     <Tabs
       value={source.mode}
       onValueChange={(mode) => {
-        source.setMode(mode as "openscholar" | "custom");
-        if (mode === "openscholar") void source.useOpenScholarCredential();
+        source.selectMode(mode as "openscholar" | "custom");
       }}
     >
       <TabsList aria-label="OpenAlex access">
@@ -220,6 +269,34 @@ export function OpenAlexAccessSettings({
         >
           Save API key
         </Button>
+        {source.customCredential ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button type="button" size="sm" variant="outline">
+                Remove saved key
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Remove the saved OpenAlex key?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Searches will use OpenScholar access instead.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => void source.removeCustomCredential()}
+                >
+                  Remove key
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : null}
       </TabsContent>
     </Tabs>
   );

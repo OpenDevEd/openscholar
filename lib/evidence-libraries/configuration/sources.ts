@@ -17,6 +17,8 @@ export type OpenAlexSourceEntry = {
   enabled: boolean;
   writebackEnabled: false;
   settings: {
+    name: string;
+    apiKeyMode: "platform" | "custom";
     approvedQuery: {
       version: string;
       approvedAt: string;
@@ -44,6 +46,20 @@ function queryFingerprint(value: unknown): string {
   }
   const query = value as Record<string, unknown>;
   return JSON.stringify({ filter: query.filter, search: query.search });
+}
+
+export function approveOpenAlexQuery(
+  current: OpenAlexSourceEntry["settings"]["approvedQuery"] | undefined,
+  query: OpenAlexQuery,
+): OpenAlexSourceEntry["settings"]["approvedQuery"] {
+  if (current && queryFingerprint(current.query) === queryFingerprint(query)) {
+    return current;
+  }
+  return {
+    version: newOpenAlexQueryVersion(),
+    approvedAt: new Date().toISOString(),
+    query,
+  };
 }
 
 /** A version identifies immutable query contents, even across source removal. */

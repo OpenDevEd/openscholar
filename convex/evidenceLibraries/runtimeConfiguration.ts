@@ -145,9 +145,12 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
         apiKey: decrypt(group.encryptedApiKey, input.encryptionKey),
         scopes: group.scopes,
       })),
-      input.openAlexApiKey
-        ? decrypt(input.openAlexApiKey.encryptedApiKey, input.encryptionKey)
-        : input.platformOpenAlexApiKey,
+      {
+        custom: input.openAlexApiKey
+          ? decrypt(input.openAlexApiKey.encryptedApiKey, input.encryptionKey)
+          : undefined,
+        platform: input.platformOpenAlexApiKey,
+      },
     ),
     // The AI provider key, likewise: decrypted only for this payload.
     applyAiProviderKey: createAiProviderKey(
