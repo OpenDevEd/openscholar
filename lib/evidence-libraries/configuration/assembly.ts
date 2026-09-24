@@ -1,4 +1,4 @@
-import { publicName, publicPhoto } from "./home-people";
+import { isHandEntered, publicName, publicPhoto } from "./home-people";
 import {
   aiProviderIssues,
   type ApplyAiProviderKey,
@@ -159,11 +159,25 @@ function fillHomeTeam(
       ...shown.filter((member) => !editors.has(member.id)),
     ].slice(0, HOME_DIRECTORY_MAX),
   };
+  // People written in by hand keep what the owner typed, cleaned as the
+  // runtime reads names and photos; they are editors a step may name too.
+  const handEntered = new Set<string>();
   if (Array.isArray(home.people)) {
     filled.people = home.people.flatMap((person) => {
-      const member = isObject(person) && members.get(person.id as string);
+      if (!isObject(person) || typeof person.id !== "string") return [];
+      const { photo: _stale, name: _name, ...rest } = person;
+      if (isHandEntered(person.id)) {
+        const fields = personFields({
+          id: person.id,
+          name: typeof person.name === "string" ? person.name : "",
+          photo: typeof person.photo === "string" ? person.photo : undefined,
+        });
+        if (!fields) return [];
+        handEntered.add(person.id);
+        return [{ ...rest, ...fields }];
+      }
+      const member = members.get(person.id);
       if (!member) return [];
-      const { photo: _stale, ...rest } = person;
       const { id: _id, ...fields } = member;
       return [{ ...rest, ...fields }];
     });
@@ -173,7 +187,7 @@ function fillHomeTeam(
       ...home.curation,
       steps: home.curation.steps.map((step) => {
         if (!isObject(step) || step.editor === undefined) return step;
-        if (members.has(step.editor as string)) return step;
+        if (members.has(step.editor as string) || handEntered.has(step.editor as string)) return step;
         const { editor: _gone, ...rest } = step;
         return rest;
       }),

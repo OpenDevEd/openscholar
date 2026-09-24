@@ -31,3 +31,28 @@ export function publicPhoto(url: string | undefined): string | undefined {
   const accepted = parsed.protocol === "https:" && !parsed.username && !parsed.password && !parsed.hash;
   return accepted && parsed.href.length <= URL_MAX ? parsed.href : undefined;
 }
+
+/**
+ * People written into the Home card by hand, rather than chosen from the
+ * library's OpenScholar team, carry ids with this prefix. They need no account;
+ * their name and photo are the ones the owner typed.
+ */
+export const HAND_ENTERED_PREFIX = "custom";
+
+export function isHandEntered(id: string): boolean {
+  return id.startsWith(`${HAND_ENTERED_PREFIX}_`);
+}
+
+/**
+ * The square taken from a photo: the full width or height, whichever is
+ * shorter. A portrait keeps its upper part, where the face usually is; a
+ * landscape keeps its middle.
+ */
+export function squareCrop(width: number, height: number) {
+  const side = Math.min(width, height);
+  return {
+    side,
+    x: Math.round((width - side) / 2),
+    y: Math.round((height - side) * 0.2),
+  };
+}

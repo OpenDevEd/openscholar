@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publicName, publicPhoto } from "./home-people";
+import { publicName, publicPhoto, squareCrop } from "./home-people";
 
 describe("home page people", () => {
   it("names a person on one line, within the runtime's 120 characters, and never by an empty name", () => {
@@ -30,5 +30,16 @@ describe("home page people", () => {
     } finally {
       URL.canParse = canParse;
     }
+  });
+});
+
+describe("photo crop", () => {
+  it("keeps the upper part of a portrait, where the face is", () => {
+    expect(squareCrop(800, 1200)).toEqual({ side: 800, x: 0, y: 80 });
+  });
+
+  it("keeps the middle of a landscape and all of a square", () => {
+    expect(squareCrop(1200, 800)).toEqual({ side: 800, x: 200, y: 0 });
+    expect(squareCrop(500, 500)).toEqual({ side: 500, x: 0, y: 0 });
   });
 });

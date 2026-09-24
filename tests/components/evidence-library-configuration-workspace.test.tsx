@@ -1114,6 +1114,18 @@ describe("<ConfigurationWorkspace>", () => {
       });
     });
 
+    it("adds someone without an account, whose picture is where their photo goes", async () => {
+      const user = userEvent.setup();
+      await renderWorkspace();
+      const home = card("home");
+      await user.click(home.getByRole("switch", { name: "Show a home page" }));
+      await user.click(home.getByRole("button", { name: "Add someone" }));
+      expect(home.getByText("Added by hand. Click the picture to add a photo.")).toBeInTheDocument();
+      await user.type(home.getByLabelText("Name"), "Amina Yusuf");
+      expect(home.getByRole("button", { name: "Add a photo of Amina Yusuf" })).toBeInTheDocument();
+      expect(home.queryByRole("button", { name: /Remove the photo/ })).toBeNull();
+    });
+
     it("names the publication picker with its field label", async () => {
       const user = userEvent.setup();
       await renderWorkspace();
