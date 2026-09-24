@@ -6,6 +6,74 @@ The implementation scope includes the OpenAlex source importer. An Elasticsearch
 Follow [the working agreement](../../AGENTS.md) and
 [the project guide](../../docs/agents/project.md).
 
+## Implementation completed, 2026-09-24
+
+The importer, saved source configuration, Topics feature, shared field overrides,
+editorial review, search, publication delivery and public topic pages are now
+implemented on the local `feat/openalex-integration` branches. EL is at
+`61209819`; OpenScholar code is at `9a88472e` and pins that exact local contract. These branches have not
+been pushed or merged. Shared development and production remain unchanged.
+
+The acceptance checks used disposable PostgreSQL, Redis and Meilisearch,
+two isolated Evidence Libraries and the lane-owned Convex Cloud deployment
+`notable-starfish-130`. They covered:
+
+- A real OpenAlex import and refresh, URL-only PDFs, persistent editorial topic
+  overrides, draft save/review/publish, and the actual source and publication
+  worker commands. PDF hosting, retries, overlap, reconciliation and late citation
+  targets were checked against disposable PostgreSQL and controlled PDF services.
+- Real hierarchy filtering, ancestor union counts, sibling OR and other-filter
+  AND behavior, unknown IDs, zero counts, URL reload/back, and author-affiliation
+  filtering. Topics off hid public data, editing and filters while keeping saved
+  assignments; enabling restored them. A plain index-worker run detected the
+  configuration change and rebuilt without a manual `--rebuild` flag.
+- Saved source approval, pause/resume, per-source PDF choice, and the Topics
+  configuration switch through the actual configuration page. A changed query
+  requires preview and approval; settings-only changes retain its query version.
+- The live publication feed and DOI grouping: one publication with links to two
+  libraries, including a location with no topics of its own. Manual records with
+  no shared identifier remain separate. Database checks cover stale deliveries,
+  conflicting identifiers, unpublish/delete, both source-conflict choices and
+  library teardown.
+- Desktop and 390 × 844 layouts, light/dark mode, the actual `/admin` editor,
+  topic popovers and public topic results. Keyboard opening, internal links,
+  Escape/focus return and selectable scrolling lists were exercised. Mobile
+  source filters use the existing sheet so the form actions remain visible.
+
+Focused verification passed: 104 OpenScholar checks across seven files; 16
+platform/teardown checks; 37 EL database/PDF/review checks across six files;
+EL unit groups of 90 and 23 checks; both TypeScript checks; changed-file EL
+lint; and the Compose contract check. The unit groups overlap and must not be
+added as a unique test total. React Doctor finished at 77 for OpenScholar and
+75 for EL; remaining diagnostics concern compiler limitations and maintainability,
+not failed runtime checks. The one integrated cross-family review completed and
+its actionable findings were fixed. No full local suite or CI monitoring ran.
+
+Migrations `0065`–`0067` were applied only to disposable databases. `0066` adds
+topic assignments, source snapshots, field overrides, reference resolution and
+the transactional delivery queue; it does not backfill existing record topics.
+`0067` stores the search projection signature so a feature-flag rebuild can
+resume after failure. Configuration format version 6 migrates older snapshots
+through the existing explicit migration chain. Deploying saved data still
+requires the repository's audit/migration/verification gate; rollback of these
+local fixtures means recreating their disposable database. Do not drop the new
+tables from a deployed library that contains editorial work.
+
+Live previews remain available at `https://localhost:3525/lib/F7NU4YS4`,
+`https://localhost:3525/admin?item=F7NU4YS4`, and
+`https://localhost:3011/topics/T11122`. Configuration uses the owned test library
+at `/evidence-libraries/m57e7vjn9r24mn9sx3v25pb4dn8f0aas/configuration` on port
+3011. These are isolated verification libraries, not an activated shared library.
+The production-origin contract check, full CI, merge and image publication belong
+to a later authorized release; local contract synchronization does not claim
+those gates have passed.
+
+The isolated configuration preview's unrelated runtime-update check reports
+"Updates cannot be checked right now" because its Convex deployment has no
+`GITHUB_TOKEN`. Source configuration and Topics calls succeed. Release lookup,
+the Activate-to-Coolify flow and a released container rollout were not verified
+in this preview; no shared deployment was attempted.
+
 ## Agreed behavior
 
 - Topics use the OpenAlex hierarchy: domain, field, subfield, topic. A topic is
@@ -112,13 +180,13 @@ No production migration or deployment is authorized. Full integration is complet
 only when the real importer, editor, configuration, PDF and public topic flows
 work; mapping tests or prototype fixtures alone do not prove completion.
 
-## Current implementation and reuse
+## Prototype inventory before implementation
 
 Implementation branches are `feat/openalex-integration`, based on EL `main`
 `7f4bd99c` and OpenScholar `dev` `90ebe501`. The table below describes the
 reviewed prototype, not code already integrated into these branches.
 
-| Boundary | Current code | What remains |
+| Boundary | Reviewed prototype code | Work replaced during integration |
 | --- | --- | --- |
 | Shared topic catalog | OS `lib/topics/catalog.ts`; EL `src/lib/topics/catalog.ts` | One maintained catalog and version; replace duplicated snapshots in the implementation |
 | OpenAlex details and works | OS `app/actions/topics.ts`, `lib/openalex/read-works.ts` | Reuse the readers; cache details and distinguish counts as described below |
@@ -136,7 +204,10 @@ The shared Outline integration and decisions pages were checked on 2026-09-24.
 They define repository ownership and service authentication but contain no
 additional topic contract. This plan records the topic-specific choices.
 
-### Import foundation, 2026-09-24
+### Historical import-foundation handoff, 2026-09-24
+
+This section records the earlier partial handoff. The completion evidence above
+supersedes its unfinished-work list and preview limitations.
 
 EL commits: `38ce2ec3` maps provider works, `ee0ee67e` adds PDF processing,
 and `01e6dc79` integrates the source worker, identity, configuration and review
@@ -190,7 +261,7 @@ schema difference. React Doctor remained at 82 with no errors; its warnings
 include dependent database reads, deliberately sequential file processing and
 Zod schema syntax. Full CI and shared deployment have not run.
 
-Still required before the full integration is usable: persistent shared field
+Remaining at that foundation handoff: persistent shared field
 overrides and conflict choices; complete-source reconciliation and withdrawal;
 incremental refresh; typed topic storage and effective assignments; saved
 configuration and approval controls; editor/publish/restore integration; real
@@ -199,11 +270,10 @@ grouped public OpenScholar results. Late-arriving and cross-search citation
 references also need resolution. Do not activate imports on a shared library
 and describe this foundation as the finished feature.
 
-## Proposed implementation defaults
+## Implementation contract
 
-These are the concrete engineering defaults for implementation, not claims
-that the backend already exists. Surface a conflict with actual source data
-before changing the user-visible behavior.
+These are the accepted engineering defaults implemented by this phase. Surface
+a conflict with actual source data before changing the user-visible behavior.
 
 ### Ownership and stored data
 
@@ -384,7 +454,7 @@ updated from publish events; metadata-card caching follows the existing author
 reader. Log library, item/topic ID, revision, operation and provider error at
 the boundary so failures are diagnosable on the first implementation.
 
-## Prototype review routes and states
+## Historical prototype review routes and states
 
 - Library item: `https://localhost:3521/lib/PP2KEL8M#topics`.
 - OpenScholar topic: `http://localhost:3010/topics/T12260`.
@@ -428,7 +498,7 @@ Run the smallest checks for each changed boundary. Full CI is the pre-merge
 gate on the exact authorized merge head; the working agreement owns that
 workflow. No shared-service or production deployment is part of preparation.
 
-## Ready to start means
+## Historical preparation gate
 
 The user has reviewed the complete prototype and the agreed behavior above;
 remaining visual comments are resolved; the target worktrees are updated to
@@ -436,7 +506,7 @@ current `main`/`dev`; the contract above is accepted; and the implementation own
 checks in an isolated environment. Prototype UI readiness does not mean the
 runtime data, migrations, publication feed or live search adapter are built.
 
-## Preparation checks
+## Historical preparation checks
 
 Checked locally on 2026-09-24:
 
