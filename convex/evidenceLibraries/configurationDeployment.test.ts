@@ -1702,6 +1702,31 @@ describe("Evidence Library configuration deployment", () => {
         libraryId: fixture.created.libraryId,
       }),
     ).rejects.toThrow(/live settings need the current software/);
+
+    // Once the settings from before that publish are restored, the earlier
+    // software can take them again.
+    await fixture.t.run(async (ctx) => {
+      const published = (await ctx.db.get(activated.revisionId))!;
+      const original = await ctx.db
+        .query("evidenceLibraryConfigRevisions")
+        .withIndex("by_libraryId_and_revisionNumber", (query) =>
+          query.eq("libraryId", fixture.created.libraryId),
+        )
+        .first();
+      const { _id, _creationTime, ...fields } = published;
+      const restore = await ctx.db.insert("evidenceLibraryConfigRevisions", {
+        ...fields,
+        revisionKey: `r${published.revisionNumber + 1}`,
+        revisionNumber: published.revisionNumber + 1,
+        rollbackOfRevisionId: original!._id,
+      });
+      await ctx.db.patch(fixture.created.libraryId, { activeRevisionId: restore });
+    });
+    await expect(
+      fixture.t.mutation(internal.evidenceLibraries.versions.startRuntimeRollback, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toMatchObject({ from: NEWER_COMMIT, to: RUNTIME_COMMIT });
   });
 
   it("publishes on the running software when it already reads the contract", async () => {

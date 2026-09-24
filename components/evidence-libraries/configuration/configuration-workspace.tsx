@@ -394,14 +394,17 @@ function Workspace({
     setActivateOpen(false);
     setActivating(true);
     setRefusal(null);
-    void save()
-      .then(async (version) => {
-        // The publish reads what the last update check found about the
-        // software. Usually the page's own check has answered; this covers an
-        // owner who activates before it does. A failed check never blocks.
-        if (!isDraftLibrary) await checkSoftware({ libraryId }).catch(() => null);
-        return activateConfiguration({ libraryId, expectedEditVersion: version });
-      })
+    // The publish reads what the last update check found about the software.
+    // Usually the page's own check has answered; this covers an owner who
+    // activates before it does, and a failed check never blocks. It runs
+    // before the save, because saving remounts the form.
+    void (isDraftLibrary
+      ? Promise.resolve()
+      : checkSoftware({ libraryId }).catch(() => null))
+      .then(() => save())
+      .then((version) =>
+        activateConfiguration({ libraryId, expectedEditVersion: version }),
+      )
       .then((result) => {
         if (result.kind === "setup") {
           router.push(`/evidence-libraries/${libraryId}/setup`);

@@ -851,7 +851,8 @@ export const startRuntimeRollback = internalMutation({
       throw createError("CONFLICT", "The earlier software is already live");
     }
     // A publish that also moved the library onto this software did so because
-    // the earlier software could not read those settings.
+    // the earlier software could not read those settings. Settings restored
+    // from before that publish are readable again.
     const arrivals = await ctx.db
       .query("evidenceLibraryConfigOperations")
       .withIndex("by_libraryId_and_failed_runtime", (query) =>
@@ -862,12 +863,21 @@ export const startRuntimeRollback = internalMutation({
           .eq("runtimeUpdate.toImage", binding.runtimeImage),
       )
       .collect();
+    const arrival = arrivals.find(
+      (operation) =>
+        operation.activationEditVersion !== undefined &&
+        operation.runtimeUpdate?.from === previous.commit,
+    );
+    const arrivalRevision = arrival?.revisionId
+      ? await ctx.db.get(arrival.revisionId)
+      : null;
+    const live = await ctx.db.get(library.activeRevisionId);
+    const restored = live?.rollbackOfRevisionId
+      ? await ctx.db.get(live.rollbackOfRevisionId)
+      : null;
     if (
-      arrivals.some(
-        (operation) =>
-          operation.activationEditVersion !== undefined &&
-          operation.runtimeUpdate?.from === previous.commit,
-      )
+      arrivalRevision &&
+      !(restored && restored.revisionNumber < arrivalRevision.revisionNumber)
     ) {
       throw createError(
         "CONFLICT",
