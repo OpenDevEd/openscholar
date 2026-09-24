@@ -2,7 +2,7 @@
 
 Prepared 2026-09-24. This is the handoff for implementing topics in
 `OpenDevEd/openalex-count` and `OpenDevEd/new-el` after the prototype review.
-Implementation now includes the OpenAlex source importer. An Elasticsearch migration remains outside this work.
+The implementation scope includes the OpenAlex source importer. An Elasticsearch migration remains outside this work.
 Follow [the working agreement](../../AGENTS.md) and
 [the project guide](../../docs/agents/project.md).
 
@@ -114,6 +114,10 @@ work; mapping tests or prototype fixtures alone do not prove completion.
 
 ## Current implementation and reuse
 
+Implementation branches are `feat/openalex-integration`, based on EL `main`
+`7f4bd99c` and OpenScholar `dev` `90ebe501`. The table below describes the
+reviewed prototype, not code already integrated into these branches.
+
 | Boundary | Current code | What remains |
 | --- | --- | --- |
 | Shared topic catalog | OS `lib/topics/catalog.ts`; EL `src/lib/topics/catalog.ts` | One maintained catalog and version; replace duplicated snapshots in the implementation |
@@ -131,6 +135,69 @@ work; mapping tests or prototype fixtures alone do not prove completion.
 The shared Outline integration and decisions pages were checked on 2026-09-24.
 They define repository ownership and service authentication but contain no
 additional topic contract. This plan records the topic-specific choices.
+
+### Import foundation, 2026-09-24
+
+EL commits: `38ce2ec3` maps provider works, `ee0ee67e` adds PDF processing,
+and `01e6dc79` integrates the source worker, identity, configuration and review
+fixes. These are local commits on `feat/openalex-integration`; nothing is pushed.
+
+The EL implementation adds approved-query configuration, a bounded OpenAlex
+client, mapping, resumable imports through the existing source worker, and
+atomic page/checkpoint writes. Approval history rejects reuse of an older
+version with changed contents. Overlapping searches share canonical provider
+records without matching manual or Zotero records by DOI. Author affiliations
+stay on creators and feed the existing institution-country catalog. Raw topic
+data is retained, but effective topic assignments are not implemented yet.
+
+PDF links work directly on the item page. Processing is opt-in per source and
+uses the existing PDF and storage services. A first failed download keeps the
+external link; a failed refresh retains a usable hosted copy and records the
+error. Overlapping searches reuse the same hosted PDF. It stays while any
+supplying source opts in, and is cleaned up when none do. Cleanup cannot remove
+an active file or revive a replaced file through an older retry.
+
+Migration `0065_openalex_sources.sql` changes file-publication foreign keys
+to permit this shared identity. It keeps canonical item/parent foreign keys
+and a separate source foreign key, and adds immutable approval history.
+It was exercised only on disposable local
+PostgreSQL. Local rollback recreates that disposable database. Before deploying
+or rolling back saved data, audit cross-source file publications; the previous
+composite constraints cannot be restored while such rows exist. No deployed
+database or shared service has changed.
+
+Targeted evidence includes interrupted/resumed imports, concurrent overlapping
+searches, stale source data, a manual record with the same DOI, query replacement
+during a request, and real PDF processing against disposable PostgreSQL. A live
+four-work OpenAlex import produced four records and two URL-only PDF children.
+The actual item page and its Open document action were checked in agent-browser.
+The local preview has no search service and does not prove search integration.
+
+The read-only phase review found file ownership, refresh failure, cleanup,
+source timestamp, affiliation limit, response size, public download and migration
+snapshot issues. The implementation fixes these at the shared boundaries. It
+also saves approval history so an old query version cannot be rewritten. The
+obsolete `_auto-process` lookup remains removed under the user's no-legacy
+direction; actual PDF URLs are stored on attachments. The public download route
+uses the existing bounded public-address fetcher and was checked over HTTP with
+a real PDF. Some publisher endpoints return HTML to server requests; the existing
+redirect to the original URL remains available in that case.
+
+Local checks passed: 289 targeted unit tests, 10 database/PDF integration checks,
+the existing source-writer regression tool, TypeScript, changed-file ESLint,
+configuration artifact verification and migration generation with no remaining
+schema difference. React Doctor remained at 82 with no errors; its warnings
+include dependent database reads, deliberately sequential file processing and
+Zod schema syntax. Full CI and shared deployment have not run.
+
+Still required before the full integration is usable: persistent shared field
+overrides and conflict choices; complete-source reconciliation and withdrawal;
+incremental refresh; typed topic storage and effective assignments; saved
+configuration and approval controls; editor/publish/restore integration; real
+facets and statistics; authenticated catalog and association delivery; and
+grouped public OpenScholar results. Late-arriving and cross-search citation
+references also need resolution. Do not activate imports on a shared library
+and describe this foundation as the finished feature.
 
 ## Proposed implementation defaults
 
@@ -281,8 +348,8 @@ base URL. Never put credentials in browser bundles or hardcode a host/port.
 | --- | --- | --- |
 | Catalog browse/resolve | version, library identity, parent or query or at most 100 IDs, cursor, limit ≤100 | Nodes, revision, next cursor, canonical public base URL; strict validation and bounded paging |
 | Topic detail | version, library identity, one canonical topic ID | Description, hierarchy, keywords, OpenAlex count with timestamp, canonical topic URL; 404 unknown, retryable unavailable response |
-| Publish associations | idempotency key, library ID, item key, monotonically increasing published revision, effective topic IDs, verified identity | Receipt for that revision; reject invalid IDs and foreign library credentials; older revisions do not win |
-| Remove associations | same identity/revision contract, unpublished/deleted state | Idempotent tombstone with revision; no hard delete that permits stale replay |
+| Publish associations | idempotency key, library ID, item key, monotonically increasing delivery generation, published revision, effective topic IDs, verified identity and bounded bibliographic metadata | Receipt for that generation; reject invalid IDs and foreign library credentials; older delivery generations do not win |
+| Remove associations | same identity/generation contract, unpublished/deleted state | Idempotent tombstone with generation; no hard delete that permits stale replay |
 | Public topic publications | topic ID, query, cursor, limit ≤50 | Deduplicated publications and locations, counts with completeness, next cursor, unavailable source summary |
 
 Use these exact proposed routes in the existing `convex/http.ts` router:
@@ -291,7 +358,7 @@ Use these exact proposed routes in the existing `convex/http.ts` router:
 - `POST /api/v1/evidence-libraries/topics/detail` for one topic.
 - `POST /api/v1/evidence-libraries/topic-associations` for replacing a record's
   complete public association set. `state: "unpublished"` carries the same
-  revision/idempotency contract and stores a tombstone.
+  generation/idempotency contract and stores a tombstone.
 - Public directory results use the Next server reader backed by the Convex
   public query `topics.publications.list`, with bounded cursor pagination;
   no browser machine credential and no duplicate public REST interface.
@@ -301,9 +368,9 @@ A shared `contractVersion: 1` discriminates these JSON payloads. Return
 400 invalid input, 401 invalid credential, 403 wrong library, 404 unknown
 entity, 409 conflicting revision, and 503 temporary unavailability. Repeat
 of an already applied idempotency key returns its original receipt; same
-key with different content returns 409. A lower revision returns a receipt
+key with different content returns 409. A lower delivery generation returns a receipt
 marked `superseded` without a mutation. The full replacement request includes
-`libraryId`, `itemKey`, `publishedRevision`, `topicIds`, verified `openalexId`
+`libraryId`, `itemKey`, `generation`, `publishedRevision`, `topicIds`, bounded public metadata, verified `openalexId`
 and bibliographic `doi` or null, and `state`.
 
 One integration owner writes the shared validator and its fixtures before
