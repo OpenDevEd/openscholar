@@ -31,7 +31,7 @@ export async function createDisposableClerkUser(args?: {
   const prefix = args?.prefix ?? "e2e";
   const organizationId = requireEnv("E2E_CLERK_ORGANIZATION_ID");
   const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const email = `${prefix}-${uniqueId}@test.example.com`;
+  const email = `${prefix}-${uniqueId}+clerk_test@example.com`;
   const password = `E2E${prefix.replace(/[^a-z0-9]/gi, "")}${uniqueId}!`;
   const clerkClient = getClerkClient();
 

@@ -79,7 +79,6 @@ async function ensureDisposableClerkUser(): Promise<void> {
   await clerkClient.users.updateUser(primary.id, {
     password,
     skipPasswordChecks: true,
-    signOutOfOtherSessions: true,
     firstName: primary.firstName ?? "E2E",
     lastName: primary.lastName ?? "Auth",
   });
