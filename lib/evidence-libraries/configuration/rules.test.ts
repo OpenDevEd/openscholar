@@ -70,6 +70,7 @@ const savedRows = [
   { sectionKey: "collections", payload: [] },
   { sectionKey: "search", payload: {} },
   { sectionKey: "filters", payload: {} },
+  { sectionKey: "topics", payload: { enabled: false } },
   { sectionKey: "sources", payload: [] },
   { sectionKey: "content", payload: {} },
   { sectionKey: "citations", payload: {} },
@@ -840,6 +841,8 @@ describe("changedSectionRows for the content sections", () => {
     expect(cardForRow("email")).toBe("contact");
     expect(cardForRow("legal")).toBe("contact");
     expect(cardForRow("features")).toBe("features");
+    expect(cardForRow("topics")).toBe("search");
+    expect(cardForRow("sources")).toBe("sources");
     expect(cardForRow("services")).toBeNull();
   });
 });
@@ -915,6 +918,7 @@ describe("readDraft for the discovery sections", () => {
       featuredValue: "EdTech Hub",
     });
     expect(draft.filters.years).toEqual({ enabled: true });
+    expect(draft.topics).toEqual({ enabled: false });
     expect(draft.filters.collectionsExpanded).toBe(true);
     expect(draft.sources).toEqual([
       {
@@ -984,10 +988,11 @@ describe("sectionProblems for the discovery sections", () => {
 });
 
 describe("changedSectionRows for the discovery sections", () => {
-  it("writes search and filters from the one card and drops the pin outside featured mode", () => {
+  it("writes search, filters and topics from the Search card", () => {
     const draft = readDraft(discoveryRows);
     draft.search.fullText = true;
     draft.filters.institution.mode = "facet";
+    draft.topics.enabled = true;
     const rows = changedSectionRows(draft, discoveryRows);
     expect(rows).toEqual([
       {
@@ -1008,6 +1013,7 @@ describe("changedSectionRows for the discovery sections", () => {
           years: { enabled: true },
         },
       },
+      { sectionKey: "topics", payload: { enabled: true } },
     ]);
     expect(sectionState(draft, discoveryRows, "search")).toBe("edited");
   });
