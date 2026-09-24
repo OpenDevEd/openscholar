@@ -1117,6 +1117,7 @@ describe("<ConfigurationWorkspace>", () => {
     it("names the publication picker with its field label", async () => {
       const user = userEvent.setup();
       await renderWorkspace();
+      await user.click(card("home").getByRole("switch", { name: "Show a home page" }));
       await user.click(card("home").getByRole("button", { name: "Add step" }));
       expect(card("home").getByLabelText("Publication followed").tagName).toBe("BUTTON");
     });
@@ -1127,6 +1128,12 @@ describe("<ConfigurationWorkspace>", () => {
       const home = card("home");
       expect(home.getByText("sections.home")).toBeInTheDocument();
       expect(home.getByText("sectionState.complete")).toBeInTheDocument();
+      // Off, the card shows only its switch, as the other switched cards do.
+      expect(home.queryByLabelText(/Example question/)).toBeNull();
+      expect(home.queryByRole("button", { name: "Add step" })).toBeNull();
+
+      await user.click(home.getByRole("switch", { name: "Show a home page" }));
+      expect(await home.findAllByLabelText(/Example question/)).not.toHaveLength(0);
       expect(home.getAllByLabelText(/Example question/)[0]).toHaveAttribute(
         "placeholder",
         "What does the evidence say about literacy?",
@@ -1136,7 +1143,6 @@ describe("<ConfigurationWorkspace>", () => {
       expect(fallback).toBeTruthy();
       expect(fallback).not.toBe("What does the evidence say about literacy?");
 
-      await user.click(home.getByRole("switch", { name: "Show a home page" }));
       expect(home.getByText("sectionState.edited")).toBeInTheDocument();
       expect(card("features").getByText("sectionState.complete")).toBeInTheDocument();
       await user.click(screen.getByRole("button", { name: "save" }));
