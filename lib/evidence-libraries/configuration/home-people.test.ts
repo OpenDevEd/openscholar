@@ -19,4 +19,16 @@ describe("home page people", () => {
     expect(publicPhoto("not a url")).toBeUndefined();
     expect(publicPhoto(" https://img.example.test/a b/é.png ")).toBe("https://img.example.test/a%20b/%C3%A9.png");
   });
+
+  it("reads photos where URL.canParse does not exist, as in Convex queries", () => {
+    const canParse = URL.canParse;
+    // @ts-expect-error Convex's query runtime has no URL.canParse.
+    delete URL.canParse;
+    try {
+      expect(publicPhoto("https://img.example.test/ada.png")).toBe("https://img.example.test/ada.png");
+      expect(publicPhoto("not a url")).toBeUndefined();
+    } finally {
+      URL.canParse = canParse;
+    }
+  });
 });
