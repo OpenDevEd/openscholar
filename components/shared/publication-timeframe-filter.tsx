@@ -1,6 +1,7 @@
 "use client";
 
 import type { DateRange } from "react-day-picker";
+import { SegmentedToggle } from "./segmented-toggle";
 import { useTranslations } from "next-intl";
 import { DateRangePicker } from "@/components/shared/date-range-picker";
 import { YearRangePicker } from "@/components/year-range-picker";
@@ -48,30 +49,15 @@ export function PublicationTimeframeFilter({
   return (
     <div className="space-y-3">
       {/* Year / Date segmented toggle */}
-      <div className="flex rounded-lg bg-muted p-1">
-        <button
-          onClick={() => onFilterTypeChange("year")}
-          className={cn(
-            "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200",
-            filterType === "year"
-              ? "bg-background shadow-sm text-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {tf("yearRange")}
-        </button>
-        <button
-          onClick={() => onFilterTypeChange("date")}
-          className={cn(
-            "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200",
-            filterType === "date"
-              ? "bg-background shadow-sm text-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {tf("dateRange")}
-        </button>
-      </div>
+      <SegmentedToggle
+        ariaLabel={tf("publicationTimeframe")}
+        value={filterType}
+        onChange={onFilterTypeChange}
+        options={[
+          { value: "year", label: tf("yearRange") },
+          { value: "date", label: tf("dateRange") },
+        ]}
+      />
 
       {/* Active picker */}
       {filterType === "date" ? (

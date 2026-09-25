@@ -2,6 +2,7 @@ import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { Work } from "@sickrin/openalex-sdk/dist/src/types/work";
 import type { SortByWork } from "@sickrin/openalex-sdk/dist/src/types/work";
+import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import type { SearchResult, SearchField, SearchFilters } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
@@ -302,7 +303,7 @@ export function createSearchParameters(
       return date.split('T')[0];
     }
     // It's a Date object, convert to ISO string
-    return date.toISOString().split('T')[0];
+    return format(date, 'yyyy-MM-dd');
   };
 
   // Add date filtering

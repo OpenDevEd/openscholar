@@ -921,6 +921,7 @@ function readSources(payload: unknown): EvidenceSourceEntry[] {
           writebackEnabled: false,
           settings: {
             name: text(settings.name),
+            ...(text(settings.searchUrl) ? { searchUrl: text(settings.searchUrl) } : {}),
             apiKeyMode:
               settings.apiKeyMode === "custom" ? "custom" : "platform",
             approvedQuery: {

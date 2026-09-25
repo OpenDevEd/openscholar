@@ -1,186 +1,102 @@
-import { getCountryCodesForRegions } from "@/lib/constants";
-import { hasUnquotedWildcard } from "@/lib/search/wildcard";
-import type { SearchField } from "@/lib/types";
-import type { OpenAlexQuery } from "./configuration/sources";
+import { getPaths } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
+import { DEFAULT_SEARCH_PARAMS, parseSearchParamsFromUrl, paramsToFilters } from "@/lib/search-params";
+import type { ImportQuery } from "@/components/evidence-libraries/configuration/sections/openalex-import-model";
+import { buildOpenAlexImportRequest, EMPTY_IMPORT_EXTRAS, type TopicLevel } from "./openalex-import-request";
+import type { OpenAlexQuery, OpenAlexSourceEntry } from "./configuration/sources";
 
-export type OpenAlexTopicLevel = "field" | "subfield" | "topic";
-export type OpenAlexSearchScope = SearchField | "all";
+export type OpenAlexTopicLevel = TopicLevel;
 
-export type OpenAlexSourceQueryBuilder = {
-  search: string;
-  scope: OpenAlexSearchScope;
-  yearRange: [number, number] | null;
-  locations: string[];
-  types: string[];
-  topicLevel: OpenAlexTopicLevel;
-  topicIds: string[];
-  sdgs: string[];
-  openAccessOnly: boolean;
-};
-
-export const OPENALEX_WORK_TYPES = [
-  { id: "article", name: "Article" },
-  { id: "book", name: "Book" },
-  { id: "book-review", name: "Book review" },
-  { id: "book-chapter", name: "Book chapter" },
-  { id: "conference-paper", name: "Conference paper" },
-  { id: "data-paper", name: "Data paper" },
-  { id: "dataset", name: "Dataset" },
-  { id: "dissertation", name: "Dissertation" },
-  { id: "edited-book", name: "Edited book" },
-  { id: "editorial", name: "Editorial" },
-  { id: "erratum", name: "Erratum" },
-  { id: "grant", name: "Grant" },
-  { id: "letter", name: "Letter" },
-  { id: "libguides", name: "Library guide" },
-  { id: "monograph", name: "Monograph" },
-  { id: "other", name: "Other" },
-  { id: "paratext", name: "Paratext" },
-  { id: "peer-review", name: "Peer review" },
-  { id: "preprint", name: "Preprint" },
-  { id: "reference-entry", name: "Reference entry" },
-  { id: "report", name: "Report" },
-  { id: "retraction", name: "Retraction" },
-  { id: "review", name: "Review" },
-  { id: "software", name: "Software" },
-  { id: "software-paper", name: "Software paper" },
-  { id: "standard", name: "Standard" },
-] as const;
-
-export const OPENALEX_SDGS = [
-  "No poverty",
-  "Zero hunger",
-  "Good health and well-being",
-  "Quality education",
-  "Gender equality",
-  "Clean water and sanitation",
-  "Affordable and clean energy",
-  "Decent work and economic growth",
-  "Industry, innovation and infrastructure",
-  "Reduced inequalities",
-  "Sustainable cities and communities",
-  "Responsible consumption and production",
-  "Climate action",
-  "Life below water",
-  "Life on land",
-  "Peace, justice and strong institutions",
-  "Partnerships for the goals",
-].map((name, index) => ({
-  id: String(index + 1),
-  name: `${index + 1}. ${name}`,
-}));
-
-export function emptyOpenAlexSourceQuery(): OpenAlexSourceQueryBuilder {
-  return {
-    search: "",
-    scope: "title_and_abstract",
-    yearRange: null,
-    locations: [],
-    types: [],
-    topicLevel: "subfield",
-    topicIds: [],
-    sdgs: [],
-    openAccessOnly: false,
-  };
+/** Pagination and display settings do not change which records a source imports. */
+export function sameOpenAlexSourceSearch(left: ImportQuery, right: ImportQuery): boolean {
+  const definition = ({ params, extras }: ImportQuery) => ({
+    params: { ...params, page: 1, sort: DEFAULT_SEARCH_PARAMS.sort, rmin: 0, rmax: 5, rated: false, lang: null },
+    extras,
+  });
+  return JSON.stringify(definition(left)) === JSON.stringify(definition(right));
 }
 
-function sorted(values: readonly string[]): string[] {
-  return [...new Set(values)].sort((a, b) => a.localeCompare(b));
+/** Use the same query expansion, dates and provider serialization as live search. */
+export function buildOpenAlexSourceQuery(query: ImportQuery): OpenAlexQuery | null {
+  const request = buildOpenAlexImportRequest(query.params.q, paramsToFilters(query.params), query.extras);
+  if (!request) return null;
+  const filter = Object.entries(getPaths(request.filter))
+    .map(([key, values]) => `${key}:${Array.isArray(values) ? values.join("|") : values}`)
+    .join(",");
+  return request.search || filter ? {
+    ...(request.search ? { search: request.search } : {}),
+    ...(filter ? { filter } : {}),
+  } : null;
 }
 
-export function buildOpenAlexSourceQuery(
-  builder: OpenAlexSourceQueryBuilder,
-): OpenAlexQuery {
-  const filter: string[] = [];
-  const search = builder.search.trim();
-  const query: OpenAlexQuery = {};
-  if (search) {
-    if (builder.scope === "all") {
-      query.search = search;
-    } else {
-      const suffix = hasUnquotedWildcard(search) ? "search.exact" : "search";
-      filter.push(`${builder.scope}.${suffix}:${search}`);
+/** A quoted search phrase can contain commas and colons without starting a filter. */
+function filterClauses(filter: string): string[] {
+  const clauses: string[] = [];
+  let start = 0;
+  let quoted = false;
+  for (let index = 0; index < filter.length; index++) {
+    if (filter[index] === "\\") { index++; continue; }
+    if (filter[index] === '\"') quoted = !quoted;
+    if (!quoted && filter[index] === "," && /^[a-z_][a-z_.]*:/.test(filter.slice(index + 1))) {
+      clauses.push(filter.slice(start, index));
+      start = index + 1;
     }
   }
-  if (builder.yearRange) {
-    filter.push(
-      `publication_year:${builder.yearRange[0]}-${builder.yearRange[1]}`,
-    );
+  clauses.push(filter.slice(start));
+  return clauses;
+}
+
+/** Provider-only sources can still be opened without discarding their filters. */
+export function parseOpenAlexSourceQuery(query: OpenAlexQuery): ImportQuery {
+  const result: ImportQuery = {
+    params: { ...DEFAULT_SEARCH_PARAMS },
+    extras: { ...EMPTY_IMPORT_EXTRAS, additionalFilters: {} },
+  };
+  if (query.search) {
+    result.params.q = query.search;
+    result.params.field = "all";
   }
-  const countries = sorted(
-    getCountryCodesForRegions(builder.locations).countries,
-  );
-  if (countries.length)
-    filter.push(`authorships.countries:${countries.join("|")}`);
-  const types = sorted(builder.types);
-  if (types.length) filter.push(`type:${types.join("|")}`);
-  const topicIds = sorted(builder.topicIds);
-  if (topicIds.length) {
-    const prefix =
-      builder.topicLevel === "topic"
-        ? "topics.id"
-        : `topics.${builder.topicLevel}.id`;
-    filter.push(`${prefix}:${topicIds.join("|")}`);
+  for (const clause of filterClauses(query.filter ?? "")) {
+    const separator = clause.indexOf(":");
+    if (separator < 1) continue;
+    const key = clause.slice(0, separator);
+    const value = clause.slice(separator + 1);
+    const scoped = key.match(/^(title_and_abstract|title|abstract|fulltext|display_name)\.search(?:\.exact)?$/);
+    if (scoped) {
+      result.params.field = scoped[1];
+      result.params.q = value;
+    } else if (key === "publication_year" && /^\d{4}-\d{4}$/.test(value)) {
+      [result.params.yf, result.params.yt] = value.split("-").map(Number);
+    } else if (key === "from_publication_date" || key === "to_publication_date") {
+      result.params.ft = "date";
+      result.params[key === "from_publication_date" ? "df" : "dt"] = value;
+    } else if (key === "authorships.countries") {
+      result.params.reg = value.split("|");
+    } else if (key === "cites" || key === "cited_by" || key === "related_to") {
+      result.params[key === "cited_by" ? "citedBy" : key === "related_to" ? "rel" : "cites"] = value;
+    } else if (/^topics(?:\.(field|subfield))?\.id$/.test(key)) {
+      result.extras.topicLevel = key === "topics.id" ? "topic" : key.split(".")[1] as TopicLevel;
+      result.extras.topicIds = value.split("|").map(id => id.replace(/^https:\/\/openalex.org\/(?:fields\/|subfields\/)?/, ""));
+    } else if (key === "sustainable_development_goals.id") {
+      result.extras.sdgs = value.split("|").map(id => id.replace("https://metadata.un.org/sdg/", ""));
+    } else if (key === "open_access.is_oa" && value === "true") {
+      result.extras.openAccessOnly = true;
+    } else {
+      result.extras.additionalFilters![key] = value;
+    }
   }
-  const sdgs = sorted(builder.sdgs)
-    .sort((a, b) => Number(a) - Number(b))
-    .map((id) => `https://metadata.un.org/sdg/${id}`);
-  if (sdgs.length)
-    filter.push(`sustainable_development_goals.id:${sdgs.join("|")}`);
-  if (builder.openAccessOnly) filter.push("open_access.is_oa:true");
-  if (filter.length) query.filter = filter.join(",");
+  return result;
+}
+
+/** Keep the original controls; an expanded provider query cannot recover country focus. */
+export function readOpenAlexSourceSearch(source: OpenAlexSourceEntry | null): ImportQuery {
+  if (!source) return { params: { ...DEFAULT_SEARCH_PARAMS }, extras: { ...EMPTY_IMPORT_EXTRAS } };
+  const query = parseOpenAlexSourceQuery(source.settings.approvedQuery.query);
+  if (source.settings.searchUrl) {
+    query.params = parseSearchParamsFromUrl(new URLSearchParams(source.settings.searchUrl.split("?")[1] ?? ""));
+  }
   return query;
 }
 
-const FILTER_BOUNDARY =
-  /,(?=(?:publication_year|authorships\.countries|type|topics(?:\.(?:field|subfield))?\.id|sustainable_development_goals\.id|open_access\.is_oa):)/;
-
-export function parseOpenAlexSourceQuery(
-  query: OpenAlexQuery,
-): OpenAlexSourceQueryBuilder {
-  const builder = emptyOpenAlexSourceQuery();
-  if (query.search) {
-    builder.search = query.search;
-    builder.scope = "all";
-  }
-  for (const clause of query.filter?.split(FILTER_BOUNDARY) ?? []) {
-    const scoped = clause.match(
-      /^(title_and_abstract|title|abstract|fulltext|display_name)\.search(?:\.exact)?:(.*)$/s,
-    );
-    if (scoped) {
-      builder.scope = scoped[1] as SearchField;
-      builder.search = scoped[2];
-      continue;
-    }
-    const year = clause.match(/^publication_year:(\d{4})-(\d{4})$/);
-    if (year) {
-      builder.yearRange = [Number(year[1]), Number(year[2])];
-      continue;
-    }
-    if (clause.startsWith("authorships.countries:")) {
-      builder.locations = clause
-        .slice("authorships.countries:".length)
-        .split("|");
-      continue;
-    }
-    if (clause.startsWith("type:")) {
-      builder.types = clause.slice("type:".length).split("|");
-      continue;
-    }
-    const topic = clause.match(/^topics(?:\.(field|subfield))?\.id:(.+)$/);
-    if (topic) {
-      builder.topicLevel = (topic[1] ?? "topic") as OpenAlexTopicLevel;
-      builder.topicIds = topic[2].split("|");
-      continue;
-    }
-    if (clause.startsWith("sustainable_development_goals.id:")) {
-      builder.sdgs = clause
-        .slice("sustainable_development_goals.id:".length)
-        .split("|")
-        .map((id) => id.replace("https://metadata.un.org/sdg/", ""));
-      continue;
-    }
-    if (clause === "open_access.is_oa:true") builder.openAccessOnly = true;
-  }
-  return builder;
+export function sourceSearchHistoryId(source: OpenAlexSourceEntry | null): string | null {
+  return source?.settings.searchUrl?.match(/^\/results\/([A-Za-z0-9-]+)(?:\?|$)/)?.[1] ?? null;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { FilterCountControl } from "./filter-count-control";
 import { motion, AnimatePresence } from "motion/react";
 import { Filter, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -114,38 +115,11 @@ export function FilterSidebar({
         <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border/30 bg-background/95 p-1">
           <AnimatePresence>
             {activeFilterCount > 0 && (
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="flex items-center gap-1"
-              >
-                <span className="flex items-center justify-center h-7 min-w-7 px-2 text-xs font-medium rounded-md bg-gradient-to-r from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)] text-white badge-glow">
-                  {activeFilterCount}
-                </span>
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      transition={hoverSpring}
-                    >
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={onClearAll}
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </motion.div>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    {t("clearAllFilters")}
-                  </TooltipContent>
-                </Tooltip>
-              </motion.div>
+              <FilterCountControl
+                count={activeFilterCount}
+                onClearAll={onClearAll}
+                orientation="row"
+              />
             )}
           </AnimatePresence>
           <Tooltip delayDuration={0}>
@@ -223,38 +197,11 @@ export function FilterSidebar({
 
             {/* Filter count badge and clear button */}
             {activeFilterCount > 0 && (
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                transition={{ duration: 0.15, delay: 0.1 }}
-                className="flex flex-col items-center gap-2"
-              >
-                <span className="flex items-center justify-center h-7 w-7 text-xs font-medium rounded-md bg-gradient-to-r from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)] text-white badge-glow">
-                  {activeFilterCount}
-                </span>
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      transition={hoverSpring}
-                    >
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={onClearAll}
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </motion.div>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    {t("clearAllFilters")}
-                  </TooltipContent>
-                </Tooltip>
-              </motion.div>
+              <FilterCountControl
+                count={activeFilterCount}
+                onClearAll={onClearAll}
+                orientation="column"
+              />
             )}
           </motion.div>
         )}

@@ -18,6 +18,7 @@ export type OpenAlexSourceEntry = {
   writebackEnabled: false;
   settings: {
     name: string;
+    searchUrl?: string;
     apiKeyMode: "platform" | "custom";
     approvedQuery: {
       version: string;

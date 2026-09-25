@@ -30,6 +30,9 @@ import {
   type OpenAlexSourceEntry,
 } from "@/lib/evidence-libraries/configuration/sources";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useSearchHistoryStore } from "@/lib/store";
+import { paramsToSearchResult } from "@/lib/search-params";
+import { readOpenAlexSourceSearch, sourceSearchHistoryId } from "@/lib/evidence-libraries/openalex-source-query";
 import { Field } from "../section-card";
 import { OpenAlexQuerySummary } from "./openalex-query-summary";
 import { SourceRow } from "./source-row";
@@ -52,6 +55,7 @@ export function useOpenAlexSources({
   onChange: (value: EvidenceSourceEntry[]) => void;
 }) {
   const [editingKey, setEditingKey] = useState<"new" | string | null>(null);
+  const [editorSession, setEditorSession] = useState<{ id: string; created: boolean } | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [selectedMode, setSelectedMode] = useState<
     "openscholar" | "custom" | null
@@ -83,6 +87,25 @@ export function useOpenAlexSources({
       ? "new"
       : (sources.find((source) => source.key === editingKey) ?? null);
 
+  function setEditing(source: "new" | OpenAlexSourceEntry | null) {
+    const history = useSearchHistoryStore.getState();
+    if (source === null) {
+      if (editorSession?.created) {
+        const index = history.searchHistory.findIndex((entry) => entry.id === editorSession.id);
+        if (index >= 0) history.removeSearchResult(index);
+      }
+      setEditingKey(null);
+      setEditorSession(null);
+      return;
+    }
+    const initial = source === "new" ? null : source;
+    const savedId = sourceSearchHistoryId(initial);
+    const existing = savedId && history.searchHistory.some((entry) => entry.id === savedId);
+    const id = existing ? savedId : history.addSearchResult(paramsToSearchResult(readOpenAlexSourceSearch(initial).params));
+    setEditorSession({ id, created: !existing });
+    setEditingKey(initial?.key ?? "new");
+  }
+
   function replaceSource(source: OpenAlexSourceEntry) {
     const nextSource: OpenAlexSourceEntry =
       editingKey === "new"
@@ -102,6 +125,7 @@ export function useOpenAlexSources({
         : [...value, nextSource],
     );
     setEditingKey(null);
+    setEditorSession(null);
   }
 
   async function saveCustomCredential() {
@@ -151,10 +175,8 @@ export function useOpenAlexSources({
   return {
     sources,
     editing,
-    setEditing: (source: "new" | OpenAlexSourceEntry | null) =>
-      setEditingKey(
-        source === null ? null : source === "new" ? "new" : source.key,
-      ),
+    searchId: editorSession?.id ?? "",
+    setEditing,
     replaceSource,
     patch: (key: string, change: Partial<OpenAlexSourceEntry>) =>
       onChange(
@@ -195,7 +217,7 @@ export function OpenAlexSourceRow({
       }
       paused={!source.enabled}
       description={
-        <OpenAlexQuerySummary query={source.settings.approvedQuery.query} />
+        <OpenAlexQuerySummary source={source} />
       }
       metadata={[
         {

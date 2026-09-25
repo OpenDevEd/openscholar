@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   query: vi.fn(),
 }));
 
+vi.mock("server-only", () => ({}));
 vi.mock("convex/react", () => ({
   useAction: () => mocks.action,
   useMutation: () => mocks.mutation,
@@ -51,6 +52,7 @@ vi.mock("@/convex/_generated/api", () => ({
 vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string) =>
     `${namespace}.${key}`,
+  useFormatter: () => ({ dateTime: (date: Date) => date.toISOString().slice(0, 10) }),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -120,7 +122,7 @@ describe("<SourcesField>", () => {
     expect(screen.getByText("education")).toBeInTheDocument();
     expect(
       screen.getByRole("list", { name: "Search filters" }),
-    ).toHaveTextContent("Years 2020–2026");
+    ).toHaveTextContent("searchFilters.filterLabelYear 2020 - 2026");
     expect(screen.queryByText(/2 sources/i)).not.toBeInTheDocument();
   });
 

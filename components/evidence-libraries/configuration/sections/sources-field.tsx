@@ -438,6 +438,7 @@ export function SourcesField({
       </Dialog>
       {openalex.editing ? (
         <OpenAlexSearchDialog
+          searchId={openalex.searchId}
           initial={
             typeof openalex.editing === "string" ? null : openalex.editing
           }
