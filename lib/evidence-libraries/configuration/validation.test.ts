@@ -210,6 +210,7 @@ describe("validateOwnerSection", () => {
           settings: {
             name: "Education",
             apiKeyMode: "platform",
+            searchUrl: "/results/saved-search-1?q=education",
             unknownField: "x",
             approvedQuery: {
               version: "v1",
