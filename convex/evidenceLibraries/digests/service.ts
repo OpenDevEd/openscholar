@@ -16,6 +16,8 @@ import { generateLibraryDigest } from "./generate";
 // cannot cut it off. A job still pending after STALE_AFTER_MS lost its action.
 const GENERATION_TIMEOUT_MS = 480_000;
 const STALE_AFTER_MS = 900_000;
+// A job nobody collects (the library stopped asking) is removed after a day.
+const EXPIRE_AFTER_MS = 86_400_000;
 
 const jobArgs = {libraryId: v.string(), editionId: v.string(), credentialDigest: v.string()};
 
@@ -65,6 +67,19 @@ export const start = internalMutation({
     await rateLimit(ctx, {name: "library-digest", key: libraryId, throws: true});
     const jobId = await ctx.db.insert("evidenceLibraryDigestJobs", {libraryId, editionId: args.editionId, requestId: args.requestId, status: "pending", startedAt: Date.now()});
     await ctx.scheduler.runAfter(0, internal.evidenceLibraries.digests.service.run, {jobId});
+    await ctx.scheduler.runAfter(EXPIRE_AFTER_MS, internal.evidenceLibraries.digests.service.expire, {jobId});
+    return null;
+  },
+});
+
+export const expire = internalMutation({
+  args: {jobId: v.id("evidenceLibraryDigestJobs")},
+  returns: v.null(),
+  handler: async (ctx, {jobId}) => {
+    const job = await ctx.db.get("evidenceLibraryDigestJobs", jobId);
+    if (!job) return null;
+    if (job.requestId) await ctx.storage.delete(job.requestId);
+    await ctx.db.delete("evidenceLibraryDigestJobs", jobId);
     return null;
   },
 });

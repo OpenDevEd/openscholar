@@ -18,7 +18,8 @@ async function setup() {
   });
   const body = {libraryId, editionId: "5e9558ce-ed55-4dc4-a44b-d1cbd3f9af64", locale: "en-GB", periodStart: "2026-09-01T09:00:00Z", periodEnd: "2026-09-08T09:00:00Z", publications: [{key: "ABCD2345", title: "Attention in classrooms", creators: ["Caitlin Mills"], date: "2026", abstract: "A framework for examining attention in learning.", publicationType: "Report", doi: null}]};
   const request = (patch: Record<string, unknown> = {}, credential = token) => t.fetch("/api/v1/evidence-libraries/digests/generate", {method: "POST", headers: {Authorization: `Bearer ${credential}`, "Content-Type": "application/json"}, body: JSON.stringify({...body, ...patch})});
-  const finishGeneration = () => t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+  // Runs the job that was just queued, leaving its one-day expiry pending.
+  const finishGeneration = async () => { vi.advanceTimersByTime(1); await t.finishInProgressScheduledFunctions(); };
   const saved = () => t.run(async ctx => ({jobs: await ctx.db.query("evidenceLibraryDigestJobs").collect(), files: await ctx.db.system.query("_storage").collect()}));
   return {t, libraryId, request, finishGeneration, saved};
 }
@@ -61,7 +62,7 @@ it("rejects foreign credentials, disabled libraries and arbitrary prompt or PDF 
 
 it("reports a failed generation once, then starts again on the next request", async () => {
   vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
-  const {request, finishGeneration, saved} = await setup();
+  const {t, request, finishGeneration, saved} = await setup();
   const provider = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({error: {message: "Model unavailable", code: 503}}), {status: 503, headers: {"Content-Type": "application/json"}}));
   expect((await request()).status).toBe(202);
   await finishGeneration();
@@ -70,4 +71,9 @@ it("reports a failed generation once, then starts again on the next request", as
   expect(await saved()).toEqual({jobs: [], files: []});
   expect((await request()).status).toBe(202);
   expect((await saved()).jobs).toMatchObject([{status: "pending"}]);
+  // A job nobody collects is removed with its stored request after a day.
+  await finishGeneration();
+  vi.advanceTimersByTime(86_400_000);
+  await t.finishInProgressScheduledFunctions();
+  expect(await saved()).toEqual({jobs: [], files: []});
 });

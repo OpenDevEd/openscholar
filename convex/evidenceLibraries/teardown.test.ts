@@ -32,6 +32,16 @@ describe("development Evidence Library teardown", () => {
 
   it("queues one teardown and removes only the library records in bounded batches", async () => {
     const fixture = await createReadySetupFixture("teardown_records");
+    await fixture.t.run(async (ctx) => {
+      const requestId = await ctx.storage.store(new Blob(["{}"]));
+      await ctx.db.insert("evidenceLibraryDigestJobs", {
+        libraryId: fixture.created.libraryId,
+        editionId: "5e9558ce-ed55-4dc4-a44b-d1cbd3f9af64",
+        requestId,
+        status: "pending",
+        startedAt: 1,
+      });
+    });
     const requested = await fixture.admin.mutation(
       api.evidenceLibraries.teardown.requestDevelopmentTeardown,
       {
@@ -73,6 +83,12 @@ describe("development Evidence Library teardown", () => {
     await expect(
       fixture.t.run((ctx) => ctx.db.get(fixture.created.libraryId)),
     ).resolves.toBeNull();
+    await expect(
+      fixture.t.run(async (ctx) => ({
+        jobs: await ctx.db.query("evidenceLibraryDigestJobs").collect(),
+        files: await ctx.db.system.query("_storage").collect(),
+      })),
+    ).resolves.toEqual({ jobs: [], files: [] });
     await expect(
       fixture.t.run((ctx) => ctx.db.get(fixture.organizationId)),
     ).resolves.toMatchObject({ state: "active" });
