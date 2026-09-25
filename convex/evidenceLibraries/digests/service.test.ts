@@ -27,13 +27,13 @@ it("authenticates a library and enforces the digest model without a wallet", asy
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     expect(String(url)).toBe("https://openrouter.ai/api/v1/chat/completions");
     captured = JSON.parse(String(init?.body)) as Record<string, unknown>;
-    return new Response(JSON.stringify({id: "generation", model: "openai/gpt-5.6-luna", created: 1, choices: [{index: 0, finish_reason: "stop", message: {role: "assistant", content: JSON.stringify({title: "Attention in learning", summary: "A new framework for classroom attention.", markdown: "The framework examines classroom attention. [Mills, 2026](/lib/ABCD2345)"})}}], usage: {prompt_tokens: 10, completion_tokens: 10, total_tokens: 20}}), {headers: {"Content-Type": "application/json"}});
+    return new Response(JSON.stringify({id: "generation", model: "openai/gpt-6-luna", created: 1, choices: [{index: 0, finish_reason: "stop", message: {role: "assistant", content: JSON.stringify({title: "Attention in learning", summary: "A new framework for classroom attention.", markdown: "The framework examines classroom attention. [Mills, 2026](/lib/ABCD2345)"})}}], usage: {prompt_tokens: 10, completion_tokens: 10, total_tokens: 20}}), {headers: {"Content-Type": "application/json"}});
   });
   const response = await request();
   expect(response.status).toBe(200);
-  expect(captured).toMatchObject({model: "openai/gpt-5.6-luna", reasoning: {effort: "max"}, provider: {require_parameters: true, allow_fallbacks: false}});
+  expect(captured).toMatchObject({model: "openai/gpt-6-luna", reasoning: {effort: "max"}, provider: {require_parameters: true, allow_fallbacks: false}});
   expect(captured).not.toHaveProperty("tools");
-  expect(await response.json()).toMatchObject({digest: {model: "openai/gpt-5.6-luna", reasoning: "max", markdown: expect.stringContaining("/lib/ABCD2345")}});
+  expect(await response.json()).toMatchObject({digest: {model: "openai/gpt-6-luna", reasoning: "max", markdown: expect.stringContaining("/lib/ABCD2345")}});
   expect(await t.run(ctx => ctx.db.query("users").collect())).toEqual([]);
 });
 
