@@ -20,7 +20,7 @@ export function TopicLibraryResults({topicId}: {topicId: string}) {
   const complete = results.data?.at(-1)?.complete && !unavailable;
   return <div>
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 px-4 py-3 sm:px-6">
-      <p className="text-sm text-muted-foreground" aria-live="polite">{t(complete ? "libraryCount" : "libraryCountLoaded", {count: papers.length})}</p>
+      <p className="text-sm text-muted-foreground" aria-live="polite">{results.data && t(complete ? "libraryCount" : "libraryCountLoaded", {count: papers.length})}</p>
       <div className="relative w-full sm:w-72"><Search aria-hidden className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label={t("searchLibrary")} placeholder={t("searchPlaceholder")} className="pl-9" value={query} maxLength={200} onChange={event => void setQuery(event.target.value)} /></div>
     </div>
     {(results.error || unavailable || updating) && <div role="alert" className="flex flex-wrap items-center gap-3 px-6 py-4 text-sm"><span>{results.error ? t("publicationsFailed") : updating ? t("updating") : t("unavailable")}</span><Button variant="outline" size="sm" onClick={async () => {await results.setSize(1); await results.mutate();}}>{t("tryAgain")}</Button></div>}
