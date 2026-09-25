@@ -827,9 +827,10 @@ export function AppSidebar() {
     return null;
   }
 
-  // Don't render until hydrated to prevent flash
+  // The saved width is only known after hydration. Until then hold the space
+  // the head script measured, so the page does not shift when the sidebar mounts.
   if (!_hasHydrated) {
-    return null;
+    return <div aria-hidden className="sticky top-0 hidden h-screen w-(--app-sidebar-width) shrink-0 border-r border-sidebar-border/60 bg-sidebar md:block" />;
   }
 
   if (isMobile) {
