@@ -1,8 +1,6 @@
-import { getPaths } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
-import { DEFAULT_SEARCH_PARAMS, parseSearchParamsFromUrl, paramsToFilters } from "@/lib/search-params";
+import { DEFAULT_SEARCH_PARAMS, parseSearchParamsFromUrl } from "@/lib/search-params";
 import type { SearchParams } from "@/lib/search";
-import { prepareOpenAlexSearch } from "@/lib/search-utils";
-import { createSearchParameters } from "@/lib/utils";
+import { buildOpenAlexWorksQuery } from "@/lib/openalex/works-query";
 import type { OpenAlexQuery, OpenAlexSourceEntry } from "./configuration/sources";
 
 /** Pagination and display settings do not change which records a source imports. */
@@ -14,31 +12,15 @@ export function sameOpenAlexSourceSearch(left: SearchParams, right: SearchParams
 }
 
 /**
- * What OpenAlex is asked for an import, with the same query expansion, dates
- * and serialization as live search. Saved as it is, so the library asks the
+ * What OpenAlex is asked for an import. Saved as it is, so the library asks the
  * same thing on every update whatever the search code later becomes.
  */
 export function buildOpenAlexSourceQuery(params: SearchParams): OpenAlexQuery | null {
   // Leaving out retracted works is on by default and narrows nothing on its own,
   // so a search must still have its own query or filter to be imported.
-  if (!params.retracted && !openAlexQuery({ ...params, retracted: true })) return null;
-  return openAlexQuery(params);
-}
-
-function openAlexQuery(params: SearchParams): OpenAlexQuery | null {
-  const prepared = prepareOpenAlexSearch({ query: params.q, filters: paramsToFilters(params) });
-  if (prepared.finalApiQuery === null) return null;
-  const request = createSearchParameters(prepared.finalApiQuery, {
-    ...prepared.effectiveFilters,
-    citesItemId: prepared.effectiveCitesItemId ?? prepared.effectiveFilters.citesItemId,
-    relatedToItemId: prepared.effectiveRelatedToItemId ?? prepared.effectiveFilters.relatedToItemId,
-  });
-  const filter = Object.entries(getPaths(request.filter ?? {}))
-    .map(([key, values]) => `${key}:${Array.isArray(values) ? values.join("|") : values}`)
-    .join(",");
-  return request.search || filter
-    ? { ...(request.search ? { search: request.search } : {}), ...(filter ? { filter } : {}) }
-    : null;
+  const narrowing = buildOpenAlexWorksQuery({ ...params, retracted: true });
+  if (!narrowing?.search && !narrowing?.filter) return null;
+  return buildOpenAlexWorksQuery(params);
 }
 
 /** A source keeps the search it was made from, so reopening it restores every control. */

@@ -198,6 +198,11 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
   return params;
 }
 
+/** Relevance needs a query, so a search without one is sorted newest first. */
+export function effectiveSort(params: Pick<ParsedSearchParams, 'q' | 'sort'>): string {
+  return params.sort === 'relevance_score:desc' && !params.q.trim() ? 'publication_date:desc' : params.sort;
+}
+
 /**
  * Convert URL params to SearchFilters for API calls
  */

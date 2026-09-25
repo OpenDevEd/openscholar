@@ -20,7 +20,7 @@ import { useTranslations } from 'next-intl';
 import { useAppToast } from '@/lib/toast';
 
 import { searchParamsParsers, DEFAULT_SEARCH_PARAMS } from '../search-params/parsers';
-import { buildShareableUrl } from '../search-params';
+import { buildShareableUrl, effectiveSort } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
@@ -276,11 +276,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     });
     previousTrackedParamsRef.current = cloneSearchParams(params);
     
-    // Auto-switch from relevance sorting if no query
-    let effectiveSortBy = params.sort;
-    if (params.sort === 'relevance_score:desc' && (!params.q || params.q.trim() === '')) {
-      effectiveSortBy = 'publication_date:desc';
-    }
+    const effectiveSortBy = effectiveSort(params);
     
     // Build SearchFilters object for the API
     const filters: SearchFilters = {

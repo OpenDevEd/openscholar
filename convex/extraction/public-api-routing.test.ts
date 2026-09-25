@@ -180,7 +180,10 @@ const BUCKET_ITEM_SAVED_SEARCH = {
   authors: [],
   searchFilters: {
     query: "heart disease",
-    searchField: "title_and_abstract" as const,
+    openAlexQuery: {
+      filter: "title_and_abstract.search:heart disease,is_retracted:false",
+      sort: "relevance_score:desc",
+    },
     limit: 2,
   },
 };

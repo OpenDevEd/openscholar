@@ -276,7 +276,11 @@ Return a more targeted version of this query.`;
       Math.max(0, totalCount ?? pullDefault),
     );
     const params = search.params;
-    const searchFilters = paramsToBucketSearchFilters(params);
+    const searchFilters = paramsToBucketSearchFilters(params, {
+      getMessage: (key, values) => tv(key as "singleCharSearch", values),
+      onWarning: (message) => toast.validation.failed(message),
+    });
+    if (!searchFilters) return;
 
     const placeholder = fromSavedSearchQuery({
       id: searchId,

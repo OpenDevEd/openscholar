@@ -178,6 +178,16 @@ vi.mock("@/lib/search", () => ({
       citedBy: "",
       rel: "",
       review: false,
+      area: [],
+      sdg: [],
+      oa: false,
+      type: [],
+      wlang: [],
+      itype: [],
+      funder: [],
+      mincite: null,
+      abs: false,
+      retracted: false,
       lang: "en",
     },
     setQuery: vi.fn(),
@@ -221,6 +231,11 @@ vi.mock("@/lib/ai/client/router", () => ({
 vi.mock("@/lib/keyword-validation", () => ({
   validateAndExpandKeywordsSilently: (query: string) => ({
     expandedQuery: query,
+  }),
+  validateAndExpandKeywords: (query: string) => ({
+    isValid: true,
+    expandedQuery: query,
+    warnings: [],
   }),
 }));
 

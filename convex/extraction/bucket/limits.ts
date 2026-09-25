@@ -39,7 +39,7 @@ import {
   type EffectiveCountItem,
 } from "../../../lib/bucket/effective-paper-count";
 import { createError } from "../../lib/errors";
-import { searchFiltersValidator } from "../validators";
+import { storedSearchFiltersValidator } from "../validators";
 
 export const PAPER_LIMIT_BY_PLAN: Record<SubscriptionPlan, number> = {
   free: 1000,
@@ -246,7 +246,7 @@ export const assertBucketWithinLimitsForUser = internalQuery({
           v.literal("zotero"),
           v.literal("upload"),
         ),
-        searchFilters: v.optional(searchFiltersValidator),
+        searchFilters: v.optional(storedSearchFiltersValidator),
       }),
     ),
   },

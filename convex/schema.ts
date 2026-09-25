@@ -10,7 +10,7 @@ import {
   extractionPaperQueueFields,
   extractionQuestionFields,
   extractionResultFields,
-  searchFiltersValidator,
+  storedSearchFiltersValidator,
 } from "./extraction/validators";
 import {
   chatGenerationUsageFields,
@@ -599,7 +599,7 @@ export default defineSchema({
     venueName: v.optional(v.string()), // primary_location.source.display_name
     workType: v.optional(v.string()),
     // history: saved-search placeholder that expands during queue setup
-    searchFilters: v.optional(searchFiltersValidator),
+    searchFilters: v.optional(storedSearchFiltersValidator),
     // zotero context (libraryType/groupId resolve the OAuth target at queue setup)
     libraryType: v.optional(v.union(v.literal("user"), v.literal("group"))),
     groupId: v.optional(v.string()),

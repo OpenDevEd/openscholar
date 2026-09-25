@@ -66,6 +66,9 @@ vi.mock("@/convex/_generated/api", () => ({
 vi.mock("@/lib/store", () => ({
   useSearchHistoryStore: <T,>(selector: (s: unknown) => T) =>
     selector({ searchHistory: historyEntriesRef.current }),
+  useKeywordExpansionStore: {
+    getState: () => ({ expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }),
+  },
 }));
 
 vi.mock("@/lib/toast/bucket", () => ({
@@ -145,7 +148,7 @@ function stageEntry(entry: SearchResult) {
             id: entry.id,
             query: entry.query,
             count: entry.count,
-            searchFilters: {},
+            searchFilters: { query: "neural networks", openAlexQuery: { sort: "relevance_score:desc" } },
           }),
         ],
         1000,

@@ -215,7 +215,7 @@ describe("lib/bucket/bucketItem normalizers", () => {
       id: "h1",
       query: "neural networks",
       count: 800,
-      searchFilters: {},
+      searchFilters: { query: "neural networks", openAlexQuery: { sort: "relevance_score:desc" } },
     });
     expect(item.source).toBe("history");
     expect(item.paperCount).toBe(800);
@@ -225,7 +225,7 @@ describe("lib/bucket/bucketItem normalizers", () => {
     const item = fromSavedSearchQuery({
       id: "h2",
       query: "unknown",
-      searchFilters: {},
+      searchFilters: { query: "neural networks", openAlexQuery: { sort: "relevance_score:desc" } },
     });
     expect(item.paperCount).toBe(0);
   });

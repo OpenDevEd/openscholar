@@ -11,10 +11,9 @@ import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { PaperData } from "./types";
-import { searchFiltersValidator } from "./validators";
+import { storedSearchFiltersValidator } from "./validators";
 import {
   buildOpenAlexSearchParams,
-  type OpenAlexSearchFilters,
 } from "../../lib/openalex/search-params";
 import {
   mapOpenAlexWorkToPaperData,
@@ -38,7 +37,7 @@ const OPENALEX_WORKS_URL = "https://api.openalex.org/works";
 const CREATE_PAPER_CHUNK_SIZE = 100;
 const QUEUE_LEASE_MS = 60_000;
 
-type SearchFilters = Infer<typeof searchFiltersValidator>;
+type StoredSearchFilters = Infer<typeof storedSearchFiltersValidator>;
 
 type FetchAndPersistPapersResult = {
   paperIds: Array<Id<"extractionPapers">>;
@@ -56,48 +55,6 @@ type ActiveSetupControl = {
   job: Doc<"extractionJobs">;
   pdfEnabled: boolean;
 };
-
-function toOpenAlexSearchFilters(filters: SearchFilters): OpenAlexSearchFilters {
-  return {
-    query: filters.query ?? "",
-    ...(filters.field !== undefined ? { field: filters.field } : {}),
-    ...(filters.searchField !== undefined
-      ? { searchField: filters.searchField }
-      : {}),
-    ...(filters.sortBy !== undefined ? { sortBy: filters.sortBy } : {}),
-    ...(filters.yearRange !== undefined && filters.yearRange.length >= 2
-      ? { yearRange: [filters.yearRange[0], filters.yearRange[1]] }
-      : {}),
-    ...(filters.dateRange !== undefined ? { dateRange: filters.dateRange } : {}),
-    ...(filters.selectedRegions !== undefined
-      ? { selectedRegions: filters.selectedRegions }
-      : {}),
-    ...(filters.selectedCountryFocus !== undefined
-      ? { selectedCountryFocus: filters.selectedCountryFocus }
-      : {}),
-    ...(filters.reviewFilter !== undefined
-      ? { reviewFilter: filters.reviewFilter }
-      : {}),
-    ...(filters.researchAreas !== undefined ? { researchAreas: filters.researchAreas } : {}),
-    ...(filters.sdgs !== undefined ? { sdgs: filters.sdgs } : {}),
-    ...(filters.openAccessOnly !== undefined ? { openAccessOnly: filters.openAccessOnly } : {}),
-    ...(filters.workTypes !== undefined ? { workTypes: filters.workTypes } : {}),
-    ...(filters.workLanguages !== undefined ? { workLanguages: filters.workLanguages } : {}),
-    ...(filters.institutionTypes !== undefined ? { institutionTypes: filters.institutionTypes } : {}),
-    ...(filters.funders !== undefined ? { funders: filters.funders } : {}),
-    ...(filters.minCitations !== undefined ? { minCitations: filters.minCitations } : {}),
-    ...(filters.hasAbstract !== undefined ? { hasAbstract: filters.hasAbstract } : {}),
-    ...(filters.includeRetracted !== undefined ? { includeRetracted: filters.includeRetracted } : {}),
-    ...(filters.citesItemId !== undefined ? { citesItemId: filters.citesItemId } : {}),
-    ...(filters.citedByItemId !== undefined
-      ? { citedByItemId: filters.citedByItemId }
-      : {}),
-    ...(filters.relatedToItemId !== undefined
-      ? { relatedToItemId: filters.relatedToItemId }
-      : {}),
-    ...(filters.limit !== undefined ? { limit: filters.limit } : {}),
-  };
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -248,11 +205,18 @@ async function resolveSetupRuntime(
 }
 
 export async function runFetchPapersFromHistory(
-  searchFilters: SearchFilters,
+  searchFilters: StoredSearchFilters,
 ): Promise<PaperData[]> {
-  const searchParams = buildOpenAlexSearchParams(
-    toOpenAlexSearchFilters(searchFilters),
-  );
+  if (!("openAlexQuery" in searchFilters)) {
+    throw createError(
+      "VALIDATION_ERROR",
+      "This search was saved before chat and extraction kept its exact request. Add it again from your search history.",
+    );
+  }
+  const searchParams = buildOpenAlexSearchParams({
+    openAlexQuery: searchFilters.openAlexQuery,
+    limit: searchFilters.limit,
+  });
 
   // CORR-02: fail loudly when OPENALEX_CONTACT_EMAIL isn't configured —
   // OpenAlex polite-pool requires a contact address in the UA header.
@@ -295,7 +259,7 @@ export async function runFetchPapersFromHistory(
 
 export const fetchPapersFromHistory = internalAction({
   args: {
-    searchFilters: searchFiltersValidator,
+    searchFilters: storedSearchFiltersValidator,
   },
   returns: v.array(
     v.object({

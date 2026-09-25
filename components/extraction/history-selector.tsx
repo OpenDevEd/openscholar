@@ -11,6 +11,9 @@ import { SelectableList } from "./bucket/selectable-list";
 import { CountChip } from "./bucket/count-chip";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromSavedSearchQuery } from "@/lib/bucket/bucketItem";
+import { paramsToBucketSearchFilters } from "@/lib/chat/params-to-bucket-filters";
+import { DEFAULT_SEARCH_PARAMS, searchResultToParams } from "@/lib/search-params";
+import { useAppToast } from "@/lib/toast";
 import { bucketAdded } from "@/lib/toast/bucket";
 import type { SearchResult } from "@/lib/types";
 
@@ -54,6 +57,8 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
   const now = useNow();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
+  const tv = useTranslations("validation");
+  const toast = useAppToast();
   const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
   const liveLimit = useQuery(
     api.extraction.bucket.queries.getMyPaperLimit,
@@ -94,36 +99,22 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
   // time so an entry.count of 3000 doesn't immediately blow past the
   // per-row cap before the CountChip has a chance to mount. The chip
   // then refines downward (if fresh count < cap) via its own effect.
+  // Null for a saved search whose query is no longer valid; the toast says why.
   const toBucketItem = useCallback(
     (entry: SearchResult) => {
+      const searchFilters = paramsToBucketSearchFilters(
+        { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(entry) },
+        {
+          getMessage: (key, values) => tv(key as "singleCharSearch", values),
+          onWarning: (message) => toast.validation.failed(message),
+        },
+      );
+      if (!searchFilters) return null;
       const seeded = fromSavedSearchQuery({
         id: entry.id,
         query: entry.query,
         count: entry.count,
-        searchFilters: {
-          query: entry.query,
-          field: entry.field,
-          yearRange: entry.yearRange,
-          dateRange: entry.dateRange
-            ? {
-                from: entry.dateRange.from?.toISOString(),
-                to: entry.dateRange.to?.toISOString(),
-              }
-            : undefined,
-          filterType: entry.filterType,
-          isYearRangeEnabled: entry.isYearRangeEnabled,
-          sortBy: entry.sortBy,
-          selectedRegions: entry.selectedRegions,
-          selectedCountryFocus: entry.selectedCountryFocus,
-          ratingRange: entry.ratingRange,
-          onlyRatedPapers: entry.onlyRatedPapers,
-          citesItemId: entry.citesItemId,
-          citedByItemId: entry.citedByItemId,
-          relatedToItemId: entry.relatedToItemId,
-          reviewFilter: entry.reviewFilter,
-          language: entry.language,
-          searchField: entry.field,
-        },
+        searchFilters,
       });
       const initial = Math.min(
         pullCap,
@@ -131,7 +122,7 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
       );
       return { ...seeded, paperCount: initial };
     },
-    [pullCap, pullDefault],
+    [pullCap, pullDefault, tv, toast],
   );
 
   if (searchHistory.length === 0) {
@@ -161,14 +152,19 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
           : `${searchHistory.length} saved search${searchHistory.length === 1 ? "" : "es"}`
       }
       onToggle={(entry, next) => {
+        if (!next) {
+          removeMany([historyBucketKey(entry)]);
+          return;
+        }
         const bucketItem = toBucketItem(entry);
-        if (next) bucketAdded(addMany([bucketItem], limit), { silent: true });
-        else removeMany([bucketItem.bucketKey]);
+        if (bucketItem) bucketAdded(addMany([bucketItem], limit), { silent: true });
       }}
       onToggleRange={(entries, next) => {
-        const bucketItems = entries.map((e) => toBucketItem(e));
-        if (next) bucketAdded(addMany(bucketItems, limit));
-        else removeMany(bucketItems.map((b) => b.bucketKey));
+        if (!next) {
+          removeMany(entries.map(historyBucketKey));
+          return;
+        }
+        bucketAdded(addMany(entries.flatMap((e) => toBucketItem(e) ?? []), limit));
       }}
       renderRow={(entry) => (
         <div>

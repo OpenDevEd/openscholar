@@ -7,60 +7,30 @@
  * history entry" are the whole point (toggle one row, no refetch needed
  * for the neighbour with the same filters).
  *
- * Only fields that feed the wire request are read. Identifiers,
- * timestamps, stored counts, screening state, and query history are
- * deliberately excluded — they must never split the cache.
+ * Everything is hashed except bookkeeping that never changes the request
+ * (identifiers, timestamps, stored counts, screening state, query
+ * history), so a new filter can never be left out of the key.
  *
- * Array-valued inputs where order has no semantic meaning (regions,
- * country focus) are sorted before hashing; empty arrays are equivalent
- * to absent values. Dates are normalised to `YYYY-MM-DD` strings.
+ * String arrays (regions, research areas, languages…) are sorted before
+ * hashing, as their order has no meaning; empty values are equivalent to
+ * absent ones. Dates are normalised to `YYYY-MM-DD` strings.
  */
 
-type HashableSearchInput = Partial<{
-  query: string;
-  field: string;
-  sortBy: string;
-  filterType: string;
-  isYearRangeEnabled: boolean;
-  yearRange: readonly [number, number] | number[];
-  dateRange: {
-    from?: Date | string | null;
-    to?: Date | string | null;
-  } | null;
-  selectedRegions: readonly string[];
-  selectedCountryFocus: readonly string[];
-  ratingRange: readonly [number, number] | number[];
-  onlyRatedPapers: boolean;
-  citesItemId: string;
-  citedByItemId: string;
-  relatedToItemId: string;
-  reviewFilter: boolean;
-  language: string;
-}>;
+/** History entry fields that never change which works a search returns. */
+const IGNORE = new Set([
+  "id",
+  "count",
+  "createdAt",
+  "updatedAt",
+  "page",
+  "queryHistory",
+  "questionHistory",
+  "screeningQuestions",
+  "screeningResponses",
+  "chatJobIdsByAccountId",
+]);
 
-const ALLOW = [
-  "query",
-  "field",
-  "sortBy",
-  "filterType",
-  "isYearRangeEnabled",
-  "yearRange",
-  "dateRange",
-  "selectedRegions",
-  "selectedCountryFocus",
-  "ratingRange",
-  "onlyRatedPapers",
-  "citesItemId",
-  "citedByItemId",
-  "relatedToItemId",
-  "reviewFilter",
-  "language",
-] as const;
-
-type AllowKey = (typeof ALLOW)[number];
-
-function isoDate(value: Date | string | null | undefined): string | null {
-  if (value === null || value === undefined) return null;
+function isoDate(value: unknown): string | null {
   if (value instanceof Date) return value.toISOString().split("T")[0];
   if (typeof value === "string") {
     return value.includes("T") ? value.split("T")[0] : value;
@@ -68,33 +38,22 @@ function isoDate(value: Date | string | null | undefined): string | null {
   return null;
 }
 
-function canonicalise(input: HashableSearchInput): Record<string, unknown> {
-  const raw = input as Record<AllowKey, unknown>;
+function canonicalise(input: object): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  for (const key of ALLOW) {
-    const value = raw[key];
-    if (value === undefined || value === null) continue;
-    if (typeof value === "string" && value === "") continue;
-
-    if (key === "selectedRegions" || key === "selectedCountryFocus") {
-      const list = value as readonly string[];
-      if (list.length === 0) continue;
-      out[key] = [...list].sort();
+  for (const [key, value] of Object.entries(input)) {
+    if (IGNORE.has(key) || value === undefined || value === null || value === "") continue;
+    if (Array.isArray(value)) {
+      if (value.length === 0) continue;
+      out[key] = value.every((item) => typeof item === "string") ? [...value].sort() : value;
       continue;
     }
-
     if (key === "dateRange") {
-      const dr = value as {
-        from?: Date | string | null;
-        to?: Date | string | null;
-      };
-      const from = isoDate(dr.from);
-      const to = isoDate(dr.to);
-      if (!from && !to) continue;
-      out[key] = { from, to };
+      const range = value as { from?: unknown; to?: unknown };
+      const from = isoDate(range.from);
+      const to = isoDate(range.to);
+      if (from || to) out[key] = { from, to };
       continue;
     }
-
     out[key] = value;
   }
   return out;
@@ -138,7 +97,7 @@ function cyrb53(str: string, seed = 0): number {
   return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 }
 
-export function hashSearchFilters(input: HashableSearchInput): string {
+export function hashSearchFilters(input: object): string {
   const canon = canonicalise(input);
   const json = stableStringify(canon);
   return cyrb53(json).toString(16);

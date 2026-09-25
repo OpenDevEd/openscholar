@@ -163,10 +163,29 @@ export const retrievalDiagnosticsValidator = v.object({
   strictNull: v.boolean(),
 });
 
-// ---- Typed search filters validator ----
-// Matches the actual shape of searchFilters stored in Convex.
-// All fields MUST be optional to remain compatible with existing stored data.
+// ---- Saved search validators ----
+/**
+ * A search a chat or extraction runs: the query as typed, for its name, and the
+ * exact OpenAlex request the results page made (see
+ * lib/openalex/works-query.ts), which the server runs as it is.
+ */
 export const searchFiltersValidator = v.object({
+  query: v.string(),
+  openAlexQuery: v.object({
+    search: v.optional(v.string()),
+    filter: v.optional(v.string()),
+    sort: v.string(),
+  }),
+  limit: v.optional(v.number()),
+});
+
+/**
+ * Searches saved before 2026-09-25 kept separate filters that the server
+ * rebuilt, sometimes into a different or rejected OpenAlex query. They are never
+ * run again, so only stored rows accept this shape. Remove it with a migration
+ * once production rows are checked.
+ */
+const legacySearchFiltersValidator = v.object({
   query: v.optional(v.string()),
   field: v.optional(v.string()),
   searchField: v.optional(v.string()),
@@ -179,16 +198,6 @@ export const searchFiltersValidator = v.object({
   selectedRegions: v.optional(v.array(v.string())),
   selectedCountryFocus: v.optional(v.array(v.string())),
   reviewFilter: v.optional(v.boolean()),
-  researchAreas: v.optional(v.array(v.string())),
-  sdgs: v.optional(v.array(v.string())),
-  openAccessOnly: v.optional(v.boolean()),
-  workTypes: v.optional(v.array(v.string())),
-  workLanguages: v.optional(v.array(v.string())),
-  institutionTypes: v.optional(v.array(v.string())),
-  funders: v.optional(v.array(v.string())),
-  minCitations: v.optional(v.number()),
-  hasAbstract: v.optional(v.boolean()),
-  includeRetracted: v.optional(v.boolean()),
   citesItemId: v.optional(v.string()),
   citedByItemId: v.optional(v.string()),
   relatedToItemId: v.optional(v.string()),
@@ -200,6 +209,11 @@ export const searchFiltersValidator = v.object({
   perPage: v.optional(v.number()),
   limit: v.optional(v.number()),
 });
+
+export const storedSearchFiltersValidator = v.union(
+  searchFiltersValidator,
+  legacySearchFiltersValidator,
+);
 
 // ---- Full document validators ----
 
@@ -280,7 +294,7 @@ export const bucketItemInputValidator = v.object({
   citedByCount: v.optional(v.number()),
   venueName: v.optional(v.string()),
   workType: v.optional(v.string()),
-  searchFilters: v.optional(searchFiltersValidator),
+  searchFilters: v.optional(storedSearchFiltersValidator),
   libraryType: v.optional(v.union(v.literal("user"), v.literal("group"))),
   groupId: v.optional(v.string()),
   zoteroUserId: v.optional(v.string()),

@@ -21,7 +21,7 @@ import {
   extractionJobValidator,
   extractionQuestionValidator,
   jobStatusValidator,
-  searchFiltersValidator,
+  storedSearchFiltersValidator,
 } from "../validators";
 
 async function resolveReadableJob(
@@ -177,7 +177,7 @@ export const getJobSources = query({
           abstract: v.optional(v.string()),
           pdfUrl: v.optional(v.string()),
           storageId: v.optional(v.id("_storage")),
-          searchFilters: v.optional(searchFiltersValidator),
+          searchFilters: v.optional(storedSearchFiltersValidator),
           libraryType: v.optional(
             v.union(v.literal("user"), v.literal("group")),
           ),
