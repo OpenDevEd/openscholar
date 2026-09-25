@@ -86,7 +86,8 @@ function OptionPicker({
   const [open, setOpen] = useState(false);
   return (
     <div className="space-y-2">
-      <Popover open={open} onOpenChange={setOpen}>
+      {/* Modal gives the list its own scroll lock; the dialog's blocks the wheel otherwise. */}
+      <Popover modal open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             type="button"
