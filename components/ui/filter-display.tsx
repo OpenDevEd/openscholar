@@ -16,10 +16,13 @@ import { cn } from "@/lib/utils";
 export function FilterChips({
   filters,
   size = "default",
+  singleLine = false,
   className,
 }: {
   filters: FilterParams;
   size?: "default" | "compact";
+  /** One row that scrolls sideways, for rows that share the line with actions. */
+  singleLine?: boolean;
   className?: string;
 }) {
   const t = useTranslations("searchFilters");
@@ -36,23 +39,27 @@ export function FilterChips({
   if (!items.length) return null;
 
   return (
-    <ul aria-label={tc("filters")} className={cn("flex flex-wrap", size === "compact" ? "gap-1" : "gap-1.5", className)}>
+    <ul
+      aria-label={tc("filters")}
+      className={cn("flex", singleLine ? "w-max" : "flex-wrap", size === "compact" ? "gap-1" : "gap-1.5", className)}
+    >
       {items.map((item) => (
-        <li key={item.key} className="min-w-0 max-w-full">
-          <FilterChip item={item} compact={size === "compact"} />
+        <li key={item.key} className={singleLine ? "shrink-0" : "min-w-0 max-w-full"}>
+          <FilterChip item={item} compact={size === "compact"} singleLine={singleLine} />
         </li>
       ))}
     </ul>
   );
 }
 
-function FilterChip({ item, compact }: { item: FilterItem; compact: boolean }) {
+function FilterChip({ item, compact, singleLine }: { item: FilterItem; compact: boolean; singleLine: boolean }) {
   const Icon = item.icon;
   return (
     <Badge
       variant="secondary"
       className={cn(
-        "max-w-full items-start gap-1.5 whitespace-normal rounded-md font-normal",
+        "items-start gap-1.5 rounded-md font-normal",
+        singleLine ? "whitespace-nowrap" : "max-w-full whitespace-normal",
         compact ? "px-1.5 py-0.5 text-[10px] [&>svg]:size-2.5" : "py-1",
       )}
     >

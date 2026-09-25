@@ -629,11 +629,12 @@ export function HistoryItem({
         )}
 
         {/* Footer: Filters + History + Actions */}
-        <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/40">
+        <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-border/40">
           {/* Left: Filters */}
-          <div className="flex-1 overflow-x-auto scrollbar-hover">
+          <div className="min-w-0 flex-1 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
+            {/* Scope and sort are in the header already. */}
             {hasActiveFiltersFromResult(item) && (
-              <FilterChips filters={item} />
+              <FilterChips filters={{ ...item, field: undefined, sortBy: undefined }} singleLine />
             )}
           </div>
 
