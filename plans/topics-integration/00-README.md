@@ -74,6 +74,50 @@ The isolated configuration preview's unrelated runtime-update check reports
 the Activate-to-Coolify flow and a released container rollout were not verified
 in this preview; no shared deployment was attempted.
 
+## Changes and decisions, 2026-09-25
+
+Both branches were rebased on 2026-09-25: EL on `main`, OpenScholar on `dev`.
+OpenScholar now pins the rebased EL branch head with a one-off local script,
+because `sync-evidence-library-config-contract.mjs` accepts only commits on
+EL `main`. Re-pin with the real script after the EL pull request merges.
+
+- **The source dialog is the search page.** It reuses the results sidebar,
+  command center and result cards from the `mock/openalex-source` design. A
+  saved source keeps its search URL (`settings.searchUrl`, now required), so
+  reopening restores every control. Reason: the first implementation replaced
+  the mocked search with a smaller form. Proof: save, reload and reopen checks
+  in the configuration preview.
+- **Filters are shared.** Publication type, research areas, SDGs, open access,
+  language, author institution type, funder, minimum citations and "has an
+  abstract" are ordinary search filters in the URL, history, the results
+  sidebar, chat and extraction, and sources. Research areas of any level come
+  from one catalog search; choices in one level widen the search and choices in
+  different levels must all match, because OpenAlex cannot OR different
+  filters. `FilterChips` is the one chip component and shows real names.
+- **Retracted works are left out by default** everywhere (`is_retracted:false`),
+  with a switch to include them. That default narrows nothing on its own, so a
+  source still needs its own query or filter before it can import.
+- **Chat and extraction run the stored request.** The client stores the exact
+  OpenAlex request the results page made (`buildOpenAlexWorksQuery`, shared
+  with sources) and Convex runs it unchanged. Reason: the separate server
+  builder sent `countries:` and `regions:` clauses that OpenAlex rejects and
+  turned reviews into a narrower filter. Proof: the real Convex action returned
+  the results page's first five papers for a Kenya and reviews search.
+  Searches saved in the old shape stay valid in storage but are refused when run
+  again. Audit production `extractionJobSources`, migrate or drop the old shape,
+  then remove `legacySearchFiltersValidator`.
+
+### Remaining before merge
+
+1. EL passes the CI Fallow gate (`fallow audit --gate new-only`): this branch
+   introduced 6 dead-code, 29 complexity and 5 duplication findings.
+2. One read-only review of each final diff by the other agent family.
+3. The real-data gate in "Implementation sequence and acceptance", including
+   Activate, on the rebased code. Activate needs `GITHUB_TOKEN` on the preview
+   Convex deployment.
+4. EL pull request, merge on green CI, re-pin OpenScholar with the real script,
+   then the OpenScholar pull request.
+
 ## Agreed behavior
 
 - Topics use the OpenAlex hierarchy: domain, field, subfield, topic. A topic is
