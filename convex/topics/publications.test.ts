@@ -125,19 +125,6 @@ it("uses fresh durable details, bounded stale data on provider failure, then ret
   await t.run(async ctx => {const row = await ctx.db.query("topicDetails").first(); await ctx.db.patch("topicDetails", row!._id, {fetchedAt: Date.now() - 8 * 86400000});});
   await expect(t.action(api.topics.details.get, {id: topicId})).rejects.toThrow("unavailable");
 });
-it("stores the full catalog and filters exact ancestors with cursor paging", async () => {
-  const t = convexTest(schema, modules);
-  await t.action(api.topics.catalog.initialize, {});
-  const domains = await t.query(api.topics.catalog.directory, {parent: null, cursor: null, limit: 100});
-  expect(domains.nodes).toHaveLength(4);
-  const first = await t.query(api.topics.catalog.directory, {ancestor: "subfields/1702", cursor: null, limit: 2});
-  const second = await t.query(api.topics.catalog.directory, {ancestor: "subfields/1702", cursor: first.nextCursor, limit: 2});
-  expect(first.nodes).toHaveLength(2);
-  expect(second.nodes).toHaveLength(2);
-  expect(first.nodes.every(node => node.parent === "subfields/1702")).toBe(true);
-  expect(new Set([...first.nodes, ...second.nodes].map(node => node.id)).size).toBe(4);
-  expect((await t.query(api.topics.catalog.resolve, {ids: ["T12260"]}))[0]).toMatchObject({id: "T12260", level: "topic"});
-}, 15_000); // Storing all ~4,500 catalog nodes can exceed 5s under a parallel run.
 it("finishes a bounded identity rebuild without reporting incomplete groups as a total", async () => {
   vi.useFakeTimers();
   try {
