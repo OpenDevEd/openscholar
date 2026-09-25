@@ -95,17 +95,17 @@ export const SECTION_REGISTRY = [
     authority: "ownerEdited",
   },
   {
-    key: "topics",
-    pointer: "/topics",
-    label: "Topics",
-    description: "Topic discovery and publication surfaces.",
-    authority: "ownerEdited",
-  },
-  {
     key: "filters",
     pointer: "/filters",
     label: "Filters",
     description: "Discovery filter presentation.",
+    authority: "ownerEdited",
+  },
+  {
+    key: "topics",
+    pointer: "/topics",
+    label: "Topics",
+    description: "Topic discovery and publication surfaces.",
     authority: "ownerEdited",
   },
   {
