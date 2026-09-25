@@ -59,6 +59,7 @@ import {
 import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "./library-page-shell";
 import { LibraryStatusChip } from "./library-status-chip";
+import { LibraryImage } from "./library-image";
 import { EmptyList } from "./configuration/fields";
 
 type Role = "Owner" | "Editor" | "Creator";
@@ -66,6 +67,7 @@ type Library = {
   id: string;
   invitationId?: Id<"evidenceLibraryInvitations">;
   organizationImageUrl?: string | null;
+  faviconUrl?: string | null;
   status?: "draft" | "setting_up" | "setup_failed" | "active" | "deleting";
   name: string;
   organization: string;
@@ -77,6 +79,16 @@ type Library = {
   configuration?: string;
 };
 const roleIcons = { Owner: Crown, Editor: ShieldCheck, Creator: PenLine };
+const LIBRARY_TILE =
+  "flex size-10 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-muted/30 text-primary";
+
+function LibraryTile() {
+  return (
+    <div className={LIBRARY_TILE}>
+      <Layers className="size-5" />
+    </div>
+  );
+}
 
 export function LibraryList() {
   const owner = useLibraryOrganizationChoice();
@@ -87,7 +99,7 @@ export function LibraryList() {
   const [retrying, setRetrying] = useState<string | null>(null);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator" } as const;
   const libraries: Library[] = [
-    ...(overviews.data ?? []).map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) })),
+    ...(overviews.data ?? []).map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, faviconUrl: library.faviconUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) })),
     ...(invitations.data ?? []).map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true })),
   ];
   const [view, setView] = useQueryState("view", parseAsStringLiteral(["libraries", "invitations"]).withDefault("libraries"));
@@ -217,8 +229,17 @@ export function LibraryList() {
                 data-status={library.status}
                 className="flex flex-wrap items-center gap-3 p-4 hover:bg-muted/15 sm:flex-nowrap"
               >
-                <div className="relative mr-1 flex size-10 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-muted/30 text-primary">
-                  <Layers className="size-5" />
+                <div className="relative mr-1 shrink-0">
+                  {library.faviconUrl ? (
+                    <LibraryImage
+                      src={library.faviconUrl}
+                      className={LIBRARY_TILE}
+                      imageClassName="size-full object-cover"
+                      fallback={<LibraryTile />}
+                    />
+                  ) : (
+                    <LibraryTile />
+                  )}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
