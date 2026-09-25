@@ -513,6 +513,23 @@ export const runtimeContractSupportValidator = v.object({
   latest: v.boolean(),
 });
 
+export const evidenceLibraryDigestResultValidator = v.object({
+  title: v.string(),
+  summary: v.string(),
+  markdown: v.string(),
+  model: v.string(),
+  reasoning: v.string(),
+});
+
+export const evidenceLibraryDigestJobFields = {
+  libraryId: v.id("evidenceLibraries"),
+  editionId: v.string(),
+  requestId: v.optional(v.id("_storage")),
+  status: v.union(v.literal("pending"), v.literal("succeeded"), v.literal("failed")),
+  startedAt: v.number(),
+  result: v.optional(evidenceLibraryDigestResultValidator),
+};
+
 export const evidenceLibraryRuntimeReleaseFields = {
   running: v.string(),
   latest: v.string(),

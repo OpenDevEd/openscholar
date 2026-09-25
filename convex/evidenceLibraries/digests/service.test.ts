@@ -5,9 +5,10 @@ import { afterEach, expect, it, vi } from "vitest";
 import schema from "../../schema";
 const modules = import.meta.glob("/convex/**/*.ts");
 const token = "els_" + "a".repeat(43);
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 
 async function setup() {
+  vi.useFakeTimers();
   const t = convexTest(schema, modules);
   const libraryId = await t.run(async ctx => {
     const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: "digest-org", evidenceLibrariesEnabled: true, name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
@@ -17,23 +18,42 @@ async function setup() {
   });
   const body = {libraryId, editionId: "5e9558ce-ed55-4dc4-a44b-d1cbd3f9af64", locale: "en-GB", periodStart: "2026-09-01T09:00:00Z", periodEnd: "2026-09-08T09:00:00Z", publications: [{key: "ABCD2345", title: "Attention in classrooms", creators: ["Caitlin Mills"], date: "2026", abstract: "A framework for examining attention in learning.", publicationType: "Report", doi: null}]};
   const request = (patch: Record<string, unknown> = {}, credential = token) => t.fetch("/api/v1/evidence-libraries/digests/generate", {method: "POST", headers: {Authorization: `Bearer ${credential}`, "Content-Type": "application/json"}, body: JSON.stringify({...body, ...patch})});
-  return {t, libraryId, request};
+  // Runs the job that was just queued, leaving its one-day expiry pending.
+  const finishGeneration = async () => { vi.advanceTimersByTime(1); await t.finishInProgressScheduledFunctions(); };
+  const saved = () => t.run(async ctx => ({jobs: await ctx.db.query("evidenceLibraryDigestJobs").collect(), files: await ctx.db.system.query("_storage").collect()}));
+  return {t, libraryId, request, finishGeneration, saved};
 }
 
-it("authenticates a library and enforces the digest model without a wallet", async () => {
+it("writes the digest in the background and returns it on every request until it expires, without a wallet", async () => {
   vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
-  const {request, t} = await setup();
+  const {request, t, finishGeneration, saved} = await setup();
   let captured: Record<string, unknown> | undefined;
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+  const provider = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     expect(String(url)).toBe("https://openrouter.ai/api/v1/chat/completions");
     captured = JSON.parse(String(init?.body)) as Record<string, unknown>;
     return new Response(JSON.stringify({id: "generation", model: "openai/gpt-6-luna", created: 1, choices: [{index: 0, finish_reason: "stop", message: {role: "assistant", content: JSON.stringify({title: "Attention in learning", summary: "A new framework for classroom attention.", markdown: "The framework examines classroom attention. [Mills, 2026](/lib/ABCD2345)"})}}], usage: {prompt_tokens: 10, completion_tokens: 10, total_tokens: 20}}), {headers: {"Content-Type": "application/json"}});
   });
-  const response = await request();
-  expect(response.status).toBe(200);
+  expect((await request()).status).toBe(202);
+  // Checking back while it is written neither restarts it nor spends the hourly limit.
+  for (let poll = 0; poll < 4; poll++) expect((await request()).status).toBe(202);
+  expect((await saved()).jobs).toMatchObject([{status: "pending"}]);
+  await finishGeneration();
+  expect(provider).toHaveBeenCalledTimes(1);
   expect(captured).toMatchObject({model: "openai/gpt-6-luna", reasoning: {effort: "max"}, provider: {require_parameters: true, allow_fallbacks: false}});
   expect(captured).not.toHaveProperty("tools");
-  expect(await response.json()).toMatchObject({digest: {model: "openai/gpt-6-luna", reasoning: "max", markdown: expect.stringContaining("/lib/ABCD2345")}});
+  const response = await request();
+  expect(response.status).toBe(200);
+  const {digest} = await response.json() as {digest: unknown};
+  expect(digest).toMatchObject({model: "openai/gpt-6-luna", reasoning: "max", markdown: expect.stringContaining("/lib/ABCD2345")});
+  // A retry after a lost response gets the same digest without writing it again.
+  const retry = await request();
+  expect(retry.status).toBe(200);
+  expect(await retry.json()).toEqual({digest});
+  expect(provider).toHaveBeenCalledTimes(1);
+  expect(await saved()).toMatchObject({jobs: [{status: "succeeded"}], files: []});
+  vi.advanceTimersByTime(86_400_000);
+  await t.finishInProgressScheduledFunctions();
+  expect(await saved()).toEqual({jobs: [], files: []});
   expect(await t.run(ctx => ctx.db.query("users").collect())).toEqual([]);
 });
 
@@ -49,10 +69,20 @@ it("rejects foreign credentials, disabled libraries and arbitrary prompt or PDF 
   expect(provider).not.toHaveBeenCalled();
 });
 
-it("returns a retryable failure when the fixed model is unavailable", async () => {
+it("reports a failed generation once, then starts again on the next request", async () => {
   vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
-  const {request} = await setup();
+  const {t, request, finishGeneration, saved} = await setup();
   const provider = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({error: {message: "Model unavailable", code: 503}}), {status: 503, headers: {"Content-Type": "application/json"}}));
-  expect((await request()).status).toBe(503);
+  expect((await request()).status).toBe(202);
+  await finishGeneration();
   expect(provider).toHaveBeenCalledTimes(1);
+  expect((await request()).status).toBe(503);
+  expect(await saved()).toEqual({jobs: [], files: []});
+  expect((await request()).status).toBe(202);
+  expect((await saved()).jobs).toMatchObject([{status: "pending"}]);
+  // A job nobody collects is removed with its stored request after a day.
+  await finishGeneration();
+  vi.advanceTimersByTime(86_400_000);
+  await t.finishInProgressScheduledFunctions();
+  expect(await saved()).toEqual({jobs: [], files: []});
 });

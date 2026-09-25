@@ -692,6 +692,19 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       await Promise.all(routeLeases.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
+    const digestJobs = await ctx.db
+      .query("evidenceLibraryDigestJobs")
+      .withIndex("by_libraryId_and_editionId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    if (digestJobs.length > 0) {
+      await Promise.all(digestJobs.map(async (row) => {
+        if (row.requestId) await ctx.storage.delete(row.requestId);
+        await ctx.db.delete(row._id);
+      }));
+      return { complete: false };
+    }
     const adminCodes = await ctx.db
       .query("evidenceLibraryAdminLoginCodes")
       .withIndex("by_libraryId_and_codeDigest", (query) =>
