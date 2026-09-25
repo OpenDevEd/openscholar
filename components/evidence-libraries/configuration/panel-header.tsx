@@ -63,7 +63,8 @@ export function PanelHeader({
               <LibraryImage
                 src={image ?? "/icon.svg"}
                 className={TILE}
-                imageClassName="h-6 w-6 object-contain md:h-7 md:w-7"
+                // The owner's icon fills the tile and takes its rounded corners.
+                imageClassName={image ? "size-full object-cover" : "h-6 w-6 object-contain md:h-7 md:w-7"}
                 fallback={<IconTile icon={Icon} />}
               />
             ) : (
