@@ -137,7 +137,7 @@ it("stores the full catalog and filters exact ancestors with cursor paging", asy
   expect(first.nodes.every(node => node.parent === "subfields/1702")).toBe(true);
   expect(new Set([...first.nodes, ...second.nodes].map(node => node.id)).size).toBe(4);
   expect((await t.query(api.topics.catalog.resolve, {ids: ["T12260"]}))[0]).toMatchObject({id: "T12260", level: "topic"});
-});
+}, 15_000); // Storing all ~4,500 catalog nodes can exceed 5s under a parallel run.
 it("finishes a bounded identity rebuild without reporting incomplete groups as a total", async () => {
   vi.useFakeTimers();
   try {
