@@ -82,6 +82,12 @@ function toOpenAlexSearchFilters(filters: SearchFilters): OpenAlexSearchFilters 
     ...(filters.sdgs !== undefined ? { sdgs: filters.sdgs } : {}),
     ...(filters.openAccessOnly !== undefined ? { openAccessOnly: filters.openAccessOnly } : {}),
     ...(filters.workTypes !== undefined ? { workTypes: filters.workTypes } : {}),
+    ...(filters.workLanguages !== undefined ? { workLanguages: filters.workLanguages } : {}),
+    ...(filters.institutionTypes !== undefined ? { institutionTypes: filters.institutionTypes } : {}),
+    ...(filters.funders !== undefined ? { funders: filters.funders } : {}),
+    ...(filters.minCitations !== undefined ? { minCitations: filters.minCitations } : {}),
+    ...(filters.hasAbstract !== undefined ? { hasAbstract: filters.hasAbstract } : {}),
+    ...(filters.includeRetracted !== undefined ? { includeRetracted: filters.includeRetracted } : {}),
     ...(filters.citesItemId !== undefined ? { citesItemId: filters.citesItemId } : {}),
     ...(filters.citedByItemId !== undefined
       ? { citedByItemId: filters.citedByItemId }

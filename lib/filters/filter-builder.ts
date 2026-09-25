@@ -24,7 +24,7 @@ import {
   FilterSectionType,
 } from "./filter-types";
 import { SECTION_TITLES, FILTER_ICONS, SORT_OPTIONS } from "./filter-config";
-import { SDGS, WORK_TYPES } from "@/lib/openalex/vocabulary";
+import { INSTITUTION_TYPES, SDGS, WORK_TYPES } from "@/lib/openalex/vocabulary";
 
 /** Translation function for filter strings (from useTranslations("searchFilters")) */
 export type FilterT = {
@@ -133,6 +133,12 @@ export function hasActiveFiltersFromResult(result: {
   sdgs?: string[];
   openAccessOnly?: boolean;
   workTypes?: string[];
+  workLanguages?: string[];
+  institutionTypes?: string[];
+  funders?: string[];
+  minCitations?: number | null;
+  hasAbstract?: boolean;
+  includeRetracted?: boolean;
 }): boolean {
   return !!(
     result.yearRange ||
@@ -148,7 +154,13 @@ export function hasActiveFiltersFromResult(result: {
     result.researchAreas?.length ||
     result.sdgs?.length ||
     result.openAccessOnly ||
-    result.workTypes?.length
+    result.workTypes?.length ||
+    result.workLanguages?.length ||
+    result.institutionTypes?.length ||
+    result.funders?.length ||
+    result.minCitations ||
+    result.hasAbstract ||
+    result.includeRetracted
   );
 }
 
@@ -197,7 +209,9 @@ export type FormatDateTimeFn = (
  */
 export type FilterNames = {
   researchAreas?: Record<string, string>;
+  funders?: Record<string, string>;
   place?: (codeOrRegionId: string) => string;
+  language?: (code: string) => string;
 };
 const namesOf = (ids: string[], options: readonly { id: string; name: string }[]) =>
   ids.map((id) => options.find((option) => option.id === id)?.name ?? id).join(", ");
@@ -354,9 +368,51 @@ export function buildFilterData(
       createFilterItem("sdg", "sdg", namesOf(params.sdgs, SDGS), t ? t("sdgs") : "SDGs")
     );
   }
+  if (params.workLanguages?.length) {
+    contentItems.push(
+      createFilterItem(
+        "workLanguage",
+        "workLanguage",
+        params.workLanguages.map((code) => names.language?.(code) ?? code).join(", "),
+        t ? t("writtenIn") : "Written in"
+      )
+    );
+  }
+  if (params.institutionTypes?.length) {
+    contentItems.push(
+      createFilterItem(
+        "institutionType",
+        "institutionType",
+        namesOf(params.institutionTypes, INSTITUTION_TYPES),
+        t ? t("institutionType") : "Institution type"
+      )
+    );
+  }
+  if (params.funders?.length) {
+    contentItems.push(
+      createFilterItem(
+        "funder",
+        "funder",
+        params.funders.map((id) => names.funders?.[id] ?? id).join(", "),
+        t ? t("funders") : "Funders"
+      )
+    );
+  }
+  if (params.minCitations) {
+    const label = t ? t("atLeastCitations", { count: params.minCitations }) : `At least ${params.minCitations} citations`;
+    contentItems.push(createFilterItem("minCitations", "minCitations", label, label));
+  }
   if (params.openAccessOnly) {
     const label = t ? t("onlyOpenAccess") : "Only open access";
     contentItems.push(createFilterItem("openAccess", "openAccess", label, label));
+  }
+  if (params.hasAbstract) {
+    const label = t ? t("onlyWithAbstract") : "Only with an abstract";
+    contentItems.push(createFilterItem("hasAbstract", "hasAbstract", label, label));
+  }
+  if (params.includeRetracted) {
+    const label = t ? t("includesRetracted") : "Includes retracted works";
+    contentItems.push(createFilterItem("includeRetracted", "includeRetracted", label, label));
   }
   if (contentItems.length > 0) {
     sections.push(createSection("content", contentItems, t));

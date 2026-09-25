@@ -21,6 +21,12 @@ export type BucketSearchFilters = {
   sdgs?: string[];
   openAccessOnly?: boolean;
   workTypes?: string[];
+  workLanguages?: string[];
+  institutionTypes?: string[];
+  funders?: string[];
+  minCitations?: number;
+  hasAbstract?: boolean;
+  includeRetracted?: boolean;
   language?: string;
 };
 
@@ -66,6 +72,12 @@ export function paramsToBucketSearchFilters(
   if (params.sdg.length > 0) filters.sdgs = params.sdg;
   if (params.oa) filters.openAccessOnly = true;
   if (params.type.length > 0) filters.workTypes = params.type;
+  if (params.wlang.length > 0) filters.workLanguages = params.wlang;
+  if (params.itype.length > 0) filters.institutionTypes = params.itype;
+  if (params.funder.length > 0) filters.funders = params.funder;
+  if (params.mincite !== null) filters.minCitations = params.mincite;
+  if (params.abs) filters.hasAbstract = true;
+  if (params.retracted) filters.includeRetracted = true;
 
   if (params.lang) filters.language = params.lang;
 

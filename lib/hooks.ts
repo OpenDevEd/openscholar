@@ -212,6 +212,12 @@ function useCurrentSearchFormStateFromUrl() {
     sdgs: search.params.sdg,
     openAccessOnly: search.params.oa,
     workTypes: search.params.type,
+    workLanguages: search.params.wlang,
+    institutionTypes: search.params.itype,
+    funders: search.params.funder,
+    minCitations: search.params.mincite,
+    hasAbstract: search.params.abs,
+    includeRetracted: search.params.retracted,
   };
 }
 
@@ -248,6 +254,12 @@ function useCurrentSearchFormStateFromStore() {
     sdgs: searchResult?.sdgs ?? [],
     openAccessOnly: searchResult?.openAccessOnly ?? false,
     workTypes: searchResult?.workTypes ?? [],
+    workLanguages: searchResult?.workLanguages ?? [],
+    institutionTypes: searchResult?.institutionTypes ?? [],
+    funders: searchResult?.funders ?? [],
+    minCitations: searchResult?.minCitations ?? null,
+    hasAbstract: searchResult?.hasAbstract ?? false,
+    includeRetracted: searchResult?.includeRetracted ?? false,
   };
 }
 
@@ -386,6 +398,30 @@ function useUpdateSearchFilterFromUrl() {
       batchUpdates.type = updates.workTypes as string[];
       shouldResetPage = true;
     }
+    if ('workLanguages' in updates) {
+      batchUpdates.wlang = updates.workLanguages as string[];
+      shouldResetPage = true;
+    }
+    if ('institutionTypes' in updates) {
+      batchUpdates.itype = updates.institutionTypes as string[];
+      shouldResetPage = true;
+    }
+    if ('funders' in updates) {
+      batchUpdates.funder = updates.funders as string[];
+      shouldResetPage = true;
+    }
+    if ('minCitations' in updates) {
+      batchUpdates.mincite = updates.minCitations as number | null;
+      shouldResetPage = true;
+    }
+    if ('hasAbstract' in updates) {
+      batchUpdates.abs = updates.hasAbstract as boolean;
+      shouldResetPage = true;
+    }
+    if ('includeRetracted' in updates) {
+      batchUpdates.retracted = updates.includeRetracted as boolean;
+      shouldResetPage = true;
+    }
     if ('language' in updates || 'lang' in updates) {
       batchUpdates.lang = ((updates.language as string | null | undefined) ?? updates.lang ?? null) as string | null;
       shouldResetPage = true;
@@ -426,6 +462,12 @@ export function useCreateSearchFilters() {
     sdgs,
     openAccessOnly,
     workTypes,
+    workLanguages,
+    institutionTypes,
+    funders,
+    minCitations,
+    hasAbstract,
+    includeRetracted,
   } = useCurrentSearchFormState();
 
   return (overrides: Partial<SearchFilters> = {}): SearchFilters => ({
@@ -447,6 +489,12 @@ export function useCreateSearchFilters() {
     sdgs,
     openAccessOnly,
     workTypes,
+    workLanguages,
+    institutionTypes,
+    funders,
+    minCitations,
+    hasAbstract,
+    includeRetracted,
     ...overrides, // Override any fields passed in
   });
 } 

@@ -25,6 +25,12 @@ const filters: SearchFilters = {
   sdgs: [],
   openAccessOnly: false,
   workTypes: [],
+  workLanguages: [],
+  institutionTypes: [],
+  funders: [],
+  minCitations: null,
+  hasAbstract: false,
+  includeRetracted: false,
 };
 
 describe("getSearchResultsWithFilters", () => {

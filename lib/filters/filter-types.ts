@@ -27,7 +27,13 @@ export type FilterType =
   | "workType"
   | "researchArea"
   | "sdg"
-  | "openAccess";
+  | "openAccess"
+  | "workLanguage"
+  | "institutionType"
+  | "funder"
+  | "minCitations"
+  | "hasAbstract"
+  | "includeRetracted";
 
 /**
  * Section categories for grouping filters
@@ -96,4 +102,10 @@ export interface FilterParams {
   sdgs?: string[];
   openAccessOnly?: boolean;
   workTypes?: string[];
+  workLanguages?: string[];
+  institutionTypes?: string[];
+  funders?: string[];
+  minCitations?: number | null;
+  hasAbstract?: boolean;
+  includeRetracted?: boolean;
 }

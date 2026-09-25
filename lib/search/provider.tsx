@@ -91,6 +91,9 @@ function cloneSearchParams(params: SearchParams): SearchParams {
     area: [...params.area],
     sdg: [...params.sdg],
     type: [...params.type],
+    wlang: [...params.wlang],
+    itype: [...params.itype],
+    funder: [...params.funder],
   };
 }
 
@@ -161,6 +164,12 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       sdg: urlParams.sdg,
       oa: urlParams.oa,
       type: urlParams.type,
+      wlang: urlParams.wlang,
+      itype: urlParams.itype,
+      funder: urlParams.funder,
+      mincite: urlParams.mincite,
+      abs: urlParams.abs,
+      retracted: urlParams.retracted,
     });
 
     paramsSnapshotByKey.set(key, cloneSearchParams(currentParams));
@@ -193,6 +202,12 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     urlParams.sdg,
     urlParams.oa,
     urlParams.type,
+    urlParams.wlang,
+    urlParams.itype,
+    urlParams.funder,
+    urlParams.mincite,
+    urlParams.abs,
+    urlParams.retracted,
     urlParams.page,
     urlParams.rmin,
     urlParams.rmax,
@@ -221,6 +236,9 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
           area: parsedParams.area ? [...parsedParams.area] : [],
           sdg: parsedParams.sdg ? [...parsedParams.sdg] : [],
           type: parsedParams.type ? [...parsedParams.type] : [],
+          wlang: parsedParams.wlang ? [...parsedParams.wlang] : [],
+          itype: parsedParams.itype ? [...parsedParams.itype] : [],
+          funder: parsedParams.funder ? [...parsedParams.funder] : [],
           page: DEFAULT_SEARCH_PARAMS.page,
           rmin: DEFAULT_SEARCH_PARAMS.rmin,
           rmax: DEFAULT_SEARCH_PARAMS.rmax,
@@ -287,6 +305,12 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       sdgs: params.sdg,
       openAccessOnly: params.oa,
       workTypes: params.type,
+      workLanguages: params.wlang,
+      institutionTypes: params.itype,
+      funders: params.funder,
+      minCitations: params.mincite,
+      hasAbstract: params.abs,
+      includeRetracted: params.retracted,
     };
     
     const searchParams: SearchWithFiltersParams = {
@@ -429,6 +453,12 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     currentParams.sdg,
     currentParams.oa,
     currentParams.type,
+    currentParams.wlang,
+    currentParams.itype,
+    currentParams.funder,
+    currentParams.mincite,
+    currentParams.abs,
+    currentParams.retracted,
     currentParams.lang,
     data?.results?.meta?.count,
     data?.validation?.isValid,
@@ -582,6 +612,12 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     if ('sdg' in updates) storeUpdates.sdgs = updates.sdg;
     if ('oa' in updates) storeUpdates.openAccessOnly = updates.oa;
     if ('type' in updates) storeUpdates.workTypes = updates.type;
+    if ('wlang' in updates) storeUpdates.workLanguages = updates.wlang;
+    if ('itype' in updates) storeUpdates.institutionTypes = updates.itype;
+    if ('funder' in updates) storeUpdates.funders = updates.funder;
+    if ('mincite' in updates) storeUpdates.minCitations = updates.mincite ?? undefined;
+    if ('abs' in updates) storeUpdates.hasAbstract = updates.abs;
+    if ('retracted' in updates) storeUpdates.includeRetracted = updates.retracted;
     if ('lang' in updates) storeUpdates.language = updates.lang || undefined;
     if ('page' in updates) storeUpdates.page = updates.page;
     
@@ -611,6 +647,12 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       sdg: [],
       oa: false,
       type: [],
+      wlang: [],
+      itype: [],
+      funder: [],
+      mincite: null,
+      abs: false,
+      retracted: false,
       page: 1,
     });
     // Also reset in store
@@ -631,6 +673,12 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       sdgs: [],
       openAccessOnly: false,
       workTypes: [],
+      workLanguages: [],
+      institutionTypes: [],
+      funders: [],
+      minCitations: undefined,
+      hasAbstract: false,
+      includeRetracted: false,
       page: 1,
     });
   }, [setUrlParams, syncToStore]);
@@ -674,6 +722,12 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     sdgs: urlParams.sdg,
     openAccessOnly: urlParams.oa,
     workTypes: urlParams.type,
+    workLanguages: urlParams.wlang,
+    institutionTypes: urlParams.itype,
+    funders: urlParams.funder,
+    minCitations: urlParams.mincite,
+    hasAbstract: urlParams.abs,
+    includeRetracted: urlParams.retracted,
   }), [urlParams]);
   
   // Build context value

@@ -20,6 +20,12 @@ const filters: SearchFilters = {
   sdgs: [],
   openAccessOnly: false,
   workTypes: [],
+  workLanguages: [],
+  institutionTypes: [],
+  funders: [],
+  minCitations: null,
+  hasAbstract: false,
+  includeRetracted: false,
 };
 
 const works = client.works as unknown as ReturnType<typeof vi.fn>;

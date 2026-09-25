@@ -27,6 +27,12 @@ function filters(overrides: Partial<SearchFilters> = {}): SearchFilters {
     sdgs: [],
     openAccessOnly: false,
     workTypes: [],
+    workLanguages: [],
+    institutionTypes: [],
+    funders: [],
+    minCitations: null,
+    hasAbstract: false,
+    includeRetracted: false,
     ...overrides,
   };
 }

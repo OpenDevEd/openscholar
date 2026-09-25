@@ -30,6 +30,12 @@ export type OpenAlexSearchFilters = {
   sdgs?: string[];
   openAccessOnly?: boolean;
   workTypes?: string[];
+  workLanguages?: string[];
+  institutionTypes?: string[];
+  funders?: string[];
+  minCitations?: number;
+  hasAbstract?: boolean;
+  includeRetracted?: boolean;
   /**
    * Per-request page size. When the caller (today: the P7 CountChip
    * via `searchFilters.limit`) knows how many papers the user chose to
@@ -144,6 +150,15 @@ export function buildOpenAlexSearchParams(
     filterParts.push(`sustainable_development_goals.id:${sdgFilterValue(filters.sdgs)}`);
   }
   if (filters.openAccessOnly) filterParts.push("open_access.is_oa:true");
+  if (filters.workLanguages?.length) filterParts.push(`language:${filters.workLanguages.join("|")}`);
+  if (filters.institutionTypes?.length) {
+    filterParts.push(`authorships.institutions.type:${filters.institutionTypes.join("|")}`);
+  }
+  if (filters.funders?.length) filterParts.push(`funders.id:${filters.funders.join("|")}`);
+  // OpenAlex takes "more than", so at least N is more than N - 1.
+  if (filters.minCitations) filterParts.push(`cited_by_count:>${filters.minCitations - 1}`);
+  if (filters.hasAbstract) filterParts.push("has_abstract:true");
+  if (!filters.includeRetracted) filterParts.push("is_retracted:false");
 
   if (filters.citesItemId) {
     filterParts.push(`cites:${qualifyOpenAlexId(filters.citesItemId)}`);

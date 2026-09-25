@@ -50,6 +50,12 @@ export const parseAsRegions = createParser({
  * - sdg: sustainable development goals (1-17)
  * - oa: open access only
  * - type: OpenAlex work types
+ * - wlang: languages the works are written in
+ * - itype: types of the authors' institutions
+ * - funder: OpenAlex funder ids
+ * - mincite: minimum number of citations
+ * - abs: only works with an abstract
+ * - retracted: include retracted works, which are left out by default
  * - lang: language filter
  */
 export const searchParamsParsers = {
@@ -90,6 +96,12 @@ export const searchParamsParsers = {
   sdg: parseAsArrayOf(parseAsString).withDefault([]),
   oa: parseAsBoolean.withDefault(false),
   type: parseAsArrayOf(parseAsString).withDefault([]),
+  wlang: parseAsArrayOf(parseAsString).withDefault([]),
+  itype: parseAsArrayOf(parseAsString).withDefault([]),
+  funder: parseAsArrayOf(parseAsString).withDefault([]),
+  mincite: parseAsInteger,
+  abs: parseAsBoolean.withDefault(false),
+  retracted: parseAsBoolean.withDefault(false),
   
   // Language
   lang: parseAsString,
@@ -121,6 +133,12 @@ export type ParsedSearchParams = {
   sdg: string[];
   oa: boolean;
   type: string[];
+  wlang: string[];
+  itype: string[];
+  funder: string[];
+  mincite: number | null;
+  abs: boolean;
+  retracted: boolean;
   lang: string | null;
 };
 
@@ -183,6 +201,12 @@ export function parseSearchParamsFromUrl(
     sdg: parseListParam(searchParams, 'sdg'),
     oa: searchParams.get('oa') === 'true',
     type: parseListParam(searchParams, 'type'),
+    wlang: parseListParam(searchParams, 'wlang'),
+    itype: parseListParam(searchParams, 'itype'),
+    funder: parseListParam(searchParams, 'funder'),
+    mincite: parseIntegerParam(searchParams, 'mincite', null),
+    abs: searchParams.get('abs') === 'true',
+    retracted: searchParams.get('retracted') === 'true',
     lang: searchParams.get('lang') ?? null,
   };
 }
@@ -228,5 +252,11 @@ export const DEFAULT_SEARCH_PARAMS: ParsedSearchParams = {
   sdg: [],
   oa: false,
   type: [],
+  wlang: [],
+  itype: [],
+  funder: [],
+  mincite: null,
+  abs: false,
+  retracted: false,
   lang: null,
 };

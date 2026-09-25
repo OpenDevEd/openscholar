@@ -35,7 +35,8 @@ describe("createSearchParameters", () => {
       dateRange: undefined,
     };
     const result = createSearchParameters("", filters);
-    expect(result.filter).toBeUndefined();
+    // Only the default that leaves out retracted works remains.
+    expect(result.filter).toEqual({ is_retracted: false });
   });
 
   describe("cites filter", () => {

@@ -19,6 +19,13 @@ export function sameOpenAlexSourceSearch(left: SearchParams, right: SearchParams
  * same thing on every update whatever the search code later becomes.
  */
 export function buildOpenAlexSourceQuery(params: SearchParams): OpenAlexQuery | null {
+  // Leaving out retracted works is on by default and narrows nothing on its own,
+  // so a search must still have its own query or filter to be imported.
+  if (!params.retracted && !openAlexQuery({ ...params, retracted: true })) return null;
+  return openAlexQuery(params);
+}
+
+function openAlexQuery(params: SearchParams): OpenAlexQuery | null {
   const prepared = prepareOpenAlexSearch({ query: params.q, filters: paramsToFilters(params) });
   if (prepared.finalApiQuery === null) return null;
   const request = createSearchParameters(prepared.finalApiQuery, {

@@ -30,5 +30,11 @@ export function toSearchFilters(entry: SearchResult): SearchFilters {
     sdgs: entry.sdgs ?? [],
     openAccessOnly: entry.openAccessOnly ?? false,
     workTypes: entry.workTypes ?? [],
+    workLanguages: entry.workLanguages ?? [],
+    institutionTypes: entry.institutionTypes ?? [],
+    funders: entry.funders ?? [],
+    minCitations: entry.minCitations ?? null,
+    hasAbstract: entry.hasAbstract ?? false,
+    includeRetracted: entry.includeRetracted ?? false,
   };
 }

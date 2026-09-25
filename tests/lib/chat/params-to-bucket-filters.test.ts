@@ -26,6 +26,12 @@ function defaultParams(overrides: Partial<SearchParams> = {}): SearchParams {
     sdg: [],
     oa: false,
     type: [],
+    wlang: [],
+    itype: [],
+    funder: [],
+    mincite: null,
+    abs: false,
+    retracted: false,
     lang: null,
     ...overrides,
   };
@@ -321,6 +327,12 @@ describe("paramsToBucketSearchFilters", () => {
         sdg: [],
         oa: false,
         type: [],
+        wlang: [],
+        itype: [],
+        funder: [],
+        mincite: null,
+        abs: false,
+        retracted: false,
         lang: "en",
       });
       assertNoNulls(out as unknown as Record<string, unknown>);
@@ -394,6 +406,12 @@ describe("paramsToBucketSearchFilters", () => {
         sdg: [],
         oa: false,
         type: [],
+        wlang: [],
+        itype: [],
+        funder: [],
+        mincite: null,
+        abs: false,
+        retracted: false,
         lang: "en",
       });
       for (const key of Object.keys(out)) {

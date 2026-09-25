@@ -39,6 +39,12 @@ export type NewSearchResultData = {
   sdgs?: string[];
   openAccessOnly?: boolean;
   workTypes?: string[];
+  workLanguages?: string[];
+  institutionTypes?: string[];
+  funders?: string[];
+  minCitations?: number;
+  hasAbstract?: boolean;
+  includeRetracted?: boolean;
   language?: string;
   page?: number;
 };
@@ -91,6 +97,12 @@ export function paramsToSearchResult(params: ParsedSearchParams): NewSearchResul
     sdgs: params.sdg,
     openAccessOnly: params.oa,
     workTypes: params.type,
+    workLanguages: params.wlang,
+    institutionTypes: params.itype,
+    funders: params.funder,
+    minCitations: params.mincite ?? undefined,
+    hasAbstract: params.abs,
+    includeRetracted: params.retracted,
     
     // Language
     language: params.lang || undefined,
@@ -166,6 +178,12 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
   if (result.sdgs?.length) params.sdg = result.sdgs;
   if (result.openAccessOnly) params.oa = true;
   if (result.workTypes?.length) params.type = result.workTypes;
+  if (result.workLanguages?.length) params.wlang = result.workLanguages;
+  if (result.institutionTypes?.length) params.itype = result.institutionTypes;
+  if (result.funders?.length) params.funder = result.funders;
+  if (result.minCitations) params.mincite = result.minCitations;
+  if (result.hasAbstract) params.abs = true;
+  if (result.includeRetracted) params.retracted = true;
   
   // Language
   if (result.language) {
@@ -212,6 +230,12 @@ export function paramsToFilters(params: ParsedSearchParams): SearchFilters {
     sdgs: params.sdg,
     openAccessOnly: params.oa,
     workTypes: params.type,
+    workLanguages: params.wlang,
+    institutionTypes: params.itype,
+    funders: params.funder,
+    minCitations: params.mincite,
+    hasAbstract: params.abs,
+    includeRetracted: params.retracted,
   };
 }
 
@@ -277,6 +301,12 @@ export function paramsMatchState(params: ParsedSearchParams, state: SearchResult
   if (!arraysEqual(params.sdg, state.sdgs ?? [])) return false;
   if (params.oa !== (state.openAccessOnly ?? false)) return false;
   if (!arraysEqual(params.type, state.workTypes ?? [])) return false;
+  if (!arraysEqual(params.wlang, state.workLanguages ?? [])) return false;
+  if (!arraysEqual(params.itype, state.institutionTypes ?? [])) return false;
+  if (!arraysEqual(params.funder, state.funders ?? [])) return false;
+  if (params.mincite !== (state.minCitations ?? null)) return false;
+  if (params.abs !== (state.hasAbstract ?? false)) return false;
+  if (params.retracted !== (state.includeRetracted ?? false)) return false;
   
   // Language
   if (params.lang !== (state.language || null)) return false;
@@ -305,6 +335,12 @@ export function hasActiveFilters(params: ParsedSearchParams): boolean {
     params.area.length > 0 ||
     params.sdg.length > 0 ||
     params.oa ||
-    params.type.length > 0
+    params.type.length > 0 ||
+    params.wlang.length > 0 ||
+    params.itype.length > 0 ||
+    params.funder.length > 0 ||
+    params.mincite !== null ||
+    params.abs ||
+    params.retracted
   );
 }

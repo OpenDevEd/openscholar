@@ -20,6 +20,11 @@ import {
   Shapes,
   Globe2,
   LockOpen,
+  Building2,
+  HandCoins,
+  Award,
+  AlignLeft,
+  FileX,
   LucideIcon,
 } from "lucide-react";
 import { FilterSectionType, FilterType } from "./filter-types";
@@ -51,6 +56,12 @@ export const FILTER_ICONS: Record<FilterType, LucideIcon> = {
   researchArea: Shapes,
   sdg: Globe2,
   openAccess: LockOpen,
+  workLanguage: Languages,
+  institutionType: Building2,
+  funder: HandCoins,
+  minCitations: Award,
+  hasAbstract: AlignLeft,
+  includeRetracted: FileX,
 };
 
 /**

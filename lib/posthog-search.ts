@@ -36,6 +36,12 @@ const SEARCH_PARAM_KEYS: SearchParamKey[] = [
   "sdg",
   "oa",
   "type",
+  "wlang",
+  "itype",
+  "funder",
+  "mincite",
+  "abs",
+  "retracted",
   "lang",
 ];
 
@@ -58,6 +64,12 @@ export const SEARCH_FETCH_PARAM_KEYS: SearchParamKey[] = [
   "sdg",
   "oa",
   "type",
+  "wlang",
+  "itype",
+  "funder",
+  "mincite",
+  "abs",
+  "retracted",
 ];
 
 function arraysEqualStable(a: string[], b: string[]): boolean {
@@ -92,6 +104,12 @@ function getActiveFilterKeys(params: SearchParams): string[] {
   if (params.sdg.length > 0) activeKeys.push("sdgs");
   if (params.oa) activeKeys.push("open_access");
   if (params.type.length > 0) activeKeys.push("work_types");
+  if (params.wlang.length > 0) activeKeys.push("work_languages");
+  if (params.itype.length > 0) activeKeys.push("institution_types");
+  if (params.funder.length > 0) activeKeys.push("funders");
+  if (params.mincite !== null) activeKeys.push("min_citations");
+  if (params.abs) activeKeys.push("has_abstract");
+  if (params.retracted) activeKeys.push("include_retracted");
   if (params.lang) activeKeys.push("language");
 
   return activeKeys;
@@ -129,6 +147,12 @@ export interface SearchFilterSnapshot {
   sdgs: string[];
   open_access_only: boolean;
   work_types: string[];
+  work_languages: string[];
+  institution_types: string[];
+  funders: string[];
+  min_citations: number | null;
+  has_abstract: boolean;
+  include_retracted: boolean;
   active_filter_count: number;
   active_filter_keys: string[];
 }
@@ -230,6 +254,12 @@ export function buildSearchFilterSnapshot(
     sdgs: params.sdg,
     open_access_only: params.oa,
     work_types: params.type,
+    work_languages: params.wlang,
+    institution_types: params.itype,
+    funders: params.funder,
+    min_citations: params.mincite,
+    has_abstract: params.abs,
+    include_retracted: params.retracted,
     active_filter_count: activeFilterKeys.length,
     active_filter_keys: activeFilterKeys,
   };
@@ -245,7 +275,7 @@ export function getChangedParamKeys(
 
   const changed: SearchParamKey[] = [];
   for (const key of SEARCH_PARAM_KEYS) {
-    if (key === "reg" || key === "focus" || key === "area" || key === "sdg" || key === "type") {
+    if (key === "reg" || key === "focus" || key === "area" || key === "sdg" || key === "type" || key === "wlang" || key === "itype" || key === "funder") {
       if (!arraysEqualStable(previous[key], current[key])) {
         changed.push(key);
       }

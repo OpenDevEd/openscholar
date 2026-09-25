@@ -129,6 +129,13 @@ export interface SearchFilters {
   sdgs: string[];
   openAccessOnly: boolean;
   workTypes: string[];
+  workLanguages: string[];
+  institutionTypes: string[];
+  funders: string[];
+  minCitations: number | null;
+  hasAbstract: boolean;
+  /** Retracted works are left out unless this is set. */
+  includeRetracted: boolean;
 }
 
 /**
@@ -160,6 +167,12 @@ export interface SearchResult {
   sdgs?: string[];
   openAccessOnly?: boolean;
   workTypes?: string[];
+  workLanguages?: string[];
+  institutionTypes?: string[];
+  funders?: string[];
+  minCitations?: number;
+  hasAbstract?: boolean;
+  includeRetracted?: boolean;
   language?: string; // ISO 639-1 language code
   page?: number; // Last viewed page for this search
   chatJobIdsByAccountId?: Record<string, string>; // Per-account chat job links for this search

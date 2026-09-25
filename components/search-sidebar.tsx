@@ -3,7 +3,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import {
-  CalendarIcon,
   SortAsc,
   Clock,
   Target,
@@ -15,8 +14,12 @@ import {
   Focus,
   Shapes,
   Globe2,
-  LockOpen,
   Library,
+  ListFilter,
+  Languages,
+  Building2,
+  HandCoins,
+  Award,
 } from "lucide-react";
 import {
   cn,
@@ -29,7 +32,6 @@ import {
   isReviewFilterActive,
   DEFAULT_FILTERS,
 } from "@/lib/utils";
-import { countActiveFilters } from "@/lib/filters";
 import type { SearchField } from "@/lib/types";
 import { SEARCH_FIELDS } from "@/lib/types";
 import { sortOptions } from "@/lib/constants";
@@ -48,17 +50,15 @@ import {
 } from "@/components/ui/select";
 import { ReviewFilter } from "./review-filter";
 import { ResearchAreaFilter } from "./research-area-filter";
-import { useTranslations } from "next-intl";
+import { FunderFilter } from "./funder-filter";
+import { useLocale, useTranslations } from "next-intl";
+import { Input } from "@/components/ui/input";
 import { FilterSection } from "@/components/shared/filter-section";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { SDGS, WORK_TYPES } from "@/lib/openalex/vocabulary";
+import { INSTITUTION_TYPES, SDGS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/vocabulary";
 
-interface SearchSidebarProps {
-  isMobile?: boolean;
-  mode?: "sidebar" | "page";
-}
 
 // Date Filter Component
 const DateFilterPanel = React.memo(function DateFilterPanel() {
@@ -509,30 +509,185 @@ const SdgFilterPanel = React.memo(function SdgFilterPanel() {
   );
 });
 
-const OpenAccessFilterPanel = React.memo(function OpenAccessFilterPanel() {
+/** A labelled switch like the review filter's, for the Only show card. */
+function SwitchRow({
+  id,
+  label,
+  hint,
+  checked,
+  onCheckedChange,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="space-y-1">
+        <Label htmlFor={id} className="text-sm font-medium">
+          {label}
+        </Label>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </div>
+      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  );
+}
+
+const OnlyShowFilterPanel = React.memo(function OnlyShowFilterPanel() {
   const tf = useTranslations("searchFilters");
-  const { openAccessOnly } = useCurrentSearchFormState();
+  const { openAccessOnly, hasAbstract, includeRetracted } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
+  const isActive = openAccessOnly || hasAbstract || includeRetracted;
   return (
     <FilterSection
-      title={tf("openAccess")}
-      icon={LockOpen}
-      isActive={openAccessOnly}
-      onClear={openAccessOnly ? () => updateFilter({ openAccessOnly: false }) : undefined}
+      title={tf("onlyShow")}
+      icon={ListFilter}
+      isActive={isActive}
+      onClear={
+        isActive
+          ? () => updateFilter({ openAccessOnly: false, hasAbstract: false, includeRetracted: false })
+          : undefined
+      }
     >
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <Label htmlFor="open-access-filter" className="text-sm font-medium">
-            {tf("onlyOpenAccess")}
-          </Label>
-          <p className="text-xs text-muted-foreground">{tf("onlyOpenAccessHint")}</p>
-        </div>
-        <Switch
+      <div className="space-y-3">
+        <SwitchRow
           id="open-access-filter"
+          label={tf("openAccessWorks")}
+          hint={tf("onlyOpenAccessHint")}
           checked={openAccessOnly}
           onCheckedChange={(checked) => updateFilter({ openAccessOnly: checked })}
         />
+        <SwitchRow
+          id="abstract-filter"
+          label={tf("worksWithAbstract")}
+          hint={tf("worksWithAbstractHint")}
+          checked={hasAbstract}
+          onCheckedChange={(checked) => updateFilter({ hasAbstract: checked })}
+        />
+        <SwitchRow
+          id="retracted-filter"
+          label={tf("notRetracted")}
+          hint={tf("notRetractedHint")}
+          checked={!includeRetracted}
+          onCheckedChange={(checked) => updateFilter({ includeRetracted: !checked })}
+        />
       </div>
+    </FilterSection>
+  );
+});
+
+const WorkLanguageFilterPanel = React.memo(function WorkLanguageFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const locale = useLocale();
+  const { workLanguages } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const isActive = workLanguages.length > 0;
+  const names = new Intl.DisplayNames([locale], { type: "language" });
+  const options = WORK_LANGUAGES.map((code) => ({ id: code, name: names.of(code) ?? code }));
+  return (
+    <FilterSection
+      title={tf("writtenIn")}
+      icon={Languages}
+      isActive={isActive}
+      onClear={isActive ? () => updateFilter({ workLanguages: [] }) : undefined}
+    >
+      <OptionPicker
+        label={tf("writtenIn")}
+        placeholder={tf("anyLanguage")}
+        selectedText={tf("nSelected", { count: workLanguages.length })}
+        searchPlaceholder={tf("searchLanguages")}
+        emptyText={tf("nothingFound")}
+        removeLabel={(name) => tf("removeChoice", { name })}
+        options={options}
+        selected={workLanguages}
+        names={Object.fromEntries(options.map((option) => [option.id, option.name]))}
+        onToggle={(id) => updateFilter({ workLanguages: toggled(workLanguages, id) })}
+      />
+    </FilterSection>
+  );
+});
+
+const InstitutionTypeFilterPanel = React.memo(function InstitutionTypeFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const { institutionTypes } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const isActive = institutionTypes.length > 0;
+  return (
+    <FilterSection
+      title={tf("institutionType")}
+      icon={Building2}
+      isActive={isActive}
+      onClear={isActive ? () => updateFilter({ institutionTypes: [] }) : undefined}
+    >
+      <OptionPicker
+        label={tf("institutionType")}
+        placeholder={tf("anyInstitutionType")}
+        selectedText={tf("nSelected", { count: institutionTypes.length })}
+        searchPlaceholder={tf("searchInstitutionTypes")}
+        emptyText={tf("nothingFound")}
+        removeLabel={(name) => tf("removeChoice", { name })}
+        options={INSTITUTION_TYPES}
+        selected={institutionTypes}
+        names={Object.fromEntries(INSTITUTION_TYPES.map((type) => [type.id, type.name]))}
+        onToggle={(id) => updateFilter({ institutionTypes: toggled(institutionTypes, id) })}
+      />
+    </FilterSection>
+  );
+});
+
+const FunderFilterPanel = React.memo(function FunderFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const { funders } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const isActive = funders.length > 0;
+  return (
+    <FilterSection
+      title={tf("funders")}
+      icon={HandCoins}
+      isActive={isActive}
+      onClear={isActive ? () => updateFilter({ funders: [] }) : undefined}
+    >
+      <FunderFilter selected={funders} onChange={(ids) => updateFilter({ funders: ids })} />
+    </FilterSection>
+  );
+});
+
+const MinCitationsFilterPanel = React.memo(function MinCitationsFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const { minCitations } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  // Typing is kept here and applied on Enter or leaving the field, so each digit is not a search.
+  const [draft, setDraft] = React.useState<string | null>(null);
+  const shown = draft ?? (minCitations ? String(minCitations) : "");
+  const apply = () => {
+    if (draft === null) return;
+    const value = Number.parseInt(draft, 10);
+    updateFilter({ minCitations: Number.isFinite(value) && value > 0 ? value : null });
+    setDraft(null);
+  };
+  return (
+    <FilterSection
+      title={tf("minCitations")}
+      icon={Award}
+      isActive={Boolean(minCitations)}
+      onClear={minCitations ? () => updateFilter({ minCitations: null }) : undefined}
+    >
+      <Input
+        type="number"
+        min={1}
+        inputMode="numeric"
+        aria-label={tf("minCitations")}
+        placeholder={tf("anyNumber")}
+        value={shown}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={apply}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") apply();
+        }}
+      />
     </FilterSection>
   );
 });
@@ -610,9 +765,13 @@ export const SidebarContent = React.memo(function SidebarContent({
       <ReviewFilterPanel />
 
       <WorkTypeFilterPanel />
+      <WorkLanguageFilterPanel />
       <ResearchAreaFilterPanel />
       <SdgFilterPanel />
-      <OpenAccessFilterPanel />
+      <InstitutionTypeFilterPanel />
+      <FunderFilterPanel />
+      <MinCitationsFilterPanel />
+      <OnlyShowFilterPanel />
 
       {/* Cites Filter (when not active) */}
       {!isCitesActive && <CitesFilterPanel />}
@@ -625,114 +784,3 @@ export const SidebarContent = React.memo(function SidebarContent({
     </div>
   );
 });
-
-export function SearchSidebar({
-  isMobile = false,
-  mode = "sidebar",
-}: SearchSidebarProps) {
-  const {
-    currentSearchField,
-    sortBy,
-    selectedRegions,
-    selectedCountryFocus,
-    ratingRange,
-    onlyRatedPapers,
-    citesItemId,
-    citedByItemId,
-    relatedToItemId,
-    yearRange,
-    isYearRangeEnabled,
-    reviewFilter,
-    dateRange,
-    filterType,
-    researchAreas,
-    sdgs,
-    openAccessOnly,
-    workTypes,
-  } = useCurrentSearchFormState();
-
-  const updateFilter = useUpdateSearchFilter();
-
-  const isCitesActive = isCitesFilterActive(citesItemId);
-  const isCitedByActive = isCitedByFilterActive(citedByItemId);
-  const isRelatedToActive = isRelatedToFilterActive(relatedToItemId);
-
-  const handleClearAllFilters = React.useCallback(() => {
-    const defaultYearRange = DEFAULT_FILTERS.yearRange();
-    updateFilter({
-      currentSearchField: DEFAULT_FILTERS.field,
-      sortBy: DEFAULT_FILTERS.sortBy,
-      dateRange: DEFAULT_FILTERS.dateRange,
-      yearRange: defaultYearRange,
-      isYearRangeEnabled: DEFAULT_FILTERS.isYearRangeEnabled,
-      ratingRange: DEFAULT_FILTERS.ratingRange,
-      onlyRatedPapers: DEFAULT_FILTERS.onlyRatedPapers,
-      selectedRegions: DEFAULT_FILTERS.selectedRegions,
-      selectedCountryFocus: DEFAULT_FILTERS.selectedCountryFocus,
-      citesItemId: DEFAULT_FILTERS.citesItemId,
-      citedByItemId: DEFAULT_FILTERS.citedByItemId,
-      relatedToItemId: DEFAULT_FILTERS.relatedToItemId,
-      reviewFilter: DEFAULT_FILTERS.reviewFilter,
-      researchAreas: [],
-      sdgs: [],
-      openAccessOnly: false,
-      workTypes: [],
-    });
-  }, [updateFilter]);
-
-  const activeFiltersCount = countActiveFilters({
-    field: currentSearchField,
-    sortBy,
-    yearRange,
-    dateRange,
-    filterType,
-    isYearRangeEnabled,
-    selectedRegions,
-    selectedCountryFocus,
-    ratingRange,
-    onlyRatedPapers,
-    citesItemId,
-    citedByItemId,
-    relatedToItemId,
-    reviewFilter,
-    researchAreas,
-    sdgs,
-    openAccessOnly,
-    workTypes,
-  });
-
-  if (mode === "page") {
-    return (
-      <div className="w-full max-w-2xl mx-auto">
-        <SidebarContent
-          hideHeader
-          isMobileSheet={isMobile}
-          activeFiltersCount={activeFiltersCount}
-          isCitesActive={isCitesActive}
-          isCitedByActive={isCitedByActive}
-          isRelatedToActive={isRelatedToActive}
-          onClearAllFilters={handleClearAllFilters}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        "w-80 rounded-2xl overflow-hidden",
-        "bg-background/95 dark:bg-background/90",
-        "border border-border/50",
-        "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]",
-      )}
-    >
-      <SidebarContent
-        activeFiltersCount={activeFiltersCount}
-        isCitesActive={isCitesActive}
-        isCitedByActive={isCitedByActive}
-        isRelatedToActive={isRelatedToActive}
-        onClearAllFilters={handleClearAllFilters}
-      />
-    </div>
-  );
-}

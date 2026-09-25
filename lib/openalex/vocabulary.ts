@@ -23,6 +23,21 @@ export const WORK_TYPES = [
   ["other", "Other"],
 ].map(([id, name]) => ({ id, name }));
 
+/** OpenAlex work languages (ISO 639) with real use, most common first. Names come from Intl. */
+export const WORK_LANGUAGES = [
+  "en", "ja", "de", "es", "fr", "pt", "zh", "ru", "ko", "id", "it", "pl", "tr", "nl", "uk", "cs",
+  "ar", "sv", "fa", "ca", "fi", "da", "hu", "hr", "no", "lv", "el", "lt", "ms", "sl", "th", "la",
+  "vi", "ro", "sh", "sr", "uz", "sk", "he", "et", "af", "eu", "gl", "ka", "bg", "hi", "is", "az",
+  "kk", "nn", "mk", "sq", "ga",
+];
+
+/** Types of the institutions authors belong to, from api.openalex.org. */
+export const INSTITUTION_TYPES = [
+  ["education", "Education"], ["facility", "Facility"], ["healthcare", "Healthcare"],
+  ["government", "Government"], ["company", "Company"], ["nonprofit", "Nonprofit"],
+  ["funder", "Funder"], ["archive", "Archive"], ["other", "Other"],
+].map(([id, name]) => ({ id, name }));
+
 export type TopicLevel = "domain" | "field" | "subfield" | "topic";
 
 /** Research area ids carry their level: "fields/33", "subfields/3304", "T13958". */
