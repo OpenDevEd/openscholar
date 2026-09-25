@@ -288,6 +288,7 @@ export function OpenAlexSearchDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
+        overlayClassName="bg-black/75"
         className="flex h-dvh max-h-dvh w-screen max-w-none flex-col gap-0 overflow-visible rounded-none border-0 bg-transparent p-0 shadow-none sm:max-w-none"
         onInteractOutside={(event) => event.preventDefault()}
         // Focusing the first control would open the Clear all tooltip on arrival.
