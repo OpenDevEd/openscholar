@@ -189,8 +189,8 @@ export default defineSchema({
     evidenceLibraryRuntimeReleaseFields,
   ).index("by_running", ["running"]),
 
-  // One digest being written for a library edition. The library polls until
-  // the result is handed over, then the row is deleted.
+  // One digest written for a library edition. The library polls until the
+  // result is ready; the row expires a day after it was started.
   evidenceLibraryDigestJobs: defineTable(evidenceLibraryDigestJobFields).index(
     "by_libraryId_and_editionId",
     ["libraryId", "editionId"],

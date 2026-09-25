@@ -16,7 +16,7 @@ import { generateLibraryDigest } from "./generate";
 // cannot cut it off. A job still pending after STALE_AFTER_MS lost its action.
 const GENERATION_TIMEOUT_MS = 480_000;
 const STALE_AFTER_MS = 900_000;
-// A job nobody collects (the library stopped asking) is removed after a day.
+// Every job, collected or not, is removed after a day.
 const EXPIRE_AFTER_MS = 86_400_000;
 
 const jobArgs = {libraryId: v.string(), editionId: v.string(), credentialDigest: v.string()};
@@ -36,7 +36,7 @@ function findJob(ctx: MutationCtx, libraryId: Id<"evidenceLibraries">, editionId
     .unique();
 }
 
-/** Hands over a finished digest once, reports a failure once, or asks the caller to start one. */
+/** Returns a finished digest until it expires, reports a failure once, or asks the caller to start one. */
 export const poll = internalMutation({
   args: jobArgs,
   returns: v.union(
@@ -47,10 +47,11 @@ export const poll = internalMutation({
     const libraryId = await authorizeLibrary(ctx, args);
     const job = await findJob(ctx, libraryId, args.editionId);
     if (!job) return {status: "start" as const};
+    // Kept after a hand-over, so a retry after a lost response gets the same digest.
+    if (job.status === "succeeded" && job.result) return {status: "succeeded" as const, digest: job.result};
     if (job.status === "pending" && job.startedAt > Date.now() - STALE_AFTER_MS) return {status: "pending" as const};
     if (job.requestId) await ctx.storage.delete(job.requestId);
     await ctx.db.delete("evidenceLibraryDigestJobs", job._id);
-    if (job.status === "succeeded" && job.result) return {status: "succeeded" as const, digest: job.result};
     return {status: "failed" as const};
   },
 });

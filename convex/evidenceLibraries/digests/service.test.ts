@@ -24,7 +24,7 @@ async function setup() {
   return {t, libraryId, request, finishGeneration, saved};
 }
 
-it("writes the digest in the background and hands it over once, without a wallet", async () => {
+it("writes the digest in the background and returns it on every request until it expires, without a wallet", async () => {
   vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
   const {request, t, finishGeneration, saved} = await setup();
   let captured: Record<string, unknown> | undefined;
@@ -43,7 +43,16 @@ it("writes the digest in the background and hands it over once, without a wallet
   expect(captured).not.toHaveProperty("tools");
   const response = await request();
   expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({digest: {model: "openai/gpt-6-luna", reasoning: "max", markdown: expect.stringContaining("/lib/ABCD2345")}});
+  const {digest} = await response.json() as {digest: unknown};
+  expect(digest).toMatchObject({model: "openai/gpt-6-luna", reasoning: "max", markdown: expect.stringContaining("/lib/ABCD2345")});
+  // A retry after a lost response gets the same digest without writing it again.
+  const retry = await request();
+  expect(retry.status).toBe(200);
+  expect(await retry.json()).toEqual({digest});
+  expect(provider).toHaveBeenCalledTimes(1);
+  expect(await saved()).toMatchObject({jobs: [{status: "succeeded"}], files: []});
+  vi.advanceTimersByTime(86_400_000);
+  await t.finishInProgressScheduledFunctions();
   expect(await saved()).toEqual({jobs: [], files: []});
   expect(await t.run(ctx => ctx.db.query("users").collect())).toEqual([]);
 });
