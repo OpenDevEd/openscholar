@@ -36,15 +36,10 @@ async function changeGroups(ctx: MutationCtx, row: Pick<Location, "state" | "top
     } else if (count > 0) await ctx.db.insert("topicPublicationGroups", {topicId, groupKey: row.groupKey, count});
   }
 }
-async function changed(ctx: MutationCtx) {
-  const state = await ctx.db.query("topicProjectionState").withIndex("by_key", q => q.eq("key", "publications")).unique();
-  if (state) await ctx.db.patch("topicProjectionState", state._id, {revision: state.revision + 1});
-  else await ctx.db.insert("topicProjectionState", {key: "publications", revision: 1, pending: 0});
-}
 async function pendingReconciliation(ctx: MutationCtx, delta: number) {
   const state = await ctx.db.query("topicProjectionState").withIndex("by_key", q => q.eq("key", "publications")).unique();
   if (state) await ctx.db.patch("topicProjectionState", state._id, {pending: Math.max(0, state.pending + delta)});
-  else await ctx.db.insert("topicProjectionState", {key: "publications", revision: 1, pending: Math.max(0, delta)});
+  else await ctx.db.insert("topicProjectionState", {key: "publications", pending: Math.max(0, delta)});
 }
 async function reconcilePage(ctx: MutationCtx, openalexId: string, cursor: string | null) {
   const dois = await linkedDois(ctx, openalexId);
@@ -55,7 +50,6 @@ async function reconcilePage(ctx: MutationCtx, openalexId: string, cursor: strin
     await changeGroups(ctx, row, -1);
     await ctx.db.patch("topicLocations", row._id, {groupKey});
     await changeGroups(ctx, {...row, groupKey}, 1);
-    await changed(ctx);
   }
   if (!page.isDone) {
     await pendingReconciliation(ctx, 1);
@@ -79,7 +73,6 @@ export async function deleteLibraryTopicsBatch(ctx: MutationCtx, libraryId: Loca
       await ctx.db.delete("topicLocations", row._id);
       if (row.state === "published" && row.doi && row.openalexId) affectedOpenAlexIds.add(row.openalexId);
     }
-    await changed(ctx);
     // Rekey surviving records separately so a large group cannot overflow teardown.
     for (const openalexId of affectedOpenAlexIds) {
       await pendingReconciliation(ctx, 1);
@@ -124,7 +117,6 @@ export const replaceFromLibrary = internalMutation({
       else await ctx.db.insert("topicLocations", row);
       await changeGroups(ctx, row, 1);
       for (const id of new Set([previous?.openalexId, input.openalexId])) if (id) await reconcilePage(ctx, id, null);
-      await changed(ctx);
     }
     await ctx.db.insert("topicDeliveryReceipts", {libraryId, idempotencyKey: input.idempotencyKey, digest, generation: input.generation, status});
     return {contractVersion: 1 as const, idempotencyKey: input.idempotencyKey, generation: input.generation, status};
@@ -137,42 +129,38 @@ async function publicLibrary(ctx: QueryCtx, libraryId: Location["libraryId"]) {
   const url = await readEvidenceLibraryAdminLaunchTarget(ctx, library);
   return url ? {id: library._id, name: library.name, url} : null;
 }
-async function hasPublicTopic(ctx: QueryCtx, topicId: string, groupKey: string) {
-  const libraries = new Map<Location["libraryId"], Awaited<ReturnType<typeof publicLibrary>>>();
+type PublicLibraries = (libraryId: Location["libraryId"]) => ReturnType<typeof publicLibrary>;
+/** Reads each library once per query, however many groups or locations share it. */
+function publicLibraries(ctx: QueryCtx): PublicLibraries {
+  const cache = new Map<Location["libraryId"], ReturnType<typeof publicLibrary>>();
+  return libraryId => {
+    if (!cache.has(libraryId)) cache.set(libraryId, publicLibrary(ctx, libraryId));
+    return cache.get(libraryId)!;
+  };
+}
+async function hasPublicTopic(ctx: QueryCtx, libraries: PublicLibraries, topicId: string, groupKey: string) {
   // This reads one indexed publication group and stops at its first eligible assignment.
   for await (const row of ctx.db.query("topicLocations").withIndex("by_groupKey_and_libraryId_and_itemKey", q => q.eq("groupKey", groupKey))) {
     if (row.state !== "published" || !row.topicIds.includes(topicId)) continue;
-    if (!libraries.has(row.libraryId)) libraries.set(row.libraryId, await publicLibrary(ctx, row.libraryId));
-    if (!libraries.get(row.libraryId)) continue;
+    if (!await libraries(row.libraryId)) continue;
     if (publicationGroupKey(row.libraryId, row.itemKey, row.doi, row.openalexId, await linkedDois(ctx, row.openalexId)) === groupKey) return true;
   }
   return false;
 }
-/** Page over materialized publication groups, not per-library records. */
+/** Page over materialized publication groups, not per-library records. The cursor is the last group key, which deliveries never move. */
 export const list = query({
-  args: {topicId: v.string(), query: v.optional(v.string()), cursor: v.union(v.string(), v.null()), limit: v.number()},
+  args: {topicId: v.string(), cursor: v.union(v.string(), v.null()), limit: v.number()},
   handler: async (ctx, args) => {
-    if (!topicIdSchema.safeParse(args.topicId).success || !Number.isInteger(args.limit) || args.limit < 1 || args.limit > 50 || (args.query?.length ?? 0) > 200) throw createError("VALIDATION_ERROR", "Invalid publications page");
+    if (!topicIdSchema.safeParse(args.topicId).success || !Number.isInteger(args.limit) || args.limit < 1 || args.limit > 50 || (args.cursor?.length ?? 0) > 2200) throw createError("VALIDATION_ERROR", "Invalid publications page");
     const state = await ctx.db.query("topicProjectionState").withIndex("by_key", q => q.eq("key", "publications")).unique();
-    const revision = state?.revision ?? 0;
-    let after = "";
-    if (args.cursor) {
-      let cursor: unknown;
-      try { cursor = JSON.parse(args.cursor); } catch { throw createError("VALIDATION_ERROR", "Invalid cursor"); }
-      if (!cursor || typeof cursor !== "object" || !("revision" in cursor) || !("id" in cursor) || !("topicId" in cursor) || !("query" in cursor) || typeof cursor.id !== "string") throw createError("VALIDATION_ERROR", "Invalid cursor");
-      if (cursor.revision !== revision || cursor.topicId !== args.topicId || cursor.query !== (args.query ?? "")) throw createError("CONFLICT", "Publication results changed. Reload results.");
-      const id = ctx.db.normalizeId("topicPublicationGroups", cursor.id);
-      const group = id ? await ctx.db.get("topicPublicationGroups", id) : null;
-      if (!group || group.topicId !== args.topicId) throw createError("VALIDATION_ERROR", "Invalid cursor");
-      after = group.groupKey;
-    }
-    const groups = await ctx.db.query("topicPublicationGroups").withIndex("by_topicId_and_groupKey", q => q.eq("topicId", args.topicId).gt("groupKey", after)).take(args.limit + 1);
+    const groups = await ctx.db.query("topicPublicationGroups").withIndex("by_topicId_and_groupKey", q => q.eq("topicId", args.topicId).gt("groupKey", args.cursor ?? "")).take(args.limit + 1);
     const candidates = groups.slice(0, args.limit);
+    const libraries = publicLibraries(ctx);
     const page = [];
     for (const group of candidates) {
-      if (await hasPublicTopic(ctx, args.topicId, group.groupKey)) page.push({key: group.groupKey});
+      if (await hasPublicTopic(ctx, libraries, args.topicId, group.groupKey)) page.push({key: group.groupKey});
     }
-    return {groups: page, revision, updating: (state?.pending ?? 0) > 0, nextCursor: groups.length > args.limit ? JSON.stringify({revision, id: candidates.at(-1)!._id, topicId: args.topicId, query: args.query ?? ""}) : null};
+    return {groups: page, updating: (state?.pending ?? 0) > 0, nextCursor: groups.length > args.limit ? candidates.at(-1)!.groupKey : null};
   },
 });
 
@@ -182,12 +170,13 @@ export const locations = query({
   handler: async (ctx, args) => {
     if (args.groupKey.length > 2200 || args.paginationOpts.numItems > 100) throw createError("VALIDATION_ERROR", "Invalid location page");
     const page = await ctx.db.query("topicLocations").withIndex("by_groupKey_and_libraryId_and_itemKey", q => q.eq("groupKey", args.groupKey)).paginate(args.paginationOpts);
+    const libraries = publicLibraries(ctx);
     const eligible = await Promise.all(page.page.map(async row => {
       if (row.state !== "published" || !row.metadata) return null;
       // During a batched identity rebuild, never leak a conflicting DOI through an old group.
       const actual = publicationGroupKey(row.libraryId, row.itemKey, row.doi, row.openalexId, await linkedDois(ctx, row.openalexId));
       if (actual !== args.groupKey) return null;
-      const library = await publicLibrary(ctx, row.libraryId);
+      const library = await libraries(row.libraryId);
       if (!library) return null;
       return {id: row._id, itemKey: row.itemKey, topicIds: row.topicIds, metadata: row.metadata, library};
     }));

@@ -73,7 +73,7 @@ it("does not bridge conflicting DOIs through an OpenAlex-only location and keeps
   const isolated = await t.query(api.topics.publications.locations, {groupKey: "openalex:W1234", paginationOpts: {cursor: null, numItems: 100}});
   expect(isolated.locations.map(row => row.itemKey)).toEqual(["NODOI001"]);
 });
-it("paginates unique publications and rejects a cursor when delivery changes grouping", async () => {
+it("paginates unique publications and keeps a cursor valid across later deliveries", async () => {
   const {t, a, b, request, send} = await fixture();
   await send(request());
   await send(request(b.libraryId), "second-credential");
@@ -83,7 +83,7 @@ it("paginates unique publications and rejects a cursor when delivery changes gro
   expect([...first.groups, ...second.groups].map(row => row.key)).toEqual(["doi:10.1234/abc", `record:${a.libraryId}:MANUAL01`]);
   expect(second.nextCursor).toBeNull();
   await send(request(a.libraryId, {generation: 2, idempotencyKey: "update"}));
-  await expect(t.query(api.topics.publications.list, {topicId, cursor: first.nextCursor, limit: 1})).rejects.toThrow("Reload");
+  expect((await t.query(api.topics.publications.list, {topicId, cursor: first.nextCursor, limit: 1})).groups).toEqual(second.groups);
 });
 it("serves bounded authenticated catalog pages and rejects unknown topic details", async () => {
   const {t, a} = await fixture();

@@ -9,7 +9,7 @@ import type { TopicPublication, TopicPublicationPage } from "@/lib/topics/public
 export async function readTopicPublications(topicId: string, query: string, cursor: string | null): Promise<TopicPublicationPage> {
   topicIdSchema.parse(topicId);
   if (query.length > 200 || (cursor?.length ?? 0) > 8192) throw new Error("Invalid publication search");
-  const result = await fetchQuery(api.topics.publications.list, {topicId, query, cursor, limit: 10});
+  const result = await fetchQuery(api.topics.publications.list, {topicId, cursor, limit: 10});
   let unavailableCount = 0;
   const rows = await Promise.all(result.groups.map(async group => {
     try {
