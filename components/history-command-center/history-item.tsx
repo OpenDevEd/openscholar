@@ -27,7 +27,7 @@ import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
 import { BookmarkForm } from "@/components/command-center";
 import { QueryText } from "@/components/ui/query-text";
-import { HistoryFilterBadges } from "@/components/ui/filter-display";
+import { FilterChips } from "@/components/ui/filter-display";
 import { languageOptions } from "@/components/language-selector";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { HistoryQueryExpansion } from "./history-query-expansion";
@@ -45,6 +45,11 @@ interface HistoryItemProps {
   index: number;
   viewMode: ViewMode;
   onSearchClick: (item: SearchResult) => void;
+  /**
+   * The list is choosing a search, not managing history: the open action
+   * reads as "use", and saving as a bookmark or deleting are left out.
+   */
+  pickLabel?: string;
 }
 
 export function HistoryItem({
@@ -52,6 +57,7 @@ export function HistoryItem({
   index,
   viewMode,
   onSearchClick,
+  pickLabel,
   }: HistoryItemProps) {
   const toast = useAppToast();
   const th = useTranslations("historyPage");
@@ -205,19 +211,21 @@ export function HistoryItem({
               <TooltipContent>{tc("copyQuery")}</TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setIsBookmarking(true)}
-                >
-                  <BookmarkPlus className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{tc("saveAsBookmark")}</TooltipContent>
-            </Tooltip>
+            {!pickLabel && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setIsBookmarking(true)}
+                  >
+                    <BookmarkPlus className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{tc("saveAsBookmark")}</TooltipContent>
+              </Tooltip>
+            )}
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -230,22 +238,24 @@ export function HistoryItem({
                   <Search className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{tc("openSearch")}</TooltipContent>
+              <TooltipContent>{pickLabel ?? tc("openSearch")}</TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 hover:text-destructive"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{tc("delete")}</TooltipContent>
-            </Tooltip>
+            {!pickLabel && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 hover:text-destructive"
+                    onClick={handleDelete}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{tc("delete")}</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
 
@@ -270,6 +280,7 @@ export function HistoryItem({
               queryHistory={item.queryHistory}
               currentQuery={item.query}
               searchId={item.id}
+              readOnly={Boolean(pickLabel)}
             />
           </div>
         )}
@@ -326,6 +337,7 @@ export function HistoryItem({
                 queryHistory={item.queryHistory}
                 currentQuery={item.query}
                 searchId={item.id}
+                readOnly={Boolean(pickLabel)}
                 hideHeader
               />
             </div>
@@ -446,19 +458,21 @@ export function HistoryItem({
                 <TooltipContent>{tc("copy")}</TooltipContent>
               </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => setIsBookmarking(true)}
-                  >
-                    <BookmarkPlus className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{tc("bookmark")}</TooltipContent>
-              </Tooltip>
+              {!pickLabel && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => setIsBookmarking(true)}
+                    >
+                      <BookmarkPlus className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{tc("bookmark")}</TooltipContent>
+                </Tooltip>
+              )}
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -471,22 +485,24 @@ export function HistoryItem({
                     <Search className="h-3 w-3" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{tc("open")}</TooltipContent>
+                <TooltipContent>{pickLabel ?? tc("open")}</TooltipContent>
               </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 hover:text-destructive"
-                    onClick={handleDelete}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{tc("delete")}</TooltipContent>
-              </Tooltip>
+              {!pickLabel && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 hover:text-destructive"
+                      onClick={handleDelete}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{tc("delete")}</TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </>
         )}
@@ -613,11 +629,12 @@ export function HistoryItem({
         )}
 
         {/* Footer: Filters + History + Actions */}
-        <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/40">
+        <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-border/40">
           {/* Left: Filters */}
-          <div className="flex-1 overflow-x-auto scrollbar-hover">
+          <div className="min-w-0 flex-1 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
+            {/* Scope and sort are in the header already. */}
             {hasActiveFiltersFromResult(item) && (
-              <HistoryFilterBadges result={item} variant="compact" />
+              <FilterChips filters={{ ...item, field: undefined, sortBy: undefined }} singleLine />
             )}
           </div>
 
@@ -644,19 +661,21 @@ export function HistoryItem({
               <TooltipContent>{tc("copyQuery")}</TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => setIsBookmarking(true)}
-                >
-                  <BookmarkPlus className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{tc("saveAsBookmark")}</TooltipContent>
-            </Tooltip>
+            {!pickLabel && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setIsBookmarking(true)}
+                  >
+                    <BookmarkPlus className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{tc("saveAsBookmark")}</TooltipContent>
+              </Tooltip>
+            )}
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -669,22 +688,24 @@ export function HistoryItem({
                   <Search className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{tc("openSearch")}</TooltipContent>
+              <TooltipContent>{pickLabel ?? tc("openSearch")}</TooltipContent>
             </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 hover:text-destructive"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{tc("delete")}</TooltipContent>
-            </Tooltip>
+            {!pickLabel && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 hover:text-destructive"
+                    onClick={handleDelete}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{tc("delete")}</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
 
@@ -695,6 +716,7 @@ export function HistoryItem({
               queryHistory={item.queryHistory}
               currentQuery={item.query}
               searchId={item.id}
+              readOnly={Boolean(pickLabel)}
             />
           </div>
         )}

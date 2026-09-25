@@ -1132,6 +1132,19 @@
 			},
 			"additionalProperties": false
 		},
+		"topics": {
+			"default": {
+				"enabled": false
+			},
+			"type": "object",
+			"properties": {
+				"enabled": {
+					"default": false,
+					"type": "boolean"
+				}
+			},
+			"additionalProperties": false
+		},
 		"content": {
 			"default": {},
 			"type": "object",
@@ -1422,86 +1435,196 @@
 			"maxItems": 100,
 			"type": "array",
 			"items": {
-				"type": "object",
-				"properties": {
-					"key": {
-						"type": "string",
-						"minLength": 1,
-						"maxLength": 64
-					},
-					"provider": {
-						"type": "string",
-						"const": "zotero"
-					},
-					"groupId": {
-						"type": "string",
-						"maxLength": 512,
-						"pattern": "^\\d+$"
-					},
-					"apiKey": {
-						"type": "string",
-						"minLength": 1,
-						"maxLength": 512,
-						"writeOnly": true
-					},
-					"enabled": {
-						"default": true,
-						"type": "boolean"
-					},
-					"writebackEnabled": {
-						"default": false,
-						"type": "boolean"
-					},
-					"settings": {
-						"default": {},
+				"oneOf": [
+					{
 						"type": "object",
 						"properties": {
-							"apiBaseUrl": {
-								"default": "https://api.zotero.org",
+							"key": {
 								"type": "string",
-								"format": "uri"
+								"minLength": 1,
+								"maxLength": 64
 							},
-							"attachmentDownloadTimeoutMs": {
-								"default": 120000,
-								"type": "integer",
-								"minimum": 1000,
-								"maximum": 900000
+							"provider": {
+								"type": "string",
+								"const": "zotero"
 							},
-							"maxConsistencyRetries": {
-								"default": 4,
-								"type": "integer",
-								"minimum": 1,
-								"maximum": 10
+							"groupId": {
+								"type": "string",
+								"maxLength": 512,
+								"pattern": "^\\d+$"
 							},
-							"maxRecordsPerBatch": {
-								"default": 500,
-								"type": "integer",
-								"minimum": 1,
-								"maximum": 1000
+							"apiKey": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 512,
+								"writeOnly": true
 							},
-							"maxSnapshotRecords": {
-								"default": 100000,
-								"type": "integer",
-								"minimum": 1,
-								"maximum": 1000000
+							"enabled": {
+								"default": true,
+								"type": "boolean"
 							},
-							"requestTimeoutMs": {
-								"default": 30000,
-								"type": "integer",
-								"minimum": 1000,
-								"maximum": 120000
+							"writebackEnabled": {
+								"default": false,
+								"type": "boolean"
+							},
+							"settings": {
+								"default": {},
+								"type": "object",
+								"properties": {
+									"apiBaseUrl": {
+										"default": "https://api.zotero.org",
+										"type": "string",
+										"format": "uri"
+									},
+									"attachmentDownloadTimeoutMs": {
+										"default": 120000,
+										"type": "integer",
+										"minimum": 1000,
+										"maximum": 900000
+									},
+									"maxConsistencyRetries": {
+										"default": 4,
+										"type": "integer",
+										"minimum": 1,
+										"maximum": 10
+									},
+									"maxRecordsPerBatch": {
+										"default": 500,
+										"type": "integer",
+										"minimum": 1,
+										"maximum": 1000
+									},
+									"maxSnapshotRecords": {
+										"default": 100000,
+										"type": "integer",
+										"minimum": 1,
+										"maximum": 1000000
+									},
+									"requestTimeoutMs": {
+										"default": 30000,
+										"type": "integer",
+										"minimum": 1000,
+										"maximum": 120000
+									}
+								},
+								"additionalProperties": false
 							}
 						},
+						"required": [
+							"key",
+							"provider",
+							"groupId",
+							"apiKey"
+						],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"key": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 64
+							},
+							"provider": {
+								"type": "string",
+								"const": "openalex"
+							},
+							"apiKey": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 512,
+								"writeOnly": true
+							},
+							"enabled": {
+								"default": true,
+								"type": "boolean"
+							},
+							"writebackEnabled": {
+								"default": false,
+								"type": "boolean",
+								"const": false
+							},
+							"settings": {
+								"type": "object",
+								"properties": {
+									"apiKeyMode": {
+										"default": "platform",
+										"type": "string",
+										"enum": [
+											"platform",
+											"custom"
+										]
+									},
+									"name": {
+										"type": "string",
+										"minLength": 1,
+										"maxLength": 80
+									},
+									"searchUrl": {
+										"type": "string",
+										"maxLength": 16384,
+										"pattern": "^\\/results\\/[A-Za-z0-9-]+(?:\\?|$)"
+									},
+									"approvedQuery": {
+										"type": "object",
+										"properties": {
+											"version": {
+												"type": "string",
+												"minLength": 1,
+												"maxLength": 128
+											},
+											"approvedAt": {
+												"type": "string",
+												"format": "date-time",
+												"pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+											},
+											"query": {
+												"type": "object",
+												"properties": {
+													"filter": {
+														"type": "string",
+														"minLength": 1,
+														"maxLength": 16384
+													},
+													"search": {
+														"type": "string",
+														"minLength": 1,
+														"maxLength": 2048
+													}
+												},
+												"additionalProperties": false
+											}
+										},
+										"required": [
+											"version",
+											"approvedAt",
+											"query"
+										],
+										"additionalProperties": false
+									},
+									"downloadPdfs": {
+										"default": false,
+										"type": "boolean"
+									}
+								},
+								"required": [
+									"name",
+									"searchUrl",
+									"approvedQuery"
+								],
+								"additionalProperties": false
+							}
+						},
+						"required": [
+							"key",
+							"provider",
+							"apiKey",
+							"settings"
+						],
 						"additionalProperties": false
 					}
-				},
-				"required": [
-					"key",
-					"provider",
-					"groupId",
-					"apiKey"
-				],
-				"additionalProperties": false
+				]
 			}
 		},
 		"services": {

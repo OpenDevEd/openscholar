@@ -2,10 +2,12 @@ import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { Work } from "@sickrin/openalex-sdk/dist/src/types/work";
 import type { SortByWork } from "@sickrin/openalex-sdk/dist/src/types/work";
+import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import type { SearchResult, SearchField, SearchFilters } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
 import { buildSearchSubfilter } from './search/search-field'
+import { researchAreaFilter, sdgFilterValue } from './openalex/vocabulary'
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -23,7 +25,46 @@ export const DEFAULT_FILTERS = {
   citedByItemId: '',
   relatedToItemId: '',
   reviewFilter: false,
+  researchAreas: [] as string[],
+  sdgs: [] as string[],
+  openAccessOnly: false,
+  workTypes: [] as string[],
+  workLanguages: [] as string[],
+  institutionTypes: [] as string[],
+  funders: [] as string[],
+  minCitations: null as number | null,
+  hasAbstract: false,
+  includeRetracted: false,
 } as const;
+
+/** Every filter back to its default, in the keys useUpdateSearchFilter takes. */
+export function clearedFilterUpdates() {
+  return {
+    currentSearchField: DEFAULT_FILTERS.field,
+    sortBy: DEFAULT_FILTERS.sortBy,
+    dateRange: DEFAULT_FILTERS.dateRange,
+    yearRange: DEFAULT_FILTERS.yearRange(),
+    isYearRangeEnabled: DEFAULT_FILTERS.isYearRangeEnabled,
+    ratingRange: DEFAULT_FILTERS.ratingRange,
+    onlyRatedPapers: DEFAULT_FILTERS.onlyRatedPapers,
+    selectedRegions: [],
+    selectedCountryFocus: [],
+    citesItemId: DEFAULT_FILTERS.citesItemId,
+    citedByItemId: DEFAULT_FILTERS.citedByItemId,
+    relatedToItemId: DEFAULT_FILTERS.relatedToItemId,
+    reviewFilter: DEFAULT_FILTERS.reviewFilter,
+    researchAreas: [],
+    sdgs: [],
+    openAccessOnly: DEFAULT_FILTERS.openAccessOnly,
+    workTypes: [],
+    workLanguages: [],
+    institutionTypes: [],
+    funders: [],
+    minCitations: DEFAULT_FILTERS.minCitations,
+    hasAbstract: DEFAULT_FILTERS.hasAbstract,
+    includeRetracted: DEFAULT_FILTERS.includeRetracted,
+  };
+}
 
 /**
  * Creates a default SearchFilters object
@@ -44,6 +85,16 @@ export function createDefaultFilters(): SearchFilters {
     citedByItemId: DEFAULT_FILTERS.citedByItemId,
     relatedToItemId: DEFAULT_FILTERS.relatedToItemId,
     reviewFilter: DEFAULT_FILTERS.reviewFilter,
+    researchAreas: [],
+    sdgs: [],
+    openAccessOnly: DEFAULT_FILTERS.openAccessOnly,
+    workTypes: [],
+    workLanguages: [],
+    institutionTypes: [],
+    funders: [],
+    minCitations: DEFAULT_FILTERS.minCitations,
+    hasAbstract: DEFAULT_FILTERS.hasAbstract,
+    includeRetracted: DEFAULT_FILTERS.includeRetracted,
   };
 }
 
@@ -302,7 +353,7 @@ export function createSearchParameters(
       return date.split('T')[0];
     }
     // It's a Date object, convert to ISO string
-    return date.toISOString().split('T')[0];
+    return format(date, 'yyyy-MM-dd');
   };
 
   // Add date filtering
@@ -331,6 +382,25 @@ export function createSearchParameters(
       countries: countryCodes.join('|')
     };
   }
+
+  if (filters.researchAreas.length) apiFilters.topics = researchAreaFilter(filters.researchAreas);
+  if (filters.sdgs.length) {
+    apiFilters.sustainable_development_goals = { id: sdgFilterValue(filters.sdgs) };
+  }
+  if (filters.openAccessOnly) apiFilters.open_access = { is_oa: true };
+  if (filters.workTypes.length) apiFilters.type = filters.workTypes.join('|');
+  if (filters.workLanguages.length) apiFilters.language = filters.workLanguages.join('|');
+  if (filters.institutionTypes.length) {
+    apiFilters.authorships = {
+      ...(apiFilters.authorships as Record<string, unknown> | undefined),
+      institutions: { type: filters.institutionTypes.join('|') },
+    };
+  }
+  if (filters.funders.length) apiFilters.funders = { id: filters.funders.join('|') };
+  // OpenAlex takes "more than", so at least N is more than N - 1.
+  if (filters.minCitations) apiFilters.cited_by_count = `>${filters.minCitations - 1}`;
+  if (filters.hasAbstract) apiFilters.has_abstract = true;
+  if (!filters.includeRetracted) apiFilters.is_retracted = false;
 
   // Add filters to search params if we have any
   if (Object.keys(apiFilters).length > 0) {

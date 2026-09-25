@@ -28,6 +28,7 @@
 
 // Provider and hooks
 export { SearchProvider, useSearch, useSearchOptional } from './provider';
+export type { LocalSearchState } from './provider';
 
 // Initializer for shared link handling
 export { SearchInitializer } from './initializer';

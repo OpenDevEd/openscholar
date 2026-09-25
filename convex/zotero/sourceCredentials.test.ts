@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
-import {
-  createZoteroSourceCredentials,
-  zoteroSourceEntry,
-  zoteroSourceKey,
-} from "./sourceCredentials";
+import { zoteroSourceEntry, zoteroSourceKey } from "./sourceEntry";
+import { createSourceCredentials } from "../evidenceLibraries/sourceCredentials";
 
 const groups = [
   { groupId: "42", apiKey: "key-42", scopes: { read: true, write: true } },
@@ -24,9 +21,9 @@ describe("zoteroSourceEntry", () => {
   });
 });
 
-describe("createZoteroSourceCredentials", () => {
+describe("createSourceCredentials", () => {
   it("adds each group's key and keeps write back only when the key can write", () => {
-    const apply = createZoteroSourceCredentials(groups);
+    const apply = createSourceCredentials(groups, {});
     expect(
       apply([
         { ...zoteroSourceEntry("42"), writebackEnabled: true },
@@ -44,10 +41,10 @@ describe("createZoteroSourceCredentials", () => {
   });
 
   it("reports a source whose group is not connected", () => {
-    const apply = createZoteroSourceCredentials(groups);
-    expect(() => apply([zoteroSourceEntry("42"), zoteroSourceEntry("99")])).toThrow(
-      ConfigurationAssemblyError,
-    );
+    const apply = createSourceCredentials(groups, {});
+    expect(() =>
+      apply([zoteroSourceEntry("42"), zoteroSourceEntry("99")]),
+    ).toThrow(ConfigurationAssemblyError);
     try {
       apply([zoteroSourceEntry("99")]);
     } catch (error) {
@@ -60,5 +57,66 @@ describe("createZoteroSourceCredentials", () => {
         },
       ]);
     }
+  });
+
+  it("uses the selected OpenAlex key without enabling writeback", () => {
+    const apply = createSourceCredentials(groups, {
+      custom: "custom-openalex-key",
+      platform: "platform-openalex-key",
+    });
+    expect(
+      apply([
+        {
+          key: "openalex-education",
+          provider: "openalex",
+          enabled: true,
+          writebackEnabled: false,
+          settings: {
+            name: "Education",
+            apiKeyMode: "custom",
+            approvedQuery: {
+              version: "v1",
+              approvedAt: "2026-09-24T12:00:00.000Z",
+              query: { search: "education" },
+            },
+            downloadPdfs: false,
+          },
+        },
+      ]),
+    ).toEqual([
+      expect.objectContaining({
+        provider: "openalex",
+        apiKey: "custom-openalex-key",
+        writebackEnabled: false,
+      }),
+    ]);
+  });
+
+  it("keeps a saved custom key while a source uses platform access", () => {
+    const apply = createSourceCredentials(groups, {
+      custom: "saved-custom-key",
+      platform: "platform-key",
+    });
+    expect(
+      apply([
+        {
+          key: "openalex-education",
+          provider: "openalex",
+          settings: { apiKeyMode: "platform" },
+        },
+      ]),
+    ).toEqual([
+      expect.objectContaining({
+        provider: "openalex",
+        apiKey: "platform-key",
+      }),
+    ]);
+  });
+
+  it("blocks OpenAlex assembly when neither platform nor custom access exists", () => {
+    const apply = createSourceCredentials(groups, {});
+    expect(() =>
+      apply([{ key: "openalex-education", provider: "openalex" }]),
+    ).toThrow(ConfigurationAssemblyError);
   });
 });

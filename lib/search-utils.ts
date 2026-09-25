@@ -40,14 +40,24 @@ function cleanCountryNameForAPI(countryName: string): string {
     .trim();
 }
 
+export interface PreparedOpenAlexSearch {
+  validation: EnhancedSearchResult["validation"];
+  countryNames: string[];
+  /** The query OpenAlex is asked, after keyword expansion, country focus and the review filter. Null when the query is invalid. */
+  finalApiQuery: string | null;
+  effectiveFilters: SearchFilters;
+  effectiveCitesItemId?: string;
+  effectiveRelatedToItemId?: string;
+}
+
 /**
- * Enhanced wrapper for getSearchResults that handles all state management,
- * query enhancement, and country filtering logic.
+ * Everything the search decides before it calls OpenAlex. Pure, so an
+ * Evidence Library import can ask OpenAlex exactly what a search asked.
  */
-export async function getSearchResultsWithFilters(
+export function prepareOpenAlexSearch(
   params: SearchWithFiltersParams,
   options?: GetSearchResultsWithFiltersOptions
-): Promise<EnhancedSearchResult> {
+): PreparedOpenAlexSearch {
   const { query, filters } = params;
 
   // Calculate if date filters are active using the utility function
@@ -101,14 +111,7 @@ export async function getSearchResultsWithFilters(
     onWarning: options?.onWarning,
   });
   if (!validation.isValid) {
-    // Return early with error state instead of throwing
-    return {
-      originalQuery: query,
-      enhancedQuery: query,
-      countryNames,
-      validation,
-      results: { results: [], meta: { count: 0, db_response_time_ms: 0, page: 1, per_page: 0, groups_count: null, next_cursor: "" } }
-    };
+    return { validation, countryNames, finalApiQuery: null, effectiveFilters };
   }
 
   // Create the final API query by enhancing the expanded query with country names
@@ -130,6 +133,44 @@ export async function getSearchResultsWithFilters(
     } else {
       finalApiQuery = reviewTerms;
     }
+  }
+
+  return {
+    validation,
+    countryNames,
+    finalApiQuery,
+    effectiveFilters,
+    effectiveCitesItemId,
+    effectiveRelatedToItemId,
+  };
+}
+
+/**
+ * Enhanced wrapper for getSearchResults that handles all state management,
+ * query enhancement, and country filtering logic.
+ */
+export async function getSearchResultsWithFilters(
+  params: SearchWithFiltersParams,
+  options?: GetSearchResultsWithFiltersOptions
+): Promise<EnhancedSearchResult> {
+  const { query } = params;
+  const {
+    validation,
+    countryNames,
+    finalApiQuery,
+    effectiveFilters,
+    effectiveCitesItemId,
+    effectiveRelatedToItemId,
+  } = prepareOpenAlexSearch(params, options);
+  if (finalApiQuery === null) {
+    // Return early with error state instead of throwing
+    return {
+      originalQuery: query,
+      enhancedQuery: query,
+      countryNames,
+      validation,
+      results: { results: [], meta: { count: 0, db_response_time_ms: 0, page: 1, per_page: 0, groups_count: null, next_cursor: "" } }
+    };
   }
 
   // Get results with the final enhanced query for API, but keep original query for UI

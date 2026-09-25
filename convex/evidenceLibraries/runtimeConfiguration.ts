@@ -15,7 +15,7 @@ import {
 import type { Id } from "../_generated/dataModel";
 import { decrypt } from "../lib/crypto";
 import type { ZoteroGroupScopes } from "../zotero/groupAccess";
-import { createZoteroSourceCredentials } from "../zotero/sourceCredentials";
+import { createSourceCredentials } from "./sourceCredentials";
 import { createAiProviderKey } from "./aiProviderKey";
 
 export const EVIDENCE_LIBRARY_SEARCH_HOST = "http://meilisearch:7700";
@@ -66,7 +66,12 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
     scopes: ZoteroGroupScopes;
   }[];
   aiProviderKey?: { encryptedApiKey: string };
-  publicationProviders?: { settings: PublicationSettings; encryptedCredentials: string };
+  openAlexApiKey?: { encryptedApiKey: string };
+  platformOpenAlexApiKey?: string;
+  publicationProviders?: {
+    settings: PublicationSettings;
+    encryptedCredentials: string;
+  };
   allowedAiModels: readonly string[];
   aiModelMetadata: Record<string, { name: string; company: string }>;
   aiModelCatalogReady: boolean;
@@ -121,15 +126,31 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       brand: input.brand,
       embeddingApiKey: input.embeddingApiKey,
       team: input.team,
-      publication: input.publicationProviders ? buildPublicationConfiguration(input.publicationProviders.settings, JSON.parse(decrypt(input.publicationProviders.encryptedCredentials, input.encryptionKey))) : undefined,
+      publication: input.publicationProviders
+        ? buildPublicationConfiguration(
+            input.publicationProviders.settings,
+            JSON.parse(
+              decrypt(
+                input.publicationProviders.encryptedCredentials,
+                input.encryptionKey,
+              ),
+            ),
+          )
+        : undefined,
     },
     // Each Zotero source gets its group's key here and nowhere earlier.
-    applySourceCredentials: createZoteroSourceCredentials(
+    applySourceCredentials: createSourceCredentials(
       input.zoteroGroups.map((group) => ({
         groupId: group.groupId,
         apiKey: decrypt(group.encryptedApiKey, input.encryptionKey),
         scopes: group.scopes,
       })),
+      {
+        custom: input.openAlexApiKey
+          ? decrypt(input.openAlexApiKey.encryptedApiKey, input.encryptionKey)
+          : undefined,
+        platform: input.platformOpenAlexApiKey,
+      },
     ),
     // The AI provider key, likewise: decrypted only for this payload.
     applyAiProviderKey: createAiProviderKey(

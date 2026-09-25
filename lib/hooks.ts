@@ -82,8 +82,10 @@ export function useQueryChangeHandler(setQuery: (query: string) => void) {
  */
 export function useEffectiveSearchId(): string | undefined {
   const pathname = usePathname();
-  
-  return getEffectiveSearchId(pathname, undefined);
+  // A search running away from the results page names itself.
+  const search = useSearchOptional();
+
+  return getEffectiveSearchId(pathname, search?.searchId || undefined);
 }
 
 /**
@@ -154,11 +156,13 @@ export function useQueryHistory(
  */
 export function useCurrentSearchFormState() {
   const pathname = usePathname();
+  // A search provider mounted away from the results page owns the state too.
+  const localSearch = useSearchOptional();
   const isOnResultsPage = pathname?.startsWith('/results');
   
   // Only use URL-based state on results pages
   // For other pages, use store defaults
-  if (!isOnResultsPage) {
+  if (!isOnResultsPage && !localSearch) {
     return useCurrentSearchFormStateFromStore();
   }
   
@@ -204,6 +208,16 @@ function useCurrentSearchFormStateFromUrl() {
     citedByItemId: search.params.citedBy,
     relatedToItemId: search.params.rel,
     reviewFilter: search.params.review,
+    researchAreas: search.params.area,
+    sdgs: search.params.sdg,
+    openAccessOnly: search.params.oa,
+    workTypes: search.params.type,
+    workLanguages: search.params.wlang,
+    institutionTypes: search.params.itype,
+    funders: search.params.funder,
+    minCitations: search.params.mincite,
+    hasAbstract: search.params.abs,
+    includeRetracted: search.params.retracted,
   };
 }
 
@@ -236,6 +250,16 @@ function useCurrentSearchFormStateFromStore() {
     citedByItemId: searchResult?.citedByItemId || '',
     relatedToItemId: searchResult?.relatedToItemId || '',
     reviewFilter: searchResult?.reviewFilter || false,
+    researchAreas: searchResult?.researchAreas ?? [],
+    sdgs: searchResult?.sdgs ?? [],
+    openAccessOnly: searchResult?.openAccessOnly ?? false,
+    workTypes: searchResult?.workTypes ?? [],
+    workLanguages: searchResult?.workLanguages ?? [],
+    institutionTypes: searchResult?.institutionTypes ?? [],
+    funders: searchResult?.funders ?? [],
+    minCitations: searchResult?.minCitations ?? null,
+    hasAbstract: searchResult?.hasAbstract ?? false,
+    includeRetracted: searchResult?.includeRetracted ?? false,
   };
 }
 
@@ -246,10 +270,11 @@ function useCurrentSearchFormStateFromStore() {
  */
 export function useUpdateSearchFilter() {
   const pathname = usePathname();
+  const localSearch = useSearchOptional();
   const isOnResultsPage = pathname?.startsWith('/results');
   
-  // On results pages, use URL-based state
-  if (isOnResultsPage) {
+  // On results pages, and inside a local search provider, use its state
+  if (isOnResultsPage || localSearch) {
     return useUpdateSearchFilterFromUrl();
   }
   
@@ -357,6 +382,46 @@ function useUpdateSearchFilterFromUrl() {
       batchUpdates.review = updates.reviewFilter as boolean;
       shouldResetPage = true;
     }
+    if ('researchAreas' in updates) {
+      batchUpdates.area = updates.researchAreas as string[];
+      shouldResetPage = true;
+    }
+    if ('sdgs' in updates) {
+      batchUpdates.sdg = updates.sdgs as string[];
+      shouldResetPage = true;
+    }
+    if ('openAccessOnly' in updates) {
+      batchUpdates.oa = updates.openAccessOnly as boolean;
+      shouldResetPage = true;
+    }
+    if ('workTypes' in updates) {
+      batchUpdates.type = updates.workTypes as string[];
+      shouldResetPage = true;
+    }
+    if ('workLanguages' in updates) {
+      batchUpdates.wlang = updates.workLanguages as string[];
+      shouldResetPage = true;
+    }
+    if ('institutionTypes' in updates) {
+      batchUpdates.itype = updates.institutionTypes as string[];
+      shouldResetPage = true;
+    }
+    if ('funders' in updates) {
+      batchUpdates.funder = updates.funders as string[];
+      shouldResetPage = true;
+    }
+    if ('minCitations' in updates) {
+      batchUpdates.mincite = updates.minCitations as number | null;
+      shouldResetPage = true;
+    }
+    if ('hasAbstract' in updates) {
+      batchUpdates.abs = updates.hasAbstract as boolean;
+      shouldResetPage = true;
+    }
+    if ('includeRetracted' in updates) {
+      batchUpdates.retracted = updates.includeRetracted as boolean;
+      shouldResetPage = true;
+    }
     if ('language' in updates || 'lang' in updates) {
       batchUpdates.lang = ((updates.language as string | null | undefined) ?? updates.lang ?? null) as string | null;
       shouldResetPage = true;
@@ -393,6 +458,16 @@ export function useCreateSearchFilters() {
     citedByItemId,
     relatedToItemId,
     reviewFilter,
+    researchAreas,
+    sdgs,
+    openAccessOnly,
+    workTypes,
+    workLanguages,
+    institutionTypes,
+    funders,
+    minCitations,
+    hasAbstract,
+    includeRetracted,
   } = useCurrentSearchFormState();
 
   return (overrides: Partial<SearchFilters> = {}): SearchFilters => ({
@@ -410,6 +485,16 @@ export function useCreateSearchFilters() {
     citedByItemId: citedByItemId || '',
     relatedToItemId: relatedToItemId || '',
     reviewFilter: reviewFilter || false,
+    researchAreas,
+    sdgs,
+    openAccessOnly,
+    workTypes,
+    workLanguages,
+    institutionTypes,
+    funders,
+    minCitations,
+    hasAbstract,
+    includeRetracted,
     ...overrides, // Override any fields passed in
   });
 } 

@@ -27,7 +27,6 @@ export type {
   QuestionHistoryEntry,
   SearchFilters,
   SearchResult,
-  SearchUrlParams,
   ViewMode,
   HistorySortBy,
   BookmarkSortBy,

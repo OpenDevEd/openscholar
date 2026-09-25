@@ -308,7 +308,8 @@ export function CountrySelector({
 
   return (
     <div className={cn("space-y-3", className)}>
-      <Popover open={isOpen} onOpenChange={(open) => {
+      {/* Modal lets the list scroll inside dialogs, whose scroll lock blocks the wheel. */}
+      <Popover modal open={isOpen} onOpenChange={(open) => {
         setIsOpen(open);
         if (!open) {
           setSearchQuery("");

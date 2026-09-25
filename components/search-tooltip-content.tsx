@@ -3,15 +3,15 @@
 /**
  * Search Tooltip Content
  * Minimal, sidebar-aligned tooltip for search items
- * Uses UnifiedFilterBadges and QueryEvolution for consistent display
+ * Uses FilterChips and QueryEvolution for consistent display
  */
 
 import React from "react";
-import { SearchField, QueryHistoryEntry } from "@/lib/types/search.types";
-import { DateRange } from "react-day-picker";
+import { QueryHistoryEntry } from "@/lib/types/search.types";
 import { cn } from "@/lib/utils";
 import { Clock } from "lucide-react";
-import { UnifiedFilterBadges } from "@/components/ui/filter-display";
+import { FilterChips } from "@/components/ui/filter-display";
+import type { FilterParams } from "@/lib/filters";
 import { QueryEvolution } from "@/components/ui/query-evolution";
 import { QueryText } from "@/components/ui/query-text";
 import { useLocale, useFormatter, useNow } from "next-intl";
@@ -22,21 +22,7 @@ interface SearchTooltipContentProps {
   count: number;
   createdAt: string;
   updatedAt: string;
-  field?: SearchField;
-  sortBy?: string;
-  yearRange?: [number, number];
-  dateRange?: DateRange;
-  filterType?: "date" | "year";
-  isYearRangeEnabled?: boolean;
-  selectedRegions?: string[];
-  selectedCountryFocus?: string[];
-  language?: string;
-  reviewFilter?: boolean;
-  ratingRange?: [number, number];
-  onlyRatedPapers?: boolean;
-  citesItemId?: string;
-  citedByItemId?: string;
-  relatedToItemId?: string;
+  filters: FilterParams;
   queryHistory?: QueryHistoryEntry[];
   // Note: questionHistory and screening props removed - not shown in tooltip
 }
@@ -46,46 +32,13 @@ export function SearchTooltipContent({
   query,
   count,
   createdAt,
-  field,
-  sortBy,
-  yearRange,
-  dateRange,
-  filterType,
-  isYearRangeEnabled,
-  selectedRegions,
-  selectedCountryFocus,
-  language,
-  reviewFilter,
-  ratingRange,
-  onlyRatedPapers,
-  citesItemId,
-  citedByItemId,
-  relatedToItemId,
+  filters,
   queryHistory,
 }: SearchTooltipContentProps) {
   const locale = useLocale();
   const format = useFormatter();
   const now = useNow();
   const timeAgo = format.relativeTime(new Date(createdAt), now);
-
-  // Build filter params for UnifiedFilterBadges
-  const filterParams = {
-    field,
-    sortBy,
-    yearRange,
-    dateRange,
-    filterType,
-    isYearRangeEnabled,
-    selectedRegions,
-    selectedCountryFocus,
-    language,
-    reviewFilter,
-    ratingRange,
-    onlyRatedPapers,
-    citesItemId,
-    citedByItemId,
-    relatedToItemId,
-  };
 
   return (
     <div className="space-y-2.5">
@@ -107,11 +60,7 @@ export function SearchTooltipContent({
       </div>
 
       {/* Filters: Inline muted badges */}
-      <UnifiedFilterBadges
-        result={filterParams}
-        variant="sidebar"
-        showAll={false}
-      />
+      <FilterChips filters={filters} size="compact" />
 
       {/* Query Evolution: Expandable mini-list */}
       {queryHistory && queryHistory.length > 1 && (

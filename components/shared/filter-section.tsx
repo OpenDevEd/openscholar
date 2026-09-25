@@ -30,6 +30,7 @@ export const FilterSection = React.memo(function FilterSection({
     <motion.div
       initial={false}
       animate={{ opacity: 1, x: 0 }}
+      data-filter-section={isActive ? "active" : "idle"}
       className={cn(
         "relative rounded-xl overflow-hidden transition-all duration-200",
         "border",

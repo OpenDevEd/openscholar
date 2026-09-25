@@ -59,13 +59,47 @@ function sectionForPointer(pointer: string): ValidationIssue["section"] {
   return SECTION_REGISTRY.find((entry) => entry.key === section)?.key ?? null;
 }
 
+// Ajv reports every failed `oneOf` branch, so a bad OpenAlex source also shows
+// every Zotero rule. Keep the branch with the fewest errors, the one the entry
+// meant. On a tie keep what all tied branches agree on, else the `oneOf` itself.
+function bestBranchErrors(errors: readonly ErrorObject[]): ErrorObject[] {
+  let kept = [...errors];
+  for (const union of errors.filter((error) => error.keyword === "oneOf")) {
+    const prefix = `${union.schemaPath}/`;
+    const branches = new Map<string, ErrorObject[]>();
+    for (const error of kept) {
+      if (!error.schemaPath.startsWith(prefix)) continue;
+      const branch = error.schemaPath.slice(prefix.length).split("/")[0];
+      branches.set(branch, [...(branches.get(branch) ?? []), error]);
+    }
+    if (branches.size === 0) continue;
+    const fewest = Math.min(...[...branches.values()].map((branch) => branch.length));
+    const [first, ...others] = [...branches.values()].filter(
+      (branch) => branch.length === fewest,
+    );
+    const same = (left: ErrorObject, right: ErrorObject) =>
+      left.instancePath === right.instancePath &&
+      left.keyword === right.keyword &&
+      JSON.stringify(left.params) === JSON.stringify(right.params);
+    const agreed = first.filter((error) =>
+      others.every((branch) => branch.some((other) => same(other, error))),
+    );
+    const branchErrors = new Set([...branches.values()].flat());
+    kept = kept.flatMap((error) => {
+      if (error === union) return agreed.length ? agreed : [union];
+      return branchErrors.has(error) ? [] : [error];
+    });
+  }
+  return kept;
+}
+
 function runValidator(
   validate: ValidateFunction<unknown>,
   input: unknown,
   pointerPrefix = "",
 ): { valid: boolean; issues: ValidationIssue[] } {
   if (validate(input)) return { valid: true, issues: [] };
-  const issues = (validate.errors ?? [])
+  const issues = bestBranchErrors(validate.errors ?? [])
     .map((error) => {
       const pointer = `${pointerPrefix}${issuePointer(error)}`;
       return {

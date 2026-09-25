@@ -41,6 +41,7 @@ import { KeywordExpansionPreview } from "./keyword-expansion-preview";
 import { AuthButton } from "./auth-button";
 import {
   Home,
+  Network,
   BookOpen,
   Library,
   ListChecks,
@@ -392,6 +393,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
   const getCurrentPage = () => {
     if (!pathname) return null;
+    if (pathname.startsWith("/topics")) return "topics";
     if (pathname.startsWith("/authors")) return "authors";
     if (pathname.startsWith("/evidence-libraries")) return "evidence-libraries";
     if (pathname === "/") return "home";
@@ -496,6 +498,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             />
           )}
 
+          <NavItem href="/topics" icon={Network} label="Topics" isActive={currentPageValue === "topics"} isCollapsed={isCollapsed && !isMobile} onClick={handleNavClick} index={5} />
+
           {organizationFeatures?.authors && <NavItem
             href="/authors"
             icon={Users}
@@ -555,25 +559,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       searchId={search.id}
                       query={search.query}
                       count={search.count}
-                      field={search.field}
-                      sortBy={search.sortBy}
-                      dateRange={search.dateRange}
-                      yearRange={search.yearRange}
-                      filterType={search.filterType}
-                      isYearRangeEnabled={search.isYearRangeEnabled}
-                      selectedRegions={search.selectedRegions}
-                      selectedCountryFocus={search.selectedCountryFocus}
-                      language={search.language}
+                      filters={search}
                       createdAt={search.createdAt}
                       updatedAt={search.updatedAt}
                       isActive={search.id === effectiveSearchId}
                       isCollapsed={isCollapsed && !isMobile}
-                      reviewFilter={search.reviewFilter}
-                      ratingRange={search.ratingRange}
-                      onlyRatedPapers={search.onlyRatedPapers}
-                      citesItemId={search.citesItemId}
-                      citedByItemId={search.citedByItemId}
-                      relatedToItemId={search.relatedToItemId}
                       queryHistory={search.queryHistory}
                       questionHistory={search.questionHistory}
                       screeningQuestions={search.screeningQuestions}

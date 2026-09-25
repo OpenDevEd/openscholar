@@ -22,6 +22,7 @@ export function PaperCard({
   onDownloadItem,
   onDownloadEssentialItem,
   viewMode = "list-detail",
+  hide,
 }: PaperCardWithModeProps) {
   switch (viewMode) {
     case "list-simple":
@@ -31,6 +32,7 @@ export function PaperCard({
           resultIndex={resultIndex}
           onDownloadItem={onDownloadItem}
           onDownloadEssentialItem={onDownloadEssentialItem}
+          hide={hide}
         />
       );
     case "grid-2":
@@ -41,6 +43,7 @@ export function PaperCard({
           resultIndex={resultIndex}
           onDownloadItem={onDownloadItem}
           onDownloadEssentialItem={onDownloadEssentialItem}
+          hide={hide}
           viewMode={viewMode}
         />
       );
@@ -52,6 +55,7 @@ export function PaperCard({
           resultIndex={resultIndex}
           onDownloadItem={onDownloadItem}
           onDownloadEssentialItem={onDownloadEssentialItem}
+          hide={hide}
         />
       );
   }

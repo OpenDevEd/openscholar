@@ -26,5 +26,15 @@ export function toSearchFilters(entry: SearchResult): SearchFilters {
     citedByItemId: entry.citedByItemId ?? "",
     relatedToItemId: entry.relatedToItemId ?? "",
     reviewFilter: entry.reviewFilter ?? false,
+    researchAreas: entry.researchAreas ?? [],
+    sdgs: entry.sdgs ?? [],
+    openAccessOnly: entry.openAccessOnly ?? false,
+    workTypes: entry.workTypes ?? [],
+    workLanguages: entry.workLanguages ?? [],
+    institutionTypes: entry.institutionTypes ?? [],
+    funders: entry.funders ?? [],
+    minCitations: entry.minCitations ?? null,
+    hasAbstract: entry.hasAbstract ?? false,
+    includeRetracted: entry.includeRetracted ?? false,
   };
 }

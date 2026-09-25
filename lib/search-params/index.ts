@@ -44,6 +44,7 @@ export {
   paramsToSearchResult,
   searchResultToParams,
   paramsToFilters,
+  effectiveSort,
   paramsMatchState,
   hasActiveFilters,
   type NewSearchResultData,

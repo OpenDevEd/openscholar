@@ -23,7 +23,17 @@ export type FilterType =
   | "onlyRated"
   | "cites"
   | "citedBy"
-  | "relatedTo";
+  | "relatedTo"
+  | "workType"
+  | "researchArea"
+  | "sdg"
+  | "openAccess"
+  | "workLanguage"
+  | "institutionType"
+  | "funder"
+  | "minCitations"
+  | "hasAbstract"
+  | "includeRetracted";
 
 /**
  * Section categories for grouping filters
@@ -44,10 +54,8 @@ export interface FilterItem {
   key: string;
   /** The type of filter */
   type: FilterType;
-  /** Lucide icon component for tooltip display */
+  /** Lucide icon component, the same one the sidebar card uses */
   icon: LucideIcon;
-  /** Emoji for history page badge display */
-  emoji: string;
   /** Human-readable label */
   label: string;
   /** Formatted display value */
@@ -66,10 +74,6 @@ export interface FilterSection {
   id: FilterSectionType;
   /** Section title */
   title: string;
-  /** Color classes for tooltip card style (e.g., "bg-orange-500/10 border-orange-500/20") */
-  tooltipColor: string;
-  /** Color classes for history page badge style (e.g., "bg-orange-50 text-orange-700") */
-  badgeColor: string;
   /** Filter items in this section */
   items: FilterItem[];
 }
@@ -94,4 +98,14 @@ export interface FilterParams {
   citesItemId?: string;
   citedByItemId?: string;
   relatedToItemId?: string;
+  researchAreas?: string[];
+  sdgs?: string[];
+  openAccessOnly?: boolean;
+  workTypes?: string[];
+  workLanguages?: string[];
+  institutionTypes?: string[];
+  funders?: string[];
+  minCitations?: number | null;
+  hasAbstract?: boolean;
+  includeRetracted?: boolean;
 }

@@ -20,7 +20,7 @@ import { useTranslations } from 'next-intl';
 import { useAppToast } from '@/lib/toast';
 
 import { searchParamsParsers, DEFAULT_SEARCH_PARAMS } from '../search-params/parsers';
-import { buildShareableUrl } from '../search-params';
+import { buildShareableUrl, effectiveSort } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
@@ -44,7 +44,18 @@ import {
 // Create context with undefined default (must be used within provider)
 const SearchContext = createContext<SearchContextValue | undefined>(undefined);
 
+/**
+ * Runs the search away from the results page: the caller owns the id and the
+ * params that the URL would otherwise hold.
+ */
+export interface LocalSearchState {
+  searchId: string;
+  params: SearchParams;
+  onParamsChange: (updates: Partial<SearchParams>) => void;
+}
+
 interface SearchProviderProps {
+  local?: LocalSearchState;
   children: ReactNode;
 }
 
@@ -77,23 +88,38 @@ function cloneSearchParams(params: SearchParams): SearchParams {
     ...params,
     reg: [...params.reg],
     focus: [...params.focus],
+    area: [...params.area],
+    sdg: [...params.sdg],
+    type: [...params.type],
+    wlang: [...params.wlang],
+    itype: [...params.itype],
+    funder: [...params.funder],
   };
 }
 
 /**
  * SearchProvider - Wrap your results pages with this
  */
-export function SearchProvider({ children }: SearchProviderProps) {
+export function SearchProvider({ children, local }: SearchProviderProps) {
   const toast = useAppToast();
   const tValidation = useTranslations("validation");
   const routeParams = useParams<{ searchId: string }>();
-  const searchId = routeParams?.searchId ?? '';
+  const searchId = local?.searchId ?? routeParams?.searchId ?? '';
   
   // Read URL params via nuqs - THIS IS THE SOURCE OF TRUTH
-  const [urlParams, setUrlParams] = useQueryStates(searchParamsParsers, {
+  const [routeUrlParams, setRouteUrlParams] = useQueryStates(searchParamsParsers, {
     history: 'push',
     shallow: false,
   });
+  const urlParams = local ? local.params : routeUrlParams;
+  const onLocalParamsChange = local?.onParamsChange;
+  const setUrlParams = useCallback(
+    (updates: Partial<SearchParams>, options?: { scroll?: boolean }) => {
+      if (onLocalParamsChange) onLocalParamsChange(updates);
+      else void setRouteUrlParams(updates as Parameters<typeof setRouteUrlParams>[0], options);
+    },
+    [onLocalParamsChange, setRouteUrlParams],
+  );
 
   const currentParams = urlParams as SearchParams;
   const previousTrackedParamsRef = useRef<SearchParams | null>(null);
@@ -134,6 +160,16 @@ export function SearchProvider({ children }: SearchProviderProps) {
       citedBy: urlParams.citedBy,
       rel: urlParams.rel,
       review: urlParams.review,
+      area: urlParams.area,
+      sdg: urlParams.sdg,
+      oa: urlParams.oa,
+      type: urlParams.type,
+      wlang: urlParams.wlang,
+      itype: urlParams.itype,
+      funder: urlParams.funder,
+      mincite: urlParams.mincite,
+      abs: urlParams.abs,
+      retracted: urlParams.retracted,
     });
 
     paramsSnapshotByKey.set(key, cloneSearchParams(currentParams));
@@ -162,6 +198,16 @@ export function SearchProvider({ children }: SearchProviderProps) {
     urlParams.citedBy,
     urlParams.rel,
     urlParams.review,
+    urlParams.area,
+    urlParams.sdg,
+    urlParams.oa,
+    urlParams.type,
+    urlParams.wlang,
+    urlParams.itype,
+    urlParams.funder,
+    urlParams.mincite,
+    urlParams.abs,
+    urlParams.retracted,
     urlParams.page,
     urlParams.rmin,
     urlParams.rmax,
@@ -187,6 +233,12 @@ export function SearchProvider({ children }: SearchProviderProps) {
           ...parsedParams,
           reg: parsedParams.reg ? [...parsedParams.reg] : [],
           focus: parsedParams.focus ? [...parsedParams.focus] : [],
+          area: parsedParams.area ? [...parsedParams.area] : [],
+          sdg: parsedParams.sdg ? [...parsedParams.sdg] : [],
+          type: parsedParams.type ? [...parsedParams.type] : [],
+          wlang: parsedParams.wlang ? [...parsedParams.wlang] : [],
+          itype: parsedParams.itype ? [...parsedParams.itype] : [],
+          funder: parsedParams.funder ? [...parsedParams.funder] : [],
           page: DEFAULT_SEARCH_PARAMS.page,
           rmin: DEFAULT_SEARCH_PARAMS.rmin,
           rmax: DEFAULT_SEARCH_PARAMS.rmax,
@@ -224,11 +276,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
     });
     previousTrackedParamsRef.current = cloneSearchParams(params);
     
-    // Auto-switch from relevance sorting if no query
-    let effectiveSortBy = params.sort;
-    if (params.sort === 'relevance_score:desc' && (!params.q || params.q.trim() === '')) {
-      effectiveSortBy = 'publication_date:desc';
-    }
+    const effectiveSortBy = effectiveSort(params);
     
     // Build SearchFilters object for the API
     const filters: SearchFilters = {
@@ -249,6 +297,16 @@ export function SearchProvider({ children }: SearchProviderProps) {
       citedByItemId: params.citedBy || '',
       relatedToItemId: params.rel || '',
       reviewFilter: params.review || false,
+      researchAreas: params.area,
+      sdgs: params.sdg,
+      openAccessOnly: params.oa,
+      workTypes: params.type,
+      workLanguages: params.wlang,
+      institutionTypes: params.itype,
+      funders: params.funder,
+      minCitations: params.mincite,
+      hasAbstract: params.abs,
+      includeRetracted: params.retracted,
     };
     
     const searchParams: SearchWithFiltersParams = {
@@ -387,6 +445,16 @@ export function SearchProvider({ children }: SearchProviderProps) {
     currentParams.citedBy,
     currentParams.rel,
     currentParams.review,
+    currentParams.area,
+    currentParams.sdg,
+    currentParams.oa,
+    currentParams.type,
+    currentParams.wlang,
+    currentParams.itype,
+    currentParams.funder,
+    currentParams.mincite,
+    currentParams.abs,
+    currentParams.retracted,
     currentParams.lang,
     data?.results?.meta?.count,
     data?.validation?.isValid,
@@ -536,6 +604,16 @@ export function SearchProvider({ children }: SearchProviderProps) {
     if ('citedBy' in updates) storeUpdates.citedByItemId = updates.citedBy;
     if ('rel' in updates) storeUpdates.relatedToItemId = updates.rel;
     if ('review' in updates) storeUpdates.reviewFilter = updates.review;
+    if ('area' in updates) storeUpdates.researchAreas = updates.area;
+    if ('sdg' in updates) storeUpdates.sdgs = updates.sdg;
+    if ('oa' in updates) storeUpdates.openAccessOnly = updates.oa;
+    if ('type' in updates) storeUpdates.workTypes = updates.type;
+    if ('wlang' in updates) storeUpdates.workLanguages = updates.wlang;
+    if ('itype' in updates) storeUpdates.institutionTypes = updates.itype;
+    if ('funder' in updates) storeUpdates.funders = updates.funder;
+    if ('mincite' in updates) storeUpdates.minCitations = updates.mincite ?? undefined;
+    if ('abs' in updates) storeUpdates.hasAbstract = updates.abs;
+    if ('retracted' in updates) storeUpdates.includeRetracted = updates.retracted;
     if ('lang' in updates) storeUpdates.language = updates.lang || undefined;
     if ('page' in updates) storeUpdates.page = updates.page;
     
@@ -561,6 +639,16 @@ export function SearchProvider({ children }: SearchProviderProps) {
       citedBy: '',
       rel: '',
       review: false,
+      area: [],
+      sdg: [],
+      oa: false,
+      type: [],
+      wlang: [],
+      itype: [],
+      funder: [],
+      mincite: null,
+      abs: false,
+      retracted: false,
       page: 1,
     });
     // Also reset in store
@@ -577,6 +665,16 @@ export function SearchProvider({ children }: SearchProviderProps) {
       citedByItemId: '',
       relatedToItemId: '',
       reviewFilter: false,
+      researchAreas: [],
+      sdgs: [],
+      openAccessOnly: false,
+      workTypes: [],
+      workLanguages: [],
+      institutionTypes: [],
+      funders: [],
+      minCitations: undefined,
+      hasAbstract: false,
+      includeRetracted: false,
       page: 1,
     });
   }, [setUrlParams, syncToStore]);
@@ -616,6 +714,16 @@ export function SearchProvider({ children }: SearchProviderProps) {
     citedByItemId: urlParams.citedBy,
     relatedToItemId: urlParams.rel,
     reviewFilter: urlParams.review,
+    researchAreas: urlParams.area,
+    sdgs: urlParams.sdg,
+    openAccessOnly: urlParams.oa,
+    workTypes: urlParams.type,
+    workLanguages: urlParams.wlang,
+    institutionTypes: urlParams.itype,
+    funders: urlParams.funder,
+    minCitations: urlParams.mincite,
+    hasAbstract: urlParams.abs,
+    includeRetracted: urlParams.retracted,
   }), [urlParams]);
   
   // Build context value

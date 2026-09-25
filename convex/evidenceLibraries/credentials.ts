@@ -15,6 +15,7 @@ import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
 import { requireNoRunningOperation } from "./aiProviderKey";
 import { AI_PROVIDER_KEY_PATTERN } from "../../lib/evidence-libraries/configuration/ai";
+import { OPENALEX_API_KEY_PATTERN } from "../../lib/evidence-libraries/configuration/sources";
 
 export function resolveCredentialPath(
   concretePath: string,
@@ -92,8 +93,14 @@ export async function storeEvidenceLibraryCredential(
   );
   // A publish reads the AI key once and ships it minutes later, so the key
   // may not move while one is under way.
-  if (resolveCredentialPath(args.concretePath, args.instanceKey).pathPattern
-      === AI_PROVIDER_KEY_PATTERN) {
+  const credentialPath = resolveCredentialPath(
+    args.concretePath,
+    args.instanceKey,
+  ).pathPattern;
+  if (
+    credentialPath === AI_PROVIDER_KEY_PATTERN ||
+    credentialPath === OPENALEX_API_KEY_PATTERN
+  ) {
     await requireNoRunningOperation(ctx, args.libraryId);
   }
   return await writeEvidenceLibraryCredentialRecord(ctx, {

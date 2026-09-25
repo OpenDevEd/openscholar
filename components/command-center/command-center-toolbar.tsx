@@ -60,6 +60,8 @@ interface CommandCenterToolbarProps<TSort extends string> {
   totalCount?: number;
   // Extra actions slot (rendered after view mode toggle, before search)
   extraActions?: React.ReactNode;
+  /** The toolbar is the first thing in its container, with no header above it. */
+  leading?: boolean;
 }
 
 /**
@@ -83,6 +85,7 @@ export function CommandCenterToolbar<TSort extends string>({
   clearTooltip,
   totalCount,
   extraActions,
+  leading = false,
 }: CommandCenterToolbarProps<TSort>) {
   const tc = useTranslations("common");
   const currentSortOption = sortOptions.find((o) => o.value === currentSort);
@@ -94,7 +97,9 @@ export function CommandCenterToolbar<TSort extends string>({
       animate={{ opacity: 1 }}
       transition={{ ...subtleSpring, delay: 0.15 }}
       className={cn(
-        "px-4 md:px-6 py-3",
+        // Under a header it is a slim strip. On its own it takes the container's
+        // padding, so the space above it matches the space beside it.
+        leading ? "p-4 md:p-6" : "px-4 md:px-6 py-3",
         "border-b border-border/40",
         "flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
       )}

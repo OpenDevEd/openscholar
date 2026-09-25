@@ -195,7 +195,8 @@ async function readContractSupport(
       running: runningReads,
       // Only asked when the running software is too old: it names the release
       // a publish would move the library to.
-      latest: runningReads || latest === running ? runningReads : await reads(latest),
+      latest:
+        runningReads || latest === running ? runningReads : await reads(latest),
     };
   } catch (error) {
     if (!(error instanceof RuntimeReleaseError)) throw error;
@@ -219,6 +220,34 @@ export type PublishRuntime =
       };
     };
 
+/** Known support for the pinned configuration contract on the running image. */
+export async function readRunningContractSupport(
+  ctx: QueryCtx,
+  library: Doc<"evidenceLibraries">,
+): Promise<boolean | null> {
+  const binding = library.runtimeBindingId
+    ? await ctx.db.get(
+        "evidenceLibraryRuntimeBindings",
+        library.runtimeBindingId,
+      )
+    : null;
+  if (
+    !binding ||
+    binding.libraryId !== library._id ||
+    binding.state !== "ready"
+  )
+    return null;
+  const release = await ctx.db
+    .query("evidenceLibraryRuntimeReleases")
+    .withIndex("by_running", (query) =>
+      query.eq("running", binding.runtimeCommit),
+    )
+    .first();
+  return release?.contractSupport?.commit === CONTRACT_COMMIT
+    ? release.contractSupport.running
+    : null;
+}
+
 /**
  * What a publish needs from the library's software. Software older than
  * OpenScholar's configuration contract refuses the fields it does not know,
@@ -231,7 +260,10 @@ export async function readPublishRuntime(
   library: Doc<"evidenceLibraries">,
 ): Promise<PublishRuntime> {
   const binding = library.runtimeBindingId
-    ? await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId)
+    ? await ctx.db.get(
+        "evidenceLibraryRuntimeBindings",
+        library.runtimeBindingId,
+      )
     : null;
   if (
     !binding ||
@@ -273,7 +305,11 @@ export const publishRuntime = query({
     v.literal("unreleased"),
   ),
   handler: async (ctx, args) => {
-    const access = await readEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    const access = await readEvidenceLibraryAccess(
+      ctx,
+      args.libraryId,
+      "manage",
+    );
     if (!access || access.library.state !== "active") return "current";
     return (await readPublishRuntime(ctx, access.library)).kind;
   },
@@ -339,7 +375,10 @@ export const checkAddress = internalAction({
  * page through the binding row.
  */
 export const check = action({
-  args: { libraryId: v.id("evidenceLibraries"), refresh: v.optional(v.boolean()) },
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    refresh: v.optional(v.boolean()),
+  },
   returns: runtimeUpdateStateValidator,
   handler: async (ctx, args): Promise<RuntimeUpdateState> => {
     const state = await ctx.runQuery(

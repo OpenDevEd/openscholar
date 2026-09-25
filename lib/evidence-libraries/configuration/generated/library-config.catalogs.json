@@ -244,6 +244,22 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "sources[].provider",
+				"values": [
+					"zotero",
+					"openalex"
+				]
+			},
+			{
+				"allowCustom": false,
+				"path": "sources[].settings.apiKeyMode",
+				"values": [
+					"platform",
+					"custom"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "theme.defaultMode",
 				"values": [
 					"light",

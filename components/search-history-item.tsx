@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getIdColor } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { SearchField } from "@/lib/types";
-import { HistoryFilterBadges } from "@/components/ui/filter-display";
+import { FilterChips } from "@/components/ui/filter-display";
 import { languageOptions } from "@/components/language-selector";
 import { QueryText } from "@/components/ui/query-text";
 import {
@@ -220,13 +220,11 @@ export function SearchHistoryItem({
         )}
 
         {/* === FOOTER: Filters + History + Actions === */}
-        <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/50">
-          <div className="flex-1 overflow-x-auto scrollbar-hover">
+        <div className="flex items-center justify-between gap-3 mt-3 pt-2 border-t border-border/50">
+          <div className="min-w-0 flex-1 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
+            {/* Scope and sort are in the header already. */}
             {hasActiveFiltersFromResult(result) && (
-              <HistoryFilterBadges
-                result={result as React.ComponentProps<typeof HistoryFilterBadges>["result"]}
-                variant={variant}
-              />
+              <FilterChips filters={{ ...result, field: undefined, sortBy: undefined }} singleLine />
             )}
           </div>
 

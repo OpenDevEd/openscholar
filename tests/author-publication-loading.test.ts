@@ -4,6 +4,7 @@ import { fetchQuery } from "convex/nextjs";
 import { readAuthorPublications } from "@/app/actions/author-publications";
 
 vi.mock("convex/nextjs", () => ({ fetchQuery: vi.fn() }));
+vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ unstable_cache: (read: unknown) => read }));
 
 const profileId = "profile" as Id<"authorProfiles">;

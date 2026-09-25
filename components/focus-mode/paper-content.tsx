@@ -1,3 +1,4 @@
+import { TopicLink } from "@/components/topics/topic-link";
 import React from "react";
 import { BookOpen, Award, ExternalLink, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -164,7 +165,7 @@ export function PaperContent({
                 <span className="font-medium">
                   {isPreview
                     ? tFocus("machineLearningPreview")
-                    : paper.primary_topic!.display_name}
+                    : <TopicLink topic={paper.primary_topic!} />}
                 </span>
               </span>
             )}
@@ -172,7 +173,7 @@ export function PaperContent({
               <span className="flex items-center gap-1">
                 <span className="text-muted-foreground">{tLabels("field")}:</span>
                 <span className="font-medium">
-                  {paper.primary_topic.field.display_name}
+                  <TopicLink topic={paper.primary_topic.field} />
                 </span>
               </span>
             )}
@@ -180,7 +181,7 @@ export function PaperContent({
               <span className="flex items-center gap-1">
                 <span className="text-muted-foreground">{tLabels("subfield")}:</span>
                 <span className="font-medium">
-                  {paper.primary_topic.subfield.display_name}
+                  <TopicLink topic={paper.primary_topic.subfield} />
                 </span>
               </span>
             )}
@@ -188,7 +189,7 @@ export function PaperContent({
               <span className="flex items-center gap-1">
                 <span className="text-muted-foreground">{tLabels("domain")}:</span>
                 <span className="font-medium">
-                  {paper.primary_topic.domain.display_name}
+                  <TopicLink topic={paper.primary_topic.domain} />
                 </span>
               </span>
             )}

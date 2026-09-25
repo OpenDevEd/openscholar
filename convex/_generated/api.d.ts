@@ -62,6 +62,7 @@ import type * as credits_queries from "../credits/queries.js";
 import type * as crons from "../crons.js";
 import type * as debug_papers from "../debug_papers.js";
 import type * as evidenceLibraries_access from "../evidenceLibraries/access.js";
+import type * as evidenceLibraries_activeTopics from "../evidenceLibraries/activeTopics.js";
 import type * as evidenceLibraries_addressActions from "../evidenceLibraries/addressActions.js";
 import type * as evidenceLibraries_addressRecovery from "../evidenceLibraries/addressRecovery.js";
 import type * as evidenceLibraries_adminHandoff from "../evidenceLibraries/adminHandoff.js";
@@ -83,6 +84,7 @@ import type * as evidenceLibraries_databaseSetupActions from "../evidenceLibrari
 import type * as evidenceLibraries_databaseSetupClient from "../evidenceLibraries/databaseSetupClient.js";
 import type * as evidenceLibraries_deploymentSetup from "../evidenceLibraries/deploymentSetup.js";
 import type * as evidenceLibraries_deploymentSetupActions from "../evidenceLibraries/deploymentSetupActions.js";
+import type * as evidenceLibraries_digests_citations from "../evidenceLibraries/digests/citations.js";
 import type * as evidenceLibraries_digests_contract from "../evidenceLibraries/digests/contract.js";
 import type * as evidenceLibraries_digests_generate from "../evidenceLibraries/digests/generate.js";
 import type * as evidenceLibraries_digests_manual from "../evidenceLibraries/digests/manual.js";
@@ -100,6 +102,7 @@ import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draft
 import type * as evidenceLibraries_invitationActions from "../evidenceLibraries/invitationActions.js";
 import type * as evidenceLibraries_invitations from "../evidenceLibraries/invitations.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
+import type * as evidenceLibraries_openAlexSourceKey from "../evidenceLibraries/openAlexSourceKey.js";
 import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
 import type * as evidenceLibraries_platformMail from "../evidenceLibraries/platformMail.js";
@@ -125,6 +128,7 @@ import type * as evidenceLibraries_sessionAccess from "../evidenceLibraries/sess
 import type * as evidenceLibraries_setupNaming from "../evidenceLibraries/setupNaming.js";
 import type * as evidenceLibraries_setupOperation from "../evidenceLibraries/setupOperation.js";
 import type * as evidenceLibraries_setupRecords from "../evidenceLibraries/setupRecords.js";
+import type * as evidenceLibraries_sourceCredentials from "../evidenceLibraries/sourceCredentials.js";
 import type * as evidenceLibraries_storageSetup from "../evidenceLibraries/storageSetup.js";
 import type * as evidenceLibraries_storageSetupActions from "../evidenceLibraries/storageSetupActions.js";
 import type * as evidenceLibraries_storageSetupClient from "../evidenceLibraries/storageSetupClient.js";
@@ -238,6 +242,7 @@ import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_backfillBillingTypes from "../migrations/backfillBillingTypes.js";
 import type * as migrations_backfillSearchableText from "../migrations/backfillSearchableText.js";
 import type * as migrations_backfillTransactionCounters from "../migrations/backfillTransactionCounters.js";
+import type * as migrations_openAlexDeploymentTargetKey from "../migrations/openAlexDeploymentTargetKey.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
 import type * as models_catalog from "../models/catalog.js";
 import type * as models_mutations from "../models/mutations.js";
@@ -264,6 +269,12 @@ import type * as subscriptions_lib_stripeStatus from "../subscriptions/lib/strip
 import type * as subscriptions_queries from "../subscriptions/queries.js";
 import type * as testing_billing from "../testing/billing.js";
 import type * as testing_evidenceLibraryAddresses from "../testing/evidenceLibraryAddresses.js";
+import type * as topics_auth from "../topics/auth.js";
+import type * as topics_catalog from "../topics/catalog.js";
+import type * as topics_details from "../topics/details.js";
+import type * as topics_publications from "../topics/publications.js";
+import type * as topics_serviceHttp from "../topics/serviceHttp.js";
+import type * as topics_validators from "../topics/validators.js";
 import type * as userAiConfig_mutations from "../userAiConfig/mutations.js";
 import type * as userAiConfig_queries from "../userAiConfig/queries.js";
 import type * as users_internal from "../users/internal.js";
@@ -298,7 +309,6 @@ import type * as zotero_queries from "../zotero/queries.js";
 import type * as zotero_runtimeReadActions from "../zotero/runtimeReadActions.js";
 import type * as zotero_runtimeReadClient from "../zotero/runtimeReadClient.js";
 import type * as zotero_runtimeReads from "../zotero/runtimeReads.js";
-import type * as zotero_sourceCredentials from "../zotero/sourceCredentials.js";
 import type * as zotero_sourceEntry from "../zotero/sourceEntry.js";
 
 import type {
@@ -362,6 +372,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   debug_papers: typeof debug_papers;
   "evidenceLibraries/access": typeof evidenceLibraries_access;
+  "evidenceLibraries/activeTopics": typeof evidenceLibraries_activeTopics;
   "evidenceLibraries/addressActions": typeof evidenceLibraries_addressActions;
   "evidenceLibraries/addressRecovery": typeof evidenceLibraries_addressRecovery;
   "evidenceLibraries/adminHandoff": typeof evidenceLibraries_adminHandoff;
@@ -383,6 +394,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/databaseSetupClient": typeof evidenceLibraries_databaseSetupClient;
   "evidenceLibraries/deploymentSetup": typeof evidenceLibraries_deploymentSetup;
   "evidenceLibraries/deploymentSetupActions": typeof evidenceLibraries_deploymentSetupActions;
+  "evidenceLibraries/digests/citations": typeof evidenceLibraries_digests_citations;
   "evidenceLibraries/digests/contract": typeof evidenceLibraries_digests_contract;
   "evidenceLibraries/digests/generate": typeof evidenceLibraries_digests_generate;
   "evidenceLibraries/digests/manual": typeof evidenceLibraries_digests_manual;
@@ -400,6 +412,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/invitationActions": typeof evidenceLibraries_invitationActions;
   "evidenceLibraries/invitations": typeof evidenceLibraries_invitations;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
+  "evidenceLibraries/openAlexSourceKey": typeof evidenceLibraries_openAlexSourceKey;
   "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
   "evidenceLibraries/platformMail": typeof evidenceLibraries_platformMail;
@@ -425,6 +438,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/setupNaming": typeof evidenceLibraries_setupNaming;
   "evidenceLibraries/setupOperation": typeof evidenceLibraries_setupOperation;
   "evidenceLibraries/setupRecords": typeof evidenceLibraries_setupRecords;
+  "evidenceLibraries/sourceCredentials": typeof evidenceLibraries_sourceCredentials;
   "evidenceLibraries/storageSetup": typeof evidenceLibraries_storageSetup;
   "evidenceLibraries/storageSetupActions": typeof evidenceLibraries_storageSetupActions;
   "evidenceLibraries/storageSetupClient": typeof evidenceLibraries_storageSetupClient;
@@ -538,6 +552,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillBillingTypes": typeof migrations_backfillBillingTypes;
   "migrations/backfillSearchableText": typeof migrations_backfillSearchableText;
   "migrations/backfillTransactionCounters": typeof migrations_backfillTransactionCounters;
+  "migrations/openAlexDeploymentTargetKey": typeof migrations_openAlexDeploymentTargetKey;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
   "models/catalog": typeof models_catalog;
   "models/mutations": typeof models_mutations;
@@ -564,6 +579,12 @@ declare const fullApi: ApiFromModules<{
   "subscriptions/queries": typeof subscriptions_queries;
   "testing/billing": typeof testing_billing;
   "testing/evidenceLibraryAddresses": typeof testing_evidenceLibraryAddresses;
+  "topics/auth": typeof topics_auth;
+  "topics/catalog": typeof topics_catalog;
+  "topics/details": typeof topics_details;
+  "topics/publications": typeof topics_publications;
+  "topics/serviceHttp": typeof topics_serviceHttp;
+  "topics/validators": typeof topics_validators;
   "userAiConfig/mutations": typeof userAiConfig_mutations;
   "userAiConfig/queries": typeof userAiConfig_queries;
   "users/internal": typeof users_internal;
@@ -598,7 +619,6 @@ declare const fullApi: ApiFromModules<{
   "zotero/runtimeReadActions": typeof zotero_runtimeReadActions;
   "zotero/runtimeReadClient": typeof zotero_runtimeReadClient;
   "zotero/runtimeReads": typeof zotero_runtimeReads;
-  "zotero/sourceCredentials": typeof zotero_sourceCredentials;
   "zotero/sourceEntry": typeof zotero_sourceEntry;
 }>;
 

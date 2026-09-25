@@ -30,6 +30,15 @@ export interface PaperCardProps {
   onDownloadItem: (item: PaperResult, format: "json" | "csv") => void;
   onDownloadEssentialItem: (item: PaperResult, format: "json" | "csv") => void;
   viewMode?: "list-simple" | "list-detail" | "grid-2" | "grid-3";
+  /** Controls to leave out where they cannot be used, such as an import preview. */
+  hide?: PaperCardHide;
+}
+
+export interface PaperCardHide {
+  /** Ratings belong to a saved search, not to a preview. */
+  rating?: boolean;
+  download?: boolean;
+  focusMode?: boolean;
 }
 
 export interface ScreeningBadgeProps {

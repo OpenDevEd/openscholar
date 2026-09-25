@@ -1,65 +1,24 @@
 import type { SearchParams } from "@/lib/search/types";
+import { effectiveSort } from "@/lib/search-params";
+import { buildOpenAlexWorksQuery } from "@/lib/openalex/works-query";
+import type { OpenAlexWorksQuery } from "@/lib/openalex/search-params";
+import type { GetSearchResultsWithFiltersOptions } from "@/lib/search-utils";
 
+/**
+ * What a chat or extraction keeps for a search: the query as typed, for its
+ * name, and the exact OpenAlex request the results page made, which the
+ * server runs as it is.
+ */
 export type BucketSearchFilters = {
-  query?: string;
-  field?: string;
-  searchField?: string;
-  sortBy?: string;
-  yearRange?: [number, number];
-  isYearRangeEnabled?: boolean;
-  dateRange?: { from?: string; to?: string };
-  filterType?: string;
-  ratingRange?: [number, number];
-  onlyRatedPapers?: boolean;
-  selectedRegions?: string[];
-  selectedCountryFocus?: string[];
-  citesItemId?: string;
-  citedByItemId?: string;
-  relatedToItemId?: string;
-  reviewFilter?: boolean;
-  language?: string;
+  query: string;
+  openAlexQuery: OpenAlexWorksQuery & { sort: string };
 };
 
+/** Null when the query is not valid; `options.onWarning` gets the reason. */
 export function paramsToBucketSearchFilters(
   params: SearchParams,
-): BucketSearchFilters {
-  const filters: BucketSearchFilters = {};
-
-  if (params.q) filters.query = params.q;
-  if (params.field) {
-    filters.field = params.field;
-    filters.searchField = params.field;
-  }
-  if (params.sort) filters.sortBy = params.sort;
-  if (params.ft) filters.filterType = params.ft;
-
-  if (params.yf !== null && params.yt !== null) {
-    filters.yearRange = [params.yf, params.yt];
-    filters.isYearRangeEnabled = true;
-  } else {
-    filters.isYearRangeEnabled = false;
-  }
-
-  if (params.df !== null || params.dt !== null) {
-    filters.dateRange = {
-      from: params.df ?? undefined,
-      to: params.dt ?? undefined,
-    };
-  }
-
-  filters.ratingRange = [params.rmin, params.rmax];
-  filters.onlyRatedPapers = params.rated;
-
-  if (params.reg.length > 0) filters.selectedRegions = params.reg;
-  if (params.focus.length > 0) filters.selectedCountryFocus = params.focus;
-
-  if (params.cites) filters.citesItemId = params.cites;
-  if (params.citedBy) filters.citedByItemId = params.citedBy;
-  if (params.rel) filters.relatedToItemId = params.rel;
-
-  filters.reviewFilter = params.review;
-
-  if (params.lang) filters.language = params.lang;
-
-  return filters;
+  options?: GetSearchResultsWithFiltersOptions,
+): BucketSearchFilters | null {
+  const query = buildOpenAlexWorksQuery(params, options);
+  return query ? { query: params.q, openAlexQuery: { ...query, sort: effectiveSort(params) } } : null;
 }

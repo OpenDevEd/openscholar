@@ -198,6 +198,30 @@ describe("validateOwnerSection", () => {
       ),
     ).toEqual(["/sources/0/key", "/sources/0/provider"]);
   });
+
+  test("names the bad field of an OpenAlex source, not every Zotero rule", () => {
+    expect(
+      validateOwnerSection("sources", [
+        {
+          key: "openalex-education",
+          provider: "openalex",
+          enabled: true,
+          writebackEnabled: false,
+          settings: {
+            name: "Education",
+            apiKeyMode: "platform",
+            searchUrl: "/results/saved-search-1?q=education",
+            unknownField: "x",
+            approvedQuery: {
+              version: "v1",
+              approvedAt: "2026-09-24T10:00:00.000Z",
+              query: { search: "education" },
+            },
+          },
+        },
+      ]).issues.map((issue) => issue.pointer),
+    ).toEqual(["/sources/0/settings/unknownField"]);
+  });
 });
 
 describe("validateOwnerSection brand assets", () => {
@@ -381,7 +405,6 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         key: "main",
         groupId: "12345",
         apiKey: "key-12345",
-        enabled: true,
       }),
     ]);
   });

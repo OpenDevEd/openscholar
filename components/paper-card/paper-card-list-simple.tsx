@@ -29,6 +29,7 @@ export function PaperCardListSimple({
   resultIndex,
   onDownloadItem,
   onDownloadEssentialItem,
+  hide,
 }: PaperCardProps) {
   const pathname = usePathname();
   const tp = useTranslations("paperCard");
@@ -67,11 +68,11 @@ export function PaperCardListSimple({
       )}
       
       <div
-        role="button"
-        tabIndex={0}
-        onClick={() => openFocusMode(isMobile, resultIndex, result.id)}
-        onKeyDown={(e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex, result.id)}
-        className="w-full text-left cursor-pointer"
+        role={hide?.focusMode ? undefined : "button"}
+        tabIndex={hide?.focusMode ? undefined : 0}
+        onClick={hide?.focusMode ? undefined : () => openFocusMode(isMobile, resultIndex, result.id)}
+        onKeyDown={hide?.focusMode ? undefined : (e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex, result.id)}
+        className={cn("w-full text-left", !hide?.focusMode && "cursor-pointer")}
       >
         <div className="flex items-center gap-3 p-3 @sm/card:p-4">
           {/* Rating - always visible */}
@@ -81,7 +82,9 @@ export function PaperCardListSimple({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+            {!hide?.rating && (
+              <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+            )}
           </div>
 
           {/* Main content area */}
@@ -162,12 +165,14 @@ export function PaperCardListSimple({
                 compact
               />
               <DOIBadge doi={result.doi} compact />
-              <DownloadMenuCompact
-                onDownloadJSON={() => onDownloadItem(result, "json")}
-                onDownloadCSV={() => onDownloadItem(result, "csv")}
-                onDownloadEssentialJSON={() => onDownloadEssentialItem(result, "json")}
-                onDownloadEssentialCSV={() => onDownloadEssentialItem(result, "csv")}
-              />
+              {!hide?.download && (
+                <DownloadMenuCompact
+                  onDownloadJSON={() => onDownloadItem(result, "json")}
+                  onDownloadCSV={() => onDownloadItem(result, "csv")}
+                  onDownloadEssentialJSON={() => onDownloadEssentialItem(result, "json")}
+                  onDownloadEssentialCSV={() => onDownloadEssentialItem(result, "csv")}
+                />
+              )}
             </div>
           </div>
 

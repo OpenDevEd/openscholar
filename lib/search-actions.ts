@@ -83,6 +83,16 @@ export const createSearchMetadata = (
     citedByItemId: '',
     relatedToItemId: '',
     reviewFilter: false,
+    researchAreas: [],
+    sdgs: [],
+    openAccessOnly: false,
+    workTypes: [],
+    workLanguages: [],
+    institutionTypes: [],
+    funders: [],
+    minCitations: null,
+    hasAbstract: false,
+    includeRetracted: false,
   };
   
   // Use the centralized utility function to create search parameters

@@ -23,6 +23,12 @@ interface SearchCommandCenterProps {
   onDownloadAllCSV?: () => void;
   onDownloadAllEssentialJSON?: () => void;
   onDownloadAllEssentialCSV?: () => void;
+  /**
+   * For building a query, not acting on results: leaves out downloads, the
+   * share link, results translation and screening. The question, AI help,
+   * query translation and query history all stay.
+   */
+  queryOnly?: boolean;
 }
 
 export function SearchCommandCenter({
@@ -35,6 +41,7 @@ export function SearchCommandCenter({
   onDownloadAllCSV,
   onDownloadAllEssentialJSON,
   onDownloadAllEssentialCSV,
+  queryOnly = false,
 }: SearchCommandCenterProps) {
   const [mode, setMode] = useState<CommandCenterMode>("search");
   const screenStateKey = searchId || "__active";
@@ -76,6 +83,7 @@ export function SearchCommandCenter({
         onDownloadAllEssentialJSON={onDownloadAllEssentialJSON}
         onDownloadAllEssentialCSV={onDownloadAllEssentialCSV}
         isLoading={isLoading || isValidating}
+        queryOnly={queryOnly}
       />
 
       {/* Body - switches between search and adjust modes */}
@@ -83,6 +91,7 @@ export function SearchCommandCenter({
         mode={mode}
         searchId={searchId}
         currentQuery={currentQuery}
+        allowEmpty={queryOnly}
         isLoading={isLoading}
         isValidating={isValidating}
       />
@@ -97,14 +106,17 @@ export function SearchCommandCenter({
         screeningQuestionCount={screeningQuestionCount}
         searchId={searchId}
         isLoading={isLoading || isValidating}
+        queryOnly={queryOnly}
       />
 
       {/* Screening panel expansion */}
-      <ScreeningExpansion
-        isOpen={isScreeningOpen}
-        searchId={searchId}
-        panelId={screeningPanelId}
-      />
+      {!queryOnly && (
+        <ScreeningExpansion
+          isOpen={isScreeningOpen}
+          searchId={searchId}
+          panelId={screeningPanelId}
+        />
+      )}
     </motion.div>
   );
 }

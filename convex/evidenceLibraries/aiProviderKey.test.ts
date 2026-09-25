@@ -326,6 +326,7 @@ describe("the OpenRouter key", () => {
         configurationDeploymentTarget: {
           applicationId: "coolify-application-1",
           aiProviderKey: ciphertext,
+          openAlexApiKey: { present: false },
           runtimeBindingId: fixture.created.runtimeBindingId,
           targetBaseUrl: "https://climate-evidence-lib.libraries.example.test",
           customDomains: [],

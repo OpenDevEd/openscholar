@@ -33,6 +33,16 @@ export interface SearchParams {
   citedBy: string;
   rel: string;            // relatedTo
   review: boolean;        // reviewOnly
+  area: string[];         // research area catalog ids
+  sdg: string[];          // sustainable development goals
+  oa: boolean;            // open access only
+  type: string[];         // OpenAlex work types
+  wlang: string[];        // languages the works are written in
+  itype: string[];        // author institution types
+  funder: string[];       // OpenAlex funder ids
+  mincite: number | null; // minimum citations
+  abs: boolean;           // only works with an abstract
+  retracted: boolean;     // include retracted works
   lang: string | null;
 }
 

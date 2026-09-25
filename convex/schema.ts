@@ -10,7 +10,7 @@ import {
   extractionPaperQueueFields,
   extractionQuestionFields,
   extractionResultFields,
-  searchFiltersValidator,
+  storedSearchFiltersValidator,
 } from "./extraction/validators";
 import {
   chatGenerationUsageFields,
@@ -42,7 +42,33 @@ import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidator
 
 import { authorContentFields } from "./authors/validators";
 
+import { topicNodeFields, metadataValidator } from "./topics/validators";
+
 export default defineSchema({
+  topicCatalog: defineTable(topicNodeFields)
+    .index("by_external_id", ["id"]).index("by_parent_and_name", ["parent", "name"]).index("by_level_and_name", ["level", "name"])
+    .index("by_level_and_domainId_and_name", ["level", "domainId", "name"])
+    .index("by_level_and_fieldId_and_name", ["level", "fieldId", "name"])
+    .index("by_level_and_subfieldId_and_name", ["level", "subfieldId", "name"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["level", "domainId", "fieldId", "subfieldId"] }),
+  topicCatalogState: defineTable({revision: v.string(), complete: v.boolean()}).index("by_revision", ["revision"]),
+  topicDetails: defineTable({id: v.string(), description: v.string(), keywords: v.array(v.string()), worksCount: v.number(), fetchedAt: v.number(), revision: v.string()}).index("by_external_id", ["id"]),
+  topicLocations: defineTable({
+    libraryId: v.id("evidenceLibraries"), itemKey: v.string(), generation: v.number(), publishedRevision: v.number(),
+    state: v.union(v.literal("published"), v.literal("unpublished")),
+    topicIds: v.array(v.string()), doi: v.union(v.string(), v.null()), openalexId: v.union(v.string(), v.null()),
+    metadata: v.union(metadataValidator, v.null()), groupKey: v.string(),
+  }).index("by_libraryId_and_itemKey", ["libraryId", "itemKey"])
+    .index("by_openalexId_and_doi", ["openalexId", "doi"])
+    .index("by_groupKey_and_libraryId_and_itemKey", ["groupKey", "libraryId", "itemKey"]),
+  topicDeliveryReceipts: defineTable({libraryId: v.id("evidenceLibraries"), idempotencyKey: v.string(), digest: v.string(), generation: v.number(), status: v.union(v.literal("applied"), v.literal("superseded"))})
+    .index("by_libraryId_and_idempotencyKey", ["libraryId", "idempotencyKey"]),
+  topicOpenAlexDois: defineTable({openalexId: v.string(), doi: v.string(), count: v.number()})
+    .index("by_openalexId_and_doi", ["openalexId", "doi"]),
+  topicPublicationGroups: defineTable({topicId: v.string(), groupKey: v.string(), count: v.number()})
+    .index("by_topicId_and_groupKey", ["topicId", "groupKey"]),
+  topicProjectionState: defineTable({key: v.literal("publications"), pending: v.number()}).index("by_key", ["key"]),
+
   authorPublicationReceipts: defineTable({
     libraryId: v.id("evidenceLibraries"),
     itemKey: v.string(),
@@ -155,9 +181,14 @@ export default defineSchema({
   )
     .index("by_draftId_and_sectionKey", ["draftId", "sectionKey"])
     .index("by_revisionId_and_sectionKey", ["revisionId", "sectionKey"])
-    .index("by_libraryId_and_kind", ["libraryId", "kind"]),
+    .index("by_libraryId_and_kind_and_sectionKey", [
+      "libraryId",
+      "kind",
+      "sectionKey",
+    ]),
 
   evidenceLibraryCredentials: defineTable(evidenceLibraryCredentialFields)
+    .index("by_credentialDigest", ["credentialDigest"])
     .index("by_libraryId", ["libraryId"])
     .index("by_libraryId_and_credentialKey", ["libraryId", "credentialKey"]),
 
@@ -572,7 +603,7 @@ export default defineSchema({
     venueName: v.optional(v.string()), // primary_location.source.display_name
     workType: v.optional(v.string()),
     // history: saved-search placeholder that expands during queue setup
-    searchFilters: v.optional(searchFiltersValidator),
+    searchFilters: v.optional(storedSearchFiltersValidator),
     // zotero context (libraryType/groupId resolve the OAuth target at queue setup)
     libraryType: v.optional(v.union(v.literal("user"), v.literal("group"))),
     groupId: v.optional(v.string()),

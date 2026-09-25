@@ -11,7 +11,7 @@ import {
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
 import { readLibraryZoteroGroupCredentials } from "./libraryGroups";
-import { zoteroSourceEntry } from "./sourceCredentials";
+import { zoteroSourceEntry } from "./sourceEntry";
 
 const ENCRYPTION_KEY = "44".repeat(32);
 const OWNER_KEY = "owner-zotero-key-0001";

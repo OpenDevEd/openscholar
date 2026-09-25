@@ -1,13 +1,18 @@
-/**
- * @vitest-environment jsdom
- */
+/** @vitest-environment jsdom */
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
-import type { Id } from "@/convex/_generated/dataModel";
+import { SourcesField } from "@/components/evidence-libraries/configuration/sections/sources-field";
 import type { TagRules } from "@/components/evidence-libraries/configuration/sections/tag-rules";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import type { Id } from "@/convex/_generated/dataModel";
+import { zoteroSourceEntry } from "@/convex/zotero/sourceEntry";
+import type {
+  EvidenceSourceEntry,
+  OpenAlexSourceEntry,
+} from "@/lib/evidence-libraries/configuration/sources";
+import { OPENALEX_API_CREDENTIAL_KEY } from "@/lib/evidence-libraries/configuration/sources";
 
 const mocks = vi.hoisted(() => ({
   listMyGroups: vi.fn(),
@@ -15,31 +20,45 @@ const mocks = vi.hoisted(() => ({
   removeGroup: vi.fn(),
   disconnect: vi.fn(),
   startOAuth: vi.fn(),
+  writeCredential: vi.fn(),
+  removeOpenAlexKey: vi.fn(),
   query: vi.fn(),
 }));
 
+vi.mock("server-only", () => ({}));
 vi.mock("convex/react", () => ({
   useAction: (ref: string) =>
     ({
       listMyZoteroGroups: mocks.listMyGroups,
       connectZoteroGroup: mocks.connectGroup,
       startOAuth: mocks.startOAuth,
+      writeCredential: mocks.writeCredential,
     })[ref],
-  useMutation: (ref: string) => ({ removeZoteroGroup: mocks.removeGroup, disconnect: mocks.disconnect })[ref],
+  useMutation: (ref: string) =>
+    ({
+      removeZoteroGroup: mocks.removeGroup,
+      disconnect: mocks.disconnect,
+      removeOpenAlexKey: mocks.removeOpenAlexKey,
+    })[ref],
 }));
-
-vi.mock("next-intl", () => ({
-  useTranslations: (namespace: string) => (key: string, values?: Record<string, unknown>) =>
-    `${namespace}.${key}${values ? ` ${JSON.stringify(values)}` : ""}`,
+vi.mock("@/lib/auth/use-auth-query", () => ({
+  useProtectedQuery: (query: string) => mocks.query(query),
 }));
-
 vi.mock("@/convex/_generated/api", () => ({
   api: {
+    evidenceLibraries: {
+      credentials: { listCredentialMetadata: "listCredentialMetadata" },
+      credentialActions: { writeCredential: "writeCredential" },
+      openAlexSourceKey: { removeOpenAlexKey: "removeOpenAlexKey" },
+    },
     zotero: {
       actions: { startOAuth: "startOAuth" },
       mutations: { disconnect: "disconnect" },
       queries: { getConnectionStatus: "getConnectionStatus" },
-      libraryGroups: { listLibraryZoteroGroups: "listLibraryZoteroGroups", removeZoteroGroup: "removeZoteroGroup" },
+      libraryGroups: {
+        listLibraryZoteroGroups: "listLibraryZoteroGroups",
+        removeZoteroGroup: "removeZoteroGroup",
+      },
       libraryGroupActions: {
         listMyZoteroGroups: "listMyZoteroGroups",
         connectZoteroGroup: "connectZoteroGroup",
@@ -47,30 +66,70 @@ vi.mock("@/convex/_generated/api", () => ({
     },
   },
 }));
-
-vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: (query: string) => mocks.query(query),
+vi.mock("next-intl", () => ({
+  useTranslations:
+    (namespace: string) => (key: string, values?: Record<string, unknown>) =>
+      `${namespace}.${key}${values ? ` ${JSON.stringify(values)}` : ""}`,
+  useFormatter: () => ({ dateTime: (date: Date) => date.toISOString().slice(0, 10) }),
+  useLocale: () => "en-GB",
 }));
-
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-import { SourcesField } from "@/components/evidence-libraries/configuration/sections/sources-field";
-import { zoteroSourceEntry } from "@/convex/zotero/sourceEntry";
+const newSearch: OpenAlexSourceEntry = {
+  key: "openalex-new",
+  provider: "openalex",
+  enabled: true,
+  writebackEnabled: false,
+  settings: {
+    name: "New search",
+    searchUrl: "/results/search-2?q=schools",
+    apiKeyMode: "platform",
+    approvedQuery: {
+      version: "query-v1",
+      approvedAt: "2026-09-25T12:00:00.000Z",
+      query: { search: "schools" },
+    },
+    downloadPdfs: false,
+  },
+};
+// The search workspace itself is covered elsewhere; here it only hands back a search.
+vi.mock(
+  "@/components/evidence-libraries/configuration/sections/openalex-search-dialog",
+  () => ({
+    OpenAlexSearchDialog: ({
+      onApprove,
+    }: {
+      onApprove: (source: OpenAlexSourceEntry) => void;
+    }) => (
+      <button type="button" onClick={() => onApprove(newSearch)}>
+        approve search
+      </button>
+    ),
+  }),
+);
 
 const libraryId = "library_1" as Id<"evidenceLibraries">;
 const ns = "evidenceLibraryConfiguration.sources";
+const rowAction = (action: string, name: string) =>
+  `${ns}.sourceAction ${JSON.stringify({ action, name })}`;
 
-function queries(input: { connected: boolean; groups: unknown[] }) {
-  mocks.query.mockImplementation((query: string) => ({
-    data:
-      query === "getConnectionStatus"
-        ? input.connected
-          ? { connected: true, zoteroUserId: "1", username: "owner" }
-          : { connected: false }
-        : input.groups,
-    isReady: true,
-  }));
-}
+const openAlexSource: OpenAlexSourceEntry = {
+  key: "openalex-education",
+  provider: "openalex",
+  enabled: true,
+  writebackEnabled: false,
+  settings: {
+    name: "Education evidence",
+    searchUrl: "/results/search-1?q=education&yf=2020&yt=2026",
+    apiKeyMode: "platform",
+    approvedQuery: {
+      version: "query-v1",
+      approvedAt: "2026-09-24T12:00:00.000Z",
+      query: { search: "education", filter: "publication_year:2020-2026" },
+    },
+    downloadPdfs: false,
+  },
+};
 
 const group42 = {
   groupId: "42",
@@ -80,25 +139,67 @@ const group42 = {
   connectedByZoteroUsername: "owner",
   scopes: { read: true, write: true },
 };
-const group77 = { ...group42, groupId: "77", name: "Private notes", isPublic: false, scopes: { read: true, write: false } };
+const group77 = {
+  ...group42,
+  groupId: "77",
+  name: "Private notes",
+  isPublic: false,
+  scopes: { read: true, write: false },
+};
 
-function Harness({ initial = [] as ReturnType<typeof zoteroSourceEntry>[], onChange = vi.fn() }) {
+function queries(input: {
+  connected: boolean;
+  groups?: unknown[];
+  credentials?: unknown[];
+}) {
+  mocks.query.mockImplementation((query: string) => ({
+    data:
+      query === "getConnectionStatus"
+        ? input.connected
+          ? { connected: true, zoteroUserId: "1", username: "owner" }
+          : { connected: false }
+        : query === "listCredentialMetadata"
+          ? (input.credentials ?? [])
+          : (input.groups ?? []),
+    isReady: true,
+  }));
+}
+
+function Harness({
+  initial = [],
+  onChange = vi.fn(),
+}: {
+  initial?: EvidenceSourceEntry[];
+  onChange?: (value: EvidenceSourceEntry[]) => void;
+}) {
   const [value, setValue] = useState(initial);
   const [tags, setTags] = useState<TagRules>({});
   return (
     <TooltipProvider>
-    <SourcesField
-      libraryId={libraryId}
-      value={value}
-      onChange={(next) => {
-        setValue(next);
-        onChange(next);
-      }}
-      tags={tags}
-      onTagsChange={setTags}
-    />
+      <SourcesField
+        libraryId={libraryId}
+        value={value}
+        onChange={(next) => {
+          setValue(next);
+          onChange(next);
+        }}
+        tags={tags}
+        onTagsChange={setTags}
+      />
     </TooltipProvider>
   );
+}
+
+async function openAddMenu() {
+  await userEvent.click(screen.getByRole("button", { name: `${ns}.addSource` }));
+}
+
+async function openGroupPicker() {
+  await openAddMenu();
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: new RegExp(`^${ns}.zoteroGroup`) }),
+  );
+  return screen.findByRole("table", { name: `${ns}.picker.title` });
 }
 
 describe("<SourcesField>", () => {
@@ -107,14 +208,101 @@ describe("<SourcesField>", () => {
     vi.stubEnv("NEXT_PUBLIC_CONVEX_SITE_URL", "https://lane.convex.site");
   });
 
-  it("offers the Zotero sign-in when the admin has no connection and keeps the group tools off", async () => {
-    queries({ connected: false, groups: [] });
+  it("shows Zotero and OpenAlex in one source list without a total", () => {
+    queries({ connected: true, groups: [group42] });
+    render(<Harness initial={[zoteroSourceEntry("42"), openAlexSource]} />);
+    expect(screen.getByRole("list", { name: `${ns}.listLabel` })).toBeInTheDocument();
+    expect(screen.getByText("Climate evidence")).toBeInTheDocument();
+    expect(screen.getByText("Education evidence")).toBeInTheDocument();
+    expect(screen.getByText("education")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "common.filters" })).toHaveTextContent(
+      "2020 - 2026",
+    );
+    expect(screen.queryByText(/2 sources/i)).not.toBeInTheDocument();
+  });
+
+  it("pauses an approved OpenAlex source in the saved draft", async () => {
+    queries({ connected: true });
+    const onChange = vi.fn();
+    render(<Harness initial={[openAlexSource]} onChange={onChange} />);
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: rowAction(`${ns}.pause`, "Education evidence"),
+      }),
+    );
+    expect(onChange).toHaveBeenLastCalledWith([{ ...openAlexSource, enabled: false }]);
+    expect(screen.getByText(`${ns}.health.paused`)).toBeInTheDocument();
+  });
+
+  it("offers both source types from one Add source menu", async () => {
+    queries({ connected: true });
+    render(<Harness />);
+    await openAddMenu();
+    expect(
+      screen.getByRole("menuitem", { name: new RegExp(`^${ns}.zoteroGroup`) }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: new RegExp(`^${ns}.openAlexSearch`) }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps provider connections separate at the bottom", async () => {
+    queries({ connected: true });
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.connections` }));
+    expect(
+      screen.getByRole("dialog", { name: `${ns}.connectionsTitle` }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Zotero/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /OpenAlex/ })).toBeInTheDocument();
+  });
+
+  it("keeps a saved API key when switching a source to OpenScholar access", async () => {
+    queries({
+      connected: true,
+      credentials: [{ credentialKey: OPENALEX_API_CREDENTIAL_KEY, maskedHint: "••••abcd" }],
+    });
+    render(
+      <Harness
+        initial={[
+          { ...openAlexSource, settings: { ...openAlexSource.settings, apiKeyMode: "custom" } },
+        ]}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.connections` }));
+    await userEvent.click(screen.getByRole("tab", { name: /OpenAlex/ }));
+    await userEvent.click(screen.getByRole("tab", { name: /OpenScholar/ }));
+    expect(mocks.removeOpenAlexKey).not.toHaveBeenCalled();
+  });
+
+  it("adds a new search with OpenScholar access when the own-key tab was only opened", async () => {
+    queries({ connected: true });
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.connections` }));
+    await userEvent.click(screen.getByRole("tab", { name: /OpenAlex/ }));
+    await userEvent.click(screen.getByRole("tab", { name: new RegExp(`${ns}.openAlex.ownKey`) }));
+    await userEvent.keyboard("{Escape}");
+    await openAddMenu();
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: new RegExp(`^${ns}.openAlexSearch`) }),
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "approve search" }));
+    expect(onChange).toHaveBeenLastCalledWith([newSearch]);
+  });
+
+  it("offers the Zotero sign-in from the Add source menu when the admin has no connection", async () => {
+    queries({ connected: false });
     mocks.startOAuth.mockResolvedValue({ authorizeUrl: "https://www.zotero.org/oauth/authorize?x" });
     render(<Harness />);
-    expect(screen.getByText(`${ns}.notConnected`)).toBeInTheDocument();
-    expect(screen.getByText(`${ns}.connectFirst`)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: `${ns}.addGroups` })).toBeDisabled();
-    await userEvent.click(screen.getByRole("button", { name: `${ns}.connect` }));
+    await openAddMenu();
+    const zotero = screen.getByRole("menuitem", { name: new RegExp(`^${ns}.zoteroGroup`) });
+    expect(zotero).toHaveTextContent(`${ns}.zoteroConnectFirst`);
+    await userEvent.click(zotero);
+    const dialog = await screen.findByRole("dialog", { name: `${ns}.connectionsTitle` });
+    expect(within(dialog).getByText(`${ns}.notConnected`)).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: `${ns}.picker.title` })).not.toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: `${ns}.connect` }));
     await waitFor(() => expect(mocks.startOAuth).toHaveBeenCalled());
     expect(mocks.startOAuth.mock.calls[0][0]).toEqual({
       callbackUrl: "https://lane.convex.site/api/zotero/callback",
@@ -123,7 +311,7 @@ describe("<SourcesField>", () => {
   });
 
   it("ticks several groups in the picker and connects each one into the section", async () => {
-    queries({ connected: true, groups: [] });
+    queries({ connected: true });
     mocks.listMyGroups.mockResolvedValue({
       connected: true,
       username: "owner",
@@ -138,10 +326,8 @@ describe("<SourcesField>", () => {
     mocks.connectGroup.mockImplementation(async ({ groupId }: { groupId: string }) => ({ groupId, name: groupId }));
     const onChange = vi.fn();
     render(<Harness initial={[zoteroSourceEntry("99")]} onChange={onChange} />);
-    expect(screen.getByText(`${ns}.connectedAs {"handle":"owner"}`)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
-    const table = await screen.findByRole("table", { name: `${ns}.picker.title` });
+    const table = await openGroupPicker();
     expect(await within(table).findByRole("checkbox", { name: "Old group" })).toBeDisabled();
     expect(within(table).getByText(`${ns}.picker.added`)).toBeInTheDocument();
     await userEvent.click(within(table).getByRole("checkbox", { name: "Climate evidence" }));
@@ -156,7 +342,7 @@ describe("<SourcesField>", () => {
   });
 
   it("pages the groups fifty at a time, searches them, and warns only at Zotero's ceiling", async () => {
-    queries({ connected: true, groups: [] });
+    queries({ connected: true });
     const many = Array.from({ length: 120 }, (_, index) => ({
       id: String(index),
       name: `Group ${index}`,
@@ -171,8 +357,7 @@ describe("<SourcesField>", () => {
       groups: many,
     });
     render(<Harness />);
-    await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
-    const table = await screen.findByRole("table", { name: `${ns}.picker.title` });
+    const table = await openGroupPicker();
     expect(await within(table).findByText("Group 0")).toBeInTheDocument();
     expect(within(table).queryByText("Group 60")).not.toBeInTheDocument();
     expect(screen.getByText(`${ns}.picker.capped`)).toBeInTheDocument();
@@ -188,7 +373,7 @@ describe("<SourcesField>", () => {
   });
 
   it("asks Zotero again when the first read failed", async () => {
-    queries({ connected: true, groups: [] });
+    queries({ connected: true });
     mocks.listMyGroups
       .mockRejectedValueOnce(new Error("zotero is down"))
       .mockResolvedValue({
@@ -199,7 +384,7 @@ describe("<SourcesField>", () => {
         groups: [{ id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 }],
       });
     render(<Harness />);
-    await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
+    await openGroupPicker();
     expect(await screen.findByRole("alert")).toHaveTextContent(`${ns}.picker.failed`);
     await userEvent.click(
       screen.getByRole("button", { name: "evidenceLibraryConfiguration.picker.tryAgain" }),
@@ -209,7 +394,7 @@ describe("<SourcesField>", () => {
   });
 
   it("says nothing about a ceiling the account never reached", async () => {
-    queries({ connected: true, groups: [] });
+    queries({ connected: true });
     mocks.listMyGroups.mockResolvedValue({
       connected: true,
       username: "owner",
@@ -218,13 +403,13 @@ describe("<SourcesField>", () => {
       groups: [{ id: "42", name: "Climate evidence", isPublic: true, itemCount: 312 }],
     });
     render(<Harness />);
-    await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
+    await openGroupPicker();
     expect(await screen.findByText("Climate evidence")).toBeInTheDocument();
     expect(screen.queryByText(`${ns}.picker.capped`)).not.toBeInTheDocument();
   });
 
   it("keeps the groups it could not connect ticked", async () => {
-    queries({ connected: true, groups: [] });
+    queries({ connected: true });
     mocks.listMyGroups.mockResolvedValue({
       connected: true,
       username: "owner",
@@ -240,8 +425,7 @@ describe("<SourcesField>", () => {
       return { groupId, name: groupId };
     });
     render(<Harness />);
-    await userEvent.click(screen.getByRole("button", { name: `${ns}.addGroups` }));
-    const table = await screen.findByRole("table", { name: `${ns}.picker.title` });
+    const table = await openGroupPicker();
     await userEvent.click(await within(table).findByRole("checkbox", { name: "Climate evidence" }));
     await userEvent.click(within(table).getByRole("checkbox", { name: "Private notes" }));
     await userEvent.click(screen.getByRole("button", { name: `${ns}.picker.addPicked {"count":2}` }));
@@ -252,10 +436,12 @@ describe("<SourcesField>", () => {
   });
 
   it("adds a public group from a pasted link and rejects other text", async () => {
-    queries({ connected: true, groups: [] });
+    queries({ connected: true });
+    mocks.listMyGroups.mockResolvedValue({ connected: true, username: "owner", zoteroUserId: "1", capped: false, groups: [] });
     mocks.connectGroup.mockResolvedValue({ groupId: "2405685", name: "Open evidence" });
     const onChange = vi.fn();
     render(<Harness onChange={onChange} />);
+    await openGroupPicker();
     const link = screen.getByRole("textbox", { name: `${ns}.pasteLink` });
     await userEvent.type(link, "not a link{enter}");
     expect(screen.getByText(`${ns}.pasteInvalid`)).toBeInTheDocument();
@@ -270,18 +456,20 @@ describe("<SourcesField>", () => {
     queries({ connected: true, groups: [group42, group77] });
     const onChange = vi.fn();
     render(<Harness initial={[zoteroSourceEntry("42"), zoteroSourceEntry("77")]} onChange={onChange} />);
-    const row42 = document.querySelector('[data-group-id="42"]')!;
-    const row77 = document.querySelector('[data-group-id="77"]')!;
+    const row42 = document.querySelector<HTMLElement>('[data-group-id="42"]')!;
+    const row77 = document.querySelector<HTMLElement>('[data-group-id="77"]')!;
     expect(row42).toHaveAttribute("data-health", "connected");
-    expect(within(row42 as HTMLElement).getByText("312")).toBeInTheDocument();
-    expect(within(row42 as HTMLElement).getByText(`${ns}.public`)).toBeInTheDocument();
-    expect(within(row77 as HTMLElement).getByRole("switch", { name: `${ns}.writeback` })).toBeDisabled();
-    expect(within(row77 as HTMLElement).getByRole("button", { name: `${ns}.reconnect` })).toBeInTheDocument();
-    expect(within(row42 as HTMLElement).queryByRole("button", { name: `${ns}.reconnect` })).not.toBeInTheDocument();
+    expect(within(row42).getByText("312")).toBeInTheDocument();
+    expect(within(row42).getByText(`${ns}.public`)).toBeInTheDocument();
+    expect(within(row77).getByRole("switch", { name: `${ns}.writeback` })).toBeDisabled();
+    expect(within(row77).getByRole("button", { name: `${ns}.reconnect` })).toBeInTheDocument();
+    expect(within(row42).queryByRole("button", { name: `${ns}.reconnect` })).not.toBeInTheDocument();
 
-    await userEvent.click(within(row42 as HTMLElement).getByRole("switch", { name: `${ns}.writeback` }));
+    await userEvent.click(within(row42).getByRole("switch", { name: `${ns}.writeback` }));
     expect(onChange).toHaveBeenLastCalledWith([{ ...zoteroSourceEntry("42"), writebackEnabled: true }, zoteroSourceEntry("77")]);
-    await userEvent.click(within(row42 as HTMLElement).getByRole("button", { name: `${ns}.pause` }));
+    await userEvent.click(
+      within(row42).getByRole("button", { name: rowAction(`${ns}.pause`, "Climate evidence") }),
+    );
     expect(onChange).toHaveBeenLastCalledWith([
       { ...zoteroSourceEntry("42"), writebackEnabled: true, enabled: false },
       zoteroSourceEntry("77"),
@@ -294,19 +482,24 @@ describe("<SourcesField>", () => {
     mocks.removeGroup.mockResolvedValue(null);
     const onChange = vi.fn();
     render(<Harness initial={[zoteroSourceEntry("42")]} onChange={onChange} />);
-    await userEvent.click(screen.getByRole("button", { name: `${ns}.remove` }));
+    await userEvent.click(
+      screen.getByRole("button", { name: rowAction("common.remove", "Climate evidence") }),
+    );
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+    expect(mocks.removeGroup).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: `${ns}.removeConfirm` }));
     await waitFor(() => expect(mocks.removeGroup).toHaveBeenCalledWith({ libraryId, groupId: "42" }));
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith([]));
   });
 
-  it("keeps the tag rules behind Advanced and edits them as chips", async () => {
-    queries({ connected: true, groups: [] });
+  it("keeps the tag rules folded in Connections and edits them as chips", async () => {
+    queries({ connected: true });
     render(<Harness />);
-    expect(screen.queryByText(`${ns}.tagRulesHeading`)).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: `${ns}.advanced` }));
-    expect(screen.getByText(`${ns}.tagRulesHeading`)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.connections` }));
+    expect(
+      screen.queryByRole("textbox", { name: `${ns}.tagRules.publish.label` }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.tagRulesHeading` }));
     const publish = screen.getByRole("textbox", { name: `${ns}.tagRules.publish.label` });
     expect(screen.getByText("_publish")).toBeInTheDocument();
     await userEvent.type(publish, "open{enter}");

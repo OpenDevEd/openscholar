@@ -522,6 +522,7 @@ async function activateChangedConfiguration(
     canonicalBaseUrl?: string;
     // What the last update check found about OpenScholar's contract.
     contractSupport?: { running: boolean; latest: boolean };
+    topicsEnabled?: boolean;
   } = {},
 ) {
   const fixture = await createReadyLibrary(suffix);
@@ -551,6 +552,7 @@ async function activateChangedConfiguration(
   }
   const sections = {
     ...essentialSetupSections,
+    ...(options.topicsEnabled ? { topics: { enabled: true } } : {}),
     identity: {
       ...essentialSetupSections.identity,
       name: `Changed ${suffix}`,
@@ -697,6 +699,7 @@ async function failConfigurationDeployment(
       configurationDeploymentTarget: {
         applicationId: binding.targetRuntimeId,
         aiProviderKey: { present: false },
+        openAlexApiKey: { present: false },
         runtimeBindingId: binding._id,
         targetBaseUrl: binding.targetBaseUrl,
         customDomains: [],
@@ -1242,7 +1245,12 @@ describe("Evidence Library configuration deployment", () => {
     ).toBe(false);
   });
 
-  it("retries a failed current deployment by reusing its saved target", async () => {
+  it.each([
+    ["by reusing its saved target", false],
+    // Saved targets from before OpenAlex sources have no OpenAlex key field
+    // until migrations/openAlexDeploymentTargetKey backfills them.
+    ["whose saved target predates OpenAlex keys", true],
+  ])("retries a failed current deployment %s", async (_name, legacyTarget) => {
     const deployment = await activateChangedConfiguration("retry-saved-target");
     const network = createRuntimeNetwork({
       libraryId: deployment.fixture.created.libraryId,
@@ -1266,6 +1274,16 @@ describe("Evidence Library configuration deployment", () => {
       ),
     ).resolves.toEqual({ pollCount: 1, status: "running" });
     await failSavedConfigurationDeployment(deployment);
+    if (legacyTarget) {
+      await deployment.fixture.t.run(async (ctx) => {
+        const operation = await ctx.db.get(deployment.activated.operationId);
+        const { openAlexApiKey: _openAlexApiKey, ...target } =
+          operation!.configurationDeploymentTarget!;
+        await ctx.db.patch(operation!._id, {
+          configurationDeploymentTarget: target,
+        });
+      });
+    }
     network.restoreReadiness();
     const writesBeforeRetry = network.requests.filter(
       ({ method, url }) =>
@@ -1746,6 +1764,14 @@ describe("Evidence Library configuration deployment", () => {
         contractSupport: { running: false, latest: false },
       }),
     ).rejects.toThrow(/still being released/);
+  });
+
+  it("refuses to enable Topics until the running software advertises the contract", async () => {
+    await expect(
+      activateChangedConfiguration("topics-without-runtime-support", {
+        topicsEnabled: true,
+      }),
+    ).rejects.toThrow(/Topics need a newer Evidence Library software version/);
   });
 
   it("continues from the exact target of this library's failed software update", async () => {

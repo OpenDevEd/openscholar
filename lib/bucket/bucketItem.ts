@@ -3,6 +3,7 @@
  * normalises into and the bucket store keys by. One dedupe key ties
  * every source into the same set.
  */
+import type { BucketSearchFilters } from "@/lib/chat/params-to-bucket-filters";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { buildDedupeKey } from "./dedupe";
 
@@ -88,7 +89,7 @@ export type SavedSearchInput = {
   id: string;
   query: string;
   count?: number;
-  searchFilters: Record<string, unknown>;
+  searchFilters: BucketSearchFilters;
 };
 
 /**

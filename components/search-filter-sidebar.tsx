@@ -12,7 +12,7 @@ import {
   isCitesFilterActive,
   isCitedByFilterActive,
   isRelatedToFilterActive,
-  DEFAULT_FILTERS,
+  clearedFilterUpdates,
 } from "@/lib/utils";
 import { countActiveFilters } from "@/lib/filters";
 import { SidebarContent } from "./search-sidebar";
@@ -20,24 +20,8 @@ import { SidebarContent } from "./search-sidebar";
 export function SearchFilterSidebar() {
   const isMobile = useIsMobile();
 
-  // Filter state -- moved from SearchSidebar
-  const {
-    currentSearchField,
-    sortBy,
-    selectedRegions,
-    selectedCountryFocus,
-    ratingRange,
-    onlyRatedPapers,
-    citesItemId,
-    citedByItemId,
-    relatedToItemId,
-    yearRange,
-    isYearRangeEnabled,
-    reviewFilter,
-    dateRange,
-    filterType,
-  } = useCurrentSearchFormState();
-
+  const formState = useCurrentSearchFormState();
+  const { citesItemId, citedByItemId, relatedToItemId } = formState;
   const updateFilter = useUpdateSearchFilter();
 
   // Compute active filter states for conditional rendering
@@ -47,41 +31,11 @@ export function SearchFilterSidebar() {
 
   // Clear all filters
   const handleClearAllFilters = React.useCallback(() => {
-    const defaultYearRange = DEFAULT_FILTERS.yearRange();
-    updateFilter({
-      currentSearchField: DEFAULT_FILTERS.field,
-      sortBy: DEFAULT_FILTERS.sortBy,
-      dateRange: DEFAULT_FILTERS.dateRange,
-      yearRange: defaultYearRange,
-      isYearRangeEnabled: DEFAULT_FILTERS.isYearRangeEnabled,
-      ratingRange: DEFAULT_FILTERS.ratingRange,
-      onlyRatedPapers: DEFAULT_FILTERS.onlyRatedPapers,
-      selectedRegions: DEFAULT_FILTERS.selectedRegions,
-      selectedCountryFocus: DEFAULT_FILTERS.selectedCountryFocus,
-      citesItemId: DEFAULT_FILTERS.citesItemId,
-      citedByItemId: DEFAULT_FILTERS.citedByItemId,
-      relatedToItemId: DEFAULT_FILTERS.relatedToItemId,
-      reviewFilter: DEFAULT_FILTERS.reviewFilter,
-    });
+    updateFilter(clearedFilterUpdates());
   }, [updateFilter]);
 
   // Active filter count
-  const activeFiltersCount = countActiveFilters({
-    field: currentSearchField,
-    sortBy,
-    yearRange,
-    dateRange,
-    filterType,
-    isYearRangeEnabled,
-    selectedRegions,
-    selectedCountryFocus,
-    ratingRange,
-    onlyRatedPapers,
-    citesItemId,
-    citedByItemId,
-    relatedToItemId,
-    reviewFilter,
-  });
+  const activeFiltersCount = countActiveFilters({ ...formState, field: formState.currentSearchField });
 
   // The filter content rendered by both desktop and mobile paths
   const filterContent = (

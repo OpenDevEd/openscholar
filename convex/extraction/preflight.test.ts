@@ -30,14 +30,22 @@ const BUCKET_ITEM_HISTORY = {
   title: "Paper One",
   authors: ["A"],
   openalexId: "W1",
-  searchFilters: { limit: 1 },
+  searchFilters: {
+    query: "Paper One",
+    openAlexQuery: { sort: "relevance_score:desc" },
+    limit: 1,
+  },
 };
 
 const BUCKET_ITEM_HISTORY_200 = {
   ...BUCKET_ITEM_HISTORY,
   bucketKey: "history:W200",
   sourceRefId: "W200",
-  searchFilters: { limit: 200 },
+  searchFilters: {
+    query: "Paper One",
+    openAlexQuery: { sort: "relevance_score:desc" },
+    limit: 200,
+  },
 };
 
 async function seedUserFlagsAndCredits(

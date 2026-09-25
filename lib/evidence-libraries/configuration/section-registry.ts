@@ -102,6 +102,13 @@ export const SECTION_REGISTRY = [
     authority: "ownerEdited",
   },
   {
+    key: "topics",
+    pointer: "/topics",
+    label: "Topics",
+    description: "Topic discovery and publication surfaces.",
+    authority: "ownerEdited",
+  },
+  {
     key: "content",
     pointer: "/content",
     label: "Content",
@@ -217,7 +224,9 @@ export const SECTION_REGISTRY = [
 
 export type SectionKey = (typeof SECTION_REGISTRY)[number]["key"];
 
-const SECTION_KEYS = new Set<string>(SECTION_REGISTRY.map((section) => section.key));
+const SECTION_KEYS = new Set<string>(
+  SECTION_REGISTRY.map((section) => section.key),
+);
 
 function isSectionKey(value: unknown): value is SectionKey {
   return typeof value === "string" && SECTION_KEYS.has(value);

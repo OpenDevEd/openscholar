@@ -13,6 +13,7 @@ interface SearchCommandBodyProps {
   currentQuery: string;
   isLoading?: boolean;
   isValidating?: boolean;
+  allowEmpty?: boolean;
 }
 
 // Direction: 1 = going right (search → adjust), -1 = going left (adjust → search)
@@ -39,6 +40,7 @@ export function SearchCommandBody({
   currentQuery,
   isLoading,
   isValidating,
+  allowEmpty = false,
 }: SearchCommandBodyProps) {
   // search → adjust = going right (1), adjust → search = going left (-1)
   const direction: Direction = mode === "adjust" ? 1 : -1;
@@ -59,12 +61,14 @@ export function SearchCommandBody({
             <SearchMode
               isLoading={isLoading}
               isValidating={isValidating}
+              allowEmpty={allowEmpty}
             />
           ) : (
             <AdjustMode
               searchId={searchId}
               isLoading={isLoading}
               isValidating={isValidating}
+              allowEmpty={allowEmpty}
             />
           )}
         </motion.div>

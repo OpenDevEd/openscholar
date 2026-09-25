@@ -1,5 +1,5 @@
 "use client";
-"use no memo"; // createHistoryListItem + Date.now in posthog handler
+"use no memo"; // Date.now in posthog handler
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -29,32 +29,19 @@ import {
   CommandCenterPagination,
 } from "@/components/command-center";
 import { HistoryItem } from "./history-item";
-import type { ViewMode } from "@/lib/types";
 
-function createHistoryListItem(
-  viewMode: ViewMode,
-  onSearchClick: (item: SearchResult) => void
-) {
-  return function HistoryListItem({
-    item,
-    index,
-  }: {
-    item: SearchResult;
-    index: number;
-  }) {
-    return (
-      <HistoryItem
-        item={item}
-        index={index}
-        viewMode={viewMode}
-        onSearchClick={onSearchClick}
-      />
-    );
-  };
-}
 import posthog from "posthog-js";
 
-export function HistoryCommandCenter() {
+interface HistoryCommandCenterProps {
+  /**
+   * Turns the page into a chooser: picking a search hands it to the caller
+   * instead of opening it, the page number stays out of the URL, and the
+   * import, export and clear-all tools are left out.
+   */
+  pick?: { label: string; onPick: (item: SearchResult) => void; excludeId?: string };
+}
+
+export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   const toast = useAppToast();
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
@@ -69,13 +56,21 @@ export function HistoryCommandCenter() {
   ];
   const router = useRouter();
   const [searchFilter, setSearchFilter] = useState("");
-  const [currentPage, setCurrentPage] = useQueryState(
+  const [urlPage, setUrlPage] = useQueryState(
     "page",
     parseAsInteger.withDefault(1).withOptions({ scroll: true }),
   );
+  const [localPage, setLocalPage] = useState(1);
+  const currentPage = pick ? localPage : urlPage;
+  const setCurrentPage = (page: number) => (pick ? setLocalPage(page) : void setUrlPage(page));
 
-  const { searchHistory, clearSearchHistory, importSearchHistory } =
+  const { searchHistory: allHistory, clearSearchHistory, importSearchHistory } =
     useSearchHistoryStore();
+  const excludeId = pick?.excludeId;
+  const searchHistory = useMemo(
+    () => (excludeId ? allHistory.filter((item) => item.id !== excludeId) : allHistory),
+    [allHistory, excludeId],
+  );
   const {
     historyViewMode,
     setHistoryViewMode,
@@ -136,6 +131,10 @@ export function HistoryCommandCenter() {
 
   // Handlers
   const handleSearchClick = (item: SearchResult) => {
+    if (pick) {
+      pick.onPick(item);
+      return;
+    }
     // Track history item restored event
     posthog.capture("history_item_restored", {
       query: item.query,
@@ -222,19 +221,22 @@ export function HistoryCommandCenter() {
 
   return (
     <CommandCenterContainer>
-      {/* Header */}
-      <CommandCenterHeader
-        icon={Clock}
-        title={tc("searchHistory")}
-        description={th("description")}
-        count={sortedHistory.length}
-        singular={tcc("searchSingular")}
-        plural={tcc("searchPlural")}
-        countLabel={tcc("searchCount", { count: sortedHistory.length })}
-      />
+      {/* Header: the page's own title. A chooser sits under its host's title. */}
+      {!pick && (
+        <CommandCenterHeader
+          icon={Clock}
+          title={tc("searchHistory")}
+          description={th("description")}
+          count={sortedHistory.length}
+          singular={tcc("searchSingular")}
+          plural={tcc("searchPlural")}
+          countLabel={tcc("searchCount", { count: sortedHistory.length })}
+        />
+      )}
 
       {/* Toolbar */}
       <CommandCenterToolbar
+        leading={Boolean(pick)}
         viewMode={historyViewMode}
         onViewModeChange={setHistoryViewMode}
         sortOptions={SORT_OPTIONS}
@@ -243,11 +245,11 @@ export function HistoryCommandCenter() {
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
         placeholder={th("searchPlaceholder")}
-        onDownloadJSON={handleDownloadJSON}
-        onDownloadCSV={handleDownloadCSV}
-        onUploadJSON={handleUploadJSON}
-        onUploadCSV={handleUploadCSV}
-        onClearAll={handleClearAll}
+        onDownloadJSON={pick ? undefined : handleDownloadJSON}
+        onDownloadCSV={pick ? undefined : handleDownloadCSV}
+        onUploadJSON={pick ? undefined : handleUploadJSON}
+        onUploadCSV={pick ? undefined : handleUploadCSV}
+        onClearAll={pick ? undefined : handleClearAll}
         clearTooltip={th("clearAllHistory")}
         totalCount={searchHistory.length}
       />
@@ -261,7 +263,7 @@ export function HistoryCommandCenter() {
           emptyIcon={Clock}
           emptyTitle={th("noHistoryYet")}
           emptyDescription={th("noHistoryDescription")}
-          emptyAction={
+          emptyAction={pick ? undefined : (
             <Button asChild className="gap-2">
               <Link href="/">
                 <Search className="h-4 w-4" />
@@ -269,12 +271,17 @@ export function HistoryCommandCenter() {
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-          }
+          )}
           hasFilter={!!searchFilter.trim()}
           onClearFilter={() => setSearchFilter("")}
-          ItemComponent={createHistoryListItem(
-            historyViewMode,
-            handleSearchClick
+          renderItem={(item, index) => (
+            <HistoryItem
+              item={item}
+              index={index}
+              viewMode={historyViewMode}
+              onSearchClick={handleSearchClick}
+              pickLabel={pick?.label}
+            />
           )}
         />
 

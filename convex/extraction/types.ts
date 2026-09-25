@@ -79,22 +79,3 @@ export interface ExtractionResult {
   model?: string;
   provider?: string;
 }
-
-export interface SearchFilters {
-  query: string;
-  field?: string;
-  yearRange?: [number, number];
-  dateRange?: { from?: string; to?: string };
-  filterType?: "date" | "year";
-  isYearRangeEnabled?: boolean;
-  sortBy?: string;
-  selectedRegions?: string[];
-  selectedCountryFocus?: string[];
-  ratingRange?: [number, number];
-  onlyRatedPapers?: boolean;
-  citesItemId?: string;
-  citedByItemId?: string;
-  relatedToItemId?: string;
-  reviewFilter?: boolean;
-  language?: string;
-}

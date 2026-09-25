@@ -281,8 +281,23 @@ export const useBucketStore = create<BucketState>()(
     }),
     {
       name: "extraction-bucket",
-      version: 1,
+      version: 2,
       partialize: (state) => ({ items: state.items, order: state.order }),
+      // v2: the server only takes a saved search with its exact OpenAlex
+      // request. Older saved searches are dropped; they are added again
+      // from search history.
+      migrate: (persisted) => {
+        const state = persisted as Pick<BucketState, "items" | "order">;
+        const items = Object.fromEntries(
+          Object.entries(state.items).filter(([, item]) => {
+            if (item.source !== "history") return true;
+            const filters = (item.sourceMeta as { searchFilters?: object })
+              ?.searchFilters;
+            return !!filters && "openAlexQuery" in filters;
+          }),
+        );
+        return { items, order: state.order.filter((key) => key in items) };
+      },
       // `dedupeKeys` and `dedupeKeyToSource` aren't persisted (Set is not
       // JSON-serialisable and the map is cheap to recompute). Rebuild
       // both from `items` after hydration so selectors see fresh values

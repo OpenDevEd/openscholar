@@ -49,6 +49,16 @@ export async function GET(request: NextRequest) {
       citedByItemId: "",
       relatedToItemId: "",
       reviewFilter: false,
+      researchAreas: [],
+      sdgs: [],
+      openAccessOnly: false,
+      workTypes: [],
+      workLanguages: [],
+      institutionTypes: [],
+      funders: [],
+      minCitations: null,
+      hasAbstract: false,
+      includeRetracted: false,
     };
 
     // Use the same function as the main search action

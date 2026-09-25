@@ -125,6 +125,17 @@ export interface SearchFilters {
   
   // Content type filters
   reviewFilter: boolean;
+  researchAreas: string[];
+  sdgs: string[];
+  openAccessOnly: boolean;
+  workTypes: string[];
+  workLanguages: string[];
+  institutionTypes: string[];
+  funders: string[];
+  minCitations: number | null;
+  hasAbstract: boolean;
+  /** Retracted works are left out unless this is set. */
+  includeRetracted: boolean;
 }
 
 /**
@@ -152,37 +163,21 @@ export interface SearchResult {
   citedByItemId?: string;
   relatedToItemId?: string;
   reviewFilter?: boolean;
+  researchAreas?: string[];
+  sdgs?: string[];
+  openAccessOnly?: boolean;
+  workTypes?: string[];
+  workLanguages?: string[];
+  institutionTypes?: string[];
+  funders?: string[];
+  minCitations?: number;
+  hasAbstract?: boolean;
+  includeRetracted?: boolean;
   language?: string; // ISO 639-1 language code
   page?: number; // Last viewed page for this search
   chatJobIdsByAccountId?: Record<string, string>; // Per-account chat job links for this search
   createdAt: string;
   updatedAt: string;
-}
-
-/**
- * Parameters for URL-based search state
- * These are the serializable versions of search params
- */
-export interface SearchUrlParams {
-  q: string;
-  field: string;
-  sort: string;
-  page: number;
-  yf?: number; // yearFrom
-  yt?: number; // yearTo
-  df?: string; // dateFrom (ISO)
-  dt?: string; // dateTo (ISO)
-  ft: string;  // filterType
-  rmin: number;
-  rmax: number;
-  rated: boolean;
-  reg: string[];    // regions (encoded)
-  focus: string[];  // country focus (encoded)
-  cites: string;
-  citedBy: string;
-  rel: string;      // relatedTo
-  review: boolean;
-  lang?: string;
 }
 
 /**

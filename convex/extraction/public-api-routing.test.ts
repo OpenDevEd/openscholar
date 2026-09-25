@@ -169,7 +169,11 @@ const BUCKET_ITEM_HISTORY = {
   title: "Paper One",
   authors: ["A"],
   openalexId: "W1",
-  searchFilters: { limit: 1 },
+  searchFilters: {
+    query: "Paper One",
+    openAlexQuery: { sort: "relevance_score:desc" },
+    limit: 1,
+  },
 };
 
 const BUCKET_ITEM_SAVED_SEARCH = {
@@ -180,7 +184,10 @@ const BUCKET_ITEM_SAVED_SEARCH = {
   authors: [],
   searchFilters: {
     query: "heart disease",
-    searchField: "title_and_abstract" as const,
+    openAlexQuery: {
+      filter: "title_and_abstract.search:heart disease,is_retracted:false",
+      sort: "relevance_score:desc",
+    },
     limit: 2,
   },
 };
@@ -533,7 +540,7 @@ describe("duplicateJob", () => {
         title: "Paper Two",
         authors: ["B"],
         openalexId: "W2",
-        searchFilters: { limit: 1 },
+        searchFilters: BUCKET_ITEM_HISTORY.searchFilters,
       });
       await ctx.db.insert("chatPapers", {
         jobId: chatJobId,
@@ -586,5 +593,65 @@ describe("duplicateJob", () => {
         expect(bySourceIncluded.has(oldId)).toBe(false);
       }
     });
+  });
+});
+
+describe("searches saved before exact OpenAlex requests", () => {
+  const oldSearch = { query: "heart disease", yearRange: [2015, 2024], sortBy: "relevance" };
+
+  it("are refused by startJob", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    await seedUserAndFlags(t);
+    const auth = t.withIdentity(STARTJOB_IDENTITY);
+
+    await expect(
+      auth.mutation(api.extraction.mutations.startJob, {
+        name: "Old search",
+        mode: "extraction",
+        bucketItems: [
+          { ...BUCKET_ITEM_SAVED_SEARCH, searchFilters: oldSearch as never },
+        ],
+        questions: [{ key: "q1", question: "What is the outcome?", type: "string" }],
+        usePdfs: false,
+      }),
+    ).rejects.toThrow(/Validator error/);
+  });
+
+  it("are not copied onto a duplicate job", async () => {
+    const t = convexTest(schema);
+    setupTransactionAggregates(t);
+    const { userId } = await seedUserAndFlags(t);
+    const jobId = await t.run(async (ctx) => {
+      const now = Date.now();
+      const jobId = await ctx.db.insert("extractionJobs", {
+        userId,
+        mode: "extraction" as const,
+        sourceType: "history" as const,
+        status: "completed" as const,
+        name: "Old",
+        createdAt: now,
+        updatedAt: now,
+      });
+      await ctx.db.insert("extractionJobSources", {
+        jobId,
+        position: 0,
+        bucketKey: BUCKET_ITEM_SAVED_SEARCH.bucketKey,
+        source: "history" as const,
+        sourceRefId: BUCKET_ITEM_SAVED_SEARCH.sourceRefId,
+        title: BUCKET_ITEM_SAVED_SEARCH.title,
+        authors: [],
+        searchFilters: oldSearch,
+      });
+      return jobId;
+    });
+
+    await expect(
+      t
+        .withIdentity(STARTJOB_IDENTITY)
+        .mutation(api.extraction.mutations.duplicateJob, { jobId }),
+    ).rejects.toThrow(/VALIDATION_ERROR/);
+    const jobs = await t.run((ctx) => ctx.db.query("extractionJobs").collect());
+    expect(jobs).toHaveLength(1);
   });
 });

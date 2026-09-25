@@ -21,10 +21,7 @@ import {
   type CoolifyConfigurationUpdateResult,
   type CoolifyDeployment,
 } from "./coolifyClient";
-import {
-  openOwnProxyClient,
-  openPinnedDomainClient,
-} from "./domainEgressNode";
+import { openOwnProxyClient, openPinnedDomainClient } from "./domainEgressNode";
 import {
   activateLibraryRuntimeConfiguration,
   changeLibraryRuntimeRoute,
@@ -161,16 +158,18 @@ export const runConfigurationDeployment = internalAction({
       // Only a deployment puts traffic behind the guard, so only a deployment
       // puts it back there when it fails. A direct activation never does:
       // no later direct activation would ever take it down again.
-      protectionRoute = prepared.requiresDeployment ? {
-        applicationUuid: prepared.continuity.applicationId,
-        customOrigins,
-        platformOrigins,
-        revisionKey: prepared.continuity.revisionKey,
-        runtimeCommit: prepared.continuity.runtimeCommit,
-        runtimeImage: prepared.continuity.runtimeImage,
-        verifierToken,
-        verifierUrl,
-      } : undefined;
+      protectionRoute = prepared.requiresDeployment
+        ? {
+            applicationUuid: prepared.continuity.applicationId,
+            customOrigins,
+            platformOrigins,
+            revisionKey: prepared.continuity.revisionKey,
+            runtimeCommit: prepared.continuity.runtimeCommit,
+            runtimeImage: prepared.continuity.runtimeImage,
+            verifierToken,
+            verifierUrl,
+          }
+        : undefined;
       if (protectionRoute && !savedDeployment) {
         await changeLibraryRuntimeRoute("protection", protectionRoute);
         await requireLibraryRuntimeRouteReady(
@@ -294,6 +293,9 @@ export const runConfigurationDeployment = internalAction({
           embeddingApiKey: optionalPlatformEmbeddingKey(),
           zoteroGroups: prepared.zoteroGroups,
           aiProviderKey: prepared.aiProviderKey,
+          openAlexApiKey: prepared.openAlexApiKey,
+          platformOpenAlexApiKey:
+            process.env.OPENALEX_API_KEY?.trim() || undefined,
           publicationProviders: prepared.publicationPayload,
           allowedAiModels: modelCatalog.allowedModelIds,
           aiModelMetadata: modelCatalog.modelMetadata,

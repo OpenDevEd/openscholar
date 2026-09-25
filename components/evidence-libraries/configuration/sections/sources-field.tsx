@@ -7,15 +7,12 @@ import {
   ChevronRight,
   Globe,
   Lock,
-  Pause,
-  Play,
   Plus,
   RefreshCw,
-  Search,
-  Trash2,
+  Settings2,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -28,22 +25,59 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { type ZoteroSourceEntry, zoteroSourceEntry } from "@/convex/zotero/sourceEntry";
+import {
+  type ZoteroSourceEntry,
+  zoteroSourceEntry,
+} from "@/convex/zotero/sourceEntry";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { getConvexSiteUrl } from "@/lib/convex-site";
-import { cn } from "@/lib/utils";
-import { ChipInput, EmptyList, FieldGroup, MetaList, Panel } from "../fields";
+import type { EvidenceSourceEntry } from "@/lib/evidence-libraries/configuration/sources";
+import { ChipInput, EmptyList, MetaList, Panel } from "../fields";
 import { FieldError } from "../section-card";
-import { StatusChip, type StatusTone } from "../status-chip";
-import { localPickerSource, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
-import { DEFAULT_TAG_RULES, type TagRuleKey, type TagRules, tagRuleIssue } from "./tag-rules";
+import { OpenAlexIcon } from "@/components/icons/openalex-icon";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  OpenAlexAccessSettings,
+  OpenAlexSearchDialog,
+  OpenAlexSourceRow,
+  useOpenAlexSources,
+} from "./openalex-sources";
+import { SourceRow } from "./source-row";
+import { type StatusTone } from "../status-chip";
+import {
+  localPickerSource,
+  type PickerSource,
+  RemotePickerDialog,
+} from "./remote-picker-dialog";
+import {
+  DEFAULT_TAG_RULES,
+  type TagRuleKey,
+  type TagRules,
+  tagRuleIssue,
+} from "./tag-rules";
 
 type ConnectedGroup = {
   groupId: string;
@@ -54,14 +88,29 @@ type ConnectedGroup = {
   scopes: { read: boolean; write: boolean };
 };
 
-type PickerGroup = { id: string; name: string; isPublic: boolean; itemCount: number };
+type PickerGroup = {
+  id: string;
+  name: string;
+  isPublic: boolean;
+  itemCount: number;
+};
 
 type GroupHealth = "connected" | "paused";
 
-const HEALTH_TONE: Record<GroupHealth, StatusTone> = { connected: "success", paused: "neutral" };
+const HEALTH_TONE: Record<GroupHealth, StatusTone> = {
+  connected: "success",
+  paused: "neutral",
+};
 
 // Displayed in the mock's order, not the schema's.
-const TAG_RULE_ORDER: TagRuleKey[] = ["hidden", "internal", "comingSoon", "description", "redirects", "publish"];
+const TAG_RULE_ORDER: TagRuleKey[] = [
+  "hidden",
+  "internal",
+  "comingSoon",
+  "description",
+  "redirects",
+  "publish",
+];
 
 /** The group id from a zotero.org group link, or null for anything else. */
 function groupIdFromLink(value: string): string | null {
@@ -71,7 +120,8 @@ function groupIdFromLink(value: string): string | null {
   } catch {
     return null;
   }
-  if (url.protocol !== "https:" || !/^(www\.)?zotero\.org$/u.test(url.hostname)) return null;
+  if (url.protocol !== "https:" || !/^(www\.)?zotero\.org$/u.test(url.hostname))
+    return null;
   const match = /^\/groups\/(\d+)(?:\/|$)/u.exec(url.pathname);
   return match ? match[1] : null;
 }
@@ -79,38 +129,61 @@ function groupIdFromLink(value: string): string | null {
 export type SourcesFieldProps = {
   libraryId: Id<"evidenceLibraries">;
   /** The `sources` section of the draft. */
-  value: ZoteroSourceEntry[];
-  onChange: (value: ZoteroSourceEntry[]) => void;
+  value: EvidenceSourceEntry[];
+  onChange: (value: EvidenceSourceEntry[]) => void;
   /** The `content.tags` rules of the draft. */
   tags: TagRules;
   onTagsChange: (tags: TagRules) => void;
 };
 
 /**
- * Field body for the Sources section: the signed-in admin's Zotero account,
- * the connected groups, and the tag rules behind "Advanced".
+ * One list of library sources. Provider credentials and import rules are
+ * managed separately from the groups and searches they connect.
  */
-export function SourcesField({ libraryId, value, onChange, tags, onTagsChange }: SourcesFieldProps) {
+export function SourcesField({
+  libraryId,
+  value,
+  onChange,
+  tags,
+  onTagsChange,
+}: SourcesFieldProps) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const account = useProtectedQuery(api.zotero.queries.getConnectionStatus, {});
-  const groups = useProtectedQuery(api.zotero.libraryGroups.listLibraryZoteroGroups, { libraryId });
-  const listMyGroups = useAction(api.zotero.libraryGroupActions.listMyZoteroGroups);
-  const connectGroup = useAction(api.zotero.libraryGroupActions.connectZoteroGroup);
+  const groups = useProtectedQuery(
+    api.zotero.libraryGroups.listLibraryZoteroGroups,
+    { libraryId },
+  );
+  const listMyGroups = useAction(
+    api.zotero.libraryGroupActions.listMyZoteroGroups,
+  );
+  const connectGroup = useAction(
+    api.zotero.libraryGroupActions.connectZoteroGroup,
+  );
   const removeGroup = useMutation(api.zotero.libraryGroups.removeZoteroGroup);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
+  const [connectionTab, setConnectionTab] = useState("zotero");
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addButton = useRef<HTMLButtonElement>(null);
+  const openalex = useOpenAlexSources({ libraryId, value, onChange });
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [busyGroupId, setBusyGroupId] = useState<string | null>(null);
   // Convex calls finish after other rows may have changed; edits always start
   // from the newest draft, not the one captured when the call began.
   const latest = useRef(value);
   latest.current = value;
-  function commit(next: ZoteroSourceEntry[]) {
+  function commit(next: EvidenceSourceEntry[]) {
     latest.current = next;
     onChange(next);
   }
 
   const connected = account.data?.connected === true;
-  const byGroupId = new Map<string, ConnectedGroup>((groups.data ?? []).map((group) => [group.groupId, group]));
+  const zoteroSources = value.filter(
+    (source): source is ZoteroSourceEntry => source.provider === "zotero",
+  );
+  const byGroupId = new Map<string, ConnectedGroup>(
+    (groups.data ?? []).map((group) => [group.groupId, group]),
+  );
 
   /** Connects each group; returns the ids that could not be connected. */
   async function addGroups(groupIds: string[]): Promise<string[]> {
@@ -118,7 +191,11 @@ export function SourcesField({ libraryId, value, onChange, tags, onTagsChange }:
     for (const groupId of groupIds) {
       try {
         await connectGroup({ libraryId, groupId });
-        if (!latest.current.some((entry) => entry.groupId === groupId)) {
+        if (
+          !latest.current.some(
+            (entry) => entry.provider === "zotero" && entry.groupId === groupId,
+          )
+        ) {
           commit([...latest.current, zoteroSourceEntry(groupId)]);
         }
       } catch (error) {
@@ -145,7 +222,11 @@ export function SourcesField({ libraryId, value, onChange, tags, onTagsChange }:
     setBusyGroupId(groupId);
     try {
       await removeGroup({ libraryId, groupId });
-      commit(latest.current.filter((entry) => entry.groupId !== groupId));
+      commit(
+        latest.current.filter(
+          (entry) => entry.provider !== "zotero" || entry.groupId !== groupId,
+        ),
+      );
     } catch {
       toast.error(t("removeFailed"));
     } finally {
@@ -154,90 +235,221 @@ export function SourcesField({ libraryId, value, onChange, tags, onTagsChange }:
   }
 
   function patchEntry(groupId: string, patch: Partial<ZoteroSourceEntry>) {
-    commit(latest.current.map((entry) => (entry.groupId === groupId ? { ...entry, ...patch } : entry)));
+    commit(
+      latest.current.map((entry) =>
+        entry.provider === "zotero" && entry.groupId === groupId
+          ? { ...entry, ...patch }
+          : entry,
+      ),
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <AccountPanel account={account.data} />
+    <div className="@container/sources space-y-4" data-library-sources>
+      {value.length === 0 ? (
+        <EmptyList>{t("noSources")}</EmptyList>
+      ) : (
+        <ul
+          aria-label={t("listLabel")}
+          className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 bg-background"
+        >
+          {zoteroSources.map((entry) => (
+            <GroupRow
+              key={entry.groupId}
+              entry={entry}
+              group={byGroupId.get(entry.groupId)}
+              busy={busyGroupId === entry.groupId}
+              canReconnect={connected}
+              onPatch={(patch) => patchEntry(entry.groupId, patch)}
+              onReconnect={() => reconnect(entry.groupId)}
+              onRemove={() => setRemoveId(entry.groupId)}
+            />
+          ))}
+          {openalex.sources.map((source) => (
+            <OpenAlexSourceRow
+              key={source.key}
+              source={source}
+              controller={openalex}
+            />
+          ))}
+        </ul>
+      )}
 
-      <FieldGroup
-        title={t("groupsHeading")}
-        action={
-          <GroupPicker
-            disabled={!connected}
-            addedIds={value.map((entry) => entry.groupId)}
-            load={() => listMyGroups({ libraryId })}
-            onAdd={addGroups}
-          />
-        }
-      >
-        {value.length === 0 ? (
-          <EmptyList>{connected ? t("noGroups") : t("connectFirst")}</EmptyList>
-        ) : (
-          <div className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 bg-background">
-            {value.map((entry) => (
-              <GroupRow
-                key={entry.groupId}
-                entry={entry}
-                group={byGroupId.get(entry.groupId)}
-                busy={busyGroupId === entry.groupId}
-                canReconnect={connected}
-                onPatch={(patch) => patchEntry(entry.groupId, patch)}
-                onReconnect={() => reconnect(entry.groupId)}
-                onRemove={() => setRemoveId(entry.groupId)}
-              />
-            ))}
-          </div>
-        )}
-
-        <PasteLink
-          disabled={!connected}
-          existing={value.map((entry) => entry.groupId)}
-          onAdd={(groupId) => addGroups([groupId])}
-        />
-      </FieldGroup>
-
-      <div className="space-y-3 border-t border-border/50 pt-5">
+      <div className="flex items-center justify-end gap-2">
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className="-ml-2 h-7 px-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-          aria-expanded={advancedOpen}
-          onClick={() => setAdvancedOpen((open) => !open)}
+          aria-label={t("connections")}
+          title={t("connections")}
+          onClick={() => setConnectionsOpen(true)}
         >
-          {advancedOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-          {t("advanced")}
+          <Settings2 />
+          <span className="hidden @min-[24rem]/sources:inline">
+            {t("connections")}
+          </span>
         </Button>
-        {advancedOpen ? (
-          <Panel tone="muted" className="space-y-4">
-            <div className="space-y-0.5">
-              <p className="text-sm font-medium">{t("tagRulesHeading")}</p>
-              <p className="text-xs text-muted-foreground">{t("tagRulesIntro")}</p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {TAG_RULE_ORDER.map((key) => {
-                const current = tags[key] ?? DEFAULT_TAG_RULES[key];
-                const issue = tagRuleIssue(key, current);
-                return (
-                  <ChipInput
-                    key={key}
-                    label={t(`tagRules.${key}.label`)}
-                    hint={t(`tagRules.${key}.hint`)}
-                    values={current}
-                    placeholder={t("tagPlaceholder")}
-                    error={issue ? t(`tagRules.issues.${issue}`) : null}
-                    onChange={(values) => onTagsChange({ ...tags, [key]: values })}
-                  />
-                );
-              })}
-            </div>
-          </Panel>
-        ) : null}
+        <GroupPicker
+          addedIds={zoteroSources.map((entry) => entry.groupId)}
+          load={() => listMyGroups({ libraryId })}
+          onAdd={addGroups}
+          onOpenChange={(open) => {
+            if (open) setAddMenuOpen(false);
+          }}
+        >
+          <DropdownMenu open={addMenuOpen} onOpenChange={setAddMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button ref={addButton} type="button" variant="outline" size="sm">
+                <Plus />
+                {t("addSource")}
+                <ChevronDown className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-64"
+              onCloseAutoFocus={(event) => event.preventDefault()}
+            >
+              {connected ? (
+                <DialogTrigger asChild>
+                  <DropdownMenuItem
+                    onSelect={(event) => event.preventDefault()}
+                  >
+                    <ZoteroIcon className="size-4 text-[#cc2936]" />
+                    <span>
+                      {t("zoteroGroup")}
+                      <span className="block text-xs text-muted-foreground">
+                        {t("zoteroGroupHint")}
+                      </span>
+                    </span>
+                  </DropdownMenuItem>
+                </DialogTrigger>
+              ) : (
+                <DropdownMenuItem
+                  onSelect={() => {
+                    setConnectionTab("zotero");
+                    setConnectionsOpen(true);
+                  }}
+                >
+                  <ZoteroIcon className="size-4 text-[#cc2936]" />
+                  <span>
+                    {t("zoteroGroup")}
+                    <span className="block text-xs text-muted-foreground">
+                      {t("zoteroConnectFirst")}
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onSelect={() => openalex.setEditing("new")}>
+                <OpenAlexIcon className="size-4" />
+                <span>
+                  {t("openAlexSearch")}
+                  <span className="block text-xs text-muted-foreground">
+                    {t("openAlexSearchHint")}
+                  </span>
+                </span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </GroupPicker>
       </div>
 
-      <AlertDialog open={removeId !== null} onOpenChange={(open) => !open && setRemoveId(null)}>
+      <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{t("connectionsTitle")}</DialogTitle>
+            <DialogDescription>{t("connectionsDescription")}</DialogDescription>
+          </DialogHeader>
+          <Tabs
+            value={connectionTab}
+            onValueChange={setConnectionTab}
+            className="gap-5"
+          >
+            <TabsList aria-label={t("providerTabs")}>
+              <TabsTrigger value="zotero">
+                <ZoteroIcon className="size-4" />
+                Zotero
+              </TabsTrigger>
+              <TabsTrigger value="openalex">
+                <OpenAlexIcon className="size-4" />
+                OpenAlex
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="zotero" className="space-y-5">
+              <AccountPanel account={account.data} />
+              <div className="space-y-3 border-t border-border/50 pt-5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="-ml-2 h-7 px-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  aria-expanded={advancedOpen}
+                  onClick={() => setAdvancedOpen((open) => !open)}
+                >
+                  {advancedOpen ? (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  )}
+                  {t("tagRulesHeading")}
+                </Button>
+                {advancedOpen ? (
+                  <Panel tone="muted" className="space-y-4">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium">
+                        {t("tagRulesHeading")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("tagRulesIntro")}
+                      </p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {TAG_RULE_ORDER.map((key) => {
+                        const current = tags[key] ?? DEFAULT_TAG_RULES[key];
+                        const issue = tagRuleIssue(key, current);
+                        return (
+                          <ChipInput
+                            key={key}
+                            label={t(`tagRules.${key}.label`)}
+                            hint={t(`tagRules.${key}.hint`)}
+                            values={current}
+                            placeholder={t("tagPlaceholder")}
+                            error={issue ? t(`tagRules.issues.${issue}`) : null}
+                            onChange={(values) =>
+                              onTagsChange({ ...tags, [key]: values })
+                            }
+                          />
+                        );
+                      })}
+                    </div>
+                  </Panel>
+                ) : null}
+              </div>
+            </TabsContent>
+            <TabsContent value="openalex">
+              <OpenAlexAccessSettings source={openalex} />
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+      {openalex.editing ? (
+        <OpenAlexSearchDialog
+          searchId={openalex.searchId}
+          initial={
+            typeof openalex.editing === "string" ? null : openalex.editing
+          }
+          onClose={() => {
+            openalex.setEditing(null);
+            addButton.current?.focus();
+          }}
+          onApprove={openalex.replaceSource}
+        />
+      ) : null}
+
+      <AlertDialog
+        open={removeId !== null}
+        onOpenChange={(open) => !open && setRemoveId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("removeTitle")}</AlertDialogTitle>
@@ -311,14 +523,23 @@ function AccountPanel({
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="text-sm font-medium">
           {account?.connected
-            ? t("connectedAs", { handle: account.username ?? account.zoteroUserId })
+            ? t("connectedAs", {
+                handle: account.username ?? account.zoteroUserId,
+              })
             : t("notConnected")}
         </p>
-        <p className="text-xs text-muted-foreground">{connected ? t("accountHeading") : t("notConnectedHint")}</p>
+        <p className="text-xs text-muted-foreground">
+          {connected ? t("accountHeading") : t("notConnectedHint")}
+        </p>
       </div>
       <div className="shrink-0">
         {connected ? (
-          <Button type="button" variant="outline" size="sm" onClick={() => setConfirmOpen(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setConfirmOpen(true)}
+          >
             {t("disconnect")}
           </Button>
         ) : (
@@ -332,14 +553,18 @@ function AccountPanel({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("disconnectTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("disconnectBody")}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {t("disconnectBody")}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("picker.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 setConfirmOpen(false);
-                void disconnect({}).catch(() => toast.error(t("disconnectFailed")));
+                void disconnect({}).catch(() =>
+                  toast.error(t("disconnectFailed")),
+                );
               }}
             >
               {t("disconnect")}
@@ -383,44 +608,56 @@ function GroupRow({
           icon: group.isPublic ? Globe : Lock,
           value: group.isPublic ? t("public") : t("private"),
         },
-        { key: "records", label: t("recordsLabel"), value: group.itemCount.toLocaleString() },
+        {
+          key: "records",
+          label: t("recordsLabel"),
+          value: group.itemCount.toLocaleString(),
+        },
         ...(group.connectedByZoteroUsername
-          ? [{ key: "by", label: t("connectedBy"), value: group.connectedByZoteroUsername }]
+          ? [
+              {
+                key: "by",
+                label: t("connectedBy"),
+                value: group.connectedByZoteroUsername,
+              },
+            ]
           : []),
       ]
     : [];
 
   return (
-    <div
-      className={cn("space-y-2 p-4", paused && "bg-muted/30")}
+    <SourceRow
+      name={group?.name ?? entry.key}
+      provider={t("zoteroGroup")}
+      icon={<ZoteroIcon className="size-4 text-[#cc2936]" />}
+      status={{ label: t(`health.${health}`), tone: HEALTH_TONE[health] }}
+      paused={paused}
+      metadata={metaItems}
       data-group-id={entry.groupId}
       data-health={health}
-    >
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={cn("text-sm font-medium", paused && "text-muted-foreground")}>
-              {group?.name ?? entry.key}
-            </span>
-            <StatusChip tone={HEALTH_TONE[health]}>{t(`health.${health}`)}</StatusChip>
-          </div>
-          {metaItems.length > 0 ? <MetaList items={metaItems} /> : null}
-        </div>
-
+      disabled={busy}
+      onToggle={() => onPatch({ enabled: paused })}
+      onRemove={onRemove}
+      description={!canWrite && group ? t("writebackUnavailable") : undefined}
+      controls={
         <div className="flex items-center gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <label className="flex h-8 items-center gap-2 rounded-md border border-border/50 bg-background px-2.5 text-xs">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Switch
                   checked={entry.writebackEnabled}
                   disabled={!canWrite}
                   aria-label={t("writeback")}
-                  onCheckedChange={(checked) => onPatch({ writebackEnabled: checked })}
+                  onCheckedChange={(checked) =>
+                    onPatch({ writebackEnabled: checked })
+                  }
                 />
                 {t("writeback")}
               </label>
             </TooltipTrigger>
-            <TooltipContent>{canWrite ? t("writebackHint") : t("writebackUnavailable")}</TooltipContent>
+            <TooltipContent>
+              {canWrite ? t("writebackHint") : t("writebackUnavailable")}
+            </TooltipContent>
           </Tooltip>
           {!canWrite ? (
             <Button
@@ -430,38 +667,13 @@ function GroupRow({
               disabled={busy || !canReconnect}
               onClick={onReconnect}
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className="size-3.5" />
               {t("reconnect")}
             </Button>
           ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onPatch({ enabled: paused })}
-          >
-            {paused ? <Play /> : <Pause />}
-            {paused ? t("resume") : t("pause")}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-destructive"
-            aria-label={t("remove")}
-            disabled={busy}
-            onClick={onRemove}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
         </div>
-      </div>
-      {!canWrite && group ? (
-        <p className="text-xs text-muted-foreground" data-writeback="unavailable">
-          {t("writebackUnavailable")}
-        </p>
-      ) : null}
-    </div>
+      }
+    />
   );
 }
 
@@ -470,15 +682,18 @@ function GroupRow({
 /* ------------------------------------------------------------------ */
 
 function GroupPicker({
-  disabled,
+  children,
+  onOpenChange,
   addedIds,
   load,
   onAdd,
 }: {
-  disabled: boolean;
+  children: ReactNode;
+  onOpenChange: (open: boolean) => void;
   addedIds: string[];
   load: () => Promise<
-    { connected: false } | { connected: true; groups: PickerGroup[]; capped: boolean }
+    | { connected: false }
+    | { connected: true; groups: PickerGroup[]; capped: boolean }
   >;
   onAdd: (groupIds: string[]) => Promise<string[]>;
 }) {
@@ -498,7 +713,8 @@ function GroupPicker({
       mine.current = null;
       throw error;
     }
-    if (!answer.connected) return { items: [], nextCursor: null, reason: "not-set-up" };
+    if (!answer.connected)
+      return { items: [], nextCursor: null, reason: "not-set-up" };
     setCapped(answer.capped);
     const rows = answer.groups.map((group) => ({
       id: group.id,
@@ -528,12 +744,14 @@ function GroupPicker({
   return (
     <RemotePickerDialog
       mode="multi"
-      trigger={
-        <Button type="button" variant="outline" size="sm" disabled={disabled}>
-          <Plus />
-          {t("addGroups")}
-        </Button>
-      }
+      trigger={children}
+      controls={() => (
+        <PasteLink
+          disabled={false}
+          existing={addedIds}
+          onAdd={(groupId) => onAdd([groupId])}
+        />
+      )}
       title={t("picker.title")}
       description={t("picker.description")}
       searchLabel={t("picker.search")}
@@ -548,6 +766,7 @@ function GroupPicker({
       notSetUpLabel={t("connectFirst")}
       note={capped ? t("picker.capped") : null}
       onOpenChange={(open) => {
+        onOpenChange(open);
         mine.current = null;
         if (!open) setCapped(false);
       }}
@@ -596,7 +815,9 @@ function PasteLink({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
-        <span className="shrink-0 text-xs text-muted-foreground">{t("pasteLink")}</span>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {t("pasteLink")}
+        </span>
         <Input
           aria-label={t("pasteLink")}
           className="h-8 bg-background font-mono text-xs"

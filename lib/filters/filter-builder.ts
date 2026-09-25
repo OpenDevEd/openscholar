@@ -23,12 +23,8 @@ import {
   FilterItem,
   FilterSectionType,
 } from "./filter-types";
-import {
-  SECTION_CONFIG,
-  FILTER_ICONS,
-  FILTER_EMOJIS,
-  SORT_OPTIONS,
-} from "./filter-config";
+import { SECTION_TITLES, FILTER_ICONS, SORT_OPTIONS } from "./filter-config";
+import { INSTITUTION_TYPES, SDGS, WORK_TYPES } from "@/lib/openalex/vocabulary";
 
 /** Translation function for filter strings (from useTranslations("searchFilters")) */
 export type FilterT = {
@@ -100,32 +96,6 @@ export function extractCountryCodes(ids: string[]): string[] {
 }
 
 /**
- * Count regions (non-country IDs) from a list
- */
-export function countRegions(ids: string[]): number {
-  return ids.filter((id) => !(id.length === 2 && COUNTRIES[id])).length;
-}
-
-/**
- * Format geographic filter summary (e.g., "2 regions + 3 countries")
- */
-export function formatGeoSummary(
-  regionCount: number,
-  countryCount: number,
-  t?: FilterT
-): string {
-  const parts: string[] = [];
-  if (regionCount > 0) {
-    parts.push(t ? t("filterRegionCount", { count: regionCount }) : `${regionCount} region${regionCount > 1 ? "s" : ""}`);
-  }
-  if (countryCount > 0) {
-    parts.push(t ? t("filterCountryCount", { count: countryCount }) : `${countryCount} countr${countryCount > 1 ? "ies" : "y"}`);
-  }
-  const join = t ? t("filterGeoJoin") : " + ";
-  return parts.join(join);
-}
-
-/**
  * Format rating range for display (e.g., "3-5 stars")
  */
 export function formatRatingRange(
@@ -145,35 +115,6 @@ export function formatRatingRange(
 }
 
 /**
- * Format rating summary for history badges
- */
-export function formatRatingSummary(
-  range?: [number, number],
-  onlyRated?: boolean,
-  t?: FilterT
-): string {
-  const parts: string[] = [];
-  if (range && (range[0] > 0 || range[1] < 5)) {
-    const [min, max] = range;
-    if (t) {
-      parts.push(
-        min === max
-          ? t("filterRatingRangeSingle", { min })
-          : t("filterRatingRangeMulti", { min, max })
-      );
-    } else {
-      parts.push(
-        `${min === max ? min : `${min}-${max}`} star${min === 1 && max === 1 ? "" : "s"}`
-      );
-    }
-  }
-  if (onlyRated) {
-    parts.push(t ? t("filterRatedOnly") : "rated only");
-  }
-  return parts.length > 0 ? parts.join(", ") : (t ? t("filterFiltered") : "filtered");
-}
-
-/**
  * Check if a SearchResult has any active filters
  * Used by history components to show filter indicators
  */
@@ -188,6 +129,16 @@ export function hasActiveFiltersFromResult(result: {
   ratingRange?: [number, number];
   reviewFilter?: boolean;
   onlyRatedPapers?: boolean;
+  researchAreas?: string[];
+  sdgs?: string[];
+  openAccessOnly?: boolean;
+  workTypes?: string[];
+  workLanguages?: string[];
+  institutionTypes?: string[];
+  funders?: string[];
+  minCitations?: number | null;
+  hasAbstract?: boolean;
+  includeRetracted?: boolean;
 }): boolean {
   return !!(
     result.yearRange ||
@@ -199,7 +150,17 @@ export function hasActiveFiltersFromResult(result: {
     result.relatedToItemId ||
     result.ratingRange ||
     result.reviewFilter ||
-    result.onlyRatedPapers
+    result.onlyRatedPapers ||
+    result.researchAreas?.length ||
+    result.sdgs?.length ||
+    result.openAccessOnly ||
+    result.workTypes?.length ||
+    result.workLanguages?.length ||
+    result.institutionTypes?.length ||
+    result.funders?.length ||
+    result.minCitations ||
+    result.hasAbstract ||
+    result.includeRetracted
   );
 }
 
@@ -210,13 +171,9 @@ function createSection(
   items: FilterItem[],
   t?: FilterT
 ): FilterSection {
-  const config = SECTION_CONFIG[type];
-  const title = t ? t(SECTION_TITLE_KEYS[type]) : config.title;
   return {
     id: type,
-    title,
-    tooltipColor: config.tooltipColor,
-    badgeColor: config.badgeColor,
+    title: t ? t(SECTION_TITLE_KEYS[type]) : SECTION_TITLES[type],
     items,
   };
 }
@@ -232,7 +189,6 @@ function createFilterItem(
     key,
     type,
     icon: FILTER_ICONS[type],
-    emoji: FILTER_EMOJIS[type],
     label,
     displayValue,
     ...extra,
@@ -248,15 +204,31 @@ export type FormatDateTimeFn = (
 ) => string;
 
 /**
+ * Names the builder cannot know on its own: research areas come from the topic
+ * catalog, and places are named in the reader's language.
+ */
+export type FilterNames = {
+  researchAreas?: Record<string, string>;
+  funders?: Record<string, string>;
+  place?: (codeOrRegionId: string) => string;
+  language?: (code: string) => string;
+};
+const namesOf = (ids: string[], options: readonly { id: string; name: string }[]) =>
+  ids.map((id) => options.find((option) => option.id === id)?.name ?? id).join(", ");
+
+/**
  * Build structured filter data from search parameters
  * This is the single source of truth for filter display logic
  */
 export function buildFilterData(
   params: FilterParams,
   t?: FilterT,
-  formatDateTime?: FormatDateTimeFn
+  formatDateTime?: FormatDateTimeFn,
+  names: FilterNames = {}
 ): FilterSection[] {
   const sections: FilterSection[] = [];
+  const placeNames = (ids: string[]) =>
+    ids.map((id) => names.place?.(id) ?? COUNTRIES[id] ?? id).join(", ");
 
   // Search section (field + sort) - only include when different from defaults
   const searchItems: FilterItem[] = [];
@@ -333,12 +305,11 @@ export function buildFilterData(
   const geoItems: FilterItem[] = [];
   if (isCountryFilterActive(params.selectedRegions)) {
     const countryCodes = extractCountryCodes(params.selectedRegions!);
-    const regionCount = countRegions(params.selectedRegions!);
     geoItems.push(
       createFilterItem(
         "regions",
         "regions",
-        formatGeoSummary(regionCount, countryCodes.length, t),
+        placeNames(params.selectedRegions!),
         t ? t("filterLabelInstitutionLocation") : "Institution location",
         { countryCodes }
       )
@@ -346,12 +317,11 @@ export function buildFilterData(
   }
   if (isCountryFocusActive(params.selectedCountryFocus)) {
     const countryCodes = extractCountryCodes(params.selectedCountryFocus!);
-    const regionCount = countRegions(params.selectedCountryFocus!);
     geoItems.push(
       createFilterItem(
         "countryFocus",
         "countryFocus",
-        formatGeoSummary(regionCount, countryCodes.length, t),
+        placeNames(params.selectedCountryFocus!),
         t ? t("filterLabelCountryFocus") : "Country focus",
         { countryCodes }
       )
@@ -361,7 +331,7 @@ export function buildFilterData(
     sections.push(createSection("geographic", geoItems, t));
   }
 
-  // Content section (review filter only - language is shown separately in history cards)
+  // Content section (language is shown separately in history cards)
   const contentItems: FilterItem[] = [];
   if (isReviewFilterActive(params.reviewFilter)) {
     contentItems.push(
@@ -372,6 +342,77 @@ export function buildFilterData(
         t ? t("filterReviewsOnly") : "Reviews only"
       )
     );
+  }
+  if (params.workTypes?.length) {
+    contentItems.push(
+      createFilterItem(
+        "workType",
+        "workType",
+        namesOf(params.workTypes, WORK_TYPES),
+        t ? t("publicationType") : "Publication type"
+      )
+    );
+  }
+  if (params.researchAreas?.length) {
+    contentItems.push(
+      createFilterItem(
+        "researchArea",
+        "researchArea",
+        params.researchAreas.map((id) => names.researchAreas?.[id] ?? id).join(", "),
+        t ? t("researchAreas") : "Research areas"
+      )
+    );
+  }
+  if (params.sdgs?.length) {
+    contentItems.push(
+      createFilterItem("sdg", "sdg", namesOf(params.sdgs, SDGS), t ? t("sdgs") : "SDGs")
+    );
+  }
+  if (params.workLanguages?.length) {
+    contentItems.push(
+      createFilterItem(
+        "workLanguage",
+        "workLanguage",
+        params.workLanguages.map((code) => names.language?.(code) ?? code).join(", "),
+        t ? t("writtenIn") : "Written in"
+      )
+    );
+  }
+  if (params.institutionTypes?.length) {
+    contentItems.push(
+      createFilterItem(
+        "institutionType",
+        "institutionType",
+        namesOf(params.institutionTypes, INSTITUTION_TYPES),
+        t ? t("institutionType") : "Institution type"
+      )
+    );
+  }
+  if (params.funders?.length) {
+    contentItems.push(
+      createFilterItem(
+        "funder",
+        "funder",
+        params.funders.map((id) => names.funders?.[id] ?? id).join(", "),
+        t ? t("funders") : "Funders"
+      )
+    );
+  }
+  if (params.minCitations) {
+    const label = t ? t("atLeastCitations", { count: params.minCitations }) : `At least ${params.minCitations} citations`;
+    contentItems.push(createFilterItem("minCitations", "minCitations", label, label));
+  }
+  if (params.openAccessOnly) {
+    const label = t ? t("onlyOpenAccess") : "Only open access";
+    contentItems.push(createFilterItem("openAccess", "openAccess", label, label));
+  }
+  if (params.hasAbstract) {
+    const label = t ? t("onlyWithAbstract") : "Only with an abstract";
+    contentItems.push(createFilterItem("hasAbstract", "hasAbstract", label, label));
+  }
+  if (params.includeRetracted) {
+    const label = t ? t("includesRetracted") : "Includes retracted works";
+    contentItems.push(createFilterItem("includeRetracted", "includeRetracted", label, label));
   }
   if (contentItems.length > 0) {
     sections.push(createSection("content", contentItems, t));
@@ -468,8 +509,9 @@ export function countActiveFilters(
 export function getAllFilterItems(
   params: FilterParams,
   t?: FilterT,
-  formatDateTime?: FormatDateTimeFn
+  formatDateTime?: FormatDateTimeFn,
+  names?: FilterNames
 ): FilterItem[] {
-  const sections = buildFilterData(params, t, formatDateTime);
+  const sections = buildFilterData(params, t, formatDateTime, names);
   return sections.flatMap((section) => section.items);
 }
