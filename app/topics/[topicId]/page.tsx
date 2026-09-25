@@ -1,14 +1,14 @@
 import {notFound} from "next/navigation";
-import {fetchAction, fetchQuery} from "convex/nextjs";
+import {fetchQuery} from "convex/nextjs";
 import {api} from "@/convex/_generated/api";
 import {PageWrapper} from "@/components/PageWrapper";
 import {TopicPage} from "@/components/topics/topic-page";
 import type {TopicNode} from "@/lib/topics/contract";
+import {readTopicNodes} from "@/app/actions/topics";
 export default async function Page({params}: {params: Promise<{topicId: string}>}) {
   const {topicId} = await params;
   if (!/^T[1-9]\d*$/.test(topicId)) notFound();
-  await fetchAction(api.topics.catalog.initialize, {});
-  const [topic] = await fetchQuery(api.topics.catalog.resolve, {ids: [topicId]});
+  const [topic] = await readTopicNodes([topicId]);
   if (!topic) notFound();
   const path: TopicNode[] = [];
   let parent = topic.parent;

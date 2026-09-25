@@ -36,7 +36,7 @@ export const catalog: ReturnType<typeof httpAction> = endpoint("catalog", topicC
 export const detail: ReturnType<typeof httpAction> = endpoint("detail", topicDetailRequestSchema, async (ctx, body, credentialDigest): Promise<Record<string, unknown>> => {
   await ctx.runQuery(internal.topics.serviceHttp.authenticate, {libraryId: body.libraryId, credentialDigest});
   await ensureCatalog(ctx);
-  return readTopicDetail(ctx, {id: body.topicId, libraryId: body.libraryId, credentialDigest});
+  return readTopicDetail(ctx, {id: body.topicId, libraryId: body.libraryId});
 });
 export const associations: ReturnType<typeof httpAction> = endpoint("associations", topicAssociationRequestSchema, async (ctx, body, credentialDigest): Promise<Record<string, unknown>> => {
   await ctx.runQuery(internal.topics.serviceHttp.authenticate, {libraryId: body.libraryId, credentialDigest});

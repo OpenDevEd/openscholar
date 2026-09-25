@@ -6,15 +6,13 @@ import { createError } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";
 import { topicIdSchema, type TopicNode } from "../../lib/topics/contract";
 import { CATALOG_REVISION } from "../../lib/topics/catalog";
-import { authenticate } from "./auth";
 import type { Doc } from "../_generated/dataModel";
 
 const provider = z.object({id: z.string(), description: z.string().max(100000), keywords: z.array(z.string().max(1000)).max(1000), works_count: z.number().int().nonnegative()});
 const DAY = 86_400_000;
 export const read = internalQuery({
-  args: {id: v.string(), libraryId: v.optional(v.string()), credentialDigest: v.optional(v.string())},
+  args: {id: v.string()},
   handler: async (ctx, args) => {
-    if (args.libraryId) await authenticate(ctx, args.libraryId, args.credentialDigest ?? "");
     const node = await ctx.db.query("topicCatalog").withIndex("by_external_id", q => q.eq("id", args.id)).unique();
     if (!node || node.level !== "topic") throw createError("NOT_FOUND", "Unknown topic");
     const path = await Promise.all(node.ancestors.map(id => ctx.db.query("topicCatalog").withIndex("by_external_id", q => q.eq("id", id)).unique()));
@@ -31,9 +29,10 @@ export const save = internalMutation({
     return null;
   },
 });
-export async function readTopicDetail(ctx: ActionCtx, args: {id: string; libraryId?: string; credentialDigest?: string}) {
+/** `libraryId` only labels logs; the service endpoint authenticates the caller first. */
+export async function readTopicDetail(ctx: ActionCtx, args: {id: string; libraryId?: string}) {
     if (!topicIdSchema.safeParse(args.id).success) throw createError("VALIDATION_ERROR", "Invalid topic ID");
-    const result: {node: TopicNode; path: {id: string; name: string}[]; detail: Doc<"topicDetails"> | null} = await ctx.runQuery(internal.topics.details.read, args);
+    const result: {node: TopicNode; path: {id: string; name: string}[]; detail: Doc<"topicDetails"> | null} = await ctx.runQuery(internal.topics.details.read, {id: args.id});
     let detail: {description: string; keywords: string[]; worksCount: number; fetchedAt: number; revision: string} | null = result.detail;
     if (!detail || detail.revision !== CATALOG_REVISION || Date.now() - detail.fetchedAt > DAY) {
       try {
@@ -56,6 +55,6 @@ export async function readTopicDetail(ctx: ActionCtx, args: {id: string; library
       publicBaseUrl: requireAppUrl(), topicUrl: new URL(`/topics/${args.id}`, requireAppUrl()).href};
  }
 export const get = action({
-  args: {id: v.string(), libraryId: v.optional(v.string()), credentialDigest: v.optional(v.string())},
-  handler: readTopicDetail,
+  args: {id: v.string()},
+  handler: (ctx, args) => readTopicDetail(ctx, args),
 });
