@@ -84,6 +84,7 @@ import type * as evidenceLibraries_databaseSetupActions from "../evidenceLibrari
 import type * as evidenceLibraries_databaseSetupClient from "../evidenceLibraries/databaseSetupClient.js";
 import type * as evidenceLibraries_deploymentSetup from "../evidenceLibraries/deploymentSetup.js";
 import type * as evidenceLibraries_deploymentSetupActions from "../evidenceLibraries/deploymentSetupActions.js";
+import type * as evidenceLibraries_digests_citations from "../evidenceLibraries/digests/citations.js";
 import type * as evidenceLibraries_digests_contract from "../evidenceLibraries/digests/contract.js";
 import type * as evidenceLibraries_digests_generate from "../evidenceLibraries/digests/generate.js";
 import type * as evidenceLibraries_digests_manual from "../evidenceLibraries/digests/manual.js";
@@ -392,6 +393,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/databaseSetupClient": typeof evidenceLibraries_databaseSetupClient;
   "evidenceLibraries/deploymentSetup": typeof evidenceLibraries_deploymentSetup;
   "evidenceLibraries/deploymentSetupActions": typeof evidenceLibraries_deploymentSetupActions;
+  "evidenceLibraries/digests/citations": typeof evidenceLibraries_digests_citations;
   "evidenceLibraries/digests/contract": typeof evidenceLibraries_digests_contract;
   "evidenceLibraries/digests/generate": typeof evidenceLibraries_digests_generate;
   "evidenceLibraries/digests/manual": typeof evidenceLibraries_digests_manual;
