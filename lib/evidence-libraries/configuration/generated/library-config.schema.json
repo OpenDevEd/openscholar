@@ -1561,6 +1561,11 @@
 										"minLength": 1,
 										"maxLength": 80
 									},
+									"searchUrl": {
+										"type": "string",
+										"maxLength": 16384,
+										"pattern": "^\\/results\\/[A-Za-z0-9-]+(?:\\?|$)"
+									},
 									"approvedQuery": {
 										"type": "object",
 										"properties": {
