@@ -112,18 +112,24 @@ it("revalidates cards, keeps available library links on timeout, and drops missi
   vi.stubGlobal("fetch", vi.fn(async (url: URL) => url.hostname === "first.example.test" ? new Response(null, {status: 404}) : Response.json({item: card})));
   expect((await readTopicPublications(topicId, "", null)).papers).toEqual([]);
 });
-it("uses fresh durable details, bounded stale data on provider failure, then returns unavailable", async () => {
-  const {t} = await fixture();
-  const fetchMock = vi.fn(async () => {throw new Error("Provider unavailable");});
-  vi.stubGlobal("fetch", fetchMock);
-  const saved = {id: topicId, description: "Saved description", keywords: ["learning"], worksCount: 123, fetchedAt: Date.now(), revision: CATALOG_REVISION};
-  await t.mutation(internal.topics.details.save, saved);
-  expect(await t.action(api.topics.details.get, {id: topicId})).toMatchObject({description: "Saved description", worksCount: 123});
-  expect(fetchMock).not.toHaveBeenCalled();
-  await t.run(async ctx => {const row = await ctx.db.query("topicDetails").first(); await ctx.db.patch("topicDetails", row!._id, {fetchedAt: Date.now() - 2 * 86400000});});
-  expect(await t.action(api.topics.details.get, {id: topicId})).toMatchObject({description: "Saved description"});
-  await t.run(async ctx => {const row = await ctx.db.query("topicDetails").first(); await ctx.db.patch("topicDetails", row!._id, {fetchedAt: Date.now() - 8 * 86400000});});
-  await expect(t.action(api.topics.details.get, {id: topicId})).rejects.toThrow("unavailable");
+it("keeps saved details, refreshes a stale copy in the background, and reports a topic never fetched", async () => {
+  vi.useFakeTimers();
+  try {
+    const {t} = await fixture();
+    const saved = {id: topicId, description: "Saved description", keywords: ["learning"], worksCount: 123, fetchedAt: Date.now() - 30 * 86400000, revision: CATALOG_REVISION};
+    await t.mutation(internal.topics.details.save, saved);
+    const fetchMock = vi.fn(async () => Response.json({id: `https://openalex.org/${topicId}`, description: "Saved description", keywords: ["learning"], works_count: 456}));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await t.action(api.topics.details.get, {id: topicId})).toMatchObject({description: "Saved description", worksCount: 123});
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(await t.action(api.topics.details.get, {id: topicId})).toMatchObject({worksCount: 456});
+    vi.stubGlobal("fetch", vi.fn(async () => {throw new Error("Provider unavailable");}));
+    await t.run(async ctx => {const row = await ctx.db.query("topicDetails").first(); await ctx.db.delete("topicDetails", row!._id);});
+    await expect(t.action(api.topics.details.get, {id: topicId})).rejects.toThrow("unavailable");
+  } finally {
+    vi.useRealTimers();
+  }
 });
 it("finishes a bounded identity rebuild without reporting incomplete groups as a total", async () => {
   vi.useFakeTimers();

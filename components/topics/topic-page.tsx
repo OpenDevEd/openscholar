@@ -22,12 +22,13 @@ import { topicHref } from "@/lib/topics/links";
 import { TopicLibraryResults } from "./topic-library-results";
 import { buildShareableUrl } from "@/lib/search-params";
 
-export function TopicPage({ topic, path, related }: { topic: TopicNode; path: TopicNode[]; related: TopicNode[] }) {
+export function TopicPage({ topic, path, related, detail: initialDetail }: { topic: TopicNode; path: TopicNode[]; related: TopicNode[]; detail: Awaited<ReturnType<typeof readTopic>> | null }) {
   const t = useTranslations("topics");
   const tc = useTranslations("common");
   const [tab, setTab] = useState("libraries");
   const [showRelated, setShowRelated] = useState(false);
-  const detail = useSWR(["topic", topic.id], ([, id]) => readTopic(id));
+  // The server sends the saved description; the browser only asks when that failed.
+  const detail = useSWR(["topic", topic.id], ([, id]) => readTopic(id), {fallbackData: initialDetail ?? undefined, revalidateOnMount: !initialDetail, revalidateOnFocus: false});
   const works = useSWRInfinite((_page, previous) => {
     if (tab !== "openalex" || (previous && !previous.meta.next_cursor)) return null;
     return ["topic-works", topic.id, previous?.meta.next_cursor ?? "*"] as const;
