@@ -8,6 +8,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { AdminAreaLink } from "./admin-area-link";
 import { useState } from "react";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import Link from "next/link";
 import {
   Building2,
@@ -89,7 +90,7 @@ export function LibraryList() {
     ...(overviews.data ?? []).map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) })),
     ...(invitations.data ?? []).map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true })),
   ];
-  const [view, setView] = useState<"libraries" | "invitations">("libraries");
+  const [view, setView] = useQueryState("view", parseAsStringLiteral(["libraries", "invitations"]).withDefault("libraries"));
   const [organization, setOrganization] = useState("all");
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState("");

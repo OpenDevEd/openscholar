@@ -1,7 +1,7 @@
 "use client";
 
 import { ConvexError } from "convex/values";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import {
   AlertCircle,
@@ -13,6 +13,7 @@ import {
   FolderTree,
   Globe,
   History,
+  House,
   Languages,
   Layers,
   Link2,
@@ -95,6 +96,7 @@ import { DomainSection } from "./sections/domain-section";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
 import { FeaturesSection } from "./sections/features-section";
 import { FooterSection } from "./sections/footer-section";
+import { HomeSection } from "./sections/home-section";
 import { IdentitySection } from "./sections/identity-section";
 import { InstitutionsSection } from "./sections/institutions-section";
 import { LanguagesSection } from "./sections/languages-section";
@@ -140,7 +142,7 @@ const RAIL_GROUPS: {
   sections: readonly RailKey[];
 }[] = [
   { key: "brand", sections: ["identity", "theme", "institutions"] },
-  { key: "content", sections: ["navigation", "footer", "contact", "collections"] },
+  { key: "content", sections: ["home", "navigation", "footer", "contact", "collections"] },
   { key: "discovery", sections: ["search", "citations", "features", "sources", "ai"] },
   { key: "platform", sections: ["languages", "analytics", "publication", "domain", "versions"] },
   { key: "team", sections: ["team"] },
@@ -151,6 +153,7 @@ const SECTION_ICONS: Record<RailKey, LucideIcon> = {
   identity: Globe,
   theme: Palette,
   institutions: Building2,
+  home: House,
   navigation: Menu,
   footer: PanelBottom,
   contact: Mail,
@@ -176,6 +179,7 @@ const SECTION_COMPONENTS: Record<
   identity: IdentitySection,
   theme: ThemeSection,
   institutions: InstitutionsSection,
+  home: HomeSection,
   navigation: NavigationSection,
   footer: FooterSection,
   contact: ContactSection,
@@ -283,6 +287,7 @@ function Workspace({
     api.evidenceLibraries.mutations.activateConfiguration,
   );
   const removeUpload = useAction(api.evidenceLibraries.uploadActions.remove);
+  const checkSoftware = useAction(api.evidenceLibraries.updates.check);
 
   const [edited, setEdited] = useState<ConfigurationDraft>(() =>
     readDraft(saved),
@@ -319,6 +324,11 @@ function Workspace({
       ? `${operation._id}:${operation.status}:${operation.updatedAt}`
       : "base";
   const isDraftLibrary = libraryState === "provisioning";
+  // Software older than the settings page's contract is updated by the publish.
+  const publishRuntime = useQuery(
+    api.evidenceLibraries.updates.publishRuntime,
+    isDraftLibrary ? "skip" : { libraryId },
+  );
   const canActivate =
     (isDraftLibrary || dirty || hasUnpublishedChanges) &&
     !activating &&
@@ -384,7 +394,14 @@ function Workspace({
     setActivateOpen(false);
     setActivating(true);
     setRefusal(null);
-    void save()
+    // The publish reads what the last update check found about the software.
+    // Usually the page's own check has answered; this covers an owner who
+    // activates before it does, and a failed check never blocks. It runs
+    // before the save, because saving remounts the form.
+    void (isDraftLibrary
+      ? Promise.resolve()
+      : checkSoftware({ libraryId }).catch(() => null))
+      .then(() => save())
       .then((version) =>
         activateConfiguration({ libraryId, expectedEditVersion: version }),
       )
@@ -563,7 +580,11 @@ function Workspace({
                       name: draft.identity.name,
                       address: draft.identity.baseUrl,
                     })
-                  : `${t("activateBody")} ${dirty ? t("activateBodyUnsaved") : ""}`}
+                  : [
+                      t("activateBody"),
+                      publishRuntime === "update" ? t("activateBodySoftware") : "",
+                      dirty ? t("activateBodyUnsaved") : "",
+                    ].filter(Boolean).join(" ")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

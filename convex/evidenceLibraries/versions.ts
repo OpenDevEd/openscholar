@@ -92,6 +92,7 @@ type CandidateIntent = {
     domainId: Id<"evidenceLibraryDomains">;
     reason: "attach" | "detach" | "canonical";
     address?: string;
+    redeploy?: true;
     token: string;
   };
 };
@@ -849,6 +850,40 @@ export const startRuntimeRollback = internalMutation({
     ) {
       throw createError("CONFLICT", "The earlier software is already live");
     }
+    // A publish that also moved the library onto this software did so because
+    // the earlier software could not read those settings. Settings restored
+    // from before that publish are readable again.
+    const arrivals = await ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_failed_runtime", (query) =>
+        query
+          .eq("libraryId", args.libraryId)
+          .eq("status", "succeeded")
+          .eq("runtimeUpdate.to", binding.runtimeCommit)
+          .eq("runtimeUpdate.toImage", binding.runtimeImage),
+      )
+      .collect();
+    const arrival = arrivals.find(
+      (operation) =>
+        operation.activationEditVersion !== undefined &&
+        operation.runtimeUpdate?.from === previous.commit,
+    );
+    const arrivalRevision = arrival?.revisionId
+      ? await ctx.db.get(arrival.revisionId)
+      : null;
+    const live = await ctx.db.get(library.activeRevisionId);
+    const restored = live?.rollbackOfRevisionId
+      ? await ctx.db.get(live.rollbackOfRevisionId)
+      : null;
+    if (
+      arrivalRevision &&
+      !(restored && restored.revisionNumber < arrivalRevision.revisionNumber)
+    ) {
+      throw createError(
+        "CONFLICT",
+        "The live settings need the current software; restore settings from before that publish first",
+      );
+    }
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
     const operation = await queueInternalRuntimeRollbackOperation(ctx, {
       libraryId: args.libraryId,
@@ -1161,6 +1196,19 @@ export const setDomainPrimary = mutation({
     const idempotencyKey =
       `domain:${running.activeRevisionId}:v${CURRENT_OWNER_CONFIGURATION_VERSION}:` +
       `${args.domainId}:canonical:${claimed.generation}:${row.host}:${address}`;
+    // The running site takes a new address through the one it answers on
+    // now. Only the platform address is always reachable: a custom domain
+    // can have lost its records or its certificate while still counting as
+    // working, so leaving one goes through a deployment.
+    const leaving = (
+      await ctx.db
+        .query("evidenceLibraryDomains")
+        .withIndex("by_libraryId", (index) =>
+          index.eq("libraryId", args.libraryId),
+        )
+        .collect()
+    ).find((entry) => entry.role === "primary");
+    const redeploy = leaving !== undefined;
     // The lease is taken now, and held until the deployment carrying this
     // change settles the row.
     await claimed.write();
@@ -1178,9 +1226,21 @@ export const setDomainPrimary = mutation({
         domainId: args.domainId,
         reason: "canonical",
         address,
+        ...(redeploy ? { redeploy: true as const } : {}),
         token: claimed.token,
       },
     });
+    // An address changed straight away replaces whatever the owner had
+    // chosen for the next activation.
+    const draft = await ctx.db
+      .query("evidenceLibraryConfigDrafts")
+      .withIndex("by_libraryId", (index) =>
+        index.eq("libraryId", args.libraryId),
+      )
+      .unique();
+    if (draft && draft.mainDomainId !== undefined) {
+      await ctx.db.patch(draft._id, { mainDomainId: undefined });
+    }
     // The deployment is recorded on the domain before the worker is booked,
     // exactly as attaching and removing do, so the change holds it for as
     // long as the deployment runs rather than for an action's lease.

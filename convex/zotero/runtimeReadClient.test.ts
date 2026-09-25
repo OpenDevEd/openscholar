@@ -3,7 +3,9 @@ import {
   RuntimeReadError,
   readRuntimeCollections,
   readRuntimeCollectionsByIds,
+  readRuntimeHomeQuestions,
   readRuntimeInstitutions,
+  readRuntimeReviewedPublications,
 } from "./runtimeReadClient";
 
 const credential = `els_${"a".repeat(43)}`;
@@ -310,5 +312,104 @@ describe("readRuntimeCollectionsByIds", () => {
       }),
     ).resolves.toEqual({ items: [] });
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+describe("readRuntimeReviewedPublications", () => {
+  const publication = {
+    key: "ABCD1234",
+    title: "Teachers in the lead",
+    publishedAt: "2026-08-04T10:00:00.000Z",
+    reviewer: "user_ada",
+    reviewed: true,
+  };
+  // A library that lists only reviewed publications does not say so.
+  const { reviewed: _reviewed, ...legacy } = publication;
+  const added = {
+    key: "EFGH5678",
+    title: "Synced from Zotero",
+    publishedAt: "2026-08-02T09:00:00.000Z",
+    reviewer: "",
+    reviewed: false,
+  };
+
+  it("asks for one page with the search text and cursor", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input));
+      expect(url.pathname).toBe("/api/openscholar/reviewed-publications");
+      expect(url.searchParams.get("query")).toBe("teachers");
+      expect(url.searchParams.get("cursor")).toBe("p2");
+      expect(url.searchParams.get("pageSize")).toBe("50");
+      expect(url.searchParams.has("ids")).toBe(false);
+      return jsonResponse({ items: [legacy, added], nextCursor: "p3" });
+    });
+    await expect(
+      readRuntimeReviewedPublications(fetchImpl, {
+        baseUrl: "https://lib.example.test",
+        credential,
+        query: "teachers",
+        cursor: "p2",
+      }),
+    ).resolves.toEqual({ items: [publication, added], nextCursor: "p3" });
+  });
+
+  it("asks for chosen publications by key alone", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input));
+      expect([...url.searchParams.keys()]).toEqual(["ids"]);
+      expect(url.searchParams.get("ids")).toBe("ABCD1234,EFGH5678");
+      return jsonResponse({ items: [publication], nextCursor: null });
+    });
+    await expect(
+      readRuntimeReviewedPublications(fetchImpl, {
+        baseUrl: "https://lib.example.test",
+        credential,
+        query: "ignored",
+        ids: ["ABCD1234", "EFGH5678"],
+      }),
+    ).resolves.toEqual({ items: [publication], nextCursor: null });
+  });
+
+  const { reviewer: _reviewer, ...silent } = publication;
+  it.each([
+    ["without its reviewer", silent],
+    ["with a reviewed flag that is not true or false", { ...publication, reviewed: null }],
+  ])("reports a row %s as broken", async (_case, row) => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ items: [row], nextCursor: null }),
+    );
+    await expect(
+      readRuntimeReviewedPublications(fetchImpl, {
+        baseUrl: "https://lib.example.test",
+        credential,
+      }),
+    ).rejects.toMatchObject({ code: "RUNTIME_READ_INVALID" });
+  });
+});
+
+describe("readRuntimeHomeQuestions", () => {
+  it("returns one question or null per slot", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+      expect(new URL(String(input)).pathname).toBe("/api/openscholar/home-questions");
+      return jsonResponse({ questions: ["What works?", null, "Where?"] });
+    });
+    await expect(
+      readRuntimeHomeQuestions(fetchImpl, {
+        baseUrl: "https://lib.example.test",
+        credential,
+      }),
+    ).resolves.toEqual(["What works?", null, "Where?"]);
+  });
+
+  it("reports a broken answer", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ questions: [1] }),
+    );
+    await expect(
+      readRuntimeHomeQuestions(fetchImpl, {
+        baseUrl: "https://lib.example.test",
+        credential,
+      }),
+    ).rejects.toMatchObject({ code: "RUNTIME_READ_INVALID" });
   });
 });

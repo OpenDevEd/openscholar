@@ -10,6 +10,7 @@ import {
   type OwnerSections,
   type PlatformBrandAssets,
   type PlatformMailService,
+  type TeamMember,
 } from "../../lib/evidence-libraries/configuration/assembly";
 import type { Id } from "../_generated/dataModel";
 import { decrypt } from "../lib/crypto";
@@ -35,6 +36,8 @@ export function buildEvidenceLibraryLoginPageUrl(input: {
 }
 
 export function assembleEvidenceLibraryRuntimePayload(input: {
+  /** When this configuration is built; the runtime takes only newer ones. */
+  assembledAt: number;
   encryptionKey: string;
   libraryId: Id<"evidenceLibraries">;
   revision: { key: string; createdAt: number };
@@ -67,6 +70,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
   allowedAiModels: readonly string[];
   aiModelMetadata: Record<string, { name: string; company: string }>;
   aiModelCatalogReady: boolean;
+  team: readonly TeamMember[];
 }): {
   runtimeConfig: AssembledEvidenceLibraryConfiguration;
   runtimeConfigJson: string;
@@ -76,7 +80,10 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
     sections: input.sections,
     managed: {
       revision: input.revision.key,
-      updatedAt: new Date(input.revision.createdAt).toISOString(),
+      // When this copy was built, not when its version was frozen: a rollback
+      // stamps the configuration it restores with the time it ran, and the
+      // runtime only takes a configuration newer than the one it has.
+      updatedAt: new Date(input.assembledAt).toISOString(),
       libraryId: input.libraryId,
       convexSiteUrl: input.origins.convexSite,
       loginPageUrl: buildEvidenceLibraryLoginPageUrl({
@@ -113,6 +120,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       mail: input.mail,
       brand: input.brand,
       embeddingApiKey: input.embeddingApiKey,
+      team: input.team,
       publication: input.publicationProviders ? buildPublicationConfiguration(input.publicationProviders.settings, JSON.parse(decrypt(input.publicationProviders.encryptedCredentials, input.encryptionKey))) : undefined,
     },
     // Each Zotero source gets its group's key here and nowhere earlier.

@@ -33,8 +33,14 @@ import { nextDraftEditVersion } from "./draftVersion";
 import {
   attachRevisionToSetupOperation,
   queueConfigurationDeploymentOperation,
+  queueDomainChangeOperation,
   queueEvidenceLibraryOperation,
 } from "./operations";
+import {
+  readDomainActivationPlan,
+  type DomainActivationPlan,
+} from "./domainPlan";
+import { claimDomainTransitionRow } from "./domains";
 import {
   claimAndScheduleConfigurationDeployment,
   requireNoActiveConfigurationDeployment,
@@ -68,6 +74,7 @@ import {
   evidenceLibrarySetupIdentityFields,
   sectionRowValidator,
 } from "./validators";
+import { readPublishRuntime, type PublishRuntime } from "./updates";
 
 const SETUP_OPERATION_IDEMPOTENCY_KEY = "library-setup";
 
@@ -427,6 +434,12 @@ async function finalizeEvidenceLibraryDraft(
   args: {
     libraryId: Id<"evidenceLibraries">;
     expectedEditVersion: number;
+    /**
+     * The address this version answers on, when the activation freezing it
+     * also changes the library's address. The draft's own copy moves once
+     * that activation is live.
+     */
+    identityBaseUrl?: string;
   },
 ) {
   const access = await requireEvidenceLibraryAccess(
@@ -486,13 +499,23 @@ async function finalizeEvidenceLibraryDraft(
     if (section.kind !== "draft") {
       throw new Error("Draft section index returned a revision row");
     }
+    const payload =
+      args.identityBaseUrl !== undefined && section.sectionKey === "identity"
+        ? {
+            ...(section.payload as Record<string, unknown>),
+            baseUrl: args.identityBaseUrl,
+          }
+        : section.payload;
     await ctx.db.insert("evidenceLibraryConfigSections", {
       kind: "revision",
       libraryId: args.libraryId,
       revisionId,
       sectionKey: section.sectionKey,
-      payload: section.payload,
-      payloadByteLength: section.payloadByteLength,
+      payload,
+      payloadByteLength:
+        payload === section.payload
+          ? section.payloadByteLength
+          : validateSectionPayload(payload),
       contractProvenance: EVIDENCE_LIBRARY_CONFIG_PROVENANCE,
       createdByClerkUserId: access.clerkUserId,
       createdAt: now,
@@ -641,6 +664,19 @@ export async function activateEvidenceLibraryConfiguration(
       "Evidence Library draft did not migrate to the current version",
     );
   }
+  // Choices about the library's addresses are saved outside the sections and
+  // applied here, together with everything else.
+  let domainPlan: DomainActivationPlan | null = null;
+  if (access.library.state === "active" && access.library.runtimeBindingId) {
+    const binding = await ctx.db.get(access.library.runtimeBindingId);
+    if (binding) {
+      domainPlan = await readDomainActivationPlan(ctx, {
+        library: access.library,
+        binding,
+        draft,
+      });
+    }
+  }
   if (access.library.state === "active") {
     if (!access.library.activeRevisionId) {
       throw createError(
@@ -657,7 +693,9 @@ export async function activateEvidenceLibraryConfiguration(
       configurationSnapshotsEqual(
         persisted.migration.snapshot,
         active.migration.snapshot,
-      ) && !await hasPublicationProviderChanges(ctx, access.library)
+      ) &&
+      !(await hasPublicationProviderChanges(ctx, access.library)) &&
+      !domainPlan?.changed
     ) {
       throw createError("CONFLICT", "There are no saved changes to activate");
     }
@@ -675,11 +713,23 @@ export async function activateEvidenceLibraryConfiguration(
       },
     ).issues,
   );
+  let publishRuntime: PublishRuntime = { kind: "current" };
   if (access.library.state === "active") {
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
+    publishRuntime = await readPublishRuntime(ctx, access.library);
+    if (publishRuntime.kind === "unreleased") {
+      throw createError(
+        "CONFLICT",
+        "These changes need Evidence Library software that is still being released. Try again in a few minutes.",
+      );
+    }
   }
 
-  const frozen = await finalizeEvidenceLibraryDraft(ctx, args);
+  const canonical = domainPlan?.canonical ?? null;
+  const frozen = await finalizeEvidenceLibraryDraft(ctx, {
+    ...args,
+    ...(canonical ? { identityBaseUrl: canonical.address } : {}),
+  });
   if (access.library.state === "provisioning") {
     const setupOperationId = access.library.setupOperationId;
     if (!setupOperationId) {
@@ -705,11 +755,53 @@ export async function activateEvidenceLibraryConfiguration(
       status: started.status,
     };
   }
+  if (canonical) {
+    // The same lease a change of address always takes, held until the
+    // deployment carrying it settles the domain.
+    const claimed = await claimDomainTransitionRow(
+      ctx,
+      canonical.domain,
+      "canonical",
+    );
+    await claimed.write();
+    const operation = await queueDomainChangeOperation(ctx, {
+      libraryId: args.libraryId,
+      revisionId: frozen.revisionId,
+      idempotencyKey: `activate:${args.expectedEditVersion}`,
+      activationEditVersion: args.expectedEditVersion,
+      domainChange: {
+        host: canonical.domain.host,
+        domainId: canonical.domain._id,
+        reason: "canonical",
+        address: canonical.address,
+        ...(canonical.redeploy ? { redeploy: true as const } : {}),
+        token: claimed.token,
+      },
+    });
+    await ctx.db.patch(canonical.domain._id, {
+      pendingDeployment: {
+        operationId: operation.operationId,
+        token: claimed.token,
+        phase: "canonical",
+      },
+      deploymentPending: undefined,
+      updatedAt: Date.now(),
+    });
+    const started = await claimAndScheduleConfigurationDeployment(ctx, {
+      libraryId: args.libraryId,
+      operationId: operation.operationId,
+    });
+    return { ...frozen, kind: "publish" as const, ...started };
+  }
   const operation = await queueConfigurationDeploymentOperation(ctx, {
     libraryId: args.libraryId,
     revisionId: frozen.revisionId,
     idempotencyKey: `activate:${args.expectedEditVersion}`,
     activationEditVersion: args.expectedEditVersion,
+    // Software older than OpenScholar's contract would refuse this revision.
+    ...(publishRuntime.kind === "update"
+      ? { runtimeUpdate: publishRuntime.runtimeUpdate }
+      : {}),
   });
   const started = await claimAndScheduleConfigurationDeployment(ctx, {
     libraryId: args.libraryId,

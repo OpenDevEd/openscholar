@@ -238,6 +238,7 @@ describe("Evidence Library Zotero groups", () => {
       readLibraryZoteroGroupCredentials(ctx, libraryId),
     );
     const payload = assembleEvidenceLibraryRuntimePayload({
+      assembledAt: Date.now(),
       encryptionKey: ENCRYPTION_KEY,
       libraryId,
       revision: { key: "r2", createdAt: 10 },
@@ -270,6 +271,7 @@ describe("Evidence Library Zotero groups", () => {
       allowedAiModels: [],
       aiModelMetadata: {},
       aiModelCatalogReady: true,
+      team: [],
     });
     expect(payload.runtimeConfig.sources).toEqual([
       expect.objectContaining({

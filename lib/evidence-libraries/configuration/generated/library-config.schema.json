@@ -1229,6 +1229,10 @@
 			"default": {},
 			"type": "object",
 			"properties": {
+				"enabled": {
+					"default": true,
+					"type": "boolean"
+				},
 				"showUrl": {
 					"default": false,
 					"type": "boolean"
@@ -1301,6 +1305,10 @@
 					"type": "boolean"
 				},
 				"atomFeed": {
+					"default": false,
+					"type": "boolean"
+				},
+				"homePage": {
 					"default": false,
 					"type": "boolean"
 				}
@@ -2305,6 +2313,214 @@
 						],
 						"additionalProperties": false
 					}
+				}
+			},
+			"additionalProperties": false
+		},
+		"home": {
+			"type": "object",
+			"properties": {
+				"intro": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 600
+				},
+				"curation": {
+					"default": {},
+					"type": "object",
+					"properties": {
+						"text": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 400
+						},
+						"steps": {
+							"default": [],
+							"maxItems": 5,
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"type": {
+										"type": "string",
+										"enum": [
+											"arrival",
+											"check",
+											"publication",
+											"text"
+										]
+									},
+									"title": {
+										"type": "string",
+										"minLength": 1,
+										"maxLength": 60
+									},
+									"text": {
+										"type": "string",
+										"minLength": 1,
+										"maxLength": 240
+									},
+									"editor": {
+										"type": "string",
+										"minLength": 1,
+										"maxLength": 64
+									}
+								},
+								"required": [
+									"type"
+								],
+								"additionalProperties": false
+							}
+						}
+					},
+					"additionalProperties": false
+				},
+				"team": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 300
+				},
+				"people": {
+					"default": [],
+					"maxItems": 24,
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 64
+							},
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 120
+							},
+							"photo": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 2048,
+								"format": "uri"
+							},
+							"title": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 60
+							},
+							"location": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 60
+							}
+						},
+						"required": [
+							"id",
+							"name"
+						],
+						"additionalProperties": false
+					}
+				},
+				"directory": {
+					"default": [],
+					"maxItems": 500,
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 64
+							},
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 120
+							},
+							"photo": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 2048,
+								"format": "uri"
+							}
+						},
+						"required": [
+							"id",
+							"name"
+						],
+						"additionalProperties": false
+					}
+				},
+				"questions": {
+					"default": [],
+					"maxItems": 3,
+					"type": "array",
+					"items": {
+						"type": "string",
+						"maxLength": 120
+					}
+				},
+				"followed": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 64
+				},
+				"involvement": {
+					"default": {},
+					"type": "object",
+					"properties": {
+						"suggestions": {
+							"default": true,
+							"type": "boolean"
+						},
+						"editors": {
+							"default": false,
+							"type": "boolean"
+						}
+					},
+					"additionalProperties": false
+				},
+				"extra": {
+					"type": "object",
+					"properties": {
+						"title": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 60
+						},
+						"text": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 1200
+						}
+					},
+					"required": [
+						"text"
+					],
+					"additionalProperties": false
+				},
+				"headings": {
+					"default": {},
+					"type": "object",
+					"properties": {
+						"curation": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 60
+						},
+						"team": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 60
+						},
+						"involvement": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 60
+						}
+					},
+					"additionalProperties": false
 				}
 			},
 			"additionalProperties": false

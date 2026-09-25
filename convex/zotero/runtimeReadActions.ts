@@ -11,11 +11,14 @@ import {
   type RuntimeCollectionsPage,
   type RuntimeInstitutionsPage,
   RuntimeReadError,
+  type RuntimeReviewedPublicationsPage,
   RUNTIME_RESOLVE_MAX_IDS,
   RUNTIME_RESOLVE_MAX_TOTAL_IDS,
   readRuntimeCollections,
   readRuntimeCollectionsByIds,
+  readRuntimeHomeQuestions,
   readRuntimeInstitutions,
+  readRuntimeReviewedPublications,
 } from "./runtimeReadClient";
 
 const collectionValidator = v.object({
@@ -28,6 +31,14 @@ const collectionValidator = v.object({
 });
 
 const institutionValidator = v.object({ name: v.string(), count: v.number() });
+
+const reviewedPublicationValidator = v.object({
+  key: v.string(),
+  title: v.string(),
+  publishedAt: v.string(),
+  reviewer: v.string(),
+  reviewed: v.boolean(),
+});
 
 const collectionFactsValidator = v.object({
   id: v.string(),
@@ -192,5 +203,60 @@ export const resolveLibraryCollections = action({
       };
     });
     return "reason" in result ? { reason: "not-set-up", items: [] } : result;
+  },
+});
+
+/**
+ * Publications with a PDF, reviewed or not, for the home page's "publication
+ * followed" choice. `ids` names chosen publications instead of searching.
+ */
+export const listReviewedPublications = action({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    query: v.optional(v.string()),
+    cursor: v.optional(v.string()),
+    ids: v.optional(v.array(v.string())),
+  },
+  returns: v.object({
+    reason: notSetUpValidator,
+    items: v.array(reviewedPublicationValidator),
+    nextCursor: v.union(v.string(), v.null()),
+  }),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<RuntimeReviewedPublicationsPage & { reason?: "not-set-up" }> => {
+    const result = await readRuntime<RuntimeReviewedPublicationsPage>(
+      ctx,
+      args.libraryId,
+      (target) =>
+        readRuntimeReviewedPublications(fetch, {
+          ...target,
+          query: args.query,
+          cursor: args.cursor,
+          ids: args.ids,
+        }),
+    );
+    return "reason" in result
+      ? { ...result, items: [], nextCursor: null }
+      : result;
+  },
+});
+
+/** The questions the home page asks in the slots the owner leaves empty. */
+export const readHomeQuestions = action({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.object({
+    reason: notSetUpValidator,
+    questions: v.array(v.union(v.string(), v.null())),
+  }),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ questions: (string | null)[]; reason?: "not-set-up" }> => {
+    const result = await readRuntime(ctx, args.libraryId, async (target) => ({
+      questions: await readRuntimeHomeQuestions(fetch, target),
+    }));
+    return "reason" in result ? { reason: "not-set-up", questions: [] } : result;
   },
 });

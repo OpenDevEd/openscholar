@@ -588,6 +588,7 @@ describe("the OpenRouter key", () => {
         readLibraryAiProviderKey(ctx, libraryId),
       );
       const payloadInput = {
+        assembledAt: Date.now(),
         encryptionKey: ENCRYPTION_KEY,
         libraryId,
         revision: { key: "r2", createdAt: 10 },
@@ -624,6 +625,7 @@ describe("the OpenRouter key", () => {
           [TEST_AI_MODELS[0]]: { name: "GPT-5.6 Luna", company: "OpenAI" },
         },
         aiModelCatalogReady: true,
+        team: [],
       };
       const payload = assembleEvidenceLibraryRuntimePayload(payloadInput);
       expect(payload.runtimeConfig.search).toMatchObject({

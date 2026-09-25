@@ -21,12 +21,17 @@ import {
   type CoolifyConfigurationUpdateResult,
   type CoolifyDeployment,
 } from "./coolifyClient";
-import { openPinnedDomainClient } from "./domainEgressNode";
+import {
+  openOwnProxyClient,
+  openPinnedDomainClient,
+} from "./domainEgressNode";
 import {
   activateLibraryRuntimeConfiguration,
   changeLibraryRuntimeRoute,
   handOffLibraryRuntime,
   isRetryableReadinessError,
+  probeEvidenceLibraryAddress,
+  readActiveConfigurationUpdatedAt,
   ReadinessClientError,
   requireLibraryRuntimePublicReady,
   requireLibraryRuntimeRouteReady,
@@ -153,7 +158,10 @@ export const runConfigurationDeployment = internalAction({
           ...pendingTarget.customDomains,
         ]),
       ].filter((origin) => !platformOriginSet.has(origin));
-      protectionRoute = {
+      // Only a deployment puts traffic behind the guard, so only a deployment
+      // puts it back there when it fails. A direct activation never does:
+      // no later direct activation would ever take it down again.
+      protectionRoute = prepared.requiresDeployment ? {
         applicationUuid: prepared.continuity.applicationId,
         customOrigins,
         platformOrigins,
@@ -162,8 +170,8 @@ export const runConfigurationDeployment = internalAction({
         runtimeImage: prepared.continuity.runtimeImage,
         verifierToken,
         verifierUrl,
-      };
-      if (prepared.requiresDeployment && !savedDeployment) {
+      } : undefined;
+      if (protectionRoute && !savedDeployment) {
         await changeLibraryRuntimeRoute("protection", protectionRoute);
         await requireLibraryRuntimeRouteReady(
           protectionRoute,
@@ -243,7 +251,26 @@ export const runConfigurationDeployment = internalAction({
           internal.models.queries.resolveEvidenceLibrarySelection,
           { modelIds: selectedAiModelIds(sections.ai) },
         );
+        const team = await ctx.runQuery(
+          internal.evidenceLibraries.queries.readLibraryTeamForAssembly,
+          { libraryId: args.libraryId },
+        );
+        // After a rollback the runtime's clock decides what counts as newer.
+        const liveOrigin = new URL(prepared.continuity.liveOrigin).origin;
+        const rolledBackTo = prepared.rolledBack
+          ? await readActiveConfigurationUpdatedAt({
+              baseUrl: liveOrigin,
+              ...(liveOrigin === new URL(prepared.targetBaseUrl).origin
+                ? {}
+                : {
+                    fetchImpl: await openOwnProxyClient({
+                      host: new URL(liveOrigin).hostname,
+                    }),
+                  }),
+            })
+          : 0;
         const payload = assembleEvidenceLibraryRuntimePayload({
+          assembledAt: Math.max(Date.now(), rolledBackTo + 1),
           encryptionKey,
           libraryId: args.libraryId,
           revision: prepared.revision,
@@ -271,6 +298,7 @@ export const runConfigurationDeployment = internalAction({
           allowedAiModels: modelCatalog.allowedModelIds,
           aiModelMetadata: modelCatalog.modelMetadata,
           aiModelCatalogReady: modelCatalog.catalogReady,
+          team,
         });
         target = await ctx.runMutation(
           internal.evidenceLibraries.configurationDeployment
@@ -327,35 +355,89 @@ export const runConfigurationDeployment = internalAction({
         ) as AssembledEvidenceLibraryConfiguration & {
           identity: { baseUrl: string };
         };
-        const configurationBaseUrl = new URL(
-          runtimeConfiguration.identity.baseUrl,
-        ).origin;
-        const configurationFetchImpl =
-          configurationBaseUrl === new URL(target.targetBaseUrl).origin
-            ? undefined
-            : await openPinnedDomainClient({
-                host: new URL(configurationBaseUrl).hostname,
-              });
-        const configurationInput = {
-          ...(configurationFetchImpl
-            ? { fetchImpl: configurationFetchImpl }
-            : {}),
-          baseUrl: configurationBaseUrl,
-          machineCredential:
-            runtimeConfiguration.authentication.openScholar.machineCredential,
-        };
-        restoreDirectConfiguration = async () => {
-          await restoreLibraryRuntimeConfiguration({
-            ...configurationInput,
-            revisionKey: prepared.continuity.revisionKey,
-          });
-        };
-        await activateLibraryRuntimeConfiguration({
-          ...configurationInput,
-          revisionKey: target.revisionKey,
-          runtimeConfigJson,
-          runtimeConfigSha256: target.runtimeConfigSha256,
+        // The running site answers its configuration only on the address it
+        // calls its own, and redirects every other. A change of that address
+        // is sent to the old one; once it lands, the site answers on the new
+        // one, which is where a restore has to go first. A custom domain is
+        // reached through our own proxy, so one whose records were deleted
+        // can still be switched away from.
+        const platformOrigin = new URL(target.targetBaseUrl).origin;
+        const liveOrigin = new URL(prepared.continuity.liveOrigin).origin;
+        const nextOrigin = new URL(runtimeConfiguration.identity.baseUrl)
+          .origin;
+        const machineCredential =
+          runtimeConfiguration.authentication.openScholar.machineCredential;
+        const configurationInputFor = async (origin: string) => ({
+          ...(origin === platformOrigin
+            ? {}
+            : {
+                fetchImpl: await openOwnProxyClient({
+                  host: new URL(origin).hostname,
+                }),
+              }),
+          baseUrl: origin,
+          machineCredential,
         });
+        const restorePreviousConfiguration = async () => {
+          let lastError: unknown;
+          for (const origin of new Set([nextOrigin, liveOrigin])) {
+            try {
+              await restoreLibraryRuntimeConfiguration({
+                ...(await configurationInputFor(origin)),
+                revisionKey: prepared.continuity.revisionKey,
+              });
+              return;
+            } catch (error) {
+              lastError = error;
+            }
+          }
+          throw lastError;
+        };
+        // Once the site takes a new address it redirects everything else
+        // there, so that address has to answer as this library over HTTPS
+        // first — a domain can count as working with an expired certificate.
+        // Nothing has changed yet if it does not.
+        if (nextOrigin !== liveOrigin && nextOrigin !== platformOrigin) {
+          const answer = await probeEvidenceLibraryAddress({
+            targetBaseUrl: nextOrigin,
+            fetchImpl: await openPinnedDomainClient({
+              host: new URL(nextOrigin).hostname,
+            }),
+          });
+          if (
+            answer.state !== "ours" ||
+            (answer.revision !== prepared.continuity.revisionKey &&
+              answer.revision !== target.revisionKey)
+          ) {
+            throw new ReadinessClientError(
+              "CONFIGURATION_ACTIVATION_FAILED",
+              "The new address does not answer as this library",
+            );
+          }
+        }
+        restoreDirectConfiguration = restorePreviousConfiguration;
+        // A retry after an attempt that landed finds the site already on the
+        // new address, so the new one is tried when the old one refuses.
+        let activated = false;
+        let activationError: unknown;
+        for (const origin of new Set([liveOrigin, nextOrigin])) {
+          try {
+            await activateLibraryRuntimeConfiguration({
+              ...(await configurationInputFor(origin)),
+              revisionKey: target.revisionKey,
+              runtimeConfigJson,
+              runtimeConfigSha256: target.runtimeConfigSha256,
+            });
+            activated = true;
+            break;
+          } catch (error) {
+            // A refusal worth waiting out is the answer, not a reason to try
+            // the other address.
+            if (isRetryableReadinessError(error)) throw error;
+            activationError = error;
+          }
+        }
+        if (!activated) throw activationError;
         await ctx.runMutation(
           internal.evidenceLibraries.configurationDeployment
             .saveConfigurationActivationReceipt,
@@ -391,10 +473,7 @@ export const runConfigurationDeployment = internalAction({
           verifierToken,
         };
         restoreDirectConfiguration = async () => {
-          await restoreLibraryRuntimeConfiguration({
-            ...configurationInput,
-            revisionKey: prepared.continuity.revisionKey,
-          });
+          await restorePreviousConfiguration();
           const previousReadiness = {
             ...readinessInput,
             revisionKey: prepared.continuity.revisionKey,
@@ -712,7 +791,11 @@ export const runConfigurationDeployment = internalAction({
       await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .failConfigurationDeployment,
-        { ...args, error: safeError },
+        {
+          ...args,
+          error: safeError,
+          ...(restoreDirectConfiguration ? { rolledBack: true } : {}),
+        },
       );
       return { status: "failed" as const };
     }

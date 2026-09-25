@@ -1,5 +1,5 @@
 const BILLING_TEST_USER_EMAIL =
-  /^billing-e2e-\d+-[a-z0-9]+@test\.example\.com$/i;
+  /^billing-e2e-\d+-[a-z0-9]+\+clerk_test@example\.com$/i;
 
 export async function cleanupStaleBillingClerkUsers(
   clerkClient,

@@ -1,4 +1,6 @@
+import { publicName, publicPhoto } from "../../lib/evidence-libraries/configuration/home-people";
 import { hasPublicationProviderChanges } from "./publicationProviders";
+import { readDomainActivationPlan } from "./domainPlan";
 import { readMemberOrganizations, requireLibraryOrganization } from "../organizationFeatures";
 import {
   internalQuery,
@@ -587,7 +589,10 @@ export async function readEvidenceLibraryDraft(
     },
     library: access.library,
     operation,
-    hasUnpublishedChanges: hasUnpublishedChanges || await hasPublicationProviderChanges(ctx, access.library),
+    hasUnpublishedChanges:
+      hasUnpublishedChanges ||
+      (await hasPublicationProviderChanges(ctx, access.library)) ||
+      (await hasDomainChanges(ctx, access.library, draft)),
     sections,
   };
 }
@@ -639,6 +644,9 @@ export const getDraft = query({
       editVersion: v.number(),
       ownerConfigurationVersion: currentOwnerConfigurationVersionValidator,
       contractProvenance: configProvenanceValidator,
+      mainDomainId: v.optional(
+        v.union(v.id("evidenceLibraryDomains"), v.null()),
+      ),
       createdByClerkUserId: v.string(),
       updatedByClerkUserId: v.string(),
       createdAt: v.number(),
@@ -715,6 +723,29 @@ const teamPersonValidator = v.object({
   imageUrl: v.optional(v.string()),
 });
 
+/**
+ * Everyone who is, or could be added to, the library's team: active members of
+ * its organization and people with a library grant, each with their role.
+ */
+async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
+  const [memberships, assignments] = await Promise.all([
+    ctx.db.query("organizationMemberships")
+      .withIndex("by_organizationId_and_state", q => q.eq("organizationId", library.organizationId).eq("state", "active")).collect(),
+    ctx.db.query("evidenceLibraryMembers")
+      .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id)).collect(),
+  ]);
+  const memberIds = new Set(memberships.map(m => m.clerkUserId));
+  const userIds = new Set([...memberIds, ...assignments.map(m => m.clerkUserId)]);
+  return await Promise.all([...userIds].map(async clerkUserId => {
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
+    return {
+      role: await readLibraryRole(ctx, library, clerkUserId),
+      canAdd: memberIds.has(clerkUserId) && user?.state !== "deleted" && library.state !== "disabled",
+      person: { clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "", imageUrl: user?.avatarUrl },
+    };
+  }));
+}
+
 /** Owners manage explicit library grants and inherited organization owners. */
 export const listTeam = query({
   args: { libraryId: v.id("evidenceLibraries") },
@@ -728,22 +759,7 @@ export const listTeam = query({
   }),
   handler: async (ctx, args) => {
     const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    const [memberships, assignments] = await Promise.all([
-      ctx.db.query("organizationMemberships")
-        .withIndex("by_organizationId_and_state", q => q.eq("organizationId", access.organization._id).eq("state", "active")).collect(),
-      ctx.db.query("evidenceLibraryMembers")
-        .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", args.libraryId)).collect(),
-    ]);
-    const memberIds = new Set(memberships.map(m => m.clerkUserId));
-    const userIds = new Set([...memberIds, ...assignments.map(m => m.clerkUserId)]);
-    const people = await Promise.all([...userIds].map(async clerkUserId => {
-      const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
-      return {
-        role: await readLibraryRole(ctx, access.library, clerkUserId),
-        canAdd: memberIds.has(clerkUserId) && user?.state !== "deleted" && access.library.state !== "disabled",
-        person: { clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "", imageUrl: user?.avatarUrl },
-      };
-    }));
+    const people = await readLibraryPeople(ctx, access.library);
     people.sort((a, b) => (a.person.name || a.person.email).localeCompare(b.person.name || b.person.email));
     return {
       invitations: (await ctx.db.query("evidenceLibraryInvitations").withIndex("by_libraryId_and_email", q => q.eq("libraryId", args.libraryId)).collect())
@@ -757,3 +773,36 @@ export const listTeam = query({
     };
   },
 });
+
+/**
+ * Everyone with a role on the library, as the published home page names them.
+ * A person without a name is left out: an email is private and never a name.
+ */
+export const readLibraryTeamForAssembly = internalQuery({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.array(v.object({ id: v.string(), name: v.string(), photo: v.optional(v.string()) })),
+  handler: async (ctx, args) => {
+    const library = await ctx.db.get("evidenceLibraries", args.libraryId);
+    if (!library) return [];
+    return (await readLibraryPeople(ctx, library)).flatMap(({ role, person }) => {
+      const name = publicName(person.name);
+      if (!role || !name) return [];
+      const photo = publicPhoto(person.imageUrl);
+      return [photo ? { id: person.clerkUserId, name, photo } : { id: person.clerkUserId, name }];
+    });
+  },
+});
+
+/** Address choices saved for the next activation count as changes too. */
+async function hasDomainChanges(
+  ctx: QueryCtx,
+  library: Doc<"evidenceLibraries">,
+  draft: Doc<"evidenceLibraryConfigDrafts">,
+): Promise<boolean> {
+  if (library.state !== "active" || !library.runtimeBindingId) return false;
+  const binding = await ctx.db.get(library.runtimeBindingId);
+  if (!binding) return false;
+  return (
+    await readDomainActivationPlan(ctx, { library, binding, draft })
+  ).changed;
+}

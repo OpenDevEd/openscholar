@@ -1,3 +1,4 @@
+import { isHandEntered, publicName, publicPhoto } from "./home-people";
 import {
   aiProviderIssues,
   type ApplyAiProviderKey,
@@ -44,7 +45,12 @@ export type ManagedEvidenceLibraryConfiguration = {
   // The OpenScholar logo and browser icon set, used when the owner uploads nothing.
   // Undefined means the platform brand is not set up yet.
   brand?: PlatformBrandAssets;
+  // Everyone with a role on the library. The home page names approvers and
+  // shows people from this list.
+  team: readonly TeamMember[];
 };
+
+export type TeamMember = { id: string; name: string; photo?: string };
 
 export type PlatformBrandAssets = {
   logoUrl: string;
@@ -80,8 +86,14 @@ export function fillBrandAssets(
 ): { assets: Record<string, unknown>; missing: (typeof BRAND_ASSET_KEYS)[number][] } {
   const own = isObject(assets) ? assets : {};
   const hasOwnerFavicon = typeof own.favicon === "string" && own.favicon !== "";
+  const ownLogoLight =
+    typeof own.logoLight === "string" && own.logoLight !== ""
+      ? own.logoLight
+      : undefined;
   const defaults: Record<(typeof BRAND_ASSET_KEYS)[number], string | undefined> = {
-    logoDark: brand?.logoUrl,
+    // The light logo is the owner's main one; dark mode uses it until a dark
+    // logo is uploaded.
+    logoDark: ownLogoLight ?? brand?.logoUrl,
     favicon: brand?.faviconUrl,
   };
   const filled: Record<string, unknown> = { ...own };
@@ -104,6 +116,84 @@ export function fillBrandAssets(
 export function emailWantsPlatformMail(email: unknown): boolean {
   if (!isObject(email)) return false;
   return Boolean(email.contactRecipient) || Boolean(email.takedownRecipient);
+}
+
+// The runtime lists at most 500 people in the directory.
+const HOME_DIRECTORY_MAX = 500;
+
+/** A team member as the home page shows them, or nothing without a usable name; no usable photo means no key. */
+function personFields(member: TeamMember) {
+  const name = publicName(member.name);
+  if (!name) return undefined;
+  const photo = publicPhoto(member.photo);
+  return photo ? { name, photo } : { name };
+}
+
+/**
+ * The owner's home row with the team filled in: the directory the runtime
+ * names approvers from, people refreshed from their accounts, and nobody who
+ * has left the team, as a person shown or as a step's editor.
+ */
+function fillHomeTeam(
+  home: Record<string, unknown>,
+  team: readonly TeamMember[],
+): Record<string, unknown> {
+  // Only people the page can name: a member without a usable name is on neither list.
+  const shown = team.flatMap((member) => {
+    const fields = personFields(member);
+    return fields ? [{ id: member.id, ...fields }] : [];
+  });
+  const members = new Map(shown.map((member) => [member.id, member]));
+  // The steps' editors go first, so a capped directory still names them.
+  const editors = new Set(
+    isObject(home.curation) && Array.isArray(home.curation.steps)
+      ? home.curation.steps.flatMap((step) =>
+          isObject(step) && typeof step.editor === "string" ? [step.editor] : [],
+        )
+      : [],
+  );
+  const filled: Record<string, unknown> = {
+    ...home,
+    directory: [
+      ...shown.filter((member) => editors.has(member.id)),
+      ...shown.filter((member) => !editors.has(member.id)),
+    ].slice(0, HOME_DIRECTORY_MAX),
+  };
+  // People written in by hand keep what the owner typed, cleaned as the
+  // runtime reads names and photos; they are editors a step may name too.
+  const handEntered = new Set<string>();
+  if (Array.isArray(home.people)) {
+    filled.people = home.people.flatMap((person) => {
+      if (!isObject(person) || typeof person.id !== "string") return [];
+      const { photo: _stale, name: _name, ...rest } = person;
+      if (isHandEntered(person.id)) {
+        const fields = personFields({
+          id: person.id,
+          name: typeof person.name === "string" ? person.name : "",
+          photo: typeof person.photo === "string" ? person.photo : undefined,
+        });
+        if (!fields) return [];
+        handEntered.add(person.id);
+        return [{ ...rest, ...fields }];
+      }
+      const member = members.get(person.id);
+      if (!member) return [];
+      const { id: _id, ...fields } = member;
+      return [{ ...rest, ...fields }];
+    });
+  }
+  if (isObject(home.curation) && Array.isArray(home.curation.steps)) {
+    filled.curation = {
+      ...home.curation,
+      steps: home.curation.steps.map((step) => {
+        if (!isObject(step) || step.editor === undefined) return step;
+        if (members.has(step.editor as string) || handEntered.has(step.editor as string)) return step;
+        const { editor: _gone, ...rest } = step;
+        return rest;
+      }),
+    };
+  }
+  return filled;
 }
 
 export type OwnerSections = Partial<Record<SectionKey, unknown>>;
@@ -251,6 +341,10 @@ export function assembleEvidenceLibraryConfiguration({
       ...owner,
       identity,
       email,
+      // The home row is the owner's; who is on the team is the platform's.
+      ...(isObject(owner.home)
+        ? { home: fillHomeTeam(owner.home, managed.team) }
+        : {}),
       services: {
         // Every managed runtime has this private Compose service.
         redis: { url: "redis://evidence-library-redis:6379" },

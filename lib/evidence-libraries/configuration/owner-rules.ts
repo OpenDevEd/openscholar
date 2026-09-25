@@ -15,6 +15,7 @@ import {
   WRITE_ONLY_POINTER_PATTERNS,
   isPlatformSection,
 } from "./section-registry";
+import { isHandEntered, publicPhoto } from "./home-people";
 
 // Drafts never carry keys or passwords; the platform adds them at assembly.
 // A missing write-only value is therefore not a draft problem. The same goes
@@ -93,6 +94,53 @@ function ownerRuleIssues(
       message: "The mail server is set by the platform and cannot be saved.",
     });
   }
+  // The directory names everyone on the team. The platform fills it from the
+  // team at assembly, so an owner row never carries one.
+  if (
+    sectionKey === "home" &&
+    record?.directory !== undefined &&
+    !(Array.isArray(record.directory) && record.directory.length === 0)
+  ) {
+    issues.push({
+      pointer: "/home/directory",
+      section: "home",
+      keyword: "platformValue",
+      message: "The team directory is set by the platform and cannot be saved.",
+    });
+  }
+  // A photo typed in by hand must be one the runtime can show: the schema
+  // takes any address, the page only https.
+  const people = sectionKey === "home" ? record?.people : undefined;
+  if (Array.isArray(people)) {
+    people.forEach((entry, index) => {
+      const person = objectValue(entry);
+      if (typeof person?.id !== "string" || !isHandEntered(person.id)) return;
+      if (typeof person.photo === "string" && person.photo.trim() && !publicPhoto(person.photo)) {
+        issues.push({
+          pointer: `/home/people/${index}/photo`,
+          section: "home",
+          keyword: "format",
+          message: "Use a photo address that starts with https://.",
+        });
+      }
+    });
+  }
+  // The runtime's one rule the schema cannot state: a text-only step is only
+  // its name and words, so it needs a name.
+  const steps = sectionKey === "home" ? objectValue(record?.curation)?.steps : undefined;
+  if (Array.isArray(steps)) {
+    steps.forEach((entry, index) => {
+      const step = objectValue(entry);
+      if (step?.type === "text" && !(typeof step.title === "string" && step.title.trim())) {
+        issues.push({
+          pointer: `/home/curation/steps/${index}/title`,
+          section: "home",
+          keyword: "required",
+          message: "A text-only step needs a name.",
+        });
+      }
+    });
+  }
   // The platform decides these two switches and the search embedder. A saved
   // row must not carry them, or a stale value would sit in the draft while
   // the library runs on something else.
@@ -144,15 +192,27 @@ function ownerRuleIssues(
   return issues;
 }
 
+/** Schema messages an owner could not place on the card, said in the card's words. */
+const OWNER_WORDING: readonly [RegExp, string][] = [
+  [/^\/home\/extra\/text$/, "Write the licence and reuse text, or clear its heading."],
+  [/^\/home\/people\/\d+\/name$/, "Write the name of each person shown."],
+];
+
+function ownerWording(issue: ValidationIssue): ValidationIssue {
+  if (issue.keyword !== "required" && issue.keyword !== "minLength") return issue;
+  const message = OWNER_WORDING.find(([pointer]) => pointer.test(issue.pointer))?.[1];
+  return message ? { ...issue, message } : issue;
+}
+
 export function validateOwnerSection(
   sectionKey: SectionKey,
   payload: unknown,
   options: OwnerRuleOptions = {},
 ): { valid: boolean; issues: ValidationIssue[] } {
   const issues = [
-    ...validateSectionStructure(sectionKey, payload).issues.filter(
-      (issue) => !isMissingPlatformValue(issue),
-    ),
+    ...validateSectionStructure(sectionKey, payload).issues
+      .filter((issue) => !isMissingPlatformValue(issue))
+      .map(ownerWording),
     ...ownerRuleIssues(sectionKey, payload, options),
   ];
   return { valid: issues.length === 0, issues };

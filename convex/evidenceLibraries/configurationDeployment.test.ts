@@ -5,12 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { encrypt } from "../lib/crypto";
 import { TEST_AI_MODELS } from "../../lib/evidence-libraries/configuration/test-models";
+import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import {
   AI_PROVIDER,
   AI_PROVIDER_CREDENTIAL_KEY,
   PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
 } from "../../lib/evidence-libraries/configuration/ai";
 import { createCoolifyLibraryTag } from "./coolifyClient";
+import { configurationOperationRequiresDeployment } from "./operations";
 import {
   createDeployedSetupFixture,
   essentialSetupSections,
@@ -20,6 +22,7 @@ import {
 
 vi.mock("./domainEgressNode", () => ({
   openPinnedDomainClient: async () => globalThis.fetch,
+  openOwnProxyClient: async () => globalThis.fetch,
 }));
 
 const ENCRYPTION_KEY = "33".repeat(32);
@@ -76,6 +79,8 @@ function createRuntimeNetwork(input: {
   libraryId: string;
   publicAddress: string;
   canonicalAddress?: string;
+  /** Other hosts the proxy routes to this library. */
+  servedAddresses?: string[];
   revisionKey: string;
   runtimeCommit?: string;
   runtimeImage?: string;
@@ -88,7 +93,16 @@ function createRuntimeNetwork(input: {
   let deployedConfigHash: string | null = INITIAL_CONFIG_HASH;
   let deploymentStatus = "queued";
   let activeRevision = input.revisionKey;
+  // The address the running site calls its own. It follows the configuration
+  // it was given, as the real runtime does, and redirects every other host.
+  let canonical = input.canonicalAddress ?? null;
+  let previousCanonical = canonical;
   let readinessUnavailable = false;
+  let configurationRejected = false;
+  // A rollback stamps what it restores with the time it ran, and the runtime
+  // then refuses any other configuration that is not newer than that.
+  let rolledBackAt: number | null = null;
+  let configurationBusy = false;
   let runtimeRouteMarker: string | null = null;
   const publicHealthMarkers: Array<string | null> = [];
   const requests: RecordedRequest[] = [];
@@ -268,11 +282,40 @@ function createRuntimeNetwork(input: {
         });
       }
       if (
-        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
+        url.origin === new URL(canonical ?? publicDomain).origin &&
         url.pathname === "/api/openscholar/configuration"
       ) {
+        if (method === "PUT" && configurationBusy) {
+          return jsonResponse({ message: "Configuration is locked" }, 409);
+        }
+        if (method === "PUT" && rolledBackAt !== null) {
+          const next = body as { revision: string; updatedAt?: string };
+          if (
+            next.revision !== activeRevision &&
+            !(Date.parse(next.updatedAt ?? "") > rolledBackAt)
+          ) {
+            return jsonResponse(
+              { error: { code: "REVISION_NOT_NEWER" } },
+              400,
+            );
+          }
+        }
+        // The runtime's clock runs half a minute ahead of the platform's.
+        if (method === "DELETE") rolledBackAt = Date.now() + 30_000;
+        if (method === "PUT" && configurationRejected) {
+          return jsonResponse({ message: "Configuration refused" }, 400);
+        }
         if (method === "PUT") {
           activeRevision = (body as { revision: string }).revision;
+          const baseUrl = (body as { identity?: { baseUrl?: string } })
+            .identity?.baseUrl;
+          previousCanonical = canonical;
+          if (baseUrl) {
+            canonical =
+              new URL(baseUrl).origin === new URL(publicDomain).origin
+                ? null
+                : baseUrl;
+          }
           return jsonResponse({
             revision: activeRevision,
             sourceSha256: createHash("sha256")
@@ -283,11 +326,27 @@ function createRuntimeNetwork(input: {
         }
         if (method === "DELETE") {
           activeRevision = (body as { revision: string }).revision;
+          canonical = previousCanonical;
           return jsonResponse({ revision: activeRevision, status: "active" });
         }
       }
+      // The runtime answers its configuration only on the address it calls
+      // its own and redirects every other.
+      if (url.pathname === "/api/openscholar/configuration") {
+        return new Response(null, {
+          status: 307,
+          headers: {
+            location: new URL(url.pathname, canonical ?? publicDomain).href,
+          },
+        });
+      }
+      // The health check answers on every host the library is served on,
+      // never redirected, so a new address can be read before it is used.
       if (
-        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
+        (url.origin === new URL(canonical ?? publicDomain).origin ||
+          (input.servedAddresses ?? []).some(
+            (address) => new URL(address).origin === url.origin,
+          )) &&
         method === "GET" &&
         url.pathname === "/api/library-config/health"
       ) {
@@ -296,7 +355,12 @@ function createRuntimeNetwork(input: {
           {
             state: "active",
             rejected: null,
-            active: { revision: activeRevision },
+            active: {
+              revision: activeRevision,
+              ...(rolledBackAt === null
+                ? {}
+                : { updatedAt: new Date(rolledBackAt).toISOString() }),
+            },
           },
           200,
           runtimeRouteMarker
@@ -305,14 +369,14 @@ function createRuntimeNetwork(input: {
         );
       }
       if (
-        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
+        url.origin === new URL(canonical ?? publicDomain).origin &&
         method === "HEAD" &&
         url.pathname === "/lib"
       ) {
         return new Response("ready", { status: 200 });
       }
       if (
-        input.canonicalAddress &&
+        canonical &&
         url.origin === new URL(publicDomain).origin &&
         method === "GET" &&
         url.pathname === "/lib"
@@ -320,14 +384,14 @@ function createRuntimeNetwork(input: {
         return new Response(null, {
           status: 307,
           headers: {
-            location: new URL("/lib", input.canonicalAddress).href,
+            location: new URL("/lib", canonical).href,
           },
         });
       }
       // A live library sends a signed-out visitor of its admin area to
       // OpenScholar, and readiness checks exactly that.
       if (
-        url.origin === new URL(input.canonicalAddress ?? publicDomain).origin &&
+        url.origin === new URL(canonical ?? publicDomain).origin &&
         method === "GET" &&
         url.pathname === "/admin"
       ) {
@@ -372,6 +436,12 @@ function createRuntimeNetwork(input: {
     },
     failReadiness() {
       readinessUnavailable = true;
+    },
+    rejectConfiguration() {
+      configurationRejected = true;
+    },
+    holdConfiguration() {
+      configurationBusy = true;
     },
     restoreReadiness() {
       readinessUnavailable = false;
@@ -448,9 +518,30 @@ async function readMoveOperation(
 
 async function activateChangedConfiguration(
   suffix: string,
-  options: { canonicalBaseUrl?: string } = {},
+  options: {
+    canonicalBaseUrl?: string;
+    // What the last update check found about OpenScholar's contract.
+    contractSupport?: { running: boolean; latest: boolean };
+  } = {},
 ) {
   const fixture = await createReadyLibrary(suffix);
+  if (options.contractSupport) {
+    const contractSupport = {
+      commit: EVIDENCE_LIBRARY_CONFIG_PROVENANCE.commit,
+      ...options.contractSupport,
+    };
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: NEWER_COMMIT,
+        latestImage: NEWER_RUNTIME_IMAGE,
+        changes: [{ sha: NEWER_COMMIT, message: "feat: home page" }],
+        releases: [],
+        checkedAt: Date.now(),
+        contractSupport,
+      });
+    });
+  }
   if (options.canonicalBaseUrl) {
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(fixture.created.runtimeBindingId, {
@@ -496,6 +587,83 @@ async function activateChangedConfiguration(
     attemptToken: operation.configurationAttemptToken,
     attemptCount: operation.attemptCount,
   };
+}
+
+/**
+ * A live library and a working custom domain, with a switch of its main
+ * address onto that domain, or back off it, already queued.
+ */
+async function switchCustomDomain(
+  suffix: string,
+  domainState: "active" | "failed",
+  direction: "on" | "off",
+  { served = true }: { served?: boolean } = {},
+) {
+  const customAddress = "https://evidence.example.org";
+  const fixture = await createReadyLibrary(suffix);
+  const domainId = await fixture.t.run(async (ctx) => {
+    if (direction === "off") {
+      await ctx.db.patch(fixture.created.runtimeBindingId, {
+        canonicalBaseUrl: customAddress,
+      });
+    }
+    const now = Date.now();
+    return await ctx.db.insert("evidenceLibraryDomains", {
+      generation: 0,
+      libraryId: fixture.created.libraryId,
+      host: new URL(customAddress).hostname,
+      isApex: false,
+      verificationHost: "example.org",
+      verificationToken: "0".repeat(32),
+      role: direction === "off" ? "primary" : "redirect",
+      state: domainState,
+      ...(domainState === "failed" ? { failure: "no-name" as const } : {}),
+      attachedAt: now,
+      createdByClerkUserId: "user_owner",
+      createdAt: now,
+      updatedAt: now,
+    });
+  });
+  const network = createRuntimeNetwork({
+    libraryId: fixture.created.libraryId,
+    publicAddress: fixture.created.publicAddress,
+    ...(direction === "off" ? { canonicalAddress: customAddress } : {}),
+    ...(direction === "on" && served ? { servedAddresses: [customAddress] } : {}),
+    // The running site reports the revision it is live on.
+    revisionKey: await fixture.t.run(async (ctx) => {
+      const library = await ctx.db.get(fixture.created.libraryId);
+      const revision = library?.activeRevisionId
+        ? await ctx.db.get(library.activeRevisionId)
+        : null;
+      return revision?.revisionKey ?? "";
+    }),
+  });
+  vi.stubGlobal("fetch", network.fetchImpl);
+  const off = await fixture.admin.mutation(
+    api.evidenceLibraries.versions.setDomainPrimary,
+    {
+      libraryId: fixture.created.libraryId,
+      domainId,
+      primary: direction === "on",
+    },
+  );
+  const run = async () => {
+    const operation = await fixture.t.run((ctx) => ctx.db.get(off.operationId));
+    if (!operation?.configurationAttemptToken) {
+      throw new Error("The address change did not start an attempt");
+    }
+    return await fixture.t.action(
+      internal.evidenceLibraries.configurationDeploymentActions
+        .runConfigurationDeployment,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: off.operationId,
+        attemptToken: operation.configurationAttemptToken,
+        attemptCount: operation.attemptCount,
+      },
+    );
+  };
+  return { customAddress, domainId, fixture, network, off, run };
 }
 
 type ChangedConfiguration = Awaited<
@@ -928,6 +1096,152 @@ describe("Evidence Library configuration deployment", () => {
     ).toBe(canonicalAddress);
   });
 
+  it("switches a library onto a working custom domain without a deployment", async () => {
+    const { customAddress, fixture, network, run } = await switchCustomDomain(
+      "canonical-on",
+      "active",
+      "on",
+    );
+
+    await expect(run()).resolves.toEqual({ status: "succeeded" });
+
+    // Nothing was redeployed: the change reached the running site directly,
+    // on the platform address it answered to until then.
+    expect(
+      network.requests.some(({ url }) => url.pathname === "/api/v1/deploy"),
+    ).toBe(false);
+    expect(
+      network.requests.find(
+        ({ method, url }) =>
+          method === "PUT" && url.pathname === "/api/openscholar/configuration",
+      )?.url.origin,
+    ).toBe(fixture.created.publicAddress);
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.canonicalAddress).toBe(customAddress);
+    expect(listed.domains[0]).toMatchObject({
+      role: "primary",
+      deploymentPending: false,
+    });
+  });
+
+  it("finishes an address switch that landed before a check failed", async () => {
+    const { customAddress, fixture, network, run } = await switchCustomDomain(
+      "canonical-on-retry",
+      "active",
+      "on",
+    );
+    network.failReadiness();
+    await expect(run()).resolves.toEqual({ pollCount: 1, status: "running" });
+    network.restoreReadiness();
+
+    // The site already answers on the new address, so the retry reaches it
+    // there instead of failing on the old one.
+    await expect(run()).resolves.toEqual({ status: "succeeded" });
+    const writes = network.requests.filter(
+      ({ method, url }) =>
+        method === "PUT" && url.pathname === "/api/openscholar/configuration",
+    );
+    expect(writes.at(-1)?.url.origin).toBe(customAddress);
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.canonicalAddress).toBe(customAddress);
+  });
+
+  it("does not switch onto a domain that does not answer as this library", async () => {
+    // Its certificate may have expired while it still counts as working.
+    // Taking it would send every visitor there with no way back.
+    const { fixture, network, run } = await switchCustomDomain(
+      "canonical-on-unserved",
+      "active",
+      "on",
+      { served: false },
+    );
+    await expect(run()).resolves.toEqual({ status: "failed" });
+    expect(
+      network.requests.some(
+        ({ method, url }) =>
+          method === "PUT" && url.pathname === "/api/openscholar/configuration",
+      ),
+    ).toBe(false);
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.canonicalAddress).toBe(fixture.created.publicAddress);
+  });
+
+  it("waits out a busy runtime rather than trying the other address", async () => {
+    const { network, run } = await switchCustomDomain(
+      "canonical-on-busy",
+      "active",
+      "on",
+    );
+    network.holdConfiguration();
+    await expect(run()).resolves.toEqual({ pollCount: 1, status: "running" });
+    expect(
+      network.requests.filter(
+        ({ method, url }) =>
+          method === "PUT" && url.pathname === "/api/openscholar/configuration",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it.each(["active", "failed"] as const)(
+    "switches a library off a %s custom domain through a deployment",
+    async (domainState) => {
+      // A custom domain can have lost its records or its certificate while
+      // still counting as working, so the site may not be reachable on it:
+      // a deployment carries the change instead.
+      const { fixture, off } = await switchCustomDomain(
+        `canonical-off-${domainState}`,
+        domainState,
+        "off",
+      );
+      const operation = await fixture.t.run((ctx) =>
+        ctx.db.get(off.operationId),
+      );
+      expect(operation?.domainChange).toMatchObject({
+        reason: "canonical",
+        redeploy: true,
+      });
+      expect(configurationOperationRequiresDeployment(operation!)).toBe(true);
+    },
+  );
+
+  it("leaves a failed direct activation out from behind the guard", async () => {
+    const deployment = await activateChangedConfiguration("direct-refused");
+    const network = createRuntimeNetwork({
+      libraryId: deployment.fixture.created.libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    network.rejectConfiguration();
+
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId: deployment.fixture.created.libraryId,
+          operationId: deployment.activated.operationId,
+          attemptToken: deployment.attemptToken,
+          attemptCount: deployment.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "failed" });
+    expect(
+      network.requests.some(
+        ({ url }) => url.pathname === "/v1/library-runtime/protection",
+      ),
+    ).toBe(false);
+  });
+
   it("retries a failed current deployment by reusing its saved target", async () => {
     const deployment = await activateChangedConfiguration("retry-saved-target");
     const network = createRuntimeNetwork({
@@ -1314,6 +1628,124 @@ describe("Evidence Library configuration deployment", () => {
       status: "succeeded",
       receipt: { runtimeCommit: NEWER_COMMIT },
     });
+  });
+
+  it("publishes changes the running software cannot read on the latest release, in the same step", async () => {
+    const { activated, fixture, attemptToken, attemptCount } =
+      await activateChangedConfiguration("publish-with-update", {
+        contractSupport: { running: false, latest: true },
+      });
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(activated.operationId),
+    );
+    expect(operation).toMatchObject({
+      kind: "publish",
+      revisionId: activated.revisionId,
+      activationEditVersion: expect.any(Number),
+      runtimeUpdate: {
+        from: RUNTIME_COMMIT,
+        to: NEWER_COMMIT,
+        fromImage: TEST_RUNTIME_IMAGE,
+        toImage: NEWER_RUNTIME_IMAGE,
+      },
+    });
+
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    const actionArgs = {
+      libraryId: fixture.created.libraryId,
+      operationId: activated.operationId,
+      attemptToken,
+      attemptCount,
+    };
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).toEqual({ pollCount: 1, status: "running" });
+    expect(network.commit).toBe(NEWER_COMMIT);
+    expect(
+      JSON.parse(
+        network.environments.find(({ key }) => key === "LIBRARY_CONFIG_JSON")!
+          .value,
+      ),
+    ).toMatchObject({ revision: activated.revisionKey });
+
+    network.finishDeployment();
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).toEqual({ status: "succeeded" });
+    const completed = await fixture.t.run(async (ctx) => ({
+      library: await ctx.db.get(fixture.created.libraryId),
+      binding: await ctx.db.get(fixture.created.runtimeBindingId),
+    }));
+    expect(completed.binding).toMatchObject({
+      runtimeCommit: NEWER_COMMIT,
+      previousRuntime: { commit: RUNTIME_COMMIT },
+    });
+    expect(completed.library).toMatchObject({
+      activeRevisionId: activated.revisionId,
+    });
+    // The earlier software could not read these settings, so it is not put back under them.
+    await expect(
+      fixture.t.mutation(internal.evidenceLibraries.versions.startRuntimeRollback, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).rejects.toThrow(/live settings need the current software/);
+
+    // Once the settings from before that publish are restored, the earlier
+    // software can take them again.
+    await fixture.t.run(async (ctx) => {
+      const published = (await ctx.db.get(activated.revisionId))!;
+      const original = await ctx.db
+        .query("evidenceLibraryConfigRevisions")
+        .withIndex("by_libraryId_and_revisionNumber", (query) =>
+          query.eq("libraryId", fixture.created.libraryId),
+        )
+        .first();
+      const { _id, _creationTime, ...fields } = published;
+      const restore = await ctx.db.insert("evidenceLibraryConfigRevisions", {
+        ...fields,
+        revisionKey: `r${published.revisionNumber + 1}`,
+        revisionNumber: published.revisionNumber + 1,
+        rollbackOfRevisionId: original!._id,
+      });
+      await ctx.db.patch(fixture.created.libraryId, { activeRevisionId: restore });
+    });
+    await expect(
+      fixture.t.mutation(internal.evidenceLibraries.versions.startRuntimeRollback, {
+        libraryId: fixture.created.libraryId,
+      }),
+    ).resolves.toMatchObject({ from: NEWER_COMMIT, to: RUNTIME_COMMIT });
+  });
+
+  it("publishes on the running software when it already reads the contract", async () => {
+    const { activated, fixture } = await activateChangedConfiguration(
+      "publish-current-software",
+      { contractSupport: { running: true, latest: true } },
+    );
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(activated.operationId),
+    );
+    expect(operation).not.toHaveProperty("runtimeUpdate");
+  });
+
+  it("refuses to publish while no release reads the contract yet", async () => {
+    await expect(
+      activateChangedConfiguration("publish-unreleased-software", {
+        contractSupport: { running: false, latest: false },
+      }),
+    ).rejects.toThrow(/still being released/);
   });
 
   it("continues from the exact target of this library's failed software update", async () => {
@@ -2114,6 +2546,71 @@ describe("Evidence Library configuration deployment", () => {
         { libraryId, operationId: deployment.activated.operationId },
       ),
     ).rejects.toThrow(/cannot be retried/i);
+  });
+
+  it("retries an activation that was rolled back with a newer copy", async () => {
+    const deployment = await activateChangedConfiguration("retry-rolled-back");
+    const { libraryId } = deployment.fixture.created;
+    const operationId = deployment.activated.operationId;
+    const network = createRuntimeNetwork({
+      libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    // The configuration lands, readiness never answers, and the last allowed
+    // check puts the previous configuration back.
+    network.failReadiness();
+    let result: { status: string } = { status: "running" };
+    for (let poll = 0; poll < 30 && result.status === "running"; poll += 1) {
+      const current = await deployment.fixture.t.run((ctx) =>
+        ctx.db.get(operationId),
+      );
+      result = await deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId,
+          operationId,
+          attemptToken: current!.configurationAttemptToken!,
+          attemptCount: current!.attemptCount,
+        },
+      );
+    }
+    expect(result).toEqual({ status: "failed" });
+    expect(
+      network.requests.some(
+        ({ method, url }) =>
+          method === "DELETE" && url.pathname === "/api/openscholar/configuration",
+      ),
+    ).toBe(true);
+
+    // Retried a second later, which the runtime's clock still calls earlier.
+    vi.setSystemTime(Date.now() + 1_000);
+    network.restoreReadiness();
+    await deployment.fixture.admin.mutation(
+      api.evidenceLibraries.configurationDeployment
+        .retryConfigurationDeployment,
+      { libraryId, operationId },
+    );
+    const claimed = await deployment.fixture.t.run((ctx) =>
+      ctx.db.get(operationId),
+    );
+    if (!claimed?.configurationAttemptToken) {
+      throw new Error("The retry did not claim the deployment");
+    }
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          libraryId,
+          operationId,
+          attemptToken: claimed.configurationAttemptToken,
+          attemptCount: claimed.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "succeeded" });
   });
 
   it("refuses a claimed retry before doing any Coolify work when its target goes stale", async () => {

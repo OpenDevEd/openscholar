@@ -304,6 +304,10 @@ export const evidenceLibraryDomainFields = {
   // Set once the owner asked for the domain to go. The row survives until
   // the proxy has been redeployed without it.
   removingAt: v.optional(v.number()),
+  // Set when the owner removed the library's main address. It stays until
+  // the next activation has moved the library to another address, and then
+  // goes by itself.
+  removeOnActivateAt: v.optional(v.number()),
   // Set just before the proxy is asked to hold this host, so a crash between
   // the proxy accepting it and the receipt being saved is still visible.
   attachIntentAt: v.optional(v.number()),
@@ -312,6 +316,15 @@ export const evidenceLibraryDomainFields = {
   createdByClerkUserId: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),
+};
+
+// One writer at a time for a library's custom-domain route file. Each writer
+// reads the attached domains after it takes this, so the last write always
+// carries the newest set.
+export const evidenceLibraryDomainRouteLeaseFields = {
+  libraryId: v.id("evidenceLibraries"),
+  token: v.string(),
+  expiresAt: v.number(),
 };
 
 export const evidenceLibrarySetupIdentityFields = {
@@ -327,6 +340,10 @@ export const evidenceLibraryConfigDraftFields = {
   editVersion: v.number(),
   ownerConfigurationVersion: draftOwnerConfigurationVersionValidator,
   contractProvenance: configProvenanceValidator,
+  // The address the owner chose for the library, applied by the next
+  // activation like any other change: a domain, or null for the platform
+  // address. Absent means the address stays as it is.
+  mainDomainId: v.optional(v.union(v.id("evidenceLibraryDomains"), v.null())),
   createdByClerkUserId: v.string(),
   updatedByClerkUserId: v.string(),
   createdAt: v.number(),
@@ -485,6 +502,17 @@ export const runtimeReleaseNotesValidator = v.object({
 
 // The newest Evidence Library software commit, checked against GitHub and
 // kept for ten minutes. One row per running commit.
+/**
+ * Whether the running software and the latest release read the configuration
+ * contract OpenScholar is pinned to (`commit`). Rows checked against another
+ * contract say nothing about this one.
+ */
+export const runtimeContractSupportValidator = v.object({
+  commit: v.string(),
+  running: v.boolean(),
+  latest: v.boolean(),
+});
+
 export const evidenceLibraryRuntimeReleaseFields = {
   running: v.string(),
   latest: v.string(),
@@ -494,6 +522,7 @@ export const evidenceLibraryRuntimeReleaseFields = {
   // them as stale and asks GitHub again.
   releases: v.optional(v.array(runtimeReleaseNotesValidator)),
   checkedAt: v.number(),
+  contractSupport: v.optional(runtimeContractSupportValidator),
 };
 
 export const evidenceLibraryCredentialFields = {
@@ -744,6 +773,9 @@ export const evidenceLibraryDomainChangeValidator = v.object({
   // For a canonical change: the address the library should call its own once
   // this deployment is live. Nothing is written until it is.
   address: v.optional(v.string()),
+  // For a canonical change away from a custom domain: carried by a
+  // deployment, which never has to reach that domain or its certificate.
+  redeploy: v.optional(v.literal(true)),
   // The lease this change holds on the domain. Checked when the deployment
   // finishes, so a change that was overtaken cannot land. Every domain
   // change carries one.
@@ -796,6 +828,10 @@ export const evidenceLibraryOperationFields = {
   teardownFailedStep: v.optional(evidenceLibraryTeardownStepValidator),
   configurationDeploymentPollCount: v.optional(v.number()),
   configurationReadinessPollCount: v.optional(v.number()),
+  // A direct activation that failed after it may have landed, and put the
+  // previous configuration back. The runtime stamped that one with the time
+  // it ran, so a retry has to build a newer copy than the one saved here.
+  rolledBackAt: v.optional(v.number()),
   status: v.union(
     v.literal("queued"),
     v.literal("running"),

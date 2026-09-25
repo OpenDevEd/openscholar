@@ -1,7 +1,7 @@
 import { seedFeatureUser } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { applyUserDeleteProjection } from "../users/internal";
 import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
@@ -79,6 +79,21 @@ describe("listTeam", () => {
         { clerkUserId: "user_editor", name: "Grace", email: "grace@example.org", imageUrl: "https://images.example.org/grace.png" },
       ],
     });
+
+    // The published home page names everyone with a role, and nobody else.
+    // An email is private: a member with an email but no name is left off, never shown by their address.
+    await fixture.t.run(async ctx => {
+      await ctx.db.insert("users", { clerkId: "user_unnamed", email: "private@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("evidenceLibraryMembers", { libraryId, clerkUserId: "user_unnamed", role: "editor", grantedBy: "owner", grantedAt: 1 });
+    });
+    await fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_new", role: "creator" });
+    await fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_editor", role: "editor" });
+    const team = await fixture.t.query(internal.evidenceLibraries.queries.readLibraryTeamForAssembly, { libraryId });
+    expect(team).toHaveLength(2);
+    expect(team).toEqual(expect.arrayContaining([
+      { id: "user_team", name: "Ada Lovelace", photo: "https://images.example.org/ada.png" },
+      { id: "user_editor", name: "Grace", photo: "https://images.example.org/grace.png" },
+    ]));
   });
 
   it("grants and revokes a library role without relying on an active organization", async () => {

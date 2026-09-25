@@ -33,7 +33,7 @@ const brandRows = [
       tagline: "Evidence for better decisions",
       fundingPartners: [{ id: "fp_1", name: "Jacobs Foundation" }],
       assets: {
-        logoDark: "https://assets.example.test/logo-dark.svg",
+        logoLight: "https://assets.example.test/logo-light.svg",
         favicon: "https://assets.example.test/favicon.svg",
       },
     },
@@ -76,6 +76,7 @@ const savedRows = [
   { sectionKey: "exports", payload: {} },
   { sectionKey: "analytics", payload: {} },
   { sectionKey: "ai", payload: {} },
+  { sectionKey: "home", payload: {} },
 ] as const;
 
 function savedDraft() {
@@ -86,8 +87,7 @@ describe("readDraft", () => {
   it("fills missing optional values so every control has a value", () => {
     const draft = savedDraft();
     expect(draft.identity.description).toBe("");
-    expect(draft.identity.assets.logoLight).toBe("");
-    expect(draft.identity.assets.faviconLight).toBe("");
+    expect(draft.identity.assets.logoDark).toBe("");
     expect(draft.identity.assets.faviconDark).toBe("");
     expect(draft.identity.assets.shareImage).toBe("");
     expect(draft.theme.layout).toBe("wide");
@@ -113,15 +113,36 @@ describe("readDraft", () => {
       },
     ]);
     expect(draft.identity.assets).toEqual({
-      logoDark: "",
       logoLight: "",
+      logoDark: "",
       favicon: "",
-      faviconLight: "",
       faviconDark: "",
       shareImage: "",
     });
     expect(draft.theme.colors.accent).toBe(THEME_DEFAULTS.colors.accent);
     expect(draft.institutions).toEqual([]);
+  });
+
+  it("reads older brand rows into the files visitors already see", () => {
+    const identity = (assets: Record<string, string>) =>
+      readDraft([{ sectionKey: "identity", payload: { assets } }]).identity
+        .assets;
+    expect(identity({ logoDark: "dark.svg", favicon: "default.ico" })).toMatchObject({
+      logoLight: "dark.svg",
+      logoDark: "",
+      favicon: "default.ico",
+      faviconDark: "",
+    });
+    expect(
+      identity({ favicon: "default.ico", faviconLight: "light.ico" }),
+    ).toMatchObject({ favicon: "light.ico", faviconDark: "default.ico" });
+    expect(
+      identity({
+        favicon: "default.ico",
+        faviconLight: "default.ico",
+        faviconDark: "dark.ico",
+      }),
+    ).toMatchObject({ favicon: "default.ico", faviconDark: "dark.ico" });
   });
 
   it("reads limits from the pinned schema", () => {
@@ -152,7 +173,7 @@ describe("sectionProblems", () => {
 
   it("flags bad colours but not missing logos; the platform logo fills in", () => {
     const draft = savedDraft();
-    draft.identity.assets.logoDark = "";
+    draft.identity.assets.logoLight = "";
     draft.identity.assets.favicon = "";
     expect(sectionProblems(draft, "theme")).toEqual([]);
     draft.theme.colors.accent = "orange";
@@ -192,7 +213,7 @@ describe("changedSectionRows", () => {
           tagline: "Evidence for better decisions",
           fundingPartners: [{ id: "fp_1", name: "Jacobs Foundation" }],
           assets: {
-            logoDark: "https://assets.example.test/logo-dark.svg",
+            logoLight: "https://assets.example.test/logo-light.svg",
             favicon: "https://assets.example.test/favicon.svg",
           },
         },
@@ -203,25 +224,22 @@ describe("changedSectionRows", () => {
   it("sends theme-specific favicons and leaves out missing uploads", () => {
     const draft = savedDraft();
     draft.identity.assets.favicon = "";
-    draft.identity.assets.logoLight =
-      "https://assets.example.test/logo-light.svg";
-    draft.identity.assets.faviconLight =
-      "https://assets.example.test/favicon-light.svg";
+    draft.identity.assets.logoDark =
+      "https://assets.example.test/logo-dark.svg";
     draft.identity.assets.faviconDark =
       "https://assets.example.test/favicon-dark.svg";
     const rows = changedSectionRows(draft, savedRows);
     expect(rows).toHaveLength(1);
     expect((rows[0]?.payload as { assets: unknown }).assets).toEqual({
-      logoDark: "https://assets.example.test/logo-dark.svg",
       logoLight: "https://assets.example.test/logo-light.svg",
-      faviconLight: "https://assets.example.test/favicon-light.svg",
+      logoDark: "https://assets.example.test/logo-dark.svg",
       faviconDark: "https://assets.example.test/favicon-dark.svg",
     });
   });
 
   it("saves a favicon on its own, and no brand images at all", () => {
     const faviconOnly = savedDraft();
-    faviconOnly.identity.assets.logoDark = "";
+    faviconOnly.identity.assets.logoLight = "";
     expect(
       (
         changedSectionRows(faviconOnly, savedRows)[0]?.payload as {
@@ -231,7 +249,7 @@ describe("changedSectionRows", () => {
     ).toEqual({ favicon: "https://assets.example.test/favicon.svg" });
 
     const nothing = savedDraft();
-    nothing.identity.assets.logoDark = "";
+    nothing.identity.assets.logoLight = "";
     nothing.identity.assets.favicon = "";
     expect(
       (
@@ -307,8 +325,8 @@ describe("changedSectionRows", () => {
 describe("sectionState and reset", () => {
   it("shows the logo upload under theme even though it lives in identity", () => {
     const draft = savedDraft();
-    draft.identity.assets.logoLight =
-      "https://assets.example.test/logo-light.svg";
+    draft.identity.assets.logoDark =
+      "https://assets.example.test/logo-dark.svg";
     expect(sectionState(draft, savedRows, "theme")).toBe("edited");
     expect(sectionState(draft, savedRows, "identity")).toBe("complete");
   });
@@ -323,12 +341,12 @@ describe("sectionState and reset", () => {
   it("restores one section from the saved rows and leaves the rest", () => {
     const draft: ConfigurationDraft = savedDraft();
     draft.identity.name = "Renamed";
-    draft.identity.assets.logoDark = "";
+    draft.identity.assets.logoLight = "";
     draft.theme.colors.accent = "#000000";
     const reset = resetSection(draft, savedRows, "theme");
     expect(reset.identity.name).toBe("Renamed");
-    expect(reset.identity.assets.logoDark).toBe(
-      "https://assets.example.test/logo-dark.svg",
+    expect(reset.identity.assets.logoLight).toBe(
+      "https://assets.example.test/logo-light.svg",
     );
     expect(reset.theme.colors.accent).toBe("#e68124");
     expect(sectionState(reset, savedRows, "theme")).toBe("complete");
@@ -337,10 +355,29 @@ describe("sectionState and reset", () => {
 });
 
 describe("staleUploads", () => {
+  it("deletes a removed photo of someone written in by hand, never a team member's", () => {
+    const rows = [
+      ...savedRows.filter((row) => row.sectionKey !== "home"),
+      {
+        sectionKey: "home",
+        payload: {
+          people: [
+            { id: "custom_amina", name: "Amina", photo: "https://assets.example.test/amina.webp" },
+            { id: "user_ada", name: "Ada", photo: "https://img.clerk.example/ada.png" },
+          ],
+        },
+      },
+    ];
+    const draft = readDraft(rows);
+    draft.home.people = [];
+    expect(staleUploads(draft, rows)).toEqual(["https://assets.example.test/amina.webp"]);
+  });
+
+
   it("lists saved files the draft no longer points at", () => {
     const draft = savedDraft();
-    draft.identity.assets.logoDark =
-      "https://assets.example.test/logo-dark-2.svg";
+    draft.identity.assets.logoLight =
+      "https://assets.example.test/logo-light-2.svg";
     const rows = savedRows.map((row) =>
       row.sectionKey === "institutions"
         ? {
@@ -357,16 +394,16 @@ describe("staleUploads", () => {
     );
     draft.institutions = [];
     expect(staleUploads(draft, rows)).toEqual([
-      "https://assets.example.test/logo-dark.svg",
+      "https://assets.example.test/logo-light.svg",
       "https://assets.example.test/edtech-hub.png",
     ]);
   });
 
   it("keeps a file that is still used somewhere in the draft", () => {
     const draft = savedDraft();
-    draft.identity.assets.logoLight = draft.identity.assets.logoDark;
-    draft.identity.assets.logoDark =
-      "https://assets.example.test/logo-dark-2.svg";
+    draft.identity.assets.logoDark = draft.identity.assets.logoLight;
+    draft.identity.assets.logoLight =
+      "https://assets.example.test/logo-light-2.svg";
     expect(staleUploads(draft, savedRows)).toEqual([]);
   });
 });
@@ -599,6 +636,18 @@ describe("changedSectionRows for the content sections", () => {
       downloads: false,
     });
     expect(sectionState(draft, contentRows, "navigation")).toBe("edited");
+  });
+
+  it("writes the home page switch only when it is on", () => {
+    const draft = readDraft(contentRows);
+    draft.features.navbarSearch = true;
+    const [off] = changedSectionRows(draft, contentRows);
+    // Off is the default; older backends and library software refuse the key.
+    expect(off?.payload).not.toHaveProperty("homePage");
+
+    draft.features.homePage = true;
+    const [on] = changedSectionRows(draft, contentRows);
+    expect(on?.payload).toMatchObject({ homePage: true });
   });
 
   it("writes links with runtime hrefs and dropdown children", () => {
@@ -1456,5 +1505,140 @@ describe("notification configuration", () => {
     draft.notifications.schedule.timezone = "Not/AZone";
     expect(sectionProblems(draft, "contact")).toContain("notificationSchedule");
     expect(hasProblems(draft)).toBe(true);
+  });
+});
+
+describe("home page", () => {
+  const homeRow = {
+    sectionKey: "home",
+    payload: {
+      intro: "What the library is **for**.",
+      curation: {
+        text: "Every entry is checked.",
+        steps: [
+          { type: "arrival", title: "Submitted" },
+          { type: "check", editor: "user_ada" },
+          { type: "text", title: "Read", text: "We read it." },
+        ],
+      },
+      team: "A small team.",
+      people: [
+        {
+          id: "user_ada",
+          name: "Ada Lovelace",
+          photo: "https://img.example.test/ada.png",
+          title: "Editor",
+        },
+      ],
+      questions: ["", "What works?"],
+      followed: "ABCD1234",
+      involvement: { suggestions: false, editors: true },
+      extra: { text: "Free to read." },
+      headings: { team: "Who we are" },
+    },
+  } as const;
+  const rows = [...savedRows.filter((row) => row.sectionKey !== "home"), homeRow];
+
+  it("writes no home row until the owner answers something", () => {
+    const withoutHome = savedRows.filter((row) => row.sectionKey !== "home");
+    const draft = readDraft(withoutHome);
+    expect(changedSectionRows(draft, withoutHome)).toEqual([]);
+    expect(sectionState(draft, withoutHome, "home")).toBe("complete");
+    draft.home.intro = "Research on literacy.";
+    expect(changedSectionRows(draft, withoutHome).map((row) => row.sectionKey)).toEqual(["home"]);
+  });
+
+  it("starts empty with the schema's involvement defaults when there is no row", () => {
+    const draft = readDraft(savedRows.filter((row) => row.sectionKey !== "home"));
+    expect(draft.home).toEqual({
+      intro: "",
+      statement: "",
+      steps: [],
+      team: "",
+      people: [],
+      questions: ["", "", ""],
+      followed: "",
+      involvement: { suggestions: true, editors: false },
+      extra: { title: "", text: "" },
+      headings: { curation: "", team: "", involvement: "" },
+    });
+    expect(draft.features.homePage).toBe(false);
+  });
+
+  it("reads a saved row back to the same payload", () => {
+    const draft = readDraft(rows);
+    expect(draft.home.steps.map((step) => step.editor)).toEqual(["", "user_ada", ""]);
+    expect(draft.home.questions).toEqual(["", "What works?", ""]);
+    expect(changedSectionRows(draft, rows)).toEqual([]);
+    expect(sectionState(draft, rows, "home")).toBe("complete");
+    draft.home.intro = "Changed.";
+    expect(changedSectionRows(draft, rows)).toEqual([
+      { sectionKey: "home", payload: { ...homeRow.payload, intro: "Changed." } },
+    ]);
+  });
+
+  it("leaves blank values out, keeps inner blank questions and never writes a directory", () => {
+    const draft = readDraft(rows);
+    draft.home = {
+      ...draft.home,
+      intro: " ",
+      statement: "",
+      team: "",
+      steps: [{ id: "st_1", type: "check", title: "", text: "", editor: "" }],
+      people: [{ id: "user_ada", name: "Ada", photo: "", title: "", location: "" }],
+      questions: ["", "What works?", " "],
+      followed: "",
+      extra: { title: " ", text: " " },
+      headings: { curation: "", team: "", involvement: "" },
+    };
+    const [row] = changedSectionRows(draft, rows);
+    expect(row).toEqual({
+      sectionKey: "home",
+      payload: {
+        curation: { steps: [{ type: "check" }] },
+        people: [{ id: "user_ada", name: "Ada" }],
+        questions: ["", "What works?"],
+        involvement: { suggestions: false, editors: true },
+        headings: {},
+      },
+    });
+    expect(
+      validateOwnerSections([{ sectionKey: "home", payload: row!.payload }]).issues,
+    ).toEqual([]);
+  });
+
+  it("keeps a closing heading without its text and asks for the text", () => {
+    const draft = readDraft(rows);
+    draft.home.extra = { title: "Reuse", text: " " };
+    const [row] = changedSectionRows(draft, rows).filter((entry) => entry.sectionKey === "home");
+    expect(row?.payload).toMatchObject({ extra: { title: "Reuse" } });
+    expect(
+      validateOwnerSections([{ sectionKey: "home", payload: row!.payload }]).issues,
+    ).toEqual([
+      expect.objectContaining({
+        pointer: "/home/extra/text",
+        message: "Write the licence and reuse text, or clear its heading.",
+      }),
+    ]);
+  });
+
+  it("owns the home page switch and flags a text step without a name", () => {
+    const draft = readDraft(rows);
+    draft.features.homePage = true;
+    expect(sectionState(draft, rows, "home")).toBe("edited");
+    expect(sectionState(draft, rows, "features")).toBe("complete");
+    expect(changedSectionRows(draft, rows).map((row) => row.sectionKey)).toEqual(["features"]);
+    expect(cardForRow("home")).toBe("home");
+    expect(cardForRow("features")).toBe("features");
+
+    draft.home.steps[2]!.title = " ";
+    expect(sectionProblems(draft, "home")).toEqual(["homeStepName"]);
+    draft.home.intro = "x".repeat(SCHEMA_LIMITS.home.intro + 1);
+    expect(sectionProblems(draft, "home")).toEqual(["homeStepName", "homeLimit"]);
+
+    const reset = resetSection(draft, rows, "home");
+    expect(reset.features.homePage).toBe(false);
+    expect(reset.home.intro).toBe(homeRow.payload.intro);
+    expect(sectionProblems(reset, "home")).toEqual([]);
   });
 });

@@ -64,6 +64,7 @@ const managedConfiguration = {
   aiModelMetadata: {},
   aiModelCatalogReady: true,
   zoteroTranslationUrl: "https://translation.example.test",
+  team: [] as { id: string; name: string; photo?: string }[],
 };
 
 const platformMail = {
@@ -245,6 +246,19 @@ describe("validateOwnerSection email rules", () => {
         platformMailConfigured: true,
       }).valid,
     ).toBe(true);
+  });
+});
+
+describe("validateOwnerSection home rules", () => {
+  test("refuses a team directory in the owner row", () => {
+    expect(validateOwnerSection("home", { directory: [] }).issues).toEqual([]);
+    expect(
+      validateOwnerSection("home", {
+        directory: [{ id: "user_a", name: "Ada Lovelace" }],
+      }).issues,
+    ).toEqual([
+      expect.objectContaining({ pointer: "/home/directory", keyword: "platformValue" }),
+    ]);
   });
 });
 
@@ -698,6 +712,162 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     });
   });
 
+  test("keeps people written in by hand, cleaned as the runtime reads them, as people a step may name", () => {
+    const configuration = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        home: {
+          curation: { steps: [{ type: "check", editor: "custom_laila" }] },
+          people: [
+            { id: "custom_laila", name: "  Laila\nFriese ", photo: "https://photos.example.test/laila.webp", title: "Senior Editor" },
+            { id: "custom_blank", name: "   " },
+            { id: "custom_yomna", name: "Yomna El-Serafy", photo: "http://photos.example.test/yomna.webp" },
+          ],
+        },
+      },
+      managed: { ...managedConfiguration, team: [] },
+    });
+    expect(validateLibraryConfigStructure(configuration).valid).toBe(true);
+    expect(configuration.home).toMatchObject({
+      people: [
+        { id: "custom_laila", name: "Laila Friese", photo: "https://photos.example.test/laila.webp", title: "Senior Editor" },
+        { id: "custom_yomna", name: "Yomna El-Serafy" },
+      ],
+      curation: { steps: [{ type: "check", editor: "custom_laila" }] },
+    });
+    // A photo the page could not show is left out rather than breaking it.
+    expect((configuration.home as { people: object[] }).people[1]).not.toHaveProperty("photo");
+  });
+
+  test("asks for a name and an https photo for people written in by hand", () => {
+    const issues = validateOwnerSection("home", {
+      people: [{ id: "custom_x", name: "", photo: "http://photos.example.test/x.webp" }],
+    }).issues;
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ pointer: "/home/people/0/name", message: "Write the name of each person shown." }),
+        expect.objectContaining({ pointer: "/home/people/0/photo", message: "Use a photo address that starts with https://." }),
+      ]),
+    );
+    // A team member's photo is their account's and is never checked here.
+    expect(
+      validateOwnerSection("home", { people: [{ id: "user_ada", name: "Ada", photo: "http://img.example.test/a.png" }] }).issues
+        .filter((issue) => issue.pointer.endsWith("/photo") && issue.keyword === "format" && issue.message.includes("https://")),
+    ).toEqual([]);
+  });
+
+  test("fills the home page from the team and leaves out whoever left it", () => {
+    const configuration = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        home: {
+          curation: {
+            steps: [
+              { type: "check", editor: "user_ada" },
+              { type: "check", editor: "user_gone" },
+              { type: "text", title: "Read" },
+            ],
+          },
+          people: [
+            { id: "user_gone", name: "Gone", title: "Founder" },
+            {
+              id: "user_ada",
+              name: "Old name",
+              photo: "https://img.example.test/old.png",
+              title: "Editor in chief",
+              location: "London",
+            },
+            { id: "user_alan", name: "Alan", photo: "https://img.example.test/stale.png" },
+          ],
+        },
+      },
+      managed: {
+        ...managedConfiguration,
+        team: [
+          { id: "user_ada", name: "Ada Lovelace", photo: "https://img.example.test/ada.png" },
+          { id: "user_alan", name: "Alan Turing" },
+        ],
+      },
+    });
+    expect(validateLibraryConfigStructure(configuration).valid).toBe(true);
+    expect(configuration.home).toMatchObject({
+      directory: [
+        { id: "user_ada", name: "Ada Lovelace", photo: "https://img.example.test/ada.png" },
+        { id: "user_alan", name: "Alan Turing" },
+      ],
+      people: [
+        {
+          id: "user_ada",
+          name: "Ada Lovelace",
+          photo: "https://img.example.test/ada.png",
+          title: "Editor in chief",
+          location: "London",
+        },
+        { id: "user_alan", name: "Alan Turing" },
+      ],
+      curation: {
+        steps: [
+          { type: "check", editor: "user_ada" },
+          { type: "check" },
+          { type: "text", title: "Read" },
+        ],
+      },
+    });
+    const home = configuration.home as { people: object[]; directory: object[] };
+    expect(home.people[1]).not.toHaveProperty("photo");
+    expect(home.directory[1]).not.toHaveProperty("photo");
+
+    const odd = assembleEvidenceLibraryConfiguration({
+      sections: { ...ownerSections, home: { people: [{ id: "user_nameless", name: "Old name" }] } },
+      managed: {
+        ...managedConfiguration,
+        team: [
+          { id: "user_lines", name: "Ada\nLovelace", photo: "https://img.example.test/ada.png#photo" },
+          { id: "user_nameless", name: "   " },
+        ],
+      },
+    });
+    expect(validateLibraryConfigStructure(odd).valid).toBe(true);
+    expect(odd.home).toMatchObject({ directory: [{ id: "user_lines", name: "Ada Lovelace" }], people: [] });
+    expect((odd.home as { directory: object[] }).directory[0]).not.toHaveProperty("photo");
+
+    // The last member edits a step, so the capped directory names them first.
+    const crowded = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        home: { people: [], curation: { steps: [{ type: "check", editor: "user_500" }] } },
+      },
+      managed: {
+        ...managedConfiguration,
+        team: Array.from({ length: 501 }, (_, index) => ({
+          id: `user_${index}`,
+          name: index === 0 ? "A".repeat(200) : `Person ${index}`,
+          photo: index === 0 ? "http://img.example.test/plain.png" : undefined,
+        })),
+      },
+    });
+    expect(validateLibraryConfigStructure(crowded).valid).toBe(true);
+    const directory = (crowded.home as { directory: { id: string; name: string; photo?: string }[] }).directory;
+    expect(directory).toHaveLength(500);
+    expect(directory[0]!.id).toBe("user_500");
+    expect(directory[1]!.name).toHaveLength(120);
+    expect(directory[1]).not.toHaveProperty("photo");
+
+    const withoutHome = assembleEvidenceLibraryConfiguration({
+      sections: ownerSections,
+      managed: { ...managedConfiguration, team: [{ id: "user_ada", name: "Ada" }] },
+    });
+    expect(withoutHome).not.toHaveProperty("home");
+  });
+
+  test("refuses a text-only step without a name, as the runtime would", () => {
+    const result = validateOwnerSection("home", {
+      curation: { steps: [{ type: "arrival" }, { type: "text", text: "Words only" }] },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.issues).toContainEqual(expect.objectContaining({ pointer: "/home/curation/steps/1/title" }));
+  });
+
   test("adds the platform mail service under the owner's recipients", () => {
     const configuration = assembleEvidenceLibraryConfiguration({
       sections: {
@@ -747,6 +917,23 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     expect(
       (partial.identity as { assets: Record<string, unknown> }).assets.icons,
     ).toEqual([]);
+
+    const lightOnly = assembleEvidenceLibraryConfiguration({
+      sections: {
+        ...ownerSections,
+        identity: {
+          ...identityWithoutAssets,
+          assets: { logoLight: "https://assets.example.test/own-logo.svg" },
+        },
+      },
+      managed: { ...managedConfiguration, brand: platformBrand },
+    });
+    expect(lightOnly.identity).toMatchObject({
+      assets: {
+        logoLight: "https://assets.example.test/own-logo.svg",
+        logoDark: "https://assets.example.test/own-logo.svg",
+      },
+    });
 
     const own = assembleEvidenceLibraryConfiguration({
       sections: ownerSections,
