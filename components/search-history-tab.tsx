@@ -9,12 +9,11 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { getIdColor } from "@/lib/format";
-import { SearchField, QueryHistoryEntry, QuestionHistoryEntry } from "@/lib/types/search.types";
+import { QueryHistoryEntry, QuestionHistoryEntry } from "@/lib/types/search.types";
 import { ScreeningQuestionEntry, ScreeningResponses } from "@/lib/types/screening.types";
-import { DateRange } from "react-day-picker";
 import { SearchTooltipContent } from "@/components/search-tooltip-content";
 import { motion, AnimatePresence } from "motion/react";
-import { countActiveFilters } from "@/lib/filters";
+import { countActiveFilters, type FilterParams } from "@/lib/filters";
 import { QueryText } from "@/components/ui/query-text";
 import { useLocale, useFormatter, useNow } from "next-intl";
 
@@ -38,25 +37,11 @@ interface SearchHistoryTabProps {
   searchId: string;
   query: string;
   count: number;
-  field?: SearchField;
-  sortBy?: string;
-  dateRange?: DateRange;
-  yearRange?: [number, number];
-  filterType?: 'date' | 'year';
-  isYearRangeEnabled?: boolean;
-  selectedRegions?: string[];
-  selectedCountryFocus?: string[];
-  language?: string;
+  filters: FilterParams;
   createdAt: string;
   updatedAt: string;
   isActive: boolean;
   isCollapsed: boolean;
-  reviewFilter?: boolean;
-  ratingRange?: [number, number];
-  onlyRatedPapers?: boolean;
-  citesItemId?: string;
-  citedByItemId?: string;
-  relatedToItemId?: string;
   queryHistory?: QueryHistoryEntry[];
   questionHistory?: QuestionHistoryEntry[];
   screeningQuestions?: ScreeningQuestionEntry[];
@@ -70,25 +55,11 @@ export function SearchHistoryTab({
   searchId,
   query,
   count,
-  field,
-  sortBy,
-  dateRange,
-  yearRange,
-  filterType,
-  isYearRangeEnabled,
-  selectedRegions,
-  selectedCountryFocus,
-  language,
+  filters,
   createdAt,
   updatedAt,
   isActive,
   isCollapsed,
-  reviewFilter,
-  ratingRange,
-  onlyRatedPapers,
-  citesItemId,
-  citedByItemId,
-  relatedToItemId,
   queryHistory,
   questionHistory,
   screeningQuestions,
@@ -103,23 +74,7 @@ export function SearchHistoryTab({
   const timeAgo = format.relativeTime(new Date(createdAt), now);
 
   // Use shared filter counting logic
-  const totalCount = countActiveFilters({
-    field,
-    sortBy,
-    yearRange,
-    dateRange,
-    filterType,
-    isYearRangeEnabled,
-    selectedRegions,
-    selectedCountryFocus,
-    language,
-    reviewFilter,
-    ratingRange,
-    onlyRatedPapers,
-    citesItemId,
-    citedByItemId,
-    relatedToItemId,
-  });
+  const totalCount = countActiveFilters(filters);
 
   const buttonContent = (
     <motion.div
@@ -236,23 +191,9 @@ export function SearchHistoryTab({
             id={id || searchId}
             query={query}
             count={count}
+            filters={filters}
             createdAt={createdAt}
             updatedAt={updatedAt || createdAt}
-            field={field}
-            sortBy={sortBy}
-            yearRange={yearRange}
-            dateRange={dateRange}
-            filterType={filterType}
-            isYearRangeEnabled={isYearRangeEnabled}
-            selectedRegions={selectedRegions}
-            selectedCountryFocus={selectedCountryFocus}
-            language={language}
-            reviewFilter={reviewFilter}
-            ratingRange={ratingRange}
-            onlyRatedPapers={onlyRatedPapers}
-            citesItemId={citesItemId}
-            citedByItemId={citedByItemId}
-            relatedToItemId={relatedToItemId}
             queryHistory={queryHistory}
           />
         </div>

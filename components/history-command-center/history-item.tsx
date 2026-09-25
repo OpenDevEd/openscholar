@@ -27,7 +27,7 @@ import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
 import { BookmarkForm } from "@/components/command-center";
 import { QueryText } from "@/components/ui/query-text";
-import { HistoryFilterBadges } from "@/components/ui/filter-display";
+import { FilterChips } from "@/components/ui/filter-display";
 import { languageOptions } from "@/components/language-selector";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { HistoryQueryExpansion } from "./history-query-expansion";
@@ -633,7 +633,7 @@ export function HistoryItem({
           {/* Left: Filters */}
           <div className="flex-1 overflow-x-auto scrollbar-hover">
             {hasActiveFiltersFromResult(item) && (
-              <HistoryFilterBadges result={item} variant="compact" />
+              <FilterChips filters={item} />
             )}
           </div>
 

@@ -11,6 +11,7 @@
  */
 
 import { hasUnquotedWildcard } from "../search/wildcard";
+import { researchAreaClauses, sdgFilterValue } from "./vocabulary";
 
 export type OpenAlexSearchFilters = {
   query: string;
@@ -25,6 +26,10 @@ export type OpenAlexSearchFilters = {
   citesItemId?: string;
   citedByItemId?: string;
   relatedToItemId?: string;
+  researchAreas?: string[];
+  sdgs?: string[];
+  openAccessOnly?: boolean;
+  workTypes?: string[];
   /**
    * Per-request page size. When the caller (today: the P7 CountChip
    * via `searchFilters.limit`) knows how many papers the user chose to
@@ -132,6 +137,13 @@ export function buildOpenAlexSearchParams(
   if (filters.selectedRegions && filters.selectedRegions.length > 0) {
     filterParts.push(`regions:${filters.selectedRegions.join("|")}`);
   }
+
+  if (filters.workTypes?.length) filterParts.push(`type:${filters.workTypes.join("|")}`);
+  if (filters.researchAreas?.length) filterParts.push(...researchAreaClauses(filters.researchAreas));
+  if (filters.sdgs?.length) {
+    filterParts.push(`sustainable_development_goals.id:${sdgFilterValue(filters.sdgs)}`);
+  }
+  if (filters.openAccessOnly) filterParts.push("open_access.is_oa:true");
 
   if (filters.citesItemId) {
     filterParts.push(`cites:${qualifyOpenAlexId(filters.citesItemId)}`);

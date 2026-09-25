@@ -125,13 +125,10 @@ export interface SearchFilters {
   
   // Content type filters
   reviewFilter: boolean;
-
-  /**
-   * OpenAlex filters the search page has no control for, in the SDK's nested
-   * form, such as `{ topics: { subfield: { id: "3304" } } }`. An Evidence
-   * Library import uses them for research areas, goals and open access.
-   */
-  extraApiFilters?: Record<string, unknown>;
+  researchAreas: string[];
+  sdgs: string[];
+  openAccessOnly: boolean;
+  workTypes: string[];
 }
 
 /**
@@ -159,37 +156,15 @@ export interface SearchResult {
   citedByItemId?: string;
   relatedToItemId?: string;
   reviewFilter?: boolean;
+  researchAreas?: string[];
+  sdgs?: string[];
+  openAccessOnly?: boolean;
+  workTypes?: string[];
   language?: string; // ISO 639-1 language code
   page?: number; // Last viewed page for this search
   chatJobIdsByAccountId?: Record<string, string>; // Per-account chat job links for this search
   createdAt: string;
   updatedAt: string;
-}
-
-/**
- * Parameters for URL-based search state
- * These are the serializable versions of search params
- */
-export interface SearchUrlParams {
-  q: string;
-  field: string;
-  sort: string;
-  page: number;
-  yf?: number; // yearFrom
-  yt?: number; // yearTo
-  df?: string; // dateFrom (ISO)
-  dt?: string; // dateTo (ISO)
-  ft: string;  // filterType
-  rmin: number;
-  rmax: number;
-  rated: boolean;
-  reg: string[];    // regions (encoded)
-  focus: string[];  // country focus (encoded)
-  cites: string;
-  citedBy: string;
-  rel: string;      // relatedTo
-  review: boolean;
-  lang?: string;
 }
 
 /**

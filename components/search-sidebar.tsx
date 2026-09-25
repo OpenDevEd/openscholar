@@ -13,6 +13,10 @@ import {
   Network,
   FileText,
   Focus,
+  Shapes,
+  Globe2,
+  LockOpen,
+  Library,
 } from "lucide-react";
 import {
   cn,
@@ -43,8 +47,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ReviewFilter } from "./review-filter";
+import { ResearchAreaFilter } from "./research-area-filter";
 import { useTranslations } from "next-intl";
 import { FilterSection } from "@/components/shared/filter-section";
+import { OptionPicker } from "@/components/shared/option-picker";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { SDGS, WORK_TYPES } from "@/lib/openalex/vocabulary";
 
 interface SearchSidebarProps {
   isMobile?: boolean;
@@ -421,6 +430,113 @@ const ReviewFilterPanel = React.memo(function ReviewFilterPanel() {
   );
 });
 
+const toggled = (list: readonly string[], id: string) =>
+  list.includes(id) ? list.filter((one) => one !== id) : [...list, id];
+
+const WorkTypeFilterPanel = React.memo(function WorkTypeFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const { workTypes } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const isActive = workTypes.length > 0;
+  return (
+    <FilterSection
+      title={tf("publicationType")}
+      icon={Library}
+      isActive={isActive}
+      onClear={isActive ? () => updateFilter({ workTypes: [] }) : undefined}
+    >
+      <OptionPicker
+        label={tf("publicationType")}
+        placeholder={tf("anyPublicationType")}
+        selectedText={tf("nSelected", { count: workTypes.length })}
+        searchPlaceholder={tf("searchPublicationTypes")}
+        emptyText={tf("nothingFound")}
+        removeLabel={(name) => tf("removeChoice", { name })}
+        options={WORK_TYPES}
+        selected={workTypes}
+        names={Object.fromEntries(WORK_TYPES.map((type) => [type.id, type.name]))}
+        onToggle={(id) => updateFilter({ workTypes: toggled(workTypes, id) })}
+      />
+    </FilterSection>
+  );
+});
+
+const ResearchAreaFilterPanel = React.memo(function ResearchAreaFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const { researchAreas } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const isActive = researchAreas.length > 0;
+  return (
+    <FilterSection
+      title={tf("researchAreas")}
+      icon={Shapes}
+      isActive={isActive}
+      onClear={isActive ? () => updateFilter({ researchAreas: [] }) : undefined}
+    >
+      <ResearchAreaFilter
+        selected={researchAreas}
+        onChange={(ids) => updateFilter({ researchAreas: ids })}
+      />
+    </FilterSection>
+  );
+});
+
+const SdgFilterPanel = React.memo(function SdgFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const { sdgs } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const isActive = sdgs.length > 0;
+  return (
+    <FilterSection
+      title={tf("sdgs")}
+      icon={Globe2}
+      isActive={isActive}
+      onClear={isActive ? () => updateFilter({ sdgs: [] }) : undefined}
+    >
+      <OptionPicker
+        label={tf("sdgs")}
+        placeholder={tf("anySdg")}
+        selectedText={tf("nSelected", { count: sdgs.length })}
+        searchPlaceholder={tf("searchSdgs")}
+        emptyText={tf("nothingFound")}
+        removeLabel={(name) => tf("removeChoice", { name })}
+        options={SDGS}
+        selected={sdgs}
+        names={Object.fromEntries(SDGS.map((goal) => [goal.id, goal.name]))}
+        onToggle={(id) => updateFilter({ sdgs: toggled(sdgs, id) })}
+      />
+    </FilterSection>
+  );
+});
+
+const OpenAccessFilterPanel = React.memo(function OpenAccessFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const { openAccessOnly } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  return (
+    <FilterSection
+      title={tf("openAccess")}
+      icon={LockOpen}
+      isActive={openAccessOnly}
+      onClear={openAccessOnly ? () => updateFilter({ openAccessOnly: false }) : undefined}
+    >
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <Label htmlFor="open-access-filter" className="text-sm font-medium">
+            {tf("onlyOpenAccess")}
+          </Label>
+          <p className="text-xs text-muted-foreground">{tf("onlyOpenAccessHint")}</p>
+        </div>
+        <Switch
+          id="open-access-filter"
+          checked={openAccessOnly}
+          onCheckedChange={(checked) => updateFilter({ openAccessOnly: checked })}
+        />
+      </div>
+    </FilterSection>
+  );
+});
+
 // Sidebar Content Component - extracted and memoized
 interface SidebarContentProps {
   hideHeader?: boolean;
@@ -432,8 +548,6 @@ interface SidebarContentProps {
   onClearAllFilters: () => void;
   /** Panels to leave out where they cannot apply, such as an import. */
   hidePanels?: readonly ("rating" | "sort")[];
-  /** Extra panels, shown after the scope and review filters. */
-  children?: React.ReactNode;
 }
 
 export const SidebarContent = React.memo(function SidebarContent({
@@ -445,7 +559,6 @@ export const SidebarContent = React.memo(function SidebarContent({
   isRelatedToActive,
   onClearAllFilters,
   hidePanels = [],
-  children,
 }: SidebarContentProps) {
   const tf = useTranslations("searchFilters");
   const tc = useTranslations("common");
@@ -496,7 +609,10 @@ export const SidebarContent = React.memo(function SidebarContent({
       {/* Review Filter */}
       <ReviewFilterPanel />
 
-      {children}
+      <WorkTypeFilterPanel />
+      <ResearchAreaFilterPanel />
+      <SdgFilterPanel />
+      <OpenAccessFilterPanel />
 
       {/* Cites Filter (when not active) */}
       {!isCitesActive && <CitesFilterPanel />}
@@ -529,6 +645,10 @@ export function SearchSidebar({
     reviewFilter,
     dateRange,
     filterType,
+    researchAreas,
+    sdgs,
+    openAccessOnly,
+    workTypes,
   } = useCurrentSearchFormState();
 
   const updateFilter = useUpdateSearchFilter();
@@ -553,6 +673,10 @@ export function SearchSidebar({
       citedByItemId: DEFAULT_FILTERS.citedByItemId,
       relatedToItemId: DEFAULT_FILTERS.relatedToItemId,
       reviewFilter: DEFAULT_FILTERS.reviewFilter,
+      researchAreas: [],
+      sdgs: [],
+      openAccessOnly: false,
+      workTypes: [],
     });
   }, [updateFilter]);
 
@@ -571,6 +695,10 @@ export function SearchSidebar({
     citedByItemId,
     relatedToItemId,
     reviewFilter,
+    researchAreas,
+    sdgs,
+    openAccessOnly,
+    workTypes,
   });
 
   if (mode === "page") {

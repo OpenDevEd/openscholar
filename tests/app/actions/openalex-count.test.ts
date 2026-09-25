@@ -23,6 +23,10 @@ function filters(overrides: Partial<SearchFilters> = {}): SearchFilters {
     citedByItemId: "",
     relatedToItemId: "",
     reviewFilter: false,
+    researchAreas: [],
+    sdgs: [],
+    openAccessOnly: false,
+    workTypes: [],
     ...overrides,
   };
 }

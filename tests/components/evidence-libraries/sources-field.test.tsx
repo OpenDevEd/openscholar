@@ -53,6 +53,7 @@ vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string) =>
     `${namespace}.${key}`,
   useFormatter: () => ({ dateTime: (date: Date) => date.toISOString().slice(0, 10) }),
+  useLocale: () => "en-GB",
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -64,6 +65,7 @@ const openAlexSource: OpenAlexSourceEntry = {
   writebackEnabled: false,
   settings: {
     name: "Education evidence",
+    searchUrl: "/results/search-1?q=education&yf=2020&yt=2026",
     apiKeyMode: "platform",
     approvedQuery: {
       version: "query-v1",
@@ -121,7 +123,7 @@ describe("<SourcesField>", () => {
     expect(screen.getByText("Education evidence")).toBeInTheDocument();
     expect(screen.getByText("education")).toBeInTheDocument();
     expect(
-      screen.getByRole("list", { name: "Search filters" }),
+      screen.getByRole("list", { name: "common.filters" }),
     ).toHaveTextContent("searchFilters.filterLabelYear 2020 - 2026");
     expect(screen.queryByText(/2 sources/i)).not.toBeInTheDocument();
   });

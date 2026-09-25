@@ -12,6 +12,10 @@ const baseFilters: SearchFilters = {
   citedByItemId: "",
   relatedToItemId: "",
   reviewFilter: false,
+  researchAreas: [],
+  sdgs: [],
+  openAccessOnly: false,
+  workTypes: [],
 };
 
 describe("createSearchParameters — wildcard field routing", () => {
@@ -45,17 +49,16 @@ describe("createSearchParameters — wildcard field routing", () => {
   });
 });
 
-describe("createSearchParameters source filters", () => {
-  it("retains query, date and institution filters alongside nested source filters", () => {
+describe("createSearchParameters research, goal, access and type filters", () => {
+  it("adds them alongside the query, date and institution filters", () => {
     const params = createSearchParameters("education", {
       ...baseFilters,
       yearRange: [2020, 2025],
       selectedRegions: ["GB"],
-      extraApiFilters: {
-        topics: { subfield: { id: "3304" } },
-        open_access: { is_oa: true },
-        sustainable_development_goals: { id: "4" },
-      },
+      researchAreas: ["subfields/3304", "subfields/1702", "T10001"],
+      sdgs: ["4"],
+      openAccessOnly: true,
+      workTypes: ["article", "review"],
     });
 
     expect(params.filter).toEqual({
@@ -63,19 +66,17 @@ describe("createSearchParameters source filters", () => {
       from_publication_date: "2020-01-01",
       to_publication_date: "2025-12-31",
       authorships: { countries: "GB" },
-      topics: { subfield: { id: "3304" } },
+      topics: { subfield: { id: "3304|1702" }, id: "T10001" },
+      sustainable_development_goals: { id: "https://metadata.un.org/sdg/4" },
       open_access: { is_oa: true },
-      sustainable_development_goals: { id: "4" },
+      type: "article|review",
     });
   });
-  it("supports an empty query scoped only by source filters", () => {
-    const params = createSearchParameters("", {
-      ...baseFilters,
-      extraApiFilters: { topics: { id: "T10001" } },
-    });
+
+  it("supports an empty query scoped only by a research area", () => {
+    const params = createSearchParameters("", { ...baseFilters, researchAreas: ["T10001"] });
 
     expect(params.filter).toEqual({ topics: { id: "T10001" } });
     expect(params.search).toBeUndefined();
   });
-
 });

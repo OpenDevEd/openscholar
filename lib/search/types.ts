@@ -33,6 +33,10 @@ export interface SearchParams {
   citedBy: string;
   rel: string;            // relatedTo
   review: boolean;        // reviewOnly
+  area: string[];         // research area catalog ids
+  sdg: string[];          // sustainable development goals
+  oa: boolean;            // open access only
+  type: string[];         // OpenAlex work types
   lang: string | null;
 }
 

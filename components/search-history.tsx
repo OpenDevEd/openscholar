@@ -24,7 +24,6 @@ import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { showConfirmation } from "@/lib/confirmation";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
-import { HistoryFilterBadges } from "@/components/ui/filter-display";
 import { languageOptions } from "@/components/language-selector";
 import { QueryText } from "@/components/ui/query-text";
 import {

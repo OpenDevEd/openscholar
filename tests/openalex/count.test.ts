@@ -22,6 +22,10 @@ function filters(overrides: Partial<SearchFilters> = {}): SearchFilters {
     citedByItemId: "",
     relatedToItemId: "",
     reviewFilter: false,
+    researchAreas: [],
+    sdgs: [],
+    openAccessOnly: false,
+    workTypes: [],
     ...overrides,
   };
 }
@@ -107,6 +111,10 @@ describe("toSearchFilters", () => {
     selectedRegions: ["US"],
     selectedCountryFocus: [],
     reviewFilter: false,
+    researchAreas: [],
+    sdgs: [],
+    openAccessOnly: false,
+    workTypes: [],
     citesItemId: "",
     citedByItemId: "",
     relatedToItemId: "",

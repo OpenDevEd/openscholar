@@ -16,6 +16,10 @@ const filters: SearchFilters = {
   citedByItemId: "",
   relatedToItemId: "",
   reviewFilter: false,
+  researchAreas: [],
+  sdgs: [],
+  openAccessOnly: false,
+  workTypes: [],
 };
 
 const works = client.works as unknown as ReturnType<typeof vi.fn>;

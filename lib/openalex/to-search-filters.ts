@@ -26,5 +26,9 @@ export function toSearchFilters(entry: SearchResult): SearchFilters {
     citedByItemId: entry.citedByItemId ?? "",
     relatedToItemId: entry.relatedToItemId ?? "",
     reviewFilter: entry.reviewFilter ?? false,
+    researchAreas: entry.researchAreas ?? [],
+    sdgs: entry.sdgs ?? [],
+    openAccessOnly: entry.openAccessOnly ?? false,
+    workTypes: entry.workTypes ?? [],
   };
 }

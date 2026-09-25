@@ -7,6 +7,7 @@ import { DateRange } from "react-day-picker";
 import type { SearchResult, SearchField, SearchFilters } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
 import { buildSearchSubfilter } from './search/search-field'
+import { researchAreaFilter, sdgFilterValue } from './openalex/vocabulary'
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -24,6 +25,10 @@ export const DEFAULT_FILTERS = {
   citedByItemId: '',
   relatedToItemId: '',
   reviewFilter: false,
+  researchAreas: [] as string[],
+  sdgs: [] as string[],
+  openAccessOnly: false,
+  workTypes: [] as string[],
 } as const;
 
 /**
@@ -45,6 +50,10 @@ export function createDefaultFilters(): SearchFilters {
     citedByItemId: DEFAULT_FILTERS.citedByItemId,
     relatedToItemId: DEFAULT_FILTERS.relatedToItemId,
     reviewFilter: DEFAULT_FILTERS.reviewFilter,
+    researchAreas: [],
+    sdgs: [],
+    openAccessOnly: DEFAULT_FILTERS.openAccessOnly,
+    workTypes: [],
   };
 }
 
@@ -333,7 +342,12 @@ export function createSearchParameters(
     };
   }
 
-  if (filters.extraApiFilters) Object.assign(apiFilters, filters.extraApiFilters);
+  if (filters.researchAreas.length) apiFilters.topics = researchAreaFilter(filters.researchAreas);
+  if (filters.sdgs.length) {
+    apiFilters.sustainable_development_goals = { id: sdgFilterValue(filters.sdgs) };
+  }
+  if (filters.openAccessOnly) apiFilters.open_access = { is_oa: true };
+  if (filters.workTypes.length) apiFilters.type = filters.workTypes.join('|');
 
   // Add filters to search params if we have any
   if (Object.keys(apiFilters).length > 0) {

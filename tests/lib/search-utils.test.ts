@@ -21,6 +21,10 @@ const filters: SearchFilters = {
   citedByItemId: "",
   relatedToItemId: "",
   reviewFilter: false,
+  researchAreas: [],
+  sdgs: [],
+  openAccessOnly: false,
+  workTypes: [],
 };
 
 describe("getSearchResultsWithFilters", () => {

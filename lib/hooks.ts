@@ -208,6 +208,10 @@ function useCurrentSearchFormStateFromUrl() {
     citedByItemId: search.params.citedBy,
     relatedToItemId: search.params.rel,
     reviewFilter: search.params.review,
+    researchAreas: search.params.area,
+    sdgs: search.params.sdg,
+    openAccessOnly: search.params.oa,
+    workTypes: search.params.type,
   };
 }
 
@@ -240,6 +244,10 @@ function useCurrentSearchFormStateFromStore() {
     citedByItemId: searchResult?.citedByItemId || '',
     relatedToItemId: searchResult?.relatedToItemId || '',
     reviewFilter: searchResult?.reviewFilter || false,
+    researchAreas: searchResult?.researchAreas ?? [],
+    sdgs: searchResult?.sdgs ?? [],
+    openAccessOnly: searchResult?.openAccessOnly ?? false,
+    workTypes: searchResult?.workTypes ?? [],
   };
 }
 
@@ -362,6 +370,22 @@ function useUpdateSearchFilterFromUrl() {
       batchUpdates.review = updates.reviewFilter as boolean;
       shouldResetPage = true;
     }
+    if ('researchAreas' in updates) {
+      batchUpdates.area = updates.researchAreas as string[];
+      shouldResetPage = true;
+    }
+    if ('sdgs' in updates) {
+      batchUpdates.sdg = updates.sdgs as string[];
+      shouldResetPage = true;
+    }
+    if ('openAccessOnly' in updates) {
+      batchUpdates.oa = updates.openAccessOnly as boolean;
+      shouldResetPage = true;
+    }
+    if ('workTypes' in updates) {
+      batchUpdates.type = updates.workTypes as string[];
+      shouldResetPage = true;
+    }
     if ('language' in updates || 'lang' in updates) {
       batchUpdates.lang = ((updates.language as string | null | undefined) ?? updates.lang ?? null) as string | null;
       shouldResetPage = true;
@@ -398,6 +422,10 @@ export function useCreateSearchFilters() {
     citedByItemId,
     relatedToItemId,
     reviewFilter,
+    researchAreas,
+    sdgs,
+    openAccessOnly,
+    workTypes,
   } = useCurrentSearchFormState();
 
   return (overrides: Partial<SearchFilters> = {}): SearchFilters => ({
@@ -415,6 +443,10 @@ export function useCreateSearchFilters() {
     citedByItemId: citedByItemId || '',
     relatedToItemId: relatedToItemId || '',
     reviewFilter: reviewFilter || false,
+    researchAreas,
+    sdgs,
+    openAccessOnly,
+    workTypes,
     ...overrides, // Override any fields passed in
   });
 } 

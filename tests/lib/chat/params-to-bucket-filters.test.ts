@@ -22,6 +22,10 @@ function defaultParams(overrides: Partial<SearchParams> = {}): SearchParams {
     citedBy: "",
     rel: "",
     review: false,
+    area: [],
+    sdg: [],
+    oa: false,
+    type: [],
     lang: null,
     ...overrides,
   };
@@ -313,6 +317,10 @@ describe("paramsToBucketSearchFilters", () => {
         citedBy: "W2",
         rel: "W3",
         review: true,
+        area: [],
+        sdg: [],
+        oa: false,
+        type: [],
         lang: "en",
       });
       assertNoNulls(out as unknown as Record<string, unknown>);
@@ -382,6 +390,10 @@ describe("paramsToBucketSearchFilters", () => {
         citedBy: "W2",
         rel: "W3",
         review: false,
+        area: [],
+        sdg: [],
+        oa: false,
+        type: [],
         lang: "en",
       });
       for (const key of Object.keys(out)) {

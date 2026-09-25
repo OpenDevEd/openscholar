@@ -52,7 +52,6 @@ export interface LocalSearchState {
   searchId: string;
   params: SearchParams;
   onParamsChange: (updates: Partial<SearchParams>) => void;
-  extraApiFilters?: Record<string, unknown>;
 }
 
 interface SearchProviderProps {
@@ -89,6 +88,9 @@ function cloneSearchParams(params: SearchParams): SearchParams {
     ...params,
     reg: [...params.reg],
     focus: [...params.focus],
+    area: [...params.area],
+    sdg: [...params.sdg],
+    type: [...params.type],
   };
 }
 
@@ -115,7 +117,6 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     },
     [onLocalParamsChange, setRouteUrlParams],
   );
-  const extraApiFiltersKey = local?.extraApiFilters ? JSON.stringify(local.extraApiFilters) : '';
 
   const currentParams = urlParams as SearchParams;
   const previousTrackedParamsRef = useRef<SearchParams | null>(null);
@@ -156,7 +157,10 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       citedBy: urlParams.citedBy,
       rel: urlParams.rel,
       review: urlParams.review,
-      ...(extraApiFiltersKey ? { extra: extraApiFiltersKey } : {}),
+      area: urlParams.area,
+      sdg: urlParams.sdg,
+      oa: urlParams.oa,
+      type: urlParams.type,
     });
 
     paramsSnapshotByKey.set(key, cloneSearchParams(currentParams));
@@ -185,12 +189,15 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     urlParams.citedBy,
     urlParams.rel,
     urlParams.review,
+    urlParams.area,
+    urlParams.sdg,
+    urlParams.oa,
+    urlParams.type,
     urlParams.page,
     urlParams.rmin,
     urlParams.rmax,
     urlParams.rated,
     urlParams.lang,
-    extraApiFiltersKey,
   ]);
   
   // Build SWR key - null means don't fetch
@@ -202,7 +209,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   
   // Single SWR fetcher - all data comes from the key
   const fetcher = useCallback(async ([, paramsJson]: readonly [string, string]) => {
-    const parsedParams = JSON.parse(paramsJson) as Partial<SearchParams> & { extra?: string };
+    const parsedParams = JSON.parse(paramsJson) as Partial<SearchParams>;
     const snapshotParams = paramsSnapshotByKey.get(paramsJson);
     const params: SearchParams = snapshotParams
       ? cloneSearchParams(snapshotParams)
@@ -211,6 +218,9 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
           ...parsedParams,
           reg: parsedParams.reg ? [...parsedParams.reg] : [],
           focus: parsedParams.focus ? [...parsedParams.focus] : [],
+          area: parsedParams.area ? [...parsedParams.area] : [],
+          sdg: parsedParams.sdg ? [...parsedParams.sdg] : [],
+          type: parsedParams.type ? [...parsedParams.type] : [],
           page: DEFAULT_SEARCH_PARAMS.page,
           rmin: DEFAULT_SEARCH_PARAMS.rmin,
           rmax: DEFAULT_SEARCH_PARAMS.rmax,
@@ -273,7 +283,10 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       citedByItemId: params.citedBy || '',
       relatedToItemId: params.rel || '',
       reviewFilter: params.review || false,
-      ...(parsedParams.extra ? { extraApiFilters: JSON.parse(parsedParams.extra) } : {}),
+      researchAreas: params.area,
+      sdgs: params.sdg,
+      openAccessOnly: params.oa,
+      workTypes: params.type,
     };
     
     const searchParams: SearchWithFiltersParams = {
@@ -412,6 +425,10 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     currentParams.citedBy,
     currentParams.rel,
     currentParams.review,
+    currentParams.area,
+    currentParams.sdg,
+    currentParams.oa,
+    currentParams.type,
     currentParams.lang,
     data?.results?.meta?.count,
     data?.validation?.isValid,
@@ -561,6 +578,10 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     if ('citedBy' in updates) storeUpdates.citedByItemId = updates.citedBy;
     if ('rel' in updates) storeUpdates.relatedToItemId = updates.rel;
     if ('review' in updates) storeUpdates.reviewFilter = updates.review;
+    if ('area' in updates) storeUpdates.researchAreas = updates.area;
+    if ('sdg' in updates) storeUpdates.sdgs = updates.sdg;
+    if ('oa' in updates) storeUpdates.openAccessOnly = updates.oa;
+    if ('type' in updates) storeUpdates.workTypes = updates.type;
     if ('lang' in updates) storeUpdates.language = updates.lang || undefined;
     if ('page' in updates) storeUpdates.page = updates.page;
     
@@ -586,6 +607,10 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       citedBy: '',
       rel: '',
       review: false,
+      area: [],
+      sdg: [],
+      oa: false,
+      type: [],
       page: 1,
     });
     // Also reset in store
@@ -602,6 +627,10 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       citedByItemId: '',
       relatedToItemId: '',
       reviewFilter: false,
+      researchAreas: [],
+      sdgs: [],
+      openAccessOnly: false,
+      workTypes: [],
       page: 1,
     });
   }, [setUrlParams, syncToStore]);
@@ -641,8 +670,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     citedByItemId: urlParams.citedBy,
     relatedToItemId: urlParams.rel,
     reviewFilter: urlParams.review,
-    ...(extraApiFiltersKey ? { extraApiFilters: JSON.parse(extraApiFiltersKey) } : {}),
-  }), [urlParams, extraApiFiltersKey]);
+    researchAreas: urlParams.area,
+    sdgs: urlParams.sdg,
+    openAccessOnly: urlParams.oa,
+    workTypes: urlParams.type,
+  }), [urlParams]);
   
   // Build context value
   const value: SearchContextValue = useMemo(() => ({

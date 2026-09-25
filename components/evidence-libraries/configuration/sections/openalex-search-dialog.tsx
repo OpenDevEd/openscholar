@@ -2,296 +2,31 @@
 
 import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import {
-  ArrowLeft,
-  Check,
-  ChevronDown,
-  Filter,
-  Globe2,
-  History,
-  LockOpen,
-  Pencil,
-  RotateCcw,
-  Save,
-  Shapes,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Filter, History, Pencil, RotateCcw, Save, X } from "lucide-react";
 import { HistoryCommandCenter } from "@/components/history-command-center";
 import { ResultsList } from "@/components/results-list";
 import { SidebarContent } from "@/components/search-sidebar";
 import { FilterCountControl } from "@/components/shared/filter-count-control";
-import { FilterSection } from "@/components/shared/filter-section";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import {
-  EMPTY_IMPORT_EXTRAS,
-  importExtraApiFilters,
-  topicLevelOf,
-  type OpenAlexImportExtras,
-} from "@/lib/evidence-libraries/openalex-import-request";
-import { countActiveFilters } from "@/lib/filters";
-import { sidebarSpring } from "@/lib/ui/sidebar-motion";
-import { DEFAULT_SEARCH_PARAMS, SearchProvider, useSearch } from "@/lib/search";
-import { useIsTablet } from "@/lib/hooks";
-import { buildResultsUrl, paramsToSearchResult, searchResultToParams } from "@/lib/search-params";
-import { useSearchHistoryStore } from "@/lib/store";
 import { approveOpenAlexQuery, type OpenAlexSourceEntry } from "@/lib/evidence-libraries/configuration/sources";
 import { buildOpenAlexSourceQuery, readOpenAlexSourceSearch, sameOpenAlexSourceSearch } from "@/lib/evidence-libraries/openalex-source-query";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { searchTopicCatalog, topicName } from "@/lib/topics/search";
-import type { SearchField } from "@/lib/types";
-import {
-  cn,
-  DEFAULT_FILTERS,
-  isCitedByFilterActive,
-  isCitesFilterActive,
-  isRelatedToFilterActive,
-} from "@/lib/utils";
-import {
-  SDGS,
-  TOPIC_LEVEL_GROUPS,
-  type ImportQuery,
-} from "./openalex-import-model";
-
-/** `group` sorts options under a heading; `detail` is a second, quieter line. */
-type Choice = { id: string; name: string; group?: string; detail?: string };
-
-function OptionPicker({
-  label,
-  placeholder,
-  options,
-  selected,
-  names,
-  onSearch,
-  onToggle,
-}: {
-  label: string;
-  placeholder: string;
-  options: readonly Choice[];
-  selected: string[];
-  names: Record<string, string>;
-  onSearch?: (value: string) => void;
-  onToggle: (option: Choice) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="space-y-2">
-      {/* Modal gives the list its own scroll lock; the dialog's blocks the wheel otherwise. */}
-      <Popover modal open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            aria-label={label}
-            className="h-9 w-full justify-between font-normal"
-          >
-            <span
-              className={cn(
-                "truncate",
-                selected.length === 0 && "text-muted-foreground",
-              )}
-            >
-              {selected.length === 0
-                ? placeholder
-                : `${selected.length} selected`}
-            </span>
-            <ChevronDown className="size-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] min-w-96 p-0"
-          align="start"
-        >
-          <Command shouldFilter={!onSearch}>
-            <CommandInput
-              placeholder={`Search ${label.toLowerCase()}`}
-              onValueChange={onSearch}
-            />
-            <CommandList>
-              <CommandEmpty>Nothing found</CommandEmpty>
-              {[...new Set(options.map((option) => option.group))].map((group) => (
-                <CommandGroup key={group ?? ""} heading={group}>
-                  {options.filter((option) => option.group === group).map((option) => (
-                    <CommandItem
-                      key={option.id}
-                      value={`${option.name} ${option.id}`}
-                      onSelect={() => onToggle(option)}
-                    >
-                      <Check
-                        className={cn(
-                          "size-4",
-                          selected.includes(option.id)
-                            ? "opacity-100"
-                            : "opacity-0",
-                        )}
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate" title={option.name}>
-                          {option.name}
-                        </span>
-                        {option.detail ? (
-                          <span className="block truncate text-xs text-muted-foreground" title={option.detail}>
-                            {option.detail}
-                          </span>
-                        ) : null}
-                      </span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              ))}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-      {selected.length ? (
-        <div className="flex flex-wrap gap-1.5">
-          {selected.map((id) => (
-            <span
-              key={id}
-              className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs"
-            >
-              <span className="truncate">{names[id] ?? id}</span>
-              <button
-                type="button"
-                aria-label={`Remove ${names[id] ?? id}`}
-                className="rounded-sm text-muted-foreground hover:text-foreground"
-                onClick={() => onToggle({ id, name: names[id] ?? id })}
-              >
-                <X className="size-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-/** Research areas, goals and open access, in the sidebar's own cards. */
-function ImportOnlyFilters({
-  extras,
-  setExtras,
-}: {
-  extras: OpenAlexImportExtras;
-  setExtras: (change: Partial<OpenAlexImportExtras>) => void;
-}) {
-  const [topicSearch, setTopicSearch] = useState("");
-  const topicOptions = useMemo(() => searchTopicCatalog(topicSearch), [topicSearch]);
-  const topicNames = Object.fromEntries(extras.topicIds.map((id) => [id, topicName(id) ?? id]));
-  const mixedLevels = new Set(extras.topicIds.map(topicLevelOf)).size > 1;
-
-  return (
-    <>
-      {Object.keys(extras.additionalFilters ?? {}).length > 0 && (
-        <FilterSection title="Other source filters" icon={Filter} isActive onClear={() => setExtras({additionalFilters: {}})}>
-          {Object.entries(extras.additionalFilters ?? {}).map(([key, value]) => (
-            <div key={key} className="flex items-center justify-between gap-2 text-sm">
-              <span className="min-w-0 break-words">{key.replaceAll("_", " ")} {value}</span>
-              <Button variant="ghost" size="icon" aria-label={`Remove ${key}`} onClick={() => {
-                const remaining = {...extras.additionalFilters};
-                delete remaining[key];
-                setExtras({additionalFilters: remaining});
-              }}><X className="size-3" /></Button>
-            </div>
-          ))}
-        </FilterSection>
-      )}
-      <FilterSection
-        title="Research areas"
-        icon={Shapes}
-        isActive={extras.topicIds.length > 0}
-        onClear={() => setExtras({ topicIds: [] })}
-      >
-        <div className="space-y-2">
-          <div>
-            <OptionPicker
-              label="Research areas"
-              placeholder="Any research area"
-              options={topicOptions.map((option) => ({
-                id: option.id,
-                name: option.name,
-                group: TOPIC_LEVEL_GROUPS[option.level],
-                detail: option.path.join(" / "),
-              }))}
-              selected={extras.topicIds}
-              names={topicNames}
-              onSearch={setTopicSearch}
-              onToggle={(option) => {
-                setExtras({
-                  topicIds: extras.topicIds.includes(option.id)
-                    ? extras.topicIds.filter((id) => id !== option.id)
-                    : [...extras.topicIds, option.id],
-                });
-              }}
-            />
-          </div>
-          {mixedLevels ? (
-            <p className="text-xs text-muted-foreground">
-              Records must match one choice from each level.
-            </p>
-          ) : null}
-        </div>
-      </FilterSection>
-      <FilterSection
-        title="SDGs"
-        icon={Globe2}
-        isActive={extras.sdgs.length > 0}
-        onClear={() => setExtras({ sdgs: [] })}
-      >
-        <OptionPicker
-          label="SDGs"
-          placeholder="Any SDG"
-          options={SDGS}
-          selected={extras.sdgs}
-          names={Object.fromEntries(SDGS.map((goal) => [goal.id, goal.name]))}
-          onToggle={(option) =>
-            setExtras({
-              sdgs: extras.sdgs.includes(option.id)
-                ? extras.sdgs.filter((id) => id !== option.id)
-                : [...extras.sdgs, option.id],
-            })
-          }
-        />
-      </FilterSection>
-      <FilterSection
-        title="Open access"
-        icon={LockOpen}
-        isActive={extras.openAccessOnly}
-        onClear={() => setExtras({ openAccessOnly: false })}
-      >
-        <label className="flex items-center justify-between gap-3">
-          <span className="space-y-0.5">
-            <span className="block text-sm font-medium">Only open access</span>
-            <span className="block text-xs text-muted-foreground">Skip records readers cannot open for free</span>
-          </span>
-          <Switch
-            checked={extras.openAccessOnly}
-            onCheckedChange={(openAccessOnly) => setExtras({ openAccessOnly })}
-          />
-        </label>
-      </FilterSection>
-    </>
-  );
-}
+import { countActiveFilters } from "@/lib/filters";
+import { useIsTablet } from "@/lib/hooks";
+import { DEFAULT_SEARCH_PARAMS, SearchProvider, useSearch, type SearchParams } from "@/lib/search";
+import { buildResultsUrl, paramsToSearchResult, searchResultToParams } from "@/lib/search-params";
+import { useSearchHistoryStore } from "@/lib/store";
+import { sidebarSpring } from "@/lib/ui/sidebar-motion";
+import { isCitedByFilterActive, isCitesFilterActive, isRelatedToFilterActive } from "@/lib/utils";
 
 /** Everything inside the provider: it reads the running search. */
 function SearchWorkspace({
   name,
   setName,
-  query,
-  setQuery,
+  params,
+  setParams,
   changed,
   queryUnchanged,
   downloadPdfs,
@@ -302,8 +37,8 @@ function SearchWorkspace({
 }: {
   name: string;
   setName: (name: string) => void;
-  query: ImportQuery;
-  setQuery: (update: (value: ImportQuery) => ImportQuery) => void;
+  params: SearchParams;
+  setParams: (update: (value: SearchParams) => SearchParams) => void;
   changed: boolean;
   queryUnchanged: boolean;
   downloadPdfs: boolean;
@@ -318,41 +53,19 @@ function SearchWorkspace({
   const nameRef = useRef<HTMLInputElement>(null);
   const [choosingFromHistory, setChoosingFromHistory] = useState(false);
   const reducedMotion = useReducedMotion();
-  const { params, extras } = query;
-  const setExtras = (change: Partial<OpenAlexImportExtras>) =>
-    setQuery((value) => ({ ...value, extras: { ...value.extras, ...change } }));
   const clearAll = () =>
-    setQuery((value) => ({
-      params: { ...DEFAULT_SEARCH_PARAMS, q: value.params.q, lang: value.params.lang },
-      extras: EMPTY_IMPORT_EXTRAS,
-    }));
+    setParams((value) => ({ ...DEFAULT_SEARCH_PARAMS, q: value.q, lang: value.lang }));
   const busy = search.isLoading || search.isValidating;
 
-  const activeFilters =
-    countActiveFilters({
-      field: params.field as SearchField,
-      sortBy: DEFAULT_FILTERS.sortBy,
-      yearRange: params.yf && params.yt ? [params.yf, params.yt] : DEFAULT_FILTERS.yearRange(),
-      dateRange:
-        params.df || params.dt
-          ? { from: params.df ? new Date(params.df) : undefined, to: params.dt ? new Date(params.dt) : undefined }
-          : undefined,
-      filterType: params.ft as "date" | "year",
-      isYearRangeEnabled: Boolean(params.yf || params.yt),
-      selectedRegions: params.reg,
-      selectedCountryFocus: params.focus,
-      ratingRange: DEFAULT_FILTERS.ratingRange,
-      onlyRatedPapers: false,
-      citesItemId: params.cites,
-      citedByItemId: params.citedBy,
-      relatedToItemId: params.rel,
-      reviewFilter: params.review,
-    }) +
-    (extras.topicIds.length ? 1 : 0) +
-    (extras.sdgs.length ? 1 : 0) +
-    (extras.openAccessOnly ? 1 : 0) + Object.keys(extras.additionalFilters ?? {}).length;
+  // Sort and ratings do not change what a source imports, so they are not counted.
+  const activeFilters = countActiveFilters({
+    ...paramsToSearchResult(params),
+    sortBy: undefined,
+    ratingRange: undefined,
+    onlyRatedPapers: undefined,
+  });
 
-  const unbounded = !buildOpenAlexSourceQuery(query);
+  const unbounded = !buildOpenAlexSourceQuery(params);
   const canApprove = queryUnchanged || (!busy && !search.error && search.validation.isValid && search.totalCount > 0);
 
   const sidebarContents = (
@@ -365,9 +78,7 @@ function SearchWorkspace({
           isCitedByActive={isCitedByFilterActive(params.citedBy)}
           isRelatedToActive={isRelatedToFilterActive(params.rel)}
           onClearAllFilters={clearAll}
-        >
-          <ImportOnlyFilters extras={extras} setExtras={setExtras} />
-        </SidebarContent>
+        />
   );
 
   return (
@@ -481,13 +192,13 @@ function SearchWorkspace({
                 label: "Use this search",
                 excludeId: search.searchId,
                 onPick: (entry) => {
-                  const params = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(entry) };
+                  const picked = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(entry) };
                   useSearchHistoryStore.getState().updateSearchResult(search.searchId, {
-                    ...paramsToSearchResult(params),
+                    ...paramsToSearchResult(picked),
                     queryHistory: entry.queryHistory,
                     questionHistory: entry.questionHistory,
                   });
-                  setQuery(() => ({ params, extras: EMPTY_IMPORT_EXTRAS }));
+                  setParams(() => picked);
                   if (!name) setName(entry.query.slice(0, 80));
                   setChoosingFromHistory(false);
                 },
@@ -552,23 +263,22 @@ export function OpenAlexSearchDialog({
   onApprove: (source: OpenAlexSourceEntry) => void;
 }) {
   const startingName = initial?.settings.name ?? "";
-  const startingQuery = useMemo(() => readOpenAlexSourceSearch(initial), [initial]);
+  const startingParams = useMemo(() => readOpenAlexSourceSearch(initial), [initial]);
   const [name, setName] = useState(startingName);
-  const [query, setQuery] = useState<ImportQuery>(startingQuery);
+  const [params, setParams] = useState<SearchParams>(startingParams);
   const [downloadPdfs, setDownloadPdfs] = useState(initial?.settings.downloadPdfs ?? false);
-  const queryUnchanged = Boolean(initial) && sameOpenAlexSourceSearch(query, startingQuery);
+  const queryUnchanged = Boolean(initial) && sameOpenAlexSourceSearch(params, startingParams);
   const changed = name !== startingName || !queryUnchanged || downloadPdfs !== (initial?.settings.downloadPdfs ?? false);
-  const extraApiFilters = useMemo(() => importExtraApiFilters(query.extras), [query.extras]);
 
   function save() {
-    const canonical = queryUnchanged ? initial!.settings.approvedQuery.query : buildOpenAlexSourceQuery(query);
+    const canonical = queryUnchanged ? initial!.settings.approvedQuery.query : buildOpenAlexSourceQuery(params);
     if (!canonical) return;
     onApprove({
       key: initial?.key ?? `openalex-${crypto.randomUUID()}`,
       provider: "openalex", enabled: initial?.enabled ?? true, writebackEnabled: false,
       settings: {
         name: name.trim(), apiKeyMode: initial?.settings.apiKeyMode ?? "platform", downloadPdfs,
-        searchUrl: buildResultsUrl(searchId, query.params),
+        searchUrl: buildResultsUrl(searchId, params),
         approvedQuery: approveOpenAlexQuery(initial?.settings.approvedQuery, canonical),
       },
     });
@@ -588,12 +298,12 @@ export function OpenAlexSearchDialog({
       >
         <DialogTitle className="sr-only">{initial ? "Change this search" : "Add a search"}</DialogTitle>
         <DialogDescription className="sr-only">Choose the search this source will keep up to date.</DialogDescription>
-        <SearchProvider local={{searchId, params: query.params, extraApiFilters,
-          onParamsChange: (updates) => setQuery((value) => ({...value, params: {...value.params, ...updates}})),
+        <SearchProvider local={{searchId, params,
+          onParamsChange: (updates) => setParams((value) => ({...value, ...updates})),
         }}>
-          <SearchWorkspace name={name} setName={setName} query={query} setQuery={setQuery}
+          <SearchWorkspace name={name} setName={setName} params={params} setParams={setParams}
             changed={changed} queryUnchanged={queryUnchanged} downloadPdfs={downloadPdfs} setDownloadPdfs={setDownloadPdfs}
-            onReset={() => {setName(startingName); setQuery(startingQuery); setDownloadPdfs(initial?.settings.downloadPdfs ?? false);}}
+            onReset={() => {setName(startingName); setParams(startingParams); setDownloadPdfs(initial?.settings.downloadPdfs ?? false);}}
             onClose={onClose} onSave={save}
           />
         </SearchProvider>

@@ -9,6 +9,7 @@ import {
   parseAsString,
   parseAsInteger,
   parseAsBoolean,
+  parseAsArrayOf,
   createParser,
   createSerializer,
 } from 'nuqs';
@@ -45,6 +46,10 @@ export const parseAsRegions = createParser({
  * - focus: country focus (smart encoded)
  * - cites/citedBy/rel: reference filters
  * - review: review articles only
+ * - area: research areas (catalog ids such as subfields/3304)
+ * - sdg: sustainable development goals (1-17)
+ * - oa: open access only
+ * - type: OpenAlex work types
  * - lang: language filter
  */
 export const searchParamsParsers = {
@@ -81,6 +86,10 @@ export const searchParamsParsers = {
   
   // Content filters
   review: parseAsBoolean.withDefault(false),
+  area: parseAsArrayOf(parseAsString).withDefault([]),
+  sdg: parseAsArrayOf(parseAsString).withDefault([]),
+  oa: parseAsBoolean.withDefault(false),
+  type: parseAsArrayOf(parseAsString).withDefault([]),
   
   // Language
   lang: parseAsString,
@@ -108,8 +117,17 @@ export type ParsedSearchParams = {
   citedBy: string;
   rel: string;
   review: boolean;
+  area: string[];
+  sdg: string[];
+  oa: boolean;
+  type: string[];
   lang: string | null;
 };
+
+/** A comma-separated list param, as nuqs writes it. */
+function parseListParam(searchParams: URLSearchParams, key: string): string[] {
+  return searchParams.get(key)?.split(',').filter(Boolean) ?? [];
+}
 
 /**
  * NaN-safe integer read from a URLSearchParams. A malformed value (e.g.
@@ -161,6 +179,10 @@ export function parseSearchParamsFromUrl(
     citedBy: searchParams.get('citedBy') ?? DEFAULT_SEARCH_PARAMS.citedBy,
     rel: searchParams.get('rel') ?? DEFAULT_SEARCH_PARAMS.rel,
     review: searchParams.get('review') === 'true',
+    area: parseListParam(searchParams, 'area'),
+    sdg: parseListParam(searchParams, 'sdg'),
+    oa: searchParams.get('oa') === 'true',
+    type: parseListParam(searchParams, 'type'),
     lang: searchParams.get('lang') ?? null,
   };
 }
@@ -202,5 +224,9 @@ export const DEFAULT_SEARCH_PARAMS: ParsedSearchParams = {
   citedBy: '',
   rel: '',
   review: false,
+  area: [],
+  sdg: [],
+  oa: false,
+  type: [],
   lang: null,
 };

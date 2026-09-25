@@ -101,7 +101,7 @@ export function useOpenAlexSources({
     const initial = source === "new" ? null : source;
     const savedId = sourceSearchHistoryId(initial);
     const existing = savedId && history.searchHistory.some((entry) => entry.id === savedId);
-    const id = existing ? savedId : history.addSearchResult(paramsToSearchResult(readOpenAlexSourceSearch(initial).params));
+    const id = existing ? savedId : history.addSearchResult(paramsToSearchResult(readOpenAlexSourceSearch(initial)));
     setEditorSession({ id, created: !existing });
     setEditingKey(initial?.key ?? "new");
   }

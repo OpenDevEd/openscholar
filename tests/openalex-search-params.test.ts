@@ -101,6 +101,26 @@ describe("buildOpenAlexSearchParams — review + geography filters", () => {
   });
 });
 
+describe("buildOpenAlexSearchParams — type, research area, SDG and open access filters", () => {
+  it("writes them as the same clauses the search page sends", () => {
+    const p = buildOpenAlexSearchParams({
+      query: "",
+      workTypes: ["article", "review"],
+      researchAreas: ["fields/33", "subfields/3304", "subfields/1702", "T10001"],
+      sdgs: ["4", "5"],
+      openAccessOnly: true,
+    });
+    expect(p.get("filter")?.split(",")).toEqual([
+      "type:article|review",
+      "topics.field.id:33",
+      "topics.subfield.id:3304|1702",
+      "topics.id:T10001",
+      "sustainable_development_goals.id:https://metadata.un.org/sdg/4|https://metadata.un.org/sdg/5",
+      "open_access.is_oa:true",
+    ]);
+  });
+});
+
 describe("buildOpenAlexSearchParams — relationship filters (cites / cited_by / related_to)", () => {
   it("prefixes cites id with https://openalex.org/ when missing", () => {
     const p = buildOpenAlexSearchParams({ query: "q", citesItemId: "W1234" });

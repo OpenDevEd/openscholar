@@ -17,6 +17,10 @@ export type BucketSearchFilters = {
   citedByItemId?: string;
   relatedToItemId?: string;
   reviewFilter?: boolean;
+  researchAreas?: string[];
+  sdgs?: string[];
+  openAccessOnly?: boolean;
+  workTypes?: string[];
   language?: string;
 };
 
@@ -58,6 +62,10 @@ export function paramsToBucketSearchFilters(
   if (params.rel) filters.relatedToItemId = params.rel;
 
   filters.reviewFilter = params.review;
+  if (params.area.length > 0) filters.researchAreas = params.area;
+  if (params.sdg.length > 0) filters.sdgs = params.sdg;
+  if (params.oa) filters.openAccessOnly = true;
+  if (params.type.length > 0) filters.workTypes = params.type;
 
   if (params.lang) filters.language = params.lang;
 

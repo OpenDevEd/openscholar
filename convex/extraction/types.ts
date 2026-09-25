@@ -96,5 +96,9 @@ export interface SearchFilters {
   citedByItemId?: string;
   relatedToItemId?: string;
   reviewFilter?: boolean;
+  researchAreas?: string[];
+  sdgs?: string[];
+  openAccessOnly?: boolean;
+  workTypes?: string[];
   language?: string;
 }

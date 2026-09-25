@@ -32,6 +32,10 @@ const SEARCH_PARAM_KEYS: SearchParamKey[] = [
   "citedBy",
   "rel",
   "review",
+  "area",
+  "sdg",
+  "oa",
+  "type",
   "lang",
 ];
 
@@ -50,6 +54,10 @@ export const SEARCH_FETCH_PARAM_KEYS: SearchParamKey[] = [
   "citedBy",
   "rel",
   "review",
+  "area",
+  "sdg",
+  "oa",
+  "type",
 ];
 
 function arraysEqualStable(a: string[], b: string[]): boolean {
@@ -80,6 +88,10 @@ function getActiveFilterKeys(params: SearchParams): string[] {
   if (params.citedBy) activeKeys.push("cited_by");
   if (params.rel) activeKeys.push("related_to");
   if (params.review) activeKeys.push("review_only");
+  if (params.area.length > 0) activeKeys.push("research_areas");
+  if (params.sdg.length > 0) activeKeys.push("sdgs");
+  if (params.oa) activeKeys.push("open_access");
+  if (params.type.length > 0) activeKeys.push("work_types");
   if (params.lang) activeKeys.push("language");
 
   return activeKeys;
@@ -113,6 +125,10 @@ export interface SearchFilterSnapshot {
   cited_by_item_id: string | null;
   related_to_item_id: string | null;
   review_only: boolean;
+  research_areas: string[];
+  sdgs: string[];
+  open_access_only: boolean;
+  work_types: string[];
   active_filter_count: number;
   active_filter_keys: string[];
 }
@@ -210,6 +226,10 @@ export function buildSearchFilterSnapshot(
     cited_by_item_id: params.citedBy || null,
     related_to_item_id: params.rel || null,
     review_only: params.review,
+    research_areas: params.area,
+    sdgs: params.sdg,
+    open_access_only: params.oa,
+    work_types: params.type,
     active_filter_count: activeFilterKeys.length,
     active_filter_keys: activeFilterKeys,
   };
@@ -225,7 +245,7 @@ export function getChangedParamKeys(
 
   const changed: SearchParamKey[] = [];
   for (const key of SEARCH_PARAM_KEYS) {
-    if (key === "reg" || key === "focus") {
+    if (key === "reg" || key === "focus" || key === "area" || key === "sdg" || key === "type") {
       if (!arraysEqualStable(previous[key], current[key])) {
         changed.push(key);
       }

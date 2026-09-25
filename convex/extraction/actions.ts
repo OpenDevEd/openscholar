@@ -78,6 +78,10 @@ function toOpenAlexSearchFilters(filters: SearchFilters): OpenAlexSearchFilters 
     ...(filters.reviewFilter !== undefined
       ? { reviewFilter: filters.reviewFilter }
       : {}),
+    ...(filters.researchAreas !== undefined ? { researchAreas: filters.researchAreas } : {}),
+    ...(filters.sdgs !== undefined ? { sdgs: filters.sdgs } : {}),
+    ...(filters.openAccessOnly !== undefined ? { openAccessOnly: filters.openAccessOnly } : {}),
+    ...(filters.workTypes !== undefined ? { workTypes: filters.workTypes } : {}),
     ...(filters.citesItemId !== undefined ? { citesItemId: filters.citesItemId } : {}),
     ...(filters.citedByItemId !== undefined
       ? { citedByItemId: filters.citedByItemId }

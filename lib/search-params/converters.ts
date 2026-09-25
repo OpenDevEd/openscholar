@@ -35,6 +35,10 @@ export type NewSearchResultData = {
   citedByItemId?: string;
   relatedToItemId?: string;
   reviewFilter?: boolean;
+  researchAreas?: string[];
+  sdgs?: string[];
+  openAccessOnly?: boolean;
+  workTypes?: string[];
   language?: string;
   page?: number;
 };
@@ -83,6 +87,10 @@ export function paramsToSearchResult(params: ParsedSearchParams): NewSearchResul
     
     // Content
     reviewFilter: params.review,
+    researchAreas: params.area,
+    sdgs: params.sdg,
+    openAccessOnly: params.oa,
+    workTypes: params.type,
     
     // Language
     language: params.lang || undefined,
@@ -154,6 +162,10 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
   if (result.reviewFilter) {
     params.review = true;
   }
+  if (result.researchAreas?.length) params.area = result.researchAreas;
+  if (result.sdgs?.length) params.sdg = result.sdgs;
+  if (result.openAccessOnly) params.oa = true;
+  if (result.workTypes?.length) params.type = result.workTypes;
   
   // Language
   if (result.language) {
@@ -196,6 +208,10 @@ export function paramsToFilters(params: ParsedSearchParams): SearchFilters {
     relatedToItemId: params.rel,
     
     reviewFilter: params.review,
+    researchAreas: params.area,
+    sdgs: params.sdg,
+    openAccessOnly: params.oa,
+    workTypes: params.type,
   };
 }
 
@@ -257,6 +273,10 @@ export function paramsMatchState(params: ParsedSearchParams, state: SearchResult
   
   // Content
   if (params.review !== (state.reviewFilter ?? false)) return false;
+  if (!arraysEqual(params.area, state.researchAreas ?? [])) return false;
+  if (!arraysEqual(params.sdg, state.sdgs ?? [])) return false;
+  if (params.oa !== (state.openAccessOnly ?? false)) return false;
+  if (!arraysEqual(params.type, state.workTypes ?? [])) return false;
   
   // Language
   if (params.lang !== (state.language || null)) return false;
@@ -281,6 +301,10 @@ export function hasActiveFilters(params: ParsedSearchParams): boolean {
     params.cites !== '' ||
     params.citedBy !== '' ||
     params.rel !== '' ||
-    params.review !== false
+    params.review !== false ||
+    params.area.length > 0 ||
+    params.sdg.length > 0 ||
+    params.oa ||
+    params.type.length > 0
   );
 }

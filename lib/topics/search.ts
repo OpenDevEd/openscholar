@@ -1,4 +1,4 @@
-import { topicLevelOf, type TopicLevel } from "@/lib/evidence-libraries/openalex-import-request";
+import { topicLevelOf, type TopicLevel } from "@/lib/openalex/vocabulary";
 import tree from "./openalex-topics.json";
 
 /** `path` holds the ancestors' names, broadest first, a repeated name once. */

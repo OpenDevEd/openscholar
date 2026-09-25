@@ -18,7 +18,8 @@ export type OpenAlexSourceEntry = {
   writebackEnabled: false;
   settings: {
     name: string;
-    searchUrl?: string;
+    /** The search it was made from, which reopens with every control. */
+    searchUrl: string;
     apiKeyMode: "platform" | "custom";
     approvedQuery: {
       version: string;
