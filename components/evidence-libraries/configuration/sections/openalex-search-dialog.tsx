@@ -59,11 +59,12 @@ import {
 } from "@/lib/utils";
 import {
   SDGS,
-  TOPIC_LEVEL_LABELS,
+  TOPIC_LEVEL_GROUPS,
   type ImportQuery,
 } from "./openalex-import-model";
 
-type Choice = { id: string; name: string; hint?: string };
+/** `group` sorts options under a heading; `detail` is a second, quieter line. */
+type Choice = { id: string; name: string; group?: string; detail?: string };
 
 function OptionPicker({
   label,
@@ -109,7 +110,7 @@ function OptionPicker({
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[--radix-popover-trigger-width] min-w-72 p-0"
+          className="w-[var(--radix-popover-trigger-width)] min-w-96 p-0"
           align="start"
         >
           <Command shouldFilter={!onSearch}>
@@ -119,32 +120,36 @@ function OptionPicker({
             />
             <CommandList>
               <CommandEmpty>Nothing found</CommandEmpty>
-              <CommandGroup>
-                {options.map((option) => (
-                  <CommandItem
-                    key={option.id}
-                    value={`${option.name} ${option.id}`}
-                    onSelect={() => onToggle(option)}
-                  >
-                    <Check
-                      className={cn(
-                        "size-4",
-                        selected.includes(option.id)
-                          ? "opacity-100"
-                          : "opacity-0",
-                      )}
-                    />
-                    <span className="min-w-0 flex-1 truncate">
-                      {option.name}
-                    </span>
-                    {option.hint ? (
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {option.hint}
+              {[...new Set(options.map((option) => option.group))].map((group) => (
+                <CommandGroup key={group ?? ""} heading={group}>
+                  {options.filter((option) => option.group === group).map((option) => (
+                    <CommandItem
+                      key={option.id}
+                      value={`${option.name} ${option.id}`}
+                      onSelect={() => onToggle(option)}
+                    >
+                      <Check
+                        className={cn(
+                          "size-4",
+                          selected.includes(option.id)
+                            ? "opacity-100"
+                            : "opacity-0",
+                        )}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate" title={option.name}>
+                          {option.name}
+                        </span>
+                        {option.detail ? (
+                          <span className="block truncate text-xs text-muted-foreground" title={option.detail}>
+                            {option.detail}
+                          </span>
+                        ) : null}
                       </span>
-                    ) : null}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              ))}
             </CommandList>
           </Command>
         </PopoverContent>
@@ -216,7 +221,8 @@ function ImportOnlyFilters({
               options={topicOptions.map((option) => ({
                 id: option.id,
                 name: option.name,
-                hint: [TOPIC_LEVEL_LABELS[option.level], option.within].filter(Boolean).join(" · "),
+                group: TOPIC_LEVEL_GROUPS[option.level],
+                detail: option.path.join(" / "),
               }))}
               selected={extras.topicIds}
               names={topicNames}

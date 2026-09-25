@@ -3,7 +3,7 @@ import { searchTopicCatalog } from "./search";
 
 it("matches part of a word across every level, names that start with it first", () => {
   const results = searchTopicCatalog("educ");
-  expect(results[0]).toEqual({ id: "subfields/3304", name: "Education", level: "subfield", within: "Social Sciences" });
+  expect(results[0]).toEqual({ id: "subfields/3304", name: "Education", level: "subfield", path: ["Social Sciences"] });
   expect(results.some((result) => result.level === "topic")).toBe(true);
 });
 

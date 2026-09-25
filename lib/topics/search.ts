@@ -1,17 +1,24 @@
 import { topicLevelOf, type TopicLevel } from "@/lib/evidence-libraries/openalex-import-request";
 import tree from "./openalex-topics.json";
 
-export type TopicOption = { id: string; name: string; level: TopicLevel; within: string };
+/** `path` holds the ancestors' names, broadest first, a repeated name once. */
+export type TopicOption = { id: string; name: string; level: TopicLevel; path: string[] };
 
 const LEVEL_ORDER: Record<TopicLevel, number> = { domain: 0, field: 1, subfield: 2, topic: 3 };
-const names = new Map(tree.map((node) => [node.id, node.name]));
+const nodes = new Map(tree.map((node) => [node.id, node]));
+const ancestors = (parent: string | null): string[] => {
+  const node = parent ? nodes.get(parent) : undefined;
+  if (!node) return [];
+  const above = ancestors(node.parent);
+  return above.at(-1) === node.name ? above : [...above, node.name];
+};
 // Broadest first, then by name, so equal matches keep that order.
 const options: TopicOption[] = tree
   .map((node) => ({
     id: node.id,
     name: node.name,
     level: topicLevelOf(node.id),
-    within: (node.parent && names.get(node.parent)) ?? "",
+    path: ancestors(node.parent),
   }))
   .sort(
     (left, right) =>
@@ -20,7 +27,7 @@ const options: TopicOption[] = tree
   );
 
 export function topicName(id: string): string | undefined {
-  return names.get(id);
+  return nodes.get(id)?.name;
 }
 
 /** Finds research areas of every level in our OpenAlex catalog, matching parts of words. */

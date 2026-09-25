@@ -22,3 +22,10 @@ export const TOPIC_LEVEL_LABELS: Record<TopicLevel, string> = {
   subfield: "Subfield",
   topic: "Topic",
 };
+
+export const TOPIC_LEVEL_GROUPS: Record<TopicLevel, string> = {
+  domain: "Domains",
+  field: "Fields",
+  subfield: "Subfields",
+  topic: "Topics",
+};
