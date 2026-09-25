@@ -57,6 +57,18 @@ it("writes the digest in the background and returns it on every request until it
   expect(await t.run(ctx => ctx.db.query("users").collect())).toEqual([]);
 });
 
+it("repairs a mistyped citation instead of rejecting the digest", async () => {
+  vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
+  const {request, finishGeneration} = await setup();
+  const provider = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({id: "generation", model: "openai/gpt-6-luna", created: 1, choices: [{index: 0, finish_reason: "stop", message: {role: "assistant", content: JSON.stringify({title: "Attention in learning", summary: "A new framework for classroom attention.", markdown: "The framework examines classroom attention. [Mills, 2026](/lib/ABCD2354)"})}}], usage: {prompt_tokens: 10, completion_tokens: 10, total_tokens: 20}}), {headers: {"Content-Type": "application/json"}}));
+  expect((await request()).status).toBe(202);
+  await finishGeneration();
+  const response = await request();
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({digest: {markdown: "The framework examines classroom attention. [Mills, 2026](/lib/ABCD2345)"}});
+  expect(provider).toHaveBeenCalledTimes(1);
+});
+
 it("rejects foreign credentials, disabled libraries and arbitrary prompt or PDF input before generation", async () => {
   const {request, t, libraryId} = await setup();
   const provider = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Provider must not be called"));
