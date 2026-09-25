@@ -23,9 +23,9 @@ it("fixes a key typo by the cited author without a model and unlinks what it can
 });
 
 it.each([
-  {verified: 0.95, markdown: "Attention drops [Mills, 2026](/lib/ABCD2345)."},
-  {verified: 0.88, markdown: "Attention drops Mills, 2026."},
-])("links Jev's pick only when its check scores at least 0.9 ($verified)", async ({verified, markdown}) => {
+  {verified: 0.9, markdown: "Attention drops [Mills, 2026](/lib/ABCD2345)."},
+  {verified: 0.83, markdown: "Attention drops Mills, 2026."},
+])("links Jev's pick only when its check scores at least 0.85 ($verified)", async ({verified, markdown}) => {
   vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
   const requests: Array<{url: string; body: {model: string; questions: Record<string, unknown>}}> = [];
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
@@ -38,6 +38,16 @@ it.each([
   expect(requests.map(request => [request.url, request.body.model])).toEqual([0, 1].map(() => ["https://openrouter.ai/api/alpha/decisions", "~typesafe/jev-latest"]));
   // Both papers by the cited author and year are offered.
   expect(Object.keys((requests[0]!.body.questions.c as {criteria: object}).criteria)).toEqual(expect.arrayContaining(["ABCD2345", "ZXCV1234", "none"]));
+});
+
+it("resolves each occurrence of a reused broken key from its own sentence", async () => {
+  vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+    const body = JSON.parse(String(init?.body)) as {state: string; questions: Record<string, unknown>};
+    return Response.json({answers: "c" in body.questions ? {c: {choice: body.state.includes("reading") ? "ZXCV1234" : "ABCD2345"}} : {v: {noul: 0.95}}});
+  });
+  const {markdown} = await repairCitations("Attention drops [Mills, 2026](/lib/QQQQQQQQ). Minds wander while reading [Mills, 2026](/lib/QQQQQQQQ).", publications);
+  expect(markdown).toBe("Attention drops [Mills, 2026](/lib/ABCD2345). Minds wander while reading [Mills, 2026](/lib/ZXCV1234).");
 });
 
 it("keeps the digest when the time limit ends during a Jev check", async () => {
