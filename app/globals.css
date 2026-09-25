@@ -454,15 +454,14 @@
   }
 }
 
-/* List row enter animation, used by the sources panel and the topic and
-   publication lists. Cheaper than Framer's AnimatePresence inside a
-   virtualized list — the compositor handles it, React never re-renders for
-   the fade. */
-.row-enter {
-  animation: row-fade-in 140ms ease-out;
+/* Fades in list rows and counts that arrive after the page. Cheaper than
+   Framer's AnimatePresence inside a virtualized list — the compositor
+   handles it, React never re-renders for the fade. */
+.fade-enter {
+  animation: fade-enter-in 140ms ease-out;
 }
 
-@keyframes row-fade-in {
+@keyframes fade-enter-in {
   from {
     opacity: 0;
     transform: translateY(2px);
@@ -474,7 +473,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .row-enter {
+  .fade-enter {
     animation: none;
   }
 }

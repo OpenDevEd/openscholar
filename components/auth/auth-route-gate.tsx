@@ -5,7 +5,7 @@ import { AnimatePresence } from "motion/react";
 import { usePathname } from "next/navigation";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
-import { isPublicPath } from "@/lib/auth/public-routes";
+import { isPublicPath, showsOwnLoading } from "@/lib/auth/public-routes";
 import { useTranslations } from "next-intl";
 
 /** Renders auth gate panels with translations. Isolated so useTranslations runs only when gate is shown, avoiding hook-order issues during provider hydration. */
@@ -60,7 +60,7 @@ export function AuthRouteGate({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
   const { phase, retryUserSync } = useAuthReadiness();
 
-  if (isPublicPath(pathname) || phase === "authenticated") {
+  if (isPublicPath(pathname) || phase === "authenticated" || (phase === "initializing" && showsOwnLoading(pathname))) {
     return <>{children}</>;
   }
 

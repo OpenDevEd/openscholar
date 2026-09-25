@@ -88,7 +88,7 @@ function SourceRowImpl({
       data-active-descendant={isActiveDescendant ? "true" : undefined}
       onClick={(e) => onActivate(e.shiftKey)}
       className={cn(
-        "row-enter",
+        "fade-enter",
         "group flex items-start gap-2.5 cursor-pointer border-l-2 px-3 py-2.5 transition-colors",
         selected
           ? "border-l-primary bg-primary/[0.06] hover:bg-primary/[0.09]"

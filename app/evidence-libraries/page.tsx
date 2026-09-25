@@ -4,8 +4,8 @@ import { PageWrapper } from "@/components/PageWrapper";
 
 export default function EvidenceLibrariesPage() {
   return (
-    <OrganizationFeatureGate feature="evidenceLibraries"><PageWrapper>
-      <LibraryList />
-    </PageWrapper></OrganizationFeatureGate>
+    <OrganizationFeatureGate feature="evidenceLibraries" fallback={<PageWrapper><LibraryList pending /></PageWrapper>}>
+      <PageWrapper><LibraryList /></PageWrapper>
+    </OrganizationFeatureGate>
   );
 }

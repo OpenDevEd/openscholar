@@ -5,7 +5,6 @@ import { OrganizationAvatar, useLibraryOrganizationChoice } from "./organization
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { AdminAreaLink } from "./admin-area-link";
 import { useState } from "react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
@@ -19,7 +18,6 @@ import {
   Mail,
   PenLine,
   Plus,
-  Search,
   Settings2,
   MoreHorizontal,
   ShieldCheck,
@@ -39,7 +37,6 @@ import {
 } from "@/components/ui/tooltip";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { LibraryAddressLink } from "./library-address-link";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -58,6 +55,8 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "./library-page-shell";
+import { LIST_FILTER, LIST_TILE, ListSearch, ListViewTabs } from "./list-controls";
+import { Spinner } from "@/components/ui/spinner";
 import { LibraryStatusChip } from "./library-status-chip";
 import { LibraryImage } from "./library-image";
 import { EmptyList } from "./configuration/fields";
@@ -79,21 +78,22 @@ type Library = {
   configuration?: string;
 };
 const roleIcons = { Owner: Crown, Editor: ShieldCheck, Creator: PenLine };
-const LIBRARY_TILE =
-  "flex size-10 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-muted/30 text-primary";
-
 function LibraryTile() {
   return (
-    <div className={LIBRARY_TILE}>
+    <div className={LIST_TILE}>
       <Layers className="size-5" />
     </div>
   );
 }
 
-export function LibraryList() {
+/**
+ * `pending` renders the page before access is confirmed: the frame and
+ * toolbar show at once and only the list waits.
+ */
+export function LibraryList({ pending = false }: { pending?: boolean }) {
   const owner = useLibraryOrganizationChoice();
-  const overviews = useProtectedQuery(api.evidenceLibraries.queries.listLibraryOverviews, {});
-  const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listMine, {});
+  const overviews = useProtectedQuery(api.evidenceLibraries.queries.listLibraryOverviews, pending ? "skip" : {});
+  const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listMine, pending ? "skip" : {});
   const respond = useAction(api.evidenceLibraries.invitationActions.respond);
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState<string | null>(null);
@@ -118,13 +118,13 @@ export function LibraryList() {
         .toLowerCase()
         .includes(search.trim().toLowerCase()),
   );
-  if (!overviews.data || !invitations.data || !owner.isReady) return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
+  const loading = !overviews.data || !invitations.data || !owner.isReady;
   return (
     <LibraryPageShell
       title="Evidence libraries"
       description="Libraries you manage and contribute to."
-      actions={owner.organizations.length > 0 ?
-        <Button asChild>
+      actions={owner.isReady && owner.organizations.length > 0 ?
+        <Button asChild className="fade-enter">
           <Link href="/evidence-libraries/new">
             <Plus />
             New library
@@ -133,51 +133,29 @@ export function LibraryList() {
       }
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 p-4">
-        <div className="flex items-center gap-1" aria-label="Library view">
-          {(["libraries", "invitations"] as const).map((tab) => {
-            const Icon = tab === "libraries" ? Layers : Mail;
-            return (
-              <Button
-                key={tab}
-                size="sm"
-                variant="ghost"
-                aria-pressed={view === tab}
-                className={cn(
-                  "gap-2 text-muted-foreground",
-                  view === tab && "bg-muted text-foreground",
-                )}
-                onClick={() => setView(tab)}
-              >
-                <Icon className="size-3.5" />
-                {tab === "libraries" ? "Your libraries" : "Invitations"}
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {
-                    libraries.filter(
-                      (library) =>
-                        Boolean(library.pending) === (tab === "invitations"),
-                    ).length
-                  }
-                </span>
-              </Button>
-            );
-          })}
-        </div>
+        <ListViewTabs
+          label="Library view"
+          value={view}
+          onChange={setView}
+          tabs={(["libraries", "invitations"] as const).map((tab) => ({
+            value: tab,
+            label: tab === "libraries" ? "Your libraries" : "Invitations",
+            icon: tab === "libraries" ? <Layers className="size-3.5" /> : <Mail className="size-3.5" />,
+            count: loading ? undefined : libraries.filter((library) => Boolean(library.pending) === (tab === "invitations")).length,
+          }))}
+        />
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              aria-label="Search libraries"
-              placeholder="Find a library…"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="h-8 w-44 border-transparent bg-muted/40 pl-8 text-xs shadow-none"
-            />
-          </div>
+          <ListSearch
+            aria-label="Search libraries"
+            placeholder="Find a library…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
           <Select value={organization} onValueChange={setOrganization}>
             <SelectTrigger
               size="sm"
               aria-label="Filter by owning organization"
-              className="min-w-48 border-transparent bg-muted/40 shadow-none"
+              className={cn("min-w-48", LIST_FILTER)}
             >
               {organization === "all" && <Building2 className="size-3.5" />}
               <SelectValue />
@@ -208,7 +186,9 @@ export function LibraryList() {
           Accept access to a library without joining its organization.
         </p>
       )}
-      {!visible.length ? (
+      {loading ? (
+        <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading libraries" className="size-6 text-primary" /></div>
+      ) : !visible.length ? (
         <div className="p-6">
           <EmptyList>
             {search || organization !== "all"
@@ -227,13 +207,13 @@ export function LibraryList() {
                 key={library.id}
                 data-library-row={library.id}
                 data-status={library.status}
-                className="flex flex-wrap items-center gap-3 p-4 hover:bg-muted/15 sm:flex-nowrap"
+                className="fade-enter flex flex-wrap items-center gap-3 p-4 hover:bg-muted/15 sm:flex-nowrap"
               >
                 <div className="relative mr-1 shrink-0">
                   {library.faviconUrl ? (
                     <LibraryImage
                       src={library.faviconUrl}
-                      className={LIBRARY_TILE}
+                      className={LIST_TILE}
                       imageClassName="size-full object-cover"
                       fallback={<LibraryTile />}
                     />
