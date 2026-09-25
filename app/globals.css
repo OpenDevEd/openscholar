@@ -184,6 +184,12 @@
 }
 
 @theme inline {
+  /* Every spinner stays invisible for its first two seconds, so quick loads never flash one. */
+  --animate-spin: spin 1s linear infinite, spinner-reveal 200ms ease-out 2s both;
+  @keyframes spinner-reveal {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
