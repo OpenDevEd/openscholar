@@ -11,7 +11,7 @@ export async function readTopic(id: string) {
 export async function readTopicWorks(id: string, cursor: string) {
   topicIdSchema.parse(id);
   if (!cursor || cursor.length > 8192) throw new Error("Invalid topic cursor");
-  return readOpenAlexWorks({filter: {...({topics: {id}}), is_paratext: false}, cursor, perPage: 10, sortBy: {field: "cited_by_count", order: "desc"}});
+  return readOpenAlexWorks({filter: {...({topics: {id}}), is_paratext: false, is_retracted: false}, cursor, perPage: 10, sortBy: {field: "cited_by_count", order: "desc"}});
 }
 export async function readTopicDirectory(input: {parent?: string | null; query?: string; ancestor?: string; cursor: string | null; limit: number}) {
   await fetchAction(api.topics.catalog.initialize, {});
