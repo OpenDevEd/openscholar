@@ -242,6 +242,7 @@ import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_backfillBillingTypes from "../migrations/backfillBillingTypes.js";
 import type * as migrations_backfillSearchableText from "../migrations/backfillSearchableText.js";
 import type * as migrations_backfillTransactionCounters from "../migrations/backfillTransactionCounters.js";
+import type * as migrations_openAlexDeploymentTargetKey from "../migrations/openAlexDeploymentTargetKey.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
 import type * as models_catalog from "../models/catalog.js";
 import type * as models_mutations from "../models/mutations.js";
@@ -551,6 +552,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/backfillBillingTypes": typeof migrations_backfillBillingTypes;
   "migrations/backfillSearchableText": typeof migrations_backfillSearchableText;
   "migrations/backfillTransactionCounters": typeof migrations_backfillTransactionCounters;
+  "migrations/openAlexDeploymentTargetKey": typeof migrations_openAlexDeploymentTargetKey;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
   "models/catalog": typeof models_catalog;
   "models/mutations": typeof models_mutations;
