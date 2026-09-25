@@ -184,8 +184,8 @@
 }
 
 @theme inline {
-  /* Every spinner stays invisible for its first two seconds, so quick loads never flash one. */
-  --animate-spin: spin 1s linear infinite, spinner-reveal 200ms ease-out 2s both;
+  /* Every spinner stays invisible for its first half second, so quick loads never flash one. */
+  --animate-spin: spin 1s linear infinite, spinner-reveal 200ms ease-out 500ms both;
   @keyframes spinner-reveal {
     from { opacity: 0; }
     to { opacity: 1; }
