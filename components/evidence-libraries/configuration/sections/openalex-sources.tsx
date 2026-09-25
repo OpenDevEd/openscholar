@@ -115,7 +115,8 @@ export function useOpenAlexSources({
             ...source,
             settings: {
               ...source.settings,
-              apiKeyMode: mode === "custom" ? "custom" : "platform",
+              // Looking at "Own API key" without saving one is not a choice.
+              apiKeyMode: mode === "custom" && customCredential ? "custom" : "platform",
             },
           }
         : source;

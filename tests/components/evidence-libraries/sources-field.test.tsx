@@ -275,6 +275,22 @@ describe("<SourcesField>", () => {
     expect(mocks.removeOpenAlexKey).not.toHaveBeenCalled();
   });
 
+  it("adds a new search with OpenScholar access when the own-key tab was only opened", async () => {
+    queries({ connected: true });
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.connections` }));
+    await userEvent.click(screen.getByRole("tab", { name: /OpenAlex/ }));
+    await userEvent.click(screen.getByRole("tab", { name: new RegExp(`${ns}.openAlex.ownKey`) }));
+    await userEvent.keyboard("{Escape}");
+    await openAddMenu();
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: new RegExp(`^${ns}.openAlexSearch`) }),
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "approve search" }));
+    expect(onChange).toHaveBeenLastCalledWith([newSearch]);
+  });
+
   it("offers the Zotero sign-in from the Add source menu when the admin has no connection", async () => {
     queries({ connected: false });
     mocks.startOAuth.mockResolvedValue({ authorizeUrl: "https://www.zotero.org/oauth/authorize?x" });
