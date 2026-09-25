@@ -1,4 +1,5 @@
 import { hasPublicationProviderChanges } from "./publicationProviders";
+import { readTopicsEnabled } from "./activeTopics";
 import { requireLibraryOrganization } from "../organizationFeatures";
 import {
   internalMutation,
@@ -335,13 +336,14 @@ export async function saveEvidenceLibraryDraftSections(
     const historicalSources = (
       await ctx.db
         .query("evidenceLibraryConfigSections")
-        .withIndex("by_libraryId_and_kind", (query) =>
-          query.eq("libraryId", args.libraryId).eq("kind", "revision"),
+        .withIndex("by_libraryId_and_kind_and_sectionKey", (query) =>
+          query
+            .eq("libraryId", args.libraryId)
+            .eq("kind", "revision")
+            .eq("sectionKey", "sources"),
         )
         .collect()
-    )
-      .filter((section) => section.sectionKey === "sources")
-      .map((section) => section.payload);
+    ).map((section) => section.payload);
     try {
       assertImmutableOpenAlexQueryVersions(historicalSources, nextSources);
     } catch (error) {
@@ -760,14 +762,11 @@ export async function activateEvidenceLibraryConfiguration(
         "These changes need Evidence Library software that is still being released. Try again in a few minutes.",
       );
     }
-    const topicsPayload = persisted.migration.snapshot.sections.find(
-      (row) => row.sectionKey === "topics",
-    )?.payload;
-    const topicsEnabled =
-      typeof topicsPayload === "object" &&
-      topicsPayload !== null &&
-      !Array.isArray(topicsPayload) &&
-      (topicsPayload as { enabled?: unknown }).enabled === true;
+    const topicsEnabled = readTopicsEnabled(
+      persisted.migration.snapshot.sections.find(
+        (row) => row.sectionKey === "topics",
+      )?.payload,
+    );
     if (
       topicsEnabled &&
       publishRuntime.kind === "current" &&

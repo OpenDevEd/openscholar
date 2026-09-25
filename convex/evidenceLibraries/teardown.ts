@@ -658,7 +658,7 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
     }
     const sections = await ctx.db
       .query("evidenceLibraryConfigSections")
-      .withIndex("by_libraryId_and_kind", (query) =>
+      .withIndex("by_libraryId_and_kind_and_sectionKey", (query) =>
         query.eq("libraryId", args.libraryId).eq("kind", "draft"),
       )
       .take(BATCH_SIZE);
@@ -666,7 +666,7 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       sections.push(
         ...(await ctx.db
           .query("evidenceLibraryConfigSections")
-          .withIndex("by_libraryId_and_kind", (query) =>
+          .withIndex("by_libraryId_and_kind_and_sectionKey", (query) =>
             query.eq("libraryId", args.libraryId).eq("kind", "revision"),
           )
           .take(BATCH_SIZE)),

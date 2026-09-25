@@ -181,7 +181,11 @@ export default defineSchema({
   )
     .index("by_draftId_and_sectionKey", ["draftId", "sectionKey"])
     .index("by_revisionId_and_sectionKey", ["revisionId", "sectionKey"])
-    .index("by_libraryId_and_kind", ["libraryId", "kind"]),
+    .index("by_libraryId_and_kind_and_sectionKey", [
+      "libraryId",
+      "kind",
+      "sectionKey",
+    ]),
 
   evidenceLibraryCredentials: defineTable(evidenceLibraryCredentialFields)
     .index("by_credentialDigest", ["credentialDigest"])
