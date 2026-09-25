@@ -2,6 +2,7 @@
 
 import type { HTMLAttributes, ReactNode } from "react";
 import { Pause, Pencil, Play, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -42,17 +43,20 @@ export function SourceRow({
   disabled?: boolean;
   toggleDisabled?: boolean;
 }) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources");
+  const tc = useTranslations("common");
   const actions = [
     ...(onEdit
-      ? [{ label: "Edit", icon: Pencil, onClick: onEdit, disabled }]
+      ? [{ key: "edit", label: tc("edit"), icon: Pencil, onClick: onEdit, disabled }]
       : []),
     {
-      label: paused ? "Resume" : "Pause",
+      key: "toggle",
+      label: paused ? t("resume") : t("pause"),
       icon: paused ? Play : Pause,
       onClick: onToggle,
       disabled: disabled || toggleDisabled,
     },
-    { label: "Remove", icon: Trash2, onClick: onRemove, disabled },
+    { key: "remove", label: tc("remove"), icon: Trash2, onClick: onRemove, disabled },
   ];
   return (
     <li
@@ -82,25 +86,25 @@ export function SourceRow({
         </div>
         <div className="col-start-2 flex items-center justify-end gap-0.5 @min-[24rem]/source:col-start-auto">
           {actions.map(
-            ({ label, icon: Icon, onClick, disabled: actionDisabled }) => (
-              <Tooltip key={label}>
+            ({ key, label, icon: Icon, onClick, disabled: actionDisabled }) => (
+              <Tooltip key={key}>
                 <TooltipTrigger asChild>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    aria-label={`${label} ${name}`}
+                    aria-label={t("sourceAction", { action: label, name })}
                     disabled={actionDisabled}
                     onClick={onClick}
                     className={cn(
                       "text-muted-foreground",
-                      label === "Remove" && "hover:text-destructive",
+                      key === "remove" && "hover:text-destructive",
                     )}
                   >
                     <Icon />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{label} source</TooltipContent>
+                <TooltipContent>{t("sourceActionHint", { action: label })}</TooltipContent>
               </Tooltip>
             ),
           )}

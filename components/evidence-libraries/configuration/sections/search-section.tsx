@@ -154,8 +154,8 @@ export function SearchSection({
 
       <FieldGroup title={t("filtersHeading")}>
         <ToggleRow
-          label="Topics"
-          hint="Show topic filters, assignments, statistics, and public topic pages."
+          label={t("topics")}
+          hint={t("topicsHint")}
           checked={draft.topics.enabled}
           onChange={(enabled) =>
             patch((next) => {

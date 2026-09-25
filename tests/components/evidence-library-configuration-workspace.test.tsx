@@ -1330,7 +1330,7 @@ describe("<ConfigurationWorkspace>", () => {
 
     it("shows the Zotero sources and the collections picker inside their cards", async () => {
       await renderWorkspace();
-      expect(card("sources").getByRole("button", { name: "Add source" })).toBeInTheDocument();
+      expect(card("sources").getByRole("button", { name: "sources.addSource" })).toBeInTheDocument();
       expect(await card("collections").findByRole("button", { name: "collections.picker.open" })).toBeInTheDocument();
       expect(card("institutions").getByRole("combobox", { name: "institutions.nameLabel" })).toBeInTheDocument();
     });

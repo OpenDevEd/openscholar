@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { ArrowLeft, Filter, History, Pencil, RotateCcw, Save, X } from "lucide-react";
 import { HistoryCommandCenter } from "@/components/history-command-center";
 import { ResultsList } from "@/components/results-list";
@@ -47,6 +48,8 @@ function SearchWorkspace({
   onClose: () => void;
   onSave: (count: number) => void;
 }) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.openAlex");
+  const tc = useTranslations("common");
   const search = useSearch();
   const narrow = useIsTablet();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -91,7 +94,7 @@ function SearchWorkspace({
         {!choosingFromHistory && !narrow && (
       <motion.aside
         key="filters"
-        aria-label="Filters"
+        aria-label={tc("filters")}
         initial={reducedMotion ? false : { x: 96, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         exit={reducedMotion ? { opacity: 0 } : { x: 96, opacity: 0 }}
@@ -106,7 +109,7 @@ function SearchWorkspace({
             </AnimatePresence>
             <span className="flex h-8 items-center gap-1.5 px-2 text-sm font-medium text-muted-foreground">
               <Filter className="h-4 w-4" />
-              Filters
+              {tc("filters")}
             </span>
           </div>
         </div>
@@ -128,10 +131,10 @@ function SearchWorkspace({
             <div className="flex min-w-0 flex-1 items-center gap-1">
               <input
                 ref={nameRef}
-                aria-label="Name of this search"
+                aria-label={t("nameLabel")}
                 value={name}
                 maxLength={80}
-                placeholder="Name this search"
+                placeholder={t("namePlaceholder")}
                 onChange={(event) => setName(event.target.value)}
                 className="-ml-2 min-w-40 max-w-full field-sizing-content rounded-lg border border-transparent bg-transparent px-2 py-1 text-xl font-semibold outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border/60 focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/10"
               />
@@ -139,7 +142,7 @@ function SearchWorkspace({
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label="Edit the name"
+                aria-label={t("editName")}
                 className="size-8 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   nameRef.current?.focus();
@@ -151,11 +154,11 @@ function SearchWorkspace({
             </div>
             {narrow && !choosingFromHistory && (
               <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-                <SheetTrigger asChild><Button variant="outline" size="icon" aria-label="Filters"><Filter /></Button></SheetTrigger>
+                <SheetTrigger asChild><Button variant="outline" size="icon" aria-label={tc("filters")}><Filter /></Button></SheetTrigger>
                 <SheetContent side="left" className="flex w-full max-w-full flex-col gap-0 p-0 sm:max-w-md">
-                  <SheetHeader className="shrink-0 border-b p-4"><SheetTitle>Filters</SheetTitle></SheetHeader>
+                  <SheetHeader className="shrink-0 border-b p-4"><SheetTitle>{tc("filters")}</SheetTitle></SheetHeader>
                   <div className="min-h-0 flex-1 overflow-y-auto">{sidebarContents}</div>
-                  <div className="shrink-0 border-t p-4"><Button className="w-full" onClick={() => setFiltersOpen(false)}>Done</Button></div>
+                  <div className="shrink-0 border-t p-4"><Button className="w-full" onClick={() => setFiltersOpen(false)}>{t("done")}</Button></div>
                 </SheetContent>
               </Sheet>
             )}
@@ -164,20 +167,20 @@ function SearchWorkspace({
               variant="outline"
               size="sm"
               className="h-9 shrink-0 rounded-lg"
-              aria-label={choosingFromHistory ? "Back to results" : "From my search history"}
+              aria-label={choosingFromHistory ? t("backToResults") : t("fromHistory")}
               aria-pressed={choosingFromHistory}
               data-history-trigger
               onClick={() => setChoosingFromHistory(!choosingFromHistory)}
             >
               {choosingFromHistory ? <ArrowLeft /> : <History />}
-              <span className="hidden sm:inline">{choosingFromHistory ? "Back to results" : "From my search history"}</span>
+              <span className="hidden sm:inline">{choosingFromHistory ? t("backToResults") : t("fromHistory")}</span>
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="size-9 rounded-lg"
-              aria-label="Close"
+              aria-label={tc("close")}
               onClick={onClose}
             >
               <X />
@@ -189,7 +192,7 @@ function SearchWorkspace({
             // The history page itself, choosing instead of opening.
             <HistoryCommandCenter
               pick={{
-                label: "Use this search",
+                label: t("useSearch"),
                 excludeId: search.searchId,
                 onPick: (entry) => {
                   const picked = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(entry) };
@@ -220,23 +223,23 @@ function SearchWorkspace({
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <p className="text-xs text-muted-foreground">
               {unbounded
-                ? "Add keywords or a filter first. An empty search would import all of OpenAlex."
+                ? t("unbounded")
                 : !busy && search.totalCount > 0
-                  ? `Saving imports all ${search.totalCount.toLocaleString()} records and keeps them up to date.`
-                  : "Nothing is imported until you save."}
+                  ? t("importsAll", { count: search.totalCount })
+                  : t("nothingImported")}
             </p>
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
               <Switch size="sm" checked={downloadPdfs} onCheckedChange={setDownloadPdfs} />
-              Process PDFs
+              {t("processPdfs")}
             </label>
           </div>
           <div className="flex items-center gap-2">
             <Button type="button" variant="ghost" className="h-9 rounded-lg" onClick={onClose}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="button" variant="outline" className="h-9 rounded-lg" disabled={!changed} onClick={onReset}>
               <RotateCcw />
-              Reset
+              {tc("reset")}
             </Button>
             <Button
               type="button"
@@ -245,7 +248,7 @@ function SearchWorkspace({
               onClick={() => onSave(search.totalCount)}
             >
               <Save />
-              Save
+              {tc("save")}
             </Button>
           </div>
         </footer>
@@ -262,6 +265,7 @@ export function OpenAlexSearchDialog({
   onClose: () => void;
   onApprove: (source: OpenAlexSourceEntry) => void;
 }) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.openAlex");
   const startingName = initial?.settings.name ?? "";
   const startingParams = useMemo(() => readOpenAlexSourceSearch(initial), [initial]);
   const [name, setName] = useState(startingName);
@@ -297,8 +301,8 @@ export function OpenAlexSearchDialog({
           (event.currentTarget as HTMLElement).focus();
         }}
       >
-        <DialogTitle className="sr-only">{initial ? "Change this search" : "Add a search"}</DialogTitle>
-        <DialogDescription className="sr-only">Choose the search this source will keep up to date.</DialogDescription>
+        <DialogTitle className="sr-only">{initial ? t("changeTitle") : t("addTitle")}</DialogTitle>
+        <DialogDescription className="sr-only">{t("dialogDescription")}</DialogDescription>
         <SearchProvider local={{searchId, params,
           onParamsChange: (updates) => setParams((value) => ({...value, ...updates})),
         }}>

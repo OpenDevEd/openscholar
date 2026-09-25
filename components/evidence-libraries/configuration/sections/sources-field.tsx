@@ -247,12 +247,10 @@ export function SourcesField({
   return (
     <div className="@container/sources space-y-4" data-library-sources>
       {value.length === 0 ? (
-        <EmptyList>
-          No sources yet. Add a Zotero group or an OpenAlex search.
-        </EmptyList>
+        <EmptyList>{t("noSources")}</EmptyList>
       ) : (
         <ul
-          aria-label="Connected sources"
+          aria-label={t("listLabel")}
           className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 bg-background"
         >
           {zoteroSources.map((entry) => (
@@ -282,13 +280,13 @@ export function SourcesField({
           type="button"
           variant="ghost"
           size="sm"
-          aria-label="Connections"
-          title="Connections"
+          aria-label={t("connections")}
+          title={t("connections")}
           onClick={() => setConnectionsOpen(true)}
         >
           <Settings2 />
           <span className="hidden @min-[24rem]/sources:inline">
-            Connections
+            {t("connections")}
           </span>
         </Button>
         <GroupPicker
@@ -303,7 +301,7 @@ export function SourcesField({
             <DropdownMenuTrigger asChild>
               <Button ref={addButton} type="button" variant="outline" size="sm">
                 <Plus />
-                Add source
+                {t("addSource")}
                 <ChevronDown className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -319,9 +317,9 @@ export function SourcesField({
                   >
                     <ZoteroIcon className="size-4 text-[#cc2936]" />
                     <span>
-                      Zotero group
+                      {t("zoteroGroup")}
                       <span className="block text-xs text-muted-foreground">
-                        Sync a shared reference library
+                        {t("zoteroGroupHint")}
                       </span>
                     </span>
                   </DropdownMenuItem>
@@ -335,9 +333,9 @@ export function SourcesField({
                 >
                   <ZoteroIcon className="size-4 text-[#cc2936]" />
                   <span>
-                    Zotero group
+                    {t("zoteroGroup")}
                     <span className="block text-xs text-muted-foreground">
-                      Connect a Zotero account first
+                      {t("zoteroConnectFirst")}
                     </span>
                   </span>
                 </DropdownMenuItem>
@@ -345,9 +343,9 @@ export function SourcesField({
               <DropdownMenuItem onSelect={() => openalex.setEditing("new")}>
                 <OpenAlexIcon className="size-4" />
                 <span>
-                  OpenAlex search
+                  {t("openAlexSearch")}
                   <span className="block text-xs text-muted-foreground">
-                    Import research matching a search
+                    {t("openAlexSearchHint")}
                   </span>
                 </span>
               </DropdownMenuItem>
@@ -359,17 +357,15 @@ export function SourcesField({
       <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Source connections</DialogTitle>
-            <DialogDescription>
-              Manage account access and import settings for this library.
-            </DialogDescription>
+            <DialogTitle>{t("connectionsTitle")}</DialogTitle>
+            <DialogDescription>{t("connectionsDescription")}</DialogDescription>
           </DialogHeader>
           <Tabs
             value={connectionTab}
             onValueChange={setConnectionTab}
             className="gap-5"
           >
-            <TabsList aria-label="Source provider">
+            <TabsList aria-label={t("providerTabs")}>
               <TabsTrigger value="zotero">
                 <ZoteroIcon className="size-4" />
                 Zotero
@@ -632,7 +628,7 @@ function GroupRow({
   return (
     <SourceRow
       name={group?.name ?? entry.key}
-      provider="Zotero group"
+      provider={t("zoteroGroup")}
       icon={<ZoteroIcon className="size-4 text-[#cc2936]" />}
       status={{ label: t(`health.${health}`), tone: HEALTH_TONE[health] }}
       paused={paused}

@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { Building2, KeyRound } from "lucide-react";
 import { useAction, useMutation } from "convex/react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
@@ -54,6 +55,7 @@ export function useOpenAlexSources({
   value: EvidenceSourceEntry[];
   onChange: (value: EvidenceSourceEntry[]) => void;
 }) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.openAlex");
   const [editingKey, setEditingKey] = useState<"new" | string | null>(null);
   const [editorSession, setEditorSession] = useState<{ id: string; created: boolean } | null>(null);
   const [apiKey, setApiKey] = useState("");
@@ -139,7 +141,7 @@ export function useOpenAlexSources({
     });
     setApiKey("");
     changeMode("custom");
-    toast.success("OpenAlex API key saved");
+    toast.success(t("keySaved"));
   }
 
   function changeMode(mode: "openscholar" | "custom") {
@@ -169,7 +171,7 @@ export function useOpenAlexSources({
     await removeCredential({ libraryId });
     changeMode("openscholar");
     setApiKey("");
-    toast.success("OpenAlex API key removed");
+    toast.success(t("keyRemoved"));
   }
 
   return {
@@ -205,15 +207,16 @@ export function OpenAlexSourceRow({
   source: OpenAlexSourceEntry;
   controller: ReturnType<typeof useOpenAlexSources>;
 }) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources");
   return (
     <SourceRow
       name={source.settings.name}
-      provider="OpenAlex search"
+      provider={t("openAlexSearch")}
       icon={<OpenAlexIcon className="size-4" />}
       status={
         source.enabled
-          ? { label: "Approved", tone: "success" }
-          : { label: "Paused", tone: "neutral" }
+          ? { label: t("approved"), tone: "success" }
+          : { label: t("health.paused"), tone: "neutral" }
       }
       paused={!source.enabled}
       description={
@@ -222,8 +225,8 @@ export function OpenAlexSourceRow({
       metadata={[
         {
           key: "pdfs",
-          label: "PDF processing",
-          value: source.settings.downloadPdfs ? "On" : "Off",
+          label: t("pdfProcessing"),
+          value: source.settings.downloadPdfs ? t("on") : t("off"),
         },
       ]}
       onEdit={() => controller.setEditing(source)}
@@ -241,6 +244,7 @@ export function OpenAlexAccessSettings({
 }: {
   source: ReturnType<typeof useOpenAlexSources>;
 }) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources");
   return (
     <Tabs
       value={source.mode}
@@ -248,28 +252,28 @@ export function OpenAlexAccessSettings({
         source.selectMode(mode as "openscholar" | "custom");
       }}
     >
-      <TabsList aria-label="OpenAlex access">
+      <TabsList aria-label={t("openAlex.access")}>
         <TabsTrigger value="openscholar">
           <Building2 />
           OpenScholar
         </TabsTrigger>
         <TabsTrigger value="custom">
           <KeyRound />
-          Own API key
+          {t("openAlex.ownKey")}
         </TabsTrigger>
       </TabsList>
       <TabsContent value="openscholar">
         <p className="text-xs text-muted-foreground">
-          Included with OpenScholar. Updates fetch only changed records.
+          {t("openAlex.platformHint")}
         </p>
       </TabsContent>
       <TabsContent value="custom" className="space-y-3">
         <Field
-          label="OpenAlex API key"
+          label={t("openAlex.keyLabel")}
           hint={
             source.customCredential?.maskedHint
-              ? `Saved key ${source.customCredential.maskedHint}`
-              : "Use your own OpenAlex API key for this library."
+              ? t("openAlex.savedKey", { hint: source.customCredential.maskedHint })
+              : t("openAlex.keyHint")
           }
         >
           {(id) => (
@@ -277,7 +281,7 @@ export function OpenAlexAccessSettings({
               id={id}
               type="password"
               autoComplete="new-password"
-              placeholder="Enter your OpenAlex API key"
+              placeholder={t("openAlex.keyPlaceholder")}
               value={source.apiKey}
               onChange={(event) => source.setApiKey(event.target.value)}
             />
@@ -289,31 +293,31 @@ export function OpenAlexAccessSettings({
           disabled={!source.apiKey.trim()}
           onClick={() => void source.saveCustomCredential()}
         >
-          Save API key
+          {t("openAlex.saveKey")}
         </Button>
         {source.customCredential ? (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button type="button" size="sm" variant="outline">
-                Remove saved key
+                {t("openAlex.removeKey")}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  Remove the saved OpenAlex key?
+                  {t("openAlex.removeKeyTitle")}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  Searches will use OpenScholar access instead.
+                  {t("openAlex.removeKeyBody")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("picker.cancel")}</AlertDialogCancel>
                 <AlertDialogAction
                   variant="destructive"
                   onClick={() => void source.removeCustomCredential()}
                 >
-                  Remove key
+                  {t("openAlex.removeKeyConfirm")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

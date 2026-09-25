@@ -1,9 +1,10 @@
 /** @vitest-environment jsdom */
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import { SourcesField } from "@/components/evidence-libraries/configuration/sections/sources-field";
+import type { TagRules } from "@/components/evidence-libraries/configuration/sections/tag-rules";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Id } from "@/convex/_generated/dataModel";
 import { zoteroSourceEntry } from "@/convex/zotero/sourceEntry";
@@ -14,50 +15,104 @@ import type {
 import { OPENALEX_API_CREDENTIAL_KEY } from "@/lib/evidence-libraries/configuration/sources";
 
 const mocks = vi.hoisted(() => ({
-  action: vi.fn(),
-  mutation: vi.fn(),
+  listMyGroups: vi.fn(),
+  connectGroup: vi.fn(),
+  removeGroup: vi.fn(),
+  disconnect: vi.fn(),
+  startOAuth: vi.fn(),
+  writeCredential: vi.fn(),
+  removeOpenAlexKey: vi.fn(),
   query: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("convex/react", () => ({
-  useAction: () => mocks.action,
-  useMutation: () => mocks.mutation,
+  useAction: (ref: string) =>
+    ({
+      listMyZoteroGroups: mocks.listMyGroups,
+      connectZoteroGroup: mocks.connectGroup,
+      startOAuth: mocks.startOAuth,
+      writeCredential: mocks.writeCredential,
+    })[ref],
+  useMutation: (ref: string) =>
+    ({
+      removeZoteroGroup: mocks.removeGroup,
+      disconnect: mocks.disconnect,
+      removeOpenAlexKey: mocks.removeOpenAlexKey,
+    })[ref],
 }));
 vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: (reference: string) => mocks.query(reference),
+  useProtectedQuery: (query: string) => mocks.query(query),
 }));
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
-      credentials: { listCredentialMetadata: "credentials" },
+      credentials: { listCredentialMetadata: "listCredentialMetadata" },
       credentialActions: { writeCredential: "writeCredential" },
       openAlexSourceKey: { removeOpenAlexKey: "removeOpenAlexKey" },
     },
     zotero: {
-      queries: { getConnectionStatus: "account" },
-      libraryGroups: {
-        listLibraryZoteroGroups: "groups",
-        removeZoteroGroup: "removeGroup",
-      },
-      libraryGroupActions: {
-        listMyZoteroGroups: "listGroups",
-        connectZoteroGroup: "connectGroup",
-      },
       actions: { startOAuth: "startOAuth" },
       mutations: { disconnect: "disconnect" },
+      queries: { getConnectionStatus: "getConnectionStatus" },
+      libraryGroups: {
+        listLibraryZoteroGroups: "listLibraryZoteroGroups",
+        removeZoteroGroup: "removeZoteroGroup",
+      },
+      libraryGroupActions: {
+        listMyZoteroGroups: "listMyZoteroGroups",
+        connectZoteroGroup: "connectZoteroGroup",
+      },
     },
   },
 }));
 vi.mock("next-intl", () => ({
-  useTranslations: (namespace: string) => (key: string) =>
-    `${namespace}.${key}`,
+  useTranslations:
+    (namespace: string) => (key: string, values?: Record<string, unknown>) =>
+      `${namespace}.${key}${values ? ` ${JSON.stringify(values)}` : ""}`,
   useFormatter: () => ({ dateTime: (date: Date) => date.toISOString().slice(0, 10) }),
   useLocale: () => "en-GB",
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+const newSearch: OpenAlexSourceEntry = {
+  key: "openalex-new",
+  provider: "openalex",
+  enabled: true,
+  writebackEnabled: false,
+  settings: {
+    name: "New search",
+    searchUrl: "/results/search-2?q=schools",
+    apiKeyMode: "platform",
+    approvedQuery: {
+      version: "query-v1",
+      approvedAt: "2026-09-25T12:00:00.000Z",
+      query: { search: "schools" },
+    },
+    downloadPdfs: false,
+  },
+};
+// The search workspace itself is covered elsewhere; here it only hands back a search.
+vi.mock(
+  "@/components/evidence-libraries/configuration/sections/openalex-search-dialog",
+  () => ({
+    OpenAlexSearchDialog: ({
+      onApprove,
+    }: {
+      onApprove: (source: OpenAlexSourceEntry) => void;
+    }) => (
+      <button type="button" onClick={() => onApprove(newSearch)}>
+        approve search
+      </button>
+    ),
+  }),
+);
+
 const libraryId = "library_1" as Id<"evidenceLibraries">;
+const ns = "evidenceLibraryConfiguration.sources";
+const rowAction = (action: string, name: string) =>
+  `${ns}.sourceAction ${JSON.stringify({ action, name })}`;
+
 const openAlexSource: OpenAlexSourceEntry = {
   key: "openalex-education",
   provider: "openalex",
@@ -76,115 +131,148 @@ const openAlexSource: OpenAlexSourceEntry = {
   },
 };
 
-function Harness({ initial = [] }: { initial?: EvidenceSourceEntry[] }) {
+const group42 = {
+  groupId: "42",
+  name: "Climate evidence",
+  isPublic: true,
+  itemCount: 312,
+  connectedByZoteroUsername: "owner",
+  scopes: { read: true, write: true },
+};
+const group77 = {
+  ...group42,
+  groupId: "77",
+  name: "Private notes",
+  isPublic: false,
+  scopes: { read: true, write: false },
+};
+
+function queries(input: {
+  connected: boolean;
+  groups?: unknown[];
+  credentials?: unknown[];
+}) {
+  mocks.query.mockImplementation((query: string) => ({
+    data:
+      query === "getConnectionStatus"
+        ? input.connected
+          ? { connected: true, zoteroUserId: "1", username: "owner" }
+          : { connected: false }
+        : query === "listCredentialMetadata"
+          ? (input.credentials ?? [])
+          : (input.groups ?? []),
+    isReady: true,
+  }));
+}
+
+function Harness({
+  initial = [],
+  onChange = vi.fn(),
+}: {
+  initial?: EvidenceSourceEntry[];
+  onChange?: (value: EvidenceSourceEntry[]) => void;
+}) {
   const [value, setValue] = useState(initial);
+  const [tags, setTags] = useState<TagRules>({});
   return (
     <TooltipProvider>
       <SourcesField
         libraryId={libraryId}
         value={value}
-        onChange={setValue}
-        tags={{}}
-        onTagsChange={vi.fn()}
+        onChange={(next) => {
+          setValue(next);
+          onChange(next);
+        }}
+        tags={tags}
+        onTagsChange={setTags}
       />
     </TooltipProvider>
   );
 }
 
+async function openAddMenu() {
+  await userEvent.click(screen.getByRole("button", { name: `${ns}.addSource` }));
+}
+
+async function openGroupPicker() {
+  await openAddMenu();
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: new RegExp(`^${ns}.zoteroGroup`) }),
+  );
+  return screen.findByRole("table", { name: `${ns}.picker.title` });
+}
+
 describe("<SourcesField>", () => {
   beforeEach(() => {
-    mocks.action.mockReset();
-    mocks.mutation.mockReset();
-    mocks.query.mockImplementation((reference: string) => ({
-      data:
-        reference === "account"
-          ? { connected: true, zoteroUserId: "1", username: "owner" }
-          : reference === "groups"
-            ? [
-                {
-                  groupId: "42",
-                  name: "Climate evidence",
-                  isPublic: true,
-                  itemCount: 12,
-                  scopes: { read: true, write: true },
-                },
-              ]
-            : [],
-      isReady: true,
-    }));
+    for (const mock of Object.values(mocks)) mock.mockReset();
+    vi.stubEnv("NEXT_PUBLIC_CONVEX_SITE_URL", "https://lane.convex.site");
   });
 
   it("shows Zotero and OpenAlex in one source list without a total", () => {
+    queries({ connected: true, groups: [group42] });
     render(<Harness initial={[zoteroSourceEntry("42"), openAlexSource]} />);
-    expect(
-      screen.getByRole("list", { name: "Connected sources" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: `${ns}.listLabel` })).toBeInTheDocument();
     expect(screen.getByText("Climate evidence")).toBeInTheDocument();
     expect(screen.getByText("Education evidence")).toBeInTheDocument();
     expect(screen.getByText("education")).toBeInTheDocument();
-    expect(
-      screen.getByRole("list", { name: "common.filters" }),
-    ).toHaveTextContent("searchFilters.filterLabelYear 2020 - 2026");
+    expect(screen.getByRole("list", { name: "common.filters" })).toHaveTextContent(
+      "2020 - 2026",
+    );
     expect(screen.queryByText(/2 sources/i)).not.toBeInTheDocument();
   });
 
   it("pauses an approved OpenAlex source in the saved draft", async () => {
-    render(<Harness initial={[openAlexSource]} />);
+    queries({ connected: true });
+    const onChange = vi.fn();
+    render(<Harness initial={[openAlexSource]} onChange={onChange} />);
     await userEvent.click(
-      screen.getByRole("button", { name: "Pause Education evidence" }),
+      screen.getByRole("button", {
+        name: rowAction(`${ns}.pause`, "Education evidence"),
+      }),
     );
-    expect(screen.getByText("Paused")).toBeInTheDocument();
+    expect(onChange).toHaveBeenLastCalledWith([{ ...openAlexSource, enabled: false }]);
+    expect(screen.getByText(`${ns}.health.paused`)).toBeInTheDocument();
+  });
+
+  it("offers both source types from one Add source menu", async () => {
+    queries({ connected: true });
+    render(<Harness />);
+    await openAddMenu();
+    expect(
+      screen.getByRole("menuitem", { name: new RegExp(`^${ns}.zoteroGroup`) }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: new RegExp(`^${ns}.openAlexSearch`) }),
+    ).toBeInTheDocument();
   });
 
   it("keeps provider connections separate at the bottom", async () => {
+    queries({ connected: true });
     render(<Harness />);
-    await userEvent.click(screen.getByRole("button", { name: "Connections" }));
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.connections` }));
     expect(
-      screen.getByRole("dialog", { name: "Source connections" }),
+      screen.getByRole("dialog", { name: `${ns}.connectionsTitle` }),
     ).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Zotero/ })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /OpenAlex/ })).toBeInTheDocument();
   });
 
   it("keeps a saved API key when switching a source to OpenScholar access", async () => {
-    mocks.query.mockImplementation((reference: string) => ({
-      data:
-        reference === "credentials"
-          ? [
-              {
-                credentialKey: OPENALEX_API_CREDENTIAL_KEY,
-                maskedHint: "••••abcd",
-              },
-            ]
-          : reference === "account"
-            ? { connected: true, zoteroUserId: "1", username: "owner" }
-            : [],
-      isReady: true,
-    }));
+    queries({
+      connected: true,
+      credentials: [{ credentialKey: OPENALEX_API_CREDENTIAL_KEY, maskedHint: "••••abcd" }],
+    });
     render(
       <Harness
         initial={[
-          {
-            ...openAlexSource,
-            settings: { ...openAlexSource.settings, apiKeyMode: "custom" },
-          },
+          { ...openAlexSource, settings: { ...openAlexSource.settings, apiKeyMode: "custom" } },
         ]}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Connections" }));
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.connections` }));
     await userEvent.click(screen.getByRole("tab", { name: /OpenAlex/ }));
     await userEvent.click(screen.getByRole("tab", { name: /OpenScholar/ }));
-    expect(mocks.mutation).not.toHaveBeenCalled();
+    expect(mocks.removeOpenAlexKey).not.toHaveBeenCalled();
   });
 
-  it("offers both source types from one Add source menu", async () => {
-    render(<Harness />);
-    await userEvent.click(screen.getByRole("button", { name: "Add source" }));
-    expect(
-      screen.getByRole("menuitem", { name: /Zotero group/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("menuitem", { name: /OpenAlex search/ }),
-    ).toBeInTheDocument();
-  });
 });
