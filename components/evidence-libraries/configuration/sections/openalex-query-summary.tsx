@@ -7,7 +7,8 @@ import { QueryText } from "@/components/ui/query-text";
 import { COUNTRIES } from "@/lib/constants";
 import { getAllFilterItems, getFieldLabel, type FilterT } from "@/lib/filters";
 import { paramsToFilters } from "@/lib/search-params";
-import { SDGS, TOPIC_LEVELS } from "./openalex-import-model";
+import { SDGS, TOPIC_LEVEL_LABELS } from "./openalex-import-model";
+import { topicLevelOf } from "@/lib/evidence-libraries/openalex-import-request";
 
 import type { OpenAlexSourceEntry } from "@/lib/evidence-libraries/configuration/sources";
 import { readOpenAlexSourceSearch } from "@/lib/evidence-libraries/openalex-source-query";
@@ -15,7 +16,7 @@ import { useSourceTopicNames } from "./use-source-topic-names";
 
 export function OpenAlexQuerySummary({ source }: { source: OpenAlexSourceEntry }) {
   const { params, extras } = readOpenAlexSourceSearch(source);
-  const topicNames = useSourceTopicNames(extras.topicLevel, extras.topicIds);
+  const topicNames = useSourceTopicNames(extras.topicIds);
   const t = useTranslations("searchFilters") as FilterT;
   const format = useFormatter();
   const filters = getAllFilterItems(
@@ -37,7 +38,7 @@ export function OpenAlexQuerySummary({ source }: { source: OpenAlexSourceEntry }
     ...extras.topicIds.map((id) => ({
       key: `topic-${id}`,
       icon: Network,
-      label: TOPIC_LEVELS.find((level) => level.value === extras.topicLevel)!.label,
+      label: TOPIC_LEVEL_LABELS[topicLevelOf(id)],
       displayValue: topicNames[id] ?? id,
     })),
     ...extras.sdgs.map((id) => ({

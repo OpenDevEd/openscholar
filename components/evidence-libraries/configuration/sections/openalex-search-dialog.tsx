@@ -21,7 +21,6 @@ import { ResultsList } from "@/components/results-list";
 import { SidebarContent } from "@/components/search-sidebar";
 import { FilterCountControl } from "@/components/shared/filter-count-control";
 import { FilterSection } from "@/components/shared/filter-section";
-import { SegmentedToggle } from "@/components/shared/segmented-toggle";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -37,6 +36,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   EMPTY_IMPORT_EXTRAS,
   importExtraApiFilters,
+  topicLevelOf,
   type OpenAlexImportExtras,
 } from "@/lib/evidence-libraries/openalex-import-request";
 import { countActiveFilters } from "@/lib/filters";
@@ -48,8 +48,7 @@ import { useSearchHistoryStore } from "@/lib/store";
 import { approveOpenAlexQuery, type OpenAlexSourceEntry } from "@/lib/evidence-libraries/configuration/sources";
 import { buildOpenAlexSourceQuery, readOpenAlexSourceSearch, sameOpenAlexSourceSearch } from "@/lib/evidence-libraries/openalex-source-query";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { useSourceTopicNames } from "./use-source-topic-names";
-import { searchTopicCatalog } from "@/lib/topics/search";
+import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import type { SearchField } from "@/lib/types";
 import {
   cn,
@@ -60,7 +59,7 @@ import {
 } from "@/lib/utils";
 import {
   SDGS,
-  TOPIC_LEVELS,
+  TOPIC_LEVEL_LABELS,
   type ImportQuery,
 } from "./openalex-import-model";
 
@@ -178,20 +177,14 @@ function OptionPicker({
 function ImportOnlyFilters({
   extras,
   setExtras,
-  topicNames,
-  setTopicNames,
 }: {
   extras: OpenAlexImportExtras;
   setExtras: (change: Partial<OpenAlexImportExtras>) => void;
-  topicNames: Record<string, string>;
-  setTopicNames: (update: (value: Record<string, string>) => Record<string, string>) => void;
 }) {
   const [topicSearch, setTopicSearch] = useState("");
-  const topicOptions = useMemo(
-    () => searchTopicCatalog(extras.topicLevel, topicSearch),
-    [extras.topicLevel, topicSearch],
-  );
-  const savedNames = useSourceTopicNames(extras.topicLevel, extras.topicIds);
+  const topicOptions = useMemo(() => searchTopicCatalog(topicSearch), [topicSearch]);
+  const topicNames = Object.fromEntries(extras.topicIds.map((id) => [id, topicName(id) ?? id]));
+  const mixedLevels = new Set(extras.topicIds.map(topicLevelOf)).size > 1;
 
   return (
     <>
@@ -216,25 +209,19 @@ function ImportOnlyFilters({
         onClear={() => setExtras({ topicIds: [] })}
       >
         <div className="space-y-2">
-          <SegmentedToggle
-            ariaLabel="Level of research area"
-            value={extras.topicLevel}
-            options={TOPIC_LEVELS}
-            onChange={(level) => {
-              setExtras({ topicLevel: level, topicIds: [] });
-              setTopicSearch("");
-            }}
-          />
           <div>
             <OptionPicker
               label="Research areas"
               placeholder="Any research area"
-              options={topicOptions.map((option) => ({ id: option.id, name: option.name, hint: option.within }))}
+              options={topicOptions.map((option) => ({
+                id: option.id,
+                name: option.name,
+                hint: [TOPIC_LEVEL_LABELS[option.level], option.within].filter(Boolean).join(" · "),
+              }))}
               selected={extras.topicIds}
-              names={{ ...savedNames, ...topicNames }}
+              names={topicNames}
               onSearch={setTopicSearch}
               onToggle={(option) => {
-                setTopicNames((value) => ({ ...value, [option.id]: option.name }));
                 setExtras({
                   topicIds: extras.topicIds.includes(option.id)
                     ? extras.topicIds.filter((id) => id !== option.id)
@@ -243,6 +230,11 @@ function ImportOnlyFilters({
               }}
             />
           </div>
+          {mixedLevels ? (
+            <p className="text-xs text-muted-foreground">
+              Records must match one choice from each level.
+            </p>
+          ) : null}
         </div>
       </FilterSection>
       <FilterSection
@@ -300,8 +292,6 @@ function SearchWorkspace({
   onReset,
   onClose,
   onSave,
-  topicNames,
-  setTopicNames,
 }: {
   name: string;
   setName: (name: string) => void;
@@ -314,8 +304,6 @@ function SearchWorkspace({
   onReset: () => void;
   onClose: () => void;
   onSave: (count: number) => void;
-  topicNames: Record<string, string>;
-  setTopicNames: (update: (value: Record<string, string>) => Record<string, string>) => void;
 }) {
   const search = useSearch();
   const narrow = useIsTablet();
@@ -371,12 +359,7 @@ function SearchWorkspace({
           isRelatedToActive={isRelatedToFilterActive(params.rel)}
           onClearAllFilters={clearAll}
         >
-          <ImportOnlyFilters
-            extras={extras}
-            setExtras={setExtras}
-            topicNames={topicNames}
-            setTopicNames={setTopicNames}
-          />
+          <ImportOnlyFilters extras={extras} setExtras={setExtras} />
         </SidebarContent>
   );
 
@@ -566,7 +549,6 @@ export function OpenAlexSearchDialog({
   const [name, setName] = useState(startingName);
   const [query, setQuery] = useState<ImportQuery>(startingQuery);
   const [downloadPdfs, setDownloadPdfs] = useState(initial?.settings.downloadPdfs ?? false);
-  const [topicNames, setTopicNames] = useState<Record<string, string>>({});
   const queryUnchanged = Boolean(initial) && sameOpenAlexSourceSearch(query, startingQuery);
   const changed = name !== startingName || !queryUnchanged || downloadPdfs !== (initial?.settings.downloadPdfs ?? false);
   const extraApiFilters = useMemo(() => importExtraApiFilters(query.extras), [query.extras]);
@@ -605,7 +587,7 @@ export function OpenAlexSearchDialog({
           <SearchWorkspace name={name} setName={setName} query={query} setQuery={setQuery}
             changed={changed} queryUnchanged={queryUnchanged} downloadPdfs={downloadPdfs} setDownloadPdfs={setDownloadPdfs}
             onReset={() => {setName(startingName); setQuery(startingQuery); setDownloadPdfs(initial?.settings.downloadPdfs ?? false);}}
-            onClose={onClose} onSave={save} topicNames={topicNames} setTopicNames={setTopicNames}
+            onClose={onClose} onSave={save}
           />
         </SearchProvider>
       </DialogContent>

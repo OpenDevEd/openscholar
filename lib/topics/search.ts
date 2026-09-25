@@ -1,36 +1,36 @@
-import type { OpenAlexTopicLevel } from "@/lib/evidence-libraries/openalex-source-query";
+import { topicLevelOf, type TopicLevel } from "@/lib/evidence-libraries/openalex-import-request";
 import tree from "./openalex-topics.json";
 
-export type TopicOption = { id: string; name: string; within: string };
+export type TopicOption = { id: string; name: string; level: TopicLevel; within: string };
 
+const LEVEL_ORDER: Record<TopicLevel, number> = { domain: 0, field: 1, subfield: 2, topic: 3 };
 const names = new Map(tree.map((node) => [node.id, node.name]));
-const byLevel = Object.fromEntries(
-  (["field", "subfield", "topic"] as const).map((level) => {
-    const prefix = level === "topic" ? "T" : `${level}s/`;
-    const options = tree
-      .filter((node) => node.id.startsWith(prefix))
-      .map((node) => ({
-        id: node.id.split("/").at(-1)!,
-        name: node.name,
-        within: (node.parent && names.get(node.parent)) ?? "",
-      }))
-      .sort((left, right) => left.name.localeCompare(right.name));
-    return [level, options];
-  }),
-) as Record<OpenAlexTopicLevel, TopicOption[]>;
+// Broadest first, then by name, so equal matches keep that order.
+const options: TopicOption[] = tree
+  .map((node) => ({
+    id: node.id,
+    name: node.name,
+    level: topicLevelOf(node.id),
+    within: (node.parent && names.get(node.parent)) ?? "",
+  }))
+  .sort(
+    (left, right) =>
+      LEVEL_ORDER[left.level] - LEVEL_ORDER[right.level] ||
+      left.name.localeCompare(right.name),
+  );
 
-/** Finds research areas in our OpenAlex catalog, matching parts of words. */
-export function searchTopicCatalog(
-  level: OpenAlexTopicLevel,
-  search: string,
-  limit = 50,
-): TopicOption[] {
+export function topicName(id: string): string | undefined {
+  return names.get(id);
+}
+
+/** Finds research areas of every level in our OpenAlex catalog, matching parts of words. */
+export function searchTopicCatalog(search: string, limit = 50): TopicOption[] {
   const query = search.trim().toLowerCase();
   const words = query.split(/\s+/).filter(Boolean);
-  if (!words.length) return byLevel[level].slice(0, limit);
+  if (!words.length) return options.slice(0, limit);
   const rank = (name: string) =>
     name.startsWith(query) ? 0 : name.includes(` ${query}`) ? 1 : 2;
-  return byLevel[level]
+  return options
     .filter((option) => {
       const name = option.name.toLowerCase();
       return words.every((word) => name.includes(word));

@@ -6,7 +6,7 @@ import { readDraft, changedSectionRows } from "./configuration/rules";
 import { approveOpenAlexQuery, type OpenAlexSourceEntry } from "./configuration/sources";
 import { buildOpenAlexSourceQuery, parseOpenAlexSourceQuery, readOpenAlexSourceSearch, sameOpenAlexSourceSearch, sourceSearchHistoryId } from "./openalex-source-query";
 
-const extras = { ...EMPTY_IMPORT_EXTRAS, topicIds: ["3304"], sdgs: ["4"], openAccessOnly: true };
+const extras = { ...EMPTY_IMPORT_EXTRAS, topicIds: ["subfields/3304"], sdgs: ["4"], openAccessOnly: true };
 const params = { ...DEFAULT_SEARCH_PARAMS, q: "education", ft: "date", df: "2020-03-15", dt: "2025-06-30", reg: ["GB"], focus: ["KE"], review: true, cites: "W123", citedBy: "W456", rel: "W789" };
 
 describe("saved source search workspace", () => {
@@ -35,8 +35,15 @@ describe("saved source search workspace", () => {
   });
 
   it("supports filter-only searches and blocks an empty import", () => {
-    expect(buildOpenAlexSourceQuery({params: DEFAULT_SEARCH_PARAMS, extras: {...EMPTY_IMPORT_EXTRAS, topicLevel: "topic", topicIds: ["T10001"]}})).toEqual({filter: "topics.id:T10001"});
+    expect(buildOpenAlexSourceQuery({params: DEFAULT_SEARCH_PARAMS, extras: {...EMPTY_IMPORT_EXTRAS, topicIds: ["T10001"]}})).toEqual({filter: "topics.id:T10001"});
     expect(buildOpenAlexSourceQuery({params: DEFAULT_SEARCH_PARAMS, extras: EMPTY_IMPORT_EXTRAS})).toBeNull();
+  });
+
+  it("combines research areas from different levels and reads them back", () => {
+    const query = {params: DEFAULT_SEARCH_PARAMS, extras: {...EMPTY_IMPORT_EXTRAS, topicIds: ["fields/33", "subfields/3304", "subfields/1702", "T12072"]}};
+    const approved = buildOpenAlexSourceQuery(query)!;
+    expect(approved.filter!.split(",").sort()).toEqual(["topics.field.id:33", "topics.id:T12072", "topics.subfield.id:3304|1702"]);
+    expect(parseOpenAlexSourceQuery(approved).extras.topicIds.sort()).toEqual([...query.extras.topicIds].sort());
   });
 
   it("retains provider-only criteria when another source filter changes", () => {

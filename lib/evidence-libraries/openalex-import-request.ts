@@ -2,13 +2,19 @@ import { prepareOpenAlexSearch } from "@/lib/search-utils";
 import { createSearchParameters } from "@/lib/utils";
 import type { SearchFilters } from "@/lib/types";
 
-export type TopicLevel = "field" | "subfield" | "topic";
+export type TopicLevel = "domain" | "field" | "subfield" | "topic";
+
+/** Catalog ids carry their level: "fields/33", "subfields/3304", "T13958". */
+export function topicLevelOf(id: string): TopicLevel {
+  return id.startsWith("T") ? "topic" : (id.split("/")[0].slice(0, -1) as TopicLevel);
+}
 
 /** Filters an import has that the search page does not. */
 export type OpenAlexImportExtras = {
-  /** All at one level: OpenAlex ORs values of one filter and ANDs different filters. */
-  topicLevel: TopicLevel;
-  /** Bare OpenAlex ids: "33", "3304", "T13958". */
+  /**
+   * Catalog ids of any level. OpenAlex ORs values of one filter and ANDs
+   * different filters, so areas of one level widen and levels narrow.
+   */
   topicIds: string[];
   /** SDG numbers, "1" to "17". */
   sdgs: string[];
@@ -27,7 +33,6 @@ export type OpenAlexImportRequest = {
 };
 
 export const EMPTY_IMPORT_EXTRAS: OpenAlexImportExtras = {
-  topicLevel: "subfield",
   topicIds: [],
   sdgs: [],
   openAccessOnly: false,
@@ -37,9 +42,17 @@ export const EMPTY_IMPORT_EXTRAS: OpenAlexImportExtras = {
 export function importExtraApiFilters(extras: OpenAlexImportExtras): Record<string, unknown> {
   const filter: Record<string, unknown> = { ...extras.additionalFilters };
   if (extras.topicIds.length) {
-    const ids = extras.topicIds.join("|");
-    filter.topics =
-      extras.topicLevel === "topic" ? { id: ids } : { [extras.topicLevel]: { id: ids } };
+    const topics: Record<string, unknown> = {};
+    for (const id of extras.topicIds) {
+      const level = topicLevelOf(id);
+      const bare = id.split("/").at(-1)!;
+      if (level === "topic") topics.id = topics.id ? `${topics.id}|${bare}` : bare;
+      else {
+        const previous = (topics[level] as { id: string } | undefined)?.id;
+        topics[level] = { id: previous ? `${previous}|${bare}` : bare };
+      }
+    }
+    filter.topics = topics;
   }
   if (extras.sdgs.length) {
     filter.sustainable_development_goals = {

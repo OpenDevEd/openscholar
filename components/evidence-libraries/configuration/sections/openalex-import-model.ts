@@ -16,8 +16,9 @@ export const SDGS = [
   "Life on land", "Peace, justice and strong institutions", "Partnerships for the goals",
 ].map((name, index) => ({ id: String(index + 1), name: `${index + 1}. ${name}` }));
 
-export const TOPIC_LEVELS: { value: TopicLevel; label: string }[] = [
-  { value: "field", label: "Fields" },
-  { value: "subfield", label: "Subfields" },
-  { value: "topic", label: "Topics" },
-];
+export const TOPIC_LEVEL_LABELS: Record<TopicLevel, string> = {
+  domain: "Domain",
+  field: "Field",
+  subfield: "Subfield",
+  topic: "Topic",
+};

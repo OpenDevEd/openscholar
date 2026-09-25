@@ -1,10 +1,8 @@
 import { getPaths } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
 import { DEFAULT_SEARCH_PARAMS, parseSearchParamsFromUrl, paramsToFilters } from "@/lib/search-params";
 import type { ImportQuery } from "@/components/evidence-libraries/configuration/sections/openalex-import-model";
-import { buildOpenAlexImportRequest, EMPTY_IMPORT_EXTRAS, type TopicLevel } from "./openalex-import-request";
+import { buildOpenAlexImportRequest, EMPTY_IMPORT_EXTRAS } from "./openalex-import-request";
 import type { OpenAlexQuery, OpenAlexSourceEntry } from "./configuration/sources";
-
-export type OpenAlexTopicLevel = TopicLevel;
 
 /** Pagination and display settings do not change which records a source imports. */
 export function sameOpenAlexSourceSearch(left: ImportQuery, right: ImportQuery): boolean {
@@ -73,9 +71,12 @@ export function parseOpenAlexSourceQuery(query: OpenAlexQuery): ImportQuery {
       result.params.reg = value.split("|");
     } else if (key === "cites" || key === "cited_by" || key === "related_to") {
       result.params[key === "cited_by" ? "citedBy" : key === "related_to" ? "rel" : "cites"] = value;
-    } else if (/^topics(?:\.(field|subfield))?\.id$/.test(key)) {
-      result.extras.topicLevel = key === "topics.id" ? "topic" : key.split(".")[1] as TopicLevel;
-      result.extras.topicIds = value.split("|").map(id => id.replace(/^https:\/\/openalex.org\/(?:fields\/|subfields\/)?/, ""));
+    } else if (/^topics(?:\.(domain|field|subfield))?\.id$/.test(key)) {
+      const level = key.split(".").length === 3 ? key.split(".")[1] : null;
+      result.extras.topicIds = [...result.extras.topicIds, ...value.split("|").map(id => {
+        const bare = id.split("/").at(-1)!;
+        return level ? `${level}s/${bare}` : bare;
+      })];
     } else if (key === "sustainable_development_goals.id") {
       result.extras.sdgs = value.split("|").map(id => id.replace("https://metadata.un.org/sdg/", ""));
     } else if (key === "open_access.is_oa" && value === "true") {
