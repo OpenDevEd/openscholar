@@ -55,8 +55,11 @@ export const runPdfTestNow = internalAction({
             authors: [],
             searchFilters: {
               query: "desert climate africa",
-              yearRange: [2015, 2024],
-              sortBy: "relevance",
+              openAlexQuery: {
+                search: "desert climate africa",
+                filter: "publication_year:2015-2024",
+                sort: "relevance_score:desc",
+              },
             },
           },
         ],

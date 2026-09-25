@@ -9,10 +9,14 @@
 
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
+import { createError } from "../lib/errors";
 
 export type JobSourceSearchFilters = NonNullable<
   Doc<"extractionJobSources">["searchFilters"]
 >;
+
+export const OLD_SEARCH_MESSAGE =
+  "This search was saved before chat and extraction kept its exact request. Add it again from your search history.";
 
 export type BucketSource =
   | "history"
@@ -109,6 +113,15 @@ export async function writeJobSources(
   jobId: Id<"extractionJobs">,
   items: ReadonlyArray<BucketItemInput>,
 ): Promise<Id<"extractionJobSources">[]> {
+  // Searches saved in the old shape are only read, never written again, so
+  // no new job (a duplicate included) carries one.
+  if (
+    items.some(
+      (item) => item.searchFilters && !("openAlexQuery" in item.searchFilters),
+    )
+  ) {
+    throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
+  }
   const inserted: Id<"extractionJobSources">[] = [];
   let position = 0;
   for (const item of items) {

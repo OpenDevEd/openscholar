@@ -212,6 +212,35 @@ describe("useBucketStore", () => {
     expect(snapshot.state.order).toEqual(["k:a", "k:b"]);
     expect(snapshot.state.items["k:a"].bucketKey).toBe("k:a");
   });
+
+  test("drops saved searches without an exact OpenAlex request when an old bucket loads", async () => {
+    const current = makeItem("history:new", {
+      sourceMeta: {
+        searchFilters: { query: "new", openAlexQuery: { sort: "relevance_score:desc" } },
+        isSavedSearch: true,
+      },
+    });
+    const old = makeItem("history:old", {
+      sourceMeta: { searchFilters: { query: "old", yearRange: [2000, 2020] }, isSavedSearch: true },
+    });
+    const upload = makeItem("upload:a", { source: "upload" });
+    window.localStorage.setItem(
+      "extraction-bucket",
+      JSON.stringify({
+        version: 1,
+        state: {
+          items: { [current.bucketKey]: current, [old.bucketKey]: old, [upload.bucketKey]: upload },
+          order: [current.bucketKey, old.bucketKey, upload.bucketKey],
+        },
+      }),
+    );
+
+    await useBucketStore.persist.rehydrate();
+
+    const state = useBucketStore.getState();
+    expect(state.order).toEqual(["history:new", "upload:a"]);
+    expect(Object.keys(state.items).sort()).toEqual(["history:new", "upload:a"]);
+  });
 });
 
 describe("useBucketStore — updatePaperCount", () => {

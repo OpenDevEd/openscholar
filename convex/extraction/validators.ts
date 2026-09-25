@@ -267,13 +267,7 @@ export const extractionJobValidator = v.object({
 const _check_extractionJobValidator: AssertExactDoc<"extractionJobs", typeof extractionJobValidator> = true;
 void _check_extractionJobValidator;
 
-/**
- * Bucket item input — the single validator for every source-tab payload
- * that reaches startJob or createJobDirect.
- * Server round-trip mirrors `lib/bucket/bucketItem.ts::BucketItem` minus
- * the client-only `addedAt` / `status` fields.
- */
-export const bucketItemInputValidator = v.object({
+const bucketItemFields = {
   bucketKey: v.string(),
   source: v.union(
     v.literal("history"),
@@ -294,12 +288,28 @@ export const bucketItemInputValidator = v.object({
   citedByCount: v.optional(v.number()),
   venueName: v.optional(v.string()),
   workType: v.optional(v.string()),
-  searchFilters: v.optional(storedSearchFiltersValidator),
   libraryType: v.optional(v.union(v.literal("user"), v.literal("group"))),
   groupId: v.optional(v.string()),
   zoteroUserId: v.optional(v.string()),
   collectionKey: v.optional(v.string()),
   includeDescendants: v.optional(v.boolean()),
+};
+
+/**
+ * Bucket item input — the single validator for every source-tab payload
+ * that reaches startJob or createJobDirect.
+ * Server round-trip mirrors `lib/bucket/bucketItem.ts::BucketItem` minus
+ * the client-only `addedAt` / `status` fields.
+ */
+export const bucketItemInputValidator = v.object({
+  ...bucketItemFields,
+  searchFilters: v.optional(searchFiltersValidator),
+});
+
+/** A bucket item read back from a job, which may hold an older search. */
+export const storedBucketItemValidator = v.object({
+  ...bucketItemFields,
+  searchFilters: v.optional(storedSearchFiltersValidator),
 });
 
 /** User-authored question input for startJob. */
@@ -519,7 +529,7 @@ void _check_extractionEvidenceUnitValidator;
  * Shape returned by readJobSources — the bucket items that were frozen
  * onto the job at submission time, replayed in insertion order.
  */
-export const jobSourcesReadValidator = v.array(bucketItemInputValidator);
+export const jobSourcesReadValidator = v.array(storedBucketItemValidator);
 
 export const resultsSortByValidator = v.union(
   v.literal("default"),

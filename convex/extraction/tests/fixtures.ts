@@ -35,8 +35,11 @@ const DEFAULT_BUCKET_ITEMS: BucketItemInput[] = [
     authors: [],
     searchFilters: {
       query: "machine learning education",
-      yearRange: [2015, 2024],
-      sortBy: "relevance",
+      openAlexQuery: {
+        search: "machine learning education",
+        filter: "publication_year:2015-2024",
+        sort: "relevance_score:desc",
+      },
     },
   },
 ];

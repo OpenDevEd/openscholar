@@ -23,7 +23,11 @@ import { dedupeExpandedSources, expandJobSources } from "../extraction/expandSou
 import { replaceJobSources, type BucketItemInput } from "../extraction/jobSources";
 import type { PaperData } from "../extraction/types";
 import { internal } from "../_generated/api";
-import { bucketItemInputValidator, structuredErrorValidator } from "../extraction/validators";
+import {
+  bucketItemInputValidator,
+  storedBucketItemValidator,
+  structuredErrorValidator,
+} from "../extraction/validators";
 import { classifyUnknownError } from "@/lib/errors/taxonomy";
 import {
   assertNonEmptyOpenAlexSourceIds,
@@ -420,7 +424,7 @@ async function replaceChatSourcesForJob(
 export const applyChatSourceRefresh = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
-    items: v.array(bucketItemInputValidator),
+    items: v.array(storedBucketItemValidator),
     sourceFingerprint: v.string(),
   },
   returns: chatSourceRefreshResultValidator,
@@ -492,7 +496,7 @@ export const applyChatSourceRefresh = internalMutation({
 export const persistPreparedSourcesForJob = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
-    items: v.array(bucketItemInputValidator),
+    items: v.array(storedBucketItemValidator),
   },
   returns: v.null(),
   handler: async (ctx, { jobId, items }) => {

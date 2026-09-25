@@ -20,6 +20,7 @@ import {
   type OpenAlexWork,
 } from "../../lib/openalex/work-mapper";
 import { dedupeExpandedSources, expandJobSources } from "./expandSources";
+import { OLD_SEARCH_MESSAGE } from "./jobSources";
 import { createError } from "../lib/errors";
 import { normalizeBatchSize, resolveBoundedConcurrency } from "./batching";
 import { EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP } from "./bucket/limits";
@@ -208,10 +209,7 @@ export async function runFetchPapersFromHistory(
   searchFilters: StoredSearchFilters,
 ): Promise<PaperData[]> {
   if (!("openAlexQuery" in searchFilters)) {
-    throw createError(
-      "VALIDATION_ERROR",
-      "This search was saved before chat and extraction kept its exact request. Add it again from your search history.",
-    );
+    throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
   }
   const searchParams = buildOpenAlexSearchParams({
     openAlexQuery: searchFilters.openAlexQuery,
