@@ -62,9 +62,9 @@ function FilterChip({ item, compact }: { item: FilterItem; compact: boolean }) {
         {item.ratingRange ? <RatingStars range={item.ratingRange} label={item.displayValue} /> : item.displayValue}
       </span>
       {item.countryCodes?.length ? (
-        <span className="mt-0.5 flex shrink-0 items-center gap-0.5" aria-hidden>
+        <span className="flex shrink-0 items-center gap-0.5 self-center" aria-hidden>
           {item.countryCodes.slice(0, 3).map((code) => (
-            <CountryFlag key={code} countryCode={code} className="h-2 w-3" />
+            <CountryFlag key={code} countryCode={code} />
           ))}
         </span>
       ) : null}
