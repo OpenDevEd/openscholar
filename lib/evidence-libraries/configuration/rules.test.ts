@@ -1648,3 +1648,47 @@ describe("home page", () => {
     expect(sectionProblems(reset, "home")).toEqual([]);
   });
 });
+
+describe("readDraft for sources", () => {
+  const otherRows = savedRows.filter((row) => row.sectionKey !== "sources");
+  it("keeps an OpenAlex source without its search so saving the card reports it", () => {
+    const openAlex = {
+      key: "openalex-1",
+      provider: "openalex",
+      enabled: true,
+      writebackEnabled: false,
+      settings: {
+        name: "Early literacy",
+        approvedQuery: {
+          version: "v1",
+          approvedAt: "2026-09-01T00:00:00Z",
+          query: { search: "early literacy" },
+        },
+      },
+    };
+    const draft = readDraft([
+      ...otherRows,
+      {
+        sectionKey: "sources",
+        payload: [
+          openAlex,
+          { key: "zotero-42", provider: "zotero", groupId: "42", enabled: true },
+        ],
+      },
+    ]);
+    draft.sources[1]!.enabled = false;
+
+    const rows = changedSectionRows(draft, [
+      ...otherRows,
+      { sectionKey: "sources", payload: [openAlex] },
+    ]);
+    const sources = rows.find((row) => row.sectionKey === "sources");
+    expect(sources?.payload).toEqual([
+      expect.objectContaining({ key: "openalex-1", provider: "openalex" }),
+      expect.objectContaining({ key: "zotero-42", enabled: false }),
+    ]);
+    expect(
+      validateOwnerSections([sources!]).issues.map((issue) => issue.pointer),
+    ).toContain("/sources/0/settings/searchUrl");
+  });
+});

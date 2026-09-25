@@ -935,15 +935,9 @@ function readSources(payload: unknown): EvidenceSourceEntry[] {
             downloadPdfs: flag(settings.downloadPdfs, false),
           },
         };
-        return parsed.key &&
-          parsed.settings.name &&
-          parsed.settings.searchUrl &&
-          parsed.settings.approvedQuery.version &&
-          parsed.settings.approvedQuery.approvedAt &&
-          (parsed.settings.approvedQuery.query.search ||
-            parsed.settings.approvedQuery.query.filter)
-          ? [parsed]
-          : [];
+        // Kept even when incomplete: dropping it would rewrite the row
+        // without it on the next save. Validation names what is missing.
+        return [parsed];
       }
       const groupId = text(row.groupId);
       if (!groupId) return [];
