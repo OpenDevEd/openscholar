@@ -14,7 +14,7 @@ const SHORTLIST = 20;
 const LINK = /\[((?:[^[\]]|\[[^[\]]*\])*)\]\(([^)\s]*)\)/g;
 const CITATION = /^\/lib\/([A-Z0-9]{8})$/;
 
-const fold = (value: string) => value.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const fold = (value: string) => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const words = (value: string) => new Set(fold(value).match(/[a-z]{4,}/g) ?? []);
 
 /** The first author's surname and the year from link text such as "Mills et al., 2026". */
