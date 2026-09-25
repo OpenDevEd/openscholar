@@ -607,6 +607,11 @@ export function OpenAlexSearchDialog({
         showCloseButton={false}
         className="flex h-dvh max-h-dvh w-screen max-w-none flex-col gap-0 overflow-visible rounded-none border-0 bg-transparent p-0 shadow-none sm:max-w-none"
         onInteractOutside={(event) => event.preventDefault()}
+        // Focusing the first control would open the Clear all tooltip on arrival.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          (event.currentTarget as HTMLElement).focus();
+        }}
       >
         <DialogTitle className="sr-only">{initial ? "Change this search" : "Add a search"}</DialogTitle>
         <DialogDescription className="sr-only">Choose the search this source will keep up to date.</DialogDescription>
