@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowLeft,
@@ -16,9 +16,6 @@ import {
   Shapes,
   X,
 } from "lucide-react";
-import {
-  searchOpenAlexTopicOptions,
-} from "@/app/actions/openalex-topic-options";
 import { HistoryCommandCenter } from "@/components/history-command-center";
 import { ResultsList } from "@/components/results-list";
 import { SidebarContent } from "@/components/search-sidebar";
@@ -45,7 +42,6 @@ import {
 import { countActiveFilters } from "@/lib/filters";
 import { sidebarSpring } from "@/lib/ui/sidebar-motion";
 import { DEFAULT_SEARCH_PARAMS, SearchProvider, useSearch } from "@/lib/search";
-import useSWR from "swr";
 import { useIsTablet } from "@/lib/hooks";
 import { buildResultsUrl, paramsToSearchResult, searchResultToParams } from "@/lib/search-params";
 import { useSearchHistoryStore } from "@/lib/store";
@@ -53,6 +49,7 @@ import { approveOpenAlexQuery, type OpenAlexSourceEntry } from "@/lib/evidence-l
 import { buildOpenAlexSourceQuery, readOpenAlexSourceSearch, sameOpenAlexSourceSearch } from "@/lib/evidence-libraries/openalex-source-query";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useSourceTopicNames } from "./use-source-topic-names";
+import { searchTopicCatalog } from "@/lib/topics/search";
 import type { SearchField } from "@/lib/types";
 import {
   cn,
@@ -75,8 +72,6 @@ function OptionPicker({
   options,
   selected,
   names,
-  loading,
-  error,
   onSearch,
   onToggle,
 }: {
@@ -85,8 +80,6 @@ function OptionPicker({
   options: readonly Choice[];
   selected: string[];
   names: Record<string, string>;
-  loading?: boolean;
-  error?: boolean;
   onSearch?: (value: string) => void;
   onToggle: (option: Choice) => void;
 }) {
@@ -126,13 +119,7 @@ function OptionPicker({
               onValueChange={onSearch}
             />
             <CommandList>
-              <CommandEmpty>
-                {loading
-                  ? "Searching"
-                  : error
-                    ? "Could not load research areas. Try another search."
-                    : "Nothing found"}
-              </CommandEmpty>
+              <CommandEmpty>Nothing found</CommandEmpty>
               <CommandGroup>
                 {options.map((option) => (
                   <CommandItem
@@ -200,13 +187,10 @@ function ImportOnlyFilters({
   setTopicNames: (update: (value: Record<string, string>) => Record<string, string>) => void;
 }) {
   const [topicSearch, setTopicSearch] = useState("");
-  const deferredSearch = useDeferredValue(topicSearch);
-  const topics = useSWR(
-    ["source-research-areas", extras.topicLevel, deferredSearch],
-    ([, level, search]) => searchOpenAlexTopicOptions(level, search),
-    { revalidateOnFocus: false },
+  const topicOptions = useMemo(
+    () => searchTopicCatalog(extras.topicLevel, topicSearch),
+    [extras.topicLevel, topicSearch],
   );
-  const topicOptions = topics.data ?? [];
   const savedNames = useSourceTopicNames(extras.topicLevel, extras.topicIds);
 
   return (
@@ -248,8 +232,6 @@ function ImportOnlyFilters({
               options={topicOptions.map((option) => ({ id: option.id, name: option.name, hint: option.within }))}
               selected={extras.topicIds}
               names={{ ...savedNames, ...topicNames }}
-              loading={topics.isLoading}
-              error={Boolean(topics.error)}
               onSearch={setTopicSearch}
               onToggle={(option) => {
                 setTopicNames((value) => ({ ...value, [option.id]: option.name }));
