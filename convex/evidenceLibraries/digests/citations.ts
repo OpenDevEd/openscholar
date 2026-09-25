@@ -10,7 +10,9 @@ const JEV_MODEL = "~typesafe/jev-latest";
 // scored up to 0.88.
 const VERIFIED = 0.9;
 const SHORTLIST = 20;
-const LINK = /\[([^\]]*)\]\(([^)\s]+)\)/g;
+// Link text may hold one level of brackets, as in [Mills [2026]](/lib/KEY).
+const LINK = /\[((?:[^[\]]|\[[^[\]]*\])*)\]\(([^)\s]*)\)/g;
+const CITATION = /^\/lib\/([A-Z0-9]{8})$/;
 
 const fold = (value: string) => value.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const words = (value: string) => new Set(fold(value).match(/[a-z]{4,}/g) ?? []);
@@ -22,10 +24,11 @@ function citedAuthor(text: string) {
   return {surname, year};
 }
 
+/** The cited surname must be one of a creator's names and the cited year the publication's. */
 function matchesCitation(publication: Publication, text: string) {
   const {surname, year} = citedAuthor(text);
-  return (!surname || publication.creators.some(creator => fold(creator).includes(surname)))
-    && (!year || (publication.date ?? "").includes(year));
+  return Boolean(surname && year) && (publication.date ?? "").includes(year!)
+    && publication.creators.some(creator => fold(creator).split(/[\s,]+/).includes(surname));
 }
 
 /** Edit distance where swapping two neighbouring characters counts as one edit. */
@@ -73,7 +76,7 @@ async function pickWithJev(text: string, sentence: string, publications: Publica
   const shortlist = publications
     .map(publication => {
       let score = [...words(`${publication.title} ${(publication.abstract ?? "").slice(0, 500)}`)].filter(word => context.has(word)).length;
-      if (surname && publication.creators.some(creator => fold(creator).includes(surname))) score += 10;
+      if (surname && publication.creators.some(creator => fold(creator).split(/[\s,]+/).includes(surname))) score += 10;
       if (year && (publication.date ?? "").includes(year)) score += 3;
       return {publication, score};
     })
@@ -105,11 +108,13 @@ export async function repairCitations(markdown: string, publications: Publicatio
   const broken = new Map<string, {text: string; href: string; sentence: string}>();
   for (const match of markdown.matchAll(LINK)) {
     const [whole, text, href] = match as unknown as [string, string, string];
-    if (/^\/lib\/[A-Z0-9]{8}$/.test(href) && byKey.has(href.slice(5))) continue;
+    if (byKey.has(href.match(CITATION)?.[1] ?? "")) continue;
     broken.set(`${text}\u0000${href}`, {text, href, sentence: sentenceAround(markdown, match.index!, match.index! + whole.length)});
   }
   const repairs = await Promise.all([...broken.values()].map(async ({text, href, sentence}): Promise<CitationRepair> => {
-    const key = href.replace(/^.*\/lib\//, "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    // Only a broken publication link can be repaired; any other link loses its target.
+    if (!href.startsWith("/lib/")) return {text, href, key: null, method: "unlinked"};
+    const key = href.slice(5).toUpperCase().replace(/[^A-Z0-9]/g, "");
     const typos = publications.filter(publication => matchesCitation(publication, text)
       && (editDistance(key, publication.key) <= 2 || (key.length >= 4 && publication.key.startsWith(key.slice(0, 4)))));
     if (typos.length === 1) return {text, href, key: typos[0]!.key, method: "typo"};
@@ -118,7 +123,7 @@ export async function repairCitations(markdown: string, publications: Publicatio
       if (pick && pick.verified >= VERIFIED) return {text, href, key: pick.key, method: "jev", verified: pick.verified};
       return {text, href, key: null, method: "unlinked", ...(pick ? {verified: pick.verified} : {})};
     } catch (error) {
-      if (signal?.aborted) throw error;
+      // Even a timeout keeps the finished digest; only this citation loses its link.
       console.error("Digest citation check with Jev failed", {text, href, error});
       return {text, href, key: null, method: "unlinked"};
     }
@@ -129,6 +134,7 @@ export async function repairCitations(markdown: string, publications: Publicatio
     if (!fixed.has(id)) return whole;
     const key = fixed.get(id);
     return key ? `[${text}](/lib/${key})` : text;
-  });
+  // Anything still shaped like a link target that is not a supplied publication loses it.
+  }).replace(/\]\(([^)]*)\)/g, (whole, href: string) => (byKey.has(href.match(CITATION)?.[1] ?? "") ? whole : "]"));
   return {markdown: repaired, repairs};
 }
