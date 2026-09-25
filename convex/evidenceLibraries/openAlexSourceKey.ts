@@ -59,11 +59,8 @@ export async function readOpenAlexEncryptedKey(
 export async function requireUnchangedOpenAlexKey(
   ctx: ReadCtx,
   libraryId: Id<"evidenceLibraries">,
-  // Undefined on a target saved before OpenAlex sources existed. Its
-  // configuration carries no OpenAlex key, so it counts as no key.
-  saved: LibraryCredentialSource | undefined,
+  source: LibraryCredentialSource,
 ) {
-  const source = saved ?? { present: false };
   const current = await readOpenAlexKeySource(ctx, libraryId);
   const same =
     current.present === source.present &&

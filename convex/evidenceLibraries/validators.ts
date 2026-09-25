@@ -744,11 +744,7 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   // The AI key row this configuration was built from, so a Replace or a
   // Remove during the publish is caught before the library goes live.
   aiProviderKey: libraryCredentialSourceValidator,
-  // Optional only while targets saved before OpenAlex sources are backfilled
-  // by migrations/openAlexDeploymentTargetKey. Once it reports no missing
-  // rows in production, make this required again and remove that migration
-  // and the `undefined` case in requireUnchangedOpenAlexKey.
-  openAlexApiKey: v.optional(libraryCredentialSourceValidator),
+  openAlexApiKey: libraryCredentialSourceValidator,
   publicationProviders: v.optional(libraryCredentialSourceValidator),
   runtimeBindingId: v.id("evidenceLibraryRuntimeBindings"),
   targetBaseUrl: v.string(),

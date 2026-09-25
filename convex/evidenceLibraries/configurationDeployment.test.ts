@@ -1245,12 +1245,7 @@ describe("Evidence Library configuration deployment", () => {
     ).toBe(false);
   });
 
-  it.each([
-    ["by reusing its saved target", false],
-    // Saved targets from before OpenAlex sources have no OpenAlex key field
-    // until migrations/openAlexDeploymentTargetKey backfills them.
-    ["whose saved target predates OpenAlex keys", true],
-  ])("retries a failed current deployment %s", async (_name, legacyTarget) => {
+  it("retries a failed current deployment by reusing its saved target", async () => {
     const deployment = await activateChangedConfiguration("retry-saved-target");
     const network = createRuntimeNetwork({
       libraryId: deployment.fixture.created.libraryId,
@@ -1274,16 +1269,6 @@ describe("Evidence Library configuration deployment", () => {
       ),
     ).resolves.toEqual({ pollCount: 1, status: "running" });
     await failSavedConfigurationDeployment(deployment);
-    if (legacyTarget) {
-      await deployment.fixture.t.run(async (ctx) => {
-        const operation = await ctx.db.get(deployment.activated.operationId);
-        const { openAlexApiKey: _openAlexApiKey, ...target } =
-          operation!.configurationDeploymentTarget!;
-        await ctx.db.patch(operation!._id, {
-          configurationDeploymentTarget: target,
-        });
-      });
-    }
     network.restoreReadiness();
     const writesBeforeRetry = network.requests.filter(
       ({ method, url }) =>
