@@ -27,6 +27,7 @@ import {
   evidenceLibraryConfigRevisionFields,
   evidenceLibraryConfigSectionValidator,
   evidenceLibraryCredentialFields,
+  evidenceLibraryDigestJobFields,
   evidenceLibraryDomainFields,
   evidenceLibraryDomainRouteLeaseFields,
   evidenceLibraryFields,
@@ -187,6 +188,13 @@ export default defineSchema({
   evidenceLibraryRuntimeReleases: defineTable(
     evidenceLibraryRuntimeReleaseFields,
   ).index("by_running", ["running"]),
+
+  // One digest being written for a library edition. The library polls until
+  // the result is handed over, then the row is deleted.
+  evidenceLibraryDigestJobs: defineTable(evidenceLibraryDigestJobFields).index(
+    "by_libraryId_and_editionId",
+    ["libraryId", "editionId"],
+  ),
 
   evidenceLibraryZoteroGroups: defineTable(evidenceLibraryZoteroGroupFields)
     .index("by_libraryId", ["libraryId"])
