@@ -534,17 +534,19 @@ function SearchWorkspace({
         </div>
 
         <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border/50 bg-background/80 px-4 py-3 sm:px-6">
-          <p className="text-xs text-muted-foreground">
-            {unbounded
-              ? "Add keywords or a filter first. An empty search would import all of OpenAlex."
-              : !busy && search.totalCount > 0
-                ? `Saving imports all ${search.totalCount.toLocaleString()} records and keeps them up to date.`
-                : "Nothing is imported until you save."}
-          </p>
-          <label className="flex items-center gap-2 text-sm">
-            <Switch checked={downloadPdfs} onCheckedChange={setDownloadPdfs} aria-label="Process PDFs" />
-            Process PDFs
-          </label>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <p className="text-xs text-muted-foreground">
+              {unbounded
+                ? "Add keywords or a filter first. An empty search would import all of OpenAlex."
+                : !busy && search.totalCount > 0
+                  ? `Saving imports all ${search.totalCount.toLocaleString()} records and keeps them up to date.`
+                  : "Nothing is imported until you save."}
+            </p>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Switch size="sm" checked={downloadPdfs} onCheckedChange={setDownloadPdfs} />
+              Process PDFs
+            </label>
+          </div>
           <div className="flex items-center gap-2">
             <Button type="button" variant="ghost" className="h-9 rounded-lg" onClick={onClose}>
               Cancel
