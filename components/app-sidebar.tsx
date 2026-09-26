@@ -588,15 +588,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       variant="ghost"
                       size="icon"
                       onClick={handlePrevPage}
+                      aria-label={tc("previousPage")}
                       disabled={currentPage === 1}
                       className={cn(
                         "h-7 w-7 transition-all duration-200",
                         isCollapsed && !isMobile ? "h-8 w-8" : "",
                         currentPage > 1 && "hover:bg-sidebar-accent/80",
                       )}
-                      title={
-                        isCollapsed && !isMobile ? tc("previousPage") : undefined
-                      }
                     >
                       <motion.div
                         whileHover={{ scale: 1.1 }}
@@ -664,6 +662,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       variant="ghost"
                       size="icon"
                       onClick={handleNextPage}
+                      aria-label={tc("nextPage")}
                       disabled={currentPage === totalPages}
                       className={cn(
                         "h-7 w-7 transition-all duration-200",
@@ -671,7 +670,6 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                         currentPage < totalPages &&
                           "hover:bg-sidebar-accent/80",
                       )}
-                      title={isCollapsed && !isMobile ? tc("nextPage") : undefined}
                     >
                       <motion.div
                         whileHover={{ scale: 1.1 }}

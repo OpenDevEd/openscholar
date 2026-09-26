@@ -4,7 +4,8 @@
  * U2 — <WebSourceChips /> filters source-url parts and renders a footer row.
  */
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithTooltip as render } from "../helpers/render-with-tooltip";
 import { WebSourceChips } from "@/components/ai-elements/web-source-chips";
 import type { UIMessagePart } from "ai";
 

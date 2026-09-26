@@ -258,6 +258,7 @@ vi.mock("@/components/ui/tooltip", () => {
       children: React.ReactNode;
       asChild?: boolean;
     }) => (asChild ? <>{children}</> : <button type="button">{children}</button>),
+    TooltipHint: Passthrough,
   };
 });
 

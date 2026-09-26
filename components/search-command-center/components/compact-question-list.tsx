@@ -8,6 +8,7 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useCooldown } from "@/lib/hooks/use-cooldown";
+import { TooltipHint } from "@/components/ui/tooltip";
 
 interface CompactQuestionListProps {
   questions: { question: string }[];
@@ -105,34 +106,40 @@ export function CompactQuestionList({
               className="h-7 flex-1 text-sm"
             />
           ) : (
-            <p className="flex-1 line-clamp-2 text-sm leading-5 text-foreground sm:line-clamp-none" title={questionEntry.question}>
-              {questionEntry.question}
-            </p>
+            <TooltipHint label={questionEntry.question}>
+              <p className="flex-1 line-clamp-2 text-sm leading-5 text-foreground sm:line-clamp-none">
+                {questionEntry.question}
+              </p>
+            </TooltipHint>
           )}
 
           <div className="flex items-center gap-1">
             {editingIndex === index ? (
               <ButtonGroup>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => saveEdit(index)}
-                  disabled={disabled}
-                  className="h-7 w-7"
-                  title={tc("save")}
-                >
-                  <Check className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={cancelEdit}
-                  disabled={disabled}
-                  className="h-7 w-7"
-                  title={tc("cancel")}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
+                <TooltipHint label={tc("save")}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => saveEdit(index)}
+                    disabled={disabled}
+                    className="h-7 w-7"
+                    aria-label={tc("save")}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipHint>
+                <TooltipHint label={tc("cancel")}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={cancelEdit}
+                    disabled={disabled}
+                    className="h-7 w-7"
+                    aria-label={tc("cancel")}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipHint>
               </ButtonGroup>
             ) : (
               <>
@@ -143,26 +150,30 @@ export function CompactQuestionList({
                   title={ta("testQuestion")}
                 />
                 <ButtonGroup>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => startEdit(index)}
-                    disabled={disabled}
-                    className="h-7 w-7"
-                    title={tc("edit")}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => onDelete(index, questionEntry.question)}
-                    disabled={disabled}
-                    className="h-7 w-7 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    title={ta("deleteQuestion")}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <TooltipHint label={tc("edit")}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => startEdit(index)}
+                      disabled={disabled}
+                      className="h-7 w-7"
+                      aria-label={tc("edit")}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipHint>
+                  <TooltipHint label={ta("deleteQuestion")}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => onDelete(index, questionEntry.question)}
+                      disabled={disabled}
+                      className="h-7 w-7 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      aria-label={ta("deleteQuestion")}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipHint>
                 </ButtonGroup>
               </>
             )}
@@ -187,18 +198,20 @@ function TestButton({
   const [isCooling, trigger] = useCooldown();
 
   return (
-    <Button
-      variant="ai"
-      size="icon"
-      onClick={() => {
-        onTest(question);
-        trigger();
-      }}
-      disabled={disabled || isCooling}
-      className="h-7 w-7"
-      title={title}
-    >
-      <Play className="h-3.5 w-3.5" />
-    </Button>
+    <TooltipHint label={title}>
+      <Button
+        variant="ai"
+        size="icon"
+        onClick={() => {
+          onTest(question);
+          trigger();
+        }}
+        disabled={disabled || isCooling}
+        className="h-7 w-7"
+        aria-label={title}
+      >
+        <Play className="h-3.5 w-3.5" />
+      </Button>
+    </TooltipHint>
   );
 }

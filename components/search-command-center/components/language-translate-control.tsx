@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { LanguageSelector } from "@/components/language-selector";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
+import { TooltipHint } from "@/components/ui/tooltip";
 
 interface LanguageTranslateControlProps {
   value?: string;
@@ -54,34 +55,36 @@ export function LanguageTranslateControl({
           className="flex items-center border-r border-current/20"
           style={{ width: ACTIONS_WIDTH }}
         >
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={disabled || translateDisabled || !hasValue}
-            onClick={onTranslate}
-            title={t("translate")}
-            aria-label={t("translate")}
-            className="size-8 p-0 rounded-none text-ai hover:bg-ai-bg-hover"
-          >
-            {isTranslating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="h-3.5 w-3.5" />
-            )}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            disabled={disabled || !hasValue}
-            onClick={handleClear}
-            title={t("clearLanguage")}
-            aria-label={t("clearLanguage")}
-            className="size-8 p-0 rounded-none text-ai hover:bg-ai-bg-hover"
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
+          <TooltipHint label={t("translate")}>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={disabled || translateDisabled || !hasValue}
+              onClick={onTranslate}
+              aria-label={t("translate")}
+              className="size-8 p-0 rounded-none text-ai hover:bg-ai-bg-hover"
+            >
+              {isTranslating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          </TooltipHint>
+          <TooltipHint label={t("clearLanguage")}>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={disabled || !hasValue}
+              onClick={handleClear}
+              aria-label={t("clearLanguage")}
+              className="size-8 p-0 rounded-none text-ai hover:bg-ai-bg-hover"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipHint>
         </div>
       </motion.div>
       <LanguageSelector

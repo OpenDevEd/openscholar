@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { locales, type Locale } from "@/i18n/config";
 import { setLocale } from "@/i18n/locale";
+import { TooltipHint } from "@/components/ui/tooltip";
 
 const LOCALE_TO_LABEL_KEY: Record<Locale, string> = {
   "en-US": "enUS",
@@ -71,23 +72,24 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
-        <PopoverTrigger asChild>
-          <Button
-            aria-label={`${t("language")}: ${getLocaleLabel(currentLocale)}`}
-            variant="ghost"
-            size={isCollapsed ? "icon" : "sm"}
-            className={cn(
-              "h-8 transition-all duration-200 hover:bg-sidebar-accent/80",
-              isCollapsed ? "w-8 px-0" : "w-auto px-2"
-            )}
-            title={t("language")}
-          >
-            <Globe className="h-[1.2rem] w-[1.2rem]" />
-            {!isCollapsed && (
-              <span className="ml-2 text-sm">{getLocaleLabel(currentLocale)}</span>
-            )}
-          </Button>
-        </PopoverTrigger>
+        <TooltipHint label={t("language")}>
+          <PopoverTrigger asChild>
+            <Button
+              aria-label={`${t("language")}: ${getLocaleLabel(currentLocale)}`}
+              variant="ghost"
+              size={isCollapsed ? "icon" : "sm"}
+              className={cn(
+                "h-8 transition-all duration-200 hover:bg-sidebar-accent/80",
+                isCollapsed ? "w-8 px-0" : "w-auto px-2"
+              )}
+            >
+              <Globe className="h-[1.2rem] w-[1.2rem]" />
+              {!isCollapsed && (
+                <span className="ml-2 text-sm">{getLocaleLabel(currentLocale)}</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+        </TooltipHint>
       </motion.div>
       <PopoverContent
         align={isCollapsed ? "end" : "start"}

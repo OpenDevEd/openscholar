@@ -3,7 +3,8 @@
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { renderWithTooltip as render } from "../helpers/render-with-tooltip";
 
 const convexQueryMock = vi.fn();
 const convexClientMock = { query: convexQueryMock };

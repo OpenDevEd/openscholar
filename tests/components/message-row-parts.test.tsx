@@ -7,7 +7,8 @@
  * via WebSourceChips. Tests target data-* / role contracts only.
  */
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import { renderWithTooltip as render } from "../helpers/render-with-tooltip";
 import type { UIMessage } from "@convex-dev/agent/react";
 import type { ToolUIPart, UIMessagePart } from "ai";
 import { MessageRow } from "@/components/extraction/chat/message-list";

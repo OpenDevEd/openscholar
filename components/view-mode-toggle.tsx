@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { VIEW_MODE_OPTIONS } from "@/lib/constants/view-modes";
 import type { ViewMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { TooltipHint } from "@/components/ui/tooltip";
 
 /** A small group of icon buttons that picks one way to show something. Every view switch uses it. */
 export function IconSwitch<T extends string>({ label, value, onChange, options }: {
@@ -16,20 +17,20 @@ export function IconSwitch<T extends string>({ label, value, onChange, options }
   return (
     <div role="group" aria-label={label} className="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5">
       {options.map(({ value: option, icon: Icon, label: optionLabel }) => (
-        <button
-          key={option}
-          type="button"
-          aria-pressed={value === option}
-          aria-label={optionLabel}
-          title={optionLabel}
-          onClick={() => onChange(option)}
-          className={cn(
-            "flex size-7 items-center justify-center rounded-[5px] transition-colors",
-            value === option ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Icon className="size-3.5" />
-        </button>
+        <TooltipHint key={option} label={optionLabel}>
+          <button
+            type="button"
+            aria-pressed={value === option}
+            aria-label={optionLabel}
+            onClick={() => onChange(option)}
+            className={cn(
+              "flex size-7 items-center justify-center rounded-[5px] transition-colors",
+              value === option ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Icon className="size-3.5" />
+          </button>
+        </TooltipHint>
       ))}
     </div>
   );

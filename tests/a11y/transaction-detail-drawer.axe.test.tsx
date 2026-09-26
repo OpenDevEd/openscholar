@@ -8,7 +8,8 @@
  * color-contrast is disabled because JSDOM has no paint engine.
  */
 import { describe, expect, it, vi } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { waitFor } from "@testing-library/react";
+import { renderWithTooltip as render } from "../helpers/render-with-tooltip";
 import { axe, toHaveNoViolations } from "jest-axe";
 
 import { TransactionDetailDrawer } from "@/components/billing/transactions/transaction-detail-drawer";
