@@ -24,6 +24,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -689,33 +690,42 @@ function PhotoPerson({ name, photo, onChange }: { name: string; photo: string; o
   return (
     <div className="flex items-center gap-3">
       <div className="relative shrink-0">
-        <button type="button" {...getRootProps({ role: "button" })} aria-label={label} title={label} className="group relative block rounded-full outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
-          <input {...getInputProps()} />
-          <IdentityAvatar name={name} imageUrl={publicPhoto(photo)} className="size-12" />
-          <span
-            aria-hidden
-            data-active={isDragActive || uploading || undefined}
-            className="absolute inset-0 grid place-items-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 data-[active]:opacity-100 motion-reduce:transition-none"
-          >
-            {uploading ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" /> : <Camera className="size-4" />}
-          </span>
-          {/* Without a photo, a pen says the picture can be changed before anyone hovers it. */}
-          {photo ? null : (
-            <span aria-hidden className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full border border-border bg-background text-muted-foreground shadow-sm">
-              <Pencil className="size-3" />
-            </span>
-          )}
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" {...getRootProps({ role: "button" })} aria-label={label} className="group relative block rounded-full outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+              <input {...getInputProps()} />
+              <IdentityAvatar name={name} imageUrl={publicPhoto(photo)} className="size-12" />
+              <span
+                aria-hidden
+                data-active={isDragActive || uploading || undefined}
+                className="absolute inset-0 grid place-items-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 data-[active]:opacity-100 motion-reduce:transition-none"
+              >
+                {uploading ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" /> : <Camera className="size-4" />}
+              </span>
+              {/* Without a photo, a pen says the picture can be changed before anyone hovers it. */}
+              {photo ? null : (
+                <span aria-hidden className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full border border-border bg-background text-muted-foreground shadow-sm">
+                  <Pencil className="size-3" />
+                </span>
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{label}</TooltipContent>
+        </Tooltip>
         {photo && !uploading ? (
-          <button
-            type="button"
-            aria-label={`Remove the photo of ${name}`}
-            title="Remove the photo"
-            onClick={() => onChange("")}
-            className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-foreground"
-          >
-            <X className="size-3" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={`Remove the photo of ${name}`}
+                onClick={() => onChange("")}
+                className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:text-foreground"
+              >
+                <X className="size-3" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Remove the photo</TooltipContent>
+          </Tooltip>
         ) : null}
       </div>
       <div className="min-w-0">

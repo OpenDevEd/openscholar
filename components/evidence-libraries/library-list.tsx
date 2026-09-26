@@ -261,17 +261,19 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                           status={library.status ?? "active"}
                         />
                       )}
-                      <span
-                        className="ml-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground"
-                        title={
-                          library.role === "Owner"
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="ml-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <RoleIcon className="size-3.5" />
+                            {library.role}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {library.role === "Owner"
                             ? "Inherited from organization ownership"
-                            : "Assigned to this library"
-                        }
-                      >
-                        <RoleIcon className="size-3.5" />
-                        {library.role}
-                      </span>
+                            : "Assigned to this library"}
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       {library.address && (

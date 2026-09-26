@@ -36,7 +36,7 @@ import {
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Children, type ReactNode, useId, useState } from "react";
+import { Children, type ReactElement, type ReactNode, useId, useState } from "react";
 import { type DropzoneState, useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -822,7 +822,7 @@ type ChoiceOption<V extends string> = {
   /** Small mono code shown before the label (chips only). */
   code?: string;
   disabled?: boolean;
-  /** Shown as a tooltip / title when disabled. */
+  /** Shown as a tooltip when disabled. */
   disabledReason?: string;
   /** Small illustration shown above the label (cards only). */
   preview?: ReactNode;
@@ -859,30 +859,43 @@ export function ChoiceCards<V extends string>({
       {options.map((o) => {
         const selected = o.value === value;
         return (
-          <Label
-            key={o.value}
-            data-value={o.value}
-            data-selected={selected}
-            className={cn(
-              "flex items-start gap-2.5 rounded-lg border-2 px-3 py-2.5 font-normal transition-colors",
-              o.disabled
-                ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
-                : selected
-                  ? "cursor-pointer border-primary/40 bg-primary/5"
-                  : "cursor-pointer border-border/50 bg-background hover:border-border/80 hover:bg-muted/30",
-            )}
-            title={o.disabled ? o.disabledReason : undefined}
-          >
-            <RadioGroupItem value={o.value} disabled={o.disabled} className="mt-0.5" />
-            <span className="min-w-0 flex-1 space-y-0.5">
-              {o.preview ? <span className="mb-2 block">{o.preview}</span> : null}
-              <span className="block text-sm font-medium">{o.label}</span>
-              {o.hint ? <span className="block text-xs text-muted-foreground">{o.hint}</span> : null}
-            </span>
-          </Label>
+          <DisabledHint key={o.value} reason={o.disabled ? o.disabledReason : undefined}>
+            <Label
+              data-value={o.value}
+              data-selected={selected}
+              className={cn(
+                "flex items-start gap-2.5 rounded-lg border-2 px-3 py-2.5 font-normal transition-colors",
+                o.disabled
+                  ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
+                  : selected
+                    ? "cursor-pointer border-primary/40 bg-primary/5"
+                    : "cursor-pointer border-border/50 bg-background hover:border-border/80 hover:bg-muted/30",
+              )}
+            >
+              <RadioGroupItem value={o.value} disabled={o.disabled} className="mt-0.5" />
+              <span className="min-w-0 flex-1 space-y-0.5">
+                {o.preview ? <span className="mb-2 block">{o.preview}</span> : null}
+                <span className="block text-sm font-medium">{o.label}</span>
+                {o.hint ? <span className="block text-xs text-muted-foreground">{o.hint}</span> : null}
+              </span>
+            </Label>
+          </DisabledHint>
         );
       })}
     </RadioGroup>
+  );
+}
+
+/**
+ * Explains on hover why a choice is off. The wrapper stays when there is no
+ * reason, so a choice that turns off keeps its element and focus.
+ */
+function DisabledHint({ reason, children }: { reason?: string; children: ReactElement }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      {reason ? <TooltipContent>{reason}</TooltipContent> : null}
+    </Tooltip>
   );
 }
 
@@ -905,36 +918,36 @@ export function ChoiceChips<V extends string>({
       {options.map((o) => {
         const checked = values.includes(o.value);
         return (
-          <Label
-            key={o.value}
-            data-value={o.value}
-            data-checked={checked}
-            data-disabled={o.disabled || undefined}
-            title={o.disabled ? o.disabledReason : undefined}
-            className={cn(
-              "flex items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm font-normal transition-colors",
-              o.disabled
-                ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
-                : checked
-                  ? "cursor-pointer border-primary/40 bg-primary/5"
-                  : "cursor-pointer border-border/50 bg-background hover:border-border/80 hover:bg-muted/30",
-            )}
-          >
-            <Checkbox
-              checked={checked}
-              disabled={o.disabled}
-              aria-label={typeof o.label === "string" ? o.label : undefined}
-              onCheckedChange={(next) =>
-                onChange(
-                  next === true
-                    ? options.filter((x) => x.value === o.value || values.includes(x.value)).map((x) => x.value)
-                    : values.filter((v) => v !== o.value),
-                )
-              }
-            />
-            {o.code ? <code className="font-mono text-xs text-muted-foreground">{o.code}</code> : null}
-            <span>{o.label}</span>
-          </Label>
+          <DisabledHint key={o.value} reason={o.disabled ? o.disabledReason : undefined}>
+            <Label
+              data-value={o.value}
+              data-checked={checked}
+              data-disabled={o.disabled || undefined}
+              className={cn(
+                "flex items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm font-normal transition-colors",
+                o.disabled
+                  ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
+                  : checked
+                    ? "cursor-pointer border-primary/40 bg-primary/5"
+                    : "cursor-pointer border-border/50 bg-background hover:border-border/80 hover:bg-muted/30",
+              )}
+            >
+              <Checkbox
+                checked={checked}
+                disabled={o.disabled}
+                aria-label={typeof o.label === "string" ? o.label : undefined}
+                onCheckedChange={(next) =>
+                  onChange(
+                    next === true
+                      ? options.filter((x) => x.value === o.value || values.includes(x.value)).map((x) => x.value)
+                      : values.filter((v) => v !== o.value),
+                  )
+                }
+              />
+              {o.code ? <code className="font-mono text-xs text-muted-foreground">{o.code}</code> : null}
+              <span>{o.label}</span>
+            </Label>
+          </DisabledHint>
         );
       })}
     </div>
@@ -1024,22 +1037,26 @@ export function ReadOnlyValue({
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.fields");
   return (
-    <div
-      id={id}
-      role="textbox"
-      aria-readonly="true"
-      aria-labelledby={id ? labelId(id) : undefined}
-      tabIndex={0}
-      title={title ?? t("fixed")}
-      className={cn(
-        "flex h-9 w-full cursor-default items-center gap-2 rounded-md border border-dashed border-border/60 bg-muted/40 px-3 text-sm text-muted-foreground",
-        mono && "font-mono",
-        className,
-      )}
-    >
-      <span className="min-w-0 flex-1 truncate">{value}</span>
-      {locked ? <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          id={id}
+          role="textbox"
+          aria-readonly="true"
+          aria-labelledby={id ? labelId(id) : undefined}
+          tabIndex={0}
+          className={cn(
+            "flex h-9 w-full cursor-default items-center gap-2 rounded-md border border-dashed border-border/60 bg-muted/40 px-3 text-sm text-muted-foreground",
+            mono && "font-mono",
+            className,
+          )}
+        >
+          <span className="min-w-0 flex-1 truncate">{value}</span>
+          {locked ? <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>{title ?? t("fixed")}</TooltipContent>
+    </Tooltip>
   );
 }
 

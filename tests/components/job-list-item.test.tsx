@@ -15,7 +15,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
-import { render } from "@testing-library/react";
+import { renderWithTooltip as render } from "../helpers/render-with-tooltip";
 
 vi.mock("next-intl", () => ({
   useTranslations:

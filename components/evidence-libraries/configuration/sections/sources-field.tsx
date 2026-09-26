@@ -276,19 +276,23 @@ export function SourcesField({
       )}
 
       <div className="flex items-center justify-end gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          aria-label={t("connections")}
-          title={t("connections")}
-          onClick={() => setConnectionsOpen(true)}
-        >
-          <Settings2 />
-          <span className="hidden @min-[24rem]/sources:inline">
-            {t("connections")}
-          </span>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label={t("connections")}
+              onClick={() => setConnectionsOpen(true)}
+            >
+              <Settings2 />
+              <span className="hidden @min-[24rem]/sources:inline">
+                {t("connections")}
+              </span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t("connections")}</TooltipContent>
+        </Tooltip>
         <GroupPicker
           addedIds={zoteroSources.map((entry) => entry.groupId)}
           load={() => listMyGroups({ libraryId })}

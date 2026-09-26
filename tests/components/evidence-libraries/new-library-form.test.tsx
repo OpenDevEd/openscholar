@@ -1,7 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -254,12 +255,9 @@ describe("<NewLibraryForm>", () => {
     render(<NewLibraryForm />);
     await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
 
-    await waitFor(() =>
-      expect(screen.getByRole("textbox", { name: "addressLabel" })).toHaveAttribute(
-        "title",
-        "climate-evidence-lib.example.test",
-      ),
-    );
+    await user.hover(await screen.findByText("climate-evidence-lib.example.test"));
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("climate-evidence-lib.example.test");
   });
 
   it("does not offer the form to an editor", () => {
