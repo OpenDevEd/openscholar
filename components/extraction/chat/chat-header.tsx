@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { motion } from "motion/react";
 import {
-  ChevronLeftIcon,
+  MessageSquareIcon,
   MoreHorizontalIcon,
   Trash2Icon,
 } from "lucide-react";
+import { PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -32,52 +31,22 @@ interface ChatHeaderProps {
 
 export function ChatHeader({ job, threadId }: ChatHeaderProps) {
   const t = useTranslations("extraction");
-  const tc = useTranslations("common");
   const [clearOpen, setClearOpen] = useState(false);
   const isGenerating = job.isGenerating ?? false;
 
   return (
     <>
+      {/* The shared page bar, fixed above the chat, which owns the scroll below it. */}
       <header
-        className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-2.5"
+        className="@container shrink-0 border-b border-sidebar-border/50 px-4 sm:px-6"
         data-chat-header="true"
       >
-        <motion.nav
-          aria-label="Breadcrumb"
-          initial={{ opacity: 0, x: -4 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-          className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground"
+        <PanelHeader
+          icon={MessageSquareIcon}
+          title={job.name}
+          backHref="/extraction"
+          backLabel={t("chatBack")}
         >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href="/extraction"
-                aria-label={t("chatBack")}
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                data-action="back"
-              >
-                <ChevronLeftIcon className="size-4" />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">{t("chatBack")}</TooltipContent>
-          </Tooltip>
-          <Link
-            href="/extraction"
-            className="hidden truncate transition-colors hover:text-foreground sm:inline"
-          >
-            {tc("extraction")}
-          </Link>
-          <span className="hidden text-muted-foreground/50 sm:inline">/</span>
-          <h1
-            className="min-w-0 truncate text-sm font-medium text-foreground"
-            data-testid="chat-job-name"
-          >
-            {job.name}
-          </h1>
-        </motion.nav>
-
-        <div className="flex items-center gap-1.5">
           <SourcesPanelSheet jobId={job._id} />
           <DropdownMenu>
             <Tooltip>
@@ -114,7 +83,7 @@ export function ChatHeader({ job, threadId }: ChatHeaderProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        </PanelHeader>
       </header>
 
       <ClearConversationDialog

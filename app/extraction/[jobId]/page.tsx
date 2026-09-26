@@ -18,14 +18,15 @@ import {
   RefreshCw,
   Trash2,
   XCircle,
-  ChevronLeft,
   Pause,
   Play,
 } from "lucide-react";
-import Link from "next/link";
 import { motion } from "motion/react";
 import posthog from "posthog-js";
 import { PageWrapper } from "@/components/PageWrapper";
+import { StickyPageHeader } from "@/components/layout/sticky-page-header";
+import { BAR_LABEL, PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
+import { STATUS_DOT, StatusChip, type StatusTone } from "@/components/evidence-libraries/configuration/status-chip";
 import { CommandCenterContainer } from "@/components/command-center";
 import { TwoColumnLayout } from "@/components/layout/two-column-layout";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,18 @@ import {
   type Question,
 } from "@/lib/extraction/filtering";
 import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
+
+/** How a job's state reads in the page bar. */
+const JOB_STATUS_TONE: Record<string, StatusTone> = {
+  pending: "running",
+  downloading_pdfs: "running",
+  extracting: "running",
+  completed: "success",
+  failed: "danger",
+  cancelled: "neutral",
+  paused: "neutral",
+  creditsExhausted: "warning",
+};
 
 export default function JobDetailPage() {
   const toast = useAppToast();
@@ -560,162 +573,119 @@ export default function JobDetailPage() {
               jobStatus={job.status}
               processedPapers={resolvedProgress.processed}
             />
-            <div className="container mx-auto max-w-6xl p-4 sm:p-6">
-              <CommandCenterContainer>
-          {/* Header Section */}
-          <div className="px-4 md:px-6 py-5 border-b border-border/40">
-            {/* Breadcrumb */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="flex items-center gap-2 text-muted-foreground text-sm mb-4"
-            >
-              <Link
-                href="/extraction"
-                className="hover:text-foreground transition-colors flex items-center gap-1"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                {tc('extraction')}
-              </Link>
-              <span>/</span>
-              <span className="text-foreground truncate max-w-[200px]">{job.name}</span>
-            </motion.div>
-
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full overflow-hidden">
-              <div className="flex items-center gap-3 truncate">
-                {/* Gradient icon */}
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 flex items-center justify-center shadow-sm shrink-0">
-                  <FileText className="h-5 w-5 text-primary" />
-                </div>
-
-                <div className="min-w-0">
-                  <motion.h1
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4 }}
-                    className="text-xl md:text-2xl font-bold tracking-tight text-foreground truncate"
-                  >
-                    {job.name}
-                  </motion.h1>
-
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5, delay: 0.1 }}
-                    className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mt-1"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={cn(
-                          "w-2 h-2 rounded-full",
-                          job.status === "completed"
-                            ? "bg-emerald-500"
-                            : job.status === "failed"
-                            ? "bg-destructive"
-                            : "bg-primary animate-pulse"
-                        )}
-                      />
-                      <span>
+            {/* Holds the bar and the page, so the bar stays pinned while the page scrolls. */}
+            <div className="@container">
+              <StickyPageHeader>
+                <PanelHeader
+                  icon={FileText}
+                  title={job.name}
+                  backHref="/extraction"
+                  backLabel={tError("backToJobs")}
+                  titleAside={
+                    <StatusChip tone={JOB_STATUS_TONE[job.status ?? "pending"] ?? "neutral"}>
+                      <span aria-hidden className={cn("size-1.5 rounded-full", STATUS_DOT[JOB_STATUS_TONE[job.status ?? "pending"] ?? "neutral"])} />
+                      <span className={BAR_LABEL}>
                         {(
-                          {
-                            pending: tJob("statusPending"),
-                            downloading_pdfs: tJob("statusDownloadingPdfs"),
-                            extracting: tJob("statusExtracting"),
-                            completed: tJob("statusCompleted"),
-                            failed: tJob("statusFailed"),
-                            cancelled: tJob("statusCancelled"),
-                          } as Record<string, string>
+                            {
+                              pending: tJob("statusPending"),
+                              downloading_pdfs: tJob("statusDownloadingPdfs"),
+                              extracting: tJob("statusExtracting"),
+                              completed: tJob("statusCompleted"),
+                              failed: tJob("statusFailed"),
+                              cancelled: tJob("statusCancelled"),
+                            } as Record<string, string>
                         )[job.status ?? "pending"] ?? (job.status ?? "pending").replace(/_/g, " ")}
                       </span>
-                    </div>
-
-                    <span className="w-1 h-1 rounded-full bg-border" />
-
-                    <div className="flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>{tJob('papersCount', { count: format.number(job.totalPapers ?? 0) })}</span>
-                    </div>
-
-                    <span className="w-1 h-1 rounded-full bg-border" />
-
-                    <div className="flex items-center gap-1.5">
-                      <RefreshCw className={cn("w-3.5 h-3.5", isProcessing && "animate-spin")} />
-                      <span>{tJob('updated', { timeAgo: format.relativeTime(new Date(job.updatedAt), now) })}</span>
-                    </div>
-
-                    <span className="w-1 h-1 rounded-full bg-border" />
-
-                    <CostBadge
-                      jobId={jobId}
-                      compact
-                      href={`/settings/billing?jobId=${jobId}`}
-                    />
-                  </motion.div>
-                </div>
-              </div>
-
-              {/* Action buttons — icon-only inside a shadcn ButtonGroup.
-                  Accessible names live on aria-label + Tooltip so the
-                  interface stays scannable without giving up screen-reader
-                  clarity. Destructive actions keep the alert-dialog
-                  confirmation step. */}
-              <motion.div
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4, delay: 0.15 }}
-                className="shrink-0"
-              >
-                <ButtonGroup>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        onClick={handleDuplicate}
-                        aria-label={tJob('restart')}
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{tJob('restart')}</TooltipContent>
-                  </Tooltip>
-
-                  {isProcessing && (
+                    </StatusChip>
+                  }
+                >
+                  {/* Icon-only actions: names live on aria-label and tooltip. Destructive ones keep their confirmation. */}
+                  <ButtonGroup>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           variant="outline"
                           size="icon-sm"
-                          data-action="pause"
-                          onClick={handlePause}
-                          aria-label={tExtraction('pause.button')}
+                          onClick={handleDuplicate}
+                          aria-label={tJob('restart')}
                         >
-                          <Pause className="w-4 h-4" />
+                          <RefreshCw className="w-4 h-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>{tExtraction('pause.button')}</TooltipContent>
+                      <TooltipContent>{tJob('restart')}</TooltipContent>
                     </Tooltip>
-                  )}
-
-                  {job.status === "paused" && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          data-action="resume"
-                          onClick={handleResume}
-                          aria-label={tExtraction('paused.resume')}
-                        >
-                          <Play className="w-4 h-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{tExtraction('paused.resume')}</TooltipContent>
-                    </Tooltip>
-                  )}
-
-                  {isProcessing && (
+  
+                    {isProcessing && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            data-action="pause"
+                            onClick={handlePause}
+                            aria-label={tExtraction('pause.button')}
+                          >
+                            <Pause className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{tExtraction('pause.button')}</TooltipContent>
+                      </Tooltip>
+                    )}
+  
+                    {job.status === "paused" && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            data-action="resume"
+                            onClick={handleResume}
+                            aria-label={tExtraction('paused.resume')}
+                          >
+                            <Play className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{tExtraction('paused.resume')}</TooltipContent>
+                      </Tooltip>
+                    )}
+  
+                    {isProcessing && (
+                      <AlertDialog>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon-sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                aria-label={tc('cancel')}
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent>{tc('cancel')}</TooltipContent>
+                        </Tooltip>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {tConfirm('cancelJobDescription')}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleCancel}
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              {tConfirm('yesCancel')}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+  
                     <AlertDialog>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -724,71 +694,54 @@ export default function JobDetailPage() {
                               variant="outline"
                               size="icon-sm"
                               className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              aria-label={tc('cancel')}
+                              aria-label={tc('delete')}
                             >
-                              <XCircle className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </AlertDialogTrigger>
                         </TooltipTrigger>
-                        <TooltipContent>{tc('cancel')}</TooltipContent>
+                        <TooltipContent>{tc('delete')}</TooltipContent>
                       </Tooltip>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
+                          <AlertDialogTitle>{tConfirm('deleteJob')}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            {tConfirm('cancelJobDescription')}
+                            {tConfirm('deleteJobDescription')}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
+                          <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={handleCancel}
+                            onClick={handleDelete}
                             className="bg-destructive hover:bg-destructive/90"
                           >
-                            {tConfirm('yesCancel')}
+                            {tConfirm('yesDelete')}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                  )}
-
-                  <AlertDialog>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon-sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            aria-label={tc('delete')}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent>{tc('delete')}</TooltipContent>
-                    </Tooltip>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>{tConfirm('deleteJob')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {tConfirm('deleteJobDescription')}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDelete}
-                          className="bg-destructive hover:bg-destructive/90"
-                        >
-                          {tConfirm('yesDelete')}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </ButtonGroup>
-              </motion.div>
+                  </ButtonGroup>
+                </PanelHeader>
+              </StickyPageHeader>
+            <div className="container mx-auto max-w-6xl p-4 sm:p-6">
+              <CommandCenterContainer>
+          {/* What the job covers, now that its name and state sit in the bar. */}
+          <div className="flex flex-wrap items-center gap-3 border-b border-border/40 px-4 py-3 text-sm text-muted-foreground md:px-6">
+            <div className="flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5" />
+              <span>{tJob('papersCount', { count: format.number(job.totalPapers ?? 0) })}</span>
             </div>
+            <span className="hidden size-1 rounded-full bg-border sm:inline-block" />
+            <div className="flex items-center gap-1.5">
+              <RefreshCw className={cn("w-3.5 h-3.5", isProcessing && "animate-spin")} />
+              <span>{tJob('updated', { timeAgo: format.relativeTime(new Date(job.updatedAt), now) })}</span>
+            </div>
+            <span className="hidden size-1 rounded-full bg-border sm:inline-block" />
+            <CostBadge
+              jobId={jobId}
+              compact
+              href={`/settings/billing?jobId=${jobId}`}
+            />
           </div>
 
           {/* Status banner stack. Each child self-hides (returns null)
@@ -1048,6 +1001,7 @@ export default function JobDetailPage() {
             </motion.div>
               </div>
                 </CommandCenterContainer>
+            </div>
             </div>
           </PageWrapper>
         }
