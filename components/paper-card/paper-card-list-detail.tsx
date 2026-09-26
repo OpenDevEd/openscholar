@@ -29,6 +29,7 @@ import {
   Network,
   BookOpen,
 } from "lucide-react";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { useTranslate } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
@@ -270,22 +271,23 @@ export function PaperCardListDetail({
                             display_name: string;
                             score: number;
                           }) => (
-                            <span
+                            <TooltipHint
                               key={sdg.id}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300 rounded-full text-xs border border-green-200 dark:border-green-800"
-                              title={tp("sdgWithScoreTooltip", {
+                              label={tp("sdgWithScoreTooltip", {
                                 name: sdg.display_name,
                                 scoreLabel: tp("score"),
                                 score: sdg.score?.toFixed(2) ?? tc("notAvailable"),
                               })}
                             >
-                              {sdg.display_name}
-                              {sdg.score && (
-                                <span className="text-green-600 dark:text-green-400 font-medium">
-                                  {sdg.score.toFixed(2)}
-                                </span>
-                              )}
-                            </span>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300 rounded-full text-xs border border-green-200 dark:border-green-800">
+                                {sdg.display_name}
+                                {sdg.score && (
+                                  <span className="text-green-600 dark:text-green-400 font-medium">
+                                    {sdg.score.toFixed(2)}
+                                  </span>
+                                )}
+                              </span>
+                            </TooltipHint>
                           ),
                         )}
                       </div>

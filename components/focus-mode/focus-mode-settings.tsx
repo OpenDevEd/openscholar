@@ -2,6 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { TooltipHint } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -77,16 +78,17 @@ export function FocusModeSettings({
               {tFocus("settingsSubtitle")}
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={settings.resetSettings}
-            className="gap-2"
-            title={tAccessibility('resetToDefaults')}
-          >
-            <RotateCcw className="h-4 w-4" />
-            {tCommon("reset")}
-          </Button>
+          <TooltipHint label={tAccessibility('resetToDefaults')}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={settings.resetSettings}
+              className="gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              {tCommon("reset")}
+            </Button>
+          </TooltipHint>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

@@ -4,6 +4,7 @@ import { BookOpen, Award, ExternalLink, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { workToCoins } from "@/lib/utils";
 import { ScreeningResponses } from "@/components/paper-card";
+import { TooltipHint } from "@/components/ui/tooltip";
 import type { PaperResult } from "@/lib/types";
 
 export interface PaperContentProps {
@@ -218,21 +219,22 @@ export function PaperContent({
             {/* DOI Button */}
             {!isPreview && paper.doi && (
               <span className="flex items-center gap-1">
-                <button
-                  onClick={() => {
-                    const doiUrl = paper.doi!.startsWith("http")
-                      ? paper.doi!
-                      : `https://doi.org/${paper.doi!}`;
-                    window.open(doiUrl, "_blank");
-                  }}
-                  className="flex items-center gap-1 text-xs text-blue-600 hover:underline cursor-pointer"
-                  title={tAccessibility("openDoi")}
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  <span className="font-mono">
-                    {paper.doi!.replace("https://doi.org/", "")}
-                  </span>
-                </button>
+                <TooltipHint label={tAccessibility("openDoi")}>
+                  <button
+                    onClick={() => {
+                      const doiUrl = paper.doi!.startsWith("http")
+                        ? paper.doi!
+                        : `https://doi.org/${paper.doi!}`;
+                      window.open(doiUrl, "_blank");
+                    }}
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:underline cursor-pointer"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    <span className="font-mono">
+                      {paper.doi!.replace("https://doi.org/", "")}
+                    </span>
+                  </button>
+                </TooltipHint>
                 <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                   I
                 </span>
@@ -263,22 +265,23 @@ export function PaperContent({
                       display_name: string;
                       score: number;
                     }) => (
-                      <span
+                      <TooltipHint
                         key={sdg.id}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs"
-                        title={tp("sdgWithScoreTooltip", {
+                        label={tp("sdgWithScoreTooltip", {
                           name: sdg.display_name,
                           scoreLabel: tp("score"),
                           score: sdg.score?.toFixed(2) ?? tCommon("notAvailable"),
                         })}
                       >
-                        {sdg.display_name}
-                        {sdg.score && (
-                          <span className="text-green-600 font-medium">
-                            {sdg.score.toFixed(2)}
-                          </span>
-                        )}
-                      </span>
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">
+                          {sdg.display_name}
+                          {sdg.score && (
+                            <span className="text-green-600 font-medium">
+                              {sdg.score.toFixed(2)}
+                            </span>
+                          )}
+                        </span>
+                      </TooltipHint>
                     )
                   )}
                 {paper.sustainable_development_goals.length > 2 && (

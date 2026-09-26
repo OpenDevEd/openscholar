@@ -10,6 +10,7 @@ import { useUIStore } from "@/lib/store";
 import { useIsTablet } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "@/components/rating-selector";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { Quote, Network, Users, BookOpen } from "lucide-react";
 import { useTranslate, useScreening, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
@@ -196,35 +197,37 @@ export function PaperCardGrid({
             
             <div className="flex items-center gap-2">
               {/* Cited by count */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCitesSearch();
-                }}
-                className={cn(
-                  "flex items-center gap-1 rounded-lg font-medium transition-colors",
-                  "text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50",
-                  isCompact ? "px-1.5 py-0.5 text-xs" : "px-2 py-1 text-sm"
-                )}
-                title={tp("citedByCount", { count: format.number(result.cited_by_count ?? 0) })}
-              >
-                <Quote className={cn(isCompact ? "h-3 w-3" : "h-3.5 w-3.5")} />
-                <span>{format.number(result.cited_by_count ?? 0)}</span>
-              </button>
-
-              {/* Related count - hidden in compact */}
-              {!isCompact && (
+              <TooltipHint label={tp("citedByCount", { count: format.number(result.cited_by_count ?? 0) })}>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleRelatedSearch();
+                    handleCitesSearch();
                   }}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
-                  title={tp("relatedCount", { count: format.number(result.related_works?.length ?? 0) })}
+                  className={cn(
+                    "flex items-center gap-1 rounded-lg font-medium transition-colors",
+                    "text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50",
+                    isCompact ? "px-1.5 py-0.5 text-xs" : "px-2 py-1 text-sm"
+                  )}
                 >
-                  <Network className="h-3.5 w-3.5" />
-                  <span>{format.number(result.related_works?.length ?? 0)}</span>
+                  <Quote className={cn(isCompact ? "h-3 w-3" : "h-3.5 w-3.5")} />
+                  <span>{format.number(result.cited_by_count ?? 0)}</span>
                 </button>
+              </TooltipHint>
+
+              {/* Related count - hidden in compact */}
+              {!isCompact && (
+                <TooltipHint label={tp("relatedCount", { count: format.number(result.related_works?.length ?? 0) })}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRelatedSearch();
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                  >
+                    <Network className="h-3.5 w-3.5" />
+                    <span>{format.number(result.related_works?.length ?? 0)}</span>
+                  </button>
+                </TooltipHint>
               )}
             </div>
           </div>

@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { TooltipHint } from "@/components/ui/tooltip";
 import type { LibraryViewMode } from "@/lib/library/search-params";
 import { ViewModeSwitch } from "@/components/view-mode-toggle";
 
@@ -86,17 +87,19 @@ export function LibraryCommandCenter({
 
             {hasExportableResults && (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                    title={t("exportLibrary")}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
+                <TooltipHint label={t("exportLibrary")}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      aria-label={t("exportLibrary")}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipHint>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={onExportCSV}>
                     {t("exportAsCSV")}

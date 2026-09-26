@@ -11,6 +11,7 @@ import { getEffectiveSearchId } from "@/lib/utils";
 import { useIsTablet } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "@/components/rating-selector";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { Quote } from "lucide-react";
 import { useTranslate, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
@@ -123,26 +124,27 @@ export function PaperCardListSimple({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
             >
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCitesSearch();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
+              <TooltipHint label={tp("citedByCount", { count: format.number(result.cited_by_count ?? 0) })}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
                     e.stopPropagation();
                     handleCitesSearch();
-                  }
-                }}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50 transition-colors cursor-pointer"
-                title={tp("citedByCount", { count: format.number(result.cited_by_count ?? 0) })}
-              >
-                <Quote className="h-3 w-3" />
-                <span>{format.number(result.cited_by_count ?? 0)}</span>
-              </div>
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleCitesSearch();
+                    }
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50 transition-colors cursor-pointer"
+                >
+                  <Quote className="h-3 w-3" />
+                  <span>{format.number(result.cited_by_count ?? 0)}</span>
+                </div>
+              </TooltipHint>
             </div>
 
             {/* Quick actions */}
