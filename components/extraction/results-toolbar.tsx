@@ -121,13 +121,12 @@ export function ResultsFilterMenu({ filters, onFiltersChange }: {
         <Button
           variant="ghost"
           size="icon"
-          className={cn("relative size-8 hover:text-foreground", active ? "text-foreground" : "text-muted-foreground")}
+          className={cn("size-8", active ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary" : "text-muted-foreground hover:text-foreground")}
           aria-label={active ? `${tc("filters")} (${active})` : tc("filters")}
           title={tc("filters")}
         >
+          {/* A tinted button says a filter is on, without a dot or a wider button. */}
           <ListFilter className="size-4" />
-          {/* A dot says a filter is on without widening the button. */}
-          {active ? <span aria-hidden className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" /> : null}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 space-y-5">
