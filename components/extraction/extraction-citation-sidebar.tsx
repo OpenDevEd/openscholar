@@ -43,6 +43,8 @@ export function ExtractionCitationSidebar({
         transition: "width 180ms ease-out",
       }}
     >
+      {/* The same line across the collapsed strip, where the panel itself has slid away. */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-16 h-px bg-sidebar-border/50" />
       <motion.aside
         className={cn(
           "h-full flex flex-col overflow-hidden absolute right-0 top-0 bottom-0",
@@ -56,6 +58,9 @@ export function ExtractionCitationSidebar({
       >
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
+
+        {/* The page bar's bottom line runs on under the panel, so the panel floats above it. */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-16 h-px bg-sidebar-border/50" />
 
         {/* Floating controls — expanded state */}
         <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border/30 bg-background/95 p-1">
@@ -87,8 +92,8 @@ export function ExtractionCitationSidebar({
           </Tooltip>
         </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 min-h-0 overflow-hidden p-2">
+        {/* Scrollable content, above the line */}
+        <div className="relative flex-1 min-h-0 overflow-hidden p-2">
           <AnswerPanel key={openAnswerKey(answer) ?? ""} answer={answer} />
         </div>
       </motion.aside>
