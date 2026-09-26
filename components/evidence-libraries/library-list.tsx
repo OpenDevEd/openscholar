@@ -123,13 +123,18 @@ export function LibraryList({ pending = false }: { pending?: boolean }) {
     <LibraryPageShell
       title="Evidence libraries"
       actions={owner.isReady && owner.organizations.length > 0 ?
-        <span className="fade-enter inline-flex">
-          <Button asChild size="sm" className={BAR_ACTION}>
-            <Link href="/evidence-libraries/new">
-              <Plus />
-              <span className={BAR_LABEL}>New library</span>
-            </Link>
-          </Button>
+        // Known only once owner access loads, so it grows in from nothing and the
+        // filters slide over instead of jumping. The negative start margin cancels
+        // the bar's gap until then; the clip margin keeps the focus ring visible.
+        <span className="grid grid-cols-[1fr] transition-[grid-template-columns,opacity,margin] duration-300 ease-out starting:-ml-2 starting:grid-cols-[0fr] starting:opacity-0 motion-reduce:transition-none">
+          <span className="flex min-w-0 justify-end overflow-clip [overflow-clip-margin:4px]">
+            <Button asChild size="sm" className={BAR_ACTION}>
+              <Link href="/evidence-libraries/new">
+                <Plus />
+                <span className={BAR_LABEL}>New library</span>
+              </Link>
+            </Button>
+          </span>
         </span> : null
       }
       tabs={
