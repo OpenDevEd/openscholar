@@ -263,7 +263,7 @@ export function BookmarksItem({
             {/* Info section */}
             <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
               {/* Label */}
-              <span className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+              <span className="text-xs text-muted-foreground font-medium">
                 {tb("expandsTo")}
               </span>
 

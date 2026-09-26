@@ -6,9 +6,8 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import { useTranslations, useFormatter, useNow } from "next-intl";
 import { cn } from "@/lib/utils";
 import { JobStatusIcon } from "./job-status-icon";
-import { FileText, Clock, MessageSquare } from "lucide-react";
+import { Database, FileText, Clock, MessageSquare } from "lucide-react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import type { ViewMode } from "@/lib/types";
 import { subtleSpring } from "@/lib/animation-config";
 
@@ -18,6 +17,17 @@ interface JobListItemProps {
   job: ExtractionJob;
   viewMode: ViewMode;
   index: number;
+}
+
+/** Which kind of job this is, as a quiet label; both kinds look the same weight. */
+function ModeLabel({ isChat, mode, label }: { isChat: boolean; mode?: string; label: string }) {
+  const Icon = isChat ? MessageSquare : Database;
+  return (
+    <span data-mode={mode} className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+      <Icon aria-hidden className="size-3.5" />
+      {label}
+    </span>
+  );
 }
 
 export function JobListItem({ job, viewMode, index }: JobListItemProps) {
@@ -70,13 +80,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           {!isChat && <JobStatusIcon status={status} label={getStatusLabel(status)} />}
 
           {/* Mode badge */}
-          <Badge
-            variant={isChat ? "secondary" : "default"}
-            data-mode={job.mode}
-            className="shrink-0"
-          >
-            {isChat ? t("jobBadgeChat") : t("jobBadgeExtraction")}
-          </Badge>
+          <ModeLabel isChat={isChat} mode={job.mode} label={isChat ? t("jobBadgeChat") : t("jobBadgeExtraction")} />
 
           {/* Job name */}
           <span className="flex-1 text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
@@ -127,13 +131,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
                   <h3 className="flex-1 text-base font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                     {job.name}
                   </h3>
-                  <Badge
-                    variant={isChat ? "secondary" : "default"}
-                    data-mode={job.mode}
-                    className="shrink-0"
-                  >
-                    {isChat ? t("jobBadgeChat") : t("jobBadgeExtraction")}
-                  </Badge>
+                  <ModeLabel isChat={isChat} mode={job.mode} label={isChat ? t("jobBadgeChat") : t("jobBadgeExtraction")} />
                 </div>
 
                 {/* Description */}
@@ -201,13 +199,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
             )}>
               {job.name}
             </h3>
-            <Badge
-              variant={isChat ? "secondary" : "default"}
-              data-mode={job.mode}
-              className="shrink-0"
-            >
-              {isChat ? t("jobBadgeChat") : t("jobBadgeExtraction")}
-            </Badge>
+            <ModeLabel isChat={isChat} mode={job.mode} label={isChat ? t("jobBadgeChat") : t("jobBadgeExtraction")} />
           </div>
 
           {/* Description */}

@@ -861,8 +861,7 @@
     "retry": {
       "summary": {
         "retryableOnly": "{retryable, plural, one {# पुनः प्रयास योग्य विफलता} other {# पुनः प्रयास योग्य विफलताएँ}}",
-        "permanentOnly": "{permanent, plural, one {# स्थायी विफलता} other {# स्थायी विफलताएँ}}",
-        "both": "{retryable, plural, one {# पुनः प्रयास योग्य} other {# पुनः प्रयास योग्य}} · {permanent, plural, one {# स्थायी} other {# स्थायी}}"
+        "permanentOnly": "{permanent, plural, one {# स्थायी विफलता} other {# स्थायी विफलताएँ}}"
       },
       "retryButton": "{count, plural, one {# विफलता पुनः प्रयास करें} other {# विफलताएँ पुनः प्रयास करें}}",
       "confirmDialog": {
@@ -908,8 +907,8 @@
     "questionProgress": {
       "completedOverTotal": "{completed}/{total}",
       "summary": "{total} में से {completed} प्रश्न पूर्ण हुए",
-      "failedCount": "· {count, plural, one {# विफल} other {# विफल}}",
-      "retryingCount": "· {count, plural, one {# पुनः प्रयास हो रहा है} other {# पुनः प्रयास हो रहे हैं}}"
+      "failedCount": "{count, plural, one {# विफल} other {# विफल}}",
+      "retryingCount": "{count, plural, one {# पुनः प्रयास हो रहा है} other {# पुनः प्रयास हो रहे हैं}}"
     },
     "errorHistory": {
       "trigger": "त्रुटि इतिहास · {count, plural, one {# प्रयास} other {# प्रयास}}",
@@ -919,7 +918,7 @@
     },
     "mixedSuccess": {
       "title": "आंशिक सफलता के साथ पूर्ण",
-      "answeredOverTotal": "{total} में से {answered} प्रश्नों के उत्तर दिए गए",
+      "answeredOverTotal": "{papers} पेपर पढ़े गए, {total} में से {answered} प्रश्न जाँचे गए",
       "retryableHint": "{count, plural, one {# विफलता पुनः प्रयास योग्य है} other {# विफलताएँ पुनः प्रयास योग्य हैं}}",
       "showFailed": "विफल पेपर दिखाएँ"
     },
@@ -1808,7 +1807,6 @@
   "filters": {
     "filterByStatus": "स्थिति से फ़िल्टर करें",
     "confidenceRange": "कॉन्फिडेंस सीमा",
-    "quickFilters": "त्वरित फ़िल्टर्स",
     "confidenceLabel": "कॉन्फिडेंस: {min}%-{max}%",
     "status": "स्थिति",
     "hasPdf": "PDF है",

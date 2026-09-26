@@ -29,6 +29,9 @@ export const CardView = memo(function CardView({
   openAnswer,
 }: CardViewProps) {
   const tc = useTranslations("common");
+  const tErrorTitle = useTranslations("errors.title");
+  const tErrorBody = useTranslations("errors.body");
+  const errorTitle = (code: string) => (tErrorTitle.has(code as never) ? tErrorTitle(code as never) : code.replace(/_/g, " "));
   const pdfEnabled = useFeatureFlag("extraction.pdf");
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -102,6 +105,17 @@ export const CardView = memo(function CardView({
                     />
                   );
                 })}
+              </div>
+            ) : paper.lastError && !unanswered.length ? (
+              // A paper that could not be read says why, instead of an empty card.
+              <div className="flex flex-1 items-start gap-2 p-4 text-sm">
+                <CircleX aria-hidden className="mt-0.5 size-4 shrink-0 text-destructive" />
+                <div className="space-y-0.5">
+                  <p className="font-medium">{errorTitle(paper.lastError.code)}</p>
+                  {tErrorBody.has(paper.lastError.code as never) ? (
+                    <p className="text-xs text-muted-foreground">{tErrorBody(paper.lastError.code as never)}</p>
+                  ) : null}
+                </div>
               </div>
             ) : <div className="flex-1" />}
 

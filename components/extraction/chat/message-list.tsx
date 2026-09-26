@@ -273,7 +273,7 @@ const CHAT_MARKDOWN_STYLES: Record<
   },
   h6: {
     className:
-      "mt-3 mb-1.5 text-xs font-semibold uppercase leading-tight tracking-wide text-muted-foreground",
+      "mt-3 mb-1.5 text-sm font-semibold leading-tight text-muted-foreground",
     marker: "heading",
   },
   blockquote: {

@@ -258,12 +258,12 @@ export function BookmarksCommandCenter() {
         clearTooltip={tb("clearAllBookmarks")}
         totalCount={bookmarksArray.length}
       />}
+      // Adding sits above the toolbar, so the search and sort stay next to the list they filter.
+      intro={<>
+        {suggestedQuery && <BookmarksSaveBanner />}
+        <BookmarksAddForm />
+      </>}
     >
-      {/* Save Current Search Banner */}
-      {suggestedQuery && <BookmarksSaveBanner />}
-
-      {/* Add Form */}
-      <BookmarksAddForm />
 
 
       {/* List */}
@@ -307,7 +307,7 @@ export function BookmarksCommandCenter() {
 }
 
 /** The bookmarks page's frame, shared with its loading state so nothing moves when it loads. */
-export function BookmarksPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
+export function BookmarksPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode; intro?: React.ReactNode }) {
   const tc = useTranslations("common");
   return <LibraryPageShell icon={BookOpen} title={tc("bookmarks")} {...controls}>{children}</LibraryPageShell>;
 }

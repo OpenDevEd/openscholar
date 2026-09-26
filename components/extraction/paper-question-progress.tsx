@@ -3,7 +3,7 @@
 /**
  * Plan-07 — inline per-paper question-progress indicator.
  *
- * Renders "4/5 · 1 retrying" next to a paper row so the user can see,
+ * Renders "4/5  1 retrying" next to a paper row so the user can see,
  * at a glance, how many questions have completed, how many are still
  * in-flight or retrying, and whether any have permanently failed. Pure
  * presentation — all counts are derived from the results array passed
@@ -102,7 +102,7 @@ export function PaperQuestionProgress({
       data-total-count={total}
       data-failed-count={failed}
       data-retrying-count={retrying}
-      className="inline-flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums"
+      className="inline-flex items-center gap-2 text-xs text-muted-foreground tabular-nums"
     >
       <ListChecks aria-hidden className="size-3" />
       <span>{t("completedOverTotal", { completed, total })}</span>

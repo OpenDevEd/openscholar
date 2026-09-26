@@ -861,8 +861,7 @@
     "retry": {
       "summary": {
         "retryableOnly": "再試行可能な失敗 {retryable} 件",
-        "permanentOnly": "永続的な失敗 {permanent} 件",
-        "both": "再試行可能 {retryable} 件 · 永続的 {permanent} 件"
+        "permanentOnly": "永続的な失敗 {permanent} 件"
       },
       "retryButton": "失敗 {count} 件を再試行",
       "confirmDialog": {
@@ -908,8 +907,8 @@
     "questionProgress": {
       "completedOverTotal": "{completed}/{total}",
       "summary": "{total} 件中 {completed} 件の質問が完了",
-      "failedCount": "· {count, plural, one {# 件失敗} other {# 件失敗}}",
-      "retryingCount": "· {count, plural, one {# 件再試行中} other {# 件再試行中}}"
+      "failedCount": "{count, plural, one {# 件失敗} other {# 件失敗}}",
+      "retryingCount": "{count, plural, one {# 件再試行中} other {# 件再試行中}}"
     },
     "errorHistory": {
       "trigger": "エラー履歴 · {count, plural, one {# 回の試行} other {# 回の試行}}",
@@ -919,7 +918,7 @@
     },
     "mixedSuccess": {
       "title": "一部成功で完了",
-      "answeredOverTotal": "{total} 件中 {answered} 件の質問に回答済み",
+      "answeredOverTotal": "{papers} 件の論文を読み取り、{total} 件中 {answered} 件の質問を確認",
       "retryableHint": "{count, plural, one {# 件の失敗は再試行可能} other {# 件の失敗は再試行可能}}です",
       "showFailed": "失敗した論文を表示"
     },
@@ -1808,7 +1807,6 @@
   "filters": {
     "filterByStatus": "ステータスでフィルター",
     "confidenceRange": "信頼度範囲",
-    "quickFilters": "クイックフィルター",
     "confidenceLabel": "信頼度：{min}%-{max}%",
     "status": "ステータス",
     "hasPdf": "PDFあり",

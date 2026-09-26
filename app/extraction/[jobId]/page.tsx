@@ -770,6 +770,7 @@ export default function JobDetailPage() {
             {job.status === "completed" && (
               <MixedSuccessSummary
                 jobId={jobId}
+                papersRead={resolvedProgress.processed}
                 onShowFailures={() => {
                   setFilters((prev) => ({ ...prev, statusFilters: new Set([...prev.statusFilters, "has-errors"]) }));
                   setCurrentPage(1);

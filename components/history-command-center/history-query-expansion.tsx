@@ -240,19 +240,15 @@ export function HistoryQueryExpansion({
                           </p>
 
                           {/* Timestamp */}
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
                             <span>{timeAgo}</span>
-                            <span className="opacity-40">•</span>
                             <span>
                               {format.dateTime(date, { dateStyle: "short", timeStyle: "short" })}
                             </span>
                             {isCurrent && (
-                              <>
-                                <span className="opacity-40">•</span>
-                                <span className="text-primary font-medium">
-                                  {th("current")}
-                                </span>
-                              </>
+                              <span className="text-primary font-medium">
+                                {th("current")}
+                              </span>
                             )}
                           </div>
                         </div>

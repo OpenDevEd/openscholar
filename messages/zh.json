@@ -861,8 +861,7 @@
     "retry": {
       "summary": {
         "retryableOnly": "{retryable} 个可重试失败",
-        "permanentOnly": "{permanent} 个永久失败",
-        "both": "{retryable} 个可重试 · {permanent} 个永久"
+        "permanentOnly": "{permanent} 个永久失败"
       },
       "retryButton": "重试 {count} 个失败",
       "confirmDialog": {
@@ -908,8 +907,8 @@
     "questionProgress": {
       "completedOverTotal": "{completed}/{total}",
       "summary": "{total} 个问题中已完成 {completed} 个",
-      "failedCount": "· {count, plural, one {# 个失败} other {# 个失败}}",
-      "retryingCount": "· {count, plural, one {# 个重试中} other {# 个重试中}}"
+      "failedCount": "{count, plural, one {# 个失败} other {# 个失败}}",
+      "retryingCount": "{count, plural, one {# 个重试中} other {# 个重试中}}"
     },
     "errorHistory": {
       "trigger": "错误历史 · {count, plural, one {# 次尝试} other {# 次尝试}}",
@@ -919,7 +918,7 @@
     },
     "mixedSuccess": {
       "title": "部分成功完成",
-      "answeredOverTotal": "{total} 个问题中已回答 {answered} 个",
+      "answeredOverTotal": "已读取 {papers} 篇论文，已检查 {total} 个问题中的 {answered} 个",
       "retryableHint": "{count, plural, one {# 个失败可重试} other {# 个失败可重试}}",
       "showFailed": "显示失败的论文"
     },
@@ -1808,7 +1807,6 @@
   "filters": {
     "filterByStatus": "按状态筛选",
     "confidenceRange": "置信度范围",
-    "quickFilters": "快速筛选",
     "confidenceLabel": "置信度：{min}%-{max}%",
     "status": "状态",
     "hasPdf": "有 PDF",

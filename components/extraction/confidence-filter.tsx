@@ -1,9 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
 interface ConfidenceFilterProps {
@@ -11,53 +9,24 @@ interface ConfidenceFilterProps {
   onChange: (range: [number, number]) => void;
 }
 
-/** The confidence range and its presets, shown in the results filter menu. */
+/** The confidence range, shown in the results filter menu. */
 export function ConfidenceFilterFields({ range, onChange }: ConfidenceFilterProps) {
   const t = useTranslations('filters');
-  const tc = useTranslations('common');
-  const presets = [
-    { label: tc('all'), value: [0, 100] as [number, number] },
-    { label: tc('high'), value: [80, 100] as [number, number] },
-    { label: tc('medium'), value: [50, 80] as [number, number] },
-    { label: tc('low'), value: [0, 50] as [number, number] },
-  ];
 
   return (
-    <div className="space-y-4">
-      <div>
-        <Label>{t('confidenceRange')}</Label>
-        <Slider
-          value={range}
-          onValueChange={(value) => onChange(value as [number, number])}
-          min={0}
-          max={100}
-          step={5}
-          className="mt-2"
-        />
-        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-          <span>{range[0]}%</span>
-          <span>{range[1]}%</span>
-        </div>
-      </div>
-
-      <div className="space-y-1">
-        <Label>{t('quickFilters')}</Label>
-        <div className="flex gap-2">
-          {presets.map(preset => (
-            <Button
-              key={preset.label}
-              variant="outline"
-              size="sm"
-              onClick={() => onChange(preset.value)}
-              className={cn(
-                range[0] === preset.value[0] && range[1] === preset.value[1] &&
-                "bg-primary/10 border-primary"
-              )}
-            >
-              {preset.label}
-            </Button>
-          ))}
-        </div>
+    <div>
+      <Label>{t('confidenceRange')}</Label>
+      <Slider
+        value={range}
+        onValueChange={(value) => onChange(value as [number, number])}
+        min={0}
+        max={100}
+        step={5}
+        className="mt-2"
+      />
+      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+        <span>{range[0]}%</span>
+        <span>{range[1]}%</span>
       </div>
     </div>
   );

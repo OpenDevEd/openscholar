@@ -861,8 +861,7 @@
     "retry": {
       "summary": {
         "retryableOnly": "{retryable, plural, one {# échec récupérable} other {# échecs récupérables}}",
-        "permanentOnly": "{permanent, plural, one {# échec permanent} other {# échecs permanents}}",
-        "both": "{retryable, plural, one {# récupérable} other {# récupérables}} · {permanent, plural, one {# permanent} other {# permanents}}"
+        "permanentOnly": "{permanent, plural, one {# échec permanent} other {# échecs permanents}}"
       },
       "retryButton": "Réessayer {count, plural, one {# échec} other {# échecs}}",
       "confirmDialog": {
@@ -908,8 +907,8 @@
     "questionProgress": {
       "completedOverTotal": "{completed}/{total}",
       "summary": "{completed} questions terminées sur {total}",
-      "failedCount": "· {count, plural, one {# échec} other {# échecs}}",
-      "retryingCount": "· {count, plural, one {# nouvelle tentative} other {# nouvelles tentatives}}"
+      "failedCount": "{count, plural, one {# échec} other {# échecs}}",
+      "retryingCount": "{count, plural, one {# nouvelle tentative} other {# nouvelles tentatives}}"
     },
     "errorHistory": {
       "trigger": "Historique des erreurs · {count, plural, one {# tentative} other {# tentatives}}",
@@ -919,7 +918,7 @@
     },
     "mixedSuccess": {
       "title": "Terminé avec succès partiel",
-      "answeredOverTotal": "{answered} questions répondues sur {total}",
+      "answeredOverTotal": "{papers, plural, one {# article lu} other {# articles lus}}, {answered} questions vérifiées sur {total}",
       "retryableHint": "{count, plural, one {# échec est récupérable} other {# échecs sont récupérables}}",
       "showFailed": "Afficher les articles en échec"
     },
@@ -1808,7 +1807,6 @@
   "filters": {
     "filterByStatus": "Filtrer par statut",
     "confidenceRange": "Plage de confiance",
-    "quickFilters": "Filtres rapides",
     "confidenceLabel": "Confiance : {min}%-{max}%",
     "status": "Statut",
     "hasPdf": "A un PDF",

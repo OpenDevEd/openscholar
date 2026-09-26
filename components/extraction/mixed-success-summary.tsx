@@ -39,9 +39,11 @@ export interface MixedSuccessSummaryProps {
   jobId: Id<"extractionJobs">;
   /** Filters the results to the papers that failed. */
   onShowFailures?: () => void;
+  /** How many papers could be read; the question counts cover only these. */
+  papersRead: number;
 }
 
-export function MixedSuccessSummary({ jobId, onShowFailures }: MixedSuccessSummaryProps) {
+export function MixedSuccessSummary({ jobId, onShowFailures, papersRead }: MixedSuccessSummaryProps) {
   const t = useTranslations("extraction.mixedSuccess");
   const tTitle = useTranslations("errors.title");
   const headingId = useId();
@@ -85,6 +87,7 @@ export function MixedSuccessSummary({ jobId, onShowFailures }: MixedSuccessSumma
       <span className="inline-flex items-center gap-1.5 text-muted-foreground">
         <CircleCheck aria-hidden className="size-4 text-emerald-600 dark:text-emerald-400" />
         {t("answeredOverTotal", {
+          papers: papersRead,
           answered: summary.answeredTotal,
           total: summary.totalQuestions,
         })}

@@ -221,11 +221,8 @@ export function VersionHistory<Row extends VersionHistoryRow>({
                     ))
                   )}
                 </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  {row.by}
-                  <span className="mx-1.5" aria-hidden>
-                    ·
-                  </span>
+                <p className="flex gap-3 truncate text-xs text-muted-foreground">
+                  <span className="truncate">{row.by}</span>
                   <time dateTime={new Date(row.createdAt).toISOString()}>
                     {format.dateTime(new Date(row.createdAt), {
                       dateStyle: "medium",

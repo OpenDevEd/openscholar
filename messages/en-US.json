@@ -878,8 +878,7 @@
     "retry": {
       "summary": {
         "retryableOnly": "{retryable, plural, one {# retryable failure} other {# retryable failures}}",
-        "permanentOnly": "{permanent, plural, one {# permanent failure} other {# permanent failures}}",
-        "both": "{retryable, plural, one {# retryable} other {# retryable}} · {permanent, plural, one {# permanent} other {# permanent}}"
+        "permanentOnly": "{permanent, plural, one {# permanent failure} other {# permanent failures}}"
       },
       "retryButton": "Retry {count, plural, one {# failure} other {# failures}}",
       "confirmDialog": {
@@ -925,8 +924,8 @@
     "questionProgress": {
       "completedOverTotal": "{completed}/{total}",
       "summary": "{completed} of {total} questions completed",
-      "failedCount": "· {count, plural, one {# failed} other {# failed}}",
-      "retryingCount": "· {count, plural, one {# retrying} other {# retrying}}"
+      "failedCount": "{count, plural, one {# failed} other {# failed}}",
+      "retryingCount": "{count, plural, one {# retrying} other {# retrying}}"
     },
     "errorHistory": {
       "trigger": "Error history · {count, plural, one {# attempt} other {# attempts}}",
@@ -936,7 +935,7 @@
     },
     "mixedSuccess": {
       "title": "Completed with partial success",
-      "answeredOverTotal": "{answered} of {total} questions answered",
+      "answeredOverTotal": "{papers, plural, one {# paper} other {# papers}} read, {answered} of {total} questions checked",
       "retryableHint": "{count, plural, one {# failure is retryable} other {# failures are retryable}}",
       "showFailed": "Show failed papers"
     },
@@ -1834,7 +1833,6 @@
   "filters": {
     "filterByStatus": "Filter by status",
     "confidenceRange": "Confidence range",
-    "quickFilters": "Quick filters",
     "confidenceLabel": "Confidence: {min}%-{max}%",
     "status": "Status",
     "hasPdf": "Has PDF",
