@@ -62,4 +62,24 @@ function TooltipContent({
   )
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+/**
+ * The app's hover hint, used instead of the browser's `title`. The wrapper
+ * stays when there is no label, so a hint that comes and goes never remounts
+ * its trigger. A disabled button fires no pointer events: wrap it in a span.
+ */
+function TooltipHint({
+  label,
+  children,
+}: {
+  label?: React.ReactNode
+  children: React.ReactElement
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      {label ? <TooltipContent>{label}</TooltipContent> : null}
+    </Tooltip>
+  )
+}
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, TooltipHint }
