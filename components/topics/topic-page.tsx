@@ -67,6 +67,8 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
       </div>}
     </div>
   }>
+    {/* Keyed by tab, so the new list fades in instead of popping. */}
+    <div key={tab} className="fade-enter">
     {tab === "libraries" ? <TopicLibraryResults state={library} /> : <div>
         <FocusMode isOpen={isFocusModeOpen} onClose={() => useUIStore.getState().setIsFocusModeOpen(false)} papers={papers} onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />
         {works.error && <div role="alert" className="flex items-center gap-3 p-6 text-sm">{t("publicationsFailed")}<Button variant="outline" size="sm" onClick={() => void works.mutate()}>{t("tryAgain")}</Button></div>}
@@ -80,5 +82,6 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
           <Button variant="ghost" size="sm" disabled={works.isValidating} onClick={() => void works.setSize(works.size + 1)}>{works.isValidating && <Spinner />}{t("showMore")}</Button>
         </div>}
     </div>}
+    </div>
   </LibraryPageShell>;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Layers, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { cn } from "@/lib/utils";
@@ -41,8 +41,13 @@ export function LibraryPageShell({
   intro?: ReactNode;
   children: ReactNode;
 }) {
+  // A tab can drop its filters. The last ones stay rendered while their row closes.
+  const [keptFilters, keepFilters] = useState(filters);
+  if (filters && filters !== keptFilters) keepFilters(filters);
+  const cardFilters = filters || keptFilters;
   const filtersInBar = !intro && filters;
-  const cardToolbar = intro && filters ? "" : filtersInBar ? "@6xl:hidden" : tabs ? "@3xl:hidden" : "hidden";
+  // The card toolbar closes at the width where the bar holds everything it has.
+  const cardToolbar = intro && filters ? OPEN : filtersInBar ? "grid-rows-[1fr] @6xl:invisible @6xl:grid-rows-[0fr]" : "grid-rows-[1fr] @3xl:invisible @3xl:grid-rows-[0fr]";
   return (
     <div className="@container w-full pb-16">
       <StickyPageHeader>
@@ -63,20 +68,39 @@ export function LibraryPageShell({
       <div className="container mx-auto max-w-6xl p-4 sm:p-6">
         <CommandCenterContainer>
           {intro ? <div className="border-b border-border/50">{intro}</div> : null}
-          {tabs || filters ? (
-            <div className={cn("flex flex-wrap items-center gap-3 border-b border-border/50 p-4", cardToolbar)}>
-              {tabs ? <div className="-mx-1 max-w-full overflow-x-auto px-1 @3xl:hidden">{tabs}</div> : null}
-              {/* Filters share a row in equal columns, go two by two on a tablet and stack on a phone. */}
-              {filters ? (
-                <div className={cn("grid w-full gap-2 [&>*]:w-full [&>:only-child]:col-span-full [&_input]:w-full", intro ? "@3xl:ml-auto @3xl:w-64" : "@lg:grid-cols-2 @3xl:grid-flow-col @3xl:grid-cols-none @3xl:auto-cols-fr")}>
-                  {filters}
-                </div>
-              ) : null}
-            </div>
+          {tabs || cardFilters ? (
+            <Collapse className={cardToolbar}>
+              <div className="flex flex-wrap items-center border-b border-border/50 p-4">
+                {tabs ? <div className="-mx-1 max-w-full overflow-x-auto px-1 @3xl:hidden">{tabs}</div> : null}
+                {cardFilters ? (
+                  <Collapse className={cn("w-full", filters ? OPEN : CLOSED)}>
+                    {/* Filters share a row in equal columns, go two by two on a tablet and stack on a phone. */}
+                    <div className={cn("grid gap-2 [&>*]:w-full [&>:only-child]:col-span-full [&_input]:w-full", tabs && "pt-3 @3xl:pt-0", intro ? "@3xl:ml-auto @3xl:w-64" : "@lg:grid-cols-2 @3xl:grid-flow-col @3xl:grid-cols-none @3xl:auto-cols-fr")}>
+                      {cardFilters}
+                    </div>
+                  </Collapse>
+                ) : null}
+              </div>
+            </Collapse>
           ) : null}
           {children}
         </CommandCenterContainer>
       </div>
+    </div>
+  );
+}
+
+const OPEN = "grid-rows-[1fr]";
+const CLOSED = "invisible grid-rows-[0fr]";
+
+/**
+ * Opens and closes its content by height instead of jumping. While closed it is
+ * hidden from focus and screen readers; the clip margin keeps focus rings whole.
+ */
+function Collapse({ className, children }: { className: string; children: ReactNode }) {
+  return (
+    <div className={cn("grid transition-[grid-template-rows,visibility] duration-200 ease-out motion-reduce:transition-none", className)}>
+      <div className="min-h-0 overflow-clip [overflow-clip-margin:4px]">{children}</div>
     </div>
   );
 }

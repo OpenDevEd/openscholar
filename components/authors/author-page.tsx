@@ -735,7 +735,8 @@ export default function AuthorPage({
         >
           {/* The bar's heading is the author's name; this names the list for screen readers. */}
           <h2 className="sr-only">Publications</h2>
-          {publicationTab === "selected" ? <div>
+          {/* Each tab keys its own list, so the new one fades in instead of popping. */}
+          {publicationTab === "selected" ? <div key="selected" className="fade-enter">
             <div className="overflow-hidden">
               {filtered.map(p => <PublicationListItem key={p.id} publication={p} />)}
               {loadingPublications ? (
@@ -748,7 +749,7 @@ export default function AuthorPage({
                 </ListEmpty>
               )}
             </div>
-          </div> : <div>
+          </div> : <div key="openalex" className="fade-enter">
             {openAlexError && <p role="alert" className="p-4 text-sm text-destructive">{openAlexError}</p>}
             {profile.match ? (
               <>
