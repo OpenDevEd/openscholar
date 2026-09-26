@@ -1,6 +1,6 @@
 "use client";
 
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, type Preloaded } from "convex/react";
 import { OrganizationAvatar, useLibraryOrganizationChoice } from "./organization-picker";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -90,8 +90,11 @@ function LibraryTile() {
  * `pending` renders the page before access is confirmed: the frame and
  * toolbar show at once and only the list waits.
  */
-export function LibraryList({ pending = false }: { pending?: boolean }) {
-  const owner = useLibraryOrganizationChoice();
+export function LibraryList({ pending = false, preloadedOrganizations }: {
+  pending?: boolean;
+  preloadedOrganizations?: Preloaded<typeof api.organizationFeatures.libraryOrganizations>;
+}) {
+  const owner = useLibraryOrganizationChoice(preloadedOrganizations);
   const overviews = useProtectedQuery(api.evidenceLibraries.queries.listLibraryOverviews, pending ? "skip" : {});
   const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listMine, pending ? "skip" : {});
   const respond = useAction(api.evidenceLibraries.invitationActions.respond);
@@ -122,17 +125,13 @@ export function LibraryList({ pending = false }: { pending?: boolean }) {
   return (
     <LibraryPageShell
       title="Evidence libraries"
-      actions={
-        // Owner access loads after the page, so the button holds its place hidden
-        // from the start and fades in there; nothing beside it moves.
-        <span className={cn("transition-[opacity,visibility] duration-300", owner.isReady && owner.organizations.length > 0 ? "visible opacity-100" : "invisible opacity-0")}>
-          <Button asChild size="sm" className={BAR_ACTION}>
-            <Link href="/evidence-libraries/new">
-              <Plus />
-              <span className={BAR_LABEL}>New library</span>
-            </Link>
-          </Button>
-        </span>
+      actions={owner.organizations.length > 0 &&
+        <Button asChild size="sm" className={BAR_ACTION}>
+          <Link href="/evidence-libraries/new">
+            <Plus />
+            <span className={BAR_LABEL}>New library</span>
+          </Link>
+        </Button>
       }
       tabs={
         <ListViewTabs
