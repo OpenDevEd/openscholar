@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Users, Plus, ArrowUpRight, SearchX } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
+import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
@@ -31,11 +32,12 @@ export function AuthorList({pending = false}: {pending?: boolean}) {
   const create = useMutation(api.authors.profiles.create);
   const {results, status, loadMore} = usePaginatedQuery(api.authors.profiles.list, pending ? "skip" : {search}, {initialNumItems: 20});
   // The page renders before sign-in finishes, so only a confirmed sign-out asks to sign in.
+  const createLabel = <><Plus /><span className={BAR_LABEL}>Create author</span></>;
   return <LibraryPageShell icon={Users} title="Authors" actions={isSignedIn === false
-    ? <SignInButton mode="modal"><Button><Plus />Create author</Button></SignInButton>
-    : <Button onClick={() => {setError(""); setOpen(true);}}><Plus />Create author</Button>}>
+    ? <SignInButton mode="modal"><Button size="sm" className={BAR_ACTION}>{createLabel}</Button></SignInButton>
+    : <Button size="sm" className={BAR_ACTION} onClick={() => {setError(""); setOpen(true);}}>{createLabel}</Button>}
+    filters={<ListSearch aria-label="Find authors" placeholder="Find an author…" className="w-56" value={search} onChange={event => setSearch(event.target.value)} />}>
     {!pending && <AuthorInvitations />}
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 p-4"><ListSearch aria-label="Find authors" placeholder="Find an author…" className="w-56" value={search} onChange={event => setSearch(event.target.value)} /></div>
     {!!results.length && <ul className="divide-y divide-border/50">{results.map(profile => <li key={profile._id} className="fade-enter"><Link href={`/authors/${profile._id}`} className="group flex items-center gap-3 p-4 hover:bg-muted/15">
       <AuthorAvatar photo={profile.photo} className="mr-1 size-10 shrink-0" />
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{profile.name}</p><p className="truncate text-xs text-muted-foreground">{profile.headline || profile.affiliation}</p></div>

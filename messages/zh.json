@@ -1419,7 +1419,6 @@
     "score": "得分"
   },
   "bookmarksPage": {
-    "description": "为常用搜索词创建快捷方式",
     "searchPlaceholder": "搜索书签...",
     "clearAllBookmarks": "清除所有书签",
     "clearAllBookmarksTitle": "清除所有书签",
@@ -3127,7 +3126,6 @@
   },
   "topics": {
     "title": "主题",
-    "description": "各 Evidence Library 中的研究主题。",
     "find": "查找主题",
     "findPlaceholder": "查找主题",
     "domain": "研究领域大类",
@@ -3224,7 +3222,6 @@
     },
     "new": {
       "title": "New Evidence Library",
-      "description": "Give it a name and reserve a public address.",
       "backToLibraries": "Back to libraries",
       "noOrganizationTitle": "Choose an organisation",
       "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here.",

@@ -28,6 +28,7 @@ import { LibraryAddressLink } from "./library-address-link";
 import { LibraryNotFound } from "./library-not-found";
 import { SetupHero } from "./live-hero";
 import { LibraryPageShell } from "./library-page-shell";
+import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
 import { LibraryStatusChip } from "./library-status-chip";
 
 export function SetupProgress({ libraryId }: { libraryId: string }) {
@@ -102,25 +103,24 @@ export function SetupProgressView({
     <LibraryPageShell
       title={setup.identity.name}
       image={setup.faviconUrl}
-      description={<LibraryAddressLink address={address} />}
       backHref="/evidence-libraries"
       backLabel={t("backToLibraries")}
-      titleAside={<LibraryStatusChip status={status} />}
+      titleAside={<><LibraryStatusChip status={status} /><LibraryAddressLink address={address} className="hidden text-sm text-muted-foreground @5xl:inline-flex" /></>}
       actions={
         <>
           {status === "draft" || active ? (
-            <Button asChild variant={active ? "outline" : "default"}>
+            <Button asChild size="sm" variant={active ? "outline" : "default"} className={BAR_ACTION}>
               <Link href={`${base}/configuration`}>
                 <Settings />
-                {t("configure")}
+                <span className={BAR_LABEL}>{t("configure")}</span>
               </Link>
             </Button>
           ) : null}
           {active ? (
-            <Button asChild>
+            <Button asChild size="sm" className={BAR_ACTION}>
               <AdminAreaLink libraryId={setup.library._id}>
                 <ExternalLink />
-                {t("openAdmin")}
+                <span className={BAR_LABEL}>{t("openAdmin")}</span>
               </AdminAreaLink>
             </Button>
           ) : null}

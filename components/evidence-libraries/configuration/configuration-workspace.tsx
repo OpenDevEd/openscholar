@@ -114,7 +114,7 @@ import {
 } from "./section-shell";
 import { LibraryAddressLink } from "../library-address-link";
 import { AdminAreaLink } from "../admin-area-link";
-import { PanelHeader } from "./panel-header";
+import { BAR_ACTION, BAR_LABEL, PanelHeader } from "./panel-header";
 import { STATUS_DOT, StatusChip } from "./status-chip";
 import { FileUploadsProvider } from "./use-file-uploads";
 import { useScrollSpy } from "./use-scroll-spy";
@@ -436,6 +436,7 @@ function Workspace({
         : null;
   const activateButton = (
     <ActivationControl
+      size="sm"
       disabled={!canActivate}
       onActivate={() => setActivateOpen(true)}
       idleLabel={isDraftLibrary ? t("setUpAndActivate") : t("activate")}
@@ -462,32 +463,34 @@ function Workspace({
             <PanelHeader
               icon={Layers}
               image={draft.identity.assets.favicon || null}
-              className="border-b-0 px-0 md:px-0"
               title={draft.identity.name || t("untitled")}
-              description={<LibraryAddressLink address={draft.identity.baseUrl} />}
               backHref={LIBRARIES_HREF}
               backLabel={t("backToLibraries")}
-              titleAside={
-                dirty ? (
+              titleAside={<>
+                {dirty ? (
                   <StatusChip tone="warning" data-unsaved>
-                    {t("unsaved")}
+                    <span aria-hidden className={cn("size-1.5 rounded-full", STATUS_DOT.warning)} />
+                    <span className={BAR_LABEL}>{t("unsaved")}</span>
                   </StatusChip>
-                ) : null
-              }
+                ) : null}
+                <LibraryAddressLink address={draft.identity.baseUrl} className="hidden text-sm text-muted-foreground @5xl:inline-flex" />
+              </>}
             >
               <Button
                 variant="outline"
+                size="sm"
+                className={BAR_ACTION}
                 disabled={!dirty || saving || activating}
                 onClick={handleSave}
               >
                 {saving ? <Spinner /> : <Save />}
-                {saving ? t("saving") : t("save")}
+                <span className={BAR_LABEL}>{saving ? t("saving") : t("save")}</span>
               </Button>
               {libraryState === "active" && !operationRunning && !activating ? (
-                <Button asChild variant="outline">
+                <Button asChild variant="outline" size="sm" className={BAR_ACTION}>
                   <AdminAreaLink libraryId={libraryId}>
-                    {tList("openAdmin")}
                     <ExternalLink />
+                    <span className={BAR_LABEL}>{tList("openAdmin")}</span>
                   </AdminAreaLink>
                 </Button>
               ) : null}

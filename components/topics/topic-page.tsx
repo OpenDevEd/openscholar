@@ -9,6 +9,7 @@ import { ArrowUpRight, BookOpen, ChevronRight, Copy, Network } from "lucide-reac
 import { toast } from "sonner";
 import { readTopic, readTopicWorks } from "@/app/actions/topics";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
+import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { PaperCard } from "@/components/paper-card";
 import { Button } from "@/components/ui/button";
@@ -40,12 +41,15 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
   const isFocusModeOpen = useUIStore(state => state.isFocusModeOpen);
 
   return <LibraryPageShell icon={Network} title={topic.name} backHref="/topics" backLabel={t("back")} actions={<>
-    <Button variant="outline" size="sm" onClick={async () => {
+    <Button variant="outline" size="sm" className={BAR_ACTION} onClick={async () => {
       try { await navigator.clipboard.writeText(location.href); toast.success(t("linkCopied")); }
       catch { toast.error(t("copyFailed")); }
-    }}><Copy aria-hidden />{t("copyLink")}</Button>
-    <Button variant="outline" size="sm" asChild><a href={`https://openalex.org/${topic.id}`} target="_blank" rel="noreferrer"><OpenAlexIcon className="size-4 shrink-0" />OpenAlex<ArrowUpRight aria-hidden /></a></Button>
-  </>}>
+    }}><Copy aria-hidden /><span className={BAR_LABEL}>{t("copyLink")}</span></Button>
+    <Button variant="outline" size="sm" className={BAR_ACTION} asChild><a href={`https://openalex.org/${topic.id}`} target="_blank" rel="noreferrer"><OpenAlexIcon className="size-4 shrink-0" /><span className={BAR_LABEL}>OpenAlex</span><ArrowUpRight aria-hidden className="@max-3xl:hidden" /></a></Button>
+  </>} tabs={<ListViewTabs label={t("publicationsView")} value={tab} onChange={setTab} tabs={[
+    {value: "libraries", label: tc("evidenceLibraries"), icon: <BookOpen aria-hidden className="size-3.5" />, count: library.count},
+    {value: "openalex", label: "OpenAlex", icon: <OpenAlexIcon className="size-3.5 shrink-0" />, count: detail.data?.worksCount.toLocaleString(locale)},
+  ]} />} filters={tab === "libraries" && <ListSearch aria-label={t("searchLibrary")} placeholder={t("searchPlaceholder")} value={library.query} maxLength={200} onChange={event => void library.setQuery(event.target.value)} />} intro={
     <div className="space-y-4 p-4 sm:p-6">
       <nav aria-label={t("classification")} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
         {path.map((node, index) => <span key={node.id} className="inline-flex items-center gap-2">
@@ -62,13 +66,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
         {showRelated && <div className="mt-2 grid gap-1 sm:grid-cols-2">{related.map(node => <Link className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted/30 hover:text-primary" key={node.id} href={`/topics/${node.id}`}>{node.name}<ArrowUpRight aria-hidden className="size-3.5 shrink-0" /></Link>)}</div>}
       </div>}
     </div>
-    <div className="flex flex-wrap items-center justify-between gap-3 border-y border-border/50 p-4">
-      <ListViewTabs label={t("publicationsView")} value={tab} onChange={setTab} tabs={[
-        {value: "libraries", label: tc("evidenceLibraries"), icon: <BookOpen aria-hidden className="size-3.5" />, count: library.count},
-        {value: "openalex", label: "OpenAlex", icon: <OpenAlexIcon className="size-3.5 shrink-0" />, count: detail.data?.worksCount.toLocaleString(locale)},
-      ]} />
-      {tab === "libraries" && <ListSearch aria-label={t("searchLibrary")} placeholder={t("searchPlaceholder")} className="w-56" value={library.query} maxLength={200} onChange={event => void library.setQuery(event.target.value)} />}
-    </div>
+  }>
     {tab === "libraries" ? <TopicLibraryResults state={library} /> : <div>
         <FocusMode isOpen={isFocusModeOpen} onClose={() => useUIStore.getState().setIsFocusModeOpen(false)} papers={papers} onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />
         {works.error && <div role="alert" className="flex items-center gap-3 p-6 text-sm">{t("publicationsFailed")}<Button variant="outline" size="sm" onClick={() => void works.mutate()}>{t("tryAgain")}</Button></div>}

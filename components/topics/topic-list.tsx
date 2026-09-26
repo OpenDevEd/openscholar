@@ -35,16 +35,12 @@ export function TopicList() {
   const topics = results.data?.flatMap(page => page.nodes) ?? [];
   const more = results.data?.at(-1)?.nextCursor;
   const clear = () => {void setSearch(""); void setDomain("all"); void setField("all"); void setSubfield("all");};
-  return <LibraryPageShell icon={Network} title={t("title")} description={t("description")}>
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 p-4">
-      <ListSearch aria-label={t("find")} placeholder={t("findPlaceholder")} className="w-56" value={search} maxLength={200} onChange={event => void setSearch(event.target.value)} />
-      <div className="flex flex-wrap items-center gap-2">
-        {(search || ancestor) && <span className="fade-enter inline-flex"><Button variant="ghost" size="sm" className="text-muted-foreground" onClick={clear}>{t("clearFilters")}</Button></span>}
-        <Select value={domain} onValueChange={value => {void setDomain(value); void setField("all"); void setSubfield("all");}}><SelectTrigger size="sm" aria-label={t("domain")} className={cn("w-44", LIST_FILTER)}><SelectValue placeholder={t("allDomains")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allDomains")}</SelectItem>{domains.data?.nodes.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
-        <Select value={field} onValueChange={value => {void setField(value); void setSubfield("all");}}><SelectTrigger size="sm" aria-label={t("field")} className={cn("w-48", LIST_FILTER)}><SelectValue placeholder={t("allFields")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allFields")}</SelectItem>{fields.data?.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
-        <Select value={subfield} disabled={!subfields.data?.length} onValueChange={value => void setSubfield(value)}><SelectTrigger size="sm" aria-label={t("subfield")} className={cn("w-48", LIST_FILTER)}><SelectValue placeholder={t("allSubfields")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allSubfields")}</SelectItem>{subfields.data?.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
-      </div>
-    </div>
+  return <LibraryPageShell icon={Network} title={t("title")} filters={<>
+    <ListSearch aria-label={t("find")} placeholder={t("findPlaceholder")} className="w-56" value={search} maxLength={200} onChange={event => void setSearch(event.target.value)} />
+    <Select value={domain} onValueChange={value => {void setDomain(value); void setField("all"); void setSubfield("all");}}><SelectTrigger size="sm" aria-label={t("domain")} className={cn("w-40", LIST_FILTER)}><SelectValue placeholder={t("allDomains")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allDomains")}</SelectItem>{domains.data?.nodes.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
+    <Select value={field} onValueChange={value => {void setField(value); void setSubfield("all");}}><SelectTrigger size="sm" aria-label={t("field")} className={cn("w-44", LIST_FILTER)}><SelectValue placeholder={t("allFields")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allFields")}</SelectItem>{fields.data?.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
+    <Select value={subfield} disabled={!subfields.data?.length} onValueChange={value => void setSubfield(value)}><SelectTrigger size="sm" aria-label={t("subfield")} className={cn("w-44", LIST_FILTER)}><SelectValue placeholder={t("allSubfields")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allSubfields")}</SelectItem>{subfields.data?.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
+  </>}>
     {(results.error || domains.error || fields.error || subfields.error) && <div role="alert" className="flex items-center gap-3 p-6 text-sm">{t("loadFailed")}<Button variant="outline" onClick={() => {void results.mutate(); void domains.mutate(); void fields.mutate(); void subfields.mutate();}}>{t("tryAgain")}</Button></div>}
     {results.isLoading && <ListLoading label={t("loading")} />}
     {!!topics.length && <ul className="divide-y divide-border/50">{topics.map(topic => <li key={topic.id} className="fade-enter"><Link href={`/topics/${topic.id}`} className="group flex items-center gap-3 p-4 hover:bg-muted/15">
@@ -52,7 +48,7 @@ export function TopicList() {
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{topic.name}</p><p className="truncate text-xs text-muted-foreground">{topic.path.slice(0, -1).join(" / ")}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
     </Link></li>)}</ul>}
-    {!results.isLoading && !results.error && !topics.length && <ListEmpty icon={SearchX}>{t("noMatches")}</ListEmpty>}
+    {!results.isLoading && !results.error && !topics.length && <ListEmpty icon={SearchX} action={(search || ancestor) && <Button variant="outline" size="sm" onClick={clear}>{t("clearFilters")}</Button>}>{t("noMatches")}</ListEmpty>}
     {more && <div className="flex justify-center p-3"><Button variant="ghost" size="sm" disabled={results.isValidating} onClick={() => void results.setSize(results.size + 1)}>{t("showMore")}</Button></div>}
   </LibraryPageShell>;
 }

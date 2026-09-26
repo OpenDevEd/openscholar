@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "./library-page-shell";
+import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
 import { LIST_FILTER, LIST_TILE, ListEmpty, ListLoading, ListSearch, ListViewTabs } from "./list-controls";
 import { LibraryStatusChip } from "./library-status-chip";
 import { LibraryImage } from "./library-image";
@@ -121,19 +122,17 @@ export function LibraryList({ pending = false }: { pending?: boolean }) {
   return (
     <LibraryPageShell
       title="Evidence libraries"
-      description="Libraries you manage and contribute to."
       actions={owner.isReady && owner.organizations.length > 0 ?
         <span className="fade-enter inline-flex">
-          <Button asChild>
+          <Button asChild size="sm" className={BAR_ACTION}>
             <Link href="/evidence-libraries/new">
               <Plus />
-              New library
+              <span className={BAR_LABEL}>New library</span>
             </Link>
           </Button>
         </span> : null
       }
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 p-4">
+      tabs={
         <ListViewTabs
           label="Library view"
           value={view}
@@ -145,34 +144,35 @@ export function LibraryList({ pending = false }: { pending?: boolean }) {
             count: loading ? undefined : libraries.filter((library) => Boolean(library.pending) === (tab === "invitations")).length,
           }))}
         />
-        <div className="flex flex-wrap items-center gap-2">
-          <ListSearch
-            aria-label="Search libraries"
-            placeholder="Find a library…"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <Select value={organization} onValueChange={setOrganization}>
-            <SelectTrigger
-              size="sm"
-              aria-label="Filter by owning organization"
-              className={cn("min-w-48", LIST_FILTER)}
-            >
-              {organization === "all" && <Building2 className="size-3.5" />}
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All organizations</SelectItem>
-              {organizations.map((org) => (
-                <SelectItem key={org} value={org}>
-                  <OrganizationAvatar name={org} imageUrl={libraries.find(l => l.organization === org)?.organizationImageUrl} />
-                  {org}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      }
+      filters={<>
+        <ListSearch
+          aria-label="Search libraries"
+          placeholder="Find a library…"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        <Select value={organization} onValueChange={setOrganization}>
+          <SelectTrigger
+            size="sm"
+            aria-label="Filter by owning organization"
+            className={cn("w-48", LIST_FILTER)}
+          >
+            {organization === "all" && <Building2 className="size-3.5" />}
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All organizations</SelectItem>
+            {organizations.map((org) => (
+              <SelectItem key={org} value={org}>
+                <OrganizationAvatar name={org} imageUrl={libraries.find(l => l.organization === org)?.organizationImageUrl} />
+                {org}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </>}
+    >
       {notice && (
         <p
           role="status"

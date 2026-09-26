@@ -27,6 +27,8 @@ import {
   CommandCenterList,
   CommandCenterPagination,
 } from "@/components/command-center";
+import { CommandCenterFileActions, CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
+import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { HistoryItem } from "./history-item";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
@@ -225,82 +227,81 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     });
   };
 
-  const content = (
-    <>
-      {/* Toolbar */}
-      <CommandCenterToolbar
+  const filters = {
+    sortOptions: SORT_OPTIONS,
+    currentSort: historySortBy,
+    onSortChange: setHistorySortBy,
+    searchFilter,
+    onSearchChange: setSearchFilter,
+    placeholder: th("searchPlaceholder"),
+  };
+
+  const list = (
+    <div className="p-4 md:p-6">
+      {!ready ? <ListLoading label={tc("loading")} /> : <CommandCenterList
+        items={paginatedHistory}
         viewMode={historyViewMode}
-        onViewModeChange={setHistoryViewMode}
-        sortOptions={SORT_OPTIONS}
-        currentSort={historySortBy}
-        onSortChange={setHistorySortBy}
-        searchFilter={searchFilter}
-        onSearchChange={setSearchFilter}
-        placeholder={th("searchPlaceholder")}
-        onDownloadJSON={pick ? undefined : handleDownloadJSON}
-        onDownloadCSV={pick ? undefined : handleDownloadCSV}
-        onUploadJSON={pick ? undefined : handleUploadJSON}
-        onUploadCSV={pick ? undefined : handleUploadCSV}
-        onClearAll={pick ? undefined : handleClearAll}
-        clearTooltip={th("clearAllHistory")}
-        totalCount={searchHistory.length}
-      />
-
-      {/* List */}
-      <div className="p-4 md:p-6">
-        {!ready ? <ListLoading label={tc("loading")} /> : <CommandCenterList
-          items={paginatedHistory}
-          viewMode={historyViewMode}
-          keyExtractor={(item) => item.id}
-          emptyIcon={Clock}
-          emptyTitle={th("noHistoryYet")}
-          emptyDescription={th("noHistoryDescription")}
-          emptyAction={pick ? undefined : (
-            <Button asChild size="sm" className="gap-2">
-              <Link href="/">
-                <Search className="h-4 w-4" />
-                {th("startSearch")}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          )}
-          hasFilter={!!searchFilter.trim()}
-          onClearFilter={() => setSearchFilter("")}
-          renderItem={(item, index) => (
-            <HistoryItem
-              item={item}
-              index={index}
-              viewMode={historyViewMode}
-              onSearchClick={handleSearchClick}
-              pickLabel={pick?.label}
-            />
-          )}
-        />}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <CommandCenterPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={sortedHistory.length}
-            itemsPerPage={COMMAND_CENTER_ITEMS_PER_PAGE}
-            itemLabel={tcc("searchesLabel")}
+        keyExtractor={(item) => item.id}
+        emptyIcon={Clock}
+        emptyTitle={th("noHistoryYet")}
+        emptyDescription={th("noHistoryDescription")}
+        emptyAction={pick ? undefined : (
+          <Button asChild size="sm" className="gap-2">
+            <Link href="/">
+              <Search className="h-4 w-4" />
+              {th("startSearch")}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        )}
+        hasFilter={!!searchFilter.trim()}
+        onClearFilter={() => setSearchFilter("")}
+        renderItem={(item, index) => (
+          <HistoryItem
+            item={item}
+            index={index}
+            viewMode={historyViewMode}
+            onSearchClick={handleSearchClick}
+            pickLabel={pick?.label}
           />
         )}
-      </div>
-    </>
+      />}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <CommandCenterPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={sortedHistory.length}
+          itemsPerPage={COMMAND_CENTER_ITEMS_PER_PAGE}
+          itemLabel={tcc("searchesLabel")}
+        />
+      )}
+    </div>
   );
 
-  // A chooser sits in its host's frame; the page gets the shared page frame.
-  return pick ? <CommandCenterContainer>{content}</CommandCenterContainer> : <HistoryPageFrame>{content}</HistoryPageFrame>;
+  // A chooser sits in its host's frame with its own toolbar; the page puts its controls in the page bar.
+  if (pick) return <CommandCenterContainer><CommandCenterToolbar viewMode={historyViewMode} onViewModeChange={setHistoryViewMode} {...filters} />{list}</CommandCenterContainer>;
+  return <HistoryPageFrame
+    tabs={<ViewModeSwitch value={historyViewMode} onChange={setHistoryViewMode} />}
+    filters={<CommandCenterFilters {...filters} />}
+    actions={<CommandCenterFileActions
+      onDownloadJSON={handleDownloadJSON}
+      onDownloadCSV={handleDownloadCSV}
+      onUploadJSON={handleUploadJSON}
+      onUploadCSV={handleUploadCSV}
+      onClearAll={handleClearAll}
+      clearTooltip={th("clearAllHistory")}
+      totalCount={searchHistory.length}
+    />}
+  >{list}</HistoryPageFrame>;
 }
 
 /** The history page's frame, shared with its loading state so nothing moves when it loads. */
-export function HistoryPageFrame({ children }: { children: React.ReactNode }) {
-  const th = useTranslations("historyPage");
+export function HistoryPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
   const tc = useTranslations("common");
-  return <LibraryPageShell icon={Clock} title={tc("searchHistory")} description={th("description")}>{children}</LibraryPageShell>;
+  return <LibraryPageShell icon={Clock} title={tc("searchHistory")} {...controls}>{children}</LibraryPageShell>;
 }
 
 export function HistoryLoading() {

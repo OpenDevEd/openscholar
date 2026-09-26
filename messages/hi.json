@@ -1419,7 +1419,6 @@
     "score": "स्कोर"
   },
   "bookmarksPage": {
-    "description": "आमतौर पर उपयोग की जाने वाली खोज शब्दों के लिए शॉर्टकट बनाएं",
     "searchPlaceholder": "बुकमार्क्स खोजें...",
     "clearAllBookmarks": "सभी बुकमार्क्स साफ़ करें",
     "clearAllBookmarksTitle": "सभी बुकमार्क्स साफ़ करें",
@@ -3127,7 +3126,6 @@
   },
   "topics": {
     "title": "विषय",
-    "description": "Evidence Libraries में शोध विषय।",
     "find": "विषय खोजें",
     "findPlaceholder": "कोई विषय खोजें",
     "domain": "शोध डोमेन",
@@ -3224,7 +3222,6 @@
     },
     "new": {
       "title": "New Evidence Library",
-      "description": "Give it a name and reserve a public address.",
       "backToLibraries": "Back to libraries",
       "noOrganizationTitle": "Choose an organisation",
       "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here.",

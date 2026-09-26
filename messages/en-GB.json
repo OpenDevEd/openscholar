@@ -1442,7 +1442,6 @@
     "score": "Score"
   },
   "bookmarksPage": {
-    "description": "Create shortcuts for commonly used search terms",
     "searchPlaceholder": "Search bookmarks...",
     "clearAllBookmarks": "Clear all bookmarks",
     "clearAllBookmarksTitle": "Clear All Bookmarks",
@@ -3152,7 +3151,6 @@
   },
   "topics": {
     "title": "Topics",
-    "description": "Research topics across Evidence Libraries.",
     "find": "Find topics",
     "findPlaceholder": "Find a topic",
     "domain": "Research domain",
@@ -3249,7 +3247,6 @@
     },
     "new": {
       "title": "New Evidence Library",
-      "description": "Give it a name and reserve a public address.",
       "backToLibraries": "Back to libraries",
       "noOrganizationTitle": "Choose an organisation",
       "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here.",

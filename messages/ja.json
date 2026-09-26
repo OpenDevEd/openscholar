@@ -1419,7 +1419,6 @@
     "score": "スコア"
   },
   "bookmarksPage": {
-    "description": "よく使う検索語のショートカットを作成",
     "searchPlaceholder": "ブックマークを検索...",
     "clearAllBookmarks": "すべてのブックマークをクリア",
     "clearAllBookmarksTitle": "すべてのブックマークをクリア",
@@ -3127,7 +3126,6 @@
   },
   "topics": {
     "title": "トピック",
-    "description": "Evidence Libraries 全体の研究トピック。",
     "find": "トピックを検索",
     "findPlaceholder": "トピックを探す",
     "domain": "研究ドメイン",
@@ -3224,7 +3222,6 @@
     },
     "new": {
       "title": "New Evidence Library",
-      "description": "Give it a name and reserve a public address.",
       "backToLibraries": "Back to libraries",
       "noOrganizationTitle": "Choose an organisation",
       "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here.",

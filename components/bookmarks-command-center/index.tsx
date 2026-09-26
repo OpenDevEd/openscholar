@@ -22,7 +22,8 @@ import type { BookmarkSortBy } from "@/lib/types";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
-import { CommandCenterToolbar } from "@/components/command-center/command-center-toolbar";
+import { CommandCenterFileActions, CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
+import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { CommandCenterList } from "@/components/command-center/command-center-list";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { BookmarksItem } from "./bookmarks-item";
@@ -238,23 +239,17 @@ export function BookmarksCommandCenter() {
   };
 
   return (
-    <BookmarksPageFrame>
-      {/* Save Current Search Banner */}
-      {suggestedQuery && <BookmarksSaveBanner />}
-
-      {/* Add Form */}
-      <BookmarksAddForm />
-
-      {/* Toolbar */}
-      <CommandCenterToolbar
-        viewMode={bookmarkViewMode}
-        onViewModeChange={setBookmarkViewMode}
+    <BookmarksPageFrame
+      tabs={<ViewModeSwitch value={bookmarkViewMode} onChange={setBookmarkViewMode} />}
+      filters={<CommandCenterFilters
         sortOptions={SORT_OPTIONS}
         currentSort={bookmarkSortBy}
         onSortChange={setBookmarkSortBy}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
         placeholder={tb("searchPlaceholder")}
+      />}
+      actions={<CommandCenterFileActions
         onDownloadJSON={handleDownloadJSON}
         onDownloadCSV={handleDownloadCSV}
         onUploadJSON={handleUploadJSON}
@@ -262,7 +257,14 @@ export function BookmarksCommandCenter() {
         onClearAll={handleClearAll}
         clearTooltip={tb("clearAllBookmarks")}
         totalCount={bookmarksArray.length}
-      />
+      />}
+    >
+      {/* Save Current Search Banner */}
+      {suggestedQuery && <BookmarksSaveBanner />}
+
+      {/* Add Form */}
+      <BookmarksAddForm />
+
 
       {/* List */}
       <div className="p-4 md:p-6">
@@ -305,10 +307,9 @@ export function BookmarksCommandCenter() {
 }
 
 /** The bookmarks page's frame, shared with its loading state so nothing moves when it loads. */
-export function BookmarksPageFrame({ children }: { children: React.ReactNode }) {
-  const tb = useTranslations("bookmarksPage");
+export function BookmarksPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
   const tc = useTranslations("common");
-  return <LibraryPageShell icon={BookOpen} title={tc("bookmarks")} description={tb("description")}>{children}</LibraryPageShell>;
+  return <LibraryPageShell icon={BookOpen} title={tc("bookmarks")} {...controls}>{children}</LibraryPageShell>;
 }
 
 export function BookmarksLoading() {

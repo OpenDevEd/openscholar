@@ -11,8 +11,11 @@ import { cn } from "@/lib/utils";
 export const LIST_TILE =
   "flex size-10 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-muted/30 text-primary";
 
-/** Toolbar filters sit quietly on the card instead of looking like form fields. */
-export const LIST_FILTER = "border-transparent bg-muted/40 shadow-none";
+/**
+ * Toolbar filters sit quietly on the card instead of looking like form fields.
+ * A select's value takes the free space, so a wide select still reads from the left.
+ */
+export const LIST_FILTER = "border-transparent bg-muted/40 shadow-none *:data-[slot=select-value]:flex-1";
 
 /**
  * The view switch at the top of a list card. A count shows only once it is
