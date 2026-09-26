@@ -39,7 +39,8 @@ export function ExtractionCitationSidebar({
       className="h-full relative overflow-hidden"
       style={{
         width,
-        transition: `width ${sidebarSpring.stiffness}ms ease-out`,
+        // Quick, so an opened answer shows at once.
+        transition: "width 180ms ease-out",
       }}
     >
       <motion.aside

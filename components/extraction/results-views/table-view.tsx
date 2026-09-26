@@ -133,7 +133,7 @@ export const TableView = memo(function TableView({
                     className="mt-0.5"
                   />
                   <div className="min-w-0 space-y-1.5">
-                    <p className="line-clamp-2 text-sm font-medium leading-snug" title={paper.title}>
+                    <p className="line-clamp-4 text-sm font-medium leading-snug" title={paper.title}>
                       <HighlightedText text={paper.title} query={searchQuery} />
                     </p>
                     <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />
@@ -153,11 +153,12 @@ export const TableView = memo(function TableView({
               {questions.map((q) => {
                 const result = paper.results.find((r) => r.questionKey === q.key);
                 return (
-                  <TableCell key={q.key} className="max-w-[320px] py-4 align-top whitespace-normal" onClick={(e) => e.stopPropagation()}>
+                  <TableCell key={q.key} className="relative isolate max-w-[320px] py-4 pl-4 pr-9 align-top whitespace-normal" onClick={(e) => e.stopPropagation()}>
                     <ResultCell
                       result={result}
                       type={q.type}
                       searchQuery={searchQuery}
+                      fill
                       selected={openAnswer === openAnswerKey({ paper, question: q, result })}
                       onOpen={() => onOpenAnswer({ paper, question: q, result })}
                     />
