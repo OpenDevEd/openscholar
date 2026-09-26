@@ -50,7 +50,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useState, useMemo, useCallback } from "react";
 import { useAppToast } from "@/lib/toast";
-import { ResultsColumnsMenu, ResultsFilters, ResultsViewSwitch, type ResultsSortBy } from "@/components/extraction/results-toolbar";
+import { ResultsColumnsMenu, ResultsFilterMenu, ResultsFilters, ResultsViewSwitch, type ResultsSortBy } from "@/components/extraction/results-toolbar";
 import { TableView, CardView, SplitView } from "@/components/extraction/results-views";
 import { SmartPagination } from "@/components/extraction/smart-pagination";
 import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
@@ -617,6 +617,13 @@ export default function JobDetailPage() {
                 />
               }
               actions={<>
+                <ResultsFilterMenu
+                  filters={filters}
+                  onFiltersChange={(f) => {
+                    setFilters(f);
+                    setCurrentPage(1);
+                  }}
+                />
                 {viewMode === "table" && <ResultsColumnsMenu showCredits={showCreditsColumn} onShowCreditsChange={setShowCreditsColumn} />}
                 <Tooltip>
                   <TooltipTrigger asChild>

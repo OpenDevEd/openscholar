@@ -51,7 +51,7 @@ export function ResultsViewSwitch({ value, onChange }: { value: ResultsViewMode;
   );
 }
 
-/** Search, confidence, status and sort, as siblings so the page bar or card toolbar can lay them out. */
+/** Search and sort, as siblings so the page bar or card toolbar can lay them out. */
 export function ResultsFilters({ filters, searchQueryResetKey = 0, onFiltersChange, sortBy, onSortChange }: {
   filters: FilterState;
   searchQueryResetKey?: number;
@@ -77,11 +77,10 @@ export function ResultsFilters({ filters, searchQueryResetKey = 0, onFiltersChan
         onChange={(searchQuery) => onFiltersChange((prev) => ({ ...prev, searchQuery }))}
         label={t("searchPapersPlaceholder")}
         placeholder={t("searchPlaceholder")}
-        className="w-48"
+        className="w-56"
       />
-      <ResultsFilterMenu filters={filters} onFiltersChange={onFiltersChange} />
       <Select value={sortBy} onValueChange={(value) => onSortChange(value as ResultsSortBy)}>
-        <SelectTrigger size="sm" aria-label={tl("sortBy")} className={cn("w-36", LIST_FILTER)}>
+        <SelectTrigger size="sm" aria-label={tl("sortBy")} className={cn("w-40", LIST_FILTER)}>
           <ArrowUpDown className="size-3.5" />
           <SelectValue />
         </SelectTrigger>
@@ -95,8 +94,8 @@ export function ResultsFilters({ filters, searchQueryResetKey = 0, onFiltersChan
   );
 }
 
-/** Confidence and status in one menu, so the bar keeps room for the title. */
-function ResultsFilterMenu({ filters, onFiltersChange }: {
+/** Confidence and status in one menu, an icon button beside the other bar actions. */
+export function ResultsFilterMenu({ filters, onFiltersChange }: {
   filters: FilterState;
   onFiltersChange: Dispatch<SetStateAction<FilterState>>;
 }) {
@@ -119,10 +118,16 @@ function ResultsFilterMenu({ filters, onFiltersChange }: {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className={cn("h-8 justify-start gap-1.5", LIST_FILTER, active ? "text-foreground" : "text-muted-foreground")}>
-          <ListFilter className="size-3.5" />
-          {tc("filters")}
-          {active ? <span className="ml-auto tabular-nums text-muted-foreground">{active}</span> : null}
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn("relative size-8 hover:text-foreground", active ? "text-foreground" : "text-muted-foreground")}
+          aria-label={active ? `${tc("filters")} (${active})` : tc("filters")}
+          title={tc("filters")}
+        >
+          <ListFilter className="size-4" />
+          {/* A dot says a filter is on without widening the button. */}
+          {active ? <span aria-hidden className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" /> : null}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 space-y-5">
