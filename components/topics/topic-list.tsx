@@ -41,6 +41,8 @@ export function TopicList() {
     <Select value={field} onValueChange={value => {void setField(value); void setSubfield("all");}}><SelectTrigger size="sm" aria-label={t("field")} className={cn("w-44", LIST_FILTER)}><SelectValue placeholder={t("allFields")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allFields")}</SelectItem>{fields.data?.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
     <Select value={subfield} disabled={!subfields.data?.length} onValueChange={value => void setSubfield(value)}><SelectTrigger size="sm" aria-label={t("subfield")} className={cn("w-44", LIST_FILTER)}><SelectValue placeholder={t("allSubfields")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allSubfields")}</SelectItem>{subfields.data?.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
   </>}>
+    {/* Appears when you filter, as the list changes anyway, so the bar never moves. */}
+    {(search || ancestor) && <div className="fade-enter flex justify-end border-b border-border/50 px-4 py-2"><Button variant="ghost" size="sm" className="text-muted-foreground" onClick={clear}>{t("clearFilters")}</Button></div>}
     {(results.error || domains.error || fields.error || subfields.error) && <div role="alert" className="flex items-center gap-3 p-6 text-sm">{t("loadFailed")}<Button variant="outline" onClick={() => {void results.mutate(); void domains.mutate(); void fields.mutate(); void subfields.mutate();}}>{t("tryAgain")}</Button></div>}
     {results.isLoading && <ListLoading label={t("loading")} />}
     {!!topics.length && <ul className="divide-y divide-border/50">{topics.map(topic => <li key={topic.id} className="fade-enter"><Link href={`/topics/${topic.id}`} className="group flex items-center gap-3 p-4 hover:bg-muted/15">
@@ -48,7 +50,7 @@ export function TopicList() {
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{topic.name}</p><p className="truncate text-xs text-muted-foreground">{topic.path.slice(0, -1).join(" / ")}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
     </Link></li>)}</ul>}
-    {!results.isLoading && !results.error && !topics.length && <ListEmpty icon={SearchX} action={(search || ancestor) && <Button variant="outline" size="sm" onClick={clear}>{t("clearFilters")}</Button>}>{t("noMatches")}</ListEmpty>}
+    {!results.isLoading && !results.error && !topics.length && <ListEmpty icon={SearchX}>{t("noMatches")}</ListEmpty>}
     {more && <div className="flex justify-center p-3"><Button variant="ghost" size="sm" disabled={results.isValidating} onClick={() => void results.setSize(results.size + 1)}>{t("showMore")}</Button></div>}
   </LibraryPageShell>;
 }

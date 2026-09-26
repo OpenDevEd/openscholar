@@ -8,9 +8,10 @@ export default async function Page({params}: {params: Promise<{profileId: string
   // The profile renders with the page. The viewer's token keeps their role,
   // and so the edit controls, right from the first frame.
   const token = (await (await auth()).getToken({template: "convex"})) ?? undefined;
-  const [preloadedRecord, preloadedReferences] = await Promise.all([
+  const [preloadedRecord, preloadedReferences, preloadedFeatures] = await Promise.all([
     preloadQuery(api.authors.profiles.get, {profileId}, {token}),
     preloadQuery(api.authors.publications.list, {profileId}, {token}),
+    preloadQuery(api.organizationFeatures.get, {}, {token}),
   ]);
-  return <PreloadedAuthorProfile profileId={profileId as Id<"authorProfiles">} preloadedRecord={preloadedRecord} preloadedReferences={preloadedReferences} />;
+  return <PreloadedAuthorProfile profileId={profileId as Id<"authorProfiles">} preloadedRecord={preloadedRecord} preloadedReferences={preloadedReferences} preloadedFeatures={preloadedFeatures} />;
 }

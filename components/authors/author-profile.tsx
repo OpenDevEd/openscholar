@@ -29,28 +29,31 @@ export function AuthorProfileView({profileId, configuration = false, invitation 
 }
 
 /** The public profile, drawn from queries the server already ran so it renders with the page. */
-export function PreloadedAuthorProfile({profileId, preloadedRecord, preloadedReferences}: {
+export function PreloadedAuthorProfile({profileId, preloadedRecord, preloadedReferences, preloadedFeatures}: {
   profileId: Id<"authorProfiles">;
   preloadedRecord: Preloaded<typeof api.authors.profiles.get>;
   preloadedReferences: Preloaded<typeof api.authors.publications.list>;
+  preloadedFeatures: Preloaded<typeof api.organizationFeatures.get>;
 }) {
   // Until the browser's sign-in reaches Convex, a live query would run signed
   // out and briefly drop the viewer's role, so the server's result stands in.
   const { isLoading: authLoading } = useConvexAuth();
   const record = useQuery(api.authors.profiles.get, authLoading ? "skip" : {profileId}) ?? preloadedQueryResult(preloadedRecord);
   const references = useQuery(api.authors.publications.list, authLoading ? "skip" : {profileId}) ?? preloadedQueryResult(preloadedReferences);
-  return <AuthorProfileBody profileId={profileId} record={record} references={references} />;
+  return <AuthorProfileBody profileId={profileId} record={record} references={references} initialFeatures={preloadedQueryResult(preloadedFeatures)} />;
 }
 
-function AuthorProfileBody({profileId, record, references, configuration = false, invitation = false}: {
+function AuthorProfileBody({profileId, record, references, initialFeatures, configuration = false, invitation = false}: {
   profileId: Id<"authorProfiles">;
   record: ProfileRecord | undefined;
   references: ProfileReferences | undefined;
+  /** The server's answer, so the back link to Authors is there from the first frame. */
+  initialFeatures?: FunctionReturnType<typeof api.organizationFeatures.get>;
   configuration?: boolean;
   invitation?: boolean;
 }) {
   const { isLoading: authLoading } = useConvexAuth();
-  const { data: features } = useOrganizationFeatures();
+  const features = useOrganizationFeatures().data ?? initialFeatures;
   const publications = useSWR(references ? ["author-publications", profileId, JSON.stringify(references)] : null, () => readAuthorPublications(profileId), {refreshInterval: data => data?.unavailableCount ? 15000 : 0});
   const save = useAction(api.authors.photos.save);
   const [search, setSearch] = useState("");

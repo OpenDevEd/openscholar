@@ -641,9 +641,9 @@ export default function AuthorPage({
                     <div className="flex items-center gap-5">
                       <AuthorAvatar photo={profile.photo} className="size-24 border border-border/50 sm:size-28" />
                       <div className="min-w-0">
-                        <h1 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+                        <p className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
                           {profile.name}
-                        </h1>
+                        </p>
                         {profile.affiliation && (
                           <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
                             <GraduationCap className="mt-0.5 size-4 shrink-0" />
@@ -733,6 +733,8 @@ export default function AuthorPage({
               </header>
           </>}
         >
+          {/* The bar's heading is the author's name; this names the list for screen readers. */}
+          <h2 className="sr-only">Publications</h2>
           {publicationTab === "selected" ? <div>
             <div className="overflow-hidden">
               {filtered.map(p => <PublicationListItem key={p.id} publication={p} />)}
