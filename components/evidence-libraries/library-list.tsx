@@ -124,12 +124,14 @@ export function LibraryList({ pending = false }: { pending?: boolean }) {
       title="Evidence libraries"
       description="Libraries you manage and contribute to."
       actions={owner.isReady && owner.organizations.length > 0 ?
-        <Button asChild className="fade-enter">
-          <Link href="/evidence-libraries/new">
-            <Plus />
-            New library
-          </Link>
-        </Button> : null
+        <span className="fade-enter inline-flex">
+          <Button asChild>
+            <Link href="/evidence-libraries/new">
+              <Plus />
+              New library
+            </Link>
+          </Button>
+        </span> : null
       }
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 p-4">

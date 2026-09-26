@@ -456,7 +456,10 @@
 
 /* Fades in list rows and counts that arrive after the page. Cheaper than
    Framer's AnimatePresence inside a virtualized list — the compositor
-   handles it, React never re-renders for the fade. */
+   handles it, React never re-renders for the fade. Put it on a wrapper, never
+   on an element that transitions opacity or transform (a Button has
+   transition-all): Firefox then runs those transitions too and the element
+   jumps back and forth as the fade ends. */
 .fade-enter {
   animation: fade-enter-in 140ms ease-out;
 }
