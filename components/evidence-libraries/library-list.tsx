@@ -183,192 +183,195 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
           {notice}
         </p>
       )}
-      {view === "invitations" && (
-        <p className="border-b border-border/50 px-4 py-3 text-xs text-muted-foreground">
-          Accept access to a library without joining its organization.
-        </p>
-      )}
-      {loading ? (
-        <ListLoading label="Loading libraries" />
-      ) : !visible.length ? (
-        <ListEmpty icon={search || organization !== "all" ? SearchX : view === "invitations" ? Mail : Layers}>
-            {search || organization !== "all"
-              ? "No libraries match these filters."
-              : view === "invitations"
-                ? "No pending invitations."
-                : "Your libraries will appear here when you receive access."}
-        </ListEmpty>
-      ) : (
-        <ul className="divide-y divide-border/50" data-library-list>
-          {visible.map((library) => {
-            const RoleIcon = roleIcons[library.role];
-            return (
-              <li
-                key={library.id}
-                data-library-row={library.id}
-                data-status={library.status}
-                className="fade-enter flex flex-wrap items-center gap-3 p-4 hover:bg-muted/15 sm:flex-nowrap"
-              >
-                <div className="relative mr-1 shrink-0">
-                  {library.faviconUrl ? (
-                    <LibraryImage
-                      src={library.faviconUrl}
-                      className={LIST_TILE}
-                      imageClassName="size-full object-cover"
-                      fallback={<LibraryTile />}
-                    />
-                  ) : (
-                    <LibraryTile />
-                  )}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={`Organization: ${library.organization}`}
-                        className="absolute -bottom-1 -right-1 rounded-md bg-background ring-2 ring-background outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
-                      >
-                        <OrganizationAvatar name={library.organization} imageUrl={library.organizationImageUrl} />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>{library.organization}</TooltipContent>
-                  </Tooltip>
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col gap-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {library.pending || library.draft ? (
-                      library.configuration ? <Link href={library.configuration} className="text-sm font-medium">
-                        {library.name}
-                      </Link> : <span className="text-sm font-medium">{library.name}</span>
-                    ) : library.configuration ? (
-                      <Link
-                        href={library.configuration}
-                        className="truncate text-sm font-medium hover:underline"
-                      >
-                        {library.name}
-                      </Link>
-                    ) : (
-                      <AdminAreaLink
-                        libraryId={library.id}
-                        className="truncate text-sm font-medium hover:underline"
-                      >
-                        {library.name}
-                      </AdminAreaLink>
-                    )}
-                    {!library.pending && (
-                      <LibraryStatusChip
-                        status={library.status ?? "active"}
+      {/* Keyed by tab, so switching fades the new list in instead of jumping. */}
+      <div key={view} className="fade-enter">
+        {view === "invitations" && (
+          <p className="border-b border-border/50 px-4 py-3 text-xs text-muted-foreground">
+            Accept access to a library without joining its organization.
+          </p>
+        )}
+        {loading ? (
+          <ListLoading label="Loading libraries" />
+        ) : !visible.length ? (
+          <ListEmpty icon={search || organization !== "all" ? SearchX : view === "invitations" ? Mail : Layers}>
+              {search || organization !== "all"
+                ? "No libraries match these filters."
+                : view === "invitations"
+                  ? "No pending invitations."
+                  : "Your libraries will appear here when you receive access."}
+          </ListEmpty>
+        ) : (
+          <ul className="divide-y divide-border/50" data-library-list>
+            {visible.map((library) => {
+              const RoleIcon = roleIcons[library.role];
+              return (
+                <li
+                  key={library.id}
+                  data-library-row={library.id}
+                  data-status={library.status}
+                  className="fade-enter flex flex-wrap items-center gap-3 p-4 hover:bg-muted/15 sm:flex-nowrap"
+                >
+                  <div className="relative mr-1 shrink-0">
+                    {library.faviconUrl ? (
+                      <LibraryImage
+                        src={library.faviconUrl}
+                        className={LIST_TILE}
+                        imageClassName="size-full object-cover"
+                        fallback={<LibraryTile />}
                       />
-                    )}
-                    <span
-                      className="ml-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground"
-                      title={
-                        library.role === "Owner"
-                          ? "Inherited from organization ownership"
-                          : "Assigned to this library"
-                      }
-                    >
-                      <RoleIcon className="size-3.5" />
-                      {library.role}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    {library.address && (
-                      <LibraryAddressLink
-                        address={`https://${library.address}`}
-                        className="max-w-full [&_button]:size-5"
-                      />
-                    )}
-                  </div>
-                </div>
-                <div className="ml-auto flex shrink-0 items-center gap-2">
-                  {library.pending ? (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setDeclining(library)}
-                      >
-                        Decline
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={async () => {
-                          if (!library.invitationId) return;
-                          try {
-                            await respond({ invitationId: library.invitationId, accept: true });
-                            setNotice(`Accepted ${library.name}.`);
-                            setView("libraries");
-                          } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to accept invitation"); }
-                        }}
-                      >
-                        <Check />
-                        Accept invitation
-                      </Button>
-                    </>
-                  ) : library.draft ? (
-                    library.role !== "Owner" || (library.status === "deleting" && !library.deletionFailed) ? (
-                      <span className="text-xs text-muted-foreground">{library.status === "deleting" ? "Deleting" : "Setup pending"}</span>
-                    ) : library.status === "deleting" ? (
-                      <Button size="sm" variant="outline" disabled={retrying === library.id} onClick={async () => {
-                        setRetrying(library.id);
-                        try { await restartTeardown({libraryId: library.id as Id<"evidenceLibraries">}); setNotice(`Deletion restarted for ${library.name}.`); }
-                        catch (error) { setNotice(error instanceof Error ? error.message : "Could not restart deletion"); }
-                        finally { setRetrying(null); }
-                      }}><RotateCcw />Retry deletion</Button>
                     ) : (
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={library.status === "draft" ? library.configuration! : `/evidence-libraries/${library.id}/setup`}>
-                          <Settings2 />{library.status === "draft" ? "Configure" : "View setup"}
+                      <LibraryTile />
+                    )}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={`Organization: ${library.organization}`}
+                          className="absolute -bottom-1 -right-1 rounded-md bg-background ring-2 ring-background outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
+                        >
+                          <OrganizationAvatar name={library.organization} imageUrl={library.organizationImageUrl} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{library.organization}</TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {library.pending || library.draft ? (
+                        library.configuration ? <Link href={library.configuration} className="text-sm font-medium">
+                          {library.name}
+                        </Link> : <span className="text-sm font-medium">{library.name}</span>
+                      ) : library.configuration ? (
+                        <Link
+                          href={library.configuration}
+                          className="truncate text-sm font-medium hover:underline"
+                        >
+                          {library.name}
                         </Link>
-                      </Button>
-                    )
-                  ) : (
-                    <ButtonGroup aria-label={`Actions for ${library.name}`}>
-                      {library.configuration && (
+                      ) : (
+                        <AdminAreaLink
+                          libraryId={library.id}
+                          className="truncate text-sm font-medium hover:underline"
+                        >
+                          {library.name}
+                        </AdminAreaLink>
+                      )}
+                      {!library.pending && (
+                        <LibraryStatusChip
+                          status={library.status ?? "active"}
+                        />
+                      )}
+                      <span
+                        className="ml-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+                        title={
+                          library.role === "Owner"
+                            ? "Inherited from organization ownership"
+                            : "Assigned to this library"
+                        }
+                      >
+                        <RoleIcon className="size-3.5" />
+                        {library.role}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      {library.address && (
+                        <LibraryAddressLink
+                          address={`https://${library.address}`}
+                          className="max-w-full [&_button]:size-5"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="ml-auto flex shrink-0 items-center gap-2">
+                    {library.pending ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setDeclining(library)}
+                        >
+                          Decline
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            if (!library.invitationId) return;
+                            try {
+                              await respond({ invitationId: library.invitationId, accept: true });
+                              setNotice(`Accepted ${library.name}.`);
+                              setView("libraries");
+                            } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to accept invitation"); }
+                          }}
+                        >
+                          <Check />
+                          Accept invitation
+                        </Button>
+                      </>
+                    ) : library.draft ? (
+                      library.role !== "Owner" || (library.status === "deleting" && !library.deletionFailed) ? (
+                        <span className="text-xs text-muted-foreground">{library.status === "deleting" ? "Deleting" : "Setup pending"}</span>
+                      ) : library.status === "deleting" ? (
+                        <Button size="sm" variant="outline" disabled={retrying === library.id} onClick={async () => {
+                          setRetrying(library.id);
+                          try { await restartTeardown({libraryId: library.id as Id<"evidenceLibraries">}); setNotice(`Deletion restarted for ${library.name}.`); }
+                          catch (error) { setNotice(error instanceof Error ? error.message : "Could not restart deletion"); }
+                          finally { setRetrying(null); }
+                        }}><RotateCcw />Retry deletion</Button>
+                      ) : (
                         <Button asChild size="sm" variant="outline">
-                          <Link href={library.configuration}>
-                            <Settings2 />
-                            Configure
+                          <Link href={library.status === "draft" ? library.configuration! : `/evidence-libraries/${library.id}/setup`}>
+                            <Settings2 />{library.status === "draft" ? "Configure" : "View setup"}
                           </Link>
                         </Button>
-                      )}
-                      <Button asChild size="sm" variant="outline">
-                        <AdminAreaLink libraryId={library.id}>
-                          <ExternalLink />
-                          Open admin
-                        </AdminAreaLink>
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="icon-sm"
-                            variant="outline"
-                            aria-label={`More actions for ${library.name}`}
-                          >
-                            <MoreHorizontal />
+                      )
+                    ) : (
+                      <ButtonGroup aria-label={`Actions for ${library.name}`}>
+                        {library.configuration && (
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={library.configuration}>
+                              <Settings2 />
+                              Configure
+                            </Link>
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <a
-                              href={`https://${library.address}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                        )}
+                        <Button asChild size="sm" variant="outline">
+                          <AdminAreaLink libraryId={library.id}>
+                            <ExternalLink />
+                            Open admin
+                          </AdminAreaLink>
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="icon-sm"
+                              variant="outline"
+                              aria-label={`More actions for ${library.name}`}
                             >
-                              <ExternalLink />
-                              View public library
-                            </a>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </ButtonGroup>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                              <MoreHorizontal />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <a
+                                href={`https://${library.address}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <ExternalLink />
+                                View public library
+                              </a>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </ButtonGroup>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
       <Dialog
         open={Boolean(declining)}
         onOpenChange={(open) => {
