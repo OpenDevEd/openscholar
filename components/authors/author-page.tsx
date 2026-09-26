@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthorSettingsNavigation } from "./author-settings-navigation";
 import { PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
-import { ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListLoading, ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { ConfigurationLayout } from "@/components/evidence-libraries/configuration/configuration-layout";
 
@@ -34,6 +34,8 @@ import {
   Users,
   Trash2,
   RefreshCw,
+  Search,
+  SearchX,
 } from "lucide-react";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
@@ -539,11 +541,11 @@ export default function AuthorPage({
                     </label>
                   ))}
                   {loadingPublications ? (
-                    <div className="flex min-h-24 items-center justify-center"><Spinner aria-label="Loading publications" className="size-5 text-primary" /></div>
-                  ) : (publicationStatus || !papers.length) && (
-                    <p className="py-3 text-sm text-muted-foreground">
-                      {publicationStatus ?? "No published works are linked to this author yet."}
-                    </p>
+                    <ListLoading compact label="Loading publications" />
+                  ) : publicationStatus ? (
+                    <p className="py-3 text-sm text-muted-foreground">{publicationStatus}</p>
+                  ) : !papers.length && (
+                    <ListEmpty compact icon={BookOpen}>No published works are linked to this author yet.</ListEmpty>
                   )}
                 </div>
               </SectionCard>
@@ -773,13 +775,13 @@ export default function AuthorPage({
                   <div className="overflow-hidden">
                     {filtered.map(p => <PublicationListItem key={p.id} publication={p} />)}
                     {loadingPublications ? (
-                      <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading publications" className="size-6 text-primary" /></div>
-                    ) : (publicationStatus || !filtered.length) && (
-                      <p className="p-6 text-center text-sm text-muted-foreground">
-                        {publicationStatus ?? (featured.length
-                          ? "No publications match your search."
-                          : "No publications selected yet.")}
-                      </p>
+                      <ListLoading label="Loading publications" />
+                    ) : publicationStatus ? (
+                      <p className="p-6 text-center text-sm text-muted-foreground">{publicationStatus}</p>
+                    ) : !filtered.length && (
+                      <ListEmpty icon={featured.length ? SearchX : BookOpen}>
+                        {featured.length ? "No publications match your search." : "No publications selected yet."}
+                      </ListEmpty>
                     )}
                   </div>
                 </div> : <div>
@@ -796,7 +798,7 @@ export default function AuthorPage({
                         onDownloadEssentialItem={downloadLibraryEssentialItem}
                       />
                       <div className="flex flex-col gap-4 p-4">
-                        {loadingWorks && !openAlexPapers.length && <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading OpenAlex publications" className="size-6 text-primary" /></div>}
+{!openAlexPapers.length && (loadingWorks ? <ListLoading label="Loading OpenAlex publications" /> : <ListEmpty icon={OpenAlexIcon}>No OpenAlex publications to display.</ListEmpty>)}
                         {openAlexPapers
                           .map((paper, index) => (
                             <PaperCard
@@ -830,9 +832,7 @@ export default function AuthorPage({
                       )}
                     </>
                   ) : (
-                    <div className="p-6 text-sm text-muted-foreground">
-                      No OpenAlex publications to display.
-                    </div>
+                    <ListEmpty icon={OpenAlexIcon}>No OpenAlex publications to display.</ListEmpty>
                   )}
                 </div>}
               </div>
@@ -936,11 +936,11 @@ export default function AuthorPage({
                         </button>
                       ))}
                       {loadingAuthors ? (
-                        <div className={matches.length ? "flex justify-center p-3" : "flex min-h-24 items-center justify-center"}><Spinner aria-label="Searching OpenAlex authors" className="size-5 text-primary" /></div>
+                        matches.length ? <div className="flex justify-center p-3"><Spinner aria-label="Searching OpenAlex authors" className="size-5 text-primary" /></div> : <ListLoading compact label="Searching OpenAlex authors" />
                       ) : !matches.length && (
-                        <p className="p-5 text-sm text-muted-foreground">
+                        <ListEmpty compact icon={matchSearch.trim() ? SearchX : Search}>
                           {matchSearch.trim() ? "No authors match your search." : "Search for an author by name, affiliation or OpenAlex ID."}
-                        </p>
+                        </ListEmpty>
                       )}
                     </div>
                   )}

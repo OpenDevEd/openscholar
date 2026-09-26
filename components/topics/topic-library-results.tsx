@@ -6,6 +6,8 @@ import {readTopicPublications} from "@/app/actions/topic-publications";
 import {PublicationListItem} from "@/components/evidence-libraries/publication-list-item";
 import {Button} from "@/components/ui/button";
 import {Spinner} from "@/components/ui/spinner";
+import {ListEmpty, ListLoading} from "@/components/evidence-libraries/list-controls";
+import {BookOpen, SearchX} from "lucide-react";
 
 /** The topic's library publications, loaded by the page so its tab can show the count. */
 export function useTopicLibraryResults(topicId: string) {
@@ -26,9 +28,9 @@ export function TopicLibraryResults({state: {query, results, papers, unavailable
   const more = results.data?.at(-1)?.nextCursor;
   return <div>
     {(results.error || unavailable || updating) && <div role="alert" className="flex flex-wrap items-center gap-3 px-6 py-4 text-sm"><span>{results.error ? t("publicationsFailed") : updating ? t("updating") : t("unavailable")}</span><Button variant="outline" size="sm" onClick={async () => {await results.setSize(1); await results.mutate();}}>{t("tryAgain")}</Button></div>}
-    {results.isLoading && <div className="flex min-h-40 items-center justify-center"><Spinner aria-label={t("loadingLibrary")} className="size-6 text-primary" /></div>}
+    {results.isLoading && <ListLoading label={t("loadingLibrary")} />}
     {papers.map(paper => <PublicationListItem key={paper.id} publication={paper} locations={paper.locations} />)}
-    {!results.isLoading && !results.error && !papers.length && <p className="p-6 text-sm text-muted-foreground">{more ? t("noPageMatches") : query ? t("noLibraryMatches") : t("noLibraryRecords")}</p>}
+    {!results.isLoading && !results.error && !papers.length && <ListEmpty icon={more || query ? SearchX : BookOpen}>{more ? t("noPageMatches") : query ? t("noLibraryMatches") : t("noLibraryRecords")}</ListEmpty>}
     {more && <div className="flex justify-center p-3"><Button variant="ghost" disabled={results.isValidating} onClick={() => void results.setSize(results.size + 1)}>{results.isValidating && <Spinner />}{t("showMore")}</Button></div>}
   </div>;
 }

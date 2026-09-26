@@ -19,7 +19,7 @@ import { useUIStore } from "@/lib/store";
 import type { TopicNode } from "@/lib/topics/catalog";
 import { topicHref } from "@/lib/topics/links";
 import { TopicLibraryResults, useTopicLibraryResults } from "./topic-library-results";
-import { ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty, ListLoading, ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { buildShareableUrl } from "@/lib/search-params";
 
 export function TopicPage({ topic, path, related, detail: initialDetail }: { topic: TopicNode; path: TopicNode[]; related: TopicNode[]; detail: Awaited<ReturnType<typeof readTopic>> | null }) {
@@ -72,11 +72,11 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
     {tab === "libraries" ? <TopicLibraryResults state={library} /> : <div>
         <FocusMode isOpen={isFocusModeOpen} onClose={() => useUIStore.getState().setIsFocusModeOpen(false)} papers={papers} onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />
         {works.error && <div role="alert" className="flex items-center gap-3 p-6 text-sm">{t("publicationsFailed")}<Button variant="outline" size="sm" onClick={() => void works.mutate()}>{t("tryAgain")}</Button></div>}
-        {works.isLoading && <div className="flex min-h-48 items-center justify-center"><Spinner aria-label={t("loadingPublications")} className="size-6 text-primary" /></div>}
+        {works.isLoading && <ListLoading label={t("loadingPublications")} />}
         {papers.length > 0 && <div className="space-y-4 p-4 sm:p-6">
           {papers.map((paper, index) => <PaperCard key={paper.id} result={paper} resultIndex={index} viewMode="list-simple" onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />)}
         </div>}
-        {!works.isLoading && !works.error && !papers.length && <p className="p-6 text-sm text-muted-foreground">{t("noOpenAlex")}</p>}
+        {!works.isLoading && !works.error && !papers.length && <ListEmpty icon={OpenAlexIcon}>{t("noOpenAlex")}</ListEmpty>}
         {works.data?.at(-1)?.meta.next_cursor && <div className="flex items-center justify-between gap-3 border-t border-border/50 px-6 py-3">
           <span className="text-sm text-muted-foreground">{t("progress", { loaded: papers.length, total })}</span>
           <Button variant="ghost" size="sm" disabled={works.isValidating} onClick={() => void works.setSize(works.size + 1)}>{works.isValidating && <Spinner />}{t("showMore")}</Button>

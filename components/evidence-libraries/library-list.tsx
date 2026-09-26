@@ -22,6 +22,7 @@ import {
   MoreHorizontal,
   ShieldCheck,
   RotateCcw,
+  SearchX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,11 +56,9 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "./library-page-shell";
-import { LIST_FILTER, LIST_TILE, ListSearch, ListViewTabs } from "./list-controls";
-import { Spinner } from "@/components/ui/spinner";
+import { LIST_FILTER, LIST_TILE, ListEmpty, ListLoading, ListSearch, ListViewTabs } from "./list-controls";
 import { LibraryStatusChip } from "./library-status-chip";
 import { LibraryImage } from "./library-image";
-import { EmptyList } from "./configuration/fields";
 
 type Role = "Owner" | "Editor" | "Creator";
 type Library = {
@@ -189,18 +188,15 @@ export function LibraryList({ pending = false }: { pending?: boolean }) {
         </p>
       )}
       {loading ? (
-        <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading libraries" className="size-6 text-primary" /></div>
+        <ListLoading label="Loading libraries" />
       ) : !visible.length ? (
-        // Same height as the loading state, so the card does not jump between them.
-        <div className="fade-enter flex min-h-40 items-center p-6">
-          <div className="w-full"><EmptyList>
+        <ListEmpty icon={search || organization !== "all" ? SearchX : view === "invitations" ? Mail : Layers}>
             {search || organization !== "all"
               ? "No libraries match these filters."
               : view === "invitations"
                 ? "No pending invitations."
                 : "Your libraries will appear here when you receive access."}
-          </EmptyList></div>
-        </div>
+        </ListEmpty>
       ) : (
         <ul className="divide-y divide-border/50" data-library-list>
           {visible.map((library) => {

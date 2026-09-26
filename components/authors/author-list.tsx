@@ -4,14 +4,13 @@ import { useMutation, usePaginatedQuery } from "convex/react";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Users, Plus, ArrowUpRight } from "lucide-react";
+import { Users, Plus, ArrowUpRight, SearchX } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
-import { ListSearch } from "@/components/evidence-libraries/list-controls";
-import { EmptyList } from "@/components/evidence-libraries/configuration/fields";
+import { ListEmpty, ListLoading, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { AuthorAvatar } from "./author-avatar";
 import { AuthorInvitations } from "./author-invitations";
 import { Field, FieldError } from "@/components/evidence-libraries/configuration/section-card";
@@ -42,10 +41,9 @@ export function AuthorList({pending = false}: {pending?: boolean}) {
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{profile.name}</p><p className="truncate text-xs text-muted-foreground">{profile.headline || profile.affiliation}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
     </Link></li>)}</ul>}
-    {/* Loading and empty share one height so the card does not jump between them. */}
-    {!results.length && <div className="flex min-h-40 items-center justify-center p-6">{pending || status === "LoadingFirstPage"
-      ? <Spinner aria-label="Loading authors" className="size-6 text-primary" />
-      : <div className="fade-enter w-full"><EmptyList>No authors found.</EmptyList></div>}</div>}
+    {!results.length && (pending || status === "LoadingFirstPage"
+      ? <ListLoading label="Loading authors" />
+      : <ListEmpty icon={search ? SearchX : Users}>{search ? "No authors match your search." : "No authors yet."}</ListEmpty>)}
     {(status === "CanLoadMore" || status === "LoadingMore") && <div className="flex justify-center border-t border-border/50 p-3"><Button variant="ghost" size="sm" disabled={status === "LoadingMore"} onClick={() => loadMore(20)}>{status === "LoadingMore" && <Spinner />}Show more</Button></div>}
     <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>Create author profile</DialogTitle></DialogHeader><form className="space-y-4" onSubmit={async event => {
       event.preventDefault(); if (creating) return; setCreating(true); setError("");

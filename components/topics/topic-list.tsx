@@ -4,14 +4,13 @@ import {useTranslations} from "next-intl";
 import {parseAsString, useQueryState} from "nuqs";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
-import {ArrowUpRight, Network} from "lucide-react";
+import {ArrowUpRight, Network, SearchX} from "lucide-react";
 import {useConvex} from "convex/react";
 import {api} from "@/convex/_generated/api";
 import {LibraryPageShell} from "@/components/evidence-libraries/library-page-shell";
-import {LIST_FILTER, LIST_TILE, ListSearch} from "@/components/evidence-libraries/list-controls";
+import {LIST_FILTER, LIST_TILE, ListEmpty, ListLoading, ListSearch} from "@/components/evidence-libraries/list-controls";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/button";
-import {Spinner} from "@/components/ui/spinner";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 export function TopicList() {
   const t = useTranslations("topics");
@@ -47,13 +46,13 @@ export function TopicList() {
       </div>
     </div>
     {(results.error || domains.error || fields.error || subfields.error) && <div role="alert" className="flex items-center gap-3 p-6 text-sm">{t("loadFailed")}<Button variant="outline" onClick={() => {void results.mutate(); void domains.mutate(); void fields.mutate(); void subfields.mutate();}}>{t("tryAgain")}</Button></div>}
-    {results.isLoading && <div className="flex min-h-40 items-center justify-center"><Spinner aria-label={t("loading")} className="size-6 text-primary" /></div>}
+    {results.isLoading && <ListLoading label={t("loading")} />}
     {!!topics.length && <ul className="divide-y divide-border/50">{topics.map(topic => <li key={topic.id} className="fade-enter"><Link href={`/topics/${topic.id}`} className="group flex items-center gap-3 p-4 hover:bg-muted/15">
       <div className={cn(LIST_TILE, "mr-1 shrink-0")}><Network aria-hidden className="size-5" /></div>
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{topic.name}</p><p className="truncate text-xs text-muted-foreground">{topic.path.slice(0, -1).join(" / ")}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
     </Link></li>)}</ul>}
-    {!results.isLoading && !results.error && !topics.length && <p className="p-6 text-sm text-muted-foreground">{t("noMatches")}</p>}
+    {!results.isLoading && !results.error && !topics.length && <ListEmpty icon={SearchX}>{t("noMatches")}</ListEmpty>}
     {more && <div className="flex justify-center p-3"><Button variant="ghost" size="sm" disabled={results.isValidating} onClick={() => void results.setSize(results.size + 1)}>{t("showMore")}</Button></div>}
   </LibraryPageShell>;
 }
