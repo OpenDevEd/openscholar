@@ -18,6 +18,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -242,13 +243,14 @@ export function ComposerModelPicker({
                             {label}
                           </span>
                           {ctx ? (
-                            <span
-                              className="shrink-0 rounded border border-border/60 bg-background/60 px-1 py-0.5 font-mono text-[10px] leading-none text-muted-foreground"
-                              aria-label={`${ctx} tokens context`}
-                              title={`${m.contextLength?.toLocaleString()} token context`}
-                            >
-                              {ctx}
-                            </span>
+                            <TooltipHint label={`${m.contextLength?.toLocaleString()} token context`}>
+                              <span
+                                className="shrink-0 rounded border border-border/60 bg-background/60 px-1 py-0.5 font-mono text-[10px] leading-none text-muted-foreground"
+                                aria-label={`${ctx} tokens context`}
+                              >
+                                {ctx}
+                              </span>
+                            </TooltipHint>
                           ) : null}
                           <CheckIcon
                             className={cn(

@@ -247,7 +247,7 @@ export const InlineCitationCarouselNext = ({
   );
 };
 
-export type InlineCitationSourceProps = ComponentProps<"div"> & {
+export type InlineCitationSourceProps = Omit<ComponentProps<"div">, "title"> & {
   title?: string;
   url?: string;
   description?: string;
