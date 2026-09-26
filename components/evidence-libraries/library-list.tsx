@@ -123,10 +123,8 @@ export function LibraryList({ pending = false }: { pending?: boolean }) {
     <LibraryPageShell
       title="Evidence libraries"
       description="Libraries you manage and contribute to."
-      // Shown from the first frame; removed only once it is known the user
-      // belongs to no organization, since creating a library needs one.
-      actions={!owner.isReady || owner.organizations.length > 0 ?
-        <Button asChild>
+      actions={owner.isReady && owner.organizations.length > 0 ?
+        <Button asChild className="fade-enter">
           <Link href="/evidence-libraries/new">
             <Plus />
             New library
