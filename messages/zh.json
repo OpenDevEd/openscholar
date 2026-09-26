@@ -1489,9 +1489,7 @@
     "searchesLabel": "次搜索",
     "bookmarksLabel": "个书签",
     "searchSingular": "次搜索",
-    "searchPlural": "次搜索",
-    "jobSingular": "个任务",
-    "jobPlural": "个任务"
+    "searchPlural": "次搜索"
   },
   "admin": {
     "cleanupTitle": "管理员：清理重复订阅",

@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { useTranslations } from "next-intl";
 import { Trash2, Download, Upload, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -157,26 +156,20 @@ export function CommandCenterFileActions({
 }
 
 /**
- * A command center's toolbar as one row inside its card, for command centers
- * without a page bar: the history chooser and extraction jobs.
+ * A command center's toolbar as one row inside its card, for the history
+ * chooser, which sits in a dialog without a page bar.
  */
 export function CommandCenterToolbar<TSort extends string>({
   viewMode,
   onViewModeChange,
-  extraActions,
   ...props
 }: CommandCenterFiltersProps<TSort> & CommandCenterFileActionsProps & {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
-  /** Rendered after the view switch. */
-  extraActions?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 p-4">
-      <div className="flex items-center gap-2">
-        <ViewModeSwitch value={viewMode} onChange={onViewModeChange} />
-        {extraActions}
-      </div>
+      <ViewModeSwitch value={viewMode} onChange={onViewModeChange} />
       <div className="flex flex-wrap items-center gap-2">
         <CommandCenterFilters {...props} />
         <CommandCenterFileActions {...props} />

@@ -1489,9 +1489,7 @@
     "searchesLabel": "検索",
     "bookmarksLabel": "ブックマーク",
     "searchSingular": "検索",
-    "searchPlural": "検索",
-    "jobSingular": "ジョブ",
-    "jobPlural": "ジョブ"
+    "searchPlural": "検索"
   },
   "admin": {
     "cleanupTitle": "管理：重複サブスクリプションのクリーンアップ",

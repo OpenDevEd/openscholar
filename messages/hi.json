@@ -1489,9 +1489,7 @@
     "searchesLabel": "खोजें",
     "bookmarksLabel": "बुकमार्क्स",
     "searchSingular": "खोज",
-    "searchPlural": "खोजें",
-    "jobSingular": "जॉब",
-    "jobPlural": "जॉब्स"
+    "searchPlural": "खोजें"
   },
   "admin": {
     "cleanupTitle": "व्यवस्थापक: डुप्लिकेट सदस्यताएं साफ़ करें",

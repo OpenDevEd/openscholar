@@ -1515,9 +1515,7 @@
     "searchesLabel": "searches",
     "bookmarksLabel": "bookmarks",
     "searchSingular": "search",
-    "searchPlural": "searches",
-    "jobSingular": "job",
-    "jobPlural": "jobs"
+    "searchPlural": "searches"
   },
   "admin": {
     "cleanupTitle": "Admin: Cleanup Duplicate Subscriptions",

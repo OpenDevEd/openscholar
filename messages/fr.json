@@ -1489,9 +1489,7 @@
     "searchesLabel": "recherches",
     "bookmarksLabel": "favoris",
     "searchSingular": "recherche",
-    "searchPlural": "recherches",
-    "jobSingular": "tâche",
-    "jobPlural": "tâches"
+    "searchPlural": "recherches"
   },
   "admin": {
     "cleanupTitle": "Admin : Nettoyer les abonnements en double",
