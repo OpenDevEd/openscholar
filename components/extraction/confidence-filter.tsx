@@ -1,15 +1,8 @@
 "use client";
 
-import { Gauge } from "lucide-react";
-import { LIST_FILTER } from "@/components/evidence-libraries/list-controls";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
@@ -18,7 +11,8 @@ interface ConfidenceFilterProps {
   onChange: (range: [number, number]) => void;
 }
 
-export function ConfidenceFilter({ range, onChange }: ConfidenceFilterProps) {
+/** The confidence range and its presets, shown in the results filter menu. */
+export function ConfidenceFilterFields({ range, onChange }: ConfidenceFilterProps) {
   const t = useTranslations('filters');
   const tc = useTranslations('common');
   const presets = [
@@ -27,55 +21,44 @@ export function ConfidenceFilter({ range, onChange }: ConfidenceFilterProps) {
     { label: tc('medium'), value: [50, 80] as [number, number] },
     { label: tc('low'), value: [0, 50] as [number, number] },
   ];
-  const isFiltered = range[0] !== 0 || range[1] !== 100;
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className={cn("h-8 gap-1.5 text-xs", LIST_FILTER, isFiltered ? "text-foreground" : "text-muted-foreground")}>
-          <Gauge className="size-3.5" />
-          {t('confidenceLabel', { min: range[0], max: range[1] })}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80">
-        <div className="space-y-4">
-          <div>
-            <Label>{t('confidenceRange')}</Label>
-            <Slider
-              value={range}
-              onValueChange={(value) => onChange(value as [number, number])}
-              min={0}
-              max={100}
-              step={5}
-              className="mt-2"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground mt-1">
-              <span>{range[0]}%</span>
-              <span>{range[1]}%</span>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <Label>{t('quickFilters')}</Label>
-            <div className="flex gap-2">
-              {presets.map(preset => (
-                <Button
-                  key={preset.label}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onChange(preset.value)}
-                  className={cn(
-                    range[0] === preset.value[0] && range[1] === preset.value[1] &&
-                    "bg-primary/10 border-primary"
-                  )}
-                >
-                  {preset.label}
-                </Button>
-              ))}
-            </div>
-          </div>
+    <div className="space-y-4">
+      <div>
+        <Label>{t('confidenceRange')}</Label>
+        <Slider
+          value={range}
+          onValueChange={(value) => onChange(value as [number, number])}
+          min={0}
+          max={100}
+          step={5}
+          className="mt-2"
+        />
+        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+          <span>{range[0]}%</span>
+          <span>{range[1]}%</span>
         </div>
-      </PopoverContent>
-    </Popover>
+      </div>
+
+      <div className="space-y-1">
+        <Label>{t('quickFilters')}</Label>
+        <div className="flex gap-2">
+          {presets.map(preset => (
+            <Button
+              key={preset.label}
+              variant="outline"
+              size="sm"
+              onClick={() => onChange(preset.value)}
+              className={cn(
+                range[0] === preset.value[0] && range[1] === preset.value[1] &&
+                "bg-primary/10 border-primary"
+              )}
+            >
+              {preset.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

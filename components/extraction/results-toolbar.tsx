@@ -1,15 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, Dispatch, SetStateAction } from "react";
-import {
-  Table2,
-  LayoutGrid,
-  PanelLeft,
-  ArrowUpDown,
-  Download,
-  Columns3,
-  Check,
-} from "lucide-react";
+import { useEffect, type Dispatch, type SetStateAction } from "react";
+import { Table2, LayoutGrid, PanelLeft, ArrowUpDown, Columns3, Check, ListFilter } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,10 +14,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LIST_FILTER } from "@/components/evidence-libraries/list-controls";
 import { IconSwitch } from "@/components/view-mode-toggle";
 import { SearchInput } from "./search-input";
-import { ConfidenceFilter } from "./confidence-filter";
-import { StatusFilter } from "./status-filter";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { ConfidenceFilterFields } from "./confidence-filter";
+import { StatusFilterFields } from "./status-filter";
 import { cn } from "@/lib/utils";
-import type { FilterState, Question } from "@/lib/extraction/filtering";
+import type { FilterState } from "@/lib/extraction/filtering";
+
+// The job page's results controls, in the page bar's slots like history and
+// bookmarks: the view switch as tabs, search, filters and sort as filters, and
+// the column picker beside the other actions.
 
 export type ResultsSortBy =
   | "default"
@@ -34,142 +32,147 @@ export type ResultsSortBy =
   | "confidence-high"
   | "confidence-low";
 
-interface ResultsToolbarProps {
+export type ResultsViewMode = "table" | "cards" | "split";
+
+export function ResultsViewSwitch({ value, onChange }: { value: ResultsViewMode; onChange: (mode: ResultsViewMode) => void }) {
+  const tc = useTranslations("common");
+  const ta = useTranslations("accessibility");
+  return (
+    <IconSwitch
+      label={ta("viewOptions")}
+      value={value}
+      onChange={onChange}
+      options={[
+        { value: "table", icon: Table2, label: tc("table") },
+        { value: "cards", icon: LayoutGrid, label: tc("cards") },
+        { value: "split", icon: PanelLeft, label: tc("split") },
+      ]}
+    />
+  );
+}
+
+/** Search, confidence, status and sort, as siblings so the page bar or card toolbar can lay them out. */
+export function ResultsFilters({ filters, searchQueryResetKey = 0, onFiltersChange, sortBy, onSortChange }: {
   filters: FilterState;
   searchQueryResetKey?: number;
   onFiltersChange: Dispatch<SetStateAction<FilterState>>;
-  viewMode: "table" | "cards" | "split";
-  onViewModeChange: (mode: "table" | "cards" | "split") => void;
-  totalCount: number;
-  filteredCount: number;
-  questions: Question[];
   sortBy: ResultsSortBy;
   onSortChange: (sort: ResultsSortBy) => void;
-  onExportAll: () => void;
-  /** Plan-04: Credits column visibility toggle (table view only). */
-  showCredits: boolean;
-  onShowCreditsChange: (next: boolean) => void;
-}
-
-export function ResultsToolbar({
-  filters,
-  searchQueryResetKey = 0,
-  onFiltersChange,
-  viewMode,
-  onViewModeChange,
-  totalCount,
-  filteredCount,
-  questions,
-  sortBy,
-  onSortChange,
-  onExportAll,
-  showCredits,
-  onShowCreditsChange,
-}: ResultsToolbarProps) {
+}) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
-  const ta = useTranslations("accessibility");
   const tl = useTranslations("libraryPage");
-
-  const RESULTS_VIEW_OPTIONS = useMemo(() => [
-    { mode: "table" as const, icon: Table2, label: tc("table") },
-    { mode: "cards" as const, icon: LayoutGrid, label: tc("cards") },
-    { mode: "split" as const, icon: PanelLeft, label: tc("split") },
-  ], [tc]);
-
-  const SORT_OPTIONS: { value: ResultsSortBy; label: string }[] = useMemo(() => [
+  const sortOptions: { value: ResultsSortBy; label: string }[] = [
     { value: "default", label: tc("defaultSort") },
     { value: "title-asc", label: tc("aToZ") },
     { value: "title-desc", label: tc("zToA") },
     { value: "confidence-high", label: t("confidenceHighLow") },
     { value: "confidence-low", label: t("confidenceLowHigh") },
-  ], [t, tc]);
-
-  const handleSearchChange = useCallback(
-    (q: string) => {
-      onFiltersChange((prev) => ({ ...prev, searchQuery: q }));
-    },
-    [onFiltersChange]
-  );
-
-  const handleConfidenceChange = useCallback(
-    (r: [number, number]) => {
-      onFiltersChange((prev) => ({ ...prev, confidenceRange: r }));
-    },
-    [onFiltersChange]
-  );
-
-  const handleStatusChange = useCallback(
-    (s: Set<string>) => {
-      onFiltersChange((prev) => ({ ...prev, statusFilters: s }));
-    },
-    [onFiltersChange]
-  );
-
+  ];
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-border/50 px-4 py-3 md:px-6">
-      <IconSwitch
-        label={ta("viewOptions")}
-        value={viewMode}
-        onChange={onViewModeChange}
-        options={RESULTS_VIEW_OPTIONS.map(({ mode, icon, label }) => ({ value: mode, icon, label }))}
-      />
+    <>
       <SearchInput
         key={searchQueryResetKey}
         value={filters.searchQuery}
-        onChange={handleSearchChange}
-        placeholder={t("searchPapersPlaceholder")}
-        className="order-first w-full sm:order-none sm:w-auto sm:min-w-48 sm:flex-1"
+        onChange={(searchQuery) => onFiltersChange((prev) => ({ ...prev, searchQuery }))}
+        label={t("searchPapersPlaceholder")}
+        placeholder={t("searchPlaceholder")}
+        className="w-48"
       />
-      <ConfidenceFilter range={filters.confidenceRange} onChange={handleConfidenceChange} />
-      <StatusFilter selected={filters.statusFilters} onChange={handleStatusChange} />
-      {filteredCount < totalCount ? (
-        <span className="text-xs tabular-nums text-muted-foreground">
-          {t("filteredOfTotal", { filtered: filteredCount, total: totalCount })}
-        </span>
-      ) : null}
-      <div className="flex items-center gap-2 sm:ml-auto">
-        <Select value={sortBy} onValueChange={(value) => onSortChange(value as ResultsSortBy)}>
-          <SelectTrigger size="sm" aria-label={tl("sortBy")} className={cn("w-40", LIST_FILTER)}>
-            <ArrowUpDown className="size-3.5" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <ResultsFilterMenu filters={filters} onFiltersChange={onFiltersChange} />
+      <Select value={sortBy} onValueChange={(value) => onSortChange(value as ResultsSortBy)}>
+        <SelectTrigger size="sm" aria-label={tl("sortBy")} className={cn("w-36", LIST_FILTER)}>
+          <ArrowUpDown className="size-3.5" />
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {sortOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </>
+  );
+}
 
-        {viewMode === "table" && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" aria-label={tc("columns")} title={tc("columns")}>
-                <Columns3 className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  onShowCreditsChange(!showCredits);
-                }}
-                data-column-toggle="credits"
-                data-column-visible={showCredits ? "true" : "false"}
-                className="gap-2"
-              >
-                <Check className={cn("size-3.5", showCredits ? "opacity-100" : "opacity-0")} />
-                {tc("credits")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+/** Confidence and status in one menu, so the bar keeps room for the title. */
+function ResultsFilterMenu({ filters, onFiltersChange }: {
+  filters: FilterState;
+  onFiltersChange: Dispatch<SetStateAction<FilterState>>;
+}) {
+  const tc = useTranslations("common");
+  const pdfEnabled = useFeatureFlag("extraction.pdf");
+  const { confidenceRange, statusFilters } = filters;
+  const rangeActive = confidenceRange[0] !== 0 || confidenceRange[1] !== 100;
+  const active = statusFilters.size + (rangeActive ? 1 : 0);
 
-        <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground" onClick={onExportAll} disabled={filteredCount === 0}>
-          <Download className="size-3.5" />
-          {tc("export")}
+  // A saved "has PDF" filter can outlive the PDF feature; drop it so it never hides results.
+  useEffect(() => {
+    if (pdfEnabled || !statusFilters.has("has-pdf")) return;
+    onFiltersChange((prev) => {
+      const next = new Set(prev.statusFilters);
+      next.delete("has-pdf");
+      return { ...prev, statusFilters: next };
+    });
+  }, [onFiltersChange, pdfEnabled, statusFilters]);
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" className={cn("h-8 justify-start gap-1.5", LIST_FILTER, active ? "text-foreground" : "text-muted-foreground")}>
+          <ListFilter className="size-3.5" />
+          {tc("filters")}
+          {active ? <span className="ml-auto tabular-nums text-muted-foreground">{active}</span> : null}
         </Button>
-      </div>
-    </div>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 space-y-5">
+        <ConfidenceFilterFields
+          range={confidenceRange}
+          onChange={(range) => onFiltersChange((prev) => ({ ...prev, confidenceRange: range }))}
+        />
+        <StatusFilterFields
+          selected={statusFilters}
+          onChange={(selected) => onFiltersChange((prev) => ({ ...prev, statusFilters: selected }))}
+        />
+        {active ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full"
+            onClick={() => onFiltersChange((prev) => ({ ...prev, confidenceRange: [0, 100], statusFilters: new Set() }))}
+          >
+            {tc("clearAll")}
+          </Button>
+        ) : null}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Which optional columns the table shows. */
+export function ResultsColumnsMenu({ showCredits, onShowCreditsChange }: { showCredits: boolean; onShowCreditsChange: (next: boolean) => void }) {
+  const tc = useTranslations("common");
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" aria-label={tc("columns")} title={tc("columns")}>
+          <Columns3 className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            onShowCreditsChange(!showCredits);
+          }}
+          data-column-toggle="credits"
+          data-column-visible={showCredits ? "true" : "false"}
+          className="gap-2"
+        >
+          <Check className={cn("size-3.5", showCredits ? "opacity-100" : "opacity-0")} />
+          {tc("credits")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

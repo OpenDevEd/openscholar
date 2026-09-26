@@ -73,49 +73,48 @@ export function MixedSuccessSummary({ jobId }: MixedSuccessSummaryProps) {
       data-total-questions={summary.totalQuestions}
       data-failed-total={summary.total}
       data-retryable-total={retryableTotal}
-      className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3"
+      className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm"
     >
-      <div className="flex items-start gap-3">
-        <AlertTriangle
-          className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
-          aria-hidden="true"
-        />
-        <div className="space-y-2 text-sm">
-          <h3 id={headingId} className="font-semibold text-foreground">
-            {t("title")}
-          </h3>
-          <p className="text-muted-foreground">
-            {t("answeredOverTotal", {
-              answered: summary.answeredTotal,
-              total: summary.totalQuestions,
-            })}
-          </p>
-          <p>
-            <span className="font-medium text-foreground">
-              {t("failedTotal", { count: summary.total })}
-            </span>{" "}
-            <span className="text-muted-foreground">
-              {summary.byCode
-                .map(
-                  (entry) =>
-                    `${entry.count} ${titleForCode(entry.code).toLowerCase()}`,
-                )
-                .join(", ")}
-            </span>
-          </p>
-          <ul className="sr-only">
-            {summary.byCode.map((entry) => (
-              <li key={entry.code} data-failure-code={entry.code}>
-                {entry.count} {titleForCode(entry.code)}
-              </li>
-            ))}
-          </ul>
-          {retryableTotal > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              {t("retryableHint", { count: retryableTotal })}
-            </p>
-          ) : null}
-        </div>
+      <AlertTriangle
+        className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
+        aria-hidden="true"
+      />
+      {/* One line: what happened, then what failed. */}
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <h3 id={headingId} className="font-medium text-foreground">
+          {t("title")}
+        </h3>
+        <span className="text-muted-foreground">
+          {t("answeredOverTotal", {
+            answered: summary.answeredTotal,
+            total: summary.totalQuestions,
+          })}
+        </span>
+        <span>
+          <span className="font-medium text-foreground">
+            {t("failedTotal", { count: summary.total })}
+          </span>{" "}
+          <span className="text-muted-foreground">
+            {summary.byCode
+              .map(
+                (entry) =>
+                  `${entry.count} ${titleForCode(entry.code).toLowerCase()}`,
+              )
+              .join(", ")}
+          </span>
+        </span>
+        <ul className="sr-only">
+          {summary.byCode.map((entry) => (
+            <li key={entry.code} data-failure-code={entry.code}>
+              {entry.count} {titleForCode(entry.code)}
+            </li>
+          ))}
+        </ul>
+        {retryableTotal > 0 ? (
+          <span className="text-xs text-muted-foreground">
+            {t("retryableHint", { count: retryableTotal })}
+          </span>
+        ) : null}
       </div>
     </section>
   );

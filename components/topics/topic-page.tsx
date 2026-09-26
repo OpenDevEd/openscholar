@@ -49,7 +49,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
   </>} tabs={<ListViewTabs label={t("publicationsView")} value={tab} onChange={setTab} tabs={[
     {value: "libraries", label: tc("evidenceLibraries"), icon: <BookOpen aria-hidden className="size-3.5" />, count: library.count},
     {value: "openalex", label: "OpenAlex", icon: <OpenAlexIcon className="size-3.5 shrink-0" />, count: detail.data?.worksCount.toLocaleString(locale)},
-  ]} />} filters={tab === "libraries" && <ListSearch aria-label={t("searchLibrary")} placeholder={t("searchPlaceholder")} value={library.query} maxLength={200} onChange={event => void library.setQuery(event.target.value)} />} intro={
+  ]} />} filters={tab === "libraries" && <ListSearch aria-label={t("searchLibrary")} placeholder={t("searchPlaceholder")} value={library.query} maxLength={200} onChange={event => void library.setQuery(event.target.value)} />} filtersInCard intro={
     <div className="space-y-4 p-4 sm:p-6">
       <nav aria-label={t("classification")} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
         {path.map((node, index) => <span key={node.id} className="inline-flex items-center gap-2">

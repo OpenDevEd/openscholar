@@ -9,13 +9,15 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useTranslations } from "next-intl";
 
 interface SearchInputProps {
+  /** What the box searches, for screen readers; the placeholder can then stay short. */
+  label?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
 }
 
-export function SearchInput({ value, onChange, placeholder, className }: SearchInputProps) {
+export function SearchInput({ label, value, onChange, placeholder, className }: SearchInputProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const resolvedPlaceholder = placeholder ?? t("searchPlaceholder");
@@ -40,7 +42,7 @@ export function SearchInput({ value, onChange, placeholder, className }: SearchI
   return (
     <div className={cn("relative", className)}>
       <ListSearch
-        aria-label={resolvedPlaceholder}
+        aria-label={label ?? resolvedPlaceholder}
         placeholder={resolvedPlaceholder}
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}

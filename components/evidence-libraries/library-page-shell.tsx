@@ -26,6 +26,7 @@ export function LibraryPageShell({
   filters,
   actions,
   intro,
+  filtersInCard = false,
   children,
 }: {
   icon?: LucideIcon;
@@ -37,17 +38,19 @@ export function LibraryPageShell({
   tabs?: ReactNode;
   filters?: ReactNode;
   actions?: ReactNode;
-  /** The top of a detail page's card. Its filters then always sit with the list below it. */
+  /** The top of a detail page's card, above the toolbar and the list. */
   intro?: ReactNode;
+  /** Keep the filters in the card at every width, for a search that belongs to one tab's list. */
+  filtersInCard?: boolean;
   children: ReactNode;
 }) {
   // A tab can drop its filters. The last ones stay rendered while their row closes.
   const [keptFilters, keepFilters] = useState(filters);
   if (filters && filters !== keptFilters) keepFilters(filters);
   const cardFilters = filters || keptFilters;
-  const filtersInBar = !intro && filters;
+  const filtersInBar = !filtersInCard && filters;
   // The card toolbar closes at the width where the bar holds everything it has.
-  const cardToolbar = intro && filters ? OPEN : filtersInBar ? "grid-rows-[1fr] @6xl:invisible @6xl:grid-rows-[0fr]" : "grid-rows-[1fr] @3xl:invisible @3xl:grid-rows-[0fr]";
+  const cardToolbar = filtersInCard && filters ? OPEN : filtersInBar ? "grid-rows-[1fr] @6xl:invisible @6xl:grid-rows-[0fr]" : "grid-rows-[1fr] @3xl:invisible @3xl:grid-rows-[0fr]";
   return (
     <div className="@container w-full pb-16">
       <StickyPageHeader>
@@ -70,12 +73,12 @@ export function LibraryPageShell({
           {intro ? <div className="border-b border-border/50">{intro}</div> : null}
           {tabs || cardFilters ? (
             <Collapse className={cardToolbar}>
-              <div className="flex flex-wrap items-center border-b border-border/50 p-4">
+              <div className="flex flex-wrap items-center gap-x-3 border-b border-border/50 p-4">
                 {tabs ? <div className="-mx-1 max-w-full overflow-x-auto px-1 @3xl:hidden">{tabs}</div> : null}
                 {cardFilters ? (
-                  <Collapse className={cn("w-full", filters ? OPEN : CLOSED)}>
-                    {/* Filters share a row in equal columns, go two by two on a tablet and stack on a phone. */}
-                    <div className={cn("grid gap-2 [&>*]:w-full [&>:only-child]:col-span-full [&_input]:w-full", tabs && "pt-3 @3xl:pt-0", intro ? "@3xl:ml-auto @3xl:w-64" : "@lg:grid-cols-2 @3xl:grid-flow-col @3xl:grid-cols-none @3xl:auto-cols-fr")}>
+                  <Collapse className={cn("w-full min-w-0 @lg:w-auto @lg:flex-1", filters ? OPEN : CLOSED)}>
+                    {/* Filters sit beside the tabs in equal columns. On a phone they go two to a row, and a lone or leading filter takes the full row. */}
+                    <div className={cn("grid gap-2 [&>*]:w-full [&_input]:w-full @max-lg:grid-cols-2 @max-lg:[&>:only-child]:col-span-2 @max-lg:[&>:first-child:nth-last-child(3)]:col-span-2", tabs && "pt-3 @lg:pt-0", filtersInCard ? "@lg:ml-auto @lg:w-64" : "@lg:grid-flow-col @lg:auto-cols-fr")}>
                       {cardFilters}
                     </div>
                   </Collapse>

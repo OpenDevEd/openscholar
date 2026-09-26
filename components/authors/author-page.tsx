@@ -606,6 +606,7 @@ export default function AuthorPage({
               onChange={(e) => setSearch(e.target.value)}
             />
           )}
+          filtersInCard
           intro={<>
             {invitationSection}
               <header className="relative isolate overflow-hidden p-5 sm:p-6">

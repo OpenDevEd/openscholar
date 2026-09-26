@@ -6,7 +6,12 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations, useFormatter, useNow } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -19,14 +24,16 @@ import {
   XCircle,
   Pause,
   Play,
+  Download,
+  MoreHorizontal,
   ListChecks,
   SearchX,
 } from "lucide-react";
 import posthog from "posthog-js";
 import { PageWrapper } from "@/components/PageWrapper";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
-import { StickyPageHeader } from "@/components/layout/sticky-page-header";
-import { BAR_LABEL, PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
+import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
+import { BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { STATUS_DOT, StatusChip, type StatusTone } from "@/components/evidence-libraries/configuration/status-chip";
 import { CommandCenterContainer } from "@/components/command-center";
 import { TwoColumnLayout } from "@/components/layout/two-column-layout";
@@ -40,11 +47,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useState, useMemo, useCallback } from "react";
 import { useAppToast } from "@/lib/toast";
-import { ResultsToolbar, type ResultsSortBy } from "@/components/extraction/results-toolbar";
+import { ResultsColumnsMenu, ResultsFilters, ResultsViewSwitch, type ResultsSortBy } from "@/components/extraction/results-toolbar";
 import { TableView, CardView, SplitView } from "@/components/extraction/results-views";
 import { SmartPagination } from "@/components/extraction/smart-pagination";
 import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
@@ -147,6 +153,7 @@ export default function JobDetailPage() {
 
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>('default');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [confirming, setConfirming] = useState<"cancel" | "delete" | null>(null);
   const [exportMode, setExportMode] = useState<'all' | 'selected'>('all');
   const [citationPanelPayload, setCitationPanelPayload] = useState<CitationPanelPayload | null>(null);
   const [mobilePane, setMobilePane] = useState<"results" | "citation">("results");
@@ -574,158 +581,166 @@ export default function JobDetailPage() {
               jobStatus={job.status}
               processedPapers={resolvedProgress.processed}
             />
-            {/* Holds the bar and the page, so the bar stays pinned while the page scrolls. */}
-            <div className="@container">
-              <StickyPageHeader>
-                <PanelHeader
-                  icon={FileText}
-                  title={job.name}
-                  backHref="/extraction"
-                  backLabel={tError("backToJobs")}
-                  titleAside={
-                    <StatusChip tone={JOB_STATUS_TONE[job.status ?? "pending"] ?? "neutral"}>
-                      <span aria-hidden className={cn("size-1.5 rounded-full", STATUS_DOT[JOB_STATUS_TONE[job.status ?? "pending"] ?? "neutral"])} />
-                      <span className={BAR_LABEL}>
-                        {(
-                            {
-                              pending: tJob("statusPending"),
-                              downloading_pdfs: tJob("statusDownloadingPdfs"),
-                              extracting: tJob("statusExtracting"),
-                              completed: tJob("statusCompleted"),
-                              failed: tJob("statusFailed"),
-                              cancelled: tJob("statusCancelled"),
-                            } as Record<string, string>
-                        )[job.status ?? "pending"] ?? (job.status ?? "pending").replace(/_/g, " ")}
-                      </span>
-                    </StatusChip>
-                  }
-                >
-                  {/* Icon-only actions: names live on aria-label and tooltip. Destructive ones keep their confirmation. */}
-                  <ButtonGroup>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          onClick={handleDuplicate}
-                          aria-label={tJob('restart')}
-                        >
-                          <RefreshCw className="w-4 h-4" />
+            <LibraryPageShell
+              icon={FileText}
+              title={job.name}
+              backHref="/extraction"
+              backLabel={tError("backToJobs")}
+              titleAside={
+                <StatusChip tone={JOB_STATUS_TONE[job.status ?? "pending"] ?? "neutral"}>
+                  <span aria-hidden className={cn("size-1.5 rounded-full", STATUS_DOT[JOB_STATUS_TONE[job.status ?? "pending"] ?? "neutral"])} />
+                  <span className={BAR_LABEL}>
+                    {(
+                        {
+                          pending: tJob("statusPending"),
+                          downloading_pdfs: tJob("statusDownloadingPdfs"),
+                          extracting: tJob("statusExtracting"),
+                          completed: tJob("statusCompleted"),
+                          failed: tJob("statusFailed"),
+                          cancelled: tJob("statusCancelled"),
+                        } as Record<string, string>
+                    )[job.status ?? "pending"] ?? (job.status ?? "pending").replace(/_/g, " ")}
+                  </span>
+                </StatusChip>
+              }
+              tabs={<ResultsViewSwitch value={viewMode} onChange={setViewMode} />}
+              filters={
+                <ResultsFilters
+                  filters={filters}
+                  searchQueryResetKey={searchQueryResetKey}
+                  onFiltersChange={(f) => {
+                    setFilters(f);
+                    setCurrentPage(1);
+                  }}
+                  sortBy={resultsSortBy}
+                  onSortChange={setResultsSortBy}
+                />
+              }
+              actions={<>
+                {viewMode === "table" && <ResultsColumnsMenu showCredits={showCreditsColumn} onShowCreditsChange={setShowCreditsColumn} />}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-muted-foreground hover:text-foreground"
+                      aria-label={tc("export")}
+                      disabled={authoritativeFilteredPapers === 0}
+                      onClick={() => {
+                        setExportMode('all');
+                        setExportDialogOpen(true);
+                      }}
+                    >
+                      <Download className="size-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{tc("export")}</TooltipContent>
+                </Tooltip>
+                {isProcessing && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground hover:text-foreground"
+                        data-action="pause"
+                        onClick={handlePause}
+                        aria-label={tExtraction('pause.button')}
+                      >
+                        <Pause className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{tExtraction('pause.button')}</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {job.status === "paused" && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground hover:text-foreground"
+                        data-action="resume"
+                        onClick={handleResume}
+                        aria-label={tExtraction('paused.resume')}
+                      >
+                        <Play className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{tExtraction('paused.resume')}</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* Less frequent and destructive actions stay one click away, like the chat's menu. */}
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" aria-label={tExtraction("chatHeaderMore")}>
+                          <MoreHorizontal className="size-4" />
                         </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{tJob('restart')}</TooltipContent>
-                    </Tooltip>
-  
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>{tExtraction("chatHeaderMore")}</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align="end" className="min-w-44">
+                    <DropdownMenuItem onSelect={handleDuplicate}>
+                      <RefreshCw className="size-4" />
+                      {tJob('restart')}
+                    </DropdownMenuItem>
                     {isProcessing && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon-sm"
-                            data-action="pause"
-                            onClick={handlePause}
-                            aria-label={tExtraction('pause.button')}
-                          >
-                            <Pause className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{tExtraction('pause.button')}</TooltipContent>
-                      </Tooltip>
+                      <DropdownMenuItem variant="destructive" onSelect={() => setConfirming("cancel")}>
+                        <XCircle className="size-4" />
+                        {tc('cancel')}
+                      </DropdownMenuItem>
                     )}
-  
-                    {job.status === "paused" && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon-sm"
-                            data-action="resume"
-                            onClick={handleResume}
-                            aria-label={tExtraction('paused.resume')}
-                          >
-                            <Play className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{tExtraction('paused.resume')}</TooltipContent>
-                      </Tooltip>
-                    )}
-  
-                    {isProcessing && (
-                      <AlertDialog>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon-sm"
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                aria-label={tc('cancel')}
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                          </TooltipTrigger>
-                          <TooltipContent>{tc('cancel')}</TooltipContent>
-                        </Tooltip>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {tConfirm('cancelJobDescription')}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleCancel}
-                              className="bg-destructive hover:bg-destructive/90"
-                            >
-                              {tConfirm('yesCancel')}
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-  
-                    <AlertDialog>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="icon-sm"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              aria-label={tc('delete')}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent>{tc('delete')}</TooltipContent>
-                      </Tooltip>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>{tConfirm('deleteJob')}</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {tConfirm('deleteJobDescription')}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleDelete}
-                            className="bg-destructive hover:bg-destructive/90"
-                          >
-                            {tConfirm('yesDelete')}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </ButtonGroup>
-                </PanelHeader>
-              </StickyPageHeader>
-            <div className="container mx-auto max-w-6xl p-4 sm:p-6">
-              <CommandCenterContainer>
+                    <DropdownMenuItem variant="destructive" onSelect={() => setConfirming("delete")}>
+                      <Trash2 className="size-4" />
+                      {tc('delete')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <AlertDialog open={confirming === "cancel"} onOpenChange={(open) => !open && setConfirming(null)}>
+                  <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {tConfirm('cancelJobDescription')}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleCancel}
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
+                          {tConfirm('yesCancel')}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+                <AlertDialog open={confirming === "delete"} onOpenChange={(open) => !open && setConfirming(null)}>
+                  <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {tConfirm('cancelJobDescription')}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleCancel}
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
+                          {tConfirm('yesCancel')}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+              </>}
+              intro={<>
           {/* What the job covers and how far it has got. Its name and state sit in the bar. */}
           <div className="space-y-3 border-b border-border/40 px-4 py-4 md:px-6">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
@@ -791,6 +806,8 @@ export default function JobDetailPage() {
             <NowProcessing jobId={jobId} />
           </div>
 
+              </>}
+            >
           {/* Results */}
           <div className="min-w-0 overflow-x-hidden">
             <div className="min-w-0">
@@ -800,27 +817,6 @@ export default function JobDetailPage() {
                 onMobilePaneChange={setMobilePane}
                 primaryLabel={tView('results')}
               >
-                <ResultsToolbar
-                  filters={filters}
-                  searchQueryResetKey={searchQueryResetKey}
-                  onFiltersChange={(f) => {
-                    setFilters(f);
-                    setCurrentPage(1);
-                  }}
-                  viewMode={viewMode}
-                  onViewModeChange={setViewMode}
-                  totalCount={authoritativeTotalPapers}
-                  filteredCount={authoritativeFilteredPapers}
-                  questions={questions}
-                  sortBy={resultsSortBy}
-                  onSortChange={setResultsSortBy}
-                  onExportAll={() => {
-                    setExportMode('all');
-                    setExportDialogOpen(true);
-                  }}
-                  showCredits={showCreditsColumn}
-                  onShowCreditsChange={setShowCreditsColumn}
-                />
 
                 <div
                   className="min-h-[500px] min-w-0"
@@ -938,9 +934,7 @@ export default function JobDetailPage() {
               </ExtractionResultsShell>
             </div>
           </div>
-                </CommandCenterContainer>
-            </div>
-            </div>
+            </LibraryPageShell>
           </PageWrapper>
         }
       />
