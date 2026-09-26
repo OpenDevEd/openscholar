@@ -4,6 +4,7 @@ import React from 'react'
 import { useTranslations } from "next-intl"
 import { useKeywordExpansionStore } from "@/lib/store"
 import { Badge } from "@/components/ui/badge"
+import { TooltipHint } from "@/components/ui/tooltip"
 
 interface KeywordExpansionPreviewProps {
   query: string
@@ -90,13 +91,14 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
               {parts.map((part) => (
                 <span key={`${part.originalKeyword ?? ""}-${part.text}`} className="inline-flex">
                   {part.isExpanded ? (
-                    <Badge 
-                      variant="secondary" 
-                      className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 text-xs rounded-md break-words whitespace-normal max-w-full inline-block"
-                      title={tb("expandedFrom", { keyword: part.originalKeyword ?? "" })}
-                    >
-                      <span className="break-words overflow-wrap-anywhere">{part.text}</span>
-                    </Badge>
+                    <TooltipHint label={tb("expandedFrom", { keyword: part.originalKeyword ?? "" })}>
+                      <Badge
+                        variant="secondary"
+                        className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 text-xs rounded-md break-words whitespace-normal max-w-full inline-block"
+                      >
+                        <span className="break-words overflow-wrap-anywhere">{part.text}</span>
+                      </Badge>
+                    </TooltipHint>
                   ) : (
                     <span className="text-foreground break-words overflow-wrap-anywhere">{part.text}</span>
                   )}

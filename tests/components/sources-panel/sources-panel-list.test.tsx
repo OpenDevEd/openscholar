@@ -16,7 +16,8 @@
  * No CSS assertions per project doctrine.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
+import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 import { SourcesPanelList } from "@/components/extraction/chat/sources-panel/sources-panel-list";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import type { Id } from "@/convex/_generated/dataModel";

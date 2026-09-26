@@ -21,7 +21,8 @@ import {
   it,
   vi,
 } from "vitest";
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent } from "@testing-library/react";
+import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 import type { Id } from "@/convex/_generated/dataModel";
 import { PapersContext } from "@/components/extraction/chat/papers-context";
 import {

@@ -17,7 +17,8 @@
  * off-by-one shift occurs.
  */
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithTooltip as render } from "../helpers/render-with-tooltip";
 
 import { MessageResponse } from "@/components/ai-elements/message";
 import {

@@ -25,6 +25,7 @@ import { useTranslations } from "next-intl";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { TooltipHint } from "@/components/ui/tooltip";
 
 export interface NowProcessingProps {
   jobId: Id<"extractionJobs">;
@@ -60,9 +61,11 @@ export function NowProcessing({ jobId }: NowProcessingProps) {
       <span className="font-medium text-foreground">
         {t("prefix")}
       </span>
-      <span className="truncate max-w-[48ch]" title={data.paperTitle}>
-        {data.paperTitle}
-      </span>
+      <TooltipHint label={data.paperTitle}>
+        <span className="truncate max-w-[48ch]">
+          {data.paperTitle}
+        </span>
+      </TooltipHint>
     </div>
   );
 }

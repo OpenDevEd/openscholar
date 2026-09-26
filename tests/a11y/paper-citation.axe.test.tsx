@@ -18,7 +18,7 @@
  * a real browser per the .a11y trace.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { renderWithTooltip as render } from "../helpers/render-with-tooltip";
 import { axe, toHaveNoViolations } from "jest-axe";
 import { PaperCitation } from "@/components/extraction/chat/paper-citation";
 import { PapersContext } from "@/components/extraction/chat/papers-context";

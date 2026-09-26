@@ -21,7 +21,8 @@
  * No CSS-class assertions per project testing doctrine.
  */
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 import { SourceRow } from "@/components/extraction/chat/sources-panel/source-row";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import type { Id } from "@/convex/_generated/dataModel";

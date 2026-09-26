@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { ExternalLink, PanelLeftOpen, Quote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { StatusChip, type StatusTone } from "@/components/evidence-libraries/configuration/status-chip";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
 import { getAllCitationLocations, getCitationStatus } from "@/lib/extraction/citations";
@@ -68,9 +69,11 @@ export function ResultAnswer({ result, type, searchQuery = "", clamp = "line-cla
     return (
       <div className="flex flex-wrap gap-1">
         {answer.map((item) => (
-          <Badge key={String(item)} variant="outline" className="max-w-full text-xs font-normal" title={String(item)}>
-            <span className="truncate"><HighlightedText text={String(item)} query={searchQuery} /></span>
-          </Badge>
+          <TooltipHint key={String(item)} label={String(item)}>
+            <Badge variant="outline" className="max-w-full text-xs font-normal">
+              <span className="truncate"><HighlightedText text={String(item)} query={searchQuery} /></span>
+            </Badge>
+          </TooltipHint>
         ))}
       </div>
     );
@@ -126,14 +129,12 @@ export function ResultCell({ result, type, searchQuery = "", clamp, selected = f
   /** The question, shown above the answer inside the button so they highlight together. */
   label?: string;
 }) {
-  const tc = useTranslations("common");
   if (!result) return <ResultAnswer result={result} type={type} />;
   return (
     <button
       type="button"
       onClick={onOpen}
       aria-pressed={selected}
-      title={tc("details")}
       className={cn(
         "group/cell block space-y-1.5 text-left",
         fill
@@ -147,7 +148,11 @@ export function ResultCell({ result, type, searchQuery = "", clamp, selected = f
             ),
       )}
     >
-      {label ? <span className="block truncate text-xs text-muted-foreground" title={label}>{label}</span> : null}
+      {label ? (
+        <TooltipHint label={label}>
+          <span className="block truncate text-xs text-muted-foreground">{label}</span>
+        </TooltipHint>
+      ) : null}
       <ResultAnswer result={result} type={type} searchQuery={searchQuery} clamp={clamp} />
       <ResultMeta result={result} />
       <PanelLeftOpen

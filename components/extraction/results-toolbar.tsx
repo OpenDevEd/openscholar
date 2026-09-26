@@ -15,6 +15,7 @@ import { LIST_FILTER } from "@/components/evidence-libraries/list-controls";
 import { IconSwitch } from "@/components/view-mode-toggle";
 import { SearchInput } from "./search-input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { ConfidenceFilterFields } from "./confidence-filter";
 import { StatusFilterFields } from "./status-filter";
@@ -117,18 +118,19 @@ export function ResultsFilterMenu({ filters, onFiltersChange }: {
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn("size-8", active ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary" : "text-muted-foreground hover:text-foreground")}
-          aria-label={active ? `${tc("filters")} (${active})` : tc("filters")}
-          title={tc("filters")}
-        >
-          {/* A tinted button says a filter is on, without a dot or a wider button. */}
-          <ListFilter className="size-4" />
-        </Button>
-      </PopoverTrigger>
+      <TooltipHint label={tc("filters")}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("size-8", active ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary" : "text-muted-foreground hover:text-foreground")}
+            aria-label={active ? `${tc("filters")} (${active})` : tc("filters")}
+          >
+            {/* A tinted button says a filter is on, without a dot or a wider button. */}
+            <ListFilter className="size-4" />
+          </Button>
+        </PopoverTrigger>
+      </TooltipHint>
       <PopoverContent align="end" className="w-80 space-y-5">
         <ConfidenceFilterFields
           range={confidenceRange}
@@ -158,11 +160,13 @@ export function ResultsColumnsMenu({ showCredits, onShowCreditsChange }: { showC
   const tc = useTranslations("common");
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" aria-label={tc("columns")} title={tc("columns")}>
-          <Columns3 className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
+      <TooltipHint label={tc("columns")}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" aria-label={tc("columns")}>
+            <Columns3 className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+      </TooltipHint>
       <DropdownMenuContent align="end">
         <DropdownMenuItem
           onSelect={(e) => {
