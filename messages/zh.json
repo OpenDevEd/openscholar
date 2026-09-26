@@ -1215,9 +1215,7 @@
   },
   "viewMode": {
     "simpleList": "简单列表",
-    "simple": "简单",
     "detailedList": "详细列表",
-    "detail": "详细",
     "twoColumnGrid": "2 列网格",
     "threeColumnGrid": "3 列网格"
   },
@@ -2053,10 +2051,6 @@
     "filterYearRange": "出版年份",
     "filterYearFrom": "从",
     "filterYearTo": "到",
-    "viewListSimple": "简单列表",
-    "viewListDetail": "详细列表",
-    "viewGrid2": "两列网格",
-    "viewGrid3": "三列网格",
     "filterCollection": "合集",
     "allCollections": "所有合集",
     "manageCollections": "管理合集",

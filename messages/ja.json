@@ -1215,9 +1215,7 @@
   },
   "viewMode": {
     "simpleList": "シンプルリスト",
-    "simple": "シンプル",
     "detailedList": "詳細リスト",
-    "detail": "詳細",
     "twoColumnGrid": "2列グリッド",
     "threeColumnGrid": "3列グリッド"
   },
@@ -2053,10 +2051,6 @@
     "filterYearRange": "出版年",
     "filterYearFrom": "から",
     "filterYearTo": "まで",
-    "viewListSimple": "シンプルリスト",
-    "viewListDetail": "詳細リスト",
-    "viewGrid2": "2列グリッド",
-    "viewGrid3": "3列グリッド",
     "filterCollection": "コレクション",
     "allCollections": "すべてのコレクション",
     "manageCollections": "コレクションの管理",

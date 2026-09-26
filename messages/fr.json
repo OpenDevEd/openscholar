@@ -1215,9 +1215,7 @@
   },
   "viewMode": {
     "simpleList": "Liste simple",
-    "simple": "Simple",
     "detailedList": "Liste détaillée",
-    "detail": "Détaillé",
     "twoColumnGrid": "Grille à 2 colonnes",
     "threeColumnGrid": "Grille à 3 colonnes"
   },
@@ -2053,10 +2051,6 @@
     "filterYearRange": "Année",
     "filterYearFrom": "De",
     "filterYearTo": "À",
-    "viewListSimple": "Liste simple",
-    "viewListDetail": "Liste détaillée",
-    "viewGrid2": "Grille à deux colonnes",
-    "viewGrid3": "Grille à trois colonnes",
     "filterCollection": "Collection",
     "allCollections": "Toutes les collections",
     "manageCollections": "Gérer les collections",

@@ -1215,9 +1215,7 @@
   },
   "viewMode": {
     "simpleList": "सरल सूची",
-    "simple": "सरल",
     "detailedList": "विस्तृत सूची",
-    "detail": "विवरण",
     "twoColumnGrid": "2 कॉलम ग्रिड",
     "threeColumnGrid": "3 कॉलम ग्रिड"
   },
@@ -2053,10 +2051,6 @@
     "filterYearRange": "प्रकाशन वर्ष",
     "filterYearFrom": "से",
     "filterYearTo": "तक",
-    "viewListSimple": "सरल सूची",
-    "viewListDetail": "विस्तृत सूची",
-    "viewGrid2": "दो-स्तंभ ग्रिड",
-    "viewGrid3": "तीन-स्तंभ ग्रिड",
     "filterCollection": "संग्रह",
     "allCollections": "सभी संग्रह",
     "manageCollections": "संग्रह प्रबंधित करें",

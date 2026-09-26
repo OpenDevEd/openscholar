@@ -24,7 +24,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { VIEW_MODE_OPTIONS } from "@/lib/constants/view-modes";
+import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import type { ViewMode } from "@/lib/types";
 
 interface SortOption<T extends string> {
@@ -81,7 +81,6 @@ export function CommandCenterToolbar<TSort extends string>({
   extraActions,
 }: CommandCenterToolbarProps<TSort>) {
   const tc = useTranslations("common");
-  const ta = useTranslations("accessibility");
   const currentSortOption = sortOptions.find((o) => o.value === currentSort);
   const hasDownloadUpload = onDownloadJSON || onDownloadCSV || onUploadJSON || onUploadCSV;
 
@@ -89,28 +88,7 @@ export function CommandCenterToolbar<TSort extends string>({
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 p-4">
       {/* View mode switch + extra actions */}
       <div className="flex items-center gap-2">
-        <div role="group" aria-label={ta("viewOptions")} className="flex items-center gap-0.5 rounded-md bg-muted/40 p-0.5">
-          {VIEW_MODE_OPTIONS.map((option) => {
-            const isActive = viewMode === option.mode;
-            const Icon = option.icon;
-            return (
-              <button
-                key={option.mode}
-                type="button"
-                aria-pressed={isActive}
-                aria-label={option.label}
-                title={option.label}
-                onClick={() => onViewModeChange(option.mode)}
-                className={cn(
-                  "flex size-7 items-center justify-center rounded-[5px] transition-colors",
-                  isActive ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Icon className="size-3.5" />
-              </button>
-            );
-          })}
-        </div>
+        <ViewModeSwitch value={viewMode} onChange={onViewModeChange} />
         {extraActions}
       </div>
 

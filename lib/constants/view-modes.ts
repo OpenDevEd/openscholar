@@ -2,21 +2,13 @@ import { List, LayoutList, LayoutGrid, Grid3X3 } from "lucide-react";
 import type { ViewMode } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
 
-export interface ViewModeOption {
-  mode: ViewMode;
-  icon: LucideIcon;
-  label: string;
-}
-
-/**
- * Shared view mode options for command centers (bookmarks, history, etc.)
- */
-export const VIEW_MODE_OPTIONS: ViewModeOption[] = [
-  { mode: "list-simple", icon: List, label: "Simple List" },
-  { mode: "list-detail", icon: LayoutList, label: "Detailed List" },
-  { mode: "grid-2", icon: LayoutGrid, label: "2 Column Grid" },
-  { mode: "grid-3", icon: Grid3X3, label: "3 Column Grid" },
-];
+/** The views a list can offer; `label` is a key in the `viewMode` messages. */
+export const VIEW_MODE_OPTIONS = [
+  { mode: "list-simple", icon: List, label: "simpleList" },
+  { mode: "list-detail", icon: LayoutList, label: "detailedList" },
+  { mode: "grid-2", icon: LayoutGrid, label: "twoColumnGrid" },
+  { mode: "grid-3", icon: Grid3X3, label: "threeColumnGrid" },
+] as const satisfies readonly { mode: ViewMode; icon: LucideIcon; label: string }[];
 
 /**
  * Grid/flex layout classes for each view mode

@@ -18,7 +18,8 @@ import {
 import { useAppToast } from "@/lib/toast";
 import { useSearchOptional } from "@/lib/search";
 import { ModeTabs } from "./components/mode-tabs";
-import { ViewModeToggleCompact } from "@/components/view-mode-toggle";
+import { ViewModeSwitch } from "@/components/view-mode-toggle";
+import { useUIStore } from "@/lib/store";
 import { useIsTablet } from "@/lib/hooks";
 import type { CommandCenterMode } from "./types";
 import { cn } from "@/lib/utils";
@@ -52,6 +53,7 @@ export function SearchCommandHeader({
   const search = useSearchOptional();
   const getShareableUrl = search?.getShareableUrl ?? (() => "");
   const isMobile = useIsTablet();
+  const { viewMode, setViewMode } = useUIStore();
 
   const hasDownloadHandlers =
     onDownloadAllJSON ||
@@ -83,7 +85,7 @@ export function SearchCommandHeader({
       {/* Global actions */}
       <div className="flex items-center gap-2">
         {/* View mode toggle - desktop only */}
-        {!isMobile && <ViewModeToggleCompact />}
+        {!isMobile && <ViewModeSwitch value={viewMode} onChange={setViewMode} />}
 
         {/* Download dropdown */}
         {hasDownloadHandlers && !queryOnly && (
