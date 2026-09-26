@@ -9,6 +9,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Field, labelId } from "./section-card";
 
@@ -170,19 +171,23 @@ function RichTextEditor({
 
 function ToolButton({ label, active, onClick, children }: { label: string; active?: boolean; onClick: () => void; children: ReactNode }) {
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon-sm"
-      aria-label={label}
-      aria-pressed={active ?? false}
-      title={label}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={onClick}
-      className={cn("text-muted-foreground", active && "bg-accent text-foreground")}
-    >
-      {children}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={label}
+          aria-pressed={active ?? false}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onClick}
+          className={cn("text-muted-foreground", active && "bg-accent text-foreground")}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -204,20 +209,24 @@ function LinkButton({ active, href, onApply, onRemove }: { active: boolean; href
         if (next) setDraft(href || "https://");
       }}
     >
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Link"
-          aria-pressed={active}
-          title="Link"
-          onMouseDown={(event) => event.preventDefault()}
-          className={cn("text-muted-foreground", active && "bg-accent text-foreground")}
-        >
-          <Link2 />
-        </Button>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Link"
+              aria-pressed={active}
+              onMouseDown={(event) => event.preventDefault()}
+              className={cn("text-muted-foreground", active && "bg-accent text-foreground")}
+            >
+              <Link2 />
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Link</TooltipContent>
+      </Tooltip>
       <PopoverContent align="start" className="w-80 space-y-2 p-3">
         <Input
           autoFocus

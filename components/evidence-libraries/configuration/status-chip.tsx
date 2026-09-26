@@ -2,6 +2,7 @@
 
 import type { HTMLAttributes } from "react";
 import { CircleCheck, CircleDashed, CircleX, LoaderCircle, TriangleAlert, type LucideIcon } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 /**
@@ -40,9 +41,14 @@ export function StatusIcon({ tone, label, icon, className, ...rest }: HTMLAttrib
   const { icon: toneIcon, className: toneClass } = STATUS_ICON[tone];
   const Icon = icon ?? toneIcon;
   return (
-    <span role="img" aria-label={label} title={label} className={cn("inline-flex shrink-0", className)} {...rest}>
-      <Icon aria-hidden className={cn("size-4", toneClass)} />
-    </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span role="img" aria-label={label} className={cn("inline-flex shrink-0", className)} {...rest}>
+          <Icon aria-hidden className={cn("size-4", toneClass)} />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 

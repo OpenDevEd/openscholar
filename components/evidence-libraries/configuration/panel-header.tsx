@@ -4,6 +4,7 @@ import { ChevronLeft, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { LibraryImage } from "../library-image";
 
 /** On a narrow page a bar action keeps its icon; wrap its label in BAR_LABEL so screen readers still read it. */
@@ -62,7 +63,14 @@ export function PanelHeader({
             fallback={icon}
           />
         ) : icon}
-        {title ? <h1 className="truncate text-base font-semibold" title={title}>{title}</h1> : null}
+        {title ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <h1 className="truncate text-base font-semibold">{title}</h1>
+            </TooltipTrigger>
+            <TooltipContent>{title}</TooltipContent>
+          </Tooltip>
+        ) : null}
         {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}
       </div>
       {tabs ? <div className="hidden shrink-0 border-l border-border/60 pl-4 @3xl:block">{tabs}</div> : null}

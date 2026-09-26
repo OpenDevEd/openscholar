@@ -1,7 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, render, screen, within } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
+import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LinkDraft } from "@/lib/evidence-libraries/configuration/links";

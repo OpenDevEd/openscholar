@@ -1,7 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
+import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 import { StrictMode } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";

@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { StatusChip } from "../status-chip";
 
@@ -498,18 +499,26 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                             </span>
                           ) : null}
                           <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium" title={row.title}>
-                              {row.title}
-                            </p>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <p className="truncate font-medium">{row.title}</p>
+                              </TooltipTrigger>
+                              <TooltipContent>{row.title}</TooltipContent>
+                            </Tooltip>
                             {row.detail}
                           </div>
                         </div>
                       </TableCell>
                       {columns.meta ? (
                         <TableCell className="min-w-0">
-                          <p className="truncate text-muted-foreground" title={row.meta}>
-                            {row.meta}
-                          </p>
+                          {row.meta ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <p className="truncate text-muted-foreground">{row.meta}</p>
+                              </TooltipTrigger>
+                              <TooltipContent>{row.meta}</TooltipContent>
+                            </Tooltip>
+                          ) : null}
                         </TableCell>
                       ) : null}
                       {columns.count ? (
