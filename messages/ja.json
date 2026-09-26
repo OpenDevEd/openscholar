@@ -1479,10 +1479,7 @@
     "backToCard": "カードに戻る",
     "current": "現在",
     "bookmarkNamePlaceholder": "bookmark-name",
-    "recentSearches": "最近の検索",
-    "infoClickToRevisit": "検索をクリックして結果を再表示",
-    "infoDownloadUpload": "検索データをダウンロードまたはアップロード",
-    "infoManageArchive": "検索アーカイブを管理"
+    "recentSearches": "最近の検索"
   },
   "commandCenter": {
     "searchesLabel": "検索",

@@ -1505,10 +1505,7 @@
     "backToCard": "Back to card",
     "current": "Current",
     "bookmarkNamePlaceholder": "bookmark-name",
-    "recentSearches": "Recent Searches",
-    "infoClickToRevisit": "Click any search to revisit results",
-    "infoDownloadUpload": "Download or upload search data",
-    "infoManageArchive": "Manage your search archive"
+    "recentSearches": "Recent Searches"
   },
   "commandCenter": {
     "searchesLabel": "searches",

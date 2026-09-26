@@ -1479,10 +1479,7 @@
     "backToCard": "Retour à la carte",
     "current": "Actuel",
     "bookmarkNamePlaceholder": "nom-du-favori",
-    "recentSearches": "Recherches récentes",
-    "infoClickToRevisit": "Cliquez sur une recherche pour revisiter les résultats",
-    "infoDownloadUpload": "Télécharger ou téléverser des données de recherche",
-    "infoManageArchive": "Gérer votre archive de recherche"
+    "recentSearches": "Recherches récentes"
   },
   "commandCenter": {
     "searchesLabel": "recherches",

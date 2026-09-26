@@ -1479,10 +1479,7 @@
     "backToCard": "返回卡片",
     "current": "当前",
     "bookmarkNamePlaceholder": "书签名称",
-    "recentSearches": "最近搜索",
-    "infoClickToRevisit": "点击任意搜索以重新查看结果",
-    "infoDownloadUpload": "下载或上传搜索数据",
-    "infoManageArchive": "管理您的搜索档案"
+    "recentSearches": "最近搜索"
   },
   "commandCenter": {
     "searchesLabel": "次搜索",

@@ -1479,10 +1479,7 @@
     "backToCard": "कार्ड पर वापस जाएं",
     "current": "वर्तमान",
     "bookmarkNamePlaceholder": "बुकमार्क-नाम",
-    "recentSearches": "हाल की खोजें",
-    "infoClickToRevisit": "परिणाम दोबारा देखने के लिए किसी भी खोज पर क्लिक करें",
-    "infoDownloadUpload": "खोज डेटा डाउनलोड या अपलोड करें",
-    "infoManageArchive": "अपने खोज संग्रह का प्रबंधन करें"
+    "recentSearches": "हाल की खोजें"
   },
   "commandCenter": {
     "searchesLabel": "खोजें",
