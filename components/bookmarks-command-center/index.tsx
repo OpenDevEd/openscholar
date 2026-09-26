@@ -6,7 +6,6 @@ import { parseAsInteger, useQueryState } from "nuqs";
 import { BookOpen } from "lucide-react";
 import {
   useKeywordExpansionStore,
-  useKeywordExpansionDialogStore,
   useUIStore,
 } from "@/lib/store";
 import {
@@ -58,8 +57,7 @@ function createBookmarkListItem(
     );
   };
 }
-import { BookmarksAddForm } from "./bookmarks-add-form";
-import { BookmarksSaveBanner } from "./bookmarks-save-banner";
+import { NewBookmarkDialog } from "./new-bookmark-dialog";
 import { BookmarksGuide } from "./bookmarks-guide";
 import posthog from "posthog-js";
 import type { BookmarkEntry } from "./types";
@@ -93,7 +91,6 @@ export function BookmarksCommandCenter() {
     clearKeywords,
     importKeywords,
   } = useKeywordExpansionStore();
-  const { suggestedQuery } = useKeywordExpansionDialogStore();
   // Bookmarks and view settings are saved in the browser; wait for them rather than flash an empty list.
   const listReady = usePersistedStoreReady(useKeywordExpansionStore);
   const settingsReady = usePersistedStoreReady(useUIStore);
@@ -249,7 +246,9 @@ export function BookmarksCommandCenter() {
         onSearchChange={setSearchFilter}
         placeholder={tb("searchPlaceholder")}
       />}
-      actions={<CommandCenterFileActions
+      actions={<>
+        <NewBookmarkDialog />
+        <CommandCenterFileActions
         onDownloadJSON={handleDownloadJSON}
         onDownloadCSV={handleDownloadCSV}
         onUploadJSON={handleUploadJSON}
@@ -257,11 +256,7 @@ export function BookmarksCommandCenter() {
         onClearAll={handleClearAll}
         clearTooltip={tb("clearAllBookmarks")}
         totalCount={bookmarksArray.length}
-      />}
-      // Adding sits above the toolbar, so the search and sort stay next to the list they filter.
-      intro={<>
-        {suggestedQuery && <BookmarksSaveBanner />}
-        <BookmarksAddForm />
+      />
       </>}
     >
 
@@ -307,7 +302,7 @@ export function BookmarksCommandCenter() {
 }
 
 /** The bookmarks page's frame, shared with its loading state so nothing moves when it loads. */
-export function BookmarksPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode; intro?: React.ReactNode }) {
+export function BookmarksPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
   const tc = useTranslations("common");
   return <LibraryPageShell icon={BookOpen} title={tc("bookmarks")} {...controls}>{children}</LibraryPageShell>;
 }
