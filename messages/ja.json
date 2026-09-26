@@ -1745,6 +1745,7 @@
   "jobStatus": {
     "restart": "再開",
     "papersCount": "{count} 論文",
+    "questionsCount": "{count, plural, other {# 件の質問}}",
     "statusPending": "保留中",
     "statusDownloadingPdfs": "論文を処理中",
     "statusExtracting": "抽出中",
@@ -1758,13 +1759,8 @@
     "jobCreated": "新しいジョブを作成しました",
     "failedToCreate": "新しいジョブの作成に失敗しました",
     "updated": "更新 {timeAgo}",
-    "totalPapers": "合計論文数",
-    "processed": "処理済み",
-    "successRate": "成功率",
-    "extractionProgress": "抽出の進捗",
     "noMatches": "現在のフィルターに一致するものはありません",
     "clearFilters": "フィルターをクリア",
-    "questions": "質問",
     "progressOfPapers": "{total} 論文中 {processed} 件",
     "loadingExtractionResults": "抽出結果を読み込み中...",
     "appliedSavedView": "保存ビューを適用：{name}"

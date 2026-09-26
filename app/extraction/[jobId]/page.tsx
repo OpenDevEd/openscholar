@@ -13,17 +13,18 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  Loader2,
   FileText,
   RefreshCw,
   Trash2,
   XCircle,
   Pause,
   Play,
+  ListChecks,
+  SearchX,
 } from "lucide-react";
-import { motion } from "motion/react";
 import posthog from "posthog-js";
 import { PageWrapper } from "@/components/PageWrapper";
+import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { BAR_LABEL, PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
 import { STATUS_DOT, StatusChip, type StatusTone } from "@/components/evidence-libraries/configuration/status-chip";
@@ -725,22 +726,32 @@ export default function JobDetailPage() {
               </StickyPageHeader>
             <div className="container mx-auto max-w-6xl p-4 sm:p-6">
               <CommandCenterContainer>
-          {/* What the job covers, now that its name and state sit in the bar. */}
-          <div className="flex flex-wrap items-center gap-3 border-b border-border/40 px-4 py-3 text-sm text-muted-foreground md:px-6">
-            <div className="flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5" />
-              <span>{tJob('papersCount', { count: format.number(job.totalPapers ?? 0) })}</span>
+          {/* What the job covers and how far it has got. Its name and state sit in the bar. */}
+          <div className="space-y-3 border-b border-border/40 px-4 py-4 md:px-6">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <FileText className="size-3.5" />
+                {tJob('papersCount', { count: format.number(job.totalPapers ?? 0) })}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <ListChecks className="size-3.5" />
+                {tJob('questionsCount', { count: questions.length })}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <RefreshCw className={cn("size-3.5", isProcessing && "animate-spin")} />
+                {tJob('updated', { timeAgo: format.relativeTime(new Date(job.updatedAt), now) })}
+              </span>
+              <CostBadge
+                jobId={jobId}
+                compact
+                href={`/settings/billing?jobId=${jobId}`}
+              />
             </div>
-            <span className="hidden size-1 rounded-full bg-border sm:inline-block" />
-            <div className="flex items-center gap-1.5">
-              <RefreshCw className={cn("w-3.5 h-3.5", isProcessing && "animate-spin")} />
-              <span>{tJob('updated', { timeAgo: format.relativeTime(new Date(job.updatedAt), now) })}</span>
-            </div>
-            <span className="hidden size-1 rounded-full bg-border sm:inline-block" />
-            <CostBadge
-              jobId={jobId}
-              compact
-              href={`/settings/billing?jobId=${jobId}`}
+            <JobProgressBar
+              jobName={job.name}
+              processed={resolvedProgress.processed}
+              failed={resolvedProgress.failed}
+              total={resolvedProgress.total}
             />
           </div>
 
@@ -749,7 +760,7 @@ export default function JobDetailPage() {
               between real DOM siblings, and `empty:hidden` collapses
               the whole strip when every banner is null — so no phantom
               padding remains on clean completed / idle jobs. */}
-          <div className="space-y-4 px-4 pt-4 empty:hidden md:px-6">
+          <div className="space-y-3 border-b border-border/40 px-4 py-4 empty:hidden md:px-6">
             {job.status === "creditsExhausted" && (
               <CreditsExhaustedBanner
                 onResume={handleResume}
@@ -780,73 +791,9 @@ export default function JobDetailPage() {
             <NowProcessing jobId={jobId} />
           </div>
 
-          {/* Stats Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            className="px-4 md:px-6 py-5 border-b border-border/40"
-          >
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  {tJob('totalPapers')}
-                </p>
-                <p className="text-2xl lg:text-3xl font-bold text-foreground">
-                  {format.number(job.totalPapers ?? 0)}
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  {tJob('processed')}
-                </p>
-                <p className="text-2xl lg:text-3xl font-bold text-foreground">
-                  {format.number(resolvedProgress.processed)}
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  {tJob('successRate')}
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl lg:text-3xl font-bold text-primary">
-                    {resolvedProgress.percentage}%
-                  </p>
-                  {isProcessing && (
-                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  {tJob('questions')}
-                </p>
-                <p className="text-2xl lg:text-3xl font-bold text-foreground">
-                  {questions.length}
-                </p>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <JobProgressBar
-              jobName={job.name}
-              processed={resolvedProgress.processed}
-              failed={resolvedProgress.failed}
-              total={resolvedProgress.total}
-            />
-          </motion.div>
-
-          {/* Content Section */}
-          <div className="overflow-x-hidden p-4 md:p-6">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="min-w-0 overflow-x-hidden"
-            >
+          {/* Results */}
+          <div className="min-w-0 overflow-x-hidden">
+            <div className="min-w-0">
               <ExtractionResultsShell
                 panelPayload={citationPanelPayload}
                 mobilePane={mobilePane}
@@ -882,46 +829,37 @@ export default function JobDetailPage() {
                   data-filtered-papers={authoritativeFilteredPapers}
                 >
                   {resultsRenderState === "loading" ? (
-                    <div className="my-6 flex min-h-[420px] items-center justify-center rounded-xl border border-border bg-muted/30 py-24 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary/80" />
-                        <p className="text-sm text-muted-foreground">
-                          {tJob('loadingExtractionResults')}
-                        </p>
-                      </div>
-                    </div>
+                    <ListLoading label={tJob('loadingExtractionResults')} />
                   ) : resultsRenderState === "empty" ||
                     resultsRenderState === "filtered_empty" ? (
-                    <div className="my-6 flex flex-col items-center justify-center rounded-xl border border-border bg-muted py-24 text-center">
-                      <FileText className="mb-4 h-16 w-16 text-muted-foreground/50" />
-                       <h3 className="mb-2 text-xl font-semibold text-foreground">
-                        {resultsRenderState === "filtered_empty"
-                          ? tJob('noMatches')
-                          : tc('noResultsFound')}
-                      </h3>
-                      <p className="max-w-md text-muted-foreground">
-                        {resultsRenderState === "filtered_empty"
-                          ? tc('tryAdjustingSearch')
-                          :                           papersWithResults.length === 0
-                          ? job.status === "completed"
-                            ? tPdf('noResultsDescription')
-                            : tPdf('resultsWillAppear')
-                          : tPdf('resultsWillAppear')}
-                      </p>
-                      {resultsRenderState === "filtered_empty" && (
-                        <Button
-                          variant="outline"
-                          className="mt-6"
-                          onClick={() => {
-                          setFilters(defaultFilters);
-                          setCurrentPage(1);
-                          setSearchQueryResetKey((k) => k + 1);
-                        }}
-                        >
-                          {tJob('clearFilters')}
-                        </Button>
-                      )}
-                    </div>
+                    resultsRenderState === "filtered_empty" ? (
+                      <ListEmpty
+                        icon={SearchX}
+                        description={tc('tryAdjustingSearch')}
+                        action={
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setFilters(defaultFilters);
+                              setCurrentPage(1);
+                              setSearchQueryResetKey((k) => k + 1);
+                            }}
+                          >
+                            {tJob('clearFilters')}
+                          </Button>
+                        }
+                      >
+                        {tJob('noMatches')}
+                      </ListEmpty>
+                    ) : (
+                      <ListEmpty
+                        icon={FileText}
+                        description={papersWithResults.length === 0 && job.status === "completed" ? tPdf('noResultsDescription') : tPdf('resultsWillAppear')}
+                      >
+                        {tc('noResultsFound')}
+                      </ListEmpty>
+                    )
                   ) : (
                     <>
                       {viewMode === 'table' && (
@@ -998,8 +936,8 @@ export default function JobDetailPage() {
                   }
                 />
               </ExtractionResultsShell>
-            </motion.div>
-              </div>
+            </div>
+          </div>
                 </CommandCenterContainer>
             </div>
             </div>

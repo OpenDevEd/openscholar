@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Search, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { X } from "lucide-react";
+import { ListSearch } from "@/components/evidence-libraries/list-controls";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useTranslations } from "next-intl";
@@ -16,6 +17,7 @@ interface SearchInputProps {
 
 export function SearchInput({ value, onChange, placeholder, className }: SearchInputProps) {
   const t = useTranslations("extraction");
+  const tc = useTranslations("common");
   const resolvedPlaceholder = placeholder ?? t("searchPlaceholder");
   const [localValue, setLocalValue] = useState(() => value);
   const debouncedValue = useDebouncedValue(localValue, 300);
@@ -36,25 +38,26 @@ export function SearchInput({ value, onChange, placeholder, className }: SearchI
   // Parent uses key={searchQueryResetKey} to remount when filters are reset; no sync effect needed
 
   return (
-    <div className={`relative flex-1 ${className}`}>
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-      <Input
+    <div className={cn("relative", className)}>
+      <ListSearch
+        aria-label={resolvedPlaceholder}
+        placeholder={resolvedPlaceholder}
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
-        placeholder={resolvedPlaceholder}
-        className="pl-10 pr-10 h-9 bg-muted/30 dark:bg-muted/20 border-border/50 placeholder:text-muted-foreground/60"
+        className="w-full pr-8"
       />
       {localValue && (
         <Button
           variant="ghost"
-          size="icon"
-          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+          size="icon-xs"
+          aria-label={tc("clear")}
+          className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground"
           onClick={() => {
             setLocalValue('');
             onChange('');
           }}
         >
-          <X className="w-4 h-4" />
+          <X className="size-3.5" />
         </Button>
       )}
     </div>

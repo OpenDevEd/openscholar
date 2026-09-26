@@ -1745,6 +1745,7 @@
   "jobStatus": {
     "restart": "Redémarrer",
     "papersCount": "{count} articles",
+    "questionsCount": "{count, plural, one {# question} other {# questions}}",
     "statusPending": "En attente",
     "statusDownloadingPdfs": "Traitement des articles",
     "statusExtracting": "Extraction",
@@ -1758,13 +1759,8 @@
     "jobCreated": "Nouvelle tâche créée",
     "failedToCreate": "Échec de la création de la tâche",
     "updated": "Mis à jour {timeAgo}",
-    "totalPapers": "Total des articles",
-    "processed": "Traités",
-    "successRate": "Taux de réussite",
-    "extractionProgress": "Progression de l'extraction",
     "noMatches": "Aucune correspondance pour les filtres actuels",
     "clearFilters": "Effacer les filtres",
-    "questions": "Questions",
     "progressOfPapers": "{processed} sur {total} articles",
     "loadingExtractionResults": "Chargement des résultats de l'extraction...",
     "appliedSavedView": "Vue sauvegardée appliquée : {name}"

@@ -59,18 +59,7 @@ export function JobProgressBar({
   const processedPlusFailed = processed + failed;
 
   return (
-    <div className="mt-6">
-      <div className="flex justify-between text-sm mb-2">
-        <span className="text-muted-foreground">
-          {t("extractionProgress")}
-        </span>
-        <span className="font-medium text-foreground">
-          {t("progressOfPapers", {
-            processed: processedPlusFailed,
-            total,
-          })}
-        </span>
-      </div>
+    <div className="flex items-center gap-3">
       <div
         role="progressbar"
         aria-label={jobName}
@@ -82,15 +71,18 @@ export function JobProgressBar({
           total,
         })}
         data-progress-percent={percent}
-        className="h-3 bg-muted rounded-full overflow-hidden"
+        className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"
       >
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${percent}%` }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-          className="h-full bg-primary rounded-full"
+          className="h-full rounded-full bg-primary"
         />
       </div>
+      <span aria-hidden className="shrink-0 text-xs tabular-nums text-muted-foreground">
+        {t("progressOfPapers", { processed: processedPlusFailed, total })}
+      </span>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { LIST_FILTER } from "@/components/evidence-libraries/list-controls";
 import { useTranslations } from "next-intl";
 
 interface SmartPaginationProps {
@@ -82,9 +83,9 @@ export function SmartPagination({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6">
+    <div className="flex flex-col items-center justify-between gap-3 border-t border-border/50 px-4 py-3 sm:flex-row md:px-6">
       {/* Left: Results info */}
-      <p className="text-sm text-muted-foreground">
+      <p className="text-xs tabular-nums text-muted-foreground">
         {t("showingRange", { start: startIdx, end: endIdx, total: filteredCount })}
         {filteredCount < totalCount && (
           <span className="text-xs ml-2">{t("filteredFrom", { total: totalCount })}</span>
@@ -97,7 +98,7 @@ export function SmartPagination({
           <Button
             variant="outline"
             size="icon"
-            className="h-9 w-9"
+            className="size-8"
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
           >
@@ -119,7 +120,7 @@ export function SmartPagination({
                 variant={currentPage === page ? "default" : "outline"}
                 size="icon"
                 className={cn(
-                  "h-9 w-9",
+                  "size-8 tabular-nums",
                   currentPage === page && "pointer-events-none"
                 )}
                 onClick={() => onPageChange(page)}
@@ -132,7 +133,7 @@ export function SmartPagination({
           <Button
             variant="outline"
             size="icon"
-            className="h-9 w-9"
+            className="size-8"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
           >
@@ -147,7 +148,7 @@ export function SmartPagination({
         value={pageSize.toString()}
         onValueChange={(v) => onPageSizeChange(Number(v))}
       >
-        <SelectTrigger className="w-32">
+        <SelectTrigger size="sm" aria-label={t("perPage", { count: pageSize })} className={cn("w-36", LIST_FILTER)}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

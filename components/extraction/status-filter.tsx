@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import {
-  Filter,
+  ListFilter,
   FileText,
   Unlock,
   AlertCircle,
@@ -12,7 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
+import { LIST_FILTER } from "@/components/evidence-libraries/list-controls";
+import { cn } from "@/lib/utils";
 import {
   Popover,
   PopoverContent,
@@ -75,14 +76,10 @@ export function StatusFilter({ selected, onChange }: StatusFilterProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Filter className="w-4 h-4 mr-2" />
+        <Button variant="ghost" size="sm" className={cn("h-8 gap-1.5 text-xs", LIST_FILTER, selected.size ? "text-foreground" : "text-muted-foreground")}>
+          <ListFilter className="size-3.5" />
           {t('status')}
-          {selected.size > 0 && (
-            <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-[10px]">
-              {selected.size}
-            </Badge>
-          )}
+          {selected.size > 0 && <span className="tabular-nums text-muted-foreground">{selected.size}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64">

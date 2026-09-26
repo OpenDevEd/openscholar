@@ -1745,6 +1745,7 @@
   "jobStatus": {
     "restart": "पुनः आरंभ करें",
     "papersCount": "{count} पेपर",
+    "questionsCount": "{count, plural, one {# प्रश्न} other {# प्रश्न}}",
     "statusPending": "लंबित",
     "statusDownloadingPdfs": "पेपर प्रोसेस हो रहे हैं",
     "statusExtracting": "निकाल रहे हैं",
@@ -1758,13 +1759,8 @@
     "jobCreated": "नई जॉब बनी",
     "failedToCreate": "नई जॉब बनाने में विफल",
     "updated": "{timeAgo} अपडेट किया गया",
-    "totalPapers": "कुल पेपर",
-    "processed": "प्रोसेस किए गए",
-    "successRate": "सफलता दर",
-    "extractionProgress": "एक्सट्रैक्शन प्रगति",
     "noMatches": "वर्तमान फ़िल्टर के लिए कोई मैच नहीं",
     "clearFilters": "फ़िल्टर साफ़ करें",
-    "questions": "प्रश्न",
     "progressOfPapers": "{total} में से {processed} पेपर",
     "loadingExtractionResults": "एक्सट्रैक्शन परिणाम लोड हो रहे हैं...",
     "appliedSavedView": "सहेजा गया व्यू लागू किया गया: {name}"

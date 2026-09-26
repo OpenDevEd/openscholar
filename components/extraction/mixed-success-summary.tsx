@@ -26,7 +26,7 @@
 
 import { useId } from "react";
 import { useTranslations } from "next-intl";
-import { PartyPopper } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -73,11 +73,11 @@ export function MixedSuccessSummary({ jobId }: MixedSuccessSummaryProps) {
       data-total-questions={summary.totalQuestions}
       data-failed-total={summary.total}
       data-retryable-total={retryableTotal}
-      className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4"
+      className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3"
     >
       <div className="flex items-start gap-3">
-        <PartyPopper
-          className="mt-0.5 h-4 w-4 text-amber-600"
+        <AlertTriangle
+          className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
           aria-hidden="true"
         />
         <div className="space-y-2 text-sm">

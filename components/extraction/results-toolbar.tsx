@@ -6,13 +6,11 @@ import {
   LayoutGrid,
   PanelLeft,
   ArrowUpDown,
-  ChevronDown,
   Download,
   Columns3,
   Check,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,6 +18,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LIST_FILTER } from "@/components/evidence-libraries/list-controls";
+import { IconSwitch } from "@/components/view-mode-toggle";
 import { SearchInput } from "./search-input";
 import { ConfidenceFilter } from "./confidence-filter";
 import { StatusFilter } from "./status-filter";
@@ -67,6 +68,8 @@ export function ResultsToolbar({
 }: ResultsToolbarProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
+  const ta = useTranslations("accessibility");
+  const tl = useTranslations("libraryPage");
 
   const RESULTS_VIEW_OPTIONS = useMemo(() => [
     { mode: "table" as const, icon: Table2, label: tc("table") },
@@ -103,137 +106,69 @@ export function ResultsToolbar({
     [onFiltersChange]
   );
 
-  const currentSortOption = SORT_OPTIONS.find((o) => o.value === sortBy);
-
   return (
-    <div className="sticky top-0 z-20 mb-6 rounded-xl border-b bg-card/95">
-      {/* Top row: View toggle + Search + Sort + Export */}
-      <div className="flex flex-col sm:flex-row gap-3 p-4">
-        {/* View mode toggle - icon-only matching shared toolbar */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60">
-            {RESULTS_VIEW_OPTIONS.map((option) => {
-              const isActive = viewMode === option.mode;
-              const Icon = option.icon;
-              return (
-                <button
-                  key={option.mode}
-                  onClick={() => onViewModeChange(option.mode)}
-                  className={cn(
-                    "relative z-10 flex items-center justify-center p-1.5 rounded-md transition-colors",
-                    isActive
-                      ? "text-primary bg-background shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                  )}
-                  title={option.label}
-                >
-                  <Icon className="h-4 w-4" />
-                </button>
-              );
-            })}
-          </div>
-        </div>
+    <div className="flex flex-wrap items-center gap-2 border-b border-border/50 px-4 py-3 md:px-6">
+      <IconSwitch
+        label={ta("viewOptions")}
+        value={viewMode}
+        onChange={onViewModeChange}
+        options={RESULTS_VIEW_OPTIONS.map(({ mode, icon, label }) => ({ value: mode, icon, label }))}
+      />
+      <SearchInput
+        key={searchQueryResetKey}
+        value={filters.searchQuery}
+        onChange={handleSearchChange}
+        placeholder={t("searchPapersPlaceholder")}
+        className="order-first w-full sm:order-none sm:w-auto sm:min-w-48 sm:flex-1"
+      />
+      <ConfidenceFilter range={filters.confidenceRange} onChange={handleConfidenceChange} />
+      <StatusFilter selected={filters.statusFilters} onChange={handleStatusChange} />
+      {filteredCount < totalCount ? (
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {t("filteredOfTotal", { filtered: filteredCount, total: totalCount })}
+        </span>
+      ) : null}
+      <div className="flex items-center gap-2 sm:ml-auto">
+        <Select value={sortBy} onValueChange={(value) => onSortChange(value as ResultsSortBy)}>
+          <SelectTrigger size="sm" aria-label={tl("sortBy")} className={cn("w-40", LIST_FILTER)}>
+            <ArrowUpDown className="size-3.5" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        {/* Search */}
-        <SearchInput
-          key={searchQueryResetKey}
-          value={filters.searchQuery}
-          onChange={handleSearchChange}
-          placeholder={t("searchPapersPlaceholder")}
-        />
-
-        {/* Sort dropdown */}
-        <div className="flex items-center gap-2 shrink-0">
+        {viewMode === "table" && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <ArrowUpDown className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">
-                  {currentSortOption?.label}
-                </span>
-                <ChevronDown className="h-3 w-3 opacity-50" />
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" aria-label={tc("columns")} title={tc("columns")}>
+                <Columns3 className="size-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {SORT_OPTIONS.map((option) => (
-                <DropdownMenuItem
-                  key={option.value}
-                  onClick={() => onSortChange(option.value)}
-                  className={cn(sortBy === option.value && "bg-muted")}
-                >
-                  {option.label}
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  onShowCreditsChange(!showCredits);
+                }}
+                data-column-toggle="credits"
+                data-column-visible={showCredits ? "true" : "false"}
+                className="gap-2"
+              >
+                <Check className={cn("size-3.5", showCredits ? "opacity-100" : "opacity-0")} />
+                {tc("credits")}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        )}
 
-          {/* Columns dropdown — table view only */}
-          {viewMode === "table" && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 gap-1.5 text-muted-foreground hover:text-foreground"
-                  aria-label={tc("columns")}
-                >
-                  <Columns3 className="h-3.5 w-3.5" />
-                  <ChevronDown className="h-3 w-3 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    onShowCreditsChange(!showCredits);
-                  }}
-                  data-column-toggle="credits"
-                  data-column-visible={showCredits ? "true" : "false"}
-                  className="gap-2"
-                >
-                  <Check
-                    className={cn(
-                      "h-3.5 w-3.5",
-                      showCredits ? "opacity-100" : "opacity-0",
-                    )}
-                  />
-                  {tc("credits")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          {/* Export button */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-1.5 text-muted-foreground hover:text-foreground"
-            onClick={onExportAll}
-            disabled={filteredCount === 0}
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{tc("export")}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Bottom row: Filters + count */}
-      <div className="flex flex-wrap items-center gap-2 px-4 pb-4">
-        <ConfidenceFilter
-          range={filters.confidenceRange}
-          onChange={handleConfidenceChange}
-        />
-        <StatusFilter
-          selected={filters.statusFilters}
-          onChange={handleStatusChange}
-        />
-        <Badge variant="outline" className="ml-auto">
-          {t("filteredOfTotal", { filtered: filteredCount, total: totalCount })}
-        </Badge>
+        <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground" onClick={onExportAll} disabled={filteredCount === 0}>
+          <Download className="size-3.5" />
+          {tc("export")}
+        </Button>
       </div>
     </div>
   );

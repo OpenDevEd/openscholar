@@ -1771,6 +1771,7 @@
   "jobStatus": {
     "restart": "Restart",
     "papersCount": "{count} papers",
+    "questionsCount": "{count, plural, one {# question} other {# questions}}",
     "statusPending": "Pending",
     "statusDownloadingPdfs": "Processing papers",
     "statusExtracting": "Extracting",
@@ -1784,13 +1785,8 @@
     "jobCreated": "New job created",
     "failedToCreate": "Failed to create new job",
     "updated": "Updated {timeAgo}",
-    "totalPapers": "Total Papers",
-    "processed": "Processed",
-    "successRate": "Success Rate",
-    "extractionProgress": "Extraction Progress",
     "noMatches": "No matches for current filters",
     "clearFilters": "Clear Filters",
-    "questions": "Questions",
     "progressOfPapers": "{processed} of {total} papers",
     "loadingExtractionResults": "Loading extraction results...",
     "appliedSavedView": "Applied saved view: {name}"

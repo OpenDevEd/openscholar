@@ -1,6 +1,7 @@
 "use client";
 
-import { Filter } from "lucide-react";
+import { Gauge } from "lucide-react";
+import { LIST_FILTER } from "@/components/evidence-libraries/list-controls";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -31,8 +32,8 @@ export function ConfidenceFilter({ range, onChange }: ConfidenceFilterProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className={cn(isFiltered && "border-primary")}>
-          <Filter className="w-4 h-4 mr-2" />
+        <Button variant="ghost" size="sm" className={cn("h-8 gap-1.5 text-xs", LIST_FILTER, isFiltered ? "text-foreground" : "text-muted-foreground")}>
+          <Gauge className="size-3.5" />
           {t('confidenceLabel', { min: range[0], max: range[1] })}
         </Button>
       </PopoverTrigger>
