@@ -48,7 +48,7 @@ export function isPublicPath(pathname: string) {
  * route gate skips its full-screen loader for them. Each one must stay
  * correct before access is known (see OrganizationFeatureGate's fallback).
  */
-const PAGES_WITH_OWN_LOADING = ["/evidence-libraries"] as const;
+const PAGES_WITH_OWN_LOADING = ["/evidence-libraries", "/authors"] as const;
 
 export function showsOwnLoading(pathname: string) {
   return (PAGES_WITH_OWN_LOADING as readonly string[]).includes(normalizePathname(pathname));

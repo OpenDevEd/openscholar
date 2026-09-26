@@ -4,46 +4,54 @@ import { useMutation, usePaginatedQuery } from "convex/react";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Users, Plus, Search, ArrowUpRight } from "lucide-react";
+import { Users, Plus, ArrowUpRight } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
+import { ListSearch } from "@/components/evidence-libraries/list-controls";
+import { EmptyList } from "@/components/evidence-libraries/configuration/fields";
 import { AuthorAvatar } from "./author-avatar";
 import { AuthorInvitations } from "./author-invitations";
 import { Field, FieldError } from "@/components/evidence-libraries/configuration/section-card";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from "@/components/ui/dialog";
 
-export function AuthorList() {
+/**
+ * `pending` renders the page before access is confirmed: the frame and
+ * toolbar show at once and only the list waits.
+ */
+export function AuthorList({pending = false}: {pending?: boolean}) {
   const {isSignedIn} = useUser();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [pending, setPending] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const create = useMutation(api.authors.profiles.create);
-  const {results, status, loadMore} = usePaginatedQuery(api.authors.profiles.list, {search}, {initialNumItems: 20});
-  return <LibraryPageShell icon={Users} title="Authors" actions={isSignedIn
-    ? <Button onClick={() => {setError(""); setOpen(true);}}><Plus />Create author</Button>
-    : <SignInButton mode="modal"><Button><Plus />Create author</Button></SignInButton>}>
-    <AuthorInvitations />
-    <div className="border-b border-border/50 p-4"><div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" aria-label="Find authors" placeholder="Find an author" value={search} onChange={event => setSearch(event.target.value)} /></div></div>
-    {results.map(profile => <Link key={profile._id} href={`/authors/${profile._id}`} className="flex items-center gap-4 border-b border-border/50 px-4 py-4 transition-colors last:border-b-0 hover:bg-muted/20 sm:px-6">
-      <AuthorAvatar photo={profile.photo} className="size-12" />
-      <div className="min-w-0 flex-1"><p className="truncate font-semibold">{profile.name}</p><p className="mt-1 truncate text-sm text-muted-foreground">{profile.headline || profile.affiliation}</p></div>
-      <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
-    </Link>)}
-    {!results.length && (status === "LoadingFirstPage"
-      ? <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading authors" className="size-6 text-primary" /></div>
-      : <p className="p-6 text-sm text-muted-foreground">No authors found.</p>)}
+  const {results, status, loadMore} = usePaginatedQuery(api.authors.profiles.list, pending ? "skip" : {search}, {initialNumItems: 20});
+  // The page renders before sign-in finishes, so only a confirmed sign-out asks to sign in.
+  return <LibraryPageShell icon={Users} title="Authors" actions={isSignedIn === false
+    ? <SignInButton mode="modal"><Button><Plus />Create author</Button></SignInButton>
+    : <Button onClick={() => {setError(""); setOpen(true);}}><Plus />Create author</Button>}>
+    {!pending && <AuthorInvitations />}
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 p-4"><ListSearch aria-label="Find authors" placeholder="Find an author…" className="w-56" value={search} onChange={event => setSearch(event.target.value)} /></div>
+    {!!results.length && <ul className="divide-y divide-border/50">{results.map(profile => <li key={profile._id} className="fade-enter"><Link href={`/authors/${profile._id}`} className="group flex items-center gap-3 p-4 hover:bg-muted/15">
+      <AuthorAvatar photo={profile.photo} className="mr-1 size-10 shrink-0" />
+      <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{profile.name}</p><p className="truncate text-xs text-muted-foreground">{profile.headline || profile.affiliation}</p></div>
+      <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+    </Link></li>)}</ul>}
+    {/* Loading and empty share one height so the card does not jump between them. */}
+    {!results.length && <div className="flex min-h-40 items-center justify-center p-6">{pending || status === "LoadingFirstPage"
+      ? <Spinner aria-label="Loading authors" className="size-6 text-primary" />
+      : <div className="fade-enter w-full"><EmptyList>No authors found.</EmptyList></div>}</div>}
     {(status === "CanLoadMore" || status === "LoadingMore") && <div className="flex justify-center border-t border-border/50 p-3"><Button variant="ghost" size="sm" disabled={status === "LoadingMore"} onClick={() => loadMore(20)}>{status === "LoadingMore" && <Spinner />}Show more</Button></div>}
     <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>Create author profile</DialogTitle></DialogHeader><form className="space-y-4" onSubmit={async event => {
-      event.preventDefault(); if (pending) return; setPending(true); setError("");
+      event.preventDefault(); if (creating) return; setCreating(true); setError("");
       try { const id = await create({name}); router.push(`/authors/${id}/configuration`); setOpen(false); }
       catch (error) { setError(error instanceof Error ? error.message : "Could not create profile"); }
-      finally { setPending(false); }
-    }}><Field label="Name">{id => <Input id={id} value={name} onChange={event => setName(event.target.value)} required maxLength={500} autoFocus />}</Field>{error && <FieldError>{error}</FieldError>}<DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit" disabled={pending || !name.trim()}><Plus />Create profile</Button></DialogFooter></form></DialogContent></Dialog>
+      finally { setCreating(false); }
+    }}><Field label="Name">{id => <Input id={id} value={name} onChange={event => setName(event.target.value)} required maxLength={500} autoFocus />}</Field>{error && <FieldError>{error}</FieldError>}<DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit" disabled={creating || !name.trim()}><Plus />Create profile</Button></DialogFooter></form></DialogContent></Dialog>
   </LibraryPageShell>;
 }

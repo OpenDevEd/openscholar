@@ -191,14 +191,15 @@ export function LibraryList({ pending = false }: { pending?: boolean }) {
       {loading ? (
         <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading libraries" className="size-6 text-primary" /></div>
       ) : !visible.length ? (
-        <div className="p-6">
-          <EmptyList>
+        // Same height as the loading state, so the card does not jump between them.
+        <div className="fade-enter flex min-h-40 items-center p-6">
+          <div className="w-full"><EmptyList>
             {search || organization !== "all"
               ? "No libraries match these filters."
               : view === "invitations"
                 ? "No pending invitations."
                 : "Your libraries will appear here when you receive access."}
-          </EmptyList>
+          </EmptyList></div>
         </div>
       ) : (
         <ul className="divide-y divide-border/50" data-library-list>
