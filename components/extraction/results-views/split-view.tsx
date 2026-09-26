@@ -66,7 +66,8 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenAnsw
               const result = selectedPaper.results.find((r) => r.questionKey === q.key);
               const citations = getAllCitationLocations(result);
               return (
-                <section key={q.key} className="grid gap-4 p-4 md:px-6 xl:grid-cols-[1fr_280px]">
+                // The citation column exists only when there is a citation to show.
+                <section key={q.key} className={cn("grid gap-4 p-4 md:px-6", citations.length > 0 && result && "xl:grid-cols-[1fr_280px]")}>
                   <div className="min-w-0 space-y-2">
                     <h3 className="text-xs text-muted-foreground">{q.question}</h3>
                     <ResultAnswer result={result} type={q.type} clamp="" />
