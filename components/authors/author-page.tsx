@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthorSettingsNavigation } from "./author-settings-navigation";
 import { PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
+import { ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { ConfigurationLayout } from "@/components/evidence-libraries/configuration/configuration-layout";
 
@@ -29,7 +30,6 @@ import {
   Library,
   Link2,
   Pencil,
-  Search,
   Unlink,
   Users,
   Trash2,
@@ -61,7 +61,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -132,7 +131,7 @@ export default function AuthorPage({
   const unavailable = Boolean(openAlexError);
   const [unlink, setUnlink] = useState(false);
   const [formError, setFormError] = useState("");
-  const [publicationTab, setPublicationTab] = useState("selected");
+  const [publicationTab, setPublicationTab] = useState<"selected" | "openalex">("selected");
   const publicationsRef = useRef<HTMLDivElement>(null);
   const update = async (next: AuthorProfile) => {
     setSaving(true);
@@ -748,46 +747,29 @@ export default function AuthorPage({
               icon={BookOpen}
               bodyClassName="p-0 space-y-0"
             >
-              <Tabs
-                ref={publicationsRef}
-                value={publicationTab}
-                onValueChange={setPublicationTab}
-                className="min-w-0 gap-0"
-              >
+              <div ref={publicationsRef} className="min-w-0">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
-                  <TabsList className="justify-start gap-1 rounded-lg bg-transparent p-0 group-data-[orientation=horizontal]/tabs:h-auto">
-                    <TabsTrigger
-                      value="selected"
-                      className="h-8 flex-none gap-2 rounded-md border-0 px-3 py-1 text-xs transition-colors after:hidden data-[state=active]:bg-muted data-[state=active]:shadow-none dark:data-[state=active]:bg-muted"
-                    >
-                      <BookOpen className="size-3.5" />
-                      Selected publications{" "}
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        {featured.length}
-                      </span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="openalex"
-                      className="h-8 flex-none gap-2 rounded-md border-0 px-3 py-1 text-xs transition-colors after:hidden data-[state=active]:bg-muted data-[state=active]:shadow-none dark:data-[state=active]:bg-muted"
-                    >
-                      <OpenAlexIcon className="size-3.5" />
-                      From OpenAlex
-                    </TabsTrigger>
-                  </TabsList>
+                  <ListViewTabs
+                    label="Publication sources"
+                    value={publicationTab}
+                    onChange={setPublicationTab}
+                    tabs={[
+                      {value: "selected", label: "Selected publications", icon: <BookOpen className="size-3.5" />, count: loadingPublications ? undefined : featured.length},
+                      // The OpenAlex total is known once its first page arrives.
+                      {value: "openalex", label: "From OpenAlex", icon: <OpenAlexIcon className="size-3.5" />, count: openAlexPapers.length ? workCount : undefined},
+                    ]}
+                  />
                   {publicationTab === "selected" && (
-                    <div className="relative w-full sm:w-64">
-                      <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        className="h-8 border-border/50 bg-background pl-8 text-xs shadow-none"
-                        placeholder="Find a publication…"
-                        aria-label="Search publications"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
+                    <ListSearch
+                      className="w-64"
+                      placeholder="Find a publication…"
+                      aria-label="Search publications"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
                   )}
                 </div>
-                <TabsContent value="selected" className="mt-0 space-y-0">
+                {publicationTab === "selected" ? <div>
                   <div className="overflow-hidden">
                     {filtered.map(p => <PublicationListItem key={p.id} publication={p} />)}
                     {loadingPublications ? (
@@ -800,8 +782,7 @@ export default function AuthorPage({
                       </p>
                     )}
                   </div>
-                </TabsContent>
-                <TabsContent value="openalex" className="mt-0 space-y-0">
+                </div> : <div>
                   {openAlexError && <p role="alert" className="p-4 text-sm text-destructive">{openAlexError}</p>}
                   {profile.match ? (
                     <>
@@ -853,8 +834,8 @@ export default function AuthorPage({
                       No OpenAlex publications to display.
                     </div>
                   )}
-                </TabsContent>
-              </Tabs>
+                </div>}
+              </div>
             </SectionCard>
           </>
         ))}
