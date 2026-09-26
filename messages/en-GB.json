@@ -1070,6 +1070,9 @@
     "chatModelPresets": "Presets"
   },
   "sourcesPanel": {
+    "meta": {
+      "cites": "{count, plural, one {# cite} other {# cites}}"
+    },
     "title": "Sources",
     "countLive": "{included, number} of {total, number}",
     "countShort": "{included, number}/{total, number}",
