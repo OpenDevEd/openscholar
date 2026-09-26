@@ -14,7 +14,8 @@
  *   - exposes the 1-based index suffix
  */
 import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
+import { renderWithTooltip as render } from "../helpers/render-with-tooltip";
 import { WebSourceChip } from "@/components/ai-elements/web-source-chip";
 
 describe("<WebSourceChip>", () => {

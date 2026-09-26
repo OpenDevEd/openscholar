@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
+  TooltipHint,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -567,12 +568,11 @@ export function HistoryItem({
 
             {/* Research question */}
             {latestQuestion && (
-              <p
-                className="text-xs text-muted-foreground leading-tight truncate"
-                title={latestQuestion}
-              >
-                <span className="opacity-60">{tc("questionPrefix")}</span> {latestQuestion}
-              </p>
+              <TooltipHint label={latestQuestion} onlyWhenClipped>
+                <p className="text-xs text-muted-foreground leading-tight truncate">
+                  <span className="opacity-60">{tc("questionPrefix")}</span> {latestQuestion}
+                </p>
+              </TooltipHint>
             )}
 
             {/* Metadata */}

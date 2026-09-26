@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TooltipHint } from "@/components/ui/tooltip";
 import {
   Popover,
   PopoverContent,
@@ -122,7 +123,9 @@ export const TableView = memo(function TableView({
             {questions.map((q) => (
               <TableHead key={q.key} className="min-w-[240px] max-w-[320px] whitespace-normal">
                 <div className="flex items-center gap-1.5">
-                  <span className="line-clamp-1" title={q.question}>{q.question}</span>
+                  <TooltipHint label={q.question} onlyWhenClipped>
+                    <span className="line-clamp-1">{q.question}</span>
+                  </TooltipHint>
                   {q.description && (
                     <Popover>
                       <PopoverTrigger aria-label={tc("details")} className="mt-0.5 shrink-0 text-muted-foreground/60 hover:text-muted-foreground">
@@ -162,9 +165,11 @@ export const TableView = memo(function TableView({
                       className="mt-0.5"
                     />
                     <div className="min-w-0 space-y-1.5">
-                      <p className="line-clamp-4 text-sm font-medium leading-snug" title={paper.title}>
-                        <HighlightedText text={paper.title} query={searchQuery} />
-                      </p>
+                      <TooltipHint label={paper.title} onlyWhenClipped>
+                        <p className="line-clamp-4 text-sm font-medium leading-snug">
+                          <HighlightedText text={paper.title} query={searchQuery} />
+                        </p>
+                      </TooltipHint>
                       <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />
                       <div onClick={(e) => e.stopPropagation()}>
                         <PaperQuestionProgress paperStatus={paper.status} results={paper.results} totalQuestions={questions.length} />

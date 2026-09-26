@@ -2359,7 +2359,6 @@
       "lowContrast": "Low contrast ({ratio}:1). Text in this colour will be hard to read.",
       "removeChip": "Remove {value}",
       "reset": "Reset changes",
-      "fixed": "This value is fixed.",
       "dragHandle": "Drag to reorder",
       "uploadFailed": "The file could not be uploaded. Try again.",
       "view": "View",

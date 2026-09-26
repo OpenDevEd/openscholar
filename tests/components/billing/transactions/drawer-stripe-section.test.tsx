@@ -2,7 +2,8 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, fireEvent, act } from "@testing-library/react";
+import { fireEvent, act } from "@testing-library/react";
+import { renderWithTooltip as render } from "../../../helpers/render-with-tooltip";
 
 import { DrawerStripeSection } from "@/components/billing/transactions/drawer-stripe-section";
 

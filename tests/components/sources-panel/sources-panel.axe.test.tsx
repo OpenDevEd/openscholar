@@ -13,7 +13,7 @@
  * behavior tests live in their own files).
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 import { axe, toHaveNoViolations } from "jest-axe";
 import { SourcesPanelInner } from "@/components/extraction/chat/sources-panel/sources-panel";
 import { PapersContext } from "@/components/extraction/chat/papers-context";

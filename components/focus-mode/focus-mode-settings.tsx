@@ -82,7 +82,6 @@ export function FocusModeSettings({
             size="sm"
             onClick={settings.resetSettings}
             className="gap-2"
-            title={tAccessibility('resetToDefaults')}
           >
             <RotateCcw className="h-4 w-4" />
             {tCommon("reset")}

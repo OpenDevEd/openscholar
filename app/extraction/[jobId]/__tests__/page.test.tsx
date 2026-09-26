@@ -362,6 +362,7 @@ vi.mock("@/components/ui/tooltip", () => ({
   Tooltip: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   TooltipTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   TooltipContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  TooltipHint: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock("@/components/command-center", () => ({

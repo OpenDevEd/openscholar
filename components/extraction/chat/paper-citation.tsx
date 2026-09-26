@@ -13,6 +13,7 @@ import {
 } from "@/components/ai-elements/inline-citation";
 import { Button } from "@/components/ui/button";
 import { HoverCardTrigger } from "@/components/ui/hover-card";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import {
   classifyCitationState,
@@ -147,7 +148,6 @@ export function PaperCitation({ index }: PaperCitationProps) {
             data-paper-index={index}
             data-paper-resolved="deprecated"
             aria-label={t("chatCitationDeprecated", { index })}
-            title={t("chatCitationDeprecated", { index })}
             tabIndex={0}
           >
             {index}
@@ -167,16 +167,17 @@ export function PaperCitation({ index }: PaperCitationProps) {
 
   if (state === "unresolved") {
     return (
-      <span
-        className={PILL_CLASS_BY_STATE.unresolved}
-        data-citation-state="unresolved"
-        data-paper-index={index}
-        data-paper-resolved="false"
-        aria-label={t("chatCitationUnresolved", { index })}
-        title={`${index}?`}
-      >
-        {index}?
-      </span>
+      <TooltipHint label={t("chatCitationUnresolved", { index })}>
+        <span
+          className={PILL_CLASS_BY_STATE.unresolved}
+          data-citation-state="unresolved"
+          data-paper-index={index}
+          data-paper-resolved="false"
+          aria-label={t("chatCitationUnresolved", { index })}
+        >
+          {index}?
+        </span>
+      </TooltipHint>
     );
   }
 
@@ -250,7 +251,6 @@ export function PaperCitation({ index }: PaperCitationProps) {
                   className={cn(
                     "h-7 px-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50",
                   )}
-                  title={tCommon("openAccessPdf")}
                 >
                   <a
                     href={pdfUrl}
@@ -271,7 +271,6 @@ export function PaperCitation({ index }: PaperCitationProps) {
                   className={cn(
                     "h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50",
                   )}
-                  title={tAcc("openDoi")}
                 >
                   <a
                     href={doiUrl}
@@ -294,7 +293,6 @@ export function PaperCitation({ index }: PaperCitationProps) {
                   className={cn(
                     "h-7 px-2 text-amber-700 border-amber-200 hover:bg-amber-50 hover:border-amber-300 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-950/50",
                   )}
-                  title={t("chatCitationOpenOpenAlex")}
                 >
                   <a
                     href={openalexUrl}

@@ -403,11 +403,6 @@ Return a more targeted version of this query.`;
                       : handleNarrowQuery
                   }
                   disabled={Boolean(isLoading) || isContextualActionLoading}
-                  title={
-                    contextualAction === "broaden"
-                      ? tsc("makeBroader")
-                      : tsc("makeSpecific")
-                  }
                   aria-label={
                     contextualAction === "broaden"
                       ? tsc("makeBroader")
@@ -460,11 +455,6 @@ Return a more targeted version of this query.`;
                     type="button"
                     onClick={handleStartChat}
                     disabled={Boolean(isLoading) || isStartingChat}
-                    title={
-                      chatButtonState.mode === "continue"
-                        ? tsc("continueChat")
-                        : tsc("startChat")
-                    }
                     aria-label={
                       chatButtonState.mode === "continue"
                         ? tsc("continueChat")
@@ -492,7 +482,6 @@ Return a more targeted version of this query.`;
                   type="button"
                   onClick={() => phase === "authenticated" ? setIsScreeningDialogOpen(true) : goToSignIn()}
                   disabled={Boolean(isLoading)}
-                  title={tsc("screenAll")}
                   aria-label={tsc("screenAll")}
                   className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
                 >

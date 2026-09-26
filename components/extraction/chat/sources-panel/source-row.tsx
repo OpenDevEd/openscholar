@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { CheckIcon, ExternalLink, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import { cn } from "@/lib/utils";
 import { extractMatchSnippet } from "@/lib/chat/search/match-snippet";
@@ -133,15 +134,16 @@ function SourceRowImpl({
           <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-foreground">
             {row.title}
           </p>
-          <span
-            title={SOURCE_LABEL[row.sourceType]}
-            data-source-icon={row.sourceType}
-            className="shrink-0 pt-0.5"
-            style={{ color: `var(${sourceColorVar})` }}
-          >
-            <SourceIcon className="size-3.5" aria-hidden="true" />
-            <span className="sr-only">{SOURCE_LABEL[row.sourceType]}</span>
-          </span>
+          <TooltipHint label={SOURCE_LABEL[row.sourceType]}>
+            <span
+              data-source-icon={row.sourceType}
+              className="shrink-0 pt-0.5"
+              style={{ color: `var(${sourceColorVar})` }}
+            >
+              <SourceIcon className="size-3.5" aria-hidden="true" />
+              <span className="sr-only">{SOURCE_LABEL[row.sourceType]}</span>
+            </span>
+          </TooltipHint>
         </div>
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-[11px] text-muted-foreground">
@@ -194,13 +196,14 @@ function SourceRowImpl({
             data-paper-meta
           >
             {row.venueName?.trim() && (
-              <span
-                className="truncate italic text-foreground/85"
-                data-paper-venue
-                title={row.venueName}
-              >
-                {row.venueName}
-              </span>
+              <TooltipHint label={row.venueName} onlyWhenClipped>
+                <span
+                  className="truncate italic text-foreground/85"
+                  data-paper-venue
+                >
+                  {row.venueName}
+                </span>
+              </TooltipHint>
             )}
             {row.workType?.trim() && (
               <span

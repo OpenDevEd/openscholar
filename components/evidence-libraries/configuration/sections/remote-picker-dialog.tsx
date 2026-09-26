@@ -23,7 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { StatusChip } from "../status-chip";
 
@@ -499,26 +499,18 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                             </span>
                           ) : null}
                           <div className="min-w-0 flex-1">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <p className="truncate font-medium">{row.title}</p>
-                              </TooltipTrigger>
-                              <TooltipContent>{row.title}</TooltipContent>
-                            </Tooltip>
+                            <TooltipHint label={row.title} onlyWhenClipped>
+                              <p className="truncate font-medium">{row.title}</p>
+                            </TooltipHint>
                             {row.detail}
                           </div>
                         </div>
                       </TableCell>
                       {columns.meta ? (
                         <TableCell className="min-w-0">
-                          {row.meta ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <p className="truncate text-muted-foreground">{row.meta}</p>
-                              </TooltipTrigger>
-                              <TooltipContent>{row.meta}</TooltipContent>
-                            </Tooltip>
-                          ) : null}
+                          <TooltipHint label={row.meta} onlyWhenClipped>
+                            <p className="truncate text-muted-foreground">{row.meta}</p>
+                          </TooltipHint>
                         </TableCell>
                       ) : null}
                       {columns.count ? (

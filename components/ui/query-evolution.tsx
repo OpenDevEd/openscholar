@@ -81,7 +81,7 @@ export function QueryEvolution({
           <div className="flex-1 min-w-0 flex items-center gap-1 text-[10px] text-muted-foreground">
             {previewQueries.map((entry, idx) => (
               <React.Fragment key={entry.query}>
-                <span className="truncate max-w-[80px]" title={entry.query}>
+                <span className="truncate max-w-[80px]">
                   "{truncateQuery(entry.query, 15)}"
                 </span>
                 {idx < previewQueries.length - 1 && (

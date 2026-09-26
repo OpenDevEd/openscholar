@@ -161,7 +161,7 @@ export function FocusModeHeader({
               variant={showTranslated ? "outline-primary" : "outline"}
               size="sm"
               onClick={onToggleTranslation}
-              title={
+              aria-label={
                 showTranslated
                   ? tFocus("showOriginal")
                   : tFocus("showTranslation")

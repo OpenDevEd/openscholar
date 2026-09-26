@@ -22,7 +22,7 @@
  * engine; the listbox option exposes inner action affordances on hover).
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { renderWithTooltip as render } from "../helpers/render-with-tooltip";
 import { axe, toHaveNoViolations } from "jest-axe";
 import { installJsdomVirtualizerStubs } from "@/tests/helpers/jsdom-virtualizer";
 

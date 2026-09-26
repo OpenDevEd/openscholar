@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { useTranslations } from "next-intl";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TooltipHint } from "@/components/ui/tooltip";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";
@@ -83,7 +84,9 @@ export const CardView = memo(function CardView({
                 className="mt-0.5"
               />
               <div className="min-w-0 flex-1 space-y-1">
-                <p className="line-clamp-2 text-sm font-medium leading-snug" title={paper.title}>{paper.title}</p>
+                <TooltipHint label={paper.title} onlyWhenClipped>
+                  <p className="line-clamp-2 text-sm font-medium leading-snug">{paper.title}</p>
+                </TooltipHint>
                 <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />
               </div>
             </div>

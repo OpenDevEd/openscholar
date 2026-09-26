@@ -364,7 +364,7 @@ export default function AISettingsPage() {
                     const Icon = p.icon;
                     const sel = provider === p.id;
                     return (
-                      <button key={p.id} type="button" onClick={() => handleProviderChange(p.id)} title={p.name} className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-all", sel ? "bg-muted font-medium shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                      <button key={p.id} type="button" aria-label={p.name} onClick={() => handleProviderChange(p.id)} className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-all", sel ? "bg-muted font-medium shadow-sm" : "text-muted-foreground hover:text-foreground")}>
                         <Icon className={cn("h-4 w-4", sel ? p.color : "")} />
                         <span className="hidden sm:inline">{p.name}</span>
                       </button>

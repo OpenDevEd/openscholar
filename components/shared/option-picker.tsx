@@ -12,6 +12,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 /** `group` sorts options under a heading; `detail` is a second, quieter line. */
@@ -79,13 +80,17 @@ export function OptionPicker({
                     >
                       <Check className={cn("size-4", selected.includes(option.id) ? "opacity-100" : "opacity-0")} />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate" title={option.name}>
-                          {option.name}
-                        </span>
-                        {option.detail ? (
-                          <span className="block truncate text-xs text-muted-foreground" title={option.detail}>
-                            {option.detail}
+                        <TooltipHint label={option.name} onlyWhenClipped>
+                          <span className="block truncate">
+                            {option.name}
                           </span>
+                        </TooltipHint>
+                        {option.detail ? (
+                          <TooltipHint label={option.detail} onlyWhenClipped>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {option.detail}
+                            </span>
+                          </TooltipHint>
                         ) : null}
                       </span>
                     </CommandItem>
@@ -100,9 +105,11 @@ export function OptionPicker({
         <div className="flex flex-wrap gap-1.5">
           {selected.map((id) => (
             <span key={id} className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
-              <span className="truncate" title={names[id] ?? id}>
-                {names[id] ?? id}
-              </span>
+              <TooltipHint label={names[id] ?? id} onlyWhenClipped>
+                <span className="truncate">
+                  {names[id] ?? id}
+                </span>
+              </TooltipHint>
               <button
                 type="button"
                 aria-label={removeLabel(names[id] ?? id)}

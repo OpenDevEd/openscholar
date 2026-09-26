@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { CITATION_FORMATS, type CitationStyle } from "@/lib/citations/formats";
 import {
   loadCitationStyles,
@@ -237,20 +238,21 @@ export function CitationStylePicker({
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          size="sm"
-          variant="outline"
-          aria-label={
-            selected ? `${t("style")}: ${selected.label}` : t("style")
-          }
-          title={selected?.label ?? t("style")}
-          className="min-w-0 flex-1 justify-between gap-2 border bg-background shadow-xs"
-        >
-          <span className="truncate">{selected?.label ?? t("style")}</span>
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-        </Button>
-      </PopoverTrigger>
+      <TooltipHint label={selected?.label ?? t("style")} onlyWhenClipped>
+        <PopoverTrigger asChild>
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label={
+              selected ? `${t("style")}: ${selected.label}` : t("style")
+            }
+            className="min-w-0 flex-1 justify-between gap-2 border bg-background shadow-xs"
+          >
+            <span className="truncate">{selected?.label ?? t("style")}</span>
+            <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+          </Button>
+        </PopoverTrigger>
+      </TooltipHint>
       <PopoverContent
         align="start"
         collisionPadding={16}

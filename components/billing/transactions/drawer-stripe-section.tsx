@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 import { useCopyToClipboard } from "./use-copy-to-clipboard";
+import { TooltipHint } from "@/components/ui/tooltip";
 
 interface Props {
   invoiceId: string | null;
@@ -89,12 +90,9 @@ export function DrawerStripeSection({
               {t(labelKey)}
             </dt>
             <dd className="flex min-w-0 flex-1 items-center gap-1">
-              <code
-                className="truncate font-mono text-[11px]"
-                title={value}
-              >
-                {value}
-              </code>
+              <TooltipHint label={value} onlyWhenClipped>
+                <code className="truncate font-mono text-[11px]">{value}</code>
+              </TooltipHint>
               <Button
                 type="button"
                 variant="ghost"

@@ -2,7 +2,8 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithTooltip as render } from "../../../helpers/render-with-tooltip";
 import userEvent from "@testing-library/user-event";
 
 import { TransactionDetailDrawer } from "@/components/billing/transactions/transaction-detail-drawer";

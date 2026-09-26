@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { CitationStylePicker } from "@/components/citation-style-picker";
 import { CitationText } from "@/components/citation-text";
 import { enrichPaperCitationMetadata } from "@/app/actions/citations";
@@ -174,20 +175,21 @@ export function CitationControl({
       onKeyDown={(event) => event.stopPropagation()}
     >
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            onPointerEnter={prepare}
-            onFocus={prepare}
-            variant={compact ? "ghost" : "outline"}
-            size={compact ? "icon" : "sm"}
-            className={compact ? "size-8" : ""}
-            aria-label={t("cite")}
-            title={t("cite")}
-          >
-            <Quote className="size-4" />
-            {!compact && t("cite")}
-          </Button>
-        </PopoverTrigger>
+        <TooltipHint label={compact ? t("cite") : undefined}>
+          <PopoverTrigger asChild>
+            <Button
+              onPointerEnter={prepare}
+              onFocus={prepare}
+              variant={compact ? "ghost" : "outline"}
+              size={compact ? "icon" : "sm"}
+              className={compact ? "size-8" : ""}
+              aria-label={t("cite")}
+            >
+              <Quote className="size-4" />
+              {!compact && t("cite")}
+            </Button>
+          </PopoverTrigger>
+        </TooltipHint>
         <PopoverContent
           align="end"
           collisionPadding={16}

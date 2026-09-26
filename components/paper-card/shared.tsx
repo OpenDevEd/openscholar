@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { DownloadMenu } from "@/components/download-menu";
 import {
   Quote,
@@ -129,30 +130,33 @@ export function TranslationToggle({
     if (!translatedContent) {
       if (isTranslating) {
         return (
-          <div className="flex items-center justify-center p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30" title={tc("translating")}>
-            <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-          </div>
+          <TooltipHint label={tc("translating")}>
+            <div role="img" aria-label={tc("translating")} className="flex items-center justify-center p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30">
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+            </div>
+          </TooltipHint>
         );
       }
       return null;
     }
 
     return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowTranslated(!showTranslated);
-        }}
-        className={cn(
-          "flex items-center justify-center p-1.5 rounded-md text-xs font-medium transition-colors",
-          showTranslated
-            ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
-            : "bg-muted text-muted-foreground hover:bg-muted/80"
-        )}
-        title={showTranslated ? tc("showOriginal") : tc("showTranslation")}
-      >
-        {showTranslated ? tc("originalShort") : tc("translationShort")}
-      </button>
+      <TooltipHint label={showTranslated ? tc("showOriginal") : tc("showTranslation")}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowTranslated(!showTranslated);
+          }}
+          className={cn(
+            "flex items-center justify-center p-1.5 rounded-md text-xs font-medium transition-colors",
+            showTranslated
+              ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+              : "bg-muted text-muted-foreground hover:bg-muted/80"
+          )}
+        >
+          {showTranslated ? tc("originalShort") : tc("translationShort")}
+        </button>
+      </TooltipHint>
     );
   }
 
@@ -259,52 +263,60 @@ export function ScreeningResponses({
           const displayState = finalState(isQuestionAnswered, isQuestionLoading, isQuestionMissing);
 
           return (
-            <button
+            <TooltipHint
               key={question.question}
-              disabled={displayState === "loading"}
-              className={cn(
-                "flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors",
-                displayState === "checked"
-                  ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100 dark:bg-green-950/30 dark:border-green-800 dark:text-green-400"
-                  : displayState === "crossed"
-                  ? "bg-red-50 border-red-200 text-red-800 hover:bg-red-100 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400"
-                  : displayState === "loading"
-                  ? "bg-blue-50 border-blue-200 text-blue-800 cursor-wait dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
-                  : "bg-muted/50 border-border text-muted-foreground hover:bg-muted/80"
-              )}
-              title={tp("questionN", { n: index + 1, question: question.question })}
+              label={tp("questionN", { n: index + 1, question: question.question })}
             >
-              {displayState === "checked" && <Check className="h-3 w-3" />}
-              {displayState === "crossed" && <X className="h-3 w-3" />}
-              {displayState === "unchecked" && <Minus className="h-3 w-3" />}
-              {displayState === "loading" && (
-                <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
-              )}
-              <span className="font-mono">{index + 1}</span>
-            </button>
+              <span className="inline-flex">
+                <button
+                  disabled={displayState === "loading"}
+                  className={cn(
+                    "flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors",
+                    displayState === "checked"
+                      ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100 dark:bg-green-950/30 dark:border-green-800 dark:text-green-400"
+                      : displayState === "crossed"
+                      ? "bg-red-50 border-red-200 text-red-800 hover:bg-red-100 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400"
+                      : displayState === "loading"
+                      ? "bg-blue-50 border-blue-200 text-blue-800 cursor-wait dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
+                      : "bg-muted/50 border-border text-muted-foreground hover:bg-muted/80"
+                  )}
+                >
+                  {displayState === "checked" && <Check className="h-3 w-3" />}
+                  {displayState === "crossed" && <X className="h-3 w-3" />}
+                  {displayState === "unchecked" && <Minus className="h-3 w-3" />}
+                  {displayState === "loading" && (
+                    <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                  )}
+                  <span className="font-mono">{index + 1}</span>
+                </button>
+              </span>
+            </TooltipHint>
           );
         })}
 
         {/* Expand Button */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setScreeningDetailExpanded(data.id, !showExpandedView);
-          }}
-          className="flex items-center gap-1 px-2 py-1 rounded border bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100 text-xs transition-colors dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
-          title={tp("showDetailedScreeningResponses") +
+        <TooltipHint
+          label={tp("showDetailedScreeningResponses") +
             (expandShortcut ? tp("shortcutInTooltip", { shortcut: expandShortcut.toUpperCase() }) : "")}
         >
-          <Table className="h-3 w-3" />
-          {showExpandedView ? tc("hide") : tc("details")}
-          {expandShortcut && (
-            <span className="text-xs bg-black/10 dark:bg-white/10 px-1 rounded hidden md:inline">
-              {expandShortcut.toUpperCase()}
-            </span>
-          )}
-        </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setScreeningDetailExpanded(data.id, !showExpandedView);
+            }}
+            className="flex items-center gap-1 px-2 py-1 rounded border bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100 text-xs transition-colors dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
+          >
+            <Table className="h-3 w-3" />
+            {showExpandedView ? tc("hide") : tc("details")}
+            {expandShortcut && (
+              <span className="text-xs bg-black/10 dark:bg-white/10 px-1 rounded hidden md:inline">
+                {expandShortcut.toUpperCase()}
+              </span>
+            )}
+          </button>
+        </TooltipHint>
       </div>
 
       {/* Expanded Table View */}
@@ -411,19 +423,24 @@ export function ScreeningBadge({
     unchecked: "bg-muted/50 border-border text-muted-foreground",
   };
 
+  const label = tp("questionN", { n: index + 1, question });
+
   return (
-    <div
-      className={cn(baseClasses, stateClasses[displayState])}
-      title={tp("questionN", { n: index + 1, question })}
-    >
-      {displayState === "checked" && <Check className="h-3 w-3" />}
-      {displayState === "crossed" && <X className="h-3 w-3" />}
-      {displayState === "unchecked" && <Minus className="h-3 w-3" />}
-      {displayState === "loading" && (
-        <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
-      )}
-      {variant !== "icon-only" && <span className="font-mono">{index + 1}</span>}
-    </div>
+    <TooltipHint label={label}>
+      <div
+        role="img"
+        aria-label={label}
+        className={cn(baseClasses, stateClasses[displayState])}
+      >
+        {displayState === "checked" && <Check className="h-3 w-3" />}
+        {displayState === "crossed" && <X className="h-3 w-3" />}
+        {displayState === "unchecked" && <Minus className="h-3 w-3" />}
+        {displayState === "loading" && (
+          <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+        )}
+        {variant !== "icon-only" && <span className="font-mono">{index + 1}</span>}
+      </div>
+    </TooltipHint>
   );
 }
 
@@ -451,17 +468,18 @@ export function CitationBadge({
 
   if (compact) {
     return (
-      <button
-        onClick={onClick}
-        className={cn(
-          "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors",
-          colorClasses[color]
-        )}
-        title={label}
-      >
-        <Icon className="h-3 w-3" />
-        <span>{format.number(count)}</span>
-      </button>
+      <TooltipHint label={label}>
+        <button
+          onClick={onClick}
+          className={cn(
+            "flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors",
+            colorClasses[color]
+          )}
+        >
+          <Icon className="h-3 w-3" />
+          <span>{format.number(count)}</span>
+        </button>
+      </TooltipHint>
     );
   }
 
@@ -471,7 +489,6 @@ export function CitationBadge({
       size="sm"
       onClick={onClick}
       className={cn("flex items-center gap-2 flex-shrink-0", colorClasses[color])}
-      title={label}
     >
       <Icon className="h-4 w-4" />
       <span className="text-sm">{label}: {format.number(count)}</span>
@@ -493,22 +510,24 @@ export function OpenAccessBadge({
 
   if (compact) {
     return (
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => window.open(oaUrl, "_blank")}
-        onKeyDown={(e) => e.key === "Enter" && window.open(oaUrl, "_blank")}
-        onMouseDown={(e) => {
-          if (e.button === 1) {
-            e.preventDefault();
-            window.open(oaUrl, "_blank");
-          }
-        }}
-        className="flex items-center justify-center p-1.5 rounded-md text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/50 transition-colors cursor-pointer"
-        title={tc("openAccessPdf")}
-      >
-        <FileText className="h-4 w-4" />
-      </div>
+      <TooltipHint label={tc("openAccessPdf")}>
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={tc("openAccessPdf")}
+          onClick={() => window.open(oaUrl, "_blank")}
+          onKeyDown={(e) => e.key === "Enter" && window.open(oaUrl, "_blank")}
+          onMouseDown={(e) => {
+            if (e.button === 1) {
+              e.preventDefault();
+              window.open(oaUrl, "_blank");
+            }
+          }}
+          className="flex items-center justify-center p-1.5 rounded-md text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/50 transition-colors cursor-pointer"
+        >
+          <FileText className="h-4 w-4" />
+        </div>
+      </TooltipHint>
     );
   }
 
@@ -524,7 +543,6 @@ export function OpenAccessBadge({
         }
       }}
       className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50 cursor-pointer flex-shrink-0"
-      title={tc("openAccessPdf")}
     >
       <FileText className="h-4 w-4" />
       <span>{tc("pdf")}</span>
@@ -547,22 +565,24 @@ export function DOIBadge({
 
   if (compact) {
     return (
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => window.open(doiUrl, "_blank")}
-        onKeyDown={(e) => e.key === "Enter" && window.open(doiUrl, "_blank")}
-        onMouseDown={(e) => {
-          if (e.button === 1) {
-            e.preventDefault();
-            window.open(doiUrl, "_blank");
-          }
-        }}
-        className="flex items-center justify-center p-1.5 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
-        title={tAcc("doiTooltip", { doi: shortDoi })}
-      >
-        <ExternalLink className="h-4 w-4" />
-      </div>
+      <TooltipHint label={tAcc("doiTooltip", { doi: shortDoi })}>
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={tAcc("doiTooltip", { doi: shortDoi })}
+          onClick={() => window.open(doiUrl, "_blank")}
+          onKeyDown={(e) => e.key === "Enter" && window.open(doiUrl, "_blank")}
+          onMouseDown={(e) => {
+            if (e.button === 1) {
+              e.preventDefault();
+              window.open(doiUrl, "_blank");
+            }
+          }}
+          className="flex items-center justify-center p-1.5 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </div>
+      </TooltipHint>
     );
   }
 
@@ -578,7 +598,6 @@ export function DOIBadge({
         }
       }}
       className="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 cursor-pointer flex-shrink-0"
-      title={tAcc("openDoi")}
     >
       <ExternalLink className="h-3 w-3" />
       <span className="text-xs font-mono">{shortDoi}</span>

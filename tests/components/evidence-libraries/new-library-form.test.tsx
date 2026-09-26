@@ -255,7 +255,11 @@ describe("<NewLibraryForm>", () => {
     render(<NewLibraryForm />);
     await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
 
-    await user.hover(await screen.findByText("climate-evidence-lib.example.test"));
+    const address = await screen.findByText("climate-evidence-lib.example.test");
+    // jsdom has no layout: make the address overflow its box, as a long one does in a browser.
+    Object.defineProperty(address, "scrollWidth", { configurable: true, value: 400 });
+    Object.defineProperty(address, "clientWidth", { configurable: true, value: 200 });
+    await user.hover(address);
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent("climate-evidence-lib.example.test");
   });

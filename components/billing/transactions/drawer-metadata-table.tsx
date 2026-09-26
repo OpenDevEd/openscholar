@@ -3,6 +3,7 @@
 import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { TooltipHint } from "@/components/ui/tooltip";
 
 interface Props {
   metadata: Record<string, string>;
@@ -61,9 +62,9 @@ export function DrawerMetadataTable({ metadata }: Props) {
               >
                 {key}
               </dt>
-              <dd className="truncate font-mono" title={value}>
-                {value}
-              </dd>
+              <TooltipHint label={value} onlyWhenClipped>
+                <dd className="truncate font-mono">{value}</dd>
+              </TooltipHint>
             </Fragment>
           ))}
         </dl>
