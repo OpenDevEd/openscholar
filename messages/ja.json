@@ -1050,7 +1050,24 @@
       "presetMax": "最大",
       "liveAnnouncement": "論文数を {count, number} 件に設定しました"
     },
-    "chatModelPresets": "Presets"
+    "chatModelPresets": "Presets",
+    "chatRetryResponseWith": "{model} で再生成",
+    "chatRetryWithPrefix": "再生成に使うモデル",
+    "chatRetryLoadingMessages": "会話を読み込んでいます…",
+    "chatHeaderMore": "その他のオプション",
+    "chatBack": "抽出一覧に戻る",
+    "chatComposerPlaceholder": "論文について何でも質問してください…",
+    "chatHintEnter": "↵ 送信",
+    "chatHintShiftEnter": "⇧↵ 改行",
+    "chatModelPickerTrigger": "モデルを変更",
+    "chatModelPickerSearch": "モデルを検索…",
+    "chatModelPickerEmpty": "モデルが見つかりません。",
+    "chatModelPickerLoading": "モデルを読み込んでいます…",
+    "chatJumpToLatest": "最新へ移動",
+    "chatJumpToLatestWithCount": "{count, plural, other {# 件の新しいメッセージ}}",
+    "chatEmptyHeadline": "論文について何でも質問してください",
+    "chatEmptyPaperCount": "{count, plural, other {このスレッドの # 件の論文に基づいています}}",
+    "chatShortcutFocus": "⌘K で入力欄に移動します"
   },
   "sourcesPanel": {
     "title": "ソース",
@@ -1075,7 +1092,12 @@
       "source": "ソース",
       "inContext": "コンテキスト内",
       "dirAsc": "昇順",
-      "dirDesc": "降順"
+      "dirDesc": "降順",
+      "triggerLabel": "並べ替え",
+      "menuLabel": "並べ替えの基準",
+      "directionLabel": "順序",
+      "asc": "昇順",
+      "desc": "降順"
     },
     "bulk": {
       "groupLabel": "一括操作",
@@ -1092,6 +1114,20 @@
       "abstract": "概要",
       "doi": "DOI",
       "openalexId": "OpenAlex ID"
+    },
+    "countShort": "{included, number}/{total, number}",
+    "progressLabel": "{total, number} 件中 {included, number} 件を含めています",
+    "searchClear": "検索をクリア",
+    "meta": {
+      "cites": "{count, plural, other {被引用 # 件}}"
+    },
+    "source": {
+      "filterLabel": "ソースの種類で絞り込む",
+      "placeholder": "すべてのソース",
+      "all": "すべてのソース",
+      "openalex": "OpenAlex",
+      "zotero": "Zotero",
+      "unknown": "その他"
     }
   },
   "composer": {

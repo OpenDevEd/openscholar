@@ -1050,7 +1050,24 @@
       "presetMax": "最大",
       "liveAnnouncement": "论文数已设为 {count, number}"
     },
-    "chatModelPresets": "Presets"
+    "chatModelPresets": "Presets",
+    "chatRetryResponseWith": "使用 {model} 重新生成",
+    "chatRetryWithPrefix": "重新生成所用模型",
+    "chatRetryLoadingMessages": "正在加载对话…",
+    "chatHeaderMore": "更多选项",
+    "chatBack": "返回提取列表",
+    "chatComposerPlaceholder": "就你的论文提出任何问题…",
+    "chatHintEnter": "↵ 发送",
+    "chatHintShiftEnter": "⇧↵ 换行",
+    "chatModelPickerTrigger": "更换模型",
+    "chatModelPickerSearch": "搜索模型…",
+    "chatModelPickerEmpty": "未找到模型。",
+    "chatModelPickerLoading": "正在加载模型…",
+    "chatJumpToLatest": "跳到最新",
+    "chatJumpToLatestWithCount": "{count, plural, other {# 条新消息}}",
+    "chatEmptyHeadline": "就你的论文提出任何问题",
+    "chatEmptyPaperCount": "{count, plural, other {基于此对话中的 # 篇论文}}",
+    "chatShortcutFocus": "按 ⌘K 跳到输入框"
   },
   "sourcesPanel": {
     "title": "来源",
@@ -1075,7 +1092,12 @@
       "source": "来源",
       "inContext": "在上下文中",
       "dirAsc": "升序",
-      "dirDesc": "降序"
+      "dirDesc": "降序",
+      "triggerLabel": "排序",
+      "menuLabel": "排序方式",
+      "directionLabel": "顺序",
+      "asc": "升序",
+      "desc": "降序"
     },
     "bulk": {
       "groupLabel": "批量操作",
@@ -1092,6 +1114,20 @@
       "abstract": "摘要",
       "doi": "DOI",
       "openalexId": "OpenAlex ID"
+    },
+    "countShort": "{included, number}/{total, number}",
+    "progressLabel": "已包含 {total, number} 篇中的 {included, number} 篇",
+    "searchClear": "清除搜索",
+    "meta": {
+      "cites": "{count, plural, other {被引 # 次}}"
+    },
+    "source": {
+      "filterLabel": "按来源类型筛选",
+      "placeholder": "全部来源",
+      "all": "全部来源",
+      "openalex": "OpenAlex",
+      "zotero": "Zotero",
+      "unknown": "其他"
     }
   },
   "composer": {

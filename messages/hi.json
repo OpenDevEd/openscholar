@@ -1050,7 +1050,24 @@
       "presetMax": "अधिकतम",
       "liveAnnouncement": "शोधपत्रों की संख्या {count, number} पर सेट की गई"
     },
-    "chatModelPresets": "Presets"
+    "chatModelPresets": "Presets",
+    "chatRetryResponseWith": "{model} के साथ फिर से बनाएँ",
+    "chatRetryWithPrefix": "इसके साथ फिर से बनाएँ",
+    "chatRetryLoadingMessages": "बातचीत लोड हो रही है…",
+    "chatHeaderMore": "और विकल्प",
+    "chatBack": "एक्सट्रैक्शन पर वापस जाएँ",
+    "chatComposerPlaceholder": "अपने पेपर के बारे में कुछ भी पूछें…",
+    "chatHintEnter": "↵ भेजें",
+    "chatHintShiftEnter": "⇧↵ नई पंक्ति",
+    "chatModelPickerTrigger": "मॉडल बदलें",
+    "chatModelPickerSearch": "मॉडल खोजें…",
+    "chatModelPickerEmpty": "कोई मॉडल नहीं मिला।",
+    "chatModelPickerLoading": "मॉडल लोड हो रहे हैं…",
+    "chatJumpToLatest": "नवीनतम पर जाएँ",
+    "chatJumpToLatestWithCount": "{count, plural, one {# नया संदेश} other {# नए संदेश}}",
+    "chatEmptyHeadline": "अपने पेपर के बारे में कुछ भी पूछें",
+    "chatEmptyPaperCount": "{count, plural, one {इस बातचीत में # पेपर पर आधारित} other {इस बातचीत में # पेपर पर आधारित}}",
+    "chatShortcutFocus": "संदेश बॉक्स पर जाने के लिए ⌘K दबाएँ"
   },
   "sourcesPanel": {
     "title": "स्रोत",
@@ -1075,7 +1092,12 @@
       "source": "स्रोत",
       "inContext": "संदर्भ में",
       "dirAsc": "बढ़ते क्रम में",
-      "dirDesc": "घटते क्रम में"
+      "dirDesc": "घटते क्रम में",
+      "triggerLabel": "क्रमबद्ध करें",
+      "menuLabel": "इसके अनुसार क्रमबद्ध करें",
+      "directionLabel": "क्रम",
+      "asc": "आरोही",
+      "desc": "अवरोही"
     },
     "bulk": {
       "groupLabel": "बल्क क्रियाएँ",
@@ -1092,6 +1114,20 @@
       "abstract": "सार",
       "doi": "DOI",
       "openalexId": "OpenAlex ID"
+    },
+    "countShort": "{included, number}/{total, number}",
+    "progressLabel": "{total, number} में से {included, number} शामिल",
+    "searchClear": "खोज साफ़ करें",
+    "meta": {
+      "cites": "{count, plural, one {# उद्धरण} other {# उद्धरण}}"
+    },
+    "source": {
+      "filterLabel": "स्रोत के प्रकार से फ़िल्टर करें",
+      "placeholder": "सभी स्रोत",
+      "all": "सभी स्रोत",
+      "openalex": "OpenAlex",
+      "zotero": "Zotero",
+      "unknown": "अन्य"
     }
   },
   "composer": {
