@@ -199,19 +199,21 @@ function TestButton({
 
   return (
     <TooltipHint label={title}>
-      <Button
-        variant="ai"
-        size="icon"
-        onClick={() => {
-          onTest(question);
-          trigger();
-        }}
-        disabled={disabled || isCooling}
-        className="h-7 w-7"
-        aria-label={title}
-      >
-        <Play className="h-3.5 w-3.5" />
-      </Button>
+      <span className="inline-flex">
+        <Button
+          variant="ai"
+          size="icon"
+          onClick={() => {
+            onTest(question);
+            trigger();
+          }}
+          disabled={disabled || isCooling}
+          className="h-7 w-7"
+          aria-label={title}
+        >
+          <Play className="h-3.5 w-3.5" />
+        </Button>
+      </span>
     </TooltipHint>
   );
 }

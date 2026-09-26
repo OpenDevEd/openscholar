@@ -395,39 +395,41 @@ Return a more targeted version of this query.`;
                 className="inline-flex items-center"
               >
                 <TooltipHint label={contextualAction === "broaden" ? tsc("makeBroader") : tsc("makeSpecific")}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    type="button"
-                    onClick={
-                      contextualAction === "broaden"
-                        ? handleBroadenQuery
-                        : handleNarrowQuery
-                    }
-                    disabled={Boolean(isLoading) || isContextualActionLoading}
-                    aria-label={
-                      contextualAction === "broaden"
-                        ? tsc("makeBroader")
-                        : tsc("makeSpecific")
-                    }
-                    className={cn(
-                      "h-9 gap-1.5 rounded-xl border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground",
-                      isContextualActionLoading && "text-foreground"
-                    )}
-                  >
-                    {isContextualActionLoading ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : contextualAction === "broaden" ? (
-                      <Expand className="h-3.5 w-3.5" />
-                    ) : (
-                      <Minimize2 className="h-3.5 w-3.5" />
-                    )}
-                    <span className="hidden text-sm font-medium sm:inline">
-                      {contextualAction === "broaden"
-                        ? tsc("makeBroader")
-                        : tsc("makeSpecific")}
-                    </span>
-                  </Button>
+                  <span className="inline-flex">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={
+                        contextualAction === "broaden"
+                          ? handleBroadenQuery
+                          : handleNarrowQuery
+                      }
+                      disabled={Boolean(isLoading) || isContextualActionLoading}
+                      aria-label={
+                        contextualAction === "broaden"
+                          ? tsc("makeBroader")
+                          : tsc("makeSpecific")
+                      }
+                      className={cn(
+                        "h-9 gap-1.5 rounded-xl border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground",
+                        isContextualActionLoading && "text-foreground"
+                      )}
+                    >
+                      {isContextualActionLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : contextualAction === "broaden" ? (
+                        <Expand className="h-3.5 w-3.5" />
+                      ) : (
+                        <Minimize2 className="h-3.5 w-3.5" />
+                      )}
+                      <span className="hidden text-sm font-medium sm:inline">
+                        {contextualAction === "broaden"
+                          ? tsc("makeBroader")
+                          : tsc("makeSpecific")}
+                      </span>
+                    </Button>
+                  </span>
                 </TooltipHint>
                 {!queryOnly && <div className="mx-1 h-6 w-px bg-border/70" />}
               </motion.div>
@@ -453,49 +455,53 @@ Return a more targeted version of this query.`;
               >
                 {chatFlagEnabled && (
                   <TooltipHint label={chatButtonState.mode === "continue" ? tsc("continueChat") : tsc("startChat")}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      onClick={handleStartChat}
-                      disabled={Boolean(isLoading) || isStartingChat}
-                      aria-label={
-                        chatButtonState.mode === "continue"
-                          ? tsc("continueChat")
-                          : tsc("startChat")
-                      }
-                      data-chat-button-mode={chatButtonState.mode}
-                      className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
-                    >
-                      {isStartingChat ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <MessageSquare className="h-3.5 w-3.5" />
-                      )}
-                      <span className="hidden text-sm font-medium sm:inline">
-                        {chatButtonState.mode === "continue"
-                          ? tsc("continueChat")
-                          : tsc("startChat")}
-                      </span>
-                    </Button>
+                    <span className="inline-flex">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={handleStartChat}
+                        disabled={Boolean(isLoading) || isStartingChat}
+                        aria-label={
+                          chatButtonState.mode === "continue"
+                            ? tsc("continueChat")
+                            : tsc("startChat")
+                        }
+                        data-chat-button-mode={chatButtonState.mode}
+                        className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+                      >
+                        {isStartingChat ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <MessageSquare className="h-3.5 w-3.5" />
+                        )}
+                        <span className="hidden text-sm font-medium sm:inline">
+                          {chatButtonState.mode === "continue"
+                            ? tsc("continueChat")
+                            : tsc("startChat")}
+                        </span>
+                      </Button>
+                    </span>
                   </TooltipHint>
                 )}
 
                 <TooltipHint label={tsc("screenAll")}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    type="button"
-                    onClick={() => phase === "authenticated" ? setIsScreeningDialogOpen(true) : goToSignIn()}
-                    disabled={Boolean(isLoading)}
-                    aria-label={tsc("screenAll")}
-                    className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
-                  >
-                    <ListChecks className="h-3.5 w-3.5" />
-                    <span className="hidden text-sm font-medium sm:inline">
-                      {tsc("screenAll")}
-                    </span>
-                  </Button>
+                  <span className="inline-flex">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={() => phase === "authenticated" ? setIsScreeningDialogOpen(true) : goToSignIn()}
+                      disabled={Boolean(isLoading)}
+                      aria-label={tsc("screenAll")}
+                      className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+                    >
+                      <ListChecks className="h-3.5 w-3.5" />
+                      <span className="hidden text-sm font-medium sm:inline">
+                        {tsc("screenAll")}
+                      </span>
+                    </Button>
+                  </span>
                 </TooltipHint>
 
                 <Tooltip>

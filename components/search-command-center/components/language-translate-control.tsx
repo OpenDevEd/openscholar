@@ -56,34 +56,38 @@ export function LanguageTranslateControl({
           style={{ width: ACTIONS_WIDTH }}
         >
           <TooltipHint label={t("translate")}>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={disabled || translateDisabled || !hasValue}
-              onClick={onTranslate}
-              aria-label={t("translate")}
-              className="size-8 p-0 rounded-none text-ai hover:bg-ai-bg-hover"
-            >
-              {isTranslating ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )}
-            </Button>
+            <span className="inline-flex">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={disabled || translateDisabled || !hasValue}
+                onClick={onTranslate}
+                aria-label={t("translate")}
+                className="size-8 p-0 rounded-none text-ai hover:bg-ai-bg-hover"
+              >
+                {isTranslating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </span>
           </TooltipHint>
           <TooltipHint label={t("clearLanguage")}>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={disabled || !hasValue}
-              onClick={handleClear}
-              aria-label={t("clearLanguage")}
-              className="size-8 p-0 rounded-none text-ai hover:bg-ai-bg-hover"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
+            <span className="inline-flex">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={disabled || !hasValue}
+                onClick={handleClear}
+                aria-label={t("clearLanguage")}
+                className="size-8 p-0 rounded-none text-ai hover:bg-ai-bg-hover"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </span>
           </TooltipHint>
         </div>
       </motion.div>

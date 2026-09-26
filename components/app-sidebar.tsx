@@ -584,43 +584,35 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       isCollapsed && !isMobile && "flex-col gap-2",
                     )}
                   >
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handlePrevPage}
-                      aria-label={tc("previousPage")}
-                      disabled={currentPage === 1}
-                      className={cn(
-                        "h-7 w-7 transition-all duration-200",
-                        isCollapsed && !isMobile ? "h-8 w-8" : "",
-                        currentPage > 1 && "hover:bg-sidebar-accent/80",
-                      )}
-                    >
-                      <motion.div
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        transition={hoverSpring}
-                      >
-                        {isCollapsed && !isMobile ? (
-                          <Tooltip delayDuration={0}>
-                            <TooltipTrigger asChild>
+                    <Tooltip delayDuration={0}>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handlePrevPage}
+                            aria-label={tc("previousPage")}
+                            disabled={currentPage === 1}
+                            className={cn(
+                              "h-7 w-7 transition-all duration-200",
+                              isCollapsed && !isMobile ? "h-8 w-8" : "",
+                              currentPage > 1 && "hover:bg-sidebar-accent/80",
+                            )}
+                          >
+                            <motion.div
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              transition={hoverSpring}
+                            >
                               <ChevronLeft className="h-4 w-4" />
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                              {tc("previousPage")}
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <>
-                            <ChevronLeft className="h-4 w-4" />
-                            {!isCollapsed ||
-                              (isMobile && (
-                                <span className="sr-only">{tc("previous")}</span>
-                              ))}
-                          </>
-                        )}
-                      </motion.div>
-                    </Button>
+                            </motion.div>
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {isCollapsed && !isMobile ? (
+                        <TooltipContent side="right">{tc("previousPage")}</TooltipContent>
+                      ) : null}
+                    </Tooltip>
 
                     {totalPages > 2 && (
                       <div
@@ -658,44 +650,36 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       </div>
                     )}
 
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleNextPage}
-                      aria-label={tc("nextPage")}
-                      disabled={currentPage === totalPages}
-                      className={cn(
-                        "h-7 w-7 transition-all duration-200",
-                        isCollapsed && !isMobile ? "h-8 w-8" : "",
-                        currentPage < totalPages &&
-                          "hover:bg-sidebar-accent/80",
-                      )}
-                    >
-                      <motion.div
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        transition={hoverSpring}
-                      >
-                        {isCollapsed && !isMobile ? (
-                          <Tooltip delayDuration={0}>
-                            <TooltipTrigger asChild>
+                    <Tooltip delayDuration={0}>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleNextPage}
+                            aria-label={tc("nextPage")}
+                            disabled={currentPage === totalPages}
+                            className={cn(
+                              "h-7 w-7 transition-all duration-200",
+                              isCollapsed && !isMobile ? "h-8 w-8" : "",
+                              currentPage < totalPages &&
+                                "hover:bg-sidebar-accent/80",
+                            )}
+                          >
+                            <motion.div
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              transition={hoverSpring}
+                            >
                               <ChevronRight className="h-4 w-4" />
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                              {tc("nextPage")}
-                            </TooltipContent>
-                          </Tooltip>
-                        ) : (
-                          <>
-                            <ChevronRight className="h-4 w-4" />
-                            {!isCollapsed ||
-                              (isMobile && (
-                                <span className="sr-only">{tc("next")}</span>
-                              ))}
-                          </>
-                        )}
-                      </motion.div>
-                    </Button>
+                            </motion.div>
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      {isCollapsed && !isMobile ? (
+                        <TooltipContent side="right">{tc("nextPage")}</TooltipContent>
+                      ) : null}
+                    </Tooltip>
                   </motion.div>
                 )}
               </div>
