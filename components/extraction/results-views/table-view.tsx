@@ -18,12 +18,7 @@ import {
 } from "@/components/ui/popover";
 import { Info } from "lucide-react";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
-import {
-  getAllCitationLocations,
-  getCitationStatus,
-} from "@/lib/extraction/citations";
-import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
-import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";
 import { HighlightedText } from "./highlighted-text";
 import { PaperQuestionProgress } from "@/components/extraction/paper-question-progress";
 import { PaperDetails, ResultCell } from "./result-parts";
@@ -34,7 +29,9 @@ interface TableViewProps {
   selectedIds: Set<string>;
   onSelectionChange: (selectedIds: Set<string>) => void;
   searchQuery?: string;
-  onOpenCitationPanel: (payload: CitationPanelPayload) => void;
+  onOpenAnswer: (answer: OpenAnswer) => void;
+  /** The answer open in the side panel, to highlight its cell. */
+  openAnswer?: string | null;
   usePdfs: boolean;
   /** Plan-04: opt-in per-paper Credits column, toggled via toolbar. */
   showCredits?: boolean;
@@ -46,7 +43,8 @@ export const TableView = memo(function TableView({
   selectedIds,
   onSelectionChange,
   searchQuery = '',
-  onOpenCitationPanel,
+  onOpenAnswer,
+  openAnswer,
   usePdfs,
   showCredits = false,
 }: TableViewProps) {
@@ -157,24 +155,11 @@ export const TableView = memo(function TableView({
                 return (
                   <TableCell key={q.key} className="max-w-[320px] py-4 align-top whitespace-normal" onClick={(e) => e.stopPropagation()}>
                     <ResultCell
-                      question={q.question}
                       result={result}
                       type={q.type}
                       searchQuery={searchQuery}
-                      onCite={() => {
-                        if (!result) return;
-                        const citations = getAllCitationLocations(result);
-                        if (citations.length === 0) return;
-                        const payload = buildCitationPanelPayload({
-                          paperId: paper._id,
-                          paperTitle: paper.title,
-                          citations,
-                          citationStatus: getCitationStatus(result),
-                          answer: result.answer,
-                          questionText: q.question,
-                        });
-                        if (payload) onOpenCitationPanel(payload);
-                      }}
+                      selected={openAnswer === openAnswerKey({ paper, question: q, result })}
+                      onOpen={() => onOpenAnswer({ paper, question: q, result })}
                     />
                   </TableCell>
                 );
@@ -192,7 +177,8 @@ export const TableView = memo(function TableView({
     prevProps.questions === nextProps.questions &&
     prevProps.selectedIds === nextProps.selectedIds &&
     prevProps.searchQuery === nextProps.searchQuery &&
-    prevProps.onOpenCitationPanel === nextProps.onOpenCitationPanel &&
+    prevProps.onOpenAnswer === nextProps.onOpenAnswer &&
+    prevProps.openAnswer === nextProps.openAnswer &&
     prevProps.showCredits === nextProps.showCredits
   );
 });

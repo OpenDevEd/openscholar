@@ -69,7 +69,7 @@ import { useSelection } from "@/lib/hooks/use-selection";
 import { useIsMobile } from "@/lib/hooks";
 import { useUrlState } from "@/lib/hooks/use-url-state";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";
 import { useExtractionCitationPanelStore } from "@/lib/store";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import {
@@ -142,7 +142,7 @@ export default function JobDetailPage() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [confirming, setConfirming] = useState<"cancel" | "delete" | null>(null);
   const [exportMode, setExportMode] = useState<'all' | 'selected'>('all');
-  const [citationPanelPayload, setCitationPanelPayload] = useState<CitationPanelPayload | null>(null);
+  const [openAnswer, setOpenAnswer] = useState<OpenAnswer | null>(null);
   const [mobilePane, setMobilePane] = useState<"results" | "citation">("results");
   const { expand: expandCitationPanel } = useExtractionCitationPanelStore();
 
@@ -322,8 +322,8 @@ export default function JobDetailPage() {
     setSelection(newIds);
   }, [setSelection]);
 
-  const openCitationPanel = useCallback((payload: CitationPanelPayload) => {
-    setCitationPanelPayload(payload);
+  const openAnswerPanel = useCallback((answer: OpenAnswer) => {
+    setOpenAnswer(answer);
     expandCitationPanel();
     setMobilePane("citation");
   }, [expandCitationPanel]);
@@ -566,7 +566,7 @@ export default function JobDetailPage() {
         leftColumn={
           isMobile ? null : (
             <ExtractionCitationSidebar
-              panelPayload={citationPanelPayload}
+              answer={openAnswer}
             />
           )
         }
@@ -811,7 +811,7 @@ export default function JobDetailPage() {
           <div className="min-w-0 overflow-x-hidden">
             <div className="min-w-0">
               <ExtractionResultsShell
-                panelPayload={citationPanelPayload}
+                answer={openAnswer}
                 mobilePane={mobilePane}
                 onMobilePaneChange={setMobilePane}
                 primaryLabel={tView('results')}
@@ -864,7 +864,8 @@ export default function JobDetailPage() {
                           selectedIds={selectedIds}
                           onSelectionChange={handleTableSelectionChange}
                           searchQuery={filters.searchQuery}
-                          onOpenCitationPanel={openCitationPanel}
+                          onOpenAnswer={openAnswerPanel}
+                          openAnswer={openAnswerKey(openAnswer)}
                           usePdfs={job.usePdfs ?? false}
                           showCredits={showCreditsColumn}
                         />
@@ -875,14 +876,15 @@ export default function JobDetailPage() {
                           questions={questions}
                           selectedIds={selectedIds}
                           onSelectionChange={handleCardSelectionChange}
-                          onOpenCitationPanel={openCitationPanel}
+                          onOpenAnswer={openAnswerPanel}
+                          openAnswer={openAnswerKey(openAnswer)}
                         />
                       )}
                       {viewMode === 'split' && (
                         <SplitView
                           papers={displayedPapers}
                           questions={questions}
-                          onOpenCitationPanel={openCitationPanel}
+                          onOpenAnswer={openAnswerPanel}
                         />
                       )}
                     </>

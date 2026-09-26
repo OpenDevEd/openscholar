@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { ExternalLink, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -82,16 +81,6 @@ export function PdfCitationPanel({
   const citation = payload?.citations[effectiveSelectedIndex] || null;
   const shouldRenderPdfViewer =
     !pdfUrlQuery.isDeferred && Boolean(pdfUrl) && Boolean(citation);
-  const statusLabel =
-    payload?.citationStatus === "grounded"
-      ? t('common.grounded')
-      : payload?.citationStatus === "best_effort"
-        ? t('common.bestEffort')
-        : payload?.citationStatus === "insufficient_evidence"
-          ? t('common.insufficientEvidence')
-          : payload?.citationStatus === "extraction_error"
-            ? t('common.extractionError')
-            : null;
 
   const isLongCitation = (citation?.text?.length || 0) > 260;
 
@@ -112,17 +101,10 @@ export function PdfCitationPanel({
     <div className="@container/citation flex h-full min-h-0 min-w-0 max-w-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
       <div className="border-b border-border/60 bg-background/95 px-3 py-2">
         <div className="flex items-center gap-2">
-          <h3 className="min-w-0 truncate text-sm font-semibold">{payload.paperTitle || t('common.citation')}</h3>
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
-            {statusLabel ? (
-              <Badge variant="outline" className="text-[10px] font-medium uppercase tracking-wide">
-                {statusLabel}
-              </Badge>
-            ) : null}
+          <h3 className="min-w-0 truncate text-sm font-semibold">{t('common.citation')}</h3>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {citation ? (
-              <Badge variant="secondary" className="text-[10px] font-medium uppercase tracking-wide">
-                p.{citation.page}
-              </Badge>
+              <span className="text-xs tabular-nums text-muted-foreground">p.{citation.page}</span>
             ) : null}
             {pdfUrl ? (
               <Button

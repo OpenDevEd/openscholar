@@ -1,10 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ExternalLink, Quote } from "lucide-react";
+import { ExternalLink, PanelLeftOpen, Quote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { StatusChip, type StatusTone } from "@/components/evidence-libraries/configuration/status-chip";
 import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
 import { getAllCitationLocations, getCitationStatus } from "@/lib/extraction/citations";
@@ -110,51 +108,40 @@ export function ResultMeta({ result }: { result?: ExtractionResultRecord }) {
 
 /**
  * One answer in a table cell or card: the value and how far to trust it. The
- * whole cell opens the details, the reasoning and the citation, so no icon has
- * to explain itself.
+ * whole cell opens the answer's side panel, and says so on hover.
  */
-export function ResultCell({ question, result, type, searchQuery = "", clamp, onCite }: {
-  question: string;
+export function ResultCell({ result, type, searchQuery = "", clamp, selected = false, onOpen }: {
   result?: ExtractionResultRecord;
   type: string;
   searchQuery?: string;
   clamp?: string;
-  onCite?: () => void;
+  /** The answer shown in the side panel right now. */
+  selected?: boolean;
+  onOpen: () => void;
 }) {
   const tc = useTranslations("common");
-  const body = (
-    <>
+  if (!result) return <ResultAnswer result={result} type={type} />;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-pressed={selected}
+      title={tc("details")}
+      className={cn(
+        "group/cell relative -m-2 block w-[calc(100%+1rem)] space-y-1.5 rounded-md p-2 pr-7 text-left transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring",
+        selected && "bg-primary/5 ring-1 ring-primary/30 hover:bg-primary/10",
+      )}
+    >
       <ResultAnswer result={result} type={type} searchQuery={searchQuery} clamp={clamp} />
       <ResultMeta result={result} />
-    </>
-  );
-  if (!result) return <div className="space-y-1.5">{body}</div>;
-  const hasCitation = getAllCitationLocations(result).length > 0;
-  return (
-    <Popover>
-      <PopoverTrigger className="-m-2 block w-[calc(100%+1rem)] space-y-1.5 rounded-md p-2 text-left transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted/60">
-        {body}
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-96 space-y-3 p-4">
-        <p className="text-xs text-muted-foreground">{question}</p>
-        <ResultAnswer result={result} type={type} searchQuery={searchQuery} clamp="" />
-        <ResultMeta result={result} />
-        {result.reasoning ? (
-          <div className="space-y-1 border-t border-border/50 pt-3">
-            <p className="text-xs font-medium">{tc("reasoning")}</p>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              <HighlightedText text={result.reasoning} query={searchQuery} />
-            </p>
-          </div>
-        ) : null}
-        {hasCitation && onCite ? (
-          <Button variant="outline" size="sm" className="w-full" onClick={onCite}>
-            <Quote className="size-3.5" />
-            {tc("viewCitation")}
-          </Button>
-        ) : null}
-      </PopoverContent>
-    </Popover>
+      <PanelLeftOpen
+        aria-hidden
+        className={cn(
+          "absolute right-2 top-2.5 size-3.5 text-muted-foreground transition-opacity",
+          selected ? "text-primary opacity-100" : "opacity-0 group-hover/cell:opacity-100 group-focus-visible/cell:opacity-100",
+        )}
+      />
+    </button>
   );
 }
 

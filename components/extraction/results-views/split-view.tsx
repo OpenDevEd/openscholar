@@ -11,17 +11,16 @@ import {
   getCitationStatus,
 } from "@/lib/extraction/citations";
 import type { CitationLocation } from "@/lib/extraction/citations";
-import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
-import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
+import type { OpenAnswer } from "@/components/extraction/answer-panel";
 import { answeredConfidence, ConfidenceValue, PaperDetails, ResultAnswer, ResultMeta } from "./result-parts";
 
 interface SplitViewProps {
   papers: PaperWithResults[];
   questions: Question[];
-  onOpenCitationPanel: (payload: CitationPanelPayload) => void;
+  onOpenAnswer: (answer: OpenAnswer) => void;
 }
 
-export const SplitView = memo(function SplitView({ papers, questions, onOpenCitationPanel }: SplitViewProps) {
+export const SplitView = memo(function SplitView({ papers, questions, onOpenAnswer }: SplitViewProps) {
   const t = useTranslations("extraction");
   const pdfEnabled = useFeatureFlag("extraction.pdf");
   const [selectedPaperId, setSelectedPaperId] = useState<string | null>(
@@ -77,17 +76,7 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenCita
                   {citations.length > 0 && result ? (
                     <CitationPreview
                       citation={citations[0]}
-                      onClick={() => {
-                        const payload = buildCitationPanelPayload({
-                          paperId: selectedPaper._id,
-                          paperTitle: selectedPaper.title,
-                          citations,
-                          citationStatus: getCitationStatus(result),
-                          answer: result.answer,
-                          questionText: q.question,
-                        });
-                        if (payload) onOpenCitationPanel(payload);
-                      }}
+                      onClick={() => onOpenAnswer({ paper: selectedPaper, question: q, result })}
                     />
                   ) : null}
                 </section>
@@ -107,7 +96,7 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenCita
   return (
     prevProps.papers === nextProps.papers &&
     prevProps.questions === nextProps.questions &&
-    prevProps.onOpenCitationPanel === nextProps.onOpenCitationPanel
+    prevProps.onOpenAnswer === nextProps.onOpenAnswer
   );
 });
 
