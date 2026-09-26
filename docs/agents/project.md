@@ -56,6 +56,10 @@ supported process changed. Read the page back before claiming success.
   wrapper, or transition only colors, borders, and shadows. Shared
   `components/ui` parts name the properties they transition.
   `npm run check:animation-clash` enforces both, in CI.
+- Hover hints use `TooltipHint` or `Tooltip` from `components/ui/tooltip`,
+  never the native `title` attribute. When an icon-only control loses its
+  `title`, give it an `aria-label`. The only `title` left is on the hidden
+  `Z3988` spans, which carry citation data for Zotero.
 
 ## Development services
 
