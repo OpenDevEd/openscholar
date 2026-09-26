@@ -1,83 +1,50 @@
 "use client";
 
-import React from "react";
-import { List, LayoutList, LayoutGrid, Grid3X3 } from "lucide-react";
-import { useUIStore } from "@/lib/store";
-import { ViewMode } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import type { ComponentType } from "react";
 import { useTranslations } from "next-intl";
+import { VIEW_MODE_OPTIONS } from "@/lib/constants/view-modes";
+import type { ViewMode } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
-interface ViewModeOption {
-  mode: ViewMode;
-  icon: React.ReactNode;
+/** A small group of icon buttons that picks one way to show something. Every view switch uses it. */
+export function IconSwitch<T extends string>({ label, value, onChange, options }: {
   label: string;
-  shortLabel: string;
-}
-
-export interface CompactIconToggleOption<TValue extends string> {
-  value: TValue;
-  icon: React.ReactNode;
-  label: string;
-}
-
-interface CompactIconToggleGroupProps<TValue extends string> {
-  value: TValue;
-  onChange: (value: TValue) => void;
-  options: CompactIconToggleOption<TValue>[];
-}
-
-export function CompactIconToggleGroup<TValue extends string>({
-  value,
-  onChange,
-  options,
-}: CompactIconToggleGroupProps<TValue>) {
+  value: T;
+  onChange: (value: T) => void;
+  options: { value: T; icon: ComponentType<{ className?: string }>; label: string }[];
+}) {
   return (
-    <div className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/50 p-0.5 dark:bg-muted/30">
-      {options.map((option) => {
-        const isActive = value === option.value;
-
-        return (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-            className={cn(
-              "relative z-10 flex items-center justify-center rounded-md p-1.5 transition-colors",
-              isActive
-                ? "bg-background text-primary shadow-sm"
-                : "text-muted-foreground hover:bg-background/50 hover:text-foreground"
-            )}
-            title={option.label}
-          >
-            {option.icon}
-          </button>
-        );
-      })}
+    <div role="group" aria-label={label} className="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5">
+      {options.map(({ value: option, icon: Icon, label: optionLabel }) => (
+        <button
+          key={option}
+          type="button"
+          aria-pressed={value === option}
+          aria-label={optionLabel}
+          title={optionLabel}
+          onClick={() => onChange(option)}
+          className={cn(
+            "flex size-7 items-center justify-center rounded-[5px] transition-colors",
+            value === option ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Icon className="size-3.5" />
+        </button>
+      ))}
     </div>
   );
 }
 
-// Compact version for tight spaces
-export function ViewModeToggleCompact() {
-  const { viewMode, setViewMode } = useUIStore();
+/** The one switch between list and grid views, used by every list that offers them. */
+export function ViewModeSwitch({ value, onChange }: { value: ViewMode; onChange: (mode: ViewMode) => void }) {
   const t = useTranslations("viewMode");
-
-  const viewModeOptions: ViewModeOption[] = [
-    { mode: "list-simple", icon: <List className="h-4 w-4" />, label: t("simpleList"), shortLabel: t("simple") },
-    { mode: "list-detail", icon: <LayoutList className="h-4 w-4" />, label: t("detailedList"), shortLabel: t("detail") },
-    { mode: "grid-2", icon: <LayoutGrid className="h-4 w-4" />, label: t("twoColumnGrid"), shortLabel: "2×2" },
-    { mode: "grid-3", icon: <Grid3X3 className="h-4 w-4" />, label: t("threeColumnGrid"), shortLabel: "3×3" },
-  ];
-
+  const ta = useTranslations("accessibility");
   return (
-    <CompactIconToggleGroup
-      value={viewMode}
-      onChange={setViewMode}
-      options={viewModeOptions.map((option) => ({
-        value: option.mode,
-        icon: option.icon,
-        label: option.label,
-      }))}
+    <IconSwitch
+      label={ta("viewOptions")}
+      value={value}
+      onChange={onChange}
+      options={VIEW_MODE_OPTIONS.map(({ mode, icon, label }) => ({ value: mode, icon, label: t(label) }))}
     />
   );
 }

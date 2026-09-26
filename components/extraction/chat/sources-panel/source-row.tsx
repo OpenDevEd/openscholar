@@ -88,7 +88,7 @@ function SourceRowImpl({
       data-active-descendant={isActiveDescendant ? "true" : undefined}
       onClick={(e) => onActivate(e.shiftKey)}
       className={cn(
-        "source-row-enter",
+        "fade-enter",
         "group flex items-start gap-2.5 cursor-pointer border-l-2 px-3 py-2.5 transition-colors",
         selected
           ? "border-l-primary bg-primary/[0.06] hover:bg-primary/[0.09]"
@@ -204,7 +204,7 @@ function SourceRowImpl({
             )}
             {row.workType?.trim() && (
               <span
-                className="rounded bg-muted/70 px-1.5 py-px text-[9.5px] font-semibold uppercase tracking-wider text-muted-foreground"
+                className="rounded bg-muted/70 px-1.5 py-px text-[11px] font-medium text-muted-foreground first-letter:uppercase"
                 data-paper-work-type
               >
                 {row.workType}
@@ -229,7 +229,7 @@ function SourceRowImpl({
             className="mt-0.5 text-[11px] italic text-muted-foreground"
             data-match-field={matchedNonChromeField}
           >
-            <span className="mr-1 text-[10px] not-italic uppercase tracking-wide text-muted-foreground/70">
+            <span className="mr-1 inline-block text-[11px] not-italic text-muted-foreground/80 first-letter:uppercase">
               {matchedNonChromeField}
             </span>
             <SnippetText

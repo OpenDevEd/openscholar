@@ -8,21 +8,16 @@ import * as authQuery from "@/lib/auth/use-auth-query";
 const {
   pushMock,
   currentJobIdMock,
-  resultsToolbarSpy,
+  resultsFiltersSpy,
   smartPaginationSpy,
   exportDialogSpy,
 } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   currentJobIdMock: { value: "job_1" },
-  resultsToolbarSpy: vi.fn(
+  resultsFiltersSpy: vi.fn(
     ({
-      totalCount,
-      filteredCount,
       onFiltersChange,
-      onExportAll,
     }: {
-      totalCount: number;
-      filteredCount: number;
       onFiltersChange: (
         next:
           | {
@@ -45,14 +40,8 @@ const {
               questionFilters: Map<string, string>;
             }),
       ) => void;
-      onExportAll: () => void;
     }) => (
-      <div
-        data-testid="results-toolbar"
-        data-total-count={String(totalCount)}
-        data-filtered-count={String(filteredCount)}
-      >
-        {filteredCount} of {totalCount} papers
+      <div data-testid="results-filters">
         <button
           type="button"
           onClick={() =>
@@ -63,9 +52,6 @@ const {
           }
         >
           filter to Paper 250
-        </button>
-        <button type="button" onClick={onExportAll}>
-          export all
         </button>
       </div>
     ),
@@ -394,7 +380,10 @@ vi.mock("@/components/layout/two-column-layout", () => ({
 }));
 
 vi.mock("@/components/extraction/results-toolbar", () => ({
-  ResultsToolbar: resultsToolbarSpy,
+  ResultsFilters: resultsFiltersSpy,
+  ResultsViewSwitch: () => null,
+  ResultsFilterMenu: () => null,
+  ResultsColumnsMenu: () => null,
 }));
 
 vi.mock("@/components/extraction/results-views", () => ({
@@ -550,7 +539,7 @@ describe("JobDetailPage", () => {
   beforeEach(() => {
     pushMock.mockReset();
     currentJobIdMock.value = "job_1";
-    resultsToolbarSpy.mockClear();
+    resultsFiltersSpy.mockClear();
     smartPaginationSpy.mockClear();
     exportDialogSpy.mockClear();
 
@@ -589,8 +578,8 @@ describe("JobDetailPage", () => {
     expect(mountedJobDetailsCalls).toHaveLength(0);
     expect(document.querySelector('[data-job-mode="chat"]')).not.toBeNull();
     expect(document.querySelector('[data-job-mode="extraction"]')).toBeNull();
-    expect(resultsToolbarSpy).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("results-toolbar")).toBeNull();
+    expect(resultsFiltersSpy).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("results-filters")).toBeNull();
     expect(screen.queryByText("extractionResults")).toBeNull();
     expect(screen.queryByText("insights")).toBeNull();
     expect(screen.queryByText("reviewQueue")).toBeNull();
@@ -642,9 +631,8 @@ describe("JobDetailPage", () => {
     expect(document.querySelector('[data-job-mode="extraction"]')).not.toBeNull();
     expect(screen.getByTestId("extraction-results-shell")).toBeInTheDocument();
     expect(screen.queryByTestId("chat-job-view")).toBeNull();
-    expect(screen.getByTestId("results-toolbar")).toHaveTextContent(
-      "293 of 293 papers",
-    );
+    expect(document.querySelector("[data-results-scope]")).toHaveAttribute("data-total-papers", "293");
+    expect(document.querySelector("[data-results-scope]")).toHaveAttribute("data-filtered-papers", "293");
   });
 
   it("keeps showing the shared loading spinner while stale job shell data do not match the route", () => {
@@ -677,13 +665,10 @@ describe("JobDetailPage", () => {
 
     render(<JobDetailPage />);
 
-    expect(screen.getByTestId("auth-state-loading")).toHaveAttribute(
-      "data-loading-style",
-      "spinner",
-    );
+    expect(screen.getByRole("status", { name: "loadingExtractionResults" })).toBeInTheDocument();
     expect(document.querySelector('[data-job-mode="chat"]')).toBeNull();
     expect(document.querySelector('[data-job-mode="extraction"]')).toBeNull();
-    expect(resultsToolbarSpy).not.toHaveBeenCalled();
+    expect(resultsFiltersSpy).not.toHaveBeenCalled();
   });
 
   it("uses the shared spinner loading state while a chat thread is preparing", () => {
@@ -721,7 +706,7 @@ describe("JobDetailPage", () => {
       "data-title",
       "chatPreparing",
     );
-    expect(resultsToolbarSpy).not.toHaveBeenCalled();
+    expect(resultsFiltersSpy).not.toHaveBeenCalled();
   });
 
   it("shows the full server filtered count while keeping the progress bar total authoritative", () => {
@@ -765,9 +750,8 @@ describe("JobDetailPage", () => {
 
     render(<JobDetailPage />);
 
-    expect(screen.getByTestId("results-toolbar")).toHaveTextContent(
-      "293 of 293 papers",
-    );
+    expect(document.querySelector("[data-results-scope]")).toHaveAttribute("data-total-papers", "293");
+    expect(document.querySelector("[data-results-scope]")).toHaveAttribute("data-filtered-papers", "293");
     expect(screen.queryByText("overviewQuestions")).toBeNull();
     expect(screen.queryByText("insights")).toBeNull();
     expect(screen.queryByText("reviewQueue")).toBeNull();
@@ -820,13 +804,8 @@ describe("JobDetailPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "go to page 2" }));
 
-    expect(resultsToolbarSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        totalCount: 293,
-        filteredCount: 293,
-      }),
-      undefined,
-    );
+    expect(document.querySelector("[data-results-scope]")).toHaveAttribute("data-total-papers", "293");
+    expect(document.querySelector("[data-results-scope]")).toHaveAttribute("data-filtered-papers", "293");
     expect(smartPaginationSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
         currentPage: 2,
@@ -880,15 +859,10 @@ describe("JobDetailPage", () => {
     render(<JobDetailPage />);
 
     fireEvent.click(screen.getByRole("button", { name: "set page size 25" }));
-    fireEvent.click(screen.getByRole("button", { name: "filter to Paper 250" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "filter to Paper 250" })[0]);
 
-    expect(resultsToolbarSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        totalCount: 293,
-        filteredCount: 1,
-      }),
-      undefined,
-    );
+    expect(document.querySelector("[data-results-scope]")).toHaveAttribute("data-total-papers", "293");
+    expect(document.querySelector("[data-results-scope]")).toHaveAttribute("data-filtered-papers", "1");
     expect(smartPaginationSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
         pageSize: 25,
@@ -961,7 +935,7 @@ describe("JobDetailPage", () => {
     render(<JobDetailPage />);
 
     fireEvent.click(screen.getByRole("button", { name: "set page size 25" }));
-    fireEvent.click(screen.getByRole("button", { name: "export all" }));
+    fireEvent.click(screen.getByRole("button", { name: "export" }));
 
     expect(screen.getByTestId("export-dialog")).toHaveAttribute(
       "data-papers-count",

@@ -74,7 +74,7 @@ function withLoading() {
 describe("<MixedSuccessSummary>", () => {
   it("renders nothing while the summary query is loading", () => {
     withLoading();
-    const { container } = render(<MixedSuccessSummary jobId={fakeJobId} />);
+    const { container } = render(<MixedSuccessSummary jobId={fakeJobId} papersRead={11} />);
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -85,7 +85,7 @@ describe("<MixedSuccessSummary>", () => {
       answeredTotal: 500,
       totalQuestions: 500,
     });
-    const { container } = render(<MixedSuccessSummary jobId={fakeJobId} />);
+    const { container } = render(<MixedSuccessSummary jobId={fakeJobId} papersRead={11} />);
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -100,7 +100,7 @@ describe("<MixedSuccessSummary>", () => {
       answeredTotal: 473,
       totalQuestions: 500,
     });
-    render(<MixedSuccessSummary jobId={fakeJobId} />);
+    render(<MixedSuccessSummary jobId={fakeJobId} papersRead={11} />);
     const region = screen.getByRole("region");
     expect(region).toHaveAttribute("data-mixed-success-summary");
     expect(region).toHaveAttribute("data-answered-total", "473");
@@ -126,7 +126,7 @@ describe("<MixedSuccessSummary>", () => {
       answeredTotal: 3,
       totalQuestions: 10,
     });
-    render(<MixedSuccessSummary jobId={fakeJobId} />);
+    render(<MixedSuccessSummary jobId={fakeJobId} papersRead={11} />);
     const rows = document.querySelectorAll("[data-failure-code]");
     expect(rows.length).toBe(3);
     expect(rows[0]).toHaveAttribute("data-failure-code", "rate_limit");
@@ -144,7 +144,7 @@ describe("<MixedSuccessSummary>", () => {
       answeredTotal: 7,
       totalQuestions: 10,
     });
-    render(<MixedSuccessSummary jobId={fakeJobId} />);
+    render(<MixedSuccessSummary jobId={fakeJobId} papersRead={11} />);
     const region = screen.getByRole("region");
     expect(region).toHaveAttribute("data-retryable-total", "0");
   });

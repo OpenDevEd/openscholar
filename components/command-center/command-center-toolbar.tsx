@@ -1,19 +1,9 @@
 "use client";
 
-import React from "react";
-import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import {
-  Search,
-  X,
-  Trash2,
-  Download,
-  Upload,
-  ChevronDown,
-  ArrowUpDown,
-} from "lucide-react";
+import { Trash2, Download, Upload, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { LIST_FILTER, ListSearch } from "@/components/evidence-libraries/list-controls";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,14 +11,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { subtleSpring } from "@/lib/animation-config";
-import { VIEW_MODE_OPTIONS } from "@/lib/constants/view-modes";
+import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import type { ViewMode } from "@/lib/types";
 
 interface SortOption<T extends string> {
@@ -36,47 +26,63 @@ interface SortOption<T extends string> {
   label: string;
 }
 
-interface CommandCenterToolbarProps<TSort extends string> {
-  // View mode
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
-  // Sort
+interface CommandCenterFiltersProps<TSort extends string> {
   sortOptions: SortOption<TSort>[];
   currentSort: TSort;
   onSortChange: (sort: TSort) => void;
-  // Search
   searchFilter: string;
   onSearchChange: (value: string) => void;
   placeholder: string;
-  // Download/Upload handlers (optional)
+}
+
+interface CommandCenterFileActionsProps {
   onDownloadJSON?: () => void;
   onDownloadCSV?: () => Promise<void>;
   onUploadJSON?: () => Promise<void>;
   onUploadCSV?: () => Promise<void>;
-  // Clear (optional)
   onClearAll?: () => void;
   clearTooltip?: string;
-  // State
   totalCount?: number;
-  // Extra actions slot (rendered after view mode toggle, before search)
-  extraActions?: React.ReactNode;
-  /** The toolbar is the first thing in its container, with no header above it. */
-  leading?: boolean;
 }
 
-/**
- * Shared toolbar component for command centers.
- * Includes view mode toggle, search input, sort dropdown, download/upload, and clear button.
- */
-export function CommandCenterToolbar<TSort extends string>({
-  viewMode,
-  onViewModeChange,
+/** A command center's search and sort, as siblings so a page bar or card toolbar can lay them out. */
+export function CommandCenterFilters<TSort extends string>({
   sortOptions,
   currentSort,
   onSortChange,
   searchFilter,
   onSearchChange,
   placeholder,
+}: CommandCenterFiltersProps<TSort>) {
+  const t = useTranslations("libraryPage");
+  return (
+    <>
+      <ListSearch
+        aria-label={placeholder}
+        placeholder={placeholder}
+        value={searchFilter}
+        onChange={(e) => onSearchChange(e.target.value)}
+        className="w-56"
+      />
+      <Select value={currentSort} onValueChange={(value) => onSortChange(value as TSort)}>
+        <SelectTrigger size="sm" aria-label={t("sortBy")} className={cn("w-40", LIST_FILTER)}>
+          <ArrowUpDown className="size-3.5" />
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {sortOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </>
+  );
+}
+
+/** Import, export and clear-all, as icon buttons. */
+export function CommandCenterFileActions({
   onDownloadJSON,
   onDownloadCSV,
   onUploadJSON,
@@ -84,173 +90,90 @@ export function CommandCenterToolbar<TSort extends string>({
   onClearAll,
   clearTooltip,
   totalCount,
-  extraActions,
-  leading = false,
-}: CommandCenterToolbarProps<TSort>) {
+}: CommandCenterFileActionsProps) {
   const tc = useTranslations("common");
-  const currentSortOption = sortOptions.find((o) => o.value === currentSort);
   const hasDownloadUpload = onDownloadJSON || onDownloadCSV || onUploadJSON || onUploadCSV;
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ ...subtleSpring, delay: 0.15 }}
-      className={cn(
-        // Under a header it is a slim strip. On its own it takes the container's
-        // padding, so the space above it matches the space beside it.
-        leading ? "p-4 md:p-6" : "px-4 md:px-6 py-3",
-        "border-b border-border/40",
-        "flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
-      )}
-    >
-      {/* Left: View mode toggle + extra actions */}
-      <div className="flex items-center gap-2 shrink-0">
-        <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60">
-          {VIEW_MODE_OPTIONS.map((option) => {
-            const isActive = viewMode === option.mode;
-            const Icon = option.icon;
-            return (
-              <button
-                key={option.mode}
-                onClick={() => onViewModeChange(option.mode)}
-                className={cn(
-                  "relative z-10 flex items-center justify-center p-1.5 rounded-md transition-colors",
-                  isActive
-                    ? "text-primary bg-background shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                )}
-                title={option.label}
-              >
-                <Icon className="h-4 w-4" />
-              </button>
-            );
-          })}
-        </div>
-        {extraActions}
-      </div>
-
-      {/* Center: Search input */}
-      <div className="flex-1 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <Input
-          type="text"
-          placeholder={placeholder}
-          value={searchFilter}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className={cn(
-            "pl-9 pr-9 h-9",
-            "bg-muted/30 dark:bg-muted/20",
-            "border-border/50",
-            "placeholder:text-muted-foreground/60"
-          )}
-        />
-        {searchFilter && (
-          <button
-            onClick={() => onSearchChange("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
-      {/* Right: Actions */}
-      <div className="flex items-center gap-2 shrink-0 justify-end">
-        {/* Sort dropdown */}
+    <>
+      {hasDownloadUpload && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 gap-1.5 text-muted-foreground hover:text-foreground"
-            >
-              <ArrowUpDown className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{currentSortOption?.label}</span>
-              <ChevronDown className="h-3 w-3 opacity-50" />
+            <Button variant="ghost" size="icon" aria-label={tc("downloadAsJson")} className="size-8 text-muted-foreground hover:text-foreground">
+              <Download className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {sortOptions.map((option) => (
-              <DropdownMenuItem
-                key={option.value}
-                onClick={() => onSortChange(option.value)}
-                className={cn(currentSort === option.value && "bg-muted")}
-              >
-                {option.label}
+            {onDownloadJSON && (
+              <DropdownMenuItem onClick={onDownloadJSON} disabled={totalCount === 0}>
+                <Download className="h-4 w-4 mr-2" />
+                {tc("downloadAsJson")}
               </DropdownMenuItem>
-            ))}
+            )}
+            {onDownloadCSV && (
+              <DropdownMenuItem onClick={onDownloadCSV} disabled={totalCount === 0}>
+                <Download className="h-4 w-4 mr-2" />
+                {tc("downloadAsCsv")}
+              </DropdownMenuItem>
+            )}
+            {(onDownloadJSON || onDownloadCSV) && (onUploadJSON || onUploadCSV) && (
+              <DropdownMenuSeparator />
+            )}
+            {onUploadJSON && (
+              <DropdownMenuItem onClick={onUploadJSON}>
+                <Upload className="h-4 w-4 mr-2" />
+                {tc("uploadJson")}
+              </DropdownMenuItem>
+            )}
+            {onUploadCSV && (
+              <DropdownMenuItem onClick={onUploadCSV}>
+                <Upload className="h-4 w-4 mr-2" />
+                {tc("uploadCsv")}
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
+      )}
 
-        {/* Download/Upload dropdown */}
-        {hasDownloadUpload && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 text-muted-foreground hover:text-foreground"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {onDownloadJSON && (
-                <DropdownMenuItem
-                  onClick={onDownloadJSON}
-                  disabled={totalCount === 0}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {tc("downloadAsJson")}
-                </DropdownMenuItem>
-              )}
-              {onDownloadCSV && (
-                <DropdownMenuItem
-                  onClick={onDownloadCSV}
-                  disabled={totalCount === 0}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {tc("downloadAsCsv")}
-                </DropdownMenuItem>
-              )}
-              {(onDownloadJSON || onDownloadCSV) && (onUploadJSON || onUploadCSV) && (
-                <DropdownMenuSeparator />
-              )}
-              {onUploadJSON && (
-                <DropdownMenuItem onClick={onUploadJSON}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  {tc("uploadJson")}
-                </DropdownMenuItem>
-              )}
-              {onUploadCSV && (
-                <DropdownMenuItem onClick={onUploadCSV}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  {tc("uploadCsv")}
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+      {onClearAll && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={clearTooltip}
+              onClick={onClearAll}
+              disabled={totalCount === 0}
+              className="size-8 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{clearTooltip}</TooltipContent>
+        </Tooltip>
+      )}
+    </>
+  );
+}
 
-        {/* Clear all button */}
-        {onClearAll && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onClearAll}
-                disabled={totalCount === 0}
-                className="h-9 w-9 text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{clearTooltip}</TooltipContent>
-          </Tooltip>
-        )}
+/**
+ * A command center's toolbar as one row inside its card, for the history
+ * chooser, which sits in a dialog without a page bar.
+ */
+export function CommandCenterToolbar<TSort extends string>({
+  viewMode,
+  onViewModeChange,
+  ...props
+}: CommandCenterFiltersProps<TSort> & CommandCenterFileActionsProps & {
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 p-4">
+      <ViewModeSwitch value={viewMode} onChange={onViewModeChange} />
+      <div className="flex flex-wrap items-center gap-2">
+        <CommandCenterFilters {...props} />
+        <CommandCenterFileActions {...props} />
       </div>
-    </motion.div>
+    </div>
   );
 }

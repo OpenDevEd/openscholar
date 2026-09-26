@@ -42,3 +42,18 @@ export function isPublicPath(pathname: string) {
     matchesPublicPattern(normalizedPath, pattern),
   );
 }
+
+/**
+ * Signed-in pages that show their own frame while sign-in finishes, so the
+ * route gate skips its full-screen loader for them. Each one must stay
+ * correct before access is known (see OrganizationFeatureGate's fallback).
+ */
+const PAGES_WITH_OWN_LOADING = ["/evidence-libraries", "/authors"] as const;
+/** Every page in these sections draws its own frame while loading. */
+const SECTIONS_WITH_OWN_LOADING = ["/extraction"] as const;
+
+export function showsOwnLoading(pathname: string) {
+  const path = normalizePathname(pathname);
+  return (PAGES_WITH_OWN_LOADING as readonly string[]).includes(path)
+    || SECTIONS_WITH_OWN_LOADING.some((section) => path === section || path.startsWith(`${section}/`));
+}

@@ -2,10 +2,6 @@
 
 import {
   Download,
-  Grid3X3,
-  LayoutGrid,
-  LayoutList,
-  List,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
@@ -19,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { LibraryViewMode } from "@/lib/library/search-params";
-import { CompactIconToggleGroup } from "@/components/view-mode-toggle";
+import { ViewModeSwitch } from "@/components/view-mode-toggle";
 
 interface LibraryCommandCenterProps {
   rawSearch: string;
@@ -48,28 +44,6 @@ export function LibraryCommandCenter({
 }: LibraryCommandCenterProps) {
   const t = useTranslations("libraryPage");
   const tc = useTranslations("common");
-  const viewModeOptions = [
-    {
-      value: "list-simple" as const,
-      icon: <List className="h-4 w-4" />,
-      label: t("viewListSimple"),
-    },
-    {
-      value: "list-detail" as const,
-      icon: <LayoutList className="h-4 w-4" />,
-      label: t("viewListDetail"),
-    },
-    {
-      value: "grid-2" as const,
-      icon: <LayoutGrid className="h-4 w-4" />,
-      label: t("viewGrid2"),
-    },
-    {
-      value: "grid-3" as const,
-      icon: <Grid3X3 className="h-4 w-4" />,
-      label: t("viewGrid3"),
-    },
-  ];
 
   return (
     <CommandCenterContainer className="overflow-hidden">
@@ -108,11 +82,7 @@ export function LibraryCommandCenter({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <CompactIconToggleGroup
-              value={viewMode}
-              onChange={onViewModeChange}
-              options={viewModeOptions}
-            />
+            <ViewModeSwitch value={viewMode} onChange={onViewModeChange} />
 
             {hasExportableResults && (
               <DropdownMenu>

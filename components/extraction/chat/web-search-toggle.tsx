@@ -167,7 +167,7 @@ export function WebSearchToggle({
               <span
                 data-web-search-status-pill={state}
                 className={cn(
-                  "inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                  "inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[11px] font-medium",
                   state === "on" && "bg-primary/15 text-primary",
                   state === "off" &&
                     "bg-muted text-muted-foreground/80",

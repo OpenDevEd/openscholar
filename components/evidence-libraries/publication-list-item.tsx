@@ -23,7 +23,7 @@ export function PublicationListItem({ publication: p, locations }: {
 }) {
   return (
     <article
-      className="group grid grid-cols-[64px_minmax(0,1fr)] items-center gap-4 border-b border-border/50 px-4 py-4 transition-colors hover:bg-muted/20 last:border-b-0 sm:grid-cols-[80px_minmax(0,1fr)_auto] sm:gap-6"
+      className="fade-enter group grid grid-cols-[64px_minmax(0,1fr)] items-center gap-4 border-b border-border/50 px-4 py-4 transition-colors hover:bg-muted/20 last:border-b-0 sm:grid-cols-[80px_minmax(0,1fr)_auto] sm:gap-6"
     >
       <button
         className="rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"

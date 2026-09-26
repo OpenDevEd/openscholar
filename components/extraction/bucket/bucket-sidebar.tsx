@@ -67,8 +67,9 @@ function BucketHeader({
   const atCap = state === "at";
   const nearCap = state === "near";
   return (
-    <header className="flex flex-col gap-2 border-b border-border/50 p-4">
-      <div className="flex items-center justify-between gap-3">
+    <header className="flex flex-col">
+      {/* As tall as the page bar, with the same line, so the two top edges meet. */}
+      <div className="flex h-[65px] items-center justify-between gap-3 border-b border-sidebar-border/50 px-4">
         <div className="min-w-0 flex-1">
           <h2
             id="bucket-sidebar-title"
@@ -119,7 +120,7 @@ function BucketHeader({
         <div
           role="status"
           className={cn(
-            "rounded-md p-2 text-xs",
+            "mx-4 mt-3 rounded-md p-2 text-xs",
             atCap
               ? "bg-destructive/10 text-destructive"
               : "bg-amber-500/10 text-amber-700 dark:text-amber-300",

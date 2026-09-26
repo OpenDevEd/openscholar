@@ -21,7 +21,7 @@ export interface RetrySummaryProps {
  * Plan-05 retry summary banner.
  *
  * Reads the per-job retry classification (plan 05 B1) and renders:
- *   - "N retryable · M permanent" counts (exposed as data-retryable-count
+ *   - "N retryable" and "M permanent" counts (exposed as data-retryable-count
  *     + data-permanent-count for behavior tests).
  *   - A primary "Retry N failed" button when `retryableCount > 0`.
  *   - A confirmation dialog on click (plan 05 B5) that reuses plan 03's
@@ -55,15 +55,9 @@ export function RetrySummary({ jobId, usePdfs = false }: RetrySummaryProps) {
         data-permanent-count={permanentCount}
         className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-xs"
       >
-        <span className="tabular-nums">
-          {retryableCount > 0 && permanentCount > 0
-            ? t("summary.both", {
-                retryable: retryableCount,
-                permanent: permanentCount,
-              })
-            : retryableCount > 0
-              ? t("summary.retryableOnly", { retryable: retryableCount })
-              : t("summary.permanentOnly", { permanent: permanentCount })}
+        <span className="flex flex-wrap gap-x-3 tabular-nums">
+          {retryableCount > 0 ? <span>{t("summary.retryableOnly", { retryable: retryableCount })}</span> : null}
+          {permanentCount > 0 ? <span>{t("summary.permanentOnly", { permanent: permanentCount })}</span> : null}
         </span>
         {retryableCount > 0 && (
           <>

@@ -6,8 +6,8 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { PdfCitationPanel } from "@/components/extraction/pdf-citation-panel";
-import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { AnswerPanel, openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";
+import { getAllCitationLocations } from "@/lib/extraction/citations";
 import {
   useExtractionCitationPanelStore,
   getExtractionCitationPanelDimensions,
@@ -15,11 +15,11 @@ import {
 import { sidebarSpring, hoverSpring } from "@/lib/ui/sidebar-motion";
 
 type ExtractionCitationSidebarProps = {
-  panelPayload: CitationPanelPayload | null;
+  answer: OpenAnswer | null;
 };
 
 export function ExtractionCitationSidebar({
-  panelPayload,
+  answer,
 }: ExtractionCitationSidebarProps) {
   const t = useTranslations();
   const { isCollapsed, setCollapsed, toggle, _hasHydrated } =
@@ -29,7 +29,8 @@ export function ExtractionCitationSidebar({
 
   if (!_hasHydrated) return null;
 
-  const hasPayload = panelPayload !== null;
+  const hasPayload = answer !== null;
+  const firstPage = getAllCitationLocations(answer?.result)[0]?.page;
   const width = !hasPayload ? 0 : isCollapsed ? collapsedWidth : expandedWidth;
   const translateX = isCollapsed ? -(expandedWidth - collapsedWidth) : 0;
 
@@ -38,9 +39,12 @@ export function ExtractionCitationSidebar({
       className="h-full relative overflow-hidden"
       style={{
         width,
-        transition: `width ${sidebarSpring.stiffness}ms ease-out`,
+        // Quick, so an opened answer shows at once.
+        transition: "width 180ms ease-out",
       }}
     >
+      {/* The same line across the collapsed strip, where the panel itself has slid away. */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-16 h-px bg-sidebar-border/50" />
       <motion.aside
         className={cn(
           "h-full flex flex-col overflow-hidden absolute right-0 top-0 bottom-0",
@@ -54,6 +58,9 @@ export function ExtractionCitationSidebar({
       >
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
+
+        {/* The page bar's bottom line runs on under the panel, so the panel floats above it. */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-16 h-px bg-sidebar-border/50" />
 
         {/* Floating controls — expanded state */}
         <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border/30 bg-background/95 p-1">
@@ -85,9 +92,9 @@ export function ExtractionCitationSidebar({
           </Tooltip>
         </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 min-h-0 overflow-hidden p-2">
-          <PdfCitationPanel key={`${panelPayload?.paperId ?? ""}-${panelPayload?.questionText ?? ""}`} payload={panelPayload} />
+        {/* Scrollable content, above the line */}
+        <div className="relative flex-1 min-h-0 overflow-hidden p-2">
+          <AnswerPanel key={openAnswerKey(answer) ?? ""} answer={answer} />
         </div>
       </motion.aside>
 
@@ -129,7 +136,7 @@ export function ExtractionCitationSidebar({
             </Tooltip>
 
             {/* Page number badge */}
-            {panelPayload?.citations?.[0]?.page != null && (
+            {firstPage != null && (
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -137,7 +144,7 @@ export function ExtractionCitationSidebar({
                 transition={{ duration: 0.15, delay: 0.1 }}
               >
                 <span className="flex items-center justify-center h-7 min-w-7 px-2 text-xs font-medium rounded-md bg-primary/15 text-primary border border-primary/20">
-                  p.{panelPayload.citations[0].page}
+                  p.{firstPage}
                 </span>
               </motion.div>
             )}

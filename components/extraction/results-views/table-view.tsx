@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Table,
@@ -10,30 +10,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Info, Maximize2, Quote, ExternalLink } from "lucide-react";
+import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type {
-  ExtractionResultRecord,
-  PaperWithResults,
-  Question,
-} from "@/lib/extraction/filtering";
-import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
-import {
-  getAllCitationLocations,
-  getCitationStatus,
-} from "@/lib/extraction/citations";
-import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
-import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
+import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
+import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";
 import { HighlightedText } from "./highlighted-text";
 import { PaperQuestionProgress } from "@/components/extraction/paper-question-progress";
+import { PaperDetails, ResultCell } from "./result-parts";
 
 interface TableViewProps {
   papers: PaperWithResults[];
@@ -41,7 +30,9 @@ interface TableViewProps {
   selectedIds: Set<string>;
   onSelectionChange: (selectedIds: Set<string>) => void;
   searchQuery?: string;
-  onOpenCitationPanel: (payload: CitationPanelPayload) => void;
+  onOpenAnswer: (answer: OpenAnswer) => void;
+  /** The answer open in the side panel, to highlight its cell. */
+  openAnswer?: string | null;
   usePdfs: boolean;
   /** Plan-04: opt-in per-paper Credits column, toggled via toolbar. */
   showCredits?: boolean;
@@ -53,11 +44,11 @@ export const TableView = memo(function TableView({
   selectedIds,
   onSelectionChange,
   searchQuery = '',
-  onOpenCitationPanel,
+  onOpenAnswer,
+  openAnswer,
   usePdfs,
   showCredits = false,
 }: TableViewProps) {
-  const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const pdfEnabled = usePdfs;
   const allSelected = papers.length > 0 && papers.every(p => selectedIds.has(p._id));
@@ -81,245 +72,142 @@ export const TableView = memo(function TableView({
     onSelectionChange(newSet);
   };
 
-  return (
-      <div className="min-w-0 overflow-x-hidden rounded-xl border border-border/40 bg-card/90 shadow-sm">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-card/95">
-              <TableRow className="hover:bg-transparent border-b-2">
-                <TableHead className="w-12 pl-6">
-                  <Checkbox
-                    checked={allSelected || someSelected}
-                    onCheckedChange={toggleSelectAll}
-                  />
-                </TableHead>
-                <TableHead className="sticky left-0 w-[320px] min-w-[320px] bg-card/95 font-medium text-foreground">
-                  {tc("paper")}
-                </TableHead>
-                {showCredits && (
-                  <TableHead
-                    className="w-[100px] min-w-[100px] text-right font-medium text-foreground tabular-nums"
-                    data-column="credits"
-                  >
-                    {tc("credits")}
-                  </TableHead>
-                )}
-                {questions.map((q) => (
-                  <TableHead
-                    key={q.key}
-                    className="min-w-[220px] font-medium text-foreground"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>{q.question}</span>
-                      {q.description && (
-                        <Popover>
-                          <PopoverTrigger>
-                            <Info className="w-3.5 h-3.5 text-muted-foreground/60 hover:text-muted-foreground transition-colors" />
-                          </PopoverTrigger>
-                          <PopoverContent className="p-3 text-xs w-64">
-                            {q.description}
-                          </PopoverContent>
-                        </Popover>
-                      )}
-                    </div>
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {papers.map((paper, idx) => {
-                const isSelected = selectedIds.has(paper._id);
-                const hasAbstract =
-                  !!paper.abstract &&
-                  paper.abstract.length > MIN_ABSTRACT_LENGTH;
-                const hasPdfSource =
-                  !!paper.pdfUrl ||
-                  !!paper.storageId ||
-                  !!paper.ragEntryId ||
-                  !!paper.isIndexed;
-                const showAbstractBadge =
-                  hasAbstract &&
-                  !paper.pdfContentUsed &&
-                  !paper.isIndexed &&
-                  !paper.ragEntryId &&
-                  paper.status !== "download_failed";
-                const abstractLabel =
-                  !paper.isOpenAccess && !hasPdfSource
-                    ? tc("abstractOnly")
-                    : tc("abstract");
-                const showNoContent =
-                  paper.status === "download_failed" && !hasAbstract;
-                const completedCount = paper.results.filter(
-                  (r) => r.status === "completed",
-                ).length;
-                const questionProgress = `${completedCount}/${Math.max(
-                  questions.length,
-                  paper.results.length,
-                )}`;
+  // Edge fades while there is more to scroll to. The table's own scroll box
+  // is outside React, so a listener and resize observer keep this in step.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ start: true, end: true });
+  useEffect(() => {
+    const box = scrollRef.current?.querySelector<HTMLElement>('[data-slot="table-container"]');
+    if (!box) return;
+    const update = () => setEdges({
+      start: box.scrollLeft <= 1,
+      end: box.scrollLeft + box.clientWidth >= box.scrollWidth - 1,
+    });
+    update();
+    box.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(box);
+    if (box.firstElementChild) observer.observe(box.firstElementChild);
+    return () => {
+      box.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, []);
+  // Answers fade into the card as they slide under the pinned paper column.
+  const pinnedShadow = cn(
+    "after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-10 after:translate-x-full after:bg-gradient-to-r after:from-card after:to-transparent after:transition-opacity after:duration-150",
+    edges.start ? "after:opacity-0" : "after:opacity-100",
+  );
 
-                return (
-                  <TableRow
-                    key={paper._id}
-                    data-paper-id={paper._id}
-                    data-paper-status={paper.status}
-                    data-question-progress={questionProgress}
-                    className={cn(
-                      "group hover:bg-muted/50 transition-colors cursor-pointer",
-                      isSelected && "bg-primary/5",
-                      idx % 2 === 0 && "bg-muted/20"
-                    )}
-                    onClick={() => toggleSelect(paper._id)}
-                  >
-                    {/* Checkbox Column */}
-                    <TableCell className="pl-6" onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => toggleSelect(paper._id)}
+  return (
+    <div ref={scrollRef} className="relative">
+      {/* Opaque, so the pinned paper column matches the cells scrolling under it. */}
+      <Table className="bg-card">
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className={cn(pinnedShadow, "sticky left-0 z-10 w-[220px] min-w-[220px] bg-card pl-4 pr-4 sm:w-[320px] sm:min-w-[320px] md:pl-6")}>
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                  onCheckedChange={toggleSelectAll}
+                />
+                {tc("paper")}
+              </div>
+            </TableHead>
+            {showCredits && (
+              <TableHead className="w-[100px] min-w-[100px] text-right tabular-nums" data-column="credits">
+                {tc("credits")}
+              </TableHead>
+            )}
+            {questions.map((q) => (
+              <TableHead key={q.key} className="min-w-[240px] max-w-[320px] whitespace-normal">
+                <div className="flex items-center gap-1.5">
+                  <span className="line-clamp-1" title={q.question}>{q.question}</span>
+                  {q.description && (
+                    <Popover>
+                      <PopoverTrigger aria-label={tc("details")} className="mt-0.5 shrink-0 text-muted-foreground/60 hover:text-muted-foreground">
+                        <Info className="size-3.5" />
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-3 text-xs">{q.description}</PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {papers.map((paper) => {
+            const isSelected = selectedIds.has(paper._id);
+            const completedCount = paper.results.filter((r) => r.status === "completed").length;
+            const questionProgress = `${completedCount}/${Math.max(questions.length, paper.results.length)}`;
+            return (
+              <TableRow
+                key={paper._id}
+                data-paper-id={paper._id}
+                data-paper-status={paper.status}
+                data-question-progress={questionProgress}
+                data-state={isSelected ? "selected" : undefined}
+                className="group cursor-pointer"
+                onClick={() => toggleSelect(paper._id)}
+              >
+                {/* The paper stays in view while the answers scroll sideways; its hover colour is opaque so they never show through. */}
+                <TableCell className={cn(pinnedShadow, "sticky left-0 z-10 bg-card py-4 pl-4 pr-4 align-top whitespace-normal group-hover:bg-[color-mix(in_oklab,var(--card),var(--muted)_50%)] group-data-[state=selected]:bg-muted md:pl-6")}>
+                  <div className="flex max-w-[188px] gap-3 sm:max-w-[288px]">
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleSelect(paper._id)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={paper.title}
+                      className="mt-0.5"
+                    />
+                    <div className="min-w-0 space-y-1.5">
+                      <p className="line-clamp-4 text-sm font-medium leading-snug" title={paper.title}>
+                        <HighlightedText text={paper.title} query={searchQuery} />
+                      </p>
+                      <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <PaperQuestionProgress paperStatus={paper.status} results={paper.results} totalQuestions={questions.length} />
+                      </div>
+                    </div>
+                  </div>
+                </TableCell>
+
+                {showCredits && (
+                  <TableCell className="py-4 text-right align-top tabular-nums" data-column="credits" data-credits={String(paper.creditsUsed ?? 0)}>
+                    {(paper.creditsUsed ?? 0).toLocaleString()}
+                  </TableCell>
+                )}
+
+                {questions.map((q) => {
+                  const result = paper.results.find((r) => r.questionKey === q.key);
+                  return (
+                    <TableCell key={q.key} className="relative isolate max-w-[320px] py-4 pl-4 pr-9 align-top whitespace-normal" onClick={(e) => e.stopPropagation()}>
+                      <ResultCell
+                        result={result}
+                        type={q.type}
+                        searchQuery={searchQuery}
+                        fill
+                        selected={openAnswer === openAnswerKey({ paper, question: q, result })}
+                        onOpen={() => onOpenAnswer({ paper, question: q, result })}
                       />
                     </TableCell>
-
-                    {/* Paper Info Column */}
-                    <TableCell className="sticky left-0 bg-card/95 py-4 align-top">
-                      <div className="space-y-1.5 max-w-[300px]">
-                        <div
-                          className="font-medium text-sm leading-snug line-clamp-2"
-                          title={paper.title}
-                        >
-                          <HighlightedText text={paper.title} query={searchQuery} />
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {paper.publicationYear && (
-                            <Badge
-                              variant="outline"
-                              className="h-5 px-1.5 text-[10px] font-normal"
-                            >
-                              {paper.publicationYear}
-                            </Badge>
-                          )}
-                          {paper.doi && (
-                            <a
-                              href={`https://doi.org/${paper.doi}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center hover:text-primary transition-colors hover:underline"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              DOI <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
-                            </a>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 pt-1">
-                          {showNoContent ? (
-                            <Badge
-                              variant="outline"
-                              className="h-4 px-1 text-[9px] bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
-                            >
-                              {tc("noContent")}
-                            </Badge>
-                          ) : null}
-                          {paper.isOpenAccess && (
-                            <Badge
-                              variant="outline"
-                              className="h-4 px-1 text-[9px] bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
-                            >
-                              {tc("openAccess")}
-                            </Badge>
-                          )}
-                          {pdfEnabled && (paper.isIndexed || paper.ragEntryId) ? (
-                            <Badge
-                              variant="outline"
-                              className="h-4 px-1 text-[9px] bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20"
-                            >
-                              {tc("indexed")}
-                            </Badge>
-                          ) : null}
-                          {pdfEnabled && paper.pdfContentUsed ? (
-                            <Badge
-                              variant="outline"
-                              className="h-4 px-1 text-[9px] bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
-                            >
-                              {tc("pdfUsed")}
-                            </Badge>
-                          ) : null}
-                          {showAbstractBadge ? (
-                            <Badge
-                              variant="outline"
-                              className="h-4 px-1 text-[9px] text-muted-foreground border-border"
-                            >
-                              {abstractLabel}
-                            </Badge>
-                          ) : null}
-                        </div>
-
-                        {/* Plan-07: inline per-paper question progress.
-                            Pure presentational — counts derive from
-                            paper.results. Renders a group role with
-                            data-question-progress for behavior tests. */}
-                        <div
-                          className="pt-1"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <PaperQuestionProgress
-                            paperStatus={paper.status}
-                            results={paper.results}
-                            totalQuestions={questions.length}
-                          />
-                        </div>
-
-                      </div>
-                    </TableCell>
-
-                    {showCredits && (
-                      <TableCell
-                        className="align-top py-4 text-right tabular-nums"
-                        data-column="credits"
-                        data-credits={String(paper.creditsUsed ?? 0)}
-                      >
-                        {(paper.creditsUsed ?? 0).toLocaleString()}
-                      </TableCell>
-                    )}
-
-                    {/* Results Columns */}
-                    {questions.map((q) => {
-                      const result = paper.results.find(
-                        (r) => r.questionKey === q.key,
-                      );
-                      return (
-                        <TableCell
-                          key={q.key}
-                          className="align-top py-4"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <ResultCell
-                            result={result}
-                            type={q.type}
-                            searchQuery={searchQuery}
-                            onCite={() => {
-                              if (!result) return;
-                              const citations = getAllCitationLocations(result);
-                              if (citations.length === 0) return;
-                              const payload = buildCitationPanelPayload({
-                                paperId: paper._id,
-                                paperTitle: paper.title,
-                                citations,
-                                citationStatus: getCitationStatus(result),
-                                answer: result.answer,
-                                questionText: q.question,
-                              });
-                              if (!payload) return;
-                              onOpenCitationPanel(payload);
-                            }}
-                          />
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+                  );
+                })}
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+      {/* More columns off to the right. */}
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-card to-transparent transition-opacity duration-150",
+          edges.end ? "opacity-0" : "opacity-100",
+        )}
+      />
+    </div>
   );
 }, (prevProps, nextProps) => {
   // Custom comparison to prevent unnecessary re-renders
@@ -328,168 +216,9 @@ export const TableView = memo(function TableView({
     prevProps.questions === nextProps.questions &&
     prevProps.selectedIds === nextProps.selectedIds &&
     prevProps.searchQuery === nextProps.searchQuery &&
-    prevProps.onOpenCitationPanel === nextProps.onOpenCitationPanel &&
+    prevProps.onOpenAnswer === nextProps.onOpenAnswer &&
+    prevProps.openAnswer === nextProps.openAnswer &&
     prevProps.showCredits === nextProps.showCredits
   );
 });
 
-
-const ResultCell = memo(function ResultCell({
-  result,
-  type,
-  searchQuery,
-  onCite,
-}: {
-  result?: ExtractionResultRecord;
-  type: string;
-  searchQuery?: string;
-  onCite?: () => void;
-}) {
-  const tc = useTranslations("common");
-  if (!result) {
-    return <span className="text-muted-foreground/30 text-xs">—</span>;
-  }
-
-  const { answer, confidence, reasoning } = result;
-  const citations = getAllCitationLocations(result);
-  const citationStatus = getCitationStatus(result);
-
-  const getConfidenceColor = (conf?: number) => {
-    if (!conf) return "bg-gray-500/10 text-gray-500";
-    if (conf >= 0.8)
-      return "bg-green-500/10 text-green-600 dark:text-green-400 border-green-200";
-    if (conf >= 0.5)
-      return "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-200";
-    return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-200";
-  };
-
-  return (
-    <div className="space-y-2">
-      {/* Visual confidence bar */}
-      {confidence !== undefined && (
-        <div className="h-1 rounded-full bg-muted overflow-hidden">
-          <div
-            className={cn(
-              "h-full transition-all duration-500 ease-out",
-              confidence >= 0.8 ? "bg-green-500" :
-              confidence >= 0.5 ? "bg-yellow-500" :
-              "bg-red-500"
-            )}
-            style={{ width: `${(confidence || 0) * 100}%` }}
-          />
-        </div>
-      )}
-
-      {/* Answer value with highlighting */}
-      <div className="text-sm">
-        {type === "boolean" ? (
-          answer === true ? (
-            <Badge
-              variant="default"
-              className="font-normal bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 shadow-none"
-            >
-              {tc("yes")}
-            </Badge>
-          ) : answer === false ? (
-            <Badge
-              variant="secondary"
-              className="font-normal bg-muted text-muted-foreground hover:bg-muted/80"
-            >
-              {tc("no")}
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="font-normal text-muted-foreground">
-              {tc("unknown")}
-            </Badge>
-          )
-        ) : Array.isArray(answer) ? (
-          <div className="flex flex-wrap gap-1">
-            {answer.map((item) => (
-              <Badge
-                key={String(item)}
-                variant="outline"
-                className="text-xs font-normal"
-              >
-                <HighlightedText text={String(item)} query={searchQuery || ''} />
-              </Badge>
-            ))}
-          </div>
-        ) : (
-          <div className="line-clamp-3 text-sm text-foreground/90 leading-relaxed">
-            <HighlightedText text={String(answer)} query={searchQuery || ''} />
-          </div>
-        )}
-      </div>
-
-      {/* Footer with actions */}
-      <div className="flex items-center gap-2">
-        {confidence !== undefined && (
-          <Badge
-            variant="outline"
-            className={cn(
-              "text-[10px] font-medium",
-              getConfidenceColor(confidence)
-            )}
-          >
-            {Math.round((confidence || 0) * 100)}%
-          </Badge>
-        )}
-        {citationStatus === "grounded" ? (
-          <Badge variant="outline" className="text-[10px] font-medium">
-            {tc("grounded")}
-          </Badge>
-        ) : null}
-        {citationStatus === "best_effort" ? (
-          <Badge variant="outline" className="text-[10px] font-medium">
-            {tc("bestEffort")}
-          </Badge>
-        ) : null}
-        {citationStatus === "insufficient_evidence" ? (
-          <Badge variant="outline" className="text-[10px] font-medium">
-            {tc("insufficientEvidence")}
-          </Badge>
-        ) : null}
-        {citationStatus === "extraction_error" ? (
-          <Badge variant="outline" className="text-[10px] font-medium">
-            {tc("extractionError")}
-          </Badge>
-        ) : null}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {reasoning && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5 text-muted-foreground/50 hover:text-primary transition-colors"
-                >
-                  <Maximize2 className="h-3 w-3" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-4 text-xs leading-relaxed">
-                <div className="space-y-1">
-                  <h4 className="font-medium">{tc("reasoning")}</h4>
-                  <p className="text-muted-foreground">
-                    <HighlightedText text={reasoning} query={searchQuery || ''} />
-                  </p>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-
-          {citations.length > 0 && onCite ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onCite}
-              className="h-5 w-5 text-muted-foreground/60 hover:text-foreground transition-colors"
-              title={tc("viewCitation")}
-            >
-              <Quote className="h-3 w-3" />
-            </Button>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-});

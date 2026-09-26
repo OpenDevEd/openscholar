@@ -1,16 +1,16 @@
 /**
  * @vitest-environment jsdom
  *
- * Plan-07 — <JobListItem> status-dot a11y contract.
+ * Plan-07 — <JobListItem> status-icon a11y contract.
  *
- * Each status dot / stripe must expose:
+ * Each status icon must expose:
  *   role="img"           — decorative visual that conveys state
  *   aria-label           — screen-reader text for that state
  *   data-job-status      — stable attribute for tests
  *
  * Every view mode (list-simple, list-detail, grid-2, grid-3) must
- * expose the attr on its respective status signifier. Chat-mode jobs
- * do not carry a pipeline status, so the attr must NOT leak for them.
+ * expose the attr on its status icon. Chat-mode jobs do not carry a
+ * pipeline status, so the attr must NOT leak for them.
  */
 
 import { describe, expect, it, vi } from "vitest";
@@ -73,8 +73,8 @@ function buildJob(overrides: Partial<Doc<"extractionJobs">>): Doc<"extractionJob
   return { ...base, ...overrides };
 }
 
-describe("<JobListItem> status-dot a11y", () => {
-  it("list-simple: exposes role, aria-label, and data-job-status on the dot", () => {
+describe("<JobListItem> status-icon a11y", () => {
+  it("list-simple: exposes role, aria-label, and data-job-status on the status icon", () => {
     const job = buildJob({ status: "extracting" });
     const { container } = render(
       <JobListItem job={job} viewMode="list-simple" index={0} />,
@@ -85,7 +85,7 @@ describe("<JobListItem> status-dot a11y", () => {
     expect(dot).toHaveAttribute("aria-label", "extracting");
   });
 
-  it("list-detail: status dot carries the paused state label", () => {
+  it("list-detail: the status icon carries the paused state label", () => {
     const job = buildJob({ status: "paused" });
     const { container } = render(
       <JobListItem job={job} viewMode="list-detail" index={0} />,
@@ -95,7 +95,7 @@ describe("<JobListItem> status-dot a11y", () => {
     expect(dot).toHaveAttribute("aria-label", "paused");
   });
 
-  it("grid-3: the colored top stripe exposes aria-label + data-job-status", () => {
+  it("grid-3: the status icon exposes aria-label + data-job-status", () => {
     const job = buildJob({ status: "completed" });
     const { container } = render(
       <JobListItem job={job} viewMode="grid-3" index={0} />,
@@ -107,7 +107,7 @@ describe("<JobListItem> status-dot a11y", () => {
     expect(stripe).toHaveAttribute("aria-label", "completed");
   });
 
-  it("chat mode: does NOT emit a pipeline data-job-status (no dot, no labeled stripe)", () => {
+  it("chat mode: does NOT emit a pipeline data-job-status (no status icon)", () => {
     const job = buildJob({ mode: "chat", status: "extracting" });
     // list-simple hides the dot entirely in chat mode.
     const { container: simpleContainer } = render(

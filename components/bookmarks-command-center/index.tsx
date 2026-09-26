@@ -6,7 +6,6 @@ import { parseAsInteger, useQueryState } from "nuqs";
 import { BookOpen } from "lucide-react";
 import {
   useKeywordExpansionStore,
-  useKeywordExpansionDialogStore,
   useUIStore,
 } from "@/lib/store";
 import {
@@ -19,9 +18,11 @@ import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { BookmarkSortBy } from "@/lib/types";
-import { CommandCenterContainer } from "@/components/command-center/command-center-container";
-import { CommandCenterHeader } from "@/components/command-center/command-center-header";
-import { CommandCenterToolbar } from "@/components/command-center/command-center-toolbar";
+import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
+import { ListLoading } from "@/components/evidence-libraries/list-controls";
+import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
+import { CommandCenterFileActions, CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
+import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { CommandCenterList } from "@/components/command-center/command-center-list";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { BookmarksItem } from "./bookmarks-item";
@@ -56,8 +57,7 @@ function createBookmarkListItem(
     );
   };
 }
-import { BookmarksAddForm } from "./bookmarks-add-form";
-import { BookmarksSaveBanner } from "./bookmarks-save-banner";
+import { NewBookmarkDialog } from "./new-bookmark-dialog";
 import { BookmarksGuide } from "./bookmarks-guide";
 import posthog from "posthog-js";
 import type { BookmarkEntry } from "./types";
@@ -91,7 +91,10 @@ export function BookmarksCommandCenter() {
     clearKeywords,
     importKeywords,
   } = useKeywordExpansionStore();
-  const { suggestedQuery } = useKeywordExpansionDialogStore();
+  // Bookmarks and view settings are saved in the browser; wait for them rather than flash an empty list.
+  const listReady = usePersistedStoreReady(useKeywordExpansionStore);
+  const settingsReady = usePersistedStoreReady(useUIStore);
+  const ready = listReady && settingsReady;
   const {
     bookmarkViewMode,
     setBookmarkViewMode,
@@ -233,34 +236,19 @@ export function BookmarksCommandCenter() {
   };
 
   return (
-    <CommandCenterContainer>
-      {/* Header */}
-      <CommandCenterHeader
-        icon={BookOpen}
-        title={tc("bookmarks")}
-        description={tb("description")}
-        count={sortedBookmarks.length}
-        singular={tcc("bookmarkSingular")}
-        plural={tcc("bookmarkPlural")}
-        countLabel={tcc("bookmarkCount", { count: sortedBookmarks.length })}
-      />
-
-      {/* Save Current Search Banner */}
-      {suggestedQuery && <BookmarksSaveBanner />}
-
-      {/* Add Form */}
-      <BookmarksAddForm />
-
-      {/* Toolbar */}
-      <CommandCenterToolbar
-        viewMode={bookmarkViewMode}
-        onViewModeChange={setBookmarkViewMode}
+    <BookmarksPageFrame
+      tabs={<ViewModeSwitch value={bookmarkViewMode} onChange={setBookmarkViewMode} />}
+      filters={<CommandCenterFilters
         sortOptions={SORT_OPTIONS}
         currentSort={bookmarkSortBy}
         onSortChange={setBookmarkSortBy}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
         placeholder={tb("searchPlaceholder")}
+      />}
+      actions={<>
+        <NewBookmarkDialog />
+        <CommandCenterFileActions
         onDownloadJSON={handleDownloadJSON}
         onDownloadCSV={handleDownloadCSV}
         onUploadJSON={handleUploadJSON}
@@ -269,10 +257,13 @@ export function BookmarksCommandCenter() {
         clearTooltip={tb("clearAllBookmarks")}
         totalCount={bookmarksArray.length}
       />
+      </>}
+    >
+
 
       {/* List */}
       <div className="p-4 md:p-6">
-        <CommandCenterList
+        {!ready ? <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={paginatedBookmarks}
           viewMode={bookmarkViewMode}
           keyExtractor={(bookmark) => bookmark.name}
@@ -289,7 +280,7 @@ export function BookmarksCommandCenter() {
             handleCancelEdit,
             handleDelete
           )}
-        />
+        />}
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -306,6 +297,17 @@ export function BookmarksCommandCenter() {
         {/* Usage Guide */}
         <BookmarksGuide />
       </div>
-    </CommandCenterContainer>
+    </BookmarksPageFrame>
   );
+}
+
+/** The bookmarks page's frame, shared with its loading state so nothing moves when it loads. */
+export function BookmarksPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
+  const tc = useTranslations("common");
+  return <LibraryPageShell icon={BookOpen} title={tc("bookmarks")} {...controls}>{children}</LibraryPageShell>;
+}
+
+export function BookmarksLoading() {
+  const tc = useTranslations("common");
+  return <BookmarksPageFrame><ListLoading label={tc("loading")} /></BookmarksPageFrame>;
 }

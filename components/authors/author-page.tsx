@@ -5,18 +5,19 @@ import {
 } from "@/components/icons/author-service-icons";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AuthorSettingsNavigation } from "./author-settings-navigation";
-import { PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
+import { BAR_ACTION, BAR_LABEL, PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
+import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
+import { ListEmpty, ListLoading, ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { ConfigurationLayout } from "@/components/evidence-libraries/configuration/configuration-layout";
 
 import { AuthorAvatar } from "./author-avatar";
-import { StickyAuthorHeader } from "./sticky-author-header";
 import { useRef, useState, type ReactNode } from "react";
 import {
   Upload,
   Save,
+  PencilLine,
   UserRound,
   ArrowUpRight,
   BookOpen,
@@ -29,11 +30,11 @@ import {
   Library,
   Link2,
   Pencil,
-  Search,
   Unlink,
-  Users,
   Trash2,
   RefreshCw,
+  Search,
+  SearchX,
 } from "lucide-react";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
@@ -56,12 +57,11 @@ import {
   FieldError,
 } from "@/components/evidence-libraries/configuration/section-card";
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -107,10 +107,8 @@ export default function AuthorPage({
   hasMoreWorks: boolean; workCount: number; loadingWorks: boolean; onLoadMoreWorks: () => void;
 }) {
   const profileId = profile.id;
-  const router = useRouter();
   const profileHref = `/authors/${profileId}`;
   const configurationHref = `/authors/${profileId}/configuration`;
-  const headerRef = useRef<HTMLElement>(null);
   const photoInput = useRef<HTMLInputElement>(null);
   const isFocusModeOpen = useUIStore((state) => state.isFocusModeOpen);
   const [draft, setDraft] = useState<AuthorProfile | null>(() =>
@@ -132,8 +130,7 @@ export default function AuthorPage({
   const unavailable = Boolean(openAlexError);
   const [unlink, setUnlink] = useState(false);
   const [formError, setFormError] = useState("");
-  const [publicationTab, setPublicationTab] = useState("selected");
-  const publicationsRef = useRef<HTMLDivElement>(null);
+  const [publicationTab, setPublicationTab] = useState<"selected" | "openalex">("selected");
   const update = async (next: AuthorProfile) => {
     setSaving(true);
     try {
@@ -166,93 +163,41 @@ export default function AuthorPage({
       ),
   );
   return (
-    <main
-      id="author-page"
-      className={
-        draft
-          ? "w-full"
-          : "relative isolate mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8"
-      }
-    >
-      {invitationSection}
-      {profile && !draft && (
-        <StickyAuthorHeader
-          profile={profile}
-          headerRef={headerRef}
-          onEdit={canEdit ? () => router.push(configurationHref) : undefined}
-        />
-      )}
-      {!draft && (
-        <div className="!mt-0 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="size-4" />
-            {canBrowseAuthors ? <Link href="/authors" className="hover:text-foreground">Authors</Link> : <span>Authors</span>}
-            <ChevronRight className="size-3" />
-            <span className="truncate text-foreground">
-              {profile?.name ?? "Profile not found"}
-            </span>
-          </div>
-          {profile && !draft && (
-            <ButtonGroup>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(
-                      `${location.origin}/authors/${profile.id}`,
-                    );
-                    toast.success("Profile link copied");
-                  } catch {
-                    toast.error(
-                      "Copy the address from your browser to share this profile",
-                    );
-                  }
-                }}
-              >
-                <Copy />
-                Share
-              </Button>
-              {canEdit && <Button size="sm" asChild>
-                <Link href={configurationHref}>
-                  <Pencil />
-                  Edit profile
-                </Link>
-              </Button>}
-            </ButtonGroup>
-          )}
-        </div>
-      )}
+    <main id="author-page" className="w-full">
       {draft && (
         <ConfigurationLayout
           header={
             <PanelHeader
               icon={UserRound}
-              title={profile?.name ?? "Author profile"}
-              description="Author profile settings"
+              title={profile.name}
               backHref={profileHref}
               backLabel="Back to author profile"
-              className="border-b-0 px-0 md:px-0"
-              titleAside={
-                dirty ? (
-                  <StatusChip tone="warning">Unsaved changes</StatusChip>
-                ) : null
-              }
+              titleAside={<>
+                <span className="hidden text-sm text-muted-foreground @3xl:inline">Profile settings</span>
+                {dirty ? (
+                  <StatusChip tone="warning">
+                    <PencilLine aria-hidden />
+                    <span className={BAR_LABEL}>Unsaved changes</span>
+                  </StatusChip>
+                ) : null}
+              </>}
             >
-              <Button variant="outline" asChild>
+              <Button variant="outline" size="sm" className={BAR_ACTION} asChild>
                 <Link href={profileHref}>
                   <ArrowUpRight />
-                  {dirty ? "Cancel" : "View profile"}
+                  <span className={BAR_LABEL}>{dirty ? "Cancel" : "View profile"}</span>
                 </Link>
               </Button>
               <Button
                 variant="outline"
+                size="sm"
+                className={BAR_ACTION}
                 type="submit"
                 form="author-profile-form"
                 disabled={!dirty || saving || profileChanged}
               >
                 <Save className="size-4" />
-                Save
+                <span className={BAR_LABEL}>Save</span>
               </Button>
             </PanelHeader>
           }
@@ -540,11 +485,11 @@ export default function AuthorPage({
                     </label>
                   ))}
                   {loadingPublications ? (
-                    <div className="flex min-h-24 items-center justify-center"><Spinner aria-label="Loading publications" className="size-5 text-primary" /></div>
-                  ) : (publicationStatus || !papers.length) && (
-                    <p className="py-3 text-sm text-muted-foreground">
-                      {publicationStatus ?? "No published works are linked to this author yet."}
-                    </p>
+                    <ListLoading compact label="Loading publications" />
+                  ) : publicationStatus ? (
+                    <p className="py-3 text-sm text-muted-foreground">{publicationStatus}</p>
+                  ) : !papers.length && (
+                    <ListEmpty compact icon={BookOpen}>No published works are linked to this author yet.</ListEmpty>
                   )}
                 </div>
               </SectionCard>
@@ -608,256 +553,257 @@ export default function AuthorPage({
           {accessSection}
         </ConfigurationLayout>
       )}
-      {!draft &&
-        (!profile ? (
-          <Card>
-            <CardContent className="text-sm text-muted-foreground">
-              Author profile not found.
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <header
-              ref={headerRef}
-              className="relative isolate overflow-hidden rounded-2xl border-2 border-border/60 bg-muted/20 p-5 sm:p-6"
+      {!draft && (
+        <LibraryPageShell
+          icon={UserRound}
+          title={profile.name}
+          backHref={canBrowseAuthors ? "/authors" : undefined}
+          backLabel="Back to authors"
+          actions={<>
+            <Button
+              variant="outline"
+              size="sm"
+              className={BAR_ACTION}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    `${location.origin}/authors/${profile.id}`,
+                  );
+                  toast.success("Profile link copied");
+                } catch {
+                  toast.error(
+                    "Copy the address from your browser to share this profile",
+                  );
+                }
+              }}
             >
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_0%_0%,var(--primary),transparent_65%)] opacity-[0.09] dark:opacity-[0.12]"
-              />
-              <svg
-                aria-hidden="true"
-                focusable="false"
-                viewBox="0 0 480 320"
-                fill="none"
-                className="pointer-events-none absolute -bottom-20 -right-16 -z-10 h-80 w-[480px] text-primary opacity-[0.07] dark:opacity-[0.10]"
-              >
-                {[90, 125, 160, 195, 230, 265].map((radius) => (
-                  <circle
-                    key={radius}
-                    cx="370"
-                    cy="240"
-                    r={radius}
+              <Copy />
+              <span className={BAR_LABEL}>Share</span>
+            </Button>
+            {canEdit && <Button size="sm" className={BAR_ACTION} asChild>
+              <Link href={configurationHref}>
+                <Pencil />
+                <span className={BAR_LABEL}>Edit profile</span>
+              </Link>
+            </Button>}
+          </>}
+          tabs={
+            <ListViewTabs
+              label="Publication sources"
+              value={publicationTab}
+              onChange={setPublicationTab}
+              tabs={[
+                {value: "selected", label: "Selected publications", icon: <BookOpen className="size-3.5" />, count: loadingPublications ? undefined : featured.length},
+                // The OpenAlex total is known once its first page arrives.
+                {value: "openalex", label: "From OpenAlex", icon: <OpenAlexIcon className="size-3.5" />, count: openAlexPapers.length ? workCount : undefined},
+              ]}
+            />
+          }
+          filters={publicationTab === "selected" && (
+            <ListSearch
+              placeholder="Find a publication…"
+              aria-label="Search publications"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          )}
+          filtersInCard
+          intro={<>
+            {invitationSection}
+              <header className="relative isolate overflow-hidden p-5 sm:p-6">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_0%_0%,var(--primary),transparent_65%)] opacity-[0.09] dark:opacity-[0.12]"
+                />
+                <svg
+                  aria-hidden="true"
+                  focusable="false"
+                  viewBox="0 0 480 320"
+                  fill="none"
+                  className="pointer-events-none absolute -bottom-20 -right-16 -z-10 h-80 w-[480px] text-primary opacity-[0.07] dark:opacity-[0.10]"
+                >
+                  {[90, 125, 160, 195, 230, 265].map((radius) => (
+                    <circle
+                      key={radius}
+                      cx="370"
+                      cy="240"
+                      r={radius}
+                      stroke="currentColor"
+                      strokeWidth="1"
+                    />
+                  ))}
+                  <path
+                    d="M0 240H480M370 0V320"
                     stroke="currentColor"
                     strokeWidth="1"
                   />
-                ))}
-                <path
-                  d="M0 240H480M370 0V320"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                />
-              </svg>
-              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.85fr)] lg:gap-14">
-                <div>
-                  <div className="flex items-center gap-5">
-                    <AuthorAvatar photo={profile.photo} className="size-24 border border-border/50 sm:size-28" />
-                    <div className="min-w-0">
-                      <h1 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
-                        {profile.name}
-                      </h1>
-                      {profile.affiliation && (
-                        <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
-                          <GraduationCap className="mt-0.5 size-4 shrink-0" />
-                          {profile.affiliation}
+                </svg>
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.85fr)] lg:gap-14">
+                  <div>
+                    <div className="flex items-center gap-5">
+                      <AuthorAvatar photo={profile.photo} className="size-24 border border-border/50 sm:size-28" />
+                      <div className="min-w-0">
+                        <p className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+                          {profile.name}
                         </p>
-                      )}
-                    </div>
-                  </div>
-                  {profile.headline && (
-                    <p className="mt-5 max-w-lg text-lg leading-relaxed">
-                      {profile.headline}
-                    </p>
-                  )}
-                  <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
-                    {[
-                      {
-                        name: "ORCID",
-                        icon: OrcidIcon,
-                        url: profile.orcid
-                          ? `https://orcid.org/${profile.orcid.replace("https://orcid.org/", "")}`
-                          : "",
-                      },
-                      { name: "Website", icon: Globe, url: profile.website },
-                      {
-                        name: "LinkedIn",
-                        icon: LinkedInIcon,
-                        url: profile.linkedin,
-                      },
-                    ]
-                      .filter((l) => safeUrl(l.url))
-                      .map((l) => (
-                        <a
-                          key={l.name}
-                          href={safeUrl(l.url)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary"
-                        >
-                          <l.icon className="size-3.5" />
-                          {l.name}
-                          <ArrowUpRight className="ml-auto size-3.5" />
-                        </a>
-                      ))}
-                  </div>
-                </div>
-                <div className="flex flex-col justify-center">
-                  {profile.bio && (
-                    <p className="max-w-prose text-sm leading-7 text-muted-foreground">
-                      {profile.bio}
-                    </p>
-                  )}
-                  {papers.length > 0 && (
-                    <div
-                      className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2"
-                      aria-label="Evidence libraries"
-                    >
-                      <span className="text-xs text-muted-foreground">
-                        Published in
-                      </span>
-                      {libraries.map(library => <Tooltip key={library.id}>
-                        <TooltipTrigger asChild>
-                          <a
-                            href={library.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="group inline-flex items-center gap-2 rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
-                          >
-                            <Library className="size-4 text-primary" />
-                            <span className="text-sm font-medium group-hover:text-primary">
-                              {library.name}
-                            </span>
-
-                            <ArrowUpRight className="size-3 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                          </a>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" sideOffset={8}>
-                          <p>{library.url}</p>
-                          <p className="mt-1 opacity-70">
-                            {featured.filter(paper => paper.library.id === library.id).length} published works in this library
+                        {profile.affiliation && (
+                          <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
+                            <GraduationCap className="mt-0.5 size-4 shrink-0" />
+                            {profile.affiliation}
                           </p>
-                        </TooltipContent>
-                      </Tooltip>)}
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            </header>
-            <SectionCard
-              title="Publications"
-              icon={BookOpen}
-              bodyClassName="p-0 space-y-0"
-            >
-              <Tabs
-                ref={publicationsRef}
-                value={publicationTab}
-                onValueChange={setPublicationTab}
-                className="min-w-0 gap-0"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
-                  <TabsList className="justify-start gap-1 rounded-lg bg-transparent p-0 group-data-[orientation=horizontal]/tabs:h-auto">
-                    <TabsTrigger
-                      value="selected"
-                      className="h-8 flex-none gap-2 rounded-md border-0 px-3 py-1 text-xs transition-colors after:hidden data-[state=active]:bg-muted data-[state=active]:shadow-none dark:data-[state=active]:bg-muted"
-                    >
-                      <BookOpen className="size-3.5" />
-                      Selected publications{" "}
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        {featured.length}
-                      </span>
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="openalex"
-                      className="h-8 flex-none gap-2 rounded-md border-0 px-3 py-1 text-xs transition-colors after:hidden data-[state=active]:bg-muted data-[state=active]:shadow-none dark:data-[state=active]:bg-muted"
-                    >
-                      <OpenAlexIcon className="size-3.5" />
-                      From OpenAlex
-                    </TabsTrigger>
-                  </TabsList>
-                  {publicationTab === "selected" && (
-                    <div className="relative w-full sm:w-64">
-                      <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        className="h-8 border-border/50 bg-background pl-8 text-xs shadow-none"
-                        placeholder="Find a publication…"
-                        aria-label="Search publications"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
-                  )}
-                </div>
-                <TabsContent value="selected" className="mt-0 space-y-0">
-                  <div className="overflow-hidden">
-                    {filtered.map(p => <PublicationListItem key={p.id} publication={p} />)}
-                    {loadingPublications ? (
-                      <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading publications" className="size-6 text-primary" /></div>
-                    ) : (publicationStatus || !filtered.length) && (
-                      <p className="p-6 text-center text-sm text-muted-foreground">
-                        {publicationStatus ?? (featured.length
-                          ? "No publications match your search."
-                          : "No publications selected yet.")}
+                    {profile.headline && (
+                      <p className="mt-5 max-w-lg text-lg leading-relaxed">
+                        {profile.headline}
                       </p>
                     )}
-                  </div>
-                </TabsContent>
-                <TabsContent value="openalex" className="mt-0 space-y-0">
-                  {openAlexError && <p role="alert" className="p-4 text-sm text-destructive">{openAlexError}</p>}
-                  {profile.match ? (
-                    <>
-                      <FocusMode
-                        isOpen={isFocusModeOpen}
-                        onClose={() =>
-                          useUIStore.getState().setIsFocusModeOpen(false)
-                        }
-                        papers={openAlexPapers}
-                        onDownloadItem={downloadLibraryItem}
-                        onDownloadEssentialItem={downloadLibraryEssentialItem}
-                      />
-                      <div className="flex flex-col gap-4 p-4">
-                        {loadingWorks && !openAlexPapers.length && <div className="flex min-h-40 items-center justify-center"><Spinner aria-label="Loading OpenAlex publications" className="size-6 text-primary" /></div>}
-                        {openAlexPapers
-                          .map((paper, index) => (
-                            <PaperCard
-                              key={paper.id}
-                              result={paper}
-                              resultIndex={index}
-                              viewMode="list-detail"
-                              onDownloadItem={downloadLibraryItem}
-                              onDownloadEssentialItem={
-                                downloadLibraryEssentialItem
-                              }
-                            />
-                          ))}
-                      </div>
-                      {hasMoreWorks && (
-                        <div className="flex items-center justify-between gap-3 border-t border-border/50 px-4 py-3">
-                          <span className="text-xs text-muted-foreground">
-                            {openAlexPapers.length} of{" "}
-                            {workCount} publications
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={onLoadMoreWorks}
-                            disabled={loadingWorks}
+                    <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3">
+                      {[
+                        {
+                          name: "ORCID",
+                          icon: OrcidIcon,
+                          url: profile.orcid
+                            ? `https://orcid.org/${profile.orcid.replace("https://orcid.org/", "")}`
+                            : "",
+                        },
+                        { name: "Website", icon: Globe, url: profile.website },
+                        {
+                          name: "LinkedIn",
+                          icon: LinkedInIcon,
+                          url: profile.linkedin,
+                        },
+                      ]
+                        .filter((l) => safeUrl(l.url))
+                        .map((l) => (
+                          <a
+                            key={l.name}
+                            href={safeUrl(l.url)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary"
                           >
-                            Show more
-                            {loadingWorks ? <Spinner /> : <ChevronRight className="size-3.5 rotate-90" />}
-                          </Button>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="p-6 text-sm text-muted-foreground">
-                      No OpenAlex publications to display.
+                            <l.icon className="size-3.5" />
+                            {l.name}
+                            <ArrowUpRight className="ml-auto size-3.5" />
+                          </a>
+                        ))}
                     </div>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </SectionCard>
-          </>
-        ))}
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    {profile.bio && (
+                      <p className="max-w-prose text-sm leading-7 text-muted-foreground">
+                        {profile.bio}
+                      </p>
+                    )}
+                    {papers.length > 0 && (
+                      <div
+                        className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2"
+                        aria-label="Evidence libraries"
+                      >
+                        <span className="text-xs text-muted-foreground">
+                          Published in
+                        </span>
+                        {libraries.map(library => <Tooltip key={library.id}>
+                          <TooltipTrigger asChild>
+                            <a
+                              href={library.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="group inline-flex items-center gap-2 rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+                            >
+                              <Library className="size-4 text-primary" />
+                              <span className="text-sm font-medium group-hover:text-primary">
+                                {library.name}
+                              </span>
+  
+                              <ArrowUpRight className="size-3 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                            </a>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" sideOffset={8}>
+                            <p>{library.url}</p>
+                            <p className="mt-1 opacity-70">
+                              {featured.filter(paper => paper.library.id === library.id).length} published works in this library
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </header>
+          </>}
+        >
+          {/* The bar's heading is the author's name; this names the list for screen readers. */}
+          <h2 className="sr-only">Publications</h2>
+          {/* Each tab keys its own list, so the new one fades in instead of popping. */}
+          {publicationTab === "selected" ? <div key="selected" className="fade-enter">
+            <div className="overflow-hidden">
+              {filtered.map(p => <PublicationListItem key={p.id} publication={p} />)}
+              {loadingPublications ? (
+                <ListLoading label="Loading publications" />
+              ) : publicationStatus ? (
+                <p className="p-6 text-center text-sm text-muted-foreground">{publicationStatus}</p>
+              ) : !filtered.length && (
+                <ListEmpty icon={featured.length ? SearchX : BookOpen}>
+                  {featured.length ? "No publications match your search." : "No publications selected yet."}
+                </ListEmpty>
+              )}
+            </div>
+          </div> : <div key="openalex" className="fade-enter">
+            {openAlexError && <p role="alert" className="p-4 text-sm text-destructive">{openAlexError}</p>}
+            {profile.match ? (
+              <>
+                <FocusMode
+                  isOpen={isFocusModeOpen}
+                  onClose={() =>
+                    useUIStore.getState().setIsFocusModeOpen(false)
+                  }
+                  papers={openAlexPapers}
+                  onDownloadItem={downloadLibraryItem}
+                  onDownloadEssentialItem={downloadLibraryEssentialItem}
+                />
+                <div className="flex flex-col gap-4 p-4">
+{!openAlexPapers.length && (loadingWorks ? <ListLoading label="Loading OpenAlex publications" /> : <ListEmpty icon={OpenAlexIcon}>No OpenAlex publications to display.</ListEmpty>)}
+                  {openAlexPapers
+                    .map((paper, index) => (
+                      <PaperCard
+                        key={paper.id}
+                        result={paper}
+                        resultIndex={index}
+                        viewMode="list-detail"
+                        onDownloadItem={downloadLibraryItem}
+                        onDownloadEssentialItem={
+                          downloadLibraryEssentialItem
+                        }
+                      />
+                    ))}
+                </div>
+                {hasMoreWorks && (
+                  <div className="flex items-center justify-between gap-3 border-t border-border/50 px-4 py-3">
+                    <span className="text-xs text-muted-foreground">
+                      {openAlexPapers.length} of{" "}
+                      {workCount} publications
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onLoadMoreWorks}
+                      disabled={loadingWorks}
+                    >
+                      Show more
+                      {loadingWorks ? <Spinner /> : <ChevronRight className="size-3.5 rotate-90" />}
+                    </Button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <ListEmpty icon={OpenAlexIcon}>No OpenAlex publications to display.</ListEmpty>
+            )}
+          </div>}
+        </LibraryPageShell>
+      )}
       {profile && (
         <>
           <Dialog open={matchDialog} onOpenChange={setMatchDialog}>
@@ -955,11 +901,11 @@ export default function AuthorPage({
                         </button>
                       ))}
                       {loadingAuthors ? (
-                        <div className={matches.length ? "flex justify-center p-3" : "flex min-h-24 items-center justify-center"}><Spinner aria-label="Searching OpenAlex authors" className="size-5 text-primary" /></div>
+                        matches.length ? <div className="flex justify-center p-3"><Spinner aria-label="Searching OpenAlex authors" className="size-5 text-primary" /></div> : <ListLoading compact label="Searching OpenAlex authors" />
                       ) : !matches.length && (
-                        <p className="p-5 text-sm text-muted-foreground">
+                        <ListEmpty compact icon={matchSearch.trim() ? SearchX : Search}>
                           {matchSearch.trim() ? "No authors match your search." : "Search for an author by name, affiliation or OpenAlex ID."}
-                        </p>
+                        </ListEmpty>
                       )}
                     </div>
                   )}

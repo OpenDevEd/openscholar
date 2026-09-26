@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { ExternalLink, Settings } from "lucide-react";
+import { ExternalLink, Settings , CircleDashed } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -28,6 +28,7 @@ import { LibraryAddressLink } from "./library-address-link";
 import { LibraryNotFound } from "./library-not-found";
 import { SetupHero } from "./live-hero";
 import { LibraryPageShell } from "./library-page-shell";
+import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
 import { LibraryStatusChip } from "./library-status-chip";
 
 export function SetupProgress({ libraryId }: { libraryId: string }) {
@@ -102,25 +103,24 @@ export function SetupProgressView({
     <LibraryPageShell
       title={setup.identity.name}
       image={setup.faviconUrl}
-      description={<LibraryAddressLink address={address} />}
       backHref="/evidence-libraries"
       backLabel={t("backToLibraries")}
-      titleAside={<LibraryStatusChip status={status} />}
+      titleAside={<><LibraryStatusChip status={status} /><LibraryAddressLink address={address} className="hidden text-sm text-muted-foreground @5xl:inline-flex" /></>}
       actions={
         <>
           {status === "draft" || active ? (
-            <Button asChild variant={active ? "outline" : "default"}>
+            <Button asChild size="sm" variant={active ? "outline" : "default"} className={BAR_ACTION}>
               <Link href={`${base}/configuration`}>
                 <Settings />
-                {t("configure")}
+                <span className={BAR_LABEL}>{t("configure")}</span>
               </Link>
             </Button>
           ) : null}
           {active ? (
-            <Button asChild>
+            <Button asChild size="sm" className={BAR_ACTION}>
               <AdminAreaLink libraryId={setup.library._id}>
                 <ExternalLink />
-                {t("openAdmin")}
+                <span className={BAR_LABEL}>{t("openAdmin")}</span>
               </AdminAreaLink>
             </Button>
           ) : null}
@@ -183,7 +183,7 @@ function DraftStepRow({ step }: { step: SetupStep }) {
   return (
     <li data-step={step.key} data-state={step.status} className="flex items-start gap-3 p-3">
       <span className="flex size-5 shrink-0 items-center justify-center">
-        <span className="size-2 rounded-full bg-muted-foreground/50" />
+        <CircleDashed aria-hidden className="size-3.5 text-muted-foreground" />
       </span>
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="text-sm font-medium text-muted-foreground">{t(`steps.${step.key}.name`)}</p>

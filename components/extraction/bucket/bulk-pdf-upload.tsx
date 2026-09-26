@@ -216,9 +216,10 @@ export function BulkPdfUpload({ paperLimit }: { paperLimit?: number }) {
             >
               <div className="flex-1 min-w-0">
                 <p className="truncate font-medium">{row.file.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {(row.file.size / (1024 * 1024)).toFixed(1)} MB · {row.status}
-                  {row.error ? ` · ${row.error}` : ""}
+                <p className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                  <span className="tabular-nums">{(row.file.size / (1024 * 1024)).toFixed(1)} MB</span>
+                  <span>{row.status}</span>
+                  {row.error ? <span className="text-destructive">{row.error}</span> : null}
                 </p>
               </div>
               {row.status === "uploading" && (
@@ -242,9 +243,10 @@ export function BulkPdfUpload({ paperLimit }: { paperLimit?: number }) {
               </Button>
             </div>
           ))}
-          <p className="text-xs text-muted-foreground">
-            {inFlight} in flight · {rows.filter((r) => r.status === "uploaded").length} uploaded ·{" "}
-            {rows.filter((r) => r.status === "failed").length} failed
+          <p className="flex flex-wrap gap-x-3 text-xs tabular-nums text-muted-foreground">
+            <span>{inFlight} in flight</span>
+            <span>{rows.filter((r) => r.status === "uploaded").length} uploaded</span>
+            <span>{rows.filter((r) => r.status === "failed").length} failed</span>
           </p>
         </div>
       )}

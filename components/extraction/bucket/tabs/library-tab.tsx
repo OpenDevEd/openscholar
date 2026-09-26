@@ -196,10 +196,10 @@ export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
                   <p className="font-medium text-sm truncate">{item.title}</p>
                   <p className="text-xs text-muted-foreground truncate">
                     {item.authors ?? "Unknown authors"}
-                    {item.publicationYear ? ` · ${item.publicationYear}` : ""}
+                    {item.publicationYear ? `, ${item.publicationYear}` : ""}
                   </p>
                   {alsoFrom && (
-                    <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Also staged from {BUCKET_SOURCE_LABELS[alsoFrom]}
                     </p>
                   )}
@@ -272,7 +272,7 @@ function SourceSidebar({ collections, view, onChange }: SourceSidebarProps) {
     >
       <div className={cn("flex items-center gap-1 p-2", collapsed ? "justify-center" : "justify-between")}>
         {!collapsed && (
-          <span className="px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="px-1 text-xs font-medium text-muted-foreground">
             Views
           </span>
         )}
@@ -333,7 +333,7 @@ function SourceSidebar({ collections, view, onChange }: SourceSidebarProps) {
           <div className="mx-2 border-t border-border/60" />
           {!collapsed && (
             <div className="px-2 pt-2">
-              <span className="px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="px-1 text-xs font-medium text-muted-foreground">
                 Collections
               </span>
             </div>
@@ -420,7 +420,7 @@ function SidebarEntry({
       <TooltipTrigger asChild>{button}</TooltipTrigger>
       <TooltipContent side="right">
         {label}
-        {count !== undefined ? ` · ${count}` : ""}
+        {count !== undefined ? <span className="ml-2 tabular-nums opacity-70">{count}</span> : null}
       </TooltipContent>
     </Tooltip>
   );

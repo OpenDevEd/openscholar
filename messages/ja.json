@@ -861,8 +861,7 @@
     "retry": {
       "summary": {
         "retryableOnly": "再試行可能な失敗 {retryable} 件",
-        "permanentOnly": "永続的な失敗 {permanent} 件",
-        "both": "再試行可能 {retryable} 件 · 永続的 {permanent} 件"
+        "permanentOnly": "永続的な失敗 {permanent} 件"
       },
       "retryButton": "失敗 {count} 件を再試行",
       "confirmDialog": {
@@ -908,8 +907,8 @@
     "questionProgress": {
       "completedOverTotal": "{completed}/{total}",
       "summary": "{total} 件中 {completed} 件の質問が完了",
-      "failedCount": "· {count, plural, one {# 件失敗} other {# 件失敗}}",
-      "retryingCount": "· {count, plural, one {# 件再試行中} other {# 件再試行中}}"
+      "failedCount": "{count, plural, one {# 件失敗} other {# 件失敗}}",
+      "retryingCount": "{count, plural, one {# 件再試行中} other {# 件再試行中}}"
     },
     "errorHistory": {
       "trigger": "エラー履歴 · {count, plural, one {# 回の試行} other {# 回の試行}}",
@@ -919,9 +918,9 @@
     },
     "mixedSuccess": {
       "title": "一部成功で完了",
-      "answeredOverTotal": "{total} 件中 {answered} 件の質問に回答済み。",
-      "failedTotal": "{count, plural, one {# 件失敗:} other {# 件失敗:}}",
-      "retryableHint": "{count, plural, one {# 件の失敗は再試行可能} other {# 件の失敗は再試行可能}}です。"
+      "answeredOverTotal": "{papers} 件の論文を読み取り、{total} 件中 {answered} 件の質問を確認",
+      "retryableHint": "{count, plural, one {# 件の失敗は再試行可能} other {# 件の失敗は再試行可能}}です",
+      "showFailed": "失敗した論文を表示"
     },
     "pleaseSelectSource": "少なくとも1つのソースを選択してください",
     "pleaseCompleteSteps": "すべてのステップを完了してください",
@@ -929,6 +928,7 @@
     "untitledJob": "タイトルなし抽出ジョブ",
     "jobStarted": "抽出ジョブを開始しました！",
     "failedToStartJob": "抽出ジョブの開始に失敗しました",
+    "newJobTitle": "新しいジョブ",
     "stepOfThree": "ステップ {step} / {total}",
     "nameYourJob": "抽出ジョブに名前を付ける",
     "nameYourJobDescription": "後で識別しやすいように、このジョブにわかりやすい名前を付けてください。",
@@ -1050,7 +1050,24 @@
       "presetMax": "最大",
       "liveAnnouncement": "論文数を {count, number} 件に設定しました"
     },
-    "chatModelPresets": "Presets"
+    "chatModelPresets": "Presets",
+    "chatRetryResponseWith": "{model} で再生成",
+    "chatRetryWithPrefix": "再生成に使うモデル",
+    "chatRetryLoadingMessages": "会話を読み込んでいます…",
+    "chatHeaderMore": "その他のオプション",
+    "chatBack": "抽出一覧に戻る",
+    "chatComposerPlaceholder": "論文について何でも質問してください…",
+    "chatHintEnter": "↵ 送信",
+    "chatHintShiftEnter": "⇧↵ 改行",
+    "chatModelPickerTrigger": "モデルを変更",
+    "chatModelPickerSearch": "モデルを検索…",
+    "chatModelPickerEmpty": "モデルが見つかりません。",
+    "chatModelPickerLoading": "モデルを読み込んでいます…",
+    "chatJumpToLatest": "最新へ移動",
+    "chatJumpToLatestWithCount": "{count, plural, other {# 件の新しいメッセージ}}",
+    "chatEmptyHeadline": "論文について何でも質問してください",
+    "chatEmptyPaperCount": "{count, plural, other {このスレッドの # 件の論文に基づいています}}",
+    "chatShortcutFocus": "⌘K で入力欄に移動します"
   },
   "sourcesPanel": {
     "title": "ソース",
@@ -1075,7 +1092,12 @@
       "source": "ソース",
       "inContext": "コンテキスト内",
       "dirAsc": "昇順",
-      "dirDesc": "降順"
+      "dirDesc": "降順",
+      "triggerLabel": "並べ替え",
+      "menuLabel": "並べ替えの基準",
+      "directionLabel": "順序",
+      "asc": "昇順",
+      "desc": "降順"
     },
     "bulk": {
       "groupLabel": "一括操作",
@@ -1092,6 +1114,20 @@
       "abstract": "概要",
       "doi": "DOI",
       "openalexId": "OpenAlex ID"
+    },
+    "countShort": "{included, number}/{total, number}",
+    "progressLabel": "{total, number} 件中 {included, number} 件を含めています",
+    "searchClear": "検索をクリア",
+    "meta": {
+      "cites": "{count, plural, other {被引用 # 件}}"
+    },
+    "source": {
+      "filterLabel": "ソースの種類で絞り込む",
+      "placeholder": "すべてのソース",
+      "all": "すべてのソース",
+      "openalex": "OpenAlex",
+      "zotero": "Zotero",
+      "unknown": "その他"
     }
   },
   "composer": {
@@ -1215,9 +1251,7 @@
   },
   "viewMode": {
     "simpleList": "シンプルリスト",
-    "simple": "シンプル",
     "detailedList": "詳細リスト",
-    "detail": "詳細",
     "twoColumnGrid": "2列グリッド",
     "threeColumnGrid": "3列グリッド"
   },
@@ -1421,7 +1455,6 @@
     "score": "スコア"
   },
   "bookmarksPage": {
-    "description": "よく使う検索語のショートカットを作成",
     "searchPlaceholder": "ブックマークを検索...",
     "clearAllBookmarks": "すべてのブックマークをクリア",
     "clearAllBookmarksTitle": "すべてのブックマークをクリア",
@@ -1447,10 +1480,6 @@
     "missingBookmarks": "ブックマークが見つかりません",
     "missingBookmarksDescription": "存在しないブックマークを使用すると警告が表示されます。",
     "howToUseBookmarks": "ブックマークの使い方",
-    "saveCurrentSearch": "現在の検索をブックマークとして保存",
-    "saveQueryAsBookmark": "クエリをブックマークとして保存",
-    "saveSearchDescription": "後で素早くアクセスするために検索クエリを保存",
-    "editQueryPlaceholder": "ブックマークとして保存するクエリを編集...",
     "enterBookmarkName": "ブックマーク名を入力（例：my-search）",
     "bookmarkExpansionPreview": "ブックマーク展開プレビュー",
     "typeQueryToPreview": "\"bookmark...\" を付けてクエリを入力すると展開プレビューが表示されます",
@@ -1483,22 +1512,13 @@
     "backToCard": "カードに戻る",
     "current": "現在",
     "bookmarkNamePlaceholder": "bookmark-name",
-    "recentSearches": "最近の検索",
-    "infoClickToRevisit": "検索をクリックして結果を再表示",
-    "infoDownloadUpload": "検索データをダウンロードまたはアップロード",
-    "infoManageArchive": "検索アーカイブを管理"
+    "recentSearches": "最近の検索"
   },
   "commandCenter": {
-    "searchCount": "{count, plural, one {# 件の検索} other {# 件の検索}}",
-    "bookmarkCount": "{count, plural, one {# 件のブックマーク} other {# 件のブックマーク}}",
     "searchesLabel": "検索",
     "bookmarksLabel": "ブックマーク",
     "searchSingular": "検索",
-    "searchPlural": "検索",
-    "bookmarkSingular": "ブックマーク",
-    "bookmarkPlural": "ブックマーク",
-    "jobSingular": "ジョブ",
-    "jobPlural": "ジョブ"
+    "searchPlural": "検索"
   },
   "admin": {
     "cleanupTitle": "管理：重複サブスクリプションのクリーンアップ",
@@ -1754,6 +1774,7 @@
   "jobStatus": {
     "restart": "再開",
     "papersCount": "{count} 論文",
+    "questionsCount": "{count, plural, other {# 件の質問}}",
     "statusPending": "保留中",
     "statusDownloadingPdfs": "論文を処理中",
     "statusExtracting": "抽出中",
@@ -1767,13 +1788,8 @@
     "jobCreated": "新しいジョブを作成しました",
     "failedToCreate": "新しいジョブの作成に失敗しました",
     "updated": "更新 {timeAgo}",
-    "totalPapers": "合計論文数",
-    "processed": "処理済み",
-    "successRate": "成功率",
-    "extractionProgress": "抽出の進捗",
     "noMatches": "現在のフィルターに一致するものはありません",
     "clearFilters": "フィルターをクリア",
-    "questions": "質問",
     "progressOfPapers": "{total} 論文中 {processed} 件",
     "loadingExtractionResults": "抽出結果を読み込み中...",
     "appliedSavedView": "保存ビューを適用：{name}"
@@ -1821,7 +1837,6 @@
   "filters": {
     "filterByStatus": "ステータスでフィルター",
     "confidenceRange": "信頼度範囲",
-    "quickFilters": "クイックフィルター",
     "confidenceLabel": "信頼度：{min}%-{max}%",
     "status": "ステータス",
     "hasPdf": "PDFあり",
@@ -2057,10 +2072,6 @@
     "filterYearRange": "出版年",
     "filterYearFrom": "から",
     "filterYearTo": "まで",
-    "viewListSimple": "シンプルリスト",
-    "viewListDetail": "詳細リスト",
-    "viewGrid2": "2列グリッド",
-    "viewGrid3": "3列グリッド",
     "filterCollection": "コレクション",
     "allCollections": "すべてのコレクション",
     "manageCollections": "コレクションの管理",
@@ -3137,7 +3148,6 @@
   },
   "topics": {
     "title": "トピック",
-    "description": "Evidence Libraries 全体の研究トピック。",
     "find": "トピックを検索",
     "findPlaceholder": "トピックを探す",
     "domain": "研究ドメイン",
@@ -3146,8 +3156,6 @@
     "allFields": "すべての分野",
     "subfield": "研究サブ分野",
     "allSubfields": "すべてのサブ分野",
-    "count": "{count, plural, other {# 件のトピック}}",
-    "countLoaded": "{count, plural, other {# 件のトピックを読み込みました}}",
     "clearFilters": "フィルターをクリア",
     "loadFailed": "トピックを読み込めませんでした。",
     "tryAgain": "再試行",
@@ -3166,11 +3174,9 @@
     "hideRelated": "関連トピックを隠す",
     "publicationsFailed": "文献を読み込めませんでした。",
     "loadingPublications": "文献を読み込み中",
-    "openAlexCount": "{count, plural, other {OpenAlex の文献 # 件}}",
+    "publicationsView": "出版物のソース",
     "noOpenAlex": "OpenAlex の文献は見つかりませんでした。",
     "progress": "{total, number} 件中 {loaded, number} 件",
-    "libraryCount": "{count, plural, other {# 件の文献}}",
-    "libraryCountLoaded": "{count, plural, other {# 件の文献を読み込みました}}",
     "searchLibrary": "ライブラリの文献を検索",
     "searchPlaceholder": "文献を検索",
     "updating": "文献グループを更新中です。しばらくしてから再読み込みしてください。",
@@ -3238,7 +3244,6 @@
     },
     "new": {
       "title": "New Evidence Library",
-      "description": "Give it a name and reserve a public address.",
       "backToLibraries": "Back to libraries",
       "noOrganizationTitle": "Choose an organisation",
       "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here.",

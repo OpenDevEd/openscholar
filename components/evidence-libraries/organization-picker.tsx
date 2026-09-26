@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { api } from "@/convex/_generated/api";
 import type { FunctionReturnType } from "convex/server";
+import type { Preloaded } from "convex/react";
+import { preloadedQueryResult } from "convex/nextjs";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import {
@@ -25,16 +27,19 @@ export function OrganizationAvatar({
   );
 }
 
-export function useLibraryOrganizationChoice() {
+/** `preloaded` is the server's answer, used until the live query takes over, so the page knows at once. */
+export function useLibraryOrganizationChoice(
+  preloaded?: Preloaded<typeof api.organizationFeatures.libraryOrganizations>,
+) {
   const query = useProtectedQuery(
     api.organizationFeatures.libraryOrganizations,
     {},
   );
   const [chosenId, choose] = useState<string | null>(null);
-  const organizations = query.data ?? [];
+  const organizations = query.data ?? (preloaded ? preloadedQueryResult(preloaded) : []);
   const selected =
     organizations.find((org) => org.id === chosenId) ?? organizations[0];
-  return { organizations, selected, choose, isReady: query.isReady };
+  return { organizations, selected, choose, isReady: query.isReady || Boolean(preloaded) };
 }
 
 export function LibraryOrganizationPicker({

@@ -460,7 +460,7 @@ export function ZoteroSelector({ paperLimit }: { paperLimit?: number }) {
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {item.authors.slice(0, 3).join(", ") || te("unknownAuthors")}
-                  {item.year ? ` • ${item.year}` : ""}
+                  {item.year ? `, ${item.year}` : ""}
                 </p>
                 {item.hasPdfChild && (
                   <div className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -468,7 +468,7 @@ export function ZoteroSelector({ paperLimit }: { paperLimit?: number }) {
                   </div>
                 )}
                 {alsoFrom && (
-                  <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Also staged from {BUCKET_SOURCE_LABELS[alsoFrom]}
                   </p>
                 )}
