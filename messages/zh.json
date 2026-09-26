@@ -928,6 +928,7 @@
     "untitledJob": "未命名的提取任务",
     "jobStarted": "提取任务已开始！",
     "failedToStartJob": "无法启动提取任务",
+    "newJobTitle": "新建任务",
     "stepOfThree": "步骤 {step}，共 {total} 步",
     "nameYourJob": "为您的提取任务命名",
     "nameYourJobDescription": "为此任务提供一个描述性名称，以便稍后识别。",

@@ -928,6 +928,7 @@
     "untitledJob": "Tâche d'extraction sans titre",
     "jobStarted": "Tâche d'extraction démarrée !",
     "failedToStartJob": "Échec du démarrage de la tâche d'extraction",
+    "newJobTitle": "Nouvelle tâche",
     "stepOfThree": "Étape {step} sur {total}",
     "nameYourJob": "Nommez votre tâche d'extraction",
     "nameYourJobDescription": "Donnez à cette tâche un nom descriptif pour vous aider à l'identifier plus tard.",

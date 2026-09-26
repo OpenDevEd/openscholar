@@ -928,6 +928,7 @@
     "untitledJob": "शीर्षकहीन एक्सट्रैक्शन जॉब",
     "jobStarted": "एक्सट्रैक्शन जॉब शुरू हुई!",
     "failedToStartJob": "एक्सट्रैक्शन जॉब शुरू करने में विफल",
+    "newJobTitle": "नया जॉब",
     "stepOfThree": "चरण {step} / {total}",
     "nameYourJob": "अपने एक्सट्रैक्शन जॉब का नाम दें",
     "nameYourJobDescription": "इस जॉब को बाद में पहचानने में मदद के लिए एक वर्णनात्मक नाम दें।",

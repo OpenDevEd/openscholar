@@ -28,6 +28,7 @@ export function LibraryPageShell({
   actions,
   intro,
   filtersInCard = false,
+  allowOverflow = false,
   children,
 }: {
   icon?: LucideIcon | null;
@@ -43,6 +44,8 @@ export function LibraryPageShell({
   intro?: ReactNode;
   /** Keep the filters in the card at every width, for a search that belongs to one tab's list. */
   filtersInCard?: boolean;
+  /** Let the card's content overflow, for a sticky footer or popovers inside it. */
+  allowOverflow?: boolean;
   children: ReactNode;
 }) {
   // A tab can drop its filters. The last ones stay rendered while their row closes.
@@ -70,7 +73,7 @@ export function LibraryPageShell({
       </StickyPageHeader>
 
       <div className="container mx-auto max-w-6xl p-4 sm:p-6">
-        <CommandCenterContainer>
+        <CommandCenterContainer allowOverflow={allowOverflow}>
           {intro ? <div className="border-b border-border/50">{intro}</div> : null}
           {tabs || cardFilters ? (
             <Collapse className={cardToolbar}>

@@ -928,6 +928,7 @@
     "untitledJob": "タイトルなし抽出ジョブ",
     "jobStarted": "抽出ジョブを開始しました！",
     "failedToStartJob": "抽出ジョブの開始に失敗しました",
+    "newJobTitle": "新しいジョブ",
     "stepOfThree": "ステップ {step} / {total}",
     "nameYourJob": "抽出ジョブに名前を付ける",
     "nameYourJobDescription": "後で識別しやすいように、このジョブにわかりやすい名前を付けてください。",

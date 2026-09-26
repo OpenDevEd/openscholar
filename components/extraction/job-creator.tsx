@@ -13,11 +13,13 @@ import { Label } from "@/components/ui/label";
 import {
   ArrowLeft,
   ArrowRight,
-  Check,
   Loader2,
   Layers,
   FileText,
   Zap,
+  Database,
+  CircleCheck,
+  ChevronRight,
 } from "lucide-react";
 import { useExtractionStore, type JobMode } from "@/lib/store/extraction";
 import { useBucketStore } from "@/lib/store/bucket";
@@ -37,6 +39,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { useIsMobile } from "@/lib/hooks";
 import { readyBucketPaperCount } from "@/lib/bucket/paper-count";
 
@@ -237,37 +240,32 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
   };
 
   return (
-    <div className="w-full px-4 pt-4 md:px-6 md:pt-6">
-      {/* Header with Cancel */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between mb-8"
-      >
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/extraction")}
+    <LibraryPageShell
+      icon={Database}
+      title={t("newJobTitle")}
+      backHref="/extraction"
+      backLabel={tc("cancel")}
+      allowOverflow
+      tabs={
+        <JobSteps
+          steps={steps}
+          current={validStep}
           disabled={isSubmitting}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {tc("cancel")}
-        </Button>
-
-        <div className="flex items-center gap-3">
-          {isMobile && (
-            <BucketIndicator
-              ref={bucketIndicatorRef}
-              onClick={() => setBucketOpen(true)}
-              paperLimit={paperLimit}
-            />
-          )}
-          <div className="text-sm text-muted-foreground">
-            {t("stepOfThree", { step: validStep, total: 3 })}
-          </div>
-        </div>
-      </motion.div>
-
+          onSelect={(step) => {
+            setDirection(-1);
+            void setStepRaw(step);
+          }}
+        />
+      }
+      actions={isMobile ? (
+        <BucketIndicator
+          ref={bucketIndicatorRef}
+          onClick={() => setBucketOpen(true)}
+          paperLimit={paperLimit}
+        />
+      ) : null}
+    >
+    <div className="w-full px-4 pt-6 md:px-6 md:pt-8">
       {isMobile && (
         <BucketDrawer
           open={bucketOpen}
@@ -276,74 +274,6 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
           paperLimit={paperLimit}
         />
       )}
-
-      {/* Step Progress - Horizontal Timeline */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-        className="mb-12"
-      >
-        <div className="flex items-center justify-between relative"
-        >
-          {/* Progress Line */}
-          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-muted rounded-full">
-            <motion.div
-              className="h-full bg-primary rounded-full"
-              initial={{ width: "0%" }}
-              animate={{ width: `${((validStep - 1) / (steps.length - 1)) * 100}%` }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            />
-          </div>
-
-          {/* Step Indicators */}
-          {steps.map((s, i) => {
-            const isActive = validStep >= s.id;
-            const isCurrent = validStep === s.id;
-
-            return (
-              <motion.div
-                key={s.id}
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.3, delay: i * 0.1 }}
-                className="relative z-10 flex flex-col items-center"
-              >
-                <motion.div
-                  animate={{
-                    scale: isCurrent ? 1.1 : 1,
-                    backgroundColor: isActive ? "hsl(var(--primary))" : "hsl(var(--muted))",
-                  }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center shadow-lg",
-                    isActive ? "text-primary-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  {isActive && validStep > s.id ? (
-                    <Check className="w-6 h-6 text-muted-foreground opacity-50" />
-                  ) : (
-                    <s.icon className="w-5 h-5 text-muted-foreground" />
-                  )}
-                </motion.div>
-                <div className="mt-3 text-center">
-                  <p
-                    className={cn(
-                      "text-sm font-medium",
-                      isCurrent ? "text-foreground" : "text-muted-foreground"
-                    )}
-                  >
-                    {s.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {s.description}
-                  </p>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      </motion.div>
 
       {/* Content Area with Spring Physics */}
       <div className="min-h-[400px]">
@@ -515,5 +445,46 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
         </Button>
       </motion.div>
     </div>
+    </LibraryPageShell>
+  );
+}
+
+/**
+ * The three steps as a compact switcher in the page bar's tab slot. A finished
+ * step shows a check and can be clicked to go back; later steps wait their turn.
+ */
+function JobSteps({ steps, current, disabled, onSelect }: {
+  steps: { id: number; title: string; icon: typeof Layers }[];
+  current: number;
+  disabled: boolean;
+  onSelect: (step: 1 | 2 | 3) => void;
+}) {
+  return (
+    <ol className="flex items-center gap-1">
+      {steps.map((step, index) => {
+        const done = step.id < current;
+        const isCurrent = step.id === current;
+        const Icon = done ? CircleCheck : step.icon;
+        return (
+          <li key={step.id} className="flex items-center gap-1">
+            {index > 0 ? <ChevronRight aria-hidden className="size-3.5 text-muted-foreground/60" /> : null}
+            <button
+              type="button"
+              disabled={!done || disabled}
+              aria-current={isCurrent ? "step" : undefined}
+              onClick={() => onSelect(step.id as 1 | 2 | 3)}
+              className={cn(
+                "inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-md px-3 text-sm transition-colors",
+                isCurrent ? "bg-muted font-medium text-foreground" : done ? "text-foreground hover:bg-muted/60" : "text-muted-foreground",
+              )}
+            >
+              <Icon aria-hidden className={cn("size-3.5", done && "text-emerald-600 dark:text-emerald-400")} />
+              {/* On a narrow page only the current step keeps its name; the others keep their icon. */}
+              <span className={cn(!isCurrent && "@max-md:sr-only")}>{step.title}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
