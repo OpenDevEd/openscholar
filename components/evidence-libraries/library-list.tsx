@@ -282,7 +282,8 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                       )}
                     </div>
                   </div>
-                  <div className="ml-auto flex shrink-0 items-center gap-2">
+                  {/* On phones the actions take their own line under the name, lined up with it, so the name keeps the row's width. */}
+                  <div className="flex w-full shrink-0 items-center gap-2 pl-14 sm:ml-auto sm:w-auto sm:pl-0">
                     {library.pending ? (
                       <>
                         <Button
