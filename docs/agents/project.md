@@ -50,6 +50,12 @@ supported process changed. Read the page back before claiming success.
   small, explain the outside system, and include full cleanup and dependencies.
 - Use server components, Convex queries, `nuqs`, render-time calculations,
   lifted state, context, and event handlers for application state.
+- An animated element (a CSS animation class or Framer props) never also
+  transitions opacity or transform: no `transition`, `transition-all`,
+  `transition-opacity`, or `transition-transform` on it. Put the animation on a
+  wrapper, or transition only colors, borders, and shadows. Shared
+  `components/ui` parts name the properties they transition.
+  `npm run check:animation-clash` enforces both, in CI.
 
 ## Development services
 
@@ -114,6 +120,8 @@ Read `docs/test-quality.md` and use `test-decision` before touching tests.
   confirm the matching remote logs are clean.
 - For `app/` or `components/` work, run `npm run dev:web`, open the
   changed page, and check the browser plus terminal.
+- Check an animation or transition change in Firefox as well as Chromium.
+  Zen is Firefox-based, and Firefox shows animation clashes that Chromium hides.
 - Documentation-only work needs link checks and `git diff --check`, not the
   application test suite.
 
