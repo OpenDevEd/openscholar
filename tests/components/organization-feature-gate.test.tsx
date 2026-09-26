@@ -32,3 +32,20 @@ it("mounts allowed content and removes it when a membership grant is revoked", (
   expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
   expect(screen.getByRole("status")).toHaveTextContent("no_access");
 });
+
+it("shows the page's own fallback while access is checked and keeps it mounted when access is granted", () => {
+  const mounts = vi.fn();
+  function Page({ pending = false }: { pending?: boolean }) { React.useEffect(() => { mounts(); }, []); return <div>{pending ? "Pending page" : "Page"}</div>; }
+  const gate = () => <OrganizationFeatureGate feature="authors" fallback={<Page pending />}><Page /></OrganizationFeatureGate>;
+  access.mockReturnValue({ phase: "initializing", data: undefined });
+  const { rerender } = render(gate());
+  expect(screen.getByText("Pending page")).toBeInTheDocument();
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  access.mockReturnValue({ phase: "authenticated", data: { authors: true } });
+  rerender(gate());
+  expect(screen.getByText("Page")).toBeInTheDocument();
+  expect(mounts).toHaveBeenCalledOnce();
+  access.mockReturnValue({ phase: "authenticated", data: { authors: false } });
+  rerender(gate());
+  expect(screen.getByRole("status")).toHaveTextContent("no_access");
+});

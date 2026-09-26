@@ -861,8 +861,7 @@
     "retry": {
       "summary": {
         "retryableOnly": "{retryable} 个可重试失败",
-        "permanentOnly": "{permanent} 个永久失败",
-        "both": "{retryable} 个可重试 · {permanent} 个永久"
+        "permanentOnly": "{permanent} 个永久失败"
       },
       "retryButton": "重试 {count} 个失败",
       "confirmDialog": {
@@ -908,8 +907,8 @@
     "questionProgress": {
       "completedOverTotal": "{completed}/{total}",
       "summary": "{total} 个问题中已完成 {completed} 个",
-      "failedCount": "· {count, plural, one {# 个失败} other {# 个失败}}",
-      "retryingCount": "· {count, plural, one {# 个重试中} other {# 个重试中}}"
+      "failedCount": "{count, plural, one {# 个失败} other {# 个失败}}",
+      "retryingCount": "{count, plural, one {# 个重试中} other {# 个重试中}}"
     },
     "errorHistory": {
       "trigger": "错误历史 · {count, plural, one {# 次尝试} other {# 次尝试}}",
@@ -919,9 +918,9 @@
     },
     "mixedSuccess": {
       "title": "部分成功完成",
-      "answeredOverTotal": "{total} 个问题中已回答 {answered} 个。",
-      "failedTotal": "{count, plural, one {# 个失败：} other {# 个失败：}}",
-      "retryableHint": "{count, plural, one {# 个失败可重试} other {# 个失败可重试}}。"
+      "answeredOverTotal": "已读取 {papers} 篇论文，已检查 {total} 个问题中的 {answered} 个",
+      "retryableHint": "{count, plural, one {# 个失败可重试} other {# 个失败可重试}}",
+      "showFailed": "显示失败的论文"
     },
     "pleaseSelectSource": "请至少选择一个来源",
     "pleaseCompleteSteps": "请完成所有步骤",
@@ -929,6 +928,7 @@
     "untitledJob": "未命名的提取任务",
     "jobStarted": "提取任务已开始！",
     "failedToStartJob": "无法启动提取任务",
+    "newJobTitle": "新建任务",
     "stepOfThree": "步骤 {step}，共 {total} 步",
     "nameYourJob": "为您的提取任务命名",
     "nameYourJobDescription": "为此任务提供一个描述性名称，以便稍后识别。",
@@ -1050,7 +1050,24 @@
       "presetMax": "最大",
       "liveAnnouncement": "论文数已设为 {count, number}"
     },
-    "chatModelPresets": "Presets"
+    "chatModelPresets": "Presets",
+    "chatRetryResponseWith": "使用 {model} 重新生成",
+    "chatRetryWithPrefix": "重新生成所用模型",
+    "chatRetryLoadingMessages": "正在加载对话…",
+    "chatHeaderMore": "更多选项",
+    "chatBack": "返回提取列表",
+    "chatComposerPlaceholder": "就你的论文提出任何问题…",
+    "chatHintEnter": "↵ 发送",
+    "chatHintShiftEnter": "⇧↵ 换行",
+    "chatModelPickerTrigger": "更换模型",
+    "chatModelPickerSearch": "搜索模型…",
+    "chatModelPickerEmpty": "未找到模型。",
+    "chatModelPickerLoading": "正在加载模型…",
+    "chatJumpToLatest": "跳到最新",
+    "chatJumpToLatestWithCount": "{count, plural, other {# 条新消息}}",
+    "chatEmptyHeadline": "就你的论文提出任何问题",
+    "chatEmptyPaperCount": "{count, plural, other {基于此对话中的 # 篇论文}}",
+    "chatShortcutFocus": "按 ⌘K 跳到输入框"
   },
   "sourcesPanel": {
     "title": "来源",
@@ -1075,7 +1092,12 @@
       "source": "来源",
       "inContext": "在上下文中",
       "dirAsc": "升序",
-      "dirDesc": "降序"
+      "dirDesc": "降序",
+      "triggerLabel": "排序",
+      "menuLabel": "排序方式",
+      "directionLabel": "顺序",
+      "asc": "升序",
+      "desc": "降序"
     },
     "bulk": {
       "groupLabel": "批量操作",
@@ -1092,6 +1114,20 @@
       "abstract": "摘要",
       "doi": "DOI",
       "openalexId": "OpenAlex ID"
+    },
+    "countShort": "{included, number}/{total, number}",
+    "progressLabel": "已包含 {total, number} 篇中的 {included, number} 篇",
+    "searchClear": "清除搜索",
+    "meta": {
+      "cites": "{count, plural, other {被引 # 次}}"
+    },
+    "source": {
+      "filterLabel": "按来源类型筛选",
+      "placeholder": "全部来源",
+      "all": "全部来源",
+      "openalex": "OpenAlex",
+      "zotero": "Zotero",
+      "unknown": "其他"
     }
   },
   "composer": {
@@ -1215,9 +1251,7 @@
   },
   "viewMode": {
     "simpleList": "简单列表",
-    "simple": "简单",
     "detailedList": "详细列表",
-    "detail": "详细",
     "twoColumnGrid": "2 列网格",
     "threeColumnGrid": "3 列网格"
   },
@@ -1421,7 +1455,6 @@
     "score": "得分"
   },
   "bookmarksPage": {
-    "description": "为常用搜索词创建快捷方式",
     "searchPlaceholder": "搜索书签...",
     "clearAllBookmarks": "清除所有书签",
     "clearAllBookmarksTitle": "清除所有书签",
@@ -1447,10 +1480,6 @@
     "missingBookmarks": "缺失的书签",
     "missingBookmarksDescription": "如果您使用不存在的书签，将会看到警告。",
     "howToUseBookmarks": "如何使用书签",
-    "saveCurrentSearch": "将当前搜索保存为书签",
-    "saveQueryAsBookmark": "将查询保存为书签",
-    "saveSearchDescription": "保存您的搜索查询以便稍后快速访问",
-    "editQueryPlaceholder": "编辑将保存为书签的查询...",
     "enterBookmarkName": "输入书签名称（例如：my-search）",
     "bookmarkExpansionPreview": "书签扩展预览",
     "typeQueryToPreview": "输入带有 \"bookmark...\" 的查询以查看扩展预览",
@@ -1483,22 +1512,13 @@
     "backToCard": "返回卡片",
     "current": "当前",
     "bookmarkNamePlaceholder": "书签名称",
-    "recentSearches": "最近搜索",
-    "infoClickToRevisit": "点击任意搜索以重新查看结果",
-    "infoDownloadUpload": "下载或上传搜索数据",
-    "infoManageArchive": "管理您的搜索档案"
+    "recentSearches": "最近搜索"
   },
   "commandCenter": {
-    "searchCount": "{count, plural, other {# 次搜索}}",
-    "bookmarkCount": "{count, plural, other {# 个书签}}",
     "searchesLabel": "次搜索",
     "bookmarksLabel": "个书签",
     "searchSingular": "次搜索",
-    "searchPlural": "次搜索",
-    "bookmarkSingular": "个书签",
-    "bookmarkPlural": "个书签",
-    "jobSingular": "个任务",
-    "jobPlural": "个任务"
+    "searchPlural": "次搜索"
   },
   "admin": {
     "cleanupTitle": "管理员：清理重复订阅",
@@ -1754,6 +1774,7 @@
   "jobStatus": {
     "restart": "重新运行",
     "papersCount": "{count} 篇论文",
+    "questionsCount": "{count, plural, other {# 个问题}}",
     "statusPending": "待处理",
     "statusDownloadingPdfs": "正在处理论文",
     "statusExtracting": "提取中",
@@ -1767,13 +1788,8 @@
     "jobCreated": "新任务已创建",
     "failedToCreate": "创建新任务失败",
     "updated": "更新于 {timeAgo}",
-    "totalPapers": "论文总数",
-    "processed": "已处理",
-    "successRate": "成功率",
-    "extractionProgress": "提取进度",
     "noMatches": "没有符合当前筛选条件的匹配项",
     "clearFilters": "清除筛选",
-    "questions": "问题",
     "progressOfPapers": "{processed} / {total} 篇论文",
     "loadingExtractionResults": "正在加载提取结果...",
     "appliedSavedView": "已应用保存的视图：{name}"
@@ -1821,7 +1837,6 @@
   "filters": {
     "filterByStatus": "按状态筛选",
     "confidenceRange": "置信度范围",
-    "quickFilters": "快速筛选",
     "confidenceLabel": "置信度：{min}%-{max}%",
     "status": "状态",
     "hasPdf": "有 PDF",
@@ -2057,10 +2072,6 @@
     "filterYearRange": "出版年份",
     "filterYearFrom": "从",
     "filterYearTo": "到",
-    "viewListSimple": "简单列表",
-    "viewListDetail": "详细列表",
-    "viewGrid2": "两列网格",
-    "viewGrid3": "三列网格",
     "filterCollection": "合集",
     "allCollections": "所有合集",
     "manageCollections": "管理合集",
@@ -3137,7 +3148,6 @@
   },
   "topics": {
     "title": "主题",
-    "description": "各 Evidence Library 中的研究主题。",
     "find": "查找主题",
     "findPlaceholder": "查找主题",
     "domain": "研究领域大类",
@@ -3146,8 +3156,6 @@
     "allFields": "全部学科",
     "subfield": "子学科",
     "allSubfields": "全部子学科",
-    "count": "{count, plural, other {# 个主题}}",
-    "countLoaded": "{count, plural, other {已加载 # 个主题}}",
     "clearFilters": "清除筛选",
     "loadFailed": "无法加载主题。",
     "tryAgain": "重试",
@@ -3166,11 +3174,9 @@
     "hideRelated": "隐藏相关主题",
     "publicationsFailed": "无法加载文献。",
     "loadingPublications": "正在加载文献",
-    "openAlexCount": "{count, plural, other {OpenAlex 中有 # 篇文献}}",
+    "publicationsView": "出版物来源",
     "noOpenAlex": "未找到 OpenAlex 文献。",
     "progress": "{loaded, number} / {total, number}",
-    "libraryCount": "{count, plural, other {# 篇文献}}",
-    "libraryCountLoaded": "{count, plural, other {已加载 # 篇文献}}",
     "searchLibrary": "搜索文献库中的文献",
     "searchPlaceholder": "搜索文献",
     "updating": "文献分组正在更新，请稍后刷新。",
@@ -3238,7 +3244,6 @@
     },
     "new": {
       "title": "New Evidence Library",
-      "description": "Give it a name and reserve a public address.",
       "backToLibraries": "Back to libraries",
       "noOrganizationTitle": "Choose an organisation",
       "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here.",

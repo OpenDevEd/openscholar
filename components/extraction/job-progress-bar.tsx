@@ -31,6 +31,8 @@ export interface JobProgressBarProps {
   failed: number;
   /** Total units of work. */
   total: number;
+  /** The job finished, so the answered part turns green. */
+  complete?: boolean;
 }
 
 function percentFromCounts(
@@ -53,24 +55,14 @@ export function JobProgressBar({
   processed,
   failed,
   total,
+  complete = false,
 }: JobProgressBarProps) {
   const t = useTranslations("jobStatus");
   const percent = percentFromCounts(processed, failed, total);
   const processedPlusFailed = processed + failed;
 
   return (
-    <div className="mt-6">
-      <div className="flex justify-between text-sm mb-2">
-        <span className="text-muted-foreground">
-          {t("extractionProgress")}
-        </span>
-        <span className="font-medium text-foreground">
-          {t("progressOfPapers", {
-            processed: processedPlusFailed,
-            total,
-          })}
-        </span>
-      </div>
+    <div className="flex items-center gap-3">
       <div
         role="progressbar"
         aria-label={jobName}
@@ -82,15 +74,27 @@ export function JobProgressBar({
           total,
         })}
         data-progress-percent={percent}
-        className="h-3 bg-muted rounded-full overflow-hidden"
+        className="flex h-1.5 flex-1 gap-0.5 overflow-hidden rounded-full bg-muted"
       >
+        {/* Answered papers, then failed ones in red, so the bar tells the outcome at a glance. */}
         <motion.div
           initial={{ width: 0 }}
-          animate={{ width: `${percent}%` }}
+          animate={{ width: `${total > 0 ? (processed / total) * 100 : 0}%` }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-          className="h-full bg-primary rounded-full"
+          className={complete ? "h-full rounded-full bg-emerald-500" : "h-full rounded-full bg-primary"}
         />
+        {failed > 0 ? (
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${(failed / total) * 100}%` }}
+            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            className="h-full rounded-full bg-destructive"
+          />
+        ) : null}
       </div>
+      <span aria-hidden className="shrink-0 text-xs tabular-nums text-muted-foreground">
+        {t("progressOfPapers", { processed: processedPlusFailed, total })}
+      </span>
     </div>
   );
 }

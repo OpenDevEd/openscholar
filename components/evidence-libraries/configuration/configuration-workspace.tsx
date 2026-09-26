@@ -30,6 +30,8 @@ import {
   ToggleRight,
   Trash2,
   Users,
+  PencilLine,
+  CircleAlert,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -114,8 +116,11 @@ import {
 } from "./section-shell";
 import { LibraryAddressLink } from "../library-address-link";
 import { AdminAreaLink } from "../admin-area-link";
-import { PanelHeader } from "./panel-header";
-import { STATUS_DOT, StatusChip } from "./status-chip";
+import { BAR_ACTION, BAR_LABEL, PanelHeader } from "./panel-header";
+import { StatusChip, StatusIcon } from "./status-chip";
+
+// A section's state in the menu: done, changed or needs attention.
+const STATE_ICON = { complete: undefined, edited: PencilLine, attention: CircleAlert } as const;
 import { FileUploadsProvider } from "./use-file-uploads";
 import { useScrollSpy } from "./use-scroll-spy";
 import { ActivationControl } from "./activation-control";
@@ -436,6 +441,7 @@ function Workspace({
         : null;
   const activateButton = (
     <ActivationControl
+      size="sm"
       disabled={!canActivate}
       onActivate={() => setActivateOpen(true)}
       idleLabel={isDraftLibrary ? t("setUpAndActivate") : t("activate")}
@@ -462,32 +468,34 @@ function Workspace({
             <PanelHeader
               icon={Layers}
               image={draft.identity.assets.favicon || null}
-              className="border-b-0 px-0 md:px-0"
               title={draft.identity.name || t("untitled")}
-              description={<LibraryAddressLink address={draft.identity.baseUrl} />}
               backHref={LIBRARIES_HREF}
               backLabel={t("backToLibraries")}
-              titleAside={
-                dirty ? (
+              titleAside={<>
+                {dirty ? (
                   <StatusChip tone="warning" data-unsaved>
-                    {t("unsaved")}
+                    <PencilLine aria-hidden />
+                    <span className={BAR_LABEL}>{t("unsaved")}</span>
                   </StatusChip>
-                ) : null
-              }
+                ) : null}
+                <LibraryAddressLink address={draft.identity.baseUrl} className="hidden text-sm text-muted-foreground @5xl:inline-flex" />
+              </>}
             >
               <Button
                 variant="outline"
+                size="sm"
+                className={BAR_ACTION}
                 disabled={!dirty || saving || activating}
                 onClick={handleSave}
               >
                 {saving ? <Spinner /> : <Save />}
-                {saving ? t("saving") : t("save")}
+                <span className={BAR_LABEL}>{saving ? t("saving") : t("save")}</span>
               </Button>
               {libraryState === "active" && !operationRunning && !activating ? (
-                <Button asChild variant="outline">
+                <Button asChild variant="outline" size="sm" className={BAR_ACTION}>
                   <AdminAreaLink libraryId={libraryId}>
-                    {tList("openAdmin")}
                     <ExternalLink />
+                    <span className={BAR_LABEL}>{tList("openAdmin")}</span>
                   </AdminAreaLink>
                 </Button>
               ) : null}
@@ -540,15 +548,12 @@ function Workspace({
                         >
                           <span className="flex-1">{t(`sections.${key}`)}</span>
                           {state ? (
-                            <span
-                              className={cn(
-                                "size-2 shrink-0 rounded-full",
-                                STATUS_DOT[STATE_TONE[state]],
-                              )}
+                            <StatusIcon
+                              tone={STATE_TONE[state]}
+                              icon={STATE_ICON[state]}
+                              label={t(`sectionState.${state}`)}
                               data-state={state}
-                              title={t(`sectionState.${state}`)}
-                              aria-label={t(`sectionState.${state}`)}
-                              role="img"
+                              className="[&>svg]:size-3.5"
                             />
                           ) : null}
                         </RailLink>

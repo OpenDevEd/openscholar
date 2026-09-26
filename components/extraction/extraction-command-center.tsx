@@ -9,11 +9,16 @@ import { useUIStore } from "@/lib/store";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { ExtractionSortBy } from "@/lib/types";
 import type { Doc } from "@/convex/_generated/dataModel";
+import Link from "next/link";
 import {
-  CommandCenterToolbar,
   CommandCenterList,
   CommandCenterPagination,
 } from "@/components/command-center";
+import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
+import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
+import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
+import { ListLoading } from "@/components/evidence-libraries/list-controls";
+import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { JobListItem } from "./job-list-item";
 import type { ViewMode } from "@/lib/types";
 
@@ -32,8 +37,8 @@ function createExtractionJobListItem(viewMode: ViewMode) {
 type ExtractionJob = Doc<"extractionJobs">;
 
 interface ExtractionCommandCenterProps {
-  jobs: ExtractionJob[];
-  onNewJob: () => void;
+  /** Undefined while the jobs load: the page and its bar show at once and only the list waits. */
+  jobs: ExtractionJob[] | undefined;
 }
 
 const STATUS_ORDER: Record<string, number> = {
@@ -45,7 +50,7 @@ const STATUS_ORDER: Record<string, number> = {
   cancelled: 5,
 };
 
-export function ExtractionCommandCenter({ jobs, onNewJob }: ExtractionCommandCenterProps) {
+export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
 
@@ -70,7 +75,7 @@ export function ExtractionCommandCenter({ jobs, onNewJob }: ExtractionCommandCen
 
   // Filter jobs
   const filteredJobs = useMemo(() => {
-    if (!searchFilter.trim()) return jobs;
+    if (!jobs || !searchFilter.trim()) return jobs ?? [];
     const query = searchFilter.toLowerCase();
     return jobs.filter(
       (job) =>
@@ -112,28 +117,29 @@ export function ExtractionCommandCenter({ jobs, onNewJob }: ExtractionCommandCen
   }, [currentPage, totalPages, setCurrentPage]);
 
   return (
-    <>
-      {/* Toolbar */}
-      <CommandCenterToolbar
-        viewMode={extractionViewMode}
-        onViewModeChange={setExtractionViewMode}
+    <LibraryPageShell
+      icon={Database}
+      title={tc("extraction")}
+      tabs={<ViewModeSwitch value={extractionViewMode} onChange={setExtractionViewMode} />}
+      filters={<CommandCenterFilters
         sortOptions={SORT_OPTIONS}
         currentSort={extractionSortBy}
         onSortChange={setExtractionSortBy}
         searchFilter={searchFilter}
         onSearchChange={setSearchFilter}
         placeholder={t("searchJobs")}
-        extraActions={
-          <Button size="sm" className="h-9 gap-1.5" onClick={onNewJob}>
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">{tc("new")}</span>
-          </Button>
-        }
-      />
-
-      {/* List */}
+      />}
+      actions={
+        <Button asChild size="sm" className={BAR_ACTION}>
+          <Link href="/extraction/new">
+            <Plus />
+            <span className={BAR_LABEL}>{tc("new")}</span>
+          </Link>
+        </Button>
+      }
+    >
       <div className="p-4 md:p-6">
-        <CommandCenterList
+        {!jobs ? <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={paginatedJobs}
           viewMode={extractionViewMode}
           keyExtractor={(job) => job._id}
@@ -143,7 +149,7 @@ export function ExtractionCommandCenter({ jobs, onNewJob }: ExtractionCommandCen
           hasFilter={!!searchFilter.trim()}
           onClearFilter={() => setSearchFilter("")}
           ItemComponent={createExtractionJobListItem(extractionViewMode)}
-        />
+        />}
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -157,6 +163,6 @@ export function ExtractionCommandCenter({ jobs, onNewJob }: ExtractionCommandCen
           />
         )}
       </div>
-    </>
+    </LibraryPageShell>
   );
 }

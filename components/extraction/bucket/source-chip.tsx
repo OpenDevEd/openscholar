@@ -2,6 +2,7 @@ import type { BucketSource } from "@/lib/bucket/bucketItem";
 import {
   BUCKET_SOURCE_LABELS,
   SOURCE_COLOR_VAR,
+  SOURCE_ICON,
 } from "@/lib/bucket/source-labels";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ export function SourceChip({
   source: BucketSource;
   className?: string;
 }) {
+  const SourceIcon = SOURCE_ICON[source];
   return (
     <span
       data-source={source}
@@ -20,11 +22,9 @@ export function SourceChip({
         className,
       )}
     >
-      <span
-        className="h-1.5 w-1.5 rounded-full"
-        style={{ backgroundColor: `var(${SOURCE_COLOR_VAR[source]})` }}
-        aria-hidden="true"
-      />
+      <span aria-hidden="true" className="inline-flex" style={{ color: `var(${SOURCE_COLOR_VAR[source]})` }}>
+        <SourceIcon className="size-3" />
+      </span>
       {BUCKET_SOURCE_LABELS[source]}
     </span>
   );

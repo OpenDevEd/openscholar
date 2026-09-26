@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useQuery } from "convex/react";
 import { PageWrapper } from "@/components/PageWrapper";
-import { CommandCenterContainer } from "@/components/command-center";
 import { JobCreator } from "@/components/extraction/job-creator";
 import { TwoColumnLayout } from "@/components/layout/two-column-layout";
 import { BucketSidebar } from "@/components/extraction/bucket/bucket-sidebar";
@@ -20,13 +19,9 @@ export default function NewExtractionPage() {
         leftColumn={<BucketSidebar paperLimit={paperLimit} />}
         rightColumn={
           <PageWrapper>
-            <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
-              <CommandCenterContainer allowOverflow>
-                <Suspense fallback={null}>
-                  <JobCreator paperLimit={paperLimit} />
-                </Suspense>
-              </CommandCenterContainer>
-            </div>
+            <Suspense fallback={null}>
+              <JobCreator paperLimit={paperLimit} />
+            </Suspense>
           </PageWrapper>
         }
       />

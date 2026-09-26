@@ -6,26 +6,34 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations, useFormatter, useNow } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  Loader2,
   FileText,
   RefreshCw,
   Trash2,
   XCircle,
-  ChevronLeft,
   Pause,
   Play,
+  Download,
+  MoreHorizontal,
+  ListChecks,
+  SearchX,
 } from "lucide-react";
-import Link from "next/link";
-import { motion } from "motion/react";
 import posthog from "posthog-js";
 import { PageWrapper } from "@/components/PageWrapper";
+import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
+import { LibraryPageShell, PageFrameLoading } from "@/components/evidence-libraries/library-page-shell";
+import { JobStatusIcon } from "@/components/extraction/job-status-icon";
 import { CommandCenterContainer } from "@/components/command-center";
 import { TwoColumnLayout } from "@/components/layout/two-column-layout";
 import { cn } from "@/lib/utils";
@@ -38,11 +46,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useState, useMemo, useCallback } from "react";
 import { useAppToast } from "@/lib/toast";
-import { ResultsToolbar, type ResultsSortBy } from "@/components/extraction/results-toolbar";
+import { ResultsColumnsMenu, ResultsFilterMenu, ResultsFilters, ResultsViewSwitch, type ResultsSortBy } from "@/components/extraction/results-toolbar";
 import { TableView, CardView, SplitView } from "@/components/extraction/results-views";
 import { SmartPagination } from "@/components/extraction/smart-pagination";
 import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
@@ -62,7 +69,7 @@ import { useSelection } from "@/lib/hooks/use-selection";
 import { useIsMobile } from "@/lib/hooks";
 import { useUrlState } from "@/lib/hooks/use-url-state";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";
 import { useExtractionCitationPanelStore } from "@/lib/store";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import {
@@ -133,8 +140,9 @@ export default function JobDetailPage() {
 
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>('default');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [confirming, setConfirming] = useState<"cancel" | "delete" | null>(null);
   const [exportMode, setExportMode] = useState<'all' | 'selected'>('all');
-  const [citationPanelPayload, setCitationPanelPayload] = useState<CitationPanelPayload | null>(null);
+  const [openAnswer, setOpenAnswer] = useState<OpenAnswer | null>(null);
   const [mobilePane, setMobilePane] = useState<"results" | "citation">("results");
   const { expand: expandCitationPanel } = useExtractionCitationPanelStore();
 
@@ -314,11 +322,17 @@ export default function JobDetailPage() {
     setSelection(newIds);
   }, [setSelection]);
 
-  const openCitationPanel = useCallback((payload: CitationPanelPayload) => {
-    setCitationPanelPayload(payload);
+  // Clicking the answer that is already open closes the panel again.
+  const openAnswerPanel = useCallback((answer: OpenAnswer) => {
+    if (openAnswerKey(answer) === openAnswerKey(openAnswer)) {
+      setOpenAnswer(null);
+      setMobilePane("results");
+      return;
+    }
+    setOpenAnswer(answer);
     expandCitationPanel();
     setMobilePane("citation");
-  }, [expandCitationPanel]);
+  }, [expandCitationPanel, openAnswer]);
 
   const handleCancel = async () => {
     try {
@@ -402,6 +416,15 @@ export default function JobDetailPage() {
         resultsPageQuery.isDeferred))
   ) {
     const showChatPreparingHint = modeHint === "chat" && jobShell === undefined;
+    // A chat has its own full-height layout; everything else loads inside the
+    // page frame it will end up in, so nothing jumps when the job arrives.
+    if (!showChatPreparingHint) {
+      return (
+        <PageWrapper>
+          <PageFrameLoading label={tJob("loadingExtractionResults")} />
+        </PageWrapper>
+      );
+    }
     return (
       <PageWrapper>
         <AuthStatePanel
@@ -491,16 +514,21 @@ export default function JobDetailPage() {
   if (jobDetails?.status !== "ok" || !hasCurrentJobDetails) {
     return (
       <PageWrapper>
-        <AuthStatePanel
-          variant="loading"
-          layout="fullscreen"
-          loadingStyle="spinner"
-        />
+        <PageFrameLoading label={tJob("loadingExtractionResults")} />
       </PageWrapper>
     );
   }
 
   const { job } = jobDetails;
+  const statusLabel =
+    ({
+      pending: tJob("statusPending"),
+      downloading_pdfs: tJob("statusDownloadingPdfs"),
+      extracting: tJob("statusExtracting"),
+      completed: tJob("statusCompleted"),
+      failed: tJob("statusFailed"),
+      cancelled: tJob("statusCancelled"),
+    } as Record<string, string>)[job.status ?? "pending"] ?? (job.status ?? "pending").replace(/_/g, " ");
   const jobProgressSafe = jobProgress?.status === "ok" ? jobProgress : null;
   const resolvedProgress = jobProgressSafe
     ? {
@@ -549,7 +577,7 @@ export default function JobDetailPage() {
         leftColumn={
           isMobile ? null : (
             <ExtractionCitationSidebar
-              panelPayload={citationPanelPayload}
+              answer={openAnswer}
             />
           )
         }
@@ -560,235 +588,200 @@ export default function JobDetailPage() {
               jobStatus={job.status}
               processedPapers={resolvedProgress.processed}
             />
-            <div className="container mx-auto max-w-6xl p-4 sm:p-6">
-              <CommandCenterContainer>
-          {/* Header Section */}
-          <div className="px-4 md:px-6 py-5 border-b border-border/40">
-            {/* Breadcrumb */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="flex items-center gap-2 text-muted-foreground text-sm mb-4"
-            >
-              <Link
-                href="/extraction"
-                className="hover:text-foreground transition-colors flex items-center gap-1"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                {tc('extraction')}
-              </Link>
-              <span>/</span>
-              <span className="text-foreground truncate max-w-[200px]">{job.name}</span>
-            </motion.div>
-
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 w-full overflow-hidden">
-              <div className="flex items-center gap-3 truncate">
-                {/* Gradient icon */}
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 flex items-center justify-center shadow-sm shrink-0">
-                  <FileText className="h-5 w-5 text-primary" />
-                </div>
-
-                <div className="min-w-0">
-                  <motion.h1
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4 }}
-                    className="text-xl md:text-2xl font-bold tracking-tight text-foreground truncate"
-                  >
-                    {job.name}
-                  </motion.h1>
-
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5, delay: 0.1 }}
-                    className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mt-1"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={cn(
-                          "w-2 h-2 rounded-full",
-                          job.status === "completed"
-                            ? "bg-emerald-500"
-                            : job.status === "failed"
-                            ? "bg-destructive"
-                            : "bg-primary animate-pulse"
-                        )}
-                      />
-                      <span>
-                        {(
-                          {
-                            pending: tJob("statusPending"),
-                            downloading_pdfs: tJob("statusDownloadingPdfs"),
-                            extracting: tJob("statusExtracting"),
-                            completed: tJob("statusCompleted"),
-                            failed: tJob("statusFailed"),
-                            cancelled: tJob("statusCancelled"),
-                          } as Record<string, string>
-                        )[job.status ?? "pending"] ?? (job.status ?? "pending").replace(/_/g, " ")}
-                      </span>
-                    </div>
-
-                    <span className="w-1 h-1 rounded-full bg-border" />
-
-                    <div className="flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>{tJob('papersCount', { count: format.number(job.totalPapers ?? 0) })}</span>
-                    </div>
-
-                    <span className="w-1 h-1 rounded-full bg-border" />
-
-                    <div className="flex items-center gap-1.5">
-                      <RefreshCw className={cn("w-3.5 h-3.5", isProcessing && "animate-spin")} />
-                      <span>{tJob('updated', { timeAgo: format.relativeTime(new Date(job.updatedAt), now) })}</span>
-                    </div>
-
-                    <span className="w-1 h-1 rounded-full bg-border" />
-
-                    <CostBadge
-                      jobId={jobId}
-                      compact
-                      href={`/settings/billing?jobId=${jobId}`}
-                    />
-                  </motion.div>
-                </div>
-              </div>
-
-              {/* Action buttons — icon-only inside a shadcn ButtonGroup.
-                  Accessible names live on aria-label + Tooltip so the
-                  interface stays scannable without giving up screen-reader
-                  clarity. Destructive actions keep the alert-dialog
-                  confirmation step. */}
-              <motion.div
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4, delay: 0.15 }}
-                className="shrink-0"
-              >
-                <ButtonGroup>
+            <LibraryPageShell
+              icon={FileText}
+              title={job.name}
+              backHref="/extraction"
+              backLabel={tError("backToJobs")}
+              titleAside={
+                <JobStatusIcon
+                  status={job.status ?? "pending"}
+                  label={statusLabel}
+                />
+              }
+              tabs={<ResultsViewSwitch value={viewMode} onChange={setViewMode} />}
+              filters={
+                <ResultsFilters
+                  filters={filters}
+                  searchQueryResetKey={searchQueryResetKey}
+                  onFiltersChange={(f) => {
+                    setFilters(f);
+                    setCurrentPage(1);
+                  }}
+                  sortBy={resultsSortBy}
+                  onSortChange={setResultsSortBy}
+                />
+              }
+              actions={<>
+                <ResultsFilterMenu
+                  filters={filters}
+                  onFiltersChange={(f) => {
+                    setFilters(f);
+                    setCurrentPage(1);
+                  }}
+                />
+                {viewMode === "table" && <ResultsColumnsMenu showCredits={showCreditsColumn} onShowCreditsChange={setShowCreditsColumn} />}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-muted-foreground hover:text-foreground"
+                      aria-label={tc("export")}
+                      disabled={authoritativeFilteredPapers === 0}
+                      onClick={() => {
+                        setExportMode('all');
+                        setExportDialogOpen(true);
+                      }}
+                    >
+                      <Download className="size-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{tc("export")}</TooltipContent>
+                </Tooltip>
+                {isProcessing && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        variant="outline"
-                        size="icon-sm"
-                        onClick={handleDuplicate}
-                        aria-label={tJob('restart')}
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground hover:text-foreground"
+                        data-action="pause"
+                        onClick={handlePause}
+                        aria-label={tExtraction('pause.button')}
                       >
-                        <RefreshCw className="w-4 h-4" />
+                        <Pause className="size-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>{tJob('restart')}</TooltipContent>
+                    <TooltipContent>{tExtraction('pause.button')}</TooltipContent>
                   </Tooltip>
+                )}
 
-                  {isProcessing && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          data-action="pause"
-                          onClick={handlePause}
-                          aria-label={tExtraction('pause.button')}
-                        >
-                          <Pause className="w-4 h-4" />
+                {job.status === "paused" && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground hover:text-foreground"
+                        data-action="resume"
+                        onClick={handleResume}
+                        aria-label={tExtraction('paused.resume')}
+                      >
+                        <Play className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{tExtraction('paused.resume')}</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {/* Less frequent and destructive actions stay one click away, like the chat's menu. */}
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" aria-label={tExtraction("chatHeaderMore")}>
+                          <MoreHorizontal className="size-4" />
                         </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{tExtraction('pause.button')}</TooltipContent>
-                    </Tooltip>
-                  )}
-
-                  {job.status === "paused" && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon-sm"
-                          data-action="resume"
-                          onClick={handleResume}
-                          aria-label={tExtraction('paused.resume')}
-                        >
-                          <Play className="w-4 h-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>{tExtraction('paused.resume')}</TooltipContent>
-                    </Tooltip>
-                  )}
-
-                  {isProcessing && (
-                    <AlertDialog>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="icon-sm"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                              aria-label={tc('cancel')}
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent>{tc('cancel')}</TooltipContent>
-                      </Tooltip>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {tConfirm('cancelJobDescription')}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleCancel}
-                            className="bg-destructive hover:bg-destructive/90"
-                          >
-                            {tConfirm('yesCancel')}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-
-                  <AlertDialog>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon-sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            aria-label={tc('delete')}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent>{tc('delete')}</TooltipContent>
-                    </Tooltip>
-                    <AlertDialogContent>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>{tExtraction("chatHeaderMore")}</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align="end" className="min-w-44">
+                    <DropdownMenuItem onSelect={handleDuplicate}>
+                      <RefreshCw className="size-4" />
+                      {tJob('restart')}
+                    </DropdownMenuItem>
+                    {isProcessing && (
+                      <DropdownMenuItem variant="destructive" onSelect={() => setConfirming("cancel")}>
+                        <XCircle className="size-4" />
+                        {tc('cancel')}
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem variant="destructive" onSelect={() => setConfirming("delete")}>
+                      <Trash2 className="size-4" />
+                      {tc('delete')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <AlertDialog open={confirming === "cancel"} onOpenChange={(open) => !open && setConfirming(null)}>
+                  <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>{tConfirm('deleteJob')}</AlertDialogTitle>
+                        <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          {tConfirm('deleteJobDescription')}
+                          {tConfirm('cancelJobDescription')}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+                        <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={handleDelete}
+                          onClick={handleCancel}
                           className="bg-destructive hover:bg-destructive/90"
                         >
-                          {tConfirm('yesDelete')}
+                          {tConfirm('yesCancel')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
-                  </AlertDialog>
-                </ButtonGroup>
-              </motion.div>
+                </AlertDialog>
+                <AlertDialog open={confirming === "delete"} onOpenChange={(open) => !open && setConfirming(null)}>
+                  <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {tConfirm('cancelJobDescription')}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleCancel}
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
+                          {tConfirm('yesCancel')}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+              </>}
+              intro={<>
+          {/* What the job covers and how far it has got. Its name and state sit in the bar. */}
+          <div className="space-y-3 border-b border-border/40 px-4 py-4 md:px-6">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <FileText className="size-3.5" />
+                {tJob('papersCount', { count: format.number(job.totalPapers ?? 0) })}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <ListChecks className="size-3.5" />
+                {tJob('questionsCount', { count: questions.length })}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <RefreshCw className={cn("size-3.5", isProcessing && "animate-spin")} />
+                {tJob('updated', { timeAgo: format.relativeTime(new Date(job.updatedAt), now) })}
+              </span>
+              <CostBadge
+                jobId={jobId}
+                compact
+                href={`/settings/billing?jobId=${jobId}`}
+              />
             </div>
+            <JobProgressBar
+              jobName={job.name}
+              processed={resolvedProgress.processed}
+              failed={resolvedProgress.failed}
+              total={resolvedProgress.total}
+              complete={job.status === "completed"}
+            />
+            {job.status === "completed" && (
+              <MixedSuccessSummary
+                jobId={jobId}
+                papersRead={resolvedProgress.processed}
+                onShowFailures={() => {
+                  setFilters((prev) => ({ ...prev, statusFilters: new Set([...prev.statusFilters, "has-errors"]) }));
+                  setCurrentPage(1);
+                }}
+              />
+            )}
           </div>
 
           {/* Status banner stack. Each child self-hides (returns null)
@@ -796,7 +789,7 @@ export default function JobDetailPage() {
               between real DOM siblings, and `empty:hidden` collapses
               the whole strip when every banner is null — so no phantom
               padding remains on clean completed / idle jobs. */}
-          <div className="space-y-4 px-4 pt-4 empty:hidden md:px-6">
+          <div className="space-y-3 border-b border-border/40 px-4 py-4 empty:hidden md:px-6">
             {job.status === "creditsExhausted" && (
               <CreditsExhaustedBanner
                 onResume={handleResume}
@@ -820,107 +813,21 @@ export default function JobDetailPage() {
               <RetrySummary jobId={jobId} usePdfs={job.usePdfs ?? false} />
             )}
 
-            {job.status === "completed" && (
-              <MixedSuccessSummary jobId={jobId} />
-            )}
 
             <NowProcessing jobId={jobId} />
           </div>
 
-          {/* Stats Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            className="px-4 md:px-6 py-5 border-b border-border/40"
-          >
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  {tJob('totalPapers')}
-                </p>
-                <p className="text-2xl lg:text-3xl font-bold text-foreground">
-                  {format.number(job.totalPapers ?? 0)}
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  {tJob('processed')}
-                </p>
-                <p className="text-2xl lg:text-3xl font-bold text-foreground">
-                  {format.number(resolvedProgress.processed)}
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  {tJob('successRate')}
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl lg:text-3xl font-bold text-primary">
-                    {resolvedProgress.percentage}%
-                  </p>
-                  {isProcessing && (
-                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  {tJob('questions')}
-                </p>
-                <p className="text-2xl lg:text-3xl font-bold text-foreground">
-                  {questions.length}
-                </p>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <JobProgressBar
-              jobName={job.name}
-              processed={resolvedProgress.processed}
-              failed={resolvedProgress.failed}
-              total={resolvedProgress.total}
-            />
-          </motion.div>
-
-          {/* Content Section */}
-          <div className="overflow-x-hidden p-4 md:p-6">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="min-w-0 overflow-x-hidden"
+              </>}
             >
+          {/* Results */}
+          <div className="min-w-0 overflow-x-hidden">
+            <div className="min-w-0">
               <ExtractionResultsShell
-                panelPayload={citationPanelPayload}
+                answer={openAnswer}
                 mobilePane={mobilePane}
                 onMobilePaneChange={setMobilePane}
                 primaryLabel={tView('results')}
               >
-                <ResultsToolbar
-                  filters={filters}
-                  searchQueryResetKey={searchQueryResetKey}
-                  onFiltersChange={(f) => {
-                    setFilters(f);
-                    setCurrentPage(1);
-                  }}
-                  viewMode={viewMode}
-                  onViewModeChange={setViewMode}
-                  totalCount={authoritativeTotalPapers}
-                  filteredCount={authoritativeFilteredPapers}
-                  questions={questions}
-                  sortBy={resultsSortBy}
-                  onSortChange={setResultsSortBy}
-                  onExportAll={() => {
-                    setExportMode('all');
-                    setExportDialogOpen(true);
-                  }}
-                  showCredits={showCreditsColumn}
-                  onShowCreditsChange={setShowCreditsColumn}
-                />
 
                 <div
                   className="min-h-[500px] min-w-0"
@@ -929,46 +836,37 @@ export default function JobDetailPage() {
                   data-filtered-papers={authoritativeFilteredPapers}
                 >
                   {resultsRenderState === "loading" ? (
-                    <div className="my-6 flex min-h-[420px] items-center justify-center rounded-xl border border-border bg-muted/30 py-24 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary/80" />
-                        <p className="text-sm text-muted-foreground">
-                          {tJob('loadingExtractionResults')}
-                        </p>
-                      </div>
-                    </div>
+                    <ListLoading label={tJob('loadingExtractionResults')} />
                   ) : resultsRenderState === "empty" ||
                     resultsRenderState === "filtered_empty" ? (
-                    <div className="my-6 flex flex-col items-center justify-center rounded-xl border border-border bg-muted py-24 text-center">
-                      <FileText className="mb-4 h-16 w-16 text-muted-foreground/50" />
-                       <h3 className="mb-2 text-xl font-semibold text-foreground">
-                        {resultsRenderState === "filtered_empty"
-                          ? tJob('noMatches')
-                          : tc('noResultsFound')}
-                      </h3>
-                      <p className="max-w-md text-muted-foreground">
-                        {resultsRenderState === "filtered_empty"
-                          ? tc('tryAdjustingSearch')
-                          :                           papersWithResults.length === 0
-                          ? job.status === "completed"
-                            ? tPdf('noResultsDescription')
-                            : tPdf('resultsWillAppear')
-                          : tPdf('resultsWillAppear')}
-                      </p>
-                      {resultsRenderState === "filtered_empty" && (
-                        <Button
-                          variant="outline"
-                          className="mt-6"
-                          onClick={() => {
-                          setFilters(defaultFilters);
-                          setCurrentPage(1);
-                          setSearchQueryResetKey((k) => k + 1);
-                        }}
-                        >
-                          {tJob('clearFilters')}
-                        </Button>
-                      )}
-                    </div>
+                    resultsRenderState === "filtered_empty" ? (
+                      <ListEmpty
+                        icon={SearchX}
+                        description={tc('tryAdjustingSearch')}
+                        action={
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setFilters(defaultFilters);
+                              setCurrentPage(1);
+                              setSearchQueryResetKey((k) => k + 1);
+                            }}
+                          >
+                            {tJob('clearFilters')}
+                          </Button>
+                        }
+                      >
+                        {tJob('noMatches')}
+                      </ListEmpty>
+                    ) : (
+                      <ListEmpty
+                        icon={FileText}
+                        description={papersWithResults.length === 0 && job.status === "completed" ? tPdf('noResultsDescription') : tPdf('resultsWillAppear')}
+                      >
+                        {tc('noResultsFound')}
+                      </ListEmpty>
+                    )
                   ) : (
                     <>
                       {viewMode === 'table' && (
@@ -978,7 +876,8 @@ export default function JobDetailPage() {
                           selectedIds={selectedIds}
                           onSelectionChange={handleTableSelectionChange}
                           searchQuery={filters.searchQuery}
-                          onOpenCitationPanel={openCitationPanel}
+                          onOpenAnswer={openAnswerPanel}
+                          openAnswer={openAnswerKey(openAnswer)}
                           usePdfs={job.usePdfs ?? false}
                           showCredits={showCreditsColumn}
                         />
@@ -989,14 +888,15 @@ export default function JobDetailPage() {
                           questions={questions}
                           selectedIds={selectedIds}
                           onSelectionChange={handleCardSelectionChange}
-                          onOpenCitationPanel={openCitationPanel}
+                          onOpenAnswer={openAnswerPanel}
+                          openAnswer={openAnswerKey(openAnswer)}
                         />
                       )}
                       {viewMode === 'split' && (
                         <SplitView
                           papers={displayedPapers}
                           questions={questions}
-                          onOpenCitationPanel={openCitationPanel}
+                          onOpenAnswer={openAnswerPanel}
                         />
                       )}
                     </>
@@ -1045,10 +945,9 @@ export default function JobDetailPage() {
                   }
                 />
               </ExtractionResultsShell>
-            </motion.div>
-              </div>
-                </CommandCenterContainer>
             </div>
+          </div>
+            </LibraryPageShell>
           </PageWrapper>
         }
       />

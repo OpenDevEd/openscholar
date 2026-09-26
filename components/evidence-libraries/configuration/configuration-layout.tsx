@@ -17,7 +17,7 @@ export function ConfigurationLayout({
   footer?: ReactNode;
 }) {
   return (
-    <div className="w-full pb-16 [--configuration-offset:calc(var(--app-navbar-height)+var(--page-header-height,6rem)+1rem)] [&_section[id^=sec-]]:scroll-mt-[var(--configuration-offset)]">
+    <div className="@container w-full pb-16 [--configuration-offset:calc(var(--app-navbar-height)+var(--page-header-height,6rem)+1rem)] [&_section[id^=sec-]]:scroll-mt-[var(--configuration-offset)]">
       <StickyPageHeader>{header}</StickyPageHeader>
       <div className="@container/configuration container mx-auto max-w-6xl p-4 sm:p-6">
         <CommandCenterContainer

@@ -13,6 +13,7 @@ import {
 import {
   BUCKET_SOURCE_LABELS,
   SOURCE_COLOR_VAR,
+  SOURCE_ICON,
 } from "@/lib/bucket/source-labels";
 import { cn } from "@/lib/utils";
 
@@ -113,6 +114,7 @@ function LedgerRow({
   const label = row.isSavedSearch
     ? t("chatReviewSourceSavedSearch")
     : BUCKET_SOURCE_LABELS[row.source];
+  const SourceIcon = SOURCE_ICON[row.source];
 
   return (
     <div
@@ -121,11 +123,9 @@ function LedgerRow({
       className="flex items-baseline justify-between gap-4 py-3"
     >
       <dt className="flex items-center gap-2 text-sm text-foreground">
-        <span
-          aria-hidden="true"
-          className={cn("inline-block h-1.5 w-1.5 rounded-full")}
-          style={{ backgroundColor: `var(${SOURCE_COLOR_VAR[row.source]})` }}
-        />
+        <span aria-hidden="true" className="inline-flex" style={{ color: `var(${SOURCE_COLOR_VAR[row.source]})` }}>
+          <SourceIcon className="size-3.5" />
+        </span>
         {label}
       </dt>
       <dd className="font-mono text-sm tabular-nums text-foreground">

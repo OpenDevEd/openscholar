@@ -1,12 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { FileText } from "lucide-react";
+import { FileText, PanelLeftOpen } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { useIsMobile } from "@/lib/hooks";
-import { PdfCitationPanel } from "@/components/extraction/pdf-citation-panel";
-import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { AnswerPanel, openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";
 import { subtleSpring } from "@/lib/animation-config";
 import { useTranslations } from "next-intl";
 
@@ -28,7 +27,7 @@ const slideVariants = {
 };
 
 type ExtractionResultsShellProps = {
-  panelPayload: CitationPanelPayload | null;
+  answer: OpenAnswer | null;
   mobilePane: "results" | "citation";
   onMobilePaneChange: (pane: "results" | "citation") => void;
   primaryLabel?: string;
@@ -36,16 +35,17 @@ type ExtractionResultsShellProps = {
 };
 
 export function ExtractionResultsShell({
-  panelPayload,
+  answer,
   mobilePane,
   onMobilePaneChange,
   primaryLabel,
   children,
 }: ExtractionResultsShellProps) {
   const t = useTranslations("extractionView");
+  const tc = useTranslations("common");
   const isMobile = useIsMobile();
   const label = primaryLabel ?? t("results");
-  const hasActiveCitationPanel = panelPayload !== null;
+  const hasActiveCitationPanel = answer !== null;
   // results → citation = going right (1), citation → results = going left (-1)
   const direction: Direction = mobilePane === "citation" ? 1 : -1;
 
@@ -56,18 +56,19 @@ export function ExtractionResultsShell({
 
     return (
       <div className="min-w-0 overflow-x-hidden">
-        <Tabs
-          value={mobilePane}
-          onValueChange={(value) => onMobilePaneChange(value as "results" | "citation")}
-          className="flex min-w-0 flex-col gap-0"
-        >
-          <TabsList className="grid h-11 w-full grid-cols-2">
-            <TabsTrigger value="results" className="gap-1.5">
-              <FileText className="size-3.5" />
-              {label}
-            </TabsTrigger>
-            <TabsTrigger value="citation">{t("citation")}</TabsTrigger>
-          </TabsList>
+        <div className="flex min-w-0 flex-col gap-0">
+          {/* The shared tabs: the results, or the answer opened from them. */}
+          <div className="border-b border-border/50 px-4 py-3">
+            <ListViewTabs
+              label={label}
+              value={mobilePane}
+              onChange={onMobilePaneChange}
+              tabs={[
+                { value: "results", label, icon: <FileText className="size-3.5" /> },
+                { value: "citation", label: tc("details"), icon: <PanelLeftOpen className="size-3.5" /> },
+              ]}
+            />
+          </div>
 
           <div className="relative min-h-[420px] flex-1 overflow-hidden">
             <AnimatePresence initial={false} mode="popLayout" custom={direction}>
@@ -96,13 +97,13 @@ export function ExtractionResultsShell({
                   className="absolute inset-0 overflow-auto"
                 >
                   <div className="h-full min-h-[420px]">
-                    <PdfCitationPanel key={`${panelPayload?.paperId ?? ""}-${panelPayload?.questionText ?? ""}`} payload={panelPayload} />
+                    <AnswerPanel key={openAnswerKey(answer) ?? ""} answer={answer} />
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-        </Tabs>
+        </div>
       </div>
     );
   }

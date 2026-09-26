@@ -117,12 +117,12 @@
     "more": "More",
     "paper": "Paper",
     "columns": "Columns",
-    "openAccess": "Open Access",
-    "noContent": "No Content",
+    "openAccess": "Open access",
+    "noContent": "No content",
     "indexed": "Indexed",
-    "pdfUsed": "PDF Used",
+    "pdfUsed": "PDF used",
     "abstract": "Abstract",
-    "abstractOnly": "Abstract Only",
+    "abstractOnly": "Abstract only",
     "completed": "Completed",
     "failed": "Failed",
     "cancelled": "Cancelled",
@@ -781,7 +781,7 @@
     "selectPaperToView": "Select a paper to view details",
     "reviewed": "Reviewed {count}/{total}",
     "jobDetails": "Job Details",
-    "modeAndDetails": "Mode & Details",
+    "modeAndDetails": "Mode & details",
     "pickModeAndName": "Pick a job mode and give it a name.",
     "modeSelectLabel": "Job mode",
     "modeExtractionTitle": "Data Extraction",
@@ -852,9 +852,9 @@
     "jobBadgeExtraction": "Extraction",
     "jobBadgeChat": "Chat",
     "jobChatSubline": "{messages, plural, one {# message} other {# messages}}",
-    "selectPapers": "Select Papers",
+    "selectPapers": "Select papers",
     "chooseFromHistory": "Choose from history",
-    "defineQuestions": "Define Questions",
+    "defineQuestions": "Define questions",
     "whatToExtract": "What to extract",
     "preflight": {
       "sufficient": "~{estimate} credits",
@@ -878,8 +878,7 @@
     "retry": {
       "summary": {
         "retryableOnly": "{retryable, plural, one {# retryable failure} other {# retryable failures}}",
-        "permanentOnly": "{permanent, plural, one {# permanent failure} other {# permanent failures}}",
-        "both": "{retryable, plural, one {# retryable} other {# retryable}} · {permanent, plural, one {# permanent} other {# permanent}}"
+        "permanentOnly": "{permanent, plural, one {# permanent failure} other {# permanent failures}}"
       },
       "retryButton": "Retry {count, plural, one {# failure} other {# failures}}",
       "confirmDialog": {
@@ -925,8 +924,8 @@
     "questionProgress": {
       "completedOverTotal": "{completed}/{total}",
       "summary": "{completed} of {total} questions completed",
-      "failedCount": "· {count, plural, one {# failed} other {# failed}}",
-      "retryingCount": "· {count, plural, one {# retrying} other {# retrying}}"
+      "failedCount": "{count, plural, one {# failed} other {# failed}}",
+      "retryingCount": "{count, plural, one {# retrying} other {# retrying}}"
     },
     "errorHistory": {
       "trigger": "Error history · {count, plural, one {# attempt} other {# attempts}}",
@@ -936,9 +935,9 @@
     },
     "mixedSuccess": {
       "title": "Completed with partial success",
-      "answeredOverTotal": "{answered} of {total} questions answered.",
-      "failedTotal": "{count, plural, one {# failed:} other {# failed:}}",
-      "retryableHint": "{count, plural, one {# failure is retryable} other {# failures are retryable}}."
+      "answeredOverTotal": "{papers, plural, one {# paper} other {# papers}} read, {answered} of {total} questions checked",
+      "retryableHint": "{count, plural, one {# failure is retryable} other {# failures are retryable}}",
+      "showFailed": "Show failed papers"
     },
     "pleaseSelectSource": "Please select at least one source",
     "pleaseCompleteSteps": "Please complete all steps",
@@ -946,6 +945,7 @@
     "untitledJob": "Untitled Extraction Job",
     "jobStarted": "Extraction job started!",
     "failedToStartJob": "Failed to start extraction job",
+    "newJobTitle": "New job",
     "stepOfThree": "Step {step} of {total}",
     "nameYourJob": "Name your extraction job",
     "nameYourJobDescription": "Give this job a descriptive name to help you identify it later.",
@@ -1241,9 +1241,7 @@
   },
   "viewMode": {
     "simpleList": "Simple List",
-    "simple": "Simple",
     "detailedList": "Detailed List",
-    "detail": "Detail",
     "twoColumnGrid": "2 Column Grid",
     "threeColumnGrid": "3 Column Grid"
   },
@@ -1447,20 +1445,19 @@
     "score": "Score"
   },
   "bookmarksPage": {
-    "description": "Create shortcuts for commonly used search terms",
     "searchPlaceholder": "Search bookmarks...",
     "clearAllBookmarks": "Clear all bookmarks",
-    "clearAllBookmarksTitle": "Clear All Bookmarks",
+    "clearAllBookmarksTitle": "Clear all bookmarks",
     "clearAllBookmarksConfirm": "Are you sure you want to delete all {count} bookmarks? This action cannot be undone.",
     "noBookmarksYet": "No bookmarks yet",
-    "addFirstBookmark": "Add your first bookmark using the form above.",
-    "bookmarkName": "Bookmark Name",
+    "addFirstBookmark": "Add your first bookmark with Add bookmark in the bar above.",
+    "bookmarkName": "Bookmark name",
     "bookmarkNamePlaceholder": "e.g., ml, ai-terms, my-search",
     "lettersNumbersDashes": "Letters, numbers, and dashes only",
     "expandsTo": "Expands to",
     "expandsToPlaceholder": "e.g., AI OR ML OR \"artificial intelligence\"",
     "useInSearch": "Use name... in search to expand",
-    "addBookmark": "Add Bookmark",
+    "addBookmark": "Add bookmark",
     "nameCannotBeEmpty": "Bookmark name cannot be empty",
     "nameOnlyLettersNumbersDashes": "Bookmark name can only contain letters, numbers, and dashes",
     "nameNoSpaces": "Bookmark name cannot contain spaces",
@@ -1473,10 +1470,6 @@
     "missingBookmarks": "Missing bookmarks",
     "missingBookmarksDescription": "You'll see a warning if you use a bookmark that doesn't exist.",
     "howToUseBookmarks": "How to use bookmarks",
-    "saveCurrentSearch": "Save Current Search as Bookmark",
-    "saveQueryAsBookmark": "Save Query as Bookmark",
-    "saveSearchDescription": "Save your search query for quick access later",
-    "editQueryPlaceholder": "Edit the query that will be saved as bookmark...",
     "enterBookmarkName": "Enter bookmark name (e.g., my-search)",
     "bookmarkExpansionPreview": "Bookmark Expansion Preview",
     "typeQueryToPreview": "Type a query with \"bookmark...\" to see expansion preview",
@@ -1509,22 +1502,13 @@
     "backToCard": "Back to card",
     "current": "Current",
     "bookmarkNamePlaceholder": "bookmark-name",
-    "recentSearches": "Recent Searches",
-    "infoClickToRevisit": "Click any search to revisit results",
-    "infoDownloadUpload": "Download or upload search data",
-    "infoManageArchive": "Manage your search archive"
+    "recentSearches": "Recent Searches"
   },
   "commandCenter": {
-    "searchCount": "{count, plural, one {# search} other {# searches}}",
-    "bookmarkCount": "{count, plural, one {# bookmark} other {# bookmarks}}",
     "searchesLabel": "searches",
     "bookmarksLabel": "bookmarks",
     "searchSingular": "search",
-    "searchPlural": "searches",
-    "bookmarkSingular": "bookmark",
-    "bookmarkPlural": "bookmarks",
-    "jobSingular": "job",
-    "jobPlural": "jobs"
+    "searchPlural": "searches"
   },
   "admin": {
     "cleanupTitle": "Admin: Cleanup Duplicate Subscriptions",
@@ -1780,6 +1764,7 @@
   "jobStatus": {
     "restart": "Restart",
     "papersCount": "{count} papers",
+    "questionsCount": "{count, plural, one {# question} other {# questions}}",
     "statusPending": "Pending",
     "statusDownloadingPdfs": "Processing papers",
     "statusExtracting": "Extracting",
@@ -1793,13 +1778,8 @@
     "jobCreated": "New job created",
     "failedToCreate": "Failed to create new job",
     "updated": "Updated {timeAgo}",
-    "totalPapers": "Total Papers",
-    "processed": "Processed",
-    "successRate": "Success Rate",
-    "extractionProgress": "Extraction Progress",
     "noMatches": "No matches for current filters",
     "clearFilters": "Clear Filters",
-    "questions": "Questions",
     "progressOfPapers": "{processed} of {total} papers",
     "loadingExtractionResults": "Loading extraction results...",
     "appliedSavedView": "Applied saved view: {name}"
@@ -1845,15 +1825,14 @@
     "questionsCount": "{count} questions"
   },
   "filters": {
-    "filterByStatus": "Filter by Status",
-    "confidenceRange": "Confidence Range",
-    "quickFilters": "Quick Filters",
+    "filterByStatus": "Filter by status",
+    "confidenceRange": "Confidence range",
     "confidenceLabel": "Confidence: {min}%-{max}%",
     "status": "Status",
     "hasPdf": "Has PDF",
-    "hasErrors": "Has Errors",
-    "highConfidence": "High Confidence",
-    "lowConfidence": "Low Confidence",
+    "hasErrors": "Has errors",
+    "highConfidence": "High confidence",
+    "lowConfidence": "Low confidence",
     "reviewed": "Reviewed",
     "needsFollowUp": "Needs Follow-up"
   },
@@ -2083,10 +2062,6 @@
     "filterYearRange": "Year",
     "filterYearFrom": "From",
     "filterYearTo": "To",
-    "viewListSimple": "Simple list",
-    "viewListDetail": "Detailed list",
-    "viewGrid2": "Two-column grid",
-    "viewGrid3": "Three-column grid",
     "filterCollection": "Collection",
     "allCollections": "All collections",
     "manageCollections": "Manage collections",
@@ -3163,7 +3138,6 @@
   },
   "topics": {
     "title": "Topics",
-    "description": "Research topics across Evidence Libraries.",
     "find": "Find topics",
     "findPlaceholder": "Find a topic",
     "domain": "Research domain",
@@ -3172,8 +3146,6 @@
     "allFields": "All fields",
     "subfield": "Research subfield",
     "allSubfields": "All subfields",
-    "count": "{count, plural, one {# topic} other {# topics}}",
-    "countLoaded": "{count, plural, one {# topic loaded} other {# topics loaded}}",
     "clearFilters": "Clear filters",
     "loadFailed": "Topics could not be loaded.",
     "tryAgain": "Try again",
@@ -3192,11 +3164,9 @@
     "hideRelated": "Hide related topics",
     "publicationsFailed": "Publications could not be loaded.",
     "loadingPublications": "Loading publications",
-    "openAlexCount": "{count, plural, one {# publication in OpenAlex} other {# publications in OpenAlex}}",
+    "publicationsView": "Publication sources",
     "noOpenAlex": "No OpenAlex publications found.",
     "progress": "{loaded, number} of {total, number}",
-    "libraryCount": "{count, plural, one {# publication} other {# publications}}",
-    "libraryCountLoaded": "{count, plural, one {# publication loaded} other {# publications loaded}}",
     "searchLibrary": "Search library publications",
     "searchPlaceholder": "Search publications",
     "updating": "Publication groups are updating. Refresh shortly.",
@@ -3264,7 +3234,6 @@
     },
     "new": {
       "title": "New Evidence Library",
-      "description": "Give it a name and reserve a public address.",
       "backToLibraries": "Back to libraries",
       "noOrganizationTitle": "Choose an organisation",
       "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here.",

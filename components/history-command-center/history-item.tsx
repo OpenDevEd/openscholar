@@ -403,14 +403,9 @@ export function HistoryItem({
               </p>
 
               {/* Metadata */}
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 <span>{format.relativeTime(new Date(item.createdAt), now)}</span>
-                {!isCompact && (
-                  <>
-                    <span className="opacity-40">•</span>
-                    <span>{getFieldLabel(item.field, tFilters as FilterT)}</span>
-                  </>
-                )}
+                {!isCompact && <span>{getFieldLabel(item.field, tFilters as FilterT)}</span>}
               </div>
 
               {/* Language */}
@@ -581,15 +576,11 @@ export function HistoryItem({
             )}
 
             {/* Metadata */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
               <span>{format.relativeTime(new Date(item.createdAt), now)}</span>
-              <span className="opacity-40">•</span>
               <span>{getFieldLabel(item.field, tFilters as FilterT)}</span>
               {item.sortBy && getSortLabel(item.sortBy, tFilters as FilterT) && (
-                <>
-                  <span className="opacity-40">•</span>
-                  <span>{getSortLabel(item.sortBy, tFilters as FilterT)}</span>
-                </>
+                <span>{getSortLabel(item.sortBy, tFilters as FilterT)}</span>
               )}
             </div>
 

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import { SIDEBAR_STORAGE_KEY, SIDEBAR_WIDTH_COLLAPSED, SIDEBAR_WIDTH_EXPANDED } from './sidebar-width'
 import type {
   SearchField,
   QueryHistoryEntry,
@@ -1067,8 +1068,6 @@ export const useResultsTranslationSettingsStore = create<ResultsTranslationSetti
 );
 
 // Sidebar Store - Main navigation sidebar
-const SIDEBAR_WIDTH_EXPANDED = 280;
-const SIDEBAR_WIDTH_COLLAPSED = 72;
 
 interface SidebarState {
   isOpen: boolean;
@@ -1098,7 +1097,7 @@ export const useSidebarStore = create<SidebarState>()(
       setHasHydrated: (state) => set({ _hasHydrated: state }),
     }),
     {
-      name: 'openalex-sidebar',
+      name: SIDEBAR_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ isCollapsed: state.isCollapsed }),
       onRehydrateStorage: () => (state) => {

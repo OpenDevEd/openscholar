@@ -26,7 +26,8 @@
 
 import { useId } from "react";
 import { useTranslations } from "next-intl";
-import { PartyPopper } from "lucide-react";
+import { CircleCheck, CircleX } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -36,9 +37,13 @@ const KNOWN_CODES: ReadonlySet<string> = new Set(ERROR_CODES);
 
 export interface MixedSuccessSummaryProps {
   jobId: Id<"extractionJobs">;
+  /** Filters the results to the papers that failed. */
+  onShowFailures?: () => void;
+  /** How many papers could be read; the question counts cover only these. */
+  papersRead: number;
 }
 
-export function MixedSuccessSummary({ jobId }: MixedSuccessSummaryProps) {
+export function MixedSuccessSummary({ jobId, onShowFailures, papersRead }: MixedSuccessSummaryProps) {
   const t = useTranslations("extraction.mixedSuccess");
   const tTitle = useTranslations("errors.title");
   const headingId = useId();
@@ -73,50 +78,37 @@ export function MixedSuccessSummary({ jobId }: MixedSuccessSummaryProps) {
       data-total-questions={summary.totalQuestions}
       data-failed-total={summary.total}
       data-retryable-total={retryableTotal}
-      className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4"
+      className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm"
     >
-      <div className="flex items-start gap-3">
-        <PartyPopper
-          className="mt-0.5 h-4 w-4 text-amber-600"
-          aria-hidden="true"
-        />
-        <div className="space-y-2 text-sm">
-          <h3 id={headingId} className="font-semibold text-foreground">
-            {t("title")}
-          </h3>
-          <p className="text-muted-foreground">
-            {t("answeredOverTotal", {
-              answered: summary.answeredTotal,
-              total: summary.totalQuestions,
-            })}
-          </p>
-          <p>
-            <span className="font-medium text-foreground">
-              {t("failedTotal", { count: summary.total })}
-            </span>{" "}
-            <span className="text-muted-foreground">
-              {summary.byCode
-                .map(
-                  (entry) =>
-                    `${entry.count} ${titleForCode(entry.code).toLowerCase()}`,
-                )
-                .join(", ")}
-            </span>
-          </p>
-          <ul className="sr-only">
-            {summary.byCode.map((entry) => (
-              <li key={entry.code} data-failure-code={entry.code}>
-                {entry.count} {titleForCode(entry.code)}
-              </li>
-            ))}
-          </ul>
-          {retryableTotal > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              {t("retryableHint", { count: retryableTotal })}
-            </p>
-          ) : null}
-        </div>
-      </div>
+      <h3 id={headingId} className="sr-only">
+        {t("title")}
+      </h3>
+      {/* A legend for the bar above: what worked, then each reason something failed. */}
+      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+        <CircleCheck aria-hidden className="size-4 text-emerald-600 dark:text-emerald-400" />
+        {t("answeredOverTotal", {
+          papers: papersRead,
+          answered: summary.answeredTotal,
+          total: summary.totalQuestions,
+        })}
+      </span>
+      {summary.byCode.map((entry) => (
+        <span key={entry.code} data-failure-code={entry.code} className="inline-flex items-center gap-1.5">
+          <CircleX aria-hidden className="size-4 text-destructive" />
+          {titleForCode(entry.code)}
+          <span className="tabular-nums text-muted-foreground">{entry.count}</span>
+        </span>
+      ))}
+      {retryableTotal > 0 ? (
+        <span className="text-xs text-muted-foreground">
+          {t("retryableHint", { count: retryableTotal })}
+        </span>
+      ) : null}
+      {onShowFailures ? (
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={onShowFailures}>
+          {t("showFailed")}
+        </Button>
+      ) : null}
     </section>
   );
 }

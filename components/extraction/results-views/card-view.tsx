@@ -2,36 +2,22 @@
 
 import { memo } from "react";
 import { useTranslations } from "next-intl";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Maximize2, Quote, ExternalLink } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import type { Doc } from "@/convex/_generated/dataModel";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
-import { getAvgConfidence } from "@/lib/extraction/filtering";
-import { ConfidenceRing } from "../confidence-ring";
-import { MIN_ABSTRACT_LENGTH } from "@/convex/extraction/content";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
-import {
-  getAllCitationLocations,
-  getCitationStatus,
-} from "@/lib/extraction/citations";
-import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
-import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
+import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";
+import { PaperDetails, ResultCell } from "./result-parts";
+import { CircleDashed, CircleX } from "lucide-react";
+import { getCitationStatus } from "@/lib/extraction/citations";
 
 interface CardViewProps {
   papers: PaperWithResults[];
   questions: Question[];
   selectedIds: Set<string>;
   onSelectionChange: (selectedIds: Set<string>) => void;
-  onOpenCitationPanel: (payload: CitationPanelPayload) => void;
+  onOpenAnswer: (answer: OpenAnswer) => void;
+  /** The answer open in the side panel, to highlight its cell. */
+  openAnswer?: string | null;
 }
 
 export const CardView = memo(function CardView({
@@ -39,10 +25,13 @@ export const CardView = memo(function CardView({
   questions,
   selectedIds,
   onSelectionChange,
-  onOpenCitationPanel,
+  onOpenAnswer,
+  openAnswer,
 }: CardViewProps) {
-  const t = useTranslations("extraction");
   const tc = useTranslations("common");
+  const tErrorTitle = useTranslations("errors.title");
+  const tErrorBody = useTranslations("errors.body");
+  const errorTitle = (code: string) => (tErrorTitle.has(code as never) ? tErrorTitle(code as never) : code.replace(/_/g, " "));
   const pdfEnabled = useFeatureFlag("extraction.pdf");
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -55,140 +44,108 @@ export const CardView = memo(function CardView({
   };
 
   return (
-      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
-        {papers.map(paper => {
-          const isSelected = selectedIds.has(paper._id);
-          const avgConfidence = getAvgConfidence(paper);
-          const hasAbstract =
-            !!paper.abstract &&
-            paper.abstract.length > MIN_ABSTRACT_LENGTH;
-          const hasPdfSource =
-            !!paper.pdfUrl ||
-            !!paper.storageId ||
-            !!paper.ragEntryId ||
-            !!paper.isIndexed;
-          const showNoContent =
-            paper.status === "download_failed" && !hasAbstract;
-          return (
-            <Card
-              key={paper._id}
-              className={cn(
-                "group hover:shadow-md transition-all cursor-pointer",
-                isSelected && "ring-2 ring-primary"
-              )}
-              onClick={() => toggleSelect(paper._id)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => toggleSelect(paper._id)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <CardTitle className="text-base line-clamp-2">
-                        {paper.title}
-                      </CardTitle>
-                    </div>
-                    <CardDescription>
-                      <div className="flex items-center gap-2 text-xs">
-                        {paper.publicationYear && (
-                          <Badge
-                            variant="outline"
-                            className="h-5 px-1.5 text-[10px] font-normal"
-                          >
-                            {paper.publicationYear}
-                          </Badge>
-                        )}
-                        {paper.doi && (
-                          <a
-                            href={`https://doi.org/${paper.doi}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center hover:text-primary transition-colors hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            DOI <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
-                          </a>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 pt-2">
-                        {showNoContent ? (
-                          <Badge
-                            variant="outline"
-                            className="h-4 px-1 text-[9px] bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
-                          >
-                            {tc("noContent")}
-                          </Badge>
-                        ) : null}
-                        {paper.isOpenAccess && (
-                          <Badge
-                            variant="outline"
-                            className="h-4 px-1 text-[9px] bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
-                          >
-                            {tc("openAccess")}
-                          </Badge>
-                        )}
-                        {pdfEnabled && (paper.isIndexed || paper.ragEntryId) ? (
-                          <Badge
-                            variant="outline"
-                            className="h-4 px-1 text-[9px] bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20"
-                          >
-                            {tc("indexed")}
-                          </Badge>
-                        ) : null}
-                        {pdfEnabled && paper.pdfContentUsed ? (
-                          <Badge
-                            variant="outline"
-                            className="h-4 px-1 text-[9px] bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
-                          >
-                            {tc("pdfUsed")}
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </CardDescription>
-                  </div>
-                  <ConfidenceRing value={avgConfidence} size={48} />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3" onClick={(e) => e.stopPropagation()}>
-                {questions.map(q => {
-                  const result = paper.results.find(r => r.questionKey === q.key);
+    <ul className="grid gap-4 p-4 md:p-6 @4xl:grid-cols-2">
+      {papers.map((paper) => {
+        const isSelected = selectedIds.has(paper._id);
+        const resultFor = (question: Question) => paper.results.find((r) => r.questionKey === question.key);
+        const hasAnswer = (question: Question) => {
+          const answer = resultFor(question)?.answer;
+          return answer !== undefined && answer !== null && answer !== "" && !(Array.isArray(answer) && !answer.length);
+        };
+        const answered = questions.filter(hasAnswer);
+        const unanswered = questions.filter((question) => !hasAnswer(question) && resultFor(question));
+        const failed = unanswered.filter((question) => getCitationStatus(resultFor(question)) === "extraction_error");
+        const missing = unanswered.filter((question) => !failed.includes(question));
+        const chips = (group: Question[]) => group.map((question) => (
+          <button
+            key={question.key}
+            type="button"
+            aria-pressed={openAnswer === openAnswerKey({ paper, question })}
+            onClick={() => onOpenAnswer({ paper, question, result: resultFor(question) })}
+            className="max-w-full truncate rounded-md bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground transition-colors duration-100 hover:bg-muted hover:text-foreground aria-pressed:bg-primary/10 aria-pressed:text-foreground"
+          >
+            {question.question}
+          </button>
+        ));
+        return (
+          <li
+            key={paper._id}
+            data-paper-id={paper._id}
+            data-state={isSelected ? "selected" : undefined}
+            className="flex flex-col rounded-xl border border-border/50 bg-card/50 transition-colors data-[state=selected]:border-primary/40 dark:bg-card/40"
+          >
+            {/* The paper */}
+            <div className="flex items-start gap-3 border-b border-border/40 p-4">
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={() => toggleSelect(paper._id)}
+                aria-label={paper.title}
+                className="mt-0.5"
+              />
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="line-clamp-2 text-sm font-medium leading-snug" title={paper.title}>{paper.title}</p>
+                <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />
+              </div>
+            </div>
+
+            {/* Its answers, each opening the side panel */}
+            {answered.length ? (
+              <div className="flex-1 space-y-1 px-4 py-3">
+                {answered.map((question) => {
+                  const result = resultFor(question);
                   return (
-                    <div key={q.key} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                      <div className="flex-1 min-w-0">
-                        <h5 className="text-xs font-medium text-muted-foreground mb-1">
-                          {q.question}
-                        </h5>
-                        <ResultValue result={result} type={q.type} />
-                      </div>
-                      <ResultActions
-                        result={result}
-                        onCite={() => {
-                          if (!result) return;
-                          const citations = getAllCitationLocations(result);
-                          if (citations.length === 0) return;
-                          const payload = buildCitationPanelPayload({
-                            paperId: paper._id,
-                            paperTitle: paper.title,
-                            citations,
-                            citationStatus: getCitationStatus(result),
-                            answer: result.answer,
-                            questionText: q.question,
-                          });
-                          if (!payload) return;
-                          onOpenCitationPanel(payload);
-                        }}
-                      />
-                    </div>
+                    <ResultCell
+                      key={question.key}
+                      label={question.question}
+                      result={result}
+                      type={question.type}
+                      clamp="line-clamp-3"
+                      selected={openAnswer === openAnswerKey({ paper, question, result })}
+                      onOpen={() => onOpenAnswer({ paper, question, result })}
+                    />
                   );
                 })}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+              </div>
+            ) : paper.lastError && !unanswered.length ? (
+              // A paper that could not be read says why, instead of an empty card.
+              <div className="flex flex-1 items-start gap-2 p-4 text-sm">
+                <CircleX aria-hidden className="mt-0.5 size-4 shrink-0 text-destructive" />
+                <div className="space-y-0.5">
+                  <p className="font-medium">{errorTitle(paper.lastError.code)}</p>
+                  {tErrorBody.has(paper.lastError.code as never) ? (
+                    <p className="text-xs text-muted-foreground">{tErrorBody(paper.lastError.code as never)}</p>
+                  ) : null}
+                </div>
+              </div>
+            ) : <div className="flex-1" />}
+
+            {/* Questions without an answer, grouped so they don't repeat down the card */}
+            {missing.length || failed.length ? (
+              <div className="space-y-2 border-t border-border/40 px-4 py-3">
+                {missing.length ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <CircleDashed aria-hidden className="size-3.5" />
+                      {tc("insufficientEvidence")}
+                    </span>
+                    {chips(missing)}
+                  </div>
+                ) : null}
+                {failed.length ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-1 inline-flex items-center gap-1.5 text-xs text-destructive">
+                      <CircleX aria-hidden className="size-3.5" />
+                      {tc("extractionError")}
+                    </span>
+                    {chips(failed)}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
   );
 }, (prevProps, nextProps) => {
   // Custom comparison to prevent unnecessary re-renders
@@ -196,145 +153,7 @@ export const CardView = memo(function CardView({
     prevProps.papers === nextProps.papers &&
     prevProps.questions === nextProps.questions &&
     prevProps.selectedIds === nextProps.selectedIds &&
-    prevProps.onOpenCitationPanel === nextProps.onOpenCitationPanel
+    prevProps.onOpenAnswer === nextProps.onOpenAnswer &&
+    prevProps.openAnswer === nextProps.openAnswer
   );
 });
-
-function ResultValue({ result, type }: { result?: Doc<"extractionResults">; type: string }) {
-  const tc = useTranslations("common");
-  if (!result) {
-    return <span className="text-muted-foreground/30 text-xs">—</span>;
-  }
-
-  const { answer, confidence } = result;
-  const citationStatus = getCitationStatus(result);
-
-  const getConfidenceColor = (conf?: number) => {
-    if (!conf) return "bg-gray-500/10 text-gray-500 border-gray-200";
-    if (conf >= 0.8)
-      return "bg-green-500/10 text-green-600 dark:text-green-400 border-green-200";
-    if (conf >= 0.5)
-      return "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-200";
-    return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-200";
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="text-sm">
-        {type === "boolean" ? (
-          answer === true ? (
-            <Badge
-              variant="default"
-              className="font-normal bg-primary/10 text-primary hover:bg-primary/20 border-primary/20 shadow-none"
-            >
-              {tc("yes")}
-            </Badge>
-          ) : answer === false ? (
-            <Badge
-              variant="secondary"
-              className="font-normal bg-muted text-muted-foreground hover:bg-muted/80"
-            >
-              {tc("no")}
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="font-normal text-muted-foreground">
-              {tc("unknown")}
-            </Badge>
-          )
-        ) : Array.isArray(answer) ? (
-          <div className="flex flex-wrap gap-1">
-            {answer.map((item) => (
-              <Badge key={String(item)} variant="outline" className="text-xs font-normal">
-                {item}
-              </Badge>
-            ))}
-          </div>
-        ) : (
-          <div className="line-clamp-2 text-sm text-foreground/90 leading-relaxed">
-            {String(answer)}
-          </div>
-        )}
-      </div>
-      {confidence !== undefined && (
-        <Badge
-          variant="outline"
-          className={cn(
-            "text-[10px] font-medium",
-            getConfidenceColor(confidence)
-          )}
-        >
-          {Math.round((confidence || 0) * 100)}%
-        </Badge>
-      )}
-      {citationStatus === "grounded" ? (
-        <Badge variant="outline" className="text-[10px] font-medium">
-          {tc("grounded")}
-        </Badge>
-      ) : null}
-      {citationStatus === "best_effort" ? (
-        <Badge variant="outline" className="text-[10px] font-medium">
-          {tc("bestEffort")}
-        </Badge>
-      ) : null}
-      {citationStatus === "insufficient_evidence" ? (
-        <Badge variant="outline" className="text-[10px] font-medium">
-          {tc("insufficientEvidence")}
-        </Badge>
-      ) : null}
-      {citationStatus === "extraction_error" ? (
-        <Badge variant="outline" className="text-[10px] font-medium">
-          {tc("extractionError")}
-        </Badge>
-      ) : null}
-    </div>
-  );
-}
-
-function ResultActions({
-  result,
-  onCite,
-}: {
-  result?: Doc<"extractionResults">;
-  onCite?: () => void;
-}) {
-  const tc = useTranslations("common");
-  if (!result) return null;
-
-  const { reasoning } = result;
-  const citations = getAllCitationLocations(result);
-
-  return (
-    <div className="flex flex-col gap-1">
-      {reasoning && (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-muted-foreground/50 hover:text-primary transition-colors"
-            >
-              <Maximize2 className="h-3 w-3" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-4 text-xs leading-relaxed">
-            <div className="space-y-1">
-              <h4 className="font-medium">{tc("reasoning")}</h4>
-              <p className="text-muted-foreground">{reasoning}</p>
-            </div>
-          </PopoverContent>
-        </Popover>
-      )}
-      {citations.length > 0 && onCite ? (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onCite}
-          className="h-6 w-6 text-muted-foreground/60 hover:text-foreground transition-colors"
-          title={tc("viewCitation")}
-        >
-          <Quote className="h-3 w-3" />
-        </Button>
-      ) : null}
-    </div>
-  );
-}

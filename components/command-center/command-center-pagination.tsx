@@ -74,7 +74,7 @@ export function CommandCenterPagination({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6">
       {/* Info text */}
-      <p className="text-sm text-muted-foreground">
+      <p className="text-xs tabular-nums text-muted-foreground">
         {tc("showingStartEnd", { start: startItem, end: endItem, total: totalItems, label: itemLabel })}
       </p>
 
@@ -83,7 +83,7 @@ export function CommandCenterPagination({
         <Button
           variant="outline"
           size="icon"
-          className="h-9 w-9"
+          className="size-8"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
         >
@@ -105,7 +105,7 @@ export function CommandCenterPagination({
               variant={currentPage === page ? "default" : "outline"}
               size="icon"
               className={cn(
-                "h-9 w-9",
+                "size-8 tabular-nums",
                 currentPage === page && "pointer-events-none"
               )}
               onClick={() => onPageChange(page)}
@@ -118,7 +118,7 @@ export function CommandCenterPagination({
         <Button
           variant="outline"
           size="icon"
-          className="h-9 w-9"
+          className="size-8"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
         >

@@ -861,8 +861,7 @@
     "retry": {
       "summary": {
         "retryableOnly": "{retryable, plural, one {# पुनः प्रयास योग्य विफलता} other {# पुनः प्रयास योग्य विफलताएँ}}",
-        "permanentOnly": "{permanent, plural, one {# स्थायी विफलता} other {# स्थायी विफलताएँ}}",
-        "both": "{retryable, plural, one {# पुनः प्रयास योग्य} other {# पुनः प्रयास योग्य}} · {permanent, plural, one {# स्थायी} other {# स्थायी}}"
+        "permanentOnly": "{permanent, plural, one {# स्थायी विफलता} other {# स्थायी विफलताएँ}}"
       },
       "retryButton": "{count, plural, one {# विफलता पुनः प्रयास करें} other {# विफलताएँ पुनः प्रयास करें}}",
       "confirmDialog": {
@@ -908,8 +907,8 @@
     "questionProgress": {
       "completedOverTotal": "{completed}/{total}",
       "summary": "{total} में से {completed} प्रश्न पूर्ण हुए",
-      "failedCount": "· {count, plural, one {# विफल} other {# विफल}}",
-      "retryingCount": "· {count, plural, one {# पुनः प्रयास हो रहा है} other {# पुनः प्रयास हो रहे हैं}}"
+      "failedCount": "{count, plural, one {# विफल} other {# विफल}}",
+      "retryingCount": "{count, plural, one {# पुनः प्रयास हो रहा है} other {# पुनः प्रयास हो रहे हैं}}"
     },
     "errorHistory": {
       "trigger": "त्रुटि इतिहास · {count, plural, one {# प्रयास} other {# प्रयास}}",
@@ -919,9 +918,9 @@
     },
     "mixedSuccess": {
       "title": "आंशिक सफलता के साथ पूर्ण",
-      "answeredOverTotal": "{total} में से {answered} प्रश्नों के उत्तर दिए गए।",
-      "failedTotal": "{count, plural, one {# विफल:} other {# विफल:}}",
-      "retryableHint": "{count, plural, one {# विफलता पुनः प्रयास योग्य है} other {# विफलताएँ पुनः प्रयास योग्य हैं}}।"
+      "answeredOverTotal": "{papers} पेपर पढ़े गए, {total} में से {answered} प्रश्न जाँचे गए",
+      "retryableHint": "{count, plural, one {# विफलता पुनः प्रयास योग्य है} other {# विफलताएँ पुनः प्रयास योग्य हैं}}",
+      "showFailed": "विफल पेपर दिखाएँ"
     },
     "pleaseSelectSource": "कृपया कम से कम एक स्रोत चुनें",
     "pleaseCompleteSteps": "कृपया सभी चरण पूरे करें",
@@ -929,6 +928,7 @@
     "untitledJob": "शीर्षकहीन एक्सट्रैक्शन जॉब",
     "jobStarted": "एक्सट्रैक्शन जॉब शुरू हुई!",
     "failedToStartJob": "एक्सट्रैक्शन जॉब शुरू करने में विफल",
+    "newJobTitle": "नया जॉब",
     "stepOfThree": "चरण {step} / {total}",
     "nameYourJob": "अपने एक्सट्रैक्शन जॉब का नाम दें",
     "nameYourJobDescription": "इस जॉब को बाद में पहचानने में मदद के लिए एक वर्णनात्मक नाम दें।",
@@ -1050,7 +1050,24 @@
       "presetMax": "अधिकतम",
       "liveAnnouncement": "शोधपत्रों की संख्या {count, number} पर सेट की गई"
     },
-    "chatModelPresets": "Presets"
+    "chatModelPresets": "Presets",
+    "chatRetryResponseWith": "{model} के साथ फिर से बनाएँ",
+    "chatRetryWithPrefix": "इसके साथ फिर से बनाएँ",
+    "chatRetryLoadingMessages": "बातचीत लोड हो रही है…",
+    "chatHeaderMore": "और विकल्प",
+    "chatBack": "एक्सट्रैक्शन पर वापस जाएँ",
+    "chatComposerPlaceholder": "अपने पेपर के बारे में कुछ भी पूछें…",
+    "chatHintEnter": "↵ भेजें",
+    "chatHintShiftEnter": "⇧↵ नई पंक्ति",
+    "chatModelPickerTrigger": "मॉडल बदलें",
+    "chatModelPickerSearch": "मॉडल खोजें…",
+    "chatModelPickerEmpty": "कोई मॉडल नहीं मिला।",
+    "chatModelPickerLoading": "मॉडल लोड हो रहे हैं…",
+    "chatJumpToLatest": "नवीनतम पर जाएँ",
+    "chatJumpToLatestWithCount": "{count, plural, one {# नया संदेश} other {# नए संदेश}}",
+    "chatEmptyHeadline": "अपने पेपर के बारे में कुछ भी पूछें",
+    "chatEmptyPaperCount": "{count, plural, one {इस बातचीत में # पेपर पर आधारित} other {इस बातचीत में # पेपर पर आधारित}}",
+    "chatShortcutFocus": "संदेश बॉक्स पर जाने के लिए ⌘K दबाएँ"
   },
   "sourcesPanel": {
     "title": "स्रोत",
@@ -1075,7 +1092,12 @@
       "source": "स्रोत",
       "inContext": "संदर्भ में",
       "dirAsc": "बढ़ते क्रम में",
-      "dirDesc": "घटते क्रम में"
+      "dirDesc": "घटते क्रम में",
+      "triggerLabel": "क्रमबद्ध करें",
+      "menuLabel": "इसके अनुसार क्रमबद्ध करें",
+      "directionLabel": "क्रम",
+      "asc": "आरोही",
+      "desc": "अवरोही"
     },
     "bulk": {
       "groupLabel": "बल्क क्रियाएँ",
@@ -1092,6 +1114,20 @@
       "abstract": "सार",
       "doi": "DOI",
       "openalexId": "OpenAlex ID"
+    },
+    "countShort": "{included, number}/{total, number}",
+    "progressLabel": "{total, number} में से {included, number} शामिल",
+    "searchClear": "खोज साफ़ करें",
+    "meta": {
+      "cites": "{count, plural, one {# उद्धरण} other {# उद्धरण}}"
+    },
+    "source": {
+      "filterLabel": "स्रोत के प्रकार से फ़िल्टर करें",
+      "placeholder": "सभी स्रोत",
+      "all": "सभी स्रोत",
+      "openalex": "OpenAlex",
+      "zotero": "Zotero",
+      "unknown": "अन्य"
     }
   },
   "composer": {
@@ -1215,9 +1251,7 @@
   },
   "viewMode": {
     "simpleList": "सरल सूची",
-    "simple": "सरल",
     "detailedList": "विस्तृत सूची",
-    "detail": "विवरण",
     "twoColumnGrid": "2 कॉलम ग्रिड",
     "threeColumnGrid": "3 कॉलम ग्रिड"
   },
@@ -1421,7 +1455,6 @@
     "score": "स्कोर"
   },
   "bookmarksPage": {
-    "description": "आमतौर पर उपयोग की जाने वाली खोज शब्दों के लिए शॉर्टकट बनाएं",
     "searchPlaceholder": "बुकमार्क्स खोजें...",
     "clearAllBookmarks": "सभी बुकमार्क्स साफ़ करें",
     "clearAllBookmarksTitle": "सभी बुकमार्क्स साफ़ करें",
@@ -1447,10 +1480,6 @@
     "missingBookmarks": "गायब बुकमार्क्स",
     "missingBookmarksDescription": "यदि आप एक ऐसा बुकमार्क उपयोग करते हैं जो मौजूद नहीं है, तो आपको एक चेतावनी दिखाई देगी।",
     "howToUseBookmarks": "बुकमार्क्स का उपयोग कैसे करें",
-    "saveCurrentSearch": "वर्तमान खोज को बुकमार्क के रूप में सहेजें",
-    "saveQueryAsBookmark": "क्वेरी को बुकमार्क के रूप में सहेजें",
-    "saveSearchDescription": "बाद में त्वरित पहुंच के लिए अपनी खोज क्वेरी सहेजें",
-    "editQueryPlaceholder": "वह क्वेरी संपादित करें जो बुकमार्क के रूप में सहेजी जाएगी...",
     "enterBookmarkName": "बुकमार्क नाम दर्ज करें (जैसे मेरी-खोज)",
     "bookmarkExpansionPreview": "बुकमार्क विस्तार पूर्वावलोकन",
     "typeQueryToPreview": "विस्तार पूर्वावलोकन देखने के लिए \"bookmark...\" के साथ क्वेरी टाइप करें",
@@ -1483,22 +1512,13 @@
     "backToCard": "कार्ड पर वापस जाएं",
     "current": "वर्तमान",
     "bookmarkNamePlaceholder": "बुकमार्क-नाम",
-    "recentSearches": "हाल की खोजें",
-    "infoClickToRevisit": "परिणाम दोबारा देखने के लिए किसी भी खोज पर क्लिक करें",
-    "infoDownloadUpload": "खोज डेटा डाउनलोड या अपलोड करें",
-    "infoManageArchive": "अपने खोज संग्रह का प्रबंधन करें"
+    "recentSearches": "हाल की खोजें"
   },
   "commandCenter": {
-    "searchCount": "{count, plural, one {# खोज} other {# खोजें}}",
-    "bookmarkCount": "{count, plural, one {# बुकमार्क} other {# बुकमार्क्स}}",
     "searchesLabel": "खोजें",
     "bookmarksLabel": "बुकमार्क्स",
     "searchSingular": "खोज",
-    "searchPlural": "खोजें",
-    "bookmarkSingular": "बुकमार्क",
-    "bookmarkPlural": "बुकमार्क्स",
-    "jobSingular": "जॉब",
-    "jobPlural": "जॉब्स"
+    "searchPlural": "खोजें"
   },
   "admin": {
     "cleanupTitle": "व्यवस्थापक: डुप्लिकेट सदस्यताएं साफ़ करें",
@@ -1754,6 +1774,7 @@
   "jobStatus": {
     "restart": "पुनः आरंभ करें",
     "papersCount": "{count} पेपर",
+    "questionsCount": "{count, plural, one {# प्रश्न} other {# प्रश्न}}",
     "statusPending": "लंबित",
     "statusDownloadingPdfs": "पेपर प्रोसेस हो रहे हैं",
     "statusExtracting": "निकाल रहे हैं",
@@ -1767,13 +1788,8 @@
     "jobCreated": "नई जॉब बनी",
     "failedToCreate": "नई जॉब बनाने में विफल",
     "updated": "{timeAgo} अपडेट किया गया",
-    "totalPapers": "कुल पेपर",
-    "processed": "प्रोसेस किए गए",
-    "successRate": "सफलता दर",
-    "extractionProgress": "एक्सट्रैक्शन प्रगति",
     "noMatches": "वर्तमान फ़िल्टर के लिए कोई मैच नहीं",
     "clearFilters": "फ़िल्टर साफ़ करें",
-    "questions": "प्रश्न",
     "progressOfPapers": "{total} में से {processed} पेपर",
     "loadingExtractionResults": "एक्सट्रैक्शन परिणाम लोड हो रहे हैं...",
     "appliedSavedView": "सहेजा गया व्यू लागू किया गया: {name}"
@@ -1821,7 +1837,6 @@
   "filters": {
     "filterByStatus": "स्थिति से फ़िल्टर करें",
     "confidenceRange": "कॉन्फिडेंस सीमा",
-    "quickFilters": "त्वरित फ़िल्टर्स",
     "confidenceLabel": "कॉन्फिडेंस: {min}%-{max}%",
     "status": "स्थिति",
     "hasPdf": "PDF है",
@@ -2057,10 +2072,6 @@
     "filterYearRange": "प्रकाशन वर्ष",
     "filterYearFrom": "से",
     "filterYearTo": "तक",
-    "viewListSimple": "सरल सूची",
-    "viewListDetail": "विस्तृत सूची",
-    "viewGrid2": "दो-स्तंभ ग्रिड",
-    "viewGrid3": "तीन-स्तंभ ग्रिड",
     "filterCollection": "संग्रह",
     "allCollections": "सभी संग्रह",
     "manageCollections": "संग्रह प्रबंधित करें",
@@ -3137,7 +3148,6 @@
   },
   "topics": {
     "title": "विषय",
-    "description": "Evidence Libraries में शोध विषय।",
     "find": "विषय खोजें",
     "findPlaceholder": "कोई विषय खोजें",
     "domain": "शोध डोमेन",
@@ -3146,8 +3156,6 @@
     "allFields": "सभी क्षेत्र",
     "subfield": "शोध उपक्षेत्र",
     "allSubfields": "सभी उपक्षेत्र",
-    "count": "{count, plural, one {# विषय} other {# विषय}}",
-    "countLoaded": "{count, plural, one {# विषय लोड हुआ} other {# विषय लोड हुए}}",
     "clearFilters": "फ़िल्टर साफ़ करें",
     "loadFailed": "विषय लोड नहीं हो सके।",
     "tryAgain": "फिर प्रयास करें",
@@ -3166,11 +3174,9 @@
     "hideRelated": "संबंधित विषय छिपाएं",
     "publicationsFailed": "प्रकाशन लोड नहीं हो सके।",
     "loadingPublications": "प्रकाशन लोड हो रहे हैं",
-    "openAlexCount": "{count, plural, one {OpenAlex में # प्रकाशन} other {OpenAlex में # प्रकाशन}}",
+    "publicationsView": "प्रकाशन स्रोत",
     "noOpenAlex": "OpenAlex में कोई प्रकाशन नहीं मिला।",
     "progress": "{total, number} में से {loaded, number}",
-    "libraryCount": "{count, plural, one {# प्रकाशन} other {# प्रकाशन}}",
-    "libraryCountLoaded": "{count, plural, one {# प्रकाशन लोड हुआ} other {# प्रकाशन लोड हुए}}",
     "searchLibrary": "लाइब्रेरी प्रकाशनों में खोजें",
     "searchPlaceholder": "प्रकाशन खोजें",
     "updating": "प्रकाशन समूह अपडेट हो रहे हैं। थोड़ी देर में रीफ़्रेश करें।",
@@ -3238,7 +3244,6 @@
     },
     "new": {
       "title": "New Evidence Library",
-      "description": "Give it a name and reserve a public address.",
       "backToLibraries": "Back to libraries",
       "noOrganizationTitle": "Choose an organisation",
       "noOrganizationDescription": "Pick or create an organisation with the switcher, then come back here.",

@@ -185,7 +185,7 @@ export function PaperCitation({ index }: PaperCitationProps) {
   const authorsStr =
     p.authors.length > 0 ? p.authors.join(", ") : t("unknownAuthors");
   const yearStr = p.year != null ? String(p.year) : "—";
-  const description = `${authorsStr} · ${yearStr}`;
+  const description = `${authorsStr}, ${yearStr}`;
   const { openalexUrl, doiUrl, pdfUrl, shortDoi, primary } =
     resolvePaperLinks(p);
   const ariaLabel =

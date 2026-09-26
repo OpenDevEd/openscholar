@@ -451,29 +451,29 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           />
 
           <NavItem
-            href="/bookmarks"
-            icon={BookOpen}
-            label={tc("bookmarks")}
-            isActive={currentPageValue === "bookmarks"}
-            isCollapsed={isCollapsed && !isMobile}
-            onClick={handleNavClick}
-            index={1}
-            badge={expandableCount > 0 ? expandableCount : undefined}
-            customTooltipContent={
-              hasBookmarkSyntax ? (
-                <KeywordExpansionPreview query={activeQuery} />
-              ) : undefined
-            }
-          />
-
-          <NavItem
             href="/library"
             icon={Library}
             label={tc("library")}
             isActive={currentPageValue === "library"}
             isCollapsed={isCollapsed && !isMobile}
             onClick={handleNavClick}
+            index={1}
+          />
+
+          <NavItem
+            href="/bookmarks"
+            icon={BookOpen}
+            label={tc("bookmarks")}
+            isActive={currentPageValue === "bookmarks"}
+            isCollapsed={isCollapsed && !isMobile}
+            onClick={handleNavClick}
             index={2}
+            badge={expandableCount > 0 ? expandableCount : undefined}
+            customTooltipContent={
+              hasBookmarkSyntax ? (
+                <KeywordExpansionPreview query={activeQuery} />
+              ) : undefined
+            }
           />
 
           <NavItem
@@ -827,9 +827,10 @@ export function AppSidebar() {
     return null;
   }
 
-  // Don't render until hydrated to prevent flash
+  // The saved width is only known after hydration. Until then hold the space
+  // the head script measured, so the page does not shift when the sidebar mounts.
   if (!_hasHydrated) {
-    return null;
+    return <div aria-hidden className="sticky top-0 hidden h-screen w-(--app-sidebar-width) shrink-0 border-r border-sidebar-border/60 bg-sidebar md:block" />;
   }
 
   if (isMobile) {

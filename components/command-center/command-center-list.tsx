@@ -1,12 +1,11 @@
 "use client";
 
 import React from "react";
-import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { Search } from "lucide-react";
+import { SearchX } from "lucide-react";
+import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { subtleSpring } from "@/lib/animation-config";
 import { GRID_CLASSES } from "@/lib/constants/view-modes";
 import type { ViewMode } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
@@ -49,45 +48,17 @@ export function CommandCenterList<T>({
   // Empty state
   if (items.length === 0) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={subtleSpring}
-        className="flex flex-col items-center justify-center py-16 px-4"
-      >
-        <div
-          className={cn(
-            "w-16 h-16 rounded-2xl mb-6",
-            "bg-gradient-to-br from-muted/80 to-muted/40",
-            "flex items-center justify-center",
-            "border border-border/50"
-          )}
-        >
-          {hasFilter ? (
-            <Search className="h-7 w-7 text-muted-foreground" />
-          ) : (
-            <EmptyIcon className="h-7 w-7 text-muted-foreground" />
-          )}
-        </div>
-
-        <h3 className="text-lg font-semibold text-foreground mb-2">
-          {hasFilter ? tc("noMatchesFound") : emptyTitle}
-        </h3>
-
-        <p className="text-sm text-muted-foreground text-center max-w-sm mb-6">
-          {hasFilter
-            ? tc("tryAdjustingSearch")
-            : emptyDescription}
-        </p>
-
-        {hasFilter ? (
-          <Button variant="outline" onClick={onClearFilter} className="gap-2">
+      <ListEmpty
+        icon={hasFilter ? SearchX : EmptyIcon}
+        description={hasFilter ? tc("tryAdjustingSearch") : emptyDescription}
+        action={hasFilter ? (
+          <Button variant="outline" size="sm" onClick={onClearFilter}>
             {tc("clearFilter")}
           </Button>
-        ) : (
-          emptyAction
-        )}
-      </motion.div>
+        ) : emptyAction}
+      >
+        {hasFilter ? tc("noMatchesFound") : emptyTitle}
+      </ListEmpty>
     );
   }
 

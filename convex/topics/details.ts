@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, type ActionCtx } from "../_generated/server";
+import { action, internalAction, internalMutation, internalQuery, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";
@@ -29,26 +29,44 @@ export const save = internalMutation({
     return null;
   },
 });
-/** `libraryId` only labels logs; the service endpoint authenticates the caller first. */
+async function fetchTopicDetail(id: string) {
+  const url = new URL(`https://api.openalex.org/topics/${id}`);
+  if (process.env.OPENALEX_API_KEY) url.searchParams.set("api_key", process.env.OPENALEX_API_KEY);
+  const response = await fetch(url, {signal: AbortSignal.timeout(10000)});
+  if (!response.ok) throw new Error(`OpenAlex topic returned ${response.status}`);
+  const topic = provider.parse(await response.json());
+  if (topic.id.replace("https://openalex.org/", "") !== id) throw new Error("OpenAlex returned a different topic");
+  return {id, description: topic.description, keywords: topic.keywords, worksCount: topic.works_count, fetchedAt: Date.now(), revision: CATALOG_REVISION};
+}
+/** Keeps a saved topic's publication count current without making a reader wait. */
+export const refresh = internalAction({
+  args: {id: v.string()},
+  handler: async (ctx, {id}) => {
+    try { await ctx.runMutation(internal.topics.details.save, await fetchTopicDetail(id)); }
+    catch (error) { console.error("Topic details refresh failed", {topicId: id, revision: CATALOG_REVISION, operation: "refresh", error}); }
+  },
+});
+/**
+ * A topic's details are fetched from OpenAlex once and kept. Readers always get
+ * the saved copy; one older than a day is refreshed in the background.
+ * `libraryId` only labels logs; the service endpoint authenticates the caller first.
+ */
 export async function readTopicDetail(ctx: ActionCtx, args: {id: string; libraryId?: string}) {
     if (!topicIdSchema.safeParse(args.id).success) throw createError("VALIDATION_ERROR", "Invalid topic ID");
     const result: {node: TopicNode; path: {id: string; name: string}[]; detail: Doc<"topicDetails"> | null} = await ctx.runQuery(internal.topics.details.read, {id: args.id});
-    let detail: {description: string; keywords: string[]; worksCount: number; fetchedAt: number; revision: string} | null = result.detail;
-    if (!detail || detail.revision !== CATALOG_REVISION || Date.now() - detail.fetchedAt > DAY) {
+    let detail: {description: string; keywords: string[]; worksCount: number; fetchedAt: number; revision: string} | null = result.detail?.revision === CATALOG_REVISION ? result.detail : null;
+    if (!detail) {
       try {
-        const url = new URL(`https://api.openalex.org/topics/${args.id}`);
-        if (process.env.OPENALEX_API_KEY) url.searchParams.set("api_key", process.env.OPENALEX_API_KEY);
-        const response = await fetch(url, {signal: AbortSignal.timeout(10000)});
-        if (!response.ok) throw new Error(`OpenAlex topic returned ${response.status}`);
-        const topic = provider.parse(await response.json());
-        if (topic.id.replace("https://openalex.org/", "") !== args.id) throw new Error("OpenAlex returned a different topic");
-        const fresh = {id: args.id, description: topic.description, keywords: topic.keywords, worksCount: topic.works_count, fetchedAt: Date.now(), revision: CATALOG_REVISION};
-        await ctx.runMutation(internal.topics.details.save, fresh);
-        detail = fresh;
+        const fetched = await fetchTopicDetail(args.id);
+        await ctx.runMutation(internal.topics.details.save, fetched);
+        detail = fetched;
       } catch (error) {
         console.error("Topic details unavailable", {topicId: args.id, libraryId: args.libraryId, revision: CATALOG_REVISION, operation: "detail", error});
-        if (!detail || Date.now() - detail.fetchedAt > 7 * DAY) throw createError("INVALID_DATA", "Topic description unavailable");
+        throw createError("INVALID_DATA", "Topic description unavailable");
       }
+    } else if (Date.now() - detail.fetchedAt > DAY) {
+      // ponytail: every reader of a stale topic schedules a refresh until one lands; save keeps the newest.
+      await ctx.scheduler.runAfter(0, internal.topics.details.refresh, {id: args.id});
     }
     return {contractVersion: 1 as const, id: args.id, name: result.node.name, description: detail.description,
       keywords: detail.keywords, path: result.path, worksCount: detail.worksCount, fetchedAt: new Date(detail.fetchedAt).toISOString(), revision: detail.revision,

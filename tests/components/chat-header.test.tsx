@@ -126,7 +126,7 @@ describe("<ChatHeader>", () => {
   it("renders the thread name", () => {
     render(withProviders(<ChatHeader job={makeJob()} threadId="t_1" />));
     expect(
-      screen.getByTestId("chat-job-name"),
+      screen.getByRole("heading", { level: 1 }),
     ).toHaveTextContent("Coffee bean roasting study");
   });
 

@@ -4,7 +4,7 @@ import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon , FileText } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { optimisticallySendMessage } from "@convex-dev/agent/react";
 import { cn } from "@/lib/utils";
@@ -69,14 +69,11 @@ export function SuggestionChips({ threadId }: SuggestionChipsProps) {
       >
         {paperCount > 0 ? (
           <div
-            className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground"
             data-paper-context="true"
             data-paper-count={paperCount}
           >
-            <span
-              className="inline-block size-1 rounded-full bg-primary"
-              aria-hidden
-            />
+            <FileText className="size-3.5 text-primary" aria-hidden />
             <span>{t("chatEmptyPaperCount", { count: paperCount })}</span>
           </div>
         ) : null}
