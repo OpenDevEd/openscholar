@@ -936,9 +936,9 @@
     },
     "mixedSuccess": {
       "title": "Completed with partial success",
-      "answeredOverTotal": "{answered} of {total} questions answered.",
-      "failedTotal": "{count, plural, one {# failed:} other {# failed:}}",
-      "retryableHint": "{count, plural, one {# failure is retryable} other {# failures are retryable}}."
+      "answeredOverTotal": "{answered} of {total} questions answered",
+      "retryableHint": "{count, plural, one {# failure is retryable} other {# failures are retryable}}",
+      "showFailed": "Show failed papers"
     },
     "pleaseSelectSource": "Please select at least one source",
     "pleaseCompleteSteps": "Please complete all steps",

@@ -218,14 +218,10 @@ export function HistoryQueryExpansion({
                     >
                       <div className="flex items-start gap-3">
                         {/* Timeline indicator */}
-                        <div className="shrink-0 mt-1.5">
-                          <div
-                            className={cn(
-                              "w-2 h-2 rounded-full",
-                              isCurrent
-                                ? "bg-primary ring-2 ring-primary/30"
-                                : "bg-muted-foreground/40"
-                            )}
+                        <div className="shrink-0 mt-0.5">
+                          <Search
+                            aria-hidden
+                            className={cn("size-3.5", isCurrent ? "text-primary" : "text-muted-foreground/60")}
                           />
                         </div>
 

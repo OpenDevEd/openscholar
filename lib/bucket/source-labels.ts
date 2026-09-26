@@ -1,3 +1,6 @@
+import { Clock, FolderOpen, Library, Upload, type LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
+import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import type { BucketSource } from "@/lib/bucket/bucketItem";
 
 /**
@@ -14,8 +17,7 @@ export const BUCKET_SOURCE_LABELS: Record<BucketSource, string> = {
 };
 
 /**
- * CSS variable name (without `var()`) driving the colored dot on each
- * source chip. Maps to the chart palette defined in
+ * CSS variable name (without `var()`) colouring each source's icon. Maps to the chart palette defined in
  * `app/globals.css:68-73`. Chart tokens are light-mode only; OKLCh
  * chroma keeps them legible in dark mode without overrides.
  */
@@ -25,4 +27,13 @@ export const SOURCE_COLOR_VAR: Record<BucketSource, string> = {
   collection: "--chart-3",
   zotero: "--chart-4",
   upload: "--chart-5",
+};
+
+/** Each source's icon, coloured by `SOURCE_COLOR_VAR`, the way chat sources are shown. */
+export const SOURCE_ICON: Record<BucketSource, LucideIcon | ComponentType<{ className?: string }>> = {
+  history: Clock,
+  library: Library,
+  collection: FolderOpen,
+  zotero: ZoteroIcon,
+  upload: Upload,
 };

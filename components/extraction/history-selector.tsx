@@ -182,7 +182,6 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
                   {format.relativeTime(new Date(entry.createdAt), now)}
                 </span>
               </div>
-              <span className="w-1 h-1 rounded-full bg-border" />
               <div className="flex items-center gap-1">
                 <FileText className="w-3.5 h-3.5" />
                 <span>

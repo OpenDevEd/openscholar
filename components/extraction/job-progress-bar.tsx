@@ -31,6 +31,8 @@ export interface JobProgressBarProps {
   failed: number;
   /** Total units of work. */
   total: number;
+  /** The job finished, so the answered part turns green. */
+  complete?: boolean;
 }
 
 function percentFromCounts(
@@ -53,6 +55,7 @@ export function JobProgressBar({
   processed,
   failed,
   total,
+  complete = false,
 }: JobProgressBarProps) {
   const t = useTranslations("jobStatus");
   const percent = percentFromCounts(processed, failed, total);
@@ -71,14 +74,23 @@ export function JobProgressBar({
           total,
         })}
         data-progress-percent={percent}
-        className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"
+        className="flex h-1.5 flex-1 gap-0.5 overflow-hidden rounded-full bg-muted"
       >
+        {/* Answered papers, then failed ones in red, so the bar tells the outcome at a glance. */}
         <motion.div
           initial={{ width: 0 }}
-          animate={{ width: `${percent}%` }}
+          animate={{ width: `${total > 0 ? (processed / total) * 100 : 0}%` }}
           transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-          className="h-full rounded-full bg-primary"
+          className={complete ? "h-full rounded-full bg-emerald-500" : "h-full rounded-full bg-primary"}
         />
+        {failed > 0 ? (
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${(failed / total) * 100}%` }}
+            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            className="h-full rounded-full bg-destructive"
+          />
+        ) : null}
       </div>
       <span aria-hidden className="shrink-0 text-xs tabular-nums text-muted-foreground">
         {t("progressOfPapers", { processed: processedPlusFailed, total })}

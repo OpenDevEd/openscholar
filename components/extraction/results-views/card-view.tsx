@@ -4,12 +4,11 @@ import { memo } from "react";
 import { useTranslations } from "next-intl";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
-import { getAvgConfidence } from "@/lib/extraction/filtering";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getAllCitationLocations, getCitationStatus } from "@/lib/extraction/citations";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
-import { ConfidenceValue, PaperDetails, ResultActions, ResultAnswer, ResultMeta } from "./result-parts";
+import { answeredConfidence, ConfidenceValue, PaperDetails, ResultCell } from "./result-parts";
 
 interface CardViewProps {
   papers: PaperWithResults[];
@@ -42,7 +41,7 @@ export const CardView = memo(function CardView({
     <ul className="divide-y divide-border/50">
       {papers.map((paper) => {
         const isSelected = selectedIds.has(paper._id);
-        const answered = paper.results.filter((r) => r.confidence !== undefined);
+        const confidence = answeredConfidence(paper);
         return (
           <li
             key={paper._id}
@@ -63,9 +62,9 @@ export const CardView = memo(function CardView({
                 <p className="line-clamp-2 text-sm font-medium leading-snug" title={paper.title}>{paper.title}</p>
                 <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />
               </div>
-              {answered.length ? (
-                <span className="shrink-0 text-xs text-muted-foreground" title={t("confidence")}>
-                  <ConfidenceValue value={getAvgConfidence(paper)} /> {t("confidence")}
+              {confidence !== undefined ? (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  <ConfidenceValue value={confidence} /> {t("confidence")}
                 </span>
               ) : null}
             </div>
@@ -75,28 +74,27 @@ export const CardView = memo(function CardView({
                 return (
                   <div key={q.key} className="min-w-0 space-y-1">
                     <dt className="text-xs text-muted-foreground">{q.question}</dt>
-                    <dd className="space-y-1.5">
-                      <ResultAnswer result={result} type={q.type} clamp="line-clamp-4" />
-                      <div className="flex items-center justify-between gap-2">
-                        <ResultMeta result={result} />
-                        <ResultActions
-                          result={result}
-                          onCite={() => {
-                            if (!result) return;
-                            const citations = getAllCitationLocations(result);
-                            if (citations.length === 0) return;
-                            const payload = buildCitationPanelPayload({
-                              paperId: paper._id,
-                              paperTitle: paper.title,
-                              citations,
-                              citationStatus: getCitationStatus(result),
-                              answer: result.answer,
-                              questionText: q.question,
-                            });
-                            if (payload) onOpenCitationPanel(payload);
-                          }}
-                        />
-                      </div>
+                    <dd>
+                      <ResultCell
+                        question={q.question}
+                        result={result}
+                        type={q.type}
+                        clamp="line-clamp-4"
+                        onCite={() => {
+                          if (!result) return;
+                          const citations = getAllCitationLocations(result);
+                          if (citations.length === 0) return;
+                          const payload = buildCitationPanelPayload({
+                            paperId: paper._id,
+                            paperTitle: paper.title,
+                            citations,
+                            citationStatus: getCitationStatus(result),
+                            answer: result.answer,
+                            questionText: q.question,
+                          });
+                          if (payload) onOpenCitationPanel(payload);
+                        }}
+                      />
                     </dd>
                   </div>
                 );

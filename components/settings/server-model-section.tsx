@@ -19,6 +19,7 @@ import { getModelIcon } from "@/components/icons/provider-icons";
 import {
   Coins, Zap, Scale, Brain, SlidersHorizontal, Check, Search,
   ChevronDown, Loader2, ArrowRight,
+  Star,
 } from "lucide-react";
 
 type Ico = ComponentType<{ className?: string }>;
@@ -119,7 +120,7 @@ export function ServerModelSection({
                     onClick={() => setPreset({ serverPreset: pst.key })}
                     className={cn("relative flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-center transition-all", on ? cn("border-l-[4px] border-t-border/50 border-r-border/50 border-b-border/50", meta.dot, meta.bg) : "border-border/50 hover:border-border/80 hover:bg-muted/30")}
                   >
-                    {meta.recommended && <span className={cn("absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500", !on && "opacity-50")} title={t("recommended")} />}
+                    {meta.recommended && <Star aria-label={t("recommended")} className={cn("absolute right-2 top-2 size-3.5 fill-blue-500 text-blue-500", !on && "opacity-50")}><title>{t("recommended")}</title></Star>}
                     <Icon className={cn("h-6 w-6", on ? meta.ico : "text-muted-foreground")} />
                     <span className="flex items-center gap-1 text-sm font-semibold">{pst.label}{on && <Check className={cn("h-3.5 w-3.5", meta.ico)} />}</span>
                     <span className="block w-full text-center text-[11px] text-muted-foreground"><Brand className="mr-1 inline-block h-3 w-3 align-[-2px]" />{stripProvider(m?.name ?? pst.slug)}</span>

@@ -9,7 +9,7 @@ import { AuthorSettingsNavigation } from "./author-settings-navigation";
 import { BAR_ACTION, BAR_LABEL, PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { ListEmpty, ListLoading, ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
-import { STATUS_DOT, StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
+import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { ConfigurationLayout } from "@/components/evidence-libraries/configuration/configuration-layout";
 
 import { AuthorAvatar } from "./author-avatar";
@@ -17,6 +17,7 @@ import { useRef, useState, type ReactNode } from "react";
 import {
   Upload,
   Save,
+  PencilLine,
   UserRound,
   ArrowUpRight,
   BookOpen,
@@ -175,7 +176,7 @@ export default function AuthorPage({
                 <span className="hidden text-sm text-muted-foreground @3xl:inline">Profile settings</span>
                 {dirty ? (
                   <StatusChip tone="warning">
-                    <span aria-hidden className={cn("size-1.5 rounded-full", STATUS_DOT.warning)} />
+                    <PencilLine aria-hidden />
                     <span className={BAR_LABEL}>Unsaved changes</span>
                   </StatusChip>
                 ) : null}

@@ -919,9 +919,9 @@
     },
     "mixedSuccess": {
       "title": "आंशिक सफलता के साथ पूर्ण",
-      "answeredOverTotal": "{total} में से {answered} प्रश्नों के उत्तर दिए गए।",
-      "failedTotal": "{count, plural, one {# विफल:} other {# विफल:}}",
-      "retryableHint": "{count, plural, one {# विफलता पुनः प्रयास योग्य है} other {# विफलताएँ पुनः प्रयास योग्य हैं}}।"
+      "answeredOverTotal": "{total} में से {answered} प्रश्नों के उत्तर दिए गए",
+      "retryableHint": "{count, plural, one {# विफलता पुनः प्रयास योग्य है} other {# विफलताएँ पुनः प्रयास योग्य हैं}}",
+      "showFailed": "विफल पेपर दिखाएँ"
     },
     "pleaseSelectSource": "कृपया कम से कम एक स्रोत चुनें",
     "pleaseCompleteSteps": "कृपया सभी चरण पूरे करें",

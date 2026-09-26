@@ -30,6 +30,8 @@ import {
   ToggleRight,
   Trash2,
   Users,
+  PencilLine,
+  CircleAlert,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -115,7 +117,10 @@ import {
 import { LibraryAddressLink } from "../library-address-link";
 import { AdminAreaLink } from "../admin-area-link";
 import { BAR_ACTION, BAR_LABEL, PanelHeader } from "./panel-header";
-import { STATUS_DOT, StatusChip } from "./status-chip";
+import { StatusChip, StatusIcon } from "./status-chip";
+
+// A section's state in the menu: done, changed or needs attention.
+const STATE_ICON = { complete: undefined, edited: PencilLine, attention: CircleAlert } as const;
 import { FileUploadsProvider } from "./use-file-uploads";
 import { useScrollSpy } from "./use-scroll-spy";
 import { ActivationControl } from "./activation-control";
@@ -469,7 +474,7 @@ function Workspace({
               titleAside={<>
                 {dirty ? (
                   <StatusChip tone="warning" data-unsaved>
-                    <span aria-hidden className={cn("size-1.5 rounded-full", STATUS_DOT.warning)} />
+                    <PencilLine aria-hidden />
                     <span className={BAR_LABEL}>{t("unsaved")}</span>
                   </StatusChip>
                 ) : null}
@@ -543,15 +548,12 @@ function Workspace({
                         >
                           <span className="flex-1">{t(`sections.${key}`)}</span>
                           {state ? (
-                            <span
-                              className={cn(
-                                "size-2 shrink-0 rounded-full",
-                                STATUS_DOT[STATE_TONE[state]],
-                              )}
+                            <StatusIcon
+                              tone={STATE_TONE[state]}
+                              icon={STATE_ICON[state]}
+                              label={t(`sectionState.${state}`)}
                               data-state={state}
-                              title={t(`sectionState.${state}`)}
-                              aria-label={t(`sectionState.${state}`)}
-                              role="img"
+                              className="[&>svg]:size-3.5"
                             />
                           ) : null}
                         </RailLink>

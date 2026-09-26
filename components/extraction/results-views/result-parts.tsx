@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ExternalLink, Maximize2, Quote } from "lucide-react";
+import { ExternalLink, Quote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -28,6 +28,12 @@ function confidenceTone(value?: number): StatusTone {
   return value >= 0.8 ? "success" : value >= 0.5 ? "warning" : "danger";
 }
 
+/** How sure the answers a paper got are, leaving out questions it had no answer for. */
+export function answeredConfidence(paper: PaperWithResults): number | undefined {
+  const scores = paper.results.map((r) => r.confidence ?? 0).filter((c) => c > 0);
+  return scores.length ? scores.reduce((sum, c) => sum + c, 0) / scores.length : undefined;
+}
+
 /** A confidence between 0 and 1, as a coloured percentage. */
 export function ConfidenceValue({ value, className }: { value: number; className?: string }) {
   return (
@@ -37,21 +43,7 @@ export function ConfidenceValue({ value, className }: { value: number; className
   );
 }
 
-const CITATION_TONE = {
-  grounded: "success",
-  best_effort: "neutral",
-  insufficient_evidence: "warning",
-  extraction_error: "danger",
-} as const satisfies Record<string, StatusTone>;
-
-const CITATION_LABEL = {
-  grounded: "grounded",
-  best_effort: "bestEffort",
-  insufficient_evidence: "insufficientEvidence",
-  extraction_error: "extractionError",
-} as const;
-
-/** An answer's value: yes or no, a list, or text. A missing answer reads as a dash, never "null". */
+/** An answer's value: yes or no, a list, or text. With no answer it says why, in words. */
 export function ResultAnswer({ result, type, searchQuery = "", clamp = "line-clamp-3" }: {
   result?: ExtractionResultRecord;
   type: string;
@@ -62,7 +54,12 @@ export function ResultAnswer({ result, type, searchQuery = "", clamp = "line-cla
   const tc = useTranslations("common");
   const answer = result?.answer;
   if (answer === undefined || answer === null || answer === "" || (Array.isArray(answer) && !answer.length)) {
-    return <span className="text-sm text-muted-foreground/60">—</span>;
+    const status = getCitationStatus(result);
+    return (
+      <span className={cn("text-sm", status === "extraction_error" ? "text-destructive" : "text-muted-foreground")}>
+        {status === "extraction_error" ? tc("extractionError") : status === "insufficient_evidence" ? tc("insufficientEvidence") : "—"}
+      </span>
+    );
   }
   if (type === "boolean") {
     return answer === true ? <span className="text-sm font-medium">{tc("yes")}</span>
@@ -87,56 +84,77 @@ export function ResultAnswer({ result, type, searchQuery = "", clamp = "line-cla
   );
 }
 
-/** How sure the answer is and how well the paper backs it. */
+/** How far to trust an answer, as one quiet line: its confidence and whether the paper backs it. */
 export function ResultMeta({ result }: { result?: ExtractionResultRecord }) {
+  const t = useTranslations("extraction");
   const tc = useTranslations("common");
-  if (!result) return null;
   const status = getCitationStatus(result);
+  // A missing answer already says why in its place, so it needs no second line.
+  if (!result || !result.confidence) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* A missing answer has no confidence worth showing. */}
-      {result.confidence ? <ConfidenceValue value={result.confidence} /> : null}
-      {status && status in CITATION_TONE ? (
-        <StatusChip tone={CITATION_TONE[status as keyof typeof CITATION_TONE]}>
-          {tc(CITATION_LABEL[status as keyof typeof CITATION_LABEL])}
-        </StatusChip>
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+      <span className={cn("font-medium tabular-nums", CONFIDENCE_TEXT[confidenceTone(result.confidence)])}>
+        {Math.round(result.confidence * 100)}% {t("confidence")}
+      </span>
+      {status === "grounded" ? (
+        <span className="inline-flex items-center gap-1 text-muted-foreground">
+          <Quote aria-hidden className="size-3 text-emerald-600 dark:text-emerald-400" />
+          {tc("grounded")}
+        </span>
+      ) : status === "best_effort" ? (
+        <span className="text-muted-foreground">{tc("bestEffort")}</span>
       ) : null}
-    </div>
+    </p>
   );
 }
 
-/** The model's reasoning and the supporting citation, as small icon buttons. */
-export function ResultActions({ result, onCite, searchQuery = "", className }: {
+/**
+ * One answer in a table cell or card: the value and how far to trust it. The
+ * whole cell opens the details, the reasoning and the citation, so no icon has
+ * to explain itself.
+ */
+export function ResultCell({ question, result, type, searchQuery = "", clamp, onCite }: {
+  question: string;
   result?: ExtractionResultRecord;
-  onCite?: () => void;
+  type: string;
   searchQuery?: string;
-  className?: string;
+  clamp?: string;
+  onCite?: () => void;
 }) {
   const tc = useTranslations("common");
-  if (!result) return null;
+  const body = (
+    <>
+      <ResultAnswer result={result} type={type} searchQuery={searchQuery} clamp={clamp} />
+      <ResultMeta result={result} />
+    </>
+  );
+  if (!result) return <div className="space-y-1.5">{body}</div>;
   const hasCitation = getAllCitationLocations(result).length > 0;
-  if (!result.reasoning && !(hasCitation && onCite)) return null;
   return (
-    <div className={cn("flex items-center gap-0.5", className)}>
-      {result.reasoning ? (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-foreground" aria-label={tc("reasoning")} title={tc("reasoning")}>
-              <Maximize2 className="size-3" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 space-y-1 p-4 text-xs leading-relaxed">
-            <p className="font-medium">{tc("reasoning")}</p>
-            <p className="text-muted-foreground"><HighlightedText text={result.reasoning} query={searchQuery} /></p>
-          </PopoverContent>
-        </Popover>
-      ) : null}
-      {hasCitation && onCite ? (
-        <Button variant="ghost" size="icon-xs" onClick={onCite} className="text-muted-foreground hover:text-foreground" aria-label={tc("viewCitation")} title={tc("viewCitation")}>
-          <Quote className="size-3" />
-        </Button>
-      ) : null}
-    </div>
+    <Popover>
+      <PopoverTrigger className="-m-2 block w-[calc(100%+1rem)] space-y-1.5 rounded-md p-2 text-left transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-muted/60">
+        {body}
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-96 space-y-3 p-4">
+        <p className="text-xs text-muted-foreground">{question}</p>
+        <ResultAnswer result={result} type={type} searchQuery={searchQuery} clamp="" />
+        <ResultMeta result={result} />
+        {result.reasoning ? (
+          <div className="space-y-1 border-t border-border/50 pt-3">
+            <p className="text-xs font-medium">{tc("reasoning")}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              <HighlightedText text={result.reasoning} query={searchQuery} />
+            </p>
+          </div>
+        ) : null}
+        {hasCitation && onCite ? (
+          <Button variant="outline" size="sm" className="w-full" onClick={onCite}>
+            <Quote className="size-3.5" />
+            {tc("viewCitation")}
+          </Button>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   );
 }
 

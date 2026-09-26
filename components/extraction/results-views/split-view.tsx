@@ -6,7 +6,6 @@ import { Quote, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
-import { getAvgConfidence } from "@/lib/extraction/filtering";
 import {
   getAllCitationLocations,
   getCitationStatus,
@@ -14,7 +13,7 @@ import {
 import type { CitationLocation } from "@/lib/extraction/citations";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
-import { ConfidenceValue, PaperDetails, ResultAnswer, ResultMeta } from "./result-parts";
+import { answeredConfidence, ConfidenceValue, PaperDetails, ResultAnswer, ResultMeta } from "./result-parts";
 
 interface SplitViewProps {
   papers: PaperWithResults[];
@@ -48,7 +47,7 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenCita
                 <p className="line-clamp-2 text-sm font-medium leading-snug">{paper.title}</p>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   {paper.publicationYear ? <span className="tabular-nums">{paper.publicationYear}</span> : null}
-                  <ConfidenceValue value={getAvgConfidence(paper)} />
+                  {answeredConfidence(paper) !== undefined ? <ConfidenceValue value={answeredConfidence(paper)!} /> : null}
                 </div>
               </button>
             </li>

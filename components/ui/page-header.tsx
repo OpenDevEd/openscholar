@@ -85,7 +85,6 @@ export function PageHeader({
             {infoItems.map((item, index) => (
               <React.Fragment key={`${item.label}-${item.color}`}>
                 <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                  <div className={`w-2 h-2 rounded-full ${item.color} flex-shrink-0`}></div>
                   <span className="break-words">{item.label}</span>
                 </div>
                 {index < infoItems.length - 1 && (

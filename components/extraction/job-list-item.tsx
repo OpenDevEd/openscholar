@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { useTranslations, useFormatter, useNow } from "next-intl";
 import { cn } from "@/lib/utils";
+import { JobStatusIcon } from "./job-status-icon";
 import { FileText, Clock, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -17,26 +18,6 @@ interface JobListItemProps {
   job: ExtractionJob;
   viewMode: ViewMode;
   index: number;
-}
-
-const STATUS_DOT_COLORS: Record<string, string> = {
-  completed: "bg-emerald-500",
-  failed: "bg-destructive",
-  cancelled: "bg-muted-foreground",
-};
-
-const STATUS_STRIPE_COLORS: Record<string, string> = {
-  completed: "bg-emerald-500",
-  failed: "bg-destructive",
-  cancelled: "bg-muted-foreground",
-};
-
-function getStatusDotColor(status: string) {
-  return STATUS_DOT_COLORS[status] ?? "bg-primary animate-pulse";
-}
-
-function getStatusStripeColor(status: string) {
-  return STATUS_STRIPE_COLORS[status] ?? "bg-primary";
 }
 
 export function JobListItem({ job, viewMode, index }: JobListItemProps) {
@@ -85,15 +66,8 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
             "transition-[background-color,border-color,box-shadow] duration-200"
           )}
         >
-          {/* Status dot (hidden in chat mode — no pipeline state) */}
-          {!isChat && (
-            <span
-              role="img"
-              aria-label={getStatusLabel(status)}
-              data-job-status={status}
-              className={cn("w-2 h-2 rounded-full shrink-0", getStatusDotColor(status))}
-            />
-          )}
+          {/* Status icon (hidden in chat mode — no pipeline state) */}
+          {!isChat && <JobStatusIcon status={status} label={getStatusLabel(status)} />}
 
           {/* Mode badge */}
           <Badge
@@ -144,15 +118,8 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
         >
           <div className="p-4">
             <div className="flex items-start gap-3">
-              {/* Status dot (extraction only) */}
-              {!isChat && (
-                <span
-                  role="img"
-                  aria-label={getStatusLabel(status)}
-                  data-job-status={status}
-                  className={cn("w-2 h-2 rounded-full shrink-0 mt-2", getStatusDotColor(status))}
-                />
-              )}
+              {/* Status icon (extraction only) */}
+              {!isChat && <JobStatusIcon status={status} label={getStatusLabel(status)} className="mt-1" />}
 
               <div className="flex-1 min-w-0 space-y-2">
                 {/* Header row: name + mode badge */}
@@ -178,19 +145,6 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
 
                 {/* Metadata row */}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  {!isChat && (
-                    <>
-                      <span className={cn("text-xs font-medium capitalize", {
-                        "text-emerald-600 dark:text-emerald-400": status === "completed",
-                        "text-destructive": status === "failed",
-                        "text-primary": status !== "completed" && status !== "failed" && status !== "cancelled",
-                      })}>
-                        {getStatusLabel(status)}
-                      </span>
-
-                      <span className="w-1 h-1 rounded-full bg-border" />
-                    </>
-                  )}
 
                   <div className="flex items-center gap-1.5">
                     {isChat ? (
@@ -204,8 +158,6 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
                         : tJob("papersCount", { count: totalPapers })}
                     </span>
                   </div>
-
-                  <span className="w-1 h-1 rounded-full bg-border" />
 
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
@@ -238,18 +190,11 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           "transition-[background-color,border-color,box-shadow] duration-200"
         )}
       >
-        {/* Colored top stripe */}
-        <div
-          role={isChat ? undefined : "img"}
-          aria-label={isChat ? undefined : getStatusLabel(status)}
-          data-job-status={isChat ? undefined : status}
-          className={cn("h-[3px]", isChat ? "bg-primary/60" : getStatusStripeColor(status))}
-        />
-
         {/* Content */}
         <div className={cn("flex-1 flex flex-col", isCompact ? "p-3" : "p-4")}>
-          {/* Header: name + mode badge */}
+          {/* Header: status, name and mode badge */}
           <div className="flex items-start gap-2">
+            {!isChat && <JobStatusIcon status={status} label={getStatusLabel(status)} className="mt-0.5" />}
             <h3 className={cn(
               "flex-1 font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2",
               isCompact ? "text-sm" : "text-base"

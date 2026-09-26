@@ -1,5 +1,7 @@
 "use client";
 
+import type { HTMLAttributes } from "react";
+import { CircleCheck, CircleDashed, CircleX, LoaderCircle, TriangleAlert, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,14 +19,32 @@ const STATUS_TONE = {
 
 export type StatusTone = keyof typeof STATUS_TONE;
 
-/** Small dot used next to rail items. */
-export const STATUS_DOT: Record<StatusTone, string> = {
-  neutral: "bg-muted-foreground",
-  running: "bg-primary animate-pulse",
-  success: "bg-emerald-500",
-  warning: "bg-amber-500",
-  danger: "bg-destructive",
+const STATUS_ICON: Record<StatusTone, { icon: LucideIcon; className: string }> = {
+  neutral: { icon: CircleDashed, className: "text-muted-foreground" },
+  running: { icon: LoaderCircle, className: "animate-spin text-primary motion-reduce:animate-none" },
+  success: { icon: CircleCheck, className: "text-emerald-600 dark:text-emerald-400" },
+  warning: { icon: TriangleAlert, className: "text-amber-600 dark:text-amber-400" },
+  danger: { icon: CircleX, className: "text-destructive" },
 };
+
+/**
+ * A state as a coloured icon, never a dot: a check when done, a spinner while
+ * running, a cross when it failed. The label is its accessible name and tooltip.
+ * Pass `icon` for a state with its own sign, such as paused.
+ */
+export function StatusIcon({ tone, label, icon, className, ...rest }: HTMLAttributes<HTMLSpanElement> & {
+  tone: StatusTone;
+  label: string;
+  icon?: LucideIcon;
+}) {
+  const { icon: toneIcon, className: toneClass } = STATUS_ICON[tone];
+  const Icon = icon ?? toneIcon;
+  return (
+    <span role="img" aria-label={label} title={label} className={cn("inline-flex shrink-0", className)} {...rest}>
+      <Icon aria-hidden className={cn("size-4", toneClass)} />
+    </span>
+  );
+}
 
 export function StatusChip({
   tone,

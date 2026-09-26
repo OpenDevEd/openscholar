@@ -33,8 +33,7 @@ import posthog from "posthog-js";
 import { PageWrapper } from "@/components/PageWrapper";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
-import { BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
-import { STATUS_DOT, StatusChip, type StatusTone } from "@/components/evidence-libraries/configuration/status-chip";
+import { JobStatusIcon } from "@/components/extraction/job-status-icon";
 import { CommandCenterContainer } from "@/components/command-center";
 import { TwoColumnLayout } from "@/components/layout/two-column-layout";
 import { cn } from "@/lib/utils";
@@ -83,18 +82,6 @@ import {
   type Question,
 } from "@/lib/extraction/filtering";
 import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
-
-/** How a job's state reads in the page bar. */
-const JOB_STATUS_TONE: Record<string, StatusTone> = {
-  pending: "running",
-  downloading_pdfs: "running",
-  extracting: "running",
-  completed: "success",
-  failed: "danger",
-  cancelled: "neutral",
-  paused: "neutral",
-  creditsExhausted: "warning",
-};
 
 export default function JobDetailPage() {
   const toast = useAppToast();
@@ -522,6 +509,15 @@ export default function JobDetailPage() {
   }
 
   const { job } = jobDetails;
+  const statusLabel =
+    ({
+      pending: tJob("statusPending"),
+      downloading_pdfs: tJob("statusDownloadingPdfs"),
+      extracting: tJob("statusExtracting"),
+      completed: tJob("statusCompleted"),
+      failed: tJob("statusFailed"),
+      cancelled: tJob("statusCancelled"),
+    } as Record<string, string>)[job.status ?? "pending"] ?? (job.status ?? "pending").replace(/_/g, " ");
   const jobProgressSafe = jobProgress?.status === "ok" ? jobProgress : null;
   const resolvedProgress = jobProgressSafe
     ? {
@@ -587,21 +583,10 @@ export default function JobDetailPage() {
               backHref="/extraction"
               backLabel={tError("backToJobs")}
               titleAside={
-                <StatusChip tone={JOB_STATUS_TONE[job.status ?? "pending"] ?? "neutral"}>
-                  <span aria-hidden className={cn("size-1.5 rounded-full", STATUS_DOT[JOB_STATUS_TONE[job.status ?? "pending"] ?? "neutral"])} />
-                  <span className={BAR_LABEL}>
-                    {(
-                        {
-                          pending: tJob("statusPending"),
-                          downloading_pdfs: tJob("statusDownloadingPdfs"),
-                          extracting: tJob("statusExtracting"),
-                          completed: tJob("statusCompleted"),
-                          failed: tJob("statusFailed"),
-                          cancelled: tJob("statusCancelled"),
-                        } as Record<string, string>
-                    )[job.status ?? "pending"] ?? (job.status ?? "pending").replace(/_/g, " ")}
-                  </span>
-                </StatusChip>
+                <JobStatusIcon
+                  status={job.status ?? "pending"}
+                  label={statusLabel}
+                />
               }
               tabs={<ResultsViewSwitch value={viewMode} onChange={setViewMode} />}
               filters={
@@ -774,7 +759,17 @@ export default function JobDetailPage() {
               processed={resolvedProgress.processed}
               failed={resolvedProgress.failed}
               total={resolvedProgress.total}
+              complete={job.status === "completed"}
             />
+            {job.status === "completed" && (
+              <MixedSuccessSummary
+                jobId={jobId}
+                onShowFailures={() => {
+                  setFilters((prev) => ({ ...prev, statusFilters: new Set([...prev.statusFilters, "has-errors"]) }));
+                  setCurrentPage(1);
+                }}
+              />
+            )}
           </div>
 
           {/* Status banner stack. Each child self-hides (returns null)
@@ -806,9 +801,6 @@ export default function JobDetailPage() {
               <RetrySummary jobId={jobId} usePdfs={job.usePdfs ?? false} />
             )}
 
-            {job.status === "completed" && (
-              <MixedSuccessSummary jobId={jobId} />
-            )}
 
             <NowProcessing jobId={jobId} />
           </div>

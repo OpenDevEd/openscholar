@@ -919,9 +919,9 @@
     },
     "mixedSuccess": {
       "title": "Terminé avec succès partiel",
-      "answeredOverTotal": "{answered} questions répondues sur {total}.",
-      "failedTotal": "{count, plural, one {# échec :} other {# échecs :}}",
-      "retryableHint": "{count, plural, one {# échec est récupérable} other {# échecs sont récupérables}}."
+      "answeredOverTotal": "{answered} questions répondues sur {total}",
+      "retryableHint": "{count, plural, one {# échec est récupérable} other {# échecs sont récupérables}}",
+      "showFailed": "Afficher les articles en échec"
     },
     "pleaseSelectSource": "Veuillez sélectionner au moins une source",
     "pleaseCompleteSteps": "Veuillez compléter toutes les étapes",

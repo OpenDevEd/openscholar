@@ -919,9 +919,9 @@
     },
     "mixedSuccess": {
       "title": "部分成功完成",
-      "answeredOverTotal": "{total} 个问题中已回答 {answered} 个。",
-      "failedTotal": "{count, plural, one {# 个失败：} other {# 个失败：}}",
-      "retryableHint": "{count, plural, one {# 个失败可重试} other {# 个失败可重试}}。"
+      "answeredOverTotal": "{total} 个问题中已回答 {answered} 个",
+      "retryableHint": "{count, plural, one {# 个失败可重试} other {# 个失败可重试}}",
+      "showFailed": "显示失败的论文"
     },
     "pleaseSelectSource": "请至少选择一个来源",
     "pleaseCompleteSteps": "请完成所有步骤",

@@ -919,9 +919,9 @@
     },
     "mixedSuccess": {
       "title": "一部成功で完了",
-      "answeredOverTotal": "{total} 件中 {answered} 件の質問に回答済み。",
-      "failedTotal": "{count, plural, one {# 件失敗:} other {# 件失敗:}}",
-      "retryableHint": "{count, plural, one {# 件の失敗は再試行可能} other {# 件の失敗は再試行可能}}です。"
+      "answeredOverTotal": "{total} 件中 {answered} 件の質問に回答済み",
+      "retryableHint": "{count, plural, one {# 件の失敗は再試行可能} other {# 件の失敗は再試行可能}}です",
+      "showFailed": "失敗した論文を表示"
     },
     "pleaseSelectSource": "少なくとも1つのソースを選択してください",
     "pleaseCompleteSteps": "すべてのステップを完了してください",

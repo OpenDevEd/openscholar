@@ -1,5 +1,6 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
 import {
   Children,
   Fragment,
@@ -545,11 +546,8 @@ export const MessageRow = memo(function MessageRow({
       )}
     >
       {!isUser && isFirstInGroup ? (
-        <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-          <span
-            className="inline-block size-1 rounded-full bg-primary"
-            aria-hidden
-          />
+        <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <Sparkles className="size-3.5 text-primary" aria-hidden />
           <span>Assistant</span>
         </div>
       ) : null}

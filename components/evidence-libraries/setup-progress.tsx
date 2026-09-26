@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { ExternalLink, Settings } from "lucide-react";
+import { ExternalLink, Settings , CircleDashed } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -183,7 +183,7 @@ function DraftStepRow({ step }: { step: SetupStep }) {
   return (
     <li data-step={step.key} data-state={step.status} className="flex items-start gap-3 p-3">
       <span className="flex size-5 shrink-0 items-center justify-center">
-        <span className="size-2 rounded-full bg-muted-foreground/50" />
+        <CircleDashed aria-hidden className="size-3.5 text-muted-foreground" />
       </span>
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="text-sm font-medium text-muted-foreground">{t(`steps.${step.key}.name`)}</p>

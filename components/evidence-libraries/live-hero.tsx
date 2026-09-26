@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, ExternalLink, RefreshCw, X } from "lucide-react";
+import { Check, Copy, ExternalLink, RefreshCw, X , CircleDashed } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -237,5 +237,5 @@ function StepMark({ status, emphasis }: { status: SetupStep["status"]; emphasis:
     return <Spinner role="presentation" aria-label={undefined} className="size-3.5 text-primary motion-reduce:animate-none" />;
   }
   if (status === "failed") return <X className="size-3.5 text-destructive" strokeWidth={3} aria-hidden />;
-  return <span aria-hidden className="mx-1 size-1.5 rounded-full bg-muted-foreground/50" />;
+  return <CircleDashed aria-hidden className="size-3.5 text-muted-foreground" />;
 }

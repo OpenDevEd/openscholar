@@ -26,7 +26,7 @@ import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { buildCitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { HighlightedText } from "./highlighted-text";
 import { PaperQuestionProgress } from "@/components/extraction/paper-question-progress";
-import { PaperDetails, ResultActions, ResultAnswer, ResultMeta } from "./result-parts";
+import { PaperDetails, ResultCell } from "./result-parts";
 
 interface TableViewProps {
   papers: PaperWithResults[];
@@ -78,7 +78,7 @@ export const TableView = memo(function TableView({
     <Table className="bg-card">
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead className="sticky left-0 z-10 w-[220px] min-w-[220px] bg-card py-2 pl-4 align-bottom sm:w-[320px] sm:min-w-[320px] md:pl-6">
+          <TableHead className="sticky left-0 z-10 w-[220px] min-w-[220px] bg-card pl-4 sm:w-[320px] sm:min-w-[320px] md:pl-6">
             <div className="flex items-center gap-3">
               <Checkbox
                 checked={allSelected ? true : someSelected ? "indeterminate" : false}
@@ -93,9 +93,9 @@ export const TableView = memo(function TableView({
             </TableHead>
           )}
           {questions.map((q) => (
-            <TableHead key={q.key} className="min-w-[240px] max-w-[320px] whitespace-normal py-2 align-bottom">
-              <div className="flex items-start gap-1.5">
-                <span className="line-clamp-2" title={q.question}>{q.question}</span>
+            <TableHead key={q.key} className="min-w-[240px] max-w-[320px] whitespace-normal">
+              <div className="flex items-center gap-1.5">
+                <span className="line-clamp-1" title={q.question}>{q.question}</span>
                 {q.description && (
                   <Popover>
                     <PopoverTrigger aria-label={tc("details")} className="mt-0.5 shrink-0 text-muted-foreground/60 hover:text-muted-foreground">
@@ -156,32 +156,26 @@ export const TableView = memo(function TableView({
                 const result = paper.results.find((r) => r.questionKey === q.key);
                 return (
                   <TableCell key={q.key} className="max-w-[320px] py-4 align-top whitespace-normal" onClick={(e) => e.stopPropagation()}>
-                    <div className="space-y-1.5">
-                      <ResultAnswer result={result} type={q.type} searchQuery={searchQuery} />
-                      <div className="flex items-center justify-between gap-2">
-                        <ResultMeta result={result} />
-                        {/* Shown on hover or keyboard focus, so rows stay quiet. */}
-                        <ResultActions
-                          result={result}
-                          searchQuery={searchQuery}
-                          className="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
-                          onCite={() => {
-                            if (!result) return;
-                            const citations = getAllCitationLocations(result);
-                            if (citations.length === 0) return;
-                            const payload = buildCitationPanelPayload({
-                              paperId: paper._id,
-                              paperTitle: paper.title,
-                              citations,
-                              citationStatus: getCitationStatus(result),
-                              answer: result.answer,
-                              questionText: q.question,
-                            });
-                            if (payload) onOpenCitationPanel(payload);
-                          }}
-                        />
-                      </div>
-                    </div>
+                    <ResultCell
+                      question={q.question}
+                      result={result}
+                      type={q.type}
+                      searchQuery={searchQuery}
+                      onCite={() => {
+                        if (!result) return;
+                        const citations = getAllCitationLocations(result);
+                        if (citations.length === 0) return;
+                        const payload = buildCitationPanelPayload({
+                          paperId: paper._id,
+                          paperTitle: paper.title,
+                          citations,
+                          citationStatus: getCitationStatus(result),
+                          answer: result.answer,
+                          questionText: q.question,
+                        });
+                        if (payload) onOpenCitationPanel(payload);
+                      }}
+                    />
                   </TableCell>
                 );
               })}
