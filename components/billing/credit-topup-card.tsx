@@ -45,10 +45,12 @@ export function CreditTopupCard({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: idx * 0.05 }}
+            // Framer owns transform here, so the hover lift is Framer's too.
+            whileHover={{ y: -2, transition: { duration: 0.2 } }}
             data-bundle-key={bundle.key}
             data-hero={isHero ? "true" : undefined}
             className={cn(
-              "group relative flex flex-col overflow-hidden rounded-2xl p-6 transition-all duration-200 hover:-translate-y-0.5",
+              "group relative flex flex-col overflow-hidden rounded-2xl p-6 transition-[background-color,box-shadow] duration-200",
               isHero
                 ? "text-primary-foreground bg-[radial-gradient(120%_120%_at_0%_0%,var(--primary-400)_0%,var(--primary-600)_55%,var(--primary-700)_100%)] shadow-[var(--shadow-glow)] hover:shadow-xl"
                 : "bg-muted/25 hover:bg-muted/50 hover:shadow-md",

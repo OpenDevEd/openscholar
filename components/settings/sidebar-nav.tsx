@@ -36,7 +36,7 @@ export function SidebarNav({ className, items, ...props }: SidebarNavProps) {
             <motion.div
               className={cn(
                 buttonVariants({ variant: "ghost" }),
-                "w-full justify-start gap-3 relative overflow-hidden transition-all duration-200",
+                "w-full justify-start gap-3 relative overflow-hidden transition-[color,background-color,box-shadow] duration-200",
                 isActive
                   ? "bg-sidebar-accent/80 text-sidebar-primary font-medium shadow-sm hover:bg-sidebar-accent/90"
                   : "hover:bg-sidebar-accent/40 text-muted-foreground hover:text-foreground"

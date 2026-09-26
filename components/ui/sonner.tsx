@@ -54,7 +54,7 @@ function CustomToast({
         "relative flex min-w-[300px] max-w-[400px] items-start gap-3 overflow-hidden rounded-xl border p-3 pl-5",
         "bg-[oklch(0.96_0.02_25/0.8)] border-[oklch(0.85_0.08_25/0.5)]",
         "dark:bg-[oklch(0.22_0.02_25/0.9)] dark:border-[oklch(0.35_0.08_25/0.5)]",
-        "shadow-md transition-all duration-200 ease-out hover:shadow-lg"
+        "shadow-md transition-shadow duration-200 ease-out hover:shadow-lg"
       )}
     >
       <ToastGradientBar
@@ -79,7 +79,7 @@ function CustomToast({
               }}
               className={cn(
                 "inline-flex h-7 w-fit items-center justify-center gap-1.5 rounded-md border-0 px-3 text-xs font-medium",
-                "bg-primary text-primary-foreground transition-all duration-150 hover:bg-[oklch(0.62_0.16_52)]",
+                "bg-primary text-primary-foreground transition-colors duration-150 hover:bg-[oklch(0.62_0.16_52)]",
                 "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               )}
             >
@@ -96,7 +96,7 @@ function CustomToast({
                   }}
                   className={cn(
                     "inline-flex h-7 w-fit items-center justify-center gap-1.5 rounded-md px-3 text-xs font-medium",
-                    "bg-transparent text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-accent-foreground",
+                    "bg-transparent text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-accent-foreground",
                     "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   )}
                 >
@@ -113,7 +113,7 @@ function CustomToast({
         onClick={closeToast}
         className={cn(
           "absolute right-2 top-2 flex h-6 w-6 scale-90 items-center justify-center rounded-md border-0 p-0",
-          "bg-transparent text-muted-foreground opacity-0 transition-all duration-150",
+          "bg-transparent text-muted-foreground opacity-0 transition-[opacity,scale,background-color,color] duration-150",
           "cursor-pointer hover:bg-accent hover:text-accent-foreground",
           "focus-visible:scale-100 focus-visible:opacity-100 focus-visible:outline-none",
           "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",

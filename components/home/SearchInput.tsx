@@ -113,7 +113,7 @@ export function SearchInput({
         <motion.div
           layout
           className={cn(
-            "relative rounded-2xl p-1 transition-all duration-300",
+            "relative rounded-2xl p-1 transition-[background-color,border-color,box-shadow] duration-300",
             effectiveMode === "research"
               ? "bg-gradient-to-br from-primary/20 via-primary/10 to-transparent shadow-[0_0_30px_-5px_oklch(0.7_0.17_54/0.2)]"
               : "bg-background/40 shadow-xl border border-white/20 dark:border-white/5",
@@ -262,7 +262,7 @@ export function SearchInput({
                 animate="animate"
                 exit="exit"
                 transition={hintAnimTransition}
-                className="h-9 flex items-center justify-center gap-2.5 rounded-full border border-border/40 bg-muted/50 px-3 text-xs text-muted-foreground transition-all duration-200 hover:border-primary/25 hover:bg-muted/70 hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 sm:text-sm"
+                className="h-9 flex items-center justify-center gap-2.5 rounded-full border border-border/40 bg-muted/50 px-3 text-xs text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-200 hover:border-primary/25 hover:bg-muted/70 hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 sm:text-sm"
               >
                 <Wand2 className="h-3.5 w-3.5 text-foreground/70" />
                 <span>{t("questionShortcutHint")}</span>
