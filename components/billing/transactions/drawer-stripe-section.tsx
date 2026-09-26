@@ -90,7 +90,7 @@ export function DrawerStripeSection({
               {t(labelKey)}
             </dt>
             <dd className="flex min-w-0 flex-1 items-center gap-1">
-              <TooltipHint label={value}>
+              <TooltipHint label={value} onlyWhenClipped>
                 <code className="truncate font-mono text-[11px]">{value}</code>
               </TooltipHint>
               <Button

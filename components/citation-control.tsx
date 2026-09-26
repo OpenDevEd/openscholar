@@ -175,7 +175,7 @@ export function CitationControl({
       onKeyDown={(event) => event.stopPropagation()}
     >
       <Popover open={open} onOpenChange={setOpen}>
-        <TooltipHint label={t("cite")}>
+        <TooltipHint label={compact ? t("cite") : undefined}>
           <PopoverTrigger asChild>
             <Button
               onPointerEnter={prepare}

@@ -69,7 +69,7 @@ export function ResultAnswer({ result, type, searchQuery = "", clamp = "line-cla
     return (
       <div className="flex flex-wrap gap-1">
         {answer.map((item) => (
-          <TooltipHint key={String(item)} label={String(item)}>
+          <TooltipHint key={String(item)} label={String(item)} onlyWhenClipped>
             <Badge variant="outline" className="max-w-full text-xs font-normal">
               <span className="truncate"><HighlightedText text={String(item)} query={searchQuery} /></span>
             </Badge>
@@ -149,7 +149,7 @@ export function ResultCell({ result, type, searchQuery = "", clamp, selected = f
       )}
     >
       {label ? (
-        <TooltipHint label={label}>
+        <TooltipHint label={label} onlyWhenClipped>
           <span className="block truncate text-xs text-muted-foreground">{label}</span>
         </TooltipHint>
       ) : null}

@@ -62,7 +62,7 @@ export function DrawerMetadataTable({ metadata }: Props) {
               >
                 {key}
               </dt>
-              <TooltipHint label={value}>
+              <TooltipHint label={value} onlyWhenClipped>
                 <dd className="truncate font-mono">{value}</dd>
               </TooltipHint>
             </Fragment>

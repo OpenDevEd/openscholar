@@ -80,13 +80,13 @@ export function OptionPicker({
                     >
                       <Check className={cn("size-4", selected.includes(option.id) ? "opacity-100" : "opacity-0")} />
                       <span className="min-w-0 flex-1">
-                        <TooltipHint label={option.name}>
+                        <TooltipHint label={option.name} onlyWhenClipped>
                           <span className="block truncate">
                             {option.name}
                           </span>
                         </TooltipHint>
                         {option.detail ? (
-                          <TooltipHint label={option.detail}>
+                          <TooltipHint label={option.detail} onlyWhenClipped>
                             <span className="block truncate text-xs text-muted-foreground">
                               {option.detail}
                             </span>
@@ -105,7 +105,7 @@ export function OptionPicker({
         <div className="flex flex-wrap gap-1.5">
           {selected.map((id) => (
             <span key={id} className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
-              <TooltipHint label={names[id] ?? id}>
+              <TooltipHint label={names[id] ?? id} onlyWhenClipped>
                 <span className="truncate">
                   {names[id] ?? id}
                 </span>

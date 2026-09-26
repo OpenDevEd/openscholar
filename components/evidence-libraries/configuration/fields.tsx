@@ -1019,31 +1019,27 @@ export function ReadOnlyValue({
   /** Show the lock. Off for values that are only derived, not yet fixed. */
   locked?: boolean;
   className?: string;
-  /** Hover text. Use it when a long value has to be truncated. */
+  /** Hover text while the value is cut off. Defaults to a text value itself. */
   title?: string;
 }) {
-  const t = useTranslations("evidenceLibraryConfiguration.fields");
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div
-          id={id}
-          role="textbox"
-          aria-readonly="true"
-          aria-labelledby={id ? labelId(id) : undefined}
-          tabIndex={0}
-          className={cn(
-            "flex h-9 w-full cursor-default items-center gap-2 rounded-md border border-dashed border-border/60 bg-muted/40 px-3 text-sm text-muted-foreground",
-            mono && "font-mono",
-            className,
-          )}
-        >
-          <span className="min-w-0 flex-1 truncate">{value}</span>
-          {locked ? <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
-        </div>
-      </TooltipTrigger>
-      <TooltipContent>{title ?? t("fixed")}</TooltipContent>
-    </Tooltip>
+    <TooltipHint label={title ?? (typeof value === "string" ? value : undefined)} onlyWhenClipped>
+      <div
+        id={id}
+        role="textbox"
+        aria-readonly="true"
+        aria-labelledby={id ? labelId(id) : undefined}
+        tabIndex={0}
+        className={cn(
+          "flex h-9 w-full cursor-default items-center gap-2 rounded-md border border-dashed border-border/60 bg-muted/40 px-3 text-sm text-muted-foreground",
+          mono && "font-mono",
+          className,
+        )}
+      >
+        <span className="min-w-0 flex-1 truncate">{value}</span>
+        {locked ? <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
+      </div>
+    </TooltipHint>
   );
 }
 

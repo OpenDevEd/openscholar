@@ -484,17 +484,15 @@ export function CitationBadge({
   }
 
   return (
-    <TooltipHint label={label}>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onClick}
-        className={cn("flex items-center gap-2 flex-shrink-0", colorClasses[color])}
-      >
-        <Icon className="h-4 w-4" />
-        <span className="text-sm">{label}: {format.number(count)}</span>
-      </Button>
-    </TooltipHint>
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onClick}
+      className={cn("flex items-center gap-2 flex-shrink-0", colorClasses[color])}
+    >
+      <Icon className="h-4 w-4" />
+      <span className="text-sm">{label}: {format.number(count)}</span>
+    </Button>
   );
 }
 
@@ -534,23 +532,21 @@ export function OpenAccessBadge({
   }
 
   return (
-    <TooltipHint label={tc("openAccessPdf")}>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => window.open(oaUrl, "_blank")}
-        onMouseDown={(e) => {
-          if (e.button === 1) {
-            e.preventDefault();
-            window.open(oaUrl, "_blank");
-          }
-        }}
-        className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50 cursor-pointer flex-shrink-0"
-      >
-        <FileText className="h-4 w-4" />
-        <span>{tc("pdf")}</span>
-      </Button>
-    </TooltipHint>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => window.open(oaUrl, "_blank")}
+      onMouseDown={(e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          window.open(oaUrl, "_blank");
+        }
+      }}
+      className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50 cursor-pointer flex-shrink-0"
+    >
+      <FileText className="h-4 w-4" />
+      <span>{tc("pdf")}</span>
+    </Button>
   );
 }
 
@@ -591,23 +587,21 @@ export function DOIBadge({
   }
 
   return (
-    <TooltipHint label={tAcc("openDoi")}>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => window.open(doiUrl, "_blank")}
-        onMouseDown={(e) => {
-          if (e.button === 1) {
-            e.preventDefault();
-            window.open(doiUrl, "_blank");
-          }
-        }}
-        className="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 cursor-pointer flex-shrink-0"
-      >
-        <ExternalLink className="h-3 w-3" />
-        <span className="text-xs font-mono">{shortDoi}</span>
-      </Button>
-    </TooltipHint>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => window.open(doiUrl, "_blank")}
+      onMouseDown={(e) => {
+        if (e.button === 1) {
+          e.preventDefault();
+          window.open(doiUrl, "_blank");
+        }
+      }}
+      className="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 cursor-pointer flex-shrink-0"
+    >
+      <ExternalLink className="h-3 w-3" />
+      <span className="text-xs font-mono">{shortDoi}</span>
+    </Button>
   );
 }
 

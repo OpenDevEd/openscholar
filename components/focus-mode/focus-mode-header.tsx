@@ -1,7 +1,6 @@
 import { CitationControl } from "@/components/citation-control";
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { TooltipHint } from "@/components/ui/tooltip";
 import {
   SheetHeader,
   SheetTitle,
@@ -158,41 +157,31 @@ export function FocusModeHeader({
           <div className="w-px h-4 bg-border mx-1 md:hidden"></div>
 
           <div className="flex items-center gap-1">
-            <TooltipHint
-              label={
+            <Button
+              variant={showTranslated ? "outline-primary" : "outline"}
+              size="sm"
+              onClick={onToggleTranslation}
+              aria-label={
                 showTranslated
                   ? tFocus("showOriginal")
                   : tFocus("showTranslation")
               }
+              disabled={
+                !translatedContent ||
+                translatedContent.noTranslationNeeded
+              }
             >
-              <span className="inline-flex">
-                <Button
-                  variant={showTranslated ? "outline-primary" : "outline"}
-                  size="sm"
-                  onClick={onToggleTranslation}
-                  aria-label={
-                    showTranslated
-                      ? tFocus("showOriginal")
-                      : tFocus("showTranslation")
-                  }
-                  disabled={
-                    !translatedContent ||
-                    translatedContent.noTranslationNeeded
-                  }
-                >
-                  {isTranslating ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <>
-                      <Globe className="h-3 w-3 md:mr-1" />
-                      <span className="hidden sm:inline">
-                        {showTranslated ? tFocus("original") : tFocus("translation")}
-                      </span>
-                    </>
-                  )}
-                </Button>
-              </span>
-            </TooltipHint>
+              {isTranslating ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <>
+                  <Globe className="h-3 w-3 md:mr-1" />
+                  <span className="hidden sm:inline">
+                    {showTranslated ? tFocus("original") : tFocus("translation")}
+                  </span>
+                </>
+              )}
+            </Button>
             <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
               T
             </span>

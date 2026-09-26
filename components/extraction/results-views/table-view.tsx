@@ -123,7 +123,7 @@ export const TableView = memo(function TableView({
             {questions.map((q) => (
               <TableHead key={q.key} className="min-w-[240px] max-w-[320px] whitespace-normal">
                 <div className="flex items-center gap-1.5">
-                  <TooltipHint label={q.question}>
+                  <TooltipHint label={q.question} onlyWhenClipped>
                     <span className="line-clamp-1">{q.question}</span>
                   </TooltipHint>
                   {q.description && (
@@ -165,7 +165,7 @@ export const TableView = memo(function TableView({
                       className="mt-0.5"
                     />
                     <div className="min-w-0 space-y-1.5">
-                      <TooltipHint label={paper.title}>
+                      <TooltipHint label={paper.title} onlyWhenClipped>
                         <p className="line-clamp-4 text-sm font-medium leading-snug">
                           <HighlightedText text={paper.title} query={searchQuery} />
                         </p>

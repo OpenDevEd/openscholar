@@ -196,7 +196,7 @@ function SourceRowImpl({
             data-paper-meta
           >
             {row.venueName?.trim() && (
-              <TooltipHint label={row.venueName}>
+              <TooltipHint label={row.venueName} onlyWhenClipped>
                 <span
                   className="truncate italic text-foreground/85"
                   data-paper-venue

@@ -568,7 +568,7 @@ export function HistoryItem({
 
             {/* Research question */}
             {latestQuestion && (
-              <TooltipHint label={latestQuestion}>
+              <TooltipHint label={latestQuestion} onlyWhenClipped>
                 <p className="text-xs text-muted-foreground leading-tight truncate">
                   <span className="opacity-60">{tc("questionPrefix")}</span> {latestQuestion}
                 </p>

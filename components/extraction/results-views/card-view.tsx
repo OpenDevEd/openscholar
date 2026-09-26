@@ -84,7 +84,7 @@ export const CardView = memo(function CardView({
                 className="mt-0.5"
               />
               <div className="min-w-0 flex-1 space-y-1">
-                <TooltipHint label={paper.title}>
+                <TooltipHint label={paper.title} onlyWhenClipped>
                   <p className="line-clamp-2 text-sm font-medium leading-snug">{paper.title}</p>
                 </TooltipHint>
                 <PaperDetails paper={paper} pdfEnabled={pdfEnabled} />

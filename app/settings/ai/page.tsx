@@ -50,7 +50,6 @@ import {
 } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForResolvedTier } from "@/lib/feature-flags/hook";
 import type { AIProvider } from "@/lib/types/ai.types";
-import { TooltipHint } from "@/components/ui/tooltip";
 
 type ModelCatalogOption =
   (typeof api.models.queries.listCatalogOptions)["_returnType"][number];
@@ -365,12 +364,10 @@ export default function AISettingsPage() {
                     const Icon = p.icon;
                     const sel = provider === p.id;
                     return (
-                      <TooltipHint key={p.id} label={p.name}>
-                        <button type="button" aria-label={p.name} onClick={() => handleProviderChange(p.id)} className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-all", sel ? "bg-muted font-medium shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-                          <Icon className={cn("h-4 w-4", sel ? p.color : "")} />
-                          <span className="hidden sm:inline">{p.name}</span>
-                        </button>
-                      </TooltipHint>
+                      <button key={p.id} type="button" aria-label={p.name} onClick={() => handleProviderChange(p.id)} className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-all", sel ? "bg-muted font-medium shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                        <Icon className={cn("h-4 w-4", sel ? p.color : "")} />
+                        <span className="hidden sm:inline">{p.name}</span>
+                      </button>
                     );
                   })}
                 </div>

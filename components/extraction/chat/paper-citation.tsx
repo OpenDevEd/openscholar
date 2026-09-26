@@ -167,7 +167,7 @@ export function PaperCitation({ index }: PaperCitationProps) {
 
   if (state === "unresolved") {
     return (
-      <TooltipHint label={`${index}?`}>
+      <TooltipHint label={t("chatCitationUnresolved", { index })}>
         <span
           className={PILL_CLASS_BY_STATE.unresolved}
           data-citation-state="unresolved"
@@ -244,72 +244,66 @@ export function PaperCitation({ index }: PaperCitationProps) {
           {(openalexUrl || doiUrl || pdfUrl) && (
             <div className="flex flex-wrap items-center gap-1.5">
               {pdfUrl ? (
-                <TooltipHint label={tCommon("openAccessPdf")}>
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "h-7 px-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50",
-                    )}
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-7 px-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50",
+                  )}
+                >
+                  <a
+                    href={pdfUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-paper-card-link="pdf"
                   >
-                    <a
-                      href={pdfUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      data-paper-card-link="pdf"
-                    >
-                      <FileText className="h-3.5 w-3.5" />
-                      <span className="text-xs">{tCommon("pdf")}</span>
-                    </a>
-                  </Button>
-                </TooltipHint>
+                    <FileText className="h-3.5 w-3.5" />
+                    <span className="text-xs">{tCommon("pdf")}</span>
+                  </a>
+                </Button>
               ) : null}
               {doiUrl ? (
-                <TooltipHint label={tAcc("openDoi")}>
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50",
-                    )}
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50",
+                  )}
+                >
+                  <a
+                    href={doiUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-paper-card-link="doi"
                   >
-                    <a
-                      href={doiUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      data-paper-card-link="doi"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      <span className="text-xs font-mono max-w-[12rem] truncate">
-                        {shortDoi}
-                      </span>
-                    </a>
-                  </Button>
-                </TooltipHint>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span className="text-xs font-mono max-w-[12rem] truncate">
+                      {shortDoi}
+                    </span>
+                  </a>
+                </Button>
               ) : null}
               {openalexUrl ? (
-                <TooltipHint label={t("chatCitationOpenOpenAlex")}>
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "h-7 px-2 text-amber-700 border-amber-200 hover:bg-amber-50 hover:border-amber-300 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-950/50",
-                    )}
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-7 px-2 text-amber-700 border-amber-200 hover:bg-amber-50 hover:border-amber-300 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-950/50",
+                  )}
+                >
+                  <a
+                    href={openalexUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-paper-card-link="openalex"
                   >
-                    <a
-                      href={openalexUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      data-paper-card-link="openalex"
-                    >
-                      <OpenAlexIcon className="h-3.5 w-3.5" />
-                      <span className="text-xs">OpenAlex</span>
-                    </a>
-                  </Button>
-                </TooltipHint>
+                    <OpenAlexIcon className="h-3.5 w-3.5" />
+                    <span className="text-xs">OpenAlex</span>
+                  </a>
+                </Button>
               ) : null}
             </div>
           )}

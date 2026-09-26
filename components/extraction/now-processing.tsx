@@ -61,7 +61,7 @@ export function NowProcessing({ jobId }: NowProcessingProps) {
       <span className="font-medium text-foreground">
         {t("prefix")}
       </span>
-      <TooltipHint label={data.paperTitle}>
+      <TooltipHint label={data.paperTitle} onlyWhenClipped>
         <span className="truncate max-w-[48ch]">
           {data.paperTitle}
         </span>

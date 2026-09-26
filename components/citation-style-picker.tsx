@@ -238,7 +238,7 @@ export function CitationStylePicker({
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <TooltipHint label={selected?.label ?? t("style")}>
+      <TooltipHint label={selected?.label ?? t("style")} onlyWhenClipped>
         <PopoverTrigger asChild>
           <Button
             size="sm"
