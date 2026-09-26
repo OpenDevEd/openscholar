@@ -1,7 +1,7 @@
 import { OrganizationFeatureGate } from "@/components/auth/organization-feature-gate";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { ExtractionAccessGate } from "@/components/extraction/extraction-access-gate";
+import { ExtractionAccessGate, ExtractionLoading } from "@/components/extraction/extraction-access-gate";
 
 export async function generateMetadata(): Promise<Metadata> {
   const [t, tc, te] = await Promise.all([
@@ -24,5 +24,5 @@ export default function ExtractionLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <OrganizationFeatureGate feature="extraction"><ExtractionAccessGate>{children}</ExtractionAccessGate></OrganizationFeatureGate>;
+  return <OrganizationFeatureGate feature="extraction" fallback={<ExtractionLoading />}><ExtractionAccessGate>{children}</ExtractionAccessGate></OrganizationFeatureGate>;
 }

@@ -26,7 +26,8 @@ export function PanelHeader({
   filters,
   children,
 }: {
-  icon: LucideIcon;
+  /** Null while the page is still loading and its kind is not known yet. */
+  icon: LucideIcon | null;
   /** A library page: its favicon, or null for the OpenScholar one. Leave undefined for the icon. */
   image?: string | null;
   title: string;
@@ -42,7 +43,7 @@ export function PanelHeader({
   /** Actions. */
   children?: ReactNode;
 }) {
-  const icon = <Icon aria-hidden className="size-4.5 shrink-0 text-primary" />;
+  const icon = Icon ? <Icon aria-hidden className="size-4.5 shrink-0 text-primary" /> : null;
   return (
     <div className="flex h-16 items-center gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-2 @3xl:flex-initial">
@@ -61,7 +62,7 @@ export function PanelHeader({
             fallback={icon}
           />
         ) : icon}
-        <h1 className="truncate text-base font-semibold" title={title}>{title}</h1>
+        {title ? <h1 className="truncate text-base font-semibold" title={title}>{title}</h1> : null}
         {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}
       </div>
       {tabs ? <div className="hidden shrink-0 border-l border-border/60 pl-4 @3xl:block">{tabs}</div> : null}

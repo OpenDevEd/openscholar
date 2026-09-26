@@ -6,6 +6,7 @@ import { CommandCenterContainer } from "@/components/command-center/command-cent
 import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { cn } from "@/lib/utils";
 import { PanelHeader } from "./configuration/panel-header";
+import { ListLoading } from "./list-controls";
 
 /**
  * The page frame shared by the library, topic, author, history and bookmark
@@ -29,7 +30,7 @@ export function LibraryPageShell({
   filtersInCard = false,
   children,
 }: {
-  icon?: LucideIcon;
+  icon?: LucideIcon | null;
   image?: string | null;
   title: string;
   backHref?: string;
@@ -105,5 +106,18 @@ function Collapse({ className, children }: { className: string; children: ReactN
     <div className={cn("grid transition-[grid-template-rows,visibility] duration-200 ease-out motion-reduce:transition-none", className)}>
       <div className="min-h-0 overflow-clip [overflow-clip-margin:4px]">{children}</div>
     </div>
+  );
+}
+
+/**
+ * The page frame, empty, with the list spinner in its card: what a page shows
+ * while it loads, so the bar and card are already in place when the content
+ * arrives and nothing jumps.
+ */
+export function PageFrameLoading({ label }: { label: string }) {
+  return (
+    <LibraryPageShell icon={null} title="">
+      <ListLoading label={label} />
+    </LibraryPageShell>
   );
 }

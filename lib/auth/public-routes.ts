@@ -49,7 +49,11 @@ export function isPublicPath(pathname: string) {
  * correct before access is known (see OrganizationFeatureGate's fallback).
  */
 const PAGES_WITH_OWN_LOADING = ["/evidence-libraries", "/authors"] as const;
+/** Every page in these sections draws its own frame while loading. */
+const SECTIONS_WITH_OWN_LOADING = ["/extraction"] as const;
 
 export function showsOwnLoading(pathname: string) {
-  return (PAGES_WITH_OWN_LOADING as readonly string[]).includes(normalizePathname(pathname));
+  const path = normalizePathname(pathname);
+  return (PAGES_WITH_OWN_LOADING as readonly string[]).includes(path)
+    || SECTIONS_WITH_OWN_LOADING.some((section) => path === section || path.startsWith(`${section}/`));
 }

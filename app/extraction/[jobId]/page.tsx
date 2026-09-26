@@ -32,7 +32,7 @@ import {
 import posthog from "posthog-js";
 import { PageWrapper } from "@/components/PageWrapper";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
-import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
+import { LibraryPageShell, PageFrameLoading } from "@/components/evidence-libraries/library-page-shell";
 import { JobStatusIcon } from "@/components/extraction/job-status-icon";
 import { CommandCenterContainer } from "@/components/command-center";
 import { TwoColumnLayout } from "@/components/layout/two-column-layout";
@@ -416,6 +416,15 @@ export default function JobDetailPage() {
         resultsPageQuery.isDeferred))
   ) {
     const showChatPreparingHint = modeHint === "chat" && jobShell === undefined;
+    // A chat has its own full-height layout; everything else loads inside the
+    // page frame it will end up in, so nothing jumps when the job arrives.
+    if (!showChatPreparingHint) {
+      return (
+        <PageWrapper>
+          <PageFrameLoading label={tJob("loadingExtractionResults")} />
+        </PageWrapper>
+      );
+    }
     return (
       <PageWrapper>
         <AuthStatePanel
@@ -505,11 +514,7 @@ export default function JobDetailPage() {
   if (jobDetails?.status !== "ok" || !hasCurrentJobDetails) {
     return (
       <PageWrapper>
-        <AuthStatePanel
-          variant="loading"
-          layout="fullscreen"
-          loadingStyle="spinner"
-        />
+        <PageFrameLoading label={tJob("loadingExtractionResults")} />
       </PageWrapper>
     );
   }
