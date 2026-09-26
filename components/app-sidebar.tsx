@@ -451,29 +451,29 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           />
 
           <NavItem
-            href="/bookmarks"
-            icon={BookOpen}
-            label={tc("bookmarks")}
-            isActive={currentPageValue === "bookmarks"}
-            isCollapsed={isCollapsed && !isMobile}
-            onClick={handleNavClick}
-            index={1}
-            badge={expandableCount > 0 ? expandableCount : undefined}
-            customTooltipContent={
-              hasBookmarkSyntax ? (
-                <KeywordExpansionPreview query={activeQuery} />
-              ) : undefined
-            }
-          />
-
-          <NavItem
             href="/library"
             icon={Library}
             label={tc("library")}
             isActive={currentPageValue === "library"}
             isCollapsed={isCollapsed && !isMobile}
             onClick={handleNavClick}
+            index={1}
+          />
+
+          <NavItem
+            href="/bookmarks"
+            icon={BookOpen}
+            label={tc("bookmarks")}
+            isActive={currentPageValue === "bookmarks"}
+            isCollapsed={isCollapsed && !isMobile}
+            onClick={handleNavClick}
             index={2}
+            badge={expandableCount > 0 ? expandableCount : undefined}
+            customTooltipContent={
+              hasBookmarkSyntax ? (
+                <KeywordExpansionPreview query={activeQuery} />
+              ) : undefined
+            }
           />
 
           <NavItem
