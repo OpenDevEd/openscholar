@@ -68,8 +68,8 @@ export function ResultAnswer({ result, type, searchQuery = "", clamp = "line-cla
     return (
       <div className="flex flex-wrap gap-1">
         {answer.map((item) => (
-          <Badge key={String(item)} variant="outline" className="text-xs font-normal">
-            <HighlightedText text={String(item)} query={searchQuery} />
+          <Badge key={String(item)} variant="outline" className="max-w-full text-xs font-normal" title={String(item)}>
+            <span className="truncate"><HighlightedText text={String(item)} query={searchQuery} /></span>
           </Badge>
         ))}
       </div>
