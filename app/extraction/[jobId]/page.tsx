@@ -322,11 +322,17 @@ export default function JobDetailPage() {
     setSelection(newIds);
   }, [setSelection]);
 
+  // Clicking the answer that is already open closes the panel again.
   const openAnswerPanel = useCallback((answer: OpenAnswer) => {
+    if (openAnswerKey(answer) === openAnswerKey(openAnswer)) {
+      setOpenAnswer(null);
+      setMobilePane("results");
+      return;
+    }
     setOpenAnswer(answer);
     expandCitationPanel();
     setMobilePane("citation");
-  }, [expandCitationPanel]);
+  }, [expandCitationPanel, openAnswer]);
 
   const handleCancel = async () => {
     try {
