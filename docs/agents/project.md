@@ -55,7 +55,7 @@ supported process changed. Read the page back before claiming success.
   `transition-opacity`, or `transition-transform` on it. Put the animation on a
   wrapper, or transition only colors, borders, and shadows. Shared
   `components/ui` parts name the properties they transition.
-  `tests/animation-transition-clash.test.ts` enforces both.
+  `npm run check:animation-clash` enforces both, in CI.
 
 ## Development services
 

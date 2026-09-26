@@ -132,6 +132,9 @@ jobs:
         if: always()
         run: rm -rf .email-source
 
+      - name: Check animation and transition clashes
+        run: npm run check:animation-clash
+
       - name: Run unit and contract tests
         run: npm run test
 
