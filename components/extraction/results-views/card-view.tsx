@@ -87,25 +87,22 @@ export const CardView = memo(function CardView({
 
             {/* Its answers, each opening the side panel */}
             {answered.length ? (
-              <dl className="flex-1 space-y-3 p-4">
+              <div className="flex-1 space-y-1 px-4 py-3">
                 {answered.map((question) => {
                   const result = resultFor(question);
                   return (
-                    <div key={question.key} className="space-y-1">
-                      <dt className="truncate text-xs text-muted-foreground" title={question.question}>{question.question}</dt>
-                      <dd>
-                        <ResultCell
-                          result={result}
-                          type={question.type}
-                          clamp="line-clamp-3"
-                          selected={openAnswer === openAnswerKey({ paper, question, result })}
-                          onOpen={() => onOpenAnswer({ paper, question, result })}
-                        />
-                      </dd>
-                    </div>
+                    <ResultCell
+                      key={question.key}
+                      label={question.question}
+                      result={result}
+                      type={question.type}
+                      clamp="line-clamp-3"
+                      selected={openAnswer === openAnswerKey({ paper, question, result })}
+                      onOpen={() => onOpenAnswer({ paper, question, result })}
+                    />
                   );
                 })}
-              </dl>
+              </div>
             ) : <div className="flex-1" />}
 
             {/* Questions without an answer, grouped so they don't repeat down the card */}

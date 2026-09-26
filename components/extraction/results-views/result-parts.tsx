@@ -110,7 +110,7 @@ export function ResultMeta({ result }: { result?: ExtractionResultRecord }) {
  * One answer in a table cell or card: the value and how far to trust it. The
  * whole cell opens the answer's side panel, and says so on hover.
  */
-export function ResultCell({ result, type, searchQuery = "", clamp, selected = false, onOpen, fill = false }: {
+export function ResultCell({ result, type, searchQuery = "", clamp, selected = false, onOpen, fill = false, label }: {
   result?: ExtractionResultRecord;
   type: string;
   searchQuery?: string;
@@ -123,6 +123,8 @@ export function ResultCell({ result, type, searchQuery = "", clamp, selected = f
    * (which must be `relative isolate`), behind the text.
    */
   fill?: boolean;
+  /** The question, shown above the answer inside the button so they highlight together. */
+  label?: string;
 }) {
   const tc = useTranslations("common");
   if (!result) return <ResultAnswer result={result} type={type} />;
@@ -140,18 +142,19 @@ export function ResultCell({ result, type, searchQuery = "", clamp, selected = f
               selected && "after:bg-primary/5 after:ring-1 after:ring-inset after:ring-primary/30 hover:after:bg-primary/10",
             )
           : cn(
-              "relative -m-2 w-[calc(100%+1rem)] rounded-md p-2 pr-7 transition-colors duration-100 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring",
+              "relative -mx-2 w-[calc(100%+1rem)] rounded-lg px-2 py-1.5 pr-7 transition-colors duration-100 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring",
               selected && "bg-primary/5 ring-1 ring-primary/30 hover:bg-primary/10",
             ),
       )}
     >
+      {label ? <span className="block truncate text-xs text-muted-foreground" title={label}>{label}</span> : null}
       <ResultAnswer result={result} type={type} searchQuery={searchQuery} clamp={clamp} />
       <ResultMeta result={result} />
       <PanelLeftOpen
         aria-hidden
         className={cn(
           "absolute size-3.5 text-muted-foreground transition-opacity duration-100",
-          fill ? "right-3.5 top-4.5" : "right-2 top-2.5",
+          fill ? "right-3.5 top-4.5" : "right-2 top-2",
           selected ? "text-primary opacity-100" : "opacity-0 group-hover/cell:opacity-100 group-focus-visible/cell:opacity-100",
         )}
       />
