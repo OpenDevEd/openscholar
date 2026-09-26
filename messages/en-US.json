@@ -1515,14 +1515,10 @@
     "infoManageArchive": "Manage your search archive"
   },
   "commandCenter": {
-    "searchCount": "{count, plural, one {# search} other {# searches}}",
-    "bookmarkCount": "{count, plural, one {# bookmark} other {# bookmarks}}",
     "searchesLabel": "searches",
     "bookmarksLabel": "bookmarks",
     "searchSingular": "search",
     "searchPlural": "searches",
-    "bookmarkSingular": "bookmark",
-    "bookmarkPlural": "bookmarks",
     "jobSingular": "job",
     "jobPlural": "jobs"
   },

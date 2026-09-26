@@ -1489,14 +1489,10 @@
     "infoManageArchive": "検索アーカイブを管理"
   },
   "commandCenter": {
-    "searchCount": "{count, plural, one {# 件の検索} other {# 件の検索}}",
-    "bookmarkCount": "{count, plural, one {# 件のブックマーク} other {# 件のブックマーク}}",
     "searchesLabel": "検索",
     "bookmarksLabel": "ブックマーク",
     "searchSingular": "検索",
     "searchPlural": "検索",
-    "bookmarkSingular": "ブックマーク",
-    "bookmarkPlural": "ブックマーク",
     "jobSingular": "ジョブ",
     "jobPlural": "ジョブ"
   },

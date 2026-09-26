@@ -1489,14 +1489,10 @@
     "infoManageArchive": "管理您的搜索档案"
   },
   "commandCenter": {
-    "searchCount": "{count, plural, other {# 次搜索}}",
-    "bookmarkCount": "{count, plural, other {# 个书签}}",
     "searchesLabel": "次搜索",
     "bookmarksLabel": "个书签",
     "searchSingular": "次搜索",
     "searchPlural": "次搜索",
-    "bookmarkSingular": "个书签",
-    "bookmarkPlural": "个书签",
     "jobSingular": "个任务",
     "jobPlural": "个任务"
   },

@@ -1489,14 +1489,10 @@
     "infoManageArchive": "Gérer votre archive de recherche"
   },
   "commandCenter": {
-    "searchCount": "{count, plural, one {# recherche} other {# recherches}}",
-    "bookmarkCount": "{count, plural, one {# favori} other {# favoris}}",
     "searchesLabel": "recherches",
     "bookmarksLabel": "favoris",
     "searchSingular": "recherche",
     "searchPlural": "recherches",
-    "bookmarkSingular": "favori",
-    "bookmarkPlural": "favoris",
     "jobSingular": "tâche",
     "jobPlural": "tâches"
   },

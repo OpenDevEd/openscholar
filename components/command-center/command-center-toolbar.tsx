@@ -1,11 +1,8 @@
 "use client";
 
 import React from "react";
-import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import {
-  Search,
-  X,
   Trash2,
   Download,
   Upload,
@@ -13,7 +10,7 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { LIST_FILTER, ListSearch } from "@/components/evidence-libraries/list-controls";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +24,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { subtleSpring } from "@/lib/animation-config";
 import { VIEW_MODE_OPTIONS } from "@/lib/constants/view-modes";
 import type { ViewMode } from "@/lib/types";
 
@@ -60,8 +56,6 @@ interface CommandCenterToolbarProps<TSort extends string> {
   totalCount?: number;
   // Extra actions slot (rendered after view mode toggle, before search)
   extraActions?: React.ReactNode;
-  /** The toolbar is the first thing in its container, with no header above it. */
-  leading?: boolean;
 }
 
 /**
@@ -85,44 +79,34 @@ export function CommandCenterToolbar<TSort extends string>({
   clearTooltip,
   totalCount,
   extraActions,
-  leading = false,
 }: CommandCenterToolbarProps<TSort>) {
   const tc = useTranslations("common");
+  const ta = useTranslations("accessibility");
   const currentSortOption = sortOptions.find((o) => o.value === currentSort);
   const hasDownloadUpload = onDownloadJSON || onDownloadCSV || onUploadJSON || onUploadCSV;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ ...subtleSpring, delay: 0.15 }}
-      className={cn(
-        // Under a header it is a slim strip. On its own it takes the container's
-        // padding, so the space above it matches the space beside it.
-        leading ? "p-4 md:p-6" : "px-4 md:px-6 py-3",
-        "border-b border-border/40",
-        "flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
-      )}
-    >
-      {/* Left: View mode toggle + extra actions */}
-      <div className="flex items-center gap-2 shrink-0">
-        <div className="flex items-center gap-0.5 p-0.5 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border/60">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 p-4">
+      {/* View mode switch + extra actions */}
+      <div className="flex items-center gap-2">
+        <div role="group" aria-label={ta("viewOptions")} className="flex items-center gap-0.5 rounded-md bg-muted/40 p-0.5">
           {VIEW_MODE_OPTIONS.map((option) => {
             const isActive = viewMode === option.mode;
             const Icon = option.icon;
             return (
               <button
                 key={option.mode}
+                type="button"
+                aria-pressed={isActive}
+                aria-label={option.label}
+                title={option.label}
                 onClick={() => onViewModeChange(option.mode)}
                 className={cn(
-                  "relative z-10 flex items-center justify-center p-1.5 rounded-md transition-colors",
-                  isActive
-                    ? "text-primary bg-background shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                  "flex size-7 items-center justify-center rounded-[5px] transition-colors",
+                  isActive ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                 )}
-                title={option.label}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="size-3.5" />
               </button>
             );
           })}
@@ -130,44 +114,22 @@ export function CommandCenterToolbar<TSort extends string>({
         {extraActions}
       </div>
 
-      {/* Center: Search input */}
-      <div className="flex-1 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <Input
-          type="text"
+      {/* Search, sort and file actions */}
+      <div className="flex flex-wrap items-center gap-2">
+        <ListSearch
+          aria-label={placeholder}
           placeholder={placeholder}
           value={searchFilter}
           onChange={(e) => onSearchChange(e.target.value)}
-          className={cn(
-            "pl-9 pr-9 h-9",
-            "bg-muted/30 dark:bg-muted/20",
-            "border-border/50",
-            "placeholder:text-muted-foreground/60"
-          )}
+          className="w-56"
         />
-        {searchFilter && (
-          <button
-            onClick={() => onSearchChange("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-      </div>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-2 shrink-0 justify-end">
-        {/* Sort dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 gap-1.5 text-muted-foreground hover:text-foreground"
-            >
-              <ArrowUpDown className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="sm" className={cn("h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground", LIST_FILTER)}>
+              <ArrowUpDown className="size-3.5" />
               <span className="hidden sm:inline">{currentSortOption?.label}</span>
-              <ChevronDown className="h-3 w-3 opacity-50" />
+              <ChevronDown className="size-3 opacity-50" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -183,33 +145,22 @@ export function CommandCenterToolbar<TSort extends string>({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Download/Upload dropdown */}
         {hasDownloadUpload && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 text-muted-foreground hover:text-foreground"
-              >
-                <Download className="h-4 w-4" />
+              <Button variant="ghost" size="icon" aria-label={tc("downloadAsJson")} className="size-8 text-muted-foreground hover:text-foreground">
+                <Download className="size-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {onDownloadJSON && (
-                <DropdownMenuItem
-                  onClick={onDownloadJSON}
-                  disabled={totalCount === 0}
-                >
+                <DropdownMenuItem onClick={onDownloadJSON} disabled={totalCount === 0}>
                   <Download className="h-4 w-4 mr-2" />
                   {tc("downloadAsJson")}
                 </DropdownMenuItem>
               )}
               {onDownloadCSV && (
-                <DropdownMenuItem
-                  onClick={onDownloadCSV}
-                  disabled={totalCount === 0}
-                >
+                <DropdownMenuItem onClick={onDownloadCSV} disabled={totalCount === 0}>
                   <Download className="h-4 w-4 mr-2" />
                   {tc("downloadAsCsv")}
                 </DropdownMenuItem>
@@ -233,24 +184,24 @@ export function CommandCenterToolbar<TSort extends string>({
           </DropdownMenu>
         )}
 
-        {/* Clear all button */}
         {onClearAll && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label={clearTooltip}
                 onClick={onClearAll}
                 disabled={totalCount === 0}
-                className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                className="size-8 text-muted-foreground hover:text-destructive"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="size-4" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>{clearTooltip}</TooltipContent>
           </Tooltip>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }

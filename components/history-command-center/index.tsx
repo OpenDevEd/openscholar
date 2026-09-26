@@ -23,12 +23,14 @@ import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { SearchResult, HistorySortBy } from "@/lib/types";
 import {
   CommandCenterContainer,
-  CommandCenterHeader,
   CommandCenterToolbar,
   CommandCenterList,
   CommandCenterPagination,
 } from "@/components/command-center";
 import { HistoryItem } from "./history-item";
+import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
+import { ListLoading } from "@/components/evidence-libraries/list-controls";
+import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
 
 import posthog from "posthog-js";
 
@@ -71,6 +73,10 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     () => (excludeId ? allHistory.filter((item) => item.id !== excludeId) : allHistory),
     [allHistory, excludeId],
   );
+  // History and view settings are saved in the browser; wait for them rather than flash an empty list.
+  const listReady = usePersistedStoreReady(useSearchHistoryStore);
+  const settingsReady = usePersistedStoreReady(useUIStore);
+  const ready = listReady && settingsReady;
   const {
     historyViewMode,
     setHistoryViewMode,
@@ -219,24 +225,10 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     });
   };
 
-  return (
-    <CommandCenterContainer>
-      {/* Header: the page's own title. A chooser sits under its host's title. */}
-      {!pick && (
-        <CommandCenterHeader
-          icon={Clock}
-          title={tc("searchHistory")}
-          description={th("description")}
-          count={sortedHistory.length}
-          singular={tcc("searchSingular")}
-          plural={tcc("searchPlural")}
-          countLabel={tcc("searchCount", { count: sortedHistory.length })}
-        />
-      )}
-
+  const content = (
+    <>
       {/* Toolbar */}
       <CommandCenterToolbar
-        leading={Boolean(pick)}
         viewMode={historyViewMode}
         onViewModeChange={setHistoryViewMode}
         sortOptions={SORT_OPTIONS}
@@ -256,7 +248,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
 
       {/* List */}
       <div className="p-4 md:p-6">
-        <CommandCenterList
+        {!ready ? <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={paginatedHistory}
           viewMode={historyViewMode}
           keyExtractor={(item) => item.id}
@@ -264,7 +256,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
           emptyTitle={th("noHistoryYet")}
           emptyDescription={th("noHistoryDescription")}
           emptyAction={pick ? undefined : (
-            <Button asChild className="gap-2">
+            <Button asChild size="sm" className="gap-2">
               <Link href="/">
                 <Search className="h-4 w-4" />
                 {th("startSearch")}
@@ -283,7 +275,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
               pickLabel={pick?.label}
             />
           )}
-        />
+        />}
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -297,6 +289,21 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
           />
         )}
       </div>
-    </CommandCenterContainer>
+    </>
   );
+
+  // A chooser sits in its host's frame; the page gets the shared page frame.
+  return pick ? <CommandCenterContainer>{content}</CommandCenterContainer> : <HistoryPageFrame>{content}</HistoryPageFrame>;
+}
+
+/** The history page's frame, shared with its loading state so nothing moves when it loads. */
+export function HistoryPageFrame({ children }: { children: React.ReactNode }) {
+  const th = useTranslations("historyPage");
+  const tc = useTranslations("common");
+  return <LibraryPageShell icon={Clock} title={tc("searchHistory")} description={th("description")}>{children}</LibraryPageShell>;
+}
+
+export function HistoryLoading() {
+  const tc = useTranslations("common");
+  return <HistoryPageFrame><ListLoading label={tc("loading")} /></HistoryPageFrame>;
 }

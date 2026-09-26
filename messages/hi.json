@@ -1489,14 +1489,10 @@
     "infoManageArchive": "अपने खोज संग्रह का प्रबंधन करें"
   },
   "commandCenter": {
-    "searchCount": "{count, plural, one {# खोज} other {# खोजें}}",
-    "bookmarkCount": "{count, plural, one {# बुकमार्क} other {# बुकमार्क्स}}",
     "searchesLabel": "खोजें",
     "bookmarksLabel": "बुकमार्क्स",
     "searchSingular": "खोज",
     "searchPlural": "खोजें",
-    "bookmarkSingular": "बुकमार्क",
-    "bookmarkPlural": "बुकमार्क्स",
     "jobSingular": "जॉब",
     "jobPlural": "जॉब्स"
   },

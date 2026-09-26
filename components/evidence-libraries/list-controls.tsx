@@ -68,9 +68,11 @@ export function ListLoading({ label, compact = false }: { label: string; compact
 }
 
 /** What a list says when it has nothing to show, in the same frame as its loading state. */
-export function ListEmpty({ icon: Icon, children, compact = false }: {
+export function ListEmpty({ icon: Icon, children, description, action, compact = false }: {
   icon: ComponentType<{ className?: string }>;
   children: ReactNode;
+  description?: ReactNode;
+  action?: ReactNode;
   compact?: boolean;
 }) {
   return (
@@ -78,7 +80,11 @@ export function ListEmpty({ icon: Icon, children, compact = false }: {
       <div aria-hidden className={cn("flex items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 via-primary/10 to-primary/5 text-primary ring-1 ring-primary/10", compact ? "size-9" : "size-11")}>
         <Icon className={compact ? "size-4" : "size-5"} />
       </div>
-      <p className="max-w-sm text-sm text-muted-foreground">{children}</p>
+      <div className="max-w-sm space-y-1">
+        <p className={cn("text-sm", description ? "font-medium text-foreground" : "text-muted-foreground")}>{children}</p>
+        {description && <p className="text-xs text-muted-foreground">{description}</p>}
+      </div>
+      {action}
     </div>
   );
 }
