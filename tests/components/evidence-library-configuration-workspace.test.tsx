@@ -77,6 +77,7 @@ vi.mock("@/convex/_generated/api", () => ({
       credentialActions: { writeCredential: "writeCredential" },
       aiProviderKey: { removeAiProviderKey: "removeAiProviderKey" },
       openAlexSourceKey: { removeOpenAlexKey: "removeOpenAlexKey" },
+      sourceStatus: { listForLibrary: "listSourceStatus" },
       mutations: {
         activateConfiguration: "activateConfiguration",
         saveDraftSections: "saveDraftSections",
@@ -118,6 +119,7 @@ vi.mock("@/convex/_generated/api", () => ({
         resolveLibraryCollections: "resolveLibraryCollections",
         listReviewedPublications: "listReviewedPublications",
         readHomeQuestions: "readHomeQuestions",
+        requestSourceRun: "requestSourceRun",
       },
     },
     models: {
