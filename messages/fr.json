@@ -2661,6 +2661,53 @@
       }
     },
     "sources": {
+      "status": {
+        "label": "État de l'import",
+        "chip": {
+          "importing": "Import en cours",
+          "searching": "Mise à jour de la recherche",
+          "upToDate": "À jour",
+          "failed": "Échec de l'import",
+          "waiting": "Pas encore importée",
+          "paused": "En pause"
+        },
+        "steps": {
+          "import": "Importer les notices",
+          "search": "Mettre à jour la recherche"
+        },
+        "importProgress": "Progression de l'import",
+        "searchProgress": "Progression de la mise à jour de la recherche",
+        "ofTotal": "sur {total, number} notices",
+        "soFar": "notices pour l'instant",
+        "searchOfTotal": "sur {total, number} notices rendues consultables",
+        "searchSoFar": "notices rendues consultables pour l'instant",
+        "started": "Commencé à {time}",
+        "minutesLeft": "{minutes, plural, one {# min restante} other {# min restantes}}",
+        "underAMinute": "Moins d'une minute restante",
+        "searchable": "notices consultables",
+        "changed": "{count, plural, one {# modifiée} other {# modifiées}} lors du dernier import, vérifié {when}",
+        "checked": "Vérifié {when}",
+        "reviewIssues": "Voir {count, plural, one {# problème de notice} other {# problèmes de notices}}",
+        "failedAt": "Échec de l'import à {time}",
+        "lastSuccess": "Dernier succès {when}",
+        "retry": "Relancer l'import",
+        "retryStarted": "La bibliothèque importera cette source d'ici quelques secondes.",
+        "retryFailed": "Impossible de demander l'import à la bibliothèque. Réessayez dans un instant.",
+        "details": "Détails techniques",
+        "afterActivate": "Importée après l'activation",
+        "startsSoon": "Commence dans la minute",
+        "failure": {
+          "access_denied": "{provider} a refusé la clé enregistrée. Vérifiez-la dans Connexions, puis relancez.",
+          "not_found": "{provider} ne trouve plus cette source, ou la clé enregistrée n'y a pas accès.",
+          "missing_key": "Aucune clé d'API n'est enregistrée pour cette source. Ajoutez-en une dans Connexions.",
+          "invalid_query": "{provider} a refusé la recherche. Modifiez-la, puis activez de nouveau.",
+          "too_large": "Cette source contient plus de notices que la bibliothèque n'en autorise.",
+          "rate_limited": "{provider} limite les requêtes. L'import réessaie chaque minute.",
+          "unavailable": "{provider} est injoignable. L'import réessaie chaque minute.",
+          "interrupted": "L'import s'est arrêté avant la fin. Il reprendra de lui-même.",
+          "internal": "L'import a rencontré une erreur inattendue. Les détails techniques indiquent ce qui s'est passé."
+        }
+      },
       "description": "Where the library's records come from.",
       "accountHeading": "Zotero account",
       "notConnected": "Not connected",

@@ -2653,6 +2653,53 @@
       }
     },
     "sources": {
+      "status": {
+        "label": "Import status",
+        "chip": {
+          "importing": "Importing",
+          "searching": "Updating search",
+          "upToDate": "Up to date",
+          "failed": "Import failed",
+          "waiting": "Not imported yet",
+          "paused": "Paused"
+        },
+        "steps": {
+          "import": "Import records",
+          "search": "Update search"
+        },
+        "importProgress": "Import progress",
+        "searchProgress": "Search update progress",
+        "ofTotal": "of {total, number} records",
+        "soFar": "records so far",
+        "searchOfTotal": "of {total, number} records made searchable",
+        "searchSoFar": "records made searchable so far",
+        "started": "Started {time}",
+        "minutesLeft": "{minutes, plural, one {# min left} other {# min left}}",
+        "underAMinute": "Under a minute left",
+        "searchable": "records searchable",
+        "changed": "{count, plural, one {# changed} other {# changed}} in the last import, checked {when}",
+        "checked": "Checked {when}",
+        "reviewIssues": "Review {count, plural, one {# record issue} other {# record issues}}",
+        "failedAt": "Import failed at {time}",
+        "lastSuccess": "Last success {when}",
+        "retry": "Retry import",
+        "retryStarted": "The library will import this source within a few seconds.",
+        "retryFailed": "The library could not be asked to import now. Try again in a moment.",
+        "details": "Technical details",
+        "afterActivate": "Imports after you activate",
+        "startsSoon": "Starts within a minute",
+        "failure": {
+          "access_denied": "{provider} refused the saved key. Check it in Connections, then retry.",
+          "not_found": "{provider} no longer finds this source, or the saved key cannot see it.",
+          "missing_key": "No API key is saved for this source. Add one in Connections.",
+          "invalid_query": "{provider} rejected the search. Edit the search, then activate again.",
+          "too_large": "This source has more records than the library allows.",
+          "rate_limited": "{provider} is limiting requests. The import tries again every minute.",
+          "unavailable": "{provider} could not be reached. The import tries again every minute.",
+          "interrupted": "The import stopped before it finished. It starts again on its own.",
+          "internal": "The import hit an unexpected error. The technical details show what happened."
+        }
+      },
       "description": "Where the library's records come from.",
       "accountHeading": "Zotero account",
       "notConnected": "Not connected",

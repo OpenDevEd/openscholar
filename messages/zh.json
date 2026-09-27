@@ -2661,6 +2661,53 @@
       }
     },
     "sources": {
+      "status": {
+        "label": "导入状态",
+        "chip": {
+          "importing": "正在导入",
+          "searching": "正在更新搜索",
+          "upToDate": "已是最新",
+          "failed": "导入失败",
+          "waiting": "尚未导入",
+          "paused": "已暂停"
+        },
+        "steps": {
+          "import": "导入记录",
+          "search": "更新搜索"
+        },
+        "importProgress": "导入进度",
+        "searchProgress": "搜索更新进度",
+        "ofTotal": "/ {total, number} 条记录",
+        "soFar": "条记录（目前）",
+        "searchOfTotal": "/ {total, number} 条记录已可搜索",
+        "searchSoFar": "条记录已可搜索（目前）",
+        "started": "{time} 开始",
+        "minutesLeft": "剩余 {minutes, number} 分钟",
+        "underAMinute": "剩余不到 1 分钟",
+        "searchable": "条记录可搜索",
+        "changed": "上次导入更改了 {count, number} 条，{when}检查",
+        "checked": "{when}检查",
+        "reviewIssues": "查看 {count, number} 个记录问题",
+        "failedAt": "{time} 导入失败",
+        "lastSuccess": "上次成功：{when}",
+        "retry": "重新导入",
+        "retryStarted": "图书馆将在几秒内导入此来源。",
+        "retryFailed": "无法请求图书馆立即导入。请稍后再试。",
+        "details": "技术详情",
+        "afterActivate": "激活后导入",
+        "startsSoon": "一分钟内开始",
+        "failure": {
+          "access_denied": "{provider} 拒绝了已保存的密钥。请在“连接”中检查后重试。",
+          "not_found": "{provider} 找不到此来源，或已保存的密钥无权访问。",
+          "missing_key": "此来源没有保存 API 密钥。请在“连接”中添加。",
+          "invalid_query": "{provider} 拒绝了该搜索。请编辑搜索后重新激活。",
+          "too_large": "此来源的记录数超过了图书馆允许的上限。",
+          "rate_limited": "{provider} 正在限制请求。导入每分钟重试一次。",
+          "unavailable": "无法连接 {provider}。导入每分钟重试一次。",
+          "interrupted": "导入在完成前停止了，会自动重新开始。",
+          "internal": "导入遇到意外错误。技术详情说明了发生的情况。"
+        }
+      },
       "description": "Where the library's records come from.",
       "accountHeading": "Zotero account",
       "notConnected": "Not connected",

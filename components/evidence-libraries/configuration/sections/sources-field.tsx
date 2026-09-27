@@ -66,6 +66,7 @@ import {
   useOpenAlexSources,
 } from "./openalex-sources";
 import { SourceRow } from "./source-row";
+import { type SourceLive, useSourceActivity } from "./source-activity";
 import { type StatusTone } from "../status-chip";
 import {
   localPickerSource,
@@ -166,6 +167,7 @@ export function SourcesField({
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const addButton = useRef<HTMLButtonElement>(null);
   const openalex = useOpenAlexSources({ libraryId, value, onChange });
+  const liveFor = useSourceActivity(libraryId);
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [busyGroupId, setBusyGroupId] = useState<string | null>(null);
   // Convex calls finish after other rows may have changed; edits always start
@@ -260,6 +262,7 @@ export function SourcesField({
               group={byGroupId.get(entry.groupId)}
               busy={busyGroupId === entry.groupId}
               canReconnect={connected}
+              live={liveFor(entry.key, !entry.enabled, "Zotero")}
               onPatch={(patch) => patchEntry(entry.groupId, patch)}
               onReconnect={() => reconnect(entry.groupId)}
               onRemove={() => setRemoveId(entry.groupId)}
@@ -269,6 +272,7 @@ export function SourcesField({
             <OpenAlexSourceRow
               key={source.key}
               source={source}
+              live={liveFor(source.key, !source.enabled, "OpenAlex")}
               controller={openalex}
             />
           ))}
@@ -589,6 +593,7 @@ function GroupRow({
   group,
   busy,
   canReconnect,
+  live,
   onPatch,
   onReconnect,
   onRemove,
@@ -597,6 +602,7 @@ function GroupRow({
   group: ConnectedGroup | undefined;
   busy: boolean;
   canReconnect: boolean;
+  live: SourceLive | null;
   onPatch: (patch: Partial<ZoteroSourceEntry>) => void;
   onReconnect: () => void;
   onRemove: () => void;
@@ -634,7 +640,8 @@ function GroupRow({
       name={group?.name ?? entry.key}
       provider={t("zoteroGroup")}
       icon={<ZoteroIcon className="size-4 text-[#cc2936]" />}
-      status={{ label: t(`health.${health}`), tone: HEALTH_TONE[health] }}
+      status={live?.status ?? { label: t(`health.${health}`), tone: HEALTH_TONE[health] }}
+      activity={live?.activity}
       paused={paused}
       metadata={metaItems}
       data-group-id={entry.groupId}

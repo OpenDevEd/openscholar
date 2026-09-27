@@ -19,6 +19,7 @@ import {
   readRuntimeHomeQuestions,
   readRuntimeInstitutions,
   readRuntimeReviewedPublications,
+  requestRuntimeSourceRun,
 } from "./runtimeReadClient";
 
 const collectionValidator = v.object({
@@ -258,5 +259,18 @@ export const readHomeQuestions = action({
       questions: await readRuntimeHomeQuestions(fetch, target),
     }));
     return "reason" in result ? { reason: "not-set-up", questions: [] } : result;
+  },
+});
+
+/** "Retry import": the library runs the source within seconds. */
+export const requestSourceRun = action({
+  args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string() },
+  returns: v.object({ reason: notSetUpValidator }),
+  handler: async (ctx, args): Promise<{ reason?: "not-set-up" }> => {
+    const result = await readRuntime(ctx, args.libraryId, async (target) => {
+      await requestRuntimeSourceRun(fetch, target, args.sourceKey);
+      return {};
+    });
+    return "reason" in result ? { reason: "not-set-up" } : {};
   },
 });

@@ -1,0 +1,359 @@
+"use client";
+
+import {
+  Check,
+  ChevronDown,
+  Database,
+  ExternalLink,
+  RefreshCw,
+  Search,
+  TriangleAlert,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+import { useAction } from "convex/react";
+import { useFormatter, useNow, useTranslations } from "next-intl";
+import { type ReactNode, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Spinner } from "@/components/ui/spinner";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import type { SourceStatus } from "@/convex/evidenceLibraries/sourceStatusValidators";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { buildAdminRouteHref } from "@/lib/evidence-libraries/admin-handoff";
+import { cn } from "@/lib/utils";
+import { type StatusTone } from "../status-chip";
+
+type Running = Extract<SourceStatus, { state: "running" }>;
+type Failed = Extract<SourceStatus, { state: "failed" }>;
+
+/**
+ * The row's chip: the state in one word, so a long list scans quickly.
+ * `null` is a source the library has not seen yet: it imports after Activate.
+ */
+export function useSourceStatusChip() {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.status");
+  return (status: SourceStatus | null, paused: boolean): { label: string; tone: StatusTone } => {
+    if (paused) return { label: t("chip.paused"), tone: "neutral" };
+    if (!status || status.state === "idle") return { label: t("chip.waiting"), tone: "neutral" };
+    if (status.state === "running") {
+      return { label: t(status.phase === "import" ? "chip.importing" : "chip.searching"), tone: "running" };
+    }
+    if (status.state === "failed") return { label: t("chip.failed"), tone: "danger" };
+    return { label: t("chip.upToDate"), tone: "success" };
+  };
+}
+
+type PhaseState = "running" | "done" | "failed" | "waiting";
+
+const PHASE_LOOK: Record<PhaseState, { text: string; ring: string }> = {
+  running: { text: "text-primary", ring: "bg-primary/10" },
+  done: { text: "text-emerald-700 dark:text-emerald-400", ring: "bg-emerald-500/10" },
+  failed: { text: "text-destructive", ring: "bg-destructive/10" },
+  waiting: { text: "text-muted-foreground", ring: "bg-muted" },
+};
+
+function Phase({ label, icon: Icon, state }: { label: string; icon: LucideIcon; state: PhaseState }) {
+  const look = PHASE_LOOK[state];
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", look.text)}>
+      <span className={cn("grid size-6 place-items-center rounded-full", look.ring)}>
+        {state === "running" ? (
+          <Spinner role="presentation" aria-label={undefined} className="size-3.5" />
+        ) : state === "done" ? (
+          <Check aria-hidden className="size-3.5" strokeWidth={3} />
+        ) : state === "failed" ? (
+          <X aria-hidden className="size-3.5" strokeWidth={3} />
+        ) : (
+          <Icon aria-hidden className="size-3.5" />
+        )}
+      </span>
+      {label}
+    </span>
+  );
+}
+
+function phaseStates(status: SourceStatus | null): [PhaseState, PhaseState] {
+  if (!status) return ["waiting", "waiting"];
+  switch (status.state) {
+    case "running":
+      return status.phase === "import" ? ["running", "waiting"] : ["done", "running"];
+    case "succeeded":
+      return ["done", "done"];
+    case "failed":
+      return ["failed", "waiting"];
+    case "idle":
+      return ["waiting", "waiting"];
+  }
+}
+
+/** Import records, then Update search, with the one under way lit. */
+function PhaseTrack({ status }: { status: SourceStatus | null }) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.status");
+  const [importState, searchState] = phaseStates(status);
+  return (
+    <div className="flex items-center gap-2">
+      <Phase label={t("steps.import")} icon={Database} state={importState} />
+      <span
+        aria-hidden
+        className={cn(
+          "h-px flex-1 transition-colors duration-500 motion-reduce:transition-none",
+          importState === "done" ? "bg-emerald-500/50" : "bg-border",
+        )}
+      />
+      <Phase label={t("steps.search")} icon={Search} state={searchState} />
+    </div>
+  );
+}
+
+/** A bar with no end, for a source that has not said how many records it holds. */
+function OpenEndedBar({ label }: { label: string }) {
+  return (
+    <div
+      role="progressbar"
+      aria-label={label}
+      className="relative h-2 w-full overflow-hidden rounded-full bg-foreground/10"
+    >
+      <span className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-primary animate-[source-open-ended_1.4s_ease-in-out_infinite] motion-reduce:w-full motion-reduce:animate-none motion-reduce:opacity-40" />
+    </div>
+  );
+}
+
+function RunningActivity({ status }: { status: Running }) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.status");
+  const format = useFormatter();
+  const fraction = status.total ? status.done / status.total : null;
+  const label = t(status.phase === "import" ? "importProgress" : "searchProgress");
+  const unit =
+    status.total === null
+      ? t(status.phase === "import" ? "soFar" : "searchSoFar")
+      : t(status.phase === "import" ? "ofTotal" : "searchOfTotal", { total: status.total });
+  return (
+    <div className="space-y-2">
+      <div className="flex items-end justify-between gap-4">
+        <p className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+          <span className="text-3xl font-semibold leading-none tracking-tight tabular-nums">
+            {format.number(status.done)}
+          </span>
+          <span className="text-sm text-muted-foreground">{unit}</span>
+        </p>
+        {fraction === null ? null : (
+          <span className="text-lg font-semibold leading-none tabular-nums">
+            {format.number(Math.floor(fraction * 100) / 100, { style: "percent" })}
+          </span>
+        )}
+      </div>
+      {fraction === null ? (
+        <OpenEndedBar label={label} />
+      ) : (
+        <Progress
+          aria-label={label}
+          value={fraction * 100}
+          className="h-2 bg-foreground/10 [&>[data-slot=progress-indicator]]:duration-700 [&>[data-slot=progress-indicator]]:ease-out motion-reduce:[&>[data-slot=progress-indicator]]:transition-none"
+        />
+      )}
+      <div className="flex items-center justify-between text-xs tabular-nums text-muted-foreground">
+        <span>{t("started", { time: format.dateTime(new Date(status.startedAt), { timeStyle: "short" }) })}</span>
+        <span>
+          {status.minutesLeft === null
+            ? null
+            : status.minutesLeft < 1
+              ? t("underAMinute")
+              : t("minutesLeft", { minutes: status.minutesLeft })}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function SucceededActivity({ status, issuesHref }: { status: SourceStatus; issuesHref: string }) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.status");
+  const format = useFormatter();
+  const now = useNow({ updateInterval: 30_000 });
+  const issues = Object.values(status.issues).reduce((sum, count) => sum + count, 0);
+  const checked = status.lastSuccessAt ? format.relativeTime(new Date(status.lastSuccessAt), now) : null;
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="space-y-1.5">
+        <p className="flex flex-wrap items-baseline gap-x-2">
+          <span className="text-3xl font-semibold leading-none tracking-tight tabular-nums">
+            {format.number(status.searchable)}
+          </span>
+          <span className="text-sm text-muted-foreground">{t("searchable")}</span>
+        </p>
+        {checked ? (
+          <p className="text-xs text-muted-foreground">
+            {status.changed === null
+              ? t("checked", { when: checked })
+              : t("changed", { count: status.changed, when: checked })}
+          </p>
+        ) : null}
+      </div>
+      {issues > 0 ? (
+        // A plain link: the admin trip spends a single-use sign-in code, see AdminAreaLink.
+        <Button asChild variant="outline" size="sm">
+          <a href={issuesHref}>
+            <TriangleAlert className="text-amber-600 dark:text-amber-400" />
+            {t("reviewIssues", { count: issues })}
+            <ExternalLink className="text-muted-foreground" />
+          </a>
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function FailedActivity({
+  status,
+  provider,
+  onRetry,
+  retrying,
+}: {
+  status: Failed;
+  provider: string;
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.status");
+  const format = useFormatter();
+  const now = useNow({ updateInterval: 30_000 });
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <p className="text-lg font-semibold leading-tight tracking-tight text-destructive">
+          {t("failedAt", { time: format.dateTime(new Date(status.failure.at), { timeStyle: "short" }) })}
+        </p>
+        <p className="text-sm leading-relaxed">{t(`failure.${status.failure.code}`, { provider })}</p>
+        {status.lastSuccessAt ? (
+          <p className="text-xs text-muted-foreground">
+            {t("lastSuccess", { when: format.relativeTime(new Date(status.lastSuccessAt), now) })}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" size="sm" onClick={onRetry} disabled={retrying}>
+          {retrying ? <Spinner /> : <RefreshCw />}
+          {t("retry")}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {t("details")}
+          <ChevronDown
+            className={cn("transition-transform motion-reduce:transition-none", open && "rotate-180")}
+          />
+        </Button>
+      </div>
+      {open ? (
+        <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted-foreground">
+          {status.failure.details}
+        </pre>
+      ) : null}
+    </div>
+  );
+}
+
+const BAND: Record<SourceStatus["state"] | "waiting", string> = {
+  running: "bg-primary/[0.05]",
+  succeeded: "bg-emerald-500/[0.05]",
+  failed: "bg-destructive/[0.06]",
+  idle: "bg-muted/40",
+  waiting: "bg-muted/40",
+};
+
+/**
+ * The foot of a source row: the two steps, then one large figure or
+ * headline, tinted by state so the state reads before the words. A `null`
+ * status is a source the library has not seen yet.
+ */
+export function SourceActivityBand({
+  status,
+  provider,
+  issuesHref,
+  onRetry,
+  retrying,
+}: {
+  status: SourceStatus | null;
+  /** The provider's name, for failure messages. */
+  provider: string;
+  /** The admin, opened on this source's record issues. */
+  issuesHref: string;
+  onRetry: () => void;
+  retrying: boolean;
+}) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.status");
+  return (
+    <section
+      aria-live="polite"
+      aria-label={t("label")}
+      data-source-state={status?.state ?? "waiting"}
+      className={cn(
+        "space-y-4 px-4 pb-4 pt-3.5 transition-colors duration-300 motion-reduce:transition-none",
+        BAND[status?.state ?? "waiting"],
+      )}
+    >
+      <PhaseTrack status={status} />
+      {status?.state === "running" ? <RunningActivity status={status} /> : null}
+      {status?.state === "succeeded" ? <SucceededActivity status={status} issuesHref={issuesHref} /> : null}
+      {status?.state === "failed" ? (
+        <FailedActivity status={status} provider={provider} onRetry={onRetry} retrying={retrying} />
+      ) : null}
+      {!status || status.state === "idle" ? (
+        <p className="text-base font-semibold tracking-tight text-muted-foreground">
+          {t(status ? "startsSoon" : "afterActivate")}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+export type SourceLive = { status: { label: string; tone: StatusTone }; activity: ReactNode };
+
+/**
+ * Each source's live chip and band, from the library's latest report. Returns
+ * null for every source until the library has reported once, so a library
+ * on older software keeps its plain rows.
+ */
+export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.status");
+  const chip = useSourceStatusChip();
+  const report = useProtectedQuery(api.evidenceLibraries.sourceStatus.listForLibrary, { libraryId });
+  const requestRun = useAction(api.zotero.runtimeReadActions.requestSourceRun);
+  const [retrying, setRetrying] = useState<string | null>(null);
+
+  function retry(sourceKey: string) {
+    setRetrying(sourceKey);
+    requestRun({ libraryId, sourceKey })
+      .then(() => toast.success(t("retryStarted")))
+      .catch(() => toast.error(t("retryFailed")))
+      .finally(() => setRetrying(null));
+  }
+
+  return (sourceKey: string, paused: boolean, provider: string): SourceLive | null => {
+    if (!report.data) return null;
+    const status = report.data.sources.find((source) => source.key === sourceKey) ?? null;
+    return {
+      activity: paused ? null : (
+        <SourceActivityBand
+          status={status}
+          provider={provider}
+          issuesHref={buildAdminRouteHref({
+            libraryId,
+            returnPath: `/admin?source=${encodeURIComponent(sourceKey)}`,
+          })}
+          onRetry={() => retry(sourceKey)}
+          retrying={retrying === sourceKey}
+        />
+      ),
+      status: chip(status, paused),
+    };
+  };
+}

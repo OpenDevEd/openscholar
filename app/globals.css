@@ -673,3 +673,13 @@
     display: none;
   }
 }
+
+/* A source import with no known total: a segment sweeps the bar. */
+@keyframes source-open-ended {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
