@@ -25,7 +25,8 @@ const base = {
     v.literal("dspace"),
     v.literal("eprints"),
   ),
-  searchable: v.number(),
+  /** Null while the source imports, when the runtime does not count it. */
+  searchable: v.union(v.number(), v.null()),
   searchFailed: v.number(),
   changed: v.union(v.number(), v.null()),
   lastSuccessAt: v.union(v.string(), v.null()),

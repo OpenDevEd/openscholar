@@ -17,8 +17,10 @@ const upToDate = {
   lastSuccessAt: "2026-09-27T12:08:00.000Z",
   issues: { pdf_unavailable: 3 },
 };
+// The runtime does not count searchable records mid-import.
 const importing = {
   ...upToDate,
+  searchable: null,
   state: "running",
   phase: "import",
   done: 120,

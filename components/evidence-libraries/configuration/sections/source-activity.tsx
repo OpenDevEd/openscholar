@@ -180,7 +180,7 @@ function SucceededActivity({ status, issuesHref }: { status: SourceStatus; issue
       <div className="space-y-1.5">
         <p className="flex flex-wrap items-baseline gap-x-2">
           <span className="text-3xl font-semibold leading-none tracking-tight tabular-nums">
-            {format.number(status.searchable)}
+            {format.number(status.searchable ?? 0)}
           </span>
           <span className="text-sm text-muted-foreground">{t("searchable")}</span>
         </p>
