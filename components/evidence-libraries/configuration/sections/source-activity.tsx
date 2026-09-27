@@ -11,7 +11,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useAction } from "convex/react";
+import { useAction, useQueries } from "convex/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
@@ -20,8 +20,9 @@ import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import type { FunctionReturnType } from "convex/server";
 import type { SourceStatus } from "@/convex/evidenceLibraries/sourceStatusValidators";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { buildAdminRouteHref } from "@/lib/evidence-libraries/admin-handoff";
 import { cn } from "@/lib/utils";
 import { type StatusTone } from "../status-chip";
@@ -325,7 +326,16 @@ export type SourceLive = { status: { label: string; tone: StatusTone }; activity
 export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
   const t = useTranslations("evidenceLibraryConfiguration.sources.status");
   const chip = useSourceStatusChip();
-  const report = useProtectedQuery(api.evidenceLibraries.sourceStatus.listForLibrary, { libraryId });
+  const { canRunProtectedQueries } = useAuthReadiness();
+  // useQueries hands a failure back instead of throwing it: a status the
+  // backend cannot give yet (its functions deploy after the site) leaves the
+  // plain rows rather than taking down the configuration editor.
+  const result = useQueries(
+    canRunProtectedQueries
+      ? { report: { query: api.evidenceLibraries.sourceStatus.listForLibrary, args: { libraryId } } }
+      : {},
+  ).report as FunctionReturnType<typeof api.evidenceLibraries.sourceStatus.listForLibrary> | Error | undefined;
+  const report = result instanceof Error ? null : result;
   const requestRun = useAction(api.zotero.runtimeReadActions.requestSourceRun);
   const [retrying, setRetrying] = useState<string | null>(null);
 
@@ -342,8 +352,8 @@ export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
   }
 
   return (sourceKey: string, paused: boolean, provider: string): SourceLive | null => {
-    if (!report.data) return null;
-    const status = report.data.sources.find((source) => source.key === sourceKey) ?? null;
+    if (!report) return null;
+    const status = report.sources.find((source) => source.key === sourceKey) ?? null;
     return {
       activity: paused ? null : (
         <SourceActivityBand

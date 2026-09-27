@@ -25,9 +25,13 @@ const mocks = vi.hoisted(() => ({
   requestSourceRun: vi.fn(),
   query: vi.fn(),
 }));
+/** What the source status query answers: a report, null, or an Error. */
+const statusReport = vi.hoisted(() => ({ current: null as unknown }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("convex/react", () => ({
+  useQueries: (queries: Record<string, unknown>) =>
+    "report" in queries ? { report: statusReport.current } : {},
   useAction: (ref: string) =>
     ({
       listMyZoteroGroups: mocks.listMyGroups,
@@ -42,6 +46,9 @@ vi.mock("convex/react", () => ({
       disconnect: mocks.disconnect,
       removeOpenAlexKey: mocks.removeOpenAlexKey,
     })[ref],
+}));
+vi.mock("@/components/providers/convex-provider", () => ({
+  useAuthReadiness: () => ({ canRunProtectedQueries: true, phase: "ready" }),
 }));
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: (query: string) => mocks.query(query),
@@ -161,13 +168,12 @@ function queries(input: {
   groups?: unknown[];
   credentials?: unknown[];
   /** The library's latest source status report; null before its first. */
-  report?: { observedAt: number; sources: unknown[] } | null;
+  report?: { observedAt: number; sources: unknown[] } | null | Error;
 }) {
+  statusReport.current = input.report ?? null;
   mocks.query.mockImplementation((query: string) => ({
     data:
-      query === "listForLibrary"
-        ? (input.report ?? null)
-        : query === "getConnectionStatus"
+      query === "getConnectionStatus"
         ? input.connected
           ? { connected: true, zoteroUserId: "1", username: "owner" }
           : { connected: false }
@@ -558,6 +564,14 @@ describe("SourcesField import status", () => {
 
   it("keeps the plain rows for a library that has not reported yet", () => {
     queries({ connected: true, groups: [group42], report: null });
+    render(<Harness initial={[zoteroSourceEntry("42")]} />);
+
+    expect(screen.queryByRole("region", { name: `${ns}.status.label` })).toBeNull();
+    expect(screen.getByText(`${ns}.health.connected`)).toBeTruthy();
+  });
+
+  it("keeps the configuration usable when the status cannot be read", () => {
+    queries({ connected: true, groups: [group42], report: new Error("Could not find public function") });
     render(<Harness initial={[zoteroSourceEntry("42")]} />);
 
     expect(screen.queryByRole("region", { name: `${ns}.status.label` })).toBeNull();
