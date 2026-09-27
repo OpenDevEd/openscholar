@@ -6,7 +6,7 @@ facts, commands, and deployment boundaries.
 ## Product and repository boundary
 
 - Repository: `OpenDevEd/openalex-count`.
-- Active development branch: `dev`.
+- Active development branch: `dev`. See "Branches and live systems".
 - OpenScholar owns research discovery, reviews, screening, extraction,
   synthesis, evidence organization, accounts, billing, and Evidence Library
   setup and management.
@@ -40,25 +40,16 @@ supported process changed. Read the page back before claiming success.
 
 - Convex is the backend. Before changing `convex/`, read
   `convex/_generated/ai/guidelines.md`.
-- Before changing a Next.js API, route, cache rule, request rule, or file
-  layout, read the matching installed guide under
-  `node_modules/next/dist/docs/`.
-- Do not use React effects for app state, URL state, copied props, derived
-  values, data loading, navigation, or mutations.
-- Effects are only for an outside browser system such as an event listener,
-  observer, timer, focus operation, or third-party widget. Keep the effect
-  small, explain the outside system, and include full cleanup and dependencies.
-- Use server components, Convex queries, `nuqs`, render-time calculations,
-  lifted state, context, and event handlers for application state.
+- Application state uses Convex queries alongside the shared React rules in
+  `AGENTS.md`.
 - An animated element (a CSS animation class or Framer props) never also
   transitions opacity or transform: no `transition`, `transition-all`,
   `transition-opacity`, or `transition-transform` on it. Put the animation on a
   wrapper, or transition only colors, borders, and shadows. Shared
   `components/ui` parts name the properties they transition.
   `npm run check:animation-clash` enforces both, in CI.
-- Hover hints use `TooltipHint` or `Tooltip` from `components/ui/tooltip`,
-  never the native `title` attribute. When an icon-only control loses its
-  `title`, give it an `aria-label`. The only `title` left is on the hidden
+- The shared tooltip is `TooltipHint` or `Tooltip` from
+  `components/ui/tooltip`. The only native `title` left is on the hidden
   `Z3988` spans, which carry citation data for Zotero.
 
 ## Development services
@@ -67,36 +58,43 @@ supported process changed. Read the page back before claiming success.
 checkout. It is the only checkout allowed to upload to the shared self-hosted
 development Convex service.
 
-```sh
-npm run dev
-npm run dev:web
-npm run convex:push
-npm run logs:convex
-```
-
+- `npm run dev:web` runs the Next.js app only. Use it for `app/` and
+  `components/` work.
+- `npm run dev` also watches `convex/` and keeps pushing functions to the
+  shared development backend. Run it only from `dev-self` when that upload is
+  intended.
+- `npm run convex:push` uploads once. `npm run logs:convex` reads the remote
+  logs.
 - Convex URL: `https://convex.opendev.space`.
 - HTTP actions: `https://convex-site.opendev.space`.
 - Dashboard: `https://convex-dashboard.opendev.space`.
 - Do not run a local Convex backend or use PM2.
-- An implementation lane uses its own worktree and named Convex Cloud
-  development deployment. It uploads once with `npx convex dev --once`.
-- A lane never copies `CONVEX_SELF_HOSTED_URL` or
-  `CONVEX_SELF_HOSTED_ADMIN_KEY`. It never selects the shared deployment,
-  another lane's deployment, or a production deployment.
-- Only the integration owner uploads merged `dev` to the shared service and
-  performs the final remote check.
+- Other worktrees never copy `CONVEX_SELF_HOSTED_URL` or
+  `CONVEX_SELF_HOSTED_ADMIN_KEY`, and never select the shared deployment or a
+  production deployment.
 - Use Coolify service `m6kbbm36nkb9anjt5vfc6e4e`, sub-service `backend`,
   only for container, network, disk, or startup failures. Use Convex logs for
   function failures.
+- The `what2` and `minio` Docker containers are the user's personal services.
+  Never stop, remove, or clean them up.
 
-Production is outside normal development scope. Never push the Evidence
-Library `coolify` or `openscholar` branches. Do not use the user's
-`new-el-optimize` checkout. Never change a shared or production service
-without the user's clear instruction and a read-only target check.
+## Branches and live systems
+
+- `main` is the live OpenScholar at `openscholar.ai`. It has none of the
+  Evidence Library, extraction, or other work on `dev`, which is the future
+  production release. Never merge into, push to, or deploy `main` unless the
+  user asks.
+- `dev` deploys to `dev.openscholar.ai` and is where all current work lands.
+- new-el's `coolify` branch and the tenants it runs are off limits. Never
+  touch, push to, or use them as a reference; see new-el's
+  `docs/agents/project.md`.
+- Do not use the user's `new-el-optimize` checkout.
 
 ## Evidence Library configuration data
 
-Saved configuration is production data.
+Saved configuration must never be lost. Development libraries are used for
+MVPs and showcases, and future libraries will rely on updates keeping their
+settings, so every change to its shape ships a migration.
 
 - Give each stored snapshot an OpenScholar format version separate from the
   runtime schema version.
@@ -113,8 +111,6 @@ Saved configuration is production data.
 
 ## Checks
 
-Read `docs/test-quality.md` and use `test-decision` before touching tests.
-
 - Run the smallest relevant Vitest target while coding.
 - Run `npx tsc --noEmit` when TypeScript contracts change.
 - Run `npm run build` when the production Next.js build is part of the
@@ -124,24 +120,9 @@ Read `docs/test-quality.md` and use `test-decision` before touching tests.
   confirm the matching remote logs are clean.
 - For `app/` or `components/` work, run `npm run dev:web`, open the
   changed page, and check the browser plus terminal.
-- Check an animation or transition change in Firefox as well as Chromium.
-  Zen is Firefox-based, and Firefox shows animation clashes that Chromium hides.
-- Documentation-only work needs link checks and `git diff --check`, not the
-  application test suite.
+- GitHub CI runs the full pre-merge suite.
 
-GitHub CI owns the full pre-merge suite. Follow the CI section in `AGENTS.md`:
-ordinary edits and PR updates finish after targeted checks, while automatic CI
-runs in the background. The primary agent checks the changed browser or
-shared-service behavior when that boundary needs verification.
-
-## Plans and current references
-
-Use a committed plan only for the cases named in `AGENTS.md`. Keep task
-contracts in the numbered plan and link to shared rules instead of copying
-agent prompts.
+## References
 
 - Test rules: `docs/test-quality.md`.
 - Cross-repository follow-ups: `docs/evidence-library-follow-ups.md`.
-- Multi-agent deployment lessons: `docs/agent-sprint-lessons.md`.
-- Current Evidence Library configuration work:
-  `plans/evidence-library-configuration-v2/00-README.md`.

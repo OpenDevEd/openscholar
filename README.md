@@ -148,7 +148,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
    npm run logs:convex   # stream remote Convex function logs
    ```
 
-   The remote dashboard is `https://openscholar-dashboard.opendev.space`. For Convex container failures, open Coolify service `jqlwqa7jatuq5n3e6nvc6xwh` and read the `backend` logs. Stop local development with `Ctrl-C`.
+   The remote dashboard is `https://convex-dashboard.opendev.space`. For Convex container failures, open Coolify service `m6kbbm36nkb9anjt5vfc6e4e` and read the `backend` logs. Stop local development with `Ctrl-C`.
 
 ## Auth E2E + CI
 

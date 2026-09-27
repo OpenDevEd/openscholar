@@ -1,32 +1,7 @@
 # Test quality standard
 
-Read this guide and use the `test-decision` skill before creating, changing,
-deleting, or reviewing any test or assertion.
-
-## First decide whether a test belongs
-
-A changed line does not automatically require a changed test.
-
-Do not add or change a test for work that only changes:
-
-- ordinary interface copy;
-- visual styling or layout;
-- comments or documentation; or
-- internal structure while public behavior stays the same.
-
-Run the existing checks that cover the area. Inspect copy and visual changes in
-the real browser or a screenshot. Exact wording needs an assertion only when it
-is itself a lasting legal, security, accessibility, or protocol contract.
-
-Before changing tests, answer:
-
-1. What behavior or contract changed?
-2. Which concrete defect would the test catch?
-3. Why does existing coverage not catch it?
-4. What is the smallest boundary where the result is visible?
-5. Will the test survive harmless copy changes and internal refactoring?
-
-If those answers are not clear, do not change the test.
+The `test-decision` skill decides whether a change needs a test at all. This
+guide covers what a test must prove once it does.
 
 ## What a useful test proves
 
@@ -67,15 +42,6 @@ Static source rules belong in lint, TypeScript, or a named static check. Do not
 count them as behavior tests.
 
 ## Bad and good examples
-
-Bad copy fossil:
-
-```ts
-expect(card.textContent).not.toContain("optional");
-```
-
-Good: make the copy edit, run existing checks, and inspect the real page. Add
-no test.
 
 Bad source scan:
 

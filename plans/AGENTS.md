@@ -43,7 +43,6 @@ active.
 | Bad | Good |
 |---|---|
 | Repeat eighty lines of standing rules in every prompt. | Start with the task path and let the root files supply the workflow. |
-| Assign one agent to every numbered plan even when they share a schema. | Keep the schema with one owner and parallelize only independent callers. |
 | Require a full suite, deployment, and review after each commit. | Name the focused check for each unit and one final phase gate. |
 | Treat a two-month-old plan as proof of current behavior. | Check the branch, tests, and running boundary, then correct the plan. |
 | Add a fallback because the plan names an old field. | Update the plan, migrate saved data when required, and delete the old field. |
