@@ -7,10 +7,29 @@ import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { requireEvidenceLibraryAccess } from "./access";
 import { authenticateLibraryServiceCredential } from "./credentials";
-import { sourceStatusSnapshotValidator, sourceStatusValidator } from "./sourceStatusValidators";
+import {
+  type SourceStatus,
+  sourceStatusSnapshotValidator,
+  sourceStatusValidator,
+} from "./sourceStatusValidators";
 
 // A library lists its sources in its configuration; far fewer than this.
 const MAX_SOURCES = 200;
+
+const isTime = (value: string | null) => value === null || !Number.isNaN(Date.parse(value));
+const isCount = (value: number | null) => value === null || (Number.isInteger(value) && value >= 0);
+
+/** What the validator cannot say: times that parse and counts that are whole and not negative. */
+function isSensibleStatus(status: SourceStatus) {
+  const counts = [status.searchable, status.searchFailed, status.changed, ...Object.values(status.issues)];
+  const times = [status.lastSuccessAt];
+  if (status.state === "running") {
+    counts.push(status.done, status.total, status.minutesLeft);
+    times.push(status.startedAt);
+  }
+  if (status.state === "failed") times.push(status.failure.at);
+  return counts.every(isCount) && times.every(isTime);
+}
 
 /** Keeps the newest snapshot; a late or retried older one changes nothing. */
 export const record = internalMutation({
@@ -66,7 +85,11 @@ export const receiveSourceStatus = httpAction(async (ctx, request) => {
   if (!validate(sourceStatusSnapshotValidator, body)) return jsonResponse(400, { error: "invalid_request" });
   const snapshot = body as Infer<typeof sourceStatusSnapshotValidator>;
   const observedAt = Date.parse(snapshot.observedAt);
-  if (Number.isNaN(observedAt) || snapshot.sources.length > MAX_SOURCES) {
+  if (
+    Number.isNaN(observedAt) ||
+    snapshot.sources.length > MAX_SOURCES ||
+    !snapshot.sources.every(isSensibleStatus)
+  ) {
     return jsonResponse(400, { error: "invalid_request" });
   }
   try {

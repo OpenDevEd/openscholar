@@ -332,7 +332,11 @@ export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
   function retry(sourceKey: string) {
     setRetrying(sourceKey);
     requestRun({ libraryId, sourceKey })
-      .then(() => toast.success(t("retryStarted")))
+      .then((result) => {
+        // No running library to ask: nothing was requested.
+        if (result.reason) throw new Error(result.reason);
+        toast.success(t("retryStarted"));
+      })
       .catch(() => toast.error(t("retryFailed")))
       .finally(() => setRetrying(null));
   }

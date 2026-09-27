@@ -709,6 +709,16 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       }));
       return { complete: false };
     }
+    const sourceStatus = await ctx.db
+      .query("evidenceLibrarySourceStatus")
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    if (sourceStatus.length > 0) {
+      await Promise.all(sourceStatus.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
     const adminCodes = await ctx.db
       .query("evidenceLibraryAdminLoginCodes")
       .withIndex("by_libraryId_and_codeDigest", (query) =>

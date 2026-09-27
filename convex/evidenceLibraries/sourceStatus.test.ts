@@ -63,6 +63,8 @@ it("refuses another library's credential and a report that breaks the contract",
   expect((await post("2026-09-27T12:10:00.000Z", [upToDate], "els_" + "b".repeat(43))).status).toBe(401);
   expect((await post("2026-09-27T12:10:00.000Z", [{ ...upToDate, state: "exploded" }])).status).toBe(400);
   expect((await post("not a time", [upToDate])).status).toBe(400);
+  expect((await post("2026-09-27T12:10:00.000Z", [{ ...importing, startedAt: "not a time" }])).status).toBe(400);
+  expect((await post("2026-09-27T12:10:00.000Z", [{ ...importing, done: -1 }])).status).toBe(400);
   expect((await post("2026-09-27T12:10:00.000Z", [upToDate], token, { version: 2 })).status).toBe(400);
   expect(await saved()).toEqual([]);
 });
