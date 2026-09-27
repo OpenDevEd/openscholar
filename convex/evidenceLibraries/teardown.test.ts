@@ -41,6 +41,11 @@ describe("development Evidence Library teardown", () => {
         status: "pending",
         startedAt: 1,
       });
+      await ctx.db.insert("evidenceLibrarySourceStatus", {
+        libraryId: fixture.created.libraryId,
+        observedAt: 1,
+        sources: [],
+      });
     });
     const requested = await fixture.admin.mutation(
       api.evidenceLibraries.teardown.requestDevelopmentTeardown,
@@ -87,8 +92,9 @@ describe("development Evidence Library teardown", () => {
       fixture.t.run(async (ctx) => ({
         jobs: await ctx.db.query("evidenceLibraryDigestJobs").collect(),
         files: await ctx.db.system.query("_storage").collect(),
+        sourceStatus: await ctx.db.query("evidenceLibrarySourceStatus").collect(),
       })),
-    ).resolves.toEqual({ jobs: [], files: [] });
+    ).resolves.toEqual({ jobs: [], files: [], sourceStatus: [] });
     await expect(
       fixture.t.run((ctx) => ctx.db.get(fixture.organizationId)),
     ).resolves.toMatchObject({ state: "active" });

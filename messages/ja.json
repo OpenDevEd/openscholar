@@ -2661,6 +2661,53 @@
       }
     },
     "sources": {
+      "status": {
+        "label": "インポートの状況",
+        "chip": {
+          "importing": "インポート中",
+          "searching": "検索を更新中",
+          "upToDate": "最新",
+          "failed": "インポート失敗",
+          "waiting": "未インポート",
+          "paused": "一時停止中"
+        },
+        "steps": {
+          "import": "レコードをインポート",
+          "search": "検索を更新"
+        },
+        "importProgress": "インポートの進捗",
+        "searchProgress": "検索更新の進捗",
+        "ofTotal": "/ {total, number} 件のレコード",
+        "soFar": "件のレコード（これまで）",
+        "searchOfTotal": "/ {total, number} 件を検索可能にしました",
+        "searchSoFar": "件を検索可能にしました（これまで）",
+        "started": "{time} に開始",
+        "minutesLeft": "残り {minutes, number} 分",
+        "underAMinute": "残り 1 分未満",
+        "searchable": "件のレコードを検索可能",
+        "changed": "前回のインポートで {count, number} 件変更、{when}に確認",
+        "checked": "{when}に確認",
+        "reviewIssues": "{count, number} 件のレコードの問題を確認",
+        "failedAt": "{time} にインポートが失敗しました",
+        "lastSuccess": "最後の成功: {when}",
+        "retry": "インポートを再実行",
+        "retryStarted": "数秒以内にライブラリがこのソースをインポートします。",
+        "retryFailed": "今すぐインポートするようライブラリに依頼できませんでした。少し待ってからもう一度お試しください。",
+        "details": "技術的な詳細",
+        "afterActivate": "有効化するとインポートされます",
+        "startsSoon": "1 分以内に開始します",
+        "failure": {
+          "access_denied": "{provider} が保存済みのキーを拒否しました。接続で確認してから再実行してください。",
+          "not_found": "{provider} でこのソースが見つからないか、保存済みのキーではアクセスできません。",
+          "missing_key": "このソースの API キーが保存されていません。接続で追加してください。",
+          "invalid_query": "{provider} が検索を拒否しました。検索を編集してから、もう一度有効化してください。",
+          "too_large": "このソースのレコード数がライブラリの上限を超えています。",
+          "rate_limited": "{provider} がリクエストを制限しています。インポートは毎分再試行します。",
+          "unavailable": "{provider} に接続できませんでした。インポートは毎分再試行します。",
+          "interrupted": "インポートが途中で止まりました。自動的に再開します。",
+          "internal": "インポートで予期しないエラーが発生しました。技術的な詳細で内容を確認できます。"
+        }
+      },
       "description": "Where the library's records come from.",
       "accountHeading": "Zotero account",
       "notConnected": "Not connected",

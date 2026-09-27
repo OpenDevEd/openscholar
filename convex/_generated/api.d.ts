@@ -129,6 +129,8 @@ import type * as evidenceLibraries_setupNaming from "../evidenceLibraries/setupN
 import type * as evidenceLibraries_setupOperation from "../evidenceLibraries/setupOperation.js";
 import type * as evidenceLibraries_setupRecords from "../evidenceLibraries/setupRecords.js";
 import type * as evidenceLibraries_sourceCredentials from "../evidenceLibraries/sourceCredentials.js";
+import type * as evidenceLibraries_sourceStatus from "../evidenceLibraries/sourceStatus.js";
+import type * as evidenceLibraries_sourceStatusValidators from "../evidenceLibraries/sourceStatusValidators.js";
 import type * as evidenceLibraries_storageSetup from "../evidenceLibraries/storageSetup.js";
 import type * as evidenceLibraries_storageSetupActions from "../evidenceLibraries/storageSetupActions.js";
 import type * as evidenceLibraries_storageSetupClient from "../evidenceLibraries/storageSetupClient.js";
@@ -438,6 +440,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/setupOperation": typeof evidenceLibraries_setupOperation;
   "evidenceLibraries/setupRecords": typeof evidenceLibraries_setupRecords;
   "evidenceLibraries/sourceCredentials": typeof evidenceLibraries_sourceCredentials;
+  "evidenceLibraries/sourceStatus": typeof evidenceLibraries_sourceStatus;
+  "evidenceLibraries/sourceStatusValidators": typeof evidenceLibraries_sourceStatusValidators;
   "evidenceLibraries/storageSetup": typeof evidenceLibraries_storageSetup;
   "evidenceLibraries/storageSetupActions": typeof evidenceLibraries_storageSetupActions;
   "evidenceLibraries/storageSetupClient": typeof evidenceLibraries_storageSetupClient;

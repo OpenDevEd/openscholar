@@ -22,17 +22,23 @@ const mocks = vi.hoisted(() => ({
   startOAuth: vi.fn(),
   writeCredential: vi.fn(),
   removeOpenAlexKey: vi.fn(),
+  requestSourceRun: vi.fn(),
   query: vi.fn(),
 }));
+/** What the source status query answers: a report, null, or an Error. */
+const statusReport = vi.hoisted(() => ({ current: null as unknown }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("convex/react", () => ({
+  useQueries: (queries: Record<string, unknown>) =>
+    "report" in queries ? { report: statusReport.current } : {},
   useAction: (ref: string) =>
     ({
       listMyZoteroGroups: mocks.listMyGroups,
       connectZoteroGroup: mocks.connectGroup,
       startOAuth: mocks.startOAuth,
       writeCredential: mocks.writeCredential,
+      requestSourceRun: mocks.requestSourceRun,
     })[ref],
   useMutation: (ref: string) =>
     ({
@@ -40,6 +46,9 @@ vi.mock("convex/react", () => ({
       disconnect: mocks.disconnect,
       removeOpenAlexKey: mocks.removeOpenAlexKey,
     })[ref],
+}));
+vi.mock("@/components/providers/convex-provider", () => ({
+  useAuthReadiness: () => ({ canRunProtectedQueries: true, phase: "ready" }),
 }));
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: (query: string) => mocks.query(query),
@@ -50,6 +59,7 @@ vi.mock("@/convex/_generated/api", () => ({
       credentials: { listCredentialMetadata: "listCredentialMetadata" },
       credentialActions: { writeCredential: "writeCredential" },
       openAlexSourceKey: { removeOpenAlexKey: "removeOpenAlexKey" },
+      sourceStatus: { listForLibrary: "listForLibrary" },
     },
     zotero: {
       actions: { startOAuth: "startOAuth" },
@@ -63,6 +73,7 @@ vi.mock("@/convex/_generated/api", () => ({
         listMyZoteroGroups: "listMyZoteroGroups",
         connectZoteroGroup: "connectZoteroGroup",
       },
+      runtimeReadActions: { requestSourceRun: "requestSourceRun" },
     },
   },
 }));
@@ -70,8 +81,13 @@ vi.mock("next-intl", () => ({
   useTranslations:
     (namespace: string) => (key: string, values?: Record<string, unknown>) =>
       `${namespace}.${key}${values ? ` ${JSON.stringify(values)}` : ""}`,
-  useFormatter: () => ({ dateTime: (date: Date) => date.toISOString().slice(0, 10) }),
+  useFormatter: () => ({
+    dateTime: (date: Date) => date.toISOString().slice(0, 10),
+    number: (value: number) => String(value),
+    relativeTime: (date: Date) => date.toISOString(),
+  }),
   useLocale: () => "en-GB",
+  useNow: () => new Date("2026-09-27T12:10:00.000Z"),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -151,7 +167,10 @@ function queries(input: {
   connected: boolean;
   groups?: unknown[];
   credentials?: unknown[];
+  /** The library's latest source status report; null before its first. */
+  report?: { observedAt: number; sources: unknown[] } | null | Error;
 }) {
+  statusReport.current = input.report ?? null;
   mocks.query.mockImplementation((query: string) => ({
     data:
       query === "getConnectionStatus"
@@ -510,5 +529,79 @@ describe("<SourcesField>", () => {
       );
     }
     expect(screen.getByText(`${ns}.tagRules.issues.publishEmpty`)).toBeInTheDocument();
+  });
+});
+
+describe("SourcesField import status", () => {
+  const failedZotero = {
+    key: "zotero-42",
+    provider: "zotero",
+    state: "failed",
+    failure: { code: "access_denied", details: "ZoteroApiError: 403", at: "2026-09-27T12:04:00.000Z" },
+    searchable: 300,
+    searchFailed: 0,
+    changed: 14,
+    lastSuccessAt: "2026-09-26T18:20:00.000Z",
+    issues: {},
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.requestSourceRun.mockResolvedValue({});
+  });
+
+  it("shows a failed import with its reason and asks the library to retry that source", async () => {
+    queries({ connected: true, groups: [group42], report: { observedAt: 1, sources: [failedZotero] } });
+    render(<Harness initial={[zoteroSourceEntry("42")]} />);
+
+    const band = screen.getByRole("region", { name: `${ns}.status.label` });
+    expect(within(band).getByText(`${ns}.status.failure.access_denied ${JSON.stringify({ provider: "Zotero" })}`)).toBeTruthy();
+    // The row's chip and the band's announcement both name the state.
+    expect(screen.getAllByText(`${ns}.status.chip.failed`)).toHaveLength(2);
+
+    await userEvent.click(within(band).getByRole("button", { name: `${ns}.status.retry` }));
+    expect(mocks.requestSourceRun).toHaveBeenCalledWith({ libraryId, sourceKey: "zotero-42" });
+  });
+
+  it("keeps the plain rows for a library that has not reported yet", () => {
+    queries({ connected: true, groups: [group42], report: null });
+    render(<Harness initial={[zoteroSourceEntry("42")]} />);
+
+    expect(screen.queryByRole("region", { name: `${ns}.status.label` })).toBeNull();
+    expect(screen.getByText(`${ns}.health.connected`)).toBeTruthy();
+  });
+
+  it("keeps the configuration usable when the status cannot be read", () => {
+    queries({ connected: true, groups: [group42], report: new Error("Could not find public function") });
+    render(<Harness initial={[zoteroSourceEntry("42")]} />);
+
+    expect(screen.queryByRole("region", { name: `${ns}.status.label` })).toBeNull();
+    expect(screen.getByText(`${ns}.health.connected`)).toBeTruthy();
+  });
+
+  it("stops showing progress for an import the library stopped reporting", () => {
+    const importing = {
+      ...failedZotero,
+      state: "running",
+      phase: "import",
+      done: 120,
+      total: 300,
+      startedAt: "2026-09-27T11:50:00.000Z",
+      minutesLeft: 2,
+    };
+    // The page's clock reads 12:10; the last report came at 12:00.
+    queries({ connected: true, groups: [group42], report: { observedAt: Date.parse("2026-09-27T12:00:00.000Z"), sources: [importing] } });
+    render(<Harness initial={[zoteroSourceEntry("42")]} />);
+
+    expect(screen.queryByRole("region", { name: `${ns}.status.label` })).toBeNull();
+    expect(screen.getByText(`${ns}.health.connected`)).toBeTruthy();
+  });
+
+  it("says a source added in the draft imports after activation", () => {
+    queries({ connected: true, groups: [group42], report: { observedAt: 1, sources: [failedZotero] } });
+    render(<Harness initial={[zoteroSourceEntry("42"), openAlexSource]} />);
+
+    const bands = screen.getAllByRole("region", { name: `${ns}.status.label` });
+    expect(within(bands[1]!).getByText(`${ns}.status.afterActivate`)).toBeTruthy();
   });
 });

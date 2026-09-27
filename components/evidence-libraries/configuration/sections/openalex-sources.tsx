@@ -37,6 +37,7 @@ import { readOpenAlexSourceSearch, sourceSearchHistoryId } from "@/lib/evidence-
 import { Field } from "../section-card";
 import { OpenAlexQuerySummary } from "./openalex-query-summary";
 import { SourceRow } from "./source-row";
+import type { SourceLive } from "./source-activity";
 
 export const OpenAlexSearchDialog = dynamic(
   () =>
@@ -204,9 +205,11 @@ export function useOpenAlexSources({
 export function OpenAlexSourceRow({
   source,
   controller,
+  live,
 }: {
   source: OpenAlexSourceEntry;
   controller: ReturnType<typeof useOpenAlexSources>;
+  live: SourceLive | null;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   return (
@@ -215,10 +218,12 @@ export function OpenAlexSourceRow({
       provider={t("openAlexSearch")}
       icon={<OpenAlexIcon className="size-4" />}
       status={
-        source.enabled
+        live?.status ??
+        (source.enabled
           ? { label: t("approved"), tone: "success" }
-          : { label: t("health.paused"), tone: "neutral" }
+          : { label: t("health.paused"), tone: "neutral" })
       }
+      activity={live?.activity}
       paused={!source.enabled}
       description={
         <OpenAlexQuerySummary source={source} />

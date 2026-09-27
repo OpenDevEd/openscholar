@@ -39,6 +39,7 @@ import {
   organizationMembershipFields,
 } from "./evidenceLibraries/validators";
 import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidators";
+import { evidenceLibrarySourceStatusFields } from "./evidenceLibraries/sourceStatusValidators";
 
 import { authorContentFields } from "./authors/validators";
 
@@ -225,6 +226,12 @@ export default defineSchema({
   evidenceLibraryDigestJobs: defineTable(evidenceLibraryDigestJobFields).index(
     "by_libraryId_and_editionId",
     ["libraryId", "editionId"],
+  ),
+
+  // Rewritten every few seconds while a library imports, so it has its own table.
+  evidenceLibrarySourceStatus: defineTable(evidenceLibrarySourceStatusFields).index(
+    "by_libraryId",
+    ["libraryId"],
   ),
 
   evidenceLibraryZoteroGroups: defineTable(evidenceLibraryZoteroGroupFields)

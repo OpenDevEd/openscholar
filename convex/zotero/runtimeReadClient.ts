@@ -146,19 +146,17 @@ function readReviewedPublication(
   };
 }
 
-async function runtimeGet(
+/** One call to the library with its machine credential; any refusal or failure throws. */
+async function runtimeFetch(
   fetchImpl: typeof fetch,
   target: { baseUrl: string; credential: string },
-  path: string,
-  params: Record<string, string | undefined>,
-): Promise<unknown> {
-  const url = new URL(path, target.baseUrl);
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== "") url.searchParams.set(key, value);
-  }
+  url: URL,
+  method: "GET" | "POST" = "GET",
+): Promise<Response> {
   let response: Response;
   try {
     response = await fetchImpl(url.toString(), {
+      method,
       headers: {
         Authorization: `Bearer ${target.credential}`,
         Accept: "application/json",
@@ -183,6 +181,20 @@ async function runtimeGet(
       `The library answered ${response.status}`,
     );
   }
+  return response;
+}
+
+async function runtimeGet(
+  fetchImpl: typeof fetch,
+  target: { baseUrl: string; credential: string },
+  path: string,
+  params: Record<string, string | undefined>,
+): Promise<unknown> {
+  const url = new URL(path, target.baseUrl);
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") url.searchParams.set(key, value);
+  }
+  const response = await runtimeFetch(fetchImpl, target, url);
   try {
     return await response.json();
   } catch {
@@ -385,4 +397,17 @@ export async function readRuntimeHomeQuestions(
     );
   }
   return questions as (string | null)[];
+}
+
+/** Asks the library to import one source now instead of at its next sweep. */
+export async function requestRuntimeSourceRun(
+  fetchImpl: typeof fetch,
+  target: { baseUrl: string; credential: string },
+  sourceKey: string,
+): Promise<void> {
+  const url = new URL(
+    `/api/openscholar/sources/${encodeURIComponent(sourceKey)}/sync`,
+    target.baseUrl,
+  );
+  await runtimeFetch(fetchImpl, target, url, "POST");
 }

@@ -7,6 +7,7 @@ import { components, internal, api } from "./_generated/api";
 import { registerRoutes } from "@convex-dev/stripe";
 import { clerkWebhook } from "./webhooks/clerk";
 import { redeemAdminLoginCode, checkAdminSession } from "./evidenceLibraries/serviceHttp";
+import { receiveSourceStatus } from "./evidenceLibraries/sourceStatus";
 import { normalizeStripeWebhookSecret } from "./lib/stripeWebhookSecret";
 import { requireAppUrl } from "./lib/env";
 import {
@@ -78,6 +79,12 @@ http.route({
   path: "/api/v1/evidence-libraries/admin-login/redeem",
   method: "POST",
   handler: redeemAdminLoginCode,
+});
+
+http.route({
+  path: "/api/v1/evidence-libraries/source-status",
+  method: "POST",
+  handler: receiveSourceStatus,
 });
 
 // Zotero OAuth callback

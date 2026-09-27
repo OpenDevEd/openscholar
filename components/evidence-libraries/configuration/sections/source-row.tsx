@@ -22,6 +22,7 @@ export function SourceRow({
   metadata,
   description,
   controls,
+  activity,
   onEdit,
   onToggle,
   onRemove,
@@ -37,6 +38,8 @@ export function SourceRow({
   metadata: MetaItem[];
   description?: ReactNode;
   controls?: ReactNode;
+  /** The import status band across the foot of the row. */
+  activity?: ReactNode;
   onEdit?: () => void;
   onToggle: () => void;
   onRemove: () => void;
@@ -119,6 +122,7 @@ export function SourceRow({
         <MetaList items={metadata} />
         {controls}
       </div>
+      {activity ? <div className="-mx-4 -mb-4">{activity}</div> : null}
     </li>
   );
 }

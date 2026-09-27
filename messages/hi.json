@@ -2661,6 +2661,53 @@
       }
     },
     "sources": {
+      "status": {
+        "label": "आयात की स्थिति",
+        "chip": {
+          "importing": "आयात हो रहा है",
+          "searching": "खोज अपडेट हो रही है",
+          "upToDate": "अद्यतन",
+          "failed": "आयात विफल",
+          "waiting": "अभी आयात नहीं हुआ",
+          "paused": "रुका हुआ"
+        },
+        "steps": {
+          "import": "रिकॉर्ड आयात करें",
+          "search": "खोज अपडेट करें"
+        },
+        "importProgress": "आयात की प्रगति",
+        "searchProgress": "खोज अपडेट की प्रगति",
+        "ofTotal": "{total, number} में से रिकॉर्ड",
+        "soFar": "रिकॉर्ड अब तक",
+        "searchOfTotal": "{total, number} में से रिकॉर्ड खोजने योग्य हुए",
+        "searchSoFar": "रिकॉर्ड अब तक खोजने योग्य हुए",
+        "started": "{time} पर शुरू हुआ",
+        "minutesLeft": "{minutes, plural, one {# मिनट बाकी} other {# मिनट बाकी}}",
+        "underAMinute": "एक मिनट से कम बाकी",
+        "searchable": "रिकॉर्ड खोजने योग्य",
+        "changed": "पिछले आयात में {count, plural, one {# बदला} other {# बदले}}, {when} जाँचा गया",
+        "checked": "{when} जाँचा गया",
+        "reviewIssues": "{count, plural, one {# रिकॉर्ड समस्या} other {# रिकॉर्ड समस्याएँ}} देखें",
+        "failedAt": "{time} पर आयात विफल हुआ",
+        "lastSuccess": "पिछली सफलता {when}",
+        "retry": "आयात फिर से चलाएँ",
+        "retryStarted": "लाइब्रेरी कुछ सेकंड में इस स्रोत को आयात करेगी।",
+        "retryFailed": "लाइब्रेरी से अभी आयात करने को नहीं कहा जा सका। थोड़ी देर में फिर कोशिश करें।",
+        "details": "तकनीकी विवरण",
+        "afterActivate": "सक्रिय करने के बाद आयात होगा",
+        "startsSoon": "एक मिनट के भीतर शुरू होगा",
+        "failure": {
+          "access_denied": "{provider} ने सहेजी गई कुंजी अस्वीकार कर दी। कनेक्शन में इसे जाँचें, फिर दोबारा चलाएँ।",
+          "not_found": "{provider} को यह स्रोत अब नहीं मिलता, या सहेजी गई कुंजी इसे नहीं देख सकती।",
+          "missing_key": "इस स्रोत के लिए कोई API कुंजी सहेजी नहीं गई है। कनेक्शन में एक जोड़ें।",
+          "invalid_query": "{provider} ने खोज अस्वीकार कर दी। खोज बदलें, फिर दोबारा सक्रिय करें।",
+          "too_large": "इस स्रोत में लाइब्रेरी की अनुमति से ज़्यादा रिकॉर्ड हैं।",
+          "rate_limited": "{provider} अनुरोध सीमित कर रहा है। आयात हर मिनट फिर से कोशिश करता है।",
+          "unavailable": "{provider} तक नहीं पहुँचा जा सका। आयात हर मिनट फिर से कोशिश करता है।",
+          "interrupted": "आयात पूरा होने से पहले रुक गया। यह अपने आप फिर शुरू होगा।",
+          "internal": "आयात में एक अनपेक्षित त्रुटि हुई। तकनीकी विवरण बताते हैं कि क्या हुआ।"
+        }
+      },
       "description": "Where the library's records come from.",
       "accountHeading": "Zotero account",
       "notConnected": "Not connected",

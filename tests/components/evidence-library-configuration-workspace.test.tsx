@@ -54,6 +54,7 @@ vi.mock("next-intl", () => ({
     return full.startsWith(prefix) ? full.slice(prefix.length) : full;
   },
   useFormatter: () => ({ dateTime: (date: Date) => date.toISOString() }),
+  useNow: () => new Date("2026-09-27T12:10:00.000Z"),
 }));
 
 vi.mock("sonner", () => ({ toast: toastMock }));
@@ -77,6 +78,7 @@ vi.mock("@/convex/_generated/api", () => ({
       credentialActions: { writeCredential: "writeCredential" },
       aiProviderKey: { removeAiProviderKey: "removeAiProviderKey" },
       openAlexSourceKey: { removeOpenAlexKey: "removeOpenAlexKey" },
+      sourceStatus: { listForLibrary: "listSourceStatus" },
       mutations: {
         activateConfiguration: "activateConfiguration",
         saveDraftSections: "saveDraftSections",
@@ -118,6 +120,7 @@ vi.mock("@/convex/_generated/api", () => ({
         resolveLibraryCollections: "resolveLibraryCollections",
         listReviewedPublications: "listReviewedPublications",
         readHomeQuestions: "readHomeQuestions",
+        requestSourceRun: "requestSourceRun",
       },
     },
     models: {
@@ -141,8 +144,13 @@ const homeQuestionsMock = vi.hoisted(() =>
 );
 const reviewedPublicationsMock = vi.hoisted(() => vi.fn(async () => ({ items: [], nextCursor: null })));
 
+vi.mock("@/components/providers/convex-provider", () => ({
+  useAuthReadiness: () => ({ canRunProtectedQueries: true, phase: "ready" }),
+}));
 vi.mock("convex/react", () => ({
   useMutation: (mutation: unknown) => mutationMock(mutation),
+  // No library has reported source status in these cases.
+  useQueries: () => ({}),
   useQuery: (query: unknown) =>
     query === "publishRuntime"
       ? publishRuntimeAnswer
