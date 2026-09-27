@@ -291,9 +291,9 @@ export function SourceActivityBand({
   retrying: boolean;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources.status");
+  const chip = useSourceStatusChip();
   return (
     <section
-      aria-live="polite"
       aria-label={t("label")}
       data-source-state={status?.state ?? "waiting"}
       className={cn(
@@ -301,6 +301,10 @@ export function SourceActivityBand({
         BAND[status?.state ?? "waiting"],
       )}
     >
+      {/* Only the state is announced; the counts change every few seconds. */}
+      <span className="sr-only" aria-live="polite">
+        {chip(status, false).label}
+      </span>
       <PhaseTrack status={status} />
       {status?.state === "running" ? <RunningActivity status={status} /> : null}
       {status?.state === "succeeded" ? <SucceededActivity status={status} issuesHref={issuesHref} /> : null}
@@ -315,6 +319,9 @@ export function SourceActivityBand({
     </section>
   );
 }
+
+// A running import reports every few seconds; this long without one means it stopped.
+const STALE_RUNNING_MS = 120_000;
 
 export type SourceLive = { status: { label: string; tone: StatusTone }; activity: ReactNode };
 
@@ -337,10 +344,11 @@ export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
   ).report as FunctionReturnType<typeof api.evidenceLibraries.sourceStatus.listForLibrary> | Error | undefined;
   const report = result instanceof Error ? null : result;
   const requestRun = useAction(api.zotero.runtimeReadActions.requestSourceRun);
-  const [retrying, setRetrying] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState<ReadonlySet<string>>(new Set());
+  const now = useNow({ updateInterval: 30_000 });
 
   function retry(sourceKey: string) {
-    setRetrying(sourceKey);
+    setRetrying((keys) => new Set(keys).add(sourceKey));
     requestRun({ libraryId, sourceKey })
       .then((result) => {
         // No running library to ask: nothing was requested.
@@ -348,12 +356,21 @@ export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
         toast.success(t("retryStarted"));
       })
       .catch(() => toast.error(t("retryFailed")))
-      .finally(() => setRetrying(null));
+      .finally(() =>
+        setRetrying((keys) => {
+          const next = new Set(keys);
+          next.delete(sourceKey);
+          return next;
+        }),
+      );
   }
 
   return (sourceKey: string, paused: boolean, provider: string): SourceLive | null => {
     if (!report) return null;
     const status = report.sources.find((source) => source.key === sourceKey) ?? null;
+    // A running import reports every few seconds; silence means the library
+    // stopped reporting, so its last progress is no longer known.
+    if (status?.state === "running" && now.getTime() - report.observedAt > STALE_RUNNING_MS) return null;
     return {
       activity: paused ? null : (
         <SourceActivityBand
@@ -364,7 +381,7 @@ export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
             returnPath: `/admin?source=${encodeURIComponent(sourceKey)}`,
           })}
           onRetry={() => retry(sourceKey)}
-          retrying={retrying === sourceKey}
+          retrying={retrying.has(sourceKey)}
         />
       ),
       status: chip(status, paused),

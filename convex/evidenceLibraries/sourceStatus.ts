@@ -15,6 +15,8 @@ import {
 
 // A library lists its sources in its configuration; far fewer than this.
 const MAX_SOURCES = 200;
+// Newest wins, so a clock far ahead would freeze a library's status.
+const MAX_CLOCK_AHEAD_MS = 5 * 60_000;
 
 const isTime = (value: string | null) => value === null || !Number.isNaN(Date.parse(value));
 const isCount = (value: number | null) => value === null || (Number.isInteger(value) && value >= 0);
@@ -87,6 +89,7 @@ export const receiveSourceStatus = httpAction(async (ctx, request) => {
   const observedAt = Date.parse(snapshot.observedAt);
   if (
     Number.isNaN(observedAt) ||
+    observedAt > Date.now() + MAX_CLOCK_AHEAD_MS ||
     snapshot.sources.length > MAX_SOURCES ||
     !snapshot.sources.every(isSensibleStatus)
   ) {

@@ -54,6 +54,7 @@ vi.mock("next-intl", () => ({
     return full.startsWith(prefix) ? full.slice(prefix.length) : full;
   },
   useFormatter: () => ({ dateTime: (date: Date) => date.toISOString() }),
+  useNow: () => new Date("2026-09-27T12:10:00.000Z"),
 }));
 
 vi.mock("sonner", () => ({ toast: toastMock }));

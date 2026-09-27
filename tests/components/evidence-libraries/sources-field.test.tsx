@@ -556,7 +556,8 @@ describe("SourcesField import status", () => {
 
     const band = screen.getByRole("region", { name: `${ns}.status.label` });
     expect(within(band).getByText(`${ns}.status.failure.access_denied ${JSON.stringify({ provider: "Zotero" })}`)).toBeTruthy();
-    expect(screen.getByText(`${ns}.status.chip.failed`)).toBeTruthy();
+    // The row's chip and the band's announcement both name the state.
+    expect(screen.getAllByText(`${ns}.status.chip.failed`)).toHaveLength(2);
 
     await userEvent.click(within(band).getByRole("button", { name: `${ns}.status.retry` }));
     expect(mocks.requestSourceRun).toHaveBeenCalledWith({ libraryId, sourceKey: "zotero-42" });
@@ -572,6 +573,24 @@ describe("SourcesField import status", () => {
 
   it("keeps the configuration usable when the status cannot be read", () => {
     queries({ connected: true, groups: [group42], report: new Error("Could not find public function") });
+    render(<Harness initial={[zoteroSourceEntry("42")]} />);
+
+    expect(screen.queryByRole("region", { name: `${ns}.status.label` })).toBeNull();
+    expect(screen.getByText(`${ns}.health.connected`)).toBeTruthy();
+  });
+
+  it("stops showing progress for an import the library stopped reporting", () => {
+    const importing = {
+      ...failedZotero,
+      state: "running",
+      phase: "import",
+      done: 120,
+      total: 300,
+      startedAt: "2026-09-27T11:50:00.000Z",
+      minutesLeft: 2,
+    };
+    // The page's clock reads 12:10; the last report came at 12:00.
+    queries({ connected: true, groups: [group42], report: { observedAt: Date.parse("2026-09-27T12:00:00.000Z"), sources: [importing] } });
     render(<Harness initial={[zoteroSourceEntry("42")]} />);
 
     expect(screen.queryByRole("region", { name: `${ns}.status.label` })).toBeNull();
