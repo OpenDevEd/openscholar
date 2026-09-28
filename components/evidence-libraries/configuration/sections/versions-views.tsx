@@ -1,8 +1,7 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   canRestore,
@@ -14,6 +13,7 @@ import {
 } from "@/lib/evidence-libraries/configuration/versions";
 import { cn } from "@/lib/utils";
 import { EmptyList } from "../fields";
+import { DisclosureButton } from "../disclosure-button";
 import { StatusChip, type StatusTone } from "../status-chip";
 
 /*
@@ -114,6 +114,8 @@ export function ReleaseNotes({
   changes: readonly ReleaseChange[];
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
+  const [changesOpen, setChangesOpen] = useState(false);
+  const changesId = useId();
   if (releases.length === 0) return <CommitList changes={changes} />;
   return (
     <div className="space-y-4" data-release-notes={releases.length}>
@@ -148,15 +150,16 @@ export function ReleaseNotes({
         </article>
       ))}
       {changes.length > 0 ? (
-        <details className="group border-t border-border/50 pt-3">
-          <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
-            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+        <div className="border-t border-border/50 pt-3">
+          <DisclosureButton open={changesOpen} controls={changesId} onToggle={() => setChangesOpen((open) => !open)}>
             {t("versions.technicalChanges")}
-          </summary>
-          <div className="pt-2">
-            <CommitList changes={changes} />
-          </div>
-        </details>
+          </DisclosureButton>
+          {changesOpen ? (
+            <div id={changesId} className="pt-2">
+              <CommitList changes={changes} />
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

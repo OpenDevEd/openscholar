@@ -4,7 +4,6 @@ import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { useAction, useMutation } from "convex/react";
 import {
   ChevronDown,
-  ChevronRight,
   Globe,
   Lock,
   Plus,
@@ -73,6 +72,7 @@ import {
   type PickerSource,
   RemotePickerDialog,
 } from "./remote-picker-dialog";
+import { DisclosureButton } from "../disclosure-button";
 import {
   DEFAULT_TAG_RULES,
   type TagRuleKey,
@@ -386,23 +386,11 @@ export function SourcesField({
             <TabsContent value="zotero" className="space-y-5">
               <AccountPanel account={account.data} />
               <div className="space-y-3 border-t border-border/50 pt-5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="-ml-2 h-7 px-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-                  aria-expanded={advancedOpen}
-                  onClick={() => setAdvancedOpen((open) => !open)}
-                >
-                  {advancedOpen ? (
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  ) : (
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  )}
+                <DisclosureButton open={advancedOpen} controls="zotero-tag-rules" onToggle={() => setAdvancedOpen((open) => !open)}>
                   {t("tagRulesHeading")}
-                </Button>
+                </DisclosureButton>
                 {advancedOpen ? (
-                  <Panel tone="muted" className="space-y-4">
+                  <Panel id="zotero-tag-rules" tone="muted" className="space-y-4">
                     <div className="space-y-0.5">
                       <p className="text-sm font-medium">
                         {t("tagRulesHeading")}

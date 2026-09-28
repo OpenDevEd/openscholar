@@ -2,7 +2,6 @@
 
 import {
   Check,
-  ChevronDown,
   Database,
   ExternalLink,
   RefreshCw,
@@ -13,7 +12,7 @@ import {
 } from "lucide-react";
 import { useAction, useQueries } from "convex/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -25,6 +24,7 @@ import type { SourceStatus } from "@/convex/evidenceLibraries/sourceStatusValida
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AdminAreaLink } from "@/components/evidence-libraries/admin-area-link";
 import { cn } from "@/lib/utils";
+import { DisclosureButton } from "../disclosure-button";
 import { type StatusTone } from "../status-chip";
 
 type Running = Extract<SourceStatus, { state: "running" }>;
@@ -223,6 +223,7 @@ function FailedActivity({
   const format = useFormatter();
   const now = useNow({ updateInterval: 30_000 });
   const [open, setOpen] = useState(false);
+  const detailsId = useId();
   return (
     <div className="space-y-3">
       <div className="space-y-1">
@@ -241,22 +242,12 @@ function FailedActivity({
           {retrying ? <Spinner /> : <RefreshCw />}
           {t("retry")}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        >
+        <DisclosureButton open={open} controls={detailsId} className="ml-0" onToggle={() => setOpen((value) => !value)}>
           {t("details")}
-          <ChevronDown
-            className={cn("transition-transform motion-reduce:transition-none", open && "rotate-180")}
-          />
-        </Button>
+        </DisclosureButton>
       </div>
       {open ? (
-        <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted-foreground">
+        <pre id={detailsId} className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted-foreground">
           {status.failure.details}
         </pre>
       ) : null}

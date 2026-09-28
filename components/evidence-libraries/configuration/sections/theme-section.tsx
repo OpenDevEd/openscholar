@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Palette } from "lucide-react";
+import { Palette } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import { COLOUR_PRESETS } from "../colours";
 import { Field } from "../section-card";
 import { ChoiceCards, ColourField, FieldGroup, UploadField } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
+import { DisclosureButton } from "../disclosure-button";
 
 const ADVANCED_COLOURS = [
   "backgroundDark",
@@ -232,18 +233,9 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
       </FieldGroup>
 
       <div className="space-y-3 border-t border-border/50 pt-5">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="-ml-2 h-7 text-xs font-medium text-muted-foreground hover:text-foreground"
-          aria-expanded={advancedOpen}
-          aria-controls="theme-advanced"
-          onClick={() => setAdvancedOpen((open) => !open)}
-        >
-          {advancedOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        <DisclosureButton open={advancedOpen} controls="theme-advanced" onToggle={() => setAdvancedOpen((open) => !open)}>
           {t("advanced")}
-        </Button>
+        </DisclosureButton>
         {advancedOpen ? (
           <div id="theme-advanced" className="grid gap-4 rounded-lg bg-muted/30 p-3 sm:grid-cols-2">
             {ADVANCED_COLOURS.map((key) => (

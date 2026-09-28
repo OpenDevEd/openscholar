@@ -207,9 +207,12 @@ describe("<VersionsSection>", () => {
     expect(screen.getByText("Search is faster.")).toBeInTheDocument();
     expect(screen.getByText("Search results load faster on large libraries.")).toBeInTheDocument();
     expect(document.querySelector('[data-area="speed"]')).toHaveTextContent("versions.areas.speed");
-    const disclosure = screen.getByText("versions.technicalChanges").closest("details");
-    expect(disclosure).not.toHaveAttribute("open");
-    expect(within(disclosure as HTMLElement).getByText("feat: faster search index")).toBeInTheDocument();
+    const disclosure = screen.getByRole("button", { name: "versions.technicalChanges" });
+    expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("feat: faster search index")).toBeNull();
+    await userEvent.setup().click(disclosure);
+    expect(disclosure).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("feat: faster search index")).toBeInTheDocument();
   });
 
   it("disables Update and Restore while an operation runs", async () => {
