@@ -821,6 +821,7 @@ export const evidenceLibraryOperationFields = {
   // last step can refuse a key that moved on the way.
   setupAiProviderKey: v.optional(libraryCredentialSourceValidator),
   setupPublicationProviders: v.optional(libraryCredentialSourceValidator),
+  setupOpenAlexApiKey: v.optional(libraryCredentialSourceValidator),
   setupRuntimeCommit: v.optional(v.string()),
   setupRuntimeImage: v.optional(v.string()),
   setupDeploymentId: v.optional(v.string()),

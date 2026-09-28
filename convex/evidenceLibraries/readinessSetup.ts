@@ -1,6 +1,7 @@
 import { requireUnchangedPublicationProviders } from "./publicationProviders";
 import { internal } from "../_generated/api";
 import { requireUnchangedAiProviderKey } from "./aiProviderKey";
+import { requireUnchangedOpenAlexKey } from "./openAlexSourceKey";
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
@@ -216,6 +217,11 @@ export const completeReadinessSetup = internalMutation({
       ctx,
       args.libraryId,
       setup.setupOperation.setupPublicationProviders ?? { present: false },
+    );
+    await requireUnchangedOpenAlexKey(
+      ctx,
+      args.libraryId,
+      setup.setupOperation.setupOpenAlexApiKey ?? { present: false },
     );
     const transition = await recordEvidenceLibrarySetupStep(ctx, {
       libraryId: args.libraryId,

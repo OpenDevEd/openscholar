@@ -511,6 +511,7 @@ export async function recordEvidenceLibrarySetupStep(
     setupLeaseExpiresAt: undefined,
     setupEncryptedDatabasePassword: undefined,
     setupAiProviderKey: undefined,
+    setupOpenAlexApiKey: undefined,
     setupRuntimeCommit: undefined,
     setupRuntimeImage: undefined,
     setupDeploymentId: undefined,
