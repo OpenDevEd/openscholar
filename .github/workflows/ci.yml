@@ -15,21 +15,23 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # A pull request run tests the merge result. When it passed, it records the
-  # tree it tested. A push whose tree matches has nothing new to test.
-  tested:
-    name: Tested tree
-    if: github.event_name == 'push'
+  changes:
+    name: Changes
     runs-on: openscholar-light
     timeout-minutes: 5
     permissions:
       actions: read
       contents: read
     outputs:
-      passed: ${{ steps.lookup.outputs.passed }}
+      tested: ${{ steps.tested.outputs.passed }}
+      runtime_required: ${{ steps.detect.outputs.runtime_required }}
     steps:
+      # A pull request run tests the merge result and, when every check ran and
+      # passed, records the tree it tested. A push to dev with that tree has
+      # nothing new to test. Pushes to main always run, for extended billing.
       - name: Look for a passed pull request run of this tree
-        id: lookup
+        id: tested
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -37,34 +39,33 @@ jobs:
           api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
           auth="Authorization: Bearer $GITHUB_TOKEN"
           # Any lookup failure runs the full suite.
+          passed=false
           tree="$(curl -fsS -H "$auth" "$api/git/commits/$GITHUB_SHA" | jq -r .tree.sha)" || tree=""
-          count=0
+          runs=""
           if [ -n "$tree" ]; then
-            count="$(curl -fsS -H "$auth" "$api/actions/artifacts?name=ci-passed-$tree" \
-              | jq '[.artifacts[] | select(.expired | not)] | length')" || count=0
+            runs="$(curl -fsS -H "$auth" "$api/actions/artifacts?name=ci-passed-$tree" \
+              | jq -r '.artifacts[] | select(.expired | not) | .workflow_run.id')" || runs=""
           fi
-          if [ "$count" -gt 0 ]; then
-            echo "A pull request run already passed tree $tree."
-            echo "passed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "passed=false" >> "$GITHUB_OUTPUT"
-          fi
+          # Only a successful pull request run of this workflow from this
+          # repository counts. A fork could upload the same artifact name.
+          for run in $runs; do
+            if curl -fsS -H "$auth" "$api/actions/runs/$run" | jq -e --arg repository "$GITHUB_REPOSITORY" \
+              '.path == ".github/workflows/ci.yml" and .event == "pull_request" and .conclusion == "success" and .head_repository.full_name == $repository' > /dev/null; then
+              passed=true
+              echo "Pull request run $run already passed tree $tree."
+              break
+            fi
+          done
+          echo "passed=$passed" >> "$GITHUB_OUTPUT"
 
-  changes:
-    name: Changes
-    needs: tested
-    if: ${{ !cancelled() && needs.tested.outputs.passed != 'true' }}
-    runs-on: openscholar-light
-    timeout-minutes: 5
-    outputs:
-      runtime_required: ${{ steps.detect.outputs.runtime_required }}
-    steps:
-      - uses: actions/checkout@v6
+      - if: steps.tested.outputs.passed != 'true'
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Detect runtime changes
         id: detect
+        if: steps.tested.outputs.passed != 'true'
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -109,6 +110,9 @@ jobs:
     runs-on: openscholar-light
     timeout-minutes: 20
     needs: changes
+    if: needs.changes.outputs.tested != 'true'
+    outputs:
+      email_source: ${{ steps.email-source-access.outputs.available }}
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
       CLERK_SECRET_KEY: sk_test_placeholder
@@ -174,6 +178,7 @@ jobs:
     runs-on: openscholar-light
     timeout-minutes: 20
     needs: changes
+    if: needs.changes.outputs.tested != 'true'
     env:
       NODE_OPTIONS: --max-old-space-size=4096
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
@@ -203,6 +208,8 @@ jobs:
     # Starts with the unit tests and the build instead of after them.
     needs: changes
     if: needs.changes.outputs.runtime_required == 'true'
+    outputs:
+      ran: ${{ steps.auth-environment.outputs.available }}
     # One test backend: each run pushes its own Convex functions, so runs take turns.
     concurrency:
       group: e2e-auth-convex
@@ -307,6 +314,8 @@ jobs:
     timeout-minutes: 45
     needs: changes
     if: needs.changes.outputs.runtime_required == 'true'
+    outputs:
+      ran: ${{ steps.billing-environment.outputs.available }}
     concurrency:
       group: billing-live-shared-test-user
       cancel-in-progress: false
@@ -482,7 +491,6 @@ jobs:
     timeout-minutes: 5
     if: always()
     needs:
-      - tested
       - changes
       - unit-tests
       - build
@@ -491,7 +499,7 @@ jobs:
     steps:
       - name: Require every selected CI lane to pass
         env:
-          TESTED: ${{ needs.tested.outputs.passed }}
+          TESTED: ${{ needs.changes.outputs.tested }}
           CHANGES: ${{ needs.changes.result }}
           UNIT_TESTS: ${{ needs.unit-tests.result }}
           BUILD: ${{ needs.build.result }}
@@ -514,9 +522,15 @@ jobs:
             test "$BILLING" = skipped
           fi
 
+      # A check that skipped its steps for missing secrets proves nothing, so
+      # only a run where every check ran records its tree.
       - name: Name the tested tree
         id: tree
-        if: github.event_name == 'pull_request'
+        if: >-
+          github.event_name == 'pull_request' &&
+          needs.unit-tests.outputs.email_source == 'true' &&
+          (needs.changes.outputs.runtime_required != 'true' ||
+          (needs.e2e-auth.outputs.ran == 'true' && needs.billing-live.outputs.ran == 'true'))
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -527,7 +541,7 @@ jobs:
           echo "sha=$tree" >> "$GITHUB_OUTPUT"
 
       - name: Record the tested tree
-        if: github.event_name == 'pull_request'
+        if: steps.tree.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
           name: ci-passed-${{ steps.tree.outputs.sha }}
