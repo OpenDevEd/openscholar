@@ -5,7 +5,7 @@ import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { collectAllPages } from "@/lib/zotero/collect-all-pages";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,6 +31,7 @@ import {
 import type { BucketSource } from "@/lib/bucket/bucketItem";
 import { BUCKET_SOURCE_LABELS } from "@/lib/bucket/source-labels";
 import { bucketAdded } from "@/lib/toast/bucket";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 type ZoteroGroup = {
   id: string;
@@ -72,11 +73,7 @@ export function ZoteroSelector({ paperLimit }: { paperLimit?: number }) {
   const bucketKeys = useMemo(() => new Set(bucketOrder), [bucketOrder]);
   const dedupeKeys = useBucketStore((s) => s.dedupeKeys);
   const dedupeKeyToSource = useBucketStore((s) => s.dedupeKeyToSource);
-  const livePaperLimit = useQuery(
-    api.extraction.bucket.queries.getMyPaperLimit,
-    paperLimit === undefined ? {} : "skip",
-  );
-  const resolvedPaperLimit = paperLimit ?? livePaperLimit ?? 1000;
+  const resolvedPaperLimit = paperLimit ?? PAPER_LIMIT;
   const meQuery = useProtectedQuery(api.users.queries.me, {});
   const me = meQuery.data;
   const connectionStatusQuery = useProtectedQuery(

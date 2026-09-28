@@ -52,19 +52,16 @@ async function seedFlags(
     await ctx.db.insert("featureFlags", {
       key: "extraction.enabled",
       enabled: true,
-      minimumTier: 0,
       updatedAt: now,
     });
     await ctx.db.insert("featureFlags", {
       key: "extraction.start",
       enabled: true,
-      minimumTier: 0,
       updatedAt: now,
     });
     await ctx.db.insert("featureFlags", {
       key: "extraction.chat",
       enabled: flags.chat ?? true,
-      minimumTier: 0,
       updatedAt: now,
     });
   });

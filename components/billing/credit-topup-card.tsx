@@ -97,7 +97,7 @@ export function CreditTopupCard({
               {format.number(bundle.amountCents / 100, {
                 style: "currency",
                 currency: bundle.currency.toUpperCase(),
-                maximumFractionDigits: 0,
+                trailingZeroDisplay: "stripIfInteger",
               })}
             </div>
 

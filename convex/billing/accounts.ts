@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import {
+  action,
   internalAction,
   internalMutation,
   internalQuery,
@@ -17,36 +18,33 @@ import {
   billingAccountSnapshotValidator,
   type BillingAccountSnapshot,
 } from "./validators";
-import { PLAN_IDS, PLAN_TIER, type PlanId } from "../../lib/billing/plans";
-
-const SIGNUP_PLAN = "signup_credits";
-
-function isPlanId(value: string): value is PlanId {
-  return (PLAN_IDS as readonly string[]).includes(value);
-}
+import { SIGNUP_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
 
 /** Reads what OpenScholar needs from an Autumn customer. */
 export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSnapshot {
   const main = customer.subscriptions.filter((s) => !s.add_on);
   const current = main.find((s) => s.status === "active" || s.status === "trialing");
   const scheduled = main.find((s) => s.status === "scheduled");
-  const plan = current && isPlanId(current.plan_id) ? current.plan_id : "free";
+  // The plan Autumn gives every customer (Free) is auto-enabled; any other
+  // main plan was chosen and is paid for.
+  const onPaidPlan = Boolean(current && !current.auto_enable);
   const periodEnd = current?.current_period_end ?? undefined;
   return {
-    plan,
+    ...(current ? { plan: current.plan_id } : {}),
     pastDue: current?.past_due ?? false,
-    renewsAt: current && !current.canceled_at && plan !== "free" ? periodEnd : undefined,
+    renewsAt: onPaidPlan && !current?.canceled_at ? periodEnd : undefined,
     changesAt: current?.canceled_at ? periodEnd : undefined,
-    nextPlan: scheduled && isPlanId(scheduled.plan_id) ? scheduled.plan_id : undefined,
+    nextPlan: scheduled?.plan_id,
+    features: Object.keys(customer.flags ?? {}),
     balance: customer.balances.credits?.remaining ?? 0,
     purchased: (customer.balances.credits?.breakdown ?? [])
-      .filter((balance) => balance.plan_id === "top_up")
+      .filter((balance) => balance.plan_id === TOPUP_PLAN)
       .reduce((sum, balance) => sum + balance.remaining, 0),
     card: customer.payment_method?.card
       ? { brand: customer.payment_method.card.brand, last4: customer.payment_method.card.last4 }
       : undefined,
     signupGranted: customer.subscriptions.some((s) => s.plan_id === SIGNUP_PLAN),
-    hasPaid: plan !== "free" || (customer.purchases ?? []).length > 0,
+    hasPaid: onPaidPlan || (customer.purchases ?? []).length > 0,
     stripeCustomerId: customer.stripe_id ?? undefined,
   };
 }
@@ -63,9 +61,13 @@ export async function availableCredits(ctx: QueryCtx | MutationCtx, userId: Id<"
   return (await readAccount(ctx, userId))?.balance ?? 0;
 }
 
-/** The user's plan tier, for feature flags with a minimum tier. */
-export async function planTier(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
-  return PLAN_TIER[(await readAccount(ctx, userId))?.plan ?? "free"];
+/** Whether the user's plans grant `featureId`, per the cached snapshot. */
+export async function hasPlanFeature(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users">,
+  featureId: string,
+): Promise<boolean> {
+  return (await readAccount(ctx, userId))?.features?.includes(featureId) ?? false;
 }
 
 export const writeSnapshot = internalMutation({
@@ -115,11 +117,23 @@ export const provision = internalAction({
   },
 });
 
-export const refresh = internalAction({
-  args: { userId: v.id("users") },
+/** How old a cached account may be before opening billing re-reads it. */
+const REFRESH_AFTER_MS = 30_000;
+
+/**
+ * Re-reads the signed-in user's account from Autumn. The billing page calls
+ * it while rendering on the server, so edits made in Autumn's dashboard
+ * that send no webhook (a balance grant, say) show when the page opens.
+ */
+export const refreshMine = action({
+  args: {},
   returns: v.null(),
-  handler: async (ctx, { userId }) => {
-    await refreshAccount(ctx, userId);
+  handler: async (ctx) => {
+    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    if (!user) return null;
+    const account = await ctx.runQuery(internal.billing.accounts.forUser, { userId: user._id });
+    if (account && Date.now() - account.refreshedAt < REFRESH_AFTER_MS) return null;
+    await refreshAccount(ctx, user._id);
     return null;
   },
 });

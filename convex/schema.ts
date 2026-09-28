@@ -44,7 +44,7 @@ import { evidenceLibrarySourceStatusFields } from "./evidenceLibraries/sourceSta
 import { authorContentFields } from "./authors/validators";
 
 import { topicNodeFields, metadataValidator } from "./topics/validators";
-import { billingAccountFields, billingUsageFields } from "./billing/validators";
+import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 
 export default defineSchema({
   topicCatalog: defineTable(topicNodeFields)
@@ -336,7 +336,10 @@ export default defineSchema({
   featureFlags: defineTable({
     key: v.string(),
     enabled: v.boolean(),
-    minimumTier: v.number(),
+    /** An Autumn feature the user's plan must grant, such as "extraction". */
+    planFeature: v.optional(v.string()),
+    /** Retired: the plan tier gate. `featureFlags/internal:adoptPlanFeatures` clears it. */
+    minimumTier: v.optional(v.number()),
     description: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
@@ -383,12 +386,14 @@ export default defineSchema({
 
   // ═══════════════════════════════════════════════════════════════
   // BILLING - balances and plans live in Autumn (convex/billing).
-  // billingAccounts caches each user's plan and balance for the UI;
+  // billingAccounts caches each user's plan, features and balance;
+  // billingCatalog caches Autumn's plans and features;
   // billingUsage records every settled charge.
   // ═══════════════════════════════════════════════════════════════
   billingAccounts: defineTable(billingAccountFields)
     .index("by_user", ["userId"])
     .index("by_stripe_customer", ["stripeCustomerId"]),
+  billingCatalog: defineTable({ ...billingCatalogValidator.fields, syncedAt: v.number() }),
   billingUsage: defineTable(billingUsageFields)
     .index("by_charge", ["chargeId"])
     .index("by_user_and_createdAt", ["userId", "createdAt"])

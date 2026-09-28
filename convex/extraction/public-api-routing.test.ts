@@ -136,19 +136,16 @@ async function seedUserAndFlags(
     await ctx.db.insert("featureFlags", {
       key: "extraction.enabled",
       enabled: flags.enabled ?? true,
-      minimumTier: 0,
       updatedAt: now,
     });
     await ctx.db.insert("featureFlags", {
       key: "extraction.start",
       enabled: flags.start ?? true,
-      minimumTier: 0,
       updatedAt: now,
     });
     await ctx.db.insert("featureFlags", {
       key: "extraction.chat",
       enabled: flags.chat ?? false,
-      minimumTier: 0,
       updatedAt: now,
     });
     // Seed a large credit balance so plan-03's preflight gate in

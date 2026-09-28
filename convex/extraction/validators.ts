@@ -47,9 +47,9 @@ export const classifiedErrorValidator = v.object({
 
 // ---- Input-size caps (enforced at mutation boundary) ----
 //
-// The per-bucket cap is the only input cap — it's plan-aware and resolved
-// via `getPaperLimit` in each mutation. These question-shape caps still
-// apply and are enforced inline.
+// The per-bucket cap is `PAPER_LIMIT` (lib/extraction/limits.ts), checked by
+// `assertBucketWithinLimits`. These question-shape caps still apply and are
+// enforced inline.
 
 export const MAX_QUESTIONS_PER_JOB = 50;
 export const MAX_QUESTION_TEXT_LENGTH = 2000;

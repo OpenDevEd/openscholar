@@ -31,9 +31,6 @@ vi.mock("convex/react", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     extraction: {
-      bucket: {
-        queries: { getMyPaperLimit: "stub" },
-      },
     },
   },
 }));

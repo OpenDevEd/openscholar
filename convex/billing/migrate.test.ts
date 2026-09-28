@@ -13,7 +13,7 @@ const planIds = (body: ReturnType<typeof importBody>) =>
 
 describe("importBody", () => {
   it("keeps a Free user's credits on the signup grant so it's never granted again", () => {
-    const body = importBody({ ...base, free: 320, paid: 0 });
+    const body = importBody({ ...base, free: 320, paid: 0 }, 10_000);
     expect(planIds(body)).toEqual(["signup_credits"]);
     expect(body.billables[0]).toMatchObject({
       plan: { balances: [{ feature_id: "credits", balance: 320 }] },
@@ -28,7 +28,7 @@ describe("importBody", () => {
       subscription: { plan: "pro", stripeSubscriptionId: "sub_1", pastDue: true },
       free: 9_000,
       paid: 12_345,
-    });
+    }, 10_000);
     expect(planIds(body)).toEqual(["signup_credits", "pro", "top_up"]);
     expect(body.processors).toEqual([{ type: "stripe", id: "cus_1" }]);
     expect(body.billables[0]).toMatchObject({ plan: { balances: [{ balance: 0 }] } });
@@ -46,7 +46,7 @@ describe("importBody", () => {
   });
 
   it("imports a negative ledger balance as zero", () => {
-    const body = importBody({ ...base, free: -40, paid: -5 });
+    const body = importBody({ ...base, free: -40, paid: -5 }, 10_000);
     expect(planIds(body)).toEqual(["signup_credits"]);
     expect(body.billables[0]).toMatchObject({ plan: { balances: [{ balance: 0 }] } });
   });

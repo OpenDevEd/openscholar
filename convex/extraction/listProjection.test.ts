@@ -33,7 +33,6 @@ async function seedProjectionFixture(t: ReturnType<typeof convexTest>): Promise<
       await ctx.db.insert("featureFlags", {
         key,
         enabled: true,
-        minimumTier: 0,
         description: `${key} (test)`,
         updatedAt: now,
       });

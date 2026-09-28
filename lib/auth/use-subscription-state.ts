@@ -3,15 +3,22 @@
 import { createContext, createElement, useContext, type ReactNode } from "react";
 import { api } from "@/convex/_generated/api";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
-import { PLAN_TIER, type PlanId } from "@/lib/billing/plans";
+import { defaultPlanId } from "@/lib/billing/catalog";
+import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 
 type SubscriptionState = ReturnType<typeof useOwnedSubscriptionState>;
 
+const NO_FEATURES: readonly string[] = [];
+
 const SubscriptionStateContext = createContext<SubscriptionState | null>(null);
 
-/** The signed-in user's plan and credits, from the cached billing snapshot. */
+/**
+ * The signed-in user's plan, plan features and credits, from the cached
+ * billing snapshot, and Autumn's catalog to describe them.
+ */
 function useOwnedSubscriptionState() {
   const query = useOptionalAuthQuery(api.billing.accounts.mine, {});
+  const catalog = useBillingCatalog();
   const account = query.data ?? null;
 
   const isAuthLoading = query.settlement === "auth_loading";
@@ -20,8 +27,13 @@ function useOwnedSubscriptionState() {
   const isAnonymous = query.settlement === "anonymous";
   const isReady = query.settlement === "ready";
 
-  const resolvedPlan: PlanId | null = isReady ? (account?.plan ?? "free") : null;
-  const resolvedTier = resolvedPlan ? PLAN_TIER[resolvedPlan] : null;
+  const resolvedPlan: string | null = isReady
+    ? (account?.plan ?? (catalog ? defaultPlanId(catalog) : undefined) ?? null)
+    : null;
+  // On the plan every customer starts with (Free), rather than one they chose.
+  const onDefaultPlan = resolvedPlan === null ? null : !catalog || resolvedPlan === defaultPlanId(catalog);
+  // Autumn features the user's plans grant; null until known.
+  const planFeatures: readonly string[] | null = isReady ? (account?.features ?? NO_FEATURES) : null;
 
   return {
     account,
@@ -31,7 +43,9 @@ function useOwnedSubscriptionState() {
     isAnonymous,
     isReady,
     resolvedPlan,
-    resolvedTier,
+    onDefaultPlan,
+    planFeatures,
+    catalog,
   };
 }
 

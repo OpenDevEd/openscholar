@@ -68,7 +68,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
    - **Clerk (Next.js):** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`
    - **Clerk (Convex):** `CLERK_JWT_ISSUER_DOMAIN`, `CLERK_WEBHOOK_SIGNING_SECRET`
    - **App URL (for billing + redirects):** `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`)
-   - **Billing (Convex):** `AUTUMN_URL` and `AUTUMN_SECRET_KEY` for the self-hosted Autumn server; `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` for OpenScholar's own Stripe webhook
+   - **Billing (Convex):** `AUTUMN_URL` and `AUTUMN_SECRET_KEY` for the self-hosted Autumn server, `AUTUMN_WEBHOOK_SECRET` for Autumn's webhook, and `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` for OpenScholar's own Stripe webhook
    - **Extraction embedding billing:** optional `EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS` (defaults to `0.02`)
    - **Feature flags:** optional `NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED` (set to `false` to disable top-ups), `NEXT_PUBLIC_EXTRACTION_PDF_ENABLED` (set to `false` for abstract-only extraction mode)
 
@@ -93,19 +93,29 @@ It's designed for systematic reviews and complex queries, not just keyword match
    Billing notes for this repo:
    - Plans, credit balances, subscriptions, and invoices live in a self-hosted
      [Autumn](https://github.com/useautumn/autumn) server, which talks to
-     Stripe. The plan catalog is `autumn.config.ts`; publish changes with
-     `AUTUMN_BASE_URL=... AUTUMN_SECRET_KEY=... npx atmn push`.
+     Stripe. Plans, prices, credits, top-up bundles and which plans include
+     which features are all edited in Autumn's dashboard. Convex copies the
+     catalog into `billingCatalog` every five minutes, and the app reads it
+     from there. Plan metadata sets what the dashboard has no field for:
+     `popular` (true), `highlights` (one card line per line) and, on the
+     top-up plan, `bundles` (credit amounts to offer).
+   - A feature flag with `planFeature` is on only for users whose plan
+     includes that Autumn feature. `extraction.start` needs `extraction`.
    - Convex keeps a cached copy of each user's plan and balance in
      `billingAccounts` for reactive UI, and a log of every charge in
      `billingUsage`. Design, trial results, and the data migration are in
      `plans/autumn-billing/README.md`.
+   - Autumn sends its webhooks through the Svix server beside it. Add an
+     endpoint for `POST /webhooks/autumn` on the Convex HTTP URL in Autumn's
+     dashboard under Developer, Webhooks, and set `AUTUMN_WEBHOOK_SECRET` to its
+     signing secret. Each event refreshes that user's cached copy, so plan
+     changes made in the dashboard reach the app in seconds. Autumn sends no
+     event for a balance edit; the billing page refreshes the copy when it
+     opens.
    - Autumn's own Stripe webhook points at the Autumn server. OpenScholar's
      Stripe webhook (`POST /webhooks/stripe` on the Convex HTTP URL) refreshes
-     the cached copy and removes credits for refunded top-ups. Subscribe it to:
-     `checkout.session.completed`, `customer.updated`,
-     `customer.subscription.created`, `customer.subscription.updated`,
-     `customer.subscription.deleted`, `invoice.paid`,
-     `invoice.payment_failed`, `payment_method.attached`,
+     the cached card and removes credits for refunded top-ups. Subscribe it
+     to: `customer.updated`, `payment_method.attached`,
      `payment_method.detached`, `charge.refunded`.
    - `STRIPE_WEBHOOK_SECRET` is that endpoint's signing secret.
 

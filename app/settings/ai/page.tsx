@@ -48,7 +48,7 @@ import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import {
   useSharedSubscriptionState,
 } from "@/lib/auth/use-subscription-state";
-import { useFeatureFlagForResolvedTier } from "@/lib/feature-flags/hook";
+import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import type { AIProvider } from "@/lib/types/ai.types";
 
 type ModelCatalogOption =
@@ -249,9 +249,9 @@ export default function AISettingsPage() {
     },
   ];
 
-  const creditsEnabled = useFeatureFlagForResolvedTier(
+  const creditsEnabled = useFeatureFlagForPlan(
     "credits.enabled",
-    subscriptionState.resolvedTier,
+    subscriptionState.planFeatures,
   );
   const isCreditsModeLocked = !creditsEnabled;
   const isDisabled = apiKeyMode === "credits";

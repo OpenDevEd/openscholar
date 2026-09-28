@@ -5,6 +5,7 @@ const REQUIRED_ENV_VARS = [
   "ENCRYPTION_KEY",
   "AUTUMN_URL",
   "AUTUMN_SECRET_KEY",
+  "AUTUMN_WEBHOOK_SECRET",
   "STRIPE_WEBHOOK_SECRET",
   "CLERK_JWT_ISSUER_DOMAIN",
   "EVIDENCE_LIBRARY_PLATFORM_DOMAIN",
@@ -38,6 +39,7 @@ describe("validateRequiredEnvVars", () => {
     process.env.ENCRYPTION_KEY = "test-key";
     process.env.AUTUMN_URL = "https://autumn.test";
     process.env.AUTUMN_SECRET_KEY = "am_sk_test";
+    process.env.AUTUMN_WEBHOOK_SECRET = "whsec_test";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
     process.env.EVIDENCE_LIBRARY_PLATFORM_DOMAIN = "libraries.example.test";
@@ -54,6 +56,7 @@ describe("validateRequiredEnvVars", () => {
     process.env.ENCRYPTION_KEY = "";
     process.env.AUTUMN_URL = "https://autumn.test";
     process.env.AUTUMN_SECRET_KEY = "am_sk_test";
+    process.env.AUTUMN_WEBHOOK_SECRET = "whsec_test";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
     process.env.EVIDENCE_LIBRARY_PLATFORM_DOMAIN = "libraries.example.test";
@@ -70,6 +73,7 @@ describe("validateRequiredEnvVars", () => {
     process.env.ENCRYPTION_KEY = "test-encryption-key";
     process.env.AUTUMN_URL = "https://autumn.test";
     process.env.AUTUMN_SECRET_KEY = "am_sk_test";
+    process.env.AUTUMN_WEBHOOK_SECRET = "whsec_test";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
     process.env.EVIDENCE_LIBRARY_PLATFORM_DOMAIN = "libraries.example.test";
@@ -87,6 +91,7 @@ describe("validateRequiredEnvVars", () => {
     delete process.env.STRIPE_WEBHOOK_SECRET;
     process.env.AUTUMN_URL = "https://autumn.test";
     process.env.AUTUMN_SECRET_KEY = "am_sk_test";
+    process.env.AUTUMN_WEBHOOK_SECRET = "whsec_test";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
     process.env.EVIDENCE_LIBRARY_PLATFORM_DOMAIN = "libraries.example.test";
 

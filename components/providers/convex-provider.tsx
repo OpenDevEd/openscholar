@@ -23,6 +23,7 @@ import {
   resolveClerkLocalization,
 } from "@/lib/auth/clerk-ui-config";
 import { FeatureFlagProvider } from "@/lib/feature-flags/provider";
+import { BillingCatalogProvider } from "@/lib/billing/catalog-provider";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const MAX_SYNC_RETRIES = 6;
@@ -49,9 +50,11 @@ const AuthReadinessContext = createContext<AuthReadinessContextValue | undefined
 export function ConvexClientProvider({
   children,
   preloadedFlags,
+  preloadedCatalog,
 }: {
   children: ReactNode;
   preloadedFlags: Preloaded<typeof api.featureFlags.queries.getAll>;
+  preloadedCatalog: Preloaded<typeof api.billing.catalog.get>;
 }) {
   const locale = useLocale();
   const { resolvedTheme } = useTheme();
@@ -69,7 +72,9 @@ export function ConvexClientProvider({
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <AuthReadinessProvider>
           <FeatureFlagProvider preloadedFlags={preloadedFlags}>
-            {children}
+            <BillingCatalogProvider preloadedCatalog={preloadedCatalog}>
+              {children}
+            </BillingCatalogProvider>
           </FeatureFlagProvider>
         </AuthReadinessProvider>
       </ConvexProviderWithClerk>

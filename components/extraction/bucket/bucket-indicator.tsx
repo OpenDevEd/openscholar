@@ -1,13 +1,12 @@
 "use client";
 
 import type { Ref } from "react";
-import { useQuery } from "convex/react";
 import { Package } from "lucide-react";
-import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useBucketStore } from "@/lib/store/bucket";
 import { AnimatedCount } from "./animated-count";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 export function BucketIndicator({
   ref,
@@ -18,11 +17,7 @@ export function BucketIndicator({
   onClick: () => void;
   paperLimit?: number;
 }) {
-  const liveLimit = useQuery(
-    api.extraction.bucket.queries.getMyPaperLimit,
-    paperLimit === undefined ? {} : "skip",
-  );
-  const limit = paperLimit ?? liveLimit ?? 1000;
+  const limit = paperLimit ?? PAPER_LIMIT;
   // Sum `paperCount` (default 1) rather than row count — a staged
   // saved-search entry contributes its expansion size, not 1.
   const readyCount = useBucketStore((s) =>

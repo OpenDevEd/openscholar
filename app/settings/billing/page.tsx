@@ -15,15 +15,8 @@ import { CreditTopupCard, type CreditTopupBundleCard } from "@/components/billin
 import { UsageHistory } from "@/components/billing/usage-history";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
-import { useFeatureFlagForResolvedTier } from "@/lib/feature-flags/hook";
-import { PAID_PLANS, TOPUP, planCreditCap } from "@/lib/billing/plans";
-
-const TOPUP_BUNDLES: CreditTopupBundleCard[] = TOPUP.bundles.map((credits) => ({
-  key: String(credits),
-  credits,
-  amountCents: (credits / TOPUP.creditsPerUnit) * TOPUP.usdPerUnit * 100,
-  currency: "usd",
-}));
+import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
+import { defaultPlanId, findPlan, planCreditCap, topUpBundles } from "@/lib/billing/catalog";
 
 export default function BillingPage() {
   const t = useTranslations("billingPage");
@@ -34,11 +27,20 @@ export default function BillingPage() {
   const searchParams = useSearchParams();
   const subscriptionState = useSharedSubscriptionState();
   const account = subscriptionState.account;
-  const creditsEnabled = useFeatureFlagForResolvedTier("credits.enabled", subscriptionState.resolvedTier);
-  const topupsEnabled = useFeatureFlagForResolvedTier("credits.topups", subscriptionState.resolvedTier);
-  const subscriptionsEnabled = useFeatureFlagForResolvedTier(
+  const creditsEnabled = useFeatureFlagForPlan("credits.enabled", subscriptionState.planFeatures);
+  const topupsEnabled = useFeatureFlagForPlan("credits.topups", subscriptionState.planFeatures);
+  const subscriptionsEnabled = useFeatureFlagForPlan(
     "subscriptions.enabled",
-    subscriptionState.resolvedTier,
+    subscriptionState.planFeatures,
+  );
+  const catalog = subscriptionState.catalog;
+  const topUpBundleCards: CreditTopupBundleCard[] = (catalog ? topUpBundles(catalog) : []).map(
+    (bundle) => ({
+      key: String(bundle.credits),
+      credits: bundle.credits,
+      amountCents: Math.round(bundle.amount * 100),
+      currency: "usd",
+    }),
   );
   const openPortal = useAction(api.billing.actions.openPortal);
   const keepPlan = useAction(api.billing.actions.keepPlan);
@@ -47,8 +49,11 @@ export default function BillingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingTopupBundle, setLoadingTopupBundle] = useState<string | null>(null);
 
-  const plan = account?.plan ?? "free";
-  const showUpgradeCta = plan === "free" && !account?.hasPaid;
+  const plan = subscriptionState.resolvedPlan ?? "";
+  const planInfo = catalog ? findPlan(catalog, plan) : undefined;
+  const planName = (id: string) => (catalog && findPlan(catalog, id)?.name) || id;
+  const onPaidPlan = subscriptionState.onDefaultPlan === false;
+  const showUpgradeCta = !onPaidPlan && !account?.hasPaid;
   const returnedFrom =
     searchParams.get("checkout") === "success" || searchParams.get("topup") === "success";
 
@@ -108,8 +113,11 @@ export default function BillingPage() {
 
   const formatDate = (ms: number) =>
     format.dateTime(new Date(ms), { year: "numeric", month: "short", day: "numeric" });
-  const price = plan === "free" ? null : PAID_PLANS[plan].usdPerMonth;
-  const endsWithoutRenewal = account?.nextPlan === "free";
+  const price = onPaidPlan ? planInfo?.price : undefined;
+  const endsWithoutRenewal =
+    account?.nextPlan !== undefined && catalog !== null && account.nextPlan === defaultPlanId(catalog);
+  const intervalLabel = (interval: string) =>
+    interval === "month" ? t("intervalMonth") : interval === "year" ? t("intervalYear") : interval;
   const planChange = account?.changesAt !== undefined && account.nextPlan && !endsWithoutRenewal;
 
   return (
@@ -167,7 +175,7 @@ export default function BillingPage() {
           {creditsEnabled && topupsEnabled && (
             <div id="topup-section">
               <CreditTopupCard
-                bundles={TOPUP_BUNDLES}
+                bundles={topUpBundleCards}
                 loadingBundleKey={loadingTopupBundle}
                 onPurchase={handleTopupPurchase}
                 disabled={isLoading}
@@ -180,7 +188,7 @@ export default function BillingPage() {
               <div className="p-4 flex items-center justify-between border-b border-border/40 min-h-[80px]">
                 <div className="flex items-center gap-3">
                   <span data-testid="billing-plan-name" className="text-2xl font-bold capitalize">
-                    {t("planLabel", { plan })}
+                    {t("planLabel", { plan: planName(plan) })}
                   </span>
                   <span
                     data-testid="billing-status-badge"
@@ -189,13 +197,13 @@ export default function BillingPage() {
                     {account.pastDue ? t("statusPastDue") : tc("active")}
                   </span>
                 </div>
-                {price !== null && (
+                {price && (
                   <div className="text-right">
                     <div className="text-lg font-bold">
-                      {format.number(price, { style: "currency", currency: "USD" })}
+                      {format.number(price.amount, { style: "currency", currency: "USD" })}
                     </div>
                     <div className="text-xs text-muted-foreground uppercase">
-                      {t("perInterval", { interval: t("intervalMonth") })}
+                      {t("perInterval", { interval: intervalLabel(price.interval) })}
                     </div>
                   </div>
                 )}
@@ -228,7 +236,7 @@ export default function BillingPage() {
                     <AlertCircle className="w-4 h-4" />
                     <span>
                       {t("scheduledChangeTo")}{" "}
-                      <span className="font-semibold capitalize">{account.nextPlan}</span>{" "}
+                      <span className="font-semibold">{planName(account.nextPlan!)}</span>{" "}
                       {tc("onDate", { date: formatDate(account.changesAt) })}.
                     </span>
                   </div>
@@ -244,7 +252,7 @@ export default function BillingPage() {
                 </div>
               )}
 
-              {plan !== "free" ? (
+              {onPaidPlan ? (
                 <div className="bg-background/50 p-4 min-h-[60px]">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     {(account.renewsAt ?? account.changesAt) !== undefined && (
@@ -283,7 +291,7 @@ export default function BillingPage() {
               ) : (
                 <div className="bg-background/50 p-4 text-sm text-muted-foreground flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" />
-                  {t("upgradeToProDescription")}
+                  {t("upgradeDescription")}
                 </div>
               )}
             </div>
@@ -294,8 +302,8 @@ export default function BillingPage() {
               free={account.balance - account.purchased}
               paid={account.purchased}
               total={account.balance}
-              creditsPerMonth={plan === "free" ? 0 : PAID_PLANS[plan].creditsPerMonth}
-              freeCreditCap={planCreditCap(plan)}
+              creditsPerMonth={planInfo?.credits?.interval === "month" ? planInfo.credits.included : 0}
+              freeCreditCap={catalog ? planCreditCap(catalog, plan) : 0}
             />
           )}
 

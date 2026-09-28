@@ -42,7 +42,6 @@ async function seed(t: ReturnType<typeof convexTest>) {
     await ctx.db.insert("featureFlags", {
       key: "extraction.enabled",
       enabled: true,
-      minimumTier: 0,
       updatedAt: now,
     });
     const titles = ["Neural Networks Review", "CRISPR Guide", "Quantum Solar Cells"];

@@ -1,16 +1,14 @@
 "use client";
 
 import { Suspense } from "react";
-import { useQuery } from "convex/react";
 import { PageWrapper } from "@/components/PageWrapper";
 import { JobCreator } from "@/components/extraction/job-creator";
 import { TwoColumnLayout } from "@/components/layout/two-column-layout";
 import { BucketSidebar } from "@/components/extraction/bucket/bucket-sidebar";
-import { api } from "@/convex/_generated/api";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 export default function NewExtractionPage() {
-  const paperLimit =
-    useQuery(api.extraction.bucket.queries.getMyPaperLimit, {}) ?? 1000;
+  const paperLimit = PAPER_LIMIT;
 
   return (
     <div className="flex w-full flex-1 flex-col overflow-x-clip">

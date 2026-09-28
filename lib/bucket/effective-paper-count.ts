@@ -12,7 +12,7 @@
  *  - **Per-paper rows** — every other source (library, collection, zotero,
  *    upload, history-as-individual-paper). One row, one paper.
  *
- * The plan-level paper cap (`getPaperLimit`) MUST be measured against the
+ * The paper cap (`PAPER_LIMIT`) MUST be measured against the
  * post-expansion sum, not against the row count: a single placeholder
  * with `limit=200` would otherwise pass `items.length ≤ 1000` and then
  * schedule 200 papers; a thousand of them would schedule 200,000.

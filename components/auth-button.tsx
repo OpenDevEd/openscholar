@@ -35,6 +35,7 @@ import { useState } from "react";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
+import { findPlan, isUpgrade, mainPlans } from "@/lib/billing/catalog";
 import { useTranslations } from "next-intl";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 
@@ -189,14 +190,17 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
     : profile.email?.split("@")[0] || tc("user");
 
   // Determine plan label and upgrade status
+  const catalog = subscriptionState.catalog;
   const planLabel = resolvedPlan
-    ? resolvedPlan.charAt(0).toUpperCase() + resolvedPlan.slice(1)
+    ? ((catalog && findPlan(catalog, resolvedPlan)?.name) ?? resolvedPlan)
     : null;
-  const isResolvedProPlan = resolvedPlan === "pro";
+  // A pricier main plan exists to upgrade to.
+  const canUpgrade = Boolean(
+    catalog && resolvedPlan && mainPlans(catalog).some((plan) => isUpgrade(catalog, resolvedPlan, plan.id)),
+  );
+  const isTopPlan = subscriptionState.onDefaultPlan === false && !canUpgrade;
 
-  const showUpgrade =
-    hasResolvedSubscription &&
-    (resolvedPlan === "free" || resolvedPlan === "go");
+  const showUpgrade = hasResolvedSubscription && canUpgrade;
 
   const showPlanRow = subscriptionsEnabled || !showUpgrade;
   const showCredits =
@@ -269,7 +273,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
                     />
                   ) : (
                     <div className="flex items-center text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                      {isResolvedProPlan && <Crown className="w-3 h-3 mr-1" />}
+                      {isTopPlan && <Crown className="w-3 h-3 mr-1" />}
                       {planLabel}
                     </div>
                   )}

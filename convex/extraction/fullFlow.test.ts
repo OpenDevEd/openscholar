@@ -102,19 +102,16 @@ async function seedUserFlagsAndCredits(
     await ctx.db.insert("featureFlags", {
       key: "extraction.enabled",
       enabled: true,
-      minimumTier: 0,
       updatedAt: now,
     });
     await ctx.db.insert("featureFlags", {
       key: "extraction.start",
       enabled: true,
-      minimumTier: 0,
       updatedAt: now,
     });
     await ctx.db.insert("featureFlags", {
       key: "extraction.pdf",
       enabled: false,
-      minimumTier: 0,
       updatedAt: now,
     });
 

@@ -43,11 +43,10 @@ import {
 import { validateResumeTransition } from "../../../lib/extraction/transitions";
 import { estimatePaperCredits } from "../../../lib/extraction/cost-estimate";
 import {
-  EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP,
-  getExtractionExecutionLimits,
-  PAPER_LIMIT_MAX,
-} from "../bucket/limits";
-import { normalizeBatchSize, resolveBoundedConcurrency } from "../batching";
+  EXTRACTION_PAPER_CONCURRENCY,
+  EXTRACTION_QUESTION_CONCURRENCY,
+  PAPER_LIMIT,
+} from "../../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { availableCredits as readAvailableCredits } from "../../billing/accounts";
 import { getFlag } from "../../featureFlags/guard";
@@ -137,19 +136,13 @@ export const resumeExtraction = mutation({
     const pdfFlagOn = pdfFlag?.enabled ?? true;
     const pdfEnabled = pdfFlagOn && (job.usePdfs ?? false);
 
-    const executionLimits = await getExtractionExecutionLimits(ctx, user._id);
-    const questionConcurrency = resolveBoundedConcurrency(
-      executionLimits.questionConcurrencyPerPaper,
-      EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP,
-    );
-    const paperConcurrency = normalizeBatchSize(
-      executionLimits.paperConcurrency,
-    );
+    const questionConcurrency = EXTRACTION_QUESTION_CONCURRENCY;
+    const paperConcurrency = EXTRACTION_PAPER_CONCURRENCY;
 
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(PAPER_LIMIT_MAX);
+      .take(PAPER_LIMIT);
     const nonTerminalPaperIds = papers
       .filter(
         (p) =>

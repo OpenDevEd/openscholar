@@ -11,7 +11,7 @@ import {
   SubscriptionStateProvider,
   useSharedSubscriptionState,
 } from "@/lib/auth/use-subscription-state";
-import { useFeatureFlagForResolvedTier } from "@/lib/feature-flags/hook";
+import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 export default function SettingsLayout({
@@ -35,17 +35,16 @@ function SettingsLayoutContent({
   const { phase } = useAuthReadiness();
   const isSignedIn = phase === "authenticated";
   const subscriptionState = useSharedSubscriptionState();
-  const subscriptionsEnabled = useFeatureFlagForResolvedTier(
+  const subscriptionsEnabled = useFeatureFlagForPlan(
     "subscriptions.enabled",
-    subscriptionState.resolvedTier,
+    subscriptionState.planFeatures,
   );
-  const creditsEnabled = useFeatureFlagForResolvedTier(
+  const creditsEnabled = useFeatureFlagForPlan(
     "credits.enabled",
-    subscriptionState.resolvedTier,
+    subscriptionState.planFeatures,
   );
-  const effectivePlan = subscriptionState.resolvedPlan ?? "free";
   const showUpgradeCta =
-    effectivePlan === "free" && !subscriptionState.account?.hasPaid;
+    subscriptionState.onDefaultPlan !== false && !subscriptionState.account?.hasPaid;
   const hideBilling =
     !subscriptionsEnabled && !creditsEnabled && showUpgradeCta && !subscriptionState.isSettling;
 

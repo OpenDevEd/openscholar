@@ -18,7 +18,7 @@ import { userValidator } from "../../lib/validators";
 import { getProcessableFlags } from "../content";
 import { readJobSources } from "../jobSources";
 import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../../lib/queryBounds";
-import { PAPER_LIMIT_MAX } from "../bucket/limits";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import {
   errorCodeValidator,
   extractionEvidenceUnitValidator,
@@ -75,7 +75,7 @@ export const getJobSourcesInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: jobSourcesReadValidator,
   handler: async (ctx, args) => {
-    return await readJobSources(ctx, args.jobId, PAPER_LIMIT_MAX * 2);
+    return await readJobSources(ctx, args.jobId, PAPER_LIMIT * 2);
   },
 });
 
@@ -194,7 +194,7 @@ export const getJobProgressInternal = internalQuery({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT_MAX);
+      .take(PAPER_LIMIT);
     const processablePapers = papers.filter((p) => p.processable !== false);
     const processed = processablePapers.filter(
       (p) => p.status === "completed",
@@ -264,7 +264,7 @@ export const getPapersDebug = internalQuery({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT_MAX);
+      .take(PAPER_LIMIT);
 
     const pdfFlag = await getFlag(ctx, "extraction.pdf");
     const pdfEnabled = pdfFlag?.enabled ?? true;
