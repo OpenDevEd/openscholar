@@ -143,18 +143,19 @@ export function UpgradeConfirmationDialog({
             </div>
           </div>
 
-          {/* Credits info */}
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">
-                {t("creditsGranted", { credits: format.number(preview.targetPlanCreditsPerMonth) })}
-              </span>
+          {preview.targetPlanCreditsPerMonth > 0 && (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
+              <div className="flex items-center gap-2">
+                <Zap className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">
+                  {t("creditsGranted", { credits: format.number(preview.targetPlanCreditsPerMonth) })}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground pl-6">
+                {t("monthlyCreditsAfter", { credits: format.number(preview.targetPlanCreditsPerMonth) })}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground pl-6">
-              {t("monthlyCreditsAfter", { credits: format.number(preview.targetPlanCreditsPerMonth) })}
-            </p>
-          </div>
+          )}
         </div>
 
         <DialogFooter>

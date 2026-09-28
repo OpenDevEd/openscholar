@@ -179,6 +179,11 @@ export function Pricing() {
   );
 
   const planName = (id: string) => (catalog && findPlan(catalog, id)?.name) || id;
+  // The upgrade dialog and toast describe monthly refills; other intervals show none.
+  const monthlyCredits = (id: string) => {
+    const credits = catalog && findPlan(catalog, id)?.credits;
+    return credits?.interval === "month" ? credits.included : 0;
+  };
   const scheduledPlan = account?.changesAt !== undefined ? account.nextPlan : undefined;
   const hasPendingDowngrade = Boolean(
     catalog &&
@@ -248,7 +253,7 @@ export function Pricing() {
           currentPlan: planName(resolvedPlan),
           targetPlan: planName(planType),
           targetPlanId: planType,
-          targetPlanCreditsPerMonth: (catalog && findPlan(catalog, planType)?.credits?.included) ?? 0,
+          targetPlanCreditsPerMonth: monthlyCredits(planType),
           remainingDays,
           card: preview.card,
           lineItems: preview.lineItems.map((item) => ({
@@ -305,9 +310,11 @@ export function Pricing() {
         target_plan: targetPlan,
       });
       sonnerToast.success(td("upgradeSuccess"), {
-        description: td("upgradeSuccessCredits", {
-          plan: targetPlan,
-          credits: format.number(upgradePreview.targetPlanCreditsPerMonth),
+        ...(upgradePreview.targetPlanCreditsPerMonth > 0 && {
+          description: td("upgradeSuccessCredits", {
+            plan: targetPlan,
+            credits: format.number(upgradePreview.targetPlanCreditsPerMonth),
+          }),
         }),
         duration: 5000,
       });
