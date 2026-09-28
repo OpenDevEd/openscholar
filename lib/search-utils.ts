@@ -146,6 +146,33 @@ export function prepareOpenAlexSearch(
   };
 }
 
+function requestFilters(
+  filters: SearchFilters,
+  citesItemId: string | undefined,
+  relatedToItemId: string | undefined,
+): SearchFilters {
+  return {
+    ...filters,
+    citesItemId: citesItemId || filters.citesItemId,
+    relatedToItemId: relatedToItemId || filters.relatedToItemId,
+  };
+}
+
+/**
+ * The query and filters a search sends OpenAlex, after keyword expansion,
+ * country focus and review terms. Null when the query is not valid.
+ */
+export function searchRequest(
+  params: SearchWithFiltersParams,
+): { query: string; filters: SearchFilters } | null {
+  const prepared = prepareOpenAlexSearch(params);
+  if (prepared.finalApiQuery === null) return null;
+  return {
+    query: prepared.finalApiQuery,
+    filters: requestFilters(prepared.effectiveFilters, prepared.effectiveCitesItemId, prepared.effectiveRelatedToItemId),
+  };
+}
+
 /**
  * Enhanced wrapper for getSearchResults that handles all state management,
  * query enhancement, and country filtering logic.
@@ -177,10 +204,7 @@ export async function getSearchResultsWithFilters(
   // Get results with the final enhanced query for API, but keep original query for UI
   const result = await getSearchResults(
     finalApiQuery,
-    effectiveFilters,
-    finalApiQuery, // Pass the final enhanced query as both search and expanded query
-    effectiveCitesItemId,
-    effectiveRelatedToItemId
+    requestFilters(effectiveFilters, effectiveCitesItemId, effectiveRelatedToItemId),
   );
 
   if (!result.ok) {

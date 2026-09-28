@@ -19,10 +19,11 @@ export type OqlWorksResult =
  */
 export async function fetchOqlWorks(
   oql: string,
-  view: { perPage: number; sort?: string },
+  view: { perPage: number; sort?: string; cursor?: string },
 ): Promise<OqlWorksResult> {
   const url = new URL("https://api.openalex.org/");
   url.searchParams.set("per-page", String(view.perPage));
+  if (view.cursor) url.searchParams.set("cursor", view.cursor);
   if (view.sort) url.searchParams.set("sort", view.sort);
   if (process.env.OPENALEX_API_KEY) url.searchParams.set("api_key", process.env.OPENALEX_API_KEY);
   if (process.env.OPENALEX_CONTACT_EMAIL) url.searchParams.set("mailto", process.env.OPENALEX_CONTACT_EMAIL);

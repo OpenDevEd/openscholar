@@ -621,6 +621,12 @@ describe("the OpenRouter key", () => {
         zoteroGroups: [],
         aiProviderKey: aiProviderKey ?? undefined,
         embeddingApiKey: EMBEDDING_KEY as string | undefined,
+        zoteroTranslationUrl: undefined,
+        mail: undefined,
+        brand: undefined,
+        openAlexApiKey: undefined,
+        platformOpenAlexApiKey: undefined,
+        publicationProviders: undefined,
         allowedAiModels: TEST_AI_MODELS,
         aiModelMetadata: {
           [TEST_AI_MODELS[0]]: { name: "GPT-5.6 Luna", company: "OpenAI" },

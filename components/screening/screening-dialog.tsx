@@ -24,7 +24,8 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/toast";
 import { showStyledToast } from "@/components/ui/sonner";
-import { reconstructAbstract } from "@/lib/openalex/reconstruct-abstract";
+import { readSearchPage } from "@/app/actions/openalex";
+import { searchRequest } from "@/lib/search-utils";
 import { api } from "@/convex/_generated/api";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "@/convex/lib/queryBounds";
 import { ESTIMATED_CREDITS_PER_PAPER } from "@/convex/lib/constants";
@@ -252,56 +253,33 @@ export function ScreeningDialog({
   // -----------------------------------------------------------------------
 
   const handleSubmit = useCallback(async () => {
-    if (!search?.apiUrl && !search?.oql) return;
+    if (!search) return;
     setIsSubmitting(true);
     try {
-      // 1. Fetch papers from OpenAlex, then slice to the user-selected range.
-      //    OpenAlex hard-caps per_page at 200, so page through (basic paging is
-      //    good to 10k results) until we've covered the range or run out.
+      // 1. Read the search's works on the server, where OpenScholar's OpenAlex
+      //    key applies, following the cursor until the range is covered.
       const [rangeStart, rangeEnd] = paperRange;
-      const PER_PAGE = 200;
-      // An OQL search is POSTed to the API root: it outgrows a URL.
-      const oql = search.oql;
-      const url = new URL(oql ? "https://api.openalex.org/" : search.apiUrl);
-      if (oql) url.searchParams.set("sort", effectiveSort(search.params));
-      // apiUrl is the SDK's meta.url, which carries `cursor=*`. We paginate with
-      // `page`, and OpenAlex rejects `cursor` + `page` together ("Cannot use page
-      // parameter with cursor"), so drop the cursor before paging.
-      url.searchParams.delete("cursor");
-      url.searchParams.set("per_page", String(PER_PAGE));
+      const request = searchRequest({
+        query: search.params.q,
+        filters: { ...search.toSearchFilters(), sortBy: effectiveSort(search.params) },
+      });
+      if (!request) throw new Error(t("submitError"));
       const collected: Array<Record<string, unknown>> = [];
-      const pagesNeeded = Math.ceil(rangeEnd / PER_PAGE);
-      for (let page = 1; page <= pagesNeeded; page++) {
-        url.searchParams.set("page", String(page));
-        const response = await fetch(
-          url.toString(),
-          oql
-            ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oql }) }
-            : undefined,
-        );
-        if (!response.ok) {
-          throw new Error(`OpenAlex API error: ${response.status}`);
-        }
-        const data = await response.json();
-        const pageResults: Array<Record<string, unknown>> = data.results ?? [];
-        collected.push(...pageResults);
-        // Short page → OpenAlex has no more results, stop early.
-        if (pageResults.length < PER_PAGE) break;
+      let cursor: string | null = "*";
+      while (cursor && collected.length < rangeEnd) {
+        const page = await readSearchPage(request.query, request.filters, cursor);
+        if (!page.ok) throw new Error(page.message);
+        collected.push(...(page.works as unknown as Array<Record<string, unknown>>));
+        cursor = page.nextCursor;
       }
       const works: Array<Record<string, unknown>> = collected.slice(rangeStart - 1, rangeEnd);
 
       // 2. Map to screening paper input shape
       const papers = works.map((w) => {
-        const abstractIdx = w.abstract_inverted_index as
-          | Record<string, number[]>
-          | null
-          | undefined;
         return {
           openalexId: String(w.id ?? ""),
           title: String(w.title ?? w.display_name ?? ""),
-          abstract: abstractIdx
-            ? reconstructAbstract(abstractIdx)
-            : undefined,
+          abstract: typeof w.abstract === "string" ? w.abstract : undefined,
           authors: Array.isArray(w.authorships)
             ? (w.authorships as Array<{ author?: { display_name?: string } }>)
                 .map((a) => a.author?.display_name)
@@ -353,9 +331,7 @@ export function ScreeningDialog({
       setIsSubmitting(false);
     }
   }, [
-    search?.apiUrl,
-    search?.oql,
-    search?.params,
+    search,
     keyedQuestions,
     scoringRules,
     starThresholds,

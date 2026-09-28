@@ -43,9 +43,10 @@ export const backfillPaperData = internalAction({
           ? item.openalexId.split("/").pop()!
           : item.openalexId;
 
-        const response = await fetch(
-          `${OPENALEX_API_BASE}/${workId}?mailto=openscholar@sickrin.com`,
-        );
+        const url = new URL(`${OPENALEX_API_BASE}/${workId}`);
+        if (process.env.OPENALEX_API_KEY) url.searchParams.set("api_key", process.env.OPENALEX_API_KEY);
+        if (process.env.OPENALEX_CONTACT_EMAIL) url.searchParams.set("mailto", process.env.OPENALEX_CONTACT_EMAIL);
+        const response = await fetch(url);
 
         if (!response.ok) {
           console.warn(
