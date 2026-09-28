@@ -26,7 +26,10 @@ describe("Library access list", () => {
     render(<LibraryList />);
     for (const role of ["owner", "editor", "creator"]) {
       const row = within(screen.getByText(`${role} library`).closest("li")!);
-      expect(row.getByRole("link", { name: "Open admin" })).toHaveAttribute("href", `/evidence-libraries/${role}/admin`);
+      const admin = row.getByRole("link", { name: "Open admin" });
+      expect(admin).toHaveAttribute("href", `/evidence-libraries/${role}/admin`);
+      // Links out to a library open a new tab and leave OpenScholar where it was.
+      expect(admin).toHaveAttribute("target", "_blank");
       if (role === "owner") expect(row.getByRole("link", { name: "Configure" })).toHaveAttribute("href", "/evidence-libraries/owner/configuration");
       else expect(row.queryByRole("link", { name: "Configure" })).not.toBeInTheDocument();
     }

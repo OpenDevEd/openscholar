@@ -23,7 +23,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
 import type { SourceStatus } from "@/convex/evidenceLibraries/sourceStatusValidators";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
-import { buildAdminRouteHref } from "@/lib/evidence-libraries/admin-handoff";
+import { AdminAreaLink } from "@/components/evidence-libraries/admin-area-link";
 import { cn } from "@/lib/utils";
 import { type StatusTone } from "../status-chip";
 
@@ -169,7 +169,10 @@ function RunningActivity({ status }: { status: Running }) {
   );
 }
 
-function SucceededActivity({ status, issuesHref }: { status: SourceStatus; issuesHref: string }) {
+/** A place in a library's admin: the library, and where in it to land. */
+type AdminDestination = { libraryId: string; returnPath: string };
+
+function SucceededActivity({ status, issuesIn }: { status: SourceStatus; issuesIn: AdminDestination }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources.status");
   const format = useFormatter();
   const now = useNow({ updateInterval: 30_000 });
@@ -193,13 +196,12 @@ function SucceededActivity({ status, issuesHref }: { status: SourceStatus; issue
         ) : null}
       </div>
       {issues > 0 ? (
-        // A plain link: the admin trip spends a single-use sign-in code, see AdminAreaLink.
         <Button asChild variant="outline" size="sm">
-          <a href={issuesHref}>
+          <AdminAreaLink libraryId={issuesIn.libraryId} returnPath={issuesIn.returnPath}>
             <TriangleAlert className="text-amber-600 dark:text-amber-400" />
             {t("reviewIssues", { count: issues })}
             <ExternalLink className="text-muted-foreground" />
-          </a>
+          </AdminAreaLink>
         </Button>
       ) : null}
     </div>
@@ -278,7 +280,7 @@ const BAND: Record<SourceStatus["state"] | "waiting", string> = {
 export function SourceActivityBand({
   status,
   provider,
-  issuesHref,
+  issuesIn,
   onRetry,
   retrying,
 }: {
@@ -286,7 +288,7 @@ export function SourceActivityBand({
   /** The provider's name, for failure messages. */
   provider: string;
   /** The admin, opened on this source's record issues. */
-  issuesHref: string;
+  issuesIn: AdminDestination;
   onRetry: () => void;
   retrying: boolean;
 }) {
@@ -307,7 +309,7 @@ export function SourceActivityBand({
       </span>
       <PhaseTrack status={status} />
       {status?.state === "running" ? <RunningActivity status={status} /> : null}
-      {status?.state === "succeeded" ? <SucceededActivity status={status} issuesHref={issuesHref} /> : null}
+      {status?.state === "succeeded" ? <SucceededActivity status={status} issuesIn={issuesIn} /> : null}
       {status?.state === "failed" ? (
         <FailedActivity status={status} provider={provider} onRetry={onRetry} retrying={retrying} />
       ) : null}
@@ -376,10 +378,7 @@ export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
         <SourceActivityBand
           status={status}
           provider={provider}
-          issuesHref={buildAdminRouteHref({
-            libraryId,
-            returnPath: `/admin?source=${encodeURIComponent(sourceKey)}`,
-          })}
+          issuesIn={{ libraryId, returnPath: `/admin?source=${encodeURIComponent(sourceKey)}` }}
           onRetry={() => retry(sourceKey)}
           retrying={retrying.has(sourceKey)}
         />
