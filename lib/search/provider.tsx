@@ -127,11 +127,14 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   const onLocalParamsChange = local?.onParamsChange;
   const setUrlParams = useCallback(
     (updates: Partial<SearchParams>, options?: { scroll?: boolean }) => {
-      if (onLocalParamsChange) return onLocalParamsChange(updates);
-      const toOql = (updates.field ?? routeUrlParams.field) === OQL_FIELD;
+      const fromOql = (local ? local.params.field : routeUrlParams.field) === OQL_FIELD;
+      const toOql = (updates.field ?? (local ? local.params.field : routeUrlParams.field)) === OQL_FIELD;
       // Switching between keywords and OQL without a query starts an empty one,
       // since neither reads the other. The old query stays in the query history.
-      const switching = toOql !== routeIsOql;
+      const switching = toOql !== fromOql;
+      if (onLocalParamsChange) {
+        return onLocalParamsChange(switching && updates.q === undefined ? { ...updates, q: '' } : updates);
+      }
       if (switching && updates.q === undefined && searchId) {
         useSearchHistoryStore.getState().updateSearchResult(searchId, { query: '' });
       }
@@ -141,7 +144,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
         options,
       );
     },
-    [onLocalParamsChange, setRouteUrlParams, routeUrlParams.field, routeIsOql, searchId],
+    [onLocalParamsChange, setRouteUrlParams, routeUrlParams.field, local, searchId],
   );
 
   const currentParams = urlParams as SearchParams;

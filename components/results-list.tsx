@@ -274,6 +274,7 @@ export function ResultsList({
   const searchState = {
     query: search.params.q,
     field: search.params.field,
+    oql: search.oql,
     dateRange:
       search.params.df || search.params.dt
         ? {

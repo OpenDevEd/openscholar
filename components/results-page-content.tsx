@@ -39,6 +39,7 @@ export default function ResultsPageContent({
     isLoading,
     isValidating,
     toSearchFilters,
+    oql,
   } = useSearch();
 
   const query = params.q;
@@ -52,8 +53,9 @@ export default function ResultsPageContent({
       dateRange: filters.dateRange,
       yearRange: filters.yearRange,
       searchId,
+      oql,
     };
-  }, [query, searchId, toSearchFilters]);
+  }, [query, searchId, toSearchFilters, oql]);
 
   const handleBackToHome = () => {
     router.push("/");

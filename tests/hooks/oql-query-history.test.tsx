@@ -6,6 +6,7 @@ import { SearchProvider, useSearch } from "@/lib/search";
 import { useQueryHistory } from "@/lib/hooks";
 import { useSearchHistoryStore } from "@/lib/store";
 import type { SearchResult } from "@/lib/types";
+import { DEFAULT_SEARCH_PARAMS } from "@/lib/search-params";
 
 // A fresh id per test, because the history arrows remember their position per search.
 let searchId = "";
@@ -96,5 +97,24 @@ describe("query history arrows across keyword and OQL scopes", () => {
     await waitFor(() => expect(result.current.search.params.field).toBe("title_and_abstract"), SETTLE);
     expect(onUrlUpdate.mock.calls.at(-1)![0].searchParams.get("q")).toBe("tutor");
     expect(useSearchHistoryStore.getState().searchHistory[0].query).toBe("tutor");
+  });
+});
+
+// The Evidence Library import dialog runs the search in local mode, outside the URL.
+describe("switching scope in a local search", () => {
+  it("starts an empty query when switching to OQL", () => {
+    seed([{ query: "chatgpt", field: "title_and_abstract" }]);
+    const onParamsChange = vi.fn();
+    const params = { ...DEFAULT_SEARCH_PARAMS, q: "chatgpt" };
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <NuqsTestingAdapter>
+        <SearchProvider local={{ searchId, params, onParamsChange }}>{children}</SearchProvider>
+      </NuqsTestingAdapter>
+    );
+    const { result } = renderHook(() => useSearch(), { wrapper });
+
+    act(() => result.current.updateParams({ field: "oql" }));
+
+    expect(onParamsChange).toHaveBeenLastCalledWith({ field: "oql", q: "" });
   });
 });
