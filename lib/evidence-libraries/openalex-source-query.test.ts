@@ -63,6 +63,7 @@ describe("saved source search", () => {
     expect(query).toEqual({oql: "works where (title has (chatgpt) and title has (education)) and type is (article) and is_retracted is (false)"});
     expect(buildOpenAlexSourceQuery({...DEFAULT_SEARCH_PARAMS, field: "oql"})).toBeNull();
     expect(buildOpenAlexSourceQuery({...DEFAULT_SEARCH_PARAMS, field: "oql", q: "(IS_RETRACTED is (false))"})).toBeNull();
+    expect(buildOpenAlexSourceQuery({...DEFAULT_SEARCH_PARAMS, field: "oql", q: "is_retracted is (false) or retracted is (false)"})).toBeNull();
 
     const source: OpenAlexSourceEntry = {
       key: "openalex-aied", provider: "openalex", enabled: true, writebackEnabled: false,

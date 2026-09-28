@@ -13,8 +13,8 @@ export function sameOpenAlexSourceSearch(left: SearchParams, right: SearchParams
 }
 
 /**
- * Leaving out retracted works narrows nothing, however the clause is grouped
- * or spelled. new-el's source schema applies the same rule.
+ * Leaving out retracted works narrows nothing, however the clause is grouped,
+ * spelled or repeated. new-el's source schema applies the same rule.
  */
 function narrowsOql(oql: string | undefined): boolean {
   const where = oql?.match(/^works\s+where\s+([\s\S]+)$/i)?.[1];
@@ -22,7 +22,7 @@ function narrowsOql(oql: string | undefined): boolean {
     where
       ?.toLowerCase()
       .replace(/[()\s]+/g, " ")
-      .split(/\band\b/)
+      .split(/\b(?:and|or)\b/)
       .map((clause) => clause.trim())
       .some((clause) => clause && !/^(is_)?retracted is false$/.test(clause)),
   );
