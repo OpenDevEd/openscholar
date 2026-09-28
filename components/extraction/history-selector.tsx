@@ -2,8 +2,6 @@
 
 import { useCallback, useMemo } from "react";
 import { motion } from "motion/react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { useSearchHistoryStore } from "@/lib/store";
 import { Search, Calendar, FileText } from "lucide-react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
@@ -16,6 +14,7 @@ import { DEFAULT_SEARCH_PARAMS, searchResultToParams } from "@/lib/search-params
 import { useAppToast } from "@/lib/toast";
 import { bucketAdded } from "@/lib/toast/bucket";
 import type { SearchResult } from "@/lib/types";
+import { PAPER_LIMIT, PAPER_PULL_CAP, PAPER_PULL_DEFAULT } from "@/lib/extraction/limits";
 
 const HISTORY_BUCKET_KEY_PREFIX = "history:";
 
@@ -60,15 +59,9 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
   const tv = useTranslations("validation");
   const toast = useAppToast();
   const searchHistory = useSearchHistoryStore((state) => state.searchHistory);
-  const liveLimit = useQuery(
-    api.extraction.bucket.queries.getMyPaperLimit,
-    paperLimit === undefined ? {} : "skip",
-  );
-  const limit = paperLimit ?? liveLimit ?? 1000;
-  const pullCap =
-    useQuery(api.extraction.bucket.queries.getMyPaperPullCap) ?? 200;
-  const pullDefault =
-    useQuery(api.extraction.bucket.queries.getMyPaperPullDefault) ?? 200;
+  const limit = paperLimit ?? PAPER_LIMIT;
+  const pullCap = PAPER_PULL_CAP;
+  const pullDefault = PAPER_PULL_DEFAULT;
   const addMany = useBucketStore((s) => s.addMany);
   const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);

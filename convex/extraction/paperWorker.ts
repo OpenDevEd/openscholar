@@ -11,6 +11,8 @@ import {
 import { chunk } from "./batching";
 import { getProcessableFlags } from "./content";
 import { resolveOpenRouterModel } from "../chat/provider";
+import { reserveCredits, settleCredits } from "../billing/charge";
+import { estimatePaperCredits } from "../../lib/extraction/cost-estimate";
 import {
   batchSkipReasonToWorkerSkipReason,
   captureCompletedQuestionTracking,
@@ -29,6 +31,8 @@ type QueueStopStatus = Extract<QueueStatus, "cancelled" | "failed" | "parked">;
 const QUEUE_LEASE_MS = 60_000;
 
 type QuestionItem = Doc<"extractionQuestions">;
+
+type BatchRun = { stop: QueueStopStatus | null; credits: number };
 
 type PaperExtractionContextResult =
   | { status: "not_found" }
@@ -221,7 +225,7 @@ async function runQuestionBatch(
     pricing: Awaited<ReturnType<typeof resolveOpenRouterModel>>["pricing"];
     modelSlug: string;
   },
-): Promise<QueueStopStatus | null> {
+): Promise<BatchRun> {
   const outcomes = await Promise.all(
     batch.map(async (question): Promise<QuestionBatchOutcome> => {
       try {
@@ -250,12 +254,12 @@ async function runQuestionBatch(
     )
     .map((outcome) => getQueueStatusForWorkerSkip(outcome.reason))
     .find((status) => status !== null);
-  if (stopStatus) return stopStatus;
+  if (stopStatus) return { stop: stopStatus, credits: 0 };
 
   const completed = outcomes.filter(isCompletedQuestionOutcome);
   const failed = outcomes.filter(isFailedQuestionOutcome);
   if (completed.length === 0 && failed.length === 0) {
-    return null;
+    return { stop: null, credits: 0 };
   }
 
   const writeResult = await ctx.runMutation(
@@ -272,21 +276,29 @@ async function runQuestionBatch(
   );
 
   if (writeResult.status === "skipped") {
-    return getQueueStatusForWorkerSkip(
-      batchSkipReasonToWorkerSkipReason(writeResult.reason),
-    );
+    return {
+      stop: getQueueStatusForWorkerSkip(
+        batchSkipReasonToWorkerSkipReason(writeResult.reason),
+      ),
+      credits: 0,
+    };
   }
 
+  const persisted = new Set(writeResult.completed);
   if (context.user && completed.length > 0) {
     await captureCompletedQuestionTracking({
       distinctId: context.user.clerkId,
       outcomes: completed,
-      persistedQuestionKeys: new Set(writeResult.completed),
+      persistedQuestionKeys: persisted,
       modelSlug,
     });
   }
 
-  return null;
+  // Only answers that were saved are charged.
+  const credits = completed
+    .filter((outcome) => persisted.has(outcome.questionKey))
+    .reduce((sum, outcome) => sum + outcome.creditsUsed, 0);
+  return { stop: null, credits };
 }
 
 async function runQuestionBatches(
@@ -302,15 +314,15 @@ async function runQuestionBatches(
     questionConcurrency: number;
     expectedEpoch: number;
   },
-): Promise<QueueStopStatus | null> {
-  // Per-user server model stamped on the job (credits path). Pricing comes from
-  // the SAME row, so the deduction can never diverge from the model that ran.
+): Promise<BatchRun> {
+  // Pricing comes from the model stamped on the job, so charges match the model that ran.
   const { model, pricing, modelSlug } = await resolveOpenRouterModel(
     ctx,
     context.job.serverModelId ?? null,
   );
+  let credits = 0;
   for (const batch of chunk(items, questionConcurrency)) {
-    const stopStatus = await runQuestionBatch(ctx, {
+    const run = await runQuestionBatch(ctx, {
       context,
       batch,
       expectedEpoch,
@@ -318,9 +330,79 @@ async function runQuestionBatches(
       pricing,
       modelSlug,
     });
-    if (stopStatus) return stopStatus;
+    credits += run.credits;
+    if (run.stop) return { stop: run.stop, credits };
   }
+  return { stop: null, credits };
+}
+
+type PaperReservation = { chargeId: string; reserved: number; description: string };
+
+/**
+ * Holds the paper's worst-case cost before any work starts. When the balance
+ * can't cover it, the job pauses as credits exhausted and this row parks
+ * until the user tops up and resumes.
+ */
+async function reservePaperCredits(
+  ctx: ActionCtx,
+  args: {
+    job: Doc<"extractionJobs">;
+    paper: Doc<"extractionPapers">;
+    queueRow: QueueRow;
+    pdfEnabled: boolean;
+  },
+): Promise<PaperReservation | null> {
+  const { job, paper, queueRow } = args;
+  const questionCount =
+    queueRow.kind === "initial"
+      ? await ctx.runQuery(internal.extraction.queries.internal.getQuestionCount, {
+          jobId: job._id,
+        })
+      : (queueRow.questionKeys?.length ?? 0);
+  const reserved = estimatePaperCredits({
+    questionCount,
+    pdf: args.pdfEnabled && Boolean(paper.pdfUrl || paper.storageId),
+  });
+  const reservation = {
+    chargeId: `extraction:${queueRow._id}:${crypto.randomUUID()}`,
+    reserved,
+    description: `Extraction (${questionCount} ${questionCount === 1 ? "question" : "questions"})`,
+  };
+  if (
+    await reserveCredits(ctx, {
+      userId: job.userId,
+      chargeId: reservation.chargeId,
+      credits: reserved,
+    })
+  ) {
+    return reservation;
+  }
+  await ctx.runMutation(internal.extraction.mutations.results.updateJobStatus, {
+    jobId: job._id,
+    expectedEpoch: queueRow.runEpoch,
+    status: "creditsExhausted",
+    error: {
+      code: "insufficient_credits",
+      message: `Need about ${reserved} credits to extract the next paper`,
+      at: Date.now(),
+    },
+  });
+  await updateQueueStatus(ctx, queueRow, "parked");
   return null;
+}
+
+async function settlePaperCredits(
+  ctx: ActionCtx,
+  job: Doc<"extractionJobs">,
+  reservation: PaperReservation,
+  credits: number,
+): Promise<void> {
+  await settleCredits(ctx, {
+    userId: job.userId,
+    chargeId: reservation.chargeId,
+    credits,
+    usage: { kind: "extraction", description: reservation.description, jobId: job._id },
+  });
 }
 
 export const runPaperQueueItem = internalAction({
@@ -397,79 +479,94 @@ export const runPaperQueueItem = internalAction({
       return null;
     }
 
-    await markPaperStatus(ctx, {
-      paperId: paper._id,
-      status: "downloading",
-      expectedEpoch: args.expectedEpoch,
+    const reservation = await reservePaperCredits(ctx, {
+      job,
+      paper,
+      queueRow,
+      pdfEnabled: args.pdfEnabled,
     });
+    if (!reservation) return null;
 
-    const indexed = await runDownloadAndIndexPdf(ctx, {
-      paperId: paper._id,
-      jobId: queueRow.jobId,
-      expectedEpoch: args.expectedEpoch,
-    });
-    if (indexed.status === "skipped") {
-      await updateQueueStatus(
-        ctx,
-        queueRow,
-        getQueueStatusForJobSkip(indexed.reason),
-      );
-      return null;
-    }
-    if (indexed.status === "failed") {
+    let charged = 0;
+    try {
       await markPaperStatus(ctx, {
         paperId: paper._id,
-        status: "download_failed",
-        error: {
-          code: indexed.error?.code ?? "pdf_download_failed",
-          message: indexed.error?.message ?? "Download failed",
-        },
+        status: "downloading",
         expectedEpoch: args.expectedEpoch,
       });
-      await maybeFinalizeJob(ctx, queueRow);
+
+      const indexed = await runDownloadAndIndexPdf(ctx, {
+        paperId: paper._id,
+        jobId: queueRow.jobId,
+        expectedEpoch: args.expectedEpoch,
+      });
+      if (indexed.status === "skipped") {
+        await updateQueueStatus(
+          ctx,
+          queueRow,
+          getQueueStatusForJobSkip(indexed.reason),
+        );
+        return null;
+      }
+      if (indexed.status === "failed") {
+        await markPaperStatus(ctx, {
+          paperId: paper._id,
+          status: "download_failed",
+          error: {
+            code: indexed.error?.code ?? "pdf_download_failed",
+            message: indexed.error?.message ?? "Download failed",
+          },
+          expectedEpoch: args.expectedEpoch,
+        });
+        await maybeFinalizeJob(ctx, queueRow);
+        await completeQueueItem(ctx, queueRow, {
+          status: "completed",
+          paperConcurrency: args.paperConcurrency,
+          questionConcurrency: args.questionConcurrency,
+          pdfEnabled: args.pdfEnabled,
+        });
+        return null;
+      }
+      charged += indexed.embeddingCredits;
+
+      await markPaperStatus(ctx, {
+        paperId: paper._id,
+        status: "extracting",
+        expectedEpoch: args.expectedEpoch,
+      });
+
+      const contextResult: PaperExtractionContextResult = await ctx.runQuery(
+        internal.extraction.queries.internal.getPaperExtractionContext,
+        { jobId: queueRow.jobId, paperId: paper._id },
+      );
+      if (contextResult.status !== "ok") {
+        await updateQueueStatus(ctx, queueRow, "failed");
+        return null;
+      }
+      const questionRun = await runQuestionBatches(ctx, {
+        context: contextResult,
+        items: getQuestionItemsForQueue(queueRow, contextResult.questions),
+        questionConcurrency: args.questionConcurrency,
+        expectedEpoch: args.expectedEpoch,
+      });
+      charged += questionRun.credits;
+      if (questionRun.stop) {
+        await updateQueueStatus(ctx, queueRow, questionRun.stop);
+        return null;
+      }
+
+      await ctx.runMutation(internal.extraction.mutations.results.finalizePaper, {
+        paperId: paper._id,
+      });
       await completeQueueItem(ctx, queueRow, {
         status: "completed",
         paperConcurrency: args.paperConcurrency,
         questionConcurrency: args.questionConcurrency,
         pdfEnabled: args.pdfEnabled,
       });
-      return null;
+    } finally {
+      await settlePaperCredits(ctx, job, reservation, charged);
     }
-
-    await markPaperStatus(ctx, {
-      paperId: paper._id,
-      status: "extracting",
-      expectedEpoch: args.expectedEpoch,
-    });
-
-    const contextResult: PaperExtractionContextResult = await ctx.runQuery(
-      internal.extraction.queries.internal.getPaperExtractionContext,
-      { jobId: queueRow.jobId, paperId: paper._id },
-    );
-    if (contextResult.status !== "ok") {
-      await updateQueueStatus(ctx, queueRow, "failed");
-      return null;
-    }
-    const questionStopStatus = await runQuestionBatches(ctx, {
-      context: contextResult,
-      items: getQuestionItemsForQueue(queueRow, contextResult.questions),
-      questionConcurrency: args.questionConcurrency,
-      expectedEpoch: args.expectedEpoch,
-    });
-    if (questionStopStatus) {
-      await updateQueueStatus(ctx, queueRow, questionStopStatus);
-      return null;
-    }
-
-    await ctx.runMutation(internal.extraction.mutations.results.finalizePaper, {
-      paperId: paper._id,
-    });
-    await completeQueueItem(ctx, queueRow, {
-      status: "completed",
-      paperConcurrency: args.paperConcurrency,
-      questionConcurrency: args.questionConcurrency,
-      pdfEnabled: args.pdfEnabled,
-    });
     return null;
   },
 });

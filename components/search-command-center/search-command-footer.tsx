@@ -41,7 +41,6 @@ import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { fromSavedSearchQuery } from "@/lib/bucket/bucketItem";
 import { bucketItemToServerInput } from "@/lib/bucket/to-server-input";
 import { deriveChatName } from "@/lib/chat/chat-name";
@@ -49,6 +48,7 @@ import { paramsToBucketSearchFilters } from "@/lib/chat/params-to-bucket-filters
 import { deriveStartChatButtonState } from "@/lib/chat/start-chat-button-state";
 import { buildChatSourceFingerprint } from "@/lib/chat/source-request";
 import { api } from "@/convex/_generated/api";
+import { PAPER_PULL_CAP, PAPER_PULL_DEFAULT } from "@/lib/extraction/limits";
 
 interface SearchCommandFooterProps {
   totalCount: number;
@@ -101,16 +101,8 @@ export function SearchCommandFooter({
   const continueChatWithSourceRefresh = useAction(
     api.chat.threads.continueChatWithSourceRefresh,
   );
-  const { data: livePullCap } = useProtectedQuery(
-    api.extraction.bucket.queries.getMyPaperPullCap,
-    {},
-  );
-  const { data: livePullDefault } = useProtectedQuery(
-    api.extraction.bucket.queries.getMyPaperPullDefault,
-    {},
-  );
-  const pullCap = livePullCap ?? 200;
-  const pullDefault = livePullDefault ?? 200;
+  const pullCap = PAPER_PULL_CAP;
+  const pullDefault = PAPER_PULL_DEFAULT;
   const chatFlag = useFeatureFlag("extraction.chat");
   const { data: features } = useOrganizationFeatures();
   const chatFlagEnabled = chatFlag && features?.extraction === true;

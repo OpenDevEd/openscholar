@@ -17,13 +17,12 @@ import {
 } from "../../lib/ai/core";
 import {
   createAIAction,
-  calculateServerCreditsToDeduct,
   withAuthAndCreditsBatch,
 } from "./helpers";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
+import { toExtractionQuestions } from "../../lib/ai/core/schemas";
 import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
 import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
-import { extractOpenalexId } from "../../lib/billing/transactions/openalex-id";
 import { internal } from "../_generated/api";
 import { BATCH_LOCK_TTL_MS } from "../lib/locks";
 import { createError } from "../lib/errors";
@@ -44,7 +43,7 @@ export const enhanceSearchQuery = createAIAction(
     enhancedQuery: output.enhancedQuery,
     explanation: "",
   }),
-  { billingType: "search" },
+  { kind: "search" },
 );
 
 export const generateScreeningQuestions = createAIAction(
@@ -61,7 +60,7 @@ export const generateScreeningQuestions = createAIAction(
   (output) => ({
     questions: output.questions,
   }),
-  { billingType: "screening" },
+  { kind: "screening" },
 );
 
 export const generateExtractionQuestions = createAIAction(
@@ -80,8 +79,8 @@ export const generateExtractionQuestions = createAIAction(
   }),
   "Generate extraction questions",
   getExtractionQuestionsConfig,
-  (output) => ({ questions: output.questions }),
-  { billingType: "extraction_llm" },
+  toExtractionQuestions,
+  { kind: "extraction" },
 );
 
 export const translateQuery = createAIAction(
@@ -98,7 +97,7 @@ export const translateQuery = createAIAction(
   (output) => ({
     translatedQuery: output.translatedQuery,
   }),
-  { billingType: "translation" },
+  { kind: "translation" },
 );
 
 export const translatePaperContent = createAIAction(
@@ -119,7 +118,7 @@ export const translatePaperContent = createAIAction(
     translatedAbstract: output.translatedAbstract,
     noTranslationNeeded: false,
   }),
-  { billingType: "translation" },
+  { kind: "translation" },
 );
 
 export const generateScreeningResponses = createAIAction(
@@ -141,7 +140,7 @@ export const generateScreeningResponses = createAIAction(
     ),
     confidence: output.confidence,
   }),
-  { billingType: "screening" },
+  { kind: "screening" },
 );
 
 /**
@@ -202,31 +201,17 @@ export const generateBatchTranslations = action({
     try {
       return await withAuthAndCreditsBatch(
         ctx,
-        `Batch translation (${papers.length} papers)`,
-        async (_user, pricing, model) => {
+        {
+          description: `Batch translation (${papers.length} papers)`,
+          kind: "translation",
+          estimate: Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
+        },
+        async (_user, model) => {
           const { results, errors, usages, usageByItemId, trackingByItemId } = await processTranslationBatch({
             model,
             papers,
             targetLanguage,
           });
-
-          const usageBreakdown = Object.entries(usageByItemId).map(
-            ([paperRef, usage]) => {
-              const amount = calculateServerCreditsToDeduct(usage, pricing);
-              const openalexId = extractOpenalexId(paperRef) ?? paperRef;
-              return {
-                usage,
-                billingType: "translation" as const,
-                // `itemId` keys back into BatchResult.results — required
-                // for the mid-batch salvage path to identify unpaid items.
-                itemId: paperRef,
-                metadata: {
-                  openalexId,
-                  chargedCredits: String(amount),
-                },
-              };
-            },
-          );
 
           const trackingEntries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
             ([itemId, tracking]) => {
@@ -248,11 +233,9 @@ export const generateBatchTranslations = action({
           return {
             result: { results, errors },
             totalUsage: aggregateUsage(usages),
-            usageBreakdown,
             trackingEntries,
           };
         },
-        Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
       );
     } finally {
       await ctx.runMutation(internal.lib.locks.releaseBatchLock, { lockId });
@@ -319,8 +302,12 @@ export const generateBatchScreeningResponses = action({
     try {
       return await withAuthAndCreditsBatch(
         ctx,
-        `Batch screening (${papers.length} papers)`,
-        async (_user, pricing, model) => {
+        {
+          description: `Batch screening (${papers.length} papers)`,
+          kind: "screening",
+          estimate: Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
+        },
+        async (_user, model) => {
           const { results, errors, usages, usageByItemId, trackingByItemId } = await processScreeningBatch({
             model,
             papers,
@@ -335,24 +322,6 @@ export const generateBatchScreeningResponses = action({
                 responses: encodeQuestionResponseMap(result.responses),
               },
             ])
-          );
-
-          const usageBreakdown = Object.entries(usageByItemId).map(
-            ([paperRef, usage]) => {
-              const amount = calculateServerCreditsToDeduct(usage, pricing);
-              const openalexId = extractOpenalexId(paperRef) ?? paperRef;
-              return {
-                usage,
-                billingType: "screening" as const,
-                // `itemId` keys back into BatchResult.results — required
-                // for the mid-batch salvage path to identify unpaid items.
-                itemId: paperRef,
-                metadata: {
-                  openalexId,
-                  chargedCredits: String(amount),
-                },
-              };
-            },
           );
 
           const trackingEntries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
@@ -375,11 +344,9 @@ export const generateBatchScreeningResponses = action({
           return {
             result: { results: encodedResults, errors },
             totalUsage: aggregateUsage(usages),
-            usageBreakdown,
             trackingEntries,
           };
         },
-        Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
       );
     } finally {
       await ctx.runMutation(internal.lib.locks.releaseBatchLock, { lockId });

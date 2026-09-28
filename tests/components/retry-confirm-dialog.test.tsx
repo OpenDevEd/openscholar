@@ -27,8 +27,8 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
-    credits: {
-      queries: { checkBalance: "checkBalance" },
+    billing: {
+      accounts: { checkBalance: "checkBalance" },
     },
   },
 }));

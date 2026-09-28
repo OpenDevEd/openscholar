@@ -1,62 +1,51 @@
 "use client";
 
 import { createContext, createElement, useContext, type ReactNode } from "react";
-import { getPlanTier } from "@/convex/lib/constants";
 import { api } from "@/convex/_generated/api";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
-import {
-  isEntitledSubscription,
-  resolveEffectivePlan,
-  type SubscriptionPlan,
-} from "@/lib/billing/entitlements";
+import { defaultPlanId } from "@/lib/billing/catalog";
+import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 
 type SubscriptionState = ReturnType<typeof useOwnedSubscriptionState>;
 
+const NO_FEATURES: readonly string[] = [];
+
 const SubscriptionStateContext = createContext<SubscriptionState | null>(null);
 
-function useOwnedSubscriptionState(): {
-  data: ReturnType<typeof useOptionalAuthQuery<typeof api.subscriptions.queries.getMy>>["data"];
-  phase: ReturnType<typeof useOptionalAuthQuery<typeof api.subscriptions.queries.getMy>>["phase"];
-  isDeferred: boolean;
-  isReady: boolean;
-  isAnonymous: boolean;
-  settlement: ReturnType<typeof useOptionalAuthQuery<typeof api.subscriptions.queries.getMy>>["settlement"];
-} & {
-  subscription: ReturnType<typeof useOptionalAuthQuery<typeof api.subscriptions.queries.getMy>>["data"];
-  isAuthLoading: boolean;
-  isQueryLoading: boolean;
-  isSettling: boolean;
-  isEntitled: boolean;
-  resolvedPlan: SubscriptionPlan | null;
-  resolvedTier: number | null;
-} {
-  const query = useOptionalAuthQuery(api.subscriptions.queries.getMy, {});
-  const subscription = query.data;
+/**
+ * The signed-in user's plan, plan features and credits, from the cached
+ * billing snapshot, and Autumn's catalog to describe them.
+ */
+function useOwnedSubscriptionState() {
+  const query = useOptionalAuthQuery(api.billing.accounts.mine, {});
+  const catalog = useBillingCatalog();
+  const account = query.data ?? null;
 
   const isAuthLoading = query.settlement === "auth_loading";
   const isQueryLoading = query.settlement === "query_loading";
   const isSettling = isAuthLoading || isQueryLoading;
   const isAnonymous = query.settlement === "anonymous";
   const isReady = query.settlement === "ready";
-  const isEntitled = isReady ? isEntitledSubscription(subscription) : false;
 
-  let resolvedPlan: SubscriptionPlan | null = null;
-  if (isReady) {
-    resolvedPlan = resolveEffectivePlan(subscription);
-  }
-  const resolvedTier = resolvedPlan ? getPlanTier(resolvedPlan) : null;
+  const resolvedPlan: string | null = isReady
+    ? (account?.plan ?? (catalog ? defaultPlanId(catalog) : undefined) ?? null)
+    : null;
+  // On the plan every customer starts with (Free), rather than one they chose.
+  const onDefaultPlan = resolvedPlan === null ? null : !catalog || resolvedPlan === defaultPlanId(catalog);
+  // Autumn features the user's plans grant; null until known.
+  const planFeatures: readonly string[] | null = isReady ? (account?.features ?? NO_FEATURES) : null;
 
   return {
-    ...query,
-    subscription,
+    account,
     isAuthLoading,
     isQueryLoading,
     isSettling,
     isAnonymous,
     isReady,
-    isEntitled,
     resolvedPlan,
-    resolvedTier,
+    onDefaultPlan,
+    planFeatures,
+    catalog,
   };
 }
 

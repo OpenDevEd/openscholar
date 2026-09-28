@@ -20,4 +20,13 @@ crons.interval(
   {},
 );
 
+// Plans and features are edited in Autumn's dashboard, which sends no event
+// for catalog changes, so the copy is re-read on a short interval.
+crons.interval(
+  "sync autumn billing catalog",
+  { minutes: 5 },
+  internal.billing.catalog.sync,
+  {},
+);
+
 export default crons;

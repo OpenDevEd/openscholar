@@ -35,7 +35,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
 - **Framework:** Next.js 16 (App Router)
 - **Database:** Convex (Real-time)
 - **Auth:** Clerk
-- **Billing:** Stripe
+- **Billing:** Autumn (self-hosted) on Stripe
 - **Styling:** Tailwind CSS 4, Radix UI, Motion
 - **State:** Zustand, SWR
 
@@ -68,12 +68,9 @@ It's designed for systematic reviews and complex queries, not just keyword match
    - **Clerk (Next.js):** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`
    - **Clerk (Convex):** `CLERK_JWT_ISSUER_DOMAIN`, `CLERK_WEBHOOK_SIGNING_SECRET`
    - **App URL (for billing + redirects):** `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`)
-   - **Stripe:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CREDITS_PRODUCT_ID` (and optional publishable key for client UI)
-   - **Credits top-up conversion:** optional `CREDITS_PER_USD`
+   - **Billing (Convex):** `AUTUMN_URL` and `AUTUMN_SECRET_KEY` for the self-hosted Autumn server, `AUTUMN_WEBHOOK_SECRET` for Autumn's webhook, and `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` for OpenScholar's own Stripe webhook
    - **Extraction embedding billing:** optional `EXTRACTION_EMBEDDING_USD_PER_1M_TOKENS` (defaults to `0.02`)
    - **Feature flags:** optional `NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED` (set to `false` to disable top-ups), `NEXT_PUBLIC_EXTRACTION_PDF_ENABLED` (set to `false` for abstract-only extraction mode)
-   - **Billing live test user (optional; defaults provided):** `BILLING_TEST_USER_SUBJECT`, `BILLING_TEST_USER_EMAIL`
-   - **Billing live top-up safety (optional):** `BILLING_TEST_MIN_CHARGE_CENTS` (defaults to `50`), `BILLING_TEST_TOPUP_CREDITS` (defaults to `1000` but auto-raised in tests when below min charge)
 
    Clerk notes for this repo:
    - Next.js auth edge protection is configured in `proxy.ts`.
@@ -93,44 +90,34 @@ It's designed for systematic reviews and complex queries, not just keyword match
    - Public debug/test Convex endpoints are disabled by default; only enable with `ENABLE_PUBLIC_DEBUG_FUNCTIONS=true`.
    - Public read-query auth/authorization states follow the safe contract documented in `docs/auth-error-contract.md`.
 
-   Stripe notes for this repo:
-   - Configure Stripe webhook endpoint to `POST /webhooks/stripe` on your Convex HTTP deployment URL.
-   - Required webhook events:
-     - `checkout.session.completed`
-     - `customer.created`
-     - `customer.updated`
-     - `customer.subscription.created`
-     - `customer.subscription.updated`
-     - `customer.subscription.deleted`
-     - `invoice.created`
-     - `invoice.finalized`
-     - `invoice.paid`
-     - `invoice.payment_failed`
-     - `invoice.payment_succeeded`
-     - `payment_intent.succeeded`
-     - `charge.refunded`
-   - Local listener command:
-     - `npm run dev:stripe`
-     - This command auto-syncs `STRIPE_WEBHOOK_SECRET` in Convex from the active Stripe CLI listener before forwarding events.
-   - Signature verification troubleshooting:
-     - `STRIPE_WEBHOOK_SECRET` must come from the same source that sends the request.
-     - If using Stripe CLI forwarding, use the Stripe CLI signing secret (`stripe listen --print-secret`), not a dashboard endpoint secret.
-     - If using direct Stripe dashboard webhooks to Convex, use that endpoint's signing secret and avoid forwarding the same events via Stripe CLI to the same path.
-   - Plan change policy:
-     - Upgrades apply immediately and release any attached `active`/`not_started` subscription schedule first.
-     - Downgrades are scheduled for period end using current schedule phase boundaries.
-     - Same-tier requests clear pending scheduled changes when present.
-   - Entitlement policy:
-     - Entitled statuses: `active`, `trialing`, `past_due`.
-     - Non-entitled statuses: `incomplete`, `incomplete_expired`, `unpaid`, `paused`, `canceled`.
-     - `incomplete` is treated as payment pending and should be resolved in Stripe Billing Portal.
-   - Monthly credit grant policy:
-     - Credits are granted only for invoices with `billing_reason` in `subscription_create` or `subscription_cycle`.
-     - Non-eligible invoice reasons (for example `subscription_update`, `manual`) are ignored and do not grant credits.
-     - Missing or unexpected `billing_reason` values on paid subscription invoices are treated as config drift and logged as actionable failures.
-   - Reconciliation policy:
-     - Webhook push is primary.
-     - Hourly pull reconciliation (`internal.credits.actions.reconcileRecentPaidInvoicesFromStripe`) backfills missed eligible invoice grants.
+   Billing notes for this repo:
+   - Plans, credit balances, subscriptions, and invoices live in a self-hosted
+     [Autumn](https://github.com/useautumn/autumn) server, which talks to
+     Stripe. Plans, prices, credits, top-up bundles and which plans include
+     which features are all edited in Autumn's dashboard. Convex copies the
+     catalog into `billingCatalog` every five minutes, and the app reads it
+     from there. Plan metadata sets what the dashboard has no field for:
+     `popular` (true), `highlights` (one card line per line) and, on the
+     top-up plan, `bundles` (credit amounts to offer).
+   - A feature flag with `planFeature` is on only for users whose plan
+     includes that Autumn feature. `extraction.start` needs `extraction`.
+   - Convex keeps a cached copy of each user's plan and balance in
+     `billingAccounts` for reactive UI, and a log of every charge in
+     `billingUsage`. Design, trial results, and the data migration are in
+     `plans/autumn-billing/README.md`.
+   - Autumn sends its webhooks through the Svix server beside it. Add an
+     endpoint for `POST /webhooks/autumn` on the Convex HTTP URL in Autumn's
+     dashboard under Developer, Webhooks, and set `AUTUMN_WEBHOOK_SECRET` to its
+     signing secret. Each event refreshes that user's cached copy, so plan
+     changes made in the dashboard reach the app in seconds. Autumn sends no
+     event for a balance edit; the billing page refreshes the copy when it
+     opens.
+   - Autumn's own Stripe webhook points at the Autumn server. OpenScholar's
+     Stripe webhook (`POST /webhooks/stripe` on the Convex HTTP URL) refreshes
+     the cached card and removes credits for refunded top-ups. Subscribe it
+     to: `customer.updated`, `payment_method.attached`,
+     `payment_method.detached`, `charge.refunded`.
+   - `STRIPE_WEBHOOK_SECRET` is that endpoint's signing secret.
 
 4. **Run OpenScholar against the hosted development services**
 
@@ -173,37 +160,9 @@ It's designed for systematic reviews and complex queries, not just keyword match
   - `.github/workflows/ci.yml` runs:
     - `unit-and-build` (`npm run test`, `npm run build`)
     - `e2e-auth` (`npm run test:e2e:auth`)
-    - `billing-live` (`npm run test:billing:live:ci`) against shared Convex dev + Stripe sandbox
-  - `.github/workflows/billing-nightly.yml` runs `npm run test:billing:extended:ci` nightly
   - Branch protection should require the aggregate `CI` check. It covers the
     required jobs while allowing runtime E2E to skip documentation-only pull
     requests.
-
-## Billing Live Regression Suite
-
-- Preflight checks (env, Convex reachability, Stripe webhook endpoint/events):
-
-  ```bash
-  npm run test:billing:preflight
-  ```
-
-- Required live billing regression suite (PR-gated):
-
-  ```bash
-  npm run test:billing:live
-  ```
-
-- CI wrapper (pushes Convex code before running required suite):
-
-  ```bash
-  npm run test:billing:live:ci
-  ```
-
-- Extended non-blocking suite (main/nightly):
-
-  ```bash
-  npm run test:billing:extended
-  ```
 
 ## Project Structure
 

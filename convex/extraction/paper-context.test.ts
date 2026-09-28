@@ -18,7 +18,6 @@ async function seedPaperContextFixture(t: ReturnType<typeof convexTest>) {
     await ctx.db.insert("featureFlags", {
       key: "extraction.pdf",
       enabled: false,
-      minimumTier: 0,
       updatedAt: now,
     });
     const jobId = await ctx.db.insert("extractionJobs", {

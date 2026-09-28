@@ -4,49 +4,41 @@
 
 import { FLAG_REGISTRY, type FlagName } from "./registry";
 
+type FlagRow = { key: string; enabled: boolean; planFeature?: string };
+
 /**
- * Resolve a single flag from DB data.
- * A flag is enabled if: globally enabled AND user tier >= minimumTier.
+ * A flag is on when it's enabled and, if it names a plan feature, the user's
+ * plans grant it. `planFeatures` is null while the user's plan is unknown.
  */
 export function resolveFlag(
   enabled: boolean,
-  minimumTier: number,
-  userTier: number | null,
+  planFeature: string | undefined,
+  planFeatures: readonly string[] | null,
 ): boolean {
   if (!enabled) return false;
-  if (minimumTier === 0) return true;
-  return userTier !== null && userTier >= minimumTier;
+  if (!planFeature) return true;
+  return planFeatures?.includes(planFeature) ?? false;
 }
 
-/**
- * Resolve a flag from its static default (used during loading).
- */
-export function resolveFlagDefault(name: FlagName, userTier: number | null): boolean {
-  const def = FLAG_REGISTRY[name];
-  return resolveFlag(def.enabled, def.minimumTier, userTier);
+/** Resolve a flag from its static default (used during loading). */
+export function resolveFlagDefault(name: FlagName, planFeatures: readonly string[] | null): boolean {
+  const def: { enabled: boolean; planFeature?: string } = FLAG_REGISTRY[name];
+  return resolveFlag(def.enabled, def.planFeature, planFeatures);
 }
 
 export type ResolvedFlags = { readonly [K in FlagName]: boolean };
 
-/**
- * Resolve all flags from DB data.
- * @param dbFlags - Array of { key, enabled, minimumTier } from the featureFlags table
- * @param userTier - The user's plan tier (0/10/20/30), null if unknown
- */
+/** Resolve every registered flag from the DB rows, falling back to defaults. */
 export function resolveAllFlags(
-  dbFlags: Array<{ key: string; enabled: boolean; minimumTier: number }> | undefined,
-  userTier: number | null,
+  dbFlags: FlagRow[] | undefined,
+  planFeatures: readonly string[] | null,
 ): ResolvedFlags {
   const result = {} as Record<string, boolean>;
-
   for (const name of Object.keys(FLAG_REGISTRY) as FlagName[]) {
     const dbFlag = dbFlags?.find((f) => f.key === name);
-    if (dbFlag) {
-      result[name] = resolveFlag(dbFlag.enabled, dbFlag.minimumTier, userTier);
-    } else {
-      result[name] = resolveFlagDefault(name, userTier);
-    }
+    result[name] = dbFlag
+      ? resolveFlag(dbFlag.enabled, dbFlag.planFeature, planFeatures)
+      : resolveFlagDefault(name, planFeatures);
   }
-
   return Object.freeze(result) as ResolvedFlags;
 }

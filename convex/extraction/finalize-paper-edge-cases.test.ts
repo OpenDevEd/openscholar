@@ -35,10 +35,8 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
 import {
-  setupTransactionAggregates,
   seedCreditsForTest,
-} from "../credits/aggregates.test-support";
-import { readBalance } from "../credits/balanceCounter";
+} from "../billing/billing.test-support";
 import { incPaperOutcome, readJobCounters } from "./jobCounters";
 
 type JobStatusFixture =
@@ -82,7 +80,6 @@ interface SeedOpts {
   totalPapers?: number;
   processedPapers?: number;
   failedPapers?: number;
-  paperQuestionsBilled?: boolean;
   startingCredits?: number;
   clerkSuffix?: string;
 }
@@ -96,7 +93,6 @@ async function seedScenario(
   opts: SeedOpts = {},
 ): Promise<{
   userId: Id<"users">;
-  creditsId: Id<"credits">;
   jobId: Id<"extractionJobs">;
   paperId: Id<"extractionPapers">;
 }> {
@@ -109,7 +105,6 @@ async function seedScenario(
     totalPapers = 1,
     processedPapers = 0,
     failedPapers = 0,
-    paperQuestionsBilled,
     startingCredits = 1_000,
     clerkSuffix = String(Math.random()).slice(2),
   } = opts;
@@ -123,7 +118,7 @@ async function seedScenario(
       createdAt: now,
       updatedAt: now,
     });
-    const creditsId = await seedCreditsForTest(ctx, {
+    await seedCreditsForTest(ctx, {
       userId,
       free: 0,
       paid: startingCredits,
@@ -162,7 +157,6 @@ async function seedScenario(
       openalexId: `oa:fp_${clerkSuffix}`,
       title: "FinalizePaper Edge Case Paper",
       status: paperStatus,
-      questionsBilled: paperQuestionsBilled,
     });
     for (const r of results) {
       await ctx.db.insert("extractionResults", {
@@ -192,15 +186,8 @@ async function seedScenario(
         processedAt: now,
       });
     }
-    return { userId, creditsId, jobId, paperId };
+    return { userId, jobId, paperId };
   });
-}
-
-async function readPaidBalance(
-  t: ReturnType<typeof convexTest>,
-  creditsId: Id<"credits">,
-): Promise<number> {
-  return (await t.run((ctx) => readBalance(ctx, creditsId))).paid;
 }
 
 const finalizePaperRef =
@@ -213,7 +200,6 @@ const finalizePaperRef =
 describe("finalizePaper — cross-epoch regression (stuck-at-99% bug)", () => {
   it("rejects an extra expectedEpoch arg", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       jobStatus: "extracting",
@@ -233,7 +219,6 @@ describe("finalizePaper — cross-epoch regression (stuck-at-99% bug)", () => {
 
   it("completes a paper whose results were written at the original epoch even after job.runEpoch advanced", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     // Simulates the post-pause-resume world: work started at runEpoch=0;
     // a pause+resume cycle bumped it to 2 while question fan-out was in
@@ -258,7 +243,6 @@ describe("finalizePaper — cross-epoch regression (stuck-at-99% bug)", () => {
 
   it("completes a paper even when the job has been resumed many times (runEpoch=10)", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedScenario(t, {
       jobStatus: "extracting",
@@ -294,7 +278,6 @@ describe("finalizePaper — paper-level idempotency", () => {
     "no-op when paper is already %s (counter not double-bumped)",
     async (initial, expected) => {
       const t = convexTest(schema);
-      setupTransactionAggregates(t);
       setupAggregates(t);
       const { jobId, paperId } = await seedScenario(t, {
         paperStatus: initial,
@@ -319,7 +302,6 @@ describe("finalizePaper — paper-level idempotency", () => {
 
   it("two consecutive finalizePaper calls bump counters exactly once", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedScenario(t, {
       results: [{ questionKey: "q1", status: "completed", billed: true }],
@@ -355,7 +337,6 @@ describe("finalizePaper — job-state gating", () => {
     "no-op when parent job status is %s (paper stays extracting, no counter mutation)",
     async (jobStatus) => {
       const t = convexTest(schema);
-      setupTransactionAggregates(t);
       setupAggregates(t);
       const { jobId, paperId } = await seedScenario(t, {
         jobStatus,
@@ -381,7 +362,6 @@ describe("finalizePaper — job-state gating", () => {
 
   it("no-op when the paper has been deleted", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       results: [{ questionKey: "q1", status: "completed", billed: true }],
@@ -396,7 +376,6 @@ describe("finalizePaper — job-state gating", () => {
 
   it("no-op when the parent job has been deleted (paper orphaned)", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedScenario(t, {
       results: [{ questionKey: "q1", status: "completed", billed: true }],
@@ -417,7 +396,6 @@ describe("finalizePaper — job-state gating", () => {
 describe("finalizePaper — aggregation outcomes", () => {
   it("all results completed → paper completed", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       questionKeys: ["q1", "q2", "q3"],
@@ -438,7 +416,6 @@ describe("finalizePaper — aggregation outcomes", () => {
 
   it("mix of completed + terminal failed (non-retryable) → paper completed (any success outweighs failures)", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       questionKeys: ["q1", "q2"],
@@ -464,7 +441,6 @@ describe("finalizePaper — aggregation outcomes", () => {
 
   it("all results terminal failed (non-retryable) → paper failed", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedScenario(t, {
       questionKeys: ["q1", "q2"],
@@ -499,7 +475,6 @@ describe("finalizePaper — aggregation outcomes", () => {
 
   it("all results retryable failures with attempts exhausted → paper failed", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       questionKeys: ["q1", "q2"],
@@ -531,7 +506,6 @@ describe("finalizePaper — aggregation outcomes", () => {
 
   it("one retryable failure with budget remaining → no-op (paper stays extracting)", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       questionKeys: ["q1", "q2"],
@@ -557,7 +531,6 @@ describe("finalizePaper — aggregation outcomes", () => {
 
   it("one question without a result row → no-op (rollup is pending)", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       questionKeys: ["q1", "q2"],
@@ -575,7 +548,6 @@ describe("finalizePaper — aggregation outcomes", () => {
 
   it("no results and no questions → no-op (rollup is pending)", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       questionKeys: [],
@@ -592,7 +564,6 @@ describe("finalizePaper — aggregation outcomes", () => {
 
   it("classifies a failed-but-unclassified error as retryable by default → no-op until exhausted", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       questionKeys: ["q1"],
@@ -617,7 +588,6 @@ describe("finalizePaper — aggregation outcomes", () => {
 
   it("an unclassified failure that hit the attempt cap flips paper to failed", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       questionKeys: ["q1"],
@@ -647,7 +617,6 @@ describe("finalizePaper — aggregation outcomes", () => {
 describe("finalizePaper — pdfContentUsed propagation", () => {
   it("propagates pdfContentUsed=true when any question used PDF content", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       questionKeys: ["q1", "q2"],
@@ -677,7 +646,6 @@ describe("finalizePaper — pdfContentUsed propagation", () => {
 
   it("leaves pdfContentUsed undefined when no question used PDF content", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       questionKeys: ["q1", "q2"],
@@ -713,7 +681,6 @@ describe("finalizePaper — pdfContentUsed propagation", () => {
 describe("finalizePaper — creditsUsed preservation", () => {
   it("preserves the accumulated per-question creditsUsed on the paper-row terminal copy", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     // Tier C: the per-question creditsUsed lives on the extractionResults
     // row. finalizePaper sums them and writes the total onto the paper
@@ -735,7 +702,6 @@ describe("finalizePaper — creditsUsed preservation", () => {
 
   it("leaves creditsUsed undefined when no per-question credits were spent", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperId } = await seedScenario(t, {
       results: [{ questionKey: "q1", status: "completed", billed: true }],
@@ -761,7 +727,6 @@ describe("finalizePaper — creditsUsed preservation", () => {
 describe("finalizePaper — maybeFinalizeJob cascade", () => {
   it("flips job to completed when this is the only paper and it succeeded", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedScenario(t, {
       totalPapers: 1,
@@ -779,7 +744,6 @@ describe("finalizePaper — maybeFinalizeJob cascade", () => {
 
   it("flips job to failed when this is the only paper and it failed", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId, paperId } = await seedScenario(t, {
       totalPapers: 1,
@@ -806,7 +770,6 @@ describe("finalizePaper — maybeFinalizeJob cascade", () => {
 
   it("leaves job extracting when peer papers are still in flight", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     // Two papers total; only one finalized in this test. The job's counter
     // moves to 1/2 but maybeFinalizeJob does not flip.
@@ -831,251 +794,5 @@ describe("finalizePaper — maybeFinalizeJob cascade", () => {
     const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
     expect(counters.processed).toBe(1);
     expect(counters.failed).toBe(0);
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────
-// 8. Per-paper credit-debit semantics (new debit site).
-//
-// finalizePaper is now the one-and-only debit site for LLM-extraction
-// credits, which eliminates OCC-storm contention on the user's credits row.
-// Every
-// terminal flip with a non-zero paper.creditsUsed drains that amount
-// from the wallet, gated on `paper.questionsBilled` so retries never
-// double-charge.
-// ─────────────────────────────────────────────────────────────────────
-
-describe("finalizePaper — per-paper credit debit", () => {
-  it("debits summed result.creditsUsed from the wallet on terminal flip and sets questionsBilled", async () => {
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    setupAggregates(t);
-    const { creditsId, jobId, paperId } = await seedScenario(t, {
-      startingCredits: 1_000,
-      results: [
-        { questionKey: "q1", status: "completed", billed: true, creditsUsed: 7 },
-      ],
-    });
-
-    await t.mutation(finalizePaperRef, { paperId });
-
-    expect(await readPaidBalance(t, creditsId)).toBe(993);
-    const paper = await t.run((ctx) =>
-      ctx.db.get("extractionPapers", paperId),
-    );
-    expect(paper?.status).toBe("completed");
-    expect(paper?.questionsBilled).toBe(true);
-    expect(paper?.creditsUsed).toBe(7);
-    const charges = await t.run((ctx) =>
-      ctx.db
-        .query("creditTransactions")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect(),
-    );
-    expect(charges).toHaveLength(1);
-    expect(charges[0]?.amount).toBe(-7);
-    expect(charges[0]?.billingType).toBe("extraction_llm");
-    expect(charges[0]?.paperId).toBe(paperId);
-  });
-
-  it("debits accumulated result-row credits even when the paper terminal status is failed (partial-cost successes still bill)", async () => {
-    // Tier C: result.creditsUsed lives on the extractionResults row and
-    // can be non-zero even for a row that later resolved to status=failed
-    // (e.g. a retry attempt that consumed LLM tokens before exhausting).
-    // finalizePaper sums them and bills regardless of the paper-level
-    // rollup status — otherwise users get unbilled LLM calls on papers
-    // whose questions ultimately all failed.
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    setupAggregates(t);
-    const { creditsId, jobId, paperId } = await seedScenario(t, {
-      startingCredits: 1_000,
-      questionKeys: ["q1", "q2"],
-      results: [
-        {
-          questionKey: "q1",
-          status: "failed",
-          billed: false,
-          lastErrorCode: "pdf_invalid",
-          attemptCount: 1,
-          creditsUsed: 2,
-        },
-        {
-          questionKey: "q2",
-          status: "failed",
-          billed: false,
-          lastErrorCode: "pdf_invalid",
-          attemptCount: 1,
-          creditsUsed: 2,
-        },
-      ],
-    });
-
-    await t.mutation(finalizePaperRef, { paperId });
-
-    expect(await readPaidBalance(t, creditsId)).toBe(996);
-    const paper = await t.run((ctx) =>
-      ctx.db.get("extractionPapers", paperId),
-    );
-    expect(paper?.status).toBe("failed");
-    expect(paper?.questionsBilled).toBe(true);
-    const charges = await t.run((ctx) =>
-      ctx.db
-        .query("creditTransactions")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect(),
-    );
-    expect(charges).toHaveLength(1);
-    expect(charges[0]?.amount).toBe(-4);
-  });
-
-  it("does NOT debit when paper.questionsBilled is already true", async () => {
-    // Seeds a paper that already carries questionsBilled=true (a prior
-    // run already paid the bill). The terminal flip happens, but the
-    // wallet is untouched.
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    setupAggregates(t);
-    const { creditsId, jobId, paperId } = await seedScenario(t, {
-      paperQuestionsBilled: true,
-      startingCredits: 1_000,
-      results: [
-        { questionKey: "q1", status: "completed", billed: true, creditsUsed: 5 },
-      ],
-    });
-
-    await t.mutation(finalizePaperRef, { paperId });
-
-    expect(await readPaidBalance(t, creditsId)).toBe(1_000);
-    const paper = await t.run((ctx) =>
-      ctx.db.get("extractionPapers", paperId),
-    );
-    expect(paper?.status).toBe("completed");
-    expect(paper?.questionsBilled).toBe(true);
-    const charges = await t.run((ctx) =>
-      ctx.db
-        .query("creditTransactions")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect(),
-    );
-    expect(charges).toHaveLength(0);
-  });
-
-  it("does NOT debit and does NOT flip questionsBilled when summed result credits are zero", async () => {
-    // Zero-credit guard short-circuits before deductCreditsTransaction
-    // would throw INVALID_AMOUNT on a zero-amount debit. questionsBilled
-    // stays unset so a downstream resume that records real cost can
-    // still charge.
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    setupAggregates(t);
-    const { creditsId, jobId, paperId } = await seedScenario(t, {
-      startingCredits: 1_000,
-      results: [
-        { questionKey: "q1", status: "completed", billed: true, creditsUsed: 0 },
-      ],
-    });
-
-    await t.mutation(finalizePaperRef, { paperId });
-
-    expect(await readPaidBalance(t, creditsId)).toBe(1_000);
-    const paper = await t.run((ctx) =>
-      ctx.db.get("extractionPapers", paperId),
-    );
-    expect(paper?.status).toBe("completed");
-    expect(paper?.questionsBilled).toBeUndefined();
-    const charges = await t.run((ctx) =>
-      ctx.db
-        .query("creditTransactions")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect(),
-    );
-    expect(charges).toHaveLength(0);
-  });
-
-  it("does NOT debit when no result row has creditsUsed (never accumulated)", async () => {
-    // result.creditsUsed omitted at seed time → field is undefined.
-    // sum = (undefined ?? 0) === 0, guard skips.
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    setupAggregates(t);
-    const { creditsId, jobId, paperId } = await seedScenario(t, {
-      startingCredits: 1_000,
-      results: [{ questionKey: "q1", status: "completed", billed: true }],
-    });
-
-    await t.mutation(finalizePaperRef, { paperId });
-
-    expect(await readPaidBalance(t, creditsId)).toBe(1_000);
-    const paper = await t.run((ctx) =>
-      ctx.db.get("extractionPapers", paperId),
-    );
-    expect(paper?.status).toBe("completed");
-    expect(paper?.questionsBilled).toBeUndefined();
-    const charges = await t.run((ctx) =>
-      ctx.db
-        .query("creditTransactions")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect(),
-    );
-    expect(charges).toHaveLength(0);
-  });
-
-  it("drains the wallet (allowPartial:true) when balance < summed result credits instead of throwing", async () => {
-    // The contract is `allowPartial:true` — if the wallet ran short
-    // mid-run, finalizePaper must drain the remaining balance and let
-    // the cascade transition the job to creditsExhausted upstream.
-    // Throwing INSUFFICIENT_CREDITS here would mean a successfully-
-    // extracted paper stays in "extracting" forever.
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    setupAggregates(t);
-    const { creditsId, jobId, paperId } = await seedScenario(t, {
-      startingCredits: 3,
-      results: [
-        { questionKey: "q1", status: "completed", billed: true, creditsUsed: 10 },
-      ],
-    });
-
-    await t.mutation(finalizePaperRef, { paperId });
-
-    expect(await readPaidBalance(t, creditsId)).toBe(0);
-    const paper = await t.run((ctx) =>
-      ctx.db.get("extractionPapers", paperId),
-    );
-    expect(paper?.status).toBe("completed");
-    expect(paper?.questionsBilled).toBe(true);
-    const charges = await t.run((ctx) =>
-      ctx.db
-        .query("creditTransactions")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect(),
-    );
-    expect(charges).toHaveLength(1);
-    expect(charges[0]?.amount).toBe(-3);
-  });
-
-  it("calling finalizePaper twice with non-zero credits debits exactly once (terminal short-circuit)", async () => {
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    setupAggregates(t);
-    const { creditsId, jobId, paperId } = await seedScenario(t, {
-      startingCredits: 1_000,
-      results: [
-        { questionKey: "q1", status: "completed", billed: true, creditsUsed: 6 },
-      ],
-    });
-
-    await t.mutation(finalizePaperRef, { paperId });
-    await t.mutation(finalizePaperRef, { paperId });
-
-    expect(await readPaidBalance(t, creditsId)).toBe(994);
-    const charges = await t.run((ctx) =>
-      ctx.db
-        .query("creditTransactions")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect(),
-    );
-    expect(charges).toHaveLength(1);
   });
 });

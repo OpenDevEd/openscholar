@@ -37,6 +37,7 @@ import {
   getExtractionSourceSidebarDimensions,
   useExtractionSourceSidebarStore,
 } from "@/lib/store";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 type LibItem = Doc<"libraryItems">;
 type ViewId = "all" | "unfiled" | Id<"collections">;
@@ -64,11 +65,7 @@ export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
   );
 
   const convex = useConvex();
-  const liveLimit = useQuery(
-    api.extraction.bucket.queries.getMyPaperLimit,
-    paperLimit === undefined ? {} : "skip",
-  );
-  const limit = paperLimit ?? liveLimit ?? 1000;
+  const limit = paperLimit ?? PAPER_LIMIT;
   const addMany = useBucketStore((s) => s.addMany);
   const removeMany = useBucketStore((s) => s.removeMany);
   const order = useBucketStore((s) => s.order);

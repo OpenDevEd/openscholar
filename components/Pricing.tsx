@@ -1,13 +1,18 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAction } from "convex/react";
 import posthog from "posthog-js";
 import { api } from "@/convex/_generated/api";
-import { getPlanTier, FREE_SIGNUP_CREDIT_GRANT, PLAN_CONFIG } from "@/convex/lib/constants";
+import type { CatalogPlan } from "@/convex/billing/validators";
+import {
+  findPlan,
+  isUpgrade,
+  mainPlans,
+  signupCredits,
+} from "@/lib/billing/catalog";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { motion } from "motion/react";
 import {
@@ -18,6 +23,7 @@ import {
   Rocket,
   CreditCard,
   BookOpen,
+  Sparkles,
 } from "lucide-react";
 import { useAppToast } from "@/lib/toast";
 import { toast as sonnerToast } from "sonner";
@@ -25,7 +31,6 @@ import {
   UpgradeConfirmationDialog,
   type UpgradePreview,
 } from "@/components/billing/upgrade-confirmation-dialog";
-import useSWR from "swr";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
@@ -34,164 +39,128 @@ import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useTranslations, useFormatter } from "next-intl";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 
-type PlanPrice = {
+type PlanCard = {
   id: string;
-  amount: number | null;
-  currency: string;
-  interval: "day" | "week" | "month" | "year" | undefined;
-  nickname: string | null;
-  metadata: Record<string, string>;
-  plan: "free" | "go" | "pro" | "enterprise";
-};
-
-type PlanConfig = {
-  id: "free" | "go" | "pro" | "enterprise";
   name: string;
   icon: typeof BookOpen;
-  description: string;
+  description?: string;
   features: string[];
-  tier: number;
-  popular?: boolean;
+  price?: { amount: number; interval: string };
+  popular: boolean;
+  /** The plan every customer starts on. */
+  isDefault: boolean;
 };
 
-type SubscriptionDetails = {
-  amount: number;
-  currency: string;
-  interval: string;
-  currentPeriodEnd: number;
-  currentPriceId: string;
-  status: string;
-  entitlementState: "entitled" | "payment_pending" | "not_entitled";
-  entitlementMessage?: string;
-  cancelAtPeriodEnd: boolean;
-  hasPendingChange: boolean;
-  pendingTargetPriceId?: string;
-  pendingTargetPlan?: "free" | "go" | "pro" | "enterprise";
-  pendingEffectiveDate?: number;
-  cardBrand?: string;
-  cardLast4?: string;
-};
+/** Enterprise is sold by contract, so it only appears as a contact card. */
+const ENTERPRISE_ID = "enterprise";
+const ENTERPRISE_CREDITS_PER_MONTH = 150_000;
+
+/** Icons for the plans OpenScholar launched with; other plans get a generic one. */
+const PLAN_ICONS: Record<string, typeof BookOpen> = { free: BookOpen, go: Rocket, pro: Zap };
+
+/**
+ * Translated wording for the plans OpenScholar launched with. A description or
+ * highlights set on the plan in Autumn replace it; plans added in Autumn use
+ * Autumn's text.
+ */
+const PLAN_COPY = {
+  free: { description: "freeDescription", highlights: ["freeFeature2", "freeFeature3"] },
+  go: { description: "goDescription", highlights: ["goFeature2", "goFeature3"] },
+  pro: { description: "proDescription", highlights: ["proFeature3", "proFeature4"] },
+} as const;
+
+/** Translated names for Autumn features; others show the name set in Autumn. */
+const FEATURE_NAMES = { extraction: "features.extraction" } as const;
 
 export function Pricing() {
   const toast = useAppToast();
   const t = useTranslations("pricing");
+  const tb = useTranslations("billingPage");
   const tc = useTranslations("common");
   const format = useFormatter();
 
-  const FEATURES = useMemo(() => ({
-    free: [t("freeFeature1", { credits: FREE_SIGNUP_CREDIT_GRANT }), t("freeFeature2"), t("freeFeature3")],
-    go: [t("goFeature1", { credits: PLAN_CONFIG.go.creditsPerMonth }), t("goFeature2"), t("goFeature3")],
-    pro: [t("proFeature1", { credits: PLAN_CONFIG.pro.creditsPerMonth }), t("proFeature2"), t("proFeature3"), t("proFeature4")],
-    enterprise: [t("enterpriseFeature1", { credits: PLAN_CONFIG.enterprise.creditsPerMonth }), t("enterpriseFeature2"), t("enterpriseFeature3"), t("enterpriseFeature4")],
-  }), [t]);
-
-  const showGo = useFeatureFlag("subscriptions.plan.go");
-  const showPro = useFeatureFlag("subscriptions.plan.pro");
   const showEnterprise = useFeatureFlag("subscriptions.plan.enterprise");
 
-  const PLANS: PlanConfig[] = useMemo(() => {
-    const all: PlanConfig[] = [
-      { id: "free", name: t("freePlanName"), icon: BookOpen, description: t("freeDescription"), features: FEATURES.free, tier: 0 },
-      ...(showGo ? [{ id: "go" as const, name: t("goPlanName"), icon: Rocket, description: t("goDescription"), features: FEATURES.go, tier: 10 }] : []),
-      ...(showPro ? [{ id: "pro" as const, name: t("proPlanName"), icon: Zap, description: t("proDescription"), features: FEATURES.pro, tier: 20, popular: true }] : []),
-      ...(showEnterprise ? [{ id: "enterprise" as const, name: t("enterprisePlanName"), icon: Building2, description: t("enterpriseDescription"), features: FEATURES.enterprise, tier: 30 }] : []),
-    ];
-    return all;
-  }, [t, FEATURES, showGo, showPro, showEnterprise]);
+  const choosePlan = useAction(api.billing.actions.choosePlan);
+  const keepPlan = useAction(api.billing.actions.keepPlan);
+  const previewPlan = useAction(api.billing.actions.previewPlan);
+  const openPortal = useAction(api.billing.actions.openPortal);
 
-  const getPlans = useAction(api.subscriptions.actions.getPlans);
-  const createCheckoutSession = useAction(
-    api.subscriptions.actions.createCheckoutSession,
-  );
-  const changePlan = useAction(api.subscriptions.actions.changePlan);
-  const createPortalSession = useAction(
-    api.subscriptions.actions.createPortalSession,
-  );
-  const getSubscriptionDetails = useAction(
-    api.subscriptions.actions.getSubscriptionDetails,
-  );
-  const getUpgradePreview = useAction(
-    api.subscriptions.actions.getUpgradePreview,
-  );
-
-  const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);
-  const [upgradePreview, setUpgradePreview] = useState<(UpgradePreview & { targetPriceId: string }) | null>(null);
+  const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+  const [upgradePreview, setUpgradePreview] = useState<(UpgradePreview & { targetPlanId: string }) | null>(null);
   const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
   const [isConfirmingUpgrade, setIsConfirmingUpgrade] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [subscriptionDetails, setSubscriptionDetails] = useState<SubscriptionDetails | null>(null);
 
-  // Fetch current subscription
   const { phase, retryUserSync } = useAuthReadiness();
   const subscriptionState = useSubscriptionState();
+  const account = subscriptionState.account;
+  const catalog = subscriptionState.catalog;
   const isAuthLoading = subscriptionState.isAuthLoading;
   const isSubscriptionLoading = subscriptionState.isQueryLoading;
   const isAnonymous = subscriptionState.isAnonymous;
   const hasResolvedSubscription = subscriptionState.isReady;
-  const isEntitled = subscriptionState.isEntitled;
   const resolvedPlan = subscriptionState.resolvedPlan;
-  const resolvedTier = subscriptionState.resolvedTier;
 
-  // Fetch prices using SWR
-  const {
-    data: prices,
-    isLoading: isPricesLoading,
-  } = useSWR<PlanPrice[]>(
-    "stripe-prices",
-    async () => getPlans({}),
-    {
-      revalidateOnFocus: false,
-      revalidateOnMount: true, // Always fetch real Stripe prices on mount
-      onError: (err) => {
-        console.error("Failed to load Stripe prices", err);
-        toast.error(t("failedToLoadPricing"), t("pleaseRefresh"));
-      },
-    },
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    const stripeSubscriptionId = subscriptionState.subscription?.stripeSubscriptionId;
-
-    if (phase !== "authenticated" || !stripeSubscriptionId) {
-      setSubscriptionDetails(null);
-      return;
-    }
-
-    getSubscriptionDetails({})
-      .then((result) => {
-        if (cancelled) return;
-        if (result.status === "success" && result.data) {
-          setSubscriptionDetails(result.data as SubscriptionDetails);
-          return;
-        }
-        setSubscriptionDetails(null);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        console.error("Failed to fetch subscription details for pricing page", err);
-        setSubscriptionDetails(null);
-      });
-
-    return () => {
-      cancelled = true;
+  const PLANS: PlanCard[] = useMemo(() => {
+    if (!catalog) return [];
+    const featureName = (id: string) =>
+      id in FEATURE_NAMES
+        ? t(FEATURE_NAMES[id as keyof typeof FEATURE_NAMES])
+        : (catalog.features.find((f) => f.id === id)?.name ?? id);
+    const creditsLine = (plan: CatalogPlan) => {
+      if (plan.autoEnable) {
+        const credits = signupCredits(catalog);
+        return credits > 0 ? [t("creditsOnce", { credits })] : [];
+      }
+      return plan.credits?.interval === "month"
+        ? [t("creditsPerMonth", { credits: plan.credits.included })]
+        : [];
     };
-  }, [phase, subscriptionState.subscription?.stripeSubscriptionId, getSubscriptionDetails]);
+    const cards: PlanCard[] = mainPlans(catalog).map((plan) => {
+      const copy = plan.id in PLAN_COPY ? PLAN_COPY[plan.id as keyof typeof PLAN_COPY] : undefined;
+      return {
+        id: plan.id,
+        name: plan.name,
+        icon: PLAN_ICONS[plan.id] ?? Sparkles,
+        description: plan.description ?? (copy ? t(copy.description) : undefined),
+        features: [
+          ...creditsLine(plan),
+          ...plan.features.map(featureName),
+          ...(plan.highlights ?? copy?.highlights.map((key) => t(key)) ?? []),
+        ],
+        price: plan.price,
+        popular: plan.popular,
+        isDefault: plan.autoEnable,
+      };
+    });
+    if (showEnterprise) {
+      cards.push({
+        id: ENTERPRISE_ID,
+        name: t("enterprisePlanName"),
+        icon: Building2,
+        description: t("enterpriseDescription"),
+        features: [
+          t("enterpriseFeature1", { credits: ENTERPRISE_CREDITS_PER_MONTH }),
+          t("enterpriseFeature2"),
+          t("enterpriseFeature3"),
+          t("enterpriseFeature4"),
+        ],
+        popular: false,
+        isDefault: false,
+      });
+    }
+    return cards;
+  }, [catalog, showEnterprise, t]);
 
   // Track pricing page view
   useEffect(() => {
     if (phase === "authenticated" && hasResolvedSubscription) {
-      posthog.capture("pricing_page_viewed", {
-        current_plan: resolvedPlan ?? "free",
-        is_entitled: isEntitled,
-      });
+      posthog.capture("pricing_page_viewed", { current_plan: resolvedPlan ?? "free" });
     } else if (phase === "anonymous") {
-      posthog.capture("pricing_page_viewed", {
-        current_plan: "anonymous",
-        is_entitled: false,
-      });
+      posthog.capture("pricing_page_viewed", { current_plan: "anonymous" });
     }
-  }, [phase, hasResolvedSubscription, resolvedPlan, isEntitled]);
+  }, [phase, hasResolvedSubscription, resolvedPlan]);
 
   // Mobile detection
   useEffect(() => {
@@ -201,164 +170,119 @@ export function Pricing() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const router = useRouter();
   const goToSignIn = useSignInRedirect();
 
-  // Reorder plans for mobile (PRO first)
-  const orderedPlans = useMemo(() => {
-    if (isMobile) {
-      const mobileOrder: PlanConfig["id"][] = ["pro", "go", "free", "enterprise"];
-      return mobileOrder
-        .map((id) => PLANS.find((p) => p.id === id))
-        .filter((p): p is PlanConfig => p !== undefined);
-    }
-    return PLANS;
-  }, [isMobile, PLANS]);
+  // On mobile, the recommended plans come first.
+  const orderedPlans = useMemo(
+    () => (isMobile ? [...PLANS].sort((a, b) => Number(b.popular) - Number(a.popular)) : PLANS),
+    [isMobile, PLANS],
+  );
 
-  const pendingTargetTier = subscriptionDetails?.pendingTargetPlan
-    ? getPlanTier(subscriptionDetails.pendingTargetPlan)
-    : null;
-  const isPaymentPending =
-    subscriptionState.subscription?.status === "incomplete" ||
-    subscriptionDetails?.entitlementState === "payment_pending";
+  const planName = (id: string) => (catalog && findPlan(catalog, id)?.name) || id;
+  // The upgrade dialog and toast describe monthly refills; other intervals show none.
+  const monthlyCredits = (id: string) => {
+    const credits = catalog && findPlan(catalog, id)?.credits;
+    return credits?.interval === "month" ? credits.included : 0;
+  };
+  const scheduledPlan = account?.changesAt !== undefined ? account.nextPlan : undefined;
   const hasPendingDowngrade = Boolean(
-    subscriptionDetails?.hasPendingChange &&
-      pendingTargetTier !== null &&
-      resolvedTier !== null &&
-      pendingTargetTier < resolvedTier,
+    catalog &&
+      scheduledPlan &&
+      resolvedPlan &&
+      scheduledPlan !== resolvedPlan &&
+      !isUpgrade(catalog, resolvedPlan, scheduledPlan),
   );
 
   const handleKeepCurrentPlan = async () => {
-    if (!subscriptionDetails?.currentPriceId) {
-      return;
-    }
-
     try {
-      setLoadingPriceId("keep-current");
+      setLoadingPlanId("keep-current");
       posthog.capture("pending_change_canceled", {
         current_plan: resolvedPlan ?? "free",
         context: "pricing_page",
       });
-      const result = await changePlan({ targetPriceId: subscriptionDetails.currentPriceId });
-
-      const refreshed = await getSubscriptionDetails({});
-      if (refreshed.status === "success" && refreshed.data) {
-        setSubscriptionDetails(refreshed.data as SubscriptionDetails);
-      }
+      await keepPlan({});
     } catch (err) {
       console.error(err);
       toast.error(tc("somethingWentWrong"), t("couldNotInitiateCheckout"));
     } finally {
-      setLoadingPriceId(null);
-    }
-  };
-
-  const handleSubscribe = async (planType: "go" | "pro" | "enterprise") => {
-    if (phase !== "authenticated") {
-      goToSignIn();
-      return;
-    }
-
-    if (isPaymentPending) {
-      await handleOpenPortal();
-      return;
-    }
-
-    const priceId = prices?.find((price) => price.plan === planType)?.id;
-
-    if (!priceId) {
-      toast.error(t("planUnavailable"), t("pricingNotConfigured"));
-      return;
-    }
-
-    posthog.capture("pricing_plan_clicked", {
-      target_plan: planType,
-      current_plan: resolvedPlan ?? "free",
-      is_upgrade: resolvedTier !== null && getPlanTier(planType) > resolvedTier,
-      price_id: priceId,
-    });
-
-    try {
-      setLoadingPriceId(priceId);
-      const hasLinkedStripeSubscription = Boolean(
-        subscriptionState.subscription?.stripeSubscriptionId,
-      );
-
-      if (isEntitled && resolvedPlan && resolvedPlan !== "free") {
-        const targetTier = getPlanTier(planType);
-        const isUpgrade = resolvedTier !== null && targetTier > resolvedTier;
-
-        if (isUpgrade) {
-          // Show confirmation dialog with proration preview
-          const preview = await getUpgradePreview({ targetPriceId: priceId });
-          setUpgradePreview({ ...preview, targetPriceId: priceId });
-          setIsUpgradeDialogOpen(true);
-          posthog.capture("upgrade_preview_viewed", {
-            current_plan: resolvedPlan,
-            target_plan: planType,
-            proration_amount_cents: preview.immediateChargeCents,
-            pro_rata_credits: preview.proRataCredits,
-          });
-        } else {
-          // Downgrade: keep existing behavior (no dialog)
-          posthog.capture("downgrade_initiated", {
-            current_plan: resolvedPlan,
-            target_plan: planType,
-          });
-          await changePlan({ targetPriceId: priceId });
-          const refreshed = await getSubscriptionDetails({});
-          if (refreshed.status === "success" && refreshed.data) {
-            setSubscriptionDetails(refreshed.data as SubscriptionDetails);
-          }
-        }
-      } else {
-        if (hasLinkedStripeSubscription) {
-          const { url } = await createPortalSession({});
-          if (url) {
-            window.location.href = url;
-          }
-          return;
-        }
-
-        const { url } = await createCheckoutSession({
-          priceId,
-          quantity: 1,
-        });
-
-        if (url) {
-          posthog.capture("checkout_session_created", {
-            plan: planType,
-            price_id: priceId,
-          });
-          window.location.href = url;
-        } else {
-          toast.billing.checkoutFailed();
-        }
-      }
-    } catch (err) {
-      console.error(err);
-      toast.billing.checkoutFailed(err);
-    } finally {
-      setLoadingPriceId(null);
+      setLoadingPlanId(null);
     }
   };
 
   const handleOpenPortal = async () => {
     try {
-      setLoadingPriceId("portal");
+      setLoadingPlanId("portal");
       posthog.capture("billing_portal_opened", {
         current_plan: resolvedPlan ?? "free",
         context: "pricing_page",
       });
-      const { url } = await createPortalSession({});
-      if (url) {
-        window.location.href = url;
-      }
+      window.location.href = await openPortal({});
     } catch (err) {
       console.error(err);
       toast.billing.portalFailed(err);
     } finally {
-      setLoadingPriceId(null);
+      setLoadingPlanId(null);
+    }
+  };
+
+  const handleSubscribe = async (planType: string) => {
+    if (phase !== "authenticated") {
+      goToSignIn();
+      return;
+    }
+    const upgrade = Boolean(catalog && resolvedPlan && isUpgrade(catalog, resolvedPlan, planType));
+    posthog.capture("pricing_plan_clicked", {
+      target_plan: planType,
+      current_plan: resolvedPlan ?? "free",
+      is_upgrade: upgrade,
+    });
+
+    try {
+      setLoadingPlanId(planType);
+      // A saved card is charged without Checkout, so confirm any amount due
+      // now. Autumn decides that, not the price comparison: a move to a
+      // yearly plan is charged at once even when it's cheaper per month.
+      const preview = resolvedPlan ? await previewPlan({ plan: planType }) : null;
+      if (resolvedPlan && preview?.card && preview.dueNow > 0) {
+        const remainingDays = account?.renewsAt
+          ? Math.max(0, Math.ceil((account.renewsAt - Date.now()) / 86_400_000))
+          : 0;
+        setUpgradePreview({
+          currency: preview.currency,
+          immediateChargeCents: Math.round(preview.dueNow * 100),
+          currentPlan: planName(resolvedPlan),
+          targetPlan: planName(planType),
+          targetPlanId: planType,
+          targetPlanCreditsPerMonth: monthlyCredits(planType),
+          remainingDays,
+          card: preview.card,
+          lineItems: preview.lineItems.map((item) => ({
+            description: item.description,
+            amountCents: Math.round(item.amount * 100),
+            currency: preview.currency,
+          })),
+        });
+        setIsUpgradeDialogOpen(true);
+        posthog.capture("upgrade_preview_viewed", {
+          current_plan: resolvedPlan,
+          target_plan: planType,
+          proration_amount_cents: Math.round(preview.dueNow * 100),
+        });
+        return;
+      }
+      if (!upgrade) {
+        posthog.capture("downgrade_initiated", { current_plan: resolvedPlan, target_plan: planType });
+      }
+      const { url } = await choosePlan({ plan: planType });
+      if (url) {
+        posthog.capture("checkout_session_created", { plan: planType });
+        window.location.href = url;
+      }
+    } catch (err) {
+      console.error(err);
+      toast.billing.checkoutFailed(err);
+    } finally {
+      setLoadingPlanId(null);
     }
   };
 
@@ -372,48 +296,28 @@ export function Pricing() {
         current_plan: upgradePreview.currentPlan,
         target_plan: upgradePreview.targetPlan,
         proration_amount_cents: upgradePreview.immediateChargeCents,
-        pro_rata_credits: upgradePreview.proRataCredits,
       });
-      const result = await changePlan({
-        targetPriceId: upgradePreview.targetPriceId,
-        prorationDate: upgradePreview.prorationDate,
-      });
-
-      const refreshed = await getSubscriptionDetails({});
-      if (refreshed.status === "success" && refreshed.data) {
-        setSubscriptionDetails(refreshed.data as SubscriptionDetails);
+      const { url } = await choosePlan({ plan: upgradePreview.targetPlanId });
+      if (url) {
+        window.location.href = url;
+        return;
       }
-
-      // Save reference before clearing state
       const targetPlan = upgradePreview.targetPlan;
-
       setIsUpgradeDialogOpen(false);
       setUpgradePreview(null);
-
       posthog.capture("upgrade_completed", {
         current_plan: upgradePreview.currentPlan,
         target_plan: targetPlan,
-        credits_granted: result.creditsGranted,
       });
-
-      if (result.creditsGranted > 0) {
-        // Happy path: credits granted immediately — show actual count from server
-        sonnerToast.success(td("upgradeSuccess"), {
+      sonnerToast.success(td("upgradeSuccess"), {
+        ...(upgradePreview.targetPlanCreditsPerMonth > 0 && {
           description: td("upgradeSuccessCredits", {
             plan: targetPlan,
-            credits: result.creditsGranted.toLocaleString(),
+            credits: format.number(upgradePreview.targetPlanCreditsPerMonth),
           }),
-          duration: 5000,
-        });
-      } else {
-        // Grant failed or zero: credits are being processed — info-level tone
-        sonnerToast(td("upgradeSuccess"), {
-          description: td("upgradeProcessingCredits", {
-            plan: targetPlan,
-          }),
-          duration: 5000,
-        });
-      }
+        }),
+        duration: 5000,
+      });
     } catch (err) {
       console.error(err);
       toast.billing.checkoutFailed(err);
@@ -422,20 +326,14 @@ export function Pricing() {
     }
   };
 
-  const getPriceDisplay = (planType: "go" | "pro") => {
-    if (isPricesLoading || !prices)
-      return <Loader2 className="h-4 w-4 animate-spin" />;
-    const price = prices?.find((p) => p.plan === planType);
-    if (!price || !price.amount)
-      return <Loader2 className="h-4 w-4 animate-spin" />;
-    return format.number(price.amount / 100, {
+  const formatPrice = (amount: number) =>
+    format.number(amount, {
       style: "currency",
-      currency: price.currency,
+      currency: "USD",
       minimumFractionDigits: 0,
     });
-  };
 
-  const getButtonConfig = (plan: PlanConfig) => {
+  const getButtonConfig = (plan: PlanCard) => {
     if (isAuthLoading || isSubscriptionLoading) {
       return {
         disabled: true,
@@ -454,7 +352,7 @@ export function Pricing() {
       };
     }
 
-    if (!hasResolvedSubscription || !resolvedPlan || resolvedTier === null) {
+    if (!hasResolvedSubscription || !resolvedPlan || !catalog) {
       return {
         disabled: true,
         label: tc("loading"),
@@ -463,31 +361,8 @@ export function Pricing() {
       };
     }
 
-    if (isPaymentPending) {
-      if (plan.id === "free") {
-        return {
-          disabled: true,
-          label: "Payment pending",
-          variant: "outline" as const,
-          onClick: () => {},
-        };
-      }
-      return {
-        disabled: false,
-        label: "Complete payment in billing portal",
-        variant: "outline" as const,
-        onClick: handleOpenPortal,
-      };
-    }
-
-    const currentPlan = resolvedPlan;
-    const currentTier = resolvedTier;
-    const isCurrent = currentPlan === plan.id;
-    const isUpgrade = plan.tier > currentTier;
-    const isDowngrade = plan.tier < currentTier;
-    const isScheduledTarget =
-      subscriptionDetails?.hasPendingChange &&
-      subscriptionDetails.pendingTargetPlan === plan.id;
+    const isCurrent = resolvedPlan === plan.id;
+    const isScheduledTarget = scheduledPlan === plan.id;
 
     if (isCurrent && hasPendingDowngrade) {
       return {
@@ -516,7 +391,7 @@ export function Pricing() {
       };
     }
 
-    if (plan.id === "free") {
+    if (plan.isDefault) {
       return {
         disabled: false,
         label: "Manage in Billing Portal",
@@ -525,7 +400,7 @@ export function Pricing() {
       };
     }
 
-    if (plan.id === "enterprise") {
+    if (plan.id === ENTERPRISE_ID) {
       return {
         disabled: false,
         label: tc("contactSupport"),
@@ -534,30 +409,20 @@ export function Pricing() {
       };
     }
 
-    if (isUpgrade) {
-      return {
-        disabled: false,
-        label: tc("upgradeTo", { plan: plan.name }),
-        variant: "default" as const,
-        onClick: () => handleSubscribe(plan.id as "go" | "pro" | "enterprise"),
-      };
-    }
-
-    if (isDowngrade) {
+    if (!isUpgrade(catalog, resolvedPlan, plan.id)) {
       return {
         disabled: false,
         label: `Downgrade to ${plan.name}`,
         variant: "outline" as const,
-        onClick: () => handleSubscribe(plan.id as "go" | "pro"),
+        onClick: () => handleSubscribe(plan.id),
       };
     }
 
-    // Fallback (shouldn't reach here)
     return {
-      disabled: true,
-      label: tc("notAvailable"),
-      variant: "outline" as const,
-      onClick: () => {},
+      disabled: false,
+      label: tc("upgradeTo", { plan: plan.name }),
+      variant: "default" as const,
+      onClick: () => handleSubscribe(plan.id),
     };
   };
 
@@ -627,44 +492,25 @@ export function Pricing() {
       </div>
 
       {/* Plans Grid */}
-      {isPaymentPending && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 flex items-center justify-between gap-3">
-          <span>
-            {subscriptionDetails?.entitlementMessage ??
-              t("paymentPendingDefault")}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleOpenPortal}
-            disabled={loadingPriceId !== null}
-          >
-            {tc("openBillingPortal")}
-          </Button>
-        </div>
-      )}
-
-      {hasPendingDowngrade && subscriptionDetails && (
+      {hasPendingDowngrade && account?.changesAt !== undefined && (
         <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-700 flex items-center justify-between gap-3">
           <span>
             {t("downgradeScheduledTo")}{" "}
-            <span className="font-semibold">
-              {subscriptionDetails.pendingTargetPlan ?? tc("anotherPlan")}
-            </span>
-            {subscriptionDetails.pendingEffectiveDate
-              ? ` ${tc("onDate", { date: format.dateTime(new Date(subscriptionDetails.pendingEffectiveDate), {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                }) })}`
-              : ""}
+            <span className="font-semibold">{planName(scheduledPlan!)}</span>{" "}
+            {tc("onDate", {
+              date: format.dateTime(new Date(account.changesAt), {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              }),
+            })}
             .
           </span>
           <Button
             variant="outline"
             size="sm"
             onClick={handleKeepCurrentPlan}
-            disabled={loadingPriceId !== null || !subscriptionDetails.currentPriceId}
+            disabled={loadingPlanId !== null}
           >
             {tc("keepCurrentPlan")}
           </Button>
@@ -676,17 +522,15 @@ export function Pricing() {
           "grid gap-6",
           "grid-cols-1",
           "md:grid-cols-2",
-          "lg:grid-cols-4",
+          // One row for however many plans Autumn offers, while they fit.
+          "lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]",
         )}
       >
         {orderedPlans.map((plan, index) => {
           const isCurrent = hasResolvedSubscription && resolvedPlan === plan.id;
           const buttonConfig = getButtonConfig(plan);
-          const planPriceId = prices?.find((p) => p.plan === plan.id)?.id;
           const Icon = plan.icon;
-          const isScheduledTarget =
-            subscriptionDetails?.hasPendingChange &&
-            subscriptionDetails.pendingTargetPlan === plan.id;
+          const isScheduledTarget = scheduledPlan === plan.id;
 
           return (
             <motion.div
@@ -738,15 +582,22 @@ export function Pricing() {
 
                 {/* Price Display */}
                 <div className="mb-2">
-                  {plan.id === "free" ? (
-                    <div className="text-4xl font-bold">{t("freePlanName")}</div>
-                  ) : plan.id === "enterprise" ? (
+                  {plan.id === ENTERPRISE_ID ? (
                     <div className="text-4xl font-bold">{tc("custom")}</div>
-                  ) : (
+                  ) : plan.price ? (
                     <div className="text-4xl font-bold">
-                      {getPriceDisplay(plan.id as "go" | "pro")}
-                      <span className="text-lg text-muted-foreground">{t("perMonth")}</span>
+                      {formatPrice(plan.price.amount)}
+                      <span className="text-lg text-muted-foreground">
+                        {plan.price.interval === "month"
+                          ? t("perMonth")
+                          : tb("perInterval", {
+                              interval:
+                                plan.price.interval === "year" ? tb("intervalYear") : plan.price.interval,
+                            })}
+                      </span>
                     </div>
+                  ) : (
+                    <div className="text-4xl font-bold">{t("freePrice")}</div>
                   )}
                 </div>
 
@@ -771,12 +622,12 @@ export function Pricing() {
                   data-testid={`pricing-button-${plan.id}`}
                   className="w-full"
                   variant={buttonConfig.variant}
-                  disabled={buttonConfig.disabled || loadingPriceId !== null}
+                  disabled={buttonConfig.disabled || loadingPlanId !== null}
                   onClick={buttonConfig.onClick}
                 >
-                  {loadingPriceId === planPriceId ||
-                  loadingPriceId === "portal" ||
-                  loadingPriceId === "keep-current" ? (
+                  {loadingPlanId === plan.id ||
+                  loadingPlanId === "portal" ||
+                  loadingPlanId === "keep-current" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     buttonConfig.label
@@ -799,8 +650,8 @@ export function Pricing() {
         onConfirm={handleConfirmUpgrade}
         isConfirming={isConfirmingUpgrade}
         preview={upgradePreview}
-        cardBrand={subscriptionDetails?.cardBrand}
-        cardLast4={subscriptionDetails?.cardLast4}
+        cardBrand={upgradePreview?.card?.brand}
+        cardLast4={upgradePreview?.card?.last4}
       />
     </div>
   );

@@ -1,8 +1,6 @@
-import { internalMutation, internalQuery } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
-import { resolveEffectivePlan } from "../../lib/billing/entitlements";
-import { getPlanTier } from "../lib/constants";
-import { selectCanonicalSubscription } from "../subscriptions/lib/selectCanonicalSubscription";
+import { FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 
 /**
  * Upsert a feature flag. Used for seeding and admin operations.
@@ -11,9 +9,10 @@ export const upsert = internalMutation({
   args: {
     key: v.string(),
     enabled: v.boolean(),
-    minimumTier: v.number(),
+    planFeature: v.optional(v.string()),
     description: v.optional(v.string()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("featureFlags")
@@ -23,94 +22,78 @@ export const upsert = internalMutation({
     if (existing) {
       await ctx.db.patch("featureFlags", existing._id, {
         enabled: args.enabled,
-        minimumTier: args.minimumTier,
+        planFeature: args.planFeature,
         description: args.description,
         updatedAt: Date.now(),
       });
     } else {
-      await ctx.db.insert("featureFlags", {
-        ...args,
-        updatedAt: Date.now(),
-      });
+      await ctx.db.insert("featureFlags", { ...args, updatedAt: Date.now() });
     }
+    return null;
   },
 });
 
 /**
- * Seed all feature flags with defaults. Idempotent — only inserts flags
- * that don't already exist.
+ * Inserts every flag in the registry that doesn't exist yet, with its
+ * default. Idempotent.
  */
 export const seed = internalMutation({
   args: {},
+  returns: v.null(),
   handler: async (ctx) => {
-    const defaults: Array<{ key: string; enabled: boolean; minimumTier: number; description: string }> = [
-      { key: "extraction.enabled", enabled: true, minimumTier: 0, description: "Master switch for the extraction feature" },
-      { key: "extraction.pdf", enabled: true, minimumTier: 0, description: "PDF processing capability gate (per-job toggle visibility)" },
-      { key: "extraction.chat", enabled: false, minimumTier: 0, description: "Chat mode for job creation (paper Q&A)" },
-      { key: "extraction.start", enabled: true, minimumTier: 20, description: "Start new extraction jobs (Pro+)" },
-      { key: "credits.enabled", enabled: true, minimumTier: 0, description: "Credit system master switch" },
-      { key: "credits.topups", enabled: true, minimumTier: 0, description: "On-demand credit top-up purchases" },
-      { key: "subscriptions.enabled", enabled: true, minimumTier: 0, description: "Subscription/billing system master switch" },
-      { key: "subscriptions.plan.go", enabled: true, minimumTier: 0, description: "Show the Go plan on the pricing page" },
-      { key: "subscriptions.plan.pro", enabled: true, minimumTier: 0, description: "Show the Pro plan on the pricing page" },
-      { key: "subscriptions.plan.enterprise", enabled: true, minimumTier: 0, description: "Show the Enterprise plan on the pricing page" },
-    ];
-
-    for (const flag of defaults) {
+    for (const [key, flag] of Object.entries(FLAG_REGISTRY)) {
       const existing = await ctx.db
         .query("featureFlags")
-        .withIndex("by_key", (q) => q.eq("key", flag.key))
+        .withIndex("by_key", (q) => q.eq("key", key))
         .unique();
-
       if (!existing) {
         await ctx.db.insert("featureFlags", {
-          ...flag,
+          key,
+          enabled: flag.enabled,
+          ...("planFeature" in flag ? { planFeature: flag.planFeature } : {}),
+          description: flag.description,
           updatedAt: Date.now(),
         });
       }
     }
+    return null;
   },
 });
 
+/** Flags that only showed plans on the pricing page; Autumn's catalog does that now. */
+const RETIRED_FLAGS = ["subscriptions.plan.go", "subscriptions.plan.pro"];
+
 /**
- * Internal query to check a feature flag. Used by actions via ctx.runQuery
- * since actions don't have ctx.db access.
+ * One-off: moves flags from plan tiers to plan features in Autumn. A flag
+ * that had a minimum tier takes the plan feature its registry entry names;
+ * every flag loses `minimumTier`; flags Autumn replaces are removed.
+ * Idempotent. Run once per deployment after the release that adds it.
  */
-export const checkFlag = internalQuery({
-  args: {
-    key: v.string(),
-    userId: v.optional(v.id("users")),
-  },
-  handler: async (ctx, args) => {
-    const flag = await ctx.db
-      .query("featureFlags")
-      .withIndex("by_key", (q) => q.eq("key", args.key))
-      .unique();
-
-    if (!flag || !flag.enabled) {
-      return { allowed: false, reason: "disabled" as const };
-    }
-
-    if (flag.minimumTier > 0) {
-      if (!args.userId) {
-        return { allowed: false, reason: "unauthenticated" as const };
+export const adoptPlanFeatures = internalMutation({
+  args: {},
+  returns: v.object({ updated: v.number(), removed: v.number() }),
+  handler: async (ctx) => {
+    let updated = 0;
+    let removed = 0;
+    for (const flag of await ctx.db.query("featureFlags").collect()) {
+      if (RETIRED_FLAGS.includes(flag.key)) {
+        await ctx.db.delete("featureFlags", flag._id);
+        removed += 1;
+        continue;
       }
-
-      const subscriptions = await ctx.db
-        .query("subscriptions")
-        .withIndex("by_user", (q) => q.eq("userId", args.userId!))
-        .order("desc")
-        .collect();
-
-      const canonical = selectCanonicalSubscription(subscriptions);
-      const plan = resolveEffectivePlan(canonical);
-      const tier = getPlanTier(plan);
-
-      if (tier < flag.minimumTier) {
-        return { allowed: false, reason: "insufficient_tier" as const };
-      }
+      if (flag.minimumTier === undefined) continue;
+      const registered = FLAG_REGISTRY[flag.key as keyof typeof FLAG_REGISTRY];
+      const planFeature =
+        flag.minimumTier > 0 && registered && "planFeature" in registered
+          ? registered.planFeature
+          : flag.planFeature;
+      await ctx.db.patch("featureFlags", flag._id, {
+        minimumTier: undefined,
+        planFeature,
+        updatedAt: Date.now(),
+      });
+      updated += 1;
     }
-
-    return { allowed: true, reason: "ok" as const };
+    return { updated, removed };
   },
 });

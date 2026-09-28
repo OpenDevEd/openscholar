@@ -23,8 +23,9 @@ import { requireFeature } from "../../featureFlags/guard";
 import { resolveServerModelId } from "../../ai/serverModel";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
-import { PAPER_LIMIT_MAX, assertBucketWithinLimits } from "../bucket/limits";
-import { readBalance } from "../../credits/balanceCounter";
+import { assertBucketWithinLimits } from "../bucket/limits";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
+import { availableCredits as readAvailableCredits } from "../../billing/accounts";
 import { dedupeBucketItems } from "../../../lib/bucket/dedupe";
 import { assertValidJobTransition, type JobStatus } from "../stateMachine";
 import {
@@ -84,7 +85,7 @@ export const startJob = mutation({
 
     // Shared: bucket validation + source persistence.
     const deduped = dedupeBucketItems(args.bucketItems);
-    const bucketLimits = await assertBucketWithinLimits(ctx, user._id, deduped);
+    const bucketLimits = assertBucketWithinLimits(deduped);
     const sourceType = deriveSourceType(deduped);
 
     // Extraction-mode question validation happens after bucket validation
@@ -120,13 +121,7 @@ export const startJob = mutation({
       });
 
       if (estimate.high > 0) {
-        const credits = await ctx.db
-          .query("credits")
-          .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .unique();
-        const totalAvailable = credits
-          ? (await readBalance(ctx, credits._id)).total
-          : 0;
+        const totalAvailable = await readAvailableCredits(ctx, user._id);
         if (totalAvailable < estimate.high) {
           throw createError(
             "INSUFFICIENT_CREDITS",
@@ -241,7 +236,7 @@ export const duplicateJob = mutation({
     const oldSourceRows = await ctx.db
       .query("extractionJobSources")
       .withIndex("by_job_and_position", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT_MAX * 2);
+      .take(PAPER_LIMIT * 2);
     const bucketItems: BucketItemInput[] = oldSourceRows.map((row) => ({
       bucketKey: row.bucketKey,
       source: row.source,
@@ -261,7 +256,7 @@ export const duplicateJob = mutation({
       collectionKey: row.collectionKey,
       includeDescendants: row.includeDescendants,
     }));
-    await assertBucketWithinLimits(ctx, user._id, bucketItems);
+    assertBucketWithinLimits(bucketItems);
 
     const now = Date.now();
 
@@ -389,15 +384,6 @@ export const cancelExtraction = mutation({
       updatedAt: Date.now(),
     });
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
-
-    // Clear any paper admission markers that no longer represent active
-    // work. Scheduled async so this user mutation does not grow O(P).
-    await ctx.scheduler.runAfter(
-      0,
-      internal.extraction.mutations.internal.lifecycle
-        .clearAdmittedPaperCreditsForJob,
-      { jobId: args.jobId },
-    );
 
     // Any in-flight paper action sees the cancelled job on its next
     // status check and returns without persisting.

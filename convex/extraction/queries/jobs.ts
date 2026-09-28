@@ -15,7 +15,7 @@ import { getCurrentUser } from "../../lib/auth";
 import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedJob, type OwnedJobResolution } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
-import { PAPER_LIMIT_MAX } from "../bucket/limits";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import { readJobCounters } from "../jobCounters";
 import {
   extractionJobValidator,
@@ -196,7 +196,7 @@ export const getJobSources = query({
     const sources = await ctx.db
       .query("extractionJobSources")
       .withIndex("by_job_and_position", (q) => q.eq("jobId", args.jobId))
-      .take(PAPER_LIMIT_MAX);
+      .take(PAPER_LIMIT);
 
     return { status: "ok" as const, sources };
   },

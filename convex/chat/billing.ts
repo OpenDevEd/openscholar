@@ -1,16 +1,14 @@
-import {
-  internalAction,
-  internalMutation,
-  internalQuery,
-} from "../_generated/server";
+/**
+ * Chat turns reserve credits before they stream (see messages.ts). This file
+ * settles the turns that stop or fail after OpenRouter started a generation: the
+ * generation record is looked up with retries, and its cost is charged.
+ */
+import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import {
-  calculateCreditsToDeductFromUsage,
-  convertUsdCostToCredits,
-} from "../ai/lib/creditBilling";
-import { deductCreditsTransaction } from "../credits/internal";
-import { WEB_SEARCH_PRICING } from "@/lib/pricing";
+import { convertUsdToCredits } from "@/lib/pricing";
+import { settleCredits } from "../billing/charge";
+import { errorToLogString } from "../lib/errors";
 
 const OPENROUTER_GENERATION_URL = "https://openrouter.ai/api/v1/generation";
 // Back-off schedule for /api/v1/generation lookups. OpenRouter takes a
@@ -57,15 +55,6 @@ function pickNumber(...values: unknown[]): number {
     if (number !== null) return number;
   }
   return 0;
-}
-
-export function getOpenRouterGenerationIdFromProviderMetadata(
-  providerMetadata: unknown,
-): string | null {
-  const metadata = asRecord(providerMetadata);
-  const openrouter = metadata ? asRecord(metadata.openrouter) : null;
-  const responseId = openrouter ? asString(openrouter.responseId) : null;
-  return responseId && responseId.trim().length > 0 ? responseId.trim() : null;
 }
 
 export function normalizeOpenRouterGeneration(
@@ -117,52 +106,6 @@ export function getChatGenerationRetryDelayMs(
   return CHAT_GENERATION_RETRY_DELAYS_MS[priorFailedAttempts] ?? null;
 }
 
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return "Unknown error";
-  }
-}
-
-function buildChatBillingMetadata(args: {
-  billingSource: "sdk_usage" | "sdk_usage_cost" | "openrouter_generation_api";
-  model: string;
-  promptTokens: number;
-  completionTokens: number;
-  reasoningTokens: number;
-  cachedPromptTokens: number;
-  generationId?: string;
-  providerName?: string | null;
-  totalCostUsd?: number;
-  cancelled?: boolean;
-  finishReason?: string | null;
-  nativeFinishReason?: string | null;
-}) {
-  return {
-    ...(args.generationId ? { generationId: args.generationId } : {}),
-    billingSource: args.billingSource,
-    model: args.model,
-    ...(args.providerName ? { providerName: args.providerName } : {}),
-    promptTokens: String(args.promptTokens),
-    completionTokens: String(args.completionTokens),
-    reasoningTokens: String(args.reasoningTokens),
-    cachedPromptTokens: String(args.cachedPromptTokens),
-    ...(args.totalCostUsd !== undefined
-      ? { totalCostUsd: String(args.totalCostUsd) }
-      : {}),
-    ...(args.cancelled !== undefined
-      ? { cancelled: String(args.cancelled) }
-      : {}),
-    ...(args.finishReason ? { finishReason: args.finishReason } : {}),
-    ...(args.nativeFinishReason
-      ? { nativeFinishReason: args.nativeFinishReason }
-      : {}),
-  };
-}
-
 type FetchGenerationResult =
   | { kind: "ok"; generation: NormalizedOpenRouterGeneration }
   | { kind: "retryable"; message: string }
@@ -212,584 +155,51 @@ async function fetchOpenRouterGeneration(
       generation: normalizeOpenRouterGeneration(data),
     };
   } catch (error) {
-    return { kind: "retryable", message: toErrorMessage(error) };
+    return { kind: "retryable", message: errorToLogString(error) };
   }
 }
 
-export const getGenerationUsageByGenerationId = internalQuery({
-  args: { generationId: v.string() },
-  returns: v.union(
-    v.null(),
-    v.object({
-      generationId: v.string(),
-      jobId: v.id("extractionJobs"),
-      threadId: v.string(),
-      userId: v.id("users"),
-      requestedModel: v.union(v.string(), v.null()),
-      status: v.union(
-        v.literal("captured"),
-        v.literal("retrying"),
-        v.literal("billed"),
-        v.literal("failed"),
-      ),
-      attemptCount: v.number(),
-      billedAt: v.union(v.number(), v.null()),
-      billedCredits: v.union(v.number(), v.null()),
-    }),
-  ),
-  handler: async (ctx, { generationId }) => {
-    const row = await ctx.db
-      .query("chatGenerationUsages")
-      .withIndex("by_generation_id", (q) => q.eq("generationId", generationId))
-      .unique();
-    if (!row) return null;
-    return {
-      generationId: row.generationId,
-      jobId: row.jobId,
-      threadId: row.threadId,
-      userId: row.userId,
-      requestedModel: row.requestedModel ?? null,
-      status: row.status,
-      attemptCount: row.attemptCount,
-      billedAt: row.billedAt ?? null,
-      billedCredits: row.billedCredits ?? null,
-    };
-  },
-});
-
-export const getLatestGenerationUsageForThread = internalQuery({
-  args: { threadId: v.string() },
-  returns: v.union(
-    v.null(),
-    v.object({
-      generationId: v.string(),
-      status: v.union(
-        v.literal("captured"),
-        v.literal("retrying"),
-        v.literal("billed"),
-        v.literal("failed"),
-      ),
-      billedAt: v.union(v.number(), v.null()),
-    }),
-  ),
-  handler: async (ctx, { threadId }) => {
-    const rows = await ctx.db
-      .query("chatGenerationUsages")
-      .withIndex("by_thread", (q) => q.eq("threadId", threadId))
-      .order("desc")
-      .take(1);
-    const row = rows[0];
-    if (!row) return null;
-    return {
-      generationId: row.generationId,
-      status: row.status,
-      billedAt: row.billedAt ?? null,
-    };
-  },
-});
-
-export const captureGenerationFromResponse = internalMutation({
+export const settleFromOpenRouter = internalAction({
   args: {
-    threadId: v.string(),
+    userId: v.id("users"),
+    jobId: v.id("extractionJobs"),
+    chargeId: v.string(),
     generationId: v.string(),
-    requestedModel: v.optional(v.string()),
-  },
-  returns: v.object({
-    captured: v.boolean(),
-  }),
-  handler: async (ctx, { threadId, generationId, requestedModel }) => {
-    const existing = await ctx.db
-      .query("chatGenerationUsages")
-      .withIndex("by_generation_id", (q) => q.eq("generationId", generationId))
-      .unique();
-    if (existing) {
-      return { captured: false };
-    }
-
-    const job = await ctx.db
-      .query("extractionJobs")
-      .withIndex("by_chatThread", (q) => q.eq("chatThreadId", threadId))
-      .unique();
-    if (!job || job.mode !== "chat") {
-      return { captured: false };
-    }
-
-    const now = Date.now();
-    await ctx.db.insert("chatGenerationUsages", {
-      generationId,
-      jobId: job._id,
-      threadId,
-      userId: job.userId,
-      requestedModel,
-      source: "openrouter_response_id",
-      status: "captured",
-      attemptCount: 0,
-      createdAt: now,
-      updatedAt: now,
-    });
-    return { captured: true };
-  },
-});
-
-export const billGenerationFromSdkUsage = internalMutation({
-  args: {
-    generationId: v.string(),
-    model: v.string(),
-    pricing: v.object({
-      input: v.number(),
-      output: v.number(),
-    }),
-    promptTokens: v.number(),
-    completionTokens: v.number(),
-    reasoningTokens: v.number(),
-    cachedPromptTokens: v.number(),
-    // Optional all-in USD cost from providerMetadata.openrouter.usage.cost
-    // (set by the SDK when the chat factory is built with
-    // `usage: { include: true }`). Includes any provider-side tool cost
-    // such as OpenRouter server web search; preferred over the
-    // pricing×tokens math whenever supplied.
-    totalCostUsd: v.optional(v.number()),
-  },
-  returns: v.object({
-    outcome: v.union(v.literal("already_billed"), v.literal("billed")),
-    billedCredits: v.number(),
-  }),
-  handler: async (ctx, args) => {
-    const row = await ctx.db
-      .query("chatGenerationUsages")
-      .withIndex("by_generation_id", (q) => q.eq("generationId", args.generationId))
-      .unique();
-    if (!row) {
-      throw new Error(`Missing chatGenerationUsages row for ${args.generationId}`);
-    }
-    if (row.billedAt) {
-      return {
-        outcome: "already_billed" as const,
-        billedCredits: row.billedCredits ?? 0,
-      };
-    }
-
-    const useCostReadback =
-      args.totalCostUsd !== undefined &&
-      Number.isFinite(args.totalCostUsd) &&
-      args.totalCostUsd >= 0;
-    const billedCredits = useCostReadback
-      ? convertUsdCostToCredits(args.totalCostUsd as number)
-      : calculateCreditsToDeductFromUsage({
-          usage: {
-            inputTokens: args.promptTokens,
-            outputTokens: args.completionTokens,
-          },
-          pricing: args.pricing,
-        });
-    const now = Date.now();
-
-    // allowPartial: the chat pre-flight at messages.ts:generateResponse
-    // is the gate that keeps wallets from going negative. Once we land
-    // here the user already had a non-trivial balance; any per-turn
-    // overrun versus the constant floor is small and intentionally
-    // absorbed. Throwing here would roll back the row patch and leave
-    // chatGenerationUsages stuck in `retrying` with a misleading
-    // lastError, so we drain to zero and record the actual deduction.
-    let actualBilledCredits = 0;
-    if (billedCredits > 0) {
-      const result = await deductCreditsTransaction(ctx, {
-        userId: row.userId,
-        amount: billedCredits,
-        description: "AI: Chat message",
-        jobId: row.jobId,
-        billingType: "chat",
-        allowPartial: true,
-        metadata: buildChatBillingMetadata({
-          billingSource: useCostReadback ? "sdk_usage_cost" : "sdk_usage",
-          generationId: args.generationId,
-          model: args.model,
-          promptTokens: args.promptTokens,
-          completionTokens: args.completionTokens,
-          reasoningTokens: args.reasoningTokens,
-          cachedPromptTokens: args.cachedPromptTokens,
-          ...(useCostReadback ? { totalCostUsd: args.totalCostUsd } : {}),
-        }),
-      });
-      actualBilledCredits = result.deducted;
-    }
-
-    await ctx.db.patch(row._id, {
-      requestedModel: row.requestedModel ?? args.model,
-      authoritativeModel: row.authoritativeModel ?? args.model,
-      source: "sdk_usage",
-      status: "billed",
-      promptTokens: args.promptTokens,
-      completionTokens: args.completionTokens,
-      reasoningTokens: args.reasoningTokens,
-      cachedPromptTokens: args.cachedPromptTokens,
-      ...(useCostReadback ? { totalCostUsd: args.totalCostUsd } : {}),
-      billedCredits: actualBilledCredits,
-      attemptCount: row.attemptCount + 1,
-      lastAttemptAt: now,
-      nextRetryAt: undefined,
-      billedAt: now,
-      lastError: undefined,
-      updatedAt: now,
-    });
-
-    return { outcome: "billed" as const, billedCredits: actualBilledCredits };
-  },
-});
-
-export const billThreadUsageFromSdk = internalMutation({
-  args: {
-    threadId: v.string(),
-    model: v.string(),
-    pricing: v.object({
-      input: v.number(),
-      output: v.number(),
-    }),
-    promptTokens: v.number(),
-    completionTokens: v.number(),
-    reasoningTokens: v.number(),
-    cachedPromptTokens: v.number(),
-    // Defence-in-depth path mirrors billGenerationFromSdkUsage: when the
-    // fetch wrapper missed the X-Generation-Id header but the SDK still
-    // surfaced an all-in cost on providerMetadata, prefer it over the
-    // pricing×tokens math.
-    totalCostUsd: v.optional(v.number()),
-  },
-  returns: v.object({
-    outcome: v.literal("billed"),
-    billedCredits: v.number(),
-  }),
-  handler: async (ctx, args) => {
-    const job = await ctx.db
-      .query("extractionJobs")
-      .withIndex("by_chatThread", (q) => q.eq("chatThreadId", args.threadId))
-      .unique();
-    if (!job || job.mode !== "chat") {
-      throw new Error(`Missing chat job for thread ${args.threadId}`);
-    }
-
-    const useCostReadback =
-      args.totalCostUsd !== undefined &&
-      Number.isFinite(args.totalCostUsd) &&
-      args.totalCostUsd >= 0;
-    const billedCredits = useCostReadback
-      ? convertUsdCostToCredits(args.totalCostUsd as number)
-      : calculateCreditsToDeductFromUsage({
-          usage: {
-            inputTokens: args.promptTokens,
-            outputTokens: args.completionTokens,
-          },
-          pricing: args.pricing,
-        });
-
-    let actualBilledCredits = 0;
-    if (billedCredits > 0) {
-      const result = await deductCreditsTransaction(ctx, {
-        userId: job.userId,
-        amount: billedCredits,
-        description: "AI: Chat message",
-        jobId: job._id,
-        billingType: "chat",
-        allowPartial: true,
-        metadata: buildChatBillingMetadata({
-          billingSource: useCostReadback ? "sdk_usage_cost" : "sdk_usage",
-          model: args.model,
-          promptTokens: args.promptTokens,
-          completionTokens: args.completionTokens,
-          reasoningTokens: args.reasoningTokens,
-          cachedPromptTokens: args.cachedPromptTokens,
-          ...(useCostReadback ? { totalCostUsd: args.totalCostUsd } : {}),
-        }),
-      });
-      actualBilledCredits = result.deducted;
-    }
-
-    return { outcome: "billed" as const, billedCredits: actualBilledCredits };
-  },
-});
-
-/**
- * Tavily-per-search cost — see plan-06.
- *
- * Each Tavily HTTP call returns a `usage.creditsUsed` integer. Plan 05
- * forwards that count to the orchestrator's `costSink`, which calls
- * this mutation once per search. We convert Tavily credits → USD →
- * deducted credits using the same `convertUsdCostToCredits` helper
- * model billing uses, so the AI cost markup applies symmetrically.
- *
- *   1 Tavily basic credit    = $0.008 (basic search)
- *   2 Tavily advanced credits = $0.016 (passed as tavilyCredits=2)
- *
- * The per-credit rate lives in `lib/pricing/web-search.ts` —
- * `WEB_SEARCH_PRICING.tavily.usdPerCredit` — as the single source of
- * truth shared with the UI tooltip and the `pickWebSearchPricing`
- * selector. Update there, not here.
- *
- * The mutation rejects non-positive `tavilyCredits` so a misconfigured
- * call site shows up loudly in tests rather than silently no-opping.
- * No cross-call dedupe key is computed: each Tavily HTTP search is a
- * real charge, and `maxRetries: 0` on the streamText call site means
- * a logical retry of the same step cannot happen.
- */
-export const recordTavilyCost = internalMutation({
-  args: {
-    threadId: v.string(),
-    tavilyCredits: v.number(),
-  },
-  returns: v.object({
-    billedCredits: v.number(),
-  }),
-  handler: async (ctx, { threadId, tavilyCredits }) => {
-    if (!Number.isFinite(tavilyCredits) || tavilyCredits <= 0) {
-      throw new Error(
-        `recordTavilyCost: tavilyCredits must be a positive number, got ${tavilyCredits}`,
-      );
-    }
-
-    const job = await ctx.db
-      .query("extractionJobs")
-      .withIndex("by_chatThread", (q) => q.eq("chatThreadId", threadId))
-      .unique();
-    if (!job || job.mode !== "chat") {
-      throw new Error(
-        `recordTavilyCost: missing chat job for thread ${threadId}`,
-      );
-    }
-
-    const usdCost = WEB_SEARCH_PRICING.tavily.usdPerCredit * tavilyCredits;
-    const billedCredits = convertUsdCostToCredits(usdCost);
-
-    const result = await deductCreditsTransaction(ctx, {
-      userId: job.userId,
-      amount: billedCredits,
-      description: "AI: Web search (Tavily)",
-      jobId: job._id,
-      billingType: "search",
-      allowPartial: true,
-      metadata: {
-        searchEngine: "tavily",
-        tavilyCredits: String(tavilyCredits),
-        usdCost: String(usdCost),
-      },
-    });
-
-    return { billedCredits: result.deducted };
-  },
-});
-
-export const markGenerationRetry = internalMutation({
-  args: {
-    generationId: v.string(),
-    error: v.string(),
-  },
-  returns: v.object({
-    shouldRetry: v.boolean(),
-    delayMs: v.union(v.number(), v.null()),
-  }),
-  handler: async (ctx, { generationId, error }) => {
-    const row = await ctx.db
-      .query("chatGenerationUsages")
-      .withIndex("by_generation_id", (q) => q.eq("generationId", generationId))
-      .unique();
-    if (!row || row.billedAt) {
-      return { shouldRetry: false, delayMs: null };
-    }
-
-    const delayMs = getChatGenerationRetryDelayMs(row.attemptCount);
-    const now = Date.now();
-
-    await ctx.db.patch(row._id, {
-      status: delayMs === null ? "failed" : "retrying",
-      attemptCount: row.attemptCount + 1,
-      lastAttemptAt: now,
-      nextRetryAt: delayMs === null ? undefined : now + delayMs,
-      lastError: error,
-      updatedAt: now,
-    });
-
-    return { shouldRetry: delayMs !== null, delayMs };
-  },
-});
-
-export const settleGenerationUsage = internalMutation({
-  args: {
-    generationId: v.string(),
-    authoritativeModel: v.string(),
-    providerName: v.union(v.string(), v.null()),
-    cancelled: v.boolean(),
-    finishReason: v.union(v.string(), v.null()),
-    nativeFinishReason: v.union(v.string(), v.null()),
-    promptTokens: v.number(),
-    completionTokens: v.number(),
-    reasoningTokens: v.number(),
-    cachedPromptTokens: v.number(),
-    totalCostUsd: v.number(),
-  },
-  returns: v.object({
-    outcome: v.union(v.literal("already_billed"), v.literal("billed")),
-    billedCredits: v.number(),
-  }),
-  handler: async (ctx, args) => {
-    const row = await ctx.db
-      .query("chatGenerationUsages")
-      .withIndex("by_generation_id", (q) => q.eq("generationId", args.generationId))
-      .unique();
-    if (!row) {
-      throw new Error(`Missing chatGenerationUsages row for ${args.generationId}`);
-    }
-    if (row.billedAt) {
-      return {
-        outcome: "already_billed" as const,
-        billedCredits: row.billedCredits ?? 0,
-      };
-    }
-
-    const billedCredits = convertUsdCostToCredits(args.totalCostUsd);
-    const now = Date.now();
-
-    let actualBilledCredits = 0;
-    if (billedCredits > 0) {
-      const result = await deductCreditsTransaction(ctx, {
-        userId: row.userId,
-        amount: billedCredits,
-        description: "AI: Chat message",
-        jobId: row.jobId,
-        billingType: "chat",
-        allowPartial: true,
-        metadata: buildChatBillingMetadata({
-          generationId: args.generationId,
-          billingSource: "openrouter_generation_api",
-          model: args.authoritativeModel,
-          providerName: args.providerName,
-          promptTokens: args.promptTokens,
-          completionTokens: args.completionTokens,
-          reasoningTokens: args.reasoningTokens,
-          cachedPromptTokens: args.cachedPromptTokens,
-          totalCostUsd: args.totalCostUsd,
-          cancelled: args.cancelled,
-          finishReason: args.finishReason,
-          nativeFinishReason: args.nativeFinishReason,
-        }),
-      });
-      actualBilledCredits = result.deducted;
-    }
-
-    await ctx.db.patch(row._id, {
-      requestedModel: row.requestedModel ?? args.authoritativeModel,
-      authoritativeModel: args.authoritativeModel,
-      providerName: args.providerName ?? undefined,
-      source: "openrouter_generation_api",
-      status: "billed",
-      cancelled: args.cancelled,
-      finishReason: args.finishReason ?? undefined,
-      nativeFinishReason: args.nativeFinishReason ?? undefined,
-      promptTokens: args.promptTokens,
-      completionTokens: args.completionTokens,
-      reasoningTokens: args.reasoningTokens,
-      cachedPromptTokens: args.cachedPromptTokens,
-      totalCostUsd: args.totalCostUsd,
-      billedCredits: actualBilledCredits,
-      attemptCount: row.attemptCount + 1,
-      lastAttemptAt: now,
-      nextRetryAt: undefined,
-      authoritativeAt: now,
-      billedAt: now,
-      lastError: undefined,
-      updatedAt: now,
-    });
-
-    return { outcome: "billed" as const, billedCredits: actualBilledCredits };
-  },
-});
-
-export const failGenerationUsage = internalMutation({
-  args: {
-    generationId: v.string(),
-    error: v.string(),
+    /** Cost already known outside this generation: earlier steps and web search. */
+    extraUsd: v.number(),
+    attempt: v.number(),
   },
   returns: v.null(),
-  handler: async (ctx, { generationId, error }) => {
-    const row = await ctx.db
-      .query("chatGenerationUsages")
-      .withIndex("by_generation_id", (q) => q.eq("generationId", generationId))
-      .unique();
-    if (!row || row.billedAt) {
-      return null;
+  handler: async (ctx, args) => {
+    const result = await fetchOpenRouterGeneration(args.generationId);
+    if (result.kind === "retryable") {
+      const delayMs = getChatGenerationRetryDelayMs(args.attempt);
+      if (delayMs !== null) {
+        await ctx.scheduler.runAfter(delayMs, internal.chat.billing.settleFromOpenRouter, {
+          ...args,
+          attempt: args.attempt + 1,
+        });
+        return null;
+      }
     }
-    const now = Date.now();
-    await ctx.db.patch(row._id, {
-      status: "failed",
-      attemptCount: row.attemptCount + 1,
-      lastAttemptAt: now,
-      nextRetryAt: undefined,
-      lastError: error,
-      updatedAt: now,
+    if (result.kind !== "ok") {
+      console.error(
+        `[chat billing] no OpenRouter cost for ${args.generationId}; charging only the known ${args.extraUsd} USD for ${args.chargeId}: ${result.message}`,
+      );
+    }
+    const usd = (result.kind === "ok" ? result.generation.totalCostUsd : 0) + args.extraUsd;
+    await settleCredits(ctx, {
+      userId: args.userId,
+      chargeId: args.chargeId,
+      credits: convertUsdToCredits({ usd }),
+      usage: {
+        kind: "chat",
+        description: "Chat message",
+        jobId: args.jobId,
+        ...(result.kind === "ok" ? { model: result.generation.model } : {}),
+        costUsd: usd,
+      },
     });
     return null;
-  },
-});
-
-export const reconcileGenerationUsage = internalAction({
-  args: { generationId: v.string() },
-  returns: v.object({
-    outcome: v.union(
-      v.literal("missing"),
-      v.literal("already_billed"),
-      v.literal("retry_scheduled"),
-      v.literal("billed"),
-      v.literal("failed"),
-    ),
-  }),
-  handler: async (ctx, { generationId }) => {
-    const row = await ctx.runQuery(
-      internal.chat.billing.getGenerationUsageByGenerationId,
-      { generationId },
-    );
-    if (!row) {
-      return { outcome: "missing" as const };
-    }
-    if (row.billedAt) {
-      return { outcome: "already_billed" as const };
-    }
-
-    const result = await fetchOpenRouterGeneration(generationId);
-    if (result.kind === "retryable") {
-      const retry = await ctx.runMutation(
-        internal.chat.billing.markGenerationRetry,
-        { generationId, error: result.message },
-      );
-      if (retry.shouldRetry && retry.delayMs !== null) {
-        await ctx.scheduler.runAfter(
-          retry.delayMs,
-          internal.chat.billing.reconcileGenerationUsage,
-          { generationId },
-        );
-        return { outcome: "retry_scheduled" as const };
-      }
-      return { outcome: "failed" as const };
-    }
-
-    if (result.kind === "fatal") {
-      await ctx.runMutation(internal.chat.billing.failGenerationUsage, {
-        generationId,
-        error: result.message,
-      });
-      return { outcome: "failed" as const };
-    }
-
-    await ctx.runMutation(internal.chat.billing.settleGenerationUsage, {
-      generationId: result.generation.generationId,
-      authoritativeModel: result.generation.model,
-      providerName: result.generation.providerName,
-      cancelled: result.generation.cancelled,
-      finishReason: result.generation.finishReason,
-      nativeFinishReason: result.generation.nativeFinishReason,
-      promptTokens: result.generation.promptTokens,
-      completionTokens: result.generation.completionTokens,
-      reasoningTokens: result.generation.reasoningTokens,
-      cachedPromptTokens: result.generation.cachedPromptTokens,
-      totalCostUsd: result.generation.totalCostUsd,
-    });
-    return { outcome: "billed" as const };
   },
 });

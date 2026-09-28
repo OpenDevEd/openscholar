@@ -1,6 +1,5 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import {
   Drawer,
   DrawerClose,
@@ -12,7 +11,6 @@ import {
 } from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { api } from "@/convex/_generated/api";
 import {
   useBucketStore,
   type AllClearSnapshot,
@@ -22,6 +20,7 @@ import { bucketCleared } from "@/lib/toast/bucket";
 import { AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { BucketPaperRow } from "./bucket-paper-row";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 export function BucketDrawer({
   open,
@@ -39,11 +38,7 @@ export function BucketDrawer({
   onClearReturnFocus?: () => void;
   paperLimit?: number;
 }) {
-  const liveLimit = useQuery(
-    api.extraction.bucket.queries.getMyPaperLimit,
-    paperLimit === undefined ? {} : "skip",
-  );
-  const limit = paperLimit ?? liveLimit ?? 1000;
+  const limit = paperLimit ?? PAPER_LIMIT;
   const order = useBucketStore((s) => s.order);
   const itemsMap = useBucketStore((s) => s.items);
   const remove = useBucketStore((s) => s.remove);

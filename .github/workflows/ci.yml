@@ -28,7 +28,7 @@ jobs:
     steps:
       # A pull request run tests the merge result and, when every check ran and
       # passed, records the tree it tested. A push to dev with that tree has
-      # nothing new to test. Pushes to main always run, for extended billing.
+      # nothing new to test. Pushes to main always run.
       - name: Look for a passed pull request run of this tree
         id: tested
         if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
@@ -170,8 +170,7 @@ jobs:
       - name: Check animation and transition clashes
         run: npm run check:animation-clash
 
-      # The browser and billing jobs build Next.js on the same guest at the same
-      # time. Fifteen jsdom workers on a shared CPU share pushed single tests
+      # The browser job builds Next.js on the same guest at the same time. Fifteen jsdom workers on a shared CPU share pushed single tests
       # past their timeouts; eight finish sooner.
       - name: Run unit and contract tests
         run: npm run test -- --maxWorkers=8
@@ -314,186 +313,6 @@ jobs:
           path: test-results
           if-no-files-found: ignore
 
-  billing-live:
-    runs-on: openscholar-secret
-    timeout-minutes: 45
-    needs: changes
-    if: needs.changes.outputs.runtime_required == 'true'
-    outputs:
-      ran: ${{ steps.billing-environment.outputs.available }}
-    concurrency:
-      group: billing-live-shared-test-user
-      cancel-in-progress: false
-    env:
-      PLAYWRIGHT_WORKERS: "8"
-      NEXT_BUILD_SKIP_VERIFIED_TYPES: "1"
-      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
-      NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
-      CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
-      CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
-      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
-      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-      STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
-      STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
-      CREDITS_PER_USD: ${{ secrets.CREDITS_PER_USD }}
-      BILLING_TEST_USER_SUBJECT: billing_live_test_subject
-      BILLING_TEST_USER_EMAIL: billing-live-test@example.com
-      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-      CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
-      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
-      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
-      E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-      E2E_CLERK_ORGANIZATION_ID: ${{ secrets.E2E_CLERK_ORGANIZATION_ID }}
-      E2E_BASE_URL: http://localhost:3001
-      # Anonymous OpenAlex search is paused whenever its cluster is under load.
-      OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
-      PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3001
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Check billing test environment
-        id: billing-environment
-        run: |
-          required_vars=(
-            NEXT_PUBLIC_CONVEX_URL
-            CONVEX_DEPLOY_KEY
-            STRIPE_SECRET_KEY
-            STRIPE_GO_PRICE_ID
-            CLERK_SECRET_KEY
-            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-            E2E_CLERK_USER_EMAIL
-            E2E_CLERK_USER_PASSWORD
-            E2E_CLERK_ORGANIZATION_ID
-          )
-          missing_vars=()
-          for var_name in "${required_vars[@]}"; do
-            if [ -z "${!var_name}" ]; then
-              missing_vars+=("$var_name")
-            fi
-          done
-          if [ -z "${CONVEX_DEPLOYMENT}" ] && [ -z "${CONVEX_DEPLOYMENT_NAME}" ]; then
-            missing_vars+=("CONVEX_DEPLOYMENT or CONVEX_DEPLOYMENT_NAME")
-          fi
-          if [ "${#missing_vars[@]}" -eq 0 ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            printf '::error::Missing required billing secret/env: %s\n' "${missing_vars[*]}"
-            exit 1
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            printf '::notice::Skipping live billing checks because this pull request has no billing test environment: %s\n' "${missing_vars[*]}"
-          fi
-          if [ "${#missing_vars[@]}" -eq 0 ] && [ "$NEXT_PUBLIC_CREDITS_ENABLED" = "false" ]; then
-            echo "::error::NEXT_PUBLIC_CREDITS_ENABLED is set to 'false' — credit cap banner tests (CRED-05) will fail"
-            exit 1
-          fi
-
-      - if: steps.billing-environment.outputs.available == 'true'
-        uses: ./.github/actions/setup-project
-
-      - name: Install Playwright browser
-        if: steps.billing-environment.outputs.available == 'true'
-        run: npx playwright install chromium
-
-      - name: Run required live and browser billing checks
-        if: steps.billing-environment.outputs.available == 'true'
-        run: |
-          BILLING_LIVE_PUSH_CONVEX=true npm run test:billing:preflight -- --push-convex
-
-          set +e
-
-          npm run test:billing:live &
-          live_pid=$!
-          npm run test:billing:e2e &
-          browser_pid=$!
-
-          wait "$live_pid"
-          live_status=$?
-          wait "$browser_pid"
-          browser_status=$?
-
-          if (( live_status != 0 || browser_status != 0 )); then
-            printf '::error::Billing checks failed: live=%s browser=%s\n' "$live_status" "$browser_status"
-            exit 1
-          fi
-
-      - name: Upload billing-live artifacts
-        if: failure() && steps.billing-environment.outputs.available == 'true'
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: billing-live-artifacts
-          path: test-results/billing-live
-          if-no-files-found: ignore
-
-      - name: Upload billing E2E report
-        if: failure() && steps.billing-environment.outputs.available == 'true'
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: billing-e2e-report-${{ github.job }}
-          path: playwright-report
-          if-no-files-found: ignore
-
-  billing-live-extended:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: openscholar-secret
-    timeout-minutes: 60
-    needs: billing-live
-    continue-on-error: true
-    concurrency:
-      group: billing-live-shared-test-user
-      cancel-in-progress: false
-    env:
-      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
-      NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
-      CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
-      CONVEX_DEPLOYMENT_NAME: ${{ secrets.CONVEX_DEPLOYMENT_NAME }}
-      CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
-      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-      STRIPE_GO_PRICE_ID: ${{ secrets.STRIPE_GO_PRICE_ID }}
-      STRIPE_PRO_PRICE_ID: ${{ secrets.STRIPE_PRO_PRICE_ID }}
-      CREDITS_PER_USD: ${{ secrets.CREDITS_PER_USD }}
-      BILLING_TEST_USER_SUBJECT: billing_live_test_subject
-      BILLING_TEST_USER_EMAIL: billing-live-test@example.com
-      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-      CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
-      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
-      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
-      E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-      E2E_CLERK_ORGANIZATION_ID: ${{ secrets.E2E_CLERK_ORGANIZATION_ID }}
-      E2E_BASE_URL: http://localhost:3001
-      # Anonymous OpenAlex search is paused whenever its cluster is under load.
-      OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
-      PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3001
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: ./.github/actions/setup-project
-
-      - name: Validate billing environment
-        run: |
-          if [ "$NEXT_PUBLIC_CREDITS_ENABLED" = "false" ]; then
-            echo "::error::NEXT_PUBLIC_CREDITS_ENABLED is set to 'false' — credit cap banner tests (CRED-05) will fail"
-            exit 1
-          fi
-
-      - name: Run extended live billing regressions (non-blocking)
-        run: npm run test:billing:extended:ci
-
-      - name: Upload billing-live-extended artifacts
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v7
-        with:
-          name: billing-live-extended-artifacts
-          path: test-results/billing-live
-          if-no-files-found: ignore
-
   ci:
     name: CI
     runs-on: openscholar-light
@@ -504,7 +323,6 @@ jobs:
       - unit-tests
       - build
       - e2e-auth
-      - billing-live
     steps:
       - name: Require every selected CI lane to pass
         env:
@@ -514,7 +332,6 @@ jobs:
           BUILD: ${{ needs.build.result }}
           RUNTIME_REQUIRED: ${{ needs.changes.outputs.runtime_required }}
           AUTH: ${{ needs.e2e-auth.result }}
-          BILLING: ${{ needs.billing-live.result }}
         run: |
           if [ "$TESTED" = true ]; then
             echo "A pull request run already passed this tree."
@@ -525,10 +342,8 @@ jobs:
           test "$BUILD" = success
           if test "$RUNTIME_REQUIRED" = true; then
             test "$AUTH" = success
-            test "$BILLING" = success
           else
             test "$AUTH" = skipped
-            test "$BILLING" = skipped
           fi
 
       # A check that skipped its steps for missing secrets proves nothing, so
@@ -539,7 +354,7 @@ jobs:
           github.event_name == 'pull_request' &&
           needs.unit-tests.outputs.email_source == 'true' &&
           (needs.changes.outputs.runtime_required != 'true' ||
-          (needs.e2e-auth.outputs.ran == 'true' && needs.billing-live.outputs.ran == 'true'))
+          needs.e2e-auth.outputs.ran == 'true')
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |

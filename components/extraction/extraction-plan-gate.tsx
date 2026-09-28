@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import type { ComponentType, SVGProps } from "react";
 import {
@@ -14,7 +14,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { useFeatureFlag, useFlagPlanFeature } from "@/lib/feature-flags/hook";
+import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
+import { plansWithFeature } from "@/lib/billing/catalog";
 
 type Step = {
   title: string;
@@ -29,7 +31,14 @@ type ValueCard = {
 
 export function ExtractionPlanGate() {
   const t = useTranslations("extraction");
+  const tp = useTranslations("pricing");
+  const format = useFormatter();
   const subscriptionsEnabled = useFeatureFlag("subscriptions.enabled");
+  // The plans that include extraction, as set in Autumn, cheapest first.
+  const { catalog } = useSubscriptionState();
+  const planFeature = useFlagPlanFeature("extraction.start");
+  const plans = catalog && planFeature ? plansWithFeature(catalog, planFeature) : [];
+  const cheapestPlan = plans[0]?.name;
 
   const steps: Step[] = [
     {
@@ -73,21 +82,23 @@ export function ExtractionPlanGate() {
       >
         <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/15 blur-3xl" />
         <div className="relative space-y-4">
-          <Badge variant="secondary" className="w-fit gap-1.5">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t("planGateBadge")}
-          </Badge>
+          {cheapestPlan && (
+            <Badge variant="secondary" className="w-fit gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" />
+              {t("planGateBadge", { plan: cheapestPlan })}
+            </Badge>
+          )}
           <h1 className="max-w-3xl text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
             {t("planGateTitle")}
           </h1>
           <p className="max-w-3xl text-sm md:text-base text-muted-foreground leading-relaxed">
             {t("planGateDescription")}
           </p>
-          {subscriptionsEnabled && (
+          {subscriptionsEnabled && cheapestPlan && (
             <div className="flex flex-wrap gap-3 pt-1">
               <Button asChild>
                 <Link href="/pricing" className="gap-2">
-                  {t("planGatePrimaryCta")}
+                  {t("planGatePrimaryCta", { plan: cheapestPlan })}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -156,10 +167,16 @@ export function ExtractionPlanGate() {
         </div>
       </motion.section>
 
-      <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-        <CheckCircle2 className="h-4 w-4 text-primary" />
-        {t("planGateProNote")}
-      </div>
+      {plans.length > 0 && (
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+          <CheckCircle2 className="h-4 w-4 text-primary" />
+          {t("planGateNote", {
+            plans: format.list([...plans.map((plan) => plan.name), tp("enterprisePlanName")], {
+              type: "conjunction",
+            }),
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { validatePdfFile } from "@/lib/bucket/bulk-upload";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromUpload } from "@/lib/bucket/bucketItem";
 import { FileUp, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 const CONCURRENCY = 3;
 
@@ -39,11 +40,7 @@ function makeUploadId(): string {
 export function BulkPdfUpload({ paperLimit }: { paperLimit?: number }) {
   const toast = useAppToast();
   const pdfEnabled = useFeatureFlag("extraction.pdf");
-  const livePaperLimit = useQuery(
-    api.extraction.bucket.queries.getMyPaperLimit,
-    paperLimit === undefined ? {} : "skip",
-  );
-  const resolvedPaperLimit = paperLimit ?? livePaperLimit ?? 1000;
+  const resolvedPaperLimit = paperLimit ?? PAPER_LIMIT;
   const bucketAdd = useBucketStore((s) => s.addMany);
   const bucketRemove = useBucketStore((s) => s.remove);
 

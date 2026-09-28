@@ -15,7 +15,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import { usePreloadedQuery, type Preloaded } from "convex/react";
 import type { api } from "@/convex/_generated/api";
 
-type FlagRow = { key: string; enabled: boolean; minimumTier: number };
+type FlagRow = { key: string; enabled: boolean; planFeature?: string };
 type FlagRows = FlagRow[];
 
 const FeatureFlagContext = createContext<FlagRows | undefined>(undefined);

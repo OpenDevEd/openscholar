@@ -20,6 +20,7 @@ import { createError } from "../lib/errors";
 import { assertCallerOwnsJob, authorizeThreadAccess } from "./auth";
 import { paperChat } from "./agent";
 import { dedupeExpandedSources, expandJobSources } from "../extraction/expandSources";
+import { assertBucketWithinLimits } from "../extraction/bucket/limits";
 import { replaceJobSources, type BucketItemInput } from "../extraction/jobSources";
 import type { PaperData } from "../extraction/types";
 import { internal } from "../_generated/api";
@@ -144,15 +145,11 @@ export const ensureThreadForJob = internalAction({
 
     try {
       const preparedSources = await resolvePreparedSources(ctx, jobId);
-      await ctx.runQuery(
-        internal.extraction.bucket.limits.assertBucketWithinLimitsForUser,
-        {
-          userId: job.userId,
-          items: preparedSources.map((item) => ({
-            source: item.source,
-            searchFilters: item.searchFilters,
-          })),
-        },
+      assertBucketWithinLimits(
+        preparedSources.map((item) => ({
+          source: item.source,
+          searchFilters: item.searchFilters,
+        })),
       );
       await ctx.runMutation(internal.chat.threads.persistPreparedSourcesForJob, {
         jobId,
@@ -346,15 +343,11 @@ export const continueChatWithSourceRefresh = action({
       throw createError("VALIDATION_ERROR", toValidationError(error));
     }
 
-    await ctx.runQuery(
-      internal.extraction.bucket.limits.assertBucketWithinLimitsForUser,
-      {
-        userId: job.userId,
-        items: preparedSources.map((item) => ({
-          source: item.source,
-          searchFilters: item.searchFilters,
-        })),
-      },
+    assertBucketWithinLimits(
+      preparedSources.map((item) => ({
+        source: item.source,
+        searchFilters: item.searchFilters,
+      })),
     );
 
     return await ctx.runMutation(

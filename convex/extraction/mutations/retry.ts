@@ -17,7 +17,7 @@
  *     plan 02; the retry mutation never flips `billed` back to false and
  *     never touches a row where it's true (would re-bill).
  *   - Indexing is NEVER re-run. Retry reuses the paper's existing
- *     `ragEntryId` + `indexingBilled=true` flag; retry rows skip download
+ *     `ragEntryId` and `isIndexed`; retry rows skip download
  *     and indexing.
  *   - Pre-flight credit check via `estimateRetryCredits` × balance.
  *
@@ -41,16 +41,15 @@ import {
   type JobStatus,
 } from "../stateMachine";
 import {
-  EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP,
-  getExtractionExecutionLimits,
-  PAPER_LIMIT_MAX,
-} from "../bucket/limits";
+  EXTRACTION_PAPER_CONCURRENCY,
+  EXTRACTION_QUESTION_CONCURRENCY,
+  PAPER_LIMIT,
+} from "../../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { estimateRetryCredits } from "../../../lib/extraction/cost-estimate";
-import { readBalance } from "../../credits/balanceCounter";
+import { availableCredits as readAvailableCredits } from "../../billing/accounts";
 import { isResultRetryableFailure } from "../../../lib/extraction/retry-summary";
 import { recomputePaperListProjection } from "../listProjection";
-import { normalizeBatchSize, resolveBoundedConcurrency } from "../batching";
 import {
   dispatchPaperQueueWindowTx,
   enqueueRetryPapersForJobTx,
@@ -71,7 +70,7 @@ async function listRetryableFailures(
     .withIndex("by_job_status", (q) =>
       q.eq("jobId", jobId).eq("status", "failed"),
     )
-    .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB);
+    .take(PAPER_LIMIT * MAX_QUESTIONS_PER_JOB);
 
   return failedResults.filter((result) => {
     if (result.billed === true) return false;
@@ -173,17 +172,11 @@ async function resolveRetryQueueRuntime(
   questionConcurrency: number;
   paperConcurrency: number;
 }> {
-  const [pdfFlag, executionLimits] = await Promise.all([
-    getFlag(ctx, "extraction.pdf"),
-    getExtractionExecutionLimits(ctx, job.userId),
-  ]);
+  const pdfFlag = await getFlag(ctx, "extraction.pdf");
   return {
     pdfEnabled: (pdfFlag?.enabled ?? true) && (job.usePdfs ?? false),
-    questionConcurrency: resolveBoundedConcurrency(
-      executionLimits.questionConcurrencyPerPaper,
-      EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP,
-    ),
-    paperConcurrency: normalizeBatchSize(executionLimits.paperConcurrency),
+    questionConcurrency: EXTRACTION_QUESTION_CONCURRENCY,
+    paperConcurrency: EXTRACTION_PAPER_CONCURRENCY,
   };
 }
 
@@ -269,13 +262,7 @@ export const retryFailedQuestions = mutation({
     });
 
     if (estimate.high > 0) {
-      const credits = await ctx.db
-        .query("credits")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .unique();
-      const totalAvailable = credits
-        ? (await readBalance(ctx, credits._id)).total
-        : 0;
+      const totalAvailable = await readAvailableCredits(ctx, user._id);
       if (totalAvailable < estimate.high) {
         throw createError(
           "INSUFFICIENT_CREDITS",

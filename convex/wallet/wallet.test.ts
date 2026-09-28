@@ -4,9 +4,8 @@ import { internal, api } from "../_generated/api";
 import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
 import {
-  setupTransactionAggregates,
   seedCreditsForTest,
-} from "../credits/aggregates.test-support";
+} from "../billing/billing.test-support";
 
 // ─── Seed helpers ────────────────────────────────────────────
 
@@ -48,14 +47,14 @@ async function seedUserWithCredits(
       lastLoginAt: now,
     });
 
-    const creditsId = await seedCreditsForTest(ctx, {
+    await seedCreditsForTest(ctx, {
       userId,
       free: freeBalance,
       paid: paidBalance,
       now,
     });
 
-    return { userId, creditsId };
+    return { userId };
   });
 }
 
@@ -83,7 +82,6 @@ async function seedWalletKey(
 describe("walletKeys schema", () => {
   it("creates a wallet key record with all fields", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUser(t);
     const walletKeyId = await seedWalletKey(t, userId, {
       appName: "MyApp",
@@ -102,7 +100,6 @@ describe("walletKeys schema", () => {
 
   it("supports by_hashed_key index lookup", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUser(t);
     await seedWalletKey(t, userId, { hashedKey: "unique_hash_123" });
 
@@ -118,7 +115,6 @@ describe("walletKeys schema", () => {
 
   it("supports by_user index lookup", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUser(t);
     await seedWalletKey(t, userId, { hashedKey: "hash_a" });
     await seedWalletKey(t, userId, { hashedKey: "hash_b", appName: "App2" });
@@ -139,7 +135,6 @@ describe("wallet internal mutations", () => {
   describe("insertKey", () => {
     it("inserts a wallet key record", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       const userId = await seedUser(t);
 
       const walletKeyId = await t.mutation(internal.wallet.internal.insertKey, {
@@ -160,7 +155,6 @@ describe("wallet internal mutations", () => {
   describe("lookupKey", () => {
     it("returns userId and appName for active key", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       const userId = await seedUser(t);
       const walletKeyId = await seedWalletKey(t, userId, {
         hashedKey: "lookup_hash",
@@ -179,7 +173,6 @@ describe("wallet internal mutations", () => {
 
     it("returns null for non-existent hash", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
 
       const result = await t.query(internal.wallet.internal.lookupKey, {
         hashedKey: "does_not_exist",
@@ -190,7 +183,6 @@ describe("wallet internal mutations", () => {
 
     it("returns null for inactive key", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       const userId = await seedUser(t);
       await seedWalletKey(t, userId, {
         hashedKey: "inactive_hash",
@@ -208,7 +200,6 @@ describe("wallet internal mutations", () => {
   describe("touchKeyUsage", () => {
     it("updates lastUsedAt timestamp", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       const userId = await seedUser(t);
       const walletKeyId = await seedWalletKey(t, userId);
 
@@ -227,7 +218,6 @@ describe("wallet internal mutations", () => {
   describe("revokeKey", () => {
     it("sets isActive to false for the correct user", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       const userId = await seedUser(t);
       const walletKeyId = await seedWalletKey(t, userId);
 
@@ -244,7 +234,6 @@ describe("wallet internal mutations", () => {
 
     it("returns false for wrong user", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       const userId = await seedUser(t, { clerkId: "clerk_a", email: "a@test.com" });
       const otherUserId = await seedUser(t, { clerkId: "clerk_b", email: "b@test.com" });
       const walletKeyId = await seedWalletKey(t, userId);
@@ -263,7 +252,6 @@ describe("wallet internal mutations", () => {
 
     it("returns false when key belongs to different user and revoke attempted by another", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       const userA = await seedUser(t, { clerkId: "clerk_revoke_a", email: "revoke_a@test.com" });
       const userB = await seedUser(t, { clerkId: "clerk_revoke_b", email: "revoke_b@test.com" });
       const walletKeyId = await seedWalletKey(t, userA, { hashedKey: "revoke_ownership" });
@@ -285,7 +273,6 @@ describe("wallet internal mutations", () => {
   describe("lookupById", () => {
     it("returns appName and redirectOrigin for valid key and user", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       const userId = await seedUser(t);
       const walletKeyId = await seedWalletKey(t, userId, { appName: "ByIdApp" });
 
@@ -301,7 +288,6 @@ describe("wallet internal mutations", () => {
 
     it("returns null for wrong user", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       const userId = await seedUser(t, { clerkId: "clerk_x", email: "x@test.com" });
       const otherUserId = await seedUser(t, { clerkId: "clerk_y", email: "y@test.com" });
       const walletKeyId = await seedWalletKey(t, userId);
@@ -318,7 +304,6 @@ describe("wallet internal mutations", () => {
   describe("removePendingKey", () => {
     it("deletes key with __pending__ hash", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       const userId = await seedUser(t);
       const walletKeyId = await seedWalletKey(t, userId, {
         hashedKey: "__pending__",
@@ -332,7 +317,6 @@ describe("wallet internal mutations", () => {
 
     it("does NOT delete key with real hash", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       const userId = await seedUser(t);
       const walletKeyId = await seedWalletKey(t, userId, {
         hashedKey: "real_hash_not_pending",
@@ -347,76 +331,11 @@ describe("wallet internal mutations", () => {
   });
 });
 
-// ─── Integration: key lookup + credit check ──────────────────
+// ─── Integration: key lookup ────────────────────────────────
 
-describe("wallet + credits integration", () => {
-  it("lookupKey returns userId that can be used for balance check", async () => {
+describe("wallet key lookup", () => {
+  it("a revoked key is not found", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    const { userId } = await seedUserWithCredits(t, 100, 50);
-    await seedWalletKey(t, userId, { hashedKey: "integration_hash" });
-
-    // Step 1: lookup key
-    const keyResult = await t.query(internal.wallet.internal.lookupKey, {
-      hashedKey: "integration_hash",
-    });
-    expect(keyResult).not.toBeNull();
-
-    // Step 2: check balance using the returned userId
-    const balance = await t.query(internal.credits.internal.getBalanceByUserId, {
-      userId: keyResult!.userId,
-    });
-    expect(balance).not.toBeNull();
-    expect(balance!.total).toBe(150);
-    expect(balance!.free).toBe(100);
-    expect(balance!.paid).toBe(50);
-  });
-
-  it("lookupKey → deductCredits chain works correctly", async () => {
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    const { userId, creditsId } = await seedUserWithCredits(t, 100, 0);
-    await seedWalletKey(t, userId, { hashedKey: "deduct_chain_hash" });
-
-    // Step 1: lookup key
-    const keyResult = await t.query(internal.wallet.internal.lookupKey, {
-      hashedKey: "deduct_chain_hash",
-    });
-    expect(keyResult).not.toBeNull();
-
-    // Step 2: deduct credits
-    const result = await t.mutation(internal.credits.internal.deductCredits, {
-      userId: keyResult!.userId,
-      amount: 25,
-      description: "Wallet API: gpt-4o-mini",
-      metadata: {
-        source: "wallet_api",
-        appName: "TestApp",
-        model: "gpt-4o-mini",
-        provider: "openai",
-      },
-    });
-    expect(result.deducted).toBe(25);
-    expect(result.remaining).toBe(75);
-
-    // Verify transaction recorded correctly. Seed `grant`/`purchase` rows
-    // also live on the credits row, so filter to the deduction row.
-    const transactions = await t.run(async (ctx) =>
-      ctx.db
-        .query("creditTransactions")
-        .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
-        .filter((q) => q.eq(q.field("type"), "usage"))
-        .collect(),
-    );
-    expect(transactions).toHaveLength(1);
-    expect(transactions[0].description).toBe("Wallet API: gpt-4o-mini");
-    expect(transactions[0].metadata?.source).toBe("wallet_api");
-    expect(transactions[0].metadata?.appName).toBe("TestApp");
-  });
-
-  it("revoked key cannot be used for balance check", async () => {
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const { userId } = await seedUserWithCredits(t, 100, 0);
     const walletKeyId = await seedWalletKey(t, userId, {
       hashedKey: "revoke_test_hash",
@@ -472,7 +391,6 @@ describe("models (unified table)", () => {
   describe("listServed", () => {
     it("returns only served models", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       await seedModel(t, { modelId: "openai/active-1", isServed: true });
       await seedModel(t, { modelId: "openai/active-2", isServed: true });
       await seedModel(t, { modelId: "openai/inactive-1", isServed: false });
@@ -486,7 +404,6 @@ describe("models (unified table)", () => {
 
     it("returns empty array when no models exist", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       const models = await t.query(internal.models.queries.listServed);
       expect(models).toHaveLength(0);
     });
@@ -495,7 +412,6 @@ describe("models (unified table)", () => {
   describe("getServedByModelId", () => {
     it("returns served model by modelId", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       await seedModel(t, {
         modelId: "openai/gpt-4o",
         name: "GPT-4o",
@@ -518,7 +434,6 @@ describe("models (unified table)", () => {
 
     it("returns null for non-served model", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       await seedModel(t, { modelId: "openai/disabled-model", isServed: false });
 
       const model = await t.query(internal.models.queries.getServedByModelId, {
@@ -529,7 +444,6 @@ describe("models (unified table)", () => {
 
     it("returns null for non-existent model", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
 
       const model = await t.query(internal.models.queries.getServedByModelId, {
         modelId: "openai/does-not-exist",
@@ -541,7 +455,6 @@ describe("models (unified table)", () => {
   describe("getPricing", () => {
     it("returns pricing for a model", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       await seedModel(t, {
         modelId: "anthropic/claude-sonnet-4-5",
         inputPricePerMillion: 3.0,
@@ -557,7 +470,6 @@ describe("models (unified table)", () => {
 
     it("returns null for non-existent model", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
 
       const pricing = await t.query(internal.models.queries.getPricing, {
         modelId: "openai/nonexistent",
@@ -569,7 +481,6 @@ describe("models (unified table)", () => {
   describe("setServed mutation", () => {
     it("toggles isServed and updates overrides", async () => {
       const t = convexTest(schema);
-    setupTransactionAggregates(t);
       await seedModel(t, { modelId: "openai/toggle-test", isServed: false });
 
       await t.mutation(internal.models.mutations.setServed, {

@@ -71,10 +71,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [locale, messages, preloadedFlags] = await Promise.all([
+  const [locale, messages, preloadedFlags, preloadedCatalog] = await Promise.all([
     getLocale(),
     getMessages(),
     preloadQuery(api.featureFlags.queries.getAll),
+    preloadQuery(api.billing.catalog.get),
   ]);
 
   return (
@@ -85,7 +86,7 @@ export default async function RootLayout({
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
-            <ConvexClientProvider preloadedFlags={preloadedFlags}>
+            <ConvexClientProvider preloadedFlags={preloadedFlags} preloadedCatalog={preloadedCatalog}>
               <ConfigProvider>
                 <NuqsAdapter>
                   <QuerySyncProvider>

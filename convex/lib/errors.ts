@@ -26,14 +26,10 @@ export type ErrorCode =
   | "API_KEY_ENCRYPTION_KEY_MISSING"
   | "API_KEY_INVALID_FORMAT"
   // Credits/billing
-  | "CREDITS_USER_NOT_FOUND"
   | "CREDITS_TOPUP_BUNDLE_INVALID"
   | "CREDITS_PRODUCT_NOT_CONFIGURED"
   | "BILLING_SUBSCRIPTION_DATA_INVALID"
   | "BILLING_INVALID_PRICE_ID"
-  | "BILLING_FREE_PLAN_CHECKOUT_NOT_ALLOWED"
-  | "BILLING_SUBSCRIPTION_ALREADY_EXISTS"
-  | "BILLING_CUSTOMER_NOT_FOUND"
   | "BILLING_NO_SUBSCRIPTION_LINKED"
   | "BILLING_SUBSCRIPTION_PRICE_MISSING"
   | "BILLING_SUBSCRIPTION_INVALID"
@@ -46,7 +42,8 @@ export type ErrorCode =
   | "BILLING_SUBSCRIPTION_ITEM_NOT_FOUND"
   | "BILLING_PERIOD_END_UNAVAILABLE"
   | "BILLING_PLAN_CHANGE_CONFLICT"
-  | "BILLING_CHARGE_FAILED"
+  | "BILLING_UNAVAILABLE"
+  | "BILLING_PLAN_INVALID"
   // Screening
   | "SCREENING_JOB_ALREADY_ACTIVE"
   | "SCREENING_JOB_NOT_FOUND"
@@ -93,4 +90,15 @@ export function readConvexErrorData(error: unknown): {code: string; message?: st
   }
   if (!data || typeof data !== "object" || !("code" in data) || typeof data.code !== "string") return null;
   return {code: data.code, ...("message" in data && typeof data.message === "string" ? {message: data.message} : {})};
+}
+
+/** A loggable message for any thrown value. */
+export function errorToLogString(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return "Unknown error";
+  }
 }

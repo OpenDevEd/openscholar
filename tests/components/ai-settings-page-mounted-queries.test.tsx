@@ -87,11 +87,11 @@ vi.mock("@/lib/auth/use-sign-in-redirect", () => ({
 }));
 
 vi.mock("@/lib/auth/use-subscription-state", () => ({
-  useSharedSubscriptionState: () => ({ resolvedTier: 0 }),
+  useSharedSubscriptionState: () => ({ planFeatures: [] }),
 }));
 
 vi.mock("@/lib/feature-flags/hook", () => ({
-  useFeatureFlagForResolvedTier: () => true,
+  useFeatureFlagForPlan: () => true,
 }));
 
 vi.mock("@/lib/toast", () => ({

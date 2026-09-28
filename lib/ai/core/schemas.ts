@@ -55,12 +55,20 @@ export const extractionQuestionsSchema = z.object({
       z.object({
         question: z.string().describe("The data extraction question"),
         type: z.enum(["string", "boolean", "number", "array"]).describe("Expected answer type"),
-        description: z.string().optional().describe("Optional context/instructions for the AI extractor"),
+        description: z.string().nullable().describe("Context or instructions for the AI extractor, or null"),
       })
     )
     .min(1)
     .max(10)
     .describe("3-7 data extraction questions with their expected types"),
+})
+
+/** Strict structured output needs every field, so a missing description comes back as null. */
+export const toExtractionQuestions = (output: z.infer<typeof extractionQuestionsSchema>) => ({
+  questions: output.questions.map(({ description, ...question }) => ({
+    ...question,
+    ...(description ? { description } : {}),
+  })),
 })
 
 export const STANDARD_PROVIDER_OPTIONS = {

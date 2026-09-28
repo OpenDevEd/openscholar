@@ -5,9 +5,8 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
 import {
-  setupTransactionAggregates,
   seedCreditsForTest,
-} from "../credits/aggregates.test-support";
+} from "../billing/billing.test-support";
 import { incPaperOutcome } from "./jobCounters";
 
 const CLERK_OWNER = "clerk_rebuild_projection";
@@ -31,7 +30,6 @@ async function seedPreProjectionJob(t: ReturnType<typeof convexTest>) {
     await ctx.db.insert("featureFlags", {
       key: "extraction.enabled",
       enabled: true,
-      minimumTier: 0,
       description: "extraction.enabled (test)",
       updatedAt: now,
     });
@@ -90,7 +88,6 @@ async function seedPreProjectionJob(t: ReturnType<typeof convexTest>) {
 describe("rebuildJobListProjection", () => {
   it("repairs pre-projection jobs instead of relying on a runtime fallback", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { jobId } = await seedPreProjectionJob(t);
     const auth = t.withIdentity(OWNER_IDENTITY);

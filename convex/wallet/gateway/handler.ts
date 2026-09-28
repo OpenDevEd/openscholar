@@ -11,11 +11,13 @@ import {
 import { buildReasoningProviderOptions } from "./reasoning";
 import {
   calculateEnhancedModelCost,
-  creditsFromCost,
   extractEnhancedUsage,
   type EnhancedUsage,
 } from "./cost";
 import type { AIProvider } from "../../../lib/types/ai.types";
+import { convertUsdToCredits } from "../../../lib/pricing";
+import { autumn } from "../../billing/autumn";
+import { reserveCredits, releaseCredits, settleCredits } from "../../billing/charge";
 import type { Id, Doc } from "../../_generated/dataModel";
 import {
   ESTIMATED_CREDITS_PER_WALLET_API_CALL,
@@ -140,29 +142,6 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
   }
   const req = parsed.request;
 
-  // 5. Balance check — estimate-based pre-flight. Web-search turns add
-  //    the grounding-fee constant on top of the chat-completion floor.
-  //    Drain-to-zero (plan-03 in makeDeductFn) handles in-flight overrun.
-  const balance: {
-    free: number;
-    paid: number;
-    total: number;
-  } | null = await ctx.runQuery(
-    internal.credits.internal.getBalanceByUserId,
-    { userId: keyResult.userId },
-  );
-  const requiredCredits =
-    ESTIMATED_CREDITS_PER_WALLET_API_CALL +
-    (req.web_search_options ? ESTIMATED_CREDITS_PER_WEB_SEARCH : 0);
-  if (!balance || balance.total < requiredCredits) {
-    return openAIError(
-      `Insufficient credits — need at least ${requiredCredits}, have ${balance?.total ?? 0}.`,
-      "insufficient_quota",
-      402,
-      allowedOrigin,
-    );
-  }
-
   // 6. Resolve model
   const walletModel: Doc<"models"> | null = await ctx.runQuery(
     internal.models.queries.getServedByModelId,
@@ -202,10 +181,33 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     );
   }
 
-  // 8. Convert request to AI SDK params
+  // 8. Hold the estimate. Web-search turns add the grounding-fee constant.
+  const requiredCredits =
+    ESTIMATED_CREDITS_PER_WALLET_API_CALL +
+    (req.web_search_options ? ESTIMATED_CREDITS_PER_WEB_SEARCH : 0);
+  const chargeId = `wallet:${crypto.randomUUID()}`;
+  if (
+    !(await reserveCredits(ctx, {
+      userId: keyResult.userId,
+      chargeId,
+      credits: requiredCredits,
+    }))
+  ) {
+    const account = await ctx.runQuery(internal.billing.accounts.forUser, {
+      userId: keyResult.userId,
+    });
+    return openAIError(
+      `Insufficient credits — need at least ${requiredCredits}, have ${account?.balance ?? 0}.`,
+      "insufficient_quota",
+      402,
+      allowedOrigin,
+    );
+  }
+
+  // 9. Convert request to AI SDK params
   const aiSdkParams = convertToAISdkParams(req);
 
-  // 9. Build provider options (reasoning + pass-through)
+  // 10. Build provider options (reasoning + pass-through)
   let providerOptions: Record<string, Record<string, unknown>> | undefined;
   if (req.reasoning_effort) {
     providerOptions = buildReasoningProviderOptions(
@@ -218,11 +220,11 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     providerOptions = { ...providerOptions, ...req.provider_options };
   }
 
-  // 10. Execute
+  // 11. Execute
   const responseId = generateResponseId();
   const shouldStream = req.stream !== false; // default true
   const callOptions = buildCallOptions(model, aiSdkParams, providerOptions);
-  const deduct = makeDeductFn(ctx, walletModel, keyResult);
+  const charge = makeChargeFn(ctx, walletModel, keyResult, chargeId);
 
   try {
     if (shouldStream) {
@@ -232,7 +234,7 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
         walletModel,
         includeUsage: req.stream_options?.include_usage ?? false,
         allowedOrigin,
-        deduct,
+        charge,
       });
     }
     return await handleNonStreaming({
@@ -240,10 +242,11 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
       responseId,
       walletModel,
       allowedOrigin,
-      deduct,
+      charge,
     });
   } catch (e) {
     console.error("[gateway] Generation failed:", e);
+    await charge.release();
     const errMsg = e instanceof Error ? e.message : "";
     const hint = req.web_search_options
       ? " This model may not support web search — try without web_search_options or use a different model."
@@ -257,46 +260,35 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
   }
 });
 
-// ─── Credit deduction helper ────────────────────────────────
+// ─── Credit charge helper ───────────────────────────────────
 
-type DeductFn = (
-  usage: EnhancedUsage,
-  finishReason: string,
-) => Promise<void>;
+type ChargeFn = {
+  settle: (usage: EnhancedUsage) => Promise<void>;
+  release: () => Promise<void>;
+};
 
-function makeDeductFn(
+function makeChargeFn(
   ctx: Parameters<Parameters<typeof httpAction>[0]>[0],
   walletModel: Doc<"models">,
   keyResult: { userId: Id<"users">; appName: string },
-): DeductFn {
-  return async (usage, finishReason) => {
-    const costDollars = calculateEnhancedModelCost(usage, walletModel);
-    const credits = Math.max(
-      1,
-      creditsFromCost(costDollars, walletModel.costMarkup),
-    );
-
-    // allowPartial:true — pre-flight (plan-04) is the gate; an in-flight
-    // overrun drains the wallet rather than throwing after the OpenAI
-    // response has already been streamed back to the client.
-    await ctx.runMutation(internal.credits.internal.deductCredits, {
-      userId: keyResult.userId,
-      amount: credits,
-      description: `Wallet API: ${walletModel.name}`,
-      billingType: "wallet_api",
-      allowPartial: true,
-      metadata: {
-        appName: keyResult.appName,
-        model: walletModel.modelId,
-        provider: walletModel.provider,
-        inputTokens: String(usage.inputTokens),
-        outputTokens: String(usage.outputTokens),
-        reasoningTokens: String(usage.reasoningTokens),
-        cacheReadTokens: String(usage.cacheReadTokens),
-        webSearchRequests: String(usage.webSearchRequests),
-        finishReason,
-      },
-    });
+  chargeId: string,
+): ChargeFn {
+  return {
+    settle: async (usage) => {
+      const costUsd = calculateEnhancedModelCost(usage, walletModel);
+      await settleCredits(ctx, {
+        userId: keyResult.userId,
+        chargeId,
+        credits: Math.max(1, convertUsdToCredits({ usd: costUsd, markup: walletModel.costMarkup })),
+        usage: {
+          kind: "wallet_api",
+          description: `${keyResult.appName}: ${walletModel.name}`,
+          model: walletModel.modelId,
+          costUsd,
+        },
+      });
+    },
+    release: () => releaseCredits(ctx, { userId: keyResult.userId, chargeId }),
   };
 }
 
@@ -330,13 +322,10 @@ function handleStreaming(params: {
   walletModel: Doc<"models">;
   includeUsage: boolean;
   allowedOrigin: string;
-  deduct: DeductFn;
+  charge: ChargeFn;
 }): Response {
-  const { callOptions, responseId, walletModel, includeUsage, allowedOrigin, deduct } =
+  const { callOptions, responseId, walletModel, includeUsage, allowedOrigin, charge } =
     params;
-
-  let capturedFinishReason = "stop";
-  let capturedSourceCount = 0;
 
   const streamResult = streamText(callOptions);
 
@@ -348,28 +337,18 @@ function handleStreaming(params: {
         Record<string, unknown>
       >,
     includeUsage,
-    onUsage: () => {
-      /* usage captured via totalUsage promise below */
-    },
-    onFinishReason: (reason) => {
-      capturedFinishReason = reason;
-    },
-    onSourceCount: (count) => {
-      capturedSourceCount = count;
+    // Charge before the response closes; release the hold if it fails.
+    onDone: async (sourceCount) => {
+      try {
+        const enhanced = extractEnhancedUsage(await streamResult.totalUsage);
+        enhanced.webSearchRequests = sourceCount;
+        await charge.settle(enhanced);
+      } catch (e) {
+        console.error("[gateway] Credit charge failed:", e);
+        await charge.release().catch(() => undefined);
+      }
     },
   });
-
-  // Fire-and-forget credit deduction after stream completes
-  void (async () => {
-    try {
-      const totalUsage = await streamResult.totalUsage;
-      const enhanced = extractEnhancedUsage(totalUsage);
-      enhanced.webSearchRequests = capturedSourceCount;
-      await deduct(enhanced, capturedFinishReason);
-    } catch (e) {
-      console.error("[gateway] Credit deduction failed:", e);
-    }
-  })();
 
   return new Response(sseStream, {
     headers: {
@@ -388,9 +367,9 @@ async function handleNonStreaming(params: {
   responseId: string;
   walletModel: Doc<"models">;
   allowedOrigin: string;
-  deduct: DeductFn;
+  charge: ChargeFn;
 }): Promise<Response> {
-  const { callOptions, responseId, walletModel, allowedOrigin, deduct } = params;
+  const { callOptions, responseId, walletModel, allowedOrigin, charge } = params;
 
   const result = await generateText(
     callOptions as Parameters<typeof generateText>[0],
@@ -407,7 +386,7 @@ async function handleNonStreaming(params: {
   // Deduct credits
   const enhanced = extractEnhancedUsage(result.usage);
   enhanced.webSearchRequests = sources.length;
-  await deduct(enhanced, result.finishReason);
+  await charge.settle(enhanced);
 
   // Format tool calls — AI SDK v6 uses `input` not `args`
   const toolCalls = (result.toolCalls ?? []).map(
@@ -545,24 +524,13 @@ export const handleBalance = httpAction(async (ctx, request) => {
     allowedOrigin = requestOrigin;
   }
 
-  const balance: {
-    free: number;
-    paid: number;
-    total: number;
-  } | null = await ctx.runQuery(
-    internal.credits.internal.getBalanceByUserId,
-    { userId: keyResult.userId },
-  );
-
-  if (!balance) {
-    return corsJson({ free: 0, paid: 0, total: 0 }, 200, allowedOrigin);
-  }
-
-  return corsJson(
-    { free: balance.free, paid: balance.paid, total: balance.total },
-    200,
-    allowedOrigin,
-  );
+  // Top-up credits are "paid"; plan and signup credits are "free".
+  const balances = (await autumn.customer(keyResult.userId)).balances.credits?.breakdown ?? [];
+  const paid = balances
+    .filter((balance) => balance.plan_id === "top_up")
+    .reduce((sum, balance) => sum + balance.remaining, 0);
+  const total = balances.reduce((sum, balance) => sum + balance.remaining, 0);
+  return corsJson({ free: total - paid, paid, total }, 200, allowedOrigin);
 });
 
 // ─── OPTIONS preflight ──────────────────────────────────────

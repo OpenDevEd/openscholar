@@ -46,8 +46,6 @@ export interface PickWebSearchPricingArgs {
    *  global `AI_COST_MARKUP`. The wallet gateway path can pass per-model
    *  `costMarkup` here. */
   markup?: number;
-  /** Credits-per-USD override; defaults to `DEFAULT_CREDITS_PER_USD`. */
-  creditsPerUsd?: number;
 }
 
 export interface WebSearchPricing {
@@ -55,7 +53,7 @@ export interface WebSearchPricing {
    *  the path itself is `null` (toggle off / model unsupported). */
   usdPerCall: number | null;
   /** Estimated credits that would be deducted for one such call after
-   *  markup + creditsPerUsd. `null` mirrors `usdPerCall === null`. */
+   *  markup. `null` mirrors `usdPerCall === null`. */
   creditsPerCall: number | null;
   /** Stable string for analytics / telemetry. */
   source:
@@ -80,7 +78,6 @@ export function pickWebSearchPricing(
       creditsPerCall: convertUsdToCredits({
         usd,
         markup: args.markup,
-        creditsPerUsd: args.creditsPerUsd,
       }),
       source: "tavily-basic",
     };
@@ -94,7 +91,6 @@ export function pickWebSearchPricing(
       creditsPerCall: convertUsdToCredits({
         usd: native,
         markup: args.markup,
-        creditsPerUsd: args.creditsPerUsd,
       }),
       source: "openrouter-native",
     };
@@ -110,7 +106,6 @@ export function pickWebSearchPricing(
     creditsPerCall: convertUsdToCredits({
       usd,
       markup: args.markup,
-      creditsPerUsd: args.creditsPerUsd,
     }),
     source: "openrouter-server-tool",
   };

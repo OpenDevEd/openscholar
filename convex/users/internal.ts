@@ -2,7 +2,7 @@ import { internalMutation, internalQuery, type MutationCtx } from "../_generated
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { userValidator } from "../lib/validators";
-import { createUserWithDefaults, repairUserBillingRecords } from "../lib/userCreation";
+import { createUserWithDefaults, ensureBillingAccount } from "../lib/userCreation";
 import { clerkEventOutcomeValidator } from "../evidenceLibraries/validators";
 import {
   applyOrderedClerkEvent,
@@ -66,7 +66,7 @@ export async function applyUserUpsertProjection(
         state: "active",
         updatedAt: Date.now(),
       });
-      await repairUserBillingRecords(ctx, existing._id);
+      await ensureBillingAccount(ctx, existing._id);
       return;
     }
 

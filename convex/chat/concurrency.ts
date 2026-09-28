@@ -22,7 +22,7 @@ import {
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
-import { getChatConcurrencyLimit } from "../extraction/bucket/limits";
+import { CHAT_CONCURRENCY_LIMIT } from "@/lib/extraction/limits";
 
 const STALE_LOCK_MS = 5 * 60 * 1000;
 
@@ -48,7 +48,7 @@ export async function assertChatConcurrencyAvailable(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
 ) {
-  const limit = await getChatConcurrencyLimit(ctx, userId);
+  const limit = CHAT_CONCURRENCY_LIMIT;
   const inFlight = await countUserInFlightChats(ctx, userId);
   if (inFlight >= limit) {
     throw createError(
