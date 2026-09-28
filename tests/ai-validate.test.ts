@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  validateOqlQuery,
   validateQuery,
   repairJSON,
   repairSingleField,
@@ -122,5 +123,18 @@ describe("repairSingleField", () => {
   it("returns null when repairJSON returns null", async () => {
     const result = await repairSingleField("{{{broken", null, "field");
     expect(result).toBeNull();
+  });
+});
+
+describe("validateOqlQuery", () => {
+  it("accepts a quoted wildcard, which OQL requires, and drops a leading works where", () => {
+    expect(validateOqlQuery('works where title/abstract has ("educat*" and chatgpt)')).toBe(
+      'title/abstract has ("educat*" and chatgpt)',
+    );
+  });
+
+  it("rejects unbalanced parentheses and a dangling operator so the model retries", () => {
+    expect(() => validateOqlQuery("title has ((chatgpt or llm)")).toThrow(/unbalanced/);
+    expect(() => validateOqlQuery("title has (chatgpt) and")).toThrow(/incomplete operator/);
   });
 });

@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { QueryHistoryNav } from "./components/query-history-nav";
 import { LanguageTranslateControl } from "./components/language-translate-control";
+import { OqlQueryStatus } from "./components/oql-query-status";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 import { useSearchOptional } from "@/lib/search";
 import {
   useSearchHistoryStore,
@@ -66,6 +68,9 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
   const selectedLanguage = search?.params?.lang ?? "";
 
   const isFormDisabled = isLoading || isValidating || isTranslating || isEnhancing;
+  const isOql = search?.params?.field === OQL_FIELD;
+  // AI writes and translates in the search's own query language.
+  const syntax = isOql ? ('oql' as const) : undefined;
   const isLanguageSelectorDisabled = isTranslating || isEnhancing;
 
   // Sync question from history when search changes
@@ -132,6 +137,7 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
       const result = await enhanceQuery({
         query: questionToProcess,
         language: currentSearchResult?.language ?? localeToLanguageCode(locale),
+        syntax,
       });
 
       if (search) {
@@ -172,6 +178,7 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
         const result = await translateQueryFn({
           query: expandedQuery,
           targetLanguage,
+          syntax,
         });
         search.setQuery(result.translatedQuery);
         posthog.capture("query_translated", {
@@ -198,6 +205,7 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
       localInputValue,
       isTranslateConfigured,
       translateQueryFn,
+      syntax,
       t,
       te,
       toast,
@@ -272,7 +280,7 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
       {/* Keywords Input */}
       <form onSubmit={handleSearchSubmit}>
         <FloatingInput
-          label={t('keywords')}
+          label={isOql ? t('oqlQuery') : t('keywords')}
           labelAddon={
             <QueryHistoryNav
               historyIndex={historyIndex}
@@ -284,7 +292,7 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
               disabled={isFormDisabled}
             />
           }
-          placeholder={isTranslating ? tc('translating') : t('placeholder.keywords')}
+          placeholder={isTranslating ? tc('translating') : t(isOql ? 'placeholder.oql' : 'placeholder.keywords')}
           value={localInputValue}
           onChange={(e) => handleQueryChange(e.target.value)}
           disabled={isFormDisabled}
@@ -313,6 +321,7 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
             </div>
           }
         />
+        {isOql && <OqlQueryStatus error={search?.error ?? null} />}
       </form>
     </div>
   );

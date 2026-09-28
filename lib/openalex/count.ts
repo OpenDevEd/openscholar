@@ -18,6 +18,8 @@
 import client from "@/lib/openalex";
 import { createSearchParameters } from "@/lib/utils";
 import type { SearchFilters } from "@/lib/types";
+import { OQL_FIELD, worksOql } from "./oql";
+import { fetchOqlWorks } from "./oql-works";
 
 export async function fetchOpenAlexCount(
   query: string,
@@ -26,6 +28,11 @@ export async function fetchOpenAlexCount(
   const params = createSearchParameters(query, filters, {
     perPageOverride: 1,
   });
+  if (filters.searchField === OQL_FIELD) {
+    const result = await fetchOqlWorks(worksOql(query, params.filter ?? {}), { perPage: 1 });
+    if (!result.ok) throw new Error(`OpenAlex API error: ${result.message}`);
+    return { count: result.data.meta.count };
+  }
   try {
     const response = await client.works(params);
     return { count: response.meta.count };

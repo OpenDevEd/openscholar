@@ -223,6 +223,8 @@
   },
   "search": {
     "nothingMatched": "\"{query}\" に一致するものはありません",
+    "queryErrorTitle": "OpenAlex はこのクエリを実行できませんでした",
+    "oqlUnknownFieldFix": "フィールド名を確認するか、検索語をテキスト句の中に書いてください。例: title/abstract has (chatgpt)。すべてのフィールドは OQL リファレンスにあります。",
     "noResultsNoFilter": "現在のフィルターで論文が見つかりませんでした",
     "tryBroaderTerms": "より広い用語を試してください",
     "checkSpelling": "スペルを確認してください",
@@ -1348,6 +1350,7 @@
     "searchFieldAbstract": "要約",
     "searchFieldFulltext": "全文",
     "searchFieldDisplayName": "表示名",
+    "searchFieldOql": "OQL クエリ",
     "sortRelevance": "関連性（最も関連）",
     "sortCitationsDesc": "引用（最も引用）",
     "sortCitationsAsc": "引用（最も少ない）",
@@ -1680,6 +1683,8 @@
   "searchCommand": {
     "researchQuestion": "研究質問",
     "keywords": "キーワード",
+    "oqlQuery": "OQL クエリ",
+    "oqlReference": "OQL リファレンス",
     "askAI": "AIに聞く",
     "translate": "翻訳",
     "clearLanguage": "言語をクリア",
@@ -1732,6 +1737,7 @@
     "placeholder": {
       "researchQuestion": "マインドフルネスが不安に与える影響は？",
       "keywords": "mindfulness AND (anxiety OR stress)",
+      "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "例：臨床試験についてより具体的に...",
       "screeningQuestion": "スクリーニング質問を追加..."
     }

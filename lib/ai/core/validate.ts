@@ -1,6 +1,23 @@
 import { jsonrepair } from 'jsonrepair'
 import { hasWildcardInQuotedPhrase } from '../../search/wildcard'
 
+/**
+ * An OQL query the search box takes: the part after `works where`. OQL keeps
+ * wildcards inside quotes, the opposite of the classic rule.
+ */
+export function validateOqlQuery(query: string): string {
+  const where = query.trim().replace(/^works\s+where\s+/i, '')
+  const openParens = (where.match(/\(/g) || []).length
+  const closeParens = (where.match(/\)/g) || []).length
+  if (openParens !== closeParens) {
+    throw new Error('Generated query has unbalanced parentheses')
+  }
+  if (/\b(and|or|not)\s*$/i.test(where)) {
+    throw new Error('Generated query ends with an incomplete operator')
+  }
+  return where
+}
+
 export function validateQuery(query: string): string {
   const openParens = (query.match(/\(/g) || []).length
   const closeParens = (query.match(/\)/g) || []).length

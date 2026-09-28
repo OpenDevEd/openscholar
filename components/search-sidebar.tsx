@@ -34,6 +34,7 @@ import {
 } from "@/lib/utils";
 import type { SearchField } from "@/lib/types";
 import { SEARCH_FIELDS } from "@/lib/types";
+import { getFieldLabel, type FilterT } from "@/lib/filters";
 import { sortOptions } from "@/lib/constants";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { RatingRangePicker } from "./rating-range-picker";
@@ -233,18 +234,6 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
     updateFilter({ currentSearchField: DEFAULT_FILTERS.field });
   }, [updateFilter]);
 
-  const FIELD_KEY_MAP: Record<string, string> = {
-    title_and_abstract: "searchFieldTitleAndAbstract",
-    title: "searchFieldTitle",
-    abstract: "searchFieldAbstract",
-    fulltext: "searchFieldFulltext",
-    display_name: "searchFieldDisplayName",
-  };
-  const currentFieldLabel =
-    (currentSearchField && FIELD_KEY_MAP[currentSearchField]
-      ? tf(FIELD_KEY_MAP[currentSearchField] as never)
-      : null) || tf("titleAndAbstract");
-
   const isSearchFieldActive = currentSearchField !== DEFAULT_FILTERS.field;
 
   return (
@@ -260,15 +249,13 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
       >
         <SelectTrigger className="w-full">
           <SelectValue placeholder={ta("selectSearchScope")}>
-            {currentFieldLabel}
+            {getFieldLabel(currentSearchField, tf as FilterT)}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {SEARCH_FIELDS.map((field) => (
             <SelectItem key={field.value} value={field.value}>
-              {FIELD_KEY_MAP[field.value]
-                ? tf(FIELD_KEY_MAP[field.value] as never)
-                : field.label}
+              {getFieldLabel(field.value, tf as FilterT)}
             </SelectItem>
           ))}
         </SelectContent>

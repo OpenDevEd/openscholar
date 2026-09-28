@@ -1,3 +1,4 @@
+import { OQL_FIELD, worksOql } from './openalex/oql';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import posthog from 'posthog-js';
@@ -112,7 +113,8 @@ export const createSearchMetadata = (
       } : null,
       timestamp: new Date().toISOString(),
       sdk_version: "1.1.6",
-      parameters: searchParams
+      // An OQL search is one query, not the SDK's search and filter.
+      parameters: searchField === OQL_FIELD ? { oql: worksOql(query, searchParams.filter ?? {}) } : searchParams
     }
   };
 };

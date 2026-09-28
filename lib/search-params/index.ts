@@ -23,6 +23,7 @@
  */
 
 import { serializeSearchParams, type ParsedSearchParams } from './parsers';
+import { OQL_FIELD } from '../openalex/oql';
 
 // Parsers and serialization
 export {
@@ -50,6 +51,18 @@ export {
   type NewSearchResultData,
 } from './converters';
 
+const SHARED_OQL = 'oql';
+
+/** The OQL query a shared link carries in its fragment. */
+export function readSharedOql(hash: string): string | null {
+  return new URLSearchParams(hash.replace(/^#/, '')).get(SHARED_OQL);
+}
+
+/** An OQL query can outgrow a URL, so an OQL search keeps it only in its history entry. */
+function withUrlQuery(params: Partial<ParsedSearchParams>): Partial<ParsedSearchParams> {
+  return params.field === OQL_FIELD ? { ...params, q: '' } : params;
+}
+
 /**
  * Build a results page URL for a search
  * Uses nuqs serializer with base path for proper URL construction
@@ -59,7 +72,7 @@ export {
  * @returns Full URL path like "/results/abc-123?q=test&field=title"
  */
 export function buildResultsUrl(searchId: string, params: Partial<ParsedSearchParams>): string {
-  return serializeSearchParams(`/results/${searchId}`, params);
+  return serializeSearchParams(`/results/${searchId}`, withUrlQuery(params));
 }
 
 /**
@@ -74,7 +87,9 @@ export function buildResultsUrl(searchId: string, params: Partial<ParsedSearchPa
  * @param params - The search params to serialize
  */
 export function buildShareableUrl(origin: string, params: Partial<ParsedSearchParams>): string {
-  return serializeSearchParams(`${origin}/results`, params);
+  const url = serializeSearchParams(`${origin}/results`, withUrlQuery(params));
+  // A browser never sends the fragment to the server, so a long OQL query fits there.
+  return params.field === OQL_FIELD && params.q ? `${url}#${SHARED_OQL}=${encodeURIComponent(params.q)}` : url;
 }
 
 

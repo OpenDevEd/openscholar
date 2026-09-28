@@ -30,7 +30,9 @@ import type { PaperCardHide } from "./paper-card/shared";
 import { useSearch } from "@/lib/search";
 import { SearchCommandCenter } from "./search-command-center";
 
-import { NoResults, LoadingResults } from "@/components/no-results";
+import { NoResults, LoadingResults, QueryErrorState } from "@/components/no-results";
+import { rejectedQuery } from "@/lib/search/search-error";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 import { motion, AnimatePresence } from "motion/react";
 import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-utils";
 import { ScreeningContext, TranslationContext } from "@/components/results-contexts";
@@ -257,6 +259,7 @@ export function ResultsList({
 }: ResultsListProps) {
   // Use the new search context
   const search = useSearch();
+  const queryError = rejectedQuery(search.error);
   const results = search.results;
   const totalCount = search.totalCount;
   
@@ -575,7 +578,9 @@ export function ResultsList({
                   </motion.div>
                 </AnimatePresence>
               )}
-              {isSearching || isInitialLoading ? (
+              {queryError ? (
+                <QueryErrorState detail={queryError} oql={search.params.field === OQL_FIELD} />
+              ) : isSearching || isInitialLoading ? (
                 <LoadingResults />
               ) : isEmptySearch ? (
                 <NoResults

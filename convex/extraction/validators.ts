@@ -174,6 +174,8 @@ export const searchFiltersValidator = v.object({
   openAlexQuery: v.object({
     search: v.optional(v.string()),
     filter: v.optional(v.string()),
+    /** An OQL search, filters included, run as a POST instead of search and filter. */
+    oql: v.optional(v.string()),
     sort: v.string(),
   }),
   limit: v.optional(v.number()),

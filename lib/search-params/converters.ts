@@ -10,6 +10,7 @@
 import { format, parseISO } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import type { SearchResult, SearchFilters, SearchField } from '../types';
+import { OQL_FIELD } from '../openalex/oql';
 import type { ParsedSearchParams } from './parsers';
 import { DEFAULT_SEARCH_PARAMS } from './parsers';
 import { sanitizeSelection } from './sanitize';
@@ -198,9 +199,18 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
   return params;
 }
 
-/** Relevance needs a query, so a search without one is sorted newest first. */
-export function effectiveSort(params: Pick<ParsedSearchParams, 'q' | 'sort'>): string {
-  return params.sort === 'relevance_score:desc' && !params.q.trim() ? 'publication_date:desc' : params.sort;
+/**
+ * Relevance needs a text search, so a search without one is sorted newest first.
+ * An OQL query searches text only through a `has` or `is similar to` clause;
+ * country focus and the review filter add one.
+ */
+export function effectiveSort(
+  params: Pick<ParsedSearchParams, 'q' | 'sort' | 'field' | 'review' | 'focus'>,
+): string {
+  const searchesText = params.field === OQL_FIELD
+    ? /\b(has|is similar to)\b/i.test(params.q) || params.review || params.focus.length > 0
+    : Boolean(params.q.trim());
+  return params.sort === 'relevance_score:desc' && !searchesText ? 'publication_date:desc' : params.sort;
 }
 
 /**

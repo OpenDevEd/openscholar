@@ -1,5 +1,6 @@
 import { getSearchResults } from '@/app/actions/openalex';
 import { SearchError } from './search/search-error';
+import { OQL_FIELD, joinOql } from './openalex/oql';
 import type { Works } from '@sickrin/openalex-sdk/dist/src/types/work';
 import { isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive } from './utils';
 import { getCountryCodesForRegions, COUNTRIES, COUNTRY_NAME_CHANGES } from './constants';
@@ -114,25 +115,25 @@ export function prepareOpenAlexSearch(
     return { validation, countryNames, finalApiQuery: null, effectiveFilters };
   }
 
-  // Create the final API query by enhancing the expanded query with country names
+  // Country focus and the review filter add terms to the query itself, in the
+  // query's own language: OQL clauses or a classic search string.
+  const oql = filters.searchField === OQL_FIELD;
+  const appendTerms = (query: string, terms: string) => {
+    if (oql) return joinOql(query, [`title/abstract has ${terms}`]);
+    return query ? `(${query}) AND ${terms}` : terms;
+  };
+
   let finalApiQuery = validation.expandedQuery;
   if (countryNames.length > 0) {
-    const countryTerms = countryNames.map(name => `"${name}"`).join(' OR ');
-    if (validation.expandedQuery) {
-      finalApiQuery = `(${validation.expandedQuery}) AND (${countryTerms})`;
-    } else {
-      finalApiQuery = `(${countryTerms})`;
-    }
+    const countryTerms = countryNames.map(name => `"${name}"`).join(oql ? ' or ' : ' OR ');
+    finalApiQuery = appendTerms(finalApiQuery, `(${countryTerms})`);
   }
 
-  // Add review filter if active
   if (filters.reviewFilter) {
-    const reviewTerms = '(review OR synthesis OR "meta-analysis")';
-    if (finalApiQuery) {
-      finalApiQuery = `(${finalApiQuery}) AND ${reviewTerms}`;
-    } else {
-      finalApiQuery = reviewTerms;
-    }
+    finalApiQuery = appendTerms(
+      finalApiQuery,
+      oql ? '(review or synthesis or stemmed "meta-analysis")' : '(review OR synthesis OR "meta-analysis")',
+    );
   }
 
   return {
@@ -186,7 +187,7 @@ export async function getSearchResultsWithFilters(
     // Throw client-side so the real status + OpenAlex message reach the toast
     // intact. A server-action-thrown message is stripped by Next in production;
     // this SearchError is constructed here, in the browser, so it survives.
-    throw new SearchError(result.message, result.status);
+    throw new SearchError(result.message, result.status, result.detail ?? null);
   }
 
   return {

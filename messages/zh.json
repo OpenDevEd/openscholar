@@ -223,6 +223,8 @@
   },
   "search": {
     "nothingMatched": "未找到与 \"{query}\" 匹配的内容",
+    "queryErrorTitle": "OpenAlex 无法运行此查询",
+    "oqlUnknownFieldFix": "请检查字段名，或把搜索词放在文本子句中，例如 title/abstract has (chatgpt)。OQL 参考列出了所有字段。",
     "noResultsNoFilter": "无法找到符合当前筛选条件的论文",
     "tryBroaderTerms": "尝试使用更广泛的术语",
     "checkSpelling": "检查拼写",
@@ -1348,6 +1350,7 @@
     "searchFieldAbstract": "摘要",
     "searchFieldFulltext": "全文",
     "searchFieldDisplayName": "显示名称",
+    "searchFieldOql": "OQL 查询",
     "sortRelevance": "相关性（最相关）",
     "sortCitationsDesc": "引用（最多引用）",
     "sortCitationsAsc": "引用（最少引用）",
@@ -1680,6 +1683,8 @@
   "searchCommand": {
     "researchQuestion": "研究问题",
     "keywords": "关键词",
+    "oqlQuery": "OQL 查询",
+    "oqlReference": "OQL 参考",
     "askAI": "询问 AI",
     "translate": "翻译",
     "clearLanguage": "清除语言",
@@ -1732,6 +1737,7 @@
     "placeholder": {
       "researchQuestion": "冥想对焦虑有什么影响？",
       "keywords": "mindfulness AND (anxiety OR stress)",
+      "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "例如，使其更具体地关于临床试验...",
       "screeningQuestion": "添加筛选问题..."
     }

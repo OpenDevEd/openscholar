@@ -1,9 +1,50 @@
 import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, GenerateExtractionQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput } from './types'
 import { getLanguageName } from './languages'
 
+const OQL_RULES = `OpenAlex Query Language (OQL) rules:
+- Write only the part after "works where". Never start with "works where".
+- Search text with has: title/abstract has (...), title has (...), abstract has (...).
+- Inside has (...), join terms with and, or, not, and group them with parentheses.
+- Bare words are stemmed: education also matches educational and educated.
+- Quotes mean an exact, unstemmed phrase: "machine learning". Write stemmed "large language model" for a phrase that should still match plurals.
+- Wildcards go inside quotes: "educat*".
+- Other filters join with and: year >= (2020), type is (article or review), language is (en).
+- Never use Elasticsearch syntax such as title:"x" or field prefixes inside has (...).
+- OQL words (has, and, or, not, is, title, abstract, year, type, language, stemmed) are never translated.
+
+Examples:
+Q: "What are the effects of climate change on agriculture in Africa?"
+→ title/abstract has ((climate or "global warming") and (agriculture or crop) and africa)
+
+Q: "AI in education since 2020"
+→ title/abstract has (("artificial intelligence" or AI or chatgpt) and (education or student or teacher)) and year >= (2020)`
+
+function buildEnhanceOqlPrompts(input: EnhanceSearchQueryInput, languageName: string | null | undefined, retryCount: number) {
+  return {
+    system: `You write OpenAlex Query Language (OQL) searches for academic literature.
+
+CRITICAL: You MUST respond with valid JSON in the following format:
+{
+  "enhancedQuery": "your OQL query here"
+}
+
+You may receive an existing OQL query, a natural-language research question, or instructions about a query. Keep an existing query's structure and filters, and change only what the input asks for.
+${languageName ? `\nWrite the search terms in ${languageName}. Keep the OQL words in English.\n` : ''}
+${OQL_RULES}`,
+    prompt: `Write an OQL search for this input:
+"${input.query}"
+
+Requirements:
+1. Balanced parentheses and no dangling and, or, not.
+2. Synonyms grouped with or, concepts joined with and.
+3. Keep every filter clause (year, type, language and others) that is already in the query.${retryCount > 0 ? '\n\nIMPORTANT: The previous attempt had unbalanced parentheses or a dangling operator. Fix that.' : ''}`,
+  }
+}
+
 export function buildEnhanceQueryPrompts(input: EnhanceSearchQueryInput, retryCount: number) {
   const language = input.language
   const languageName = language ? getLanguageName(language) : null
+  if (input.syntax === 'oql') return buildEnhanceOqlPrompts(input, languageName, retryCount)
 
   return {
     system: `You are an Elasticsearch Query String Query optimization expert for academic search.
@@ -136,6 +177,18 @@ ${languageName ? `\n\nMANDATORY: Generate all questions in ${languageName} only.
 }
 
 export function buildTranslateQueryPrompts(input: TranslateQueryInput) {
+  if (input.syntax === 'oql') {
+    return {
+      system: `You translate the search terms of an OpenAlex Query Language (OQL) query for academic search. Keep the query's structure, clauses, parentheses, quotes and filters exactly as they are. Translate only the words and phrases being searched for, using the academic terms of the target language.
+
+${OQL_RULES}`,
+      prompt: `Translate the search terms of this OQL query to ${getLanguageName(input.targetLanguage)}:
+
+${input.query}
+
+Provide only the translated OQL query.`,
+    }
+  }
   return {
     system: `You are a professional translator specializing in academic search queries. Your task is to translate the given query to the specified language while maintaining:
 

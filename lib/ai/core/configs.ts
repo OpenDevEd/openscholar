@@ -12,6 +12,7 @@ import {
   buildTranslateQueryPrompts,
   buildTranslatePaperContentPrompts,
   buildScreeningResponsesPrompts,
+  validateOqlQuery,
   validateQuery,
 } from './index'
 import {
@@ -64,7 +65,7 @@ export function getEnhanceQueryConfig(
     },
     validator: (output) => ({
       ...output,
-      enhancedQuery: validateQuery(output.enhancedQuery),
+      enhancedQuery: input.syntax === 'oql' ? validateOqlQuery(output.enhancedQuery) : validateQuery(output.enhancedQuery),
     }),
   }
 }
@@ -141,7 +142,7 @@ export function getTranslateQueryConfig(
     // invalid query shape) fails validation and re-prompts the translator.
     validator: (output) => ({
       ...output,
-      translatedQuery: validateQuery(output.translatedQuery),
+      translatedQuery: input.syntax === 'oql' ? validateOqlQuery(output.translatedQuery) : validateQuery(output.translatedQuery),
     }),
   }
 }

@@ -1,4 +1,5 @@
 import { DEFAULT_SEARCH_PARAMS, parseSearchParamsFromUrl } from "@/lib/search-params";
+import { serializeSearchParams } from "@/lib/search-params/parsers";
 import type { SearchParams } from "@/lib/search";
 import { buildOpenAlexWorksQuery } from "@/lib/openalex/works-query";
 import type { OpenAlexQuery, OpenAlexSourceEntry } from "./configuration/sources";
@@ -19,8 +20,17 @@ export function buildOpenAlexSourceQuery(params: SearchParams): OpenAlexQuery | 
   // Leaving out retracted works is on by default and narrows nothing on its own,
   // so a search must still have its own query or filter to be imported.
   const narrowing = buildOpenAlexWorksQuery({ ...params, retracted: true });
-  if (!narrowing?.search && !narrowing?.filter) return null;
+  const narrowingOql = narrowing?.oql && narrowing.oql !== "works";
+  if (!narrowing?.search && !narrowing?.filter && !narrowingOql) return null;
   return buildOpenAlexWorksQuery(params);
+}
+
+/**
+ * The search a source reopens with. It is saved in the configuration, not used
+ * as a browser address, so an OQL query stays in it.
+ */
+export function openAlexSourceSearchUrl(searchId: string, params: SearchParams): string {
+  return serializeSearchParams(`/results/${searchId}`, params);
 }
 
 /** A source keeps the search it was made from, so reopening it restores every control. */

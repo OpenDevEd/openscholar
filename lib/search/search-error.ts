@@ -9,12 +9,53 @@
  */
 export class SearchError extends Error {
   readonly status: number | null;
+  readonly detail: QueryErrorDetail | null;
 
-  constructor(message: string, status: number | null) {
+  constructor(message: string, status: number | null, detail: QueryErrorDetail | null = null) {
     super(message);
     this.name = "SearchError";
     this.status = status;
+    this.detail = detail;
   }
+}
+
+/** Why OpenAlex rejected a query, and where in the query it stopped. */
+export type QueryErrorDetail = {
+  problem: string;
+  fix?: string;
+  near?: { before: string; token: string; after: string };
+};
+
+const NEAR = 40;
+
+/**
+ * Splits OpenAlex's "problem  Fix: remedy" message and, when it gives a
+ * position, cuts the query around it with the failing token on its own.
+ */
+export function describeQueryError(
+  query: string,
+  error: { message?: string; position?: number | null },
+): QueryErrorDetail {
+  const [problem, fix] = (error.message ?? "").split(/\s+Fix:\s+/);
+  const at = error.position;
+  const detail: QueryErrorDetail = { problem: problem.trim(), ...(fix ? { fix: fix.trim() } : {}) };
+  if (typeof at !== "number" || at < 0 || at >= query.length) return detail;
+  const token = query.slice(at).match(/^("[^"]*"|[^\s()]+|\S)/)?.[0] ?? "";
+  const end = at + token.length;
+  return {
+    ...detail,
+    near: {
+      before: (at > NEAR ? "…" : "") + query.slice(Math.max(0, at - NEAR), at),
+      token,
+      after: query.slice(end, end + NEAR) + (end + NEAR < query.length ? "…" : ""),
+    },
+  };
+}
+
+/** A query OpenAlex rejected, as opposed to a failed request. */
+export function rejectedQuery(error: unknown): QueryErrorDetail | null {
+  if (!(error instanceof SearchError) || error.status !== 400) return null;
+  return error.detail ?? { problem: error.message };
 }
 
 export interface SearchToastCopy {
