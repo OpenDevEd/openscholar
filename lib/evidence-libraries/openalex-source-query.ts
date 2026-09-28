@@ -13,6 +13,22 @@ export function sameOpenAlexSourceSearch(left: SearchParams, right: SearchParams
 }
 
 /**
+ * Leaving out retracted works narrows nothing, however the clause is grouped
+ * or spelled. new-el's source schema applies the same rule.
+ */
+function narrowsOql(oql: string | undefined): boolean {
+  const where = oql?.match(/^works\s+where\s+([\s\S]+)$/i)?.[1];
+  return Boolean(
+    where
+      ?.toLowerCase()
+      .replace(/[()\s]+/g, " ")
+      .split(/\band\b/)
+      .map((clause) => clause.trim())
+      .some((clause) => clause && !/^(is_)?retracted is false$/.test(clause)),
+  );
+}
+
+/**
  * What OpenAlex is asked for an import. Saved as it is, so the library asks the
  * same thing on every update whatever the search code later becomes.
  */
@@ -20,8 +36,7 @@ export function buildOpenAlexSourceQuery(params: SearchParams): OpenAlexQuery | 
   // Leaving out retracted works is on by default and narrows nothing on its own,
   // so a search must still have its own query or filter to be imported.
   const narrowing = buildOpenAlexWorksQuery({ ...params, retracted: true });
-  const narrowingOql = narrowing?.oql && narrowing.oql !== "works";
-  if (!narrowing?.search && !narrowing?.filter && !narrowingOql) return null;
+  if (!narrowing?.search && !narrowing?.filter && !narrowsOql(narrowing?.oql)) return null;
   return buildOpenAlexWorksQuery(params);
 }
 
