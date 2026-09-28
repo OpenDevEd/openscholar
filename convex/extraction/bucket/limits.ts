@@ -1,304 +1,55 @@
 /**
- * Plan-aware knobs for the extraction bucket.
- *
- *  - `PAPER_LIMIT_BY_PLAN`       — total ready-items allowed across the
- *                                  whole bucket (per-job ceiling).
- *  - `PAPER_PULL_CAP_BY_PLAN`    — maximum papers a single history entry
- *                                  can pull from OpenAlex on submit.
- *                                  Today 200 everywhere — the SDK's
- *                                  single-page ceiling without cursor
- *                                  pagination (lifted in P8).
- *  - `PAPER_PULL_DEFAULT_BY_PLAN`— default stepper value for the CountChip
- *                                  when a history row is first selected.
- *                                  Always clamped to cap at read time so
- *                                  a drift in config never lets the
- *                                  default outrun the cap.
- *
- * Three paired entry points mirror the pattern:
- *  - `getPaperLimit / getPaperPullCap / getPaperPullDefault` — QueryCtx-
- *    scoped helpers.
- *  - `getPaperLimitForUser / getPaperPullCapForUser / getPaperPullDefaultForUser`
- *    — `internalQuery` wrappers so actions can round-trip.
- *
- * `PAPER_LIMIT_MAX` is the hard ceiling across all plans; used by
- * internal sweeps that span users (cascade delete, storage GC) where a
- * per-user plan lookup doesn't apply.
+ * Pre-flight validation for any mutation or action that accepts a
+ * user-supplied bucket. The limits themselves live in lib/extraction/limits.ts.
  */
-import { v } from "convex/values";
-import { internalQuery } from "../../_generated/server";
-import type { QueryCtx, MutationCtx } from "../../_generated/server";
-import type { Id } from "../../_generated/dataModel";
-import type { PlanId } from "../../../lib/billing/plans";
-import { readAccount } from "../../billing/accounts";
 import {
   effectivePaperCount,
   findOverPullCapIndex,
   type EffectiveCountItem,
 } from "../../../lib/bucket/effective-paper-count";
+import { PAPER_LIMIT, PAPER_PULL_CAP } from "../../../lib/extraction/limits";
 import { createError } from "../../lib/errors";
-import { storedSearchFiltersValidator } from "../validators";
-
-export const PAPER_LIMIT_BY_PLAN: Record<PlanId, number> = {
-  free: 1000,
-  go: 1000,
-  pro: 1000,
-};
-
-export const PAPER_LIMIT_MAX = Math.max(
-  ...Object.values(PAPER_LIMIT_BY_PLAN),
-);
-
-export const PAPER_PULL_CAP_BY_PLAN: Record<PlanId, number> = {
-  free: 200,
-  go: 200,
-  pro: 200,
-};
-
-export const PAPER_PULL_DEFAULT_BY_PLAN: Record<PlanId, number> = {
-  free: 200,
-  go: 200,
-  pro: 200,
-};
 
 /**
- * Per-user concurrent in-flight chat generations. V1 is 3 everywhere;
- * subscription-tier differentiation is a one-line change later.
- */
-export const CHAT_CONCURRENCY_LIMIT_BY_PLAN: Record<PlanId, number> = {
-  free: 3,
-  go: 3,
-  pro: 3,
-};
-
-export const CHAT_CONCURRENCY_LIMIT_MAX = Math.max(
-  ...Object.values(CHAT_CONCURRENCY_LIMIT_BY_PLAN),
-);
-
-export const EXTRACTION_PAPER_CONCURRENCY_BY_PLAN: Record<
-  PlanId,
-  number
-> = {
-  free: 5,
-  go: 5,
-  pro: 5,
-};
-
-export const EXTRACTION_QUESTION_CONCURRENCY_BY_PLAN: Record<
-  PlanId,
-  number
-> = {
-  free: 5,
-  go: 5,
-  pro: 5,
-};
-
-// Infra-level upper bound applied on top of the plan-based per-paper
-// question concurrency. Shared by queue setup, resume, retry, and paper
-// workers so every entrypoint uses the same bounded parallelism.
-export const EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP = 5;
-
-export type ExtractionExecutionLimits = {
-  paperConcurrency: number;
-  questionConcurrencyPerPaper: number;
-};
-
-async function resolvePlan(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-): Promise<PlanId> {
-  return (await readAccount(ctx, userId))?.plan ?? "free";
-}
-
-export async function getPaperLimit(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-): Promise<number> {
-  const plan = await resolvePlan(ctx, userId);
-  return PAPER_LIMIT_BY_PLAN[plan];
-}
-
-export async function getPaperPullCap(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-): Promise<number> {
-  const plan = await resolvePlan(ctx, userId);
-  return PAPER_PULL_CAP_BY_PLAN[plan];
-}
-
-export async function getPaperPullDefault(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-): Promise<number> {
-  const plan = await resolvePlan(ctx, userId);
-  const cap = PAPER_PULL_CAP_BY_PLAN[plan];
-  const raw = PAPER_PULL_DEFAULT_BY_PLAN[plan];
-  // `default ≤ cap` invariant enforced at read time so config drift never
-  // leaks a too-high default to the client.
-  return Math.min(raw, cap);
-}
-
-/**
- * ActionCtx-friendly entry point. Actions can't touch ctx.db directly,
- * so they round-trip through this internal query.
- */
-export const getPaperLimitForUser = internalQuery({
-  args: { userId: v.id("users") },
-  returns: v.number(),
-  handler: async (ctx, args): Promise<number> => {
-    return await getPaperLimit(ctx, args.userId);
-  },
-});
-
-export const getPaperPullCapForUser = internalQuery({
-  args: { userId: v.id("users") },
-  returns: v.number(),
-  handler: async (ctx, args): Promise<number> => {
-    return await getPaperPullCap(ctx, args.userId);
-  },
-});
-
-export const getPaperPullDefaultForUser = internalQuery({
-  args: { userId: v.id("users") },
-  returns: v.number(),
-  handler: async (ctx, args): Promise<number> => {
-    return await getPaperPullDefault(ctx, args.userId);
-  },
-});
-
-export async function getChatConcurrencyLimit(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-): Promise<number> {
-  const plan = await resolvePlan(ctx, userId);
-  return CHAT_CONCURRENCY_LIMIT_BY_PLAN[plan];
-}
-
-export async function getExtractionPaperConcurrency(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-): Promise<number> {
-  const plan = await resolvePlan(ctx, userId);
-  return EXTRACTION_PAPER_CONCURRENCY_BY_PLAN[plan];
-}
-
-export async function getExtractionQuestionConcurrencyPerPaper(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-): Promise<number> {
-  const plan = await resolvePlan(ctx, userId);
-  return EXTRACTION_QUESTION_CONCURRENCY_BY_PLAN[plan];
-}
-
-export async function getExtractionExecutionLimits(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-): Promise<ExtractionExecutionLimits> {
-  const plan = await resolvePlan(ctx, userId);
-  return {
-    paperConcurrency: EXTRACTION_PAPER_CONCURRENCY_BY_PLAN[plan],
-    questionConcurrencyPerPaper:
-      EXTRACTION_QUESTION_CONCURRENCY_BY_PLAN[plan],
-  };
-}
-
-export const getChatConcurrencyLimitForUser = internalQuery({
-  args: { userId: v.id("users") },
-  returns: v.number(),
-  handler: async (ctx, args): Promise<number> => {
-    return await getChatConcurrencyLimit(ctx, args.userId);
-  },
-});
-
-export const getExtractionExecutionLimitsForUser = internalQuery({
-  args: { userId: v.id("users") },
-  returns: v.object({
-    paperConcurrency: v.number(),
-    questionConcurrencyPerPaper: v.number(),
-  }),
-  handler: async (ctx, args): Promise<ExtractionExecutionLimits> => {
-    return await getExtractionExecutionLimits(ctx, args.userId);
-  },
-});
-
-export const assertBucketWithinLimitsForUser = internalQuery({
-  args: {
-    userId: v.id("users"),
-    items: v.array(
-      v.object({
-        source: v.union(
-          v.literal("history"),
-          v.literal("library"),
-          v.literal("collection"),
-          v.literal("zotero"),
-          v.literal("upload"),
-        ),
-        searchFilters: v.optional(storedSearchFiltersValidator),
-      }),
-    ),
-  },
-  returns: v.object({
-    paperLimit: v.number(),
-    pullCap: v.number(),
-    effectiveCount: v.number(),
-  }),
-  handler: async (ctx, args) => {
-    return await assertBucketWithinLimits(ctx, args.userId, args.items);
-  },
-});
-
-/**
- * Single-source-of-truth pre-flight validation for any mutation that
- * accepts a user-supplied bucket. Enforces both:
+ * Enforces both:
  *
- *  1. Per-row pull cap — no history row may request more than `pullCap`
- *     papers via `searchFilters.limit`. Catches crafted requests that
- *     try to bypass the row-count limit by inflating one row's expansion.
- *  2. Plan-level paper cap — the post-expansion sum (history rows count
- *     their `searchFilters.limit`, others count 1) must fit the user's
- *     plan. Catches crafted requests that multiply rows × per-row limit
- *     past the row-count cap.
+ *  1. Per-row pull cap — no history row may request more than
+ *     `PAPER_PULL_CAP` papers via `searchFilters.limit`. Catches crafted
+ *     requests that try to bypass the row-count limit by inflating one row.
+ *  2. Paper cap — the post-expansion sum (history rows count their
+ *     `searchFilters.limit`, others count 1) must fit `PAPER_LIMIT`. Catches
+ *     crafted requests that multiply rows × per-row limit past the cap.
  *
  * Throws the project-standard `VALIDATION_ERROR` so callers don't have
- * to handle it. Returns the resolved plan limit so the caller can reuse
- * the value (e.g., for downstream `take(limit)` queries).
+ * to handle it.
  */
-export async function assertBucketWithinLimits(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-  items: ReadonlyArray<EffectiveCountItem>,
-): Promise<{ paperLimit: number; pullCap: number; effectiveCount: number }> {
-  const [paperLimit, pullCap] = await Promise.all([
-    getPaperLimit(ctx, userId),
-    getPaperPullCap(ctx, userId),
-  ]);
-
-  const overIndex = findOverPullCapIndex(items, pullCap);
+export function assertBucketWithinLimits(items: ReadonlyArray<EffectiveCountItem>): {
+  effectiveCount: number;
+} {
+  const overIndex = findOverPullCapIndex(items, PAPER_PULL_CAP);
   if (overIndex !== -1) {
     throw createError(
       "VALIDATION_ERROR",
-      `Bucket row ${overIndex} requests more than the per-row pull cap of ${pullCap} papers`,
+      `Bucket row ${overIndex} requests more than the per-row pull cap of ${PAPER_PULL_CAP} papers`,
     );
   }
 
-  const count = effectivePaperCount(items, pullCap);
+  const count = effectivePaperCount(items, PAPER_PULL_CAP);
   // Reject empty buckets up-front. A bucket with zero effective papers
   // (e.g. every history row has `searchFilters.limit <= 0`) would
-  // otherwise pass the plan-cap check, spin up queue setup, advance the
+  // otherwise pass the cap check, spin up queue setup, advance the
   // job to `downloading_pdfs`/`indexing`, and only then throw — leaving
   // the job stranded in an intermediate status. Fail fast so the client
   // sees a synchronous VALIDATION_ERROR and no job is ever created.
   if (count === 0) {
-    throw createError(
-      "VALIDATION_ERROR",
-      "Bucket must include at least one paper",
-    );
+    throw createError("VALIDATION_ERROR", "Bucket must include at least one paper");
   }
-  if (count > paperLimit) {
+  if (count > PAPER_LIMIT) {
     throw createError(
       "VALIDATION_ERROR",
-      `Bucket would produce ${count} papers, exceeding plan limit of ${paperLimit}`,
+      `Bucket would produce ${count} papers, exceeding the limit of ${PAPER_LIMIT}`,
     );
   }
 
-  return { paperLimit, pullCap, effectiveCount: count };
+  return { effectiveCount: count };
 }

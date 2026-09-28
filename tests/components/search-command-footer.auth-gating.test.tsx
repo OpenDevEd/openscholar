@@ -34,15 +34,6 @@ const {
     updateSearchResultMock: vi.fn(),
     useQueryMock: vi.fn((queryRef: unknown, args?: unknown) => {
       if (queryRef === "organizationFeatures") return {extraction: true};
-      if (
-        queryRef === "getMyPaperPullCap" ||
-        queryRef === "getMyPaperPullDefault"
-      ) {
-        if (!authReadinessRef.current.canRunProtectedQueries && args !== "skip") {
-          throw new Error("protected pull-limit query was not auth-gated");
-        }
-        return 200;
-      }
       return undefined;
     }),
   };
@@ -126,12 +117,6 @@ vi.mock("@/convex/_generated/api", () => ({
       },
     },
     extraction: {
-      bucket: {
-        queries: {
-          getMyPaperPullCap: "getMyPaperPullCap",
-          getMyPaperPullDefault: "getMyPaperPullDefault",
-        },
-      },
       mutations: {
         startJob: "startJob",
       },
@@ -300,11 +285,6 @@ describe("<SearchCommandFooter> auth-gated limits", () => {
     expect(
       screen.getByRole("button", { name: "startChat" }),
     ).toBeInTheDocument();
-    expect(useQueryMock).toHaveBeenCalledWith("getMyPaperPullCap", "skip");
-    expect(useQueryMock).toHaveBeenCalledWith(
-      "getMyPaperPullDefault",
-      "skip",
-    );
 
     fireEvent.click(screen.getByRole("button", { name: "startChat" }));
     expect(goToSignInMock).toHaveBeenCalledTimes(1);

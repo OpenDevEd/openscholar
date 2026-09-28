@@ -1,6 +1,7 @@
 # Credits and subscriptions on self-hosted Autumn
 
-Issue: OpenDevEd/openalex-count#270. Workflow rules live in the root
+Issues: OpenDevEd/openalex-count#270, #273 (catalog, webhooks and plan
+features in Autumn). Workflow rules live in the root
 `AGENTS.md` and `docs/agents/project.md`. The user signs off before merge.
 
 ## Problem
@@ -19,10 +20,17 @@ plans, Stripe subscriptions, and proration, and we can host it ourselves.
    Stripe products, prices, and subscription webhooks. Stripe stays the
    payment processor.
 2. Autumn is self-hosted on the Hetzner Coolify from a pinned commit
-   (`e16a31db`). Trial service `autumn-billing-trial`
-   (`1wqnx1zrn24l1eosrk8nviau`), API `https://autumn-api.opendev.space`.
-3. The catalog lives in `autumn.config.ts` and is pushed with `atmn push`.
-   Product rules stay as they are today:
+   (`e16a31db`). Service `autumn-billing` (`1wqnx1zrn24l1eosrk8nviau`), API
+   `https://autumn-api.opendev.space`, dashboard
+   `https://autumn.opendev.space`. A Svix server (`svix/svix-server:v1.101.0`)
+   runs beside it for webhooks. Upstream Autumn only talks to Svix's cloud,
+   so the image is patched to pass `SVIX_SERVER_URL` to the Svix client.
+3. The catalog lives in Autumn and is edited in its dashboard. Convex copies
+   it into `billingCatalog` every five minutes, and every price, credit
+   amount, bundle and plan name in the app comes from that copy. Any main
+   plan that isn't auto-enabled can be bought. Plan metadata carries what the
+   dashboard has no field for: `popular`, `highlights`, and the top-up
+   plan's `bundles`. The catalog at the time of writing:
    - Free: 500 signup credits, once.
    - Go: $5/month, 3,000 credits, unused credits roll over up to 3,000.
    - Pro: $20/month, 15,000 credits, roll over up to 15,000.
@@ -46,15 +54,19 @@ plans, Stripe subscriptions, and proration, and we can host it ourselves.
      self-hosted Autumn never expires locks, and retries if Autumn is down.
 7. Usage history is an append-only Convex table written when a charge
    settles. Autumn's `events.list` needs Tinybird, which isn't open source.
-8. A Convex snapshot row per user holds plan, status, and balance for
-   reactive UI and plan checks. It's refreshed after every Autumn call we
-   make, and whenever a Stripe webhook nudges it.
+8. A Convex snapshot row per user holds plan, status, balance, and the plan's
+   boolean features for reactive UI and plan checks. It's refreshed after
+   every Autumn call we make, on every Autumn webhook for that customer, on
+   Stripe card events, and when the billing page opens (Autumn sends no event
+   for a balance edit).
 9. The Stripe webhook in Convex does two things only:
-   - nudges a snapshot refresh, and again 15 seconds later, because Autumn
-     applies the same Stripe event on its own schedule;
+   - refreshes the snapshot for card changes, which Autumn doesn't report;
    - reverses credits for refunded top-ups, which Autumn does not do.
 10. A Stripe refund of a top-up removes the refunded share of its credits
     and never goes below zero.
+11. Plan access is an Autumn boolean feature. A feature flag with
+    `planFeature` is on only for users whose plan includes it, so which plans
+    get extraction is set in Autumn. Plan tiers are gone.
 
 ## Trial results (2026-09-28, Autumn e16a31db)
 
@@ -103,7 +115,9 @@ This plan keeps Autumn's behavior.
 | Plan/balance snapshot | `billingAccounts` table, written only by `convex/billing/accounts.ts` |
 | Customer provisioning and signup grant | `convex/billing/accounts.ts` |
 | Checkout, portal, plan change, top-up | `convex/billing/actions.ts` (Autumn `billing.attach`/`update`/portal) |
-| Refund reversal and snapshot nudges | `convex/billing/stripeWebhook.ts` |
+| Plan catalog copy | `billingCatalog` table, written only by `convex/billing/catalog.ts` |
+| Autumn webhook refreshes | `convex/billing/autumnWebhook.ts` |
+| Refund reversal and card refreshes | `convex/billing/stripeWebhook.ts` |
 
 ## Scope
 
@@ -133,7 +147,7 @@ UI:
   and Autumn actions.
 - The pricing page's checkout uses Autumn.
 - Usage history reads `billingUsage`.
-- Feature-flag tiers and plan limits read the snapshot.
+- Feature flags read the plan's Autumn features from the snapshot.
 
 ## Data migration
 
@@ -181,5 +195,6 @@ wiped.
 - A billing call now depends on Autumn being up. Charges fail closed, meaning
   no lock means no AI call, and the failures are logged with Autumn's
   response.
-- Balance snapshots can lag Stripe-driven changes until the next nudge or
-  charge.
+- A balance edited in Autumn's dashboard shows once the user opens billing
+  or spends credits, since Autumn sends no event for it.
+- The patched Autumn image has to be rebuilt on every Autumn bump.

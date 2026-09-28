@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { CorpusSource } from "../../lib/chat/render-corpus";
-import { PAPER_LIMIT_MAX } from "../extraction/bucket/limits";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import {
   classifySourceType,
   type ChatSourceType,
@@ -142,11 +142,11 @@ export async function readChatSourcesSnapshot(
     ctx.db
       .query("extractionJobSources")
       .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-      .take(PAPER_LIMIT_MAX),
+      .take(PAPER_LIMIT),
     ctx.db
       .query("chatPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .take(PAPER_LIMIT_MAX),
+      .take(PAPER_LIMIT),
   ]);
 
   return {

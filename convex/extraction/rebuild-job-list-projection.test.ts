@@ -30,7 +30,6 @@ async function seedPreProjectionJob(t: ReturnType<typeof convexTest>) {
     await ctx.db.insert("featureFlags", {
       key: "extraction.enabled",
       enabled: true,
-      minimumTier: 0,
       description: "extraction.enabled (test)",
       updatedAt: now,
     });

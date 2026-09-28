@@ -18,7 +18,6 @@ async function seed(
     await ctx.db.insert("featureFlags", {
       key: "extraction.pdf",
       enabled: opts.flag,
-      minimumTier: 0,
       updatedAt: 0,
     });
     const jobId = await ctx.db.insert("extractionJobs", {

@@ -13,6 +13,9 @@ import type { MutationCtx } from "../_generated/server";
 
 const AUTUMN_URL = "https://autumn.test";
 
+/** Credits the fake's signup add-on grants. */
+export const FAKE_SIGNUP_CREDITS = 500;
+
 type Customer = { plan: number; topUp: number; signup: boolean };
 
 export const fakeAutumn = {
@@ -67,9 +70,9 @@ function customerBody(id: string) {
     id,
     stripe_id: null,
     subscriptions: [
-      { plan_id: "free", status: "active", past_due: false, canceled_at: null, current_period_end: null, add_on: false },
+      { plan_id: "free", status: "active", past_due: false, canceled_at: null, current_period_end: null, add_on: false, auto_enable: true },
       ...(customer.signup
-        ? [{ plan_id: "signup_credits", status: "active", past_due: false, canceled_at: null, current_period_end: null, add_on: true }]
+        ? [{ plan_id: "signup_credits", status: "active", past_due: false, canceled_at: null, current_period_end: null, add_on: true, auto_enable: false }]
         : []),
     ],
     balances: {
@@ -107,7 +110,7 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
       const customer = fakeAutumn.customer(customerId!);
       if (body.plan_id === "signup_credits") {
         customer.signup = true;
-        customer.plan += 500;
+        customer.plan += FAKE_SIGNUP_CREDITS;
       }
       return respond(200, { customer_id: customerId, payment_url: null });
     }

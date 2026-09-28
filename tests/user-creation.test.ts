@@ -4,8 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import schema from "../convex/schema";
 import { internal } from "../convex/_generated/api";
 import { createUserWithDefaults } from "../convex/lib/userCreation";
-import { fakeAutumn, installFakeAutumn } from "../convex/billing/billing.test-support";
-import { SIGNUP_CREDITS } from "../lib/billing/plans";
+import {
+  FAKE_SIGNUP_CREDITS,
+  fakeAutumn,
+  installFakeAutumn,
+} from "../convex/billing/billing.test-support";
 
 describe("createUserWithDefaults", () => {
   beforeEach(() => {
@@ -31,9 +34,9 @@ describe("createUserWithDefaults", () => {
         .withIndex("by_user", (q) => q.eq("userId", userId))
         .unique(),
     );
-    expect(account).toMatchObject({ plan: "free", balance: SIGNUP_CREDITS, signupGranted: true });
+    expect(account).toMatchObject({ plan: "free", balance: FAKE_SIGNUP_CREDITS, signupGranted: true });
 
     await t.action(internal.billing.accounts.provision, { userId });
-    expect(fakeAutumn.balance(userId)).toBe(SIGNUP_CREDITS);
+    expect(fakeAutumn.balance(userId)).toBe(FAKE_SIGNUP_CREDITS);
   });
 });

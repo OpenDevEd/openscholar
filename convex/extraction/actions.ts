@@ -22,8 +22,11 @@ import {
 import { dedupeExpandedSources, expandJobSources } from "./expandSources";
 import { OLD_SEARCH_MESSAGE } from "./jobSources";
 import { createError } from "../lib/errors";
-import { normalizeBatchSize, resolveBoundedConcurrency } from "./batching";
-import { EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP } from "./bucket/limits";
+import {
+  EXTRACTION_PAPER_CONCURRENCY,
+  EXTRACTION_QUESTION_CONCURRENCY,
+  PAPER_LIMIT,
+} from "../../lib/extraction/limits";
 import {
   classifyUnknownError,
   type ClassifiedError,
@@ -186,22 +189,11 @@ async function loadActiveSetupControl(
   return { job, pdfEnabled };
 }
 
-async function resolveSetupRuntime(
-  ctx: ActionCtx,
-  job: Doc<"extractionJobs">,
-  pdfEnabled: boolean,
-): Promise<SetupRuntime> {
-  const executionLimits = await ctx.runQuery(
-    internal.extraction.bucket.limits.getExtractionExecutionLimitsForUser,
-    { userId: job.userId },
-  );
+function setupRuntime(pdfEnabled: boolean): SetupRuntime {
   return {
     pdfEnabled,
-    paperConcurrency: normalizeBatchSize(executionLimits.paperConcurrency),
-    questionConcurrency: resolveBoundedConcurrency(
-      executionLimits.questionConcurrencyPerPaper,
-      EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP,
-    ),
+    paperConcurrency: EXTRACTION_PAPER_CONCURRENCY,
+    questionConcurrency: EXTRACTION_QUESTION_CONCURRENCY,
   };
 }
 
@@ -388,21 +380,13 @@ export async function runSetupExtractionQueueJob(
   if (!initialControl) return;
 
   try {
-    const runtime = await resolveSetupRuntime(
-      ctx,
-      initialControl.job,
-      initialControl.pdfEnabled,
-    );
+    const runtime = setupRuntime(initialControl.pdfEnabled);
     const persisted = await runFetchAndPersistPapers(ctx, { jobId });
 
-    const paperLimit = await ctx.runQuery(
-      internal.extraction.bucket.limits.getPaperLimitForUser,
-      { userId: initialControl.job.userId },
-    );
-    if (persisted.totalPapers > paperLimit) {
+    if (persisted.totalPapers > PAPER_LIMIT) {
       throw createError(
         "VALIDATION_ERROR",
-        `Job would produce ${persisted.totalPapers} papers, exceeding plan limit of ${paperLimit}`,
+        `Job would produce ${persisted.totalPapers} papers, exceeding the limit of ${PAPER_LIMIT}`,
       );
     }
 

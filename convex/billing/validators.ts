@@ -1,17 +1,21 @@
 import { v, type Infer } from "convex/values";
 
-export const planIdValidator = v.union(v.literal("free"), v.literal("go"), v.literal("pro"));
-export const paidPlanIdValidator = v.union(v.literal("go"), v.literal("pro"));
-
 export const billingAccountSnapshotValidator = v.object({
-  plan: planIdValidator,
+  /** The customer's main plan id in Autumn; absent if they have none. */
+  plan: v.optional(v.string()),
   pastDue: v.boolean(),
   /** Set while a paid plan renews at the end of its period. */
   renewsAt: v.optional(v.number()),
   /** Set when the current plan ends at its period end. */
   changesAt: v.optional(v.number()),
   /** The plan that starts at `changesAt`. */
-  nextPlan: v.optional(planIdValidator),
+  nextPlan: v.optional(v.string()),
+  /**
+   * Boolean features the customer's plans grant, such as "extraction".
+   * Absent on snapshots cached before plan features existed; every refresh
+   * writes it.
+   */
+  features: v.optional(v.array(v.string())),
   balance: v.number(),
   /** Top-up credits, which never expire; included in `balance`. */
   purchased: v.number(),
@@ -54,3 +58,52 @@ export const billingUsageFields = {
   stripeChargeId: v.optional(v.string()),
   createdAt: v.number(),
 };
+
+/**
+ * A plan from Autumn's catalog, reduced to what the app shows and checks.
+ * Metadata set on the plan in Autumn's dashboard fills the optional fields.
+ */
+export const catalogPlanValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  description: v.optional(v.string()),
+  /** Main plans share a group; add-ons (signup credits, top-ups) have none. */
+  group: v.optional(v.string()),
+  addOn: v.boolean(),
+  /** Given to every new customer: the Free plan. */
+  autoEnable: v.boolean(),
+  price: v.optional(v.object({ amount: v.number(), interval: v.string() })),
+  /** The plan's credits, if any. */
+  credits: v.optional(
+    v.object({
+      included: v.number(),
+      /** How often they refill: "month", "year", "one_off", ... */
+      interval: v.string(),
+      rolloverMax: v.optional(v.number()),
+      /** Set when credits are bought: `amount` buys `billingUnits` credits. */
+      unitPrice: v.optional(v.object({ amount: v.number(), billingUnits: v.number() })),
+    }),
+  ),
+  /** Boolean features the plan grants, such as "extraction". */
+  features: v.array(v.string()),
+  /** Metadata `popular: true` marks the plan as the one to recommend. */
+  popular: v.boolean(),
+  /** Metadata `highlights`: extra lines for the pricing card. */
+  highlights: v.optional(v.array(v.string())),
+  /** Metadata `bundles` on the top-up plan: the credit amounts offered. */
+  bundles: v.optional(v.array(v.number())),
+});
+export type CatalogPlan = Infer<typeof catalogPlanValidator>;
+
+export const catalogFeatureValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  type: v.string(),
+});
+export type CatalogFeature = Infer<typeof catalogFeatureValidator>;
+
+export const billingCatalogValidator = v.object({
+  plans: v.array(catalogPlanValidator),
+  features: v.array(catalogFeatureValidator),
+});
+export type BillingCatalog = Infer<typeof billingCatalogValidator>;

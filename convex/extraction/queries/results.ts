@@ -9,7 +9,7 @@ import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { resolveOwnedJob } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
-import { getPaperLimit } from "../bucket/limits";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import {
   paginatedPaperWithResultsValidator,
   resultsPageFiltersValidator,
@@ -296,7 +296,7 @@ export const getJobResultsPage = query({
     }
     const { user } = access;
     await requireFeature(ctx, "extraction.enabled");
-    const limit = await getPaperLimit(ctx, user._id);
+    const limit = PAPER_LIMIT;
     const { totalAll, totalFiltered, filteredPapers } = await readFilteredJobPapers(
       ctx,
       {
@@ -346,7 +346,7 @@ export const getJobResultsForExport = query({
 
     const { user } = access;
     await requireFeature(ctx, "extraction.enabled");
-    const limit = await getPaperLimit(ctx, user._id);
+    const limit = PAPER_LIMIT;
     const { totalAll, totalFiltered, filteredPapers } = await readFilteredJobPapers(
       ctx,
       {

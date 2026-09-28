@@ -8,7 +8,7 @@
 import type { QueryCtx } from "../../_generated/server";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { MIN_ABSTRACT_LENGTH } from "../content";
-import { PAPER_LIMIT_MAX } from "../bucket/limits";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 export function hasUsableAbstract(abstract?: string) {
@@ -49,7 +49,7 @@ export async function loadResultsByJob(
   const all = await ctx.db
     .query("extractionResults")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB);
+    .take(PAPER_LIMIT * MAX_QUESTIONS_PER_JOB);
 
   const byPaper = new Map<string, Doc<"extractionResults">[]>();
   for (const row of all) {
@@ -95,7 +95,7 @@ export async function loadJobPapersAndResults(
   const papers = await ctx.db
     .query("extractionPapers")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .take(PAPER_LIMIT_MAX);
+    .take(PAPER_LIMIT);
 
   const resultsByPaperRaw = await loadResultsByJob(ctx, jobId);
   const resultsByPaper = new Map<string, Doc<"extractionResults">[]>();

@@ -1,9 +1,7 @@
 "use client";
 
-import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { Package, PanelRightClose } from "lucide-react";
-import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -23,6 +21,7 @@ import { bucketCleared } from "@/lib/toast/bucket";
 import { BucketPaperRow } from "./bucket-paper-row";
 import { AnimatedCount } from "./animated-count";
 import { PaperSidebarShell } from "@/components/extraction/sidebar/paper-sidebar-shell";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 type CapacityState = "normal" | "near" | "at";
 
@@ -208,11 +207,7 @@ export function BucketSidebar({ paperLimit }: { paperLimit?: number }) {
   const isCollapsed = useBucketSidebarStore((s) => s.isCollapsed);
   const toggle = useBucketSidebarStore((s) => s.toggle);
   const readyCount = useReadyCount();
-  const liveLimit = useQuery(
-    api.extraction.bucket.queries.getMyPaperLimit,
-    paperLimit === undefined ? {} : "skip",
-  );
-  const limit = paperLimit ?? liveLimit ?? 1000;
+  const limit = paperLimit ?? PAPER_LIMIT;
 
   const state = capacityState(readyCount, limit);
   const tint = CAPACITY_TINT[state];

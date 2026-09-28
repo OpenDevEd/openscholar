@@ -1,30 +1,14 @@
 /**
- * OpenScholar's plans. `autumn.config.ts` pushes these to Autumn; the app
- * reads them for display and plan gates.
+ * The ids OpenScholar and Autumn agree on. Everything else about plans
+ * (which exist, prices, credits, what they include) is set in Autumn's
+ * dashboard and read from the synced catalog (convex/billing/catalog.ts).
  */
-import { CREDITS_PER_USD } from "../pricing/constants";
 
-export const PLAN_IDS = ["free", "go", "pro"] as const;
-export type PlanId = (typeof PLAN_IDS)[number];
+/** The metered feature every AI charge spends. */
+export const CREDITS_FEATURE = "credits";
 
-export const PAID_PLANS = {
-  go: { usdPerMonth: 5, creditsPerMonth: 3_000 },
-  pro: { usdPerMonth: 20, creditsPerMonth: 15_000 },
-} as const;
+/** Add-on attached once to every new customer. */
+export const SIGNUP_PLAN = "signup_credits";
 
-/** Most plan credits a customer can hold: one month plus a month rolled over. */
-export function planCreditCap(plan: PlanId): number {
-  return plan === "free" ? SIGNUP_CREDITS : PAID_PLANS[plan].creditsPerMonth * 2;
-}
-
-/** Feature flags with a minimum tier compare against these. */
-export const PLAN_TIER: Record<PlanId, number> = { free: 0, go: 10, pro: 20 };
-
-export const SIGNUP_CREDITS = 500;
-
-/** Top-ups are sold in units of $1 and never expire. */
-export const TOPUP = {
-  usdPerUnit: 1,
-  creditsPerUnit: CREDITS_PER_USD,
-  bundles: [10_000, 50_000, 100_000],
-} as const;
+/** Add-on sold in bundles; its credits never expire. */
+export const TOPUP_PLAN = "top_up";

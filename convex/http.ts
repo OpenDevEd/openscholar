@@ -5,6 +5,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { stripeWebhook } from "./billing/stripeWebhook";
+import { autumnWebhook } from "./billing/autumnWebhook";
 import { clerkWebhook } from "./webhooks/clerk";
 import { redeemAdminLoginCode, checkAdminSession } from "./evidenceLibraries/serviceHttp";
 import { receiveSourceStatus } from "./evidenceLibraries/sourceStatus";
@@ -95,6 +96,12 @@ http.route({
   path: "/webhooks/stripe",
   method: "POST",
   handler: stripeWebhook,
+});
+
+http.route({
+  path: "/webhooks/autumn",
+  method: "POST",
+  handler: autumnWebhook,
 });
 
 // ─── Wallet AI Gateway (OpenAI-compatible) ──────────────────

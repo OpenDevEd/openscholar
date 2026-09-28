@@ -62,7 +62,7 @@ export function UpgradeConfirmationDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-          {...(preview.currentPlan === "free" ? { "aria-describedby": undefined } : {})}
+          {...(preview.remainingDays > 0 ? {} : { "aria-describedby": undefined })}
           onEscapeKeyDown={(e) => {
             if (isConfirming) e.preventDefault();
           }}
@@ -78,7 +78,7 @@ export function UpgradeConfirmationDialog({
           <DialogTitle>
             {t("title", { plan: preview.targetPlan.charAt(0).toUpperCase() + preview.targetPlan.slice(1) })}
           </DialogTitle>
-          {preview.currentPlan !== "free" && (
+          {preview.remainingDays > 0 && (
             <DialogDescription>
               {t("prorationExplanation", { days: preview.remainingDays })}
             </DialogDescription>

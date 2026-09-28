@@ -5,7 +5,13 @@ import { useEffect, useState, useMemo } from "react";
 import { useAction } from "convex/react";
 import posthog from "posthog-js";
 import { api } from "@/convex/_generated/api";
-import { PAID_PLANS, PLAN_TIER, SIGNUP_CREDITS } from "@/lib/billing/plans";
+import type { CatalogPlan } from "@/convex/billing/validators";
+import {
+  findPlan,
+  isUpgrade,
+  mainPlans,
+  signupCredits,
+} from "@/lib/billing/catalog";
 import { Button } from "@/components/ui/button";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { motion } from "motion/react";
@@ -17,6 +23,7 @@ import {
   Rocket,
   CreditCard,
   BookOpen,
+  Sparkles,
 } from "lucide-react";
 import { useAppToast } from "@/lib/toast";
 import { toast as sonnerToast } from "sonner";
@@ -32,50 +39,47 @@ import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useTranslations, useFormatter } from "next-intl";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 
-type PlanId = "free" | "go" | "pro" | "enterprise";
-
-type PlanConfig = {
-  id: PlanId;
+type PlanCard = {
+  id: string;
   name: string;
   icon: typeof BookOpen;
-  description: string;
+  description?: string;
   features: string[];
-  tier: number;
-  popular?: boolean;
+  price?: { amount: number; interval: string };
+  popular: boolean;
+  /** The plan every customer starts on. */
+  isDefault: boolean;
 };
 
 /** Enterprise is sold by contract, so it only appears as a contact card. */
+const ENTERPRISE_ID = "enterprise";
 const ENTERPRISE_CREDITS_PER_MONTH = 150_000;
-const ENTERPRISE_TIER = 30;
 
-const tierOf = (plan: PlanId) => (plan === "enterprise" ? ENTERPRISE_TIER : PLAN_TIER[plan]);
+/** Icons for the plans OpenScholar launched with; other plans get a generic one. */
+const PLAN_ICONS: Record<string, typeof BookOpen> = { free: BookOpen, go: Rocket, pro: Zap };
+
+/**
+ * Translated wording for the plans OpenScholar launched with. A description or
+ * highlights set on the plan in Autumn replace it; plans added in Autumn use
+ * Autumn's text.
+ */
+const PLAN_COPY = {
+  free: { description: "freeDescription", highlights: ["freeFeature2", "freeFeature3"] },
+  go: { description: "goDescription", highlights: ["goFeature2", "goFeature3"] },
+  pro: { description: "proDescription", highlights: ["proFeature3", "proFeature4"] },
+} as const;
+
+/** Translated names for Autumn features; others show the name set in Autumn. */
+const FEATURE_NAMES = { extraction: "features.extraction" } as const;
 
 export function Pricing() {
   const toast = useAppToast();
   const t = useTranslations("pricing");
+  const tb = useTranslations("billingPage");
   const tc = useTranslations("common");
   const format = useFormatter();
 
-  const FEATURES = useMemo(() => ({
-    free: [t("freeFeature1", { credits: SIGNUP_CREDITS }), t("freeFeature2"), t("freeFeature3")],
-    go: [t("goFeature1", { credits: PAID_PLANS.go.creditsPerMonth }), t("goFeature2"), t("goFeature3")],
-    pro: [t("proFeature1", { credits: PAID_PLANS.pro.creditsPerMonth }), t("proFeature2"), t("proFeature3"), t("proFeature4")],
-    enterprise: [t("enterpriseFeature1", { credits: ENTERPRISE_CREDITS_PER_MONTH }), t("enterpriseFeature2"), t("enterpriseFeature3"), t("enterpriseFeature4")],
-  }), [t]);
-
-  const showGo = useFeatureFlag("subscriptions.plan.go");
-  const showPro = useFeatureFlag("subscriptions.plan.pro");
   const showEnterprise = useFeatureFlag("subscriptions.plan.enterprise");
-
-  const PLANS: PlanConfig[] = useMemo(() => {
-    const all: PlanConfig[] = [
-      { id: "free", name: t("freePlanName"), icon: BookOpen, description: t("freeDescription"), features: FEATURES.free, tier: tierOf("free") },
-      ...(showGo ? [{ id: "go" as const, name: t("goPlanName"), icon: Rocket, description: t("goDescription"), features: FEATURES.go, tier: tierOf("go") }] : []),
-      ...(showPro ? [{ id: "pro" as const, name: t("proPlanName"), icon: Zap, description: t("proDescription"), features: FEATURES.pro, tier: tierOf("pro"), popular: true }] : []),
-      ...(showEnterprise ? [{ id: "enterprise" as const, name: t("enterprisePlanName"), icon: Building2, description: t("enterpriseDescription"), features: FEATURES.enterprise, tier: ENTERPRISE_TIER }] : []),
-    ];
-    return all;
-  }, [t, FEATURES, showGo, showPro, showEnterprise]);
 
   const choosePlan = useAction(api.billing.actions.choosePlan);
   const keepPlan = useAction(api.billing.actions.keepPlan);
@@ -83,7 +87,7 @@ export function Pricing() {
   const openPortal = useAction(api.billing.actions.openPortal);
 
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
-  const [upgradePreview, setUpgradePreview] = useState<(UpgradePreview & { targetPlan: "go" | "pro" }) | null>(null);
+  const [upgradePreview, setUpgradePreview] = useState<(UpgradePreview & { targetPlanId: string }) | null>(null);
   const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
   const [isConfirmingUpgrade, setIsConfirmingUpgrade] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -91,12 +95,63 @@ export function Pricing() {
   const { phase, retryUserSync } = useAuthReadiness();
   const subscriptionState = useSubscriptionState();
   const account = subscriptionState.account;
+  const catalog = subscriptionState.catalog;
   const isAuthLoading = subscriptionState.isAuthLoading;
   const isSubscriptionLoading = subscriptionState.isQueryLoading;
   const isAnonymous = subscriptionState.isAnonymous;
   const hasResolvedSubscription = subscriptionState.isReady;
   const resolvedPlan = subscriptionState.resolvedPlan;
-  const resolvedTier = subscriptionState.resolvedTier;
+
+  const PLANS: PlanCard[] = useMemo(() => {
+    if (!catalog) return [];
+    const featureName = (id: string) =>
+      id in FEATURE_NAMES
+        ? t(FEATURE_NAMES[id as keyof typeof FEATURE_NAMES])
+        : (catalog.features.find((f) => f.id === id)?.name ?? id);
+    const creditsLine = (plan: CatalogPlan) => {
+      if (plan.autoEnable) {
+        const credits = signupCredits(catalog);
+        return credits > 0 ? [t("creditsOnce", { credits })] : [];
+      }
+      return plan.credits?.interval === "month"
+        ? [t("creditsPerMonth", { credits: plan.credits.included })]
+        : [];
+    };
+    const cards: PlanCard[] = mainPlans(catalog).map((plan) => {
+      const copy = plan.id in PLAN_COPY ? PLAN_COPY[plan.id as keyof typeof PLAN_COPY] : undefined;
+      return {
+        id: plan.id,
+        name: plan.name,
+        icon: PLAN_ICONS[plan.id] ?? Sparkles,
+        description: plan.description ?? (copy ? t(copy.description) : undefined),
+        features: [
+          ...creditsLine(plan),
+          ...plan.features.map(featureName),
+          ...(plan.highlights ?? copy?.highlights.map((key) => t(key)) ?? []),
+        ],
+        price: plan.price,
+        popular: plan.popular,
+        isDefault: plan.autoEnable,
+      };
+    });
+    if (showEnterprise) {
+      cards.push({
+        id: ENTERPRISE_ID,
+        name: t("enterprisePlanName"),
+        icon: Building2,
+        description: t("enterpriseDescription"),
+        features: [
+          t("enterpriseFeature1", { credits: ENTERPRISE_CREDITS_PER_MONTH }),
+          t("enterpriseFeature2"),
+          t("enterpriseFeature3"),
+          t("enterpriseFeature4"),
+        ],
+        popular: false,
+        isDefault: false,
+      });
+    }
+    return cards;
+  }, [catalog, showEnterprise, t]);
 
   // Track pricing page view
   useEffect(() => {
@@ -117,20 +172,20 @@ export function Pricing() {
 
   const goToSignIn = useSignInRedirect();
 
-  // Reorder plans for mobile (PRO first)
-  const orderedPlans = useMemo(() => {
-    if (isMobile) {
-      const mobileOrder: PlanConfig["id"][] = ["pro", "go", "free", "enterprise"];
-      return mobileOrder
-        .map((id) => PLANS.find((p) => p.id === id))
-        .filter((p): p is PlanConfig => p !== undefined);
-    }
-    return PLANS;
-  }, [isMobile, PLANS]);
+  // On mobile, the recommended plans come first.
+  const orderedPlans = useMemo(
+    () => (isMobile ? [...PLANS].sort((a, b) => Number(b.popular) - Number(a.popular)) : PLANS),
+    [isMobile, PLANS],
+  );
 
+  const planName = (id: string) => (catalog && findPlan(catalog, id)?.name) || id;
   const scheduledPlan = account?.changesAt !== undefined ? account.nextPlan : undefined;
   const hasPendingDowngrade = Boolean(
-    scheduledPlan && resolvedTier !== null && tierOf(scheduledPlan) < resolvedTier,
+    catalog &&
+      scheduledPlan &&
+      resolvedPlan &&
+      scheduledPlan !== resolvedPlan &&
+      !isUpgrade(catalog, resolvedPlan, scheduledPlan),
   );
 
   const handleKeepCurrentPlan = async () => {
@@ -165,32 +220,35 @@ export function Pricing() {
     }
   };
 
-  const handleSubscribe = async (planType: "go" | "pro") => {
+  const handleSubscribe = async (planType: string) => {
     if (phase !== "authenticated") {
       goToSignIn();
       return;
     }
-    const isUpgrade = resolvedTier !== null && tierOf(planType) > resolvedTier;
+    const upgrade = Boolean(catalog && resolvedPlan && isUpgrade(catalog, resolvedPlan, planType));
     posthog.capture("pricing_plan_clicked", {
       target_plan: planType,
       current_plan: resolvedPlan ?? "free",
-      is_upgrade: isUpgrade,
+      is_upgrade: upgrade,
     });
 
     try {
       setLoadingPlanId(planType);
-      // A saved card is charged without Checkout, so confirm the amount first.
-      const preview = resolvedPlan && isUpgrade ? await previewPlan({ plan: planType }) : null;
-      if (resolvedPlan && preview?.card) {
+      // A saved card is charged without Checkout, so confirm any amount due
+      // now. Autumn decides that, not the price comparison: a move to a
+      // yearly plan is charged at once even when it's cheaper per month.
+      const preview = resolvedPlan ? await previewPlan({ plan: planType }) : null;
+      if (resolvedPlan && preview?.card && preview.dueNow > 0) {
         const remainingDays = account?.renewsAt
           ? Math.max(0, Math.ceil((account.renewsAt - Date.now()) / 86_400_000))
           : 0;
         setUpgradePreview({
           currency: preview.currency,
           immediateChargeCents: Math.round(preview.dueNow * 100),
-          currentPlan: resolvedPlan,
-          targetPlan: planType,
-          targetPlanCreditsPerMonth: PAID_PLANS[planType].creditsPerMonth,
+          currentPlan: planName(resolvedPlan),
+          targetPlan: planName(planType),
+          targetPlanId: planType,
+          targetPlanCreditsPerMonth: (catalog && findPlan(catalog, planType)?.credits?.included) ?? 0,
           remainingDays,
           card: preview.card,
           lineItems: preview.lineItems.map((item) => ({
@@ -207,7 +265,7 @@ export function Pricing() {
         });
         return;
       }
-      if (!isUpgrade) {
+      if (!upgrade) {
         posthog.capture("downgrade_initiated", { current_plan: resolvedPlan, target_plan: planType });
       }
       const { url } = await choosePlan({ plan: planType });
@@ -234,7 +292,7 @@ export function Pricing() {
         target_plan: upgradePreview.targetPlan,
         proration_amount_cents: upgradePreview.immediateChargeCents,
       });
-      const { url } = await choosePlan({ plan: upgradePreview.targetPlan });
+      const { url } = await choosePlan({ plan: upgradePreview.targetPlanId });
       if (url) {
         window.location.href = url;
         return;
@@ -249,7 +307,7 @@ export function Pricing() {
       sonnerToast.success(td("upgradeSuccess"), {
         description: td("upgradeSuccessCredits", {
           plan: targetPlan,
-          credits: format.number(PAID_PLANS[targetPlan].creditsPerMonth),
+          credits: format.number(upgradePreview.targetPlanCreditsPerMonth),
         }),
         duration: 5000,
       });
@@ -261,14 +319,14 @@ export function Pricing() {
     }
   };
 
-  const getPriceDisplay = (planType: "go" | "pro") =>
-    format.number(PAID_PLANS[planType].usdPerMonth, {
+  const formatPrice = (amount: number) =>
+    format.number(amount, {
       style: "currency",
       currency: "USD",
       minimumFractionDigits: 0,
     });
 
-  const getButtonConfig = (plan: PlanConfig) => {
+  const getButtonConfig = (plan: PlanCard) => {
     if (isAuthLoading || isSubscriptionLoading) {
       return {
         disabled: true,
@@ -287,7 +345,7 @@ export function Pricing() {
       };
     }
 
-    if (!hasResolvedSubscription || !resolvedPlan || resolvedTier === null) {
+    if (!hasResolvedSubscription || !resolvedPlan || !catalog) {
       return {
         disabled: true,
         label: tc("loading"),
@@ -296,11 +354,7 @@ export function Pricing() {
       };
     }
 
-    const currentPlan = resolvedPlan;
-    const currentTier = resolvedTier;
-    const isCurrent = currentPlan === plan.id;
-    const isUpgrade = plan.tier > currentTier;
-    const isDowngrade = plan.tier < currentTier;
+    const isCurrent = resolvedPlan === plan.id;
     const isScheduledTarget = scheduledPlan === plan.id;
 
     if (isCurrent && hasPendingDowngrade) {
@@ -330,7 +384,7 @@ export function Pricing() {
       };
     }
 
-    if (plan.id === "free") {
+    if (plan.isDefault) {
       return {
         disabled: false,
         label: "Manage in Billing Portal",
@@ -339,7 +393,7 @@ export function Pricing() {
       };
     }
 
-    if (plan.id === "enterprise") {
+    if (plan.id === ENTERPRISE_ID) {
       return {
         disabled: false,
         label: tc("contactSupport"),
@@ -348,30 +402,20 @@ export function Pricing() {
       };
     }
 
-    if (isUpgrade) {
-      return {
-        disabled: false,
-        label: tc("upgradeTo", { plan: plan.name }),
-        variant: "default" as const,
-        onClick: () => handleSubscribe(plan.id as "go" | "pro"),
-      };
-    }
-
-    if (isDowngrade) {
+    if (!isUpgrade(catalog, resolvedPlan, plan.id)) {
       return {
         disabled: false,
         label: `Downgrade to ${plan.name}`,
         variant: "outline" as const,
-        onClick: () => handleSubscribe(plan.id as "go" | "pro"),
+        onClick: () => handleSubscribe(plan.id),
       };
     }
 
-    // Fallback (shouldn't reach here)
     return {
-      disabled: true,
-      label: tc("notAvailable"),
-      variant: "outline" as const,
-      onClick: () => {},
+      disabled: false,
+      label: tc("upgradeTo", { plan: plan.name }),
+      variant: "default" as const,
+      onClick: () => handleSubscribe(plan.id),
     };
   };
 
@@ -445,7 +489,7 @@ export function Pricing() {
         <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-700 flex items-center justify-between gap-3">
           <span>
             {t("downgradeScheduledTo")}{" "}
-            <span className="font-semibold capitalize">{scheduledPlan}</span>{" "}
+            <span className="font-semibold">{planName(scheduledPlan!)}</span>{" "}
             {tc("onDate", {
               date: format.dateTime(new Date(account.changesAt), {
                 year: "numeric",
@@ -471,7 +515,8 @@ export function Pricing() {
           "grid gap-6",
           "grid-cols-1",
           "md:grid-cols-2",
-          "lg:grid-cols-4",
+          // One row for however many plans Autumn offers, while they fit.
+          "lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]",
         )}
       >
         {orderedPlans.map((plan, index) => {
@@ -530,15 +575,22 @@ export function Pricing() {
 
                 {/* Price Display */}
                 <div className="mb-2">
-                  {plan.id === "free" ? (
-                    <div className="text-4xl font-bold">{t("freePlanName")}</div>
-                  ) : plan.id === "enterprise" ? (
+                  {plan.id === ENTERPRISE_ID ? (
                     <div className="text-4xl font-bold">{tc("custom")}</div>
-                  ) : (
+                  ) : plan.price ? (
                     <div className="text-4xl font-bold">
-                      {getPriceDisplay(plan.id as "go" | "pro")}
-                      <span className="text-lg text-muted-foreground">{t("perMonth")}</span>
+                      {formatPrice(plan.price.amount)}
+                      <span className="text-lg text-muted-foreground">
+                        {plan.price.interval === "month"
+                          ? t("perMonth")
+                          : tb("perInterval", {
+                              interval:
+                                plan.price.interval === "year" ? tb("intervalYear") : plan.price.interval,
+                            })}
+                      </span>
                     </div>
+                  ) : (
+                    <div className="text-4xl font-bold">{t("freePrice")}</div>
                   )}
                 </div>
 

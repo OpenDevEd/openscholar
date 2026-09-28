@@ -17,7 +17,7 @@ import { v } from "convex/values";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { createError } from "../../lib/errors";
-import { getPaperLimit } from "../bucket/limits";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import type { Doc, Id } from "../../_generated/dataModel";
 
 const collectionIdValidator = v.optional(
@@ -118,7 +118,7 @@ export const listAllIds = query({
   handler: async (ctx, args) => {
     await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
-    const limit = await getPaperLimit(ctx, user._id);
+    const limit = PAPER_LIMIT;
 
     const search = args.query?.trim();
     const needle = search?.toLowerCase();

@@ -5,25 +5,28 @@
  * is the runtime source of truth; this registry provides:
  *   1. Compile-time autocomplete via the FlagName type
  *   2. Static defaults used as fallback while the DB query is loading
+ *   3. The rows `featureFlags/internal:seed` inserts
+ *
+ * A flag is an on/off switch for everyone. `planFeature` also requires the
+ * user's plan in Autumn to grant that feature; which plans do is set in
+ * Autumn's dashboard.
  */
 
 type FlagDefault = {
   enabled: boolean;
-  minimumTier: number;
+  planFeature?: string;
   description: string;
 };
 
 export const FLAG_REGISTRY = {
-  "extraction.enabled": { enabled: true, minimumTier: 0, description: "Master switch for the extraction feature" },
-  "extraction.pdf": { enabled: true, minimumTier: 0, description: "PDF processing capability gate (per-job toggle visibility)" },
-  "extraction.chat": { enabled: false, minimumTier: 0, description: "Chat mode for job creation (paper Q&A)" },
-  "extraction.start": { enabled: true, minimumTier: 20, description: "Start new extraction jobs (Pro+)" },
-  "credits.enabled": { enabled: true, minimumTier: 0, description: "Credit system master switch" },
-  "credits.topups": { enabled: true, minimumTier: 0, description: "On-demand credit top-up purchases" },
-  "subscriptions.enabled": { enabled: true, minimumTier: 0, description: "Subscription/billing system master switch" },
-  "subscriptions.plan.go": { enabled: true, minimumTier: 0, description: "Show the Go plan on the pricing page" },
-  "subscriptions.plan.pro": { enabled: true, minimumTier: 0, description: "Show the Pro plan on the pricing page" },
-  "subscriptions.plan.enterprise": { enabled: true, minimumTier: 0, description: "Show the Enterprise plan on the pricing page" },
+  "extraction.enabled": { enabled: true, description: "Master switch for the extraction feature" },
+  "extraction.pdf": { enabled: true, description: "PDF processing capability gate (per-job toggle visibility)" },
+  "extraction.chat": { enabled: false, description: "Chat mode for job creation (paper Q&A)" },
+  "extraction.start": { enabled: true, planFeature: "extraction", description: "Start new extraction jobs" },
+  "credits.enabled": { enabled: true, description: "Credit system master switch" },
+  "credits.topups": { enabled: true, description: "On-demand credit top-up purchases" },
+  "subscriptions.enabled": { enabled: true, description: "Subscription/billing system master switch" },
+  "subscriptions.plan.enterprise": { enabled: true, description: "Show the Enterprise plan on the pricing page" },
 } as const satisfies Record<string, FlagDefault>;
 
 export type FlagName = keyof typeof FLAG_REGISTRY;

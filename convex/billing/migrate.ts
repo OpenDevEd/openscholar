@@ -13,10 +13,11 @@
  */
 import { v } from "convex/values";
 import { internalAction, internalQuery, type ActionCtx } from "../_generated/server";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { refreshAccount } from "./accounts";
-import { TOPUP } from "../../lib/billing/plans";
+import { SIGNUP_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
+import { findPlan } from "../../lib/billing/catalog";
 
 const BATCH = 25;
 const LIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
@@ -109,8 +110,11 @@ export const legacyAccounts = internalQuery({
 
 type LegacyAccount = (typeof legacyAccountValidator)["type"];
 
-/** The `billing.import` body for one user. Negative ledger balances import as 0. */
-export function importBody(account: LegacyAccount) {
+/**
+ * The `billing.import` body for one user. Negative ledger balances import as
+ * 0. `topUpUnit` is the credits in one top-up billing unit.
+ */
+export function importBody(account: LegacyAccount, topUpUnit: number) {
   const free = Math.max(0, account.free);
   const paid = Math.max(0, account.paid);
   const stripe = account.stripeCustomerId ? ("stripe" as const) : undefined;
@@ -118,7 +122,7 @@ export function importBody(account: LegacyAccount) {
   const billables: Array<Record<string, unknown>> = [
     {
       plan: {
-        plan_id: "signup_credits",
+        plan_id: SIGNUP_PLAN,
         balances: credits(account.subscription ? 0 : free),
       },
     },
@@ -138,11 +142,11 @@ export function importBody(account: LegacyAccount) {
     billables.push({
       ...(stripe ? { processor: stripe } : {}),
       plan: {
-        plan_id: "top_up",
+        plan_id: TOPUP_PLAN,
         feature_quantities: [
           {
             feature_id: "credits",
-            quantity: Math.ceil(paid / TOPUP.creditsPerUnit) * TOPUP.creditsPerUnit,
+            quantity: Math.ceil(paid / topUpUnit) * topUpUnit,
           },
         ],
         balances: credits(paid),
@@ -175,8 +179,13 @@ async function callImport(body: Record<string, unknown>) {
   return { status: response.status, body: await response.text() };
 }
 
-async function importAccount(ctx: ActionCtx, account: LegacyAccount, dryRun: boolean) {
-  const result = await callImport({ ...importBody(account), dry_run: dryRun });
+async function importAccount(
+  ctx: ActionCtx,
+  account: LegacyAccount,
+  topUpUnit: number,
+  dryRun: boolean,
+) {
+  const result = await callImport({ ...importBody(account, topUpUnit), dry_run: dryRun });
   if (result.status !== 200) {
     console.error(`[migrate] ${account.userId} failed (${result.status}): ${result.body}`);
     return false;
@@ -209,13 +218,16 @@ export const run = internalAction({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const catalog = await ctx.runQuery(api.billing.catalog.get, {});
+    const topUpUnit = catalog && findPlan(catalog, TOPUP_PLAN)?.credits?.unitPrice?.billingUnits;
+    if (!topUpUnit) throw new Error("The catalog has no top-up plan with a billing unit; sync it first");
     const page = await ctx.runQuery(internal.billing.migrate.legacyAccounts, {
       cursor: args.cursor ?? null,
     });
     let imported = args.imported ?? 0;
     let failed = args.failed ?? 0;
     for (const account of page.accounts) {
-      if (await importAccount(ctx, account, args.dryRun)) imported += 1;
+      if (await importAccount(ctx, account, topUpUnit, args.dryRun)) imported += 1;
       else failed += 1;
     }
     if (!page.isDone) {

@@ -28,7 +28,6 @@ async function seedAndAuth() {
       await ctx.db.insert("featureFlags", {
         key,
         enabled: true,
-        minimumTier: 0,
         description: `${key} (test)`,
         updatedAt: Date.now(),
       });

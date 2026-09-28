@@ -1,24 +1,24 @@
 /**
- * Stripe webhook. Autumn owns subscriptions and invoices; this endpoint only
- * refreshes the user's cached billing snapshot and reverses credits for
- * refunded top-ups, which Autumn doesn't do.
+ * Stripe webhook. Autumn owns subscriptions and invoices and reports their
+ * changes through its own webhook. This endpoint refreshes the user's cached
+ * snapshot for what Autumn doesn't report, such as a changed card, and reverses
+ * credits for refunded top-ups.
  */
 import Stripe from "stripe";
 import { v } from "convex/values";
 import { httpAction, internalAction, internalQuery } from "../_generated/server";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { autumn } from "./autumn";
 import { refreshAccount } from "./accounts";
-import { TOPUP } from "../../lib/billing/plans";
+import { TOPUP_PLAN } from "../../lib/billing/plans";
+import { findPlan } from "../../lib/billing/catalog";
 
 function stripeClient() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY must be set");
   return new Stripe(key, { httpClient: Stripe.createFetchHttpClient() });
 }
-
-const AUTUMN_SYNC_DELAY_MS = 15_000;
 
 type CustomerRef = string | { id: string } | null | undefined;
 const idOf = (ref: CustomerRef) => (typeof ref === "string" ? ref : ref?.id);
@@ -95,11 +95,6 @@ export const handleEvent = internalAction({
       await reverseRefundedTopUp(ctx, stripe, userId, refundedChargeId);
     }
     await refreshAccount(ctx, userId);
-    // Autumn handles the same Stripe event on its own schedule, so read again
-    // once it has. ponytail: fixed delay, use Autumn's webhooks if it lags more.
-    await ctx.scheduler.runAfter(AUTUMN_SYNC_DELAY_MS, internal.billing.accounts.refresh, {
-      userId,
-    });
     return null;
   },
 });
@@ -126,12 +121,21 @@ async function reverseRefundedTopUp(
   const invoiceId = payments.data[0]?.invoice;
   if (typeof invoiceId !== "string") return;
   const lines = await stripe.invoices.listLineItems(invoiceId);
+  // Autumn bills a bundle as one line of its full price, quantity 1.
   const topUpCents = lines.data
-    .filter((line) => line.metadata?.autumn_product_id === "top_up")
+    .filter((line) => line.metadata?.autumn_product_id === TOPUP_PLAN)
     .reduce((sum, line) => sum + line.amount, 0);
   if (topUpCents <= 0) return;
+  const catalog = await ctx.runQuery(api.billing.catalog.get, {});
+  const unitPrice = catalog && findPlan(catalog, TOPUP_PLAN)?.credits?.unitPrice;
+  if (!unitPrice?.amount) {
+    console.error(`[stripe webhook] no top-up price in the catalog; refund ${chargeId} not reversed`);
+    return;
+  }
 
-  const purchased = (topUpCents / 100 / TOPUP.usdPerUnit) * TOPUP.creditsPerUnit;
+  // ponytail: converts at today's top-up price, so a refund after a price
+  // change is off by that change; record credits per purchase if prices move.
+  const purchased = Math.round((topUpCents / (unitPrice.amount * 100)) * unitPrice.billingUnits);
   const share = (refundedCents: number) =>
     Math.floor((purchased * refundedCents) / charge.amount);
   const previousCents = await ctx.runMutation(internal.billing.usage.claimRefund, {
@@ -145,7 +149,7 @@ async function reverseRefundedTopUp(
 
   const customer = await autumn.customer(userId);
   const topUps = (customer.balances.credits?.breakdown ?? [])
-    .filter((balance) => balance.plan_id === "top_up" && balance.remaining > 0)
+    .filter((balance) => balance.plan_id === TOPUP_PLAN && balance.remaining > 0)
     .sort((a, b) => b.remaining - a.remaining);
   // ponytail: removal stops at zero, so credits spent after the read above
   // make the logged amount slightly high; Autumn's balance is still right.

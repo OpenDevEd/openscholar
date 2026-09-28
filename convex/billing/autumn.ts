@@ -15,6 +15,8 @@ export type AutumnBalance = {
 
 export type AutumnSubscription = {
   plan_id: string;
+  /** Set on the plan Autumn gives every customer automatically. */
+  auto_enable: boolean;
   status: "active" | "scheduled" | "trialing" | "expired" | string;
   past_due: boolean;
   canceled_at: number | null;
@@ -28,7 +30,38 @@ export type AutumnCustomer = {
   subscriptions: AutumnSubscription[];
   purchases?: Array<{ plan_id: string }>;
   balances: { credits?: AutumnBalance };
+  /** Boolean features the customer has, keyed by feature id. */
+  flags?: Record<string, unknown>;
   payment_method?: { card?: { brand: string; last4: string } | null } | null;
+};
+
+export type AutumnPlanItem = {
+  feature_id: string;
+  included: number;
+  unlimited: boolean;
+  reset: { interval: string } | null;
+  price: { amount: number; interval: string; billing_units: number } | null;
+  rollover?: { max: number | null } | null;
+};
+
+export type AutumnPlan = {
+  id: string;
+  name: string;
+  description: string | null;
+  group: string | null;
+  add_on: boolean;
+  auto_enable: boolean;
+  archived: boolean;
+  price: { amount: number; interval: string } | null;
+  items: AutumnPlanItem[];
+  metadata: Record<string, unknown> | null;
+};
+
+export type AutumnFeature = {
+  id: string;
+  name: string;
+  type: "boolean" | "metered" | "credit_system" | string;
+  archived: boolean;
 };
 
 export class AutumnError extends Error {
@@ -87,6 +120,14 @@ async function call<T>(
 }
 
 export const autumn = {
+  listPlans() {
+    return call<{ list: AutumnPlan[] }>("plans.list", {});
+  },
+
+  listFeatures() {
+    return call<{ list: AutumnFeature[] }>("features.list", {});
+  },
+
   customer(customerId: string, data: { email?: string; name?: string } = {}) {
     return call<AutumnCustomer>("customers.get_or_create", {
       customer_id: customerId,

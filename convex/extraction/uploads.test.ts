@@ -28,13 +28,11 @@ async function seed(t: ReturnType<typeof convexTest>) {
     await ctx.db.insert("featureFlags", {
       key: "extraction.enabled",
       enabled: true,
-      minimumTier: 0,
       updatedAt: now,
     });
     await ctx.db.insert("featureFlags", {
       key: "extraction.pdf",
       enabled: true,
-      minimumTier: 0,
       updatedAt: now,
     });
   });
