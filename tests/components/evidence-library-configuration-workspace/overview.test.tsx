@@ -70,6 +70,21 @@ describe("<ConfigurationWorkspace>", () => {
     ).toBeNull();
   });
 
+  it("shows the library's one status word in the header, the running publish in place of Active", async () => {
+    const { unmount } = await renderWorkspace();
+    expect(screen.getByText("evidenceLibraries.status.active")).toBeInTheDocument();
+
+    unmount();
+    queryMock.mockReturnValue(
+      draftResult({
+        operation: { _id: "operation_123", kind: "configuration", status: "running", stage: "deployment", updatedAt: 1 },
+      }),
+    );
+    await renderWorkspace();
+    expect(screen.getByText("evidenceLibraries.operation.applying")).toBeInTheDocument();
+    expect(screen.queryByText("evidenceLibraries.status.active")).toBeNull();
+  });
+
   it("puts Domain in the rail beside Versions, with its own card", async () => {
     await renderWorkspace();
     const rail = within(

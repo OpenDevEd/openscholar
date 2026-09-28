@@ -116,6 +116,7 @@ import {
 } from "./section-shell";
 import { LibraryAddressLink } from "../library-address-link";
 import { AdminAreaLink } from "../admin-area-link";
+import { LibraryStatusChip, libraryStatusOf } from "../library-status-chip";
 import { BAR_ACTION, BAR_LABEL, PanelHeader } from "./panel-header";
 import { StatusChip, StatusIcon } from "./status-chip";
 
@@ -472,6 +473,11 @@ function Workspace({
               backHref={LIBRARIES_HREF}
               backLabel={t("backToLibraries")}
               titleAside={<>
+                <LibraryStatusChip
+                  status={libraryStatusOf(libraryState, operation)}
+                  operation={operationRunning && operation && operation.kind !== "setup" ? operation : null}
+                  labelClassName={BAR_LABEL}
+                />
                 {dirty ? (
                   <StatusChip tone="warning" data-unsaved>
                     <PencilLine aria-hidden />
