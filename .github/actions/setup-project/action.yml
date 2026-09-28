@@ -17,7 +17,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        key="$({ node --version; git ls-files -s package.json package-lock.json patches; } | sha256sum | cut -c1-16)"
+        key="$({ node --version; git ls-files -s .npmrc package.json package-lock.json patches; } | sha256sum | cut -c1-16)"
         cache_root="$HOME/.cache/openscholar-install"
         cache="$cache_root/$key"
 
@@ -27,6 +27,9 @@ runs:
           echo "Restored the installed dependencies for $key."
           exit 0
         fi
+
+        # A cancelled job can leave a half-copied install behind.
+        rm -rf "$cache_root"/.staging-*
 
         npm ci --prefer-offline --no-audit --no-fund
 
