@@ -3279,6 +3279,11 @@
       "setup_failed": "Setup failed",
       "deleting": "Deleting"
     },
+    "operation": {
+      "updating": "更新中",
+      "applying": "適用中",
+      "queued": "待機中"
+    },
     "stages": {
       "queued": "Queued",
       "database": "Database",

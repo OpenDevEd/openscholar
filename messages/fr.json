@@ -3279,6 +3279,11 @@
       "setup_failed": "Setup failed",
       "deleting": "Deleting"
     },
+    "operation": {
+      "updating": "Mise à jour",
+      "applying": "Application",
+      "queued": "En attente"
+    },
     "stages": {
       "queued": "Queued",
       "database": "Database",
