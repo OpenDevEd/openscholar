@@ -1,0 +1,40 @@
+name: Set up OpenScholar
+description: Install Node.js and the locked project dependencies.
+
+runs:
+  using: composite
+  steps:
+    # The runners keep their disk between jobs, so the npm download cache is
+    # already local. Restoring it from GitHub's cache service only costs time.
+    - name: Set up Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: 22
+
+    # Each runner user keeps one finished install per dependency state. A
+    # hard-linked copy takes a few seconds; npm ci takes about 25.
+    - name: Install dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        key="$({ node --version; git ls-files -s package.json package-lock.json patches; } | sha256sum | cut -c1-16)"
+        cache_root="$HOME/.cache/openscholar-install"
+        cache="$cache_root/$key"
+
+        if [ -d "$cache" ]; then
+          rm -rf node_modules
+          cp -al "$cache/node_modules" node_modules
+          echo "Restored the installed dependencies for $key."
+          exit 0
+        fi
+
+        npm ci --prefer-offline --no-audit --no-fund
+
+        staging="$cache_root/.staging-$key"
+        rm -rf "$staging"
+        mkdir -p "$staging"
+        cp -al node_modules "$staging/node_modules"
+        mv "$staging" "$cache"
+        # Keep this install and the one before it, so a pull request with a
+        # dependency change and dev can alternate without reinstalling.
+        ls -1dt "$cache_root"/*/ | tail -n +3 | xargs -r rm -rf

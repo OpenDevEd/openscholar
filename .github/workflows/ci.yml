@@ -15,9 +15,46 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # A pull request run tests the merge result. When it passed, it records the
+  # tree it tested. A push whose tree matches has nothing new to test.
+  tested:
+    name: Tested tree
+    if: github.event_name == 'push'
+    runs-on: openscholar-light
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      passed: ${{ steps.lookup.outputs.passed }}
+    steps:
+      - name: Look for a passed pull request run of this tree
+        id: lookup
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
+          auth="Authorization: Bearer $GITHUB_TOKEN"
+          # Any lookup failure runs the full suite.
+          tree="$(curl -fsS -H "$auth" "$api/git/commits/$GITHUB_SHA" | jq -r .tree.sha)" || tree=""
+          count=0
+          if [ -n "$tree" ]; then
+            count="$(curl -fsS -H "$auth" "$api/actions/artifacts?name=ci-passed-$tree" \
+              | jq '[.artifacts[] | select(.expired | not)] | length')" || count=0
+          fi
+          if [ "$count" -gt 0 ]; then
+            echo "A pull request run already passed tree $tree."
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   changes:
     name: Changes
-    runs-on: openscholar-secret
+    needs: tested
+    if: ${{ !cancelled() && needs.tested.outputs.passed != 'true' }}
+    runs-on: openscholar-light
     timeout-minutes: 5
     outputs:
       runtime_required: ${{ steps.detect.outputs.runtime_required }}
@@ -69,7 +106,7 @@ jobs:
 
   unit-tests:
     name: Unit tests
-    runs-on: openscholar-secret
+    runs-on: openscholar-light
     timeout-minutes: 20
     needs: changes
     env:
@@ -81,13 +118,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund
+      - uses: ./.github/actions/setup-project
 
       - name: Check email source access
         id: email-source-access
@@ -140,7 +171,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: openscholar-secret
+    runs-on: openscholar-light
     timeout-minutes: 20
     needs: changes
     env:
@@ -153,10 +184,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
+      - uses: ./.github/actions/setup-project
 
       - name: Restore the Next.js build cache
         uses: actions/cache@v5
@@ -166,19 +194,14 @@ jobs:
           restore-keys: |
             ${{ runner.name }}-nextjs-${{ hashFiles('package-lock.json') }}-
 
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund
-
       - name: Build
         run: npm run build
 
   e2e-auth:
     runs-on: openscholar-secret
     timeout-minutes: 30
-    needs:
-      - changes
-      - unit-tests
-      - build
+    # Starts with the unit tests and the build instead of after them.
+    needs: changes
     if: needs.changes.outputs.runtime_required == 'true'
     # One test backend: each run pushes its own Convex functions, so runs take turns.
     concurrency:
@@ -203,11 +226,6 @@ jobs:
       NEXT_BUILD_SKIP_VERIFIED_TYPES: "1"
     steps:
       - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
 
       - name: Check auth test environment
         id: auth-environment
@@ -241,9 +259,8 @@ jobs:
           echo "available=false" >> "$GITHUB_OUTPUT"
           printf '::notice::Skipping auth E2E because this pull request has no auth test environment: %s\n' "${missing_vars[*]}"
 
-      - name: Install dependencies
-        if: steps.auth-environment.outputs.available == 'true'
-        run: npm ci --prefer-offline --no-audit --no-fund
+      - if: steps.auth-environment.outputs.available == 'true'
+        uses: ./.github/actions/setup-project
 
       - name: Install Playwright browser
         if: steps.auth-environment.outputs.available == 'true'
@@ -288,10 +305,7 @@ jobs:
   billing-live:
     runs-on: openscholar-secret
     timeout-minutes: 45
-    needs:
-      - changes
-      - unit-tests
-      - build
+    needs: changes
     if: needs.changes.outputs.runtime_required == 'true'
     concurrency:
       group: billing-live-shared-test-user
@@ -322,11 +336,6 @@ jobs:
       PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3001
     steps:
       - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
 
       - name: Check billing test environment
         id: billing-environment
@@ -365,9 +374,8 @@ jobs:
             exit 1
           fi
 
-      - name: Install dependencies
-        if: steps.billing-environment.outputs.available == 'true'
-        run: npm ci --prefer-offline --no-audit --no-fund
+      - if: steps.billing-environment.outputs.available == 'true'
+        uses: ./.github/actions/setup-project
 
       - name: Install Playwright browser
         if: steps.billing-environment.outputs.available == 'true'
@@ -447,13 +455,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund
+      - uses: ./.github/actions/setup-project
 
       - name: Validate billing environment
         run: |
@@ -476,10 +478,11 @@ jobs:
 
   ci:
     name: CI
-    runs-on: openscholar-secret
+    runs-on: openscholar-light
     timeout-minutes: 5
     if: always()
     needs:
+      - tested
       - changes
       - unit-tests
       - build
@@ -488,6 +491,7 @@ jobs:
     steps:
       - name: Require every selected CI lane to pass
         env:
+          TESTED: ${{ needs.tested.outputs.passed }}
           CHANGES: ${{ needs.changes.result }}
           UNIT_TESTS: ${{ needs.unit-tests.result }}
           BUILD: ${{ needs.build.result }}
@@ -495,6 +499,10 @@ jobs:
           AUTH: ${{ needs.e2e-auth.result }}
           BILLING: ${{ needs.billing-live.result }}
         run: |
+          if [ "$TESTED" = true ]; then
+            echo "A pull request run already passed this tree."
+            exit 0
+          fi
           test "$CHANGES" = success
           test "$UNIT_TESTS" = success
           test "$BUILD" = success
@@ -505,3 +513,23 @@ jobs:
             test "$AUTH" = skipped
             test "$BILLING" = skipped
           fi
+
+      - name: Name the tested tree
+        id: tree
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tree="$(curl -fsS -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/git/commits/$GITHUB_SHA" | jq -r .tree.sha)"
+          echo "$tree" > "$RUNNER_TEMP/tested-tree"
+          echo "sha=$tree" >> "$GITHUB_OUTPUT"
+
+      - name: Record the tested tree
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-passed-${{ steps.tree.outputs.sha }}
+          path: ${{ runner.temp }}/tested-tree
+          retention-days: 14
