@@ -2614,6 +2614,8 @@
       "openAlexSearchHint": "Importer les travaux correspondant à une recherche",
       "approved": "Approuvée",
       "pdfProcessing": "Traitement des PDF",
+      "showFullQuery": "Afficher toute la requête",
+      "showLessQuery": "Afficher moins",
       "on": "Activé",
       "off": "Désactivé",
       "openAlex": {

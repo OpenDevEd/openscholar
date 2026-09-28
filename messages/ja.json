@@ -2614,6 +2614,8 @@
       "openAlexSearchHint": "検索に一致する研究をインポート",
       "approved": "承認済み",
       "pdfProcessing": "PDF 処理",
+      "showFullQuery": "クエリ全体を表示",
+      "showLessQuery": "折りたたむ",
       "on": "オン",
       "off": "オフ",
       "openAlex": {

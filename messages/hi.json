@@ -2614,6 +2614,8 @@
       "openAlexSearchHint": "किसी खोज से मेल खाने वाला शोध आयात करें",
       "approved": "स्वीकृत",
       "pdfProcessing": "PDF प्रोसेसिंग",
+      "showFullQuery": "पूरी क्वेरी दिखाएँ",
+      "showLessQuery": "कम दिखाएँ",
       "on": "चालू",
       "off": "बंद",
       "openAlex": {
