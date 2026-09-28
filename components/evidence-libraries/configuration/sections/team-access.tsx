@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyList } from "../fields";
 import { FieldError, SectionCard } from "../section-card";
+import { DisclosureButton } from "../disclosure-button";
 
 type Role = "Owner" | "Editor" | "Creator";
 export type AccessMember = {
@@ -123,6 +124,7 @@ export function TeamAccess({
     (person) => person.id === selectedPerson,
   );
   const [view, setView] = useState<"members" | "invitations">("members");
+  const [rolesOpen, setRolesOpen] = useState(false);
   const filtered = members.filter((member) =>
     `${member.name} ${member.email}`
       .toLowerCase()
@@ -624,11 +626,11 @@ export function TeamAccess({
             : "No members yet.",
         )}
         {!isProfile && (
-          <details className="border-t border-border/50 px-4 py-3 text-xs text-muted-foreground">
-            <summary className="w-fit cursor-pointer rounded-sm py-1 font-medium outline-offset-4">
+          <div className="border-t border-border/50 px-4 py-3 text-xs text-muted-foreground">
+            <DisclosureButton open={rolesOpen} controls="library-roles" onToggle={() => setRolesOpen((open) => !open)}>
               About library roles
-            </summary>
-            <dl className="grid gap-3 pb-1 pt-4 sm:grid-cols-3">
+            </DisclosureButton>
+            {rolesOpen ? <dl id="library-roles" className="grid gap-3 pb-1 pt-3 sm:grid-cols-3">
               {(["Owner", "Editor", "Creator"] as const).map((role) => (
                 <div key={role}>
                   <dt className="mb-1 flex items-center gap-1.5 font-medium text-foreground">
@@ -644,8 +646,8 @@ export function TeamAccess({
                   <dd className="leading-relaxed">{roleHint[role]}</dd>
                 </div>
               ))}
-            </dl>
-          </details>
+            </dl> : null}
+          </div>
         )}
       </SectionCard>
     </Dialog>
