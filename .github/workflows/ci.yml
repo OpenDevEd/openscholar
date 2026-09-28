@@ -170,8 +170,11 @@ jobs:
       - name: Check animation and transition clashes
         run: npm run check:animation-clash
 
+      # The browser and billing jobs build Next.js on the same guest at the same
+      # time. Fifteen jsdom workers on a shared CPU share pushed single tests
+      # past their timeouts; eight finish sooner.
       - name: Run unit and contract tests
-        run: npm run test
+        run: npm run test -- --maxWorkers=8
 
   build:
     name: Build
