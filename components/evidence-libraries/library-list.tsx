@@ -58,7 +58,7 @@ import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "./library-page-shell";
 import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
 import { LIST_FILTER, LIST_TILE, ListEmpty, ListLoading, ListSearch, ListViewTabs } from "./list-controls";
-import { LibraryStatusChip } from "./library-status-chip";
+import { LibraryStatusChip, type LibraryOperation } from "./library-status-chip";
 import { LibraryImage } from "./library-image";
 
 type Role = "Owner" | "Editor" | "Creator";
@@ -76,6 +76,8 @@ type Library = {
   draft?: boolean;
   deletionFailed?: boolean;
   configuration?: string;
+  /** The update or publish a live library is running. */
+  operation?: LibraryOperation | null;
 };
 const roleIcons = { Owner: Crown, Editor: ShieldCheck, Creator: PenLine };
 function LibraryTile() {
@@ -102,7 +104,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   const [retrying, setRetrying] = useState<string | null>(null);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator" } as const;
   const libraries: Library[] = [
-    ...(overviews.data ?? []).map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, faviconUrl: library.faviconUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) })),
+    ...(overviews.data ?? []).map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, faviconUrl: library.faviconUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, operation: library.operation, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) })),
     ...(invitations.data ?? []).map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true })),
   ];
   const [view, setView] = useQueryState("view", parseAsStringLiteral(["libraries", "invitations"]).withDefault("libraries"));
@@ -259,6 +261,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                       {!library.pending && (
                         <LibraryStatusChip
                           status={library.status ?? "active"}
+                          operation={library.operation}
                         />
                       )}
                       <Tooltip>

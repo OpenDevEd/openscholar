@@ -54,10 +54,17 @@ export function StatusIcon({ tone, label, icon, className, ...rest }: HTMLAttrib
 
 export function StatusChip({
   tone,
+  icon,
   className,
   children,
   ...rest
-}: React.HTMLAttributes<HTMLSpanElement> & { tone: StatusTone }) {
+}: React.HTMLAttributes<HTMLSpanElement> & {
+  tone: StatusTone;
+  /** A sign before the words: the tone's own (a check, a spinner, a cross), or a state's own icon. */
+  icon?: LucideIcon | "tone";
+}) {
+  const Icon = icon === "tone" ? STATUS_ICON[tone].icon : icon;
+  const spins = icon === "tone" && tone === "running";
   return (
     <span
       className={cn(
@@ -67,6 +74,7 @@ export function StatusChip({
       )}
       {...rest}
     >
+      {Icon ? <Icon aria-hidden className={spins ? "animate-spin motion-reduce:animate-none" : undefined} /> : null}
       {children}
     </span>
   );

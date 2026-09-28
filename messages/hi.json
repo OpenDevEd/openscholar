@@ -3279,6 +3279,11 @@
       "setup_failed": "Setup failed",
       "deleting": "Deleting"
     },
+    "operation": {
+      "updating": "अपडेट",
+      "applying": "लागू",
+      "queued": "प्रतीक्षा"
+    },
     "stages": {
       "queued": "Queued",
       "database": "Database",

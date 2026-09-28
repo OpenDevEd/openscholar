@@ -46,6 +46,23 @@ describe("Library access list", () => {
     await userEvent.setup().click(screen.getByRole("button", {name: "Retry deletion"}));
     expect(mocks.restart).toHaveBeenCalledWith({libraryId: "delete"});
   });
+  it("shows one status word per library, the running update or publish in place of Active", () => {
+    const update = { from: "a", to: "b", fromImage: "a", toImage: "b" };
+    const rows = [
+      {...libraries[0], _id: "idle", name: "Idle library"},
+      {...libraries[0], _id: "updating", name: "Updating library", operation: {stage: "deployment", runtimeUpdate: update}},
+      {...libraries[0], _id: "applying", name: "Applying library", operation: {stage: "publishing"}},
+      {...libraries[0], _id: "queued", name: "Queued library", operation: {stage: "queued"}},
+    ];
+    mocks.query.mockImplementation((name: string) => ({isReady: true, data: name === "libraries" ? rows : name === "organizations" ? [{id: "org_1", name: "Research team"}] : []}));
+    render(<LibraryList />);
+    const status = (name: string) => within(screen.getByText(name).closest("li")!);
+    expect(status("Idle library").getByText("active")).toBeInTheDocument();
+    for (const [name, word] of [["Updating library", "updating"], ["Applying library", "applying"], ["Queued library", "queued"]]) {
+      expect(status(name).getByText(word)).toBeInTheDocument();
+      expect(status(name).queryByText("active")).not.toBeInTheDocument();
+    }
+  });
   it("opens pending invitations from the invitation email link", () => {
     mocks.query.mockImplementation((name: string) => ({isReady: true, data: name === "libraries" ? libraries : name === "invitations" ? [{invitationId: "invite_1", libraryId: "invited", name: "Invited library", role: "editor", organization: {name: "Partner organization", imageUrl: null}}] : []}));
     render(<LibraryList />, "?view=invitations");
