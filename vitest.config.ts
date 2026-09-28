@@ -38,5 +38,9 @@ export default defineConfig({
     ],
     exclude: ["tests/live-billing/**/*.test.ts"],
     setupFiles: ["./tests/setup.ts"],
+    // CI runs these beside three Next.js builds on the same machine. A jsdom
+    // test that takes a second or two alone, such as rendering 950 bucket
+    // rows, then ran past Vitest's default of five seconds.
+    testTimeout: 15_000,
   },
 });
