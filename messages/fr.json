@@ -223,6 +223,8 @@
   },
   "search": {
     "nothingMatched": "Rien ne correspond à \"{query}\"",
+    "queryErrorTitle": "OpenAlex n'a pas pu exécuter cette requête",
+    "oqlUnknownFieldFix": "Vérifiez le nom du champ, ou placez les mots recherchés dans une clause de texte, par exemple title/abstract has (chatgpt). La référence OQL liste tous les champs.",
     "noResultsNoFilter": "Nous n'avons trouvé aucun article avec vos filtres actuels",
     "tryBroaderTerms": "Essayez des termes plus larges",
     "checkSpelling": "Vérifiez l'orthographe",
@@ -1202,6 +1204,7 @@
     "searchFieldAbstract": "Résumé",
     "searchFieldFulltext": "Texte complet",
     "searchFieldDisplayName": "Nom d'affichage",
+    "searchFieldOql": "Requête OQL",
     "sortRelevance": "Pertinence (plus pertinent)",
     "sortCitationsDesc": "Citations (plus cité)",
     "sortCitationsAsc": "Citations (moins cité)",
@@ -1534,6 +1537,8 @@
   "searchCommand": {
     "researchQuestion": "Question de recherche",
     "keywords": "Mots-clés",
+    "oqlQuery": "Requête OQL",
+    "oqlReference": "Référence OQL",
     "askAI": "Demander à l'IA",
     "translate": "Traduire",
     "clearLanguage": "Effacer la langue",
@@ -1586,6 +1591,7 @@
     "placeholder": {
       "researchQuestion": " Quels sont les effets de la pleine conscience sur l'anxiété ?",
       "keywords": "mindfulness AND (anxiety OR stress)",
+      "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "ex. rendez-le plus spécifique sur les essais cliniques...",
       "screeningQuestion": "Ajouter une question de sélection..."
     }

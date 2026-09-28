@@ -223,6 +223,8 @@
   },
   "search": {
     "nothingMatched": "Nothing matched \"{query}\"",
+    "queryErrorTitle": "OpenAlex could not run this query",
+    "oqlUnknownFieldFix": "Check the field name, or put search words inside a text clause, as in title/abstract has (chatgpt). The OQL reference lists every field.",
     "noResultsNoFilter": "We couldn't find any papers with your current filters",
     "tryBroaderTerms": "Try broader terms",
     "checkSpelling": "Check spelling",
@@ -1192,6 +1194,7 @@
     "searchFieldAbstract": "Abstract",
     "searchFieldFulltext": "Fulltext",
     "searchFieldDisplayName": "Display name",
+    "searchFieldOql": "OQL query",
     "sortRelevance": "Relevance (Most Relevant)",
     "sortCitationsDesc": "Citations (Most Cited)",
     "sortCitationsAsc": "Citations (Least Cited)",
@@ -1524,6 +1527,8 @@
   "searchCommand": {
     "researchQuestion": "Research Question",
     "keywords": "Keywords",
+    "oqlQuery": "OQL query",
+    "oqlReference": "OQL reference",
     "askAI": "Ask AI",
     "translate": "Translate",
     "clearLanguage": "Clear language",
@@ -1576,6 +1581,7 @@
     "placeholder": {
       "researchQuestion": "What are the effects of mindfulness on anxiety?",
       "keywords": "mindfulness AND (anxiety OR stress)",
+      "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "e.g., make it more specific about clinical trials...",
       "screeningQuestion": "Add a screening question..."
     }

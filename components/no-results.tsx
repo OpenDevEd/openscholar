@@ -2,8 +2,10 @@
 
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
-import { SearchX, ArrowRight, Loader2 } from "lucide-react";
+import { SearchX, ArrowRight, Loader2, CircleAlert, BookOpen } from "lucide-react";
 import { useTranslations } from "next-intl";
+import type { QueryErrorDetail } from "@/lib/search/search-error";
+import { OQL_REFERENCE_URL } from "@/lib/openalex/oql";
 
 export type NoResultsVariant = "search" | "filter";
 
@@ -93,6 +95,52 @@ export function NoResults({ query, variant = "search", onTryNewSearch }: NoResul
               <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
             </Button>
           </motion.div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+/** Why OpenAlex rejected the query, where it stopped, and how to fix it. */
+export function QueryErrorState({ detail, oql }: { detail: QueryErrorDetail; oql: boolean }) {
+  const t = useTranslations("search");
+  const tsc = useTranslations("searchCommand");
+  const problem = detail.problem.charAt(0).toUpperCase() + detail.problem.slice(1);
+  // OpenAlex's own fix for this one points at an internal registry.
+  const fix = /^unknown field/i.test(detail.problem) ? t("oqlUnknownFieldFix") : detail.fix;
+
+  return (
+    <div className="flex items-center justify-center py-16 md:py-24">
+      <motion.div
+        role="alert"
+        className="flex flex-col items-center text-center max-w-xl px-4"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+      >
+        <CircleAlert className="mb-6 h-12 w-12 text-destructive opacity-60" aria-hidden />
+        <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
+          {t("queryErrorTitle")}
+        </h2>
+        <p className="mt-2 text-base text-foreground">{problem}</p>
+        {detail.near && (
+          <pre className="mt-5 w-full whitespace-pre-wrap break-all rounded-lg bg-muted/60 px-4 py-3 text-left font-mono text-xs leading-relaxed text-muted-foreground">
+            {detail.near.before}
+            <mark className="rounded-sm bg-destructive/15 px-0.5 text-destructive">{detail.near.token}</mark>
+            {detail.near.after}
+          </pre>
+        )}
+        {fix && <p className="mt-4 text-sm text-muted-foreground leading-relaxed">{fix}</p>}
+        {oql && (
+          <a
+            href={OQL_REFERENCE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <BookOpen className="size-4" aria-hidden />
+            {tsc("oqlReference")}
+          </a>
         )}
       </motion.div>
     </div>

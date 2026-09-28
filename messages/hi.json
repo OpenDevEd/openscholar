@@ -223,6 +223,8 @@
   },
   "search": {
     "nothingMatched": "\"{query}\" से कुछ मेल नहीं खाया",
+    "queryErrorTitle": "OpenAlex यह क्वेरी नहीं चला सका",
+    "oqlUnknownFieldFix": "फ़ील्ड का नाम जाँचें, या खोज के शब्दों को टेक्स्ट क्लॉज़ के अंदर रखें, जैसे title/abstract has (chatgpt)। OQL संदर्भ में सभी फ़ील्ड दिए गए हैं।",
     "noResultsNoFilter": "आपके वर्तमान फ़िल्टर के साथ कोई पेपर नहीं मिला",
     "tryBroaderTerms": "व्यापक शब्द आज़माएं",
     "checkSpelling": "वर्तनी जांचें",
@@ -1202,6 +1204,7 @@
     "searchFieldAbstract": "सारांश",
     "searchFieldFulltext": "पूर्ण पाठ",
     "searchFieldDisplayName": "प्रदर्शन नाम",
+    "searchFieldOql": "OQL क्वेरी",
     "sortRelevance": "प्रासंगिकता (सबसे प्रासंगिक)",
     "sortCitationsDesc": "उद्धरण (सबसे अधिक उद्धृत)",
     "sortCitationsAsc": "उद्धरण (कम उद्धृत)",
@@ -1534,6 +1537,8 @@
   "searchCommand": {
     "researchQuestion": "शोध प्रश्न",
     "keywords": "कीवर्ड",
+    "oqlQuery": "OQL क्वेरी",
+    "oqlReference": "OQL संदर्भ",
     "askAI": "AI से पूछें",
     "translate": "अनुवाद",
     "clearLanguage": "भाषा साफ़ करें",
@@ -1586,6 +1591,7 @@
     "placeholder": {
       "researchQuestion": "चिंता पर माइंडफुलनेस के प्रभाव क्या हैं?",
       "keywords": "mindfulness AND (anxiety OR stress)",
+      "oql": "title/abstract has (chatgpt) and year >= (2020)",
       "enhance": "जैसे, क्लिनिकल ट्रायल्स के बारे में अधिक विशिष्ट बनाएं...",
       "screeningQuestion": "एक स्क्रीनिंग प्रश्न जोड़ें..."
     }

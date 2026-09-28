@@ -162,3 +162,29 @@ describe("resolveSearchInit — Branch C (sync + canonicalize)", () => {
     }
   });
 });
+
+describe("resolveSearchInit — OQL searches keep their query out of the URL", () => {
+  const stored = entry({ id: "abc", query: 'title has (chatgpt) and year >= (2020)', field: "oql" });
+
+  it("restores a stored OQL search to a URL without the query", () => {
+    const d = resolveSearchInit({
+      searchId: "abc",
+      parsedParams: params(),
+      hasExplicitParams: false,
+      existingEntry: stored,
+      currentUrl: "/results/abc",
+    });
+    expect(d).toEqual({ kind: "redirect", url: "/results/abc?field=oql" });
+  });
+
+  it("keeps the stored query when the page opens on that URL", () => {
+    const d = resolveSearchInit({
+      searchId: "abc",
+      parsedParams: params({ field: "oql" }),
+      hasExplicitParams: true,
+      existingEntry: stored,
+      currentUrl: "/results/abc?field=oql",
+    });
+    expect(d).toEqual({ kind: "ready" });
+  });
+});

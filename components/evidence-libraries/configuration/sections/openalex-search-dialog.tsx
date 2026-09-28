@@ -13,11 +13,11 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { approveOpenAlexQuery, type OpenAlexSourceEntry } from "@/lib/evidence-libraries/configuration/sources";
-import { buildOpenAlexSourceQuery, readOpenAlexSourceSearch, sameOpenAlexSourceSearch } from "@/lib/evidence-libraries/openalex-source-query";
+import { buildOpenAlexSourceQuery, openAlexSourceSearchUrl, readOpenAlexSourceSearch, sameOpenAlexSourceSearch } from "@/lib/evidence-libraries/openalex-source-query";
 import { countActiveFilters } from "@/lib/filters";
 import { useIsTablet } from "@/lib/hooks";
 import { DEFAULT_SEARCH_PARAMS, SearchProvider, useSearch, type SearchParams } from "@/lib/search";
-import { buildResultsUrl, paramsToSearchResult, searchResultToParams } from "@/lib/search-params";
+import { paramsToSearchResult, searchResultToParams } from "@/lib/search-params";
 import { useSearchHistoryStore } from "@/lib/store";
 import { sidebarSpring } from "@/lib/ui/sidebar-motion";
 import { isCitedByFilterActive, isCitesFilterActive, isRelatedToFilterActive } from "@/lib/utils";
@@ -282,7 +282,7 @@ export function OpenAlexSearchDialog({
       provider: "openalex", enabled: initial?.enabled ?? true, writebackEnabled: false,
       settings: {
         name: name.trim(), apiKeyMode: initial?.settings.apiKeyMode ?? "platform", downloadPdfs,
-        searchUrl: buildResultsUrl(searchId, params),
+        searchUrl: openAlexSourceSearchUrl(searchId, params),
         approvedQuery: approveOpenAlexQuery(initial?.settings.approvedQuery, canonical),
       },
     });

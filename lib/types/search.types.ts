@@ -40,7 +40,7 @@ export type PaperResult = Omit<Work, 'sustainable_development_goals'> & {
 /**
  * Search field options
  */
-export type SearchField = 'title_and_abstract' | 'title' | 'abstract' | 'fulltext' | 'display_name';
+export type SearchField = 'title_and_abstract' | 'title' | 'abstract' | 'fulltext' | 'display_name' | 'oql';
 
 /**
  * Available search fields with labels
@@ -51,6 +51,7 @@ export const SEARCH_FIELDS = [
   { value: 'abstract', label: 'Abstract' },
   { value: 'fulltext', label: 'Fulltext' },
   { value: 'display_name', label: 'Display name' },
+  { value: 'oql', label: 'OQL query' },
 ] as const;
 
 /**
@@ -85,6 +86,8 @@ export interface YearRangePreset {
 export interface QueryHistoryEntry {
   query: string;
   timestamp: string; // ISO timestamp when this query was made
+  /** Scope the query ran in. Entries from before scopes were saved are keyword queries. */
+  field?: SearchField;
 }
 
 /**

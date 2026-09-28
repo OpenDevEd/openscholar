@@ -63,6 +63,13 @@ export interface SearchResultData {
   };
 }
 
+export interface SetQueryOptions {
+  /** A preview from the query history, which does not add an entry. */
+  skipHistory?: boolean;
+  /** The scope a query-history entry ran in. */
+  field?: SearchField;
+}
+
 /**
  * The complete search context value
  */
@@ -77,6 +84,8 @@ export interface SearchContextValue {
   results: PaperResult[];
   totalCount: number;
   apiUrl: string;
+  /** An OQL search's full request, filters included. OQL cannot be written as `apiUrl`. */
+  oql: string | null;
   originalQuery: string;
   enhancedQuery: string;
   countryNames: string[];
@@ -92,7 +101,7 @@ export interface SearchContextValue {
   error: Error | null;
   
   // Param setters (update URL → SWR auto-refetches)
-  setQuery: (q: string, options?: { skipHistory?: boolean }) => void;
+  setQuery: (q: string, options?: SetQueryOptions) => void;
   setField: (field: SearchField) => void;
   setSort: (sort: string) => void;
   setPage: (page: number) => void;

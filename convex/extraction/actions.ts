@@ -33,6 +33,7 @@ import {
 } from "@/lib/errors/taxonomy";
 
 const OPENALEX_WORKS_URL = "https://api.openalex.org/works";
+const OPENALEX_ROOT_URL = "https://api.openalex.org/";
 
 // Per-mutation chunk size for createPaperRecords. The per-paper payload
 // after the citedByCount/venueName/workType strip is roughly 1.5–2 KB
@@ -217,19 +218,25 @@ export async function runFetchPapersFromHistory(
     );
   }
 
-  const url = `${OPENALEX_WORKS_URL}?${searchParams.toString()}`;
-  console.log(`[fetchPapersFromHistory] Fetching: ${url}`);
+  // An OQL search goes in a POST body to the API root: it outgrows the URL limit.
+  const { oql } = searchFilters.openAlexQuery;
+  const url = `${oql ? OPENALEX_ROOT_URL : OPENALEX_WORKS_URL}?${searchParams.toString()}`;
+  console.log(`[fetchPapersFromHistory] Fetching: ${url}${oql ? ` (OQL, ${oql.length} characters)` : ""}`);
 
   const response = await fetch(url, {
+    method: oql ? "POST" : "GET",
     headers: {
       "User-Agent": `OpenAlex-Count/1.0 (mailto:${contactEmail})`,
       Accept: "application/json",
+      ...(oql ? { "Content-Type": "application/json" } : {}),
     },
+    ...(oql ? { body: JSON.stringify({ oql }) } : {}),
   });
 
   if (!response.ok) {
+    const detail = (await response.text().catch(() => "")).slice(0, 500);
     throw new Error(
-      `OpenAlex API error: ${response.status} ${response.statusText}`,
+      `OpenAlex API error: ${response.status} ${response.statusText} ${detail}`.trim(),
     );
   }
 

@@ -31,6 +31,7 @@ export const enhanceSearchQuery = createAIAction(
   {
     query: v.string(),
     language: v.optional(v.string()),
+    syntax: v.optional(v.literal("oql")),
   },
   v.object({
     enhancedQuery: v.string(),
@@ -86,6 +87,7 @@ export const translateQuery = createAIAction(
   {
     query: v.string(),
     targetLanguage: v.string(),
+    syntax: v.optional(v.literal("oql")),
   },
   v.object({
     translatedQuery: v.string(),

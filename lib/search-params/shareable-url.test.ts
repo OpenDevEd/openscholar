@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildShareableUrl } from "./index";
+import { buildShareableUrl, readSharedOql } from "./index";
 
 describe("buildShareableUrl", () => {
   it("omits the searchId so a shared link isn't tied to a local history entry", () => {
@@ -25,5 +25,16 @@ describe("buildShareableUrl", () => {
     expect(url).toContain("yf=2020");
     expect(url).toContain("yt=2024");
     expect(url).not.toMatch(/\/results\/[^?]/);
+  });
+});
+
+describe("buildShareableUrl — OQL searches", () => {
+  const oql = 'title has ("artificial intelligence" or chatgpt) and title has (education or student)';
+
+  it("carries the OQL query in the fragment, which never reaches the server", () => {
+    const url = new URL(buildShareableUrl("https://example.org", { field: "oql", q: oql }));
+    expect(url.searchParams.get("field")).toBe("oql");
+    expect(url.searchParams.has("q")).toBe(false);
+    expect(readSharedOql(url.hash)).toBe(oql);
   });
 });

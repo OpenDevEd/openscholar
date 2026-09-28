@@ -40,7 +40,7 @@ export { submitNewSearch, restoreFromHistory, createCitationSearch } from './act
 export { detectSearchMode } from './detect-mode';
 
 // Types (interfaces only - no duplicate constants/functions)
-export type { SearchParams, SearchContextValue, SearchResultData } from './types';
+export type { SearchParams, SearchContextValue, SearchResultData, SetQueryOptions } from './types';
 
 // Re-export from canonical location (lib/search-params) to avoid duplication
 export { hasActiveFilters, DEFAULT_SEARCH_PARAMS } from '../search-params';

@@ -3,7 +3,8 @@ vi.mock("@/app/actions/openalex", () => ({ getSearchResults: vi.fn() }));
 import { DEFAULT_SEARCH_PARAMS, buildResultsUrl } from "@/lib/search-params";
 import { readDraft, changedSectionRows } from "./configuration/rules";
 import { approveOpenAlexQuery, type OpenAlexSourceEntry } from "./configuration/sources";
-import { buildOpenAlexSourceQuery, readOpenAlexSourceSearch, sameOpenAlexSourceSearch, sourceSearchHistoryId } from "./openalex-source-query";
+import { validateSectionStructure } from "./configuration/generated-validation";
+import { buildOpenAlexSourceQuery, openAlexSourceSearchUrl, readOpenAlexSourceSearch, sameOpenAlexSourceSearch, sourceSearchHistoryId } from "./openalex-source-query";
 
 const params = {
   ...DEFAULT_SEARCH_PARAMS, q: "education", ft: "date", df: "2020-03-15", dt: "2025-06-30", reg: ["GB"], focus: ["KE"],
@@ -55,5 +56,26 @@ describe("saved source search", () => {
   it("keeps literal punctuation in a quoted query", () => {
     expect(buildOpenAlexSourceQuery({...DEFAULT_SEARCH_PARAMS, q: '"C++ & education,example: value #1"'}))
       .toEqual({filter: 'title_and_abstract.search:"C++ & education,example: value #1",is_retracted:false'});
+  });
+
+  it("imports an OQL search and reopens it with the typed query", () => {
+    const oqlParams = {...DEFAULT_SEARCH_PARAMS, field: "oql", q: "title has (chatgpt) and title has (education)", type: ["article"]};
+    const query = buildOpenAlexSourceQuery(oqlParams)!;
+    expect(query).toEqual({oql: "works where (title has (chatgpt) and title has (education)) and type is (article) and is_retracted is (false)"});
+    expect(buildOpenAlexSourceQuery({...DEFAULT_SEARCH_PARAMS, field: "oql"})).toBeNull();
+    expect(buildOpenAlexSourceQuery({...DEFAULT_SEARCH_PARAMS, field: "oql", q: "(IS_RETRACTED is (false))"})).toBeNull();
+    expect(buildOpenAlexSourceQuery({...DEFAULT_SEARCH_PARAMS, field: "oql", q: "is_retracted is (false) or retracted is (false)"})).toBeNull();
+
+    const source: OpenAlexSourceEntry = {
+      key: "openalex-aied", provider: "openalex", enabled: true, writebackEnabled: false,
+      settings: { name: "AIED", downloadPdfs: false, apiKeyMode: "platform", searchUrl: openAlexSourceSearchUrl("saved-search-2", oqlParams), approvedQuery: approveOpenAlexQuery(undefined, query) },
+    };
+    const reopened = readDraft(changedSectionRows(readDraft([{ sectionKey: "sources", payload: [source] }]), [])).sources[0] as OpenAlexSourceEntry;
+    expect(reopened.settings.approvedQuery.query).toEqual(query);
+    expect(readOpenAlexSourceSearch(reopened)).toMatchObject(oqlParams);
+    // The runtime's configuration contract, synced from new-el, accepts its settings.
+    // (The API key is a separate credential this entry does not carry.)
+    const issues = validateSectionStructure("sources", [source]).issues;
+    expect(issues.filter((issue) => issue.pointer.startsWith("/sources/0/settings"))).toEqual([]);
   });
 });

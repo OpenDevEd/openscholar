@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SearchError, classifySearchError } from "./search-error";
+import { SearchError, classifySearchError, describeQueryError } from "./search-error";
 
 describe("SearchError", () => {
   it("carries the http status as a structured field that survives serialization", () => {
@@ -41,5 +41,29 @@ describe("classifySearchError", () => {
       titleKey: "searchFailed",
       description: "boom",
     });
+  });
+});
+
+// Real OpenAlex OQL errors, captured from api.openalex.org on 2026-09-28.
+describe("describeQueryError", () => {
+  it("splits the problem from the fix and cuts the query around the failing token", () => {
+    const query = "works where (title has (chatgpt) and pub_year >= (2020)) and is_retracted is (false)";
+    const detail = describeQueryError(query, {
+      message: 'unknown field "pub_year"  Fix: check the field name against the properties registry',
+      position: 37,
+    });
+    expect(detail.problem).toBe('unknown field "pub_year"');
+    expect(detail.fix).toBe("check the field name against the properties registry");
+    expect(detail.near).toEqual({
+      before: "works where (title has (chatgpt) and ",
+      token: "pub_year",
+      after: " >= (2020)) and is_retracted is (false)",
+    });
+  });
+
+  it("keeps a message without a position or fix whole", () => {
+    expect(describeQueryError("works where (title has ((chatgpt)", { message: "missing a closing parenthesis  Fix: add a )", position: null }))
+      .toEqual({ problem: "missing a closing parenthesis", fix: "add a )" });
+    expect(describeQueryError("", { message: "Invalid query" })).toEqual({ problem: "Invalid query" });
   });
 });

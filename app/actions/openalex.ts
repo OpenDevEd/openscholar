@@ -4,6 +4,9 @@ import client from "@/lib/openalex";
 import { buildUrl } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
 import type { Works } from "@sickrin/openalex-sdk/dist/src/types/work";
 import type { SearchFilters } from "@/lib/types";
+import type { QueryErrorDetail } from "@/lib/search/search-error";
+import { OQL_FIELD, worksOql } from "@/lib/openalex/oql";
+import { fetchOqlWorks } from "@/lib/openalex/oql-works";
 
 const OPENALEX_BASE_URL = "https://api.openalex.org";
 
@@ -15,7 +18,7 @@ const OPENALEX_BASE_URL = "https://api.openalex.org";
  */
 export type SearchActionResult =
   | { ok: true; data: Works }
-  | { ok: false; status: number | null; message: string };
+  | { ok: false; status: number | null; message: string; detail?: QueryErrorDetail };
 
 /**
  * The OpenAlex SDK swallows the response body on failure (it throws a lossy
@@ -62,6 +65,12 @@ async function callOpenAlexSDK(
   filters: SearchFilters
 ): Promise<SearchActionResult> {
   const searchParams = createSearchParameters(query, filters);
+  if (filters.searchField === OQL_FIELD) {
+    return fetchOqlWorks(worksOql(query, searchParams.filter ?? {}), {
+      perPage: searchParams.perPage,
+      sort: filters.sortBy,
+    });
+  }
   try {
     const data = (await client.works(searchParams)) as Works;
     return { ok: true, data };

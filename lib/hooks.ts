@@ -7,10 +7,10 @@ import { create } from "zustand";
 import { getEffectiveSearchId, DEFAULT_FILTERS } from "@/lib/utils";
 import { useSearchHistoryStore } from "@/lib/store";
 import { DateRange } from "react-day-picker";
-import type { SearchField, SearchFilters } from '@/lib/types';
+import type { QueryHistoryEntry, SearchField, SearchFilters } from '@/lib/types';
 
 // Import the new search context
-import { useSearchOptional, type SearchParams } from './search';
+import { useSearchOptional, type SearchParams, type SetQueryOptions } from './search';
 
 // Shared store for query history navigation index, keyed by searchId.
 // Lives here (not in lib/store) because it's an implementation detail of useQueryHistory.
@@ -95,7 +95,7 @@ export function useEffectiveSearchId(): string | undefined {
  */
 export function useQueryHistory(
   searchId: string | null | undefined,
-  setQuery: ((q: string, options?: { skipHistory?: boolean }) => void) | undefined,
+  setQuery: ((q: string, options?: SetQueryOptions) => void) | undefined,
 ) {
   const key = searchId ?? '';
   const currentSearchResult = useSearchHistoryStore((state) =>
@@ -116,6 +116,13 @@ export function useQueryHistory(
     prevHistoryLengthRef.current = queryHistory.length;
   }, [queryHistory.length, key, setHistoryIndex]);
 
+  // Entries from before scopes were saved are keyword queries.
+  const showEntry = useCallback(
+    (entry: QueryHistoryEntry) =>
+      setQuery?.(entry.query, { skipHistory: true, field: entry.field ?? DEFAULT_FILTERS.field }),
+    [setQuery],
+  );
+
   const canGoPrevious = queryHistory.length > 0 && historyIndex > 0;
   const canGoNext = queryHistory.length > 0 && historyIndex < queryHistory.length - 1;
 
@@ -123,17 +130,17 @@ export function useQueryHistory(
     if (canGoPrevious) {
       const prevIndex = historyIndex - 1;
       setHistoryIndex(key, prevIndex);
-      setQuery?.(queryHistory[prevIndex].query, { skipHistory: true });
+      showEntry(queryHistory[prevIndex]);
     }
-  }, [canGoPrevious, historyIndex, queryHistory, setQuery, key, setHistoryIndex]);
+  }, [canGoPrevious, historyIndex, queryHistory, showEntry, key, setHistoryIndex]);
 
   const goToNext = useCallback(() => {
     if (canGoNext) {
       const nextIndex = historyIndex + 1;
       setHistoryIndex(key, nextIndex);
-      setQuery?.(queryHistory[nextIndex].query, { skipHistory: true });
+      showEntry(queryHistory[nextIndex]);
     }
-  }, [canGoNext, historyIndex, queryHistory, setQuery, key, setHistoryIndex]);
+  }, [canGoNext, historyIndex, queryHistory, showEntry, key, setHistoryIndex]);
 
   return {
     queryHistory,

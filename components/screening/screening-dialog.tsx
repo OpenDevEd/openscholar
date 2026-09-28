@@ -18,6 +18,7 @@ import { Loader2, AlertCircle, Import, Coins } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Slider } from "@/components/ui/slider";
 import { useSearchOptional } from "@/lib/search";
+import { effectiveSort } from "@/lib/search-params";
 import { useSearchHistoryStore } from "@/lib/store";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { toast } from "sonner";
@@ -251,7 +252,7 @@ export function ScreeningDialog({
   // -----------------------------------------------------------------------
 
   const handleSubmit = useCallback(async () => {
-    if (!search?.apiUrl) return;
+    if (!search?.apiUrl && !search?.oql) return;
     setIsSubmitting(true);
     try {
       // 1. Fetch papers from OpenAlex, then slice to the user-selected range.
@@ -259,7 +260,10 @@ export function ScreeningDialog({
       //    good to 10k results) until we've covered the range or run out.
       const [rangeStart, rangeEnd] = paperRange;
       const PER_PAGE = 200;
-      const url = new URL(search.apiUrl);
+      // An OQL search is POSTed to the API root: it outgrows a URL.
+      const oql = search.oql;
+      const url = new URL(oql ? "https://api.openalex.org/" : search.apiUrl);
+      if (oql) url.searchParams.set("sort", effectiveSort(search.params));
       // apiUrl is the SDK's meta.url, which carries `cursor=*`. We paginate with
       // `page`, and OpenAlex rejects `cursor` + `page` together ("Cannot use page
       // parameter with cursor"), so drop the cursor before paging.
@@ -269,7 +273,12 @@ export function ScreeningDialog({
       const pagesNeeded = Math.ceil(rangeEnd / PER_PAGE);
       for (let page = 1; page <= pagesNeeded; page++) {
         url.searchParams.set("page", String(page));
-        const response = await fetch(url.toString());
+        const response = await fetch(
+          url.toString(),
+          oql
+            ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oql }) }
+            : undefined,
+        );
         if (!response.ok) {
           throw new Error(`OpenAlex API error: ${response.status}`);
         }
@@ -345,6 +354,8 @@ export function ScreeningDialog({
     }
   }, [
     search?.apiUrl,
+    search?.oql,
+    search?.params,
     keyedQuestions,
     scoringRules,
     starThresholds,

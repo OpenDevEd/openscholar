@@ -23,10 +23,13 @@ import { searchParamsParsers, DEFAULT_SEARCH_PARAMS } from '../search-params/par
 import { buildShareableUrl, effectiveSort } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
 import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
+import { SearchError, rejectedQuery } from './search-error';
+import { OQL_FIELD } from '../openalex/oql';
+import { buildOpenAlexWorksQuery } from '../openalex/works-query';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
 import { validateAndExpandKeywordsSilently } from '../keyword-validation';
 import type { SearchFilters, SearchField, PaperResult } from '../types';
-import type { SearchContextValue, SearchParams, SearchResultData } from './types';
+import type { SearchContextValue, SearchParams, SearchResultData, SetQueryOptions } from './types';
 import {
   SEARCH_EVENT_SCHEMA_VERSION,
   SEARCH_FETCH_PARAM_KEYS,
@@ -111,14 +114,37 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     history: 'push',
     shallow: false,
   });
-  const urlParams = local ? local.params : routeUrlParams;
+  // An OQL query can outgrow a URL, so an OQL search keeps it only in its history entry.
+  const storedQuery = useSearchHistoryStore(
+    (state) => state.searchHistory.find((entry) => entry.id === searchId)?.query ?? '',
+  );
+  const routeIsOql = routeUrlParams.field === OQL_FIELD;
+  const routeSearchParams = useMemo(
+    () => (routeIsOql ? { ...routeUrlParams, q: storedQuery } : routeUrlParams),
+    [routeIsOql, routeUrlParams, storedQuery],
+  );
+  const urlParams = local ? local.params : routeSearchParams;
   const onLocalParamsChange = local?.onParamsChange;
   const setUrlParams = useCallback(
     (updates: Partial<SearchParams>, options?: { scroll?: boolean }) => {
-      if (onLocalParamsChange) onLocalParamsChange(updates);
-      else void setRouteUrlParams(updates as Parameters<typeof setRouteUrlParams>[0], options);
+      const fromOql = (local ? local.params.field : routeUrlParams.field) === OQL_FIELD;
+      const toOql = (updates.field ?? (local ? local.params.field : routeUrlParams.field)) === OQL_FIELD;
+      // Switching between keywords and OQL without a query starts an empty one,
+      // since neither reads the other. The old query stays in the query history.
+      const switching = toOql !== fromOql;
+      if (onLocalParamsChange) {
+        return onLocalParamsChange(switching && updates.q === undefined ? { ...updates, q: '' } : updates);
+      }
+      if (switching && updates.q === undefined && searchId) {
+        useSearchHistoryStore.getState().updateSearchResult(searchId, { query: '' });
+      }
+      const q = toOql ? '' : updates.q ?? (switching ? '' : undefined);
+      void setRouteUrlParams(
+        { ...updates, ...(q === undefined ? {} : { q }) } as Parameters<typeof setRouteUrlParams>[0],
+        options,
+      );
     },
-    [onLocalParamsChange, setRouteUrlParams],
+    [onLocalParamsChange, setRouteUrlParams, routeUrlParams.field, local, searchId],
   );
 
   const currentParams = urlParams as SearchParams;
@@ -373,8 +399,10 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
             pendingRequestsRef.current.delete(paramsJson);
           }
         }
-        
-        toast.search.failed(err);
+
+        // An OQL query OpenAlex rejects shows its reason under the query box instead.
+        const rejectedOql = currentParams.field === OQL_FIELD && err instanceof SearchError && err.status === 400;
+        if (!rejectedOql) toast.search.failed(err);
       },
     }
   );
@@ -464,20 +492,29 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   ]);
   
   // Param setters - just update URL, SWR auto-refetches
-  const setQuery = useCallback((q: string, options?: { skipHistory?: boolean }) => {
+  const setQuery = useCallback((q: string, options?: SetQueryOptions) => {
     // Get current query from store to check if it changed
     const existing = getSearchResult(searchId);
     const currentQuery = existing?.query ?? '';
-    
+    // A query-history step onto a query from the other scope (keywords or OQL) brings its scope.
+    const field = options?.field && (options.field === OQL_FIELD) !== (urlParams.field === OQL_FIELD)
+      ? options.field
+      : urlParams.field;
+    const oqlInvolved = !local && (field === OQL_FIELD || routeIsOql);
+
     // Update URL (source of truth for filtering)
-    setUrlParams({ q });
+    setUrlParams(field === urlParams.field ? { q } : { q, field });
+    if (field !== urlParams.field) syncToStore({ field });
     
     // Track in history if query actually changed and we have a valid searchId
     // Skip history tracking when navigating through history (preview mode)
     if (searchId && q !== currentQuery && !options?.skipHistory) {
-      addQueryToHistory(searchId, q);
+      addQueryToHistory(searchId, q, field as SearchField);
+    } else if (searchId && oqlInvolved) {
+      // The URL does not carry an OQL query, so the entry must follow previews too.
+      updateSearchResult(searchId, { query: q });
     }
-  }, [setUrlParams, searchId, getSearchResult, addQueryToHistory]);
+  }, [setUrlParams, searchId, getSearchResult, addQueryToHistory, local, routeIsOql, updateSearchResult, urlParams.field, syncToStore]);
   
   const setField = useCallback((field: SearchField) => {
     setUrlParams({ field });
@@ -726,6 +763,12 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     includeRetracted: urlParams.retracted,
   }), [urlParams]);
   
+  const rejected = rejectedQuery(error) !== null;
+  const oql = useMemo(
+    () => (currentParams.field === OQL_FIELD ? buildOpenAlexWorksQuery(currentParams)?.oql ?? null : null),
+    [currentParams],
+  );
+
   // Build context value
   const value: SearchContextValue = useMemo(() => ({
     searchId,
@@ -733,9 +776,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     params: urlParams as SearchParams,
     
     // Results
-    results: (data?.results?.results || []) as PaperResult[],
-    totalCount: data?.results?.meta?.count || 0,
+    // A rejected query ran nothing, so the last search's results are not shown as its own.
+    results: (rejected ? [] : data?.results?.results || []) as PaperResult[],
+    totalCount: rejected ? 0 : data?.results?.meta?.count || 0,
     apiUrl: data?.results?.meta?.url || '',
+    oql,
     originalQuery: data?.originalQuery || '',
     enhancedQuery: data?.enhancedQuery || '',
     countryNames: data?.countryNames || [],
@@ -776,6 +821,8 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     searchId,
     urlParams,
     data,
+    oql,
+    rejected,
     isLoading,
     isValidating,
     error,

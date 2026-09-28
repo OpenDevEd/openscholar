@@ -6,9 +6,13 @@ export type AIOperationType =
   | 'translatePaperContent'
   | 'generateScreeningResponses'
 
+/** The query language a search is written in: OpenAlex Query Language, or classic keywords when unset. */
+export type QuerySyntax = 'oql'
+
 export interface EnhanceSearchQueryInput {
   query: string
   language?: string
+  syntax?: QuerySyntax
 }
 
 export interface EnhanceSearchQueryOutput {
@@ -29,6 +33,7 @@ export interface GenerateScreeningQuestionsOutput {
 export interface TranslateQueryInput {
   query: string
   targetLanguage: string
+  syntax?: QuerySyntax
 }
 
 export interface TranslateQueryOutput {

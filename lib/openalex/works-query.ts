@@ -3,21 +3,7 @@ import type { SearchParams } from "@/lib/search";
 import { prepareOpenAlexSearch, type GetSearchResultsWithFiltersOptions } from "@/lib/search-utils";
 import { createSearchParameters } from "@/lib/utils";
 import type { OpenAlexWorksQuery } from "./search-params";
-
-/**
- * Nested filters as OpenAlex paths, `{topics: {id: "T1"}}` to `topics.id: ["T1"]`.
- * Same output as the SDK's `getPaths`, whose module also loads its HTTP client.
- */
-function filterPaths(value: object, path: string[] = [], result: Record<string, unknown[]> = {}) {
-  for (const [key, item] of Object.entries(value)) {
-    const next = [...path, key];
-    for (const entry of Array.isArray(item) ? item : [item]) {
-      if (typeof entry === "object" && entry !== null) filterPaths(entry, next, result);
-      else (result[next.join(".")] ??= []).push(entry);
-    }
-  }
-  return result;
-}
+import { filterPaths, OQL_FIELD, worksOql } from "./oql";
 
 /**
  * The exact request the results page makes for these params: the same keyword
@@ -36,6 +22,7 @@ export function buildOpenAlexWorksQuery(
     citesItemId: prepared.effectiveCitesItemId ?? prepared.effectiveFilters.citesItemId,
     relatedToItemId: prepared.effectiveRelatedToItemId ?? prepared.effectiveFilters.relatedToItemId,
   });
+  if (params.field === OQL_FIELD) return { oql: worksOql(prepared.finalApiQuery, request.filter ?? {}) };
   const filter = Object.entries(filterPaths(request.filter ?? {}))
     .map(([key, values]) => `${key}:${values.join("|")}`)
     .join(",");

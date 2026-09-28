@@ -930,6 +930,7 @@ function readSources(payload: unknown): EvidenceSourceEntry[] {
               query: {
                 ...(text(query.filter) ? { filter: text(query.filter) } : {}),
                 ...(text(query.search) ? { search: text(query.search) } : {}),
+                ...(text(query.oql) ? { oql: text(query.oql) } : {}),
               },
             },
             downloadPdfs: flag(settings.downloadPdfs, false),

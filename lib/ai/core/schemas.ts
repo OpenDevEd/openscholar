@@ -5,7 +5,7 @@ export const queryEnhancementSchema = z.object({
   enhancedQuery: z
     .string()
     .describe(
-      'A complete, syntactically valid Elasticsearch Boolean query string. Must have balanced parentheses and no unfinished groups.'
+      'A complete, syntactically valid Elasticsearch Boolean query string. Must have balanced parentheses and no unfinished groups. For an OpenAlex Query Language search, an OQL query instead.'
     ),
 })
 

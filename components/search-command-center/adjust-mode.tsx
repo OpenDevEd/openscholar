@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { QueryHistoryNav } from "./components/query-history-nav";
 import { QueryTextarea } from "./components/query-textarea";
+import { OqlQueryStatus } from "./components/oql-query-status";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 import { useSearch } from "@/lib/search";
 import { useQueryHistory } from "@/lib/hooks";
 import { useAppToast } from "@/lib/toast";
@@ -55,6 +57,7 @@ export function AdjustMode({ searchId, isLoading, isValidating, allowEmpty = fal
   } = useQueryHistory(searchId, search.setQuery);
 
   const isFormDisabled = isLoading || isValidating || isEnhancing;
+  const isOql = search.params.field === OQL_FIELD;
 
   // Handle manual query submission
   const submitQuery = useCallback(() => {
@@ -84,7 +87,7 @@ export function AdjustMode({ searchId, isLoading, isValidating, allowEmpty = fal
 
 User enhancement instructions: "${aiInstructions}"
 
-Please enhance this academic search query according to the user's specific instructions while following Elasticsearch Query String Query syntax rules.${
+Please enhance this academic search query according to the user's specific instructions while following ${isOql ? "OpenAlex Query Language (OQL) rules" : "Elasticsearch Query String Query syntax rules"}.${
         urlLanguage
           ? ` The output MUST be translated to ${languageName} if it is not already in that language.`
           : ""
@@ -93,6 +96,7 @@ Please enhance this academic search query according to the user's specific instr
       const response = await enhanceQuery({
         query: enhancedPrompt,
         language: urlLanguage || localeToLanguageCode(locale) || undefined,
+        syntax: isOql ? "oql" : undefined,
       });
 
       search.setQuery(response.enhancedQuery);
@@ -146,7 +150,7 @@ Please enhance this academic search query according to the user's specific instr
 
       {/* Editable query, with the same box the import search dialog uses */}
       <QueryTextarea
-        label={t("searchCommand.currentQuery")}
+        label={isOql ? t("searchCommand.oqlQuery") : t("searchCommand.currentQuery")}
         labelAddon={
           <QueryHistoryNav
             historyIndex={historyIndex}
@@ -167,6 +171,7 @@ Please enhance this academic search query according to the user's specific instr
         allowEmpty={allowEmpty}
         flash={queryFlash}
       />
+      {isOql && <OqlQueryStatus error={search.error} />}
     </div>
   );
 }

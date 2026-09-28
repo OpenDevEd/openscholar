@@ -55,7 +55,7 @@ interface SearchHistoryState {
   searchHistory: SearchResult[]
   addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory' | 'screeningQuestions' | 'screeningResponses' | 'questionHistory'> & { questionHistory?: QuestionHistoryEntry[] }) => string
   updateSearchResult: (id: string, updates: Partial<Omit<SearchResult, 'id' | 'createdAt'>>) => void
-  addQueryToHistory: (id: string, query: string) => void
+  addQueryToHistory: (id: string, query: string, field: SearchField) => void
   addQuestionToHistory: (id: string, question: string) => void
   addScreeningQuestion: (id: string, question: string) => void
   updateScreeningQuestion: (id: string, questionIndex: number, updates: Partial<ScreeningQuestionEntry>) => void
@@ -305,7 +305,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
         const newResult: SearchResult = {
           ...result,
           id,
-          queryHistory: [{ query: result.query, timestamp: now }],
+          queryHistory: [{ query: result.query, timestamp: now, field: result.field }],
           questionHistory: result.questionHistory || [],
           screeningQuestions: [],
           screeningResponses: {},
@@ -328,7 +328,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           ),
         }));
       },
-      addQueryToHistory: (id, query) => {
+      addQueryToHistory: (id, query, field) => {
         const now = new Date().toISOString();
         set((state) => ({
           searchHistory: state.searchHistory.map((item) =>
@@ -336,7 +336,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
               ? {
                   ...item,
                   query,
-                  queryHistory: [...item.queryHistory, { query, timestamp: now }],
+                  queryHistory: [...item.queryHistory, { query, timestamp: now, field }],
                   updatedAt: now
                 }
               : item
@@ -552,7 +552,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           const newResult: SearchResult = {
             id,
             query,
-            queryHistory: [{ query, timestamp: now }],
+            queryHistory: [{ query, timestamp: now, field: field as SearchField }],
             questionHistory: [],
             screeningQuestions: [],
             screeningResponses: {},

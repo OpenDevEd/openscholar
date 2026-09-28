@@ -20,9 +20,10 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { useRouter, useSearchParams, useParams, usePathname } from 'next/navigation';
 import { useSearchHistoryStore } from '../store';
 import { searchResultToParams } from '../search-params/converters';
-import { buildResultsUrl, parseSearchParamsFromUrl } from '../search-params';
+import { buildResultsUrl, parseSearchParamsFromUrl, readSharedOql } from '../search-params';
+import { OQL_FIELD } from '../openalex/oql';
 import { resolveSearchInit } from './resolve-search-init';
-import type { SearchResult } from '../types';
+import type { SearchField, SearchResult } from '../types';
 
 interface SearchInitializerProps {
   children: ReactNode;
@@ -49,7 +50,10 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
     if (!searchParams) return; // SSR
     if (status !== 'pending') return;
 
-    const parsedParams = parseSearchParamsFromUrl(searchParams);
+    const urlParams = parseSearchParamsFromUrl(searchParams);
+    // A shared OQL search carries its query in the link's fragment.
+    const sharedOql = urlParams.field === OQL_FIELD ? readSharedOql(window.location.hash) : null;
+    const parsedParams = sharedOql ? { ...urlParams, q: sharedOql } : urlParams;
     const hasExplicitParams = searchParams.toString() !== '';
     const existingEntry = searchId ? getSearchResult(searchId) : undefined;
     const currentUrl = `${pathname}${hasExplicitParams ? `?${searchParams.toString()}` : ''}`;
@@ -79,7 +83,7 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
         return;
       case 'sync':
         if (decision.addQuery !== null) {
-          addQueryToHistory(searchId, decision.addQuery);
+          addQueryToHistory(searchId, decision.addQuery, parsedParams.field as SearchField);
         }
         updateSearchResult(searchId, decision.filterUpdates);
         if (decision.redirectTo) {

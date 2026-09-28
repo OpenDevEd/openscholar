@@ -24,6 +24,7 @@ import {
   type NewSearchResultData,
 } from "../search-params/converters";
 import { buildResultsUrl } from "../search-params";
+import { OQL_FIELD } from "../openalex/oql";
 import type { SearchResult } from "../types";
 
 export type SearchInitFilterUpdates = Omit<NewSearchResultData, "query" | "count">;
@@ -75,8 +76,12 @@ function normalizeUrl(url: string): string {
 }
 
 export function resolveSearchInit(input: SearchInitInput): SearchInitDecision {
-  const { searchId, parsedParams, hasExplicitParams, existingEntry, currentUrl } =
-    input;
+  const { searchId, hasExplicitParams, existingEntry, currentUrl } = input;
+  // An OQL search's query is not in its URL. Its history entry holds it.
+  const parsedParams =
+    input.parsedParams.field === OQL_FIELD && existingEntry
+      ? { ...input.parsedParams, q: existingEntry.query }
+      : input.parsedParams;
 
   // Branch A: missing OR unknown id -> create.
   if (!searchId || !existingEntry) {

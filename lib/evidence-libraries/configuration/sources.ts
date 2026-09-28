@@ -9,7 +9,8 @@ export const OPENALEX_API_CREDENTIAL_KEY = credentialKeyFor(
   OPENALEX_API_KEY_INSTANCE,
 );
 
-export type OpenAlexQuery = { filter?: string; search?: string };
+/** What an import asks OpenAlex: a classic search and filter, or one OQL query with the filters in it. */
+export type OpenAlexQuery = { filter?: string; search?: string; oql?: string };
 
 export type OpenAlexSourceEntry = {
   key: string;
@@ -47,7 +48,7 @@ function queryFingerprint(value: unknown): string {
     return JSON.stringify(value);
   }
   const query = value as Record<string, unknown>;
-  return JSON.stringify({ filter: query.filter, search: query.search });
+  return JSON.stringify({ filter: query.filter, search: query.search, oql: query.oql });
 }
 
 export function approveOpenAlexQuery(

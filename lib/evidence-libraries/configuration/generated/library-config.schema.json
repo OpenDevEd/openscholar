@@ -1563,7 +1563,7 @@
 									},
 									"searchUrl": {
 										"type": "string",
-										"maxLength": 16384,
+										"maxLength": 262144,
 										"pattern": "^\\/results\\/[A-Za-z0-9-]+(?:\\?|$)"
 									},
 									"approvedQuery": {
@@ -1591,6 +1591,11 @@
 														"type": "string",
 														"minLength": 1,
 														"maxLength": 2048
+													},
+													"oql": {
+														"type": "string",
+														"minLength": 1,
+														"maxLength": 131072
 													}
 												},
 												"additionalProperties": false

@@ -33,6 +33,7 @@ import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { cn } from "@/lib/utils";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 import { subtleSpring } from "@/lib/animation-config";
 import { ResultsTranslationControl } from "./components/results-translation-control";
 import { ScreeningDialog } from "@/components/screening/screening-dialog";
@@ -81,6 +82,8 @@ export function SearchCommandFooter({
   const format = useFormatter();
   const shouldReduceMotion = useReducedMotion();
   const search = useSearchOptional();
+  // AI rewrites in the search's own query language.
+  const syntax = search?.params?.field === OQL_FIELD ? ("oql" as const) : undefined;
   const { currentQuestion } = useCurrentQuestionStore();
   const { user } = useUser();
 
@@ -173,6 +176,7 @@ Return a more inclusive version of this query.`;
       const result = await enhanceQuery({
         query: broadenPrompt,
         language: currentLanguage || localeToLanguageCode(locale) || undefined,
+        syntax,
       });
 
       if (search) {
@@ -226,6 +230,7 @@ Return a more targeted version of this query.`;
       const result = await enhanceQuery({
         query: narrowPrompt,
         language: currentLanguage || localeToLanguageCode(locale) || undefined,
+        syntax,
       });
 
       if (search) {
