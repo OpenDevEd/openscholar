@@ -232,6 +232,8 @@ jobs:
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
       E2E_CLERK_ORGANIZATION_ID: ${{ secrets.E2E_CLERK_ORGANIZATION_ID }}
       E2E_BASE_URL: http://localhost:3000
+      # Anonymous OpenAlex search is paused whenever its cluster is under load.
+      OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
       PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3000
       NEXT_BUILD_SKIP_VERIFIED_TYPES: "1"
     steps:
@@ -345,6 +347,8 @@ jobs:
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
       E2E_CLERK_ORGANIZATION_ID: ${{ secrets.E2E_CLERK_ORGANIZATION_ID }}
       E2E_BASE_URL: http://localhost:3001
+      # Anonymous OpenAlex search is paused whenever its cluster is under load.
+      OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
       PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3001
     steps:
       - uses: actions/checkout@v6
@@ -463,6 +467,8 @@ jobs:
       E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
       E2E_CLERK_ORGANIZATION_ID: ${{ secrets.E2E_CLERK_ORGANIZATION_ID }}
       E2E_BASE_URL: http://localhost:3001
+      # Anonymous OpenAlex search is paused whenever its cluster is under load.
+      OPENALEX_API_KEY: ${{ secrets.OPENALEX_API_KEY }}
       PLAYWRIGHT_WEB_SERVER_COMMAND: npm run build && npm run start -- --hostname localhost --port 3001
     steps:
       - uses: actions/checkout@v6
