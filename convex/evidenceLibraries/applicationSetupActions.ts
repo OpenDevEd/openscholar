@@ -169,6 +169,8 @@ export const runApplicationSetup = internalAction({
         embeddingApiKey: optionalPlatformEmbeddingKey(),
         zoteroGroups: prepared.zoteroGroups,
         aiProviderKey: prepared.aiProviderApiKey,
+        openAlexApiKey: prepared.openAlexEncryptedApiKey,
+        platformOpenAlexApiKey: process.env.OPENALEX_API_KEY?.trim() || undefined,
         publicationProviders: prepared.publicationPayload,
         allowedAiModels: modelCatalog.allowedModelIds,
         aiModelMetadata: modelCatalog.modelMetadata,
@@ -219,6 +221,7 @@ export const runApplicationSetup = internalAction({
           storageMaxPdfBytes,
           aiProviderKey: prepared.aiProviderKey,
           publicationProviders: prepared.publicationProviders,
+          openAlexApiKey: prepared.openAlexApiKey,
           zoteroTranslationUrl: optionalRuntimeEnvironment(
             "EL_ZOTERO_TRANSLATION_URL",
           ),
@@ -233,6 +236,14 @@ export const runApplicationSetup = internalAction({
           code: error.code,
           message: error.message,
         });
+      }
+      if (
+        !(error instanceof RuntimeReleaseError) &&
+        !(error instanceof CoolifyClientError) &&
+        !(error instanceof ConfigurationAssemblyError)
+      ) {
+        // Owners see a generic message; keep the real cause in the logs.
+        console.error("Evidence Library application setup failed", error);
       }
       const safeError =
         error instanceof RuntimeReleaseError

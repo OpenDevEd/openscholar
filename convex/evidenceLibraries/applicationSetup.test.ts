@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
+import { encrypt } from "../lib/crypto";
 import {
   createActivatedSetupFixture,
   TEST_RUNTIME_IMAGE,
@@ -10,8 +11,12 @@ const LATEST_RUNTIME_COMMIT = "b".repeat(40);
 const LATEST_RUNTIME_DIGEST = `sha256:${"c".repeat(64)}`;
 const LATEST_RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@${LATEST_RUNTIME_DIGEST}`;
 
-async function createApplicationStageFixture(suffix: string) {
-  const fixture = await createActivatedSetupFixture(suffix);
+async function createApplicationStageFixture(
+  suffix: string,
+  extraSections: Record<string, unknown> = {},
+  seal: (value: string) => string = (value) => `encrypted-${value}`,
+) {
+  const fixture = await createActivatedSetupFixture(suffix, extraSections);
   await fixture.t.mutation(
     internal.evidenceLibraries.databaseSetup.completeDatabaseSetup,
     {
@@ -19,7 +24,7 @@ async function createApplicationStageFixture(suffix: string) {
       operationId: fixture.created.setupOperationId,
       attemptToken: fixture.attemptToken,
       attemptCount: fixture.attemptCount,
-      encryptedDatabaseUrl: "encrypted-database-url",
+      encryptedDatabaseUrl: seal("database-url"),
       outcome: "created",
       databaseName: "el_application",
       loginName: "el_application_user",
@@ -32,7 +37,7 @@ async function createApplicationStageFixture(suffix: string) {
       operationId: fixture.created.setupOperationId,
       attemptToken: fixture.attemptToken,
       attemptCount: fixture.attemptCount,
-      encryptedServiceRoleKey: "encrypted-storage-key",
+      encryptedServiceRoleKey: seal("storage-key"),
       outcome: "created",
       privateBucket: "el-private-application",
       publicBucket: "el-public-application",
@@ -283,6 +288,78 @@ describe("Evidence Library application setup", () => {
       "https://api.github.com/repos/OpenDevEd/new-el/releases?per_page=100",
       `https://ghcr.io/v2/opendeved/evidence-library-runtime/manifests/${LATEST_RUNTIME_COMMIT}`,
     ]);
+  });
+
+  it("gives a new library's OpenAlex source OpenScholar's key", async () => {
+    stubApplicationActionEnvironment();
+    vi.stubEnv("OPENALEX_API_KEY", "platform-openalex-key");
+    // Plain values the runtime schema accepts, sealed the way setup stores them.
+    const plain: Record<string, string> = {
+      "database-url": "postgresql://library:secret@database.internal:5432/library",
+      "storage-key": "k".repeat(40),
+      search: "s".repeat(40),
+      auth: "a".repeat(64),
+      machine: `els_${"m".repeat(43)}`,
+    };
+    const seal = (value: string) => encrypt(plain[value] ?? value, "11".repeat(32));
+    const fixture = await createApplicationStageFixture("application-openalex", {
+      sources: [
+        {
+          key: "openalex-education",
+          provider: "openalex",
+          enabled: true,
+          writebackEnabled: false,
+          settings: {
+            name: "Education",
+            searchUrl: "/results/saved-search-1",
+            apiKeyMode: "platform",
+            approvedQuery: {
+              version: "v1",
+              approvedAt: "2026-09-28T10:00:00Z",
+              query: { search: "education" },
+            },
+            downloadPdfs: false,
+          },
+        },
+      ],
+    }, seal);
+    await fixture.t.mutation(
+      internal.evidenceLibraries.applicationSetup.prepareApplicationSetup,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: fixture.created.setupOperationId,
+        attemptToken: fixture.attemptToken,
+        attemptCount: fixture.attemptCount,
+        candidateEncryptedSearchKey: seal("search"),
+        candidateEncryptedAuthenticationSecret: seal("auth"),
+        candidateEncryptedMachineCredential: seal("machine"),
+        candidateMachineCredentialDigest: "machine-digest",
+        candidateMachineCredentialHint: "els_key...",
+        candidateRuntimeCommit: LATEST_RUNTIME_COMMIT,
+        candidateRuntimeImage: LATEST_RUNTIME_IMAGE,
+      },
+    );
+    const hosts: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (request) => {
+        hosts.push(new URL(String(request)).hostname);
+        return Response.json({ message: "unavailable" }, { status: 503 });
+      }),
+    );
+
+    await fixture.t.action(
+      internal.evidenceLibraries.applicationSetupActions.runApplicationSetup,
+      {
+        libraryId: fixture.created.libraryId,
+        operationId: fixture.created.setupOperationId,
+        attemptToken: fixture.attemptToken,
+        attemptCount: fixture.attemptCount,
+      },
+    );
+
+    // The configuration assembled, so setup went on to create the application.
+    expect(hosts).toContain("coolify.example.test");
   });
 
   it("reuses the saved runtime pair without another release lookup", async () => {

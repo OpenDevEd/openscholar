@@ -36,6 +36,11 @@ import {
   readLibraryAiProviderKey,
   requireUnchangedAiProviderKey,
 } from "./aiProviderKey";
+import {
+  readOpenAlexEncryptedKey,
+  readOpenAlexKeySource,
+  requireUnchangedOpenAlexKey,
+} from "./openAlexSourceKey";
 import { zoteroGroupScopesValidator } from "../zotero/libraryGroupValidators";
 import { libraryCredentialSourceValidator } from "./validators";
 import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
@@ -138,9 +143,11 @@ export const prepareApplicationSetup = internalMutation({
     ),
     aiProviderKey: libraryCredentialSourceValidator,
         publicationProviders: v.optional(libraryCredentialSourceValidator),
-    // The key itself, for the action that builds the configuration. It is
-    // never written to the operation, which owners can read.
+    openAlexApiKey: libraryCredentialSourceValidator,
+    // The keys themselves, for the action that builds the configuration. They
+    // are never written to the operation, which owners can read.
     aiProviderApiKey: v.optional(v.object({ encryptedApiKey: v.string() })),
+    openAlexEncryptedApiKey: v.optional(v.object({ encryptedApiKey: v.string() })),
       publicationPayload: v.optional(publicationPayloadValidator),
   }),
   handler: async (ctx, args) => {
@@ -312,6 +319,8 @@ export const prepareApplicationSetup = internalMutation({
       ctx,
       args.libraryId,
     );
+    const openAlexApiKey = await readOpenAlexKeySource(ctx, args.libraryId);
+    const openAlexEncryptedApiKey = await readOpenAlexEncryptedKey(ctx, args.libraryId);
     return {
       searchCredentialId,
       encryptedSearchKey,
@@ -337,7 +346,9 @@ export const prepareApplicationSetup = internalMutation({
       ),
       aiProviderKey,
         publicationProviders,
+      openAlexApiKey,
       ...(aiProviderApiKey ? { aiProviderApiKey } : {}),
+      ...(openAlexEncryptedApiKey ? { openAlexEncryptedApiKey } : {}),
       ...(publicationPayload ? {publicationPayload} : {}),
     };
   },
@@ -367,6 +378,7 @@ export const completeApplicationSetup = internalMutation({
     storageCredentialId: v.id("evidenceLibraryCredentials"),
     aiProviderKey: libraryCredentialSourceValidator,
         publicationProviders: v.optional(libraryCredentialSourceValidator),
+    openAlexApiKey: v.optional(libraryCredentialSourceValidator),
   },
   returns: v.object({
     bindingId: v.id("evidenceLibraryRuntimeBindings"),
@@ -466,9 +478,12 @@ export const completeApplicationSetup = internalMutation({
       args.libraryId,
       args.publicationProviders,
     );
+    const openAlexApiKey = args.openAlexApiKey ?? { present: false as const };
+    await requireUnchangedOpenAlexKey(ctx, args.libraryId, openAlexApiKey);
     await ctx.db.patch(setup.setupOperation._id, {
       setupAiProviderKey: args.aiProviderKey,
       setupPublicationProviders: args.publicationProviders,
+      setupOpenAlexApiKey: openAlexApiKey,
     });
     if (occupied && occupied._id !== setup.runtimeBinding._id) {
       throw createError(
