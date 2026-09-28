@@ -47,7 +47,7 @@ export function SearchTooltipContent({
         <div className="flex items-start justify-between gap-3">
           <QueryText 
             query={query}
-            className="text-sm font-medium break-words flex-1 leading-snug"
+            className="text-sm font-medium break-words flex-1 leading-snug line-clamp-6 [overflow-wrap:anywhere]"
           />
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium shrink-0">
             {format.number(count, count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}

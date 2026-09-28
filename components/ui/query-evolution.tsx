@@ -14,6 +14,9 @@ import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import type { QueryHistoryEntry } from "@/lib/types/search.types";
 import { QueryText } from "@/components/ui/query-text";
 
+// About four lines at this size; longer queries are cut off.
+const LONG_QUERY_CHARS = 240;
+
 interface QueryEvolutionProps {
   queryHistory: QueryHistoryEntry[];
   currentQuery: string;
@@ -137,8 +140,10 @@ export function QueryEvolution({
                       <QueryText 
                         query={entry.query}
                         className={cn(
-                          "text-[10px] break-words leading-relaxed",
-                          isCurrent && "font-medium"
+                          "text-[10px] break-words leading-relaxed [overflow-wrap:anywhere]",
+                          isCurrent && "font-medium",
+                          // Only long queries are cut off, so a short one keeps its time beside it.
+                          entry.query.length > LONG_QUERY_CHARS && "line-clamp-4"
                         )}
                       />
                       <span className="text-[9px] pl-2 text-muted-foreground/50">

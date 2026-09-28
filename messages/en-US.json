@@ -2604,6 +2604,8 @@
       "openAlexSearchHint": "Import research matching a search",
       "approved": "Approved",
       "pdfProcessing": "PDF processing",
+      "showFullQuery": "Show full query",
+      "showLessQuery": "Show less",
       "on": "On",
       "off": "Off",
       "openAlex": {

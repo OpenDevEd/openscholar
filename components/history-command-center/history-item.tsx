@@ -562,7 +562,7 @@ export function HistoryItem({
           {/* Info section */}
           <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
             {/* Query */}
-            <p className="text-sm font-medium leading-tight break-words">
+            <p className="text-sm font-medium leading-tight break-words line-clamp-3 [overflow-wrap:anywhere]">
               <QueryText query={item.query} />
             </p>
 
