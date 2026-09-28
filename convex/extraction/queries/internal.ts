@@ -39,6 +39,18 @@ export const getJobInternal = internalQuery({
   },
 });
 
+export const getQuestionCount = internalQuery({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const questions = await ctx.db
+      .query("extractionQuestions")
+      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
+      .collect();
+    return questions.length;
+  },
+});
+
 /**
  * Lean control-plane read used by queue dispatchers and worker stale-run
  * guards. Returning just `{ status, runEpoch }` keeps the freshness read

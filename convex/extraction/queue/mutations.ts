@@ -5,13 +5,6 @@ import { internalMutation, type MutationCtx } from "../../_generated/server";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { extractionPaperPool } from "../../workpool";
 import { extractionQueueStatusValidator } from "../validators";
-import {
-  admitPaperQuestionCreditsTx,
-  clearPaperQuestionAdmissionTx,
-  getPaperQuestionAdmissionEstimate,
-  markJobCreditsExhaustedTx,
-  readQuestionAdmissionBalanceTx,
-} from "../creditAdmissions";
 import { isInitialQueueEligible, isRetryQueueEligible } from "./helpers";
 import {
   getQueueCapacity,
@@ -50,8 +43,6 @@ type DispatchWindowResult = {
   activeCount: number;
   capacity: number;
   dispatched: number;
-  admitted: number;
-  creditsExhausted: boolean;
 };
 
 type CancelQueueRowsResult = {
@@ -409,8 +400,6 @@ export const dispatchPaperQueueWindow = internalMutation({
     activeCount: v.number(),
     capacity: v.number(),
     dispatched: v.number(),
-    admitted: v.number(),
-    creditsExhausted: v.boolean(),
   }),
   handler: async (ctx, args): Promise<DispatchWindowResult> => {
     return await dispatchPaperQueueWindowTx(ctx, args);
@@ -431,123 +420,10 @@ export async function dispatchPaperQueueWindowTx(
 ): Promise<DispatchWindowResult> {
   const lease = await leaseNextPaperQueueRowsTx(ctx, args);
   const now = Date.now();
-  const leasedRows: Array<Doc<"extractionPaperQueue">> = [];
+  const dispatchRows: Array<Doc<"extractionPaperQueue">> = [];
   for (const queueId of lease.leased) {
     const row = await ctx.db.get(queueId);
-    if (row) leasedRows.push(row);
-  }
-
-  const job = await ctx.db.get(args.jobId);
-  let admitted = 0;
-  let creditsExhausted = false;
-  const dispatchRows: Array<Doc<"extractionPaperQueue">> = [];
-  const rowsToRequeue: Array<Doc<"extractionPaperQueue">> = [];
-
-  if (job) {
-    const questions = await ctx.db
-      .query("extractionQuestions")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
-    const estimateCredits = getPaperQuestionAdmissionEstimate({
-      questionCount: questions.length,
-      pdfEnabled: args.pdfEnabled,
-    });
-    const admissionBalance =
-      estimateCredits > 0
-        ? await readQuestionAdmissionBalanceTx(ctx, {
-            job,
-            expectedEpoch: args.expectedEpoch,
-          })
-        : null;
-    let windowAdmissionCredits = 0;
-
-    for (let index = 0; index < leasedRows.length; index += 1) {
-      const row = leasedRows[index];
-      if (row.kind !== "initial") {
-        dispatchRows.push(row);
-        continue;
-      }
-
-      const paper = await ctx.db.get(row.paperId);
-      if (!paper) {
-        rowsToRequeue.push(row);
-        continue;
-      }
-
-      const alreadyAdmitted =
-        paper.admittedRunEpoch === args.expectedEpoch &&
-        paper.admittedEstimateCredits !== undefined;
-      if (
-        !alreadyAdmitted &&
-        admissionBalance !== null &&
-        admissionBalance.availableCredits - windowAdmissionCredits <
-          estimateCredits
-      ) {
-        const activeAdmissionCredits =
-          admissionBalance.activeAdmissionCredits + windowAdmissionCredits;
-        if (activeAdmissionCredits <= 0) {
-          await markJobCreditsExhaustedTx(ctx, job, {
-            estimateNeeded: estimateCredits,
-            papersNeeded: 1,
-            questionCount: questions.length,
-            available:
-              admissionBalance.availableCredits - windowAdmissionCredits,
-          });
-          creditsExhausted = true;
-        }
-        rowsToRequeue.push(...leasedRows.slice(index));
-        break;
-      }
-
-      const admission = await admitPaperQuestionCreditsTx(ctx, {
-        paper,
-        expectedEpoch: args.expectedEpoch,
-        estimateCredits,
-      });
-      if (admission.status === "admitted") {
-        admitted += 1;
-        windowAdmissionCredits += admission.estimateCredits;
-      }
-      dispatchRows.push(row);
-    }
-  } else {
-    dispatchRows.push(...leasedRows);
-  }
-
-  if (creditsExhausted) {
-    await Promise.all(
-      leasedRows.map(async (leasedRow) => {
-        await clearPaperQuestionAdmissionTx(ctx, leasedRow.paperId);
-        await ctx.db.patch(leasedRow._id, {
-          status: "parked",
-          updatedAt: now,
-          leaseOwner: undefined,
-          leasedAt: undefined,
-          leaseExpiresAt: undefined,
-        });
-      }),
-    );
-    return {
-      activeCount: lease.activeCount,
-      capacity: lease.capacity,
-      dispatched: 0,
-      admitted: 0,
-      creditsExhausted: true,
-    };
-  }
-
-  if (rowsToRequeue.length > 0) {
-    await Promise.all(
-      rowsToRequeue.map((leasedRow) =>
-        ctx.db.patch(leasedRow._id, {
-          status: "pending",
-          updatedAt: now,
-          leaseOwner: undefined,
-          leasedAt: undefined,
-          leaseExpiresAt: undefined,
-        }),
-      ),
-    );
+    if (row) dispatchRows.push(row);
   }
 
   const workIds =
@@ -576,8 +452,6 @@ export async function dispatchPaperQueueWindowTx(
     activeCount: lease.activeCount,
     capacity: lease.capacity,
     dispatched: dispatchRows.length,
-    admitted,
-    creditsExhausted: false,
   };
 }
 
@@ -618,7 +492,6 @@ export async function cancelPaperQueueRowsForJobTx(
       leasedAt: undefined,
       leaseExpiresAt: undefined,
     });
-    await clearPaperQuestionAdmissionTx(ctx, row.paperId);
   }
 
   return { cancelled: rows.length, cancelRequested };
@@ -660,9 +533,6 @@ export const updatePaperQueueStatus = internalMutation({
           }
         : {}),
     });
-    if (clearLease) {
-      await clearPaperQuestionAdmissionTx(ctx, row.paperId);
-    }
     return { applied: true };
   },
 });

@@ -454,167 +454,6 @@
     "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
   },
   "billingPage": {
-    "transactions": {
-      "title": "Transactions",
-      "filteredByJob": "Filtered by job",
-      "clearFilter": "Clear filter",
-      "error": {
-        "title": "Couldn't load transactions",
-        "message": "Something went wrong while fetching your billing history. Try again in a moment.",
-        "retry": "Retry"
-      },
-      "empty": {
-        "no-data": {
-          "title": "No transactions yet",
-          "description": "Purchases, grants, and usage charges will appear here once you start using credits.",
-          "cta": "Buy credits"
-        },
-        "no-matches": {
-          "title": "No matches",
-          "description": "No transactions match your current filters. Try clearing them or widening the date range.",
-          "cta": "Clear filters"
-        }
-      },
-      "type": {
-        "purchase": "Credit purchase",
-        "grant": "Free credit grant",
-        "refund": "Refund",
-        "usage": "Usage",
-        "expiry": "Credits expired"
-      },
-      "billingType": {
-        "extraction_llm": "Extraction",
-        "embedding": "Indexing",
-        "screening": "Screening",
-        "chat": "Chat",
-        "search": "Search",
-        "translation": "Translation",
-        "wallet_api": "Wallet API"
-      },
-      "status": {
-        "pending": "Pending",
-        "failed": "Failed",
-        "expired": "Expired"
-      },
-      "actions": {
-        "openJob": "Open job"
-      },
-      "group": {
-        "today": "Today",
-        "yesterday": "Yesterday",
-        "thisWeek": "This week",
-        "lastWeek": "Last week"
-      },
-      "export": {
-        "label": "Export",
-        "current": "Current page ({count})",
-        "filtered": "Filtered (all pages)",
-        "all": "All time"
-      },
-      "drawer": {
-        "close": "Close details",
-        "stripe": {
-          "heading": "Stripe",
-          "invoice": "Invoice",
-          "paymentIntent": "Payment intent",
-          "charge": "Charge",
-          "checkoutSession": "Checkout session",
-          "copy": "Copy to clipboard",
-          "openInStripe": "Open in Stripe dashboard",
-          "downloadReceipt": "Download receipt"
-        },
-        "links": {
-          "heading": "Linked",
-          "job": "Extraction job",
-          "paper": "Paper",
-          "result": "Result",
-          "paperComingSoon": "Paper detail (coming soon)",
-          "resultComingSoon": "Result detail (coming soon)"
-        },
-        "metadata": {
-          "heading": "Metadata"
-        }
-      },
-      "loadingMore": "Loading more…",
-      "exhausted": "End of history",
-      "tabs": {
-        "all": "All",
-        "purchases": "Purchases",
-        "usage": "Usage",
-        "refunds-grants": "Refunds & grants",
-        "failed": "Failed"
-      },
-      "searchPlaceholder": "Search transactions…",
-      "searchClear": "Clear search",
-      "clearAll": "Clear all",
-      "filters": {
-        "type": "Type",
-        "creditPool": "Credit pool",
-        "billingType": "Billing",
-        "creditPoolValues": {
-          "free": "Free",
-          "paid": "Paid"
-        },
-        "date": {
-          "label": "Date",
-          "presets": {
-            "today": "Today",
-            "7d": "Last 7 days",
-            "30d": "Last 30 days",
-            "90d": "Last 90 days",
-            "ytd": "Year to date",
-            "all": "All time"
-          }
-        }
-      },
-      "sort": {
-        "label": "Sort",
-        "date": "Date",
-        "amount": "Amount",
-        "type": "Type",
-        "dir": {
-          "asc": "Ascending",
-          "desc": "Descending"
-        }
-      },
-      "density": {
-        "label": "Density",
-        "compact": "Compact",
-        "comfortable": "Comfortable",
-        "spacious": "Spacious"
-      },
-      "live": {
-        "summary": "Showing {shown} of {total} transactions"
-      },
-      "titles": {
-        "paidCredits": "{amount, number} paid credits",
-        "freeCredits": "{amount, number} free credits",
-        "freeCreditsExpired": "{amount, number} free credits expired",
-        "refund": "Refund · {amount, number} credits",
-        "chatMessage": "Chat message",
-        "extraction": "Paper extraction",
-        "indexing": "Paper indexing",
-        "screening": "Paper screening",
-        "paperRef": "Paper {ref}",
-        "search": "Search enhancement",
-        "translation": "Translation",
-        "walletApi": "{model} · Wallet API",
-        "walletApiGeneric": "Wallet API"
-      },
-      "secondary": {
-        "topup": "Top-up",
-        "stripe": "Stripe",
-        "stripeRefund": "Stripe refund",
-        "expired": "Free pool"
-      },
-      "amount": {
-        "balance": "Bal {balance}"
-      },
-      "aria": {
-        "credit": "Credit",
-        "debit": "Debit"
-      }
-    },
     "billingAndPlans": "Billing & Plans",
     "manageSubscription": "Manage your subscription and usage.",
     "upgradePlan": "Upgrade Plan",
@@ -668,7 +507,23 @@
     "creditCapBanner": "Your free credits are at the maximum. Use some credits to receive your full monthly grant.",
     "processingPurchase": "Processing your purchase...",
     "creditsAddedTitle": "Credits added",
-    "creditsAddedDescription": "{amount} credits have been added to your balance."
+    "creditsAddedDescription": "{amount} credits have been added to your balance.",
+    "paymentReceived": "Payment received. Your plan and credits update as soon as Stripe confirms it.",
+    "usage": {
+      "title": "Usage",
+      "empty": "No credits used yet.",
+      "loadMore": "Load more",
+      "showAll": "Show all",
+      "kinds": {
+        "chat": "Chat",
+        "extraction": "Extraction",
+        "screening": "Screening",
+        "search": "Search",
+        "translation": "Translation",
+        "wallet_api": "Wallet API",
+        "refund": "Refund"
+      }
+    }
   },
   "errors": {
     "unexpectedIssue": "We hit an unexpected issue. Please retry, or return to a stable page.",
@@ -2004,7 +1859,6 @@
     "prorationCharge": "Prorated charge",
     "prorationExplanation": "for the {days} remaining days in your billing cycle",
     "creditsGranted": "{credits} credits granted immediately",
-    "creditsDetail": "Based on {days} remaining days in your cycle",
     "monthlyCreditsAfter": "Then {credits}/month going forward",
     "confirmUpgrade": "Confirm upgrade",
     "cancel": "Cancel",

@@ -115,16 +115,15 @@ export function createStreamingResponse(params: {
   model: string;
   fullStream: AsyncIterable<Record<string, unknown>>;
   includeUsage: boolean;
-  onUsage: (usage: {
-    inputTokens?: number;
-    outputTokens?: number;
-    inputTokenDetails?: { cacheReadTokens?: number; cacheWriteTokens?: number };
-    outputTokenDetails?: { reasoningTokens?: number };
-  }) => void;
-  onFinishReason: (reason: string) => void;
-  onSourceCount?: (count: number) => void;
+  onFinishReason?: (reason: string) => void;
+  /**
+   * Runs after the last upstream part and before the response closes, so
+   * work awaited here (billing) finishes inside the request. Gets the
+   * number of web sources the model cited.
+   */
+  onDone?: (sourceCount: number) => Promise<void>;
 }): ReadableStream<Uint8Array> {
-  const { id, model, fullStream, includeUsage, onUsage, onFinishReason, onSourceCount } = params;
+  const { id, model, fullStream, includeUsage, onFinishReason, onDone } = params;
   const encoder = new TextEncoder();
   let sentRoleChunk = false;
   let lastFinishReason = "stop";
@@ -134,6 +133,15 @@ export function createStreamingResponse(params: {
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
+      // A client that disconnects closes the stream; keep reading the
+      // upstream anyway so the whole generation is counted and billed.
+      const send = (text: string) => {
+        try {
+          controller.enqueue(encoder.encode(text));
+        } catch {
+          // Client gone.
+        }
+      };
       try {
         for await (const part of fullStream) {
           const type = part.type as string;
@@ -149,20 +157,10 @@ export function createStreamingResponse(params: {
 
               // Send role chunk on first content
               if (!sentRoleChunk) {
-                controller.enqueue(
-                  encoder.encode(
-                    sseChunk(makeChunk(id, model, { role: "assistant", content: "" }, null)),
-                  ),
-                );
+                send(sseChunk(makeChunk(id, model, { role: "assistant", content: "" }, null)));
                 sentRoleChunk = true;
               }
-              controller.enqueue(
-                encoder.encode(
-                  sseChunk(
-                    makeChunk(id, model, { content: textContent }, null),
-                  ),
-                ),
-              );
+              send(sseChunk(makeChunk(id, model, { content: textContent }, null)));
               break;
             }
 
@@ -170,11 +168,7 @@ export function createStreamingResponse(params: {
             case "tool-input-start":
             case "tool-call-streaming-start": {
               if (!sentRoleChunk) {
-                controller.enqueue(
-                  encoder.encode(
-                    sseChunk(makeChunk(id, model, { role: "assistant" }, null)),
-                  ),
-                );
+                send(sseChunk(makeChunk(id, model, { role: "assistant" }, null)));
                 sentRoleChunk = true;
               }
               // v6 uses `id` for the tool call ID; v5 used `toolCallId`
@@ -188,13 +182,7 @@ export function createStreamingResponse(params: {
                 type: "function",
                 function: { name: part.toolName as string, arguments: "" },
               };
-              controller.enqueue(
-                encoder.encode(
-                  sseChunk(
-                    makeChunk(id, model, { tool_calls: [toolCallChunk] }, null),
-                  ),
-                ),
-              );
+              send(sseChunk(makeChunk(id, model, { tool_calls: [toolCallChunk] }, null)));
               break;
             }
 
@@ -210,13 +198,7 @@ export function createStreamingResponse(params: {
                 index: (part.toolCallIndex as number) ?? Math.max(0, toolCallCounter - 1),
                 function: { arguments: argsDelta },
               };
-              controller.enqueue(
-                encoder.encode(
-                  sseChunk(
-                    makeChunk(id, model, { tool_calls: [deltaChunk] }, null),
-                  ),
-                ),
-              );
+              send(sseChunk(makeChunk(id, model, { tool_calls: [deltaChunk] }, null)));
               break;
             }
 
@@ -233,7 +215,6 @@ export function createStreamingResponse(params: {
                 outputTokenDetails?: { reasoningTokens?: number };
               } | undefined;
               if (stepUsage) {
-                onUsage(stepUsage);
                 lastUsage = {
                   prompt_tokens: stepUsage.inputTokens ?? 0,
                   completion_tokens: stepUsage.outputTokens ?? 0,
@@ -262,16 +243,10 @@ export function createStreamingResponse(params: {
             case "finish": {
               const finalReason =
                 (part.finishReason as string) ?? lastFinishReason;
-              onFinishReason(finalReason);
+              onFinishReason?.(finalReason);
 
               // Finish reason chunk
-              controller.enqueue(
-                encoder.encode(
-                  sseChunk(
-                    makeChunk(id, model, {}, mapFinishReason(finalReason)),
-                  ),
-                ),
-              );
+              send(sseChunk(makeChunk(id, model, {}, mapFinishReason(finalReason))));
 
               // Usage chunk (if requested)
               if (includeUsage && lastUsage) {
@@ -283,14 +258,11 @@ export function createStreamingResponse(params: {
                   choices: [],
                   usage: lastUsage,
                 };
-                controller.enqueue(encoder.encode(sseChunk(usageChunk)));
+                send(sseChunk(usageChunk));
               }
 
-              // Report source count for cost calculation
-              if (sourceCount > 0) onSourceCount?.(sourceCount);
-
               // [DONE] sentinel
-              controller.enqueue(encoder.encode(sseDone()));
+              send(sseDone());
               break;
             }
 
@@ -312,7 +284,7 @@ export function createStreamingResponse(params: {
                   },
                 ],
               };
-              controller.enqueue(encoder.encode(sseChunk(errorChunk)));
+              send(sseChunk(errorChunk));
               break;
             }
 
@@ -336,8 +308,8 @@ export function createStreamingResponse(params: {
                   },
                 ],
               };
-              controller.enqueue(encoder.encode(sseChunk(abortChunk)));
-              controller.enqueue(encoder.encode(sseDone()));
+              send(sseChunk(abortChunk));
+              send(sseDone());
               break;
             }
 
@@ -351,12 +323,15 @@ export function createStreamingResponse(params: {
         // Stream-level error — emit error event and close
         const errMsg =
           err instanceof Error ? err.message : "Stream processing failed";
-        controller.enqueue(
-          encoder.encode(sseEvent(JSON.stringify({ error: { message: errMsg, type: "server_error" } }))),
-        );
-        controller.enqueue(encoder.encode(sseDone()));
+        send(sseEvent(JSON.stringify({ error: { message: errMsg, type: "server_error" } })));
+        send(sseDone());
       } finally {
-        controller.close();
+        await onDone?.(sourceCount);
+        try {
+          controller.close();
+        } catch {
+          // Client gone.
+        }
       }
     },
   });

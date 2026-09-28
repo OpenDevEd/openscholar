@@ -454,167 +454,6 @@
     "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
   },
   "billingPage": {
-    "transactions": {
-      "title": "取引履歴",
-      "filteredByJob": "ジョブでフィルタ中",
-      "clearFilter": "フィルタを解除",
-      "error": {
-        "title": "取引を読み込めませんでした",
-        "message": "請求履歴の取得中にエラーが発生しました。しばらくしてからもう一度お試しください。",
-        "retry": "再試行"
-      },
-      "empty": {
-        "no-data": {
-          "title": "取引はまだありません",
-          "description": "クレジットの使用を始めると、購入・付与・利用履歴がここに表示されます。",
-          "cta": "クレジットを購入"
-        },
-        "no-matches": {
-          "title": "該当なし",
-          "description": "現在のフィルタに一致する取引はありません。フィルタを解除するか、期間を広げてみてください。",
-          "cta": "フィルタをクリア"
-        }
-      },
-      "type": {
-        "purchase": "クレジット購入",
-        "grant": "無料クレジット付与",
-        "refund": "返金",
-        "usage": "利用",
-        "expiry": "クレジットの失効"
-      },
-      "billingType": {
-        "extraction_llm": "抽出",
-        "embedding": "インデックス",
-        "screening": "スクリーニング",
-        "chat": "チャット",
-        "search": "検索",
-        "translation": "翻訳",
-        "wallet_api": "Wallet API"
-      },
-      "status": {
-        "pending": "処理中",
-        "failed": "失敗",
-        "expired": "期限切れ"
-      },
-      "actions": {
-        "openJob": "ジョブを開く"
-      },
-      "group": {
-        "today": "今日",
-        "yesterday": "昨日",
-        "thisWeek": "今週",
-        "lastWeek": "先週"
-      },
-      "export": {
-        "label": "エクスポート",
-        "current": "現在のページ ({count})",
-        "filtered": "フィルタ済み (全ページ)",
-        "all": "全期間"
-      },
-      "drawer": {
-        "close": "詳細を閉じる",
-        "stripe": {
-          "heading": "Stripe",
-          "invoice": "請求書",
-          "paymentIntent": "ペイメントインテント",
-          "charge": "請求",
-          "checkoutSession": "チェックアウトセッション",
-          "copy": "クリップボードにコピー",
-          "openInStripe": "Stripe ダッシュボードで開く",
-          "downloadReceipt": "領収書をダウンロード"
-        },
-        "links": {
-          "heading": "関連",
-          "job": "抽出ジョブ",
-          "paper": "論文",
-          "result": "結果",
-          "paperComingSoon": "論文詳細 (近日公開)",
-          "resultComingSoon": "結果詳細 (近日公開)"
-        },
-        "metadata": {
-          "heading": "メタデータ"
-        }
-      },
-      "loadingMore": "読み込み中…",
-      "exhausted": "履歴の最後",
-      "tabs": {
-        "all": "すべて",
-        "purchases": "購入",
-        "usage": "利用",
-        "refunds-grants": "返金・付与",
-        "failed": "失敗"
-      },
-      "searchPlaceholder": "取引を検索…",
-      "searchClear": "検索をクリア",
-      "clearAll": "すべてクリア",
-      "filters": {
-        "type": "種類",
-        "creditPool": "クレジット種別",
-        "billingType": "課金種別",
-        "creditPoolValues": {
-          "free": "無料",
-          "paid": "有料"
-        },
-        "date": {
-          "label": "日付",
-          "presets": {
-            "today": "今日",
-            "7d": "過去7日",
-            "30d": "過去30日",
-            "90d": "過去90日",
-            "ytd": "年初から",
-            "all": "すべての期間"
-          }
-        }
-      },
-      "sort": {
-        "label": "並べ替え",
-        "date": "日付",
-        "amount": "金額",
-        "type": "種類",
-        "dir": {
-          "asc": "昇順",
-          "desc": "降順"
-        }
-      },
-      "density": {
-        "label": "表示密度",
-        "compact": "コンパクト",
-        "comfortable": "標準",
-        "spacious": "ゆったり"
-      },
-      "live": {
-        "summary": "{total}件中{shown}件の取引を表示"
-      },
-      "titles": {
-        "paidCredits": "{amount, number} 有償クレジット",
-        "freeCredits": "{amount, number} 無償クレジット",
-        "freeCreditsExpired": "{amount, number} 無償クレジット失効",
-        "refund": "返金 · {amount, number} クレジット",
-        "chatMessage": "チャットメッセージ",
-        "extraction": "論文抽出",
-        "indexing": "論文インデックス",
-        "screening": "論文スクリーニング",
-        "paperRef": "論文 {ref}",
-        "search": "検索の拡張",
-        "translation": "翻訳",
-        "walletApi": "{model} · Wallet API",
-        "walletApiGeneric": "Wallet API"
-      },
-      "secondary": {
-        "topup": "チャージ",
-        "stripe": "Stripe",
-        "stripeRefund": "Stripe返金",
-        "expired": "無償プール"
-      },
-      "amount": {
-        "balance": "残高 {balance}"
-      },
-      "aria": {
-        "credit": "クレジット",
-        "debit": "デビット"
-      }
-    },
     "billingAndPlans": "請求とプラン",
     "manageSubscription": "サブスクリプションと使用量を管理",
     "upgradePlan": "プランをアップグレード",
@@ -668,7 +507,23 @@
     "creditCapBanner": "無料クレジットが上限に達しています。月次付与を全額受け取るには、クレジットを使用してください。",
     "processingPurchase": "購入を処理中...",
     "creditsAddedTitle": "クレジット追加完了",
-    "creditsAddedDescription": "{amount} クレジットが残高に追加されました。"
+    "creditsAddedDescription": "{amount} クレジットが残高に追加されました。",
+    "paymentReceived": "お支払いを受け付けました。Stripe で確認され次第、プランとクレジットが更新されます。",
+    "usage": {
+      "title": "使用履歴",
+      "empty": "まだクレジットは使用されていません。",
+      "loadMore": "さらに表示",
+      "showAll": "すべて表示",
+      "kinds": {
+        "chat": "チャット",
+        "extraction": "抽出",
+        "screening": "スクリーニング",
+        "search": "検索",
+        "translation": "翻訳",
+        "wallet_api": "Wallet API",
+        "refund": "返金"
+      }
+    }
   },
   "errors": {
     "unexpectedIssue": "予期しない問題が発生しました。再試行するか、安定したページに戻ってください。",
@@ -2014,7 +1869,6 @@
     "prorationCharge": "日割り料金",
     "prorationExplanation": "請求サイクルの残り{days}日分",
     "creditsGranted": "{credits}クレジットを即時付与",
-    "creditsDetail": "サイクルの残り{days}日に基づく",
     "monthlyCreditsAfter": "以降は毎月{credits}クレジット",
     "confirmUpgrade": "アップグレードを確認",
     "cancel": "キャンセル",

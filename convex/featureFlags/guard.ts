@@ -2,10 +2,8 @@ import { requireOrganizationFeature } from "../organizationFeatures";
 import type { MutationCtx, QueryCtx, ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { resolveEffectivePlan } from "../../lib/billing/entitlements";
-import { getPlanTier } from "../lib/constants";
+import { planTier } from "../billing/accounts";
 import { createError } from "../lib/errors";
-import { selectCanonicalSubscription } from "../subscriptions/lib/selectCanonicalSubscription";
 
 /**
  * Assert that a feature flag is enabled for the given user.
@@ -35,15 +33,7 @@ export async function requireFeature(
       throw createError("UNAUTHENTICATED", "Authentication required for this feature");
     }
 
-    const subscriptions = await ctx.db
-      .query("subscriptions")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .order("desc")
-      .collect();
-
-    const canonical = selectCanonicalSubscription(subscriptions);
-    const plan = resolveEffectivePlan(canonical);
-    const tier = getPlanTier(plan);
+    const tier = await planTier(ctx, userId);
 
     if (tier < flag.minimumTier) {
       throw createError(

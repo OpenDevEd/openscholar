@@ -1,8 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser } from "../lib/auth";
-import { userValidator, subscriptionValidator, creditsValidator } from "../lib/validators";
-import { selectCanonicalSubscription } from "../subscriptions/lib/selectCanonicalSubscription";
+import { userValidator } from "../lib/validators";
 
 export const me = query({
   args: {},
@@ -24,37 +23,5 @@ export const getById = query({
     }
 
     return currentUser;
-  },
-});
-
-export const getMySubscription = query({
-  args: {},
-  returns: v.union(subscriptionValidator, v.null()),
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    // Cardinality: ~1-5 subscriptions per user
-    const subscriptions = await ctx.db
-      .query("subscriptions")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .collect();
-
-    return selectCanonicalSubscription(subscriptions);
-  },
-});
-
-export const getMyCredits = query({
-  args: {},
-  returns: v.union(creditsValidator, v.null()),
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    return await ctx.db
-      .query("credits")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .unique();
   },
 });

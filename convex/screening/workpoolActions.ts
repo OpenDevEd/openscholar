@@ -13,7 +13,8 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { processScreeningBatch } from "../../lib/ai/core/batch";
-import { withUserCreditsBatch } from "../ai/helpers";
+import { withUserCredits } from "../ai/helpers";
+import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
 import { resolveOpenRouterModel } from "../chat/provider";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import type { ScreeningResultData } from "../../lib/ai/core/batch-types";
@@ -105,11 +106,18 @@ export const screenPaperAction = internalAction({
 
     // 5. Call AI screening with credit billing
     try {
-      const screeningResult: ScreeningResultData = await withUserCreditsBatch<ScreeningResultData>(
+      const screeningResult: ScreeningResultData = await withUserCredits<ScreeningResultData>(
         ctx,
-        job.userId as Id<"users">,
-        `Bulk screening`,
-        async (_pricing) => {
+        {
+          userId: job.userId as Id<"users">,
+          chargeId: `screening:${args.resultId}:${crypto.randomUUID()}`,
+          estimate: Math.ceil(ESTIMATED_CREDITS_PER_PAPER),
+          kind: "screening",
+          description: "Bulk screening",
+          model: serverModelSlug,
+        },
+        serverPricing,
+        async () => {
           const paperId = String(args.resultId);
           const batchResult = await processScreeningBatch({
             model,
@@ -161,12 +169,6 @@ export const screenPaperAction = internalAction({
             totalUsage,
             trackingEntries,
           };
-        },
-        {
-          billingType: "screening",
-          metadata: { openalexId: result.openalexId },
-          pricingOverride: serverPricing,
-          modelSlugOverride: serverModelSlug,
         },
       );
 

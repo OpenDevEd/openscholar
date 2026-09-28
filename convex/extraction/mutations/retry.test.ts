@@ -18,9 +18,8 @@ import schema from "../../schema";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { applyRetryResetTx } from "./retry";
 import {
-  setupTransactionAggregates,
   seedCreditsForTest,
-} from "../../credits/aggregates.test-support";
+} from "../../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
 
 const CLERK = "clerk_retry_mutation_owner";
@@ -33,7 +32,7 @@ type ExtractionTest = TestConvex<typeof schema>;
 async function seedFlagsAndCredits(
   t: ReturnType<typeof convexTest>,
   opts: { paid?: number; free?: number } = {},
-): Promise<{ userId: Id<"users">; creditsId: Id<"credits"> }> {
+): Promise<{ userId: Id<"users"> }> {
   return await t.run(async (ctx) => {
     const now = Date.now();
     await seedOrganizationFeatures(ctx, [CLERK], { extraction: true });
@@ -56,13 +55,13 @@ async function seedFlagsAndCredits(
       minimumTier: 0,
       updatedAt: now,
     });
-    const creditsId = await seedCreditsForTest(ctx, {
+    await seedCreditsForTest(ctx, {
       userId,
       free: opts.free ?? 0,
       paid: opts.paid ?? 100_000,
       now,
     });
-    return { userId, creditsId };
+    return { userId };
   });
 }
 
@@ -209,7 +208,6 @@ async function retryAndReadQueuedWork(
 describe("applyRetryResetTx — state changes", () => {
   it("resets only retryable failures; leaves permanents, completed, and billed rows untouched", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
     const { jobId, paperId } = await seedJob(t, userId, {
       jobStatus: "completed",
@@ -288,7 +286,6 @@ describe("applyRetryResetTx — state changes", () => {
 
   it("returns 0 and makes no changes when the job has only permanent failures", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const { userId } = await seedFlagsAndCredits(t);
     const { jobId, paperId } = await seedJob(t, userId, {
       jobStatus: "completed",
@@ -316,7 +313,6 @@ describe("applyRetryResetTx — state changes", () => {
 
   it("un-terminals creditsExhausted → extracting (plan-03 resume path)", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const { userId } = await seedFlagsAndCredits(t);
     const { jobId } = await seedJob(t, userId, {
       jobStatus: "creditsExhausted",
@@ -340,7 +336,6 @@ describe("applyRetryResetTx — state changes", () => {
 describe("retryFailedQuestions — public mutation guards", () => {
   it("rejects unauthenticated callers", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const { userId } = await seedFlagsAndCredits(t);
     const { jobId } = await seedJob(t, userId, {
       rows: [{ kind: "failed", key: "q1", code: "rate_limit" }],
@@ -354,7 +349,6 @@ describe("retryFailedQuestions — public mutation guards", () => {
 
   it("rejects callers who don't own the job (no existence leak)", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const { userId } = await seedFlagsAndCredits(t);
     const { jobId } = await seedJob(t, userId, {
       rows: [{ kind: "failed", key: "q1", code: "rate_limit" }],
@@ -383,7 +377,6 @@ describe("retryFailedQuestions — public mutation guards", () => {
 
   it("rejects retry on a non-extraction (chat) job", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const { userId } = await seedFlagsAndCredits(t);
     const jobId = await t.run((ctx) =>
       ctx.db.insert("extractionJobs", {
@@ -405,7 +398,6 @@ describe("retryFailedQuestions — public mutation guards", () => {
 
   it("rejects retry on a job in an active status (pending/extracting)", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const { userId } = await seedFlagsAndCredits(t);
     const { jobId } = await seedJob(t, userId, {
       jobStatus: "extracting",
@@ -422,7 +414,6 @@ describe("retryFailedQuestions — public mutation guards", () => {
 
   it("rejects with 'nothing to retry' when only permanent failures exist", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const { userId } = await seedFlagsAndCredits(t);
     const { jobId } = await seedJob(t, userId, {
       rows: [
@@ -440,7 +431,6 @@ describe("retryFailedQuestions — public mutation guards", () => {
 
   it("rejects with INSUFFICIENT_CREDITS when balance < retry estimate.high; no state changes", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const { userId } = await seedFlagsAndCredits(t, { paid: 0 });
     const { jobId, paperId } = await seedJob(t, userId, {
       jobStatus: "completed",
@@ -474,7 +464,6 @@ describe("retryFailedQuestions — public mutation guards", () => {
 
   it("enqueues retry queue work on the happy path", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupExtractionPaperWorkpool(t);
     const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
     const { jobId } = await seedJob(t, userId, {
@@ -503,7 +492,6 @@ describe("retryFailedQuestions — public mutation guards", () => {
 
   it("allows retry on status=failed", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupExtractionPaperWorkpool(t);
     const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
     const { jobId } = await seedJob(t, userId, {
@@ -520,7 +508,6 @@ describe("retryFailedQuestions — public mutation guards", () => {
 
   it("allows retry on status=creditsExhausted", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupExtractionPaperWorkpool(t);
     const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
     const { jobId } = await seedJob(t, userId, {

@@ -1,8 +1,6 @@
 import { internalMutation, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { resolveEffectivePlan } from "../../lib/billing/entitlements";
-import { getPlanTier } from "../lib/constants";
-import { selectCanonicalSubscription } from "../subscriptions/lib/selectCanonicalSubscription";
+import { planTier } from "../billing/accounts";
 
 /**
  * Upsert a feature flag. Used for seeding and admin operations.
@@ -96,15 +94,7 @@ export const checkFlag = internalQuery({
         return { allowed: false, reason: "unauthenticated" as const };
       }
 
-      const subscriptions = await ctx.db
-        .query("subscriptions")
-        .withIndex("by_user", (q) => q.eq("userId", args.userId!))
-        .order("desc")
-        .collect();
-
-      const canonical = selectCanonicalSubscription(subscriptions);
-      const plan = resolveEffectivePlan(canonical);
-      const tier = getPlanTier(plan);
+      const tier = await planTier(ctx, args.userId!);
 
       if (tier < flag.minimumTier) {
         return { allowed: false, reason: "insufficient_tier" as const };

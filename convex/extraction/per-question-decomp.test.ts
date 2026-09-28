@@ -18,10 +18,8 @@ import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
 import { setupAggregates } from "./aggregates.test-support";
 import {
-  setupTransactionAggregates,
   seedCreditsForTest,
-} from "../credits/aggregates.test-support";
-import { readBalance } from "../credits/balanceCounter";
+} from "../billing/billing.test-support";
 import { readJobCounters } from "./jobCounters";
 
 async function seedJobWithPapersAndQuestions(
@@ -35,7 +33,6 @@ async function seedJobWithPapersAndQuestions(
   userId: Id<"users">;
   jobId: Id<"extractionJobs">;
   paperIds: Id<"extractionPapers">[];
-  creditsId: Id<"credits">;
 }> {
   return await t.run(async (ctx) => {
     const now = Date.now();
@@ -49,7 +46,7 @@ async function seedJobWithPapersAndQuestions(
       updatedAt: now,
       lastLoginAt: now,
     });
-    const creditsId = await seedCreditsForTest(ctx, {
+    await seedCreditsForTest(ctx, {
       userId,
       free: 0,
       paid: opts.startingCredits ?? 10_000,
@@ -86,16 +83,10 @@ async function seedJobWithPapersAndQuestions(
         }),
       );
     }
-    return { userId, jobId, paperIds, creditsId };
+    return { userId, jobId, paperIds };
   });
 }
 
-async function readPaidBalance(
-  t: ReturnType<typeof convexTest>,
-  creditsId: Id<"credits">,
-): Promise<number> {
-  return (await t.run((ctx) => readBalance(ctx, creditsId))).paid;
-}
 
 async function recordCompletedQuestion(
   t: ReturnType<typeof convexTest>,
@@ -154,12 +145,11 @@ async function recordFailedQuestion(
 }
 
 describe("plan-02 per-question decomposition", () => {
-  it("3 papers × 5 questions → 15 result rows, 15 debits, 3 paper-completes, 1 job-complete", async () => {
+  it("3 papers × 5 questions → 15 result rows, 3 paper-completes, 1 job-complete", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const questionKeys = ["q1", "q2", "q3", "q4", "q5"];
-    const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
+    const { jobId, paperIds } = await seedJobWithPapersAndQuestions(
       t,
       { paperCount: 3, questionKeys, startingCredits: 1000 },
     );
@@ -186,13 +176,10 @@ describe("plan-02 per-question decomposition", () => {
         .collect(),
     );
     expect(allResults).toHaveLength(15);
-    // All billed exactly once.
+    // Each answer counted exactly once.
     expect(allResults.every((r) => r.billed === true)).toBe(true);
     expect(allResults.every((r) => r.status === "completed")).toBe(true);
     expect(allResults.every((r) => r.attemptCount === 1)).toBe(true);
-
-    // 15 debits × 2 credits = 30 debited.
-    expect(await readPaidBalance(t, creditsId)).toBe(1000 - 30);
 
     // Each paper: completed + creditsUsed = 2 × 5 = 10.
     for (const paperId of paperIds) {
@@ -211,10 +198,9 @@ describe("plan-02 per-question decomposition", () => {
 
   it("finalizePaper with mix of completed + hard-failed questions → completed with failedQuestions", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const questionKeys = ["q1", "q2", "q3"];
-    const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
+    const { jobId, paperIds } = await seedJobWithPapersAndQuestions(
       t,
       { paperCount: 1, questionKeys, startingCredits: 100 },
     );
@@ -254,14 +240,10 @@ describe("plan-02 per-question decomposition", () => {
     const jobCounters = await t.run((ctx) => readJobCounters(ctx, jobId));
     expect(jobCounters.processed).toBe(1);
     expect(jobCounters.failed).toBe(0);
-
-    // Only the successful debits landed — 2 × 1 = 2.
-    expect(await readPaidBalance(t, creditsId)).toBe(100 - 2);
   });
 
   it("finalizePaper is a no-op while a question is still pending", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const questionKeys = ["q1", "q2"];
     const { paperIds } = await seedJobWithPapersAndQuestions(t, {
@@ -288,10 +270,9 @@ describe("plan-02 per-question decomposition", () => {
 
   it("finalizePaper completes after concurrent question completions land", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const questionKeys = ["q1", "q2"];
-    const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
+    const { jobId, paperIds } = await seedJobWithPapersAndQuestions(
       t,
       { paperCount: 1, questionKeys, startingCredits: 25 },
     );
@@ -321,15 +302,12 @@ describe("plan-02 per-question decomposition", () => {
     const jobCounters = await t.run((ctx) => readJobCounters(ctx, jobId));
     expect(jobCounters.processed).toBe(1);
     expect(jobCounters.failed).toBe(0);
-
-    expect(await readPaidBalance(t, creditsId)).toBe(25 - 6);
   });
 
-  it("recordQuestionBatch is idempotent under worker retry — one result row, one debit at finalize", async () => {
+  it("recordQuestionBatch is idempotent under worker retry — one result row, credits counted once", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
-    const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
+    const { paperIds } = await seedJobWithPapersAndQuestions(
       t,
       { paperCount: 1, questionKeys: ["q1"], startingCredits: 100 },
     );
@@ -341,23 +319,18 @@ describe("plan-02 per-question decomposition", () => {
       creditsUsed: 7,
     };
 
-    // recordQuestionBatch never debits — it stores result.creditsUsed
-    // behind the `billed` result guard. Retries 2 and 3 short-circuit
-    // on result.billed=true so creditsUsed stays at 7.
+    // Retries 2 and 3 short-circuit on result.billed=true so
+    // creditsUsed stays at 7.
     await recordCompletedQuestion(t, args);
     await recordCompletedQuestion(t, args);
     await recordCompletedQuestion(t, args);
-    expect(await readPaidBalance(t, creditsId)).toBe(100);
 
-    // finalizePaper performs the single per-paper debit.
     await t.mutation(internal.extraction.mutations.results.finalizePaper, {
       paperId,
     });
-    expect(await readPaidBalance(t, creditsId)).toBe(100 - 7);
 
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(paper?.creditsUsed).toBe(7);
-    expect(paper?.questionsBilled).toBe(true);
 
     const rows = await t.run((ctx) =>
       ctx.db
@@ -372,11 +345,10 @@ describe("plan-02 per-question decomposition", () => {
     expect(rows[0]?.citationStatus).toBe("grounded");
   });
 
-  it("recordQuestionBatch skips stale-epoch persists and billing", async () => {
+  it("recordQuestionBatch skips stale-epoch persists", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
-    const { jobId, paperIds, creditsId } = await seedJobWithPapersAndQuestions(
+    const { jobId, paperIds } = await seedJobWithPapersAndQuestions(
       t,
       { paperCount: 1, questionKeys: ["q1"], startingCredits: 100 },
     );
@@ -402,12 +374,10 @@ describe("plan-02 per-question decomposition", () => {
         .collect(),
     );
     expect(rows).toEqual([]);
-    expect(await readPaidBalance(t, creditsId)).toBe(100);
   });
 
   it("retryable failure → subsequent success upgrades the same row", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const { paperIds } = await seedJobWithPapersAndQuestions(t, {
       paperCount: 1,
@@ -471,7 +441,6 @@ describe("plan-02 per-question decomposition", () => {
 
   it("all hard-failed questions → paper fails, failedPapers++", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
     const questionKeys = ["q1", "q2"];
     const { jobId, paperIds } = await seedJobWithPapersAndQuestions(t, {

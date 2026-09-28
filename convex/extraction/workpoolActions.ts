@@ -7,11 +7,7 @@ import { RAG } from "@convex-dev/rag";
 import { openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import {
-  calculateServerCreditsToDeduct,
-  calculateServerRawCreditCost,
-  convertServerCostDollarsToCredits,
-} from "../ai/helpers";
+import { convertUsdToCredits, creditsForUsage } from "../../lib/pricing";
 import { resolveOpenRouterModel } from "../chat/provider";
 type ExtractionModel = Awaited<ReturnType<typeof resolveOpenRouterModel>>["model"];
 type ExtractionPricing = Awaited<ReturnType<typeof resolveOpenRouterModel>>["pricing"];
@@ -20,10 +16,7 @@ import {
   truncateForTracking,
   type AITrackingEntry,
 } from "../../lib/posthog-ai-shared";
-import {
-  captureAIGenerationServer,
-  captureServerEvent,
-} from "../../lib/posthog-server";
+import { captureAIGenerationServer } from "../../lib/posthog-server";
 import type { AIProvider } from "../../lib/types";
 import { createError } from "../lib/errors";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
@@ -168,7 +161,7 @@ function buildAnswerSchema(type: string) {
     answer: getZodTypeForQuestion(type),
     confidence: z.number().min(0).max(1),
     reasoning: z.string(),
-    supportEvidenceIds: z.array(z.string()).default([]),
+    supportEvidenceIds: z.array(z.string()),
   });
 }
 
@@ -603,6 +596,8 @@ export type IndexResult =
       status: "completed";
       storageId?: Id<"_storage">;
       chunksCount?: number;
+      /** Credits the embedding cost; 0 when nothing was embedded. */
+      embeddingCredits: number;
     }
   | {
       status: "skipped";
@@ -623,6 +618,7 @@ export async function runDownloadAndIndexPdf(
   ctx: ActionCtx,
   args: DownloadAndIndexPdfArgs,
 ): Promise<IndexResult> {
+  let embeddingCredits = 0;
   try {
     // One round trip for job + pdf-flag instead of two.
     const { job, pdfEnabled } = await ctx.runQuery(
@@ -668,6 +664,7 @@ export async function runDownloadAndIndexPdf(
         status: "completed",
         chunksCount: 0,
         storageId: existingPaper.storageId ?? undefined,
+        embeddingCredits,
       };
     }
     if (!pdfEnabled) {
@@ -686,6 +683,7 @@ export async function runDownloadAndIndexPdf(
         return {
           status: "completed",
           chunksCount: 0,
+          embeddingCredits,
         };
       }
       return {
@@ -731,6 +729,7 @@ export async function runDownloadAndIndexPdf(
           status: "completed",
           chunksCount: 0,
           storageId: resolved.storageId,
+          embeddingCredits,
         };
       }
       return {
@@ -833,14 +832,9 @@ export async function runDownloadAndIndexPdf(
       const embeddingTokens = ragResult.usage?.tokens ?? 0;
       const embeddingCostDollars =
         estimateEmbeddingCostDollars(embeddingTokens);
-      const embeddingCreditsToDeduct =
-        convertServerCostDollarsToCredits(embeddingCostDollars);
+      embeddingCredits = convertUsdToCredits({ usd: embeddingCostDollars });
 
-      // If the job was cancelled mid-indexing, flip isIndexed but do not
-      // charge the user — preserves the existing UX decision that a cancelled
-      // job is free. If not cancelled, billing is done atomically with the
-      // isIndexed flip inside markPaperIndexed, gated on indexingBilled so
-      // workpool retries are safe.
+      // A job cancelled mid-indexing is free: flip isIndexed without charging.
       const freshControl = await ctx.runQuery(
         internal.extraction.queries.internal.getJobStatusInternal,
         { jobId: args.jobId },
@@ -852,8 +846,7 @@ export async function runDownloadAndIndexPdf(
       if (freshSkipReason) {
         return { status: "skipped", reason: freshSkipReason };
       }
-      const shouldBill =
-        freshControl.status !== "cancelled" && embeddingCreditsToDeduct > 0;
+      if (freshControl.status === "cancelled") embeddingCredits = 0;
 
       await ctx.runMutation(
         internal.extraction.mutations.papers.markPaperIndexed,
@@ -861,14 +854,6 @@ export async function runDownloadAndIndexPdf(
           paperId: args.paperId,
           expectedEpoch: args.expectedEpoch,
           ragEntryId: ragResult.entryId,
-          billing: shouldBill
-            ? {
-                userId: job.userId,
-                jobId: args.jobId,
-                creditsToDeduct: embeddingCreditsToDeduct,
-                embeddingTokens,
-              }
-            : undefined,
         },
       );
     }
@@ -877,6 +862,7 @@ export async function runDownloadAndIndexPdf(
       status: "completed",
       chunksCount: units.length,
       storageId: storedId,
+      embeddingCredits,
     };
   } catch (error) {
     return {
@@ -1103,7 +1089,6 @@ export type CompletedQuestionBatchItem = {
   questionKey: string;
   result: ExtractionQuestionResult;
   creditsUsed: number;
-  creditsRawCost: number;
   trackingEntry: AITrackingEntry | null;
 };
 
@@ -1189,7 +1174,6 @@ export async function captureCompletedQuestionTracking({
         output: outcome.trackingEntry.output,
         temperature: outcome.trackingEntry.temperature,
         creditsDeducted: outcome.creditsUsed,
-        creditsRawCost: outcome.creditsRawCost,
       });
     }),
   );
@@ -1236,57 +1220,6 @@ function getQuestionEntrySkipReason({
     },
     expectedEpoch,
   );
-}
-
-async function handleQuestionCreditsExhaustionAndRethrow({
-  ctx,
-  error,
-  jobId,
-  expectedEpoch,
-  billingUser,
-  questionKey,
-}: {
-  ctx: ActionCtx;
-  error: unknown;
-  jobId: Id<"extractionJobs">;
-  expectedEpoch: number;
-  billingUser: Doc<"users">;
-  questionKey: string;
-}): Promise<never> {
-  const classified = classifyUnknownError(error);
-  if (classified.code === "insufficient_credits") {
-    try {
-      await ctx.runMutation(
-        internal.extraction.mutations.results.updateJobStatus,
-        {
-          jobId,
-          expectedEpoch,
-          status: "creditsExhausted",
-          error: {
-            code: classified.code,
-            message: classified.message,
-            context: classified.context,
-            httpStatus: classified.httpStatus,
-            providerName: classified.providerName,
-            at: Date.now(),
-          },
-        },
-      );
-      await captureServerEvent(
-        billingUser.clerkId,
-        "extraction_job_credits_exhausted",
-        {
-          job_id: jobId,
-          question_key: questionKey,
-        },
-      );
-    } catch (transitionErr) {
-      console.warn(
-        `[runExtractQuestionWithContext] Failed to transition job to creditsExhausted: ${transitionErr}`,
-      );
-    }
-  }
-  throw error;
 }
 
 export async function runExtractQuestionWithContext({
@@ -1336,43 +1269,30 @@ export async function runExtractQuestionWithContext({
     : undefined;
 
   const startedAt = Date.now();
-  try {
-    const outcome = await runOneQuestionExtraction({
-      ctx,
-      paperId: context.paper._id,
-      jobId: context.job._id,
-      model,
-      question: {
-        key: question.key,
-        question: question.question,
-        type: question.type,
-        description: question.description,
-      },
-      abstractText,
-      abstractPresent,
-      units,
-      pdfEnabled: context.pdfEnabled,
-    });
-    const latencyMs = Date.now() - startedAt;
-    const creditsUsed = calculateServerCreditsToDeduct(outcome.usage, pricing);
-    return {
-      status: "completed",
-      questionKey: question.key,
-      result: outcome.result,
-      creditsUsed,
-      creditsRawCost: calculateServerRawCreditCost(outcome.usage, pricing),
-      trackingEntry: outcome.trackingEntry
-        ? { ...outcome.trackingEntry, latencyMs }
-        : null,
-    };
-  } catch (error) {
-    return await handleQuestionCreditsExhaustionAndRethrow({
-      ctx,
-      error,
-      jobId: context.job._id,
-      expectedEpoch,
-      billingUser: context.user,
-      questionKey: question.key,
-    });
-  }
+  const outcome = await runOneQuestionExtraction({
+    ctx,
+    paperId: context.paper._id,
+    jobId: context.job._id,
+    model,
+    question: {
+      key: question.key,
+      question: question.question,
+      type: question.type,
+      description: question.description,
+    },
+    abstractText,
+    abstractPresent,
+    units,
+    pdfEnabled: context.pdfEnabled,
+  });
+  const latencyMs = Date.now() - startedAt;
+  return {
+    status: "completed",
+    questionKey: question.key,
+    result: outcome.result,
+    creditsUsed: creditsForUsage(outcome.usage, pricing),
+    trackingEntry: outcome.trackingEntry
+      ? { ...outcome.trackingEntry, latencyMs }
+      : null,
+  };
 }

@@ -1,5 +1,4 @@
 import type { Doc } from "../../_generated/dataModel";
-import { getCreditsPerUsd } from "../../lib/creditTopups";
 import { pickWebSearchPricing } from "@/lib/pricing";
 
 // ─── Types ──────────────────────────────────────────────────
@@ -81,16 +80,4 @@ export function calculateEnhancedModelCost(
     usage.webSearchRequests * (webSearchPricing.usdPerCall ?? 0);
 
   return inputCost + outputCost + reasoningCost + cacheReadCost + cacheWriteCost + webSearchCost;
-}
-
-/**
- * Convert a dollar cost + markup into credits.
- * Minimum 1 credit for any non-zero usage.
- */
-export function creditsFromCost(
-  costDollars: number,
-  markup: number,
-): number {
-  const raw = costDollars * markup * getCreditsPerUsd();
-  return raw > 0 ? Math.max(1, Math.ceil(raw)) : 0;
 }

@@ -1,7 +1,7 @@
 import { MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
-import { PLAN_CONFIG } from "./constants";
-import { createCreditsForUser } from "../credits/internal";
+import { internal } from "../_generated/api";
+import { readAccount } from "../billing/accounts";
 
 export async function createUserWithDefaults(
   ctx: MutationCtx,
@@ -24,66 +24,15 @@ export async function createUserWithDefaults(
     updatedAt: now,
   });
 
-  await createCreditsForUser(ctx, userId, now);
-
-  await ctx.db.insert("subscriptions", {
-    userId,
-    plan: "free",
-    status: "active",
-    creditsPerMonth: PLAN_CONFIG.free.creditsPerMonth,
-    seats: 1,
-    createdAt: now,
-    updatedAt: now,
-  });
-
+  await ctx.scheduler.runAfter(0, internal.billing.accounts.provision, { userId });
   return userId;
 }
 
-/**
- * Repairs missing credits and/or subscription records for an existing user.
- * Idempotent — skips records that already exist.
- */
-export async function repairUserBillingRecords(
+/** Sets up billing for a user whose earlier provisioning never finished. */
+export async function ensureBillingAccount(
   ctx: MutationCtx,
   userId: Id<"users">,
-): Promise<{ creditsCreated: boolean; subscriptionCreated: boolean }> {
-  const now = Date.now();
-  let creditsCreated = false;
-  let subscriptionCreated = false;
-
-  const existingCredits = await ctx.db
-    .query("credits")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .first();
-
-  if (!existingCredits) {
-    await createCreditsForUser(ctx, userId, now);
-    creditsCreated = true;
-  }
-
-  const existingSubscription = await ctx.db
-    .query("subscriptions")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .first();
-
-  if (!existingSubscription) {
-    await ctx.db.insert("subscriptions", {
-      userId,
-      plan: "free",
-      status: "active",
-      creditsPerMonth: PLAN_CONFIG.free.creditsPerMonth,
-      seats: 1,
-      createdAt: now,
-      updatedAt: now,
-    });
-    subscriptionCreated = true;
-  }
-
-  if (creditsCreated || subscriptionCreated) {
-    console.warn(
-      `[repairUserBillingRecords] Repaired user ${userId}: credits=${creditsCreated}, subscription=${subscriptionCreated}`,
-    );
-  }
-
-  return { creditsCreated, subscriptionCreated };
+): Promise<void> {
+  if ((await readAccount(ctx, userId))?.signupGranted) return;
+  await ctx.scheduler.runAfter(0, internal.billing.accounts.provision, { userId });
 }

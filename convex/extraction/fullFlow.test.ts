@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { seedCreditsForTest } from "../credits/aggregates.test-support";
+import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import { setupAggregates } from "./aggregates.test-support";
 import { setupExtractionPaperWorkpool } from "./queue/workpool.test-support";
 
@@ -19,7 +19,6 @@ const {
     throw new Error("Unexpected network fetch in extraction full-flow test");
   }),
   previousEnv: {
-    creditsPerUsd: undefined as string | undefined,
     posthogKey: undefined as string | undefined,
     nextPublicPosthogKey: undefined as string | undefined,
   },
@@ -88,7 +87,7 @@ const EXPECTED_ACTUAL_CREDITS =
 
 async function seedUserFlagsAndCredits(
   t: ReturnType<typeof convexTest>,
-): Promise<{ userId: Id<"users">; creditsId: Id<"credits"> }> {
+): Promise<{ userId: Id<"users"> }> {
   return await t.run(async (ctx) => {
     const now = Date.now();
     await seedOrganizationFeatures(ctx, [TEST_CLERK], { extraction: true });
@@ -119,12 +118,12 @@ async function seedUserFlagsAndCredits(
       updatedAt: now,
     });
 
-    const creditsId = await seedCreditsForTest(ctx, {
+    await seedCreditsForTest(ctx, {
       userId,
       paid: STARTING_CREDITS,
       now,
     });
-    return { userId, creditsId };
+    return { userId };
   });
 }
 
@@ -133,21 +132,15 @@ describe("extraction full flow with mocked provider I/O", () => {
     vi.useFakeTimers();
     mockProviderGenerate.mockClear();
     networkFetch.mockClear();
-    vi.stubGlobal("fetch", networkFetch);
-    previousEnv.creditsPerUsd = process.env.CREDITS_PER_USD;
+    fakeAutumn.reset();
+    vi.stubGlobal("fetch", fakeAutumnFetch(networkFetch));
     previousEnv.posthogKey = process.env.POSTHOG_KEY;
     previousEnv.nextPublicPosthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-    process.env.CREDITS_PER_USD = "10000";
     delete process.env.POSTHOG_KEY;
     delete process.env.NEXT_PUBLIC_POSTHOG_KEY;
   });
 
   afterEach(() => {
-    if (previousEnv.creditsPerUsd === undefined) {
-      delete process.env.CREDITS_PER_USD;
-    } else {
-      process.env.CREDITS_PER_USD = previousEnv.creditsPerUsd;
-    }
     if (previousEnv.posthogKey === undefined) {
       delete process.env.POSTHOG_KEY;
     } else {
@@ -162,15 +155,13 @@ describe("extraction full flow with mocked provider I/O", () => {
     vi.useRealTimers();
   });
 
-  it("runs a multi-question job through queue/workpool, settles one paper debit, and never calls a provider network", async () => {
+  it("runs a multi-question job through queue/workpool, settles one paper charge, and never calls a provider network", async () => {
     const t = convexTest(schema);
     setupAggregates(t);
     setupExtractionPaperWorkpool(t);
-    await seedUserFlagsAndCredits(t);
+    const { userId } = await seedUserFlagsAndCredits(t);
     const auth = t.withIdentity(TEST_IDENTITY);
-
-    const beforeBalance = await auth.query(api.credits.queries.getMyBalance);
-    expect(beforeBalance?.total).toBe(STARTING_CREDITS);
+    expect(fakeAutumn.balance(userId)).toBe(STARTING_CREDITS);
 
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
       name: "Full Flow E2E",
@@ -218,7 +209,7 @@ describe("extraction full flow with mocked provider I/O", () => {
     expect(progress.failedPapers).toBe(0);
 
     const state = await t.run(async (ctx) => {
-      const [papers, results, queueRows, transactions] = await Promise.all([
+      const [papers, results, queueRows, usage] = await Promise.all([
         ctx.db
           .query("extractionPapers")
           .withIndex("by_job", (q) => q.eq("jobId", jobId))
@@ -234,18 +225,15 @@ describe("extraction full flow with mocked provider I/O", () => {
           )
           .collect(),
         ctx.db
-          .query("creditTransactions")
+          .query("billingUsage")
           .withIndex("by_job", (q) => q.eq("jobId", jobId))
           .collect(),
       ]);
-      return { papers, results, queueRows, transactions };
+      return { papers, results, queueRows, usage };
     });
 
     expect(state.papers).toHaveLength(1);
     expect(state.papers[0].status).toBe("completed");
-    expect(state.papers[0].questionsBilled).toBe(true);
-    expect(state.papers[0].admittedEstimateCredits).toBeUndefined();
-    expect(state.papers[0].admittedRunEpoch).toBeUndefined();
     expect(state.papers[0].creditsUsed).toBe(EXPECTED_ACTUAL_CREDITS);
 
     expect(state.results).toHaveLength(EXPECTED_QUESTION_COUNT);
@@ -291,24 +279,12 @@ describe("extraction full flow with mocked provider I/O", () => {
     expect(mockProviderGenerate).toHaveBeenCalledTimes(EXPECTED_QUESTION_COUNT);
     expect(networkFetch).not.toHaveBeenCalled();
 
-    const transactionSummary = state.transactions
-      .map((row) => ({
-        type: row.type,
-        amount: row.amount,
-        billingType: row.billingType,
-      }))
-      .sort((a, b) => a.type.localeCompare(b.type));
-    expect(transactionSummary).toEqual([
-      {
-        type: "usage",
-        amount: -EXPECTED_ACTUAL_CREDITS,
-        billingType: "extraction_llm",
-      },
-    ]);
-
-    const afterBalance = await auth.query(api.credits.queries.getMyBalance);
-    expect(afterBalance?.total).toBe(
+    expect(
+      state.usage.map((row) => ({ kind: row.kind, credits: row.credits })),
+    ).toEqual([{ kind: "extraction", credits: EXPECTED_ACTUAL_CREDITS }]);
+    expect(fakeAutumn.balance(userId)).toBe(
       STARTING_CREDITS - EXPECTED_ACTUAL_CREDITS,
     );
+    expect(fakeAutumn.locks.size).toBe(0);
   });
 });

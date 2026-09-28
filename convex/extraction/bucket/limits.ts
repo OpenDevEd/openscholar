@@ -28,11 +28,8 @@ import { v } from "convex/values";
 import { internalQuery } from "../../_generated/server";
 import type { QueryCtx, MutationCtx } from "../../_generated/server";
 import type { Id } from "../../_generated/dataModel";
-import {
-  resolveEffectivePlan,
-  type SubscriptionPlan,
-} from "../../../lib/billing/entitlements";
-import { selectCanonicalSubscription } from "../../subscriptions/lib/selectCanonicalSubscription";
+import type { PlanId } from "../../../lib/billing/plans";
+import { readAccount } from "../../billing/accounts";
 import {
   effectivePaperCount,
   findOverPullCapIndex,
@@ -41,40 +38,36 @@ import {
 import { createError } from "../../lib/errors";
 import { storedSearchFiltersValidator } from "../validators";
 
-export const PAPER_LIMIT_BY_PLAN: Record<SubscriptionPlan, number> = {
+export const PAPER_LIMIT_BY_PLAN: Record<PlanId, number> = {
   free: 1000,
   go: 1000,
   pro: 1000,
-  enterprise: 1000,
 };
 
 export const PAPER_LIMIT_MAX = Math.max(
   ...Object.values(PAPER_LIMIT_BY_PLAN),
 );
 
-export const PAPER_PULL_CAP_BY_PLAN: Record<SubscriptionPlan, number> = {
+export const PAPER_PULL_CAP_BY_PLAN: Record<PlanId, number> = {
   free: 200,
   go: 200,
   pro: 200,
-  enterprise: 200,
 };
 
-export const PAPER_PULL_DEFAULT_BY_PLAN: Record<SubscriptionPlan, number> = {
+export const PAPER_PULL_DEFAULT_BY_PLAN: Record<PlanId, number> = {
   free: 200,
   go: 200,
   pro: 200,
-  enterprise: 200,
 };
 
 /**
  * Per-user concurrent in-flight chat generations. V1 is 3 everywhere;
  * subscription-tier differentiation is a one-line change later.
  */
-export const CHAT_CONCURRENCY_LIMIT_BY_PLAN: Record<SubscriptionPlan, number> = {
+export const CHAT_CONCURRENCY_LIMIT_BY_PLAN: Record<PlanId, number> = {
   free: 3,
   go: 3,
   pro: 3,
-  enterprise: 3,
 };
 
 export const CHAT_CONCURRENCY_LIMIT_MAX = Math.max(
@@ -82,23 +75,21 @@ export const CHAT_CONCURRENCY_LIMIT_MAX = Math.max(
 );
 
 export const EXTRACTION_PAPER_CONCURRENCY_BY_PLAN: Record<
-  SubscriptionPlan,
+  PlanId,
   number
 > = {
   free: 5,
   go: 5,
   pro: 5,
-  enterprise: 5,
 };
 
 export const EXTRACTION_QUESTION_CONCURRENCY_BY_PLAN: Record<
-  SubscriptionPlan,
+  PlanId,
   number
 > = {
   free: 5,
   go: 5,
   pro: 5,
-  enterprise: 5,
 };
 
 // Infra-level upper bound applied on top of the plan-based per-paper
@@ -114,13 +105,8 @@ export type ExtractionExecutionLimits = {
 async function resolvePlan(
   ctx: QueryCtx | MutationCtx,
   userId: Id<"users">,
-): Promise<SubscriptionPlan> {
-  const subscriptions = await ctx.db
-    .query("subscriptions")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .order("desc")
-    .collect();
-  return resolveEffectivePlan(selectCanonicalSubscription(subscriptions));
+): Promise<PlanId> {
+  return (await readAccount(ctx, userId))?.plan ?? "free";
 }
 
 export async function getPaperLimit(

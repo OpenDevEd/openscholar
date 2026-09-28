@@ -3,10 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { internal } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
-import {
-  setupTransactionAggregates,
-  seedCreditsForTest,
-} from "../../credits/aggregates.test-support";
+import { convertUsdToCredits } from "../../../lib/pricing";
 
 import { parseAndValidateRequest, convertToAISdkParams, normalizeSchemaForStrictMode } from "./parseRequest";
 import {
@@ -18,7 +15,6 @@ import {
 import {
   extractEnhancedUsage,
   calculateEnhancedModelCost,
-  creditsFromCost,
   type EnhancedUsage,
 } from "./cost";
 import { buildReasoningProviderOptions } from "./reasoning";
@@ -42,33 +38,6 @@ async function seedUser(
       updatedAt: now,
       lastLoginAt: now,
     });
-  });
-}
-
-async function seedUserWithCredits(
-  t: ReturnType<typeof convexTest>,
-  freeBalance: number,
-  paidBalance: number,
-) {
-  return await t.run(async (ctx) => {
-    const now = Date.now();
-    const userId = await ctx.db.insert("users", {
-      clerkId: "clerk_gw_credit_test",
-      email: "gw_credit@test.com",
-      firstName: "GW",
-      lastName: "Credit",
-      state: "active" as const,
-      createdAt: now,
-      updatedAt: now,
-      lastLoginAt: now,
-    });
-    const creditsId = await seedCreditsForTest(ctx, {
-      userId,
-      free: freeBalance,
-      paid: paidBalance,
-      now,
-    });
-    return { userId, creditsId };
   });
 }
 
@@ -1215,7 +1184,6 @@ describe("createStreamingResponse", () => {
       model: "openai/gpt-4o",
       fullStream: mockTextStream(),
       includeUsage: false,
-      onUsage: () => {},
       onFinishReason: (r) => { finishReason = r; },
     });
 
@@ -1247,7 +1215,6 @@ describe("createStreamingResponse", () => {
       model: "openai/gpt-4o",
       fullStream: mockTextStream(),
       includeUsage: true,
-      onUsage: () => {},
       onFinishReason: () => {},
     });
 
@@ -1271,7 +1238,6 @@ describe("createStreamingResponse", () => {
       model: "openai/gpt-4o",
       fullStream: mockTextStream(),
       includeUsage: false,
-      onUsage: () => {},
       onFinishReason: () => {},
     });
 
@@ -1304,7 +1270,6 @@ describe("createStreamingResponse", () => {
       model: "openai/gpt-4o",
       fullStream: mockToolCallStream(),
       includeUsage: false,
-      onUsage: () => {},
       onFinishReason: () => {},
     });
 
@@ -1353,7 +1318,6 @@ describe("createStreamingResponse", () => {
       model: "openai/gpt-4o",
       fullStream: mockErrorStream(),
       includeUsage: false,
-      onUsage: () => {},
       onFinishReason: () => {},
     });
 
@@ -1394,7 +1358,6 @@ describe("createStreamingResponse", () => {
       model: "anthropic/claude-opus-4-20250514",
       fullStream: mockReasoningStream(),
       includeUsage: true,
-      onUsage: () => {},
       onFinishReason: () => {},
     });
 
@@ -1594,34 +1557,6 @@ describe("calculateEnhancedModelCost", () => {
   });
 });
 
-describe("creditsFromCost", () => {
-  it("converts dollars to credits with markup", () => {
-    // Default: 10,000 credits per USD
-    // 0.001 * 1.3 = 0.0013000...002 (IEEE 754), * 10000 = 13.000...002, ceil = 14
-    const credits = creditsFromCost(0.001, 1.3);
-    expect(credits).toBe(14);
-
-    // Clean multiplication: 0.01 * 1.0 * 10000 = 100
-    expect(creditsFromCost(0.01, 1.0)).toBe(100);
-  });
-
-  it("rounds up to nearest credit", () => {
-    const credits = creditsFromCost(0.00001, 1.0);
-    // 0.00001 * 1.0 * 10000 = 0.1 → ceil = 1
-    expect(credits).toBe(1);
-  });
-
-  it("returns minimum 1 credit for any non-zero cost", () => {
-    const credits = creditsFromCost(0.0000001, 1.0);
-    expect(credits).toBeGreaterThanOrEqual(1);
-  });
-
-  it("returns 0 for zero cost", () => {
-    const credits = creditsFromCost(0, 1.3);
-    expect(credits).toBe(0);
-  });
-});
-
 // ═══════════════════════════════════════════════════════════════
 // reasoning — Provider options mapping
 // ═══════════════════════════════════════════════════════════════
@@ -1711,99 +1646,8 @@ describe("buildReasoningProviderOptions", () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe("gateway integration (data layer)", () => {
-  it("full pipeline: key lookup → balance check → model lookup → credit deduction", async () => {
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    const { userId, creditsId } = await seedUserWithCredits(t, 500, 200);
-    await seedWalletKey(t, userId, { hashedKey: "gw_pipeline_hash", appName: "PipelineApp" });
-    await seedModel(t, {
-      modelId: "openai/gpt-4o",
-      name: "GPT-4o",
-      inputPricePerMillion: 2.5,
-      outputPricePerMillion: 10.0,
-      supportedParameters: ["tools", "reasoning", "structured_outputs"],
-    });
-
-    // Step 1: Key lookup
-    const keyResult = await t.query(internal.wallet.internal.lookupKey, {
-      hashedKey: "gw_pipeline_hash",
-    });
-    expect(keyResult).not.toBeNull();
-    expect(keyResult!.appName).toBe("PipelineApp");
-
-    // Step 2: Balance check
-    const balance = await t.query(internal.credits.internal.getBalanceByUserId, {
-      userId: keyResult!.userId,
-    });
-    expect(balance).not.toBeNull();
-    expect(balance!.total).toBe(700);
-
-    // Step 3: Model lookup
-    const model = await t.query(internal.models.queries.getServedByModelId, {
-      modelId: "openai/gpt-4o",
-    });
-    expect(model).not.toBeNull();
-    expect(model!.supportedParameters).toContain("reasoning");
-
-    // Step 4: Credit deduction (simulating a generation)
-    const result = await t.mutation(internal.credits.internal.deductCredits, {
-      userId: keyResult!.userId,
-      amount: 25,
-      description: "Wallet API: GPT-4o",
-      metadata: {
-        source: "wallet_api",
-        appName: "PipelineApp",
-        model: "openai/gpt-4o",
-        provider: "openai",
-        inputTokens: "1500",
-        outputTokens: "500",
-        reasoningTokens: "0",
-        cacheReadTokens: "0",
-        finishReason: "stop",
-      },
-    });
-    expect(result.deducted).toBe(25);
-    expect(result.remaining).toBe(675);
-
-    // Verify transaction. Seed `grant`/`purchase` rows also live on the
-    // credits row, so filter to the deduction row.
-    const txns = await t.run(async (ctx) =>
-      ctx.db
-        .query("creditTransactions")
-        .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
-        .filter((q) => q.eq(q.field("type"), "usage"))
-        .collect(),
-    );
-    expect(txns).toHaveLength(1);
-    expect(txns[0].metadata?.source).toBe("wallet_api");
-    expect(txns[0].metadata?.reasoningTokens).toBe("0");
-  });
-
-  it("rejects deduction when balance is insufficient", async () => {
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    const { userId } = await seedUserWithCredits(t, 5, 0);
-    await seedWalletKey(t, userId, { hashedKey: "gw_insufficient" });
-
-    const balance = await t.query(internal.credits.internal.getBalanceByUserId, {
-      userId,
-    });
-    expect(balance!.total).toBe(5);
-
-    // Attempt to deduct more than available
-    await expect(
-      t.mutation(internal.credits.internal.deductCredits, {
-        userId,
-        amount: 100,
-        description: "Wallet API: too expensive",
-        metadata: { source: "wallet_api" },
-      }),
-    ).rejects.toThrow();
-  });
-
   it("revoked key cannot proceed through pipeline", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUser(t);
     const walletKeyId = await seedWalletKey(t, userId, { hashedKey: "gw_revoked_hash" });
 
@@ -1822,7 +1666,6 @@ describe("gateway integration (data layer)", () => {
 
   it("non-served model is rejected", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     await seedModel(t, { modelId: "openai/deprecated-model", isServed: false });
 
     const model = await t.query(internal.models.queries.getServedByModelId, {
@@ -1831,43 +1674,6 @@ describe("gateway integration (data layer)", () => {
     expect(model).toBeNull();
   });
 
-  it("deduction with reasoning token metadata records correctly", async () => {
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    const { userId, creditsId } = await seedUserWithCredits(t, 1000, 0);
-
-    await t.mutation(internal.credits.internal.deductCredits, {
-      userId,
-      amount: 50,
-      description: "Wallet API: Claude Opus",
-      metadata: {
-        source: "wallet_api",
-        appName: "ReasoningApp",
-        model: "anthropic/claude-opus-4-20250514",
-        provider: "anthropic",
-        inputTokens: "2000",
-        outputTokens: "800",
-        reasoningTokens: "5000",
-        cacheReadTokens: "1500",
-        finishReason: "stop",
-      },
-    });
-
-    // Seed `grant`/`purchase` rows also live on the credits row, so
-    // filter to the deduction row.
-    const txns = await t.run(async (ctx) =>
-      ctx.db
-        .query("creditTransactions")
-        .withIndex("by_credits", (q) => q.eq("creditsId", creditsId))
-        .filter((q) => q.eq(q.field("type"), "usage"))
-        .collect(),
-    );
-
-    expect(txns).toHaveLength(1);
-    expect(txns[0].metadata?.reasoningTokens).toBe("5000");
-    expect(txns[0].metadata?.cacheReadTokens).toBe("1500");
-    expect(txns[0].metadata?.provider).toBe("anthropic");
-  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -2101,60 +1907,58 @@ describe("web search source tracking in stream", () => {
     yield { type: "finish", finishReason: "stop" };
   }
 
-  it("counts source events for web search costing", async () => {
-    let reportedSourceCount = 0;
+  it("reports the web source count before the response closes", async () => {
+    let reportedSourceCount = -1;
+    let closedBeforeDone = false;
+    let closed = false;
 
     const stream = createStreamingResponse({
       id: "gen_ws_stream",
       model: "openai/gpt-4o",
       fullStream: mockWebSearchStream(),
       includeUsage: false,
-      onUsage: () => {},
-      onFinishReason: () => {},
-      onSourceCount: (count) => { reportedSourceCount = count; },
+      onDone: async (count) => {
+        closedBeforeDone = closed;
+        reportedSourceCount = count;
+      },
     });
 
-    // Consume the stream
     const reader = stream.getReader();
-    while (true) {
-      const { done } = await reader.read();
-      if (done) break;
-    }
+    while (!(await reader.read()).done);
+    closed = true;
 
     expect(reportedSourceCount).toBe(3);
+    expect(closedBeforeDone).toBe(false);
   });
 
-  it("reports 0 sources when no source events", async () => {
-    async function* noSourceStream(): AsyncIterable<Record<string, unknown>> {
-      yield { type: "text-delta", textDelta: "No web search used." };
-      yield {
-        type: "finish-step",
-        finishReason: "stop",
-        usage: { inputTokens: 10, outputTokens: 5, inputTokenDetails: {}, outputTokenDetails: {} },
-      };
-      yield { type: "finish", finishReason: "stop" };
+  it("reads the whole upstream and still reports after the client disconnects", async () => {
+    let upstreamFinished = false;
+    async function* upstream(): AsyncIterable<Record<string, unknown>> {
+      yield* mockWebSearchStream();
+      upstreamFinished = true;
     }
-
     let reportedSourceCount = -1;
+    let done!: () => void;
+    const reported = new Promise<void>((resolve) => (done = resolve));
 
     const stream = createStreamingResponse({
-      id: "gen_no_ws",
+      id: "gen_ws_cancel",
       model: "openai/gpt-4o",
-      fullStream: noSourceStream(),
+      fullStream: upstream(),
       includeUsage: false,
-      onUsage: () => {},
-      onFinishReason: () => {},
-      onSourceCount: (count) => { reportedSourceCount = count; },
+      onDone: async (count) => {
+        reportedSourceCount = count;
+        done();
+      },
     });
 
     const reader = stream.getReader();
-    while (true) {
-      const { done } = await reader.read();
-      if (done) break;
-    }
+    await reader.read();
+    await reader.cancel();
+    await reported;
 
-    // onSourceCount should NOT have been called (0 sources)
-    expect(reportedSourceCount).toBe(-1);
+    expect(upstreamFinished).toBe(true);
+    expect(reportedSourceCount).toBe(3);
   });
 });
 
@@ -2253,7 +2057,7 @@ describe("web search cost calculation", () => {
     const usdCost = calculateEnhancedModelCost(usage, model);
     expect(usdCost).toBeCloseTo(0.02, 6);
 
-    const credits = creditsFromCost(usdCost, model.costMarkup);
+    const credits = convertUsdToCredits({ usd: usdCost, markup: model.costMarkup });
     // ceil(0.02 × 2.0 × 10_000) = 400
     expect(credits).toBe(400);
   });

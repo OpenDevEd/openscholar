@@ -6,12 +6,9 @@ import { requireOrganizationFeature } from "../../organizationFeatures";
  * and auto-pauses (`creditsExhausted`, plan 03). It:
  *
  *   1. Owns auth + ownership checks (same shape as pauseExtraction).
- *   2. When currentStatus is `creditsExhausted`, runs a credit pre-flight
- *      by counting non-completed extractionResults + non-indexed papers
- *      and feeding them through `estimateRemainingCredits`. If the
- *      user's balance < estimate.high, the mutation throws
- *      INSUFFICIENT_CREDITS (conservative — better to block than
- *      immediately re-exhaust mid-run).
+ *   2. When currentStatus is `creditsExhausted`, checks the balance covers
+ *      the next paper's estimate, which is what each paper holds before it
+ *      runs, and otherwise throws INSUFFICIENT_CREDITS.
  *   3. Calls `validateResumeTransition` (the pure decision helper) to
  *      reach the next status. On ok: patches the job (status flip +
  *      `runEpoch` bump) and re-dispatches paper queue work. On !ok with
@@ -29,10 +26,8 @@ import { requireOrganizationFeature } from "../../organizationFeatures";
  *     mismatch.
  *
  *   Idempotency on re-dispatch: PDF indexing short-circuits via
- *   `existingPaper.isIndexed || existingPaper.indexingBilled`, and
- *   question extraction short-circuits via `existingResult?.billed`.
- *   A paper that's mid-extraction re-enters the pipeline harmlessly,
- *   re-runs only the question(s) that hadn't yet billed, then finalises.
+ *   `existingPaper.isIndexed`, and a paper that's mid-extraction re-runs
+ *   only the questions without a saved answer, then finalises.
  */
 
 import { mutation } from "../../_generated/server";
@@ -46,7 +41,7 @@ import {
   type JobStatus,
 } from "../stateMachine";
 import { validateResumeTransition } from "../../../lib/extraction/transitions";
-import { estimateRemainingCredits } from "../../../lib/extraction/cost-estimate";
+import { estimatePaperCredits } from "../../../lib/extraction/cost-estimate";
 import {
   EXTRACTION_QUESTION_CONCURRENCY_INFRA_CLAMP,
   getExtractionExecutionLimits,
@@ -54,7 +49,7 @@ import {
 } from "../bucket/limits";
 import { normalizeBatchSize, resolveBoundedConcurrency } from "../batching";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
-import { readBalance } from "../../credits/balanceCounter";
+import { availableCredits as readAvailableCredits } from "../../billing/accounts";
 import { getFlag } from "../../featureFlags/guard";
 import {
   dispatchPaperQueueWindowTx,
@@ -93,62 +88,15 @@ export const resumeExtraction = mutation({
     let remainingEstimateHigh = 0;
 
     if (job.status === "creditsExhausted") {
-      const credits = await ctx.db
-        .query("credits")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .unique();
-      availableCredits = credits
-        ? (await readBalance(ctx, credits._id)).total
-        : 0;
-
-      // Count remaining work inline — resume is a single-row-trigger
-      // operation so one round of scans is cheaper than a dedicated
-      // internal query + cross-mutation call.
-      const unresolvedResults = (
-        await Promise.all([
-          ctx.db
-            .query("extractionResults")
-            .withIndex("by_job_status", (q) =>
-              q.eq("jobId", jobId).eq("status", "pending"),
-            )
-            .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB),
-          ctx.db
-            .query("extractionResults")
-            .withIndex("by_job_status", (q) =>
-              q.eq("jobId", jobId).eq("status", "extracting"),
-            )
-            .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB),
-          ctx.db
-            .query("extractionResults")
-            .withIndex("by_job_status", (q) =>
-              q.eq("jobId", jobId).eq("status", "failed"),
-            )
-            .take(PAPER_LIMIT_MAX * MAX_QUESTIONS_PER_JOB),
-        ])
-      ).flat();
-      const remainingQuestions = unresolvedResults.filter(
-        (result) => result.billed !== true,
-      ).length;
-
-      const papers = await ctx.db
-        .query("extractionPapers")
+      availableCredits = await readAvailableCredits(ctx, user._id);
+      const questions = await ctx.db
+        .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .take(PAPER_LIMIT_MAX);
-      const unindexedPapers = papers.filter(
-        (p) =>
-          p.indexingBilled !== true &&
-          p.status !== "download_failed" &&
-          p.status !== "indexing_failed",
-      ).length;
-
-      const usePdfs = job.usePdfs ?? false;
-      const estimate = estimateRemainingCredits({
-        remainingQuestions,
-        unindexedPapers,
-        usePdfs,
-        avgPaperKind: usePdfs ? "pdf" : "abstract",
+        .collect();
+      remainingEstimateHigh = estimatePaperCredits({
+        questionCount: questions.length,
+        pdf: job.usePdfs ?? false,
       });
-      remainingEstimateHigh = estimate.high;
     }
 
     const decision = validateResumeTransition({

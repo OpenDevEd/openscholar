@@ -54,7 +54,7 @@ export function RetryConfirmDialog({
   });
 
   const { data: balance } = useProtectedQuery(
-    api.credits.queries.checkBalance,
+    api.billing.accounts.checkBalance,
     open && estimate.high > 0 ? { requiredAmount: estimate.high } : "skip",
   );
 

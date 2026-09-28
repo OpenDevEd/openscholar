@@ -1,7 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
-import { createUserWithDefaults, repairUserBillingRecords } from "../lib/userCreation";
+import { createUserWithDefaults, ensureBillingAccount } from "../lib/userCreation";
 import { createError } from "../lib/errors";
 
 export const updateProfile = mutation({
@@ -61,7 +61,7 @@ export const ensureUser = mutation({
       }
 
       await ctx.db.patch("users", existing._id, patch);
-      await repairUserBillingRecords(ctx, existing._id);
+      await ensureBillingAccount(ctx, existing._id);
       return existing._id;
     }
 

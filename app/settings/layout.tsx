@@ -35,7 +35,6 @@ function SettingsLayoutContent({
   const { phase } = useAuthReadiness();
   const isSignedIn = phase === "authenticated";
   const subscriptionState = useSharedSubscriptionState();
-  const subscription = subscriptionState.subscription;
   const subscriptionsEnabled = useFeatureFlagForResolvedTier(
     "subscriptions.enabled",
     subscriptionState.resolvedTier,
@@ -44,11 +43,9 @@ function SettingsLayoutContent({
     "credits.enabled",
     subscriptionState.resolvedTier,
   );
-  const hasBillingLink = Boolean(
-    subscription?.stripeSubscriptionId || subscription?.stripeCustomerId,
-  );
   const effectivePlan = subscriptionState.resolvedPlan ?? "free";
-  const showUpgradeCta = effectivePlan === "free" && !hasBillingLink;
+  const showUpgradeCta =
+    effectivePlan === "free" && !subscriptionState.account?.hasPaid;
   const hideBilling =
     !subscriptionsEnabled && !creditsEnabled && showUpgradeCta && !subscriptionState.isSettling;
 

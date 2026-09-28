@@ -159,7 +159,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
     [readyBucketItems, draftJob.questions.length, draftJob.usePdfs],
   );
   const { data: preflightBalance } = useProtectedQuery(
-    api.credits.queries.checkBalance,
+    api.billing.accounts.checkBalance,
     effectiveMode === "extraction" && preflightEstimate.high > 0
       ? { requiredAmount: preflightEstimate.high }
       : "skip",
