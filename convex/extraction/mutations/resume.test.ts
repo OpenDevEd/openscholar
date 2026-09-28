@@ -14,9 +14,8 @@ import { api } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
 import {
-  setupTransactionAggregates,
   seedCreditsForTest,
-} from "../../credits/aggregates.test-support";
+} from "../../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
 
 const CLERK = "clerk_resume_owner";
@@ -63,11 +62,9 @@ type ResumeSeedOpts = {
     | "indexing"
     | "extracting";
   usePdfs?: boolean;
-  /** How many pending (non-completed, non-billed) result rows to seed.
-   *  Used by the creditsExhausted pre-flight to size the estimate. */
-  remainingQuestions?: number;
-  /** Whether seeded papers count as "unindexed" (indexingBilled !== true). */
-  unindexedPapers?: number;
+  /** How many questions the job asks; the creditsExhausted pre-flight
+   *  checks the balance covers one paper's worth. */
+  questions?: number;
   runEpoch?: number;
 };
 
@@ -93,39 +90,14 @@ async function seedJob(
       updatedAt: now,
     });
 
-    const rq = opts.remainingQuestions ?? 0;
-    for (let i = 0; i < rq; i++) {
-      const paperId = await ctx.db.insert("extractionPapers", {
+    for (let i = 0; i < (opts.questions ?? 0); i++) {
+      await ctx.db.insert("extractionQuestions", {
         jobId,
-        openalexId: `oa:resume_${i}`,
-        title: `Paper ${i}`,
-        status: "extracting" as const,
-        indexingBilled: true,
-        ragEntryId: `rag:${i}`,
-        isIndexed: true,
-      });
-      await ctx.db.insert("extractionResults", {
-        jobId,
-        paperId,
-        questionKey: `q_${i}`,
-        answer: null,
-        citations: [],
-        citationStatus: "extraction_error" as const,
-        status: "pending" as const,
-        billed: false,
-        attemptCount: 0,
-        processedAt: now,
-      });
-    }
-
-    const up = opts.unindexedPapers ?? 0;
-    for (let i = 0; i < up; i++) {
-      await ctx.db.insert("extractionPapers", {
-        jobId,
-        openalexId: `oa:unindexed_${i}`,
-        title: `Unindexed ${i}`,
-        status: "pending" as const,
-        indexingBilled: false,
+        key: `q_${i}`,
+        question: `Q ${i}?`,
+        type: "string" as const,
+        order: i,
+        createdAt: now,
       });
     }
 
@@ -136,7 +108,6 @@ async function seedJob(
 describe("resumeExtraction — happy paths", () => {
   it("resumes 'paused' back to the captured pausedFromStatus", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, {
       jobStatus: "paused",
@@ -160,7 +131,6 @@ describe("resumeExtraction — happy paths", () => {
 
   it("falls back to 'extracting' when pausedFromStatus is missing", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, {
       jobStatus: "paused",
@@ -181,13 +151,12 @@ describe("resumeExtraction — happy paths", () => {
 
   it("resumes 'creditsExhausted' to 'extracting' when balance covers the estimate", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupExtractionPaperWorkpool(t);
     const userId = await seedUserAndCredits(t, { paid: 100_000 });
     const jobId = await seedJob(t, userId, {
       jobStatus: "creditsExhausted",
       usePdfs: false,
-      remainingQuestions: 5, // 5 × 5 (ABSTRACT_Q_CREDIT_HIGH) = 25
+      questions: 5,
     });
     const auth = t.withIdentity(OWNER_IDENTITY);
 
@@ -204,7 +173,6 @@ describe("resumeExtraction — happy paths", () => {
 
   it("requeues non-terminal papers through the paper queue", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupExtractionPaperWorkpool(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, {
@@ -254,15 +222,13 @@ describe("resumeExtraction — happy paths", () => {
 });
 
 describe("resumeExtraction — credit pre-flight (creditsExhausted path)", () => {
-  it("throws INSUFFICIENT_CREDITS when balance < estimate.high", async () => {
+  it("throws INSUFFICIENT_CREDITS when the balance cannot cover the next paper", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t, { paid: 0, free: 5 });
     const jobId = await seedJob(t, userId, {
       jobStatus: "creditsExhausted",
       usePdfs: false,
-      // 5 remaining × 12 (high) = 60 needed, balance 5 → throw.
-      remainingQuestions: 5,
+      questions: 5,
     });
     const auth = t.withIdentity(OWNER_IDENTITY);
 
@@ -277,15 +243,12 @@ describe("resumeExtraction — credit pre-flight (creditsExhausted path)", () =>
     expect(job?.status).toBe("creditsExhausted");
   });
 
-  it("includes indexing cost for unindexed PDF-tier papers in the preflight", async () => {
+  it("counts PDF indexing in the next paper's cost", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t, { paid: 0, free: 0 });
     const jobId = await seedJob(t, userId, {
       jobStatus: "creditsExhausted",
-      usePdfs: true, // PDF tier — indexing is billed
-      remainingQuestions: 0,
-      unindexedPapers: 1, // 1.5 credits of indexing alone
+      usePdfs: true,
     });
     const auth = t.withIdentity(OWNER_IDENTITY);
 
@@ -298,7 +261,6 @@ describe("resumeExtraction — credit pre-flight (creditsExhausted path)", () =>
 
   it("ignores balance on user-paused jobs (pause is not a credit state)", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t, { paid: 0, free: 0 });
     const jobId = await seedJob(t, userId, {
       jobStatus: "paused",
@@ -317,7 +279,6 @@ describe("resumeExtraction — credit pre-flight (creditsExhausted path)", () =>
 describe("resumeExtraction — idempotency + refusals", () => {
   it("returns resumed:false with reason 'not_paused' on an already-running job", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, { jobStatus: "extracting" });
     const auth = t.withIdentity(OWNER_IDENTITY);
@@ -331,7 +292,6 @@ describe("resumeExtraction — idempotency + refusals", () => {
 
   it("double-resume is a no-op — second call returns not_paused", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, {
       jobStatus: "paused",
@@ -356,7 +316,6 @@ describe("resumeExtraction — idempotency + refusals", () => {
     "returns not_paused on terminal status '%s'",
     async (status) => {
       const t = convexTest(schema);
-      setupTransactionAggregates(t);
       const userId = await seedUserAndCredits(t);
       const jobId = await seedJob(t, userId, { jobStatus: status });
       const auth = t.withIdentity(OWNER_IDENTITY);
@@ -372,7 +331,6 @@ describe("resumeExtraction — idempotency + refusals", () => {
 describe("resumeExtraction — auth + mode guards", () => {
   it("rejects unauthenticated callers", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, {
       jobStatus: "paused",
@@ -385,7 +343,6 @@ describe("resumeExtraction — auth + mode guards", () => {
 
   it("rejects foreign users with NOT_FOUND shape", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await seedJob(t, userId, {
       jobStatus: "paused",
@@ -414,7 +371,6 @@ describe("resumeExtraction — auth + mode guards", () => {
 
   it("rejects resume on chat-mode jobs", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     const userId = await seedUserAndCredits(t);
     const jobId = await t.run((ctx) =>
       ctx.db.insert("extractionJobs", {

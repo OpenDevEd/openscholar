@@ -94,3 +94,14 @@ export function readConvexErrorData(error: unknown): {code: string; message?: st
   if (!data || typeof data !== "object" || !("code" in data) || typeof data.code !== "string") return null;
   return {code: data.code, ...("message" in data && typeof data.message === "string" ? {message: data.message} : {})};
 }
+
+/** A loggable message for any thrown value. */
+export function errorToLogString(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return "Unknown error";
+  }
+}

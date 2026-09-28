@@ -48,8 +48,8 @@ vi.mock("@/convex/_generated/api", () => ({
       queries: { retry: { getRetryableSummary: "getRetryableSummary" } },
       mutations: { retryFailedQuestions: "retryFailedQuestions" },
     },
-    credits: {
-      queries: { checkBalance: "checkBalance" },
+    billing: {
+      accounts: { checkBalance: "checkBalance" },
     },
   },
 }));

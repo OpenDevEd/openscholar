@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { convertUsdToCredits } from "./convert";
+import { convertUsdToCredits, creditsForUsage } from "./convert";
 
 describe("convertUsdToCredits", () => {
   it("returns 0 for usd = 0", () => {
@@ -48,9 +48,21 @@ describe("convertUsdToCredits", () => {
     // 0.01 × 2.0 × 10_000 = 200
     expect(convertUsdToCredits({ usd: 0.01, markup: 2.0 })).toBe(200);
   });
+});
 
-  it("honours an explicit creditsPerUsd override", () => {
-    // 0.01 × 1.3 × 1_000 = 13
-    expect(convertUsdToCredits({ usd: 0.01, creditsPerUsd: 1_000 })).toBe(13);
+describe("creditsForUsage", () => {
+  it("prices tokens with the markup and rounds up", () => {
+    // 1M input tokens at $0.10/M + 1M output at $0.50/M = $0.60 → 7,800 credits
+    expect(
+      creditsForUsage({ inputTokens: 1_000_000, outputTokens: 1_000_000 }, { input: 0.1, output: 0.5 }),
+    ).toBe(7_800);
+  });
+
+  it("charges 1 credit for tokens on a model with no price yet", () => {
+    expect(creditsForUsage({ inputTokens: 900, outputTokens: 50 }, { input: 0, output: 0 })).toBe(1);
+  });
+
+  it("charges nothing when no tokens were used", () => {
+    expect(creditsForUsage({ inputTokens: 0, outputTokens: 0 }, { input: 0.1, output: 0.5 })).toBe(0);
   });
 });

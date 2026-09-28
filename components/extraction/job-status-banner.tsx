@@ -50,7 +50,7 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
   // credit state, so displaying balance would be misleading and the
   // query cost is wasted.
   const { data: balance } = useProtectedQuery(
-    api.credits.queries.checkBalance,
+    api.billing.accounts.checkBalance,
     props.variant === "creditsExhausted"
       ? { requiredAmount: props.minCreditsToResume ?? 1 }
       : "skip",

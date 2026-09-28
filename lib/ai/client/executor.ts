@@ -14,6 +14,7 @@ import {
   getScreeningResponsesConfig,
   type OperationConfig
 } from '../core/configs'
+import { toExtractionQuestions } from '../core/schemas'
 import type { AIProvider } from '@/lib/types'
 import { captureAIGeneration, captureAIGenerationBatch } from '@/lib/posthog-ai'
 import {
@@ -132,7 +133,7 @@ export const generateScreeningQuestions = createClientExecutor(
 
 export const generateExtractionQuestions = createClientExecutor(
   getExtractionQuestionsConfig,
-  (output) => ({ questions: output.questions }),
+  toExtractionQuestions,
   'generate_extraction_questions'
 )
 

@@ -5,8 +5,6 @@
  *   - maybeFinalizeJob: O(1) "all done" check from extractionJobs counters.
  *   - createJobDirect / createQuestionDirect: test/queue job/question
  *     record creation used by fixtures and setup helpers.
- *   - clearAdmittedPaperCreditsForJob: clears per-paper admission markers
- *     that survived a terminal job transition.
  *
  * Plan-02 retires the per-paper workpool enqueue helper that used to
  * live here — paper queue workers call download/index and extraction
@@ -15,7 +13,6 @@
 
 import { internalMutation } from "../../../_generated/server";
 import { v } from "convex/values";
-import { internal } from "../../../_generated/api";
 import { writeJobSources } from "../../jobSources";
 import { resolveServerModelId } from "../../../ai/serverModel";
 import {
@@ -28,7 +25,6 @@ import {
   sourceTypeValidator,
 } from "../../validators";
 import { readJobCounters } from "../../jobCounters";
-import { clearJobPaperQuestionAdmissionsTx } from "../../creditAdmissions";
 
 export const maybeFinalizeJob = internalMutation({
   args: {
@@ -73,12 +69,6 @@ export const maybeFinalizeJob = internalMutation({
         completedAt: now,
         updatedAt: now,
       });
-      await ctx.scheduler.runAfter(
-        0,
-        internal.extraction.mutations.internal.lifecycle
-          .clearAdmittedPaperCreditsForJob,
-        { jobId: args.jobId },
-      );
       return null;
     }
 
@@ -100,26 +90,7 @@ export const maybeFinalizeJob = internalMutation({
       completedAt: now,
       updatedAt: now,
     });
-    await ctx.scheduler.runAfter(
-      0,
-      internal.extraction.mutations.internal.lifecycle
-        .clearAdmittedPaperCreditsForJob,
-      { jobId: args.jobId },
-    );
     return null;
-  },
-});
-
-/**
- * Clear per-paper admission markers that survived a terminal job
- * transition. This does not touch the credit ledger because admission is
- * only a start gate; final billing writes the settled usage transaction.
- */
-export const clearAdmittedPaperCreditsForJob = internalMutation({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.object({ cleared: v.number() }),
-  handler: async (ctx, args): Promise<{ cleared: number }> => {
-    return await clearJobPaperQuestionAdmissionsTx(ctx, args);
   },
 });
 

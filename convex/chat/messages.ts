@@ -68,13 +68,11 @@ import {
 } from "../../lib/chat/message-state";
 import { resolveLatestAssistantTurn } from "../../lib/chat/latest-assistant-turn";
 import { pickProviderCostUsd } from "../../lib/chat/pick-provider-cost";
-import {
-  estimateTokenCount,
-  extractMessageText,
-  errorToLogString,
-  ABORT_TOKEN_SURCHARGE_MULTIPLIER,
-} from "./abortTokenEstimate";
+import { errorToLogString } from "../lib/errors";
 import { assertChatConcurrencyAvailable } from "./concurrency";
+import { reserveCredits, releaseCredits, settleCredits } from "../billing/charge";
+import { convertUsdToCredits, WEB_SEARCH_PRICING } from "../../lib/pricing";
+import { calculateCostInDollars } from "../../lib/ai/core/cost";
 
 export const STOP_ABORT_POLL_INTERVAL_MS = 500;
 
@@ -350,53 +348,46 @@ export const generateResponse = internalAction({
     // the provider's fetch wrapper (see convex/chat/openrouterFetch.ts).
     // The header lands on the initial HTTP response frame, so this ref
     // is populated even when the client aborts the stream mid-flight.
-    // That is what lets stopped turns bill against OpenRouter's
-    // /api/v1/generation endpoint via billing.reconcileGenerationUsage.
+    // That is what lets stopped turns bill from OpenRouter's
+    // /api/v1/generation record via chat/billing.ts settleFromOpenRouter.
     let capturedGenerationId: string | undefined;
     let capturedModelSlug: string | undefined;
     let streamErrored = false;
     let streamAbortedByUser = false;
     let streamReturned = false;
-    // Flipped by onFinish (happy path) OR onAbort (cancelled path) once
-    // local billing has committed. The post-stream reconcile block
-    // checks this flag and skips scheduling reconcile when either fast
-    // path already wrote the deduction — prevents OpenRouter's
-    // /api/v1/generation lookup from double-billing, and avoids
-    // scheduling a reconcile that would 404 forever anyway for
-    // cancelled streams on non-whitelisted providers (Google, Groq,
-    // Mistral, …). See plans/chat-exact-stop-billing/01 for the
-    // provider-dependence analysis.
-    let onFinishBilled = false;
-    // Accumulates streamed text deltas so onAbort can tokenize what
-    // the user actually received and bill from an estimate when
-    // OpenRouter's generation lookup is unavailable for the cancel
-    // path (see abortTokenEstimate.ts for the heuristic's caveats).
-    let accumulatedOutput = "";
+    // Credits for this turn are held under chargeId until the turn settles.
+    const chargeId = `chat:${generationAttemptId ?? crypto.randomUUID()}`;
+    let reserved = false;
+    let settledOrScheduled = false;
+    // A turn can take several model steps (tool calls). Each completed step
+    // adds its cost; a step still running at a stop or error is billed from
+    // its OpenRouter generation record.
+    let completedUsd = 0;
+    let completedTokens = 0;
+    const completedGenerations = new Set<string>();
+    let finished = false;
+    let webSearchUsd = 0;
 
     try {
-      const balance = await ctx.runQuery(
-        internal.credits.internal.getBalanceByUserId,
-        { userId },
-      );
-      // Pre-flight floor: base chat estimate plus a flat web-search
-      // surcharge when the thread has web search enabled. The grounding
-      // fee billed by OpenRouter for server-side web search dwarfs the
-      // token cost on small-output models, so a single floor undercounts.
+      // The web-search surcharge covers the flat grounding fee, which
+      // dwarfs token cost on small-output models.
       const requiredCredits =
         ESTIMATED_CREDITS_PER_CHAT_MESSAGE +
         (meta.webSearchEnabled ? ESTIMATED_CREDITS_PER_WEB_SEARCH : 0);
-      const availableCredits = balance?.total ?? 0;
-      if (availableCredits < requiredCredits) {
+      if (!(await reserveCredits(ctx, { userId, chargeId, credits: requiredCredits }))) {
+        const account = await ctx.runQuery(internal.billing.accounts.forUser, { userId });
+        const availableCredits = account?.balance ?? 0;
         throw createError(
           "AI_INSUFFICIENT_CREDITS",
           "Not enough credits for this chat message.",
           {
             requiredCredits,
             availableCredits,
-            deficitCredits: requiredCredits - availableCredits,
+            deficitCredits: Math.max(0, requiredCredits - availableCredits),
           },
         );
       }
+      reserved = true;
 
       const { model, modelSlug, pricing } = await resolveOpenRouterModel(
         ctx,
@@ -426,11 +417,8 @@ export const generateResponse = internalAction({
         tools = {
           web_search: buildTavilyWebSearchTool({
             apiKey: tavilyApiKey!,
-            costSink: async (credits) => {
-              await ctx.runMutation(internal.chat.billing.recordTavilyCost, {
-                threadId,
-                tavilyCredits: credits,
-              });
+            costSink: async (tavilyCredits) => {
+              webSearchUsd += tavilyCredits * WEB_SEARCH_PRICING.tavily.usdPerCredit;
             },
           }),
         } as ToolSet;
@@ -452,103 +440,31 @@ export const generateResponse = internalAction({
             // abort over a ~2s wait for a retry that mid-stream can't
             // salvage anyway.
             maxRetries: 0,
-            onChunk: async ({ chunk }) => {
-              // Accumulate the text the user actually saw — on abort we
-              // tokenize this to bill from an estimate. Only text-delta
-              // counts: reasoning chunks ship via a separate detail
-              // channel and are priced differently by most providers.
-              if (chunk.type === "text-delta") {
-                accumulatedOutput += chunk.text ?? "";
-              }
-            },
-            onFinish: async ({ usage, providerMetadata }) => {
-              // Fast path for successful turns. AI SDK v6's onFinish
-              // fires with aggregated usage once every step has
-              // completed — for V1 (stepCountIs(1)) this is equivalent
-              // to onStepFinish. It does NOT fire on abort, which is
-              // exactly what we want: aborts fall through to the
-              // post-stream reconcile block below, which resolves cost
-              // against OpenRouter's /api/v1/generation endpoint.
+            onStepFinish: async ({ usage, providerMetadata }) => {
               const inputTokens = usage?.inputTokens ?? 0;
               const outputTokens = usage?.outputTokens ?? 0;
-              if (inputTokens === 0 && outputTokens === 0) return;
-
-              const reasoningTokens =
-                usage?.outputTokenDetails?.reasoningTokens ??
-                usage?.reasoningTokens ??
-                0;
-              const cachedPromptTokens =
-                usage?.inputTokenDetails?.cacheReadTokens ??
-                usage?.cachedInputTokens ??
-                0;
-              // OpenRouter's all-in USD cost (token cost + any provider-
-              // side tool cost such as server web search). Surfaced when
-              // the chat factory was built with `usage: { include: true }`
-              // — see convex/chat/provider.ts and lib/chat/pick-provider-cost.ts.
-              const providerCostUsd = pickProviderCostUsd(providerMetadata);
-
-              if (capturedGenerationId) {
-                // Prefer ledger-backed billing keyed on generation id
-                // so duplicate invocations (e.g. on retry) no-op via
-                // the billedAt guard inside billGenerationFromSdkUsage.
-                await ctx.runMutation(
-                  internal.chat.billing.captureGenerationFromResponse,
-                  {
-                    threadId,
-                    generationId: capturedGenerationId,
-                    requestedModel: modelSlug,
-                  },
-                );
-                await ctx.runMutation(
-                  internal.chat.billing.billGenerationFromSdkUsage,
-                  {
-                    generationId: capturedGenerationId,
-                    model: modelSlug,
-                    pricing,
-                    promptTokens: inputTokens,
-                    completionTokens: outputTokens,
-                    reasoningTokens,
-                    cachedPromptTokens,
-                    ...(providerCostUsd !== null
-                      ? { totalCostUsd: providerCostUsd }
-                      : {}),
-                  },
-                );
-              } else {
-                // Defence-in-depth: fetch wrapper missed the header
-                // but the stream still finished. Bill via the thread-
-                // keyed path so the user isn't undercharged.
-                await ctx.runMutation(
-                  internal.chat.billing.billThreadUsageFromSdk,
-                  {
-                    threadId,
-                    model: modelSlug,
-                    pricing,
-                    promptTokens: inputTokens,
-                    completionTokens: outputTokens,
-                    reasoningTokens,
-                    cachedPromptTokens,
-                    ...(providerCostUsd !== null
-                      ? { totalCostUsd: providerCostUsd }
-                      : {}),
-                  },
-                );
-              }
-              onFinishBilled = true;
+              completedTokens += inputTokens + outputTokens;
+              // OpenRouter's all-in cost includes provider-side tools such
+              // as server web search; tokens × price is the fallback.
+              completedUsd +=
+                pickProviderCostUsd(providerMetadata) ??
+                calculateCostInDollars({ inputTokens, outputTokens }, pricing);
+              if (capturedGenerationId) completedGenerations.add(capturedGenerationId);
+            },
+            onFinish: async () => {
+              finished = true;
             },
             onAbort: ({ steps }) => {
               // AI SDK calls onAbort fire-and-forget at stream-text.ts:1206
               // — any await inside this body becomes a dangling promise
               // from the action's perspective. We restrict ourselves to
               // synchronous side-effects and surface the abort to the
-              // action body via streamAbortedByUser; the action body
-              // does the awaited billing in the post-stream block below.
+              // action body via streamAbortedByUser.
               streamAbortedByUser = true;
               console.info("[chat] stream aborted by user", {
                 jobId,
                 threadId,
                 stepCount: steps.length,
-                accumulatedChars: accumulatedOutput.length,
               });
             },
             onError: async ({ error }) => {
@@ -664,15 +580,10 @@ export const generateResponse = internalAction({
           });
       }
 
-      // Abort path runs everything that needs to happen for a
-      // user-stopped turn from the action body, properly awaited.
-      // The previous version put both the sentinel persistence and
-      // the surcharge billing inside onAbort, but AI SDK calls
-      // onAbort fire-and-forget at stream-text.ts:1206 so any awaits
-      // inside it become dangling promises that Convex may not run
-      // to completion (observed live — see commit 9db67c63). Now
-      // onAbort only flips streamAbortedByUser synchronously and we
-      // do the work here.
+      // A user stop is handled here, awaited: AI SDK calls onAbort
+      // fire-and-forget (stream-text.ts:1206), so onAbort only sets
+      // streamAbortedByUser. The stop is billed below like any other
+      // unfinished generation.
       if (streamAbortedByUser) {
         // (1) Persist the wire abort sentinel on the pending
         // assistant row so listThreadMessages's isAbortErrorString
@@ -691,97 +602,35 @@ export const generateResponse = internalAction({
             err: errorToLogString(err),
           });
         });
-
-        // (2) Bill the cancel path from a tokenized estimate of what
-        // streamed plus the user prompt, scaled by
-        // ABORT_TOKEN_SURCHARGE_MULTIPLIER. Provider-routing gap:
-        // OpenRouter's /api/v1/generation does not publish cancelled
-        // records for non-whitelisted providers (Google, Groq,
-        // Mistral, …) — the upstream model keeps generating to
-        // completion and OpenRouter bills us for the full response
-        // anyway. Tokens the user actually saw are a LOWER bound,
-        // so the multiplier charges them above the visible fraction
-        // to deter spam-stop and approximately cover the unseen
-        // context (system prompt + thread history + paper abstracts)
-        // the local estimator does not tokenize.
-        if (capturedGenerationId && accumulatedOutput.length > 0) {
-          const rawOutputTokens = estimateTokenCount(accumulatedOutput);
-          let rawInputTokens = 0;
-          try {
-            // promptMessageId is the agent component's opaque id —
-            // it lives in the component's own schema, not our root
-            // schema, so we can't name it with our Id<"messages">
-            // brand. Convex validates the value at the boundary.
-            const messageDocs = await ctx.runQuery(
-              components.agent.messages.getMessagesByIds,
-              { messageIds: [promptMessageId as never] },
-            );
-            const promptMessage = messageDocs[0];
-            const promptText = extractMessageText(promptMessage);
-            rawInputTokens = estimateTokenCount(promptText);
-          } catch (err) {
-            console.warn(
-              "[chat] abort billing: failed to read prompt text for token estimate",
-              { jobId, threadId, err: errorToLogString(err) },
-            );
-          }
-
-          if (rawInputTokens > 0 || rawOutputTokens > 0) {
-            const inputTokens =
-              rawInputTokens * ABORT_TOKEN_SURCHARGE_MULTIPLIER;
-            const outputTokens =
-              rawOutputTokens * ABORT_TOKEN_SURCHARGE_MULTIPLIER;
-
-            await ctx.runMutation(
-              internal.chat.billing.captureGenerationFromResponse,
-              {
-                threadId,
-                generationId: capturedGenerationId,
-                requestedModel: modelSlug,
-              },
-            );
-            await ctx.runMutation(
-              internal.chat.billing.billGenerationFromSdkUsage,
-              {
-                generationId: capturedGenerationId,
-                model: modelSlug,
-                pricing,
-                promptTokens: inputTokens,
-                completionTokens: outputTokens,
-                reasoningTokens: 0,
-                cachedPromptTokens: 0,
-              },
-            );
-            onFinishBilled = true;
-          }
-        }
       }
 
-      // Reconcile path for stream errors that still produced an
-      // OpenRouter generation id. captureGenerationFromResponse is
-      // idempotent (unique index on generationId) so it's safe to
-      // invoke here even when onFinish already inserted the row; we
-      // skip scheduling reconcile when the fast path already wrote
-      // the deduction, otherwise the /api/v1/generation lookup would
-      // double-bill on happy paths. Aborts skip too because the
-      // user-stop branch above bills locally from the tokenized
-      // estimate — scheduling reconcile would either 404 forever on
-      // non-whitelisted providers or, if the record does land, race
-      // the local surcharge into the `already_billed` short-circuit.
-      if (capturedGenerationId && !onFinishBilled && !streamAbortedByUser) {
-        await ctx.runMutation(
-          internal.chat.billing.captureGenerationFromResponse,
-          {
-            threadId,
-            generationId: capturedGenerationId,
-            requestedModel: capturedModelSlug,
-          },
-        );
-        await ctx.scheduler.runAfter(
-          0,
-          internal.chat.billing.reconcileGenerationUsage,
-          { generationId: capturedGenerationId },
-        );
+      const unfinishedGeneration =
+        capturedGenerationId && !completedGenerations.has(capturedGenerationId)
+          ? capturedGenerationId
+          : undefined;
+      const cleanFinish = finished && !streamErrored && !streamAbortedByUser;
+      if (unfinishedGeneration && !cleanFinish) {
+        // Stopped or failed mid-step. The step's generation record says what
+        // OpenRouter billed, including a response the provider finished
+        // after the stop.
+        await ctx.scheduler.runAfter(0, internal.chat.billing.settleFromOpenRouter, {
+          userId,
+          jobId,
+          chargeId,
+          generationId: unfinishedGeneration,
+          extraUsd: completedUsd + webSearchUsd,
+          attempt: 0,
+        });
+        settledOrScheduled = true;
+      } else if (completedTokens > 0 || webSearchUsd > 0) {
+        const usd = completedUsd + webSearchUsd;
+        await settleCredits(ctx, {
+          userId,
+          chargeId,
+          credits: convertUsdToCredits({ usd }) || 1,
+          usage: { kind: "chat", description: "Chat message", jobId, model: modelSlug, costUsd: usd },
+        });
+        settledOrScheduled = true;
       }
     } catch (err) {
       // Genuine pre-stream failures only: credit guard, thread/model
@@ -815,6 +664,14 @@ export const generateResponse = internalAction({
       });
       throw err;
     } finally {
+      if (reserved && !settledOrScheduled) {
+        await releaseCredits(ctx, { userId, chargeId }).catch((err) => {
+          console.error("[chat] failed to release reserved credits", {
+            chargeId,
+            err: errorToLogString(err),
+          });
+        });
+      }
       // Stop the poller BEFORE releasing the lock. releaseThreadLock
       // clears shouldAbort=undefined; if a poll tick raced past that
       // clear we could — in theory — spuriously abort the very next

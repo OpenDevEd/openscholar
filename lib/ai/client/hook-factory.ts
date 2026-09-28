@@ -71,7 +71,7 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
     const { phase } = useAuthReadiness()
     const isAuthenticated = phase === 'authenticated'
     const creditsEnabled = useFeatureFlag("credits.enabled")
-    const creditsQuery = useOptionalAuthQuery(api.credits.queries.getMyBalance, {})
+    const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, {})
     const isConfigured = useMemo(
       () =>
         resolveModeConfigurability({
@@ -104,7 +104,7 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
           const creditsAvailability = resolveCreditsAvailability({
             isAuthenticated,
             settlement,
-            totalCredits: creditsQuery.data?.total,
+            totalCredits: creditsQuery.data?.balance,
             requiredCredits,
           })
 
@@ -163,7 +163,7 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
         apiKeyMode,
         convexAction,
         creditsEnabled,
-        creditsQuery.data?.total,
+        creditsQuery.data?.balance,
         creditsQuery.settlement,
         executorFn,
         hasApiKey,

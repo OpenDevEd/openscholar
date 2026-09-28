@@ -7,10 +7,10 @@ import type { MutationCtx } from "../convex/_generated/server";
 // giving us access to the .handler function
 vi.mock("../convex/_generated/server", () => createMockMutationDef());
 
-// Mock createUserWithDefaults and repairUserBillingRecords to track calls
+// Mock createUserWithDefaults and ensureBillingAccount to track calls
 vi.mock("../convex/lib/userCreation", () => ({
   createUserWithDefaults: vi.fn().mockResolvedValue("new_user_id"),
-  repairUserBillingRecords: vi.fn().mockResolvedValue({ creditsCreated: false, subscriptionCreated: false }),
+  ensureBillingAccount: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock createError -- must import the real one since handler calls it directly

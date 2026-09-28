@@ -1,5 +1,4 @@
 import { defineApp } from "convex/server";
-import stripe from "@convex-dev/stripe/convex.config.js";
 import rag from "@convex-dev/rag/convex.config.js";
 import workpool from "@convex-dev/workpool/convex.config.js";
 import screeningWorkpool from "@convex-dev/workpool/convex.config.js";
@@ -11,7 +10,6 @@ import migrations from "@convex-dev/migrations/convex.config.js";
 
 const app = defineApp();
 app.use(migrations);
-app.use(stripe);
 app.use(rag);
 app.use(workpool);
 app.use(screeningWorkpool, { name: "screeningWorkpool" });
@@ -28,34 +26,11 @@ app.use(agent);
 // hot-leaf collapse.
 app.use(shardedCounter, { name: "extractionProcessedCounter" });
 app.use(shardedCounter, { name: "extractionFailedCounter" });
-// creditsAgg (plan-04): per-job credit-spend aggregate for O(log n) total
-// cost queries. Namespace = jobId; sumValue = credits spent per entry
-// (extraction_llm per-result + embedding per-paper). Cleared on cascade
-// delete via admin.clearJobCredits.
+// creditsAgg: per-job credit totals (convex/extraction/aggregates.ts).
 app.use(aggregate, { name: "creditsAgg" });
 // Screening progress aggregates (plan-02). Both are namespaced by jobId:
 // - screeningResultStatusAgg: counts terminal result states by status
 // - screeningQualifiedAgg: counts completed qualified results
 app.use(aggregate, { name: "screeningResultStatusAgg" });
 app.use(aggregate, { name: "screeningQualifiedAgg" });
-// Three @convex-dev/aggregate instances back the billing-transactions
-// faceted-count badges (plans/billing-transactions-perf/01). Each is
-// namespaced by credits._id so users never OCC-contend with each other.
-// Key carries [dimensionValue, createdAt] so date-range counts are O(log n)
-// via compound bounds. Populated by recordTransactionCounters at every
-// creditTransactions insert site; drained for reads by
-// readTransactionFacetCounts in convex/credits/aggregates.ts.
-app.use(aggregate, { name: "txnTypeAgg" });
-app.use(aggregate, { name: "txnCreditPoolAgg" });
-app.use(aggregate, { name: "txnBillingTypeAgg" });
-// plans/balance-sharded-counter: append-only credit balance backed by
-// two `@convex-dev/sharded-counter` instances (one per pool). The prior
-// `balanceAgg` DirectAggregate read the lazy-root B+ tree on every
-// balance lookup, walking ~48 component docs for ~4k-row ledgers and
-// blowing the 16 MB / mutation budget on hot billing paths.
-// ShardedCounter is O(shards) per pool (16 each) regardless of ledger
-// depth. Keyed by `Id<"credits">`; total balance is derived (free + paid).
-app.use(shardedCounter, { name: "balanceFreeCounter" });
-app.use(shardedCounter, { name: "balancePaidCounter" });
-
 export default app;

@@ -13,16 +13,15 @@ import { Loader2, ArrowRight, Zap, CreditCard } from "lucide-react";
 import { useTranslations, useFormatter } from "next-intl";
 
 export type UpgradePreview = {
-  prorationAmountCents: number;
   currency: string;
   immediateChargeCents: number;
   currentPlan: string;
   targetPlan: string;
-  proRataCredits: number;
-  currentPlanCreditsPerMonth: number;
+  /** Granted in full as soon as the upgrade is paid. */
   targetPlanCreditsPerMonth: number;
   remainingDays: number;
-  prorationDate: number;
+  /** The saved card the upgrade charges. */
+  card?: { brand: string; last4: string };
   lineItems: Array<{
     description: string;
     amountCents: number;
@@ -63,6 +62,7 @@ export function UpgradeConfirmationDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+          {...(preview.currentPlan === "free" ? { "aria-describedby": undefined } : {})}
           onEscapeKeyDown={(e) => {
             if (isConfirming) e.preventDefault();
           }}
@@ -78,9 +78,11 @@ export function UpgradeConfirmationDialog({
           <DialogTitle>
             {t("title", { plan: preview.targetPlan.charAt(0).toUpperCase() + preview.targetPlan.slice(1) })}
           </DialogTitle>
-          <DialogDescription>
-            {t("prorationExplanation", { days: preview.remainingDays })}
-          </DialogDescription>
+          {preview.currentPlan !== "free" && (
+            <DialogDescription>
+              {t("prorationExplanation", { days: preview.remainingDays })}
+            </DialogDescription>
+          )}
         </DialogHeader>
 
         <div className="space-y-4 py-2">
@@ -142,22 +144,17 @@ export function UpgradeConfirmationDialog({
           </div>
 
           {/* Credits info */}
-          {preview.proRataCredits > 0 && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
-              <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">
-                  {t("creditsGranted", { credits: preview.proRataCredits.toLocaleString() })}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground pl-6">
-                {t("creditsDetail", { days: preview.remainingDays })}
-              </p>
-              <p className="text-xs text-muted-foreground pl-6">
-                {t("monthlyCreditsAfter", { credits: preview.targetPlanCreditsPerMonth.toLocaleString() })}
-              </p>
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">
+                {t("creditsGranted", { credits: format.number(preview.targetPlanCreditsPerMonth) })}
+              </span>
             </div>
-          )}
+            <p className="text-xs text-muted-foreground pl-6">
+              {t("monthlyCreditsAfter", { credits: format.number(preview.targetPlanCreditsPerMonth) })}
+            </p>
+          </div>
         </div>
 
         <DialogFooter>

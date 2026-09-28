@@ -1,13 +1,6 @@
 /**
- * Behavior tests for creditsAgg and getJobCost (plan-04).
- *
- * Asserts invariants on the live debit-write path:
- *   - recordCreditSpend makes creditsAgg.sum track the paper-level
- *     credit accumulator
- *   - by_job index on creditTransactions returns the expected N rows
- *     per (papers × questions) completion
- *   - deleteExtractionInternal zeroes the aggregate via clearJobCredits
- *   - cancel (no delete) preserves the ledger as a receipt
+ * The job cost badge reads creditsAgg, which every settled charge against the
+ * job feeds (convex/billing/charge.ts recordUsage). Deleting the job clears it.
  */
 
 import { convexTest } from "convex-test";
@@ -16,228 +9,77 @@ import { internal, api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { setupAggregates } from "./aggregates.test-support";
-import {
-  setupTransactionAggregates,
-  seedCreditsForTest,
-} from "../credits/aggregates.test-support";
 import { creditsAgg } from "./aggregates";
 
-async function seedUserAndCredits(t: ReturnType<typeof convexTest>) {
+const CLERK_ID = "clerk_job_costs";
+
+async function seedJob(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
-      clerkId: "clerk_plan04",
-      email: "plan04@test.local",
+      clerkId: CLERK_ID,
+      email: "job-costs@test.local",
       state: "active" as const,
       createdAt: now,
       updatedAt: now,
     });
-    await seedCreditsForTest(ctx, { userId, free: 10000, paid: 0, now });
-    return userId;
-  });
-}
-
-async function seedExtractionJob(
-  t: ReturnType<typeof convexTest>,
-  userId: Id<"users">,
-  opts: { status: "extracting" | "completed" | "cancelled" } = {
-    status: "extracting",
-  },
-): Promise<{
-  jobId: Id<"extractionJobs">;
-  paperIds: Id<"extractionPapers">[];
-  questionKeys: string[];
-}> {
-  return await t.run(async (ctx) => {
-    const now = Date.now();
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
       mode: "extraction" as const,
       sourceType: "history" as const,
-      status: opts.status,
-      totalPapers: 3,
-      name: "Plan-04 cost fixture",
+      status: "extracting" as const,
+      totalPapers: 1,
+      name: "Job cost fixture",
       createdAt: now,
       updatedAt: now,
     });
-    const questionKeys = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6"];
-    for (let i = 0; i < questionKeys.length; i++) {
-      await ctx.db.insert("extractionQuestions", {
-        jobId,
-        key: questionKeys[i],
-        question: `Question ${i}`,
-        type: "string" as const,
-        order: i,
-        createdAt: now,
-      });
-    }
-    const paperIds: Id<"extractionPapers">[] = [];
-    for (let i = 0; i < 3; i++) {
-      const paperId = await ctx.db.insert("extractionPapers", {
-        jobId,
-        openalexId: `W${i}`,
-        title: `Paper ${i}`,
-        status: "extracting" as const,
-      });
-      paperIds.push(paperId);
-    }
-    return { jobId, paperIds, questionKeys };
+    return { userId, jobId };
   });
 }
 
-async function recordAnswerForPaper(
+async function charge(
   t: ReturnType<typeof convexTest>,
-  paperId: Id<"extractionPapers">,
-  questionKey: string,
-  creditsUsed: number,
+  args: { userId: Id<"users">; jobId: Id<"extractionJobs">; chargeId: string; credits: number },
 ) {
-  await t.mutation(
-    internal.extraction.mutations.results.recordQuestionBatch,
-    {
-      paperId,
-      completed: [
-        {
-          questionKey,
-          creditsUsed,
-          result: {
-            answer: `answer-${questionKey}`,
-            confidence: 0.9,
-            citations: [],
-            citationStatus: "grounded" as const,
-          },
-        },
-      ],
-      failed: [],
-    },
-  );
+  return await t.mutation(internal.billing.charge.recordUsage, {
+    ...args,
+    kind: "extraction",
+    description: "Extraction (2 questions)",
+    createdAt: Date.now(),
+  });
 }
 
-async function finalizeAllPapers(
-  t: ReturnType<typeof convexTest>,
-  paperIds: Id<"extractionPapers">[],
-) {
-  for (const paperId of paperIds) {
-    await t.mutation(
-      internal.extraction.mutations.results.finalizePaper,
-      { paperId },
-    );
-  }
-}
+const jobCost = (t: ReturnType<typeof convexTest>, jobId: Id<"extractionJobs">) =>
+  t
+    .withIdentity({ tokenIdentifier: CLERK_ID, subject: CLERK_ID, issuer: "test" })
+    .query(api.extraction.queries.costs.getJobCost, { jobId });
 
-describe("[plan-04] creditsAgg + getJobCost", () => {
-  it("sum tracks paper.creditsUsed across 3 papers × 2 questions", async () => {
+describe("job credit totals", () => {
+  it("adds every settled charge against the job, counting a repeated charge once", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
-    const userId = await seedUserAndCredits(t);
-    const { jobId, paperIds, questionKeys } = await seedExtractionJob(
-      t,
-      userId,
-    );
+    const { userId, jobId } = await seedJob(t);
 
-    let expectedTotal = 0;
-    for (const paperId of paperIds) {
-      for (const qk of questionKeys) {
-        const credits = 5;
-        await recordAnswerForPaper(t, paperId, qk, credits);
-        expectedTotal += credits;
-      }
-    }
-    // Per-paper debits now happen at finalizePaper, not per-question.
-    await finalizeAllPapers(t, paperIds);
+    expect(await charge(t, { userId, jobId, chargeId: "extraction:a", credits: 7 })).toBe(true);
+    expect(await charge(t, { userId, jobId, chargeId: "extraction:b", credits: 5 })).toBe(true);
+    expect(await charge(t, { userId, jobId, chargeId: "extraction:a", credits: 7 })).toBe(false);
 
-    const sum = await t.run(async (ctx) =>
-      creditsAgg.sum(ctx, { namespace: jobId }),
-    );
-    expect(sum).toBe(expectedTotal);
-
-    const txns = await t.run(async (ctx) =>
-      ctx.db
-        .query("creditTransactions")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect(),
-    );
-    // One row per paper (P), not P×Q.
-    expect(txns.length).toBe(paperIds.length);
-    for (const txn of txns) {
-      expect(txn.billingType).toBe("extraction_llm");
-      expect(txn.paperId).toBeDefined();
-      // Debit is per-paper, so resultId is not set on the txn.
-      expect(txn.resultId).toBeUndefined();
-      expect(txn.metadata?.jobId).toBeUndefined();
-      expect(txn.metadata?.paperId).toBeUndefined();
-      expect(txn.metadata?.billingType).toBeUndefined();
-      // Each paper accumulated questionKeys.length × 5 = 30 credits.
-      expect(txn.amount).toBe(-(questionKeys.length * 5));
-    }
+    expect((await jobCost(t, jobId)).total).toBe(12);
   });
 
-  it("delete → creditsAgg.sum(jobId) === 0 (cascade clean)", async () => {
+  it("clears the total when the job is deleted", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
     setupAggregates(t);
-    const userId = await seedUserAndCredits(t);
-    const { jobId, paperIds, questionKeys } = await seedExtractionJob(
-      t,
-      userId,
-    );
-
-    for (const paperId of paperIds) {
-      for (const qk of questionKeys) {
-        await recordAnswerForPaper(t, paperId, qk, 7);
-      }
-    }
-    await finalizeAllPapers(t, paperIds);
-
-    const beforeSum = await t.run(async (ctx) =>
-      creditsAgg.sum(ctx, { namespace: jobId }),
-    );
-    expect(beforeSum).toBeGreaterThan(0);
+    const { userId, jobId } = await seedJob(t);
+    await charge(t, { userId, jobId, chargeId: "extraction:a", credits: 7 });
 
     vi.useFakeTimers();
-    await t.mutation(
-      internal.extraction.mutations.internal.admin.deleteExtractionInternal,
-      { jobId },
-    );
+    await t.mutation(internal.extraction.mutations.internal.admin.deleteExtractionInternal, {
+      jobId,
+    });
     await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
     vi.useRealTimers();
 
-    const afterSum = await t.run(async (ctx) =>
-      creditsAgg.sum(ctx, { namespace: jobId }),
-    );
-    expect(afterSum).toBe(0);
-
-    // Job row is gone too.
-    const job = await t.run(async (ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job).toBeNull();
-  });
-
-  it("getJobCost returns the aggregate total without scanning the ledger breakdown", async () => {
-    const t = convexTest(schema);
-    setupTransactionAggregates(t);
-    setupAggregates(t);
-    const userId = await seedUserAndCredits(t);
-    const { jobId, paperIds, questionKeys } = await seedExtractionJob(
-      t,
-      userId,
-    );
-
-    for (const paperId of paperIds) {
-      for (const qk of questionKeys) {
-        await recordAnswerForPaper(t, paperId, qk, 3);
-      }
-    }
-    await finalizeAllPapers(t, paperIds);
-
-    const result = await t
-      .withIdentity({
-        tokenIdentifier: "clerk_plan04",
-        subject: "clerk_plan04",
-        issuer: "test",
-      })
-      .query(api.extraction.queries.costs.getJobCost, { jobId });
-
-    expect(result.total).toBe(paperIds.length * questionKeys.length * 3);
-    expect("breakdown" in result).toBe(false);
+    expect(await t.run((ctx) => creditsAgg.sum(ctx, { namespace: jobId }))).toBe(0);
   });
 });

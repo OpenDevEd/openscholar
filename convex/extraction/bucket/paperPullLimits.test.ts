@@ -27,22 +27,21 @@ async function seedUser(
   });
 }
 
-async function seedSubscription(
+async function seedPlan(
   t: ReturnType<typeof convexTest>,
   userId: Id<"users">,
-  plan: "free" | "go" | "pro" | "enterprise",
-  status: "active" | "canceled" | "trialing" | "past_due",
+  plan: "free" | "go" | "pro",
 ) {
   await t.run(async (ctx) => {
-    const now = Date.now();
-    await ctx.db.insert("subscriptions", {
+    await ctx.db.insert("billingAccounts", {
       userId,
       plan,
-      status,
-      stripeSubscriptionId: plan === "free" ? undefined : `sub_${userId}`,
-      stripeCustomerId: `cus_${userId}`,
-      createdAt: now,
-      updatedAt: now,
+      pastDue: false,
+      balance: 0,
+      purchased: 0,
+      signupGranted: true,
+      hasPaid: plan !== "free",
+      refreshedAt: Date.now(),
     });
   });
 }
@@ -52,11 +51,9 @@ describe("convex/extraction/bucket/limits — paper-pull cap/default", () => {
     expect(PAPER_PULL_CAP_BY_PLAN.free).toBe(200);
     expect(PAPER_PULL_CAP_BY_PLAN.go).toBe(200);
     expect(PAPER_PULL_CAP_BY_PLAN.pro).toBe(200);
-    expect(PAPER_PULL_CAP_BY_PLAN.enterprise).toBe(200);
     expect(PAPER_PULL_DEFAULT_BY_PLAN.free).toBe(200);
     expect(PAPER_PULL_DEFAULT_BY_PLAN.go).toBe(200);
     expect(PAPER_PULL_DEFAULT_BY_PLAN.pro).toBe(200);
-    expect(PAPER_PULL_DEFAULT_BY_PLAN.enterprise).toBe(200);
   });
 
   it("default never exceeds cap for any plan (config invariant)", () => {
@@ -89,10 +86,10 @@ describe("convex/extraction/bucket/limits — paper-pull cap/default", () => {
     expect(def).toBe(PAPER_PULL_DEFAULT_BY_PLAN.free);
   });
 
-  it("returns the pro-plan cap/default for an active pro subscription", async () => {
+  it("returns the pro-plan cap/default for a user on Pro", async () => {
     const t = convexTest(schema);
     const userId = await seedUser(t, "clerk_pull_pro");
-    await seedSubscription(t, userId, "pro", "active");
+    await seedPlan(t, userId, "pro");
     const cap: number = await t.query(
       internal.extraction.bucket.limits.getPaperPullCapForUser,
       { userId },

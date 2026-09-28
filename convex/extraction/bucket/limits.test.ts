@@ -31,22 +31,21 @@ async function seedUser(
   });
 }
 
-async function seedSubscription(
+async function seedPlan(
   t: ReturnType<typeof convexTest>,
   userId: Id<"users">,
-  plan: "free" | "go" | "pro" | "enterprise",
-  status: "active" | "canceled" | "trialing" | "past_due",
+  plan: "free" | "go" | "pro",
 ) {
   await t.run(async (ctx) => {
-    const now = Date.now();
-    await ctx.db.insert("subscriptions", {
+    await ctx.db.insert("billingAccounts", {
       userId,
       plan,
-      status,
-      stripeSubscriptionId: plan === "free" ? undefined : `sub_${userId}`,
-      stripeCustomerId: `cus_${userId}`,
-      createdAt: now,
-      updatedAt: now,
+      pastDue: false,
+      balance: 0,
+      purchased: 0,
+      signupGranted: true,
+      hasPaid: plan !== "free",
+      refreshedAt: Date.now(),
     });
   });
 }
@@ -56,13 +55,12 @@ describe("convex/extraction/bucket/limits", () => {
     expect(PAPER_LIMIT_BY_PLAN.free).toBe(1000);
     expect(PAPER_LIMIT_BY_PLAN.go).toBe(1000);
     expect(PAPER_LIMIT_BY_PLAN.pro).toBe(1000);
-    expect(PAPER_LIMIT_BY_PLAN.enterprise).toBe(1000);
     expect(PAPER_LIMIT_MAX).toBe(
       Math.max(...Object.values(PAPER_LIMIT_BY_PLAN)),
     );
   });
 
-  it("returns the free-plan limit when a user has no subscription row", async () => {
+  it("returns the free-plan limit when a user has no billing account", async () => {
     const t = convexTest(schema);
     const userId = await seedUser(t, "clerk_nopaper_free");
     const limit: number = await t.query(
@@ -72,10 +70,10 @@ describe("convex/extraction/bucket/limits", () => {
     expect(limit).toBe(PAPER_LIMIT_BY_PLAN.free);
   });
 
-  it("returns the pro-plan limit for an active pro subscription", async () => {
+  it("returns the pro-plan limit for a user on Pro", async () => {
     const t = convexTest(schema);
     const userId = await seedUser(t, "clerk_pro");
-    await seedSubscription(t, userId, "pro", "active");
+    await seedPlan(t, userId, "pro");
     const limit: number = await t.query(
       internal.extraction.bucket.limits.getPaperLimitForUser,
       { userId },
@@ -83,42 +81,14 @@ describe("convex/extraction/bucket/limits", () => {
     expect(limit).toBe(PAPER_LIMIT_BY_PLAN.pro);
   });
 
-  it("falls back to free for a canceled subscription", async () => {
-    const t = convexTest(schema);
-    const userId = await seedUser(t, "clerk_canceled");
-    await seedSubscription(t, userId, "pro", "canceled");
-    const limit: number = await t.query(
-      internal.extraction.bucket.limits.getPaperLimitForUser,
-      { userId },
-    );
-    expect(limit).toBe(PAPER_LIMIT_BY_PLAN.free);
-  });
 
-  it("trialing and past_due count as entitled", async () => {
-    const t = convexTest(schema);
-    const trialUserId = await seedUser(t, "clerk_trial");
-    await seedSubscription(t, trialUserId, "go", "trialing");
-    const trialLimit: number = await t.query(
-      internal.extraction.bucket.limits.getPaperLimitForUser,
-      { userId: trialUserId },
-    );
-    expect(trialLimit).toBe(PAPER_LIMIT_BY_PLAN.go);
-
-    const pastDueUserId = await seedUser(t, "clerk_pastdue");
-    await seedSubscription(t, pastDueUserId, "enterprise", "past_due");
-    const pastDueLimit: number = await t.query(
-      internal.extraction.bucket.limits.getPaperLimitForUser,
-      { userId: pastDueUserId },
-    );
-    expect(pastDueLimit).toBe(PAPER_LIMIT_BY_PLAN.enterprise);
-  });
 
   it("resolves extraction execution limits to plan-derived concurrency knobs", async () => {
     const t = convexTest(schema);
-    for (const plan of ["free", "go", "pro", "enterprise"] as const) {
+    for (const plan of ["free", "go", "pro"] as const) {
       const userId = await seedUser(t, `clerk_${plan}_limits`);
       if (plan !== "free") {
-        await seedSubscription(t, userId, plan, "active");
+        await seedPlan(t, userId, plan);
       }
 
       const limits = await t.query(

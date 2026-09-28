@@ -6,6 +6,7 @@ import {
   translateQuerySchema,
   translatePaperContentSchema,
   extractionQuestionsSchema,
+  toExtractionQuestions,
 } from "../lib/ai/core/schemas";
 
 describe("ai schemas", () => {
@@ -164,18 +165,25 @@ describe("ai schemas", () => {
       expect(result.questions[0].description).toBe("Total N");
     });
 
-    it("accepts question without description", () => {
-      const result = extractionQuestionsSchema.parse({
+    it("requires a description field, which strict structured output needs", () => {
+      const result = extractionQuestionsSchema.safeParse({
         questions: [{ question: "RCT?", type: "boolean" }],
       });
-      expect(result.questions[0].description).toBeUndefined();
+      expect(result.success).toBe(false);
+    });
+
+    it("drops a null description from the questions it returns", () => {
+      const output = extractionQuestionsSchema.parse({
+        questions: [{ question: "RCT?", type: "boolean", description: null }],
+      });
+      expect(toExtractionQuestions(output).questions[0]).toEqual({ question: "RCT?", type: "boolean" });
     });
 
     it.each(["string", "boolean", "number", "array"] as const)(
       "accepts type value: %s",
       (typeValue) => {
         const result = extractionQuestionsSchema.parse({
-          questions: [{ question: "Q", type: typeValue }],
+          questions: [{ question: "Q", type: typeValue, description: null }],
         });
         expect(result.questions[0].type).toBe(typeValue);
       },
@@ -183,7 +191,7 @@ describe("ai schemas", () => {
 
     it("rejects invalid type enum value", () => {
       const result = extractionQuestionsSchema.safeParse({
-        questions: [{ question: "Q", type: "invalid" }],
+        questions: [{ question: "Q", type: "invalid", description: null }],
       });
       expect(result.success).toBe(false);
     });
@@ -195,7 +203,7 @@ describe("ai schemas", () => {
 
     it("rejects too many questions (max 10)", () => {
       const result = extractionQuestionsSchema.safeParse({
-        questions: Array(11).fill({ question: "Q", type: "string" }),
+        questions: Array(11).fill({ question: "Q", type: "string", description: null }),
       });
       expect(result.success).toBe(false);
     });

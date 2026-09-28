@@ -10,8 +10,9 @@ import { APICallError } from "@ai-sdk/provider";
 import { paperChat } from "./agent";
 import { startAbortPoller } from "../../lib/chat/abort-poller";
 import { STOP_ABORT_POLL_INTERVAL_MS } from "./messages";
-import { ABORT_TOKEN_SURCHARGE_MULTIPLIER } from "./abortTokenEstimate";
-import { setupTransactionAggregates, seedCreditsForTest } from "../credits/aggregates.test-support";
+import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
+import { convertUsdToCredits, creditsForUsage } from "../../lib/pricing";
+import { setupAggregates } from "../extraction/aggregates.test-support";
 import { parseChatError } from "../../lib/errors/taxonomy";
 
 // Capture the composed abortSignal the library hands to doStream so
@@ -32,6 +33,7 @@ const { mockDoStream, doStreamArgsSeen, providerState, fetchMock } = vi.hoisted(
         emitGenerationId: undefined as string | undefined,
         modelSlug: "mock/model" as string,
         modelIdsSeen: [] as unknown[],
+        pricing: { input: 0, output: 0 },
       },
     fetchMock: vi.fn(),
   }),
@@ -69,7 +71,7 @@ vi.mock("./provider", async () => {
           },
         }),
         modelSlug: providerState.modelSlug,
-        pricing: { input: 0, output: 0 },
+        pricing: providerState.pricing,
       };
     },
   };
@@ -88,9 +90,12 @@ beforeEach(() => {
   mockDoStream.mockReset();
   doStreamArgsSeen.length = 0;
   fetchMock.mockReset();
+  fakeAutumn.reset();
+  fetchMock.mockImplementation(fakeAutumnFetch());
   providerState.emitGenerationId = undefined;
   providerState.modelSlug = "mock/model";
   providerState.modelIdsSeen = [];
+  providerState.pricing = { input: 0, output: 0 };
   vi.mocked(startAbortPoller).mockClear();
 });
 
@@ -221,7 +226,10 @@ function finishingDoStream(
         controller.enqueue({
           type: "finish",
           finishReason: "stop",
-          usage: { inputTokens: 5, outputTokens: 3, totalTokens: 8 },
+          usage: {
+            inputTokens: { total: 5, noCache: 5, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 3, text: 3, reasoning: 0 },
+          },
         });
         controller.close();
       },
@@ -406,11 +414,8 @@ async function createStoppedAssistantTurn(
 function createTestConvex() {
   const t = convexTest(schema);
   registerAgentComponent(t);
-  // Required by convex/credits/internal.ts so deductCredits can write
-  // its aggregate counters. Chat billing calls deductCreditsTransaction
-  // after reconciliation, so every chat test that exercises billing
-  // needs these aggregates registered.
-  setupTransactionAggregates(t);
+  // Settled chat charges add to the job's credit total.
+  setupAggregates(t);
   return t;
 }
 
@@ -1066,12 +1071,16 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     expect(job?.shouldAbort).toBeUndefined();
   });
 
-  it("C1a — no billing when OpenRouter never returned a generation id (defence-in-depth)", async () => {
-    // If the fetch wrapper never captured an X-Generation-Id (e.g. the
-    // upstream POST failed before headers arrived, or the provider
-    // changed its contract), generateResponse must NOT bill. The chat
-    // ledger is keyed by generation id; billing without one would leave
-    // a row that cannot be reconciled or refunded.
+  async function chargedUsage(t: ReturnType<typeof createTestConvex>, jobId: Id<"extractionJobs">) {
+    return await t.run(async (ctx) =>
+      ctx.db
+        .query("billingUsage")
+        .withIndex("by_job", (q) => q.eq("jobId", jobId))
+        .collect(),
+    );
+  }
+
+  it("C1a — a stop before OpenRouter starts a generation charges nothing and frees the reservation", async () => {
     const t = createTestConvex();
     const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
       isGenerating: true,
@@ -1084,11 +1093,7 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
     const promptMessageId = await seedUserMessage(t, threadId, "ping");
 
-    // providerState.emitGenerationId is undefined by default — simulating
-    // a run where OpenRouter did not return X-Generation-Id.
-    mockDoStream.mockImplementation(
-      partialDeltasThenHangDoStream(["hello ", "world"]),
-    );
+    mockDoStream.mockImplementation(partialDeltasThenHangDoStream([]));
 
     const actionPromise = t.action(internal.chat.messages.generateResponse, {
       threadId,
@@ -1099,18 +1104,12 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
     await actionPromise;
 
-    const balance = await t.run(async (ctx) =>
-      ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
-    );
-    expect(balance?.total).toBe(10_000);
-
-    await t.run(async (ctx) => {
-      const rows = await ctx.db.query("chatGenerationUsages").collect();
-      expect(rows).toHaveLength(0);
-    });
+    expect(fakeAutumn.balance(userId)).toBe(10_000);
+    expect(fakeAutumn.locks.size).toBe(0);
+    expect(await chargedUsage(t, jobId)).toHaveLength(0);
   });
 
-  it("C1b — happy-path finish captures a chatGenerationUsages row keyed by the fetch-header generation id", async () => {
+  it("C1b — a finished turn charges its cost once and records it against the chat", async () => {
     const t = createTestConvex();
     const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
       isGenerating: true,
@@ -1122,8 +1121,8 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     });
     await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
     const promptMessageId = await seedUserMessage(t, threadId, "ping");
-    const generationId = "gen_happy_1";
-    providerState.emitGenerationId = generationId;
+    providerState.emitGenerationId = "gen_happy_1";
+    providerState.pricing = { input: 1_000, output: 2_000 };
 
     mockDoStream.mockImplementation(finishingDoStream(["hi"]));
     await t.action(internal.chat.messages.generateResponse, {
@@ -1131,30 +1130,18 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
       promptMessageId,
     });
 
-    await t.run(async (ctx) => {
-      const ledger = await ctx.db
-        .query("chatGenerationUsages")
-        .withIndex("by_generation_id", (q) =>
-          q.eq("generationId", generationId),
-        )
-        .unique();
-      expect(ledger?.status).toBe("captured");
-      expect(ledger?.jobId).toBe(jobId);
-      expect(ledger?.userId).toBe(userId);
-      expect(ledger?.requestedModel).toBe("mock/model");
-      expect(ledger?.billedAt ?? null).toBeNull();
-    });
+    // 5 input and 3 output tokens at $1,000/$2,000 per million.
+    const expected = creditsForUsage({ inputTokens: 5, outputTokens: 3 }, { input: 1_000, output: 2_000 });
+    const usage = await chargedUsage(t, jobId);
+    expect(usage).toHaveLength(1);
+    expect(usage[0]?.kind).toBe("chat");
+    expect(usage[0]?.userId).toBe(userId);
+    expect(usage[0]?.credits).toBe(expected);
+    expect(fakeAutumn.balance(userId)).toBe(10_000 - (usage[0]?.credits ?? 0));
+    expect(fakeAutumn.locks.size).toBe(0);
   });
 
-  it("C1c — user-stop bills immediately from a tokenized estimate of what streamed", async () => {
-    // Provider-routing gap: OpenRouter's /api/v1/generation lookup
-    // never publishes cancelled records for non-whitelisted providers
-    // (Google, Groq, Mistral, …), so we cannot rely on reconcile for
-    // those paths. Instead onAbort tokenizes the accumulated output
-    // plus the user prompt and bills via billGenerationFromSdkUsage
-    // before the action settles. The post-stream reconcile block
-    // gates on !onFinishBilled so this fast-path write isn't
-    // double-billed against a later /api/v1/generation fetch.
+  it("C1c — a stop charges what OpenRouter's generation record says it cost", async () => {
     const t = createTestConvex();
     const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
       isGenerating: true,
@@ -1166,8 +1153,7 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     });
     await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
     const promptMessageId = await seedUserMessage(t, threadId, "ping");
-    const generationId = "gen_stopped_1";
-    providerState.emitGenerationId = generationId;
+    providerState.emitGenerationId = "gen_stopped_1";
 
     mockDoStream.mockImplementation(
       partialDeltasThenHangDoStream(["hello ", "world"]),
@@ -1182,122 +1168,31 @@ describe("chat.messages.generateResponse — stop-streaming wiring", () => {
     await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
     await actionPromise;
 
-    // Ledger row was captured AND billed in the same action — no
-    // scheduled reconcile needed for this path.
-    await t.run(async (ctx) => {
-      const ledger = await ctx.db
-        .query("chatGenerationUsages")
-        .withIndex("by_generation_id", (q) =>
-          q.eq("generationId", generationId),
-        )
-        .unique();
-      expect(ledger).not.toBeNull();
-      expect(ledger?.status).toBe("billed");
-      expect(ledger?.source).toBe("sdk_usage");
-      expect(ledger?.jobId).toBe(jobId);
-      expect(ledger?.userId).toBe(userId);
-      expect(ledger?.billedAt ?? null).not.toBeNull();
-      expect(ledger?.billedCredits ?? 0).toBeGreaterThan(0);
-      expect(ledger?.promptTokens ?? 0).toBeGreaterThan(0);
-      expect(ledger?.completionTokens ?? 0).toBeGreaterThan(0);
-
-      // Policy: aborts pay more than the fraction actually streamed.
-      // Both counts must be exact multiples of
-      // ABORT_TOKEN_SURCHARGE_MULTIPLIER because onAbort multiplies
-      // the raw tokenized prompt + accumulated output by that
-      // constant before calling billGenerationFromSdkUsage. The
-      // output side MUST be at least 1×multiplier — the mock stream
-      // emitted "hello world" which encodes to ≥1 output token.
-      expect(
-        (ledger?.promptTokens ?? 0) % ABORT_TOKEN_SURCHARGE_MULTIPLIER,
-      ).toBe(0);
-      expect(
-        (ledger?.completionTokens ?? 0) % ABORT_TOKEN_SURCHARGE_MULTIPLIER,
-      ).toBe(0);
-      expect(ledger?.completionTokens ?? 0).toBeGreaterThanOrEqual(
-        ABORT_TOKEN_SURCHARGE_MULTIPLIER,
-      );
-    });
-
-    // The credit transaction landed. The fetch wrapper's /api/v1/
-    // generation endpoint was NOT called for this path because
-    // onFinishBilled short-circuits the reconcile scheduler.
-    const balance = await t.run(async (ctx) =>
-      ctx.runQuery(internal.credits.internal.getBalanceByUserId, { userId }),
-    );
-    expect(balance?.total).toBeLessThan(10_000);
-
-    await t.run(async (ctx) => {
-      const txs = await ctx.db
-        .query("creditTransactions")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect();
-      expect(txs).toHaveLength(1);
-      expect(txs[0]?.metadata?.generationId).toBe(generationId);
-      expect(txs[0]?.metadata?.billingSource).toBe("sdk_usage");
-    });
-
-    // /api/v1/generation was not called for this abort path.
-    expect(
-      fetchMock.mock.calls.some((call) =>
-        String(call[0] ?? "").includes("api/v1/generation"),
+    const lookup = await t.run(async (ctx) =>
+      (await ctx.db.system.query("_scheduled_functions").collect()).find((sf) =>
+        sf.name.includes("settleFromOpenRouter"),
       ),
-    ).toBe(false);
-  });
-
-  it("C1d — user-stop never schedules reconcileGenerationUsage even when onAbort hasn't yet flipped onFinishBilled", async () => {
-    // Race the abort path was masking: AI SDK calls onAbort fire-and-
-    // forget, the agent wrapper does not await it, and `await stream`
-    // resolves the moment the abort chunk closes the controller. The
-    // post-stream reconcile gate at messages.ts therefore evaluates
-    // before onAbort's three awaits (read prompt → capture → bill)
-    // have completed, so onFinishBilled is still false. A gate that
-    // checks only !onFinishBilled would schedule reconcile in parallel
-    // with the still-in-flight onAbort — wasted compute on the happy
-    // abort path and a real possibility of the reconcile racing past
-    // onAbort to insert the row first, causing the surcharge to be
-    // silently lost when onAbort then sees `already_billed`.
-    //
-    // The fix gates on !onFinishBilled AND !streamAbortedByUser so
-    // user-stops never schedule reconcile. This test asserts the
-    // negative directly via _scheduled_functions, not via fetchMock —
-    // OPENROUTER_API_KEY is unset in the test env so a scheduled
-    // reconcile would short-circuit before fetch and leave fetchMock
-    // untouched, masking the bug exactly as the original C1c did.
-    const t = createTestConvex();
-    const { userId, jobId, threadId } = await seedUserAndChatJob(t, {
-      isGenerating: true,
-    });
-    const { modelId } = await seedModelAndCredits(t, userId, {
-      inputPricePerMillion: 1_000,
-      outputPricePerMillion: 2_000,
-      freeBalance: 10_000,
-    });
-    await t.run(async (ctx) => ctx.db.patch(jobId, { chatModelId: modelId }));
-    const promptMessageId = await seedUserMessage(t, threadId, "ping");
-    providerState.emitGenerationId = "gen_no_reconcile_1";
-
-    mockDoStream.mockImplementation(
-      partialDeltasThenHangDoStream(["hello ", "world"]),
     );
+    expect(lookup?.args[0]).toMatchObject({ generationId: "gen_stopped_1" });
 
-    const actionPromise = t.action(internal.chat.messages.generateResponse, {
-      threadId,
-      promptMessageId,
-    });
-    await waitFor(() => doStreamArgsSeen.length > 0);
-    await new Promise((r) => setTimeout(r, 400));
-    await t.run(async (ctx) => ctx.db.patch(jobId, { shouldAbort: true }));
-    await actionPromise;
+    // OpenRouter bills the whole response when the provider can't cancel.
+    fetchMock.mockImplementation(
+      fakeAutumnFetch(async () =>
+        new Response(
+          JSON.stringify({
+            data: { id: "gen_stopped_1", model: "mock/model", total_cost: 0.002 },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+    await t.action(internal.chat.billing.settleFromOpenRouter, lookup!.args[0]);
 
-    await t.run(async (ctx) => {
-      const scheduled = await ctx.db.system
-        .query("_scheduled_functions")
-        .collect();
-      expect(
-        scheduled.some((sf) => sf.name.includes("reconcileGenerationUsage")),
-      ).toBe(false);
-    });
+    const usage = await chargedUsage(t, jobId);
+    expect(usage).toHaveLength(1);
+    expect(usage[0]?.credits).toBe(convertUsdToCredits({ usd: 0.002 }));
+    expect(fakeAutumn.balance(userId)).toBe(10_000 - convertUsdToCredits({ usd: 0.002 }));
+    expect(fakeAutumn.locks.size).toBe(0);
   });
 
   it("C1e — user-stop persists ABORT_ERROR_STRING on the pending assistant so listThreadMessages enriches aborted:true", async () => {

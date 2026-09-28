@@ -210,7 +210,7 @@ export function ScreeningDialog({
   // Credit cost check
   const estimatedCredits = Math.ceil(paperCount * ESTIMATED_CREDITS_PER_PAPER);
   const { data: balanceCheck } = useProtectedQuery(
-    api.credits.queries.checkBalance,
+    api.billing.accounts.checkBalance,
     open ? { requiredAmount: estimatedCredits } : "skip"
   );
 

@@ -28,7 +28,7 @@ import { deriveCompletionTransition } from "./completion";
 import { buildScreeningProgressSnapshot } from "./progress";
 import { scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
-import { readBalance } from "../credits/balanceCounter";
+import { availableCredits } from "../billing/accounts";
 
 /**
  * Create a bulk screening job.
@@ -80,14 +80,7 @@ export const createScreeningJob = mutation({
     }
 
     // 4. Credit pre-flight check
-    const credits = await ctx.db
-      .query("credits")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .unique();
-
-    const totalAvailable = credits
-      ? (await readBalance(ctx, credits._id)).total
-      : 0;
+    const totalAvailable = await availableCredits(ctx, user._id);
 
     const estimatedCost = Math.ceil(args.papers.length * ESTIMATED_CREDITS_PER_PAPER);
     if (totalAvailable < estimatedCost) {

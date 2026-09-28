@@ -1,13 +1,4 @@
-/**
- * Job-scoped credit-cost queries. Surfaces the live total for a single job,
- * driving the header cost badge and completion toast.
- *
- *   total     — creditsAgg.sum(namespace: jobId). O(log n) regardless
- *               of job size. Namespaced so a paper finishing on job-A
- *               does not invalidate queries for job-B.
- *
- * The query is subscribed by CostBadge + the completion-toast effect.
- */
+/** Live credit total for one job, for the cost badge and completion toast. */
 
 import { query } from "../../_generated/server";
 import { v } from "convex/values";

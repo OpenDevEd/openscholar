@@ -1,21 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   getChatGenerationRetryDelayMs,
-  getOpenRouterGenerationIdFromProviderMetadata,
   normalizeOpenRouterGeneration,
 } from "./billing";
 
 describe("chat billing helpers", () => {
-  it("extracts the generation id from OpenRouter provider metadata", () => {
-    expect(
-      getOpenRouterGenerationIdFromProviderMetadata({
-        openrouter: {
-          responseId: "resp_abc123",
-        },
-      }),
-    ).toBe("resp_abc123");
-  });
-
   it("normalizes OpenRouter generation payloads using native token counts when present", () => {
     expect(
       normalizeOpenRouterGeneration({

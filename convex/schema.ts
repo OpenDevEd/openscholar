@@ -44,6 +44,7 @@ import { evidenceLibrarySourceStatusFields } from "./evidenceLibraries/sourceSta
 import { authorContentFields } from "./authors/validators";
 
 import { topicNodeFields, metadataValidator } from "./topics/validators";
+import { billingAccountFields, billingUsageFields } from "./billing/validators";
 
 export default defineSchema({
   topicCatalog: defineTable(topicNodeFields)
@@ -381,8 +382,23 @@ export default defineSchema({
     .index("by_state", ["state"]),
 
   // ═══════════════════════════════════════════════════════════════
-  // CREDITS - per-user credit balance
+  // BILLING - balances and plans live in Autumn (convex/billing).
+  // billingAccounts caches each user's plan and balance for the UI;
+  // billingUsage records every settled charge.
   // ═══════════════════════════════════════════════════════════════
+  billingAccounts: defineTable(billingAccountFields)
+    .index("by_user", ["userId"])
+    .index("by_stripe_customer", ["stripeCustomerId"]),
+  billingUsage: defineTable(billingUsageFields)
+    .index("by_charge", ["chargeId"])
+    .index("by_user_and_createdAt", ["userId", "createdAt"])
+    .index("by_job", ["jobId"])
+    .index("by_stripe_charge", ["stripeChargeId"]),
+
+  // Retired billing tables: credits, creditTransactions, subscriptions,
+  // billingCustomers, stripeEventLogs, and chatGenerationUsages. Only
+  // convex/billing/migrate.ts reads them. Drop them once production has been
+  // imported into Autumn.
   credits: defineTable(creditsFields).index("by_user", ["userId"]),
 
   // ═══════════════════════════════════════════════════════════════

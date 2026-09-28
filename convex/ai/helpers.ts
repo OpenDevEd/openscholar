@@ -22,26 +22,18 @@ import { resolveOpenRouterModel } from "../chat/provider";
 import type { AIProvider } from "../../lib/types/ai.types";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType, type GenericValidator } from "convex/values";
-import { captureAIGenerationServer, captureAIGenerationBatchServer, captureServerEvent } from "../../lib/posthog-server";
+import { captureAIGenerationServer, captureAIGenerationBatchServer } from "../../lib/posthog-server";
 import {
   type AITrackingEntry,
   truncateForTracking,
   extractHttpStatus,
   extractErrorCode,
 } from "../../lib/posthog-ai-shared";
-import { AI_COST_MARKUP, ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
+import { ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
 import { createError } from "../lib/errors";
-import { hasEnoughCredits } from "../../lib/credits/availability";
-import type { BatchError } from "../../lib/ai/core/batch-types";
-import { applyBatchItemDeductions } from "./lib/applyBatchItemDeductions";
-
-import {
-  calculateCreditsToDeductFromUsage,
-  calculateRawCreditCost,
-  convertUsdCostToCredits,
-} from "./lib/creditBilling";
-import { collectBillableItemIds } from "./lib/collectBillableItemIds";
-export { collectBillableItemIds };
+import { creditsForUsage } from "../../lib/pricing";
+import { reserveCredits, releaseCredits, settleCredits } from "../billing/charge";
+import type { UsageKind } from "../billing/validators";
 
 type Pricing = { input: number; output: number };
 
@@ -153,34 +145,9 @@ export async function getModel() {
   );
 }
 
-export function convertServerCostDollarsToCredits(costDollars: number): number {
-  return convertUsdCostToCredits(costDollars, AI_COST_MARKUP);
-}
-
-/**
- * Fetch live pricing for the server model from the models table.
- * Constructs the full OpenRouter-format model ID for lookup.
- */
-export async function fetchServerPricing(ctx: ActionCtx): Promise<Pricing> {
-  const provider = SERVER_AI_CONFIG.provider;
-  const model = SERVER_AI_CONFIG.model;
-
-  // The models table uses OpenRouter-format IDs (e.g. "deepseek/deepseek-chat")
-  const fullModelId = model.includes("/") ? model : `${provider}/${model}`;
-
-  const pricing = await ctx.runQuery(
-    internal.models.queries.getPricing,
-    { modelId: fullModelId },
-  );
-
-  // Fallback to zero pricing if model not yet synced
-  return pricing ?? { input: 0, output: 0 };
-}
-
 /**
  * Resolve the per-user server model for an action: the user's stored choice
  * (preset/custom, default balanced) → a concrete model instance + its pricing.
- * Replaces the env getModel()/fetchServerPricing pair for credit-billed runs.
  */
 export type ServerModel = Awaited<ReturnType<typeof resolveOpenRouterModel>>;
 export async function resolveUserServerModel(
@@ -193,288 +160,132 @@ export async function resolveUserServerModel(
   return resolveOpenRouterModel(ctx, modelId);
 }
 
-export function calculateServerCreditsToDeduct(
-  usage: Usage,
-  pricing?: Pricing,
-): number {
-  return calculateCreditsToDeductFromUsage({
-    usage,
-    pricing: pricing ?? { input: 0, output: 0 },
-    markupMultiplier: AI_COST_MARKUP,
-  });
-}
-
-/** Raw fractional credit cost (no ceiling/min). For PostHog analytics only. */
-export function calculateServerRawCreditCost(
-  usage: Usage,
-  pricing?: Pricing,
-): number {
-  return calculateRawCreditCost({
-    usage,
-    pricing: pricing ?? { input: 0, output: 0 },
-    markupMultiplier: AI_COST_MARKUP,
-  });
-}
-
-export type UsageBreakdownEntry = {
-  usage: Usage;
-  description?: string;
-  metadata?: Record<string, string>;
-  /**
-   * Typed billing-type column. Prefer this over `metadata.billingType` so
-   * the ledger's typed `billingType` validator catches taxonomy drift at
-   * write time and downstream queries can filter by index instead of by
-   * metadata introspection.
-   */
-  billingType?:
-    | "extraction_llm"
-    | "embedding"
-    | "screening"
-    | "chat"
-    | "search"
-    | "translation"
-    | "wallet_api";
+export type CreditTarget = {
+  userId: Id<"users">;
+  /** Unique per attempt. */
+  chargeId: string;
+  /** Credits reserved before the work starts. */
+  estimate: number;
+  kind: UsageKind;
+  description: string;
   jobId?: Id<"extractionJobs">;
-  paperId?: Id<"extractionPapers">;
-  resultId?: Id<"extractionResults">;
-  /**
-   * Typed input batch item identifier. Populated for batch flows whose
-   * inputs are external paper references (openalex ids, BatchPaper.id
-   * strings) rather than ids of rows in the extraction-pipeline tables
-   * (extractionPapers / extractionResults). Keys back into
-   * `BatchResult.results` and `BatchResult.errors[].paperId` so the
-   * mid-batch credit-exhaustion salvage path can identify unpaid items
-   * without reading from `metadata`.
-   */
-  itemId?: string;
+  model?: string;
 };
 
 /**
- * Batch-aware auth and credits wrapper.
- * Checks auth/credits once, runs the batch handler, then deducts credits per item.
- * On mid-batch credit exhaustion, salvages already-paid items as results and
- * returns the unpaid items as structured errors via `applyUnpaidBatchItemErrors`.
- * @param minimumRequired - Pre-flight floor (estimate). Use
- *                          `papers.length * ESTIMATED_CREDITS_PER_PAPER` for batch operations.
+ * Runs AI work that costs credits. Reserves `estimate` first and refuses the
+ * work when the balance can't cover it. Afterwards it charges what the tokens
+ * actually cost; releases the reservation if the work throws.
  */
-type BatchShapedResult = {
-  results: Record<string, unknown>;
-  errors: BatchError[];
-};
-
-export async function withAuthAndCreditsBatch<T extends BatchShapedResult>(
+export async function withCredits<T>(
   ctx: ActionCtx,
-  operation: string,
-  handler: (user: Doc<"users">, pricing: Pricing, model: ServerModel["model"]) => Promise<{
+  target: CreditTarget,
+  pricing: Pricing,
+  work: () => Promise<{ result: T; usage: Usage }>,
+): Promise<{ result: T; credits: number; usage: Usage }> {
+  const reserved = await reserveCredits(ctx, {
+    userId: target.userId,
+    chargeId: target.chargeId,
+    credits: target.estimate,
+  });
+  if (!reserved) {
+    throw createError(
+      "AI_INSUFFICIENT_CREDITS",
+      `Insufficient credits: this needs about ${target.estimate} credits`,
+    );
+  }
+  let outcome: { result: T; usage: Usage };
+  try {
+    outcome = await work();
+  } catch (error) {
+    await releaseCredits(ctx, target);
+    throw error;
+  }
+  const credits = creditsForUsage(outcome.usage, pricing);
+  await settleCredits(ctx, {
+    userId: target.userId,
+    chargeId: target.chargeId,
+    credits,
+    usage: {
+      kind: target.kind,
+      description: target.description,
+      jobId: target.jobId,
+      model: target.model,
+    },
+  });
+  return { result: outcome.result, credits, usage: outcome.usage };
+}
+
+function tokenCounts(usage: Usage) {
+  return {
+    inputTokens: usage.inputTokens ?? usage.promptTokens ?? 0,
+    outputTokens: usage.outputTokens ?? usage.completionTokens ?? 0,
+  };
+}
+
+async function requireAIUser(ctx: ActionCtx): Promise<Doc<"users">> {
+  const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
+  if (!user) {
+    throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
+  }
+  return user;
+}
+
+/**
+ * Auth and credits for a batch run by the signed-in user. Reserves
+ * `estimate` credits and charges the combined usage of every item.
+ */
+export async function withAuthAndCreditsBatch<T>(
+  ctx: ActionCtx,
+  operation: { description: string; kind: UsageKind; estimate: number },
+  handler: (user: Doc<"users">, model: ServerModel["model"]) => Promise<{
     result: T;
     totalUsage: Usage;
-    usageBreakdown?: UsageBreakdownEntry[];
     trackingEntries?: AITrackingEntry[];
   }>,
-  minimumRequired = ESTIMATED_CREDITS_PER_QUERY,
 ): Promise<T> {
   try {
-    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
-    if (!user) {
-      throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
-    }
-
-    const balance = await ctx.runQuery(
-      internal.credits.internal.getBalanceByUserId,
-      { userId: user._id },
-    );
-    if (!hasEnoughCredits({ balance, required: minimumRequired })) {
-      await captureServerEvent(user.clerkId, "credits_insufficient", {
-        required_credits: minimumRequired,
-        available_credits: balance?.total ?? 0,
-        feature: operation,
-      });
-      throw createError(
-        "AI_INSUFFICIENT_CREDITS",
-        `Insufficient credits: need at least ${minimumRequired} but have ${balance?.total ?? 0}`,
-      );
-    }
-
+    const user = await requireAIUser(ctx);
     const { model, pricing, modelSlug } = await resolveUserServerModel(ctx, user._id);
-    const trackModelId = modelSlug;
-
     const start = Date.now();
-    const { result, totalUsage, usageBreakdown, trackingEntries } = await handler(user, pricing, model);
-    const latencyMs = Date.now() - start;
-
-    const totalCreditsDeducted = usageBreakdown && usageBreakdown.length > 0
-      ? usageBreakdown.reduce((sum, e) => sum + calculateServerCreditsToDeduct(e.usage, pricing), 0)
-      : calculateServerCreditsToDeduct(totalUsage, pricing);
-    const totalRawCost = usageBreakdown && usageBreakdown.length > 0
-      ? usageBreakdown.reduce((sum, e) => sum + calculateServerRawCreditCost(e.usage, pricing), 0)
-      : calculateServerRawCreditCost(totalUsage, pricing);
-    const creditContext = {
-      creditsDeducted: totalCreditsDeducted,
-      creditsRawCost: totalRawCost,
-      creditsRemaining: Math.max(0, balance!.total - totalCreditsDeducted),
-    };
-
-    // Per-item tracking when entries provided; single aggregated event otherwise
-    if (trackingEntries && trackingEntries.length > 0) {
-      const enriched = trackingEntries.map((e) => ({ ...e, ...creditContext }));
-      await captureAIGenerationBatchServer(
-        user.clerkId,
-        "openrouter" as AIProvider,
-        trackModelId,
-        enriched,
-      );
-    } else {
-      const hasTokens = (totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0) > 0
-        || (totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0) > 0;
-      await captureAIGenerationServer({
-        distinctId: user.clerkId,
-        provider: "openrouter" as AIProvider,
-        modelId: trackModelId,
-        feature: operation,
-        usage: {
-          inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
-          outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
-        },
-        latencyMs,
-        input: `Batch: ${operation}`,
-        output: hasTokens ? "Completed (aggregated)" : "No items succeeded",
-        isError: !hasTokens,
-        ...creditContext,
-      });
-    }
-
-    if (usageBreakdown && usageBreakdown.length > 0) {
-      return await applyBatchItemDeductions({
-        result,
-        usageBreakdown,
-        pricing,
-        clerkId: user.clerkId,
-        operation,
-        availableCreditsAtStart: balance?.total ?? 0,
-        deductCredits: (deductArgs) =>
-          ctx.runMutation(internal.credits.internal.deductCredits, {
-            userId: user._id,
-            ...deductArgs,
-          }),
-        captureServerEvent,
-      });
-    } else {
-      const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage, pricing);
-      // allowPartial:true — pre-flight at line 269 was the gate; any
-      // in-flight overrun vs. provider cost drains wallet to zero rather
-      // than leaving a partial-success state with the row stuck retrying.
-      // PostHog tracking above still reports planned creditsToDeduct;
-      // ledger remains the source of truth on actual deducted.
-      await ctx.runMutation(internal.credits.internal.deductCredits, {
+    let trackingEntries: AITrackingEntry[] | undefined;
+    const { result, credits, usage } = await withCredits(
+      ctx,
+      {
         userId: user._id,
-        amount: creditsToDeduct,
-        description: `AI: ${operation}`,
-        allowPartial: true,
-      });
-    }
-
-    return result;
-  } catch (error) {
-    throwStructuredAIError(error);
-  }
-}
-
-/**
- * Credits wrapper for background jobs (internalActions) where we already know the userId.
- * Use this when auth context is not available (scheduled jobs, internal actions).
- */
-export async function withUserCreditsBatch<T>(
-  ctx: ActionCtx,
-  userId: Id<"users">,
-  operation: string,
-  handler: (pricing: Pricing) => Promise<{ result: T; totalUsage: Usage; trackingEntries?: AITrackingEntry[] }>,
-  options?: DeductCreditsHints & { pricingOverride?: Pricing; modelSlugOverride?: string },
-): Promise<T> {
-  try {
-    // Get user by ID (no auth check needed - we trust the userId passed from the parent action)
-    const user = await ctx.runQuery(internal.users.internal.getUserById, {
-      userId,
-    });
-    if (!user) {
-      throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
-    }
-
-    // Check credits for this user
-    const balance = await ctx.runQuery(
-      internal.credits.internal.getBalanceByUserId,
-      { userId },
+        chargeId: `${operation.kind}:${crypto.randomUUID()}`,
+        estimate: operation.estimate,
+        kind: operation.kind,
+        description: operation.description,
+        model: modelSlug,
+      },
+      pricing,
+      async () => {
+        const outcome = await handler(user, model);
+        trackingEntries = outcome.trackingEntries;
+        return { result: outcome.result, usage: outcome.totalUsage };
+      },
     );
-    if (!hasEnoughCredits({ balance, required: ESTIMATED_CREDITS_PER_QUERY })) {
-      await captureServerEvent(user.clerkId, "credits_insufficient", {
-        required_credits: ESTIMATED_CREDITS_PER_QUERY,
-        available_credits: balance?.total ?? 0,
-        feature: operation,
-      });
-      throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
-    }
-
-    // Caller may pass the pricing it already resolved for the job's server model
-    // (so the deduction matches the model that ran); else fall back to the
-    // system default pricing.
-    const pricing = options?.pricingOverride ?? (await fetchServerPricing(ctx));
-    const trackModelId = options?.modelSlugOverride ?? SERVER_AI_CONFIG.model;
-
-    const start = Date.now();
-    const { result, totalUsage, trackingEntries } = await handler(pricing);
-    const latencyMs = Date.now() - start;
-
-    const creditsToDeduct = calculateServerCreditsToDeduct(totalUsage, pricing);
-
-    // allowPartial:true — pre-flight at line 384 was the gate; any in-flight
-    // overrun vs. provider cost drains wallet to zero rather than throwing.
-    // Deduct first so PostHog tracking below reports actual deducted.
-    const { deducted } = await ctx.runMutation(internal.credits.internal.deductCredits, {
-      userId,
-      amount: creditsToDeduct,
-      description: `AI: ${operation}`,
-      billingType: options?.billingType,
-      jobId: options?.jobId,
-      paperId: options?.paperId,
-      resultId: options?.resultId,
-      metadata: options?.metadata,
-      allowPartial: true,
-    });
-
-    const creditContext = {
-      creditsDeducted: deducted,
-      creditsRawCost: calculateServerRawCreditCost(totalUsage, pricing),
-      creditsRemaining: Math.max(0, balance!.total - deducted),
-    };
-
-    // Per-item tracking when entries provided; single aggregated event otherwise
     if (trackingEntries && trackingEntries.length > 0) {
-      const enriched = trackingEntries.map((e) => ({ ...e, ...creditContext }));
       await captureAIGenerationBatchServer(
         user.clerkId,
         "openrouter" as AIProvider,
-        trackModelId,
-        enriched,
+        modelSlug,
+        trackingEntries.map((entry) => ({ ...entry, creditsDeducted: credits })),
       );
     } else {
-      const hasTokens = (totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0) > 0
-        || (totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0) > 0;
       await captureAIGenerationServer({
         distinctId: user.clerkId,
         provider: "openrouter" as AIProvider,
-        modelId: trackModelId,
-        feature: operation,
-        usage: {
-          inputTokens: totalUsage.inputTokens ?? totalUsage.promptTokens ?? 0,
-          outputTokens: totalUsage.outputTokens ?? totalUsage.completionTokens ?? 0,
-        },
-        latencyMs,
-        input: `Batch: ${operation}`,
-        output: hasTokens ? "Completed (aggregated)" : "No items succeeded",
-        isError: !hasTokens,
-        ...creditContext,
+        modelId: modelSlug,
+        feature: operation.description,
+        usage: tokenCounts(usage),
+        latencyMs: Date.now() - start,
+        input: `Batch: ${operation.description}`,
+        output: "Completed (aggregated)",
+        creditsDeducted: credits,
       });
     }
-
     return result;
   } catch (error) {
     throwStructuredAIError(error);
@@ -482,103 +293,36 @@ export async function withUserCreditsBatch<T>(
 }
 
 /**
- * Auth + credits wrapper for single AI operations.
- *
- * **IMPORTANT: This function does NOT send PostHog tracking events.**
- * The caller is responsible for calling `captureAIGenerationServer` themselves.
- * Currently only used by `createAIAction` which handles tracking internally.
- *
- * For batch operations, prefer `withAuthAndCreditsBatch` or `withUserCreditsBatch`
- * which have built-in tracking via `trackingEntries`.
+ * Credits for background work where the user is known but not signed in to
+ * this request (workpool items).
  */
-export type CreditContext = {
-  creditsDeducted: number;
-  creditsRawCost: number;
-  creditsRemaining: number;
-};
-
-/**
- * Opt-in ledger-column hints. Callers that can classify their AI action
- * against the canonical billingType enum set `options.billingType`; the
- * row then carries a typed column instead of falling through to the
- * generic "Usage" bucket. `metadata` is an escape hatch for keys that
- * don't have a promoted column (e.g. `openalexId` when the paper isn't
- * yet in `extractionPapers`).
- */
-export type DeductCreditsHints = {
-  billingType?:
-    | "extraction_llm"
-    | "embedding"
-    | "screening"
-    | "chat"
-    | "search"
-    | "translation"
-    | "wallet_api";
-  jobId?: Id<"extractionJobs">;
-  paperId?: Id<"extractionPapers">;
-  resultId?: Id<"extractionResults">;
-  metadata?: Record<string, string>;
-};
-
-export async function withAuthAndCredits<T>(
+export async function withUserCredits<T>(
   ctx: ActionCtx,
-  operation: string,
-  handler: (
-    user: Doc<"users">,
-    buildCreditContext: (usage: Usage) => CreditContext,
-    model: ServerModel["model"],
-    modelSlug: string,
-  ) => Promise<{ result: T; usage: Usage }>,
-  options?: DeductCreditsHints,
+  target: CreditTarget,
+  pricing: Pricing,
+  handler: () => Promise<{ result: T; totalUsage: Usage; trackingEntries?: AITrackingEntry[] }>,
 ): Promise<T> {
   try {
-    const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
+    const user = await ctx.runQuery(internal.users.internal.getUserById, {
+      userId: target.userId,
+    });
     if (!user) {
       throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
     }
-
-    const balance = await ctx.runQuery(
-      internal.credits.internal.getBalanceByUserId,
-      { userId: user._id },
-    );
-    if (!hasEnoughCredits({ balance, required: ESTIMATED_CREDITS_PER_QUERY })) {
-      await captureServerEvent(user.clerkId, "credits_insufficient", {
-        required_credits: ESTIMATED_CREDITS_PER_QUERY,
-        available_credits: balance?.total ?? 0,
-        feature: operation,
-      });
-      throw createError("AI_INSUFFICIENT_CREDITS", "Insufficient credits for AI operation");
-    }
-
-    const { model, pricing, modelSlug } = await resolveUserServerModel(ctx, user._id);
-
-    const buildCreditContext = (usage: Usage): CreditContext => {
-      const deducted = calculateServerCreditsToDeduct(usage, pricing);
-      return {
-        creditsDeducted: deducted,
-        creditsRawCost: calculateServerRawCreditCost(usage, pricing),
-        creditsRemaining: Math.max(0, balance!.total - deducted),
-      };
-    };
-
-    const { result, usage } = await handler(user, buildCreditContext, model, modelSlug);
-
-    const creditsToDeduct = calculateServerCreditsToDeduct(usage, pricing);
-
-    // allowPartial:true — pre-flight at line 512 was the gate; any in-flight
-    // overrun vs. provider cost drains wallet to zero rather than throwing.
-    await ctx.runMutation(internal.credits.internal.deductCredits, {
-      userId: user._id,
-      amount: creditsToDeduct,
-      description: `AI: ${operation}`,
-      billingType: options?.billingType,
-      jobId: options?.jobId,
-      paperId: options?.paperId,
-      resultId: options?.resultId,
-      metadata: options?.metadata,
-      allowPartial: true,
+    let trackingEntries: AITrackingEntry[] | undefined;
+    const { result, credits } = await withCredits(ctx, target, pricing, async () => {
+      const outcome = await handler();
+      trackingEntries = outcome.trackingEntries;
+      return { result: outcome.result, usage: outcome.totalUsage };
     });
-
+    if (trackingEntries && trackingEntries.length > 0) {
+      await captureAIGenerationBatchServer(
+        user.clerkId,
+        "openrouter" as AIProvider,
+        target.model ?? SERVER_AI_CONFIG.model,
+        trackingEntries.map((entry) => ({ ...entry, creditsDeducted: credits })),
+      );
+    }
     return result;
   } catch (error) {
     throwStructuredAIError(error);
@@ -597,58 +341,59 @@ export function createAIAction<
     args: ObjectType<Args>,
   ) => OperationConfig<ObjectType<Args>, AIOutput>,
   formatOutput: (output: AIOutput, args: ObjectType<Args>) => Output,
-  options?: DeductCreditsHints,
+  options: { kind: UsageKind },
 ) {
   return action({
     args: argsValidator,
     returns: returnsValidator,
-    handler: async (ctx, args: ObjectType<Args>) => {
-      return withAuthAndCredits(ctx, description, async (user, buildCreditContext, model, modelSlug) => {
-        const trackModelId = modelSlug;
+    handler: async (ctx, args: ObjectType<Args>): Promise<Output> => {
+      try {
+        const user = await requireAIUser(ctx);
+        const { model, pricing, modelSlug } = await resolveUserServerModel(ctx, user._id);
         const config = configFactory(args);
         const prompts = config.buildPrompts(config.input, 0);
         const inputForTracking = truncateForTracking(
           `[system] ${prompts.system}\n[user] ${prompts.prompt}`
         );
-
         const start = Date.now();
         try {
-          const { output, usage } = await executeAIOperation({
-            model,
-            ...config,
-          });
-          const latencyMs = Date.now() - start;
-          const outputForTracking = truncateForTracking(JSON.stringify(output));
-
-          await captureAIGenerationServer({
-            distinctId: user.clerkId,
-            provider: "openrouter" as AIProvider,
-            modelId: trackModelId,
-            feature: description,
-            usage: {
-              inputTokens: usage.inputTokens ?? usage.promptTokens ?? 0,
-              outputTokens: usage.outputTokens ?? usage.completionTokens ?? 0,
+          const { result, credits, usage } = await withCredits<AIOutput>(
+            ctx,
+            {
+              userId: user._id,
+              chargeId: `${options.kind}:${crypto.randomUUID()}`,
+              estimate: ESTIMATED_CREDITS_PER_QUERY,
+              kind: options.kind,
+              description,
+              model: modelSlug,
             },
-            latencyMs,
-            input: inputForTracking,
-            output: outputForTracking,
-            temperature: config.temperature,
-            ...buildCreditContext(usage),
-          });
-
-          return {
-            result: formatOutput(output, args),
-            usage,
-          };
-        } catch (error) {
-          const latencyMs = Date.now() - start;
+            pricing,
+            async () => {
+              const { output, usage } = await executeAIOperation({ model, ...config });
+              return { result: output, usage };
+            },
+          );
           await captureAIGenerationServer({
             distinctId: user.clerkId,
             provider: "openrouter" as AIProvider,
-            modelId: trackModelId,
+            modelId: modelSlug,
+            feature: description,
+            usage: tokenCounts(usage),
+            latencyMs: Date.now() - start,
+            input: inputForTracking,
+            output: truncateForTracking(JSON.stringify(result)),
+            temperature: config.temperature,
+            creditsDeducted: credits,
+          });
+          return formatOutput(result, args);
+        } catch (error) {
+          await captureAIGenerationServer({
+            distinctId: user.clerkId,
+            provider: "openrouter" as AIProvider,
+            modelId: modelSlug,
             feature: description,
             usage: { inputTokens: 0, outputTokens: 0 },
-            latencyMs,
+            latencyMs: Date.now() - start,
             input: inputForTracking,
             output: "",
             isError: true,
@@ -657,9 +402,11 @@ export function createAIAction<
             errorCode: extractErrorCode(error),
             temperature: config.temperature,
           });
-          throwStructuredAIError(error);
+          throw error;
         }
-      }, options);
+      } catch (error) {
+        throwStructuredAIError(error);
+      }
     },
   });
 }

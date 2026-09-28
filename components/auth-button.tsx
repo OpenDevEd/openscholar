@@ -61,7 +61,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   const hasResolvedSubscription = subscriptionState.isReady;
   const resolvedPlan = subscriptionState.resolvedPlan;
 
-  const creditsQuery = useOptionalAuthQuery(api.credits.queries.getMyBalance, {});
+  const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, {});
   const credits = creditsQuery.data;
 
   const creditsEnabled = useFeatureFlag("credits.enabled");
@@ -192,7 +192,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
   const planLabel = resolvedPlan
     ? resolvedPlan.charAt(0).toUpperCase() + resolvedPlan.slice(1)
     : null;
-  const isResolvedProPlan = resolvedPlan === "pro" || resolvedPlan === "enterprise";
+  const isResolvedProPlan = resolvedPlan === "pro";
 
   const showUpgrade =
     hasResolvedSubscription &&
@@ -281,7 +281,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
                     {tc("credits")}
                   </span>
                   <span className="text-sm font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                    {credits.total}
+                    {credits.balance}
                   </span>
                 </div>
               )}

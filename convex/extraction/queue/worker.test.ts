@@ -1,11 +1,11 @@
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
 import { setupAggregates } from "../aggregates.test-support";
 import { setupExtractionPaperWorkpool } from "./workpool.test-support";
-import { seedCreditsForTest } from "../../credits/aggregates.test-support";
+import { fakeAutumn, installFakeAutumn, seedCreditsForTest } from "../../billing/billing.test-support";
 
 async function seedLeasedPaperQueueItem(
   t: ReturnType<typeof convexTest>,
@@ -114,10 +114,14 @@ async function seedLeasedUnprocessablePaper(
 
 async function seedAlreadyAnsweredPaper(
   t: ReturnType<typeof convexTest>,
+  opts: { credits?: number; answered?: boolean } = {},
 ): Promise<{
+  userId: Id<"users">;
+  jobId: Id<"extractionJobs">;
   paperId: Id<"extractionPapers">;
   queueId: Id<"extractionPaperQueue">;
 }> {
+  const { credits = 100_000, answered = true } = opts;
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
@@ -127,6 +131,7 @@ async function seedAlreadyAnsweredPaper(
       createdAt: now,
       updatedAt: now,
     });
+    await seedCreditsForTest(ctx, { userId, paid: credits, now });
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
       mode: "extraction" as const,
@@ -157,19 +162,21 @@ async function seedAlreadyAnsweredPaper(
       order: 0,
       createdAt: now,
     });
-    await ctx.db.insert("extractionResults", {
-      jobId,
-      paperId,
-      questionKey: "q1",
-      answer: "Already answered",
-      citations: [],
-      citationStatus: "grounded" as const,
-      status: "completed" as const,
-      billed: true,
-      attemptCount: 1,
-      creditsUsed: 0,
-      processedAt: now,
-    });
+    if (answered) {
+      await ctx.db.insert("extractionResults", {
+        jobId,
+        paperId,
+        questionKey: "q1",
+        answer: "Already answered",
+        citations: [],
+        citationStatus: "grounded" as const,
+        status: "completed" as const,
+        billed: true,
+        attemptCount: 1,
+        creditsUsed: 0,
+        processedAt: now,
+      });
+    }
     const queueId = await ctx.db.insert("extractionPaperQueue", {
       jobId,
       userId,
@@ -185,7 +192,7 @@ async function seedAlreadyAnsweredPaper(
       createdAt: now,
       updatedAt: now,
     });
-    return { paperId, queueId };
+    return { userId, jobId, paperId, queueId };
   });
 }
 
@@ -320,6 +327,45 @@ async function seedQueueRefillJob(
 }
 
 describe("extraction paper queue worker", () => {
+  beforeEach(() => installFakeAutumn());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("pauses the job and parks the paper when its credits can't be reserved", async () => {
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { userId, jobId, paperId, queueId } = await seedAlreadyAnsweredPaper(t, {
+      credits: 2,
+      answered: false,
+    });
+
+    await t.action(internal.extraction.paperWorker.runPaperQueueItem, {
+      queueId,
+      expectedEpoch: 0,
+      paperConcurrency: 1,
+      questionConcurrency: 1,
+      pdfEnabled: false,
+    });
+
+    const [job, paper, queueRow, results] = await t.run(async (ctx) =>
+      Promise.all([
+        ctx.db.get(jobId),
+        ctx.db.get(paperId),
+        ctx.db.get(queueId),
+        ctx.db
+          .query("extractionResults")
+          .withIndex("by_paper", (q) => q.eq("paperId", paperId))
+          .collect(),
+      ]),
+    );
+    expect(job?.status).toBe("creditsExhausted");
+    expect(job?.error?.code).toBe("insufficient_credits");
+    expect(queueRow?.status).toBe("parked");
+    expect(paper?.status).toBe("pending");
+    expect(results).toHaveLength(0);
+    expect(fakeAutumn.balance(userId)).toBe(2);
+    expect(fakeAutumn.locks.size).toBe(0);
+  });
+
   it("marks a leased item cancelled when the job is already cancelled", async () => {
     const t = convexTest(schema);
     const { queueId } = await seedLeasedPaperQueueItem(t, "cancelled");

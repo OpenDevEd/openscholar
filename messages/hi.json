@@ -454,167 +454,6 @@
     "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
   },
   "billingPage": {
-    "transactions": {
-      "title": "लेन-देन",
-      "filteredByJob": "कार्य द्वारा फ़िल्टर किया गया",
-      "clearFilter": "फ़िल्टर साफ़ करें",
-      "error": {
-        "title": "लेन-देन लोड नहीं हो सके",
-        "message": "आपका बिलिंग इतिहास लाते समय कुछ गड़बड़ हुई। कृपया थोड़ी देर में फिर कोशिश करें।",
-        "retry": "पुनः प्रयास करें"
-      },
-      "empty": {
-        "no-data": {
-          "title": "अभी तक कोई लेन-देन नहीं",
-          "description": "जैसे ही आप क्रेडिट का उपयोग शुरू करेंगे, खरीद, अनुदान और उपयोग शुल्क यहाँ दिखाई देंगे।",
-          "cta": "क्रेडिट खरीदें"
-        },
-        "no-matches": {
-          "title": "कोई मिलान नहीं",
-          "description": "आपके मौजूदा फ़िल्टर से कोई लेन-देन मेल नहीं खाता। फ़िल्टर साफ़ करें या तिथि सीमा बढ़ाएँ।",
-          "cta": "फ़िल्टर साफ़ करें"
-        }
-      },
-      "type": {
-        "purchase": "क्रेडिट खरीद",
-        "grant": "मुफ़्त क्रेडिट अनुदान",
-        "refund": "धनवापसी",
-        "usage": "उपयोग",
-        "expiry": "क्रेडिट समाप्त"
-      },
-      "billingType": {
-        "extraction_llm": "निष्कर्षण",
-        "embedding": "इंडेक्सिंग",
-        "screening": "स्क्रीनिंग",
-        "chat": "चैट",
-        "search": "खोज",
-        "translation": "अनुवाद",
-        "wallet_api": "Wallet API"
-      },
-      "status": {
-        "pending": "लंबित",
-        "failed": "विफल",
-        "expired": "समाप्त"
-      },
-      "actions": {
-        "openJob": "कार्य खोलें"
-      },
-      "group": {
-        "today": "आज",
-        "yesterday": "कल",
-        "thisWeek": "इस हफ़्ते",
-        "lastWeek": "पिछले हफ़्ते"
-      },
-      "export": {
-        "label": "निर्यात",
-        "current": "वर्तमान पृष्ठ ({count})",
-        "filtered": "फ़िल्टर्ड (सभी पृष्ठ)",
-        "all": "सम्पूर्ण इतिहास"
-      },
-      "drawer": {
-        "close": "विवरण बंद करें",
-        "stripe": {
-          "heading": "Stripe",
-          "invoice": "इनवॉइस",
-          "paymentIntent": "पेमेंट इंटेंट",
-          "charge": "चार्ज",
-          "checkoutSession": "चेकआउट सेशन",
-          "copy": "क्लिपबोर्ड पर कॉपी करें",
-          "openInStripe": "Stripe डैशबोर्ड में खोलें",
-          "downloadReceipt": "रसीद डाउनलोड करें"
-        },
-        "links": {
-          "heading": "लिंक",
-          "job": "एक्सट्रैक्शन जॉब",
-          "paper": "पेपर",
-          "result": "परिणाम",
-          "paperComingSoon": "पेपर विवरण (जल्द आ रहा है)",
-          "resultComingSoon": "परिणाम विवरण (जल्द आ रहा है)"
-        },
-        "metadata": {
-          "heading": "मेटाडेटा"
-        }
-      },
-      "loadingMore": "लोड हो रहा है…",
-      "exhausted": "इतिहास का अंत",
-      "tabs": {
-        "all": "सभी",
-        "purchases": "ख़रीद",
-        "usage": "उपयोग",
-        "refunds-grants": "धनवापसी और अनुदान",
-        "failed": "विफल"
-      },
-      "searchPlaceholder": "लेन-देन खोजें…",
-      "searchClear": "खोज साफ़ करें",
-      "clearAll": "सब साफ़ करें",
-      "filters": {
-        "type": "प्रकार",
-        "creditPool": "क्रेडिट पूल",
-        "billingType": "बिलिंग",
-        "creditPoolValues": {
-          "free": "मुफ़्त",
-          "paid": "भुगतान किया"
-        },
-        "date": {
-          "label": "तारीख़",
-          "presets": {
-            "today": "आज",
-            "7d": "पिछले 7 दिन",
-            "30d": "पिछले 30 दिन",
-            "90d": "पिछले 90 दिन",
-            "ytd": "इस वर्ष अब तक",
-            "all": "सम्पूर्ण समय"
-          }
-        }
-      },
-      "sort": {
-        "label": "क्रमबद्ध करें",
-        "date": "तारीख़",
-        "amount": "राशि",
-        "type": "प्रकार",
-        "dir": {
-          "asc": "बढ़ता हुआ",
-          "desc": "घटता हुआ"
-        }
-      },
-      "density": {
-        "label": "घनत्व",
-        "compact": "सघन",
-        "comfortable": "आरामदायक",
-        "spacious": "विशाल"
-      },
-      "live": {
-        "summary": "{total} लेन-देनों में से {shown} दिखाए जा रहे हैं"
-      },
-      "titles": {
-        "paidCredits": "{amount, number} भुगतान किए गए क्रेडिट",
-        "freeCredits": "{amount, number} मुफ़्त क्रेडिट",
-        "freeCreditsExpired": "{amount, number} मुफ़्त क्रेडिट समाप्त",
-        "refund": "रिफ़ंड · {amount, number} क्रेडिट",
-        "chatMessage": "चैट संदेश",
-        "extraction": "पेपर एक्सट्रैक्शन",
-        "indexing": "पेपर इंडेक्सिंग",
-        "screening": "पेपर स्क्रीनिंग",
-        "paperRef": "पेपर {ref}",
-        "search": "खोज सुधार",
-        "translation": "अनुवाद",
-        "walletApi": "{model} · Wallet API",
-        "walletApiGeneric": "Wallet API"
-      },
-      "secondary": {
-        "topup": "टॉप-अप",
-        "stripe": "Stripe",
-        "stripeRefund": "Stripe रिफ़ंड",
-        "expired": "मुफ़्त पूल"
-      },
-      "amount": {
-        "balance": "शेष {balance}"
-      },
-      "aria": {
-        "credit": "क्रेडिट",
-        "debit": "डेबिट"
-      }
-    },
     "billingAndPlans": "बिलिंग और प्लान्स",
     "manageSubscription": "अपनी सदस्यता और उपयोग प्रबंधित करें।",
     "upgradePlan": "प्लान अपग्रेड करें",
@@ -668,7 +507,23 @@
     "creditCapBanner": "आपके मुफ्त क्रेडिट अधिकतम सीमा पर हैं। अपनी पूरी मासिक राशि प्राप्त करने के लिए कुछ क्रेडिट उपयोग करें।",
     "processingPurchase": "आपकी खरीदारी प्रोसेस हो रही है...",
     "creditsAddedTitle": "क्रेडिट जोड़े गए",
-    "creditsAddedDescription": "आपके बैलेंस में {amount} क्रेडिट जोड़े गए हैं।"
+    "creditsAddedDescription": "आपके बैलेंस में {amount} क्रेडिट जोड़े गए हैं।",
+    "paymentReceived": "भुगतान मिल गया। Stripe की पुष्टि होते ही आपकी योजना और क्रेडिट अपडेट हो जाएंगे।",
+    "usage": {
+      "title": "उपयोग",
+      "empty": "अभी तक कोई क्रेडिट उपयोग नहीं हुआ।",
+      "loadMore": "और दिखाएं",
+      "showAll": "सभी दिखाएँ",
+      "kinds": {
+        "chat": "चैट",
+        "extraction": "निष्कर्षण",
+        "screening": "स्क्रीनिंग",
+        "search": "खोज",
+        "translation": "अनुवाद",
+        "wallet_api": "Wallet API",
+        "refund": "रिफ़ंड"
+      }
+    }
   },
   "errors": {
     "unexpectedIssue": "हमें एक अप्रत्याशित समस्या का सामना करना पड़ा। कृपया पुनः प्रयास करें, या स्थिर पेज पर वापस जाएं।",
@@ -2014,7 +1869,6 @@
     "prorationCharge": "आनुपातिक शुल्क",
     "prorationExplanation": "आपके बिलिंग चक्र के शेष {days} दिनों के लिए",
     "creditsGranted": "{credits} क्रेडिट तुरंत प्रदान किए गए",
-    "creditsDetail": "आपके चक्र में शेष {days} दिनों के आधार पर",
     "monthlyCreditsAfter": "फिर आगे हर महीने {credits}",
     "confirmUpgrade": "अपग्रेड की पुष्टि करें",
     "cancel": "रद्द करें",

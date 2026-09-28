@@ -2,7 +2,6 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import schema from "../schema";
-import { setupTransactionAggregates } from "../credits/aggregates.test-support";
 import {
   applyUserDeleteProjection,
   applyUserUpsertProjection,
@@ -24,7 +23,6 @@ function metadata(eventId: string, occurredAt: number) {
 describe("Clerk user projection ordering", () => {
   it("keeps a user deleted when an older update arrives later", async () => {
     const t = convexTest(schema);
-    setupTransactionAggregates(t);
 
     const created = await t.run((ctx) =>
       applyUserUpsertProjection(ctx, {

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { seedCreditsForTest } from "../credits/aggregates.test-support";
+import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupAggregates } from "./aggregates.test-support";
 
 async function seedBatchResultFixture(t: ReturnType<typeof convexTest>) {

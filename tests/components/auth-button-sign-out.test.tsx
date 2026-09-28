@@ -58,7 +58,7 @@ vi.mock("@/lib/feature-flags/hook", () => ({
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
-  api: { credits: { queries: { getMyBalance: "getMyBalance" } } },
+  api: { billing: { accounts: { mine: "getMyBalance" } } },
 }));
 
 vi.mock("@/components/ui/button", () => ({

@@ -111,14 +111,4 @@ describe("pickWebSearchPricing", () => {
       source: "tavily-basic",
     });
   });
-
-  it("propagates an explicit creditsPerUsd override into the credits estimate (Tavily, rate=1_000)", () => {
-    expect(
-      pickWebSearchPricing({ path: "tavily", creditsPerUsd: 1_000 }),
-    ).toEqual({
-      usdPerCall: 0.008,
-      creditsPerCall: 11,
-      source: "tavily-basic",
-    });
-  });
 });

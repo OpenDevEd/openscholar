@@ -14,13 +14,11 @@ import { internalMutation, type MutationCtx } from "../../_generated/server";
 import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { internal } from "../../_generated/api";
-import { deductCreditsTransaction } from "../../credits/internal";
 import {
   assertValidJobTransition,
   type JobStatus,
 } from "../stateMachine";
 import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
-import { recordCreditSpend } from "../aggregates";
 import {
   answerValidator,
   citationStatusValidator,
@@ -270,10 +268,14 @@ const batchSkipReasonValidator = v.union(
   v.literal("stale_epoch"),
   v.literal("job_terminal"),
   v.literal("paused"),
-  v.literal("credits_exhausted"),
   v.literal("not_extracting"),
 );
 
+/**
+ * Why a finished batch can't be saved. A job paused for credits still saves
+ * it: the paper's credits were held before the batch ran, and the answers are
+ * paid for.
+ */
 function getBatchSkipReason(
   job: { status?: string; runEpoch?: number } | null | undefined,
   expectedEpoch?: number,
@@ -282,15 +284,13 @@ function getBatchSkipReason(
   | "stale_epoch"
   | "job_terminal"
   | "paused"
-  | "credits_exhausted"
   | "not_extracting"
   | null {
   if (!job) return "job_missing";
   if (!matchesExpectedEpoch(job, expectedEpoch)) return "stale_epoch";
   if (isJobTerminal(job)) return "job_terminal";
   if (job.status === "paused") return "paused";
-  if (job.status === "creditsExhausted") return "credits_exhausted";
-  if (job.status !== "extracting") return "not_extracting";
+  if (job.status !== "extracting" && job.status !== "creditsExhausted") return "not_extracting";
   return null;
 }
 
@@ -509,56 +509,14 @@ export const finalizePaper = internalMutation({
     const terminalStatus = rollup.status === "failed" ? "failed" : "completed";
     const anyPdfUsed = resultsForPaper.some((r) => r.pdfContentUsed);
 
-    // Per-paper credit debit. Tier C: the per-question creditsUsed now
-    // lives on each extractionResults row (no longer accumulated on the
-    // paper row by an OCC-contended applyResultProjectionWrite). Sum
-    // them here and settle the wallet ONCE on the terminal transition.
-    // `questionsBilled` is the idempotency gate so an adversarial
-    // reset-then-rerun cannot re-bill — mirrors the `indexingBilled`
-    // precedent.
-    // allowPartial:true drains the wallet rather than throwing
-    // INSUFFICIENT_CREDITS mid-fanout. Queue admission already checked
-    // the HIGH estimate before starting this paper; final billing is the
-    // single settled usage row.
-    const creditsToDebit = resultsForPaper.reduce(
+    // The worker charges each run when it finishes; this total is for display.
+    const creditsUsed = resultsForPaper.reduce(
       (sum, r) => sum + (r.creditsUsed ?? 0),
       0,
     );
-    if (!paper.questionsBilled && job) {
-      let deducted = 0;
-      let billingOccurred = false;
-      if (creditsToDebit > 0) {
-        const result = await deductCreditsTransaction(ctx, {
-          userId: job.userId,
-          amount: creditsToDebit,
-          description: `AI: Extraction (${paper.openalexId} — ${rollup.completedQuestions} questions)`,
-          jobId: paper.jobId,
-          paperId: args.paperId,
-          billingType: "extraction_llm",
-          allowPartial: true,
-        });
-        deducted = result.deducted;
-        billingOccurred = true;
-      }
-      if (deducted > 0) {
-        await recordCreditSpend(ctx, {
-          jobId: paper.jobId,
-          id: args.paperId,
-          creditsUsed: deducted,
-        });
-      }
-      if (billingOccurred || paper.admittedEstimateCredits !== undefined) {
-        await ctx.db.patch(args.paperId, {
-          ...(billingOccurred ? { questionsBilled: true } : {}),
-          admittedEstimateCredits: undefined,
-          admittedRunEpoch: undefined,
-          admittedAt: undefined,
-        });
-      }
-    }
 
     await markPaperTerminalTx(ctx, args.paperId, terminalStatus, {
-      creditsUsed: creditsToDebit > 0 ? creditsToDebit : undefined,
+      creditsUsed: creditsUsed > 0 ? creditsUsed : undefined,
       pdfContentUsed: anyPdfUsed ? true : undefined,
     });
 

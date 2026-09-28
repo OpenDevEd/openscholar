@@ -14,26 +14,10 @@ import type { Id } from "../_generated/dataModel";
 type RunMutationCtx = { runMutation: GenericMutationCtx<never>["runMutation"] };
 
 /**
- * Plan-04: per-job credit-spend aggregate. Backs `getJobCost` with an
- * O(log n) sum call regardless of job size, and drives the header cost
- * badge's live-updating subscription (namespace isolation means
- * paper-N completing on job-A does not rerun queries for job-B).
- *
- * Namespace: the jobId — one B-tree per job.
- * Key:       a random number in [0, 2^53). No semantic — exists only to
- *            distribute parallel inserts across B-tree leaves. The
- *            previous timestamp-keyed scheme collapsed all writes onto
- *            the rightmost leaf under fan-out, re-creating the OCC
- *            contention the aggregate was supposed to absorb. Reads
- *            (`sum`, `clear`) are namespace-wide and key-agnostic.
- * Id:        opaque unique string per debit (`paperId` for extraction_llm,
- *            or `embed:${paperId}` for embedding). Typed as string because
- *            the aggregate captures both extraction and embedding charges.
- * sumValue:  credits spent for that debit.
- *
- * Cleared on cascade delete via `clearJobCredits` (see below). NOT
- * cleared on cancel — the receipt for already-spent credits must be
- * preserved (partial-work billing integrity).
+ * Per-job credit totals for the cost badge. One entry per settled charge,
+ * written by `convex/billing/charge.ts`. Namespaced by job so one job's
+ * charges don't rerun another job's queries; random keys spread parallel
+ * inserts across the B-tree. Cleared when the job is deleted.
  */
 export const creditsAgg = new DirectAggregate<{
   Namespace: Id<"extractionJobs">;
@@ -41,41 +25,19 @@ export const creditsAgg = new DirectAggregate<{
   Id: string;
 }>(components.creditsAgg);
 
-/**
- * Record one credit-spend entry into `creditsAgg`. Use from the same
- * transaction as `deductCredits` so the aggregate total stays
- * exactly in sync with the ledger.
- *
- * Idempotency is NOT enforced here. `insertIfDoesNotExist` lookups are
- * keyed by (key, id) position — with a random key on every call, two
- * calls with the same id at different keys would create duplicate
- * entries. Callers MUST gate this through a billing flag on the source
- * row (`indexingBilled` and `questionsBilled` on extractionPapers) so
- * recordCreditSpend is called at most once per logical debit. OCC
- * retries within a single mutation invocation are fine because only
- * the committed attempt's writes persist.
- */
-export async function recordCreditSpend(
+export async function recordJobCredits(
   ctx: RunMutationCtx,
-  args: {
-    jobId: Id<"extractionJobs">;
-    id: string;
-    creditsUsed: number;
-  },
+  args: { jobId: Id<"extractionJobs">; chargeId: string; credits: number },
 ): Promise<void> {
   await creditsAgg.insertIfDoesNotExist(ctx, {
     namespace: args.jobId,
     key: Math.floor(Math.random() * Number.MAX_SAFE_INTEGER),
-    id: args.id,
-    sumValue: args.creditsUsed,
+    id: args.chargeId,
+    sumValue: args.credits,
   });
 }
 
-/**
- * Wipe every entry for a job's namespace. Called from the
- * `deleteExtractionInternal` cascade. One component call (not O(N))
- * because `clear` walks the namespace B-tree directly.
- */
+/** Wipes a job's entries; called when the job is deleted. */
 export async function clearJobCredits(
   ctx: RunMutationCtx,
   jobId: Id<"extractionJobs">,
