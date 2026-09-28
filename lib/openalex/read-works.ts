@@ -1,4 +1,3 @@
-import "server-only";
 import { z } from "zod";
 import { buildUrl, convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
 import type { SearchParameters, Work } from "@sickrin/openalex-sdk/dist/src/types/work";
@@ -12,7 +11,10 @@ const responseSchema = z.object({
   })),
 });
 
-/** One provider page per request. The SDK's numbered pages replay all earlier cursors. */
+/**
+ * One provider page per request. The SDK's numbered pages replay all earlier cursors.
+ * Server side only: it reads the OpenAlex key.
+ */
 export async function readOpenAlexWorks(parameters: SearchParameters & {cursor: string}) {
   const url = new URL(buildUrl("https://api.openalex.org/", "works", parameters.search, parameters.searchField, parameters.filter, parameters.groupBy, parameters.sortBy));
   url.searchParams.set("cursor", parameters.cursor);

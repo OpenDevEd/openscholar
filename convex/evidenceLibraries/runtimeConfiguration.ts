@@ -35,6 +35,11 @@ export function buildEvidenceLibraryLoginPageUrl(input: {
   ).toString();
 }
 
+/**
+ * Setup and publishing both build the configuration here. Every input is
+ * required, even the ones that can be undefined, so a path that forgets one
+ * fails to compile instead of shipping a library without it.
+ */
 export function assembleEvidenceLibraryRuntimePayload(input: {
   /** When this configuration is built; the runtime takes only newer ones. */
   assembledAt: number;
@@ -56,22 +61,21 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
     publicBucket: string;
     maxPdfBytes: number;
   };
-  zoteroTranslationUrl?: string;
-  mail?: PlatformMailService;
-  brand?: PlatformBrandAssets;
-  embeddingApiKey?: string;
+  zoteroTranslationUrl: string | undefined;
+  mail: PlatformMailService | undefined;
+  brand: PlatformBrandAssets | undefined;
+  embeddingApiKey: string | undefined;
   zoteroGroups: {
     groupId: string;
     encryptedApiKey: string;
     scopes: ZoteroGroupScopes;
   }[];
-  aiProviderKey?: { encryptedApiKey: string };
-  openAlexApiKey?: { encryptedApiKey: string };
-  platformOpenAlexApiKey?: string;
-  publicationProviders?: {
-    settings: PublicationSettings;
-    encryptedCredentials: string;
-  };
+  aiProviderKey: { encryptedApiKey: string } | undefined;
+  openAlexApiKey: { encryptedApiKey: string } | undefined;
+  platformOpenAlexApiKey: string | undefined;
+  publicationProviders:
+    | { settings: PublicationSettings; encryptedCredentials: string }
+    | undefined;
   allowedAiModels: readonly string[];
   aiModelMetadata: Record<string, { name: string; company: string }>;
   aiModelCatalogReady: boolean;

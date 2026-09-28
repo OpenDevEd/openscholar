@@ -222,8 +222,12 @@ export async function runFetchPapersFromHistory(
   const { oql } = searchFilters.openAlexQuery;
   const url = `${oql ? OPENALEX_ROOT_URL : OPENALEX_WORKS_URL}?${searchParams.toString()}`;
   console.log(`[fetchPapersFromHistory] Fetching: ${url}${oql ? ` (OQL, ${oql.length} characters)` : ""}`);
+  // Without OpenScholar's key a search costs 10 of 1,000 shared daily credits.
+  // Added after the log line so the key stays out of the logs.
+  const apiKey = process.env.OPENALEX_API_KEY;
+  const requestUrl = apiKey ? `${url}&api_key=${encodeURIComponent(apiKey)}` : url;
 
-  const response = await fetch(url, {
+  const response = await fetch(requestUrl, {
     method: oql ? "POST" : "GET",
     headers: {
       "User-Agent": `OpenAlex-Count/1.0 (mailto:${contactEmail})`,
