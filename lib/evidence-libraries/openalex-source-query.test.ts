@@ -3,6 +3,7 @@ vi.mock("@/app/actions/openalex", () => ({ getSearchResults: vi.fn() }));
 import { DEFAULT_SEARCH_PARAMS, buildResultsUrl } from "@/lib/search-params";
 import { readDraft, changedSectionRows } from "./configuration/rules";
 import { approveOpenAlexQuery, type OpenAlexSourceEntry } from "./configuration/sources";
+import { validateSectionStructure } from "./configuration/generated-validation";
 import { buildOpenAlexSourceQuery, openAlexSourceSearchUrl, readOpenAlexSourceSearch, sameOpenAlexSourceSearch, sourceSearchHistoryId } from "./openalex-source-query";
 
 const params = {
@@ -72,5 +73,9 @@ describe("saved source search", () => {
     const reopened = readDraft(changedSectionRows(readDraft([{ sectionKey: "sources", payload: [source] }]), [])).sources[0] as OpenAlexSourceEntry;
     expect(reopened.settings.approvedQuery.query).toEqual(query);
     expect(readOpenAlexSourceSearch(reopened)).toMatchObject(oqlParams);
+    // The runtime's configuration contract, synced from new-el, accepts its settings.
+    // (The API key is a separate credential this entry does not carry.)
+    const issues = validateSectionStructure("sources", [source]).issues;
+    expect(issues.filter((issue) => issue.pointer.startsWith("/sources/0/settings"))).toEqual([]);
   });
 });
