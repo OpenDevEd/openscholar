@@ -174,6 +174,8 @@ function createCoolifyServer(
     environments?: FakeEnvironment[];
     deployments?: FakeDeployment[];
     deploymentCount?: number;
+    // Runs after each deployment list read, to change the history between pages.
+    afterDeploymentRead?: (deployments: FakeDeployment[]) => void;
     createPreviewEnvironmentOnCreate?: boolean;
     ignoreApplicationWrites?: boolean;
     conflictOnApplicationPatch?: boolean;
@@ -450,10 +452,15 @@ function createCoolifyServer(
         method === "GET" &&
         url.pathname === `/api/v1/deployments/applications/${APPLICATION_UUID}`
       ) {
-        return jsonResponse({
+        // Coolify pages the list with skip and take.
+        const skip = Number(url.searchParams.get("skip") ?? 0);
+        const take = Number(url.searchParams.get("take") ?? deployments.length);
+        const page = jsonResponse({
           count: input.deploymentCount ?? deployments.length,
-          deployments: structuredClone(deployments),
+          deployments: structuredClone(deployments.slice(skip, skip + take)),
         });
+        input.afterDeploymentRead?.(deployments);
+        return page;
       }
 
       if (method === "POST" && url.pathname === "/api/v1/deploy") {
@@ -1396,6 +1403,73 @@ describe("Coolify Evidence Library client", () => {
       reason: "configuration-hash-missing",
     });
     expect(server.deployments).toHaveLength(1);
+  });
+
+  it("reads a long deployment history in small pages and adopts a match past the first page", async () => {
+    const configHash = hashForRevision(1);
+    const older = Array.from({ length: 12 }, (_, index) => ({
+      deployment_uuid: `deployment-other-${index}`,
+      commit: RUNTIME_COMMIT,
+      configuration_hash: hashForRevision(9),
+      status: "finished",
+    }));
+    const server = createCoolifyServer({
+      application: expectedApplication({ config_hash: configHash }),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+      deployments: [
+        ...older,
+        { deployment_uuid: "deployment-match", commit: RUNTIME_COMMIT, configuration_hash: configHash, status: "finished" },
+        ...older.slice(0, 12).map((row, index) => ({ ...row, deployment_uuid: `deployment-older-${index}` })),
+      ],
+    });
+
+    await expect(
+      createClient(server.fetchImpl).startOrAdoptDeployment({
+        applicationUuid: APPLICATION_UUID,
+        runtimeCommit: RUNTIME_COMMIT,
+        coolifyConfigHash: configHash,
+      }),
+    ).resolves.toMatchObject({ outcome: "adopted", deployment: { deploymentUuid: "deployment-match" } });
+    const listReads = server.requests.filter(
+      ({ method, path }) => method === "GET" && path === `/api/v1/deployments/applications/${APPLICATION_UUID}`,
+    );
+    // Each response stays small: never more than ten deployments with their logs.
+    expect(listReads.map(({ search }) => new URLSearchParams(search).get("take"))).toEqual(["10", "10", "10"]);
+    expect(server.deployments).toHaveLength(25);
+  });
+
+  it("reads the history again when a deployment disappears between pages", async () => {
+    const configHash = hashForRevision(1);
+    const others = Array.from({ length: 11 }, (_, index) => ({
+      deployment_uuid: `deployment-other-${index}`,
+      commit: RUNTIME_COMMIT,
+      configuration_hash: hashForRevision(9),
+      status: "finished",
+    }));
+    let removed = false;
+    const server = createCoolifyServer({
+      application: expectedApplication({ config_hash: configHash }),
+      tags: [createCoolifyLibraryTag(LIBRARY_ID)],
+      // The match is 11th, so removing a first-page entry would shift it out of the second page.
+      deployments: [
+        ...others.slice(0, 10),
+        { deployment_uuid: "deployment-match", commit: RUNTIME_COMMIT, configuration_hash: configHash, status: "finished" },
+        ...others.slice(10),
+      ],
+      afterDeploymentRead: (deployments) => {
+        if (removed) return;
+        removed = true;
+        deployments.shift();
+      },
+    });
+
+    await expect(
+      createClient(server.fetchImpl).startOrAdoptDeployment({
+        applicationUuid: APPLICATION_UUID,
+        runtimeCommit: RUNTIME_COMMIT,
+        coolifyConfigHash: configHash,
+      }),
+    ).resolves.toMatchObject({ outcome: "adopted", deployment: { deploymentUuid: "deployment-match" } });
   });
 
   it("starts a new deployment when bounded history cannot prove a match", async () => {
