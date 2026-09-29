@@ -73,7 +73,7 @@ export const listCatalogOptions = query({
   returns: v.array(catalogOptionValidator),
   handler: async (ctx, { provider, tasks }) => {
     const all = pickable(await activeModels(ctx, provider).take(MAX_CATALOG_MODELS));
-    const needed = tasks?.length ? tasks : (["chat"] as const);
+    const needed = tasks?.length ? [...new Set(tasks)] : (["chat"] as const);
     return all.filter((row) => needed.every((task) => usableFor(row, task))).map(catalogOption);
   },
 });

@@ -37,11 +37,12 @@ export function requireEffort(model: Doc<"models">, effort: Effort | undefined) 
 
 /**
  * Whether a model can do a task: a decision model (Jev) only screens, and every
- * task but chat parses a structured answer, which the model must support.
+ * task but chat asks for a JSON-schema answer, which needs `structured_outputs`
+ * (`response_format` alone is plain JSON mode).
  */
 export function usableFor(model: Pick<Doc<"models">, "modelId" | "supportedParameters">, task: AiTask) {
   if (isDecisionModel(model.modelId)) return DECISION_TASKS.includes(task);
-  return task === "chat" || model.supportedParameters?.some((param) => param === "response_format" || param === "structured_outputs") === true;
+  return task === "chat" || model.supportedParameters?.includes("structured_outputs") === true;
 }
 
 /** Refuses a model for a task it can't do. */

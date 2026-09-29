@@ -8,7 +8,7 @@ import type { AiTask } from "../../lib/ai/tasks";
 async function setup() {
   const t = convexTest(schema);
   setupAggregates(t);
-  const model = (modelId: string, reasoningEfforts?: Array<"low" | "medium" | "high">, supportedParameters = ["response_format"]) =>
+  const model = (modelId: string, reasoningEfforts?: Array<"low" | "medium" | "high">, supportedParameters = ["structured_outputs"]) =>
     t.run((ctx) =>
       ctx.db.insert("models", {
         modelId, name: modelId, provider: modelId.split("/")[0]!, inputPricePerMillion: 1, outputPricePerMillion: 2,
@@ -19,7 +19,8 @@ async function setup() {
   const sonnet = await model("anthropic/sonnet", ["low", "medium", "high"]);
   const flash = await model("google/flash", ["low"]);
   const mine = await model("acme/mine");
-  const chatOnly = await model("acme/chat-only", undefined, ["tools"]);
+  // JSON mode without schemas isn't enough for the tasks that parse an answer.
+  const chatOnly = await model("acme/chat-only", undefined, ["response_format", "tools"]);
   const userId = await t.run((ctx) =>
     ctx.db.insert("users", { clerkId: "clerk_user", email: "user@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }),
   );
