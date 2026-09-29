@@ -8,7 +8,7 @@ import {
   formatNonStreamingResponse,
   createStreamingResponse,
 } from "./formatResponse";
-import { callOptions as providerCallOptions } from "../../../lib/ai/core/call-options";
+import { callOptions as providerCallOptions, clamp } from "../../../lib/ai/core/call-options";
 import { pickProviderCostUsd } from "../../../lib/chat/pick-provider-cost";
 import {
   calculateEnhancedModelCost,
@@ -171,6 +171,8 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
       "openrouter",
       undefined,
       routedModelId,
+      // Needed for OpenRouter to report the call's cost, which is what we charge.
+      { openrouterUsageInclude: true },
     );
   } catch (e) {
     console.error("[gateway] Provider model creation failed:", e);
@@ -210,14 +212,15 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
 
   // 10. Provider options: the requested effort (models that reason, and never
   //     "none" where reasoning can't be turned off), then the caller's own.
-  const effort =
-    req.reasoning_effort && walletModel.reasoningEfforts?.length &&
-    !(req.reasoning_effort === "none" && walletModel.reasoningMandatory)
-      ? req.reasoning_effort
-      : undefined;
+  //     A level the model doesn't take rounds down to one it does.
+  const levels = walletModel.reasoningEfforts ?? [];
+  const effort = req.reasoning_effort && levels.length ? clamp(req.reasoning_effort, levels) : undefined;
+  const ours = providerCallOptions(model, { effort });
   const providerOptions: Record<string, Record<string, unknown>> = {
-    ...providerCallOptions(model, { effort }),
+    ...ours,
     ...req.provider_options,
+    // The caller's OpenRouter settings add to ours; a field they set themselves wins.
+    openrouter: { ...ours.openrouter, ...req.provider_options?.openrouter },
   };
 
   // 11. Execute

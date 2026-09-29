@@ -167,12 +167,13 @@ export const settleFromOpenRouter = internalAction({
     generationId: v.string(),
     /** Cost already known outside this generation: earlier steps and web search. */
     extraUsd: v.number(),
-    /** Token details of the steps that finished before this one. */
-    earlierTokens: v.object({ cacheReadTokens: v.number(), cacheWriteTokens: v.number(), reasoningTokens: v.number() }),
+    /** Token details of the steps that finished before this one; absent on retries scheduled before it existed. */
+    earlierTokens: v.optional(v.object({ cacheReadTokens: v.number(), cacheWriteTokens: v.number(), reasoningTokens: v.number() })),
     attempt: v.number(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const earlier = args.earlierTokens ?? { cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 };
     const result = await fetchOpenRouterGeneration(args.generationId);
     if (result.kind === "retryable") {
       const delayMs = getChatGenerationRetryDelayMs(args.attempt);
@@ -201,9 +202,9 @@ export const settleFromOpenRouter = internalAction({
         ...(result.kind === "ok" ? { model: result.generation.model } : {}),
         costUsd: usd,
         // OpenRouter's generation record has no cache-write count.
-        cacheReadTokens: args.earlierTokens.cacheReadTokens + (result.kind === "ok" ? result.generation.cachedPromptTokens : 0),
-        cacheWriteTokens: args.earlierTokens.cacheWriteTokens,
-        reasoningTokens: args.earlierTokens.reasoningTokens + (result.kind === "ok" ? result.generation.reasoningTokens : 0),
+        cacheReadTokens: earlier.cacheReadTokens + (result.kind === "ok" ? result.generation.cachedPromptTokens : 0),
+        cacheWriteTokens: earlier.cacheWriteTokens,
+        reasoningTokens: earlier.reasoningTokens + (result.kind === "ok" ? result.generation.reasoningTokens : 0),
       },
     });
     return null;

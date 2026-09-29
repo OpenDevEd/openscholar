@@ -23,9 +23,10 @@ describe("transformModel — reasoning effort", () => {
     expect(out).toMatchObject({ reasoningEfforts: ["low", "high", "max"], defaultEffort: "high", reasoningMandatory: false });
   });
 
-  it("takes every level when OpenRouter lists none, and no reasoning when the model has none", () => {
+  it("takes every level but off when OpenRouter lists none for a mandatory reasoner, and no reasoning when the model has none", () => {
     expect(transformModel({ ...RAW_BASE, reasoning: { mandatory: true } })).toMatchObject({
-      reasoningEfforts: ["none", "minimal", "low", "medium", "high", "xhigh", "max"],
+      // "none" is refused where reasoning is mandatory.
+      reasoningEfforts: ["minimal", "low", "medium", "high", "xhigh", "max"],
       reasoningMandatory: true,
     });
     expect(transformModel(RAW_BASE)).not.toHaveProperty("reasoningEfforts");

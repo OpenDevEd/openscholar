@@ -19,7 +19,7 @@ export interface CallOptionsArgs {
 }
 
 /** The nearest level in `allowed` at or below `effort`, else the lowest. */
-function clamp<T extends Effort>(effort: Effort, allowed: readonly T[]): T {
+export function clamp<T extends Effort>(effort: Effort, allowed: readonly T[]): T {
   const rank = EFFORTS.indexOf(effort)
   const fits = allowed.filter((level) => EFFORTS.indexOf(level) <= rank)
   return fits.at(-1) ?? allowed[0]!

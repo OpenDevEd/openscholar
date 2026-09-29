@@ -61,7 +61,8 @@ function reasoningOf(reasoning: OpenRouterModel["reasoning"]) {
   const known = (level: string | null | undefined): level is Effort => EFFORTS.includes(level as Effort);
   const efforts = reasoning.supported_efforts ? reasoning.supported_efforts.filter(known) : [...EFFORTS];
   return {
-    reasoningEfforts: EFFORTS.filter((level) => efforts.includes(level)),
+    // Where reasoning can't be turned off, "none" is refused.
+    reasoningEfforts: EFFORTS.filter((level) => efforts.includes(level) && !(level === "none" && reasoning.mandatory)),
     ...(known(reasoning.default_effort) && { defaultEffort: reasoning.default_effort }),
     reasoningMandatory: reasoning.mandatory ?? false,
   };
