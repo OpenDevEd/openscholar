@@ -63,7 +63,8 @@ export const generateScreeningQuestions = createAIAction(
   (output) => ({
     questions: output.questions,
   }),
-  { kind: "screening", task: "screening" },
+  // Writing questions needs a text model; the Screening pick may be Jev, which only answers them.
+  { kind: "screening", task: "extraction" },
 );
 
 export const generateExtractionQuestions = createAIAction(
@@ -124,27 +125,6 @@ export const translatePaperContent = createAIAction(
   { kind: "translation", task: "translate" },
 );
 
-export const generateScreeningResponses = createAIAction(
-  {
-    title: v.string(),
-    abstract: v.string(),
-    questions: v.array(v.string()),
-  },
-  v.object({
-    responses: v.record(v.string(), v.union(v.boolean(), v.null())),
-    confidence: v.number(),
-  }),
-  "Generate screening responses",
-  getScreeningResponsesConfig,
-  (output) => ({
-    // Convex requires ASCII-only object keys, so encode question text keys.
-    responses: encodeQuestionResponseMap(
-      output.responses as Record<string, boolean | null>
-    ),
-    confidence: output.confidence,
-  }),
-  { kind: "screening", task: "screening" },
-);
 
 /**
  * Batch translation action - processes multiple papers in a single action call.
@@ -317,6 +297,7 @@ export const generateBatchScreeningResponses = action({
           const { results, errors, usages, usageByItemId, trackingByItemId } = await processScreeningBatch({
             model,
             effort,
+            decisionsKey: process.env.OPENROUTER_API_KEY,
             papers,
             questions,
           });

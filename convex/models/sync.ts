@@ -9,6 +9,9 @@ const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
 import { z } from "zod";
 import { MAX_CATALOG_MODELS } from "./catalog";
 import { EFFORTS, type Effort } from "../../lib/ai/core/call-options";
+import { JEV_MODEL } from "../../lib/ai/decisions";
+
+const DECISION_MODELS = [JEV_MODEL];
 
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 const optionalText = z.string().nullish();
@@ -176,7 +179,39 @@ async function readCatalogResponse(response: Response): Promise<string> {
   }
 }
 
-/** One HTTP request and one atomic write. Never schedules itself or retries. */
+// Decision models (Jev) aren't in OpenRouter's model list; each is read from its endpoints entry.
+const endpointsSchema = z.object({
+  data: z.object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    description: optionalText,
+    created: optionalNumber,
+    architecture: rawModelSchema.shape.architecture,
+    endpoints: z.array(z.object({
+      context_length: optionalNumber,
+      pricing: z.object({prompt: optionalText, completion: optionalText}),
+    })).min(1),
+  }),
+});
+
+/** A decision model as a catalog row, from its endpoints entry. */
+async function fetchDecisionModel(slug: string): Promise<OpenRouterModel> {
+  const response = await fetch(`https://openrouter.ai/api/v1/models/${slug}/endpoints`, {signal: AbortSignal.timeout(30_000)});
+  if (!response.ok) throw new Error(`OpenRouter endpoints for ${slug} returned HTTP ${response.status}`);
+  const {data} = endpointsSchema.parse(await response.json());
+  const [endpoint] = data.endpoints;
+  return {
+    id: data.id,
+    name: data.name,
+    description: data.description,
+    created: data.created,
+    architecture: data.architecture,
+    context_length: endpoint!.context_length,
+    pricing: endpoint!.pricing,
+  };
+}
+
+/** The list, then each decision model's entry, then one atomic write. Never schedules itself or retries. */
 export const syncFromOpenRouter = internalAction({
   args: {},
   returns: v.number(),
@@ -190,13 +225,21 @@ export const syncFromOpenRouter = internalAction({
       throw new Error("OpenRouter catalog exceeds the response size limit");
     }
     const text = await readCatalogResponse(response);
-    const {data} = catalogSchema.parse(JSON.parse(text));
+    const {data: listed} = catalogSchema.parse(JSON.parse(text));
+    // A decision model that can't be read keeps its stored row, so one failed lookup
+    // neither stops the catalog from updating nor retires a model presets use.
+    const decisions = await Promise.allSettled(DECISION_MODELS.map(fetchDecisionModel));
+    const keep = DECISION_MODELS.filter((_, i) => decisions[i].status === "rejected");
+    decisions.forEach((result, i) => {
+      if (result.status === "rejected") console.error(`[syncFromOpenRouter] kept the stored ${DECISION_MODELS[i]}:`, result.reason);
+    });
+    const data = [...listed, ...decisions.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []))];
     if (new Set(data.map(model => model.id)).size !== data.length) {
       throw new Error("OpenRouter catalog contains duplicate model ids");
     }
     const entries = data.map(transformModel).filter(entry => entry !== null);
     if (entries.length === 0) throw new Error("OpenRouter catalog contains no models with usable pricing");
-    const total: number = await ctx.runMutation(internal.models.mutations.reconcileCatalog, {entries});
+    const total: number = await ctx.runMutation(internal.models.mutations.reconcileCatalog, {entries, keep});
     console.log(`[syncFromOpenRouter] Synced ${total} models in one pass`);
     return total;
   },

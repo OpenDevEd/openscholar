@@ -1,12 +1,4 @@
 import type { SearchTask } from '../tasks'
-export type AIOperationType =
-  | 'enhanceSearchQuery'
-  | 'generateScreeningQuestions'
-  | 'generateExtractionQuestions'
-  | 'translateQuery'
-  | 'translatePaperContent'
-  | 'generateScreeningResponses'
-
 /** The query language a search is written in: OpenAlex Query Language, or classic keywords when unset. */
 export type QuerySyntax = 'oql'
 

@@ -1,6 +1,8 @@
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { Effort } from "../../lib/ai/core/call-options";
+import { isDecisionModel } from "../../lib/ai/decisions";
+import { DECISION_TASKS, type AiTask } from "../../lib/ai/tasks";
 import { createError } from "../lib/errors";
 
 // ponytail: one transaction handles up to 2,000 active models. Increase only
@@ -32,3 +34,13 @@ export function requireEffort(model: Doc<"models">, effort: Effort | undefined) 
     throw createError("VALIDATION_ERROR", `${model.name} doesn't take ${effort} reasoning effort.`);
   }
 }
+
+/** Refuses a decision model (Jev) for a task that needs text, since it only answers yes/no. */
+export function requireTaskModel(model: Doc<"models">, task: AiTask) {
+  if (isDecisionModel(model.modelId) && !DECISION_TASKS.includes(task)) {
+    throw createError("VALIDATION_ERROR", `${model.name} only answers screening questions.`);
+  }
+}
+
+/** Models a text task can use: everything but decision models. */
+export const textModels = <T extends { modelId: string }>(rows: T[]) => rows.filter((row) => !isDecisionModel(row.modelId));

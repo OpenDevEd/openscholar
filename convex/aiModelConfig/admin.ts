@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { requireAdmin } from "../admins/access";
-import { requireAvailableModel, requireEffort } from "../models/catalog";
+import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import { presetConfigKey } from "../../lib/ai/tasks";
 import { aiTaskValidator, effortValidator, presetKeyValidator } from "./validators";
 
@@ -13,6 +13,7 @@ export const setPresetPick = mutation({
     await requireAdmin(ctx);
     const model = await requireAvailableModel(ctx, modelId);
     requireEffort(model, effort);
+    requireTaskModel(model, task);
     const key = presetConfigKey(preset, task);
     const row = await ctx.db
       .query("aiModelConfig")

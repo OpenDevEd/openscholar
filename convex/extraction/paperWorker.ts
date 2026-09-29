@@ -19,6 +19,7 @@ import {
   batchSkipReasonToWorkerSkipReason,
   captureCompletedQuestionTracking,
   runDownloadAndIndexPdf,
+  runDecisionQuestions,
   runExtractQuestionWithContext,
   toCompletedQuestionBatchWrite,
   type JobWorkerSkipReason,
@@ -210,44 +211,40 @@ function isFailedQuestionOutcome(
   return outcome.status === "failed";
 }
 
+type ServerModel = Awaited<ReturnType<typeof resolveOpenRouterModel>>;
+
+/** Answers each question in the batch on the extraction model. */
+const answerWithModel =
+  (ctx: ActionCtx, context: PaperExtractionContext, expectedEpoch: number, { model, pricing }: ServerModel) =>
+  (batch: ReadonlyArray<QuestionItem>) =>
+    Promise.all(
+      batch.map(async (question): Promise<QuestionBatchOutcome> => {
+        try {
+          return await runExtractQuestionWithContext({ ctx, context, question, expectedEpoch, model, pricing });
+        } catch (error) {
+          return { status: "failed", questionKey: question.key, error: classifyUnknownError(error) };
+        }
+      }),
+    );
+
+/** Answers one batch of questions, then saves and charges what was answered. */
 async function runQuestionBatch(
   ctx: ActionCtx,
   {
     context,
     batch,
     expectedEpoch,
-    model,
-    pricing,
     modelSlug,
+    answer,
   }: {
     context: PaperExtractionContext;
     batch: ReadonlyArray<QuestionItem>;
     expectedEpoch: number;
-    model: Awaited<ReturnType<typeof resolveOpenRouterModel>>["model"];
-    pricing: Awaited<ReturnType<typeof resolveOpenRouterModel>>["pricing"];
     modelSlug: string;
+    answer: (batch: ReadonlyArray<QuestionItem>) => Promise<QuestionBatchOutcome[]>;
   },
 ): Promise<BatchRun> {
-  const outcomes = await Promise.all(
-    batch.map(async (question): Promise<QuestionBatchOutcome> => {
-      try {
-        return await runExtractQuestionWithContext({
-          ctx,
-          context,
-          question,
-          expectedEpoch,
-          model,
-          pricing,
-        });
-      } catch (error) {
-        return {
-          status: "failed",
-          questionKey: question.key,
-          error: classifyUnknownError(error),
-        };
-      }
-    }),
-  );
+  const outcomes = await answer(batch);
 
   const stopStatus = outcomes
     .filter(
@@ -317,22 +314,37 @@ async function runQuestionBatches(
     expectedEpoch: number;
   },
 ): Promise<BatchRun> {
-  // Pricing comes from the model stamped on the job, so charges match the model that ran.
-  const { model, pricing, modelSlug } = await resolveOpenRouterModel(
-    ctx,
-    context.job.serverModelId ?? null,
-  );
+  // Yes/no questions go to the decision model (Jev) in one call per paper, if the job has one still offered.
+  const decision = context.job.decisionModelId
+    ? await ctx.runQuery(internal.models.queries.getById, { modelId: context.job.decisionModelId })
+    : null;
+  const decided = decision ? items.filter((item) => item.type === "boolean") : [];
+  const batches = [
+    ...(decision && decided.length > 0
+      ? [{
+          batch: decided,
+          modelSlug: decision.modelId,
+          answer: (batch: ReadonlyArray<QuestionItem>) =>
+            runDecisionQuestions({
+              context, questions: batch, expectedEpoch, modelSlug: decision.modelId,
+              pricing: { input: decision.inputPricePerMillion, output: decision.outputPricePerMillion },
+            }),
+        }]
+      : []),
+  ];
+  const rest = items.filter((item) => !decided.includes(item));
+  if (rest.length > 0) {
+    // Pricing comes from the model stamped on the job, so charges match the model that ran.
+    const server = await resolveOpenRouterModel(ctx, context.job.serverModelId ?? null);
+    for (const batch of chunk(rest, questionConcurrency)) {
+      batches.push({ batch, modelSlug: server.modelSlug, answer: answerWithModel(ctx, context, expectedEpoch, server) });
+    }
+  }
+
   let credits = 0;
   const usages: Usage[] = [];
-  for (const batch of chunk(items, questionConcurrency)) {
-    const run = await runQuestionBatch(ctx, {
-      context,
-      batch,
-      expectedEpoch,
-      model,
-      pricing,
-      modelSlug,
-    });
+  for (const { batch, modelSlug, answer } of batches) {
+    const run = await runQuestionBatch(ctx, { context, batch, expectedEpoch, modelSlug, answer });
     credits += run.credits;
     usages.push(...run.usages);
     if (run.stop) return { stop: run.stop, credits, usages };

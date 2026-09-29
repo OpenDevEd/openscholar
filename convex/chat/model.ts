@@ -2,7 +2,7 @@
 
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { activeModels, MAX_CATALOG_MODELS, pickable } from "../models/catalog";
+import { activeModels, MAX_CATALOG_MODELS, pickable, textModels } from "../models/catalog";
 import { effortValidator } from "../aiModelConfig/validators";
 
 export const listChatModels = query({
@@ -23,7 +23,7 @@ export const listChatModels = query({
   handler: async (ctx) => {
     // Chat lets you pick ANY catalog model (isServed is curation, not a runtime
     // gate). Served models keep their curated sortOrder; the rest sort last.
-    const rows = pickable(await activeModels(ctx).take(MAX_CATALOG_MODELS));
+    const rows = textModels(pickable(await activeModels(ctx).take(MAX_CATALOG_MODELS)));
     return rows.map((m) => ({
       _id: m._id,
       modelId: m.modelId,

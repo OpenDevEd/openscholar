@@ -16,6 +16,7 @@ import type { Usage } from './types'
 import { executeAIOperation } from './execute'
 import type { Effort } from './call-options'
 import type { OperationConfig } from './configs'
+import { decideYesNo, isDecisionModel, paperState } from '../decisions'
 
 // ═══════════════════════════════════════════════════════════════
 // BATCH PROCESSOR TYPES
@@ -64,17 +65,9 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
   config: BatchProcessorConfig<TItem, TConfigInput, TOutput, TResult>
 ): Promise<BatchProcessorResult<TResult>> {
   const { model, effort, toConfigInput, getOperationConfig, formatResult, getItemId } = config
-  
-  const results: Record<string, TResult> = {}
-  const errors: BatchError[] = []
-  const usages: Usage[] = []
-  const usageByItemId: Record<string, Usage> = {}
-  const trackingByItemId: Record<string, ItemTrackingData> = {}
 
-  // Process all items in parallel, capturing per-item timing and prompts
-  const promises = items.map(async (item) => {
-    const configInput = toConfigInput(item)
-    const operationConfig = getOperationConfig(configInput)
+  return settleBatch(items, getItemId, async (item) => {
+    const operationConfig = getOperationConfig(toConfigInput(item))
     const prompts = operationConfig.buildPrompts(operationConfig.input, 0)
 
     const start = Date.now()
@@ -83,40 +76,44 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
       effort,
       ...operationConfig,
     })
-    const latencyMs = Date.now() - start
-
     return {
-      itemId: getItemId(item),
       result: formatResult(output, item),
       usage,
       tracking: {
-        latencyMs,
+        latencyMs: Date.now() - start,
         input: `[system] ${prompts.system}\n[user] ${prompts.prompt}`,
         output: JSON.stringify(output),
         temperature: operationConfig.temperature,
       },
     }
   })
+}
 
-  const settledResults = await Promise.allSettled(promises)
+/** Runs every item in parallel and keeps what succeeded; a failed item becomes an error, not a failed batch. */
+async function settleBatch<TItem, TResult>(
+  items: TItem[],
+  getItemId: (item: TItem) => string,
+  run: (item: TItem) => Promise<{ result: TResult; usage: Usage; tracking: ItemTrackingData }>,
+): Promise<BatchProcessorResult<TResult>> {
+  const results: Record<string, TResult> = {}
+  const errors: BatchError[] = []
+  const usages: Usage[] = []
+  const usageByItemId: Record<string, Usage> = {}
+  const trackingByItemId: Record<string, ItemTrackingData> = {}
 
-  for (let i = 0; i < settledResults.length; i++) {
-    const settled = settledResults[i]
-
+  const settledResults = await Promise.allSettled(items.map(run))
+  settledResults.forEach((settled, i) => {
+    const itemId = getItemId(items[i]!) || 'unknown'
     if (settled.status === 'fulfilled') {
-      const { itemId, result, usage, tracking } = settled.value
+      const { result, usage, tracking } = settled.value
       results[itemId] = result
       usages.push(usage)
       usageByItemId[itemId] = usage
       trackingByItemId[itemId] = tracking
     } else {
-      const itemId = getItemId(items[i]) || 'unknown'
-      const errorMessage = settled.reason instanceof Error
-        ? settled.reason.message
-        : String(settled.reason)
-      errors.push({ paperId: itemId, error: errorMessage })
+      errors.push({ paperId: itemId, error: settled.reason instanceof Error ? settled.reason.message : String(settled.reason) })
     }
-  }
+  })
 
   return { results, errors, usages, usageByItemId, trackingByItemId }
 }
@@ -134,12 +131,36 @@ export interface ScreeningBatchConfig {
   papers: BatchPaper[]
   questions: string[]
   effort?: Effort
+  /** The OpenRouter key a decision model (Jev) is called with. */
+  decisionsKey?: string
+  /** Groups a job's Jev calls in OpenRouter's logs. */
+  sessionId?: string
 }
 
 export async function processScreeningBatch(
   config: ScreeningBatchConfig
 ): Promise<BatchProcessorResult<ScreeningResultData>> {
-  const { model, effort, papers, questions } = config
+  const { model, effort, papers, questions, decisionsKey, sessionId } = config
+  const modelSlug = typeof model === 'string' ? model : model.modelId
+
+  // Jev answers every question about a paper in one decisions call.
+  if (isDecisionModel(modelSlug)) {
+    if (!decisionsKey) throw new Error('Jev needs an OpenRouter key')
+    return settleBatch(papers, (paper) => paper.id, async (paper) => {
+      const start = Date.now()
+      const state = paperState({ title: paper.title, abstract: paper.abstract || 'No abstract available' }, questions)
+      const { answers, usage } = await decideYesNo({ apiKey: decisionsKey, model: modelSlug, state, questions, sessionId })
+      const result: ScreeningResultData = {
+        responses: Object.fromEntries(questions.map((question, i) => [question, answers[i]!.answer])),
+        confidence: answers.reduce((sum, a) => sum + a.confidence, 0) / Math.max(answers.length, 1),
+      }
+      return {
+        result,
+        usage,
+        tracking: { latencyMs: Date.now() - start, input: JSON.stringify({ state, questions }), output: JSON.stringify(result), temperature: 0 },
+      }
+    })
+  }
 
   return processBatch<
     BatchPaper,

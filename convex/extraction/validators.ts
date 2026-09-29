@@ -247,6 +247,8 @@ export const extractionJobFields = {
   // Separate from chatModelId (chat-mode, user-swappable per conversation).
   serverModelId: v.optional(v.id("models")),
   serverEffort: v.optional(effortValidator),
+  /** When the user screens with a decision model (Jev), yes/no questions go to it too. */
+  decisionModelId: v.optional(v.id("models")),
   lastMessageAt: v.optional(v.number()),
   messageCount: v.optional(v.number()),
   isGenerating: v.optional(v.boolean()),

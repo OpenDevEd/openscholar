@@ -1,7 +1,7 @@
 import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { activeModels, MAX_CATALOG_MODELS, pickable } from "./catalog";
+import { activeModels, MAX_CATALOG_MODELS, pickable, textModels } from "./catalog";
 import type { Doc } from "../_generated/dataModel";
 import { isVariant, toNativeModelId } from "../../lib/ai/native-model-id";
 
@@ -64,10 +64,15 @@ export const list = query({
  * Returns only the fields the page renders and avoids a live whole-row shape.
  */
 export const listCatalogOptions = query({
-  args: { provider: v.optional(v.string()) },
+  args: {
+    provider: v.optional(v.string()),
+    /** Include decision models (Jev), which only screening can use. */
+    decisions: v.optional(v.boolean()),
+  },
   returns: v.array(catalogOptionValidator),
-  handler: async (ctx, { provider }) => {
-    const rows = pickable(await activeModels(ctx, provider).take(MAX_CATALOG_MODELS));
+  handler: async (ctx, { provider, decisions }) => {
+    const all = pickable(await activeModels(ctx, provider).take(MAX_CATALOG_MODELS));
+    const rows = decisions ? all : textModels(all);
 
     return rows.map(catalogOption);
   },
@@ -102,7 +107,7 @@ export const paginateCatalogOptions = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, { paginationOpts }) => {
     const result = await activeModels(ctx).paginate(paginationOpts);
-    return { ...result, page: pickable(result.page).map(catalogOption) };
+    return { ...result, page: textModels(pickable(result.page)).map(catalogOption) };
   },
 });
 

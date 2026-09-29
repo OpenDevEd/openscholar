@@ -158,14 +158,6 @@ export const translatePaperContent = createClientExecutor(
   'translate_paper_content'
 )
 
-export const generateScreeningResponses = createClientExecutor(
-  getScreeningResponsesConfig,
-  (output) => ({
-    responses: output.responses as Record<string, boolean | null>,
-    confidence: output.confidence,
-  }),
-  'generate_screening_responses'
-)
 
 // ═══════════════════════════════════════════════════════════════
 // BATCH OPERATIONS
@@ -199,6 +191,7 @@ export async function generateBatchScreeningResponses(
       effort: config.effort,
       papers,
       questions,
+      ...(config.provider === 'openrouter' && { decisionsKey: config.apiKey }),
     })
 
     const entries: AITrackingEntry[] = Object.entries(trackingByItemId).map(

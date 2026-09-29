@@ -4,6 +4,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { DEFAULT_PRESET, presetConfigKey, type AiTask, type PresetKey } from "../../lib/ai/tasks";
 import type { Effort } from "../../lib/ai/core/call-options";
+import { isDecisionModel } from "../../lib/ai/decisions";
 import { aiTaskValidator, taskPickValidator } from "../aiModelConfig/validators";
 
 /** A model a task runs on, and its reasoning effort (none: the model's default). */
@@ -58,6 +59,19 @@ export async function resolveTaskPick(ctx: QueryCtx | MutationCtx, userId: Id<"u
 /** Job fields that record what a background run uses. */
 export const serverStamp = (pick: TaskPick | null) =>
   pick ? { serverModelId: pick.modelId, ...(pick.effort && { serverEffort: pick.effort }) } : {};
+
+/**
+ * Job fields for an extraction run: what its questions run on, and the decision
+ * model (Jev) its yes/no questions go to when the user screens with one.
+ */
+export async function extractionStamp(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
+  const screen = await resolveTaskPick(ctx, userId, "screenAll");
+  const screenModel = screen ? await ctx.db.get("models", screen.modelId) : null;
+  return {
+    ...serverStamp(await resolveTaskPick(ctx, userId, "extraction")),
+    ...(screenModel && isDecisionModel(screenModel.modelId) && { decisionModelId: screenModel._id }),
+  };
+}
 
 /** Action-callable wrapper around resolveTaskPick (actions have no ctx.db). */
 export const resolveForUser = internalQuery({

@@ -39,7 +39,7 @@ import type { ToolSet } from "ai";
 import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
-import { requireAvailableModel, requireEffort } from "../models/catalog";
+import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import { effortValidator } from "../aiModelConfig/validators";
 import { paperChat } from "./agent";
 import { authorizeThreadAccess } from "./auth";
@@ -1389,7 +1389,9 @@ export const swapModel = mutation({
   returns: v.null(),
   handler: async (ctx, { threadId, modelId, effort }) => {
     const { job } = await authorizeThreadAccess(ctx, threadId);
-    requireEffort(await requireAvailableModel(ctx, modelId), effort);
+    const model = await requireAvailableModel(ctx, modelId);
+    requireEffort(model, effort);
+    requireTaskModel(model, "chat");
     await ctx.db.patch(job._id, { chatModelId: modelId, chatEffort: effort, updatedAt: Date.now() });
     return null;
   },

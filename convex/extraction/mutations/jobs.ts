@@ -20,7 +20,8 @@ import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
-import { resolveTaskPick, serverStamp } from "../../ai/serverModel";
+import { extractionStamp, resolveTaskPick } from "../../ai/serverModel";
+import { requireAvailableModel, requireTaskModel } from "../../models/catalog";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { assertBucketWithinLimits } from "../bucket/limits";
@@ -134,13 +135,16 @@ export const startJob = mutation({
     // Pre-resolve so the composer's controlled value is never null. A new chat
     // starts on the model and effort the user's choice gives chat, which
     // swapModel can still change per conversation.
+    if (args.mode === "chat" && args.chatModelId !== undefined) {
+      requireTaskModel(await requireAvailableModel(ctx, args.chatModelId), "chat");
+    }
     const chatPick =
       args.mode !== "chat" ? null
       : args.chatModelId !== undefined ? { modelId: args.chatModelId }
       : await resolveTaskPick(ctx, user._id, "chat");
 
     // Stamp what extraction runs on (credits path), read back at run by paperWorker.
-    const serverPick = args.mode === "extraction" ? await resolveTaskPick(ctx, user._id, "extraction") : null;
+    const stamp = args.mode === "extraction" ? await extractionStamp(ctx, user._id) : {};
 
     const now = Date.now();
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
@@ -156,7 +160,7 @@ export const startJob = mutation({
             totalPapers: 0,
             runEpoch: 0,
             usePdfs: args.usePdfs ?? false,
-            ...serverStamp(serverPick),
+            ...stamp,
             ...(estimate !== undefined && { estimatedCredits: estimate }),
           }
         : {
@@ -311,7 +315,7 @@ export const duplicateJob = mutation({
       .order("asc")
       .collect();
 
-    const dupPick = await resolveTaskPick(ctx, user._id, "extraction");
+    const dupStamp = await extractionStamp(ctx, user._id);
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId: user._id,
       mode: "extraction" as const,
@@ -321,7 +325,7 @@ export const duplicateJob = mutation({
       totalPapers: 0,
       runEpoch: 0,
       usePdfs: oldJob.usePdfs ?? false,
-      ...serverStamp(dupPick),
+      ...dupStamp,
       createdAt: now,
       updatedAt: now,
     });

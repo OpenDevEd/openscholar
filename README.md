@@ -138,6 +138,10 @@ It's designed for systematic reviews and complex queries, not just keyword match
      or Custom to choose each task themselves and use their own keys.
      `npx convex run aiModelConfig/internal:seed` adds the starting picks to a
      deployment that doesn't have them; it never replaces an existing pick.
+   - Screening and Screen All can run on Jev (`typesafe/jev-1.13`), TypeSafe's
+     decision model, through OpenRouter's Decisions API: one call per paper. When
+     a user's Screen All pick is Jev, their extraction jobs send yes/no questions
+     to it too. The catalog sync adds Jev, which isn't in OpenRouter's model list.
 
 4. **Run OpenScholar against the hosted development services**
 

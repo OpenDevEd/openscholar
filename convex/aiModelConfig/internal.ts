@@ -1,10 +1,11 @@
 import { internalMutation, type MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
-import { AI_TASKS, PRESET_KEYS, presetConfigKey, type AiTask, type PresetKey } from "../../lib/ai/tasks";
+import { AI_TASKS, DECISION_TASKS, PRESET_KEYS, presetConfigKey, type AiTask, type PresetKey } from "../../lib/ai/tasks";
+import { JEV_MODEL } from "../../lib/ai/decisions";
 import type { Effort } from "../../lib/ai/core/call-options";
 
 type Pick = { modelId: string; effort?: Effort };
-const HEAVY: readonly AiTask[] = ["chat", "extraction", "screenAll"];
+const HEAVY: readonly AiTask[] = ["chat", "extraction"];
 const FLASH_LITE = "google/gemini-3.1-flash-lite-preview";
 const SONNET = "anthropic/claude-sonnet-4.6";
 
@@ -13,13 +14,15 @@ const SONNET = "anthropic/claude-sonnet-4.6";
  * skips them; admins change them in Settings, Admin, AI models.
  */
 function defaultPick(preset: PresetKey, task: AiTask): Pick {
+  // Every preset screens with Jev: yes/no answers at a fraction of a text model's cost.
+  if (DECISION_TASKS.includes(task)) return { modelId: JEV_MODEL };
   switch (preset) {
     case "cheap":
       return { modelId: "deepseek/deepseek-v4.1-flash", effort: "low" };
     case "fast":
       return { modelId: FLASH_LITE, effort: "minimal" };
     case "balanced":
-      return HEAVY.includes(task) && task !== "extraction" ? { modelId: SONNET, effort: "medium" } : { modelId: FLASH_LITE, effort: "low" };
+      return task === "chat" ? { modelId: SONNET, effort: "medium" } : { modelId: FLASH_LITE, effort: "low" };
     case "intelligent":
       return HEAVY.includes(task) ? { modelId: "anthropic/claude-opus-4.8", effort: "high" } : { modelId: SONNET, effort: "medium" };
   }

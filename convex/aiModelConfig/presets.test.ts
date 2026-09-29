@@ -46,6 +46,19 @@ describe("presets", () => {
     expect(await runsOn("screening")).toBeNull();
   });
 
+  it("puts Jev only on screening tasks, since it can't write text", async () => {
+    const { t, admin, user } = await setup();
+    const jev = await t.run((ctx) =>
+      ctx.db.insert("models", {
+        modelId: "typesafe/jev-1.13", name: "TypeSafe: Jev 1.13", provider: "typesafe", inputPricePerMillion: 0.042, outputPricePerMillion: 0,
+        isServed: false, costMarkup: 1, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1,
+      }),
+    );
+    await expect(admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "chat", modelId: jev })).rejects.toThrow(/only answers screening/);
+    await expect(user.mutation(api.userAiConfig.mutations.setCustom, { picks: [{ task: "extraction", modelId: jev }] })).rejects.toThrow(/only answers screening/);
+    await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "screenAll", modelId: jev });
+  });
+
   it("refuses an effort the model doesn't take", async () => {
     const { admin, flash } = await setup();
     await expect(

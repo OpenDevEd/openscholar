@@ -69,6 +69,7 @@ export default function AdminAiModelsPage() {
                 if (m) route([task], m, effort);
               }}
               presets={presetPicks([task])}
+              tasks={[task]}
               trigger={
                 <button type="button" className="w-full rounded-l-xl">
                   {row}
@@ -82,6 +83,7 @@ export default function AdminAiModelsPage() {
               onChange={(m) => route(n.tasks, m)}
               onEffort={(effort) => route(n.tasks, n.model, effort)}
               presets={presetPicks(n.tasks)}
+                tasks={n.tasks}
               trigger={<NodeCard model={n.model} paidBy="credits" count={n.tasks.length} interactive />}
             />
           )}

@@ -88,6 +88,20 @@ describe("transformModel — token pricing unchanged", () => {
 const modules = import.meta.glob("/convex/**/*.ts");
 afterEach(() => vi.unstubAllGlobals());
 
+// Jev isn't in OpenRouter's model list; the sync reads it from its endpoints entry.
+const JEV_ENDPOINTS = {
+  data: {
+    id: "typesafe/jev-1.13",
+    name: "TypeSafe: Jev 1.13",
+    architecture: { modality: "text->decisions", input_modalities: ["text"], output_modalities: ["decisions"], tokenizer: "Other" },
+    endpoints: [{ context_length: 32000, pricing: { prompt: "0.000000042", completion: "0" } }],
+  },
+};
+/** OpenRouter: `list` answers the model list; Jev's endpoints entry always answers. */
+const openRouter = (list: () => Response) =>
+  vi.fn((url: string) => Promise.resolve(String(url).includes("/endpoints") ? new Response(JSON.stringify(JEV_ENDPOINTS)) : list()));
+const listCalls = (fetch: ReturnType<typeof openRouter>) => fetch.mock.calls.filter(([url]) => !String(url).includes("/endpoints")).length;
+
 describe("OpenRouter catalog refresh", () => {
   it("refreshes once, retires missing models without deleting their ids, and restores returning models", async () => {
     const t = convexTest(schema, modules);
@@ -97,11 +111,15 @@ describe("OpenRouter catalog refresh", () => {
       isServed: true, costMarkup: 1.8, sortOrder: 2, category: "curated", hidden: true,
       syncedAt: 1, createdAt: 1, updatedAt: 1,
     }));
-    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({data: [RAW_BASE]})));
+    const fetch = openRouter(() => new Response(JSON.stringify({data: [RAW_BASE]})));
     vi.stubGlobal("fetch", fetch);
-    expect(await t.action(internal.models.sync.syncFromOpenRouter, {})).toBe(1);
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(await t.action(internal.models.sync.syncFromOpenRouter, {})).toBe(2);
+    expect(listCalls(fetch)).toBe(1);
+    // Jev is in the catalog, offered only where a decision model can answer.
     expect((await t.query(api.models.queries.listCatalogOptions, {})).map(m => m.modelId)).toEqual([RAW_BASE.id]);
+    expect(await t.query(api.models.queries.listCatalogOptions, {decisions: true})).toEqual(
+      expect.arrayContaining([expect.objectContaining({modelId: "typesafe/jev-1.13", inputPricePerMillion: expect.closeTo(0.042, 6), outputPricePerMillion: 0})]),
+    );
     const old = await t.run(ctx => ctx.db.get(oldId));
     expect(old).toMatchObject({modelId: "openai/old", retiredAt: expect.any(Number), costMarkup: 1.8, isServed: true});
     expect(await t.query(internal.models.queries.getById, {modelId: oldId})).toBeNull();
@@ -114,7 +132,7 @@ describe("OpenRouter catalog refresh", () => {
     expect(await t.query(internal.models.queries.getPricing, {modelId: "openai/old"})).toEqual({input: 1, output: 2});
     expect(await t.run(ctx => ctx.db.system.query("_scheduled_functions").collect())).toEqual([]);
 
-    fetch.mockResolvedValue(new Response(JSON.stringify({data: [{...RAW_BASE, id: "openai/old", name: "Returned model"}]})));
+    vi.stubGlobal("fetch", openRouter(() => new Response(JSON.stringify({data: [{...RAW_BASE, id: "openai/old", name: "Returned model"}]}))));
     await t.action(internal.models.sync.syncFromOpenRouter, {});
     expect(await t.run(ctx => ctx.db.get(oldId))).toMatchObject({name: "Returned model", costMarkup: 1.8, sortOrder: 2, category: "curated", isServed: true, hidden: true});
     expect((await t.run(ctx => ctx.db.get(oldId)))?.retiredAt).toBeUndefined();
@@ -139,12 +157,24 @@ describe("OpenRouter catalog refresh", () => {
       syncedAt: 1, createdAt: 1, updatedAt: 1,
     }));
     const before = await t.query(api.models.queries.list, {});
-    const fetch = vi.fn().mockResolvedValue(response());
+    const fetch = openRouter(response);
     vi.stubGlobal("fetch", fetch);
     await expect(t.action(internal.models.sync.syncFromOpenRouter, {})).rejects.toThrow();
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(listCalls(fetch)).toBe(1);
     expect(await t.query(api.models.queries.list, {})).toEqual(before);
     expect(await t.run(ctx => ctx.db.system.query("_scheduled_functions").collect())).toEqual([]);
+  });
+
+  it("keeps the stored Jev and still updates the catalog when Jev's entry can't be read", async () => {
+    const t = convexTest(schema, modules);
+    vi.stubGlobal("fetch", openRouter(() => new Response(JSON.stringify({data: [RAW_BASE]}))));
+    await t.action(internal.models.sync.syncFromOpenRouter, {});
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(String(url).includes("/endpoints")
+      ? new Response("unavailable", {status: 503})
+      : new Response(JSON.stringify({data: [{...RAW_BASE, name: "Renamed"}]})))));
+    await t.action(internal.models.sync.syncFromOpenRouter, {});
+    const options = await t.query(api.models.queries.listCatalogOptions, {decisions: true});
+    expect(options.map(m => [m.modelId, m.name])).toEqual(expect.arrayContaining([[RAW_BASE.id, "Renamed"], ["typesafe/jev-1.13", "TypeSafe: Jev 1.13"]]));
   });
 
   it("passes a timeout signal and stops on an aborted request", async () => {
@@ -172,7 +202,7 @@ describe("catalog retirement guard", () => {
       });
     });
     const before = await t.query(api.models.queries.list, {});
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({data: [RAW_BASE]}))));
+    vi.stubGlobal("fetch", openRouter(() => new Response(JSON.stringify({data: [RAW_BASE]}))));
     await expect(t.action(internal.models.sync.syncFromOpenRouter, {})).rejects.toThrow("unexpectedly shrank");
     expect(await t.query(api.models.queries.list, {})).toEqual(before);
     expect(await t.run(ctx => ctx.db.system.query("_scheduled_functions").collect())).toEqual([]);
