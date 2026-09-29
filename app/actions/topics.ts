@@ -3,9 +3,12 @@ import { fetchAction } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { readOpenAlexWorks } from "@/lib/openalex/read-works";
 import { topicIdSchema } from "@/lib/topics/contract";
+import { ensureTopicCatalog } from "@/lib/topics/ensure-catalog";
 
 export async function readTopic(id: string) {
   topicIdSchema.parse(id);
+  // The description is read from the platform's copy of the catalog, so that copy must exist first.
+  await ensureTopicCatalog();
   return fetchAction(api.topics.details.get, {id});
 }
 export async function readTopicWorks(id: string, cursor: string) {
