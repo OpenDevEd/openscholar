@@ -58,7 +58,6 @@ export function useOpenAlexSources({
   value: EvidenceSourceEntry[];
   onChange: (value: EvidenceSourceEntry[]) => void;
 }) {
-  const t = useTranslations("evidenceLibraryConfiguration.sources.openAlex");
   const [editingKey, setEditingKey] = useState<"new" | string | null>(null);
   const [editorSession, setEditorSession] = useState<{ id: string; created: boolean } | null>(null);
   const [apiKey, setApiKey] = useState("");
