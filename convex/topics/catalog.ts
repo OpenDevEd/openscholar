@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, query, type ActionCtx } from "../_generated/server";
+import { action, internalMutation, internalQuery, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { topicCatalogRequestSchema, type TopicNode } from "../../lib/topics/contract";
 import tree from "../../lib/topics/openalex-topics.json";
@@ -62,33 +62,5 @@ export const serviceBrowse = internalQuery({
       : ctx.db.query("topicCatalog").withIndex("by_parent_and_name", q => q.eq("parent", input.parent ?? null));
     const page = await request.paginate({cursor: input.cursor, numItems: input.limit});
     return {contractVersion: 1 as const, nodes: page.page.map(output), revision: CATALOG_REVISION, nextCursor: page.isDone ? null : page.continueCursor, publicBaseUrl: requireAppUrl()};
-  },
-});
-export const resolve = query({
-  args: {ids: v.array(v.string())},
-  handler: async (ctx, {ids}) => {
-    if (ids.length > 100) throw createError("VALIDATION_ERROR", "Too many catalog IDs");
-    const nodes = await Promise.all(ids.map(id => ctx.db.query("topicCatalog").withIndex("by_external_id", q => q.eq("id", id)).unique()));
-    return nodes.flatMap(node => node ? [output(node)] : []);
-  },
-});
-export const directory = query({
-  args: {parent: v.optional(v.union(v.string(), v.null())), query: v.optional(v.string()), ancestor: v.optional(v.string()), cursor: v.union(v.string(), v.null()), limit: v.number()},
-  handler: async (ctx, args) => {
-    if (args.limit < 1 || args.limit > 100 || !Number.isInteger(args.limit) || (args.query?.length ?? 0) > 200) throw createError("VALIDATION_ERROR", "Invalid topic page");
-    const request = args.query?.trim()
-      ? ctx.db.query("topicCatalog").withSearchIndex("search_text", q => {
-          let search = q.search("searchText", args.query!.trim()).eq("level", "topic");
-          if (args.ancestor) search = search.eq(args.ancestor.startsWith("domains/") ? "domainId" : args.ancestor.startsWith("fields/") ? "fieldId" : "subfieldId", args.ancestor);
-          return search;
-        })
-      : args.parent !== undefined
-        ? ctx.db.query("topicCatalog").withIndex("by_parent_and_name", q => q.eq("parent", args.parent!))
-        : args.ancestor?.startsWith("domains/") ? ctx.db.query("topicCatalog").withIndex("by_level_and_domainId_and_name", q => q.eq("level", "topic").eq("domainId", args.ancestor!))
-        : args.ancestor?.startsWith("fields/") ? ctx.db.query("topicCatalog").withIndex("by_level_and_fieldId_and_name", q => q.eq("level", "topic").eq("fieldId", args.ancestor!))
-        : args.ancestor ? ctx.db.query("topicCatalog").withIndex("by_level_and_subfieldId_and_name", q => q.eq("level", "topic").eq("subfieldId", args.ancestor!))
-        : ctx.db.query("topicCatalog").withIndex("by_level_and_name", q => q.eq("level", "topic"));
-    const page = await request.paginate({cursor: args.cursor, numItems: args.limit});
-    return {nodes: page.page.map(output), nextCursor: page.isDone ? null : page.continueCursor};
   },
 });

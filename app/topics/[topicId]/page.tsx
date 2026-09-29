@@ -1,29 +1,16 @@
 import {notFound} from "next/navigation";
-import {fetchQuery} from "convex/nextjs";
-import {api} from "@/convex/_generated/api";
 import {PageWrapper} from "@/components/PageWrapper";
 import {TopicPage} from "@/components/topics/topic-page";
-import type {TopicNode} from "@/lib/topics/contract";
-import {readTopic, readTopicNodes} from "@/app/actions/topics";
+import {readTopic} from "@/app/actions/topics";
+import {catalogAncestors, catalogChildren, catalogNode} from "@/lib/topics/search";
+import {ensureTopicCatalog} from "@/lib/topics/ensure-catalog";
 export default async function Page({params}: {params: Promise<{topicId: string}>}) {
   const {topicId} = await params;
-  if (!/^T[1-9]\d*$/.test(topicId)) notFound();
-  const [topic] = await readTopicNodes([topicId]);
-  if (!topic) notFound();
-  const path: TopicNode[] = [];
-  let parent = topic.parent;
-  while (parent) {
-    const [node] = await fetchQuery(api.topics.catalog.resolve, {ids: [parent]});
-    if (!node) break;
-    path.unshift(node); parent = node.parent;
-  }
-  const related: TopicNode[] = [];
-  let cursor: string | null = null;
-  do {
-    const page: {nodes: TopicNode[]; nextCursor: string | null} = await fetchQuery(api.topics.catalog.directory, {parent: topic.parent, cursor, limit: 100});
-    related.push(...page.nodes.filter(node => node.id !== topicId)); cursor = page.nextCursor;
-  } while (cursor);
+  const topic = catalogNode(topicId);
+  if (topic?.level !== "topic") notFound();
+  const related = catalogChildren(topic.parent).filter(node => node.id !== topicId);
+  // The description is read from the platform's copy of the catalog, so that copy must exist first.
   // Rendered with the page so the description does not arrive late and push the page down.
-  const detail = await readTopic(topicId).catch(() => null);
-  return <PageWrapper><TopicPage key={topic.id} topic={topic} path={path} related={related} detail={detail} /></PageWrapper>;
+  const detail = await ensureTopicCatalog().then(() => readTopic(topicId)).catch(() => null);
+  return <PageWrapper><TopicPage key={topic.id} topic={topic} path={catalogAncestors(topicId)} related={related} detail={detail} /></PageWrapper>;
 }
