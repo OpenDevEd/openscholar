@@ -9,6 +9,7 @@ import { autumnWebhook } from "./billing/autumnWebhook";
 import { clerkWebhook } from "./webhooks/clerk";
 import { redeemAdminLoginCode, checkAdminSession } from "./evidenceLibraries/serviceHttp";
 import { receiveSourceStatus } from "./evidenceLibraries/sourceStatus";
+import { readCollectionItems } from "./evidenceLibraries/collectionSources";
 import { requireAppUrl } from "./lib/env";
 import {
   handleChatCompletions,
@@ -23,6 +24,7 @@ http.route({path: "/api/v1/evidence-libraries/topics/detail", method: "POST", ha
 http.route({path: "/api/v1/evidence-libraries/topic-associations", method: "POST", handler: topicAssociations});
 http.route({path: "/api/v1/evidence-libraries/digests/generate", method: "POST", handler: generateLibraryDigest});
 http.route({path: "/api/v1/evidence-libraries/author-profiles", method: "POST", handler: authorProfileCatalog});
+http.route({path: "/api/v1/evidence-libraries/source-collections/items", method: "POST", handler: readCollectionItems});
 http.route({path: "/api/v1/evidence-libraries/author-associations", method: "POST", handler: replacePublicationAssociations});
 // Clerk webhook for user sync
 http.route({

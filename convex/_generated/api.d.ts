@@ -77,6 +77,8 @@ import type * as evidenceLibraries_adminLoginCodes from "../evidenceLibraries/ad
 import type * as evidenceLibraries_aiProviderKey from "../evidenceLibraries/aiProviderKey.js";
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
 import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibraries/applicationSetupActions.js";
+import type * as evidenceLibraries_collectionSourceValidators from "../evidenceLibraries/collectionSourceValidators.js";
+import type * as evidenceLibraries_collectionSources from "../evidenceLibraries/collectionSources.js";
 import type * as evidenceLibraries_configurationDeployment from "../evidenceLibraries/configurationDeployment.js";
 import type * as evidenceLibraries_configurationDeploymentActions from "../evidenceLibraries/configurationDeploymentActions.js";
 import type * as evidenceLibraries_configurationMigration from "../evidenceLibraries/configurationMigration.js";
@@ -234,6 +236,7 @@ import type * as lib_validators from "../lib/validators.js";
 import type * as lib_workpool from "../lib/workpool.js";
 import type * as library_backfill from "../library/backfill.js";
 import type * as library_backfillMutations from "../library/backfillMutations.js";
+import type * as library_collectionMembership from "../library/collectionMembership.js";
 import type * as library_collections from "../library/collections.js";
 import type * as library_counter from "../library/counter.js";
 import type * as library_mutations from "../library/mutations.js";
@@ -374,6 +377,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/aiProviderKey": typeof evidenceLibraries_aiProviderKey;
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
   "evidenceLibraries/applicationSetupActions": typeof evidenceLibraries_applicationSetupActions;
+  "evidenceLibraries/collectionSourceValidators": typeof evidenceLibraries_collectionSourceValidators;
+  "evidenceLibraries/collectionSources": typeof evidenceLibraries_collectionSources;
   "evidenceLibraries/configurationDeployment": typeof evidenceLibraries_configurationDeployment;
   "evidenceLibraries/configurationDeploymentActions": typeof evidenceLibraries_configurationDeploymentActions;
   "evidenceLibraries/configurationMigration": typeof evidenceLibraries_configurationMigration;
@@ -531,6 +536,7 @@ declare const fullApi: ApiFromModules<{
   "lib/workpool": typeof lib_workpool;
   "library/backfill": typeof library_backfill;
   "library/backfillMutations": typeof library_backfillMutations;
+  "library/collectionMembership": typeof library_collectionMembership;
   "library/collections": typeof library_collections;
   "library/counter": typeof library_counter;
   "library/mutations": typeof library_mutations;

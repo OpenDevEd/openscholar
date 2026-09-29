@@ -78,6 +78,10 @@ vi.mock("@/convex/_generated/api", () => ({
       aiProviderKey: { removeAiProviderKey: "removeAiProviderKey" },
       openAlexSourceKey: { removeOpenAlexKey: "removeOpenAlexKey" },
       sourceStatus: { listForLibrary: "listSourceStatus" },
+      collectionSources: {
+        listLibraryCollectionSources: "listLibraryCollectionSources",
+        connectCollectionSource: "connectCollectionSource",
+      },
       mutations: {
         activateConfiguration: "activateConfiguration",
         saveDraftSections: "saveDraftSections",
@@ -122,6 +126,7 @@ vi.mock("@/convex/_generated/api", () => ({
         requestSourceRun: "requestSourceRun",
       },
     },
+    library: { collections: { getCollectionsWithCounts: "getCollectionsWithCounts" } },
     models: {
       queries: {
         listCatalogOptions: "listCatalogOptions",
@@ -144,6 +149,7 @@ vi.mock("@/components/providers/convex-provider", () => ({
   useAuthReadiness: () => ({ canRunProtectedQueries: true, phase: "ready" }),
 }));
 vi.mock("convex/react", () => ({
+  useConvex: () => ({ query: async () => [] }),
   useMutation: (mutation: unknown) => mutationMock(mutation),
   // No library has reported source status in these cases.
   useQueries: () => ({}),
@@ -192,6 +198,7 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
     query === "manualDigestAvailable" ? {data: harness.manualDigestAvailable, isReady: harness.manualDigestAvailable !== undefined} : query === "getPublicationProviders" ? {data: undefined, isReady: false} : query === "getConnectionStatus"
       ? { data: { connected: false }, isReady: true }
       : query === "listLibraryZoteroGroups" ||
+          query === "listLibraryCollectionSources" ||
           query === "listVersions" ||
           query === "listAddressNotices"
         ? { data: [], isReady: true }

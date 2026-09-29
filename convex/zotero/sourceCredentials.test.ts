@@ -92,6 +92,22 @@ describe("createSourceCredentials", () => {
     ]);
   });
 
+  it("gives an OpenScholar collection the OpenAlex key its works are read with", () => {
+    const apply = createSourceCredentials(groups, { platform: "platform-openalex-key" });
+    expect(
+      apply([
+        {
+          key: "openscholar-c1",
+          provider: "openscholar",
+          collectionId: "c1",
+          settings: { name: "Reading list", apiKeyMode: "platform", downloadPdfs: true },
+        },
+      ]),
+    ).toEqual([
+      expect.objectContaining({ provider: "openscholar", apiKey: "platform-openalex-key", writebackEnabled: false }),
+    ]);
+  });
+
   it("keeps a saved custom key while a source uses platform access", () => {
     const apply = createSourceCredentials(groups, {
       custom: "saved-custom-key",

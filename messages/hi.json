@@ -2422,6 +2422,7 @@
         "startsSoon": "एक मिनट के भीतर शुरू होगा",
         "failure": {
           "access_denied": "{provider} ने सहेजी गई कुंजी अस्वीकार कर दी। कनेक्शन में इसे जाँचें, फिर दोबारा चलाएँ।",
+          "owner_left": "इस संग्रह को जोड़ने वाले व्यक्ति ने संगठन छोड़ दिया, इसलिए लाइब्रेरी ने इसके रिकॉर्ड हटा दिए।",
           "not_found": "{provider} को यह स्रोत अब नहीं मिलता, या सहेजी गई कुंजी इसे नहीं देख सकती।",
           "missing_key": "इस स्रोत के लिए कोई API कुंजी सहेजी नहीं गई है। कनेक्शन में एक जोड़ें।",
           "invalid_query": "{provider} ने खोज अस्वीकार कर दी। खोज बदलें, फिर दोबारा सक्रिय करें।",
@@ -2465,7 +2466,7 @@
       "resume": "फिर शुरू करें",
       "sourceAction": "{name} {action}",
       "sourceActionHint": "स्रोत {action}",
-      "noSources": "अभी कोई स्रोत नहीं है। Zotero समूह या OpenAlex खोज जोड़ें।",
+      "noSources": "अभी कोई स्रोत नहीं है। कोई Zotero समूह, OpenAlex खोज या OpenScholar संग्रह जोड़ें।",
       "listLabel": "जुड़े हुए स्रोत",
       "connections": "कनेक्शन",
       "connectionsTitle": "स्रोत कनेक्शन",
@@ -2568,6 +2569,23 @@
         "capped": "Zotero stops listing after about 1,000 groups.",
         "loading": "Loading your groups…",
         "failed": "Could not load your groups."
+      },
+      "openScholarCollection": "OpenScholar संग्रह",
+      "openScholarCollectionHint": "अपने किसी संग्रह का अनुसरण करें",
+      "pdfs": "PDF",
+      "collectionDeleted": "यह संग्रह OpenScholar में हटा दिया गया।",
+      "removeCollectionTitle": "यह संग्रह हटाएँ?",
+      "collectionConnectFailed": "यह संग्रह नहीं जोड़ा जा सका।",
+      "collectionPicker": {
+        "title": "संग्रह जोड़ें",
+        "description": "आपके OpenScholar संग्रह। लाइब्रेरी आपके चुने संग्रहों का अनुसरण करती है और उनके बदलने पर अपडेट होती है।",
+        "search": "संग्रह खोजें…",
+        "colCollection": "संग्रह",
+        "noCollections": "आपके पास अभी कोई संग्रह नहीं है।",
+        "noMatch": "कोई संग्रह मेल नहीं खाता।",
+        "addPicked": "{count, plural, =0 {जोड़ें} one {# संग्रह जोड़ें} other {# संग्रह जोड़ें}}",
+        "loading": "आपके संग्रह लोड हो रहे हैं…",
+        "failed": "आपके संग्रह लोड नहीं हो सके।"
       }
     },
     "search": {
