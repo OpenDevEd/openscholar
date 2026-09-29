@@ -49,6 +49,7 @@ import {
 } from "@/components/ai-elements/sources";
 import type { WebSearchPricing } from "@/lib/pricing";
 import { WebSearchStep } from "./web-search-step";
+import { CHAT_LINK_SAFETY } from "./link-safety-dialog";
 import { AbortedPill } from "./aborted-pill";
 import { ChatErrorAlert } from "./chat-error-alert";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -500,6 +501,7 @@ function AssistantTextPart({
         components={STREAMDOWN_COMPONENTS}
         isAnimating={isAnimating}
         parseIncompleteMarkdown={isUnfinished}
+        linkSafety={CHAT_LINK_SAFETY}
       >
         {normalizeChatMarkdownForRender(part.text)}
       </MessageResponse>
