@@ -73,7 +73,9 @@ export function useOpenAlexQueryCount(query: OpenAlexWorksQuery): number | undef
   const { data } = useSWR<number>(
     ["openalex-query-count", query.oql ?? "", query.filter ?? "", query.search ?? ""],
     async () => (await countOpenAlexQuery(query)).count,
-    COUNT_OPTIONS,
+    // An edited query never shows the count of the one before it, and a failed count shows none.
+    // A cached count refreshes on the next visit, at most once a minute per query.
+    { ...COUNT_OPTIONS, keepPreviousData: false, revalidateIfStale: true },
   );
   return data;
 }
