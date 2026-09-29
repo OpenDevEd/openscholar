@@ -339,6 +339,38 @@ function combineOutcomes(
   return "matched";
 }
 
+/** Brings a library's two buckets to the current policy, creating any that are missing. */
+export async function reconcileLibraryBuckets(input: {
+  storageUrl: string;
+  serviceRoleKey: string;
+  privateBucket: string;
+  publicBucket: string;
+  maxPdfBytes: number;
+  fetchImpl?: typeof fetch;
+}): Promise<StorageReconcileOutcome> {
+  const client: StorageClient = {
+    fetchImpl: input.fetchImpl ?? fetch,
+    origin: requireStorageOrigin(input.storageUrl),
+    serviceRoleKey: requireServiceRoleKey(input.serviceRoleKey),
+  };
+  const maxFileBytes = requireMaxPdfBytes(input.maxPdfBytes);
+  // Covers are JPEGs; PNG stays for covers made before that.
+  const allowedMimeTypes = ["application/pdf", "image/jpeg", "image/png"];
+  const privateOutcome = await reconcileBucket(client, {
+    allowedMimeTypes,
+    fileSizeLimit: maxFileBytes,
+    name: input.privateBucket,
+    public: false,
+  });
+  const publicOutcome = await reconcileBucket(client, {
+    allowedMimeTypes,
+    fileSizeLimit: maxFileBytes,
+    name: input.publicBucket,
+    public: true,
+  });
+  return combineOutcomes(privateOutcome, publicOutcome);
+}
+
 export async function reconcileLibraryStorage(input: {
   storageUrl: string;
   serviceRoleKey: string;
@@ -346,31 +378,9 @@ export async function reconcileLibraryStorage(input: {
   maxPdfBytes: number;
   fetchImpl?: typeof fetch;
 }): Promise<StorageSetupResult> {
-  const client: StorageClient = {
-    fetchImpl: input.fetchImpl ?? fetch,
-    origin: requireStorageOrigin(input.storageUrl),
-    serviceRoleKey: requireServiceRoleKey(input.serviceRoleKey),
-  };
-  const maxFileBytes = requireMaxPdfBytes(input.maxPdfBytes);
   const names = createLibraryStorageBucketNames(input.libraryId);
-  const allowedMimeTypes = ["application/pdf", "image/png"];
-  const privateOutcome = await reconcileBucket(client, {
-    allowedMimeTypes,
-    fileSizeLimit: maxFileBytes,
-    name: names.privateBucket,
-    public: false,
-  });
-  const publicOutcome = await reconcileBucket(client, {
-    allowedMimeTypes,
-    fileSizeLimit: maxFileBytes,
-    name: names.publicBucket,
-    public: true,
-  });
-
-  return {
-    ...names,
-    outcome: combineOutcomes(privateOutcome, publicOutcome),
-  };
+  const outcome = await reconcileLibraryBuckets({ ...input, ...names });
+  return { ...names, outcome };
 }
 
 async function emptyAndDeleteBucket(client: StorageClient, name: string) {
