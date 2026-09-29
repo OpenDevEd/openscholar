@@ -3,6 +3,7 @@ import type { ModelMessage } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { components, internal } from "../_generated/api";
 import { SERVER_AI_CONFIG } from "../ai/config";
+import { chatSearchesWeb } from "../../lib/chat/web-search-capability";
 
 /**
  * Default chat agent.
@@ -51,7 +52,7 @@ async function buildChatContext(
     internal.chat.context.buildSystemPromptForJob,
     {
       jobId: meta.jobId,
-      webSearchEnabled: meta.webSearchEnabled,
+      webSearchEnabled: chatSearchesWeb(meta),
     },
   );
   return [...systemMessages, ...args.allMessages];

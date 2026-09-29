@@ -118,17 +118,15 @@ export function createStreamingResponse(params: {
   onFinishReason?: (reason: string) => void;
   /**
    * Runs after the last upstream part and before the response closes, so
-   * work awaited here (billing) finishes inside the request. Gets the
-   * number of web sources the model cited.
+   * work awaited here (billing) finishes inside the request.
    */
-  onDone?: (sourceCount: number) => Promise<void>;
+  onDone?: () => Promise<void>;
 }): ReadableStream<Uint8Array> {
   const { id, model, fullStream, includeUsage, onFinishReason, onDone } = params;
   const encoder = new TextEncoder();
   let sentRoleChunk = false;
   let lastFinishReason = "stop";
   let lastUsage: ChatCompletionUsage | undefined;
-  let sourceCount = 0;
   let toolCallCounter = 0;
 
   return new ReadableStream<Uint8Array>({
@@ -288,8 +286,19 @@ export function createStreamingResponse(params: {
               break;
             }
 
+            // Web search results, sent the way OpenRouter streams them: as
+            // url_citation annotations on the delta.
             case "source": {
-              sourceCount++;
+              if (typeof part.url !== "string") break;
+              if (!sentRoleChunk) {
+                send(sseChunk(makeChunk(id, model, { role: "assistant" }, null)));
+                sentRoleChunk = true;
+              }
+              const annotation: MessageAnnotation = {
+                type: "url_citation",
+                url_citation: { url: part.url, title: part.title as string | undefined },
+              };
+              send(sseChunk(makeChunk(id, model, { annotations: [annotation] }, null)));
               break;
             }
 
@@ -326,7 +335,7 @@ export function createStreamingResponse(params: {
         send(sseEvent(JSON.stringify({ error: { message: errMsg, type: "server_error" } })));
         send(sseDone());
       } finally {
-        await onDone?.(sourceCount);
+        await onDone?.();
         try {
           controller.close();
         } catch {

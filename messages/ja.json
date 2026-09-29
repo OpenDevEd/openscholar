@@ -866,11 +866,8 @@
       "bodyOff": "クリックして、リアルタイムのウェブページで回答を裏付けます。",
       "bodyUnsupported": "選択中のモデルはツール経由のウェブ検索に対応していません。有効化するにはモデルを変更してください。",
       "metaCost": "1 回あたり約 {credits, number} クレジット",
-      "metaCostNote": "1 回の返信で複数回検索することがあります。",
-      "metaCostLoading": "料金を計算中…",
+      "metaCostNote": "1 回の返信で最大 {searches, number} 回検索します。",
       "metaProvider": "{provider} 経由",
-      "providerTavilyBasic": "Tavily Basic",
-      "providerOpenRouter": "OpenRouter サーバーツール",
       "statusOn": "オン",
       "statusOff": "オフ"
     }

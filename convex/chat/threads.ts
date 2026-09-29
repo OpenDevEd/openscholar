@@ -589,11 +589,9 @@ export const getThreadMetadataForJob = internalQuery({
  *
  * Also surfaces `webSearchEnabled` (from the job row) and
  * `modelSupportedParameters` (joined from the chosen model row, when
- * `chatModelId` is set) in a single round-trip. Both feed the plan-06
- * tool selector and system-prompt builder. `modelSupportedParameters`
- * is `null` when no model is chosen yet — `modelSupportsWebSearch`
- * treats that as "no capability", which is the conservative default
- * for the ungated fallback path.
+ * `chatModelId` is set) in a single round-trip. `chatSearchesWeb` reads
+ * both to decide whether a turn searches the web. `modelSupportedParameters`
+ * is `null` when no model is chosen yet, which reads as "can't search".
  */
 export const getModelForThread = internalQuery({
   args: { threadId: v.string() },

@@ -866,11 +866,8 @@
       "bodyOff": "Cliquez pour ancrer les réponses dans des pages en temps réel.",
       "bodyUnsupported": "Le modèle sélectionné ne prend pas en charge la recherche web par outils. Changez de modèle pour activer.",
       "metaCost": "~{credits, number} crédits par recherche",
-      "metaCostNote": "Une réponse peut contenir plusieurs recherches.",
-      "metaCostLoading": "Calcul du coût…",
+      "metaCostNote": "Une réponse lance jusqu’à {searches, number} recherches.",
       "metaProvider": "via {provider}",
-      "providerTavilyBasic": "Tavily Basic",
-      "providerOpenRouter": "outil serveur OpenRouter",
       "statusOn": "Actif",
       "statusOff": "Inactif"
     }

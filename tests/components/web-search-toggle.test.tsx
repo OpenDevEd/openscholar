@@ -16,27 +16,20 @@
  *  - clicking flips the value via setChatWebSearchEnabled
  *  - tooltip renders a richer surface: title, body, status pill, and
  *    (when supported) cost + provider meta rows in BOTH on and off states
- *  - data-web-search-source / data-web-search-credits-estimate /
- *    data-web-search-state track the active path resolution
  *  - reduced-motion safe: motion.button still renders a real <button>
  */
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { WebSearchToggle } from "@/components/extraction/chat/web-search-toggle";
 
 const setWebSearchMock = vi.fn().mockResolvedValue(undefined);
-const pricingMock = vi.fn();
 
 vi.mock("convex/react", () => ({
   useMutation: (fnRef: unknown) => {
     if (fnRef === "setChatWebSearchEnabled") return setWebSearchMock;
     return vi.fn();
-  },
-  useQuery: (fnRef: unknown) => {
-    if (fnRef === "getChatWebSearchPricing") return pricingMock();
-    return undefined;
   },
 }));
 
@@ -45,7 +38,6 @@ vi.mock("@/convex/_generated/api", () => ({
     chat: {
       messages: {
         setChatWebSearchEnabled: "setChatWebSearchEnabled",
-        getChatWebSearchPricing: "getChatWebSearchPricing",
       },
     },
   },
@@ -67,11 +59,8 @@ const composerStrings: Record<string, string> = {
   "webSearch.bodyUnsupported":
     "The selected model can't run tool-based web searches. Switch models to enable.",
   "webSearch.metaCost": "~{credits} credits per search",
-  "webSearch.metaCostNote": "One reply may include several searches.",
-  "webSearch.metaCostLoading": "Calculating cost…",
+  "webSearch.metaCostNote": "Up to {searches} searches per reply.",
   "webSearch.metaProvider": "via {provider}",
-  "webSearch.providerTavilyBasic": "Tavily Basic",
-  "webSearch.providerOpenRouter": "OpenRouter server tool",
   "webSearch.statusOn": "On",
   "webSearch.statusOff": "Off",
 };
@@ -106,15 +95,6 @@ const baseProps = {
   modelSupportedParameters: ["tools", "stream"] as string[] | null | undefined,
   isGenerating: false,
 };
-
-beforeEach(() => {
-  pricingMock.mockReset();
-  pricingMock.mockReturnValue({
-    source: "tavily-basic",
-    usdPerCall: 0.008,
-    creditsPerCall: 104,
-  });
-});
 
 describe("<WebSearchToggle>", () => {
   it("aria-pressed reflects the enabled prop and data-web-search-state mirrors it", () => {
@@ -222,12 +202,7 @@ describe("<WebSearchToggle>", () => {
     expect(setWebSearchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("renders the unsupported tooltip surface when the model lacks tools (regardless of pricing)", () => {
-    pricingMock.mockReturnValue({
-      source: "unsupported",
-      usdPerCall: null,
-      creditsPerCall: null,
-    });
+  it("renders the unsupported tooltip surface when the model lacks tools", () => {
     const { container } = render(
       <WebSearchToggle
         {...baseProps}
@@ -242,9 +217,8 @@ describe("<WebSearchToggle>", () => {
     expect(
       container.querySelector("[data-web-search-status-pill]"),
     ).toBeNull();
-    // No meta surface (cost / provider / loading) in unsupported state.
+    // No meta surface (cost / provider) in unsupported state.
     expect(container.querySelector("[data-tooltip-cost-line]")).toBeNull();
-    expect(container.querySelector("[data-tooltip-cost-loading]")).toBeNull();
     expect(
       container.querySelector("[data-tooltip-provider-line]"),
     ).toBeNull();
@@ -254,11 +228,6 @@ describe("<WebSearchToggle>", () => {
   });
 
   it("renders the on-state tooltip with title, status pill, body, cost, and provider rows", () => {
-    pricingMock.mockReturnValue({
-      source: "tavily-basic",
-      usdPerCall: 0.008,
-      creditsPerCall: 104,
-    });
     const { container } = render(
       <WebSearchToggle
         {...baseProps}
@@ -280,25 +249,16 @@ describe("<WebSearchToggle>", () => {
     // for cost visibility even when web search is enabled.
     const costRow = container.querySelector("[data-tooltip-cost-line]");
     expect(costRow).not.toBeNull();
-    expect(costRow).toHaveTextContent(/~104 credits per search/i);
-    // Provider row resolves to the friendly name, never the raw slug.
-    const providerRow = container.querySelector(
-      "[data-tooltip-provider-line]",
-    );
-    expect(providerRow).not.toBeNull();
-    expect(providerRow).toHaveTextContent(/via Tavily Basic/);
-    expect(providerRow).not.toHaveTextContent(/tavily-basic/);
+    expect(costRow).toHaveTextContent(/~91 credits per search/i);
+    expect(
+      container.querySelector("[data-tooltip-provider-line]"),
+    ).not.toBeNull();
     expect(
       container.querySelector("[data-web-search-tooltip-hint]"),
     ).toBeNull();
   });
 
   it("renders the off-state tooltip with the full meta surface", () => {
-    pricingMock.mockReturnValue({
-      source: "tavily-basic",
-      usdPerCall: 0.008,
-      creditsPerCall: 104,
-    });
     const { container } = render(
       <WebSearchToggle
         {...baseProps}
@@ -316,7 +276,7 @@ describe("<WebSearchToggle>", () => {
     expect(pill).toHaveTextContent(/^Off$/);
     const costRow = container.querySelector("[data-tooltip-cost-line]");
     expect(costRow).not.toBeNull();
-    expect(costRow).toHaveTextContent(/~104 credits per search/i);
+    expect(costRow).toHaveTextContent(/~91 credits per search/i);
     expect(tooltip).not.toHaveTextContent(/\{credits\}/);
     expect(
       container.querySelector("[data-tooltip-provider-line]"),
@@ -324,92 +284,5 @@ describe("<WebSearchToggle>", () => {
     expect(
       container.querySelector("[data-web-search-tooltip-hint]"),
     ).toBeNull();
-    const btn = screen.getByRole("button");
-    expect(btn).toHaveAttribute("data-web-search-source", "tavily-basic");
-    expect(btn).toHaveAttribute("data-web-search-credits-estimate", "104");
-  });
-
-  it("renders the OpenRouter server-tool provider label for the openrouter-server-tool source", () => {
-    pricingMock.mockReturnValue({
-      source: "openrouter-server-tool",
-      usdPerCall: 0.02,
-      creditsPerCall: 260,
-    });
-    const { container } = render(
-      <WebSearchToggle
-        {...baseProps}
-        enabled={false}
-        modelSupportedParameters={["tools"]}
-      />,
-    );
-    const costRow = container.querySelector("[data-tooltip-cost-line]");
-    expect(costRow).toHaveTextContent(/~260 credits per search/i);
-    const providerRow = container.querySelector(
-      "[data-tooltip-provider-line]",
-    );
-    expect(providerRow).toHaveTextContent(/via OpenRouter server tool/);
-    expect(screen.getByRole("button")).toHaveAttribute(
-      "data-web-search-source",
-      "openrouter-server-tool",
-    );
-  });
-
-  it("shows a 'Calculating cost…' placeholder while pricing resolves and never flashes a 0-credit estimate", () => {
-    pricingMock.mockReturnValue(undefined);
-    const { container } = render(
-      <WebSearchToggle
-        {...baseProps}
-        enabled={false}
-        modelSupportedParameters={["tools"]}
-      />,
-    );
-    const tooltip = screen.getByTestId("tooltip-content");
-    // Body still renders during the loading window — only the cost row swaps.
-    expect(tooltip).toHaveTextContent(/Click to ground answers/);
-    // The resolved cost row is structurally absent so users never see
-    // an in-progress "0 credits" estimate.
-    expect(container.querySelector("[data-tooltip-cost-line]")).toBeNull();
-    expect(tooltip).not.toHaveTextContent(/credits per search/);
-    expect(tooltip).not.toHaveTextContent(/\$/);
-    // A loading placeholder takes its place so the user knows pricing is
-    // still being computed instead of seeing a phantom-empty meta row.
-    const loading = container.querySelector("[data-tooltip-cost-loading]");
-    expect(loading).not.toBeNull();
-    expect(loading).toHaveTextContent(/Calculating cost…/);
-    // Provider row is gated on a resolved source — also absent here.
-    expect(
-      container.querySelector("[data-tooltip-provider-line]"),
-    ).toBeNull();
-    // Data attributes on the button reflect "we don't know yet" without
-    // flashing concrete values.
-    const btn = screen.getByRole("button");
-    expect(btn).toHaveAttribute("data-web-search-source", "unsupported");
-    expect(btn).toHaveAttribute("data-web-search-credits-estimate", "0");
-  });
-
-  it("hides the provider row entirely when the source slug is unrecognised", () => {
-    pricingMock.mockReturnValue({
-      source: "unknown-future-provider",
-      usdPerCall: 0.01,
-      creditsPerCall: 130,
-    });
-    const { container } = render(
-      <WebSearchToggle
-        {...baseProps}
-        enabled={false}
-        modelSupportedParameters={["tools"]}
-      />,
-    );
-    // Cost is still shown — the credits number is provider-agnostic.
-    expect(
-      container.querySelector("[data-tooltip-cost-line]"),
-    ).toHaveTextContent(/~130 credits per search/i);
-    // Provider row is suppressed rather than leaking the raw slug.
-    expect(
-      container.querySelector("[data-tooltip-provider-line]"),
-    ).toBeNull();
-    expect(screen.getByTestId("tooltip-content")).not.toHaveTextContent(
-      /unknown-future-provider/,
-    );
   });
 });

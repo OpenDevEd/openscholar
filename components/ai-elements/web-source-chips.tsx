@@ -21,7 +21,10 @@ export function WebSourceChips<
   DATA extends UIDataTypes = UIDataTypes,
   TOOLS extends UITools = UITools,
 >({ parts }: WebSourceChipsProps<DATA, TOOLS>) {
-  const sources = parts.filter(isSourceUrlPart);
+  // Two searches in one reply can return the same page.
+  const sources = [
+    ...new Map(parts.filter(isSourceUrlPart).map((s) => [s.url, s])).values(),
+  ];
   if (sources.length === 0) return null;
   return (
     <div

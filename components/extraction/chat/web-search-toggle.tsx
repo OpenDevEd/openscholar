@@ -1,7 +1,7 @@
 "use client";
 
 import { Coins, Globe, Zap } from "lucide-react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "motion/react";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { modelSupportsWebSearch } from "@/lib/chat/web-search-capability";
+import { CHAT_WEB_SEARCHES_PER_REPLY, WEB_SEARCH_CREDITS } from "@/lib/pricing";
 import { modeToggleSpring } from "@/lib/animation-config";
 import { api } from "@/convex/_generated/api";
 
@@ -32,9 +33,6 @@ export function WebSearchToggle({
   const t = useTranslations("composer");
   const reduceMotion = useReducedMotion();
   const setWebSearch = useMutation(api.chat.messages.setChatWebSearchEnabled);
-  const pricing = useQuery(api.chat.messages.getChatWebSearchPricing, {
-    threadId,
-  });
   const supported = modelSupportsWebSearch({
     supportedParameters: modelSupportedParameters ?? undefined,
   });
@@ -68,21 +66,7 @@ export function WebSearchToggle({
         ? t("webSearch.bodyOff")
         : t("webSearch.bodyUnsupported");
 
-  // Friendly provider name for the meta row. Returning `null` hides the
-  // row entirely — we never want to show the raw "tavily-basic" slug.
-  const providerLabel = (() => {
-    switch (pricing?.source) {
-      case "tavily-basic":
-        return t("webSearch.providerTavilyBasic");
-      case "openrouter-server-tool":
-        return t("webSearch.providerOpenRouter");
-      default:
-        return null;
-    }
-  })();
-
   const showMeta = state !== "unsupported";
-  const pricingResolved = pricing !== undefined;
 
   return (
     <Tooltip>
@@ -96,10 +80,6 @@ export function WebSearchToggle({
           data-web-search-state={state}
           data-web-search-enabled={String(enabled)}
           data-web-search-supported={String(supported)}
-          data-web-search-source={pricing?.source ?? "unsupported"}
-          data-web-search-credits-estimate={String(
-            pricing?.creditsPerCall ?? 0,
-          )}
           whileHover={interactive ? { scale: 1.04 } : undefined}
           whileTap={interactive ? { scale: 0.94 } : undefined}
           transition={modeToggleSpring}
@@ -188,62 +168,41 @@ export function WebSearchToggle({
             {body}
           </p>
 
-          {/* Meta section — cost + provider. Shown in both on/off states
-              once pricing resolves so the user always knows what each
-              search costs and which provider runs it. The unsupported
-              state suppresses meta entirely (nothing to bill). */}
+          {/* Meta section — cost + provider, in both on and off states so
+              the user always knows what a search costs. The unsupported
+              state has nothing to bill. */}
           {showMeta ? (
             <div className="mt-2.5 space-y-1.5 border-t border-border/60 pt-2">
-              {pricingResolved ? (
-                <>
-                  <div
-                    className="flex items-center gap-2 text-[11px]"
-                    data-tooltip-cost-line=""
-                  >
-                    <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-muted/70 text-muted-foreground">
-                      <Coins className="size-2.5" aria-hidden="true" />
-                    </span>
-                    <span className="text-muted-foreground">
-                      {t("webSearch.metaCost", {
-                        credits: pricing.creditsPerCall ?? 0,
-                      })}
-                    </span>
-                  </div>
-                  <p
-                    className="pl-6 text-[10px] leading-tight text-muted-foreground/70"
-                    data-tooltip-cost-note=""
-                  >
-                    {t("webSearch.metaCostNote")}
-                  </p>
-                  {providerLabel ? (
-                    <div
-                      className="flex items-center gap-2 text-[11px]"
-                      data-tooltip-provider-line=""
-                    >
-                      <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-[oklch(0.55_0.15_293/0.12)] text-[oklch(0.45_0.16_293)] dark:text-[oklch(0.78_0.12_293)]">
-                        <Zap className="size-2.5" aria-hidden="true" />
-                      </span>
-                      <span className="text-muted-foreground">
-                        {t("webSearch.metaProvider", {
-                          provider: providerLabel,
-                        })}
-                      </span>
-                    </div>
-                  ) : null}
-                </>
-              ) : (
-                <div
-                  className="flex items-center gap-2 text-[11px]"
-                  data-tooltip-cost-loading=""
-                >
-                  <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-muted/40 text-muted-foreground/60">
-                    <Coins className="size-2.5" aria-hidden="true" />
-                  </span>
-                  <span className="italic text-muted-foreground/70">
-                    {t("webSearch.metaCostLoading")}
-                  </span>
-                </div>
-              )}
+              <div
+                className="flex items-center gap-2 text-[11px]"
+                data-tooltip-cost-line=""
+              >
+                <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-muted/70 text-muted-foreground">
+                  <Coins className="size-2.5" aria-hidden="true" />
+                </span>
+                <span className="text-muted-foreground">
+                  {t("webSearch.metaCost", { credits: WEB_SEARCH_CREDITS })}
+                </span>
+              </div>
+              <p
+                className="pl-6 text-[10px] leading-tight text-muted-foreground/70"
+                data-tooltip-cost-note=""
+              >
+                {t("webSearch.metaCostNote", {
+                  searches: CHAT_WEB_SEARCHES_PER_REPLY,
+                })}
+              </p>
+              <div
+                className="flex items-center gap-2 text-[11px]"
+                data-tooltip-provider-line=""
+              >
+                <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-[oklch(0.55_0.15_293/0.12)] text-[oklch(0.45_0.16_293)] dark:text-[oklch(0.78_0.12_293)]">
+                  <Zap className="size-2.5" aria-hidden="true" />
+                </span>
+                <span className="text-muted-foreground">
+                  {t("webSearch.metaProvider", { provider: "Exa" })}
+                </span>
+              </div>
             </div>
           ) : null}
 

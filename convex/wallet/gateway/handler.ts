@@ -16,14 +16,16 @@ import {
   type EnhancedUsage,
 } from "./cost";
 import type { AIProvider } from "../../../lib/types/ai.types";
-import { convertUsdToCredits } from "../../../lib/pricing";
+import {
+  convertUsdToCredits,
+  WEB_SEARCH_ENGINE,
+  WEB_SEARCH_MAX_RESULTS,
+  WEB_SEARCH_USD,
+} from "../../../lib/pricing";
 import { autumn } from "../../billing/autumn";
 import { reserveCredits, releaseCredits, settleCredits } from "../../billing/charge";
 import type { Id, Doc } from "../../_generated/dataModel";
-import {
-  ESTIMATED_CREDITS_PER_WALLET_API_CALL,
-  ESTIMATED_CREDITS_PER_WEB_SEARCH,
-} from "../../lib/constants";
+import { ESTIMATED_CREDITS_PER_WALLET_API_CALL } from "../../lib/constants";
 
 // ─── CORS helpers ───────────────────────────────────────────
 
@@ -157,20 +159,14 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     );
   }
 
-  // 7. Build provider model — all served models route through OpenRouter
-  //    Append :online suffix when web search is requested (OpenRouter-native web search)
-  //    Suffix stacking is valid: :free:online keeps the free tier, web search has its own cost
-  let routedModelId = walletModel.modelId;
-  if (req.web_search_options) {
-    routedModelId = `${routedModelId}:online`;
-  }
-
+  // 7. Build provider model — all served models route through OpenRouter.
+  const webSearch = Boolean(req.web_search_options);
   let model;
   try {
     model = await getProviderModel(
       "openrouter",
       undefined,
-      routedModelId,
+      walletModel.modelId,
       // Needed for OpenRouter to report the call's cost, which is what we charge.
       { openrouterUsageInclude: true },
     );
@@ -184,10 +180,10 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     );
   }
 
-  // 8. Hold the estimate. Web-search turns add the grounding-fee constant.
+  // 8. Hold the estimate, plus the search a web-search call runs.
   const requiredCredits =
     ESTIMATED_CREDITS_PER_WALLET_API_CALL +
-    (req.web_search_options ? ESTIMATED_CREDITS_PER_WEB_SEARCH : 0);
+    (webSearch ? convertUsdToCredits({ usd: WEB_SEARCH_USD, markup: walletModel.costMarkup }) : 0);
   const chargeId = `wallet:${crypto.randomUUID()}`;
   if (
     !(await reserveCredits(ctx, {
@@ -216,18 +212,20 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
   const levels = walletModel.reasoningEfforts ?? [];
   const effort = req.reasoning_effort && levels.length ? clamp(req.reasoning_effort, levels) : undefined;
   const ours = providerCallOptions(model, { effort });
+  const theirs = req.provider_options?.openrouter;
+  const plugins = webSearch ? withWebPlugin(theirs?.plugins) : undefined;
   const providerOptions: Record<string, Record<string, unknown>> = {
     ...ours,
     ...req.provider_options,
     // The caller's OpenRouter settings add to ours; a field they set themselves wins.
-    openrouter: { ...ours.openrouter, ...req.provider_options?.openrouter },
+    openrouter: { ...ours.openrouter, ...theirs, ...(plugins ? { plugins } : {}) },
   };
 
   // 11. Execute
   const responseId = generateResponseId();
   const shouldStream = req.stream !== false; // default true
   const callOptions = buildCallOptions(model, aiSdkParams, providerOptions);
-  const charge = makeChargeFn(ctx, walletModel, keyResult, chargeId);
+  const charge = makeChargeFn(ctx, walletModel, keyResult, chargeId, webSearch);
 
   try {
     if (shouldStream) {
@@ -251,17 +249,26 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     console.error("[gateway] Generation failed:", e);
     await charge.release();
     const errMsg = e instanceof Error ? e.message : "";
-    const hint = req.web_search_options
-      ? " This model may not support web search — try without web_search_options or use a different model."
-      : "";
     return openAIError(
-      `AI generation failed.${hint}${errMsg ? ` (${errMsg.slice(0, 200)})` : ""}`,
+      `AI generation failed.${errMsg ? ` (${errMsg.slice(0, 200)})` : ""}`,
       "server_error",
       502,
       allowedOrigin,
     );
   }
 });
+
+/**
+ * The caller's OpenRouter plugins plus the web plugin, which runs one search on
+ * Exa before the model answers. A web plugin the caller configured wins.
+ */
+export function withWebPlugin(callerPlugins: unknown): unknown[] {
+  const plugins = Array.isArray(callerPlugins) ? callerPlugins : [];
+  const hasWeb = plugins.some((plugin) => (plugin as { id?: unknown } | null)?.id === "web");
+  return hasWeb
+    ? plugins
+    : [...plugins, { id: "web", engine: WEB_SEARCH_ENGINE, max_results: WEB_SEARCH_MAX_RESULTS }];
+}
 
 // ─── Credit charge helper ───────────────────────────────────
 
@@ -282,10 +289,13 @@ function makeChargeFn(
   walletModel: Doc<"models">,
   keyResult: { userId: Id<"users">; appName: string },
   chargeId: string,
+  webSearch: boolean,
 ): ChargeFn {
   return {
     settle: async (usage, reportedUsd) => {
-      const costUsd = reportedUsd ?? calculateEnhancedModelCost(usage, walletModel);
+      // OpenRouter's reported cost includes the search; the fallback adds it.
+      const costUsd =
+        reportedUsd ?? calculateEnhancedModelCost(usage, walletModel) + (webSearch ? WEB_SEARCH_USD : 0);
       await settleCredits(ctx, {
         userId: keyResult.userId,
         chargeId,
@@ -351,11 +361,9 @@ function handleStreaming(params: {
       >,
     includeUsage,
     // Charge before the response closes; release the hold if it fails.
-    onDone: async (sourceCount) => {
+    onDone: async () => {
       try {
-        const enhanced = extractEnhancedUsage(await streamResult.totalUsage);
-        enhanced.webSearchRequests = sourceCount;
-        await charge.settle(enhanced, reportedCostUsd((await streamResult.steps).map((step) => step.providerMetadata)));
+        await charge.settle(extractEnhancedUsage(await streamResult.totalUsage), reportedCostUsd((await streamResult.steps).map((step) => step.providerMetadata)));
       } catch (e) {
         console.error("[gateway] Credit charge failed:", e);
         await charge.release().catch(() => undefined);
@@ -388,7 +396,7 @@ async function handleNonStreaming(params: {
     callOptions as Parameters<typeof generateText>[0],
   );
 
-  // Extract sources for annotations + web search costing
+  // Web search sources become url_citation annotations.
   const sources = ((result as { sources?: Array<{ url: string; title?: string }> }).sources ?? [])
     .filter((s: { url?: string }) => s.url)
     .map((s: { url: string; title?: string }) => ({
@@ -398,7 +406,6 @@ async function handleNonStreaming(params: {
 
   // Deduct credits
   const enhanced = extractEnhancedUsage(result.totalUsage);
-  enhanced.webSearchRequests = sources.length;
   await charge.settle(enhanced, reportedCostUsd(result.steps.map((step) => step.providerMetadata)));
 
   // Format tool calls — AI SDK v6 uses `input` not `args`
@@ -429,7 +436,7 @@ export const handleModelsV1 = httpAction(async (ctx) => {
   const models = await ctx.runQuery(internal.models.queries.listServed);
 
   const data = models.map((m: Doc<"models">) => {
-    // All models support web search via OpenRouter :online suffix (even :free models)
+    // Every model can search: OpenRouter's web plugin runs the search, not the model.
     const baseCaps =
       m.supportedParameters?.filter((p: string) =>
         [
@@ -476,10 +483,8 @@ export const handleModelsV1 = httpAction(async (ctx) => {
         cache_write_per_million_tokens: m.cacheWritePricePerMillion
           ? m.cacheWritePricePerMillion * m.costMarkup
           : undefined,
-        web_search_per_request: m.webSearchPrice
-          ? m.webSearchPrice * m.costMarkup
-          : undefined,
-        currency: "credits",
+        web_search_per_request: WEB_SEARCH_USD * m.costMarkup,
+        currency: "USD",
       },
 
       // Defaults

@@ -866,11 +866,8 @@
       "bodyOff": "点击以让答案基于实时网页，获得有据可查的回答。",
       "bodyUnsupported": "所选模型不支持工具式网络搜索。切换模型以启用。",
       "metaCost": "每次搜索约 {credits, number} 积分",
-      "metaCostNote": "一条回复可能包含多次搜索。",
-      "metaCostLoading": "正在计算费用…",
+      "metaCostNote": "一条回复最多搜索 {searches, number} 次。",
       "metaProvider": "经由 {provider}",
-      "providerTavilyBasic": "Tavily Basic",
-      "providerOpenRouter": "OpenRouter 服务器工具",
       "statusOn": "开",
       "statusOff": "关"
     }

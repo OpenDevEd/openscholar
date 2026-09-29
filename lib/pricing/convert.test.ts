@@ -14,15 +14,15 @@ describe("convertUsdToCredits", () => {
     expect(convertUsdToCredits({ usd: Number.NaN })).toBe(0);
   });
 
-  it("returns 104 for Tavily basic ($0.008) at default markup and rate", () => {
+  it("returns 104 for $0.008 at default markup and rate", () => {
     expect(convertUsdToCredits({ usd: 0.008 })).toBe(104);
   });
 
-  it("returns 208 for Tavily advanced ($0.016) at default markup and rate", () => {
+  it("returns 208 for $0.016 at default markup and rate", () => {
     expect(convertUsdToCredits({ usd: 0.016 })).toBe(208);
   });
 
-  it("returns 260 for OpenRouter server-tool default ($0.02) at default markup and rate", () => {
+  it("returns 260 for $0.02 at default markup and rate", () => {
     expect(convertUsdToCredits({ usd: 0.02 })).toBe(260);
   });
 

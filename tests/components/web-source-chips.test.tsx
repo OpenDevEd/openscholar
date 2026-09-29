@@ -50,6 +50,21 @@ describe("<WebSourceChips>", () => {
     expect(links[1]).toHaveTextContent("[2]");
   });
 
+  it("lists a page once when several searches return it", () => {
+    const parts: AnyPart[] = [
+      urlPart("https://arxiv.org/abs/x", "s1", "Preprint"),
+      urlPart("https://example.com", "s2"),
+      urlPart("https://arxiv.org/abs/x", "s3", "Preprint"),
+    ];
+    render(<WebSourceChips parts={parts} />);
+
+    const links = screen.getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "https://arxiv.org/abs/x",
+      "https://example.com",
+    ]);
+  });
+
   it("ignores non-source-url parts entirely", () => {
     render(<WebSourceChips parts={[textPart, stepStart]} />);
     expect(screen.queryAllByRole("link")).toHaveLength(0);

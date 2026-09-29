@@ -165,7 +165,7 @@ export const settleFromOpenRouter = internalAction({
     jobId: v.id("extractionJobs"),
     chargeId: v.string(),
     generationId: v.string(),
-    /** Cost already known outside this generation: earlier steps and web search. */
+    /** Cost already known outside this generation: its earlier steps. */
     extraUsd: v.number(),
     /** Token details of the steps that finished before this one; absent on retries scheduled before it existed. */
     earlierTokens: v.optional(v.object({ cacheReadTokens: v.number(), cacheWriteTokens: v.number(), reasoningTokens: v.number() })),

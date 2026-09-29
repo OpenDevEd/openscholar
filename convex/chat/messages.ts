@@ -44,15 +44,9 @@ import { effortValidator } from "../aiModelConfig/validators";
 import { paperChat } from "./agent";
 import { authorizeThreadAccess } from "./auth";
 import { resolveOpenRouterModel } from "./provider";
-import { pickWebSearchTool } from "./tools/selectWebSearchTool";
 import { buildOpenRouterWebSearchTool } from "./tools/openrouterWebSearch";
-import { buildTavilyWebSearchTool } from "./tools/tavilyWebSearch";
-import { modelSupportsWebSearch } from "../../lib/chat/web-search-capability";
-import { pickWebSearchPricing } from "@/lib/pricing";
-import {
-  ESTIMATED_CREDITS_PER_CHAT_MESSAGE,
-  ESTIMATED_CREDITS_PER_WEB_SEARCH,
-} from "../lib/constants";
+import { chatSearchesWeb } from "../../lib/chat/web-search-capability";
+import { ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import {
   classifyChatError,
   errorCodeValidator,
@@ -75,7 +69,11 @@ import { reserveCredits, releaseCredits, settleCredits, tokenCounts, tokenDetail
 import { callOptions } from "../../lib/ai/core/call-options";
 import { aggregateUsage, usageOf } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";
-import { convertUsdToCredits, WEB_SEARCH_PRICING } from "../../lib/pricing";
+import {
+  CHAT_WEB_SEARCHES_PER_REPLY,
+  convertUsdToCredits,
+  WEB_SEARCH_CREDITS,
+} from "../../lib/pricing";
 import { calculateCostInDollars } from "../../lib/ai/core/cost";
 
 export const STOP_ABORT_POLL_INTERVAL_MS = 500;
@@ -381,14 +379,13 @@ export const generateResponse = internalAction({
     const stepUsages: Usage[] = [];
     const completedGenerations = new Set<string>();
     let finished = false;
-    let webSearchUsd = 0;
 
     try {
-      // The web-search surcharge covers the flat grounding fee, which
-      // dwarfs token cost on small-output models.
+      const webSearch = chatSearchesWeb(meta);
+      // A web-search reply can run every search it's allowed.
       const requiredCredits =
         ESTIMATED_CREDITS_PER_CHAT_MESSAGE +
-        (meta.webSearchEnabled ? ESTIMATED_CREDITS_PER_WEB_SEARCH : 0);
+        (webSearch ? WEB_SEARCH_CREDITS * CHAT_WEB_SEARCHES_PER_REPLY : 0);
       if (!(await reserveCredits(ctx, { userId, chargeId, credits: requiredCredits }))) {
         const account = await ctx.runQuery(internal.billing.accounts.forUser, { userId });
         const availableCredits = account?.balance ?? 0;
@@ -415,31 +412,9 @@ export const generateResponse = internalAction({
       );
       capturedModelSlug = modelSlug;
 
-      // Plan-06: pick the web-search path based on the per-thread
-      // toggle, the model's tool-calling capability, and Tavily key
-      // presence. The selector itself stays pure — env reads happen
-      // here so a key rotation takes effect without a redeploy.
-      const tavilyApiKey = process.env.TAVILY_API_KEY;
-      const webSearchPath = pickWebSearchTool({
-        enabled: meta.webSearchEnabled,
-        modelSupportsWebSearch: modelSupportsWebSearch({
-          supportedParameters: meta.modelSupportedParameters,
-        }),
-        hasTavilyKey: Boolean(tavilyApiKey),
-      });
-      let tools: ToolSet | undefined;
-      if (webSearchPath === "tavily") {
-        tools = {
-          web_search: buildTavilyWebSearchTool({
-            apiKey: tavilyApiKey!,
-            costSink: async (tavilyCredits) => {
-              webSearchUsd += tavilyCredits * WEB_SEARCH_PRICING.tavily.usdPerCredit;
-            },
-          }),
-        } as ToolSet;
-      } else if (webSearchPath === "openrouter") {
-        tools = { web_search: buildOpenRouterWebSearchTool() } as ToolSet;
-      }
+      const tools = webSearch
+        ? ({ web_search: buildOpenRouterWebSearchTool() } as ToolSet)
+        : undefined;
 
       try {
         await paperChat.streamText(
@@ -463,8 +438,8 @@ export const generateResponse = internalAction({
               const inputTokens = usage?.inputTokens ?? 0;
               const outputTokens = usage?.outputTokens ?? 0;
               completedTokens += inputTokens + outputTokens;
-              // OpenRouter's all-in cost includes provider-side tools such
-              // as server web search; tokens × price is the fallback.
+              // OpenRouter's reported cost includes its web searches; tokens ×
+              // price is the fallback.
               completedUsd +=
                 pickProviderCostUsd(providerMetadata) ??
                 calculateCostInDollars({ inputTokens, outputTokens }, pricing);
@@ -637,13 +612,13 @@ export const generateResponse = internalAction({
           jobId,
           chargeId,
           generationId: unfinishedGeneration,
-          extraUsd: completedUsd + webSearchUsd,
+          extraUsd: completedUsd,
           earlierTokens: tokenCounts(aggregateUsage(stepUsages)),
           attempt: 0,
         });
         settledOrScheduled = true;
-      } else if (completedTokens > 0 || webSearchUsd > 0) {
-        const usd = completedUsd + webSearchUsd;
+      } else if (completedTokens > 0) {
+        const usd = completedUsd;
         await settleCredits(ctx, {
           userId,
           chargeId,
@@ -654,7 +629,6 @@ export const generateResponse = internalAction({
             jobId,
             model: modelSlug,
             ...tokenDetails(aggregateUsage(stepUsages)),
-            // Includes web search, which the model's own cost doesn't.
             costUsd: usd,
           },
         });
@@ -1428,82 +1402,6 @@ export const setChatWebSearchEnabled = mutation({
       updatedAt: Date.now(),
     });
     return { outcome: "updated" as const };
-  },
-});
-
-/**
- * Resolve the active web-search path + per-call pricing for a chat
- * thread, so the composer toggle and tool-step chip can render the
- * REAL credit cost of the path that will actually run instead of a
- * static placeholder. Reads:
- *   - job.{webSearchEnabled, chatModelId}
- *   - models.{webSearchPrice, supportedParameters} for the active model
- *   - process.env.TAVILY_API_KEY (server-only — UI never sees it)
- *
- * Auth-gate is SOFT: callers who can't see the thread (e.g. the
- * tooltip rendering before auth resolves) get the `unsupported` shape
- * back instead of a thrown FORBIDDEN. Surfacing a permission error
- * via the tooltip would be confusing UX.
- */
-const UNSUPPORTED_PRICING = {
-  source: "unsupported" as const,
-  usdPerCall: null,
-  creditsPerCall: null,
-};
-
-export const getChatWebSearchPricing = query({
-  args: { threadId: v.string() },
-  returns: v.object({
-    source: v.union(
-      v.literal("tavily-basic"),
-      v.literal("openrouter-native"),
-      v.literal("openrouter-server-tool"),
-      v.literal("unsupported"),
-    ),
-    usdPerCall: v.union(v.number(), v.null()),
-    creditsPerCall: v.union(v.number(), v.null()),
-  }),
-  handler: async (ctx, { threadId }) => {
-    let job;
-    try {
-      ({ job } = await authorizeThreadAccess(ctx, threadId));
-    } catch {
-      return UNSUPPORTED_PRICING;
-    }
-
-    let modelSupportedParameters: string[] | null = null;
-    let modelWebSearchPriceUsd: number | null = null;
-    if (job.chatModelId) {
-      const modelRow = await ctx.db.get(job.chatModelId);
-      if (modelRow?.retiredAt !== undefined) return UNSUPPORTED_PRICING;
-      modelSupportedParameters = modelRow?.supportedParameters ?? null;
-      modelWebSearchPriceUsd = modelRow?.webSearchPrice ?? null;
-    }
-
-    // We intentionally pass `enabled: true` here, not job.webSearchEnabled.
-    // This query powers the off-state tooltip ("if you enabled this, ~N
-    // credits per search"); reading the actual toggle state would force
-    // off-but-supported threads to render "~0 credits per search" forever.
-    // `path` falls through to null only when the model itself can't web-
-    // search — the genuine "unsupported" branch. See plan 03 § Deviations.
-    const path = pickWebSearchTool({
-      enabled: true,
-      modelSupportsWebSearch: modelSupportsWebSearch({
-        supportedParameters: modelSupportedParameters ?? undefined,
-      }),
-      hasTavilyKey: Boolean(process.env.TAVILY_API_KEY),
-    });
-
-    const pricing = pickWebSearchPricing({
-      path,
-      modelWebSearchPriceUsd,
-    });
-
-    return {
-      source: pricing.source,
-      usdPerCall: pricing.usdPerCall,
-      creditsPerCall: pricing.creditsPerCall,
-    };
   },
 });
 
