@@ -8,17 +8,18 @@ import type { AiTask } from "../../lib/ai/tasks";
 async function setup() {
   const t = convexTest(schema);
   setupAggregates(t);
-  const model = (modelId: string, reasoningEfforts?: Array<"low" | "medium" | "high">) =>
+  const model = (modelId: string, reasoningEfforts?: Array<"low" | "medium" | "high">, supportedParameters = ["response_format"]) =>
     t.run((ctx) =>
       ctx.db.insert("models", {
         modelId, name: modelId, provider: modelId.split("/")[0]!, inputPricePerMillion: 1, outputPricePerMillion: 2,
-        isServed: false, costMarkup: 1, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1,
+        isServed: false, costMarkup: 1, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1, supportedParameters,
         ...(reasoningEfforts && { reasoningEfforts, defaultEffort: reasoningEfforts[0] }),
       }),
     );
   const sonnet = await model("anthropic/sonnet", ["low", "medium", "high"]);
   const flash = await model("google/flash", ["low"]);
   const mine = await model("acme/mine");
+  const chatOnly = await model("acme/chat-only", undefined, ["tools"]);
   const userId = await t.run((ctx) =>
     ctx.db.insert("users", { clerkId: "clerk_user", email: "user@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }),
   );
@@ -29,7 +30,7 @@ async function setup() {
   const user = t.withIdentity({ subject: "clerk_user" });
   const admin = t.withIdentity({ subject: "clerk_admin" });
   const runsOn = (task: AiTask) => t.query(internal.ai.serverModel.resolveForUser, { userId, task });
-  return { t, sonnet, flash, mine, userId, user, admin, runsOn };
+  return { t, sonnet, flash, mine, chatOnly, userId, user, admin, runsOn };
 }
 
 describe("presets", () => {
@@ -57,6 +58,19 @@ describe("presets", () => {
     await expect(admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "chat", modelId: jev })).rejects.toThrow(/only answers screening/);
     await expect(user.mutation(api.userAiConfig.mutations.setCustom, { picks: [{ task: "extraction", modelId: jev }] })).rejects.toThrow(/only answers screening/);
     await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "screenAll", modelId: jev });
+  });
+
+  it("offers a model without structured output only for chat, and skips a stored pick that needs it", async () => {
+    const { t, admin, user, chatOnly, runsOn } = await setup();
+    await expect(admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "extraction", modelId: chatOnly })).rejects.toThrow(/structured answers/);
+    await expect(user.mutation(api.userAiConfig.mutations.setCustom, { picks: [{ task: "translate", modelId: chatOnly }] })).rejects.toThrow(/structured answers/);
+    await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "chat", modelId: chatOnly });
+    const offered = async (tasks?: AiTask[]) => (await t.query(api.models.queries.listCatalogOptions, tasks ? { tasks } : {})).map((m) => m._id);
+    expect(await offered()).toContain(chatOnly);
+    expect(await offered(["chat", "extraction"])).not.toContain(chatOnly);
+    // A pick saved before the rule no longer runs.
+    await t.run((ctx) => ctx.db.insert("aiModelConfig", { key: "preset.balanced.extraction", modelId: "acme/chat-only", updatedAt: 1 }));
+    expect(await runsOn("extraction")).toBeNull();
   });
 
   it("refuses an effort the model doesn't take", async () => {
