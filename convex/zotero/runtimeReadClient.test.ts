@@ -30,6 +30,8 @@ describe("readRuntimeCollections", () => {
       expect(new Headers(init?.headers).get("authorization")).toBe(
         `Bearer ${credential}`,
       );
+      // The library shield answers 403 to a request without its browser-check cookie.
+      expect(new Headers(init?.headers).get("cookie")).toBe("ode_browser_check=1");
       return jsonResponse({
         items: [
           {

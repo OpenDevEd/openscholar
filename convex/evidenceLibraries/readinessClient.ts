@@ -1,3 +1,4 @@
+import { publicLibraryHeaders } from "../../lib/evidence-libraries/library-shield";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import { isCoolifyApplicationUuid } from "./coolifyApplication";
 
@@ -9,11 +10,6 @@ const MAX_JSON_RESPONSE_BYTES = 256 * 1024;
 const MAX_RUNTIME_CONFIG_BYTES = 1024 * 1024;
 const COMMIT = /^[a-f0-9]{40}$/u;
 const RUNTIME_ROUTE_HEADER = "x-openscholar-route";
-const BROWSER_CHECK_COOKIE = "ode_browser_check=1";
-
-function publicLibraryHeaders(accept: "application/json" | "text/html") {
-  return { accept, cookie: BROWSER_CHECK_COOKIE };
-}
 
 export type LibraryRuntimeRouteOperation =
   | "maintenance"

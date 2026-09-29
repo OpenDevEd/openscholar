@@ -2,6 +2,8 @@
 // publications, home page questions) through the
 // runtime's OpenScholar read API, using the library's machine credential.
 
+import { publicLibraryHeaders } from "../../lib/evidence-libraries/library-shield";
+
 export const RUNTIME_READ_PAGE_SIZE = 50;
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -159,7 +161,7 @@ async function runtimeFetch(
       method,
       headers: {
         Authorization: `Bearer ${target.credential}`,
-        Accept: "application/json",
+        ...publicLibraryHeaders("application/json"),
       },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
