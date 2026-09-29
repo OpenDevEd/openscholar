@@ -104,14 +104,18 @@ const usageDetailsValidator = v.object({
   cacheWriteTokens: v.optional(v.number()),
   reasoningTokens: v.optional(v.number()),
 });
-/** What a charge records about the tokens behind it. */
-export function tokenDetails(usage: Usage) {
+/** The cache and reasoning token counts a charge records. */
+export function tokenCounts(usage: Usage) {
   return {
-    ...(usage.costUsd !== undefined && { costUsd: usage.costUsd }),
     cacheReadTokens: usage.cacheReadTokens ?? 0,
     cacheWriteTokens: usage.cacheWriteTokens ?? 0,
     reasoningTokens: usage.reasoningTokens ?? 0,
   };
+}
+
+/** What a charge records about the tokens behind it. */
+export function tokenDetails(usage: Usage) {
+  return { ...(usage.costUsd !== undefined && { costUsd: usage.costUsd }), ...tokenCounts(usage) };
 }
 
 const settleValidator = v.object({

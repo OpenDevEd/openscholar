@@ -17,7 +17,6 @@ import {
   calculateEnhancedModelCost,
   type EnhancedUsage,
 } from "./cost";
-import { buildReasoningProviderOptions } from "./reasoning";
 import { mapFinishReason } from "./constants";
 
 // ─── Seed helpers ────────────────────────────────────────────
@@ -1487,7 +1486,8 @@ describe("calculateEnhancedModelCost", () => {
     });
     const usage: EnhancedUsage = {
       inputTokens: 100_000,
-      outputTokens: 50_000,
+      // The AI SDK's output count includes the 200K reasoning tokens.
+      outputTokens: 250_000,
       reasoningTokens: 200_000,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
@@ -1507,7 +1507,7 @@ describe("calculateEnhancedModelCost", () => {
     });
     const usage: EnhancedUsage = {
       inputTokens: 0,
-      outputTokens: 0,
+      outputTokens: 1_000_000,
       reasoningTokens: 1_000_000,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
@@ -1527,7 +1527,8 @@ describe("calculateEnhancedModelCost", () => {
       cacheWritePricePerMillion: 3.75,
     });
     const usage: EnhancedUsage = {
-      inputTokens: 100_000,
+      // The AI SDK's input count includes the 800K cache reads and 100K cache writes.
+      inputTokens: 1_000_000,
       outputTokens: 50_000,
       reasoningTokens: 0,
       cacheReadTokens: 800_000,
@@ -1554,90 +1555,6 @@ describe("calculateEnhancedModelCost", () => {
       webSearchRequests: 0,
     };
     expect(calculateEnhancedModelCost(usage, model)).toBe(0);
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════
-// reasoning — Provider options mapping
-// ═══════════════════════════════════════════════════════════════
-
-describe("buildReasoningProviderOptions", () => {
-  const reasoningModel = makeModel({ supportedParameters: ["tools", "reasoning", "temperature"] });
-  const nonReasoningModel = makeModel({ supportedParameters: ["tools", "temperature"] });
-
-  it("returns undefined for effort 'none'", () => {
-    expect(buildReasoningProviderOptions("anthropic", "none", reasoningModel)).toBeUndefined();
-  });
-
-  it("returns undefined for model without reasoning support", () => {
-    expect(buildReasoningProviderOptions("anthropic", "high", nonReasoningModel)).toBeUndefined();
-  });
-
-  it("returns undefined for model with no supportedParameters", () => {
-    const model = makeModel({ supportedParameters: undefined });
-    expect(buildReasoningProviderOptions("anthropic", "high", model)).toBeUndefined();
-  });
-
-  it("returns undefined for unknown provider", () => {
-    expect(buildReasoningProviderOptions("mistral", "high", reasoningModel)).toBeUndefined();
-  });
-
-  describe("anthropic", () => {
-    it("maps low effort to 1024 budget", () => {
-      const opts = buildReasoningProviderOptions("anthropic", "low", reasoningModel);
-      expect(opts).toEqual({
-        anthropic: { thinking: { type: "enabled", budgetTokens: 1_024 } },
-      });
-    });
-
-    it("maps medium effort to 8192 budget", () => {
-      const opts = buildReasoningProviderOptions("anthropic", "medium", reasoningModel);
-      expect(opts).toEqual({
-        anthropic: { thinking: { type: "enabled", budgetTokens: 8_192 } },
-      });
-    });
-
-    it("maps high effort to 32768 budget", () => {
-      const opts = buildReasoningProviderOptions("anthropic", "high", reasoningModel);
-      expect(opts).toEqual({
-        anthropic: { thinking: { type: "enabled", budgetTokens: 32_768 } },
-      });
-    });
-  });
-
-  describe("openai", () => {
-    it("passes effort directly as reasoningEffort", () => {
-      expect(buildReasoningProviderOptions("openai", "low", reasoningModel)).toEqual({
-        openai: { reasoningEffort: "low" },
-      });
-      expect(buildReasoningProviderOptions("openai", "medium", reasoningModel)).toEqual({
-        openai: { reasoningEffort: "medium" },
-      });
-      expect(buildReasoningProviderOptions("openai", "high", reasoningModel)).toEqual({
-        openai: { reasoningEffort: "high" },
-      });
-    });
-  });
-
-  describe("deepseek", () => {
-    it("enables thinking for any non-none effort", () => {
-      for (const effort of ["low", "medium", "high"] as const) {
-        expect(buildReasoningProviderOptions("deepseek", effort, reasoningModel)).toEqual({
-          deepseek: { thinking: { type: "enabled" } },
-        });
-      }
-    });
-  });
-
-  describe("google", () => {
-    it("maps efforts to thinking budgets", () => {
-      expect(buildReasoningProviderOptions("google", "low", reasoningModel)).toEqual({
-        google: { thinkingConfig: { thinkingBudget: 1_024 } },
-      });
-      expect(buildReasoningProviderOptions("google", "high", reasoningModel)).toEqual({
-        google: { thinkingConfig: { thinkingBudget: 32_768 } },
-      });
-    });
   });
 });
 

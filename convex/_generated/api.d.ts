@@ -274,7 +274,6 @@ import type * as wallet_gateway_cost from "../wallet/gateway/cost.js";
 import type * as wallet_gateway_formatResponse from "../wallet/gateway/formatResponse.js";
 import type * as wallet_gateway_handler from "../wallet/gateway/handler.js";
 import type * as wallet_gateway_parseRequest from "../wallet/gateway/parseRequest.js";
-import type * as wallet_gateway_reasoning from "../wallet/gateway/reasoning.js";
 import type * as wallet_gateway_types from "../wallet/gateway/types.js";
 import type * as wallet_internal from "../wallet/internal.js";
 import type * as wallet_mutations from "../wallet/mutations.js";
@@ -572,7 +571,6 @@ declare const fullApi: ApiFromModules<{
   "wallet/gateway/formatResponse": typeof wallet_gateway_formatResponse;
   "wallet/gateway/handler": typeof wallet_gateway_handler;
   "wallet/gateway/parseRequest": typeof wallet_gateway_parseRequest;
-  "wallet/gateway/reasoning": typeof wallet_gateway_reasoning;
   "wallet/gateway/types": typeof wallet_gateway_types;
   "wallet/internal": typeof wallet_internal;
   "wallet/mutations": typeof wallet_mutations;

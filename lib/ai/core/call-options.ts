@@ -46,6 +46,8 @@ export function callOptions(model: LanguageModel, { effort, sessionId, cache }: 
         },
       }
     case 'openai':
+    case 'azure':
+      // Azure's SDK reads the `openai` key as well as its own.
       return {
         openai: { reasoningEffort: effort ? clamp(effort, ['none', 'minimal', 'low', 'medium', 'high', 'xhigh']) : 'minimal' },
       }

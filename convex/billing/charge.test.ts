@@ -12,11 +12,13 @@ function openRouterGeneration(usd: number) {
   return async () =>
     new Response(
       JSON.stringify({
-        data: { id: "gen_1", model: "openai/gpt-6-luna", total_cost: usd },
+        data: { id: "gen_1", model: "openai/gpt-6-luna", total_cost: usd, native_tokens_cached: 300, native_tokens_reasoning: 20 },
       }),
       { status: 200 },
     );
 }
+
+const NO_TOKENS = { cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 };
 
 async function seedChat(t: ReturnType<typeof convexTest>, credits: number) {
   return await t.run(async (ctx) => {
@@ -81,6 +83,7 @@ describe("settling a charge", () => {
       chargeId: "chat:over",
       generationId: "gen_1",
       extraUsd: 0,
+      earlierTokens: NO_TOKENS,
       attempt: 0,
     });
 
@@ -89,6 +92,26 @@ describe("settling a charge", () => {
     expect(fakeAutumn.balance(userId)).toBe(0);
     expect(fakeAutumn.locks.size).toBe(0);
     expect((await usageFor(t, "chat:over"))?.credits).toBe(1_000);
+  });
+
+  it("records the cache and reasoning tokens of the earlier steps and the stopped one", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.01)));
+    const t = convexTest(schema);
+    setupAggregates(t);
+    const { userId, jobId } = await seedChat(t, 1_000);
+    await hold(userId, "chat:stopped", 200);
+
+    await t.action(internal.chat.billing.settleFromOpenRouter, {
+      userId,
+      jobId,
+      chargeId: "chat:stopped",
+      generationId: "gen_1",
+      extraUsd: 0,
+      earlierTokens: { cacheReadTokens: 4_000, cacheWriteTokens: 150, reasoningTokens: 40 },
+      attempt: 0,
+    });
+
+    expect(await usageFor(t, "chat:stopped")).toMatchObject({ cacheReadTokens: 4_300, cacheWriteTokens: 150, reasoningTokens: 60 });
   });
 
   it("still charges once when the hold was released before the work finished", async () => {
@@ -107,6 +130,7 @@ describe("settling a charge", () => {
         chargeId: "chat:late",
         generationId: "gen_1",
         extraUsd: 0,
+        earlierTokens: NO_TOKENS,
         attempt: 0,
       });
     await settle();
@@ -130,6 +154,7 @@ describe("settling a charge", () => {
       chargeId: "chat:retry",
       generationId: "gen_1",
       extraUsd: 0,
+      earlierTokens: NO_TOKENS,
       attempt: 0,
     });
     expect(await usageFor(t, "chat:retry")).toBeNull();

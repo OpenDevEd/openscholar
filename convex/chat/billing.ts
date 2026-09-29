@@ -167,6 +167,8 @@ export const settleFromOpenRouter = internalAction({
     generationId: v.string(),
     /** Cost already known outside this generation: earlier steps and web search. */
     extraUsd: v.number(),
+    /** Token details of the steps that finished before this one. */
+    earlierTokens: v.object({ cacheReadTokens: v.number(), cacheWriteTokens: v.number(), reasoningTokens: v.number() }),
     attempt: v.number(),
   },
   returns: v.null(),
@@ -198,6 +200,10 @@ export const settleFromOpenRouter = internalAction({
         jobId: args.jobId,
         ...(result.kind === "ok" ? { model: result.generation.model } : {}),
         costUsd: usd,
+        // OpenRouter's generation record has no cache-write count.
+        cacheReadTokens: args.earlierTokens.cacheReadTokens + (result.kind === "ok" ? result.generation.cachedPromptTokens : 0),
+        cacheWriteTokens: args.earlierTokens.cacheWriteTokens,
+        reasoningTokens: args.earlierTokens.reasoningTokens + (result.kind === "ok" ? result.generation.reasoningTokens : 0),
       },
     });
     return null;

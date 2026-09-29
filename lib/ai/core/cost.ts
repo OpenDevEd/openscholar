@@ -21,8 +21,9 @@ export function calculateCostInDollars(
   pricing: { input: number; output: number },
 ): number {
   if (usage.costUsd !== undefined) return usage.costUsd
-  const promptTokens = usage.promptTokens ?? usage.inputTokens ?? 0
-  const completionTokens = usage.completionTokens ?? usage.outputTokens ?? 0
+  // `||`, not `??`: an aggregate carries zero aliases next to the real counts.
+  const promptTokens = usage.promptTokens || usage.inputTokens || 0
+  const completionTokens = usage.completionTokens || usage.outputTokens || 0
 
   if (!promptTokens && !completionTokens) return 0
 

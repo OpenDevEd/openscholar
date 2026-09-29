@@ -170,4 +170,10 @@ describe("aggregateUsage", () => {
     // One call without a reported cost sends the whole batch back to token prices.
     expect(aggregateUsage([reported, { inputTokens: 1000 }])).not.toHaveProperty("costUsd");
   });
+
+  it("prices a batch by tokens when a call reported no cost, even though its aliases sum to zero", () => {
+    // AI SDK usage has only inputTokens/outputTokens; the aggregate also carries promptTokens: 0.
+    const batch = aggregateUsage([{ inputTokens: 1_000_000, outputTokens: 0 }, { inputTokens: 0, outputTokens: 1_000_000 }]);
+    expect(calculateCostInDollars(batch, { input: 3, output: 15 })).toBe(18);
+  });
 });

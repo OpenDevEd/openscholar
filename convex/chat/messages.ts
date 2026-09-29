@@ -70,7 +70,7 @@ import { resolveLatestAssistantTurn } from "../../lib/chat/latest-assistant-turn
 import { pickProviderCostUsd } from "../../lib/chat/pick-provider-cost";
 import { errorToLogString } from "../lib/errors";
 import { assertChatConcurrencyAvailable } from "./concurrency";
-import { reserveCredits, releaseCredits, settleCredits, tokenDetails } from "../billing/charge";
+import { reserveCredits, releaseCredits, settleCredits, tokenCounts, tokenDetails } from "../billing/charge";
 import { callOptions } from "../../lib/ai/core/call-options";
 import { aggregateUsage, usageOf } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";
@@ -627,6 +627,7 @@ export const generateResponse = internalAction({
           chargeId,
           generationId: unfinishedGeneration,
           extraUsd: completedUsd + webSearchUsd,
+          earlierTokens: tokenCounts(aggregateUsage(stepUsages)),
           attempt: 0,
         });
         settledOrScheduled = true;
