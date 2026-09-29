@@ -27,10 +27,14 @@ import { getProviderIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import type { AIProvider } from "@/lib/types/ai.types";
 import type { ChatModelRow } from "./chat-model-types";
+import type { Effort } from "@/lib/ai/core/call-options";
 
 interface ComposerModelPickerProps {
   value: Id<"models"> | null;
-  onChange: (id: Id<"models">) => void;
+  /** The chat's effort; none means its model's default. */
+  effort?: Effort;
+  /** A preset shortcut passes the effort it runs chat at. */
+  onChange: (id: Id<"models">, effort?: Effort) => void;
   disabled?: boolean;
   models: ChatModelRow[];
 }
@@ -78,6 +82,7 @@ function formatContextLength(n: number | undefined | null): string | null {
  */
 export function ComposerModelPicker({
   value,
+  effort: chatEffort,
   onChange,
   disabled,
   models,
@@ -92,9 +97,9 @@ export function ComposerModelPicker({
   const presetRows = useMemo(
     () =>
       (presets ?? []).flatMap(({ preset, tasks }) => {
-        const chat = tasks.find((r) => r.task === "chat")?.model;
-        const m = chat ? sortedModels.find((x) => x._id === chat._id) : undefined;
-        return m ? [{ label: tp(`presets.${preset}`), m }] : [];
+        const chat = tasks.find((r) => r.task === "chat");
+        const m = chat?.model ? sortedModels.find((x) => x._id === chat.model!._id) : undefined;
+        return m ? [{ label: tp(`presets.${preset}`), m, effort: chat?.effort ?? undefined }] : [];
       }),
     [presets, sortedModels, tp],
   );
@@ -143,7 +148,7 @@ export function ComposerModelPicker({
           data-model-id={value ?? ""}
           data-provider={selected?.provider ?? ""}
           className={cn(
-            "h-7 gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground",
+            "h-7 min-w-0 shrink gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground",
             "hover:bg-accent hover:text-foreground",
             "data-[state=open]:bg-accent data-[state=open]:text-foreground",
           )}
@@ -151,7 +156,7 @@ export function ComposerModelPicker({
           {selected ? (
             <TriggerIcon className="size-3.5 text-foreground/80" />
           ) : null}
-          <span className="max-w-[200px] truncate">{triggerLabel}</span>
+          <span className="min-w-0 max-w-[200px] truncate">{triggerLabel}</span>
           <ChevronDownIcon className="size-3 opacity-60" />
         </Button>
       </PopoverTrigger>
@@ -168,15 +173,16 @@ export function ComposerModelPicker({
             {presetRows.length > 0 ? (
               <>
                 <CommandGroup heading={t("chatModelPresets")}>
-                  {presetRows.map(({ label, m }) => {
+                  {presetRows.map(({ label, m, effort }) => {
                     const Icon = getProviderIcon(m.provider as AIProvider);
-                    const isSelected = m._id === value;
+                    // A preset matches only on both its model and its effort.
+                    const isSelected = m._id === value && (effort ?? m.defaultEffort) === (chatEffort ?? m.defaultEffort);
                     return (
                       <CommandItem
-                        key={`preset-${m._id}`}
+                        key={`preset-${label}`}
                         value={`Preset ${label} ${stripProviderPrefix(m.name)}`}
                         onSelect={() => {
-                          onChange(m._id);
+                          onChange(m._id, effort);
                           setOpen(false);
                         }}
                         data-preset-option={label}

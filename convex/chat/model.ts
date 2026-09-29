@@ -1,11 +1,9 @@
-/**
- * Chat model surface. For V1 we only expose a read for the picker —
- * swapModel ships in P9.T13.
- */
+/** The models a chat can run on, with the effort levels each takes, for the composer. */
 
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { activeModels, MAX_CATALOG_MODELS, pickable } from "../models/catalog";
+import { effortValidator } from "../aiModelConfig/validators";
 
 export const listChatModels = query({
   args: {},
@@ -18,6 +16,8 @@ export const listChatModels = query({
       sortOrder: v.number(),
       contextLength: v.optional(v.number()),
       supportedParameters: v.optional(v.array(v.string())),
+      reasoningEfforts: v.optional(v.array(effortValidator)),
+      defaultEffort: v.optional(effortValidator),
     }),
   ),
   handler: async (ctx) => {
@@ -32,6 +32,8 @@ export const listChatModels = query({
       sortOrder: m.sortOrder,
       contextLength: m.contextLength,
       supportedParameters: m.supportedParameters,
+      reasoningEfforts: m.reasoningEfforts,
+      defaultEffort: m.defaultEffort,
     }));
   },
 });

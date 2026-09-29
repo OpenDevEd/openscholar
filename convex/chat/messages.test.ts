@@ -2276,3 +2276,53 @@ describe("retired chat model selection", () => {
     expect((await t.query(internal.chat.threads.getModelForThread, {threadId}))?.modelSupportedParameters).toBeNull();
   });
 });
+
+describe("chat.messages — reasoning effort", () => {
+  it("sets the chat's effort only to a level its model takes, and a model swap takes the shortcut's effort", async () => {
+    const t = createTestConvex();
+    const {userId, jobId, threadId} = await seedUserAndChatJob(t);
+    const {modelId} = await seedModelAndCredits(t, userId);
+    await t.run(ctx => ctx.db.patch(modelId, {reasoningEfforts: ["low", "medium", "high"], defaultEffort: "medium"}));
+    const caller = asCaller(t, "c_msg");
+
+    await caller.mutation(api.chat.messages.swapModel, {threadId, modelId, effort: "high"});
+    expect(await t.run(ctx => ctx.db.get(jobId))).toMatchObject({chatModelId: modelId, chatEffort: "high"});
+
+    await caller.mutation(api.chat.messages.setChatEffort, {threadId, effort: "low"});
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.chatEffort).toBe("low");
+    await expect(caller.mutation(api.chat.messages.setChatEffort, {threadId, effort: "max"})).rejects.toThrow(/doesn't take max/);
+
+    // A plain swap runs the model at its default.
+    await caller.mutation(api.chat.messages.swapModel, {threadId, modelId});
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.chatEffort).toBeUndefined();
+  });
+});
+
+describe("chat.messages — effort per turn", () => {
+  const scheduledEffort = (t: ReturnType<typeof createTestConvex>) =>
+    t.run(async (ctx) => {
+      const jobs = await ctx.db.system.query("_scheduled_functions").collect();
+      const generate = jobs.filter((job) => job.name.includes("generateResponse")).at(-1);
+      // No effort means the model's default; convex-test turns undefined into null both ways.
+      return (generate?.args[0] as { chatEffort?: string | null } | undefined)?.chatEffort ?? "default";
+    });
+
+  it("takes the effort with the model when a turn starts, and drops a level the model no longer takes", async () => {
+    const t = createTestConvex();
+    const {userId, jobId, threadId} = await seedUserAndChatJob(t);
+    await seedChatPapers(t, jobId, [true]);
+    const {modelId} = await seedModelAndCredits(t, userId);
+    await t.run(ctx => ctx.db.patch(modelId, {reasoningEfforts: ["low", "high"], defaultEffort: "low"}));
+    await t.run(ctx => ctx.db.patch(jobId, {chatModelId: modelId, chatEffort: "high"}));
+    const caller = asCaller(t, "c_msg");
+
+    await caller.mutation(api.chat.messages.sendMessage, {threadId, prompt: "hi"});
+    expect(await scheduledEffort(t)).toBe("high");
+
+    // The catalog dropped "high": the next turn runs at the model's default.
+    await t.run(ctx => ctx.db.patch(modelId, {reasoningEfforts: ["low"]}));
+    await t.run(ctx => ctx.db.patch(jobId, {isGenerating: undefined}));
+    await caller.mutation(api.chat.messages.sendMessage, {threadId, prompt: "again"});
+    expect(await scheduledEffort(t)).toBe("default");
+  });
+});

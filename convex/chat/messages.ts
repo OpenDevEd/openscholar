@@ -37,9 +37,10 @@ import {
 } from "@convex-dev/agent";
 import type { ToolSet } from "ai";
 import { components, internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
-import { requireAvailableModel } from "../models/catalog";
+import { requireAvailableModel, requireEffort } from "../models/catalog";
+import { effortValidator } from "../aiModelConfig/validators";
 import { paperChat } from "./agent";
 import { authorizeThreadAccess } from "./auth";
 import { resolveOpenRouterModel } from "./provider";
@@ -280,11 +281,19 @@ export const sendMessage = mutation({
       promptMessageId: messageId,
       generationAttemptId,
       chatModelId: job.chatModelId ?? null,
+      chatEffort: await liveChatEffort(ctx, job),
     });
 
     return null;
   },
 });
+
+/** The chat's effort if its model still takes it; a level the catalog dropped runs at the default. */
+async function liveChatEffort(ctx: MutationCtx, job: Doc<"extractionJobs">) {
+  if (!job.chatEffort || !job.chatModelId) return undefined;
+  const model = await ctx.db.get("models", job.chatModelId);
+  return model?.reasoningEfforts?.includes(job.chatEffort) ? job.chatEffort : undefined;
+}
 
 export const generateResponse = internalAction({
   args: {
@@ -292,11 +301,13 @@ export const generateResponse = internalAction({
     promptMessageId: v.string(),
     generationAttemptId: v.optional(v.string()),
     chatModelId: v.optional(v.union(v.id("models"), v.null())),
+    /** Taken with the model when the turn starts, so a later change only affects the next turn. */
+    chatEffort: v.optional(effortValidator),
   },
   returns: v.null(),
   handler: async (
     ctx,
-    { threadId, promptMessageId, generationAttemptId, chatModelId },
+    { threadId, promptMessageId, generationAttemptId, chatModelId, chatEffort },
   ) => {
     const meta = await ctx.runQuery(internal.chat.threads.getModelForThread, {
       threadId,
@@ -446,7 +457,7 @@ export const generateResponse = internalAction({
             maxRetries: 0,
             // Claude caches the corpus and earlier turns; the thread id keeps
             // every turn on the same upstream host so that cache stays warm.
-            providerOptions: callOptions(model, { cache: true, sessionId: threadId, effort: meta.chatEffort }),
+            providerOptions: callOptions(model, { cache: true, sessionId: threadId, effort: chatEffort }),
             onStepFinish: async ({ usage, providerMetadata }) => {
               stepUsages.push(usageOf({ usage, providerMetadata }));
               const inputTokens = usage?.inputTokens ?? 0;
@@ -1321,6 +1332,7 @@ export const regenerateLastAssistant = mutation({
       promptMessageId: latestTurn.promptMessageId,
       generationAttemptId,
       chatModelId: job.chatModelId ?? null,
+      chatEffort: await liveChatEffort(ctx, job),
     });
     return { started: true, generationAttemptId };
   },
@@ -1367,21 +1379,31 @@ export const clearThread = mutation({
   },
 });
 
+/** Switch the chat's model. A preset shortcut passes its effort; otherwise the model runs at its default. */
 export const swapModel = mutation({
   args: {
     threadId: v.string(),
     modelId: v.id("models"),
+    effort: v.optional(effortValidator),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, modelId }) => {
+  handler: async (ctx, { threadId, modelId, effort }) => {
     const { job } = await authorizeThreadAccess(ctx, threadId);
-    await requireAvailableModel(ctx, modelId);
-    await ctx.db.patch(job._id, {
-      chatModelId: modelId,
-      // The old effort may not suit the new model; it runs at its default.
-      chatEffort: undefined,
-      updatedAt: Date.now(),
-    });
+    requireEffort(await requireAvailableModel(ctx, modelId), effort);
+    await ctx.db.patch(job._id, { chatModelId: modelId, chatEffort: effort, updatedAt: Date.now() });
+    return null;
+  },
+});
+
+/** Set the chat's reasoning effort; it applies from the next message. */
+export const setChatEffort = mutation({
+  args: { threadId: v.string(), effort: effortValidator },
+  returns: v.null(),
+  handler: async (ctx, { threadId, effort }) => {
+    const { job } = await authorizeThreadAccess(ctx, threadId);
+    if (!job.chatModelId) throw createError("VALIDATION_ERROR", "Pick a model for this chat first.");
+    requireEffort(await requireAvailableModel(ctx, job.chatModelId), effort);
+    await ctx.db.patch(job._id, { chatEffort: effort, updatedAt: Date.now() });
     return null;
   },
 });
