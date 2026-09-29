@@ -38,7 +38,8 @@ import { paramsToSearchResult } from "@/lib/search-params";
 import { readOpenAlexSourceSearch, sourceSearchHistoryId } from "@/lib/evidence-libraries/openalex-source-query";
 import { Field } from "../section-card";
 import { OpenAlexQuerySummary } from "./openalex-query-summary";
-import { SourceRow } from "./source-row";
+import { SourceCount, SourceRow, SourceSwitch } from "./source-row";
+import { useOpenAlexQueryCounts } from "@/lib/hooks/use-history-count";
 import type { SourceLive } from "./source-activity";
 
 export const OpenAlexSearchDialog = dynamic(
@@ -78,6 +79,8 @@ export function useOpenAlexSources({
   const sources = value.filter(
     (source): source is OpenAlexSourceEntry => source.provider === "openalex",
   );
+  // How many works each approved query finds now: what the library imports.
+  const counts = useOpenAlexQueryCounts(sources.map((source) => source.settings.approvedQuery.query));
   const customCredential = (credentials.data ?? []).find(
     (credential) => credential.credentialKey === OPENALEX_API_CREDENTIAL_KEY,
   );
@@ -175,6 +178,7 @@ export function useOpenAlexSources({
 
   return {
     sources,
+    countFor: (key: string) => counts[sources.findIndex((source) => source.key === key)] ?? undefined,
     editing,
     searchId: editorSession?.id ?? "",
     setEditing,
@@ -227,11 +231,20 @@ export function OpenAlexSourceRow({
       }
       metadata={[
         {
-          key: "pdfs",
-          label: t("pdfProcessing"),
-          value: source.settings.downloadPdfs ? t("on") : t("off"),
+          key: "records",
+          label: t("recordsLabel"),
+          value: <SourceCount count={controller.countFor(source.key)} />,
         },
       ]}
+      controls={
+        <SourceSwitch
+          label={t("pdfs")}
+          checked={source.settings.downloadPdfs}
+          onCheckedChange={(downloadPdfs) =>
+            controller.patch(source.key, { settings: { ...source.settings, downloadPdfs } })
+          }
+        />
+      }
       onEdit={() => controller.setEditing(source)}
       onToggle={() =>
         controller.patch(source.key, { enabled: !source.enabled })

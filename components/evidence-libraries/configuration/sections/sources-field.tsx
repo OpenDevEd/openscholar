@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
@@ -67,7 +66,7 @@ import {
   OpenAlexSourceRow,
   useOpenAlexSources,
 } from "./openalex-sources";
-import { SourceRow } from "./source-row";
+import { SourceRow, SourceSwitch } from "./source-row";
 import {
   CollectionSourceIcon,
   CollectionSourceRow,
@@ -681,25 +680,7 @@ function GroupRow({
       onRemove={onRemove}
       description={!canWrite && group ? t("writebackUnavailable") : undefined}
       controls={
-        <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Switch
-                  checked={entry.writebackEnabled}
-                  disabled={!canWrite}
-                  aria-label={t("writeback")}
-                  onCheckedChange={(checked) =>
-                    onPatch({ writebackEnabled: checked })
-                  }
-                />
-                {t("writeback")}
-              </label>
-            </TooltipTrigger>
-            <TooltipContent>
-              {canWrite ? t("writebackHint") : t("writebackUnavailable")}
-            </TooltipContent>
-          </Tooltip>
+        <>
           {!canWrite ? (
             <Button
               type="button"
@@ -712,7 +693,18 @@ function GroupRow({
               {t("reconnect")}
             </Button>
           ) : null}
-        </div>
+          <SourceSwitch
+            label={t("writeback")}
+            checked={entry.writebackEnabled}
+            disabledReason={canWrite ? undefined : t("writebackUnavailable")}
+            onCheckedChange={(writebackEnabled) => onPatch({ writebackEnabled })}
+          />
+          <SourceSwitch
+            label={t("pdfs")}
+            checked={entry.settings.downloadPdfs}
+            onCheckedChange={(downloadPdfs) => onPatch({ settings: { downloadPdfs } })}
+          />
+        </>
       }
     />
   );

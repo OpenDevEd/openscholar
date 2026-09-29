@@ -6,6 +6,8 @@ export type ZoteroSourceEntry = {
   groupId: string;
   enabled: boolean;
   writebackEnabled: boolean;
+  /** Whether the group adds its tagged PDFs. */
+  settings: { downloadPdfs: boolean };
 };
 
 export function zoteroSourceKey(groupId: string): string {
@@ -19,5 +21,6 @@ export function zoteroSourceEntry(groupId: string): ZoteroSourceEntry {
     groupId,
     enabled: true,
     writebackEnabled: false,
+    settings: { downloadPdfs: true },
   };
 }

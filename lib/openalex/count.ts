@@ -20,6 +20,7 @@ import { createSearchParameters } from "@/lib/utils";
 import type { SearchFilters } from "@/lib/types";
 import { OQL_FIELD, worksOql } from "./oql";
 import { fetchOqlWorks } from "./oql-works";
+import type { OpenAlexWorksQuery } from "./search-params";
 
 export async function fetchOpenAlexCount(
   query: string,
@@ -41,4 +42,53 @@ export async function fetchOpenAlexCount(
       error instanceof Error ? error.message : "Unknown error";
     throw new Error(`OpenAlex API error: ${message}`);
   }
+}
+
+/**
+ * How many works a stored OpenAlex request finds, asked exactly as stored,
+ * as a library source imports it.
+ */
+async function fetchOpenAlexQueryCount(
+  query: OpenAlexWorksQuery,
+): Promise<{ count: number }> {
+  if (query.oql) {
+    const result = await fetchOqlWorks(query.oql, { perPage: 1 });
+    if (!result.ok) throw new Error(`OpenAlex API error: ${result.message}`);
+    return { count: result.data.meta.count };
+  }
+  const url = new URL("https://api.openalex.org/works");
+  if (query.filter) url.searchParams.set("filter", query.filter);
+  if (query.search) url.searchParams.set("search", query.search);
+  url.searchParams.set("per-page", "1");
+  url.searchParams.set("select", "id");
+  if (process.env.OPENALEX_API_KEY) url.searchParams.set("api_key", process.env.OPENALEX_API_KEY);
+  if (process.env.OPENALEX_CONTACT_EMAIL) url.searchParams.set("mailto", process.env.OPENALEX_CONTACT_EMAIL);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`OpenAlex API error: ${response.status}`);
+  const body = (await response.json()) as { meta: { count: number } };
+  return { count: body.meta.count };
+}
+
+/** OpenAlex requests one list of counts makes at once. */
+const COUNT_BATCH = 5;
+
+/** Counts for several stored requests; a count that fails is null so the others still show. */
+export async function fetchOpenAlexQueryCounts(
+  queries: readonly OpenAlexWorksQuery[],
+): Promise<(number | null)[]> {
+  const counts: (number | null)[] = [];
+  for (let start = 0; start < queries.length; start += COUNT_BATCH) {
+    const batch = await Promise.all(
+      queries.slice(start, start + COUNT_BATCH).map(async (query) => {
+        try {
+          return (await fetchOpenAlexQueryCount(query)).count;
+        } catch (error) {
+          console.warn("OpenAlex count failed:", error instanceof Error ? error.message : error);
+          return null;
+        }
+      }),
+    );
+    counts.push(...batch);
+  }
+  return counts;
 }

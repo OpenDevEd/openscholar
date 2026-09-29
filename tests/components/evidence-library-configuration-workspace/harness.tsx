@@ -145,6 +145,10 @@ const homeQuestionsMock = vi.hoisted(() =>
 );
 const reviewedPublicationsMock = vi.hoisted(() => vi.fn(async () => ({ items: [], nextCursor: null })));
 
+// OpenAlex is not asked during tests.
+vi.mock("@/lib/hooks/use-history-count", () => ({
+  useOpenAlexQueryCounts: () => [],
+}));
 vi.mock("@/components/providers/convex-provider", () => ({
   useAuthReadiness: () => ({ canRunProtectedQueries: true, phase: "ready" }),
 }));

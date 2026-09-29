@@ -4,6 +4,7 @@ import type { HTMLAttributes, ReactNode } from "react";
 import { Pause, Pencil, Play, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
@@ -120,9 +121,50 @@ export function SourceRow({
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <MetaList items={metadata} />
-        {controls}
+        {controls ? <div className="flex flex-wrap items-center gap-4">{controls}</div> : null}
       </div>
       {activity ? <div className="-mx-4 -mb-4">{activity}</div> : null}
     </li>
+  );
+}
+
+/** A setting on the right of a source row. It explains itself only when it cannot be used. */
+export function SourceSwitch({
+  label,
+  checked,
+  onCheckedChange,
+  disabledReason,
+}: {
+  label: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  disabledReason?: string;
+}) {
+  const control = (
+    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+      <Switch
+        checked={checked}
+        disabled={disabledReason !== undefined}
+        aria-label={label}
+        onCheckedChange={onCheckedChange}
+      />
+      {label}
+    </label>
+  );
+  if (disabledReason === undefined) return control;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{control}</TooltipTrigger>
+      <TooltipContent>{disabledReason}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** A count read after the row renders, in a box wide enough that nothing moves when it arrives. */
+export function SourceCount({ count }: { count: number | null | undefined }) {
+  return (
+    <span className="inline-block min-w-[7ch] tabular-nums">
+      {count == null ? null : count.toLocaleString()}
+    </span>
   );
 }

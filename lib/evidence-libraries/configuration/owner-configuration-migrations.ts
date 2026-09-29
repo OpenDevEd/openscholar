@@ -9,7 +9,7 @@ import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 6 as const;
+export const CURRENT_OWNER_CONFIGURATION_VERSION = 7 as const;
 export const MAX_CHANGED_POINTERS = 100;
 
 export type OwnerConfigurationSnapshotRow = {
@@ -524,6 +524,23 @@ function migrateVersionFiveToSix(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+/** Zotero groups gain a PDF setting; saved groups keep adding their tagged PDFs. */
+function migrateVersionSixToSeven(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 7;
+  for (const row of next.sections) {
+    if (row.sectionKey !== "sources" || !Array.isArray(row.payload)) continue;
+    row.payload = row.payload.map((entry: unknown) =>
+      isRecord(entry) && entry.provider === "zotero" && !isRecord(entry.settings)
+        ? { ...entry, settings: { downloadPdfs: true } }
+        : entry,
+    );
+  }
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 const disabledAiDefaults: OwnerConfigurationDefaultRow[] = [
   {
     sectionKey: "ai",
@@ -569,6 +586,15 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 5,
     to: 6,
     migrate: migrateVersionFiveToSix,
+    defaultRows: [
+      ...disabledAiDefaults,
+      { sectionKey: "topics", payload: () => ({ enabled: false }) },
+    ],
+  },
+  {
+    from: 6,
+    to: 7,
+    migrate: migrateVersionSixToSeven,
     defaultRows: [
       ...disabledAiDefaults,
       { sectionKey: "topics", payload: () => ({ enabled: false }) },

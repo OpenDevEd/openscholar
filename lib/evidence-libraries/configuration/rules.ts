@@ -965,12 +965,14 @@ function readSources(payload: unknown): EvidenceSourceEntry[] {
       }
       const groupId = text(row.groupId);
       if (!groupId) return [];
+      const settings = record(row.settings);
       const parsed: ZoteroSourceEntry = {
         key: text(row.key) || `zotero-${groupId}`,
         provider: "zotero",
         groupId,
         enabled: flag(row.enabled, true),
         writebackEnabled: flag(row.writebackEnabled, false),
+        settings: { downloadPdfs: flag(settings.downloadPdfs, true) },
       };
       return [parsed];
     });
