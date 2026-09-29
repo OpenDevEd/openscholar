@@ -240,7 +240,6 @@ import type * as library_mutations from "../library/mutations.js";
 import type * as library_queries from "../library/queries.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_countBillingUsage from "../migrations/countBillingUsage.js";
-import type * as migrations_presetMaps from "../migrations/presetMaps.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
 import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
@@ -538,7 +537,6 @@ declare const fullApi: ApiFromModules<{
   "library/queries": typeof library_queries;
   "maintenance/mutations": typeof maintenance_mutations;
   "migrations/countBillingUsage": typeof migrations_countBillingUsage;
-  "migrations/presetMaps": typeof migrations_presetMaps;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
   "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;

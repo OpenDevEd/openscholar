@@ -2,7 +2,7 @@ import { internalQuery } from "../_generated/server";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import { AI_TASKS, DEFAULT_PRESET, presetConfigKey, type AiTask, type PresetKey } from "../../lib/ai/tasks";
+import { DEFAULT_PRESET, presetConfigKey, type AiTask, type PresetKey } from "../../lib/ai/tasks";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { aiTaskValidator, taskPickValidator } from "../aiModelConfig/validators";
 
@@ -45,38 +45,11 @@ export async function userAiConfig(ctx: QueryCtx | MutationCtx, userId: Id<"user
 }
 
 /**
- * The new fields for a row saved before presets: Recommended becomes the
- * default preset, One model becomes Custom with that model on every task.
- * Also clears the old fields. Used by the migration and before any write.
- */
-export function fromLegacy(cfg: Doc<"userAiConfig">) {
-  const legacy =
-    cfg.choice !== undefined ? {}
-    : cfg.serverPreset === "custom" && cfg.serverModelId
-      ? { choice: "custom" as const, custom: Object.fromEntries(AI_TASKS.map((task) => [task, { modelId: cfg.serverModelId! }])) }
-      : { choice: cfg.serverPreset === "fast" || cfg.serverPreset === "intelligent" ? cfg.serverPreset : DEFAULT_PRESET };
-  return { ...legacy, serverPreset: undefined, serverModelId: undefined } as Partial<Doc<"userAiConfig">>;
-}
-
-/** A row as it reads after migration, so a row saved before presets resolves the same before it's migrated. */
-export function withLegacy(cfg: Doc<"userAiConfig"> | null) {
-  return cfg && cfg.choice === undefined ? { ...cfg, ...fromLegacy(cfg) } : cfg;
-}
-
-/** The user's row, converted first if it was saved before presets. */
-export async function currentUserAiConfig(ctx: MutationCtx, userId: Id<"users">) {
-  const cfg = await userAiConfig(ctx, userId);
-  if (!cfg || (cfg.serverPreset === undefined && cfg.serverModelId === undefined)) return cfg;
-  await ctx.db.patch("userAiConfig", cfg._id, fromLegacy(cfg));
-  return await ctx.db.get("userAiConfig", cfg._id);
-}
-
-/**
  * What a user's `task` runs on: their Custom pick, else their preset's, else
  * the default preset's. Null only when nothing is configured at all.
  */
 export async function resolveTaskPick(ctx: QueryCtx | MutationCtx, userId: Id<"users">, task: AiTask): Promise<TaskPick | null> {
-  const cfg = withLegacy(await userAiConfig(ctx, userId));
+  const cfg = await userAiConfig(ctx, userId);
   const choice = cfg?.choice ?? DEFAULT_PRESET;
   const picked = choice === "custom" ? await livePick(ctx, cfg?.custom?.[task]) : await presetPick(ctx, choice, task);
   return picked ?? (choice === DEFAULT_PRESET ? null : await presetPick(ctx, DEFAULT_PRESET, task));
