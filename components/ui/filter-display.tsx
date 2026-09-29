@@ -7,7 +7,7 @@ import { CountryFlag } from "@/components/ui/country-flag";
 import { getAllFilterItems, type FilterItem, type FilterParams, type FilterT } from "@/lib/filters";
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
 import { useFunderNames } from "@/lib/openalex/use-funder-names";
-import { useTopicNames } from "@/lib/topics/use-topic-names";
+import { topicName } from "@/lib/topics/search";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,7 +30,10 @@ export function FilterChips({
   const tc = useTranslations("common");
   const format = useFormatter();
   const locale = useLocale();
-  const researchAreas = useTopicNames(filters.researchAreas ?? []);
+  // Names come from the bundled catalog, so a chip never shows an ID first.
+  const researchAreas = Object.fromEntries(
+    (filters.researchAreas ?? []).map((id) => [id, topicName(id) ?? id]),
+  );
   const funders = useFunderNames(filters.funders ?? []);
   const languageNames = new Intl.DisplayNames([locale], { type: "language" });
   const items = getAllFilterItems(

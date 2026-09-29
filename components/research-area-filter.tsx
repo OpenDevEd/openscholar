@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { topicLevelOf, type TopicLevel } from "@/lib/openalex/vocabulary";
+import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 
 const GROUP_KEYS: Record<TopicLevel, string> = {
   domain: "researchAreaDomains",
@@ -13,7 +13,7 @@ const GROUP_KEYS: Record<TopicLevel, string> = {
   topic: "researchAreaTopics",
 };
 
-/** Research areas of every level from our topic catalog, which loads on its own after the page. */
+/** Research areas of every level from our topic catalog. */
 export function ResearchAreaFilter({
   selected,
   onChange,
@@ -23,13 +23,8 @@ export function ResearchAreaFilter({
 }) {
   const tf = useTranslations("searchFilters");
   const [search, setSearch] = useState("");
-  const catalog = useSWR("topic-catalog", () => import("@/lib/topics/search"), {
-    revalidateOnFocus: false,
-  });
-  const options = catalog.data?.searchTopicCatalog(search) ?? [];
-  const names = Object.fromEntries(
-    selected.map((id) => [id, catalog.data?.topicName(id) ?? id]),
-  );
+  const options = searchTopicCatalog(search);
+  const names = Object.fromEntries(selected.map((id) => [id, topicName(id) ?? id]));
   const mixedLevels = new Set(selected.map(topicLevelOf)).size > 1;
 
   return (
