@@ -1505,6 +1505,10 @@
 										"type": "integer",
 										"minimum": 1000,
 										"maximum": 120000
+									},
+									"downloadPdfs": {
+										"default": true,
+										"type": "boolean"
 									}
 								},
 								"additionalProperties": false
