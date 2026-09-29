@@ -17,8 +17,9 @@ export function rememberFunderNames(names: Record<string, string>) {
 
 /** Names for funder ids such as F4320311904: saved ones at once, others looked up once and then saved. */
 export function useFunderNames(ids: readonly string[]): Record<string, string> {
-  // Saved names only after the first browser render, so it matches the server's.
-  const ready = usePersistedStoreReady(useFunderNameStore);
+  // Saved names only after the first browser render, so it matches the server's. Without browser storage
+  // (blocked, or the server) the store only holds this visit's lookups, which start empty on both sides.
+  const ready = usePersistedStoreReady(useFunderNameStore) || !useFunderNameStore.persist;
   const saved = useFunderNameStore((state) => state.names);
   const missing = ready ? [...new Set(ids)].filter((id) => !saved[id]).sort() : [];
   useSWR(
