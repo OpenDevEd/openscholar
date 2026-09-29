@@ -863,11 +863,8 @@
       "bodyOff": "Click to ground answers in real-time pages from the live web.",
       "bodyUnsupported": "The selected model can't run tool-based web searches. Switch models to enable.",
       "metaCost": "~{credits, number} credits per search",
-      "metaCostNote": "One reply may include several searches.",
-      "metaCostLoading": "Calculating cost…",
+      "metaCostNote": "Up to {searches, number} searches per reply.",
       "metaProvider": "via {provider}",
-      "providerTavilyBasic": "Tavily Basic",
-      "providerOpenRouter": "OpenRouter server tool",
       "statusOn": "On",
       "statusOff": "Off"
     }
@@ -2419,6 +2416,7 @@
         "startsSoon": "Starts within a minute",
         "failure": {
           "access_denied": "{provider} refused the saved key. Check it in Connections, then retry.",
+          "owner_left": "The person who added this collection left the organization, so the library withdrew its records.",
           "not_found": "{provider} no longer finds this source, or the saved key cannot see it.",
           "missing_key": "No API key is saved for this source. Add one in Connections.",
           "invalid_query": "{provider} rejected the search. Edit the search, then activate again.",
@@ -2462,7 +2460,7 @@
       "resume": "Resume",
       "sourceAction": "{action} {name}",
       "sourceActionHint": "{action} source",
-      "noSources": "No sources yet. Add a Zotero group or an OpenAlex search.",
+      "noSources": "No sources yet. Add a Zotero group, an OpenAlex search or an OpenScholar collection.",
       "listLabel": "Connected sources",
       "connections": "Connections",
       "connectionsTitle": "Source connections",
@@ -2565,6 +2563,23 @@
         "capped": "Zotero stops listing after about 1,000 groups.",
         "loading": "Loading your groups…",
         "failed": "Could not load your groups."
+      },
+      "openScholarCollection": "OpenScholar collection",
+      "openScholarCollectionHint": "Follow one of your collections",
+      "pdfs": "PDFs",
+      "collectionDeleted": "This collection was deleted in OpenScholar.",
+      "removeCollectionTitle": "Remove this collection?",
+      "collectionConnectFailed": "Could not add this collection.",
+      "collectionPicker": {
+        "title": "Add collections",
+        "description": "Your OpenScholar collections. The library follows the ones you tick and updates when they change.",
+        "search": "Search collections…",
+        "colCollection": "Collection",
+        "noCollections": "You have no collections yet.",
+        "noMatch": "No collection matches.",
+        "addPicked": "{count, plural, =0 {Add} one {Add # collection} other {Add # collections}}",
+        "loading": "Loading your collections…",
+        "failed": "Could not load your collections."
       }
     },
     "search": {

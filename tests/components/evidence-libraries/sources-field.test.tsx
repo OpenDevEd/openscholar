@@ -12,7 +12,7 @@ import type {
   EvidenceSourceEntry,
   OpenAlexSourceEntry,
 } from "@/lib/evidence-libraries/configuration/sources";
-import { OPENALEX_API_CREDENTIAL_KEY } from "@/lib/evidence-libraries/configuration/sources";
+import { collectionSourceEntry, OPENALEX_API_CREDENTIAL_KEY } from "@/lib/evidence-libraries/configuration/sources";
 
 const mocks = vi.hoisted(() => ({
   listMyGroups: vi.fn(),
@@ -24,12 +24,15 @@ const mocks = vi.hoisted(() => ({
   removeOpenAlexKey: vi.fn(),
   requestSourceRun: vi.fn(),
   query: vi.fn(),
+  myCollections: vi.fn(),
+  connectCollection: vi.fn(),
 }));
 /** What the source status query answers: a report, null, or an Error. */
 const statusReport = vi.hoisted(() => ({ current: null as unknown }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("convex/react", () => ({
+  useConvex: () => ({ query: mocks.myCollections }),
   useQueries: (queries: Record<string, unknown>) =>
     "report" in queries ? { report: statusReport.current } : {},
   useAction: (ref: string) =>
@@ -45,6 +48,7 @@ vi.mock("convex/react", () => ({
       removeZoteroGroup: mocks.removeGroup,
       disconnect: mocks.disconnect,
       removeOpenAlexKey: mocks.removeOpenAlexKey,
+      connectCollectionSource: mocks.connectCollection,
     })[ref],
 }));
 vi.mock("@/components/providers/convex-provider", () => ({
@@ -60,7 +64,12 @@ vi.mock("@/convex/_generated/api", () => ({
       credentialActions: { writeCredential: "writeCredential" },
       openAlexSourceKey: { removeOpenAlexKey: "removeOpenAlexKey" },
       sourceStatus: { listForLibrary: "listForLibrary" },
+      collectionSources: {
+        listLibraryCollectionSources: "listLibraryCollectionSources",
+        connectCollectionSource: "connectCollectionSource",
+      },
     },
+    library: { collections: { getCollectionsWithCounts: "getCollectionsWithCounts" } },
     zotero: {
       actions: { startOAuth: "startOAuth" },
       mutations: { disconnect: "disconnect" },
@@ -358,6 +367,32 @@ describe("<SourcesField>", () => {
     await waitFor(() =>
       expect(onChange).toHaveBeenLastCalledWith([zoteroSourceEntry("99"), zoteroSourceEntry("42"), zoteroSourceEntry("77")]),
     );
+  });
+
+  it("adds the owner's collections only once each is connected, with the library's OpenAlex access", async () => {
+    queries({ connected: false });
+    mocks.myCollections.mockResolvedValue([
+      { _id: "c1", name: "Early grade reading", itemCount: 3 },
+      { _id: "c2", name: "Refused", itemCount: 2 },
+    ]);
+    mocks.connectCollection.mockImplementation(async ({ collectionId }: { collectionId: string }) => {
+      if (collectionId === "c2") throw new Error("Only the collection's owner can add it to a library");
+      return { collectionId, name: "Early grade reading", itemCount: 3 };
+    });
+    const onChange = vi.fn();
+    render(<Harness initial={[]} onChange={onChange} />);
+
+    await openAddMenu();
+    await userEvent.click(await screen.findByRole("menuitem", { name: new RegExp(`^${ns}.openScholarCollection`) }));
+    const table = await screen.findByRole("table", { name: `${ns}.collectionPicker.title` });
+    await userEvent.click(await within(table).findByRole("checkbox", { name: "Early grade reading" }));
+    await userEvent.click(within(table).getByRole("checkbox", { name: "Refused" }));
+    await userEvent.click(screen.getByRole("button", { name: `${ns}.collectionPicker.addPicked {"count":2}` }));
+
+    await waitFor(() => expect(mocks.connectCollection).toHaveBeenCalledTimes(2));
+    expect(onChange).toHaveBeenLastCalledWith([
+      collectionSourceEntry({ collectionId: "c1", name: "Early grade reading" }, "platform"),
+    ]);
   });
 
   it("pages the groups fifty at a time, searches them, and warns only at Zotero's ceiling", async () => {

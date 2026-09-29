@@ -873,11 +873,8 @@
       "bodyOff": "Cliquez pour ancrer les réponses dans des pages en temps réel.",
       "bodyUnsupported": "Le modèle sélectionné ne prend pas en charge la recherche web par outils. Changez de modèle pour activer.",
       "metaCost": "~{credits, number} crédits par recherche",
-      "metaCostNote": "Une réponse peut contenir plusieurs recherches.",
-      "metaCostLoading": "Calcul du coût…",
+      "metaCostNote": "Une réponse lance jusqu’à {searches, number} recherches.",
       "metaProvider": "via {provider}",
-      "providerTavilyBasic": "Tavily Basic",
-      "providerOpenRouter": "outil serveur OpenRouter",
       "statusOn": "Actif",
       "statusOff": "Inactif"
     }
@@ -2429,6 +2426,7 @@
         "startsSoon": "Commence dans la minute",
         "failure": {
           "access_denied": "{provider} a refusé la clé enregistrée. Vérifiez-la dans Connexions, puis relancez.",
+          "owner_left": "La personne qui a ajouté cette collection a quitté l’organisation, la bibliothèque a donc retiré ses notices.",
           "not_found": "{provider} ne trouve plus cette source, ou la clé enregistrée n'y a pas accès.",
           "missing_key": "Aucune clé d'API n'est enregistrée pour cette source. Ajoutez-en une dans Connexions.",
           "invalid_query": "{provider} a refusé la recherche. Modifiez-la, puis activez de nouveau.",
@@ -2472,7 +2470,7 @@
       "resume": "Reprendre",
       "sourceAction": "{action} {name}",
       "sourceActionHint": "{action} la source",
-      "noSources": "Aucune source pour l'instant. Ajoutez un groupe Zotero ou une recherche OpenAlex.",
+      "noSources": "Aucune source pour l’instant. Ajoutez un groupe Zotero, une recherche OpenAlex ou une collection OpenScholar.",
       "listLabel": "Sources connectées",
       "connections": "Connexions",
       "connectionsTitle": "Connexions des sources",
@@ -2575,6 +2573,23 @@
         "capped": "Zotero stops listing after about 1,000 groups.",
         "loading": "Loading your groups…",
         "failed": "Could not load your groups."
+      },
+      "openScholarCollection": "Collection OpenScholar",
+      "openScholarCollectionHint": "Suivre une de vos collections",
+      "pdfs": "PDF",
+      "collectionDeleted": "Cette collection a été supprimée dans OpenScholar.",
+      "removeCollectionTitle": "Retirer cette collection ?",
+      "collectionConnectFailed": "Impossible d’ajouter cette collection.",
+      "collectionPicker": {
+        "title": "Ajouter des collections",
+        "description": "Vos collections OpenScholar. La bibliothèque suit celles que vous cochez et se met à jour quand elles changent.",
+        "search": "Rechercher des collections…",
+        "colCollection": "Collection",
+        "noCollections": "Vous n’avez pas encore de collection.",
+        "noMatch": "Aucune collection ne correspond.",
+        "addPicked": "{count, plural, =0 {Ajouter} one {Ajouter # collection} other {Ajouter # collections}}",
+        "loading": "Chargement de vos collections…",
+        "failed": "Impossible de charger vos collections."
       }
     },
     "search": {

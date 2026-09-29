@@ -19,7 +19,8 @@ export function createSourceCredentials(
   const byGroupId = new Map(groups.map((group) => [group.groupId, group]));
   return (sources: readonly SourceEntry[]) =>
     sources.map((source, index) => {
-      if (source.provider === "openalex") {
+      // OpenAlex searches and OpenScholar collections both read OpenAlex.
+      if (source.provider === "openalex" || source.provider === "openscholar") {
         const settings =
           source.settings &&
           typeof source.settings === "object" &&

@@ -41,6 +41,18 @@ export async function hasDirectLibraryAccess(
   return (await readPendingLibraryInvitations(ctx, user)).length > 0;
 }
 
+/** The person's active membership of the organization, or null once they left it. */
+export async function readActiveOrganizationMembership(
+  ctx: Pick<QueryCtx | MutationCtx, "db">,
+  organizationId: Id<"organizations">,
+  clerkUserId: string,
+) {
+  return await ctx.db.query("organizationMemberships")
+    .withIndex("by_organizationId_and_clerkUserId_and_state", q => q
+      .eq("organizationId", organizationId).eq("clerkUserId", clerkUserId).eq("state", "active"))
+    .unique();
+}
+
 /** Current library access does not depend on the active Clerk organization. */
 export async function readLibraryRole(
   ctx: Pick<QueryCtx | MutationCtx, "db">,
@@ -51,10 +63,7 @@ export async function readLibraryRole(
   if (user?.state === "deleted") return null;
   const organization = await ctx.db.get("organizations", library.organizationId);
   if (!organization || organization.state !== "active") return null;
-  const membership = await ctx.db.query("organizationMemberships")
-    .withIndex("by_organizationId_and_clerkUserId_and_state", q => q
-      .eq("organizationId", library.organizationId).eq("clerkUserId", clerkUserId).eq("state", "active"))
-    .unique();
+  const membership = await readActiveOrganizationMembership(ctx, library.organizationId, clerkUserId);
   if (membership?.role === "org:admin") return "owner";
   if (library.state === "disabled") return null;
   const assignment = await ctx.db.query("evidenceLibraryMembers")

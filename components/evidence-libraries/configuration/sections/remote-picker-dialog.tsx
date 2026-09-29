@@ -8,7 +8,7 @@
 
 import { ArrowDown, ArrowUp, ArrowUpDown, Check, Plus, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, type Ref, useImperativeHandle, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -67,9 +67,13 @@ const SEARCH_MAX = 200;
 
 type Status = "loading" | "loading-more" | "ready" | "failed" | "not-set-up";
 
+/** Opens the dialog from elsewhere, such as a menu item that also opens other dialogs. */
+export type PickerHandle = { open: () => void };
+
 type CommonProps = {
   /** The control that opens the dialog. Keeps each call site's own look. */
-  trigger: ReactNode;
+  trigger?: ReactNode;
+  ref?: Ref<PickerHandle>;
   title: string;
   description: ReactNode;
   searchLabel: string;
@@ -141,6 +145,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
     onRowsLoaded,
     onOpenChange,
     note,
+    ref,
   } = props;
   const t = useTranslations("evidenceLibraryConfiguration.picker");
   const firstSort = sorts?.[0] ?? null;
@@ -221,6 +226,8 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
     }
     load({ query: "", sort: start?.value ?? null, direction: start?.direction ?? null, cursor: null });
   }
+
+  useImperativeHandle(ref, () => ({ open: () => reset(true) }));
 
   function search(value: string) {
     setQuery(value);
@@ -314,7 +321,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
 
   return (
     <Dialog open={open} onOpenChange={reset}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent
         className="flex max-h-[85vh] flex-col gap-0 p-0 sm:max-w-3xl"
         onKeyDown={moveFocus}

@@ -1,7 +1,8 @@
 import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { activeModels, MAX_CATALOG_MODELS, pickable, textModels } from "./catalog";
+import { activeModels, MAX_CATALOG_MODELS, pickable, usableFor } from "./catalog";
+import { aiTaskValidator } from "../aiModelConfig/validators";
 import type { Doc } from "../_generated/dataModel";
 import { isVariant, toNativeModelId } from "../../lib/ai/native-model-id";
 
@@ -66,15 +67,14 @@ export const list = query({
 export const listCatalogOptions = query({
   args: {
     provider: v.optional(v.string()),
-    /** Include decision models (Jev), which only screening can use. */
-    decisions: v.optional(v.boolean()),
+    /** Only models that can do every one of these tasks; chat when omitted. */
+    tasks: v.optional(v.array(aiTaskValidator)),
   },
   returns: v.array(catalogOptionValidator),
-  handler: async (ctx, { provider, decisions }) => {
+  handler: async (ctx, { provider, tasks }) => {
     const all = pickable(await activeModels(ctx, provider).take(MAX_CATALOG_MODELS));
-    const rows = decisions ? all : textModels(all);
-
-    return rows.map(catalogOption);
+    const needed = tasks?.length ? [...new Set(tasks)] : (["chat"] as const);
+    return all.filter((row) => needed.every((task) => usableFor(row, task))).map(catalogOption);
   },
 });
 
@@ -107,7 +107,7 @@ export const paginateCatalogOptions = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, { paginationOpts }) => {
     const result = await activeModels(ctx).paginate(paginationOpts);
-    return { ...result, page: textModels(pickable(result.page)).map(catalogOption) };
+    return { ...result, page: pickable(result.page).filter((row) => usableFor(row, "chat")).map(catalogOption) };
   },
 });
 

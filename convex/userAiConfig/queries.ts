@@ -21,7 +21,7 @@ export const get = query({
       choice: cfg.choice,
       custom: await Promise.all(
         AI_TASKS.map(async (task) => {
-          const pick = await livePick(ctx, cfg.custom?.[task]);
+          const pick = await livePick(ctx, cfg.custom?.[task], task);
           return { task, model: await modelSummary(ctx, pick?.modelId ?? null), effort: pick?.effort ?? null };
         }),
       ),

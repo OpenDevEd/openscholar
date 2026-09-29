@@ -19,6 +19,7 @@ import {
   isTerminalScreeningJobStatus,
 } from "./lifecycle";
 import { resolveLibraryCount } from "../library/counter";
+import { addCollectionMembership } from "../library/collectionMembership";
 import {
   readScreeningProgressCounts,
   recordQualifiedResult,
@@ -296,32 +297,14 @@ export const addToCollectionInternal = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    // Check for existing assignment (idempotent)
-    const existing = await ctx.db
-      .query("libraryItemCollections")
-      .withIndex("by_collection_item", (q) =>
-        q
-          .eq("collectionId", args.collectionId)
-          .eq("libraryItemId", args.libraryItemId)
-      )
-      .unique();
-
-    if (existing) return null;
-
-    await ctx.db.insert("libraryItemCollections", {
-      userId: args.userId,
-      collectionId: args.collectionId,
-      libraryItemId: args.libraryItemId,
-      assignedAt: Date.now(),
-    });
-
-    // Increment denormalized collection counter
     const collection = await ctx.db.get("collections", args.collectionId);
     if (collection) {
-      const currentCount = collection.itemCount ?? 0;
-      await ctx.db.patch("collections", args.collectionId, { itemCount: currentCount + 1 });
+      await addCollectionMembership(ctx, {
+        userId: args.userId,
+        collection,
+        libraryItemId: args.libraryItemId,
+      });
     }
-
     return null;
   },
 });

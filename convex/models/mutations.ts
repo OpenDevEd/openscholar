@@ -23,7 +23,6 @@ const modelEntryValidator = v.object({
   cacheReadPricePerMillion: v.optional(v.number()),
   cacheWritePricePerMillion: v.optional(v.number()),
   reasoningPricePerMillion: v.optional(v.number()),
-  webSearchPrice: v.optional(v.number()),
   imagePricePerMillion: v.optional(v.number()),
   audioPricePerMillion: v.optional(v.number()),
 

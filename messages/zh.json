@@ -873,11 +873,8 @@
       "bodyOff": "点击以让答案基于实时网页，获得有据可查的回答。",
       "bodyUnsupported": "所选模型不支持工具式网络搜索。切换模型以启用。",
       "metaCost": "每次搜索约 {credits, number} 积分",
-      "metaCostNote": "一条回复可能包含多次搜索。",
-      "metaCostLoading": "正在计算费用…",
+      "metaCostNote": "一条回复最多搜索 {searches, number} 次。",
       "metaProvider": "经由 {provider}",
-      "providerTavilyBasic": "Tavily Basic",
-      "providerOpenRouter": "OpenRouter 服务器工具",
       "statusOn": "开",
       "statusOff": "关"
     }
@@ -2429,6 +2426,7 @@
         "startsSoon": "一分钟内开始",
         "failure": {
           "access_denied": "{provider} 拒绝了已保存的密钥。请在“连接”中检查后重试。",
+          "owner_left": "添加此合集的人已离开组织，因此图书馆撤下了其中的记录。",
           "not_found": "{provider} 找不到此来源，或已保存的密钥无权访问。",
           "missing_key": "此来源没有保存 API 密钥。请在“连接”中添加。",
           "invalid_query": "{provider} 拒绝了该搜索。请编辑搜索后重新激活。",
@@ -2472,7 +2470,7 @@
       "resume": "恢复",
       "sourceAction": "{action} {name}",
       "sourceActionHint": "{action}来源",
-      "noSources": "还没有来源。请添加 Zotero 群组或 OpenAlex 搜索。",
+      "noSources": "还没有来源。请添加 Zotero 群组、OpenAlex 检索或 OpenScholar 合集。",
       "listLabel": "已连接的来源",
       "connections": "连接",
       "connectionsTitle": "来源连接",
@@ -2575,6 +2573,23 @@
         "capped": "Zotero stops listing after about 1,000 groups.",
         "loading": "Loading your groups…",
         "failed": "Could not load your groups."
+      },
+      "openScholarCollection": "OpenScholar 合集",
+      "openScholarCollectionHint": "关注你的一个合集",
+      "pdfs": "PDF",
+      "collectionDeleted": "该合集已在 OpenScholar 中删除。",
+      "removeCollectionTitle": "移除此合集？",
+      "collectionConnectFailed": "无法添加此合集。",
+      "collectionPicker": {
+        "title": "添加合集",
+        "description": "你的 OpenScholar 合集。图书馆会关注你勾选的合集，并在其变化时更新。",
+        "search": "搜索合集…",
+        "colCollection": "合集",
+        "noCollections": "你还没有合集。",
+        "noMatch": "没有匹配的合集。",
+        "addPicked": "{count, plural, =0 {添加} other {添加 # 个合集}}",
+        "loading": "正在加载你的合集…",
+        "failed": "无法加载你的合集。"
       }
     },
     "search": {

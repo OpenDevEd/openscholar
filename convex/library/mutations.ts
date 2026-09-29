@@ -4,6 +4,7 @@ import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { MAX_LIBRARY_BROWSE } from "../lib/queryBounds";
 import { resolveLibraryCount } from "./counter";
+import { removeCollectionMembership } from "./collectionMembership";
 
 export const backfillLibraryCount = internalMutation({
   args: { userId: v.id("users"), count: v.number() },
@@ -128,14 +129,7 @@ export const removeFromLibraryByOpenalexId = mutation({
         .query("libraryItemCollections")
         .withIndex("by_item", (q) => q.eq("libraryItemId", item._id))
         .collect();
-      for (const m of memberships) {
-        const col = await ctx.db.get("collections", m.collectionId);
-        if (col) {
-          const currentColCount = col.itemCount ?? 0;
-          await ctx.db.patch("collections", m.collectionId, { itemCount: Math.max(0, currentColCount - 1) });
-        }
-        await ctx.db.delete("libraryItemCollections", m._id);
-      }
+      for (const m of memberships) await removeCollectionMembership(ctx, m);
       await ctx.db.delete("libraryItems", item._id);
 
       // Decrement denormalized counter
@@ -174,14 +168,7 @@ export const removeFromLibrary = mutation({
       .query("libraryItemCollections")
       .withIndex("by_item", (q) => q.eq("libraryItemId", args.itemId))
       .collect();
-    for (const m of memberships) {
-      const col = await ctx.db.get("collections", m.collectionId);
-      if (col) {
-        const currentColCount = col.itemCount ?? 0;
-        await ctx.db.patch("collections", m.collectionId, { itemCount: Math.max(0, currentColCount - 1) });
-      }
-      await ctx.db.delete("libraryItemCollections", m._id);
-    }
+    for (const m of memberships) await removeCollectionMembership(ctx, m);
 
     await ctx.db.delete("libraryItems", args.itemId);
 

@@ -52,8 +52,10 @@ workflow.
 ## Work within the request
 
 - A request to inspect, diagnose, explain, or review is read-only.
-- A request to implement authorizes scoped file changes, commits, pushes, a
-  pull request, and merging on green.
+- A request to implement authorizes scoped file changes, commits, and pushes.
+  It authorizes a pull request and merging on green only once the work is
+  ready to merge; while a mock or design is still under review, stop at the
+  push.
 - Preserve unrelated dirty and untracked files.
 - Use an isolated worktree when the main checkout is dirty or another agent is
   editing nearby files.

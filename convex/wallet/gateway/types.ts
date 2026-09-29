@@ -177,6 +177,7 @@ export interface ChatCompletionChunkDelta {
   role?: "assistant";
   content?: string | null;
   tool_calls?: ChunkToolCall[];
+  annotations?: MessageAnnotation[];
 }
 
 export interface ChunkToolCall {

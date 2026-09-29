@@ -27,6 +27,8 @@ import {
   OPENALEX_API_CREDENTIAL_KEY,
   OPENALEX_API_KEY_INSTANCE,
   OPENALEX_API_KEY_PATH,
+  readsOpenAlexWorks,
+  withOpenAlexKeyMode,
   type EvidenceSourceEntry,
   type OpenAlexSourceEntry,
 } from "@/lib/evidence-libraries/configuration/sources";
@@ -79,7 +81,8 @@ export function useOpenAlexSources({
   const customCredential = (credentials.data ?? []).find(
     (credential) => credential.credentialKey === OPENALEX_API_CREDENTIAL_KEY,
   );
-  const inferredMode = sources.some(
+  // Collections read OpenAlex with the same key as searches.
+  const inferredMode = value.filter(readsOpenAlexWorks).some(
     (source) => source.settings.apiKeyMode === "custom",
   )
     ? "custom"
@@ -150,14 +153,8 @@ export function useOpenAlexSources({
     setSelectedMode(mode);
     onChange(
       value.map((entry) =>
-        entry.provider === "openalex"
-          ? {
-              ...entry,
-              settings: {
-                ...entry.settings,
-                apiKeyMode: mode === "custom" ? "custom" : "platform",
-              },
-            }
+        readsOpenAlexWorks(entry)
+          ? withOpenAlexKeyMode(entry, mode === "custom" ? "custom" : "platform")
           : entry,
       ),
     );

@@ -1561,6 +1561,10 @@
 										"minLength": 1,
 										"maxLength": 80
 									},
+									"downloadPdfs": {
+										"default": false,
+										"type": "boolean"
+									},
 									"searchUrl": {
 										"type": "string",
 										"maxLength": 262144,
@@ -1607,10 +1611,6 @@
 											"query"
 										],
 										"additionalProperties": false
-									},
-									"downloadPdfs": {
-										"default": false,
-										"type": "boolean"
 									}
 								},
 								"required": [
@@ -1626,6 +1626,74 @@
 							"provider",
 							"apiKey",
 							"settings"
+						],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"key": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 64
+							},
+							"provider": {
+								"type": "string",
+								"const": "openscholar"
+							},
+							"apiKey": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 512,
+								"writeOnly": true
+							},
+							"enabled": {
+								"default": true,
+								"type": "boolean"
+							},
+							"writebackEnabled": {
+								"default": false,
+								"type": "boolean",
+								"const": false
+							},
+							"settings": {
+								"type": "object",
+								"properties": {
+									"apiKeyMode": {
+										"default": "platform",
+										"type": "string",
+										"enum": [
+											"platform",
+											"custom"
+										]
+									},
+									"name": {
+										"type": "string",
+										"minLength": 1,
+										"maxLength": 80
+									},
+									"downloadPdfs": {
+										"default": false,
+										"type": "boolean"
+									}
+								},
+								"required": [
+									"name"
+								],
+								"additionalProperties": false
+							},
+							"collectionId": {
+								"type": "string",
+								"maxLength": 128,
+								"pattern": "^[0-9a-z]+$"
+							}
+						},
+						"required": [
+							"key",
+							"provider",
+							"apiKey",
+							"settings",
+							"collectionId"
 						],
 						"additionalProperties": false
 					}

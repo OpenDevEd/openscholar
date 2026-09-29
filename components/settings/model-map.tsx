@@ -20,7 +20,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { isVariant } from "@/lib/ai/native-model-id";
-import { BROWSER_TASKS, CLOUD_TASKS, DECISION_TASKS, PRESET_KEYS, type AiTask, type PresetKey } from "@/lib/ai/tasks";
+import { BROWSER_TASKS, CLOUD_TASKS, PRESET_KEYS, type AiTask, type PresetKey } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { Segmented, type Ico } from "./parts";
 
@@ -170,7 +170,7 @@ export function ModelPicker({
   align?: "start" | "end";
   /** Quick picks listed first: what each preset runs for the same tasks. */
   presets?: PresetPick[];
-  /** The tasks this pick is for; decision models (Jev) are offered only when every one can take them. */
+  /** The tasks this pick is for; only models that can do all of them are offered. */
   tasks?: AiTask[];
 }) {
   const tm = useTranslations("settingsAi");
@@ -179,8 +179,7 @@ export function ModelPicker({
     run();
     setOpen(false);
   };
-  const decisions = tasks.length > 0 && tasks.every((task) => DECISION_TASKS.includes(task));
-  const catalog = useQuery(api.models.queries.listCatalogOptions, open ? { ...(provider && { provider }), ...(decisions && { decisions }) } : "skip");
+  const catalog = useQuery(api.models.queries.listCatalogOptions, open ? { ...(provider && { provider }), ...(tasks.length > 0 && { tasks }) } : "skip");
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>

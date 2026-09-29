@@ -19,12 +19,7 @@ import { useTranslations } from "next-intl";
 import { useUIMessages, type UIMessage } from "@convex-dev/agent/react";
 import { motion, useReducedMotion } from "motion/react";
 import { useMutation, useQuery } from "convex/react";
-import type {
-  ReasoningUIPart,
-  SourceUrlUIPart,
-  TextUIPart,
-  ToolUIPart,
-} from "ai";
+import type { ReasoningUIPart, SourceUrlUIPart, TextUIPart } from "ai";
 import {
   Conversation,
   ConversationContent,
@@ -47,8 +42,6 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from "@/components/ai-elements/sources";
-import type { WebSearchPricing } from "@/lib/pricing";
-import { WebSearchStep } from "./web-search-step";
 import { CHAT_LINK_SAFETY } from "./link-safety-dialog";
 import { ChatCodeBlock, ChatTable } from "./chat-markdown-blocks";
 import { AbortedPill } from "./aborted-pill";
@@ -439,9 +432,14 @@ function partRenderKeys(parts: UIMessage["parts"]): string[] {
 }
 
 function WebSources({ parts }: { parts: UIMessage["parts"] }) {
-  const sources = parts.filter(
-    (part): part is SourceUrlUIPart => part.type === "source-url",
-  );
+  // Two searches in one reply can return the same page.
+  const sources = [
+    ...new Map(
+      parts
+        .filter((part): part is SourceUrlUIPart => part.type === "source-url")
+        .map((source) => [source.url, source]),
+    ).values(),
+  ];
   if (sources.length === 0) return null;
   return (
     <Sources className="mb-0" data-web-sources-count={sources.length}>
@@ -467,13 +465,6 @@ interface MessageRowProps {
   chatModels: ChatModelRow[];
   onRetry: () => void;
   isJobGenerating?: boolean;
-  /** Resolved web-search source for this thread (from
-   *  `getChatWebSearchPricing`). Forwarded to each `<ToolStep>` so the
-   *  in-flight chip can render the real credit estimate. */
-  webSearchSource?: WebSearchPricing["source"];
-  /** Native model web-search USD price, populated only when
-   *  `webSearchSource === "openrouter-native"`. */
-  modelWebSearchPriceUsd?: number | null;
   paperCitationsDeprecated?: boolean;
 }
 
@@ -520,8 +511,6 @@ export const MessageRow = memo(function MessageRow({
   chatModels,
   onRetry,
   isJobGenerating = true,
-  webSearchSource,
-  modelWebSearchPriceUsd,
   paperCitationsDeprecated = false,
 }: MessageRowProps) {
   const t = useTranslations("extraction");
@@ -556,7 +545,7 @@ export const MessageRow = memo(function MessageRow({
       if (part.type === "text" || part.type === "reasoning") {
         return part.text.length > 0;
       }
-      return part.type.startsWith("tool-");
+      return part.type === "source-url";
     });
   }, [isAssistant, normalizedMessage.parts]);
   const isEmpty = isAssistant
@@ -638,17 +627,6 @@ export const MessageRow = memo(function MessageRow({
                   />
                 );
               }
-              if (part.type.startsWith("tool-")) {
-                return (
-                  <WebSearchStep
-                    key={partKeys[idx]}
-                    part={part as ToolUIPart}
-                    aborted={isAborted}
-                    webSearchSource={webSearchSource}
-                    modelWebSearchPriceUsd={modelWebSearchPriceUsd}
-                  />
-                );
-              }
               return null;
             })}
             <WebSources parts={normalizedMessage.parts} />
@@ -706,23 +684,6 @@ export function MessageList({
   const sourceEvents = useQuery(api.chat.sourceEvents.listForThread, {
     threadId,
   });
-  // Resolves the active web-search path + per-call price server-side
-  // so each in-flight `<ToolStep>` chip can render the real credit
-  // estimate. Convex deduplicates this against the toggle's own
-  // subscription on the same query — a single round trip serves both.
-  const webSearchPricing = useQuery(
-    api.chat.messages.getChatWebSearchPricing,
-    { threadId },
-  );
-  const webSearchSource = webSearchPricing?.source;
-  // The model's native USD price equals usdPerCall ONLY on the
-  // openrouter-native branch; pass it through as `null` on every
-  // other source so ToolStep doesn't mistake the server-tool flat
-  // rate for a native model price.
-  const modelWebSearchPriceUsd =
-    webSearchPricing?.source === "openrouter-native"
-      ? webSearchPricing.usdPerCall
-      : null;
   const serverRegenerateReplacementVisible =
     localRegenerate !== null &&
     hasServerRegenerateReplacement(results as ChatUIMessage[], localRegenerate);
@@ -957,8 +918,6 @@ export function MessageList({
                 chatModels={chatModels}
                 onRetry={handleRetry}
                 isJobGenerating={isJobGenerating}
-                webSearchSource={webSearchSource}
-                modelWebSearchPriceUsd={modelWebSearchPriceUsd}
                 paperCitationsDeprecated={isAssistantCitationDeprecated(
                   message,
                   sourceUpdateBoundary,

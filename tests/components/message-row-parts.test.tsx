@@ -1,16 +1,15 @@
 /**
  * @vitest-environment jsdom
  *
- * U5 — MessageRow iterates UIMessage.parts and renders the AI SDK v6
- * discriminated union: text via MessageResponse, tool-* via the web search
- * Tool, source-url accumulated into the footer via Sources. Tests target
+ * U5 — MessageRow iterates UIMessage.parts: text via MessageResponse,
+ * source-url accumulated into the footer via Sources. Tests target
  * data-* / role contracts only.
  */
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, within } from "@testing-library/react";
 import { renderWithTooltip as render } from "../helpers/render-with-tooltip";
 import type { UIMessage } from "@convex-dev/agent/react";
-import type { ToolUIPart, UIMessagePart } from "ai";
+import type { UIMessagePart } from "ai";
 import { MessageRow } from "@/components/extraction/chat/message-list";
 
 vi.mock("next-intl", () => ({
@@ -78,99 +77,64 @@ function renderRow(msg: ChatUIMessage) {
 }
 
 const textPart = (text: string): AnyPart => ({ type: "text", text });
-const stepStart: AnyPart = { type: "step-start" };
-const toolPart = (state: ToolUIPart["state"], extra: object = {}): AnyPart =>
-  ({
-    type: "tool-web_search",
-    toolCallId: "c1",
-    state,
-    ...extra,
-  }) as unknown as AnyPart;
 const sourceUrlPart = (url: string, sourceId: string): AnyPart => ({
   type: "source-url",
   sourceId,
   url,
 });
 
+/** Opens the footer sources and returns their link targets. */
+function sourceLinks() {
+  const sources = document.querySelector(
+    "[data-web-sources-count]",
+  ) as HTMLElement | null;
+  expect(sources).not.toBeNull();
+  fireEvent.click(within(sources!).getByRole("button"));
+  return within(sources!)
+    .getAllByRole("link")
+    .map((link) => link.getAttribute("href"));
+}
+
 describe("<MessageRow> parts iteration — text-only", () => {
-  it("renders a single text part as the entire assistant content with no tool step or footer chips", () => {
+  it("renders a single text part as the entire assistant content with no footer sources", () => {
     renderRow(
       makeAssistant([textPart("Just a normal answer.")], {
         text: "Just a normal answer.",
       }),
     );
     expect(screen.getByText(/just a normal answer/i)).toBeInTheDocument();
-    expect(document.querySelector("[data-tool-name]")).toBeNull();
-    expect(
-      document.querySelector("[data-web-sources-count]"),
-    ).toBeNull();
-  });
-});
-
-describe("<MessageRow> parts iteration — text + tool (mid-stream)", () => {
-  it("renders the in-flight tool and the prior text without footer sources", () => {
-    renderRow(
-      makeAssistant(
-        [
-          textPart("Let me check the literature."),
-          stepStart,
-          toolPart("input-streaming", { input: { query: "RNA editing" } }),
-        ],
-        { status: "streaming" },
-      ),
-    );
-
-    expect(screen.getByText(/let me check the literature/i)).toBeInTheDocument();
-
-    const tool = document.querySelector("[data-tool-name]");
-    expect(tool).toHaveAttribute("data-tool-state", "input-streaming");
-    expect(tool).toHaveAttribute("data-tool-name", "web_search");
     expect(document.querySelector("[data-web-sources-count]")).toBeNull();
   });
 });
 
-describe("<MessageRow> parts iteration — text + tool + text + source-url (full)", () => {
-  it("renders text → tool → text, with source-urls collected at the message footer", () => {
-    const parts: AnyPart[] = [
-      textPart("Let me search."),
-      stepStart,
-      toolPart("output-available", {
-        input: { query: "RNA editing" },
-        output: {
-          sources: [
-            { url: "https://arxiv.org/abs/X" },
-            { url: "https://example.com/foo" },
-          ],
-          creditsUsed: 2,
-        },
-      }),
-      sourceUrlPart("https://arxiv.org/abs/X", "s1"),
-      stepStart,
-      sourceUrlPart("https://example.com/foo", "s2"),
-      textPart("Based on the search, here is the answer."),
-    ];
-    renderRow(makeAssistant(parts));
+describe("<MessageRow> parts iteration — text + source-url", () => {
+  it("renders the text with the web sources collected at the message footer", () => {
+    renderRow(
+      makeAssistant([
+        sourceUrlPart("https://arxiv.org/abs/X", "s1"),
+        sourceUrlPart("https://example.com/foo", "s2"),
+        textPart("Based on the search, here is the answer."),
+      ]),
+    );
 
-    // Both text parts visible.
-    expect(screen.getByText(/let me search/i)).toBeInTheDocument();
     expect(
       screen.getByText(/based on the search, here is the answer/i),
     ).toBeInTheDocument();
-
-    const tool = document.querySelector("[data-tool-name]");
-    expect(tool).toHaveAttribute("data-tool-state", "output-available");
-
-    // Source-url parts collect at the footer regardless of part position.
-    const sources = document.querySelector(
-      "[data-web-sources-count]",
-    ) as HTMLElement | null;
-    expect(sources).not.toBeNull();
-    expect(sources!.getAttribute("data-web-sources-count")).toBe("2");
-    fireEvent.click(within(sources!).getByRole("button"));
-    const links = within(sources!).getAllByRole("link");
-    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+    expect(sourceLinks()).toEqual([
       "https://arxiv.org/abs/X",
       "https://example.com/foo",
     ]);
+  });
+
+  it("lists a page once when several searches return it", () => {
+    renderRow(
+      makeAssistant([
+        sourceUrlPart("https://arxiv.org/abs/X", "s1"),
+        sourceUrlPart("https://arxiv.org/abs/X", "s2"),
+        textPart("Answer."),
+      ]),
+    );
+
+    expect(sourceLinks()).toEqual(["https://arxiv.org/abs/X"]);
   });
 });
