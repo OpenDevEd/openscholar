@@ -138,6 +138,7 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
         query: questionToProcess,
         language: currentSearchResult?.language ?? localeToLanguageCode(locale),
         syntax,
+        task: "questionToQuery",
       });
 
       if (search) {

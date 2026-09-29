@@ -1,18 +1,14 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { modelSummaryValidator, serverPresetValidator } from "../aiModelConfig/validators";
+import { modelSummary, oneModelId } from "../ai/serverModel";
 import { getCurrentUser } from "../lib/auth";
 
-const serverPresetValidator = v.union(
-  v.literal("fast"),
-  v.literal("balanced"),
-  v.literal("intelligent"),
-  v.literal("custom"),
-);
-
 /**
- * The current user's server-model choice, or null if unauthenticated / never set.
- * `serverModelId` is the remembered custom pick (sticky); resolution only uses it
- * when `serverPreset === "custom"`.
+ * The current user's server-model choice, or null if unauthenticated or never
+ * set (which means Recommended). `model` is the one model every task runs on,
+ * or null when tasks run on Recommended, including when the picked model is no
+ * longer offered.
  */
 export const get = query({
   args: {},
@@ -20,7 +16,7 @@ export const get = query({
     v.null(),
     v.object({
       serverPreset: serverPresetValidator,
-      serverModelId: v.union(v.id("models"), v.null()),
+      model: v.union(modelSummaryValidator, v.null()),
     }),
   ),
   handler: async (ctx) => {
@@ -33,6 +29,9 @@ export const get = query({
       .unique();
     if (!cfg) return null;
 
-    return { serverPreset: cfg.serverPreset, serverModelId: cfg.serverModelId ?? null };
+    return {
+      serverPreset: cfg.serverPreset,
+      model: await modelSummary(ctx, await oneModelId(ctx, user._id)),
+    };
   },
 });

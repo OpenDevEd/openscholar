@@ -97,6 +97,7 @@ Please enhance this academic search query according to the user's specific instr
         query: enhancedPrompt,
         language: urlLanguage || localeToLanguageCode(locale) || undefined,
         syntax: isOql ? "oql" : undefined,
+        task: "refine",
       });
 
       search.setQuery(response.enhancedQuery);

@@ -97,6 +97,7 @@ function Shell({ children }: { children: ReactNode }) {
       items: isAdmin
         ? [
             { href: "/settings/admin", title: t("items.switches"), icon: ToggleRight },
+            { href: "/settings/admin/ai", title: t("items.aiModels"), icon: Bot },
             { href: "/settings/admin/models", title: t("items.modelList"), icon: Boxes },
             { href: "/settings/admin/admins", title: t("items.admins"), icon: Users },
             ...(links?.autumn ? [{ href: links.autumn, title: t("items.plans"), icon: AutumnIcon, external: "Autumn" }] : []),

@@ -34,6 +34,7 @@ import { createError } from "../lib/errors";
 import { creditsForUsage } from "../../lib/pricing";
 import { reserveCredits, releaseCredits, settleCredits } from "../billing/charge";
 import type { UsageKind } from "../billing/validators";
+import type { AiTask } from "../../lib/ai/tasks";
 
 type Pricing = { input: number; output: number };
 
@@ -146,16 +147,18 @@ export async function getModel() {
 }
 
 /**
- * Resolve the per-user server model for an action: the user's stored choice
- * (preset/custom, default balanced) → a concrete model instance + its pricing.
+ * Resolve the model a user's `task` runs on: their stored choice (Recommended
+ * by default, or one model) → a concrete model instance + its pricing.
  */
 export type ServerModel = Awaited<ReturnType<typeof resolveOpenRouterModel>>;
 export async function resolveUserServerModel(
   ctx: ActionCtx,
   userId: Id<"users">,
+  task: AiTask,
 ): Promise<ServerModel> {
   const modelId = await ctx.runQuery(internal.ai.serverModel.resolveForUser, {
     userId,
+    task,
   });
   return resolveOpenRouterModel(ctx, modelId);
 }
@@ -237,7 +240,7 @@ async function requireAIUser(ctx: ActionCtx): Promise<Doc<"users">> {
  */
 export async function withAuthAndCreditsBatch<T>(
   ctx: ActionCtx,
-  operation: { description: string; kind: UsageKind; estimate: number },
+  operation: { description: string; kind: UsageKind; task: AiTask; estimate: number },
   handler: (user: Doc<"users">, model: ServerModel["model"]) => Promise<{
     result: T;
     totalUsage: Usage;
@@ -246,7 +249,7 @@ export async function withAuthAndCreditsBatch<T>(
 ): Promise<T> {
   try {
     const user = await requireAIUser(ctx);
-    const { model, pricing, modelSlug } = await resolveUserServerModel(ctx, user._id);
+    const { model, pricing, modelSlug } = await resolveUserServerModel(ctx, user._id, operation.task);
     const start = Date.now();
     let trackingEntries: AITrackingEntry[] | undefined;
     const { result, credits, usage } = await withCredits(
@@ -341,7 +344,8 @@ export function createAIAction<
     args: ObjectType<Args>,
   ) => OperationConfig<ObjectType<Args>, AIOutput>,
   formatOutput: (output: AIOutput, args: ObjectType<Args>) => Output,
-  options: { kind: UsageKind },
+  /** `task` may depend on the arguments, as with search, where one action serves three tasks. */
+  options: { kind: UsageKind; task: AiTask | ((args: ObjectType<Args>) => AiTask) },
 ) {
   return action({
     args: argsValidator,
@@ -349,7 +353,8 @@ export function createAIAction<
     handler: async (ctx, args: ObjectType<Args>): Promise<Output> => {
       try {
         const user = await requireAIUser(ctx);
-        const { model, pricing, modelSlug } = await resolveUserServerModel(ctx, user._id);
+        const task = typeof options.task === "function" ? options.task(args) : options.task;
+        const { model, pricing, modelSlug } = await resolveUserServerModel(ctx, user._id, task);
         const config = configFactory(args);
         const prompts = config.buildPrompts(config.input, 0);
         const inputForTracking = truncateForTracking(

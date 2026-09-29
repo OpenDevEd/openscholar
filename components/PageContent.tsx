@@ -80,6 +80,7 @@ function PageContent() {
         const result = await enhanceQuery({
           query: originalQuery,
           language: localeToLanguageCode(locale),
+          task: "questionToQuery",
         });
 
         // Use the enhanced query for searching

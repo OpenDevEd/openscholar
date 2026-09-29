@@ -12,7 +12,7 @@
  */
 
 import type { ActionCtx } from "../_generated/server";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { getProviderModel } from "../../lib/ai/server/providers";
 import { SERVER_AI_CONFIG } from "../ai/config";
@@ -78,9 +78,14 @@ export async function resolveOpenRouterModel(
     modelSlug = SERVER_AI_CONFIG.model.includes("/")
       ? SERVER_AI_CONFIG.model
       : `${SERVER_AI_CONFIG.provider}/${SERVER_AI_CONFIG.model}`;
-    const p = await ctx.runQuery(internal.models.queries.getPricing, {
-      modelId: modelSlug,
-    });
+    const [p, offered] = await Promise.all([
+      ctx.runQuery(internal.models.queries.getPricing, { modelId: modelSlug }),
+      ctx.runQuery(api.models.queries.getCatalogOption, { modelId: modelSlug }),
+    ]);
+    // A catalog model an admin switched off (or that retired) never runs, even as the default.
+    if (p && !offered) {
+      throw createError("VALIDATION_ERROR", MODEL_UNAVAILABLE_MESSAGE);
+    }
     pricing = p ?? { input: 0, output: 0 };
   }
 

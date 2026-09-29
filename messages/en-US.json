@@ -339,116 +339,7 @@
   },
   "aiSettings": {
     "aiConfiguration": "AI Configuration",
-    "configurePreferences": "Configure your AI provider and model preferences",
-    "useMyApiKeys": "Use My API Keys",
-    "bringYourOwn": "Bring your own provider & model",
-    "useCredits": "Use Credits",
-    "accountBalance": "Your account balance",
-    "signInToUseCredits": "Sign in to use credits",
-    "creditsInfoBanner": "When using credits, AI configuration is managed by us. Your provider, model, and API key settings are not used in this mode.",
-    "searchModels": "Search models...",
-    "credentials": "Credentials",
-    "apiKey": "API Key",
-    "apiKeyPlaceholder": "Enter your {provider} API key",
-    "apiKeySaved": "API key saved",
-    "getApiKey": "Get your {provider} API key",
-    "per1MTokens": "per 1M tokens",
-    "models300Plus": "300+ Models",
-    "usingOwnApiKeys": "Using your own API keys",
-    "usingCredits": "Using account credits",
-    "loadingOpenRouterModels": "Loading OpenRouter models",
-    "providerNames": {
-      "openai": "OpenAI",
-      "google": "Google",
-      "anthropic": "Anthropic",
-      "openrouter": "OpenRouter",
-      "deepseek": "DeepSeek",
-      "azure": "Azure"
-    },
-    "providerFamilies": {
-      "gpt": "GPT",
-      "gemini": "Gemini",
-      "claude": "Claude"
-    },
-    "providerGuidance": {
-      "openai": {
-        "whatIs": "Your OpenAI API key is a private token that lets this app send requests through your OpenAI account.",
-        "credits": "If your account has no prepaid balance (or no available free credits/quota), requests can stop until you add funds or your quota resets.",
-        "freeModels": "Free options (Jan 2026): OpenAI doesn't provide model-specific ':free' API variants in this app. OpenAI API usage is still subject to usage tiers and rate limits."
-      },
-      "google": {
-        "whatIs": "Your Google API key connects this app to your Gemini API project in AI Studio/Google Cloud.",
-        "credits": "If free-tier quota is exhausted or paid billing is not available, requests fail until quota resets or billing is enabled.",
-        "freeModels": "Free options (Jan 2026): gemini-2.5-pro, gemini-2.5-flash, and gemini-2.5-flash-lite have free-tier access, but with strict RPM/TPM/RPD limits."
-      },
-      "anthropic": {
-        "whatIs": "Your Anthropic API key authenticates calls to Claude models from your organization account.",
-        "credits": "Anthropic enforces monthly spend limits per tier; once reached, API usage pauses until your next cycle or a higher tier/deposit.",
-        "freeModels": "Free options (Jan 2026): no model-specific free Claude API variants are documented; Claude API models are metered and rate-limited."
-      },
-      "openrouter": {
-        "whatIs": "Your OpenRouter API key authorizes requests and applies usage to your OpenRouter account.",
-        "credits": "If your OpenRouter balance is negative, you may receive 402 errors, including for free models, until your balance is topped up.",
-        "freeModels": "Free options (Jan 2026): use openrouter/free (Free Models Router). Free variants have tighter limits."
-      },
-      "deepseek": {
-        "whatIs": "Your DeepSeek API key authenticates calls to DeepSeek models from your account.",
-        "credits": "DeepSeek API usage is metered; if your balance is exhausted, requests will fail until you add funds.",
-        "freeModels": "Free options: DeepSeek does not currently offer free API tiers."
-      },
-      "azure": {
-        "whatIs": "Your Azure API key connects this app to your Azure OpenAI Service deployment.",
-        "credits": "Azure OpenAI usage is billed through your Azure subscription; if your subscription or spending limit is reached, requests will fail.",
-        "freeModels": "Free options: Azure OpenAI does not offer free-tier API access; usage is billed per token."
-      }
-    },
-    "getStartedTitle": "Get started with AI",
-    "getStartedDescription": "Choose how OpenScholar powers your AI features.",
-    "getStartedSignInTitle": "Sign in for free credits",
-    "getStartedSignInDescription": "No setup needed — sign in and start using AI immediately.",
-    "getStartedApiKeyTitle": "Bring your own API key",
-    "getStartedApiKeyDescription": "Use your OpenAI, Google, Anthropic, or OpenRouter key.",
-    "getStartedConfigureApiKey": "Configure API key",
-    "useSmartMode": "Use Smart Mode",
-    "smartModeDescription": "Use credits when available, then fall back to your API key",
-    "creditsModeDisabled": "Credits mode is disabled",
-    "creditsModeDisabledDescription": "Credits are currently disabled for this app. Switch to Smart Mode or Use My API Keys.",
-    "creditsOnly": "credits",
-    "serverSignInBlurb": "Run Chat, Extraction & Screen All instantly — no card.",
-    "customModel": "Custom model",
-    "recommended": "Recommended",
-    "providerAndKey": "Provider & key",
-    "features": {
-      "chat": "Chat",
-      "extraction": "Extraction",
-      "screenAll": "Screen All"
-    },
-    "localFeatures": {
-      "questionToQuery": "Question → query",
-      "refine": "Refine",
-      "translateQuery": "Translate query",
-      "translatePaper": "Translate paper",
-      "screening": "Screening",
-      "broadenNarrow": "Broaden / narrow"
-    },
-    "modeLabel": {
-      "smart": "Smart",
-      "local": "My keys",
-      "credits": "Credits"
-    },
-    "modeShort": {
-      "smart": "Credits, then your key",
-      "local": "Own provider & model",
-      "credits": "Your account balance"
-    },
-    "modeLocked": {
-      "notOnPlan": "Not on your plan",
-      "signIn": "Sign in to use"
-    },
-    "primaryModelTitle": "Select your primary model",
-    "secondaryModelTitle": "Select your secondary model",
-    "primaryModelDesc": "Always used for Chat, Extraction & Screen All — runs in the OpenScholar cloud.",
-    "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
+    "configurePreferences": "Configure your AI provider and model preferences"
   },
   "billingPage": {
     "upgradePlan": "Upgrade Plan",
@@ -3248,7 +3139,8 @@
       "modelList": "Model list",
       "admins": "Admins",
       "plans": "Plans",
-      "users": "Users"
+      "users": "Users",
+      "aiModels": "AI models"
     },
     "sharedDev": "Shared dev",
     "production": "Production",
@@ -3351,6 +3243,72 @@
       "noUsers": "No users found",
       "email": "Email address",
       "sendInvite": "Send invite"
+    },
+    "ai": {
+      "modelCount": "{count, plural, one {# model} other {# models}}",
+      "behindRecommended": "behind Recommended",
+      "creditsOrKey": "Credits, or the user's key",
+      "chatShortcuts": "Chat shortcuts",
+      "shortcuts": {
+        "fast": "Fast",
+        "balanced": "Balanced",
+        "intelligent": "Intelligent"
+      },
+      "notSet": "Not set"
+    }
+  },
+  "settingsAi": {
+    "models": "Models",
+    "recommended": "Recommended",
+    "oneModel": "One model",
+    "modelCount": "{count, plural, one {# model} other {# models}}",
+    "perTask": "picked per task",
+    "onEveryTask": "on every task",
+    "onCloudTasks": "on cloud tasks",
+    "onBrowserTasks": "on browser tasks",
+    "cloudOnly": "Cloud only",
+    "openScholarCloud": "OpenScholar cloud",
+    "browserLabel": {
+      "credits": "In the cloud",
+      "smart": "Cloud, then your browser",
+      "local": "In your browser"
+    },
+    "keyTasks": "<b>Search tools and screening</b> can run in your browser on your key.",
+    "payWith": "Pay with",
+    "pay": {
+      "credits": "Credits",
+      "smart": "Credits, then key",
+      "local": "My key"
+    },
+    "yourBrowser": "Your browser",
+    "yourKey": "Your key",
+    "afterCredits": "after credits",
+    "credits": "Credits",
+    "taskCount": "{count, plural, one {# task} other {# tasks}}",
+    "addKey": "Add your {provider} key",
+    "apiKey": "{provider} API key",
+    "getKey": "Get a {provider} key",
+    "keyProvider": "Key provider",
+    "save": "Save",
+    "saved": "Saved",
+    "searchModels": "Search models",
+    "loadingModels": "Loading models",
+    "noModels": "No models found",
+    "free": "Free",
+    "fallback": "fallback",
+    "signInToPick": "Sign in to pick a model",
+    "signInToUseCredits": "Sign in to use credits",
+    "creditsOff": "Credits are off",
+    "creditsOffDescription": "Pay with your own key instead.",
+    "tasks": {
+      "chat": "Chat",
+      "extraction": "Extraction",
+      "screenAll": "Screen All",
+      "screening": "Screening",
+      "questionToQuery": "Question → query",
+      "refine": "Refine",
+      "translate": "Translate",
+      "broadenNarrow": "Broaden / narrow"
     }
   }
 }

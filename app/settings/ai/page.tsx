@@ -1,471 +1,342 @@
 "use client";
-"use no memo"; // try/finally in handlers
 
-import { useState, useMemo } from "react";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
-import {
-  ChevronDown,
-  ChevronUp,
-  Search,
-  ExternalLink,
-  Check,
-  AlertCircle,
-  Lock,
-  Save,
-  RotateCcw,
-  Coins,
-  KeyRound,
-  Sparkles,
-  Loader2,
-  ShieldCheck,
-} from "lucide-react";
-import {
-  OpenAIIcon,
-  GoogleIcon,
-  AnthropicIcon,
-  OpenRouterIcon,
-} from "@/components/icons/provider-icons";
-import { useAIConfigStore } from "@/lib/store";
-import {
-  getProviderConfig,
-  getDefaultModelForProvider,
-} from "@/lib/ai-models";
-import { useConvex, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useState, type ReactNode } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
-import { useAppToast } from "@/lib/toast";
-import { toast as sonnerToast } from "sonner";
+import { Box, Check, ChevronsUpDown, Coins, ExternalLink, KeyRound, Monitor, Plus, Save, Sparkles } from "lucide-react";
+import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TooltipHint } from "@/components/ui/tooltip";
+import { AnthropicIcon, getModelIcon, GoogleIcon, OpenAIIcon, OpenRouterIcon } from "@/components/icons/provider-icons";
+import { useAIConfigStore } from "@/lib/store";
+import { getDefaultModelForProvider, getProviderConfig } from "@/lib/ai-models";
+import { toNativeModelId } from "@/lib/ai/native-model-id";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
-import { ServerModelSection } from "@/components/settings/server-model-section";
+import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
+import { resolveCreditsAvailability } from "@/lib/credits/availability";
+import { ESTIMATED_CREDITS_PER_QUERY } from "@/convex/lib/constants";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
-import {
-  useSharedSubscriptionState,
-} from "@/lib/auth/use-subscription-state";
+import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
-import type { AIProvider } from "@/lib/types/ai.types";
-import { Enter } from "@/components/settings/parts";
+import { useAppToast } from "@/lib/toast";
+import { getErrorMessage } from "@/lib/toast/use-app-toast";
+import { stripProviderPrefix } from "@/lib/chat/model-display";
+import { BROWSER_TASKS, type AiTask } from "@/lib/ai/tasks";
+import type { AIKeyMode, AIProvider } from "@/lib/types/ai.types";
+import { Enter, Segmented, type Ico } from "@/components/settings/parts";
+import {
+  MapSummary, ModelPicker, NodeCard, RoutingMap, toMapModel, useRouting, ZONE_LABEL, type Hover, type MapModel,
+} from "@/components/settings/model-map";
 
-type ModelCatalogOption =
-  (typeof api.models.queries.listCatalogOptions)["_returnType"][number];
+type KeyProvider = Extract<AIProvider, "openai" | "google" | "anthropic" | "openrouter">;
+const PROVIDERS: Array<{ id: KeyProvider; icon: Ico }> = [
+  { id: "openai", icon: OpenAIIcon },
+  { id: "google", icon: GoogleIcon },
+  { id: "anthropic", icon: AnthropicIcon },
+  { id: "openrouter", icon: OpenRouterIcon },
+];
+
+/** The store keeps OpenRouter models as slugs and every other provider's as the id its own API takes. */
+const storedIdOf = (provider: AIProvider, slug: string) =>
+  provider === "openrouter" || provider === "azure" ? slug : toNativeModelId(slug, provider);
+const onBrowser = (task: AiTask) => (BROWSER_TASKS as readonly AiTask[]).includes(task);
 
 export default function AISettingsPage() {
-  const {
-    provider,
-    model,
-    setProvider,
-    setModel,
-    apiKey,
-    setApiKey,
-    apiKeyMode,
-    setApiKeyMode,
-  } = useAIConfigStore();
-
+  const t = useTranslations("settingsAi");
+  const tc = useTranslations("common");
+  const toast = useAppToast();
+  const { provider, model, setProvider, setModel, apiKey, setApiKey, apiKeyMode, setApiKeyMode } = useAIConfigStore();
   const { phase } = useAuthReadiness();
-  const isSignedIn = phase === "authenticated";
-  const convex = useConvex();
-  const router = useRouter();
+  const signedIn = phase === "authenticated";
   const goToSignIn = useSignInRedirect();
   const subscriptionState = useSharedSubscriptionState();
-  const [showApiKeyConfig, setShowApiKeyConfig] = useState(false);
+  const creditsEnabled = useFeatureFlagForPlan("credits.enabled", subscriptionState.planFeatures);
+  const [hover, setHover] = useState<Hover>(null);
 
-  // Per-provider draft keys — only entries that differ from the store are present
-  const [pendingKeys, setPendingKeys] = useState<Record<string, string>>({});
-  const [modelSearch, setModelSearch] = useState("");
-  const [modelSectionExpanded, setModelSectionExpanded] = useState(false);
-
-  const pendingApiKey = provider in pendingKeys ? pendingKeys[provider] : apiKey;
-  const hasUnsavedKey = pendingApiKey !== apiKey;
-
-  const toast = useAppToast();
-  const t = useTranslations("aiSettings");
-  const tc = useTranslations("common");
-
-  const providerConfig = getProviderConfig(provider);
-
-  // Settings only needs a point-in-time catalog read. Avoid a live
-  // subscription for a low-freshness settings surface.
-  const queryProvider = provider === "openrouter" ? undefined : provider;
-  const [rawModels, setRawModels] = useState<ModelCatalogOption[] | null>(null);
-  const [loadingModels, setLoadingModels] = useState(true);
-  const [modelCatalogFailed, setModelCatalogFailed] = useState(false);
-  const [modelCatalogRequestKey, setModelCatalogRequestKey] = useState(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    setRawModels(null);
-    setLoadingModels(true);
-    setModelCatalogFailed(false);
-
-    void convex
-      .query(api.models.queries.listCatalogOptions, { provider: queryProvider })
-      .then((models) => {
-        if (cancelled) return;
-        setRawModels(models);
-      })
-      .catch((error) => {
-        console.error("[AISettingsPage] Failed to load model catalog", error);
-        if (cancelled) return;
-        setModelCatalogFailed(true);
-        setRawModels([]);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoadingModels(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [convex, modelCatalogRequestKey, queryProvider]);
-
-  // Map DB models to the shape the UI expects
-  const models = useMemo(() => {
-    if (!rawModels) return [];
-    return rawModels.map((m) => ({
-      id: provider === "openrouter"
-        ? m.modelId
-        : (m.modelId.includes("/") ? m.modelId.split("/").slice(1).join("/") : m.modelId),
-      fullId: m.modelId,
-      name: m.name,
-      provider: m.provider,
-      description: m.description,
-      contextWindow: m.contextLength,
-      pricing: {
-        input: m.inputPricePerMillion,
-        output: m.outputPricePerMillion,
-      },
-      category: m.category ?? m.tokenizer,
-      modality: m.modality,
-    }));
-  }, [rawModels, provider]);
-
-  const handleProviderChange = (newProvider: AIProvider) => {
-    if (newProvider === provider) {
-      return;
-    }
-
-    setProvider(newProvider);
-    const defaultModel = getDefaultModelForProvider(newProvider);
-    setModel(defaultModel);
-    setModelSectionExpanded(false);
-  };
-
-  const handleModelChange = (newModel: string) => {
-    setModel(newModel);
-    setModelSectionExpanded(false);
-    setModelSearch("");
-  };
-
-  const handleRetryModelCatalog = () => {
-    setModelCatalogRequestKey((current) => current + 1);
-  };
-
-  const handleSaveApiKey = () => {
-    setApiKey(pendingApiKey);
-    setPendingKeys((prev) => {
-      const next = { ...prev };
-      delete next[provider];
-      return next;
-    });
-    sonnerToast.success(t("apiKeySaved"));
-  };
-
-  const selectedModel = models.find((m) => m.id === model);
-
-  const filteredModels = models.filter(
-    (m) =>
-      m.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
-      m.id.toLowerCase().includes(modelSearch.toLowerCase()),
+  const routes = useQuery(api.aiModelConfig.queries.routing, creditsEnabled ? {} : "skip");
+  const config = useQuery(api.userAiConfig.queries.get, signedIn && creditsEnabled ? {} : "skip");
+  const account = useOptionalAuthQuery(api.billing.accounts.mine, creditsEnabled ? {} : "skip");
+  const keyRow = useQuery(
+    api.models.queries.getCatalogOption,
+    provider === "openrouter" || provider === "azure" ? { modelId: model } : { modelId: model, provider },
   );
 
-  // Group filtered models by category
-  const filteredGroupedModels: Record<string, typeof models> = {};
-  filteredModels.forEach((m) => {
-    if (provider === "openrouter") {
-      const category = m.category || tc("other");
-      if (!filteredGroupedModels[category]) {
-        filteredGroupedModels[category] = [];
-      }
-      filteredGroupedModels[category].push(m);
-    } else {
-      const allLabel = tc("all");
-      if (!filteredGroupedModels[allLabel]) {
-        filteredGroupedModels[allLabel] = [];
-      }
-      filteredGroupedModels[allLabel].push(m);
-    }
+  const recommendedChat = routes?.tasks.find((r) => r.task === "chat")?.model ?? null;
+  const setPreset = useMutation(api.userAiConfig.mutations.setPreset).withOptimisticUpdate((store, { serverPreset }) => {
+    const current = store.getQuery(api.userAiConfig.queries.get, {});
+    store.setQuery(api.userAiConfig.queries.get, {}, {
+      serverPreset,
+      model: serverPreset === "recommended" ? null : (current?.model ?? recommendedChat),
+    });
+  });
+  const setCustomModel = useMutation(api.userAiConfig.mutations.setCustomModel);
+
+  // The server returns no model when tasks run on Recommended, including when an admin hid the picked one.
+  const single = config?.model ?? null;
+  const one = single !== null;
+  const pay = apiKeyMode;
+  // Mirrors the executor: "Credits, then key" runs on the key alone when credits can't run.
+  const creditsRun =
+    creditsEnabled &&
+    signedIn &&
+    resolveCreditsAvailability({
+      isAuthenticated: signedIn,
+      settlement: account.settlement === "ready" ? "settled" : "loading",
+      totalCredits: account.data?.balance,
+      requiredCredits: ESTIMATED_CREDITS_PER_QUERY,
+    }) !== "unavailable";
+  const browserOn: AIKeyMode = pay === "smart" && !creditsRun ? "local" : pay;
+  const keyModel: MapModel = keyRow
+    ? toMapModel(keyRow)
+    : { id: provider === "openrouter" ? model : `${provider}/${model}`, name: model, inputPricePerMillion: 0, outputPricePerMillion: 0, unpriced: true };
+
+  const routing = useRouting({
+    modelFor: (task) => {
+      if (!creditsEnabled) return null;
+      const picked = single ?? routes?.tasks.find((r) => r.task === task)?.model;
+      return picked ? toMapModel(picked) : null;
+    },
+    onKey: (task) => browserOn === "local" && onBrowser(task),
+    keyModel,
+    fallback: browserOn === "smart",
   });
 
-  const providers: Array<{
-    id: AIProvider;
-    name: string;
-    family: string;
-    icon: typeof OpenAIIcon;
-    color: string;
-    borderColor: string;
-    bgColor: string;
-  }> = [
-    {
-      id: "openai",
-      name: t("providerNames.openai"),
-      family: t("providerFamilies.gpt"),
-      icon: OpenAIIcon,
-      color: "text-green-500",
-      borderColor: "border-l-green-500",
-      bgColor: "bg-green-500/5",
-    },
-    {
-      id: "google",
-      name: t("providerNames.google"),
-      family: t("providerFamilies.gemini"),
-      icon: GoogleIcon,
-      color: "text-blue-500",
-      borderColor: "border-l-blue-500",
-      bgColor: "bg-blue-500/5",
-    },
-    {
-      id: "anthropic",
-      name: t("providerNames.anthropic"),
-      family: t("providerFamilies.claude"),
-      icon: AnthropicIcon,
-      color: "text-orange-500",
-      borderColor: "border-l-orange-500",
-      bgColor: "bg-orange-500/5",
-    },
-    {
-      id: "openrouter",
-      name: t("providerNames.openrouter"),
-      family: t("models300Plus"),
-      icon: OpenRouterIcon,
-      color: "text-purple-500",
-      borderColor: "border-l-purple-500",
-      bgColor: "bg-purple-500/5",
-    },
-  ];
-
-  const creditsEnabled = useFeatureFlagForPlan(
-    "credits.enabled",
-    subscriptionState.planFeatures,
-  );
-  const isCreditsModeLocked = !creditsEnabled;
-  // The server model section reads these; the page appears once they're in, at full size.
-  const serverConfig = useQuery(api.userAiConfig.queries.get, isSignedIn ? {} : "skip");
-  const modelConfig = useQuery(api.aiModelConfig.queries.list, creditsEnabled ? {} : "skip");
-  const modelCatalog = useQuery(api.models.queries.listCatalogOptions, creditsEnabled ? {} : "skip");
-  const serverReady =
-    !creditsEnabled || ((!isSignedIn || serverConfig !== undefined) && modelConfig !== undefined && modelCatalog !== undefined);
-  const isDisabled = apiKeyMode === "credits";
-
-  // For logged-out users: provider/model/credentials are hidden until they
-  // choose the BYOK path. For logged-in users in credits mode the sections
-  // are shown but dimmed (existing behaviour).
-  const showFullConfig = isSignedIn ? true : showApiKeyConfig;
-  const isConfigDisabled = isSignedIn ? isDisabled : false;
-
-  // Keep showApiKeyConfig referenced (legacy local toggle, retained for parity).
-  void showApiKeyConfig;
-  void showFullConfig;
-  void isConfigDisabled;
-  void setShowApiKeyConfig;
-  void router;
-
-  // The in-browser features run client-side: BYOK config shows unless the user
-  // picked Credits. Credits is gated (sign-in + credits.enabled), matching the
-  // legacy mode-card logic; Smart and My-keys are always available.
-  const modeCards: Array<{ id: "smart" | "local" | "credits"; label: string; desc: string; icon: typeof KeyRound }> = [
-    { id: "smart", label: t("modeLabel.smart"), desc: t("modeShort.smart"), icon: Sparkles },
-    { id: "local", label: t("modeLabel.local"), desc: t("modeShort.local"), icon: KeyRound },
-    { id: "credits", label: t("modeLabel.credits"), desc: t("modeShort.credits"), icon: Coins },
-  ];
-
-  const handleModeClick = (id: "smart" | "local" | "credits") => {
-    if (id === "credits") {
-      if (isCreditsModeLocked) {
-        toast.error(t("creditsModeDisabled"), t("creditsModeDisabledDescription"));
-        return;
-      }
-      if (!isSignedIn) {
-        toast.error(t("signInToUseCredits"), undefined, {
-          label: tc("signIn"),
-          onClick: goToSignIn,
-          icon: "arrow-right",
-        });
-        return;
-      }
+  const fail = (what: string) => (error: unknown) => {
+    console.error(`[settings] ${what} failed`, error);
+    toast.error(tc("somethingWentWrong"), getErrorMessage(error, tc("somethingWentWrong")));
+  };
+  const chooseMode = (mode: "recommended" | "one") => {
+    if (!signedIn) {
+      toast.error(t("signInToPick"), undefined, { label: tc("signIn"), onClick: goToSignIn, icon: "arrow-right" });
+      return;
     }
-    setApiKeyMode(id);
+    setPreset({ serverPreset: mode === "one" ? "custom" : "recommended" }).catch(fail("model mode change"));
+  };
+  const choosePay = (next: AIKeyMode) => {
+    if (next === "credits" && !creditsEnabled) {
+      toast.error(t("creditsOff"), t("creditsOffDescription"));
+      return;
+    }
+    if (next === "credits" && !signedIn) {
+      toast.error(t("signInToUseCredits"), undefined, { label: tc("signIn"), onClick: goToSignIn, icon: "arrow-right" });
+      return;
+    }
+    setApiKeyMode(next);
+  };
+  const chooseProvider = (next: KeyProvider) => {
+    if (next === provider) return;
+    setProvider(next);
+    setModel(getDefaultModelForProvider(next));
   };
 
+  const ready =
+    keyRow !== undefined &&
+    (!creditsEnabled || (routes !== undefined && (!signedIn || (config !== undefined && account.settlement === "ready"))));
+
   return (
-    <Enter ready={serverReady}>
-      {/* Two buckets: server (credits) + in-browser (key or credits) */}
-      <div className="space-y-4">
-        {/* ── ON OUR SERVERS (credits) ── */}
-        <ServerModelSection
-          signedIn={isSignedIn}
-          creditsEnabled={creditsEnabled}
-          onSignIn={goToSignIn}
+    <Enter ready={ready}>
+      <div className="space-y-6">
+        <MapSummary
+          routing={routing}
+          title={
+            !creditsEnabled
+              ? stripProviderPrefix(keyModel.name)
+              : single
+                ? stripProviderPrefix(single.name)
+                : t("modelCount", { count: routing.creditModels })
+          }
+          subtitle={!creditsEnabled ? t("onBrowserTasks") : !single ? t("perTask") : browserOn === "local" ? t("onCloudTasks") : t("onEveryTask")}
+          hovered={hover?.node}
+          onHover={(id) => setHover(id ? { node: id } : null)}
+          aside={
+            creditsEnabled ? (
+              <Segmented
+                size="md"
+                label={t("models")}
+                value={one ? "one" : "recommended"}
+                onChange={chooseMode}
+                options={[
+                  { id: "recommended", label: t("recommended"), icon: Sparkles },
+                  { id: "one", label: t("oneModel"), icon: Box },
+                ]}
+              />
+            ) : null
+          }
         />
 
-        {/* ── IN YOUR BROWSER (your key or credits) ── */}
-        <section className="overflow-hidden rounded-2xl border-2 border-border/60">
-          <div className="space-y-1.5 border-b border-border/50 bg-muted/30 px-4 py-3">
-            <div className="flex items-center gap-2.5">
-              <h3 className="flex-1 text-sm font-semibold">{t("secondaryModelTitle")}</h3>
-              <span className="flex h-6 items-center gap-1 rounded-md bg-sky-500/15 px-2 text-xs font-medium text-sky-700"><KeyRound className="h-3 w-3" /> / <Coins className="h-3 w-3" /></span>
-            </div>
-            <p className="text-xs text-muted-foreground">{t("secondaryModelDesc")}</p>
-          </div>
-
-          <div className="space-y-3 p-4">
-            {/* mode cards — credits gated; smart/my-keys always available */}
-            <div className="grid grid-cols-3 gap-2.5">
-              {modeCards.map((mc) => {
-                const locked = mc.id === "credits" && (isCreditsModeLocked || !isSignedIn);
-                const on = apiKeyMode === mc.id && !locked;
-                const ModeIcon = locked && isCreditsModeLocked ? Lock : mc.icon;
-                const shownDesc = locked ? (isCreditsModeLocked ? t("modeLocked.notOnPlan") : t("modeLocked.signIn")) : mc.desc;
-                return (
-                  <button
-                    key={mc.id}
-                    type="button"
-                    onClick={() => handleModeClick(mc.id)}
-                    className={cn("flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-center transition-all", on ? "border-l-[4px] border-l-primary border-t-border/50 border-r-border/50 border-b-border/50 bg-primary/5" : "border-border/50 hover:border-border/80 hover:bg-muted/30", locked && "opacity-60")}
-                  >
-                    <ModeIcon className={cn("h-6 w-6", on ? "text-primary" : "text-muted-foreground")} />
-                    <span className="flex items-center gap-1 text-sm font-semibold">{mc.label}{on && <Check className="h-3.5 w-3.5 text-primary" />}</span>
-                    <span className="text-[11px] text-muted-foreground">{shownDesc}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {apiKeyMode === "credits" ? (
-              <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-background p-3 text-sm text-muted-foreground">
-                <Coins className="h-4 w-4 text-amber-500" /> {t("creditsInfoBanner")}
-              </div>
+        <RoutingMap
+          routing={routing}
+          hover={hover}
+          setHover={setHover}
+          browserLabel={t(`browserLabel.${browserOn}`)}
+          browserActive={browserOn === "local"}
+          renderNode={(n) =>
+            n.id === "key" ? (
+              <KeyNode
+                model={keyModel}
+                provider={provider}
+                apiKey={apiKey}
+                fallback={browserOn === "smart"}
+                onProvider={chooseProvider}
+                onModel={(picked) => setModel(storedIdOf(provider, picked.id))}
+                onSave={setApiKey}
+              />
+            ) : single ? (
+              <ModelPicker
+                value={n.model.id}
+                onChange={(picked) => setCustomModel({ serverModelId: picked._id }).catch(fail("model change"))}
+                trigger={<NodeCard model={n.model} paidBy="credits" count={n.tasks.length} interactive />}
+              />
             ) : (
-              <div className="space-y-2.5 rounded-xl border border-border/50 bg-muted/30 p-3">
-                <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"><KeyRound className="h-3 w-3" /> {t("providerAndKey")}</div>
+              <NodeCard model={n.model} paidBy="credits" count={n.tasks.length} />
+            )
+          }
+        />
 
-                {/* provider — compact segmented control */}
-                <div className="flex gap-0.5 rounded-lg border border-border/50 bg-background p-0.5">
-                  {providers.map((p) => {
-                    const Icon = p.icon;
-                    const sel = provider === p.id;
-                    return (
-                      <button key={p.id} type="button" aria-label={p.name} onClick={() => handleProviderChange(p.id)} className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs transition-all", sel ? "bg-muted font-medium shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-                        <Icon className={cn("h-4 w-4", sel ? p.color : "")} />
-                        <span className="hidden sm:inline">{p.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* model picker (reuses the live catalog + grouped search) */}
-                <div className="space-y-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setModelSectionExpanded(!modelSectionExpanded)}
-                    className="flex w-full items-center gap-2 rounded-xl border-2 border-border/50 bg-background p-3 text-left transition-colors hover:border-border/80"
-                  >
-                    <span className="flex-1 truncate text-sm">
-                      <span className="font-medium">{selectedModel?.name || tc("selectAModel")}</span>
-                      {selectedModel && <span className="ml-1.5 text-xs text-muted-foreground">${selectedModel.pricing.input.toFixed(2)} / ${selectedModel.pricing.output.toFixed(2)} {t("per1MTokens")}</span>}
-                    </span>
-                    {loadingModels ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : modelSectionExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                  </button>
-
-                  {modelCatalogFailed && !loadingModels && (
-                    <div role="alert" className="flex items-center justify-between gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-2.5">
-                      <span className="flex items-center gap-2 text-sm"><AlertCircle className="h-4 w-4 text-destructive" /> {tc("somethingWentWrong")}</span>
-                      <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5" onClick={handleRetryModelCatalog}><RotateCcw className="h-3.5 w-3.5" /> {tc("retry")}</Button>
-                    </div>
-                  )}
-
-                  <AnimatePresence initial={false}>
-                    {modelSectionExpanded && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2, ease: "easeInOut" }} className="overflow-hidden">
-                        <div className="overflow-hidden rounded-xl border-2 border-border/50 bg-muted/20">
-                          <div className="border-b border-border/40 p-2">
-                            <div className="relative">
-                              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                              <Input placeholder={t("searchModels")} value={modelSearch} onChange={(e) => setModelSearch(e.target.value)} className="h-8 pl-8 text-sm" />
-                            </div>
-                          </div>
-                          <div className="max-h-64 overflow-y-auto p-1.5">
-                            {loadingModels ? (
-                              <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> {tc("loadingModels")}</div>
-                            ) : filteredModels.length === 0 ? (
-                              <div className="py-8 text-center text-sm text-muted-foreground">{tc("noModelsFound")}</div>
-                            ) : (
-                              Object.entries(filteredGroupedModels).map(([category, categoryModels]) => (
-                                <div key={category}>
-                                  {provider === "openrouter" && <div className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{category}</div>}
-                                  {categoryModels.map((m) => (
-                                    <button key={m.id} type="button" onClick={() => handleModelChange(m.id)} className={cn("flex w-full flex-col gap-0.5 rounded-lg border p-2 text-left transition-colors", m.id === model ? "border-primary/20 bg-primary/10" : "border-transparent hover:bg-accent")}>
-                                      <span className="flex items-center gap-2">
-                                        <span className="flex-1 truncate text-sm font-medium">{m.name}</span>
-                                        <span className="whitespace-nowrap text-[11px] text-muted-foreground">${m.pricing.input.toFixed(2)}/${m.pricing.output.toFixed(2)}</span>
-                                        {m.id === model && <Check className="h-4 w-4 flex-shrink-0 text-primary" />}
-                                      </span>
-                                      {m.description && <span className="text-[11px] text-muted-foreground line-clamp-1">{m.description}</span>}
-                                    </button>
-                                  ))}
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* credentials (per-provider key, save/reset, get-key link, guidance) */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="api-key" className="sr-only">{t("apiKey")}</Label>
-                  <div className="flex gap-1.5">
-                    <div className="relative flex-1">
-                      <Input
-                        id="api-key"
-                        type="password"
-                        placeholder={t("apiKeyPlaceholder", { provider: t(`providerNames.${provider}`) })}
-                        value={pendingApiKey}
-                        onChange={(e) => setPendingKeys((prev) => ({ ...prev, [provider]: e.target.value }))}
-                        onKeyDown={(e) => { if (e.key === "Enter" && hasUnsavedKey) handleSaveApiKey(); }}
-                        className="bg-background pr-9 font-mono text-sm"
-                      />
-                      <ShieldCheck className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-500" />
-                    </div>
-                    {hasUnsavedKey && (
-                      <ButtonGroup>
-                        <Button size="icon" variant="outline" onClick={() => setPendingKeys((prev) => { const next = { ...prev }; delete next[provider]; return next; })}><RotateCcw className="h-3.5 w-3.5" /></Button>
-                        <Button size="icon" onClick={handleSaveApiKey}><Save className="h-3.5 w-3.5" /></Button>
-                      </ButtonGroup>
-                    )}
-                  </div>
-                  <a href={providerConfig.apiKeyUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                    {t("getApiKey", { provider: providerConfig.name })} <ExternalLink className="h-3 w-3" />
-                  </a>
-                  <ul className="space-y-0.5 text-[11px] text-muted-foreground">
-                    <li>{t(`providerGuidance.${provider}.whatIs`)}</li>
-                    <li>{t(`providerGuidance.${provider}.credits`)}</li>
-                    <li>{t(`providerGuidance.${provider}.freeModels`)}</li>
-                  </ul>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
+        <div className="flex items-center justify-between gap-6 rounded-2xl bg-muted/30 py-3 pl-5 pr-3 @max-[46rem]/configuration:flex-col @max-[46rem]/configuration:items-start @max-[46rem]/configuration:gap-3">
+          <p className="text-sm text-muted-foreground">
+            {t.rich("keyTasks", { b: (chunks: ReactNode) => <span className="font-medium text-foreground">{chunks}</span> })}
+          </p>
+          <Segmented
+            label={t("payWith")}
+            value={pay}
+            onChange={choosePay}
+            options={[
+              { id: "credits", label: t("pay.credits"), icon: Coins },
+              { id: "smart", label: t("pay.smart"), icon: Sparkles },
+              { id: "local", label: t("pay.local"), icon: KeyRound },
+            ]}
+          />
+        </div>
       </div>
     </Enter>
+  );
+}
+
+/** The browser's model card: pick a provider, save its key, pick its model. */
+function KeyNode({
+  model, provider, apiKey, fallback, onProvider, onModel, onSave,
+}: {
+  model: MapModel;
+  provider: AIProvider;
+  apiKey: string;
+  fallback: boolean;
+  onProvider: (p: KeyProvider) => void;
+  onModel: (m: MapModel) => void;
+  onSave: (key: string) => void;
+}) {
+  const t = useTranslations("settingsAi");
+  const name = getProviderConfig(provider).name;
+  const Icon = PROVIDERS.find((p) => p.id === provider)?.icon ?? KeyRound;
+  const Brand = getModelIcon(model.id);
+  return (
+    <Popover>
+      <div className="relative">
+        <div
+          className="absolute left-0 flex items-center gap-1.5 rounded-t-xl bg-primary/10 pl-3 pr-4 text-xs font-medium text-primary"
+          style={{ top: -ZONE_LABEL + 2, height: ZONE_LABEL - 2 }}
+        >
+          <Monitor className="size-3.5" /> {t("yourBrowser")}
+        </div>
+        <PopoverTrigger asChild>
+          <NodeCard
+            model={model}
+            paidBy="key"
+            count={0}
+            interactive
+            caption={
+              apiKey ? (
+                <>
+                  <Icon className="size-3" /> {t("yourKey")}
+                  {fallback ? <span className="text-muted-foreground/60">{t("afterCredits")}</span> : null}
+                </>
+              ) : (
+                <span className="flex items-center gap-1 text-primary">
+                  <Plus className="size-3" /> {t("addKey", { provider: name })}
+                </span>
+              )
+            }
+          />
+        </PopoverTrigger>
+      </div>
+      <PopoverContent align="end" className="w-[26rem] space-y-3 p-3">
+        <div className="grid grid-cols-4 gap-1" role="radiogroup" aria-label={t("keyProvider")}>
+          {PROVIDERS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              role="radio"
+              aria-checked={p.id === provider}
+              onClick={() => onProvider(p.id)}
+              className={cn(
+                "flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-xs transition-colors",
+                p.id === provider ? "bg-primary/15 text-primary ring-1 ring-primary/40" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+            >
+              <p.icon className="size-4" /> {getProviderConfig(p.id).name}
+            </button>
+          ))}
+        </div>
+        <KeyInput key={provider} provider={provider} saved={apiKey} onSave={onSave} />
+        <ModelPicker
+          value={model.id}
+          onChange={onModel}
+          provider={provider === "openrouter" ? undefined : provider}
+          trigger={
+            <button
+              type="button"
+              className="flex h-10 w-full min-w-0 items-center gap-2 rounded-lg border border-border/60 bg-background px-3 text-left text-sm transition-colors hover:border-border"
+            >
+              <Brand className="size-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate font-medium">{stripProviderPrefix(model.name)}</span>
+              <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+            </button>
+          }
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Password field with save; remounts per provider so a draft never leaks to another key. */
+function KeyInput({ provider, saved, onSave }: { provider: AIProvider; saved: string; onSave: (key: string) => void }) {
+  const t = useTranslations("settingsAi");
+  const { name, apiKeyUrl } = getProviderConfig(provider);
+  const [draft, setDraft] = useState(saved);
+  const dirty = draft !== saved;
+  const save = () => onSave(draft);
+  return (
+    <div className="flex gap-2">
+      <div className="relative flex-1">
+        <Input
+          type="password"
+          aria-label={t("apiKey", { provider: name })}
+          placeholder={t("apiKey", { provider: name })}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && dirty) save();
+          }}
+          className="h-10 pr-10 font-mono text-sm"
+        />
+        <TooltipHint label={t("getKey", { provider: name })}>
+          <a
+            href={apiKeyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t("getKey", { provider: name })}
+            className="absolute right-1.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <ExternalLink className="size-3.5" />
+          </a>
+        </TooltipHint>
+      </div>
+      <Button className="h-10 w-24 gap-1.5" variant={dirty || !draft ? "default" : "secondary"} disabled={!dirty} onClick={save}>
+        {dirty || !draft ? <Save className="size-3.5" /> : <Check className="size-3.5" />} {dirty || !draft ? t("save") : t("saved")}
+      </Button>
+    </div>
   );
 }

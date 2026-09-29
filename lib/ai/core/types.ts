@@ -1,3 +1,4 @@
+import type { SearchTask } from '../tasks'
 export type AIOperationType =
   | 'enhanceSearchQuery'
   | 'generateScreeningQuestions'
@@ -13,6 +14,8 @@ export interface EnhanceSearchQueryInput {
   query: string
   language?: string
   syntax?: QuerySyntax
+  /** Which search task this is; on credits, each can run on its own model. */
+  task?: SearchTask
 }
 
 export interface EnhanceSearchQueryOutput {

@@ -3,6 +3,7 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { activeModels, MAX_CATALOG_MODELS, pickable } from "./catalog";
 import type { Doc } from "../_generated/dataModel";
+import { isVariant, toNativeModelId } from "../../lib/ai/native-model-id";
 
 const catalogOptionValidator = v.object({
   _id: v.id("models"),
@@ -69,6 +70,30 @@ export const listCatalogOptions = query({
     const rows = pickable(await activeModels(ctx, provider).take(MAX_CATALOG_MODELS));
 
     return rows.map(catalogOption);
+  },
+});
+
+/**
+ * One model users can pick, or null. With `provider`, `modelId` is that
+ * provider's native id (what the browser key calls), matched to its catalog row.
+ */
+export const getCatalogOption = query({
+  args: {
+    modelId: v.string(),
+    provider: v.optional(v.union(v.literal("openai"), v.literal("anthropic"), v.literal("google"), v.literal("deepseek"))),
+  },
+  returns: v.union(catalogOptionValidator, v.null()),
+  handler: async (ctx, { modelId, provider }) => {
+    if (provider) {
+      const rows = pickable(await activeModels(ctx, provider).take(MAX_CATALOG_MODELS));
+      const model = rows.find((row) => !isVariant(row.modelId) && toNativeModelId(row.modelId, provider) === modelId);
+      return model ? catalogOption(model) : null;
+    }
+    const model = await ctx.db
+      .query("models")
+      .withIndex("by_model_id", (q) => q.eq("modelId", modelId))
+      .unique();
+    return model && model.retiredAt === undefined && !model.hidden ? catalogOption(model) : null;
   },
 });
 
@@ -164,7 +189,7 @@ export const getById = internalQuery({
   ),
   handler: async (ctx, { modelId }) => {
     const row = await ctx.db.get(modelId);
-    if (!row || row.retiredAt !== undefined) return null;
+    if (!row || row.retiredAt !== undefined || row.hidden) return null;
     return {
       _id: row._id,
       modelId: row.modelId,

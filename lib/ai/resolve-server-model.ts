@@ -1,15 +1,19 @@
 /**
  * Pure decision logic for the per-user server-model choice (the credits path).
  *
+ * - "recommended" (and no stored choice at all): each task runs on the model an
+ *   admin set for it.
+ * - a named preset: every task runs on that preset's model.
+ * - "custom": every task runs on the remembered model.
+ *
  * `serverModelId` is STICKY: it remembers the user's last custom pick and is
- * only consulted when `serverPreset === "custom"`. Switching to a named preset
- * leaves `serverModelId` untouched, so toggling Balanced → Fast → Custom restores
- * the remembered model. The caller turns the returned decision into a concrete
- * `models` row (preset key → aiModelConfig → models table; custom → that id).
+ * only consulted when `serverPreset === "custom"`, so switching away and back
+ * restores it.
  */
 
-export type PresetKey = "fast" | "balanced" | "intelligent";
-export type ServerPreset = PresetKey | "custom";
+export const PRESET_KEYS = ["fast", "balanced", "intelligent"] as const;
+export type PresetKey = (typeof PRESET_KEYS)[number];
+export type ServerPreset = PresetKey | "custom" | "recommended";
 
 export interface UserServerChoice {
   serverPreset: ServerPreset;
@@ -17,22 +21,15 @@ export interface UserServerChoice {
 }
 
 export type ServerModelDecision =
+  | { kind: "recommended" }
   | { kind: "preset"; preset: PresetKey }
   | { kind: "custom"; modelId: string };
 
-export function resolveServerModelChoice(
-  choice: UserServerChoice | null | undefined,
-  defaultPreset: PresetKey,
-): ServerModelDecision {
-  if (!choice) {
-    return { kind: "preset", preset: defaultPreset };
-  }
+export function resolveServerModelChoice(choice: UserServerChoice | null | undefined): ServerModelDecision {
+  if (!choice || choice.serverPreset === "recommended") return { kind: "recommended" };
   if (choice.serverPreset === "custom") {
-    // Custom selected → use the remembered model, else fall back to the default preset.
-    return choice.serverModelId
-      ? { kind: "custom", modelId: choice.serverModelId }
-      : { kind: "preset", preset: defaultPreset };
+    // Custom selected but never picked → Recommended.
+    return choice.serverModelId ? { kind: "custom", modelId: choice.serverModelId } : { kind: "recommended" };
   }
-  // serverPreset is now narrowed to a named PresetKey.
   return { kind: "preset", preset: choice.serverPreset };
 }

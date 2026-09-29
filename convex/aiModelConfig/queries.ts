@@ -1,4 +1,8 @@
 import { query } from "../_generated/server";
+import { configModelId, modelSummary, recommendedModelId } from "../ai/serverModel";
+import { AI_TASKS } from "../../lib/ai/tasks";
+import { PRESET_KEYS } from "../../lib/ai/resolve-server-model";
+import { aiTaskValidator, modelSummaryValidator, presetKeyValidator } from "./validators";
 import { v } from "convex/values";
 
 /**
@@ -26,4 +30,24 @@ export const list = query({
       sortOrder: r.sortOrder ?? null,
     }));
   },
+});
+
+/**
+ * What Recommended runs each task on, and the models behind the chat
+ * shortcuts. Null where nothing live is configured.
+ */
+export const routing = query({
+  args: {},
+  returns: v.object({
+    tasks: v.array(v.object({ task: aiTaskValidator, model: v.union(modelSummaryValidator, v.null()) })),
+    presets: v.array(v.object({ preset: presetKeyValidator, model: v.union(modelSummaryValidator, v.null()) })),
+  }),
+  handler: async (ctx) => ({
+    tasks: await Promise.all(
+      AI_TASKS.map(async (task) => ({ task, model: await modelSummary(ctx, await recommendedModelId(ctx, task)) })),
+    ),
+    presets: await Promise.all(
+      PRESET_KEYS.map(async (preset) => ({ preset, model: await modelSummary(ctx, await configModelId(ctx, `preset.${preset}`)) })),
+    ),
+  }),
 });

@@ -92,7 +92,7 @@ export const createScreeningJob = mutation({
 
     // 5. Create screening job record (stamp the resolved per-user server model;
     // read back at run by screenPaperAction via resolveOpenRouterModel).
-    const serverModelId = await resolveServerModelId(ctx, user._id);
+    const serverModelId = await resolveServerModelId(ctx, user._id, "screenAll");
     const now = Date.now();
     const jobId = await ctx.db.insert("screeningJobs", {
       userId: user._id,

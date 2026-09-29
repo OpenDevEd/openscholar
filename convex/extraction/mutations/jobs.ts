@@ -132,18 +132,18 @@ export const startJob = mutation({
     }
 
     // Pre-resolve so the composer's controlled value is never null. Default a new
-    // chat to the user's server-model preset (balanced unless they changed it),
-    // which swapModel can still override per conversation.
+    // chat to the model the user's choice gives chat (Recommended unless they
+    // picked one model), which swapModel can still override per conversation.
     let resolvedChatModelId: Id<"models"> | undefined = args.chatModelId;
     if (args.mode === "chat" && resolvedChatModelId === undefined) {
-      resolvedChatModelId = (await resolveServerModelId(ctx, user._id)) ?? undefined;
+      resolvedChatModelId = (await resolveServerModelId(ctx, user._id, "chat")) ?? undefined;
     }
 
     // Stamp the resolved per-user server model on extraction-mode jobs (credits
     // path), read back at run by paperWorker via resolveOpenRouterModel.
     const serverModelId =
       args.mode === "extraction"
-        ? await resolveServerModelId(ctx, user._id)
+        ? await resolveServerModelId(ctx, user._id, "extraction")
         : undefined;
 
     const now = Date.now();
@@ -313,7 +313,7 @@ export const duplicateJob = mutation({
       .order("asc")
       .collect();
 
-    const dupServerModelId = await resolveServerModelId(ctx, user._id);
+    const dupServerModelId = await resolveServerModelId(ctx, user._id, "extraction");
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId: user._id,
       mode: "extraction" as const,

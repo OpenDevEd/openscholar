@@ -42,6 +42,13 @@ const DEFAULTS: Array<{ key: string; modelId: string; label?: string; blurb?: st
   { key: "preset.fast", modelId: "google/gemini-3.1-flash-lite-preview", label: "Fast", blurb: "Quickest & cheapest — screening, bulk work", sortOrder: 0 },
   { key: "preset.balanced", modelId: "anthropic/claude-sonnet-4.6", label: "Balanced", blurb: "Best quality for the price — most work", sortOrder: 1 },
   { key: "preset.intelligent", modelId: "anthropic/claude-opus-4.8", label: "Intelligent", blurb: "Deepest reasoning — hard, long papers", sortOrder: 2 },
+  // What Recommended runs each task on. Screening stays on the balanced preset until it moves to Jev.
+  { key: "task.chat", modelId: "anthropic/claude-sonnet-4.6" },
+  { key: "task.extraction", modelId: "google/gemini-3.1-flash-lite-preview" },
+  { key: "task.questionToQuery", modelId: "google/gemini-3.1-flash-lite-preview" },
+  { key: "task.refine", modelId: "google/gemini-3.1-flash-lite-preview" },
+  { key: "task.translate", modelId: "google/gemini-3.1-flash-lite-preview" },
+  { key: "task.broadenNarrow", modelId: "google/gemini-3.1-flash-lite-preview" },
   // Per-provider defaults (BYOK native ids; OpenRouter = server custom default).
   { key: "default.openai", modelId: "gpt-4o" },
   { key: "default.anthropic", modelId: "claude-sonnet-4-5" },

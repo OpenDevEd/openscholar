@@ -177,6 +177,7 @@ Return a more inclusive version of this query.`;
         query: broadenPrompt,
         language: currentLanguage || localeToLanguageCode(locale) || undefined,
         syntax,
+        task: "broadenNarrow",
       });
 
       if (search) {
@@ -231,6 +232,7 @@ Return a more targeted version of this query.`;
         query: narrowPrompt,
         language: currentLanguage || localeToLanguageCode(locale) || undefined,
         syntax,
+        task: "broadenNarrow",
       });
 
       if (search) {
