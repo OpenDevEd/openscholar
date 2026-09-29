@@ -49,7 +49,7 @@ export const SourcesContent = ({
 }: SourcesContentProps) => (
   <CollapsibleContent
     className={cn(
-      "flex w-fit flex-col gap-2 pt-3",
+      "flex w-fit max-w-full flex-col gap-2 pt-3",
       "overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down motion-reduce:animate-none outline-none",
       className
     )}
@@ -61,7 +61,7 @@ export type SourceProps = ComponentProps<"a">;
 
 export const Source = ({ href, title, children, ...props }: SourceProps) => (
   <a
-    className="flex items-center gap-2"
+    className="flex items-start gap-2"
     href={href}
     rel="noreferrer"
     target="_blank"
@@ -69,8 +69,8 @@ export const Source = ({ href, title, children, ...props }: SourceProps) => (
   >
     {children ?? (
       <>
-        <BookIcon className="h-4 w-4" />
-        <span className="block font-medium">{title}</span>
+        <BookIcon className="size-4 shrink-0" />
+        <span className="min-w-0 font-medium [overflow-wrap:anywhere]">{title}</span>
       </>
     )}
   </a>
