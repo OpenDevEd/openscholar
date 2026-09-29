@@ -8,6 +8,9 @@ describe("which saved key runs a model", () => {
     expect(keyFor("z-ai/glm-5.1", { openai: "sk-oa" })).toBeNull();
     expect(keyToAdd("z-ai/glm-5.1")).toBe("openrouter");
     expect(keyToAdd("google/gemini-3-pro")).toBe("google");
+    // OpenRouter-only variants never go to the provider's own API.
+    expect(keyFor("openai/gpt-oss-120b:free", { openai: "sk-oa", openrouter: "sk-or" })).toBe("openrouter");
+    expect(keyFor("openai/gpt-oss-120b:free", { openai: "sk-oa" })).toBeNull();
   });
 
   it("calls a provider's own API with its native id and OpenRouter with the slug", () => {

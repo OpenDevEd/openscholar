@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
-import type { Doc } from "../_generated/dataModel";
-import { AI_TASKS, PRESET_KEYS, type AiTask, type ModelChoice, type PresetKey } from "../../lib/ai/tasks";
+import { AI_TASKS, PRESET_KEYS, type AiTask, type PresetKey } from "../../lib/ai/tasks";
+import { fromLegacy } from "../ai/serverModel";
 import { defaultPick, insertPickIfMissing } from "../aiModelConfig/internal";
 
 // ponytail: aiModelConfig holds a few dozen curated rows, so one read covers it.
@@ -47,14 +47,6 @@ export const run = internalMutation({
   },
 });
 
-function migrated(cfg: Doc<"userAiConfig">): { choice: ModelChoice; custom?: Doc<"userAiConfig">["custom"] } {
-  if (cfg.serverPreset === "custom" && cfg.serverModelId) {
-    const pick = { modelId: cfg.serverModelId };
-    return { choice: "custom", custom: Object.fromEntries(AI_TASKS.map((task) => [task, pick])) };
-  }
-  return { choice: cfg.serverPreset === "fast" || cfg.serverPreset === "intelligent" ? cfg.serverPreset : "balanced" };
-}
-
 export const users = internalMutation({
   args: { cursor: v.union(v.string(), v.null()) },
   returns: v.object({ migrated: v.number(), isDone: v.boolean() }),
@@ -62,8 +54,8 @@ export const users = internalMutation({
     const page = await ctx.db.query("userAiConfig").paginate({ numItems: 200, cursor });
     let count = 0;
     for (const cfg of page.page) {
-      if (cfg.choice !== undefined) continue;
-      await ctx.db.patch("userAiConfig", cfg._id, { ...migrated(cfg), serverPreset: undefined, serverModelId: undefined, updatedAt: Date.now() });
+      if (cfg.serverPreset === undefined && cfg.serverModelId === undefined && cfg.choice !== undefined) continue;
+      await ctx.db.patch("userAiConfig", cfg._id, { ...fromLegacy(cfg), updatedAt: Date.now() });
       count++;
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.presetMaps.users, { cursor: page.continueCursor });

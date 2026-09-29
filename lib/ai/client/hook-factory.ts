@@ -16,7 +16,7 @@ import {
 } from '@/lib/ai/core/errors'
 import type { AIConfig } from './executor'
 import { keyFor, keyModelId } from '../keys'
-import { DEFAULT_PRESET, type AiTask } from '../tasks'
+import { effectiveChoice, fallbackPreset, type AiTask } from '../tasks'
 import {
   type AIExecutionErrorReason,
   type CreditsSettlement,
@@ -52,30 +52,36 @@ function mapExecutionError(reason: AIExecutionErrorReason): Error {
 }
 
 /**
- * How each task runs on the user's own keys: Custom's pick for it (the default
- * preset's when signed out), on whichever saved key can run that model.
- * Signed-in users on a preset always run on credits.
+ * How each task runs on the user's own keys: the pick they run on (Custom's,
+ * else their preset's, else the default preset's, as on the server), on
+ * whichever saved key can run that model. Signed-in users on a preset, or
+ * whose settings are still loading, run on credits.
  */
-function useKeyConfigs() {
+function useKeyConfigs(isAuthenticated: boolean, creditsEnabled: boolean) {
   const { provider, apiKey, providerApiKeys } = useAIConfigStore()
   const settings = useOptionalAuthQuery(api.userAiConfig.queries.get, {})
   const presets = useQuery(api.aiModelConfig.queries.presets, {})
-  const onCustom = settings.data?.choice === 'custom'
   return useMemo(() => {
     const keys: Record<string, string> = { ...providerApiKeys, [provider]: apiKey }
-    const picks = onCustom
-      ? settings.data?.custom
-      : presets?.find((p) => p.preset === DEFAULT_PRESET)?.tasks
+    const saved = settings.data?.choice
+    const choice = effectiveChoice(creditsEnabled, saved)
+    const presetPicks = presets?.find((p) => p.preset === (choice === 'custom' ? fallbackPreset(saved) : choice))?.tasks
     const configFor = (task: AiTask): AIConfig => {
-      const pick = picks?.find((p) => p.task === task)
+      const custom = choice === 'custom' ? settings.data?.custom.find((p) => p.task === task) : undefined
+      const pick = custom?.model ? custom : presetPicks?.find((p) => p.task === task)
       const slug = pick?.model?.modelId
       const key = slug ? keyFor(slug, keys) : null
       return slug && key
         ? { provider: key, apiKey: keys[key]!, model: keyModelId(slug, key), effort: pick?.effort ?? undefined }
         : { provider: 'openrouter', apiKey: '', model: '' }
     }
-    return { configFor, onPreset: settings.data !== undefined && !onCustom, anyKey: Object.values(keys).some(Boolean) }
-  }, [provider, apiKey, providerApiKeys, onCustom, settings.data, presets])
+    const loading = isAuthenticated && settings.settlement !== 'ready'
+    return {
+      configFor,
+      onCredits: isAuthenticated && creditsEnabled && (loading || choice !== 'custom'),
+      anyKey: Object.values(keys).some(Boolean),
+    }
+  }, [provider, apiKey, providerApiKeys, settings.data, settings.settlement, presets, isAuthenticated, creditsEnabled])
 }
 
 export function createAIHook<TParams extends Record<string, unknown>, TResult>(
@@ -89,12 +95,12 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
     const [error, setError] = useState<Error | null>(null)
 
     const { apiKeyMode: chosenMode } = useAIConfigStore()
-    const { configFor, onPreset, anyKey } = useKeyConfigs()
-    // Presets run on credits; paying with your own key is part of Custom.
-    const apiKeyMode = onPreset ? 'credits' : chosenMode
     const { phase } = useAuthReadiness()
     const isAuthenticated = phase === 'authenticated'
     const creditsEnabled = useFeatureFlag("credits.enabled")
+    const { configFor, onCredits, anyKey } = useKeyConfigs(isAuthenticated, creditsEnabled)
+    // Presets run on credits; paying with your own key is part of Custom.
+    const apiKeyMode = onCredits ? 'credits' : chosenMode
     const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, {})
     const isConfigured = useMemo(
       () =>

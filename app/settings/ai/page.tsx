@@ -23,7 +23,7 @@ import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { useAppToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import { AI_TASKS, BROWSER_TASKS, DEFAULT_PRESET, PRESET_KEYS, type AiTask, type ModelChoice } from "@/lib/ai/tasks";
+import { AI_TASKS, BROWSER_TASKS, PRESET_KEYS, effectiveChoice, fallbackPreset, type AiTask, type ModelChoice } from "@/lib/ai/tasks";
 import { keyFor, keyToAdd, type KeyProvider } from "@/lib/ai/keys";
 import type { Effort } from "@/lib/ai/core/call-options";
 import type { AIKeyMode, AIProvider } from "@/lib/types/ai.types";
@@ -64,8 +64,10 @@ export default function AISettingsPage() {
   });
   const saveCustom = useMutation(api.userAiConfig.mutations.setCustom);
   // Presets need credits; without them the user's own keys are all there is.
-  const choice: ModelChoice = creditsEnabled ? (settings?.choice ?? DEFAULT_PRESET) : "custom";
+  const choice = effectiveChoice(creditsEnabled, settings?.choice);
   const isCustom = choice === "custom";
+  // Signed-out users can only run on a key: the default preset's picks, on theirs.
+  const onKeys = isCustom || !signedIn;
   const keys: Record<string, string> = { ...providerApiKeys, [provider]: apiKey };
 
   const pay = apiKeyMode;
@@ -80,12 +82,12 @@ export default function AISettingsPage() {
       requiredCredits: ESTIMATED_CREDITS_PER_QUERY,
     }) !== "unavailable";
   // Presets always run on credits; your own keys are part of Custom.
-  const browserOn: AIKeyMode = !isCustom ? "credits" : !creditsEnabled || (pay === "smart" && !creditsRun) ? "local" : pay;
+  const browserOn: AIKeyMode = !signedIn ? "local" : !isCustom ? "credits" : !creditsEnabled || (pay === "smart" && !creditsRun) ? "local" : pay;
 
-  // Custom that was never set up shows the preset the user is on.
+  // A task with no live Custom pick runs on the preset it falls back to, as on the server.
   const customModel = (task: AiTask) => {
     const pick = settings?.custom.find((c) => c.task === task);
-    return pick?.model ? toMapModel(pick.model, pick.effort) : settings?.choice === "custom" ? null : (presetModel?.(settings?.choice ?? DEFAULT_PRESET, task) ?? null);
+    return pick?.model ? toMapModel(pick.model, pick.effort) : (presetModel?.(fallbackPreset(settings?.choice), task) ?? null);
   };
   const modelsOf = (c: ModelChoice) => (task: AiTask) => (c === "custom" ? customModel(task) : (presetModel?.(c, task) ?? null));
   const modelOf = modelsOf(choice);
@@ -184,7 +186,7 @@ export default function AISettingsPage() {
           setHover={setHover}
           browserLabel={t(`browserLabel.${browserOn}`)}
           browserActive={browserOn === "local"}
-          wrapBrowserLabel={!isCustom ? undefined : (label) => (
+          wrapBrowserLabel={!onKeys ? undefined : (label) => (
             <PayMenu pay={pay} onPay={choosePay} provider={provider} keys={keys} apiKey={apiKey} onProvider={setProvider} onSave={setApiKey}>
               {label}
             </PayMenu>

@@ -21,3 +21,11 @@ export type ModelChoice = PresetKey | "custom";
 export const DEFAULT_PRESET: PresetKey = "balanced";
 
 export const presetConfigKey = (preset: PresetKey, task: AiTask) => `preset.${preset}.${task}`;
+
+/** What a user runs on: their choice, or Custom when credits are off (presets need credits). */
+export const effectiveChoice = (creditsEnabled: boolean, saved: ModelChoice | undefined): ModelChoice =>
+  creditsEnabled ? (saved ?? DEFAULT_PRESET) : "custom";
+
+/** The preset a task falls back to when Custom has no live pick for it. */
+export const fallbackPreset = (saved: ModelChoice | undefined): PresetKey =>
+  saved && saved !== "custom" ? saved : DEFAULT_PRESET;

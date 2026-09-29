@@ -265,6 +265,7 @@ export const duplicateJob = mutation({
         sourceType: oldJob.sourceType,
         messageCount: 0,
         chatModelId: oldJob.chatModelId,
+        ...(oldJob.chatEffort && { chatEffort: oldJob.chatEffort }),
         createdAt: now,
         updatedAt: now,
       });

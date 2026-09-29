@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { setupAggregates } from "../extraction/aggregates.test-support";
+import type { AiTask } from "../../lib/ai/tasks";
 
 async function setup() {
   const t = convexTest(schema);
@@ -27,7 +28,7 @@ async function setup() {
   await t.mutation(internal.admins.mutations.grant, { email: "admin@test.local" });
   const user = t.withIdentity({ subject: "clerk_user" });
   const admin = t.withIdentity({ subject: "clerk_admin" });
-  const runsOn = (task: "chat" | "extraction" | "screening") => t.query(internal.ai.serverModel.resolveForUser, { userId, task });
+  const runsOn = (task: AiTask) => t.query(internal.ai.serverModel.resolveForUser, { userId, task });
   return { t, sonnet, flash, mine, userId, user, admin, runsOn };
 }
 
@@ -65,6 +66,25 @@ describe("custom", () => {
     const settings = await user.query(api.userAiConfig.queries.get, {});
     expect(settings?.choice).toBe("custom");
     expect(settings?.custom.find((c) => c.task === "extraction")?.model?._id).toBe(mine);
+  });
+
+  it("keeps every other task's pick on the first direct edit", async () => {
+    const { admin, user, sonnet, flash, mine, runsOn } = await setup();
+    await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "fast", task: "chat", modelId: flash });
+    await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "chat", modelId: sonnet });
+    await user.mutation(api.userAiConfig.mutations.choose, { choice: "fast" });
+    await user.mutation(api.userAiConfig.mutations.setCustom, { picks: [{ task: "extraction", modelId: mine }] });
+    // Chat stays on Fast's pick rather than dropping to Balanced's.
+    expect(await runsOn("chat")).toEqual({ modelId: flash });
+  });
+
+  it("converts a row saved before presets before changing it", async () => {
+    const { t, user, mine, userId, runsOn } = await setup();
+    await t.run((ctx) => ctx.db.insert("userAiConfig", { userId, serverPreset: "custom", serverModelId: mine, updatedAt: 1 }));
+    await user.mutation(api.userAiConfig.mutations.choose, { choice: "custom" });
+    expect(await runsOn("translate")).toEqual({ modelId: mine });
+    const cfg = await t.run((ctx) => ctx.db.query("userAiConfig").first());
+    expect(cfg?.serverPreset).toBeUndefined();
   });
 
   it("falls back to Balanced's pick once an admin hides a Custom model", async () => {
