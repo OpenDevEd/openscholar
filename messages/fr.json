@@ -339,116 +339,7 @@
   },
   "aiSettings": {
     "aiConfiguration": "Configuration IA",
-    "configurePreferences": "Configurez votre fournisseur IA et vos préférences de modèle",
-    "useMyApiKeys": "Utiliser mes clés API",
-    "bringYourOwn": "Apportez votre propre fournisseur et modèle",
-    "useCredits": "Utiliser les crédits",
-    "accountBalance": "Votre solde de compte",
-    "signInToUseCredits": "Connectez-vous pour utiliser les crédits",
-    "creditsInfoBanner": "Lors de l'utilisation des crédits, la configuration IA est gérée par nous. Votre fournisseur, modèle et paramètres de clé API ne sont pas utilisés dans ce mode.",
-    "searchModels": "Rechercher des modèles...",
-    "credentials": "Identifiants",
-    "apiKey": "Clé API",
-    "apiKeyPlaceholder": "Entrez votre clé API {provider}",
-    "apiKeySaved": "Clé API enregistrée",
-    "getApiKey": "Obtenez votre clé API {provider}",
-    "per1MTokens": "par 1M de tokens",
-    "models300Plus": "Plus de 300 modèles",
-    "usingOwnApiKeys": "Utilisation de vos propres clés API",
-    "usingCredits": "Utilisation des crédits du compte",
-    "loadingOpenRouterModels": "Chargement des modèles OpenRouter",
-    "providerNames": {
-      "openai": "OpenAI",
-      "google": "Google",
-      "anthropic": "Anthropic",
-      "openrouter": "OpenRouter",
-      "deepseek": "DeepSeek",
-      "azure": "Azure"
-    },
-    "providerFamilies": {
-      "gpt": "GPT",
-      "gemini": "Gemini",
-      "claude": "Claude"
-    },
-    "providerGuidance": {
-      "openai": {
-        "whatIs": "Votre clé API OpenAI est un jeton privé qui permet à cette application d'envoyer des demandes via votre compte OpenAI.",
-        "credits": "Si votre compte n'a pas de solde prépayé (ou pas de crédits/quota gratuit disponible), les demandes peuvent s'arrêter jusqu'à ce que vous ajoutiez des fonds ou que votre quota se réinitialise.",
-        "freeModels": "Options gratuites (janvier 2026) : OpenAI ne propose pas de variantes API ':free' spécifiques aux modèles dans cette application. L'utilisation de l'API OpenAI est toujours soumise aux niveaux d'utilisation et aux limites de taux."
-      },
-      "google": {
-        "whatIs": "Votre clé API Google connecte cette application à votre projet Gemini API dans AI Studio/Google Cloud.",
-        "credits": "Si le quota gratuit est épuisé ou si la facturation payante n'est pas disponible, les demandes échouent jusqu'à la réinitialisation du quota ou l'activation de la facturation.",
-        "freeModels": "Options gratuites (janvier 2026) : gemini-2.5-pro, gemini-2.5-flash et gemini-2.5-flash-lite ont un accès gratuit, mais avec des limites RPM/TPM/RPD strictes."
-      },
-      "anthropic": {
-        "whatIs": "Votre clé API Anthropic authentifie les appels aux modèles Claude depuis le compte de votre organisation.",
-        "credits": "Anthropic applique des limites de dépenses mensuelles par niveau ; une fois atteinte, l'utilisation de l'API est mise en pause jusqu'au prochain cycle ou à un niveau/dépôt supérieur.",
-        "freeModels": "Options gratuites (janvier 2026) : aucune variante Claude API gratuite spécifique aux modèles n'est documentée ; les modèles Claude API sont facturés et limités en taux."
-      },
-      "openrouter": {
-        "whatIs": "Votre clé API OpenRouter autorise les demandes et applique l'utilisation à votre compte OpenRouter.",
-        "credits": "Si votre solde OpenRouter est négatif, vous pouvez recevoir des erreurs 402, y compris pour les modèles gratuits, jusqu'à ce que votre solde soit rechargé.",
-        "freeModels": "Options gratuites (janvier 2026) : utilisez openrouter/free (Routeur de modèles gratuits). Les variantes gratuites ont des limites plus strictes."
-      },
-      "deepseek": {
-        "whatIs": "Votre clé API DeepSeek authentifie les appels aux modèles DeepSeek depuis votre compte.",
-        "credits": "L'utilisation de l'API DeepSeek est facturée ; si votre solde est épuisé, les demandes échoueront jusqu'à ce que vous ajoutiez des fonds.",
-        "freeModels": "Options gratuites : DeepSeek ne propose actuellement pas de niveaux API gratuits."
-      },
-      "azure": {
-        "whatIs": "Votre clé API Azure connecte cette application à votre déploiement Azure OpenAI Service.",
-        "credits": "L'utilisation d'Azure OpenAI est facturée via votre abonnement Azure ; si votre abonnement ou votre limite de dépenses est atteint, les demandes échoueront.",
-        "freeModels": "Options gratuites : Azure OpenAI n'offre pas d'accès API gratuit ; l'utilisation est facturée par token."
-      }
-    },
-    "getStartedTitle": "Démarrer avec l'IA",
-    "getStartedDescription": "Choisissez comment OpenScholar alimente vos fonctionnalités IA.",
-    "getStartedSignInTitle": "Se connecter pour des crédits gratuits",
-    "getStartedSignInDescription": "Aucune configuration nécessaire — connectez-vous et utilisez l'IA immédiatement.",
-    "getStartedApiKeyTitle": "Apporter votre propre clé API",
-    "getStartedApiKeyDescription": "Utilisez votre clé OpenAI, Google, Anthropic ou OpenRouter.",
-    "getStartedConfigureApiKey": "Configurer la clé API",
-    "useSmartMode": "Utiliser le mode intelligent",
-    "smartModeDescription": "Utilise les crédits s'ils sont disponibles, puis bascule vers votre clé API",
-    "creditsModeDisabled": "Le mode crédits est désactivé",
-    "creditsModeDisabledDescription": "Les crédits sont actuellement désactivés pour cette application. Passez au mode intelligent ou utilisez vos clés API.",
-    "creditsOnly": "credits",
-    "serverSignInBlurb": "Run Chat, Extraction & Screen All instantly — no card.",
-    "customModel": "Custom model",
-    "recommended": "Recommended",
-    "providerAndKey": "Provider & key",
-    "features": {
-      "chat": "Chat",
-      "extraction": "Extraction",
-      "screenAll": "Screen All"
-    },
-    "localFeatures": {
-      "questionToQuery": "Question → query",
-      "refine": "Refine",
-      "translateQuery": "Translate query",
-      "translatePaper": "Translate paper",
-      "screening": "Screening",
-      "broadenNarrow": "Broaden / narrow"
-    },
-    "modeLabel": {
-      "smart": "Smart",
-      "local": "My keys",
-      "credits": "Credits"
-    },
-    "modeShort": {
-      "smart": "Credits, then your key",
-      "local": "Own provider & model",
-      "credits": "Your account balance"
-    },
-    "modeLocked": {
-      "notOnPlan": "Not on your plan",
-      "signIn": "Sign in to use"
-    },
-    "primaryModelTitle": "Select your primary model",
-    "secondaryModelTitle": "Select your secondary model",
-    "primaryModelDesc": "Always used for Chat, Extraction & Screen All — runs in the OpenScholar cloud.",
-    "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
+    "configurePreferences": "Configurez votre fournisseur IA et vos préférences de modèle"
   },
   "billingPage": {
     "upgradePlan": "Passer à un forfait supérieur",
@@ -3247,7 +3138,8 @@
       "modelList": "Liste des modèles",
       "admins": "Administrateurs",
       "plans": "Forfaits",
-      "users": "Utilisateurs"
+      "users": "Utilisateurs",
+      "aiModels": "Modèles d'IA"
     },
     "sharedDev": "Dev partagé",
     "production": "Production",
@@ -3350,6 +3242,72 @@
       "noUsers": "Aucun utilisateur trouvé",
       "email": "Adresse e-mail",
       "sendInvite": "Envoyer l'invitation"
+    },
+    "ai": {
+      "modelCount": "{count, plural, one {# modèle} other {# modèles}}",
+      "behindRecommended": "derrière Recommandé",
+      "creditsOrKey": "Crédits, ou la clé de l'utilisateur",
+      "chatShortcuts": "Raccourcis du chat",
+      "shortcuts": {
+        "fast": "Rapide",
+        "balanced": "Équilibré",
+        "intelligent": "Intelligent"
+      },
+      "notSet": "Non défini"
+    }
+  },
+  "settingsAi": {
+    "models": "Modèles",
+    "recommended": "Recommandé",
+    "oneModel": "Un seul modèle",
+    "modelCount": "{count, plural, one {# modèle} other {# modèles}}",
+    "perTask": "choisis par tâche",
+    "onEveryTask": "pour toutes les tâches",
+    "onCloudTasks": "pour les tâches cloud",
+    "onBrowserTasks": "pour les tâches du navigateur",
+    "cloudOnly": "Cloud uniquement",
+    "openScholarCloud": "Cloud OpenScholar",
+    "browserLabel": {
+      "credits": "Dans le cloud",
+      "smart": "Le cloud, puis votre navigateur",
+      "local": "Dans votre navigateur"
+    },
+    "keyTasks": "<b>Les outils de recherche et le criblage</b> peuvent s'exécuter dans votre navigateur avec votre clé.",
+    "payWith": "Payer avec",
+    "pay": {
+      "credits": "Crédits",
+      "smart": "Crédits, puis clé",
+      "local": "Ma clé"
+    },
+    "yourBrowser": "Votre navigateur",
+    "yourKey": "Votre clé",
+    "afterCredits": "après les crédits",
+    "credits": "Crédits",
+    "taskCount": "{count, plural, one {# tâche} other {# tâches}}",
+    "addKey": "Ajouter votre clé {provider}",
+    "apiKey": "Clé API {provider}",
+    "getKey": "Obtenir une clé {provider}",
+    "keyProvider": "Fournisseur de la clé",
+    "save": "Enregistrer",
+    "saved": "Enregistrée",
+    "searchModels": "Rechercher des modèles",
+    "loadingModels": "Chargement des modèles",
+    "noModels": "Aucun modèle trouvé",
+    "free": "Gratuit",
+    "fallback": "secours",
+    "signInToPick": "Connectez-vous pour choisir un modèle",
+    "signInToUseCredits": "Connectez-vous pour utiliser des crédits",
+    "creditsOff": "Les crédits sont désactivés",
+    "creditsOffDescription": "Payez plutôt avec votre propre clé.",
+    "tasks": {
+      "chat": "Chat",
+      "extraction": "Extraction",
+      "screenAll": "Cribler tout",
+      "screening": "Criblage",
+      "questionToQuery": "Question → requête",
+      "refine": "Affiner",
+      "translate": "Traduire",
+      "broadenNarrow": "Élargir / restreindre"
     }
   }
 }

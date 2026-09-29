@@ -103,7 +103,7 @@ export const createJobDirect = internalMutation({
   },
   returns: v.id("extractionJobs"),
   handler: async (ctx, args) => {
-    const serverModelId = await resolveServerModelId(ctx, args.userId);
+    const serverModelId = await resolveServerModelId(ctx, args.userId, "extraction");
     const jobId = await ctx.db.insert("extractionJobs", {
       userId: args.userId,
       mode: "extraction" as const,

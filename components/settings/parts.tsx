@@ -59,11 +59,13 @@ export function Segmented<T extends string>({
   onChange,
   options,
   label,
+  size = "sm",
 }: {
   value: T;
   onChange: (v: T) => void;
   options: Array<{ id: T; label: string; icon?: Ico }>;
   label: string;
+  size?: "sm" | "md";
 }) {
   const buttons = useRef<Partial<Record<string, HTMLButtonElement | null>>>({});
   const [box, setBox] = useState<{ left: number; width: number } | null>(null);
@@ -98,11 +100,12 @@ export function Segmented<T extends string>({
             aria-checked={on}
             onClick={() => onChange(o.id)}
             className={cn(
-              "relative flex h-8 items-center gap-2 whitespace-nowrap rounded-full px-3 text-xs font-medium transition-colors",
+              "relative flex items-center gap-2 whitespace-nowrap rounded-full font-medium transition-colors",
+              size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
               on ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {o.icon ? <o.icon className="size-3.5" /> : null}
+            {o.icon ? <o.icon className={size === "md" ? "size-4" : "size-3.5"} /> : null}
             {o.label}
           </button>
         );

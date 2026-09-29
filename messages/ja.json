@@ -339,116 +339,7 @@
   },
   "aiSettings": {
     "aiConfiguration": "AI設定",
-    "configurePreferences": "AIプロバイダーとモデルの設定",
-    "useMyApiKeys": "自分のAPIキーを使用",
-    "bringYourOwn": "自分のプロバイダーとモデルを持ち込み",
-    "useCredits": "クレジットを使用",
-    "accountBalance": "アカウント残高",
-    "signInToUseCredits": "クレジットを使用するにはサインインしてください",
-    "creditsInfoBanner": "クレジット使用時、AI設定は当社で管理されます。プロバイダー、モデル、APIキー設定はこのモードでは使用されません。",
-    "searchModels": "モデルを検索...",
-    "credentials": "認証情報",
-    "apiKey": "APIキー",
-    "apiKeyPlaceholder": "{provider} APIキーを入力",
-    "apiKeySaved": "APIキーを保存しました",
-    "getApiKey": "{provider} APIキーを取得",
-    "per1MTokens": "100万トークンあたり",
-    "models300Plus": "300以上のモデル",
-    "usingOwnApiKeys": "自分のAPIキーを使用中",
-    "usingCredits": "アカウントクレジットを使用中",
-    "loadingOpenRouterModels": "OpenRouterモデルを読み込み中",
-    "providerNames": {
-      "openai": "OpenAI",
-      "google": "Google",
-      "anthropic": "Anthropic",
-      "openrouter": "OpenRouter",
-      "deepseek": "DeepSeek",
-      "azure": "Azure"
-    },
-    "providerFamilies": {
-      "gpt": "GPT",
-      "gemini": "Gemini",
-      "claude": "Claude"
-    },
-    "providerGuidance": {
-      "openai": {
-        "whatIs": "OpenAI APIキーは、このアプリがOpenAIアカウント経由でリクエストを送信するためのプライベートトークンです。",
-        "credits": "アカウントに前払い残高（または利用可能な無料クレジット/クォータ）がない場合、資金を追加するかクォータがリセットされるまでリクエストが停止する可能性があります。",
-        "freeModels": "無料オプション（2026年1月）：OpenAIはこのアプリでモデル固有の':free' APIバリアントを提供していません。OpenAI APIの使用は利用ティアとレート制限の対象です。"
-      },
-      "google": {
-        "whatIs": "Google APIキーは、このアプリをAI Studio/Google CloudのGemini APIプロジェクトに接続します。",
-        "credits": "無料ティアのクォータが枯渇しているか、有料請求が利用できない場合、クォータがリセットされるか請求が有効になるまでリクエストは失敗します。",
-        "freeModels": "無料オプション（2026年1月）：gemini-2.5-pro、gemini-2.5-flash、gemini-2.5-flash-liteは無料ティアアクセスがありますが、厳格なRPM/TPM/RPD制限があります。"
-      },
-      "anthropic": {
-        "whatIs": "Anthropic APIキーは、組織アカウントからClaudeモデルへの呼び出しを認証します。",
-        "credits": "Anthropicはティアごとに月次支出制限を実施しています。達すると、次のサイクルまたは上位ティア/入金までAPI使用が一時停止します。",
-        "freeModels": "無料オプション（2026年1月）：モデル固有の無料Claude APIバリアントは文書化されていません。Claude APIモデルは従量課金およびレート制限されています。"
-      },
-      "openrouter": {
-        "whatIs": "OpenRouter APIキーはリクエストを認可し、使用量をOpenRouterアカウントに適用します。",
-        "credits": "OpenRouter残高がマイナスの場合、残高が補充されるまで、無料モデルを含め402エラーが発生する可能性があります。",
-        "freeModels": "無料オプション（2026年1月）：openrouter/free（無料モデルルーター）を使用してください。無料バリアントはより厳しい制限があります。"
-      },
-      "deepseek": {
-        "whatIs": "DeepSeek APIキーは、アカウントからDeepSeekモデルへの呼び出しを認証します。",
-        "credits": "DeepSeek APIの使用は従量課金です。残高が枯渇すると、資金を追加するまでリクエストは失敗します。",
-        "freeModels": "無料オプション：DeepSeekは現在無料APIティアを提供していません。"
-      },
-      "azure": {
-        "whatIs": "Azure APIキーは、このアプリをAzure OpenAI Serviceのデプロイメントに接続します。",
-        "credits": "Azure OpenAIの使用はAzureサブスクリプションを通じて請求されます。サブスクリプションまたは支出制限に達すると、リクエストは失敗します。",
-        "freeModels": "無料オプション：Azure OpenAIは無料ティアAPIアクセスを提供していません。使用量はトークンごとに請求されます。"
-      }
-    },
-    "getStartedTitle": "AIを始める",
-    "getStartedDescription": "OpenScholarのAI機能の利用方法を選択してください。",
-    "getStartedSignInTitle": "サインインして無料クレジットを取得",
-    "getStartedSignInDescription": "設定不要 — サインインしてすぐにAIを使い始められます。",
-    "getStartedApiKeyTitle": "自分のAPIキーを使用する",
-    "getStartedApiKeyDescription": "OpenAI、Google、Anthropic、またはOpenRouterのキーを使用できます。",
-    "getStartedConfigureApiKey": "APIキーを設定",
-    "useSmartMode": "スマートモードを使用",
-    "smartModeDescription": "利用可能ならクレジットを使い、なければAPIキーを使用します",
-    "creditsModeDisabled": "クレジットモードは無効です",
-    "creditsModeDisabledDescription": "このアプリでは現在クレジットが無効です。スマートモードかAPIキー利用に切り替えてください。",
-    "creditsOnly": "credits",
-    "serverSignInBlurb": "Run Chat, Extraction & Screen All instantly — no card.",
-    "customModel": "Custom model",
-    "recommended": "Recommended",
-    "providerAndKey": "Provider & key",
-    "features": {
-      "chat": "Chat",
-      "extraction": "Extraction",
-      "screenAll": "Screen All"
-    },
-    "localFeatures": {
-      "questionToQuery": "Question → query",
-      "refine": "Refine",
-      "translateQuery": "Translate query",
-      "translatePaper": "Translate paper",
-      "screening": "Screening",
-      "broadenNarrow": "Broaden / narrow"
-    },
-    "modeLabel": {
-      "smart": "Smart",
-      "local": "My keys",
-      "credits": "Credits"
-    },
-    "modeShort": {
-      "smart": "Credits, then your key",
-      "local": "Own provider & model",
-      "credits": "Your account balance"
-    },
-    "modeLocked": {
-      "notOnPlan": "Not on your plan",
-      "signIn": "Sign in to use"
-    },
-    "primaryModelTitle": "Select your primary model",
-    "secondaryModelTitle": "Select your secondary model",
-    "primaryModelDesc": "Always used for Chat, Extraction & Screen All — runs in the OpenScholar cloud.",
-    "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
+    "configurePreferences": "AIプロバイダーとモデルの設定"
   },
   "billingPage": {
     "upgradePlan": "プランをアップグレード",
@@ -3247,7 +3138,8 @@
       "modelList": "モデル一覧",
       "admins": "管理者",
       "plans": "プラン",
-      "users": "ユーザー"
+      "users": "ユーザー",
+      "aiModels": "AI モデル"
     },
     "sharedDev": "共有開発",
     "production": "本番",
@@ -3350,6 +3242,72 @@
       "noUsers": "ユーザーが見つかりません",
       "email": "メールアドレス",
       "sendInvite": "招待を送信"
+    },
+    "ai": {
+      "modelCount": "{count, plural, other {# 個のモデル}}",
+      "behindRecommended": "「おすすめ」の中身",
+      "creditsOrKey": "クレジット、またはユーザーのキー",
+      "chatShortcuts": "チャットのショートカット",
+      "shortcuts": {
+        "fast": "高速",
+        "balanced": "バランス",
+        "intelligent": "高性能"
+      },
+      "notSet": "未設定"
+    }
+  },
+  "settingsAi": {
+    "models": "モデル",
+    "recommended": "おすすめ",
+    "oneModel": "1つのモデル",
+    "modelCount": "{count, plural, other {# 個のモデル}}",
+    "perTask": "タスクごとに選択",
+    "onEveryTask": "すべてのタスクで",
+    "onCloudTasks": "クラウドのタスクで",
+    "onBrowserTasks": "ブラウザのタスクで",
+    "cloudOnly": "クラウドのみ",
+    "openScholarCloud": "OpenScholar クラウド",
+    "browserLabel": {
+      "credits": "クラウドで",
+      "smart": "クラウド、次にブラウザ",
+      "local": "ブラウザで"
+    },
+    "keyTasks": "<b>検索ツールとスクリーニング</b>は、あなたのキーを使ってブラウザで実行できます。",
+    "payWith": "支払い方法",
+    "pay": {
+      "credits": "クレジット",
+      "smart": "クレジット、次にキー",
+      "local": "自分のキー"
+    },
+    "yourBrowser": "あなたのブラウザ",
+    "yourKey": "あなたのキー",
+    "afterCredits": "クレジットの後",
+    "credits": "クレジット",
+    "taskCount": "{count, plural, other {# 件のタスク}}",
+    "addKey": "{provider} のキーを追加",
+    "apiKey": "{provider} API キー",
+    "getKey": "{provider} のキーを取得",
+    "keyProvider": "キーのプロバイダー",
+    "save": "保存",
+    "saved": "保存済み",
+    "searchModels": "モデルを検索",
+    "loadingModels": "モデルを読み込み中",
+    "noModels": "モデルが見つかりません",
+    "free": "無料",
+    "fallback": "予備",
+    "signInToPick": "モデルを選ぶにはサインインしてください",
+    "signInToUseCredits": "クレジットを使うにはサインインしてください",
+    "creditsOff": "クレジットはオフです",
+    "creditsOffDescription": "代わりに自分のキーで支払ってください。",
+    "tasks": {
+      "chat": "チャット",
+      "extraction": "抽出",
+      "screenAll": "すべてスクリーニング",
+      "screening": "スクリーニング",
+      "questionToQuery": "質問 → クエリ",
+      "refine": "絞り込み",
+      "translate": "翻訳",
+      "broadenNarrow": "広げる / 狭める"
     }
   }
 }

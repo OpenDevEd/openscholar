@@ -133,6 +133,9 @@ It's designed for systematic reviews and complex queries, not just keyword match
      settings (`EL_SMTP_*`).
    - Set `AUTUMN_DASHBOARD_URL` on the Convex deployment to show the Plans link
      to Autumn's dashboard.
+   - Settings, Admin, AI models sets the model Recommended runs each task on.
+     `npx convex run aiModelConfig/internal:seed` adds the starting picks to a
+     deployment that doesn't have them; it never replaces an existing pick.
 
 4. **Run OpenScholar against the hosted development services**
 

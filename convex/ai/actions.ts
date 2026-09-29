@@ -26,12 +26,15 @@ import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
 import { internal } from "../_generated/api";
 import { BATCH_LOCK_TTL_MS } from "../lib/locks";
 import { createError } from "../lib/errors";
+import { searchTaskValidator } from "../aiModelConfig/validators";
 
 export const enhanceSearchQuery = createAIAction(
   {
     query: v.string(),
     language: v.optional(v.string()),
     syntax: v.optional(v.literal("oql")),
+    /** Which search task this is; each can run on its own model. */
+    task: v.optional(searchTaskValidator),
   },
   v.object({
     enhancedQuery: v.string(),
@@ -43,7 +46,7 @@ export const enhanceSearchQuery = createAIAction(
     enhancedQuery: output.enhancedQuery,
     explanation: "",
   }),
-  { kind: "search" },
+  { kind: "search", task: (args) => args.task ?? "questionToQuery" },
 );
 
 export const generateScreeningQuestions = createAIAction(
@@ -60,7 +63,7 @@ export const generateScreeningQuestions = createAIAction(
   (output) => ({
     questions: output.questions,
   }),
-  { kind: "screening" },
+  { kind: "screening", task: "screening" },
 );
 
 export const generateExtractionQuestions = createAIAction(
@@ -80,7 +83,7 @@ export const generateExtractionQuestions = createAIAction(
   "Generate extraction questions",
   getExtractionQuestionsConfig,
   toExtractionQuestions,
-  { kind: "extraction" },
+  { kind: "extraction", task: "extraction" },
 );
 
 export const translateQuery = createAIAction(
@@ -97,7 +100,7 @@ export const translateQuery = createAIAction(
   (output) => ({
     translatedQuery: output.translatedQuery,
   }),
-  { kind: "translation" },
+  { kind: "translation", task: "translate" },
 );
 
 export const translatePaperContent = createAIAction(
@@ -118,7 +121,7 @@ export const translatePaperContent = createAIAction(
     translatedAbstract: output.translatedAbstract,
     noTranslationNeeded: false,
   }),
-  { kind: "translation" },
+  { kind: "translation", task: "translate" },
 );
 
 export const generateScreeningResponses = createAIAction(
@@ -140,7 +143,7 @@ export const generateScreeningResponses = createAIAction(
     ),
     confidence: output.confidence,
   }),
-  { kind: "screening" },
+  { kind: "screening", task: "screening" },
 );
 
 /**
@@ -204,6 +207,7 @@ export const generateBatchTranslations = action({
         {
           description: `Batch translation (${papers.length} papers)`,
           kind: "translation",
+          task: "translate",
           estimate: Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
         },
         async (_user, model) => {
@@ -305,6 +309,7 @@ export const generateBatchScreeningResponses = action({
         {
           description: `Batch screening (${papers.length} papers)`,
           kind: "screening",
+          task: "screening",
           estimate: Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
         },
         async (_user, model) => {

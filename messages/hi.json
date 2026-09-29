@@ -339,116 +339,7 @@
   },
   "aiSettings": {
     "aiConfiguration": "AI कॉन्फ़िगरेशन",
-    "configurePreferences": "अपने AI प्रोवाइडर और मॉडल प्राथमिकताएं कॉन्फ़िगर करें",
-    "useMyApiKeys": "मेरे API कीज़ का उपयोग करें",
-    "bringYourOwn": "अपना प्रोवाइडर और मॉडल लाएं",
-    "useCredits": "क्रेडिट्स का उपयोग करें",
-    "accountBalance": "आपका खाता शेष",
-    "signInToUseCredits": "क्रेडिट्स का उपयोग करने के लिए साइन इन करें",
-    "creditsInfoBanner": "क्रेडिट्स का उपयोग करते समय, AI कॉन्फ़िगरेशन हमारे द्वारा प्रबंधित होता है। आपका प्रोवाइडर, मॉडल, और API की सेटिंग्स इस मोड में उपयोग नहीं होते।",
-    "searchModels": "मॉडल खोजें...",
-    "credentials": "क्रेडेंशियल्स",
-    "apiKey": "API की",
-    "apiKeyPlaceholder": "अपना {provider} API की दर्ज करें",
-    "apiKeySaved": "API की सहेजी गई",
-    "getApiKey": "अपना {provider} API की प्राप्त करें",
-    "per1MTokens": "प्रति 1M टोकन",
-    "models300Plus": "300+ मॉडल",
-    "usingOwnApiKeys": "अपने API कीज़ का उपयोग कर रहे हैं",
-    "usingCredits": "खाता क्रेडिट्स का उपयोग कर रहे हैं",
-    "loadingOpenRouterModels": "OpenRouter मॉडल लोड हो रहे हैं",
-    "providerNames": {
-      "openai": "OpenAI",
-      "google": "Google",
-      "anthropic": "Anthropic",
-      "openrouter": "OpenRouter",
-      "deepseek": "DeepSeek",
-      "azure": "Azure"
-    },
-    "providerFamilies": {
-      "gpt": "GPT",
-      "gemini": "Gemini",
-      "claude": "Claude"
-    },
-    "providerGuidance": {
-      "openai": {
-        "whatIs": "आपकी OpenAI API की एक निजी टोकन है जो इस ऐप को आपके OpenAI खाते के माध्यम से अनुरोध भेजने देती है।",
-        "credits": "यदि आपके खाते में प्रीपेड बैलेंस नहीं है (या कोई मुफ़्त क्रेडिट/कोटा उपलब्ध नहीं है), तो आप पैसे जोड़ने तक या आपका कोटा रीसेट होने तक अनुरोध रोक सकते हैं।",
-        "freeModels": "मुफ़्त विकल्प (जनवरी 2026): OpenAI इस ऐप में मॉडल-विशिष्ट ':free' API वेरिएंट प्रदान नहीं करता। OpenAI API उपयोग अभी भी उपयोग टियर और दर सीमाओं के अधीन है।"
-      },
-      "google": {
-        "whatIs": "आपकी Google API की इस ऐप को AI Studio/Google Cloud में आपके Gemini API प्रोजेक्ट से जोड़ती है।",
-        "credits": "यदि मुफ़्त-टियर कोटा समाप्त हो गया है या पेड बिलिंग उपलब्ध नहीं है, तो कोटा रीसेट या बिलिंग सक्षम होने तक अनुरोध विफल होते हैं।",
-        "freeModels": "मुफ़्त विकल्प (जनवरी 2026): gemini-2.5-pro, gemini-2.5-flash, और gemini-2.5-flash-lite के पास मुफ़्त-टियर एक्सेस है, लेकिन सख्त RPM/TPM/RPD सीमाओं के साथ।"
-      },
-      "anthropic": {
-        "whatIs": "आपकी Anthropic API की आपके संगठन खाते से Claude मॉडल के लिए कॉल को प्रमाणित करती है।",
-        "credits": "Anthropic प्रति टियर मासिक स्पेंड लिमिट लागू करता है; एक बार पूरा होने पर, API उपयोग अगले चक्र या उच्च टियर/डिपॉज़िट तक रुक जाता है।",
-        "freeModels": "मुफ़्त विकल्प (जनवरी 2026): कोई मॉडल-विशिष्ट मुफ़्त Claude API वेरिएंट दस्तावेज़ित नहीं है; Claude API मॉडल मीटर और दर-सीमित हैं।"
-      },
-      "openrouter": {
-        "whatIs": "आपकी OpenRouter API की अनुरोधों को अधिकृत करती है और उपयोग को आपके OpenRouter खाते पर लागू करती है।",
-        "credits": "यदि आपका OpenRouter बैलेंस नकारात्मक है, तो आपको अपना बैलेंस टॉप अप करने तक 402 त्रुटियां मिल सकती हैं, जिसमें मुफ़्त मॉडल भी शामिल हैं।",
-        "freeModels": "मुफ़्त विकल्प (जनवरी 2026): openrouter/free (फ्री मॉडल राउटर) का उपयोग करें। मुफ़्त वेरिएंट में कठोर सीमाएं हैं।"
-      },
-      "deepseek": {
-        "whatIs": "आपकी DeepSeek API की आपके खाते से DeepSeek मॉडल के लिए कॉल को प्रमाणित करती है।",
-        "credits": "DeepSeek API उपयोग मीटर किया जाता है; यदि आपका बैलेंस समाप्त हो गया है, तो आप पैसे जोड़ने तक अनुरोध विफल होंगे।",
-        "freeModels": "मुफ़्त विकल्प: DeepSeek वर्तमान में मुफ़्त API टियर प्रदान नहीं करता।"
-      },
-      "azure": {
-        "whatIs": "आपकी Azure API की इस ऐप को आपके Azure OpenAI सर्विस डिप्लॉयमेंट से जोड़ती है।",
-        "credits": "Azure OpenAI उपयोग आपकी Azure सब्सक्रिप्शन के माध्यम से बिल किया जाता है; यदि आपकी सब्सक्रिप्शन या स्पेंड लिमिट पूरी हो गई है, तो अनुरोध विफल होंगे।",
-        "freeModels": "मुफ़्त विकल्प: Azure OpenAI मुफ़्त-टियर API एक्सेस प्रदान नहीं करता; उपयोग प्रति टोकन बिल किया जाता है।"
-      }
-    },
-    "getStartedTitle": "AI के साथ शुरू करें",
-    "getStartedDescription": "चुनें कि OpenScholar आपकी AI सुविधाओं को कैसे संचालित करे।",
-    "getStartedSignInTitle": "मुफ्त क्रेडिट के लिए साइन इन करें",
-    "getStartedSignInDescription": "कोई सेटअप आवश्यक नहीं — साइन इन करें और तुरंत AI का उपयोग शुरू करें।",
-    "getStartedApiKeyTitle": "अपनी API कुंजी लाएं",
-    "getStartedApiKeyDescription": "अपनी OpenAI, Google, Anthropic या OpenRouter कुंजी का उपयोग करें।",
-    "getStartedConfigureApiKey": "API कुंजी कॉन्फ़िगर करें",
-    "useSmartMode": "स्मार्ट मोड का उपयोग करें",
-    "smartModeDescription": "उपलब्ध होने पर क्रेडिट्स का उपयोग करें, नहीं तो आपकी API key का उपयोग करें",
-    "creditsModeDisabled": "क्रेडिट्स मोड बंद है",
-    "creditsModeDisabledDescription": "इस ऐप के लिए क्रेडिट्स अभी बंद हैं। Smart Mode या Use My API Keys चुनें।",
-    "creditsOnly": "credits",
-    "serverSignInBlurb": "Run Chat, Extraction & Screen All instantly — no card.",
-    "customModel": "Custom model",
-    "recommended": "Recommended",
-    "providerAndKey": "Provider & key",
-    "features": {
-      "chat": "Chat",
-      "extraction": "Extraction",
-      "screenAll": "Screen All"
-    },
-    "localFeatures": {
-      "questionToQuery": "Question → query",
-      "refine": "Refine",
-      "translateQuery": "Translate query",
-      "translatePaper": "Translate paper",
-      "screening": "Screening",
-      "broadenNarrow": "Broaden / narrow"
-    },
-    "modeLabel": {
-      "smart": "Smart",
-      "local": "My keys",
-      "credits": "Credits"
-    },
-    "modeShort": {
-      "smart": "Credits, then your key",
-      "local": "Own provider & model",
-      "credits": "Your account balance"
-    },
-    "modeLocked": {
-      "notOnPlan": "Not on your plan",
-      "signIn": "Sign in to use"
-    },
-    "primaryModelTitle": "Select your primary model",
-    "secondaryModelTitle": "Select your secondary model",
-    "primaryModelDesc": "Always used for Chat, Extraction & Screen All — runs in the OpenScholar cloud.",
-    "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
+    "configurePreferences": "अपने AI प्रोवाइडर और मॉडल प्राथमिकताएं कॉन्फ़िगर करें"
   },
   "billingPage": {
     "upgradePlan": "प्लान अपग्रेड करें",
@@ -3247,7 +3138,8 @@
       "modelList": "मॉडल सूची",
       "admins": "एडमिन",
       "plans": "प्लान",
-      "users": "उपयोगकर्ता"
+      "users": "उपयोगकर्ता",
+      "aiModels": "AI मॉडल"
     },
     "sharedDev": "साझा डेव",
     "production": "प्रोडक्शन",
@@ -3350,6 +3242,72 @@
       "noUsers": "कोई उपयोगकर्ता नहीं मिला",
       "email": "ईमेल पता",
       "sendInvite": "आमंत्रण भेजें"
+    },
+    "ai": {
+      "modelCount": "{count, plural, one {# मॉडल} other {# मॉडल}}",
+      "behindRecommended": "'सुझाया गया' के पीछे",
+      "creditsOrKey": "क्रेडिट्स, या यूज़र की की",
+      "chatShortcuts": "चैट शॉर्टकट",
+      "shortcuts": {
+        "fast": "तेज़",
+        "balanced": "संतुलित",
+        "intelligent": "समझदार"
+      },
+      "notSet": "सेट नहीं"
+    }
+  },
+  "settingsAi": {
+    "models": "मॉडल",
+    "recommended": "सुझाया गया",
+    "oneModel": "एक मॉडल",
+    "modelCount": "{count, plural, one {# मॉडल} other {# मॉडल}}",
+    "perTask": "हर काम के लिए चुने गए",
+    "onEveryTask": "हर काम पर",
+    "onCloudTasks": "क्लाउड के कामों पर",
+    "onBrowserTasks": "ब्राउज़र के कामों पर",
+    "cloudOnly": "सिर्फ़ क्लाउड",
+    "openScholarCloud": "OpenScholar क्लाउड",
+    "browserLabel": {
+      "credits": "क्लाउड में",
+      "smart": "पहले क्लाउड, फिर आपका ब्राउज़र",
+      "local": "आपके ब्राउज़र में"
+    },
+    "keyTasks": "<b>सर्च टूल और स्क्रीनिंग</b> आपकी की से आपके ब्राउज़र में चल सकते हैं।",
+    "payWith": "भुगतान का तरीका",
+    "pay": {
+      "credits": "क्रेडिट्स",
+      "smart": "पहले क्रेडिट्स, फिर की",
+      "local": "मेरी की"
+    },
+    "yourBrowser": "आपका ब्राउज़र",
+    "yourKey": "आपकी की",
+    "afterCredits": "क्रेडिट्स के बाद",
+    "credits": "क्रेडिट्स",
+    "taskCount": "{count, plural, one {# काम} other {# काम}}",
+    "addKey": "अपनी {provider} की जोड़ें",
+    "apiKey": "{provider} API की",
+    "getKey": "{provider} की पाएं",
+    "keyProvider": "की प्रदाता",
+    "save": "सेव करें",
+    "saved": "सेव हो गई",
+    "searchModels": "मॉडल खोजें",
+    "loadingModels": "मॉडल लोड हो रहे हैं",
+    "noModels": "कोई मॉडल नहीं मिला",
+    "free": "मुफ़्त",
+    "fallback": "बैकअप",
+    "signInToPick": "मॉडल चुनने के लिए साइन इन करें",
+    "signInToUseCredits": "क्रेडिट्स इस्तेमाल करने के लिए साइन इन करें",
+    "creditsOff": "क्रेडिट्स बंद हैं",
+    "creditsOffDescription": "इसके बजाय अपनी की से भुगतान करें।",
+    "tasks": {
+      "chat": "चैट",
+      "extraction": "एक्सट्रैक्शन",
+      "screenAll": "सभी स्क्रीन करें",
+      "screening": "स्क्रीनिंग",
+      "questionToQuery": "सवाल → क्वेरी",
+      "refine": "बेहतर करें",
+      "translate": "अनुवाद",
+      "broadenNarrow": "बढ़ाएं / घटाएं"
     }
   }
 }

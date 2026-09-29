@@ -385,11 +385,13 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   userAiConfig: defineTable({
     userId: v.id("users"),
+    /** "recommended" (the default without a row) runs each task on its admin-set model. */
     serverPreset: v.union(
       v.literal("fast"),
       v.literal("balanced"),
       v.literal("intelligent"),
       v.literal("custom"),
+      v.literal("recommended"),
     ),
     serverModelId: v.optional(v.id("models")),
     updatedAt: v.number(),

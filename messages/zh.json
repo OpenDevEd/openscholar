@@ -339,116 +339,7 @@
   },
   "aiSettings": {
     "aiConfiguration": "AI 配置",
-    "configurePreferences": "配置您的 AI 提供商和模型偏好",
-    "useMyApiKeys": "使用我的 API 密钥",
-    "bringYourOwn": "使用您自己的提供商和模型",
-    "useCredits": "使用积分",
-    "accountBalance": "您的账户余额",
-    "signInToUseCredits": "登录以使用积分",
-    "creditsInfoBanner": "使用积分时，AI 配置由我们管理。您的提供商、模型和 API 密钥设置在此模式下不会被使用。",
-    "searchModels": "搜索模型...",
-    "credentials": "凭据",
-    "apiKey": "API 密钥",
-    "apiKeyPlaceholder": "输入您的 {provider} API 密钥",
-    "apiKeySaved": "API 密钥已保存",
-    "getApiKey": "获取您的 {provider} API 密钥",
-    "per1MTokens": "每 100 万令牌",
-    "models300Plus": "300+ 模型",
-    "usingOwnApiKeys": "使用您自己的 API 密钥",
-    "usingCredits": "使用账户积分",
-    "loadingOpenRouterModels": "加载 OpenRouter 模型中",
-    "providerNames": {
-      "openai": "OpenAI",
-      "google": "Google",
-      "anthropic": "Anthropic",
-      "openrouter": "OpenRouter",
-      "deepseek": "DeepSeek",
-      "azure": "Azure"
-    },
-    "providerFamilies": {
-      "gpt": "GPT",
-      "gemini": "Gemini",
-      "claude": "Claude"
-    },
-    "providerGuidance": {
-      "openai": {
-        "whatIs": "您的 OpenAI API 密钥是一个私密令牌，允许本应用通过您的 OpenAI 账户发送请求。",
-        "credits": "如果您的账户没有预付费余额（或没有可用的免费额度/配额），请求可能会停止，直到您充值或配额重置。",
-        "freeModels": "免费选项（2026年1月）：OpenAI 在本应用中不提供模型特定的 ':free' API 变体。OpenAI API 使用仍受使用层级和速率限制的约束。"
-      },
-      "google": {
-        "whatIs": "您的 Google API 密钥将本应用连接到 AI Studio/Google Cloud 中的 Gemini API 项目。",
-        "credits": "如果免费层级配额用尽或未启用付费账单，请求将失败，直到配额重置或启用账单。",
-        "freeModels": "免费选项（2026年1月）：gemini-2.5-pro、gemini-2.5-flash 和 gemini-2.5-flash-lite 支持免费层级访问，但有严格的 RPM/TPM/RPD 限制。"
-      },
-      "anthropic": {
-        "whatIs": "您的 Anthropic API 密钥用于从您的组织账户验证对 Claude 模型的调用。",
-        "credits": "Anthropic 按层级强制执行每月支出限制；达到上限后，API 使用将暂停，直到下个周期或升级层级/充值。",
-        "freeModels": "免费选项（2026年1月）：尚无文档记录模型特定的免费 Claude API 变体；Claude API 模型按量计费并受速率限制。"
-      },
-      "openrouter": {
-        "whatIs": "您的 OpenRouter API 密钥用于授权请求并将使用量计入您的 OpenRouter 账户。",
-        "credits": "如果您的 OpenRouter 余额为负，您可能会收到 402 错误（包括免费模型），直到您充值余额。",
-        "freeModels": "免费选项（2026年1月）：使用 openrouter/free（免费模型路由器）。免费变体有更严格的限制。"
-      },
-      "deepseek": {
-        "whatIs": "您的 DeepSeek API 密钥用于从您的账户验证对 DeepSeek 模型的调用。",
-        "credits": "DeepSeek API 使用按量计费；如果您的余额用尽，请求将失败，直到您充值。",
-        "freeModels": "免费选项：DeepSeek 目前不提供免费 API 层级。"
-      },
-      "azure": {
-        "whatIs": "您的 Azure API 密钥将本应用连接到您的 Azure OpenAI 服务部署。",
-        "credits": "Azure OpenAI 使用通过您的 Azure 订阅计费；如果您的订阅或支出限额达到上限，请求将失败。",
-        "freeModels": "免费选项：Azure OpenAI 不提供免费层级 API 访问；使用按令牌计费。"
-      }
-    },
-    "getStartedTitle": "开始使用 AI",
-    "getStartedDescription": "选择 OpenScholar 如何驱动您的 AI 功能。",
-    "getStartedSignInTitle": "登录获取免费积分",
-    "getStartedSignInDescription": "无需设置 — 登录后即可立即使用 AI。",
-    "getStartedApiKeyTitle": "使用自己的 API 密钥",
-    "getStartedApiKeyDescription": "使用您的 OpenAI、Google、Anthropic 或 OpenRouter 密钥。",
-    "getStartedConfigureApiKey": "配置 API 密钥",
-    "useSmartMode": "使用智能模式",
-    "smartModeDescription": "优先使用可用积分，否则使用你的 API 密钥",
-    "creditsModeDisabled": "积分模式已禁用",
-    "creditsModeDisabledDescription": "此应用当前已禁用积分。请切换到智能模式或使用我的 API 密钥。",
-    "creditsOnly": "credits",
-    "serverSignInBlurb": "Run Chat, Extraction & Screen All instantly — no card.",
-    "customModel": "Custom model",
-    "recommended": "Recommended",
-    "providerAndKey": "Provider & key",
-    "features": {
-      "chat": "Chat",
-      "extraction": "Extraction",
-      "screenAll": "Screen All"
-    },
-    "localFeatures": {
-      "questionToQuery": "Question → query",
-      "refine": "Refine",
-      "translateQuery": "Translate query",
-      "translatePaper": "Translate paper",
-      "screening": "Screening",
-      "broadenNarrow": "Broaden / narrow"
-    },
-    "modeLabel": {
-      "smart": "Smart",
-      "local": "My keys",
-      "credits": "Credits"
-    },
-    "modeShort": {
-      "smart": "Credits, then your key",
-      "local": "Own provider & model",
-      "credits": "Your account balance"
-    },
-    "modeLocked": {
-      "notOnPlan": "Not on your plan",
-      "signIn": "Sign in to use"
-    },
-    "primaryModelTitle": "Select your primary model",
-    "secondaryModelTitle": "Select your secondary model",
-    "primaryModelDesc": "Always used for Chat, Extraction & Screen All — runs in the OpenScholar cloud.",
-    "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
+    "configurePreferences": "配置您的 AI 提供商和模型偏好"
   },
   "billingPage": {
     "upgradePlan": "升级计划",
@@ -3247,7 +3138,8 @@
       "modelList": "模型列表",
       "admins": "管理员",
       "plans": "套餐",
-      "users": "用户"
+      "users": "用户",
+      "aiModels": "AI 模型"
     },
     "sharedDev": "共享开发",
     "production": "生产环境",
@@ -3350,6 +3242,72 @@
       "noUsers": "未找到用户",
       "email": "邮箱地址",
       "sendInvite": "发送邀请"
+    },
+    "ai": {
+      "modelCount": "{count, plural, other {# 个模型}}",
+      "behindRecommended": "支撑“推荐”",
+      "creditsOrKey": "积分，或用户的密钥",
+      "chatShortcuts": "聊天快捷方式",
+      "shortcuts": {
+        "fast": "快速",
+        "balanced": "均衡",
+        "intelligent": "智能"
+      },
+      "notSet": "未设置"
+    }
+  },
+  "settingsAi": {
+    "models": "模型",
+    "recommended": "推荐",
+    "oneModel": "单一模型",
+    "modelCount": "{count, plural, other {# 个模型}}",
+    "perTask": "按任务选择",
+    "onEveryTask": "用于所有任务",
+    "onCloudTasks": "用于云端任务",
+    "onBrowserTasks": "用于浏览器任务",
+    "cloudOnly": "仅云端",
+    "openScholarCloud": "OpenScholar 云端",
+    "browserLabel": {
+      "credits": "在云端",
+      "smart": "先云端，再浏览器",
+      "local": "在你的浏览器中"
+    },
+    "keyTasks": "<b>搜索工具和筛选</b>可以在你的浏览器中使用你的密钥运行。",
+    "payWith": "支付方式",
+    "pay": {
+      "credits": "积分",
+      "smart": "先积分，再密钥",
+      "local": "我的密钥"
+    },
+    "yourBrowser": "你的浏览器",
+    "yourKey": "你的密钥",
+    "afterCredits": "积分用完后",
+    "credits": "积分",
+    "taskCount": "{count, plural, other {# 个任务}}",
+    "addKey": "添加你的 {provider} 密钥",
+    "apiKey": "{provider} API 密钥",
+    "getKey": "获取 {provider} 密钥",
+    "keyProvider": "密钥提供商",
+    "save": "保存",
+    "saved": "已保存",
+    "searchModels": "搜索模型",
+    "loadingModels": "正在加载模型",
+    "noModels": "未找到模型",
+    "free": "免费",
+    "fallback": "备用",
+    "signInToPick": "登录后选择模型",
+    "signInToUseCredits": "登录后使用积分",
+    "creditsOff": "积分已关闭",
+    "creditsOffDescription": "请改用你自己的密钥支付。",
+    "tasks": {
+      "chat": "聊天",
+      "extraction": "提取",
+      "screenAll": "全部筛选",
+      "screening": "筛选",
+      "questionToQuery": "问题 → 查询",
+      "refine": "优化",
+      "translate": "翻译",
+      "broadenNarrow": "扩大 / 缩小"
     }
   }
 }
