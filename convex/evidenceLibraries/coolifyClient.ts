@@ -13,6 +13,8 @@ const MAX_APPLICATION_MATCHES = 2;
 const MAX_GITHUB_APPS = 100;
 const MAX_ENVIRONMENT_VARIABLES = 256;
 const MAX_DEPLOYMENTS = 100;
+// Coolify sends each deployment with its logs, often over 50 KB, so the list is read in small pages.
+const DEPLOYMENT_PAGE_SIZE = 10;
 const MAX_SERVED_RESOURCES = 1_000;
 const ENVIRONMENT_READBACK_DELAYS_MS = [100, 250, 500, 1_000] as const;
 // Coolify deletes an application in the background. Wait up to about 60 s.
@@ -1462,33 +1464,50 @@ function parseDeployment(payload: unknown): CoolifyDeployment {
   };
 }
 
-async function listApplicationDeployments(
+/** One page of an application's deployments, newest first, and how many it has in all. */
+async function readDeploymentPage(
   client: CoolifyTransport,
   applicationUuid: string,
-): Promise<CoolifyDeploymentList> {
+  skip: number,
+) {
   const payload = await requestCoolify(client, {
     expectedStatus: 200,
     method: "GET",
-    path: `/api/v1/deployments/applications/${encodeURIComponent(applicationUuid)}?skip=0&take=${MAX_DEPLOYMENTS}`,
+    path: `/api/v1/deployments/applications/${encodeURIComponent(applicationUuid)}?skip=${skip}&take=${DEPLOYMENT_PAGE_SIZE}`,
   });
   const message = "Coolify returned an invalid deployment list";
   if (!isRecord(payload)) invalidResponse(message);
   const count = payload.count;
-  const deploymentsPayload = payload.deployments;
+  const deployments = payload.deployments;
   if (
     typeof count !== "number" ||
     !Number.isSafeInteger(count) ||
     count < 0 ||
-    !Array.isArray(deploymentsPayload) ||
-    deploymentsPayload.length > MAX_DEPLOYMENTS ||
-    (count <= MAX_DEPLOYMENTS && deploymentsPayload.length !== count)
+    !Array.isArray(deployments) ||
+    deployments.length > DEPLOYMENT_PAGE_SIZE ||
+    // Within the bound the pages must add up to the count; beyond it the list is incomplete anyway.
+    (count <= MAX_DEPLOYMENTS &&
+      deployments.length !== Math.min(DEPLOYMENT_PAGE_SIZE, Math.max(0, count - skip)))
   ) {
     invalidResponse(message);
   }
-  return {
-    complete: count <= MAX_DEPLOYMENTS,
-    deployments: deploymentsPayload.map(parseDeployment),
-  };
+  return { count, deployments: deployments.map(parseDeployment) };
+}
+
+/** The application's latest deployments, up to MAX_DEPLOYMENTS, read page by page. */
+async function listApplicationDeployments(
+  client: CoolifyTransport,
+  applicationUuid: string,
+): Promise<CoolifyDeploymentList> {
+  const deployments: CoolifyDeployment[] = [];
+  let count = 0;
+  do {
+    const page = await readDeploymentPage(client, applicationUuid, deployments.length);
+    count = page.count;
+    deployments.push(...page.deployments);
+    if (page.deployments.length < DEPLOYMENT_PAGE_SIZE) break;
+  } while (deployments.length < Math.min(count, MAX_DEPLOYMENTS));
+  return { complete: count <= MAX_DEPLOYMENTS, deployments };
 }
 
 async function readDeployment(
