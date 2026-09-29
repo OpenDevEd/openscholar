@@ -100,9 +100,11 @@ describe("<SuggestionChips>", () => {
     expect(screen.getByText("Grounded on 3 papers")).toBeInTheDocument();
   });
 
-  it("renders all 4 suggestion cards as a list", () => {
+  it("renders all 4 suggestions in order", () => {
     renderSuggestionChips();
-    const items = screen.getAllByRole("listitem");
+    const items = screen
+      .getAllByRole("button")
+      .filter((el) => el.hasAttribute("data-suggestion-key"));
     expect(items).toHaveLength(4);
     const keys = items.map((el) => el.getAttribute("data-suggestion-key"));
     expect(keys).toEqual([
@@ -122,7 +124,7 @@ describe("<SuggestionChips>", () => {
       </PapersContext.Provider>,
     );
     const summarise = screen
-      .getAllByRole("listitem")
+      .getAllByRole("button")
       .find((el) => el.getAttribute("data-suggestion-key") === "suggestionSummarise");
     expect(summarise).toBeTruthy();
     await user.click(summarise!);
@@ -147,7 +149,7 @@ describe("<SuggestionChips>", () => {
       const { container } = renderSuggestionChips();
       await user.click(
         screen
-          .getAllByRole("listitem")
+          .getAllByRole("button")
           .find(
             (el) =>
               el.getAttribute("data-suggestion-key") === "suggestionSummarise",

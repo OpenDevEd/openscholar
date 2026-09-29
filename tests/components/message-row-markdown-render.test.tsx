@@ -6,6 +6,7 @@
  * -> MessageResponse/Streamdown -> chat markdown components.
  */
 import { render, screen } from "@testing-library/react";
+import { renderWithTooltip } from "../helpers/render-with-tooltip";
 import type { UIMessage } from "@convex-dev/agent/react";
 import { describe, expect, it, vi } from "vitest";
 import { MessageRow } from "@/components/extraction/chat/message-list";
@@ -72,7 +73,6 @@ describe("<MessageRow> markdown rendering", () => {
         chatModelId={null}
         chatModels={[]}
         onRetry={() => {}}
-        reduceMotion
         isJobGenerating={false}
       />,
     );
@@ -90,5 +90,29 @@ describe("<MessageRow> markdown rendering", () => {
       "href",
       "#paper-37",
     );
+  });
+
+  it("keeps inline code inside its sentence and renders fenced code as a block", () => {
+    const text =
+      "Call `filter` on the list.\n\n```python\nprint(1)\n```";
+
+    const { container } = renderWithTooltip(
+      <MessageRow
+        message={makeAssistantMessage(text)}
+        isLastAssistant
+        isFirstInGroup
+        chatModelId={null}
+        chatModels={[]}
+        onRetry={() => {}}
+        isJobGenerating={false}
+      />,
+    );
+
+    const sentence = container.querySelector('[data-chat-markdown="paragraph"]');
+    expect(sentence).toHaveTextContent("Call filter on the list.");
+    expect(sentence?.querySelector("code")).toHaveTextContent("filter");
+    expect(sentence?.querySelector("pre")).toBeNull();
+    expect(container.querySelectorAll("pre")).toHaveLength(1);
+    expect(container.querySelector("pre")).toHaveTextContent("print(1)");
   });
 });

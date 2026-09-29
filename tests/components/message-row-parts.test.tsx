@@ -2,11 +2,11 @@
  * @vitest-environment jsdom
  *
  * U5 — MessageRow iterates UIMessage.parts: text via MessageResponse,
- * source-url accumulated into the footer via WebSourceChips. Tests target
+ * source-url accumulated into the footer via Sources. Tests target
  * data-* / role contracts only.
  */
 import { describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { renderWithTooltip as render } from "../helpers/render-with-tooltip";
 import type { UIMessage } from "@convex-dev/agent/react";
 import type { UIMessagePart } from "ai";
@@ -71,7 +71,6 @@ function renderRow(msg: ChatUIMessage) {
       chatModelId={null}
       chatModels={[]}
       onRetry={() => {}}
-      reduceMotion
       isJobGenerating={false}
     />,
   );
@@ -84,40 +83,58 @@ const sourceUrlPart = (url: string, sourceId: string): AnyPart => ({
   url,
 });
 
+/** Opens the footer sources and returns their link targets. */
+function sourceLinks() {
+  const sources = document.querySelector(
+    "[data-web-sources-count]",
+  ) as HTMLElement | null;
+  expect(sources).not.toBeNull();
+  fireEvent.click(within(sources!).getByRole("button"));
+  return within(sources!)
+    .getAllByRole("link")
+    .map((link) => link.getAttribute("href"));
+}
+
 describe("<MessageRow> parts iteration — text-only", () => {
-  it("renders a single text part as the entire assistant content with no footer chips", () => {
+  it("renders a single text part as the entire assistant content with no footer sources", () => {
     renderRow(
       makeAssistant([textPart("Just a normal answer.")], {
         text: "Just a normal answer.",
       }),
     );
     expect(screen.getByText(/just a normal answer/i)).toBeInTheDocument();
-    expect(
-      document.querySelector("[data-web-sources-count]"),
-    ).toBeNull();
+    expect(document.querySelector("[data-web-sources-count]")).toBeNull();
   });
 });
 
 describe("<MessageRow> parts iteration — text + source-url", () => {
   it("renders the text with the web sources collected at the message footer", () => {
-    const parts: AnyPart[] = [
-      sourceUrlPart("https://arxiv.org/abs/X", "s1"),
-      sourceUrlPart("https://example.com/foo", "s2"),
-      textPart("Based on the search, here is the answer."),
-    ];
-    renderRow(makeAssistant(parts));
+    renderRow(
+      makeAssistant([
+        sourceUrlPart("https://arxiv.org/abs/X", "s1"),
+        sourceUrlPart("https://example.com/foo", "s2"),
+        textPart("Based on the search, here is the answer."),
+      ]),
+    );
 
     expect(
       screen.getByText(/based on the search, here is the answer/i),
     ).toBeInTheDocument();
+    expect(sourceLinks()).toEqual([
+      "https://arxiv.org/abs/X",
+      "https://example.com/foo",
+    ]);
+  });
 
-    const chipRow = document.querySelector(
-      "[data-web-sources-count]",
-    ) as HTMLElement | null;
-    expect(chipRow).not.toBeNull();
-    const chipLinks = within(chipRow!).getAllByRole("link");
-    expect(chipLinks).toHaveLength(2);
-    expect(chipLinks[0].getAttribute("data-source-host")).toBe("arxiv.org");
-    expect(chipLinks[1].getAttribute("data-source-host")).toBe("example.com");
+  it("lists a page once when several searches return it", () => {
+    renderRow(
+      makeAssistant([
+        sourceUrlPart("https://arxiv.org/abs/X", "s1"),
+        sourceUrlPart("https://arxiv.org/abs/X", "s2"),
+        textPart("Answer."),
+      ]),
+    );
+
+    expect(sourceLinks()).toEqual(["https://arxiv.org/abs/X"]);
   });
 });

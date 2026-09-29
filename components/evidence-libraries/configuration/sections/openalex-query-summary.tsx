@@ -45,10 +45,10 @@ function QueryLine({ query, scope }: { query: string; scope: string | null }) {
       {/* Sits on the scope's line, so it takes no height of its own. */}
       {expanded || clipped ? (
         <DisclosureButton
-          open={expanded}
-          controls={queryId}
+          aria-expanded={expanded}
+          aria-controls={queryId}
           className="-my-1 ml-0 h-6"
-          onToggle={() => setExpanded((value) => !value)}
+          onClick={() => setExpanded((value) => !value)}
         >
           {t(expanded ? "showLessQuery" : "showFullQuery")}
         </DisclosureButton>

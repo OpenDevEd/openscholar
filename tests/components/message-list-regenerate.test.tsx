@@ -53,13 +53,15 @@ vi.mock("@/convex/_generated/api", () => ({
   },
 }));
 
-vi.mock("@/components/ai-elements/message", () => ({
+vi.mock("@/components/ai-elements/message", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/ai-elements/message")>()),
   MessageResponse: ({ children }: { children: string }) => (
     <div data-testid="response">{children}</div>
   ),
 }));
 
 vi.mock("@/components/ai-elements/conversation", () => ({
+  ConversationScrollButton: () => null,
   Conversation: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="conversation">{children}</div>
   ),
@@ -99,10 +101,6 @@ vi.mock("@/components/extraction/chat/chat-error-alert", async () => {
     },
   };
 });
-
-vi.mock("@/components/extraction/chat/jump-to-latest-pill", () => ({
-  JumpToLatestPill: () => null,
-}));
 
 function makeMessage(overrides: Partial<UIMessage>): UIMessage {
   return {

@@ -82,37 +82,14 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
-vi.mock("motion/react", () => ({
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
-  motion: {
-    li: ({
-      children,
-      initial: _initial,
-      animate: _animate,
-      transition: _transition,
-      ...props
-    }: React.ComponentProps<"li"> & {
-      initial?: unknown;
-      animate?: unknown;
-      transition?: unknown;
-    }) => (
-      <li {...props}>{children}</li>
-    ),
-  },
-  useReducedMotion: () => true,
-}));
-
 vi.mock("@/components/ai-elements/conversation", () => ({
+  ConversationScrollButton: () => null,
   Conversation: ({ children, ...props }: React.ComponentProps<"div">) => (
     <div {...props}>{children}</div>
   ),
   ConversationContent: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
-}));
-
-vi.mock("@/components/extraction/chat/jump-to-latest-pill", () => ({
-  JumpToLatestPill: () => null,
 }));
 
 vi.mock("@/components/extraction/chat/message-actions", () => ({

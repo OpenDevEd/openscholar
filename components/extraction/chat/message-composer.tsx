@@ -1,12 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowUpIcon, SquareIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  PromptInput,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+} from "@/components/ai-elements/prompt-input";
 import { ComposerModelPicker } from "./composer-model-picker";
 import { ComposerEffortPicker } from "./composer-effort-picker";
 import type { Effort } from "@/lib/ai/core/call-options";
@@ -22,7 +26,6 @@ import {
 import { useAppToast } from "@/lib/toast";
 import { toast } from "sonner";
 import { optimisticallySendMessage } from "@convex-dev/agent/react";
-import { cn } from "@/lib/utils";
 import { ChatErrorAlert } from "./chat-error-alert";
 import { classifyChatError, serializeChatError } from "@/lib/errors/taxonomy";
 
@@ -44,9 +47,7 @@ export function MessageComposer({
   const [sendError, setSendError] = useState<string | null>(null);
   const [stopPending, setStopPending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const isComposingRef = useRef(false);
   const sendRequestSeq = useRef(0);
-  const reduceMotion = useReducedMotion();
   const jobIsGenerating = job.isGenerating ?? false;
   const generationAttemptId = job.chatGenerationAttemptId ?? null;
   const selectedModel = chatModels.find((m) => m._id === job.chatModelId);
@@ -136,34 +137,6 @@ export function MessageComposer({
     [setChatEffort, threadId, appToast, t],
   );
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      // IME composition guard: while a user is composing (Japanese,
-      // Chinese, Korean), Enter should commit the composition — not
-      // submit the message. Both `nativeEvent.isComposing` and the
-      // 229 keyCode legacy signal show up; check both for safety.
-      if (
-        e.nativeEvent.isComposing ||
-        e.nativeEvent.keyCode === 229 ||
-        isComposingRef.current
-      ) {
-        return;
-      }
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        void handleSubmit();
-      }
-    },
-    [handleSubmit],
-  );
-
-  const handleCompositionStart = useCallback(() => {
-    isComposingRef.current = true;
-  }, []);
-  const handleCompositionEnd = useCallback(() => {
-    isComposingRef.current = false;
-  }, []);
-
   // Keep focus when the disabled state flips from true → false (i.e.
   // generation finished while the user was waiting).
   const wasGeneratingRef = useRef(jobIsGenerating);
@@ -191,11 +164,7 @@ export function MessageComposer({
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        void handleSubmit();
-      }}
+    <div
       className="shrink-0 border-t bg-background p-3 sm:p-4"
       data-chat-composer="true"
       data-generating={jobIsGenerating}
@@ -258,37 +227,26 @@ export function MessageComposer({
         />
       ) : null}
 
-      <motion.div
-        layout={reduceMotion ? false : "size"}
-        transition={{ duration: 0.18, ease: "easeOut" }}
-        className={cn(
-          "group/composer flex flex-col rounded-2xl border bg-card shadow-sm transition-shadow",
-          "focus-within:border-primary/40 focus-within:shadow-md focus-within:ring-2 focus-within:ring-ring/15",
-        )}
+      <PromptInput
+        onSubmit={() => {
+          void handleSubmit();
+        }}
+        className="[&_[data-slot=input-group]]:rounded-2xl [&_[data-slot=input-group]]:bg-card"
       >
-        <textarea
+        <PromptInputTextarea
           ref={textareaRef}
-          name="message"
           value={text}
           onChange={(e) => {
             setText(e.currentTarget.value);
             if (sendError) setSendError(null);
           }}
-          onKeyDown={handleKeyDown}
-          onCompositionStart={handleCompositionStart}
-          onCompositionEnd={handleCompositionEnd}
           placeholder={t("chatComposerPlaceholder")}
-          aria-label={t("chatSend")}
-          rows={1}
-          className={cn(
-            "field-sizing-content min-h-[44px] max-h-60 w-full resize-none bg-transparent px-4 pt-3 pb-1 text-sm leading-relaxed outline-none",
-            "placeholder:text-muted-foreground",
-          )}
+          aria-label={t("chatComposerPlaceholder")}
+          className="min-h-11"
         />
-
-        <div className="flex items-center justify-between gap-2 px-2 pb-2 pt-1">
+        <PromptInputFooter>
           {/* On a narrow composer the model name truncates; the other controls keep their size. */}
-          <div className="flex min-w-0 items-center gap-1 [&>*:not(:first-child)]:shrink-0">
+          <PromptInputTools className="[&>*:not(:first-child)]:shrink-0">
             <ComposerModelPicker
               value={job.chatModelId ?? null}
               effort={job.chatEffort}
@@ -308,67 +266,21 @@ export function MessageComposer({
               modelSupportedParameters={selectedModel?.supportedParameters}
               isGenerating={jobIsGenerating}
             />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span
-              className="hidden items-center gap-2 text-[11px] text-muted-foreground sm:inline-flex"
-              aria-hidden
-            >
-              <kbd className="rounded border border-border/60 bg-background px-1 py-0.5 font-mono text-[10px] leading-none">
-                {t("chatHintEnter")}
-              </kbd>
-              <kbd className="rounded border border-border/60 bg-background px-1 py-0.5 font-mono text-[10px] leading-none">
-                {t("chatHintShiftEnter")}
-              </kbd>
-            </span>
-
-            <AnimatePresence mode="wait" initial={false}>
-              {jobIsGenerating ? (
-                <motion.div
-                  key="stop"
-                  initial={reduceMotion ? false : { scale: 0.85, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={reduceMotion ? undefined : { scale: 0.85, opacity: 0 }}
-                  transition={{ duration: 0.12, ease: "easeOut" }}
-                >
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    onClick={handleStop}
-                    disabled={!generationAttemptId || stopPending}
-                    aria-label={t("chatStop")}
-                    data-action="stop"
-                    className="size-8 rounded-full"
-                  >
-                    <SquareIcon className="size-3.5 fill-current" />
-                  </Button>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="send"
-                  initial={reduceMotion ? false : { scale: 0.85, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={reduceMotion ? undefined : { scale: 0.85, opacity: 0 }}
-                  transition={{ duration: 0.12, ease: "easeOut" }}
-                >
-                  <Button
-                    type="submit"
-                    size="icon"
-                    disabled={submitDisabled}
-                    aria-label={t("chatSend")}
-                    data-action="send"
-                    className="size-8 rounded-full disabled:opacity-40"
-                  >
-                    <ArrowUpIcon className="size-4" />
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      </motion.div>
-    </form>
+          </PromptInputTools>
+          <PromptInputSubmit
+            status={jobIsGenerating ? "streaming" : undefined}
+            onStop={handleStop}
+            disabled={
+              jobIsGenerating
+                ? !generationAttemptId || stopPending
+                : submitDisabled
+            }
+            aria-label={jobIsGenerating ? t("chatStop") : t("chatSend")}
+            data-action={jobIsGenerating ? "stop" : "send"}
+            className="rounded-full"
+          />
+        </PromptInputFooter>
+      </PromptInput>
+    </div>
   );
 }

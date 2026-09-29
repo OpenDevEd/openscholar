@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useAction, useQueries } from "convex/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -27,7 +27,8 @@ import type { SourceStatus } from "@/convex/evidenceLibraries/sourceStatusValida
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AdminAreaLink } from "@/components/evidence-libraries/admin-area-link";
 import { cn } from "@/lib/utils";
-import { DisclosureButton } from "../disclosure-button";
+import { Collapsible } from "@/components/ui/collapsible";
+import { DisclosureContent, DisclosureTrigger } from "../disclosure-button";
 import { type StatusTone } from "../status-chip";
 
 /** PDFs added to a source's records, and those that could not be downloaded. */
@@ -335,7 +336,6 @@ function FailedActivity({
   const format = useFormatter();
   const now = useNow({ updateInterval: 30_000 });
   const [open, setOpen] = useState(false);
-  const detailsId = useId();
   const pdfs = status.failedIn === "pdfs" ? (status.pdfs ?? { added: 0, missed: 0 }) : null;
   const at = format.dateTime(new Date(status.failure.at), { timeStyle: "short" });
   return (
@@ -354,20 +354,20 @@ function FailedActivity({
         ) : null}
       </div>
       {pdfs ? <PdfSummary pdfs={pdfs} tone="running" /> : null}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" size="sm" onClick={onRetry} disabled={retrying}>
-          {retrying ? <Spinner /> : <RefreshCw />}
-          {t(pdfs ? "retryPdfs" : "retry")}
-        </Button>
-        <DisclosureButton open={open} controls={detailsId} className="ml-0" onToggle={() => setOpen((value) => !value)}>
-          {t("details")}
-        </DisclosureButton>
-      </div>
-      {open ? (
-        <pre id={detailsId} className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted-foreground">
-          {status.failure.details}
-        </pre>
-      ) : null}
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" size="sm" onClick={onRetry} disabled={retrying}>
+            {retrying ? <Spinner /> : <RefreshCw />}
+            {t(pdfs ? "retryPdfs" : "retry")}
+          </Button>
+          <DisclosureTrigger className="ml-0">{t("details")}</DisclosureTrigger>
+        </div>
+        <DisclosureContent>
+          <pre className="whitespace-pre-wrap break-words pt-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
+            {status.failure.details}
+          </pre>
+        </DisclosureContent>
+      </Collapsible>
     </div>
   );
 }

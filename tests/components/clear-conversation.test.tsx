@@ -137,22 +137,12 @@ vi.mock("motion/react", () => ({
       animate?: unknown;
       transition?: unknown;
     }) => <div {...props}>{children}</div>,
-    li: ({
-      children,
-      initial: _initial,
-      animate: _animate,
-      transition: _transition,
-      ...props
-    }: React.ComponentProps<"li"> & {
-      initial?: unknown;
-      animate?: unknown;
-      transition?: unknown;
-    }) => <li {...props}>{children}</li>,
   },
   useReducedMotion: () => true,
 }));
 
 vi.mock("@/components/ai-elements/conversation", () => ({
+  ConversationScrollButton: () => null,
   Conversation: ({ children, ...props }: React.ComponentProps<"div">) => (
     <div {...props}>{children}</div>
   ),
@@ -161,7 +151,8 @@ vi.mock("@/components/ai-elements/conversation", () => ({
   ),
 }));
 
-vi.mock("@/components/ai-elements/message", () => ({
+vi.mock("@/components/ai-elements/message", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/ai-elements/message")>()),
   MessageResponse: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="response">{children}</div>
   ),
@@ -169,10 +160,6 @@ vi.mock("@/components/ai-elements/message", () => ({
 
 vi.mock("@/components/auth/auth-state-panel", () => ({
   AuthStatePanel: ({ title }: { title: string }) => <div>{title}</div>,
-}));
-
-vi.mock("@/components/extraction/chat/jump-to-latest-pill", () => ({
-  JumpToLatestPill: () => null,
 }));
 
 vi.mock("@/components/extraction/chat/message-actions", () => ({

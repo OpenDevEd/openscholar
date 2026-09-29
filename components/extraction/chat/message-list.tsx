@@ -1,6 +1,6 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import Image from "next/image";
 import {
   Children,
   Fragment,
@@ -17,16 +17,33 @@ import {
 } from "react";
 import { useTranslations } from "next-intl";
 import { useUIMessages, type UIMessage } from "@convex-dev/agent/react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { useMutation, useQuery } from "convex/react";
-import type { TextUIPart } from "ai";
+import type { ReasoningUIPart, SourceUrlUIPart, TextUIPart } from "ai";
 import {
   Conversation,
   ConversationContent,
+  ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import { JumpToLatestPill } from "./jump-to-latest-pill";
-import { MessageResponse } from "@/components/ai-elements/message";
-import { WebSourceChips } from "@/components/ai-elements/web-source-chips";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "@/components/ai-elements/reasoning";
+import { Shimmer } from "@/components/ai-elements/shimmer";
+import {
+  Source,
+  Sources,
+  SourcesContent,
+  SourcesTrigger,
+} from "@/components/ai-elements/sources";
+import { CHAT_LINK_SAFETY } from "./link-safety-dialog";
+import { ChatCodeBlock, ChatTable } from "./chat-markdown-blocks";
 import { AbortedPill } from "./aborted-pill";
 import { ChatErrorAlert } from "./chat-error-alert";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -36,8 +53,6 @@ import { MessageActions } from "./message-actions";
 import { PaperCitation } from "./paper-citation";
 import { DeprecatedPaperCitationsProvider } from "./paper-citation-context";
 import { SuggestionChips } from "./suggestion-chips";
-import { StreamingCursor } from "./streaming-cursor";
-import { TypingDots } from "./typing-dots";
 import type { ChatModelRow } from "./chat-model-types";
 import {
   resolvePaperReferences,
@@ -339,6 +354,8 @@ export function buildStreamdownComponents() {
       return createElement(tag, componentProps, rendered);
     };
   }
+  components.table = ChatTable;
+  components.code = ChatCodeBlock;
   return components;
 }
 
@@ -386,19 +403,57 @@ function SourceUpdateDivider({
   description: string;
 }) {
   return (
-    <motion.li
+    <div
       data-chat-event="sources-updated"
       role="status"
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
-      className="my-2 flex justify-center"
+      className="flex justify-center"
     >
       <div className="max-w-[90%] rounded-md border border-border/70 bg-muted/45 px-3 py-1.5 text-center text-xs text-muted-foreground">
         <span className="font-medium text-foreground">{title}</span>
         <span className="ml-1">{description}</span>
       </div>
-    </motion.li>
+    </div>
+  );
+}
+
+/**
+ * React keys for a message's parts. A streamed message carries
+ * `step-start` parts that its saved copy drops, so index keys would
+ * remount every part the moment the message is saved.
+ */
+function partRenderKeys(parts: UIMessage["parts"]): string[] {
+  const seen = new Map<string, number>();
+  return parts.map((part) => {
+    if ("toolCallId" in part) return part.toolCallId;
+    const n = seen.get(part.type) ?? 0;
+    seen.set(part.type, n + 1);
+    return `${part.type}-${n}`;
+  });
+}
+
+function WebSources({ parts }: { parts: UIMessage["parts"] }) {
+  // Two searches in one reply can return the same page.
+  const sources = [
+    ...new Map(
+      parts
+        .filter((part): part is SourceUrlUIPart => part.type === "source-url")
+        .map((source) => [source.url, source]),
+    ).values(),
+  ];
+  if (sources.length === 0) return null;
+  return (
+    <Sources className="mb-0" data-web-sources-count={sources.length}>
+      <SourcesTrigger count={sources.length} />
+      <SourcesContent>
+        {sources.map((source) => (
+          <Source
+            key={source.sourceId}
+            href={source.url}
+            title={source.title || source.url}
+          />
+        ))}
+      </SourcesContent>
+    </Sources>
   );
 }
 
@@ -409,7 +464,6 @@ interface MessageRowProps {
   chatModelId: Id<"models"> | null;
   chatModels: ChatModelRow[];
   onRetry: () => void;
-  reduceMotion: boolean;
   isJobGenerating?: boolean;
   paperCitationsDeprecated?: boolean;
 }
@@ -417,35 +471,33 @@ interface MessageRowProps {
 /**
  * Render a single AI SDK `text` UIMessagePart through Streamdown with the
  * chat-specific component map (citation rewrites, scholarly inline tags,
- * thematic-break tightening). Per-part `state` (streaming/done) wins over
- * the message-level signal — so a finalized text part inside a still-
- * streaming assistant turn renders without `parseIncompleteMarkdown`,
- * avoiding spurious markdown re-parsing once the model has handed off
- * to the next step (tool call, follow-up text part, etc.).
+ * thematic-break tightening). Streamdown stays in its default streaming
+ * mode for the part's whole life: its static mode renders a different
+ * tree, so switching when the part finishes remounts the whole answer.
+ * Only unfinished text gets its dangling markdown closed; running that
+ * repair on finished text can append stray markers.
  */
 function AssistantTextPart({
   part,
-  parseIncompleteMarkdown: outerParseIncomplete,
+  isAnimating,
+  isUnfinished,
   paperCitationsDeprecated = false,
 }: {
   part: TextUIPart;
-  parseIncompleteMarkdown: boolean;
+  isAnimating: boolean;
+  isUnfinished: boolean;
   paperCitationsDeprecated?: boolean;
 }) {
-  const partStreaming = part.state === "streaming";
-  const partDone = part.state === "done";
-  const parseIncompleteMarkdown =
-    partStreaming || (!partDone && outerParseIncomplete);
-  const renderText = normalizeChatMarkdownForRender(part.text);
   return (
     <DeprecatedPaperCitationsProvider deprecated={paperCitationsDeprecated}>
       <MessageResponse
         allowedTags={CHAT_MARKDOWN_ALLOWED_TAGS}
         components={STREAMDOWN_COMPONENTS}
-        mode={parseIncompleteMarkdown ? "streaming" : "static"}
-        parseIncompleteMarkdown={parseIncompleteMarkdown}
+        isAnimating={isAnimating}
+        parseIncompleteMarkdown={isUnfinished}
+        linkSafety={CHAT_LINK_SAFETY}
       >
-        {renderText}
+        {normalizeChatMarkdownForRender(part.text)}
       </MessageResponse>
     </DeprecatedPaperCitationsProvider>
   );
@@ -458,10 +510,10 @@ export const MessageRow = memo(function MessageRow({
   chatModelId,
   chatModels,
   onRetry,
-  reduceMotion,
   isJobGenerating = true,
   paperCitationsDeprecated = false,
 }: MessageRowProps) {
+  const t = useTranslations("extraction");
   const normalizedMessage = normalizeChatUIMessage(message);
   const isStreamingStatus = normalizedMessage.status === "streaming";
   const isPendingStatus = normalizedMessage.status === "pending";
@@ -485,13 +537,13 @@ export const MessageRow = memo(function MessageRow({
     isAssistant &&
     (normalizedMessage.status === "failed" || isStalePending) &&
     !isAborted;
+  const partKeys = partRenderKeys(normalizedMessage.parts);
   const userText = isUser ? getChatMessageText(normalizedMessage) : "";
   const hasAssistantVisibleContent = useMemo(() => {
     if (!isAssistant) return false;
     return normalizedMessage.parts.some((part) => {
-      if (part.type === "text") {
-        const t = (part as TextUIPart).text;
-        return typeof t === "string" && t.length > 0;
+      if (part.type === "text" || part.type === "reasoning") {
+        return part.text.length > 0;
       }
       return part.type === "source-url";
     });
@@ -499,7 +551,6 @@ export const MessageRow = memo(function MessageRow({
   const isEmpty = isAssistant
     ? !hasAssistantVisibleContent
     : userText.length === 0;
-  const parseIncompleteMarkdown = isGenerating || isAborted || isFailed;
 
   const rawError = normalizedMessage.error;
   const displayError =
@@ -511,7 +562,8 @@ export const MessageRow = memo(function MessageRow({
         : null);
 
   return (
-    <motion.li
+    <Message
+      from={normalizedMessage.role}
       data-role={normalizedMessage.role}
       data-status={
         isAborted ? "aborted" : isStalePending ? "failed" : normalizedMessage.status
@@ -524,67 +576,74 @@ export const MessageRow = memo(function MessageRow({
       data-message-provider={normalizedMessage.provider}
       data-first-in-group={isFirstInGroup ? "true" : undefined}
       aria-busy={isGenerating}
-      initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.22, ease: "easeOut" }}
-      className={cn(
-        "group/message flex flex-col",
-        isUser ? "items-end" : "items-start",
-        isFirstInGroup ? "mt-2" : "mt-1",
-      )}
+      className={cn(!isUser && "max-w-3xl")}
     >
       {!isUser && isFirstInGroup ? (
-        <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <Sparkles className="size-3.5 text-primary" aria-hidden />
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <Image src="/icon.svg" alt="" width={20} height={20} className="size-5" />
           <span>Assistant</span>
         </div>
       ) : null}
 
-      <div
-        className={cn(
-          "min-w-0",
-          isUser
-            ? "max-w-[85%] rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm text-foreground"
-            : "w-full max-w-3xl text-sm leading-relaxed text-foreground",
-        )}
-      >
+      <MessageContent className={cn(!isUser && "w-full")}>
         {isUser ? (
           <div className="whitespace-pre-wrap break-words">{userText}</div>
         ) : isGenerating && isEmpty ? (
-          <TypingDots />
+          <span role="status">
+            <Shimmer>{t("chatThinking")}</Shimmer>
+          </span>
         ) : (
-          <div className="min-w-0">
+          <>
             {normalizedMessage.parts.map((part, idx) => {
+              if (part.type === "reasoning") {
+                const reasoning = part as ReasoningUIPart;
+                if (!reasoning.text) return null;
+                return (
+                  <Reasoning
+                    key={partKeys[idx]}
+                    className="mb-0"
+                    defaultOpen={false}
+                    isStreaming={isGenerating && reasoning.state === "streaming"}
+                  >
+                    <ReasoningTrigger className="w-fit gap-1 text-xs text-muted-foreground/60 hover:text-muted-foreground [&_svg]:size-3" />
+                    <ReasoningContent className="pt-1.5 text-xs leading-relaxed text-muted-foreground/70 [&>div]:space-y-2 [&_li>p]:inline">
+                      {reasoning.text}
+                    </ReasoningContent>
+                  </Reasoning>
+                );
+              }
               if (part.type === "text") {
+                const text = part as TextUIPart;
                 return (
                   <AssistantTextPart
-                    key={`text-${idx}`}
-                    part={part as TextUIPart}
-                    parseIncompleteMarkdown={parseIncompleteMarkdown}
+                    key={partKeys[idx]}
+                    part={text}
+                    isAnimating={isGenerating && text.state !== "done"}
+                    isUnfinished={
+                      text.state !== "done" &&
+                      (isGenerating || isAborted || isFailed)
+                    }
                     paperCitationsDeprecated={paperCitationsDeprecated}
                   />
                 );
               }
               return null;
             })}
-            <WebSourceChips parts={normalizedMessage.parts} />
-            {isGenerating && !isEmpty ? <StreamingCursor /> : null}
-          </div>
+            <WebSources parts={normalizedMessage.parts} />
+          </>
         )}
-      </div>
+      </MessageContent>
 
       {!isUser && (!isEmpty || isAborted) ? (
-        <div className="mt-1 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           {isAborted ? <AbortedPill /> : null}
-          {!isEmpty || isAborted ? (
-            <MessageActions
-              message={normalizedMessage}
-              isLastAssistant={isLastAssistant}
-              chatModelId={chatModelId}
-              models={chatModels}
-              onRetry={onRetry}
-            />
-          ) : null}
+          <MessageActions
+            message={normalizedMessage}
+            isLastAssistant={isLastAssistant}
+            chatModelId={chatModelId}
+            models={chatModels}
+            onRetry={onRetry}
+          />
         </div>
       ) : null}
 
@@ -597,7 +656,7 @@ export const MessageRow = memo(function MessageRow({
           models={chatModels}
         />
       ) : null}
-    </motion.li>
+    </Message>
   );
 });
 
@@ -825,72 +884,60 @@ export function MessageList({
 
   return (
     <Conversation
-      // `min-h-0` releases the default flex `min-height: auto` so the
-      // StickToBottom internal `overflow: auto` can actually scroll
-      // instead of pushing the composer off-screen.
-      className={cn("min-h-0 flex-1 overscroll-contain")}
+      // `min-h-0` lets the flex child shrink so the conversation scrolls
+      // instead of pushing the composer off-screen. Opening a thread lands
+      // on the latest message without animating down to it.
+      className="min-h-0 overscroll-contain"
+      initial="instant"
       data-message-list="populated"
-      role="presentation"
     >
-      <ConversationContent>
-        <ol
-          role="log"
-          aria-live="polite"
-          aria-relevant="additions"
-          className="mx-auto flex w-full max-w-3xl flex-col gap-2"
-        >
-          <AnimatePresence initial={false}>
-            {renderResults.map((message, i) => {
-              const prev = renderResults[i - 1];
-              const showSourceUpdateDividerBefore =
-                shouldRenderSourceUpdateDividerBeforeMessage({
-                  previous: prev,
+      <ConversationContent className="mx-auto w-full max-w-3xl gap-4">
+        {renderResults.map((message, i) => {
+          const prev = renderResults[i - 1];
+          const showSourceUpdateDividerBefore =
+            shouldRenderSourceUpdateDividerBeforeMessage({
+              previous: prev,
+              message,
+              boundary: sourceUpdateBoundary,
+            });
+          return (
+            // `key` stays the same while a message goes from optimistic or
+            // streaming to saved; its `id` changes, which would remount it.
+            <Fragment key={message.key}>
+              {showSourceUpdateDividerBefore && latestSourceEvent ? (
+                <SourceUpdateDivider
+                  title={t("chatSourcesUpdatedDivider")}
+                  description={t("chatSourcesUpdatedDividerDescription")}
+                />
+              ) : null}
+              <MessageRow
+                message={message as ChatUIMessage}
+                isLastAssistant={message.id === lastAssistantId}
+                isFirstInGroup={!prev || prev.role !== message.role}
+                chatModelId={chatModelId}
+                chatModels={chatModels}
+                onRetry={handleRetry}
+                isJobGenerating={isJobGenerating}
+                paperCitationsDeprecated={isAssistantCitationDeprecated(
                   message,
-                  boundary: sourceUpdateBoundary,
-                });
-              const paperCitationsDeprecated = isAssistantCitationDeprecated(
-                message,
-                sourceUpdateBoundary,
-              );
-              const isFirstInGroup = !prev || prev.role !== message.role;
-              return (
-                <Fragment key={message.id}>
-                  {showSourceUpdateDividerBefore && latestSourceEvent ? (
-                    <SourceUpdateDivider
-                      key={latestSourceEvent._id}
-                      title={t("chatSourcesUpdatedDivider")}
-                      description={t("chatSourcesUpdatedDividerDescription")}
-                    />
-                  ) : null}
-                  <MessageRow
-                    message={message as ChatUIMessage}
-                    isLastAssistant={message.id === lastAssistantId}
-                    isFirstInGroup={isFirstInGroup}
-                    chatModelId={chatModelId}
-                    chatModels={chatModels}
-                    onRetry={handleRetry}
-                    reduceMotion={reduceMotion}
-                    isJobGenerating={isJobGenerating}
-                    paperCitationsDeprecated={paperCitationsDeprecated}
-                  />
-                </Fragment>
-              );
-            })}
-            {latestSourceEvent &&
-            shouldRenderSourceUpdateDividerAfterMessages(
-              renderResults,
-              sourceUpdateBoundary,
-            ) ? (
-              <SourceUpdateDivider
-                key={`${latestSourceEvent._id}:after`}
-                title={t("chatSourcesUpdatedDivider")}
-                description={t("chatSourcesUpdatedDividerDescription")}
+                  sourceUpdateBoundary,
+                )}
               />
-            ) : null}
-          </AnimatePresence>
-        </ol>
+            </Fragment>
+          );
+        })}
+        {latestSourceEvent &&
+        shouldRenderSourceUpdateDividerAfterMessages(
+          renderResults,
+          sourceUpdateBoundary,
+        ) ? (
+          <SourceUpdateDivider
+            title={t("chatSourcesUpdatedDivider")}
+            description={t("chatSourcesUpdatedDividerDescription")}
+          />
+        ) : null}
       </ConversationContent>
-      <JumpToLatestPill messageCount={renderResults.length} />
+      <ConversationScrollButton aria-label={t("chatJumpToLatest")} />
     </Conversation>
   );
 }

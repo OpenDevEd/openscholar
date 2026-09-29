@@ -16,7 +16,7 @@
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
-import { waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import {
   render,
   screen,
@@ -235,7 +235,10 @@ describe("<MessageComposer>", () => {
     expect(textarea.value).toContain("line2");
   });
 
-  it("IME composition guard: Enter during composition does not submit", () => {
+  // A submit runs asynchronously, so let it settle before asserting none happened.
+  const flushSubmit = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+  it("IME composition guard: Enter during composition does not submit", async () => {
     sendMessageMock.mockClear();
     renderWithSources(<MessageComposer job={makeJob()} threadId="t_1" />);
     const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
@@ -247,6 +250,18 @@ describe("<MessageComposer>", () => {
       keyCode: 229,
       // older Webkit dispatches Enter inside composition with keyCode 229
     });
+    await flushSubmit();
+    expect(sendMessageMock).not.toHaveBeenCalled();
+  });
+
+  it("IME composition guard: an Enter confirming composition (keyCode 229) does not submit", async () => {
+    sendMessageMock.mockClear();
+    renderWithSources(<MessageComposer job={makeJob()} threadId="t_1" />);
+    const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: "こんにちは" } });
+    // Some IMEs report the confirming Enter after composition has ended.
+    fireEvent.keyDown(textarea, { key: "Enter", code: "Enter", keyCode: 229 });
+    await flushSubmit();
     expect(sendMessageMock).not.toHaveBeenCalled();
   });
 

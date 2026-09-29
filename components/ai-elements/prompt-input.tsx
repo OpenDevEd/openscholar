@@ -973,16 +973,21 @@ export const PromptInputTextarea = ({
         return;
       }
 
-      // Submit only on Cmd/Ctrl+Enter. Plain Enter inserts a newline so users
-      // can draft multi-line messages without accidentally sending.
-      if (
-        e.key === "Enter" &&
-        (e.metaKey || e.ctrlKey) &&
-        !isComposing &&
-        !e.nativeEvent.isComposing
-      ) {
+      if (e.key === "Enter") {
+        // Some IMEs confirm with keyCode 229 while isComposing is already false.
+        if (
+          isComposing ||
+          e.nativeEvent.isComposing ||
+          e.nativeEvent.keyCode === 229
+        ) {
+          return;
+        }
+        if (e.shiftKey) {
+          return;
+        }
         e.preventDefault();
 
+        // Check if the submit button is disabled before submitting
         const { form } = e.currentTarget;
         const submitButton = form?.querySelector(
           'button[type="submit"]'

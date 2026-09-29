@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import {
   AlertCircleIcon,
   BanIcon,
+  ChevronRightIcon,
   ClockIcon,
   CoinsIcon,
   RefreshCwIcon,
@@ -17,6 +18,11 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getProviderIcon } from "@/components/icons/provider-icons";
@@ -135,17 +141,20 @@ export function ChatErrorAlert({
           activeModel={activeModel}
         />
         {showTechnicalDetails ? (
-          <details className="mt-2" data-error-technical-details>
-            <summary className="cursor-pointer text-xs text-muted-foreground underline-offset-2 hover:underline">
+          <Collapsible className="mt-2" data-error-technical-details>
+            <CollapsibleTrigger className="group/details flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+              <ChevronRightIcon className="size-3.5 transition-transform group-data-[state=open]/details:rotate-90" />
               {t("chatErrorShowDetails")}
-            </summary>
-            <pre
-              className="mt-1 whitespace-pre-wrap break-words text-xs text-muted-foreground"
-              data-error-technical-message
-            >
-              {envelope.message}
-            </pre>
-          </details>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down motion-reduce:animate-none">
+              <pre
+                className="whitespace-pre-wrap break-words pt-1 pl-4.5 text-xs text-muted-foreground"
+                data-error-technical-message
+              >
+                {envelope.message}
+              </pre>
+            </CollapsibleContent>
+          </Collapsible>
         ) : null}
       </AlertDescription>
     </Alert>

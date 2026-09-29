@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   canRestore,
@@ -13,7 +13,7 @@ import {
 } from "@/lib/evidence-libraries/configuration/versions";
 import { cn } from "@/lib/utils";
 import { EmptyList } from "../fields";
-import { DisclosureButton } from "../disclosure-button";
+import { Disclosure } from "../disclosure-button";
 import { StatusChip, type StatusTone } from "../status-chip";
 
 /*
@@ -115,7 +115,6 @@ export function ReleaseNotes({
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const [changesOpen, setChangesOpen] = useState(false);
-  const changesId = useId();
   if (releases.length === 0) return <CommitList changes={changes} />;
   return (
     <div className="space-y-4" data-release-notes={releases.length}>
@@ -151,14 +150,11 @@ export function ReleaseNotes({
       ))}
       {changes.length > 0 ? (
         <div className="border-t border-border/50 pt-3">
-          <DisclosureButton open={changesOpen} controls={changesId} onToggle={() => setChangesOpen((open) => !open)}>
-            {t("versions.technicalChanges")}
-          </DisclosureButton>
-          {changesOpen ? (
-            <div id={changesId} className="pt-2">
+          <Disclosure open={changesOpen} onOpenChange={setChangesOpen} label={t("versions.technicalChanges")}>
+            <div className="pt-2">
               <CommitList changes={changes} />
             </div>
-          ) : null}
+          </Disclosure>
         </div>
       ) : null}
     </div>
