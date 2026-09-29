@@ -2,12 +2,12 @@
  * @vitest-environment jsdom
  *
  * U5 — MessageRow iterates UIMessage.parts and renders the AI SDK v6
- * discriminated union: text via MessageResponse, tool-* via ToolStep,
- * step-start via StepBoundary, source-url accumulated into the footer
- * via WebSourceChips. Tests target data-* / role contracts only.
+ * discriminated union: text via MessageResponse, tool-* via the web search
+ * Tool, source-url accumulated into the footer via Sources. Tests target
+ * data-* / role contracts only.
  */
 import { describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { renderWithTooltip as render } from "../helpers/render-with-tooltip";
 import type { UIMessage } from "@convex-dev/agent/react";
 import type { ToolUIPart, UIMessagePart } from "ai";
@@ -72,7 +72,6 @@ function renderRow(msg: ChatUIMessage) {
       chatModelId={null}
       chatModels={[]}
       onRetry={() => {}}
-      reduceMotion
       isJobGenerating={false}
     />,
   );
@@ -101,18 +100,15 @@ describe("<MessageRow> parts iteration — text-only", () => {
       }),
     );
     expect(screen.getByText(/just a normal answer/i)).toBeInTheDocument();
-    expect(screen.queryByTestId("tool-step")).toBeNull();
+    expect(document.querySelector("[data-tool-name]")).toBeNull();
     expect(
       document.querySelector("[data-web-sources-count]"),
-    ).toBeNull();
-    expect(
-      document.querySelector("[data-step-boundary]"),
     ).toBeNull();
   });
 });
 
 describe("<MessageRow> parts iteration — text + tool (mid-stream)", () => {
-  it("renders the in-flight ToolStep and the prior text without a step boundary or footer chips", () => {
+  it("renders the in-flight tool and the prior text without footer sources", () => {
     renderRow(
       makeAssistant(
         [
@@ -126,19 +122,15 @@ describe("<MessageRow> parts iteration — text + tool (mid-stream)", () => {
 
     expect(screen.getByText(/let me check the literature/i)).toBeInTheDocument();
 
-    const tool = screen.getByTestId("tool-step");
+    const tool = document.querySelector("[data-tool-name]");
     expect(tool).toHaveAttribute("data-tool-state", "input-streaming");
     expect(tool).toHaveAttribute("data-tool-name", "web_search");
-
-    // step-start sits between text and an in-flight tool — boundary is
-    // visible only between *completed* tool and following text.
-    expect(document.querySelector("[data-step-boundary]")).toBeNull();
     expect(document.querySelector("[data-web-sources-count]")).toBeNull();
   });
 });
 
 describe("<MessageRow> parts iteration — text + tool + text + source-url (full)", () => {
-  it("renders text → tool → boundary → text in DOM order, with source-urls collected at the message footer", () => {
+  it("renders text → tool → text, with source-urls collected at the message footer", () => {
     const parts: AnyPart[] = [
       textPart("Let me search."),
       stepStart,
@@ -165,43 +157,20 @@ describe("<MessageRow> parts iteration — text + tool + text + source-url (full
       screen.getByText(/based on the search, here is the answer/i),
     ).toBeInTheDocument();
 
-    // ToolStep settled to output-available with the correct count.
-    const tool = screen.getByTestId("tool-step");
+    const tool = document.querySelector("[data-tool-name]");
     expect(tool).toHaveAttribute("data-tool-state", "output-available");
-    expect(tool).toHaveTextContent(/found 2 results for/i);
 
-    // Step boundary appears (completed tool followed by text via the
-    // source-url interlude is collapsed by the heuristic — boundary is
-    // visible because the *immediate* next part after the tool was the
-    // source-url, not text. So we expect zero boundaries here, since
-    // the heuristic looks at immediate neighbors only.
-    expect(document.querySelector("[data-step-boundary]")).toBeNull();
-
-    // Source-url chips render at the footer regardless of part position.
-    const chipRow = document.querySelector(
+    // Source-url parts collect at the footer regardless of part position.
+    const sources = document.querySelector(
       "[data-web-sources-count]",
     ) as HTMLElement | null;
-    expect(chipRow).not.toBeNull();
-    expect(chipRow!.getAttribute("data-web-sources-count")).toBe("2");
-    const chipLinks = within(chipRow!).getAllByRole("link");
-    expect(chipLinks).toHaveLength(2);
-    expect(chipLinks[0].getAttribute("data-source-host")).toBe("arxiv.org");
-    expect(chipLinks[1].getAttribute("data-source-host")).toBe("example.com");
-  });
-
-  it("shows the step boundary <hr> when an explicit step-start sits between a completed tool and following text", () => {
-    const parts: AnyPart[] = [
-      toolPart("output-available", {
-        input: { query: "q" },
-        output: { sources: [{ url: "https://x" }], creditsUsed: 1 },
-      }),
-      stepStart,
-      textPart("Here is the answer."),
-    ];
-    renderRow(makeAssistant(parts));
-
-    const hr = document.querySelector("[data-step-boundary]");
-    expect(hr).not.toBeNull();
-    expect(hr?.tagName.toLowerCase()).toBe("hr");
+    expect(sources).not.toBeNull();
+    expect(sources!.getAttribute("data-web-sources-count")).toBe("2");
+    fireEvent.click(within(sources!).getByRole("button"));
+    const links = within(sources!).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "https://arxiv.org/abs/X",
+      "https://example.com/foo",
+    ]);
   });
 });

@@ -3,26 +3,58 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { UIMessage } from "ai";
-import { DownloadIcon } from "lucide-react";
+import { ArrowDownIcon, DownloadIcon } from "lucide-react";
 import type { ComponentProps } from "react";
-import { useCallback } from "react";
-import { StickToBottom } from "use-stick-to-bottom";
+import { useCallback, useEffect } from "react";
+import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 
 export type ConversationProps = ComponentProps<typeof StickToBottom>;
 
-export const Conversation = ({ className, ...props }: ConversationProps) => (
+export const Conversation = ({
+  className,
+  children,
+  ...props
+}: ConversationProps) => (
   <StickToBottom
-    // The library's default `overflow: auto` IS the scroll container.
-    // We intentionally do NOT add `overflow-y-hidden` here — that
-    // override broke scrolling and was the root cause of the chat's
-    // "broken scroll" complaint.
-    className={cn("relative flex-1", className)}
+    className={cn("relative flex-1 overflow-y-hidden", className)}
     initial="smooth"
     resize="smooth"
     role="log"
     {...props}
-  />
+  >
+    {(context) => (
+      <>
+        {typeof children === "function" ? children(context) : children}
+        <PinToBottomBeforePaint />
+      </>
+    )}
+  </StickToBottom>
 );
+
+/**
+ * use-stick-to-bottom follows growing content one animation frame late, so
+ * every growth step (streamed text, a panel opening) paints once too low and
+ * then snaps back. ResizeObserver callbacks run before paint, so pinning
+ * there keeps the view still.
+ */
+const PinToBottomBeforePaint = () => {
+  const { contentRef, state } = useStickToBottomContext();
+  // Outside system: a ResizeObserver on the conversation content.
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content) {
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      if (state.isAtBottom && !state.escapedFromLock) {
+        state.scrollTop = state.calculatedTargetScrollTop;
+      }
+    });
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [contentRef, state]);
+  return null;
+};
 
 export type ConversationContentProps = ComponentProps<
   typeof StickToBottom.Content
@@ -72,6 +104,37 @@ export const ConversationEmptyState = ({
     )}
   </div>
 );
+
+export type ConversationScrollButtonProps = ComponentProps<typeof Button>;
+
+export const ConversationScrollButton = ({
+  className,
+  ...props
+}: ConversationScrollButtonProps) => {
+  const { isAtBottom, scrollToBottom } = useStickToBottomContext();
+
+  const handleScrollToBottom = useCallback(() => {
+    scrollToBottom();
+  }, [scrollToBottom]);
+
+  return (
+    !isAtBottom && (
+      <Button
+        className={cn(
+          "absolute bottom-4 left-[50%] translate-x-[-50%] rounded-full dark:bg-background dark:hover:bg-muted",
+          className
+        )}
+        onClick={handleScrollToBottom}
+        size="icon"
+        type="button"
+        variant="outline"
+        {...props}
+      >
+        <ArrowDownIcon className="size-4" />
+      </Button>
+    )
+  );
+};
 
 const getMessageText = (message: UIMessage): string =>
   message.parts

@@ -53,7 +53,7 @@ export const MessageContent = ({
   <div
     className={cn(
       "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
-      "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-primary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-primary-foreground",
+      "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
       "group-[.is-assistant]:text-foreground",
       className
     )}
@@ -321,36 +321,21 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 const streamdownPlugins = { cjk, code };
 
-function getRendererSignature({
-  allowedTags,
-  components,
-}: Pick<MessageResponseProps, "allowedTags" | "components">) {
-  const allowedTagSignature = allowedTags
-    ? Object.entries(allowedTags)
-        .map(([tag, attrs]) => `${tag}:${attrs.join(",")}`)
-        .sort()
-        .join("|")
-    : "";
-  const componentSignature = components
-    ? Object.keys(components).sort().join(",")
-    : "";
-  return `${allowedTagSignature}::${componentSignature}`;
-}
-
 export const MessageResponse = memo(
-  ({ allowedTags, className, components, ...props }: MessageResponseProps) => (
+  ({ className, ...props }: MessageResponseProps) => (
     <Streamdown
-      key={getRendererSignature({ allowedTags, components })}
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className
       )}
-      allowedTags={allowedTags}
-      components={components}
       plugins={streamdownPlugins}
       {...props}
     />
-  )
+  ),
+  (prevProps, nextProps) =>
+    prevProps.children === nextProps.children &&
+    nextProps.isAnimating === prevProps.isAnimating &&
+    nextProps.parseIncompleteMarkdown === prevProps.parseIncompleteMarkdown
 );
 
 MessageResponse.displayName = "MessageResponse";

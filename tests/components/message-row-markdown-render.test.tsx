@@ -72,7 +72,6 @@ describe("<MessageRow> markdown rendering", () => {
         chatModelId={null}
         chatModels={[]}
         onRetry={() => {}}
-        reduceMotion
         isJobGenerating={false}
       />,
     );
