@@ -321,9 +321,30 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 const streamdownPlugins = { cjk, code };
 
+/**
+ * Streamdown memoizes on its text, so a changed tag list or component map
+ * would keep the old rendering; keying on them remounts it instead.
+ */
+function getRendererSignature({
+  allowedTags,
+  components,
+}: Pick<MessageResponseProps, "allowedTags" | "components">) {
+  const allowedTagSignature = allowedTags
+    ? Object.entries(allowedTags)
+        .map(([tag, attrs]) => `${tag}:${attrs.join(",")}`)
+        .sort()
+        .join("|")
+    : "";
+  const componentSignature = components
+    ? Object.keys(components).sort().join(",")
+    : "";
+  return `${allowedTagSignature}::${componentSignature}`;
+}
+
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
     <Streamdown
+      key={getRendererSignature(props)}
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className
@@ -331,11 +352,7 @@ export const MessageResponse = memo(
       plugins={streamdownPlugins}
       {...props}
     />
-  ),
-  (prevProps, nextProps) =>
-    prevProps.children === nextProps.children &&
-    nextProps.isAnimating === prevProps.isAnimating &&
-    nextProps.parseIncompleteMarkdown === prevProps.parseIncompleteMarkdown
+  )
 );
 
 MessageResponse.displayName = "MessageResponse";

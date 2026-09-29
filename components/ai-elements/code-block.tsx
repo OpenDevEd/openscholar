@@ -130,6 +130,7 @@ const highlighterCache = new Map<
 
 // Token cache
 const tokensCache = new Map<string, TokenizedCode>();
+const TOKENS_CACHE_LIMIT = 100;
 
 // Subscribers for async token updates
 const subscribers = new Map<string, Set<(result: TokenizedCode) => void>>();
@@ -218,6 +219,11 @@ export const highlightCode = (
 
       // Cache the result
       tokensCache.set(tokensCacheKey, tokenized);
+      // A streaming block caches every prefix; keep only the newest entries.
+      // ponytail: oldest-first eviction, an LRU if hits on old snippets matter.
+      if (tokensCache.size > TOKENS_CACHE_LIMIT) {
+        tokensCache.delete(tokensCache.keys().next().value!);
+      }
 
       // Notify all subscribers
       const subs = subscribers.get(tokensCacheKey);
