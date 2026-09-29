@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useAppToast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 
 const TABLE_FORMATS = {
   md: { label: "Markdown", file: "table.md", type: "text/markdown", to: tableDataToMarkdown },
@@ -141,8 +142,33 @@ export function ChatTable({ children }: { children?: ReactNode }) {
   );
 }
 
-/** A fenced code block in an answer, on AI Elements' CodeBlock. */
+/**
+ * Code in an answer. Streamdown marks fenced code with `data-block`; that
+ * renders on AI Elements' CodeBlock, and inline code keeps Streamdown's look.
+ */
 export function ChatCodeBlock({
+  className,
+  children,
+  ...props
+}: {
+  className?: string;
+  children?: ReactNode;
+  "data-block"?: string;
+}) {
+  if (!("data-block" in props)) {
+    return (
+      <code
+        data-streamdown="inline-code"
+        className={cn("rounded bg-muted px-1.5 py-0.5 font-mono text-sm", className)}
+      >
+        {children}
+      </code>
+    );
+  }
+  return <FencedCode className={className}>{children}</FencedCode>;
+}
+
+function FencedCode({
   className,
   children,
 }: {
