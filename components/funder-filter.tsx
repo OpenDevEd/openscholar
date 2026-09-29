@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { searchFunders } from "@/app/actions/funders";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { useFunderNames } from "@/lib/openalex/use-funder-names";
+import { rememberFunderNames, useFunderNames } from "@/lib/openalex/use-funder-names";
 
 /** Funders from OpenAlex's autocomplete; there are too many to list. */
 export function FunderFilter({
@@ -50,9 +50,12 @@ export function FunderFilter({
       selected={selected}
       names={names}
       onSearch={setSearch}
-      onToggle={(id) =>
-        onChange(selected.includes(id) ? selected.filter((one) => one !== id) : [...selected, id])
-      }
+      onToggle={(id) => {
+        if (selected.includes(id)) return onChange(selected.filter((one) => one !== id));
+        // Saved as it is picked, so chips for this search never have to look the name up.
+        rememberFunderNames({ [id]: names[id] });
+        onChange([...selected, id]);
+      }}
     />
   );
 }
