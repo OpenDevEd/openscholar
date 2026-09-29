@@ -21,6 +21,7 @@ import type { Id } from "../../_generated/dataModel";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { extractionStamp, resolveTaskPick } from "../../ai/serverModel";
+import { requireAvailableModel, requireTaskModel } from "../../models/catalog";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { assertBucketWithinLimits } from "../bucket/limits";
@@ -134,6 +135,9 @@ export const startJob = mutation({
     // Pre-resolve so the composer's controlled value is never null. A new chat
     // starts on the model and effort the user's choice gives chat, which
     // swapModel can still change per conversation.
+    if (args.mode === "chat" && args.chatModelId !== undefined) {
+      requireTaskModel(await requireAvailableModel(ctx, args.chatModelId), "chat");
+    }
     const chatPick =
       args.mode !== "chat" ? null
       : args.chatModelId !== undefined ? { modelId: args.chatModelId }

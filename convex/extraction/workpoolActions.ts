@@ -12,7 +12,7 @@ import { resolveOpenRouterModel } from "../chat/provider";
 type ExtractionModel = Awaited<ReturnType<typeof resolveOpenRouterModel>>["model"];
 type ExtractionPricing = Awaited<ReturnType<typeof resolveOpenRouterModel>>["pricing"];
 import { callOptions, type Effort } from "../../lib/ai/core/call-options";
-import { decideYesNo } from "../../lib/ai/decisions";
+import { decideYesNo, paperState } from "../../lib/ai/decisions";
 import { usageOf } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";
 import {
@@ -1303,9 +1303,6 @@ export async function runExtractQuestionWithContext({
   };
 }
 
-// ponytail: Jev reads at most ~32K tokens; full text past this many characters is left out.
-const DECISION_TEXT_CHARS = 80_000;
-
 /**
  * Yes/no questions about one paper, answered by a decision model (Jev) in one
  * call. Jev cites nothing and gives no reasoning, so answers follow the
@@ -1334,10 +1331,15 @@ export async function runDecisionQuestions({
   if (asked.length === 0) return outcomes;
   if (!context.user) throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
 
-  const abstract = isUsableAbstract(context.paper.abstract) ? context.paper.abstract!.trim() : undefined;
-  const fullText = toEvidenceUnitDocs(context.evidenceUnits).map((unit) => unit.text).join("\n\n").slice(0, DECISION_TEXT_CHARS);
-  const state = { title: context.paper.title, ...(abstract && { abstract }), ...(fullText && { fullText }) };
   const prompts = asked.map((q) => (q.description ? `${q.question} (${q.description})` : q.question));
+  const state = paperState(
+    {
+      title: context.paper.title,
+      abstract: isUsableAbstract(context.paper.abstract) ? context.paper.abstract!.trim() : undefined,
+      fullText: toEvidenceUnitDocs(context.evidenceUnits).map((unit) => unit.text).join("\n\n"),
+    },
+    prompts,
+  );
 
   const startedAt = Date.now();
   try {
@@ -1361,7 +1363,7 @@ export async function runDecisionQuestions({
           denseCandidates: 0, lexicalCandidates: 0, fusedCandidates: 0, rerankedCandidates: 0, validatedCitations: 0,
           strictNull: answer === null,
         },
-        pdfContentUsed: Boolean(fullText),
+        pdfContentUsed: Boolean(state.fullText),
       };
       // The one call is charged once, on the first question it answered.
       outcomes.push({

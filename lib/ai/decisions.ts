@@ -10,6 +10,30 @@ const DECISIONS_URL = 'https://openrouter.ai/api/alpha/decisions'
 /** Models answered through the Decisions API rather than text generation. */
 export const isDecisionModel = (modelSlug: string) => modelSlug.startsWith('typesafe/jev')
 
+/** A failed decisions call, with the HTTP status the error classifier reads. */
+export class DecisionsError extends Error {
+  constructor(readonly status: number, detail: string) {
+    super(`Jev decision failed (${status}): ${detail}`)
+    this.name = 'DecisionsError'
+  }
+}
+
+// ponytail: ~4 characters a token keeps Jev's 32K-token context with room for the
+// questions and criteria; count tokens exactly if papers start getting refused.
+const MAX_STATE_CHARS = 100_000
+
+/**
+ * A paper as Jev reads it, within its context: the title and questions always fit,
+ * then the abstract, then as much full text as is left.
+ */
+export function paperState(paper: { title: string; abstract?: string; fullText?: string }, questions: string[]) {
+  let room = MAX_STATE_CHARS - paper.title.length - questions.join('').length
+  const abstract = paper.abstract?.slice(0, Math.max(0, room))
+  room -= abstract?.length ?? 0
+  const fullText = paper.fullText?.slice(0, Math.max(0, room))
+  return { title: paper.title, ...(abstract && { abstract }), ...(fullText && { fullText }) }
+}
+
 /** A yes/no answer, null when the text doesn't say enough, with how sure Jev is. */
 export type YesNo = { answer: boolean | null; confidence: number }
 
@@ -57,13 +81,15 @@ export async function decideYesNo({
     signal,
   })
   if (!response.ok) {
-    const detail = (await response.text().catch(() => '')).slice(0, 500)
-    throw new Error(`Jev decision failed (${response.status}): ${detail}`)
+    throw new DecisionsError(response.status, (await response.text().catch(() => '')).slice(0, 500))
   }
   const data = (await response.json()) as DecisionsResponse
   const answers = questions.map((_, i): YesNo => {
-    const answer = data.answers[`q${i}`]
-    if (!answer || answer.type !== 'choice') return { answer: null, confidence: 0 }
+    const answer = data.answers?.[`q${i}`]
+    // Only Jev's own "unclear" means unclear; a missing or odd answer is a failed call, not a billed null.
+    if (!answer || answer.type !== 'choice' || !(((answer as ChoiceAnswer).choice) in YES_NO_CRITERIA)) {
+      throw new DecisionsError(502, `no usable answer for question ${i + 1}: ${JSON.stringify(answer ?? null).slice(0, 200)}`)
+    }
     const { choice, probabilities } = answer as ChoiceAnswer
     return {
       answer: choice === 'yes' ? true : choice === 'no' ? false : null,

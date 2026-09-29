@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LanguageModel } from "ai";
-import { decideYesNo, JEV_MODEL } from "../lib/ai/decisions";
+import { decideYesNo, JEV_MODEL, paperState } from "../lib/ai/decisions";
 import { processScreeningBatch } from "../lib/ai/core/batch";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -34,9 +34,25 @@ describe("decideYesNo", () => {
     expect(usage).toMatchObject({ inputTokens: 400, costUsd: 0.00002 });
   });
 
-  it("reports the status and body when OpenRouter refuses", async () => {
+  it("reports the status and body when OpenRouter refuses, with the status the error classifier reads", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response('{"error":{"message":"no credits"}}', { status: 402 })));
-    await expect(decideYesNo({ apiKey: "sk-or", model: JEV_MODEL, state: {}, questions: ["a?"] })).rejects.toThrow(/402.*no credits/);
+    const failure = decideYesNo({ apiKey: "sk-or", model: JEV_MODEL, state: {}, questions: ["a?"] });
+    await expect(failure).rejects.toThrow(/402.*no credits/);
+    await expect(failure).rejects.toMatchObject({ status: 402 });
+  });
+
+  it("treats a missing answer as a failed call, not an unclear one", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      answers: { q0: { type: "choice", choice: "yes", probabilities: { yes: 1 } } },
+      usage: { input_tokens: 10, output_tokens: 1, cost: 0 },
+    }))));
+    await expect(decideYesNo({ apiKey: "sk-or", model: JEV_MODEL, state: {}, questions: ["a?", "b?"] })).rejects.toMatchObject({ status: 502 });
+  });
+
+  it("keeps a paper within Jev's context, trimming full text first", () => {
+    const state = paperState({ title: "T", abstract: "a".repeat(10), fullText: "f".repeat(200_000) }, ["q?"]);
+    expect(state.abstract).toHaveLength(10);
+    expect(state.title.length + state.abstract!.length + state.fullText!.length + "q?".length).toBe(100_000);
   });
 });
 

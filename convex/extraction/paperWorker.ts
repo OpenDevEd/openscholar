@@ -314,8 +314,6 @@ async function runQuestionBatches(
     expectedEpoch: number;
   },
 ): Promise<BatchRun> {
-  // Pricing comes from the model stamped on the job, so charges match the model that ran.
-  const server = await resolveOpenRouterModel(ctx, context.job.serverModelId ?? null);
   // Yes/no questions go to the decision model (Jev) in one call per paper, if the job has one still offered.
   const decision = context.job.decisionModelId
     ? await ctx.runQuery(internal.models.queries.getById, { modelId: context.job.decisionModelId })
@@ -333,12 +331,15 @@ async function runQuestionBatches(
             }),
         }]
       : []),
-    ...chunk(items.filter((item) => !decided.includes(item)), questionConcurrency).map((batch) => ({
-      batch,
-      modelSlug: server.modelSlug,
-      answer: answerWithModel(ctx, context, expectedEpoch, server),
-    })),
   ];
+  const rest = items.filter((item) => !decided.includes(item));
+  if (rest.length > 0) {
+    // Pricing comes from the model stamped on the job, so charges match the model that ran.
+    const server = await resolveOpenRouterModel(ctx, context.job.serverModelId ?? null);
+    for (const batch of chunk(rest, questionConcurrency)) {
+      batches.push({ batch, modelSlug: server.modelSlug, answer: answerWithModel(ctx, context, expectedEpoch, server) });
+    }
+  }
 
   let credits = 0;
   const usages: Usage[] = [];

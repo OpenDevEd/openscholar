@@ -16,7 +16,7 @@ import type { Usage } from './types'
 import { executeAIOperation } from './execute'
 import type { Effort } from './call-options'
 import type { OperationConfig } from './configs'
-import { decideYesNo, isDecisionModel } from '../decisions'
+import { decideYesNo, isDecisionModel, paperState } from '../decisions'
 
 // ═══════════════════════════════════════════════════════════════
 // BATCH PROCESSOR TYPES
@@ -148,7 +148,7 @@ export async function processScreeningBatch(
     if (!decisionsKey) throw new Error('Jev needs an OpenRouter key')
     return settleBatch(papers, (paper) => paper.id, async (paper) => {
       const start = Date.now()
-      const state = { title: paper.title, abstract: paper.abstract || 'No abstract available' }
+      const state = paperState({ title: paper.title, abstract: paper.abstract || 'No abstract available' }, questions)
       const { answers, usage } = await decideYesNo({ apiKey: decisionsKey, model: modelSlug, state, questions, sessionId })
       const result: ScreeningResultData = {
         responses: Object.fromEntries(questions.map((question, i) => [question, answers[i]!.answer])),
