@@ -161,10 +161,10 @@ export function SourceSwitch({
 }
 
 /** A count read after the row renders, in a box wide enough that nothing moves when it arrives. */
-export function SourceCount({ count }: { count: number | undefined }) {
+export function SourceCount({ count }: { count: number | null | undefined }) {
   return (
     <span className="inline-block min-w-[7ch] tabular-nums">
-      {count === undefined ? null : count.toLocaleString()}
+      {count == null ? null : count.toLocaleString()}
     </span>
   );
 }

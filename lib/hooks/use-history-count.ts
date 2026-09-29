@@ -18,7 +18,7 @@
 
 import useSWR from "swr";
 import { hashSearchFilters } from "@/lib/openalex/filter-hash";
-import { countOpenAlexQuery, searchOpenAlexCount } from "@/app/actions/openalex-count";
+import { countOpenAlexQueries, searchOpenAlexCount } from "@/app/actions/openalex-count";
 import type { OpenAlexWorksQuery } from "@/lib/openalex/search-params";
 import { toSearchFilters } from "@/lib/openalex/to-search-filters";
 import type { SearchResult } from "@/lib/types";
@@ -68,14 +68,17 @@ export function useHistoryCount(
   };
 }
 
-/** How many works a stored request finds, such as a library source's approved query; cached like the history counts. */
-export function useOpenAlexQueryCount(query: OpenAlexWorksQuery): number | undefined {
-  const { data } = useSWR<number>(
-    ["openalex-query-count", query.oql ?? "", query.filter ?? "", query.search ?? ""],
-    async () => (await countOpenAlexQuery(query)).count,
-    // An edited query never shows the count of the one before it, and a failed count shows none.
-    // A cached count refreshes on the next visit, at most once a minute per query.
+/**
+ * How many works each stored request finds, such as a library's approved
+ * source queries, read in one call for the whole list. A request that could
+ * not be counted, or a failed refresh, shows no count rather than an old one.
+ */
+export function useOpenAlexQueryCounts(queries: readonly OpenAlexWorksQuery[]): readonly (number | null)[] {
+  const { data, error } = useSWR<(number | null)[]>(
+    queries.length ? ["openalex-query-counts", JSON.stringify(queries)] : null,
+    () => countOpenAlexQueries([...queries]),
+    // A cached list refreshes on the next visit, at most once a minute.
     { ...COUNT_OPTIONS, keepPreviousData: false, revalidateIfStale: true },
   );
-  return data;
+  return error || !data ? [] : data;
 }

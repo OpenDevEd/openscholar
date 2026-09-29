@@ -972,9 +972,7 @@ function readSources(payload: unknown): EvidenceSourceEntry[] {
         groupId,
         enabled: flag(row.enabled, true),
         writebackEnabled: flag(row.writebackEnabled, false),
-        ...("downloadPdfs" in settings
-          ? { settings: { downloadPdfs: flag(settings.downloadPdfs, true) } }
-          : {}),
+        settings: { downloadPdfs: flag(settings.downloadPdfs, true) },
       };
       return [parsed];
     });

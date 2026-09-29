@@ -89,6 +89,30 @@ describe("owner configuration migrations", () => {
     });
   });
 
+  it("gives each saved Zotero group its PDF setting, keeping the PDFs it adds today", () => {
+    const zotero = (groupId: string) => ({
+      key: `zotero-${groupId}`,
+      provider: "zotero",
+      groupId,
+      enabled: true,
+      writebackEnabled: false,
+    });
+    const result = migrateOwnerConfiguration({
+      ownerConfigurationVersion: 6,
+      sections: [
+        {
+          sectionKey: "sources",
+          payload: [zotero("42"), { ...zotero("77"), settings: { downloadPdfs: false } }],
+        },
+      ],
+    });
+    expect(result.snapshot.ownerConfigurationVersion).toBe(7);
+    expect(result.snapshot.sections.find((row) => row.sectionKey === "sources")?.payload).toEqual([
+      { ...zotero("42"), settings: { downloadPdfs: true } },
+      { ...zotero("77"), settings: { downloadPdfs: false } },
+    ]);
+  });
+
   it("adds an Identity assets container without changing its other values", () => {
     const identity = {
       name: "Climate",
@@ -326,6 +350,7 @@ describe("owner configuration migrations", () => {
       [3, 4],
       [4, 5],
       [5, 6],
+      [6, 7],
     ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
@@ -562,6 +587,7 @@ describe("owner configuration migrations", () => {
       [3, 4],
       [4, 5],
       [5, 6],
+      [6, 7],
     ]);
   });
 

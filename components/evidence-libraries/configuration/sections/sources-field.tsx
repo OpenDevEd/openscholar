@@ -701,7 +701,7 @@ function GroupRow({
           />
           <SourceSwitch
             label={t("pdfs")}
-            checked={entry.settings?.downloadPdfs ?? true}
+            checked={entry.settings.downloadPdfs}
             onCheckedChange={(downloadPdfs) => onPatch({ settings: { downloadPdfs } })}
           />
         </>

@@ -39,7 +39,7 @@ import { readOpenAlexSourceSearch, sourceSearchHistoryId } from "@/lib/evidence-
 import { Field } from "../section-card";
 import { OpenAlexQuerySummary } from "./openalex-query-summary";
 import { SourceCount, SourceRow, SourceSwitch } from "./source-row";
-import { useOpenAlexQueryCount } from "@/lib/hooks/use-history-count";
+import { useOpenAlexQueryCounts } from "@/lib/hooks/use-history-count";
 import type { SourceLive } from "./source-activity";
 
 export const OpenAlexSearchDialog = dynamic(
@@ -79,6 +79,8 @@ export function useOpenAlexSources({
   const sources = value.filter(
     (source): source is OpenAlexSourceEntry => source.provider === "openalex",
   );
+  // How many works each approved query finds now: what the library imports.
+  const counts = useOpenAlexQueryCounts(sources.map((source) => source.settings.approvedQuery.query));
   const customCredential = (credentials.data ?? []).find(
     (credential) => credential.credentialKey === OPENALEX_API_CREDENTIAL_KEY,
   );
@@ -176,6 +178,7 @@ export function useOpenAlexSources({
 
   return {
     sources,
+    countFor: (key: string) => counts[sources.findIndex((source) => source.key === key)] ?? undefined,
     editing,
     searchId: editorSession?.id ?? "",
     setEditing,
@@ -210,8 +213,6 @@ export function OpenAlexSourceRow({
   live: SourceLive | null;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
-  // How many works the approved query finds now: what the library imports.
-  const count = useOpenAlexQueryCount(source.settings.approvedQuery.query);
   return (
     <SourceRow
       name={source.settings.name}
@@ -232,7 +233,7 @@ export function OpenAlexSourceRow({
         {
           key: "records",
           label: t("recordsLabel"),
-          value: <SourceCount count={count} />,
+          value: <SourceCount count={controller.countFor(source.key)} />,
         },
       ]}
       controls={

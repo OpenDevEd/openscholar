@@ -101,7 +101,7 @@ vi.mock("next-intl", () => ({
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 // OpenAlex is not asked during tests; a search finds this many works.
 vi.mock("@/lib/hooks/use-history-count", () => ({
-  useOpenAlexQueryCount: () => 1234,
+  useOpenAlexQueryCounts: (queries: unknown[]) => queries.map(() => 1234),
 }));
 
 const newSearch: OpenAlexSourceEntry = {

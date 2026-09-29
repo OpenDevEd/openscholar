@@ -48,7 +48,7 @@ export async function fetchOpenAlexCount(
  * How many works a stored OpenAlex request finds, asked exactly as stored,
  * as a library source imports it.
  */
-export async function fetchOpenAlexQueryCount(
+async function fetchOpenAlexQueryCount(
   query: OpenAlexWorksQuery,
 ): Promise<{ count: number }> {
   if (query.oql) {
@@ -67,4 +67,28 @@ export async function fetchOpenAlexQueryCount(
   if (!response.ok) throw new Error(`OpenAlex API error: ${response.status}`);
   const body = (await response.json()) as { meta: { count: number } };
   return { count: body.meta.count };
+}
+
+/** OpenAlex requests one list of counts makes at once. */
+const COUNT_BATCH = 5;
+
+/** Counts for several stored requests; a count that fails is null so the others still show. */
+export async function fetchOpenAlexQueryCounts(
+  queries: readonly OpenAlexWorksQuery[],
+): Promise<(number | null)[]> {
+  const counts: (number | null)[] = [];
+  for (let start = 0; start < queries.length; start += COUNT_BATCH) {
+    const batch = await Promise.all(
+      queries.slice(start, start + COUNT_BATCH).map(async (query) => {
+        try {
+          return (await fetchOpenAlexQueryCount(query)).count;
+        } catch (error) {
+          console.warn("OpenAlex count failed:", error instanceof Error ? error.message : error);
+          return null;
+        }
+      }),
+    );
+    counts.push(...batch);
+  }
+  return counts;
 }
