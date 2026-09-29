@@ -353,7 +353,8 @@ export async function reconcileLibraryStorage(input: {
   };
   const maxFileBytes = requireMaxPdfBytes(input.maxPdfBytes);
   const names = createLibraryStorageBucketNames(input.libraryId);
-  const allowedMimeTypes = ["application/pdf", "image/png"];
+  // Covers are JPEGs; PNG stays for covers made before that.
+  const allowedMimeTypes = ["application/pdf", "image/jpeg", "image/png"];
   const privateOutcome = await reconcileBucket(client, {
     allowedMimeTypes,
     fileSizeLimit: maxFileBytes,

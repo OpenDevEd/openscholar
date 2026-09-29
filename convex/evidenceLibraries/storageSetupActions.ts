@@ -29,6 +29,18 @@ function requireMaxPdfBytes(): number {
   return value;
 }
 
+/** Creates a library's buckets, or brings them to the platform's current policy. */
+export async function reconcilePlatformLibraryStorage(
+  libraryId: Id<"evidenceLibraries">,
+) {
+  return await reconcileLibraryStorage({
+    storageUrl: requireEnvironmentValue("EL_STORAGE_URL"),
+    serviceRoleKey: requireEnvironmentValue("EL_STORAGE_SERVICE_KEY"),
+    libraryId,
+    maxPdfBytes: requireMaxPdfBytes(),
+  });
+}
+
 type StorageSetupActionResult =
   | { status: "failed" }
   | {
@@ -55,14 +67,8 @@ export const runStorageSetup = internalAction({
   handler: async (ctx, args): Promise<StorageSetupActionResult> => {
     try {
       const encryptionKey = requireEnvironmentValue("ENCRYPTION_KEY");
-      const storageUrl = requireEnvironmentValue("EL_STORAGE_URL");
       const serviceRoleKey = requireEnvironmentValue("EL_STORAGE_SERVICE_KEY");
-      const storage = await reconcileLibraryStorage({
-        storageUrl,
-        serviceRoleKey,
-        libraryId: args.libraryId,
-        maxPdfBytes: requireMaxPdfBytes(),
-      });
+      const storage = await reconcilePlatformLibraryStorage(args.libraryId);
       return await ctx.runMutation(
         internal.evidenceLibraries.storageSetup.completeStorageSetup,
         {

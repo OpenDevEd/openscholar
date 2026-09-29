@@ -28,6 +28,8 @@ vi.mock("./domainEgressNode", () => ({
 const ENCRYPTION_KEY = "33".repeat(32);
 const APPLICATION_UUID = "app000000000000000000001";
 const COOLIFY_ORIGIN = "http://coolify:8080";
+const STORAGE_ORIGIN = "https://storage.example.test";
+const MAX_PDF_BYTES = 52_428_800;
 const RUNTIME_COMMIT = "a".repeat(40);
 const NEWER_COMMIT = "b".repeat(40);
 const NEWER_RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"f".repeat(64)}`;
@@ -119,6 +121,16 @@ function createRuntimeNetwork(input: {
     ),
   ];
   const deploymentUuid = "deployment-configuration-65";
+  // Buckets made before JPEG covers allow PDFs and PNGs only.
+  const buckets = new Map<string, Record<string, unknown>>();
+  const bucket = (name: string) =>
+    buckets.get(name) ?? {
+      id: name,
+      name,
+      public: name.startsWith("el-public-"),
+      file_size_limit: MAX_PDF_BYTES,
+      allowed_mime_types: ["application/pdf", "image/png"],
+    };
 
   const application = () => ({
     uuid: APPLICATION_UUID,
@@ -165,6 +177,13 @@ function createRuntimeNetwork(input: {
       const body = init?.body ? JSON.parse(String(init.body)) : null;
       requests.push({ body, method, url });
 
+      if (url.origin === STORAGE_ORIGIN) {
+        const name = decodeURIComponent(
+          url.pathname.replace("/storage/v1/bucket/", ""),
+        );
+        if (method === "PUT") buckets.set(name, body);
+        return jsonResponse(bucket(name));
+      }
       if (url.origin === COOLIFY_ORIGIN) {
         // The address check asks what Coolify serves. Nothing but this
         // library, which never offers its own address as a candidate.
@@ -413,6 +432,7 @@ function createRuntimeNetwork(input: {
   return {
     fetchImpl,
     requests,
+    buckets,
     environments,
     publicHealthMarkers,
     get commit() {
@@ -747,6 +767,9 @@ describe("Evidence Library configuration deployment", () => {
     vi.stubEnv("EL_CONVEX_SITE_URL", "https://convex.example.test");
     vi.stubEnv("EL_RUNTIME_VERIFIER_URL", "https://verifier.example.test");
     vi.stubEnv("EL_RUNTIME_VERIFIER_TOKEN", "verifier-token");
+    vi.stubEnv("EL_STORAGE_URL", STORAGE_ORIGIN);
+    vi.stubEnv("EL_STORAGE_SERVICE_KEY", "storage-key");
+    vi.stubEnv("EL_STORAGE_MAX_PDF_BYTES", String(MAX_PDF_BYTES));
   });
 
   afterEach(() => {
@@ -1593,6 +1616,15 @@ describe("Evidence Library configuration deployment", () => {
     expect(writes[0]).toBe(`/api/v1/applications/${APPLICATION_UUID}`);
     expect(writes.slice(1).every((path) => path.endsWith("/envs"))).toBe(true);
     expect(network.commit).toBe(NEWER_COMMIT);
+    // The new software stores JPEG covers, so the buckets must take them.
+    expect(
+      [...network.buckets.values()].map(
+        ({ allowed_mime_types }) => allowed_mime_types,
+      ),
+    ).toEqual([
+      ["application/pdf", "image/jpeg", "image/png"],
+      ["application/pdf", "image/jpeg", "image/png"],
+    ]);
     expect(
       network.environments.find(({ key }) => key === "SOURCE_COMMIT")?.value,
     ).toBe(NEWER_COMMIT);

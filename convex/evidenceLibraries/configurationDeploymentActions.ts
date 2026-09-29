@@ -50,6 +50,8 @@ import {
   buildEvidenceLibraryLoginPageUrl,
 } from "./runtimeConfiguration";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
+import { StorageSetupError } from "./storageSetupClient";
+import { reconcilePlatformLibraryStorage } from "./storageSetupActions";
 import type { RuntimeImageReference } from "./runtimeImageRegistry";
 
 const invalidConfiguration = (message: string) =>
@@ -126,6 +128,12 @@ export const runConfigurationDeployment = internalAction({
               row.sectionKey === "features" && featuresAiEnabled(row.payload),
           ),
         );
+        // Buckets keep the policy they were created with. A deployment brings
+        // them to the current one first, so new software can store new file
+        // types, such as JPEG covers.
+        if (prepared.requiresDeployment) {
+          await reconcilePlatformLibraryStorage(args.libraryId);
+        }
       }
       const verifierUrl = requireRuntimeHttpsOrigin(
         "EL_RUNTIME_VERIFIER_URL",
@@ -767,6 +775,7 @@ export const runConfigurationDeployment = internalAction({
       const safeError =
         error instanceof CoolifyClientError ||
         error instanceof ReadinessClientError ||
+        error instanceof StorageSetupError ||
         error instanceof PlatformEmbeddingKeyMissingError
           ? { code: error.code, message: error.message }
           : error instanceof ConfigurationAssemblyError
