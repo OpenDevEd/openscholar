@@ -74,6 +74,16 @@ describe("transformModel — webSearchPrice unit", () => {
   });
 });
 
+describe("transformModel — models the app can't call", () => {
+  it("leaves out batch-only variants and models that answer with images or audio, and keeps Jev", () => {
+    expect(transformModel({ ...RAW_BASE, id: "openai/gpt-6-luna:batch" })).toBeNull();
+    expect(transformModel({ ...RAW_BASE, architecture: { output_modalities: ["image", "text"] } })).toBeNull();
+    expect(transformModel({ ...RAW_BASE, architecture: { output_modalities: ["text", "audio"] } })).toBeNull();
+    expect(transformModel({ ...RAW_BASE, id: "openai/gpt-6-luna:free", architecture: { output_modalities: ["text"] } })).not.toBeNull();
+    expect(transformModel({ ...RAW_BASE, id: "typesafe/jev-1.13", architecture: { output_modalities: ["decisions"] } })).not.toBeNull();
+  });
+});
+
 describe("transformModel — token pricing unchanged", () => {
   it("still multiplies prompt/completion by 1M (per-token → per-million)", () => {
     const out = transformModel({
@@ -117,7 +127,7 @@ describe("OpenRouter catalog refresh", () => {
     expect(listCalls(fetch)).toBe(1);
     // Jev is in the catalog, offered only where a decision model can answer.
     expect((await t.query(api.models.queries.listCatalogOptions, {})).map(m => m.modelId)).toEqual([RAW_BASE.id]);
-    expect(await t.query(api.models.queries.listCatalogOptions, {decisions: true})).toEqual(
+    expect(await t.query(api.models.queries.listCatalogOptions, {tasks: ["screening"]})).toEqual(
       expect.arrayContaining([expect.objectContaining({modelId: "typesafe/jev-1.13", inputPricePerMillion: expect.closeTo(0.042, 6), outputPricePerMillion: 0})]),
     );
     const old = await t.run(ctx => ctx.db.get(oldId));
@@ -173,8 +183,8 @@ describe("OpenRouter catalog refresh", () => {
       ? new Response("unavailable", {status: 503})
       : new Response(JSON.stringify({data: [{...RAW_BASE, name: "Renamed"}]})))));
     await t.action(internal.models.sync.syncFromOpenRouter, {});
-    const options = await t.query(api.models.queries.listCatalogOptions, {decisions: true});
-    expect(options.map(m => [m.modelId, m.name])).toEqual(expect.arrayContaining([[RAW_BASE.id, "Renamed"], ["typesafe/jev-1.13", "TypeSafe: Jev 1.13"]]));
+    expect((await t.query(api.models.queries.listCatalogOptions, {})).map(m => [m.modelId, m.name])).toEqual([[RAW_BASE.id, "Renamed"]]);
+    expect((await t.query(api.models.queries.listCatalogOptions, {tasks: ["screening"]})).map(m => [m.modelId, m.name])).toEqual([["typesafe/jev-1.13", "TypeSafe: Jev 1.13"]]);
   });
 
   it("passes a timeout signal and stops on an aborted request", async () => {

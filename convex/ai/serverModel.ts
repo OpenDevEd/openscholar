@@ -5,20 +5,22 @@ import { v } from "convex/values";
 import { DEFAULT_PRESET, presetConfigKey, type AiTask, type PresetKey } from "../../lib/ai/tasks";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { isDecisionModel } from "../../lib/ai/decisions";
+import { usableFor } from "../models/catalog";
 import { aiTaskValidator, taskPickValidator } from "../aiModelConfig/validators";
 
 /** A model a task runs on, and its reasoning effort (none: the model's default). */
 export type TaskPick = { modelId: Id<"models">; effort?: Effort };
 
-const offered = (model: Doc<"models"> | null): model is Doc<"models"> =>
-  model !== null && model.retiredAt === undefined && !model.hidden;
+/** A model users can pick that can do the task. */
+const offered = (model: Doc<"models"> | null, task: AiTask): model is Doc<"models"> =>
+  model !== null && model.retiredAt === undefined && !model.hidden && usableFor(model, task);
 
 /** The effort, if the model still takes it; otherwise the model's own default. */
 function withEffort(model: Doc<"models">, effort: Effort | undefined): TaskPick {
   return effort && model.reasoningEfforts?.includes(effort) ? { modelId: model._id, effort } : { modelId: model._id };
 }
 
-/** A preset's pick for a task, if it points at a model users can pick. */
+/** A preset's pick for a task, if it points at a model users can pick for it. */
 export async function presetPick(ctx: QueryCtx | MutationCtx, preset: PresetKey, task: AiTask): Promise<TaskPick | null> {
   const cfg = await ctx.db
     .query("aiModelConfig")
@@ -29,13 +31,13 @@ export async function presetPick(ctx: QueryCtx | MutationCtx, preset: PresetKey,
     .query("models")
     .withIndex("by_model_id", (q) => q.eq("modelId", cfg.modelId))
     .unique();
-  return offered(model) ? withEffort(model, cfg.effort) : null;
+  return offered(model, task) ? withEffort(model, cfg.effort) : null;
 }
 
-/** A stored pick, if its model is still offered. */
-export async function livePick(ctx: QueryCtx | MutationCtx, pick: TaskPick | undefined): Promise<TaskPick | null> {
+/** A stored pick, if its model is still offered for the task. */
+export async function livePick(ctx: QueryCtx | MutationCtx, pick: TaskPick | undefined, task: AiTask): Promise<TaskPick | null> {
   const model = pick ? await ctx.db.get("models", pick.modelId) : null;
-  return offered(model) ? withEffort(model, pick?.effort) : null;
+  return offered(model, task) ? withEffort(model, pick?.effort) : null;
 }
 
 export async function userAiConfig(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
@@ -52,7 +54,7 @@ export async function userAiConfig(ctx: QueryCtx | MutationCtx, userId: Id<"user
 export async function resolveTaskPick(ctx: QueryCtx | MutationCtx, userId: Id<"users">, task: AiTask): Promise<TaskPick | null> {
   const cfg = await userAiConfig(ctx, userId);
   const choice = cfg?.choice ?? DEFAULT_PRESET;
-  const picked = choice === "custom" ? await livePick(ctx, cfg?.custom?.[task]) : await presetPick(ctx, choice, task);
+  const picked = choice === "custom" ? await livePick(ctx, cfg?.custom?.[task], task) : await presetPick(ctx, choice, task);
   return picked ?? (choice === DEFAULT_PRESET ? null : await presetPick(ctx, DEFAULT_PRESET, task));
 }
 

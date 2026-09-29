@@ -104,7 +104,9 @@ function extractProvider(modelId: string): string {
 
 /**
  * Transform a raw OpenRouter model into the shape expected by the upsert mutation.
- * Returns null for meta/router models with dynamic pricing.
+ * Returns null for models the app can't call: meta/router models with dynamic
+ * pricing, `:batch` variants (OpenRouter's batch API only), and models that answer
+ * with images or audio (every call expects text, or Jev's decisions).
  *
  * Exported for unit testing. Pure function — no Convex / runtime deps.
  */
@@ -114,6 +116,8 @@ export function transformModel(raw: OpenRouterModel) {
 
   // Skip models with unparseable or dynamic pricing
   if (inputPricePerMillion === null || outputPricePerMillion === null) return null;
+  if (raw.id.endsWith(":batch")) return null;
+  if (raw.architecture?.output_modalities?.some((output) => output !== "text" && output !== "decisions")) return null;
 
   return {
     modelId: raw.id,

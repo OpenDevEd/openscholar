@@ -35,12 +35,21 @@ export function requireEffort(model: Doc<"models">, effort: Effort | undefined) 
   }
 }
 
-/** Refuses a decision model (Jev) for a task that needs text, since it only answers yes/no. */
-export function requireTaskModel(model: Doc<"models">, task: AiTask) {
-  if (isDecisionModel(model.modelId) && !DECISION_TASKS.includes(task)) {
-    throw createError("VALIDATION_ERROR", `${model.name} only answers screening questions.`);
-  }
+/**
+ * Whether a model can do a task: a decision model (Jev) only screens, and every
+ * task but chat asks for a JSON-schema answer, which needs `structured_outputs`
+ * (`response_format` alone is plain JSON mode).
+ */
+export function usableFor(model: Pick<Doc<"models">, "modelId" | "supportedParameters">, task: AiTask) {
+  if (isDecisionModel(model.modelId)) return DECISION_TASKS.includes(task);
+  return task === "chat" || model.supportedParameters?.includes("structured_outputs") === true;
 }
 
-/** Models a text task can use: everything but decision models. */
-export const textModels = <T extends { modelId: string }>(rows: T[]) => rows.filter((row) => !isDecisionModel(row.modelId));
+/** Refuses a model for a task it can't do. */
+export function requireTaskModel(model: Doc<"models">, task: AiTask) {
+  if (usableFor(model, task)) return;
+  throw createError(
+    "VALIDATION_ERROR",
+    isDecisionModel(model.modelId) ? `${model.name} only answers screening questions.` : `${model.name} can't return the structured answers this task needs.`,
+  );
+}
