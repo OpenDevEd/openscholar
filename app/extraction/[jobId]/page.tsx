@@ -57,7 +57,6 @@ import { ExportDialog } from "@/components/extraction/export-dialog";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
 import { ChatJobView } from "@/components/extraction/chat/chat-job-view";
-import { CompletionToastObserver } from "@/components/extraction/completion-toast-observer";
 import { CostBadge } from "@/components/extraction/cost-badge";
 import { CreditsExhaustedBanner } from "@/components/extraction/credits-exhausted-banner";
 import { JobStatusBanner } from "@/components/extraction/job-status-banner";
@@ -583,11 +582,6 @@ export default function JobDetailPage() {
         }
         rightColumn={
           <PageWrapper>
-            <CompletionToastObserver
-              jobId={jobId}
-              jobStatus={job.status}
-              processedPapers={resolvedProgress.processed}
-            />
             <LibraryPageShell
               icon={FileText}
               title={job.name}

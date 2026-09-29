@@ -122,7 +122,6 @@ describe("<ConfigurationWorkspace>", () => {
         },
       ]),
     );
-    expect(toastMock.success).toHaveBeenCalledWith("saved");
   });
 
   it("writes the navigation bar choice to theme.layout", async () => {

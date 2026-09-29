@@ -7,7 +7,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -190,9 +189,6 @@ function OwnerForm({ organizationId, organizationPicker }: {
           name: result.name,
           shortName: result.shortName,
           publicAddress: result.publicAddress,
-        });
-        toast.success(t("reservedToast"), {
-          description: t("reservedToastDescription", { address: result.publicAddress }),
         });
       })
       .catch(() =>

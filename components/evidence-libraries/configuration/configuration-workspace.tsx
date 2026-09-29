@@ -391,7 +391,6 @@ function Workspace({
     setSaving(true);
     setRefusal(null);
     void save()
-      .then(() => toast.success(t("saved")))
       .catch((error: unknown) => showRefusal(error, t("saveError")))
       .finally(() => setSaving(false));
   }
@@ -412,15 +411,7 @@ function Workspace({
         activateConfiguration({ libraryId, expectedEditVersion: version }),
       )
       .then((result) => {
-        if (result.kind === "setup") {
-          router.push(`/evidence-libraries/${libraryId}/setup`);
-          return;
-        }
-        toast(t("activationStarted"), {
-          description: t("activationStartedDescription", {
-            rev: result.revisionKey,
-          }),
-        });
+        if (result.kind === "setup") router.push(`/evidence-libraries/${libraryId}/setup`);
       })
       .catch((error: unknown) => showRefusal(error, t("activationError")))
       .finally(() => setActivating(false));
@@ -731,7 +722,6 @@ function OperationFailureNotice({
           className="mt-3"
           onClick={() => {
             retry({ libraryId, operationId: operation._id })
-              .then(() => toast.success(t("retryStarted")))
               .catch((error) =>
                 toast.error(errorMessage(error, t("retryError"))),
               );

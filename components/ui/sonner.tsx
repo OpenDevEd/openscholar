@@ -164,5 +164,3 @@ const Toaster = ({ ...props }: ToasterProps) => {
 };
 
 export { Toaster };
-export const customToast: typeof toast.custom = (...args) => toast.custom(...args);
-export const dismissToast: typeof toast.dismiss = (...args) => toast.dismiss(...args);

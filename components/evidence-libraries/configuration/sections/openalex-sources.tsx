@@ -5,7 +5,6 @@ import { Building2, KeyRound } from "lucide-react";
 import { useAction, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +58,6 @@ export function useOpenAlexSources({
   value: EvidenceSourceEntry[];
   onChange: (value: EvidenceSourceEntry[]) => void;
 }) {
-  const t = useTranslations("evidenceLibraryConfiguration.sources.openAlex");
   const [editingKey, setEditingKey] = useState<"new" | string | null>(null);
   const [editorSession, setEditorSession] = useState<{ id: string; created: boolean } | null>(null);
   const [apiKey, setApiKey] = useState("");
@@ -149,7 +147,6 @@ export function useOpenAlexSources({
     });
     setApiKey("");
     changeMode("custom");
-    toast.success(t("keySaved"));
   }
 
   function changeMode(mode: "openscholar" | "custom") {
@@ -173,7 +170,6 @@ export function useOpenAlexSources({
     await removeCredential({ libraryId });
     changeMode("openscholar");
     setApiKey("");
-    toast.success(t("keyRemoved"));
   }
 
   return {

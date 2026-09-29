@@ -182,13 +182,6 @@ export function VersionsSection({
     setUpdateOpen(false);
     setBusy(true);
     void startRuntimeUpdate({ libraryId })
-      .then((result) => {
-        toast(t("versions.updateStarted"), {
-          description: t("versions.updateStartedDescription", {
-            rev: shortCommit(result.to),
-          }),
-        });
-      })
       .catch((error: unknown) =>
         toast.error(errorMessage(error, t("versions.updateError"))),
       )
@@ -242,14 +235,6 @@ export function VersionsSection({
     if (!target) return;
     setBusy(true);
     void restoreRevision({ libraryId, revisionId: target.revisionId })
-      .then((result) => {
-        toast(t("versions.restoreStarted"), {
-          description: t("versions.restoreStartedDescription", {
-            rev: target.revisionKey,
-            next: result.revisionKey,
-          }),
-        });
-      })
       .catch((error: unknown) =>
         toast.error(errorMessage(error, t("versions.restoreError"))),
       )

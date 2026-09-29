@@ -109,10 +109,10 @@ test.describe("clerk auth flows", () => {
 
     const tagline = "Evidence that survives a reload";
     await page.getByLabel("Tagline").fill(tagline);
-    await page.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(
-      page.getByText("Changes saved.", { exact: true }),
-    ).toBeVisible();
+    const saveButton = page.getByRole("button", { name: "Save", exact: true });
+    await saveButton.click();
+    // The button reads "Saving" while the save runs and is disabled once nothing is left to save.
+    await expect(saveButton).toBeDisabled();
 
     await page.goto("/settings");
     await page.goto(configurationUrl);
