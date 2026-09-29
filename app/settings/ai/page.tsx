@@ -36,7 +36,7 @@ import {
   getProviderConfig,
   getDefaultModelForProvider,
 } from "@/lib/ai-models";
-import { useConvex } from "convex/react";
+import { useConvex, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useTranslations } from "next-intl";
 import { useAppToast } from "@/lib/toast";
@@ -50,6 +50,7 @@ import {
 } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import type { AIProvider } from "@/lib/types/ai.types";
+import { Enter } from "@/components/settings/parts";
 
 type ModelCatalogOption =
   (typeof api.models.queries.listCatalogOptions)["_returnType"][number];
@@ -254,6 +255,12 @@ export default function AISettingsPage() {
     subscriptionState.planFeatures,
   );
   const isCreditsModeLocked = !creditsEnabled;
+  // The server model section reads these; the page appears once they're in, at full size.
+  const serverConfig = useQuery(api.userAiConfig.queries.get, isSignedIn ? {} : "skip");
+  const modelConfig = useQuery(api.aiModelConfig.queries.list, creditsEnabled ? {} : "skip");
+  const modelCatalog = useQuery(api.models.queries.listCatalogOptions, creditsEnabled ? {} : "skip");
+  const serverReady =
+    !creditsEnabled || ((!isSignedIn || serverConfig !== undefined) && modelConfig !== undefined && modelCatalog !== undefined);
   const isDisabled = apiKeyMode === "credits";
 
   // For logged-out users: provider/model/credentials are hidden until they
@@ -297,19 +304,9 @@ export default function AISettingsPage() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-6 py-5 border-b border-border/40">
-        <h2 className="text-lg font-semibold tracking-tight">
-          {isSignedIn ? t("aiConfiguration") : t("getStartedTitle")}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {isSignedIn ? t("configurePreferences") : t("getStartedDescription")}
-        </p>
-      </div>
-
-      {/* Content — two buckets: server (credits) + in-browser (key or credits) */}
-      <div className="p-6 space-y-4 max-w-2xl">
+    <Enter ready={serverReady}>
+      {/* Two buckets: server (credits) + in-browser (key or credits) */}
+      <div className="space-y-4">
         {/* ── ON OUR SERVERS (credits) ── */}
         <ServerModelSection
           signedIn={isSignedIn}
@@ -469,6 +466,6 @@ export default function AISettingsPage() {
           </div>
         </section>
       </div>
-    </div>
+    </Enter>
   );
 }

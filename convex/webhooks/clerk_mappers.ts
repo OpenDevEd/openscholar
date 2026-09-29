@@ -1,6 +1,7 @@
 export type ClerkEmailAddressPayload = {
   id: string;
   email_address: string;
+  verification?: { status?: string | null } | null;
 };
 
 export type ClerkUserPayload = {
@@ -15,6 +16,8 @@ export type ClerkUserPayload = {
 export type ClerkUserUpsertArgs = {
   clerkId: string;
   email: string;
+  /** Lowercase addresses Clerk has verified; only these claim admin invites. */
+  verifiedEmails: string[];
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
@@ -206,6 +209,9 @@ export function mapClerkUserToUpsertArgs(user: ClerkUserPayload): ClerkUserUpser
   return {
     clerkId: user.id,
     email: resolvePrimaryEmail(user) ?? `${user.id}@clerk.local`,
+    verifiedEmails: (user.email_addresses ?? [])
+      .filter((email) => email.verification?.status === "verified" && typeof email.email_address === "string")
+      .map((email) => email.email_address.trim().toLowerCase()),
     firstName: user.first_name ?? undefined,
     lastName: user.last_name ?? undefined,
     avatarUrl: user.image_url ?? undefined,

@@ -273,47 +273,47 @@
     "downgradeScheduledTo": "के लिए डाउनग्रेड निर्धारित"
   },
   "publicationSettings": {
-      "credentials": "{provider} क्रेडेंशियल",
-      "sandbox": "सैंडबॉक्स",
-      "custom": "अपने क्रेडेंशियल",
-      "sandboxTitle": "OpenScholar सैंडबॉक्स",
-      "sandboxHint": "हमारा परीक्षण खाता इस्तेमाल होता है। सामग्री प्रदाता के परीक्षण परिवेश में रहती है।",
-      "title": "प्रकाशन",
-      "description": "DOI पंजीकरण और प्रकाशनों के संग्रह के लिए खाते जोड़ें।",
-      "loading": "प्रकाशन सेटिंग लोड हो रही हैं…",
-      "storedHint": "सहेजे गए क्रेडेंशियल रखने के लिए खाली छोड़ें",
-      "saved": "प्रकाशन सेटिंग सहेजी गईं",
-      "activateHint": "इस लाइब्रेरी पर लागू करने के लिए कॉन्फ़िगरेशन सक्रिय करें।",
-      "failure": "क्रेडेंशियल सत्यापित नहीं हो सके। कुछ भी सहेजा नहीं गया। फिर प्रयास करें।",
-      "zenodoRequired": "Crossref चालू होने पर आवश्यक। फ़ाइलें उपलब्ध होने पर संग्रहित की जाती हैं।",
-      "zenodoHint": "फ़ाइलें संग्रहित करें और Zenodo DOI बनाएँ।",
-      "enableZenodo": "Zenodo चालू करें",
-      "token": "Zenodo एक्सेस टोकन",
-      "tokenHint": "deposit:write और deposit:actions अनुमतियाँ आवश्यक हैं।",
-      "createToken": "Zenodo टोकन बनाएँ",
-      "license": "डिफ़ॉल्ट फ़ाइल लाइसेंस",
-      "licenseHint": "संग्रहित फ़ाइलों पर लागू लाइसेंस।",
-      "archiveDoi": "डिफ़ॉल्ट संग्रह DOI",
-      "zenodoDoi": "Zenodo DOI",
-      "crossrefDoi": "Crossref DOI इस्तेमाल करें",
-      "crossrefHint": "रचनाकार DOI आरक्षित करते हैं। संपादक और मालिक उन्हें सक्रिय करते हैं।",
-      "enableCrossref": "Crossref चालू करें",
-      "login": "Crossref लॉगिन",
-      "loginHint": "व्यक्तिगत लॉगिन के लिए ईमेल/भूमिका इस्तेमाल करें।",
-      "password": "Crossref पासवर्ड",
-      "prefix": "DOI उपसर्ग",
-      "registrant": "पंजीयक",
-      "depositorName": "जमाकर्ता का नाम",
-      "email": "जमाकर्ता का ईमेल",
-      "namespace": "DOI नेमस्पेस",
-      "namespaceHint": "डिफ़ॉल्ट रूप से इस लाइब्रेरी के पते का नाम इस्तेमाल होता है।",
-      "libraryName": "लाइब्रेरी का नाम",
-      "checking": "प्रदाता क्रेडेंशियल जाँचे जा रहे हैं…",
-      "needsVerification": "सहेजने से पहले बदलावों का सत्यापन ज़रूरी है।",
-      "verified": "सत्यापित {date}",
-      "checkedBeforeSaving": "सहेजने से पहले क्रेडेंशियल जाँचे जाते हैं।",
-      "verifying": "सत्यापन हो रहा है…",
-      "verifySave": "सत्यापित करें और सहेजें"
+    "credentials": "{provider} क्रेडेंशियल",
+    "sandbox": "सैंडबॉक्स",
+    "custom": "अपने क्रेडेंशियल",
+    "sandboxTitle": "OpenScholar सैंडबॉक्स",
+    "sandboxHint": "हमारा परीक्षण खाता इस्तेमाल होता है। सामग्री प्रदाता के परीक्षण परिवेश में रहती है।",
+    "title": "प्रकाशन",
+    "description": "DOI पंजीकरण और प्रकाशनों के संग्रह के लिए खाते जोड़ें।",
+    "loading": "प्रकाशन सेटिंग लोड हो रही हैं…",
+    "storedHint": "सहेजे गए क्रेडेंशियल रखने के लिए खाली छोड़ें",
+    "saved": "प्रकाशन सेटिंग सहेजी गईं",
+    "activateHint": "इस लाइब्रेरी पर लागू करने के लिए कॉन्फ़िगरेशन सक्रिय करें।",
+    "failure": "क्रेडेंशियल सत्यापित नहीं हो सके। कुछ भी सहेजा नहीं गया। फिर प्रयास करें।",
+    "zenodoRequired": "Crossref चालू होने पर आवश्यक। फ़ाइलें उपलब्ध होने पर संग्रहित की जाती हैं।",
+    "zenodoHint": "फ़ाइलें संग्रहित करें और Zenodo DOI बनाएँ।",
+    "enableZenodo": "Zenodo चालू करें",
+    "token": "Zenodo एक्सेस टोकन",
+    "tokenHint": "deposit:write और deposit:actions अनुमतियाँ आवश्यक हैं।",
+    "createToken": "Zenodo टोकन बनाएँ",
+    "license": "डिफ़ॉल्ट फ़ाइल लाइसेंस",
+    "licenseHint": "संग्रहित फ़ाइलों पर लागू लाइसेंस।",
+    "archiveDoi": "डिफ़ॉल्ट संग्रह DOI",
+    "zenodoDoi": "Zenodo DOI",
+    "crossrefDoi": "Crossref DOI इस्तेमाल करें",
+    "crossrefHint": "रचनाकार DOI आरक्षित करते हैं। संपादक और मालिक उन्हें सक्रिय करते हैं।",
+    "enableCrossref": "Crossref चालू करें",
+    "login": "Crossref लॉगिन",
+    "loginHint": "व्यक्तिगत लॉगिन के लिए ईमेल/भूमिका इस्तेमाल करें।",
+    "password": "Crossref पासवर्ड",
+    "prefix": "DOI उपसर्ग",
+    "registrant": "पंजीयक",
+    "depositorName": "जमाकर्ता का नाम",
+    "email": "जमाकर्ता का ईमेल",
+    "namespace": "DOI नेमस्पेस",
+    "namespaceHint": "डिफ़ॉल्ट रूप से इस लाइब्रेरी के पते का नाम इस्तेमाल होता है।",
+    "libraryName": "लाइब्रेरी का नाम",
+    "checking": "प्रदाता क्रेडेंशियल जाँचे जा रहे हैं…",
+    "needsVerification": "सहेजने से पहले बदलावों का सत्यापन ज़रूरी है।",
+    "verified": "सत्यापित {date}",
+    "checkedBeforeSaving": "सहेजने से पहले क्रेडेंशियल जाँचे जाते हैं।",
+    "verifying": "सत्यापन हो रहा है…",
+    "verifySave": "सत्यापित करें और सहेजें"
   },
   "auth": {
     "organizationFeatureTitle": "अनुमति नहीं है",
@@ -330,10 +330,6 @@
     "syncErrorDescription": "हम आपके खाते का प्रारंभिककरण पूरा नहीं कर सके। जारी रखने के लिए पुनः प्रयास करें।",
     "syncErrorAccess": "आपका सत्र वैध है, लेकिन खाता सिंक अधूरा है। जारी रखने के लिए पुनः प्रयास करें।",
     "retrySync": "सिंक पुनः प्रयास करें"
-  },
-  "settings": {
-    "generalSettings": "सामान्य सेटिंग्स",
-    "managePreferences": "अपनी सामान्य एप्लिकेशन प्राथमिकताएं प्रबंधित करें"
   },
   "aiSetupGate": {
     "title": "अपनी खोज को बेहतर बनाने के लिए AI सेट करें",
@@ -455,65 +451,21 @@
     "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
   },
   "billingPage": {
-    "billingAndPlans": "बिलिंग और प्लान्स",
-    "manageSubscription": "अपनी सदस्यता और उपयोग प्रबंधित करें।",
     "upgradePlan": "प्लान अपग्रेड करें",
     "manageSubscriptionBtn": "सदस्यता प्रबंधित करें",
-    "subscription": "सदस्यता",
-    "planLabel": "{plan} प्लान",
-    "expiresOn": "समाप्त होता है",
-    "renewsOn": "नवीनीकृत होता है",
     "upgradeDescription": "अधिक क्रेडिट और सुविधाएँ अनलॉक करने के लिए अपना प्लान अपग्रेड करें।",
-    "loadingBillingDetails": "बिलिंग विवरण लोड हो रहे हैं",
-    "fetchingSubscription": "आपकी सदस्यता और क्रेडिट बैलेंस प्राप्त कर रहे हैं।",
-    "dangerZone": "खतरे का क्षेत्र",
-    "cancelImmediately": "तुरंत रद्द करें",
-    "cancelSubscriptionTitle": "सदस्यता तुरंत रद्द करें",
-    "cancelDescription": "यह तुरंत आपकी सदस्यता समाप्त कर देगा और आपको फ्री प्लान में डाउनग्रेड कर देगा।",
-    "cancelConfirm": "क्या आप वाकई तुरंत रद्द करना चाहते हैं? आप तुरंत पेड सुविधाओं तक पहुंच खो देंगे।",
-    "subscriptionCancelled": "सदस्यता तुरंत रद्द की गई",
-    "failedCancel": "सदस्यता रद्द करने में विफल",
-    "totalBalance": "कुल शेष",
-    "freeCredits": "फ्री क्रेडिट्स",
     "perMonth": "({amount}/महीना)",
-    "freeCapReached": "फ्री क्रेडिट सीमा पूरी हुई। असीमित बैलेंस के लिए अतिरिक्त क्रेडिट्स खरीदें।",
-    "purchasedCredits": "खरीदे गए क्रेडिट्स",
-    "noExpiration": "कोई समाप्ति या सीमा नहीं",
-    "creditsOrder": "क्रेडिट्स इस क्रम में खपत होते हैं: पहले फ्री, फिर खरीदे गए।",
     "failedToLoadDetails": "विवरण लोड करने में विफल",
-    "networkErrorFetchingDetails": "विवरण प्राप्त करने में नेटवर्क त्रुटि",
-    "statusPastDue": "बकाया",
-    "statusCanceled": "रद्द",
-    "statusTrialing": "परीक्षण",
-    "statusIncomplete": "अपूर्ण",
-    "statusIncompleteExpired": "अपूर्ण समाप्त",
-    "statusUnpaid": "अवैतनिक",
-    "statusPaused": "रुका हुआ",
-    "gracePeriodNotice": "बिलिंग समस्या का पता चला है। भुगतान पुनः प्रयास के दौरान आपको अस्थायी पहुंच बनी रहेगी।",
     "paymentFailedNotice": "भुगतान विफल हो गया। अपनी सदस्यता सक्रिय रखने के लिए अपना भुगतान तरीका अपडेट करें।",
     "updatePaymentMethod": "भुगतान तरीका अपडेट करें",
     "perInterval": "/ {interval}",
     "intervalMonth": "महीना",
     "intervalYear": "वर्ष",
-    "topupBuyButton": "क्रेडिट्स खरीदें",
-    "topupProcessing": "रीडायरेक्ट हो रहा है…",
-    "topupCheckoutFailed": "क्रेडिट चेकआउट शुरू नहीं हो सका।",
-    "topupSuccessTitle": "क्रेडिट खरीद शुरू हुई",
-    "topupSuccessDescription": "Stripe द्वारा भुगतान की पुष्टि के बाद हम क्रेडिट्स स्वचालित रूप से जोड़ देंगे।",
-    "topupCancelledTitle": "क्रेडिट चेकआउट रद्द",
-    "topupCancelledDescription": "कोई शुल्क नहीं लिया गया। आप कभी भी पुनः प्रयास कर सकते हैं।",
-    "upgradesUnavailable": "अपग्रेड अस्थायी रूप से अनुपलब्ध है।",
-    "paymentPendingDefault": "भुगतान लंबित है। क्रेडिट सक्रिय करने के लिए Stripe बिलिंग पोर्टल में भुगतान पूरा करें।",
-    "scheduledChangeTo": "के लिए बदलाव निर्धारित",
-    "creditCapBanner": "आपके मुफ्त क्रेडिट अधिकतम सीमा पर हैं। अपनी पूरी मासिक राशि प्राप्त करने के लिए कुछ क्रेडिट उपयोग करें।",
-    "processingPurchase": "आपकी खरीदारी प्रोसेस हो रही है...",
     "creditsAddedTitle": "क्रेडिट जोड़े गए",
     "creditsAddedDescription": "आपके बैलेंस में {amount} क्रेडिट जोड़े गए हैं।",
     "paymentReceived": "भुगतान मिल गया। Stripe की पुष्टि होते ही आपकी योजना और क्रेडिट अपडेट हो जाएंगे।",
     "usage": {
-      "title": "उपयोग",
       "empty": "अभी तक कोई क्रेडिट उपयोग नहीं हुआ।",
-      "loadMore": "और दिखाएं",
       "showAll": "सभी दिखाएँ",
       "kinds": {
         "chat": "चैट",
@@ -524,7 +476,25 @@
         "wallet_api": "Wallet API",
         "refund": "रिफ़ंड"
       }
-    }
+    },
+    "credits": "क्रेडिट",
+    "refillOn": "{date} को +{amount}",
+    "bought": "{amount} खरीदे गए",
+    "topUp": "टॉप अप",
+    "buyBundle": "{price} में {credits} क्रेडिट खरीदें",
+    "spendingLast30Days": "पिछले 30 दिनों का खर्च",
+    "spendingSummary": "पिछले 30 दिनों में {credits} क्रेडिट खर्च हुए",
+    "onDay": "{date} को {credits}",
+    "today": "आज",
+    "plan": "प्लान",
+    "comparePlans": "प्लान की तुलना करें",
+    "creditsAMonth": "हर महीने {amount} क्रेडिट",
+    "endsOn": "{date} को समाप्त",
+    "changesOn": "{date} से {plan}",
+    "renewsOnDate": "{date} को नवीनीकरण",
+    "charges": "शुल्क",
+    "jobCharges": "इस जॉब के शुल्क",
+    "chargesLabel": "शुल्क"
   },
   "errors": {
     "unexpectedIssue": "हमें एक अप्रत्याशित समस्या का सामना करना पड़ा। कृपया पुनः प्रयास करें, या स्थिर पेज पर वापस जाएं।",
@@ -2054,22 +2024,15 @@
   },
   "connectionsPage": {
     "connectedApps": "कनेक्टेड ऐप्स",
-    "manageExternalApps": "अपने क्रेडिट्स के माध्यम से AI जनरेशन का उपयोग करने वाले बाहरी ऐप्स प्रबंधित करें।",
-    "loadingConnections": "कनेक्शन लोड हो रहे हैं...",
     "noConnectedApps": "कोई कनेक्टेड ऐप नहीं",
     "noConnectedAppsDescription": "जब बाहरी ऐप्स आपके वॉलेट से कनेक्ट होंगे, तो वे यहां दिखाई देंगे।",
-    "activeCount": "सक्रिय ({count})",
-    "revokedCount": "रद्द ({count})",
     "revoking": "रद्द किया जा रहा है...",
-    "confirm": "पुष्टि करें",
     "revoke": "रद्द करें",
     "revokedBadge": "रद्द",
     "created": "बनाया गया {time}",
     "lastUsed": "अंतिम उपयोग {time}",
-    "justNow": "अभी",
-    "minutesAgo": "{count} मिनट पहले",
-    "hoursAgo": "{count} घंटे पहले",
-    "daysAgo": "{count} दिन पहले"
+    "apps": "ऐप",
+    "revokeApp": "{app} रद्द करें"
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -3269,6 +3232,124 @@
       "title": "Library not found",
       "description": "It may have been deleted, or it belongs to another organisation.",
       "back": "Back to libraries"
+    }
+  },
+  "settingsShell": {
+    "groups": {
+      "account": "खाता",
+      "research": "शोध",
+      "admin": "एडमिन"
+    },
+    "items": {
+      "profile": "प्रोफ़ाइल",
+      "security": "सुरक्षा",
+      "switches": "स्विच",
+      "modelList": "मॉडल सूची",
+      "admins": "एडमिन",
+      "plans": "प्लान",
+      "users": "उपयोगकर्ता"
+    },
+    "sharedDev": "साझा डेव",
+    "production": "प्रोडक्शन",
+    "planChip": "{plan} प्लान"
+  },
+  "settingsProfile": {
+    "uploading": "अपलोड हो रहा है",
+    "changePhoto": "फ़ोटो बदलें",
+    "firstName": "पहला नाम",
+    "lastName": "अंतिम नाम",
+    "saveName": "नाम सहेजें",
+    "editName": "नाम संपादित करें",
+    "addYourName": "अपना नाम जोड़ें",
+    "verified": "सत्यापित",
+    "aBrowser": "एक ब्राउज़र",
+    "browserOn": "{platform} पर {browser}",
+    "whereSignedIn": "आप कहाँ साइन इन हैं",
+    "signOutEverywhereElse": "बाकी सभी जगह से साइन आउट करें",
+    "devices": "डिवाइस",
+    "now": "अभी",
+    "thisDevice": "यह डिवाइस",
+    "signOut": "साइन आउट"
+  },
+  "settingsAdmin": {
+    "switches": {
+      "groups": {
+        "billing": "बिलिंग",
+        "extraction": "एक्सट्रैक्शन"
+      },
+      "flags": {
+        "credits": {
+          "label": "क्रेडिट",
+          "hint": "AI कार्यों पर क्रेडिट लें"
+        },
+        "topups": {
+          "label": "क्रेडिट टॉप-अप",
+          "hint": "बिलिंग पेज पर अतिरिक्त क्रेडिट बेचें"
+        },
+        "subscriptions": {
+          "label": "सदस्यताएँ",
+          "hint": "उपयोगकर्ताओं को प्लान खरीदने और बदलने दें"
+        },
+        "enterprise": {
+          "label": "Enterprise कार्ड",
+          "hint": "मूल्य पेज पर Enterprise दिखाएँ"
+        },
+        "extraction": {
+          "label": "एक्सट्रैक्शन",
+          "hint": "एक्सट्रैक्शन वाले संगठनों के लिए वर्कस्पेस खोलें"
+        },
+        "startJobs": {
+          "label": "जॉब शुरू करें",
+          "hint": "उपयोगकर्ताओं को नए जॉब शुरू करने दें"
+        },
+        "chat": {
+          "label": "चैट मोड",
+          "hint": "किसी जॉब के पेपर पर सवाल पूछें"
+        },
+        "pdf": {
+          "label": "पूरे PDF",
+          "hint": "सिर्फ़ सार नहीं, हर पेपर का PDF पढ़ें"
+        }
+      }
+    },
+    "models": {
+      "filterByProvider": "प्रदाता के अनुसार फ़िल्टर करें",
+      "search": "नाम या आईडी से खोजें",
+      "show": "दिखाएँ",
+      "on": "चालू",
+      "off": "बंद",
+      "models": "मॉडल",
+      "free": "मुफ़्त",
+      "offer": "{model} उपलब्ध कराएँ",
+      "noMatches": "कोई मॉडल मेल नहीं खाता"
+    },
+    "admins": {
+      "title": "एडमिन",
+      "admins": "एडमिन",
+      "search": "नाम या ईमेल से खोजें",
+      "you": "आप",
+      "invited": "आमंत्रित",
+      "notDelivered": "आमंत्रण नहीं पहुँचा",
+      "remove": "हटाएँ",
+      "removeName": "{name} को हटाएँ",
+      "removed": "एडमिन हटाया गया।",
+      "cancelInvite": "आमंत्रण रद्द करें",
+      "cancelInviteFor": "{email} का आमंत्रण रद्द करें",
+      "inviteCancelled": "आमंत्रण रद्द किया गया।",
+      "resend": "आमंत्रण फिर से भेजें",
+      "resendTo": "{email} को आमंत्रण फिर से भेजें",
+      "inviteSent": "{email} को आमंत्रण भेजा गया।",
+      "noMatches": "कोई एडमिन मेल नहीं खाता",
+      "add": "एडमिन जोड़ें",
+      "added": "{name} अब एडमिन हैं।",
+      "how": "जोड़ने का तरीका",
+      "existingUser": "मौजूदा उपयोगकर्ता",
+      "inviteByEmail": "ईमेल से आमंत्रित करें",
+      "chooseUser": "उपयोगकर्ता चुनें",
+      "searchEmail": "ईमेल से खोजें",
+      "noUsers": "कोई उपयोगकर्ता नहीं मिला",
+      "email": "ईमेल पता",
+      "sendInvite": "आमंत्रण भेजें"
     }
   }
 }

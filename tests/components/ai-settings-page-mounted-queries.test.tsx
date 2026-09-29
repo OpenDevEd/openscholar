@@ -27,11 +27,21 @@ vi.mock("motion/react", () => ({
     {},
     {
       get: (_target, tag: string) =>
-        ({ children, whileHover: _whileHover, whileTap: _whileTap, ...props }: React.HTMLAttributes<HTMLElement> & { whileHover?: unknown; whileTap?: unknown }) =>
+        ({
+          children,
+          whileHover: _whileHover,
+          whileTap: _whileTap,
+          initial: _initial,
+          animate: _animate,
+          transition: _transition,
+          onAnimationStart: _onAnimationStart,
+          ...props
+        }: React.HTMLAttributes<HTMLElement> & Record<"whileHover" | "whileTap" | "initial" | "animate" | "transition", unknown>) =>
           React.createElement(tag, props, children),
     },
   ),
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useReducedMotion: () => true,
 }));
 
 vi.mock("next-intl", () => ({

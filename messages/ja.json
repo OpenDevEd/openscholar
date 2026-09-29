@@ -273,47 +273,47 @@
     "downgradeScheduledTo": "ダウングレード予定："
   },
   "publicationSettings": {
-      "credentials": "{provider} 認証情報",
-      "sandbox": "サンドボックス",
-      "custom": "カスタム認証情報",
-      "sandboxTitle": "OpenScholar サンドボックス",
-      "sandboxHint": "テスト用アカウントを使用します。登録先はプロバイダーのテスト環境です。",
-      "title": "公開設定",
-      "description": "DOI の登録と出版物の保存に使うアカウントを接続します。",
-      "loading": "公開設定を読み込み中…",
-      "storedHint": "保存済みの認証情報を使う場合は空欄にします",
-      "saved": "公開設定を保存しました",
-      "activateHint": "設定を有効化すると、このライブラリに適用されます。",
-      "failure": "認証情報を確認できませんでした。保存されていません。もう一度お試しください。",
-      "zenodoRequired": "Crossref の有効時に必須です。ファイルは利用可能になり次第保存されます。",
-      "zenodoHint": "ファイルを保存し、Zenodo DOI を作成します。",
-      "enableZenodo": "Zenodo を有効にする",
-      "token": "Zenodo アクセストークン",
-      "tokenHint": "deposit:write と deposit:actions の権限が必要です。",
-      "createToken": "Zenodo トークンを作成",
-      "license": "既定のファイルライセンス",
-      "licenseHint": "保存されるファイルに適用するライセンスです。",
-      "archiveDoi": "既定のアーカイブ DOI",
-      "zenodoDoi": "Zenodo DOI",
-      "crossrefDoi": "Crossref DOI を使用",
-      "crossrefHint": "作成者が DOI を予約し、編集者と所有者が有効化します。",
-      "enableCrossref": "Crossref を有効にする",
-      "login": "Crossref ログイン",
-      "loginHint": "個人アカウントはメールアドレス/ロールを入力します。",
-      "password": "Crossref パスワード",
-      "prefix": "DOI プレフィックス",
-      "registrant": "登録機関",
-      "depositorName": "登録者名",
-      "email": "登録者のメールアドレス",
-      "namespace": "DOI 名前空間",
-      "namespaceHint": "既定ではライブラリのアドレス名を使用します。",
-      "libraryName": "ライブラリ名",
-      "checking": "認証情報を確認中…",
-      "needsVerification": "変更を保存する前に検証が必要です。",
-      "verified": "確認済み {date}",
-      "checkedBeforeSaving": "認証情報は保存前に確認されます。",
-      "verifying": "確認中…",
-      "verifySave": "確認して保存"
+    "credentials": "{provider} 認証情報",
+    "sandbox": "サンドボックス",
+    "custom": "カスタム認証情報",
+    "sandboxTitle": "OpenScholar サンドボックス",
+    "sandboxHint": "テスト用アカウントを使用します。登録先はプロバイダーのテスト環境です。",
+    "title": "公開設定",
+    "description": "DOI の登録と出版物の保存に使うアカウントを接続します。",
+    "loading": "公開設定を読み込み中…",
+    "storedHint": "保存済みの認証情報を使う場合は空欄にします",
+    "saved": "公開設定を保存しました",
+    "activateHint": "設定を有効化すると、このライブラリに適用されます。",
+    "failure": "認証情報を確認できませんでした。保存されていません。もう一度お試しください。",
+    "zenodoRequired": "Crossref の有効時に必須です。ファイルは利用可能になり次第保存されます。",
+    "zenodoHint": "ファイルを保存し、Zenodo DOI を作成します。",
+    "enableZenodo": "Zenodo を有効にする",
+    "token": "Zenodo アクセストークン",
+    "tokenHint": "deposit:write と deposit:actions の権限が必要です。",
+    "createToken": "Zenodo トークンを作成",
+    "license": "既定のファイルライセンス",
+    "licenseHint": "保存されるファイルに適用するライセンスです。",
+    "archiveDoi": "既定のアーカイブ DOI",
+    "zenodoDoi": "Zenodo DOI",
+    "crossrefDoi": "Crossref DOI を使用",
+    "crossrefHint": "作成者が DOI を予約し、編集者と所有者が有効化します。",
+    "enableCrossref": "Crossref を有効にする",
+    "login": "Crossref ログイン",
+    "loginHint": "個人アカウントはメールアドレス/ロールを入力します。",
+    "password": "Crossref パスワード",
+    "prefix": "DOI プレフィックス",
+    "registrant": "登録機関",
+    "depositorName": "登録者名",
+    "email": "登録者のメールアドレス",
+    "namespace": "DOI 名前空間",
+    "namespaceHint": "既定ではライブラリのアドレス名を使用します。",
+    "libraryName": "ライブラリ名",
+    "checking": "認証情報を確認中…",
+    "needsVerification": "変更を保存する前に検証が必要です。",
+    "verified": "確認済み {date}",
+    "checkedBeforeSaving": "認証情報は保存前に確認されます。",
+    "verifying": "確認中…",
+    "verifySave": "確認して保存"
   },
   "auth": {
     "organizationFeatureTitle": "アクセスできません",
@@ -330,10 +330,6 @@
     "syncErrorDescription": "アカウントの初期化を完了できませんでした。続行するには再試行してください。",
     "syncErrorAccess": "セッションは有効ですが、アカウント同期が完了していません。続行するには再試行してください。",
     "retrySync": "同期を再試行"
-  },
-  "settings": {
-    "generalSettings": "一般設定",
-    "managePreferences": "アプリケーションの一般設定を管理"
   },
   "aiSetupGate": {
     "title": "AIで検索を強化する",
@@ -455,65 +451,21 @@
     "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
   },
   "billingPage": {
-    "billingAndPlans": "請求とプラン",
-    "manageSubscription": "サブスクリプションと使用量を管理",
     "upgradePlan": "プランをアップグレード",
     "manageSubscriptionBtn": "サブスクリプションを管理",
-    "subscription": "サブスクリプション",
-    "planLabel": "{plan} プラン",
-    "expiresOn": "有効期限",
-    "renewsOn": "更新日",
     "upgradeDescription": "プランをアップグレードして、より多くのクレジットと機能を利用",
-    "loadingBillingDetails": "請求詳細を読み込み中",
-    "fetchingSubscription": "サブスクリプションとクレジット残高を取得中",
-    "dangerZone": "危険ゾーン",
-    "cancelImmediately": "即座にキャンセル",
-    "cancelSubscriptionTitle": "サブスクリプションを即座にキャンセル",
-    "cancelDescription": "サブスクリプションは即座に終了し、無料プランにダウングレードされます。",
-    "cancelConfirm": "即座にキャンセルしますか？有料機能へのアクセスが即座に失われます。",
-    "subscriptionCancelled": "サブスクリプションは即座にキャンセルされました",
-    "failedCancel": "サブスクリプションのキャンセルに失敗しました",
-    "totalBalance": "合計残高",
-    "freeCredits": "無料クレジット",
     "perMonth": "（{amount}/月）",
-    "freeCapReached": "無料クレジット上限に達しました。無制限の残高には追加クレジットを購入してください。",
-    "purchasedCredits": "購入クレジット",
-    "noExpiration": "有効期限・上限なし",
-    "creditsOrder": "クレジットは次の順序で消費されます：まず無料、次に購入分。",
     "failedToLoadDetails": "詳細の読み込みに失敗しました",
-    "networkErrorFetchingDetails": "詳細取得中のネットワークエラー",
-    "statusPastDue": "支払い遅延",
-    "statusCanceled": "キャンセル済み",
-    "statusTrialing": "トライアル中",
-    "statusIncomplete": "未完了",
-    "statusIncompleteExpired": "未完了・期限切れ",
-    "statusUnpaid": "未払い",
-    "statusPaused": "一時停止",
-    "gracePeriodNotice": "請求の問題を検出しました。支払いを再試行している間、一時的なアクセスが可能です。",
     "paymentFailedNotice": "お支払いに失敗しました。サブスクリプションを維持するには、お支払い方法を更新してください。",
     "updatePaymentMethod": "お支払い方法を更新",
     "perInterval": "/ {interval}",
     "intervalMonth": "月",
     "intervalYear": "年",
-    "topupBuyButton": "クレジットを購入",
-    "topupProcessing": "リダイレクト中…",
-    "topupCheckoutFailed": "クレジット購入を開始できませんでした。",
-    "topupSuccessTitle": "クレジット購入を開始しました",
-    "topupSuccessDescription": "Stripeが支払いを確認後、自動的にクレジットを追加します。",
-    "topupCancelledTitle": "クレジット購入をキャンセルしました",
-    "topupCancelledDescription": "請求は発生していません。いつでも再試行できます。",
-    "upgradesUnavailable": "アップグレードは一時的にご利用いただけません。",
-    "paymentPendingDefault": "お支払いが保留中です。クレジットを有効化するには、Stripe請求ポータルでお支払いを完了してください。",
-    "scheduledChangeTo": "プラン変更予定：",
-    "creditCapBanner": "無料クレジットが上限に達しています。月次付与を全額受け取るには、クレジットを使用してください。",
-    "processingPurchase": "購入を処理中...",
     "creditsAddedTitle": "クレジット追加完了",
     "creditsAddedDescription": "{amount} クレジットが残高に追加されました。",
     "paymentReceived": "お支払いを受け付けました。Stripe で確認され次第、プランとクレジットが更新されます。",
     "usage": {
-      "title": "使用履歴",
       "empty": "まだクレジットは使用されていません。",
-      "loadMore": "さらに表示",
       "showAll": "すべて表示",
       "kinds": {
         "chat": "チャット",
@@ -524,7 +476,25 @@
         "wallet_api": "Wallet API",
         "refund": "返金"
       }
-    }
+    },
+    "credits": "クレジット",
+    "refillOn": "{date} に +{amount}",
+    "bought": "購入分 {amount}",
+    "topUp": "追加購入",
+    "buyBundle": "{credits} クレジットを {price} で購入",
+    "spendingLast30Days": "過去 30 日間の使用量",
+    "spendingSummary": "過去 30 日間に {credits} クレジットを使用",
+    "onDay": "{date}: {credits}",
+    "today": "今日",
+    "plan": "プラン",
+    "comparePlans": "プランを比較",
+    "creditsAMonth": "毎月 {amount} クレジット",
+    "endsOn": "{date} に終了",
+    "changesOn": "{date} から {plan}",
+    "renewsOnDate": "{date} に更新",
+    "charges": "使用履歴",
+    "jobCharges": "このジョブの使用履歴",
+    "chargesLabel": "件"
   },
   "errors": {
     "unexpectedIssue": "予期しない問題が発生しました。再試行するか、安定したページに戻ってください。",
@@ -2054,22 +2024,15 @@
   },
   "connectionsPage": {
     "connectedApps": "接続済みアプリ",
-    "manageExternalApps": "クレジットを使用してAI生成を行う外部アプリを管理します。",
-    "loadingConnections": "接続を読み込み中...",
     "noConnectedApps": "接続済みアプリはありません",
     "noConnectedAppsDescription": "外部アプリがウォレットに接続すると、ここに表示されます。",
-    "activeCount": "アクティブ ({count})",
-    "revokedCount": "取り消し済み ({count})",
     "revoking": "取り消し中...",
-    "confirm": "確認",
     "revoke": "取り消す",
     "revokedBadge": "取り消し済み",
     "created": "作成 {time}",
     "lastUsed": "最終使用 {time}",
-    "justNow": "たった今",
-    "minutesAgo": "{count}分前",
-    "hoursAgo": "{count}時間前",
-    "daysAgo": "{count}日前"
+    "apps": "件のアプリ",
+    "revokeApp": "{app} を取り消す"
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -3269,6 +3232,124 @@
       "title": "Library not found",
       "description": "It may have been deleted, or it belongs to another organisation.",
       "back": "Back to libraries"
+    }
+  },
+  "settingsShell": {
+    "groups": {
+      "account": "アカウント",
+      "research": "リサーチ",
+      "admin": "管理"
+    },
+    "items": {
+      "profile": "プロフィール",
+      "security": "セキュリティ",
+      "switches": "スイッチ",
+      "modelList": "モデル一覧",
+      "admins": "管理者",
+      "plans": "プラン",
+      "users": "ユーザー"
+    },
+    "sharedDev": "共有開発",
+    "production": "本番",
+    "planChip": "{plan} プラン"
+  },
+  "settingsProfile": {
+    "uploading": "アップロード中",
+    "changePhoto": "写真を変更",
+    "firstName": "名",
+    "lastName": "姓",
+    "saveName": "名前を保存",
+    "editName": "名前を編集",
+    "addYourName": "名前を追加",
+    "verified": "確認済み",
+    "aBrowser": "ブラウザー",
+    "browserOn": "{platform} の {browser}",
+    "whereSignedIn": "サインイン中の場所",
+    "signOutEverywhereElse": "他のすべてでサインアウト",
+    "devices": "台",
+    "now": "現在",
+    "thisDevice": "このデバイス",
+    "signOut": "サインアウト"
+  },
+  "settingsAdmin": {
+    "switches": {
+      "groups": {
+        "billing": "請求",
+        "extraction": "抽出"
+      },
+      "flags": {
+        "credits": {
+          "label": "クレジット",
+          "hint": "AI タスクにクレジットを使用"
+        },
+        "topups": {
+          "label": "クレジットの追加購入",
+          "hint": "請求ページで追加クレジットを販売"
+        },
+        "subscriptions": {
+          "label": "サブスクリプション",
+          "hint": "プランの購入と変更を許可"
+        },
+        "enterprise": {
+          "label": "Enterprise カード",
+          "hint": "料金ページに Enterprise を表示"
+        },
+        "extraction": {
+          "label": "抽出",
+          "hint": "抽出が有効な組織にワークスペースを開放"
+        },
+        "startJobs": {
+          "label": "ジョブを開始",
+          "hint": "新しいジョブの開始を許可"
+        },
+        "chat": {
+          "label": "チャットモード",
+          "hint": "ジョブの論文について質問"
+        },
+        "pdf": {
+          "label": "PDF 全文",
+          "hint": "要約だけでなく各論文の PDF を読む"
+        }
+      }
+    },
+    "models": {
+      "filterByProvider": "プロバイダーで絞り込み",
+      "search": "名前または ID で検索",
+      "show": "表示",
+      "on": "オン",
+      "off": "オフ",
+      "models": "モデル",
+      "free": "無料",
+      "offer": "{model} を提供",
+      "noMatches": "一致するモデルはありません"
+    },
+    "admins": {
+      "title": "管理者",
+      "admins": "人の管理者",
+      "search": "名前またはメールで検索",
+      "you": "あなた",
+      "invited": "招待済み",
+      "notDelivered": "招待が届きませんでした",
+      "remove": "削除",
+      "removeName": "{name} を削除",
+      "removed": "管理者を削除しました。",
+      "cancelInvite": "招待を取り消す",
+      "cancelInviteFor": "{email} への招待を取り消す",
+      "inviteCancelled": "招待を取り消しました。",
+      "resend": "招待を再送",
+      "resendTo": "{email} に招待を再送",
+      "inviteSent": "{email} に招待を送信しました。",
+      "noMatches": "一致する管理者はいません",
+      "add": "管理者を追加",
+      "added": "{name} が管理者になりました。",
+      "how": "追加方法",
+      "existingUser": "既存のユーザー",
+      "inviteByEmail": "メールで招待",
+      "chooseUser": "ユーザーを選択",
+      "searchEmail": "メールで検索",
+      "noUsers": "ユーザーが見つかりません",
+      "email": "メールアドレス",
+      "sendInvite": "招待を送信"
     }
   }
 }

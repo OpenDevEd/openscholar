@@ -31,7 +31,7 @@ async function presetModelId(
     .query("models")
     .withIndex("by_model_id", (q) => q.eq("modelId", cfg.modelId))
     .unique();
-  return model && model.retiredAt === undefined ? model._id : null;
+  return model && model.retiredAt === undefined && !model.hidden ? model._id : null;
 }
 
 /**
@@ -58,7 +58,7 @@ export async function resolveServerModelId(
   if (decision.kind === "custom") {
     // The remembered custom model — verify it still exists, else fall back.
     const row = await ctx.db.get("models", decision.modelId as Id<"models">);
-    if (row && row.retiredAt === undefined) return row._id;
+    if (row && row.retiredAt === undefined && !row.hidden) return row._id;
     return presetModelId(ctx, DEFAULT_SERVER_PRESET);
   }
 

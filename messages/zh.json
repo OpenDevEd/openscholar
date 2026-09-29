@@ -273,47 +273,47 @@
     "downgradeScheduledTo": "计划降级至"
   },
   "publicationSettings": {
-      "credentials": "{provider} 凭据",
-      "sandbox": "沙盒",
-      "custom": "自定义凭据",
-      "sandboxTitle": "OpenScholar 沙盒",
-      "sandboxHint": "使用我们的测试账户。存档保留在服务商的测试环境中。",
-      "title": "发布",
-      "description": "连接用于注册 DOI 和存档出版物的账户。",
-      "loading": "正在加载发布设置…",
-      "storedHint": "留空以保留已保存的凭据",
-      "saved": "发布设置已保存",
-      "activateHint": "激活配置以应用到此文库。",
-      "failure": "无法验证凭据。未保存任何更改。请重试。",
-      "zenodoRequired": "启用 Crossref 时为必需项。文件可用时即会存档。",
-      "zenodoHint": "存档文件并创建 Zenodo DOI。",
-      "enableZenodo": "启用 Zenodo",
-      "token": "Zenodo 访问令牌",
-      "tokenHint": "需要 deposit:write 和 deposit:actions 权限。",
-      "createToken": "创建 Zenodo 令牌",
-      "license": "默认文件许可",
-      "licenseHint": "应用于存档文件的许可。",
-      "archiveDoi": "默认存档 DOI",
-      "zenodoDoi": "Zenodo DOI",
-      "crossrefDoi": "使用 Crossref DOI",
-      "crossrefHint": "创建者预留 DOI，编辑者和所有者负责激活。",
-      "enableCrossref": "启用 Crossref",
-      "login": "Crossref 登录名",
-      "loginHint": "个人账户请使用电子邮箱/角色。",
-      "password": "Crossref 密码",
-      "prefix": "DOI 前缀",
-      "registrant": "注册机构",
-      "depositorName": "提交者姓名",
-      "email": "提交者邮箱",
-      "namespace": "DOI 命名空间",
-      "namespaceHint": "默认使用此文库的地址名称。",
-      "libraryName": "文库名称",
-      "checking": "正在检查服务商凭据…",
-      "needsVerification": "更改必须经过验证后才能保存。",
-      "verified": "已验证 {date}",
-      "checkedBeforeSaving": "保存前会验证凭据。",
-      "verifying": "正在验证…",
-      "verifySave": "验证并保存"
+    "credentials": "{provider} 凭据",
+    "sandbox": "沙盒",
+    "custom": "自定义凭据",
+    "sandboxTitle": "OpenScholar 沙盒",
+    "sandboxHint": "使用我们的测试账户。存档保留在服务商的测试环境中。",
+    "title": "发布",
+    "description": "连接用于注册 DOI 和存档出版物的账户。",
+    "loading": "正在加载发布设置…",
+    "storedHint": "留空以保留已保存的凭据",
+    "saved": "发布设置已保存",
+    "activateHint": "激活配置以应用到此文库。",
+    "failure": "无法验证凭据。未保存任何更改。请重试。",
+    "zenodoRequired": "启用 Crossref 时为必需项。文件可用时即会存档。",
+    "zenodoHint": "存档文件并创建 Zenodo DOI。",
+    "enableZenodo": "启用 Zenodo",
+    "token": "Zenodo 访问令牌",
+    "tokenHint": "需要 deposit:write 和 deposit:actions 权限。",
+    "createToken": "创建 Zenodo 令牌",
+    "license": "默认文件许可",
+    "licenseHint": "应用于存档文件的许可。",
+    "archiveDoi": "默认存档 DOI",
+    "zenodoDoi": "Zenodo DOI",
+    "crossrefDoi": "使用 Crossref DOI",
+    "crossrefHint": "创建者预留 DOI，编辑者和所有者负责激活。",
+    "enableCrossref": "启用 Crossref",
+    "login": "Crossref 登录名",
+    "loginHint": "个人账户请使用电子邮箱/角色。",
+    "password": "Crossref 密码",
+    "prefix": "DOI 前缀",
+    "registrant": "注册机构",
+    "depositorName": "提交者姓名",
+    "email": "提交者邮箱",
+    "namespace": "DOI 命名空间",
+    "namespaceHint": "默认使用此文库的地址名称。",
+    "libraryName": "文库名称",
+    "checking": "正在检查服务商凭据…",
+    "needsVerification": "更改必须经过验证后才能保存。",
+    "verified": "已验证 {date}",
+    "checkedBeforeSaving": "保存前会验证凭据。",
+    "verifying": "正在验证…",
+    "verifySave": "验证并保存"
   },
   "auth": {
     "organizationFeatureTitle": "无权访问",
@@ -330,10 +330,6 @@
     "syncErrorDescription": "我们无法完成您的账户初始化。请重试以继续。",
     "syncErrorAccess": "您的会话有效，但账户同步未完成。请重试以继续。",
     "retrySync": "重试同步"
-  },
-  "settings": {
-    "generalSettings": "常规设置",
-    "managePreferences": "管理您的常规应用偏好"
   },
   "aiSetupGate": {
     "title": "设置 AI 以增强搜索",
@@ -455,65 +451,21 @@
     "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
   },
   "billingPage": {
-    "billingAndPlans": "账单和计划",
-    "manageSubscription": "管理您的订阅和使用情况。",
     "upgradePlan": "升级计划",
     "manageSubscriptionBtn": "管理订阅",
-    "subscription": "订阅",
-    "planLabel": "{plan} 计划",
-    "expiresOn": "过期于",
-    "renewsOn": "续费于",
     "upgradeDescription": "升级套餐以解锁更多积分和功能。",
-    "loadingBillingDetails": "加载账单详情中",
-    "fetchingSubscription": "获取您的订阅和积分余额。",
-    "dangerZone": "危险区域",
-    "cancelImmediately": "立即取消",
-    "cancelSubscriptionTitle": "立即取消订阅",
-    "cancelDescription": "这将立即结束您的订阅，并将您降级到免费计划。",
-    "cancelConfirm": "您确定要立即取消吗？您将立即失去付费功能的访问权限。",
-    "subscriptionCancelled": "订阅已立即取消",
-    "failedCancel": "取消订阅失败",
-    "totalBalance": "总余额",
-    "freeCredits": "免费积分",
     "perMonth": "({amount}/月)",
-    "freeCapReached": "免费积分已达上限。购买额外积分以获得无限余额。",
-    "purchasedCredits": "已购买积分",
-    "noExpiration": "无过期或上限",
-    "creditsOrder": "积分按此顺序消耗：免费优先，然后是已购买。",
     "failedToLoadDetails": "加载详情失败",
-    "networkErrorFetchingDetails": "网络错误，获取详情失败",
-    "statusPastDue": "逾期",
-    "statusCanceled": "已取消",
-    "statusTrialing": "试用中",
-    "statusIncomplete": "未完成",
-    "statusIncompleteExpired": "未完成已过期",
-    "statusUnpaid": "未支付",
-    "statusPaused": "已暂停",
-    "gracePeriodNotice": "检测到账单问题。我们重试扣款期间，你仍可暂时访问。",
     "paymentFailedNotice": "支付失败。请更新支付方式以保持订阅有效。",
     "updatePaymentMethod": "更新支付方式",
     "perInterval": "/ {interval}",
     "intervalMonth": "月",
     "intervalYear": "年",
-    "topupBuyButton": "购买积分",
-    "topupProcessing": "跳转中…",
-    "topupCheckoutFailed": "无法启动积分结账。",
-    "topupSuccessTitle": "积分购买已开始",
-    "topupSuccessDescription": "Stripe 确认付款后，我们将自动添加积分。",
-    "topupCancelledTitle": "积分结账已取消",
-    "topupCancelledDescription": "未产生任何费用。您可以随时重试。",
-    "upgradesUnavailable": "升级暂时不可用。",
-    "paymentPendingDefault": "付款待处理。请在 Stripe 计费门户中完成付款以激活积分。",
-    "scheduledChangeTo": "计划变更至",
-    "creditCapBanner": "您的免费积分已达上限。使用一些积分后即可获得完整的月度赠送。",
-    "processingPurchase": "正在处理您的购买...",
     "creditsAddedTitle": "积分已添加",
     "creditsAddedDescription": "已向您的余额添加 {amount} 积分。",
     "paymentReceived": "已收到付款。Stripe 确认后，您的套餐和积分会立即更新。",
     "usage": {
-      "title": "使用记录",
       "empty": "尚未使用积分。",
-      "loadMore": "加载更多",
       "showAll": "显示全部",
       "kinds": {
         "chat": "聊天",
@@ -524,7 +476,25 @@
         "wallet_api": "Wallet API",
         "refund": "退款"
       }
-    }
+    },
+    "credits": "积分",
+    "refillOn": "{date} 增加 {amount}",
+    "bought": "已购买 {amount}",
+    "topUp": "充值",
+    "buyBundle": "以 {price} 购买 {credits} 积分",
+    "spendingLast30Days": "近 30 天消耗",
+    "spendingSummary": "近 30 天消耗 {credits} 积分",
+    "onDay": "{date}：{credits}",
+    "today": "今天",
+    "plan": "套餐",
+    "comparePlans": "比较套餐",
+    "creditsAMonth": "每月 {amount} 积分",
+    "endsOn": "{date} 结束",
+    "changesOn": "{date} 起为 {plan}",
+    "renewsOnDate": "{date} 续订",
+    "charges": "扣费记录",
+    "jobCharges": "此任务的扣费",
+    "chargesLabel": "条扣费"
   },
   "errors": {
     "unexpectedIssue": "我们遇到了意外问题。请重试或返回稳定的页面。",
@@ -2054,22 +2024,15 @@
   },
   "connectionsPage": {
     "connectedApps": "已连接的应用",
-    "manageExternalApps": "管理通过您的积分使用 AI 生成的外部应用。",
-    "loadingConnections": "加载连接中...",
     "noConnectedApps": "没有已连接的应用",
     "noConnectedAppsDescription": "当外部应用连接到您的钱包时，它们将显示在此处。",
-    "activeCount": "活跃 ({count})",
-    "revokedCount": "已撤销 ({count})",
     "revoking": "撤销中...",
-    "confirm": "确认",
     "revoke": "撤销",
     "revokedBadge": "已撤销",
     "created": "创建于 {time}",
     "lastUsed": "最后使用 {time}",
-    "justNow": "刚刚",
-    "minutesAgo": "{count}分钟前",
-    "hoursAgo": "{count}小时前",
-    "daysAgo": "{count}天前"
+    "apps": "个应用",
+    "revokeApp": "撤销 {app}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -3269,6 +3232,124 @@
       "title": "Library not found",
       "description": "It may have been deleted, or it belongs to another organisation.",
       "back": "Back to libraries"
+    }
+  },
+  "settingsShell": {
+    "groups": {
+      "account": "账户",
+      "research": "研究",
+      "admin": "管理"
+    },
+    "items": {
+      "profile": "个人资料",
+      "security": "安全",
+      "switches": "开关",
+      "modelList": "模型列表",
+      "admins": "管理员",
+      "plans": "套餐",
+      "users": "用户"
+    },
+    "sharedDev": "共享开发",
+    "production": "生产环境",
+    "planChip": "{plan} 套餐"
+  },
+  "settingsProfile": {
+    "uploading": "上传中",
+    "changePhoto": "更换照片",
+    "firstName": "名",
+    "lastName": "姓",
+    "saveName": "保存姓名",
+    "editName": "编辑姓名",
+    "addYourName": "添加你的姓名",
+    "verified": "已验证",
+    "aBrowser": "浏览器",
+    "browserOn": "{platform} 上的 {browser}",
+    "whereSignedIn": "你的登录位置",
+    "signOutEverywhereElse": "退出其他所有设备",
+    "devices": "台设备",
+    "now": "现在",
+    "thisDevice": "此设备",
+    "signOut": "退出"
+  },
+  "settingsAdmin": {
+    "switches": {
+      "groups": {
+        "billing": "计费",
+        "extraction": "提取"
+      },
+      "flags": {
+        "credits": {
+          "label": "积分",
+          "hint": "AI 任务消耗积分"
+        },
+        "topups": {
+          "label": "积分充值",
+          "hint": "在计费页面出售额外积分"
+        },
+        "subscriptions": {
+          "label": "订阅",
+          "hint": "允许用户购买和更改套餐"
+        },
+        "enterprise": {
+          "label": "企业版卡片",
+          "hint": "在价格页显示企业版"
+        },
+        "extraction": {
+          "label": "提取",
+          "hint": "向开通提取的组织开放工作区"
+        },
+        "startJobs": {
+          "label": "启动任务",
+          "hint": "允许用户启动新任务"
+        },
+        "chat": {
+          "label": "聊天模式",
+          "hint": "针对任务的论文提问"
+        },
+        "pdf": {
+          "label": "完整 PDF",
+          "hint": "读取每篇论文的 PDF，而不只是摘要"
+        }
+      }
+    },
+    "models": {
+      "filterByProvider": "按提供商筛选",
+      "search": "按名称或 ID 搜索",
+      "show": "显示",
+      "on": "已开启",
+      "off": "已关闭",
+      "models": "个模型",
+      "free": "免费",
+      "offer": "提供 {model}",
+      "noMatches": "没有匹配的模型"
+    },
+    "admins": {
+      "title": "管理员",
+      "admins": "位管理员",
+      "search": "按姓名或邮箱搜索",
+      "you": "你",
+      "invited": "已邀请",
+      "notDelivered": "邀请未送达",
+      "remove": "移除",
+      "removeName": "移除 {name}",
+      "removed": "已移除管理员。",
+      "cancelInvite": "取消邀请",
+      "cancelInviteFor": "取消对 {email} 的邀请",
+      "inviteCancelled": "已取消邀请。",
+      "resend": "重新发送邀请",
+      "resendTo": "重新向 {email} 发送邀请",
+      "inviteSent": "邀请已发送至 {email}。",
+      "noMatches": "没有匹配的管理员",
+      "add": "添加管理员",
+      "added": "{name} 现在是管理员。",
+      "how": "添加方式",
+      "existingUser": "现有用户",
+      "inviteByEmail": "通过邮箱邀请",
+      "chooseUser": "选择用户",
+      "searchEmail": "按邮箱搜索",
+      "noUsers": "未找到用户",
+      "email": "邮箱地址",
+      "sendInvite": "发送邀请"
     }
   }
 }

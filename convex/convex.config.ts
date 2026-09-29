@@ -33,4 +33,7 @@ app.use(aggregate, { name: "creditsAgg" });
 // - screeningQualifiedAgg: counts completed qualified results
 app.use(aggregate, { name: "screeningResultStatusAgg" });
 app.use(aggregate, { name: "screeningQualifiedAgg" });
+// usageAgg: each charge counted under its user and its job, newest last, so the
+// billing page can page through charges with page numbers (convex/billing/usageLog.ts).
+app.use(aggregate, { name: "usageAgg" });
 export default app;

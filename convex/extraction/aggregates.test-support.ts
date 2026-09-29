@@ -1,6 +1,6 @@
 /**
- * Shared test helper: register the job credit total and extraction progress
- * component instances on a `convexTest` handle. Every test that settles a
+ * Shared test helper: register the job credit total, charge count and extraction
+ * progress component instances on a `convexTest` handle. Every test that settles a
  * charge against a job, or completes papers, must call this after creating
  * the test handle.
  *
@@ -22,6 +22,8 @@ export function setupAggregates<
   // the schema generic.
   const ht = t as unknown as TestConvex<SchemaDefinition<GenericSchema, boolean>>;
   registerAggregate(ht, "creditsAgg");
+  // Every recorded charge is counted for the billing page's charge pages.
+  registerAggregate(ht, "usageAgg");
   // Tier B (extraction-occ-fixes): per-job processed/failed counters
   // migrated from extractionJobs row fields to a 16-shard counter. Any
   // test that triggers markPaperTerminalTx — i.e., almost every test

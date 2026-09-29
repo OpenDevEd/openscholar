@@ -4,6 +4,8 @@ export const billingAccountSnapshotValidator = v.object({
   /** The customer's main plan id in Autumn; absent if they have none. */
   plan: v.optional(v.string()),
   pastDue: v.boolean(),
+  /** When the paid plan's current billing period started. */
+  periodStart: v.optional(v.number()),
   /** Set while a paid plan renews at the end of its period. */
   renewsAt: v.optional(v.number()),
   /** Set when the current plan ends at its period end. */

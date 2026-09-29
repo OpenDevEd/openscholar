@@ -1,249 +1,142 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
+import { useState } from "react";
+import { useMutation } from "convex/react";
+import { AnimatePresence, motion } from "motion/react";
 import posthog from "posthog-js";
+import { useFormatter, useNow, useTranslations } from "next-intl";
+import { AppWindow, Globe, KeyRound, Plug, Trash2 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useState, useCallback } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Plug, Trash2, Clock, Globe, ShieldCheck, ShieldOff } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useAuthReadiness } from "@/components/providers/convex-provider";
-import { AuthStatePanel } from "@/components/auth/auth-state-panel";
-import { useTranslations, useFormatter } from "next-intl";
+import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { Enter, LIST, Paged, pagerOf, Tile, Zone } from "@/components/settings/parts";
+
+const PER_PAGE = 8;
+const APP_TINTS = ["#a78bfa", "#60a5fa", "#34d399", "#f472b6", "#2dd4bf", "#d9a27c"];
 
 export default function ConnectionsPage() {
-  const { phase, canRunProtectedQueries } = useAuthReadiness();
-  const keys = useQuery(
-    api.wallet.queries.listMyKeys,
-    canRunProtectedQueries ? {} : "skip",
-  );
-  const revokeKey = useMutation(api.wallet.mutations.revokeKey);
-
-  const [revoking, setRevoking] = useState<Id<"walletKeys"> | null>(null);
-  const [confirmRevoke, setConfirmRevoke] = useState<Id<"walletKeys"> | null>(null);
-
   const t = useTranslations("connectionsPage");
   const tc = useTranslations("common");
   const format = useFormatter();
+  const now = useNow({ updateInterval: 60_000 });
+  const { data: keys } = useProtectedQuery(api.wallet.queries.listMyKeys, {});
+  const revokeKey = useMutation(api.wallet.mutations.revokeKey);
+  const [confirm, setConfirm] = useState<Id<"walletKeys"> | null>(null);
+  const [revoking, setRevoking] = useState<Id<"walletKeys"> | null>(null);
+  const [page, setPage] = useState(1);
+  const [revokedPage, setRevokedPage] = useState(1);
 
-  const formatRelativeTime = (timestamp: number): string => {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const minutes = Math.floor(diff / 60_000);
-    const hours = Math.floor(diff / 3_600_000);
-    const days = Math.floor(diff / 86_400_000);
+  if (!keys) return <Enter ready={false}>{null}</Enter>;
+  const active = keys.filter((k) => k.isActive);
+  const revoked = keys.filter((k) => !k.isActive);
+  const pager = pagerOf(active.length, PER_PAGE, page, setPage);
+  const revokedPager = pagerOf(revoked.length, PER_PAGE, revokedPage, setRevokedPage);
+  const shown = active.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
+  const shownRevoked = revoked.slice((revokedPager.page - 1) * PER_PAGE, revokedPager.page * PER_PAGE);
 
-    if (minutes < 1) return t("justNow");
-    if (minutes < 60) return t("minutesAgo", { count: minutes });
-    if (hours < 24) return t("hoursAgo", { count: hours });
-    if (days < 30) return t("daysAgo", { count: days });
-    return format.dateTime(new Date(timestamp), {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  const revoke = async (walletKeyId: Id<"walletKeys">) => {
+    posthog.capture("api_key_revoked", { app_name: keys.find((k) => k._id === walletKeyId)?.appName });
+    setRevoking(walletKeyId);
+    try {
+      await revokeKey({ walletKeyId });
+    } finally {
+      setRevoking(null);
+      setConfirm(null);
+    }
   };
 
-  const handleRevoke = useCallback(
-    async (walletKeyId: Id<"walletKeys">) => {
-      const key = keys?.find((k) => k._id === walletKeyId);
-      posthog.capture("api_key_revoked", {
-        app_name: key?.appName,
-      });
-      setRevoking(walletKeyId);
-      try {
-        await revokeKey({ walletKeyId });
-      } finally {
-        setRevoking(null);
-        setConfirmRevoke(null);
-      }
-    },
-    [revokeKey, keys],
-  );
-
-  if (phase === "initializing") {
-    return (
-      <div className="p-6">
-        <AuthStatePanel variant="loading" layout="inline" loadingStyle="spinner" />
-      </div>
-    );
-  }
-
-  if (phase === "anonymous") {
-    return (
-      <div className="p-6">
-        <AuthStatePanel variant="sign_in_required" layout="inline" />
-      </div>
-    );
-  }
-
-  const activeKeys = keys?.filter((k) => k.isActive) ?? [];
-  const revokedKeys = keys?.filter((k) => !k.isActive) ?? [];
-
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-6 py-5 border-b border-border/40">
-        <h2 className="text-lg font-semibold tracking-tight">{t("connectedApps")}</h2>
-        <p className="text-sm text-muted-foreground">
-          {t("manageExternalApps")}
-        </p>
-      </div>
-
-      {/* Content */}
-      <div className="p-6 space-y-6 max-w-2xl">
-        {/* Loading */}
-        {!keys && (
-          <div className="py-12 text-center text-sm text-muted-foreground">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent mx-auto mb-2" />
-            {t("loadingConnections")}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {keys && keys.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="py-16 text-center space-y-3"
-          >
-            <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center mx-auto">
-              <Plug className="w-6 h-6 text-muted-foreground" />
+    <Enter ready>
+      <div className="space-y-8">
+        <Zone label={t("connectedApps")}>
+          {active.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/80 px-6 py-10 text-center">
+              <Plug className="size-5 text-muted-foreground" />
+              <p className="text-sm font-medium">{t("noConnectedApps")}</p>
+              <p className="max-w-sm text-xs text-muted-foreground">{t("noConnectedAppsDescription")}</p>
             </div>
-            <div>
-              <p className="font-medium">{t("noConnectedApps")}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t("noConnectedAppsDescription")}
-              </p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Active keys */}
-        {activeKeys.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              <ShieldCheck className="w-4 h-4" />
-              <span>{t("activeCount", { count: activeKeys.length })}</span>
-            </div>
-
-            <div className="space-y-2">
-              <AnimatePresence mode="popLayout">
-                {activeKeys.map((key, i) => (
-                  <motion.div
-                    key={key._id}
-                    layout
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="rounded-xl border border-border/50 bg-background p-4 space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-base truncate">
-                          {key.appName}
-                        </div>
-                        <code className="text-xs font-mono text-muted-foreground">
-                          {key.keyPrefix}
-                        </code>
+          ) : (
+            <Paged pager={pager} rowHeight={61} label={t("apps")}>
+              <ul className={LIST}>
+                <AnimatePresence initial={false}>
+                  {shown.map((key, i) => (
+                    <motion.li
+                      key={key._id}
+                      layout
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                      className="flex items-center gap-3 p-3"
+                    >
+                      <Tile icon={AppWindow} tint={APP_TINTS[((pager.page - 1) * PER_PAGE + i) % APP_TINTS.length]!} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{key.appName}</p>
+                        <p className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
+                          <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[11px]">
+                            <KeyRound className="size-3" /> {key.keyPrefix}
+                          </span>
+                          {key.redirectOrigin && key.redirectOrigin !== "manual" ? (
+                            <span className="inline-flex min-w-0 items-center gap-1">
+                              <Globe className="size-3 shrink-0" />
+                              <span className="truncate">{key.redirectOrigin.replace(/^https?:\/\//, "")}</span>
+                            </span>
+                          ) : null}
+                        </p>
                       </div>
-
-                      {/* Revoke button */}
-                      {confirmRevoke === key._id ? (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setConfirmRevoke(null)}
-                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {tc("cancel")}
-                          </button>
-                          <button
-                            onClick={() => handleRevoke(key._id)}
-                            disabled={revoking === key._id}
-                            className="flex items-center gap-1.5 rounded-lg bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                            {revoking === key._id ? t("revoking") : t("confirm")}
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmRevoke(key._id)}
-                          className="flex items-center gap-1.5 rounded-lg border border-destructive/30 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          {t("revoke")}
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      {key.redirectOrigin && key.redirectOrigin !== "manual" && (
-                        <span className="flex items-center gap-1">
-                          <Globe className="w-3 h-3" />
-                          {key.redirectOrigin}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {t("created", { time: formatRelativeTime(key.createdAt) })}
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {key.lastUsedAt
+                          ? t("lastUsed", { time: format.relativeTime(key.lastUsedAt, now) })
+                          : t("created", { time: format.relativeTime(key.createdAt, now) })}
                       </span>
-                      {key.lastUsedAt && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {t("lastUsed", { time: formatRelativeTime(key.lastUsedAt) })}
-                        </span>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          </div>
-        )}
-
-        {/* Revoked keys */}
-        {revokedKeys.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              <ShieldOff className="w-4 h-4" />
-              <span>{t("revokedCount", { count: revokedKeys.length })}</span>
-            </div>
-
-            <div className="space-y-2">
-              {revokedKeys.map((key) => (
-                <div
-                  key={key._id}
-                  className="rounded-xl border border-border/30 bg-muted/20 p-4 opacity-60"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate line-through decoration-muted-foreground/50">
-                        {key.appName}
+                      <div className="flex w-40 shrink-0 justify-end">
+                        {confirm === key._id ? (
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => setConfirm(null)}>
+                              {tc("cancel")}
+                            </Button>
+                            <Button variant="destructive" size="sm" disabled={revoking === key._id} onClick={() => revoke(key._id)}>
+                              {revoking === key._id ? t("revoking") : t("revoke")}
+                            </Button>
+                          </div>
+                        ) : (
+                          <TooltipHint label={t("revoke")}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 text-muted-foreground hover:text-destructive"
+                              aria-label={t("revokeApp", { app: key.appName })}
+                              onClick={() => setConfirm(key._id)}
+                            >
+                              <Trash2 />
+                            </Button>
+                          </TooltipHint>
+                        )}
                       </div>
-                      <code className="text-xs font-mono text-muted-foreground">
-                        {key.keyPrefix}
-                      </code>
-                    </div>
-                    <span className="text-xs text-muted-foreground border border-border/50 rounded-md px-2 py-0.5">
-                      {t("revokedBadge")}
-                    </span>
-                  </div>
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+              </ul>
+            </Paged>
+          )}
+        </Zone>
 
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {t("created", { time: formatRelativeTime(key.createdAt) })}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {revoked.length > 0 ? (
+          <Zone label={t("revokedBadge")}>
+            <Paged pager={revokedPager} rowHeight={61} label={t("apps")}>
+              <ul className={LIST}>
+                {shownRevoked.map((key) => (
+                  <li key={key._id} className="flex items-center gap-3 p-3 text-muted-foreground">
+                    <Tile icon={AppWindow} tint="#94a3b8" />
+                    <span className="min-w-0 flex-1 truncate text-sm line-through decoration-muted-foreground/50">{key.appName}</span>
+                    <span className="font-mono text-[11px]">{key.keyPrefix}</span>
+                  </li>
+                ))}
+              </ul>
+            </Paged>
+          </Zone>
+        ) : null}
       </div>
-    </div>
+    </Enter>
   );
 }

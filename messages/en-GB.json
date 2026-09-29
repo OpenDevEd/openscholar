@@ -273,47 +273,47 @@
     "downgradeScheduledTo": "Downgrade scheduled to"
   },
   "publicationSettings": {
-      "credentials": "{provider} credentials",
-      "sandbox": "Sandbox",
-      "custom": "Custom credentials",
-      "sandboxTitle": "OpenScholar sandbox",
-      "sandboxHint": "Uses our test account. Deposits stay in the provider's test environment.",
-      "title": "Publishing",
-      "description": "Connect the accounts used to register DOIs and archive publications.",
-      "loading": "Loading publishing settings…",
-      "storedHint": "Leave blank to keep the saved credential",
-      "saved": "Publishing settings saved",
-      "activateHint": "Activate the configuration to apply them to this library.",
-      "failure": "Credentials could not be verified. Nothing was saved. Try again.",
-      "zenodoRequired": "Required while Crossref is enabled. Files are archived when available.",
-      "zenodoHint": "Archive files and create Zenodo DOIs.",
-      "enableZenodo": "Enable Zenodo",
-      "token": "Zenodo access token",
-      "tokenHint": "Requires deposit:write and deposit:actions permissions.",
-      "createToken": "Create a Zenodo token",
-      "license": "Default file license",
-      "licenseHint": "The license applied to archived files.",
-      "archiveDoi": "Default archive DOI",
-      "zenodoDoi": "Zenodo DOI",
-      "crossrefDoi": "Use the Crossref DOI",
-      "crossrefHint": "Creators reserve DOIs. Editors and owners activate them.",
-      "enableCrossref": "Enable Crossref",
-      "login": "Crossref login",
-      "loginHint": "For a personal login, use email/role.",
-      "password": "Crossref password",
-      "prefix": "DOI prefix",
-      "registrant": "Registrant",
-      "depositorName": "Depositor name",
-      "email": "Depositor email",
-      "namespace": "DOI namespace",
-      "namespaceHint": "Defaults to this library's address name.",
-      "libraryName": "Library name",
-      "checking": "Checking provider credentials…",
-      "needsVerification": "Changes need verification before they can be saved.",
-      "verified": "Verified {date}",
-      "checkedBeforeSaving": "Credentials are checked before saving.",
-      "verifying": "Verifying…",
-      "verifySave": "Verify and save"
+    "credentials": "{provider} credentials",
+    "sandbox": "Sandbox",
+    "custom": "Custom credentials",
+    "sandboxTitle": "OpenScholar sandbox",
+    "sandboxHint": "Uses our test account. Deposits stay in the provider's test environment.",
+    "title": "Publishing",
+    "description": "Connect the accounts used to register DOIs and archive publications.",
+    "loading": "Loading publishing settings…",
+    "storedHint": "Leave blank to keep the saved credential",
+    "saved": "Publishing settings saved",
+    "activateHint": "Activate the configuration to apply them to this library.",
+    "failure": "Credentials could not be verified. Nothing was saved. Try again.",
+    "zenodoRequired": "Required while Crossref is enabled. Files are archived when available.",
+    "zenodoHint": "Archive files and create Zenodo DOIs.",
+    "enableZenodo": "Enable Zenodo",
+    "token": "Zenodo access token",
+    "tokenHint": "Requires deposit:write and deposit:actions permissions.",
+    "createToken": "Create a Zenodo token",
+    "license": "Default file license",
+    "licenseHint": "The license applied to archived files.",
+    "archiveDoi": "Default archive DOI",
+    "zenodoDoi": "Zenodo DOI",
+    "crossrefDoi": "Use the Crossref DOI",
+    "crossrefHint": "Creators reserve DOIs. Editors and owners activate them.",
+    "enableCrossref": "Enable Crossref",
+    "login": "Crossref login",
+    "loginHint": "For a personal login, use email/role.",
+    "password": "Crossref password",
+    "prefix": "DOI prefix",
+    "registrant": "Registrant",
+    "depositorName": "Depositor name",
+    "email": "Depositor email",
+    "namespace": "DOI namespace",
+    "namespaceHint": "Defaults to this library's address name.",
+    "libraryName": "Library name",
+    "checking": "Checking provider credentials…",
+    "needsVerification": "Changes need verification before they can be saved.",
+    "verified": "Verified {date}",
+    "checkedBeforeSaving": "Credentials are checked before saving.",
+    "verifying": "Verifying…",
+    "verifySave": "Verify and save"
   },
   "auth": {
     "organizationFeatureTitle": "Not allowed",
@@ -330,10 +330,6 @@
     "syncErrorDescription": "We could not finish initializing your account. Retry to continue.",
     "syncErrorAccess": "Your session is valid, but account sync is incomplete. Retry to continue.",
     "retrySync": "Retry Sync"
-  },
-  "settings": {
-    "generalSettings": "General Settings",
-    "managePreferences": "Manage your general application preferences"
   },
   "aiSetupGate": {
     "title": "Set up AI to enhance your search",
@@ -455,65 +451,21 @@
     "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
   },
   "billingPage": {
-    "billingAndPlans": "Billing & Plans",
-    "manageSubscription": "Manage your subscription and usage.",
     "upgradePlan": "Upgrade Plan",
     "manageSubscriptionBtn": "Manage Subscription",
-    "subscription": "Subscription",
-    "planLabel": "{plan} Plan",
-    "expiresOn": "Expires on",
-    "renewsOn": "Renews on",
     "upgradeDescription": "Upgrade your plan to unlock more credits and features.",
-    "loadingBillingDetails": "Loading billing details",
-    "fetchingSubscription": "Fetching your subscription and credit balance.",
-    "dangerZone": "Danger Zone",
-    "cancelImmediately": "Cancel Immediately",
-    "cancelSubscriptionTitle": "Cancel Subscription Immediately",
-    "cancelDescription": "This will immediately end your subscription and downgrade you to the Free plan.",
-    "cancelConfirm": "Are you sure you want to cancel immediately? You will lose access to paid features instantly.",
-    "subscriptionCancelled": "Subscription cancelled immediately",
-    "failedCancel": "Failed to cancel subscription",
-    "totalBalance": "Total Balance",
-    "freeCredits": "Free Credits",
     "perMonth": "({amount}/month)",
-    "freeCapReached": "Free credit cap reached. Purchase additional credits for unlimited balance.",
-    "purchasedCredits": "Purchased Credits",
-    "noExpiration": "No expiration or cap",
-    "creditsOrder": "Credits are consumed in this order: free first, then purchased.",
     "failedToLoadDetails": "Failed to load details",
-    "networkErrorFetchingDetails": "Network error fetching details",
-    "statusPastDue": "Past due",
-    "statusCanceled": "Canceled",
-    "statusTrialing": "Trialing",
-    "statusIncomplete": "Incomplete",
-    "statusIncompleteExpired": "Incomplete expired",
-    "statusUnpaid": "Unpaid",
-    "statusPaused": "Paused",
-    "gracePeriodNotice": "Billing issue detected. You still have temporary access while we retry payment.",
     "paymentFailedNotice": "Payment failed. Update your payment method to keep your subscription active.",
     "updatePaymentMethod": "Update payment method",
     "perInterval": "/ {interval}",
     "intervalMonth": "month",
     "intervalYear": "year",
-    "topupBuyButton": "Buy credits",
-    "topupProcessing": "Redirecting…",
-    "topupCheckoutFailed": "Could not start credit checkout.",
-    "topupSuccessTitle": "Credit purchase started",
-    "topupSuccessDescription": "We will add credits automatically after Stripe confirms payment.",
-    "topupCancelledTitle": "Credit checkout canceled",
-    "topupCancelledDescription": "No charge was made. You can retry anytime.",
-    "upgradesUnavailable": "Upgrades are temporarily unavailable.",
-    "paymentPendingDefault": "Payment is pending. Complete payment in Stripe Billing Portal to activate credits.",
-    "scheduledChangeTo": "Scheduled change to",
-    "creditCapBanner": "Your free credits are at the maximum. Use some credits to receive your full monthly grant.",
-    "processingPurchase": "Processing your purchase...",
     "creditsAddedTitle": "Credits added",
     "creditsAddedDescription": "{amount} credits have been added to your balance.",
     "paymentReceived": "Payment received. Your plan and credits update as soon as Stripe confirms it.",
     "usage": {
-      "title": "Usage",
       "empty": "No credits used yet.",
-      "loadMore": "Load more",
       "showAll": "Show all",
       "kinds": {
         "chat": "Chat",
@@ -524,7 +476,25 @@
         "wallet_api": "Wallet API",
         "refund": "Refund"
       }
-    }
+    },
+    "credits": "credits",
+    "refillOn": "+{amount} on {date}",
+    "bought": "{amount} bought",
+    "topUp": "Top up",
+    "buyBundle": "Buy {credits} credits for {price}",
+    "spendingLast30Days": "Spending, last 30 days",
+    "spendingSummary": "{credits} credits spent in the last 30 days",
+    "onDay": "{credits} on {date}",
+    "today": "Today",
+    "plan": "Plan",
+    "comparePlans": "Compare plans",
+    "creditsAMonth": "{amount} credits a month",
+    "endsOn": "Ends {date}",
+    "changesOn": "{plan} from {date}",
+    "renewsOnDate": "Renews {date}",
+    "charges": "Charges",
+    "jobCharges": "This job's charges",
+    "chargesLabel": "charges"
   },
   "errors": {
     "unexpectedIssue": "We hit an unexpected issue. Please retry, or return to a stable page.",
@@ -2046,22 +2016,15 @@
   },
   "connectionsPage": {
     "connectedApps": "Connected Apps",
-    "manageExternalApps": "Manage external apps that use AI generation through your credits.",
-    "loadingConnections": "Loading connections...",
     "noConnectedApps": "No connected apps",
     "noConnectedAppsDescription": "When external apps connect to your wallet, they will appear here.",
-    "activeCount": "Active ({count})",
-    "revokedCount": "Revoked ({count})",
     "revoking": "Revoking...",
-    "confirm": "Confirm",
     "revoke": "Revoke",
     "revokedBadge": "Revoked",
     "created": "Created {time}",
     "lastUsed": "Last used {time}",
-    "justNow": "just now",
-    "minutesAgo": "{count}m ago",
-    "hoursAgo": "{count}h ago",
-    "daysAgo": "{count}d ago"
+    "apps": "apps",
+    "revokeApp": "Revoke {app}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -3261,6 +3224,124 @@
       "title": "Library not found",
       "description": "It may have been deleted, or it belongs to another organisation.",
       "back": "Back to libraries"
+    }
+  },
+  "settingsShell": {
+    "groups": {
+      "account": "Account",
+      "research": "Research",
+      "admin": "Admin"
+    },
+    "items": {
+      "profile": "Profile",
+      "security": "Security",
+      "switches": "Switches",
+      "modelList": "Model list",
+      "admins": "Admins",
+      "plans": "Plans",
+      "users": "Users"
+    },
+    "sharedDev": "Shared dev",
+    "production": "Production",
+    "planChip": "{plan} plan"
+  },
+  "settingsProfile": {
+    "uploading": "Uploading",
+    "changePhoto": "Change photo",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "saveName": "Save name",
+    "editName": "Edit name",
+    "addYourName": "Add your name",
+    "verified": "Verified",
+    "aBrowser": "A browser",
+    "browserOn": "{browser} on {platform}",
+    "whereSignedIn": "Where you're signed in",
+    "signOutEverywhereElse": "Sign out everywhere else",
+    "devices": "devices",
+    "now": "Now",
+    "thisDevice": "This device",
+    "signOut": "Sign out"
+  },
+  "settingsAdmin": {
+    "switches": {
+      "groups": {
+        "billing": "Billing",
+        "extraction": "Extraction"
+      },
+      "flags": {
+        "credits": {
+          "label": "Credits",
+          "hint": "Charge AI tasks to credits"
+        },
+        "topups": {
+          "label": "Credit top-ups",
+          "hint": "Sell extra credits on the billing page"
+        },
+        "subscriptions": {
+          "label": "Subscriptions",
+          "hint": "Let users buy and change plans"
+        },
+        "enterprise": {
+          "label": "Enterprise card",
+          "hint": "Show Enterprise on pricing"
+        },
+        "extraction": {
+          "label": "Extraction",
+          "hint": "Open the workspace to organisations with extraction"
+        },
+        "startJobs": {
+          "label": "Start jobs",
+          "hint": "Let users start new jobs"
+        },
+        "chat": {
+          "label": "Chat mode",
+          "hint": "Ask questions about a job's papers"
+        },
+        "pdf": {
+          "label": "Full PDFs",
+          "hint": "Read each paper's PDF, not just the abstract"
+        }
+      }
+    },
+    "models": {
+      "filterByProvider": "Filter by provider",
+      "search": "Search by name or id",
+      "show": "Show",
+      "on": "On",
+      "off": "Off",
+      "models": "models",
+      "free": "Free",
+      "offer": "Offer {model}",
+      "noMatches": "No models match"
+    },
+    "admins": {
+      "title": "Admins",
+      "admins": "admins",
+      "search": "Search by name or email",
+      "you": "You",
+      "invited": "Invited",
+      "notDelivered": "Invite not delivered",
+      "remove": "Remove",
+      "removeName": "Remove {name}",
+      "removed": "Admin removed.",
+      "cancelInvite": "Cancel invite",
+      "cancelInviteFor": "Cancel invite for {email}",
+      "inviteCancelled": "Invite cancelled.",
+      "resend": "Resend invite",
+      "resendTo": "Resend invite to {email}",
+      "inviteSent": "Invite sent to {email}.",
+      "noMatches": "No admins match",
+      "add": "Add admin",
+      "added": "{name} is now an admin.",
+      "how": "How to add",
+      "existingUser": "Existing user",
+      "inviteByEmail": "Invite by email",
+      "chooseUser": "Choose a user",
+      "searchEmail": "Search by email",
+      "noUsers": "No users found",
+      "email": "Email address",
+      "sendInvite": "Send invite"
     }
   }
 }
