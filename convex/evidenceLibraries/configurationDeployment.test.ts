@@ -121,6 +121,7 @@ function createRuntimeNetwork(input: {
     ),
   ];
   const deploymentUuid = "deployment-configuration-65";
+  let storageDown = false;
   // Buckets made before JPEG covers allow PDFs and PNGs only.
   const buckets = new Map<string, Record<string, unknown>>();
   const bucket = (name: string) =>
@@ -178,6 +179,7 @@ function createRuntimeNetwork(input: {
       requests.push({ body, method, url });
 
       if (url.origin === STORAGE_ORIGIN) {
+        if (storageDown) throw new TypeError("fetch failed");
         const name = decodeURIComponent(
           url.pathname.replace("/storage/v1/bucket/", ""),
         );
@@ -433,6 +435,9 @@ function createRuntimeNetwork(input: {
     fetchImpl,
     requests,
     buckets,
+    setStorageDown(down: boolean) {
+      storageDown = down;
+    },
     environments,
     publicHealthMarkers,
     get commit() {
@@ -767,9 +772,6 @@ describe("Evidence Library configuration deployment", () => {
     vi.stubEnv("EL_CONVEX_SITE_URL", "https://convex.example.test");
     vi.stubEnv("EL_RUNTIME_VERIFIER_URL", "https://verifier.example.test");
     vi.stubEnv("EL_RUNTIME_VERIFIER_TOKEN", "verifier-token");
-    vi.stubEnv("EL_STORAGE_URL", STORAGE_ORIGIN);
-    vi.stubEnv("EL_STORAGE_SERVICE_KEY", "storage-key");
-    vi.stubEnv("EL_STORAGE_MAX_PDF_BYTES", String(MAX_PDF_BYTES));
   });
 
   afterEach(() => {
@@ -1663,6 +1665,61 @@ describe("Evidence Library configuration deployment", () => {
       status: "succeeded",
       receipt: { runtimeCommit: NEWER_COMMIT },
     });
+  });
+
+  it("waits out a storage outage before a software update touches the site", async () => {
+    const fixture = await createReadyLibrary("storage-outage");
+    const activeRevision = await fixture.t.run(async (ctx) => {
+      const library = await ctx.db.get(fixture.created.libraryId);
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: NEWER_COMMIT,
+        latestImage: NEWER_RUNTIME_IMAGE,
+        changes: [{ sha: NEWER_COMMIT, message: "feat: JPEG covers" }],
+        checkedAt: Date.now(),
+      });
+      return await ctx.db.get(library!.activeRevisionId!);
+    });
+    const started = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(started.operationId),
+    );
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: activeRevision!.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    const actionArgs = {
+      libraryId: fixture.created.libraryId,
+      operationId: started.operationId,
+      attemptToken: operation!.configurationAttemptToken!,
+      attemptCount: operation!.attemptCount,
+    };
+
+    network.setStorageDown(true);
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).toEqual({ pollCount: 1, status: "running" });
+    expect(network.commit).toBe(RUNTIME_COMMIT);
+
+    network.setStorageDown(false);
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).toMatchObject({ status: "running" });
+    expect(network.commit).toBe(NEWER_COMMIT);
+    expect(network.buckets.size).toBe(2);
   });
 
   it("publishes changes the running software cannot read on the latest release, in the same step", async () => {

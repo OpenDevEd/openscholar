@@ -50,8 +50,10 @@ import {
   buildEvidenceLibraryLoginPageUrl,
 } from "./runtimeConfiguration";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
-import { StorageSetupError } from "./storageSetupClient";
-import { reconcilePlatformLibraryStorage } from "./storageSetupActions";
+import {
+  reconcileLibraryBuckets,
+  StorageSetupError,
+} from "./storageSetupClient";
 import type { RuntimeImageReference } from "./runtimeImageRegistry";
 
 const invalidConfiguration = (message: string) =>
@@ -132,7 +134,16 @@ export const runConfigurationDeployment = internalAction({
         // them to the current one first, so new software can store new file
         // types, such as JPEG covers.
         if (prepared.requiresDeployment) {
-          await reconcilePlatformLibraryStorage(args.libraryId);
+          await reconcileLibraryBuckets({
+            storageUrl: prepared.storage.url,
+            serviceRoleKey: decrypt(
+              prepared.storage.encryptedServiceRoleKey,
+              encryptionKey,
+            ),
+            privateBucket: prepared.storage.privateBucket,
+            publicBucket: prepared.storage.publicBucket,
+            maxPdfBytes: prepared.storage.maxPdfBytes,
+          });
         }
       }
       const verifierUrl = requireRuntimeHttpsOrigin(
@@ -721,12 +732,15 @@ export const runConfigurationDeployment = internalAction({
       );
     } catch (error) {
       // Coolify goes quiet for a moment while it redeploys an app or reloads
-      // its proxy for a new domain. The run is safe to repeat, so an outage
-      // waits on the same bounded poll as readiness instead of failing.
+      // its proxy for a new domain, and storage can drop a request. The run is
+      // safe to repeat, so an outage waits on the same bounded poll as
+      // readiness instead of failing.
       if (
         isRetryableReadinessError(error) ||
         (error instanceof CoolifyClientError &&
-          error.code === "COOLIFY_UNAVAILABLE")
+          error.code === "COOLIFY_UNAVAILABLE") ||
+        (error instanceof StorageSetupError &&
+          error.code === "STORAGE_UNAVAILABLE")
       ) {
         try {
           const retry = await ctx.runMutation(
