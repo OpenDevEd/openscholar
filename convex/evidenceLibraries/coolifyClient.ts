@@ -1499,15 +1499,25 @@ async function listApplicationDeployments(
   client: CoolifyTransport,
   applicationUuid: string,
 ): Promise<CoolifyDeploymentList> {
-  const deployments: CoolifyDeployment[] = [];
-  let count = 0;
-  do {
-    const page = await readDeploymentPage(client, applicationUuid, deployments.length);
-    count = page.count;
-    deployments.push(...page.deployments);
-    if (page.deployments.length < DEPLOYMENT_PAGE_SIZE) break;
-  } while (deployments.length < Math.min(count, MAX_DEPLOYMENTS));
-  return { complete: count <= MAX_DEPLOYMENTS, deployments };
+  // A deployment added or removed between pages shifts the offsets, so the scan starts over.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const first = await readDeploymentPage(client, applicationUuid, 0);
+    const deployments = [...first.deployments];
+    let shifted = false;
+    while (
+      deployments.length % DEPLOYMENT_PAGE_SIZE === 0 &&
+      deployments.length < Math.min(first.count, MAX_DEPLOYMENTS)
+    ) {
+      const page = await readDeploymentPage(client, applicationUuid, deployments.length);
+      if (page.count !== first.count) {
+        shifted = true;
+        break;
+      }
+      deployments.push(...page.deployments);
+    }
+    if (!shifted) return { complete: first.count <= MAX_DEPLOYMENTS, deployments };
+  }
+  invalidResponse("Coolify deployment history kept changing while it was read");
 }
 
 async function readDeployment(
