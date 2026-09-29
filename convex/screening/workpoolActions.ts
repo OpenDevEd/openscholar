@@ -121,6 +121,7 @@ export const screenPaperAction = internalAction({
           const paperId = String(args.resultId);
           const batchResult = await processScreeningBatch({
             model,
+            effort: job.serverEffort,
             papers: [
               {
                 id: paperId,

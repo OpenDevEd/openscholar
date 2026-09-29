@@ -1,5 +1,6 @@
 import type { QueryCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { Effort } from "../../lib/ai/core/call-options";
 import { createError } from "../lib/errors";
 
 // ponytail: one transaction handles up to 2,000 active models. Increase only
@@ -23,4 +24,11 @@ export async function requireAvailableModel(ctx: QueryCtx, modelId: Id<"models">
     throw createError("VALIDATION_ERROR", MODEL_UNAVAILABLE_MESSAGE);
   }
   return model;
+}
+
+/** Refuses an effort the model doesn't take ("none" included, where reasoning is mandatory). */
+export function requireEffort(model: Doc<"models">, effort: Effort | undefined) {
+  if (effort && !model.reasoningEfforts?.includes(effort)) {
+    throw createError("VALIDATION_ERROR", `${model.name} doesn't take ${effort} reasoning effort.`);
+  }
 }

@@ -14,7 +14,7 @@
 import { internalMutation } from "../../../_generated/server";
 import { v } from "convex/values";
 import { writeJobSources } from "../../jobSources";
-import { resolveServerModelId } from "../../../ai/serverModel";
+import { resolveTaskPick, serverStamp } from "../../../ai/serverModel";
 import {
   assertValidJobTransition,
   type JobStatus,
@@ -103,7 +103,7 @@ export const createJobDirect = internalMutation({
   },
   returns: v.id("extractionJobs"),
   handler: async (ctx, args) => {
-    const serverModelId = await resolveServerModelId(ctx, args.userId, "extraction");
+    const serverPick = await resolveTaskPick(ctx, args.userId, "extraction");
     const jobId = await ctx.db.insert("extractionJobs", {
       userId: args.userId,
       mode: "extraction" as const,
@@ -112,7 +112,7 @@ export const createJobDirect = internalMutation({
       status: "pending",
       totalPapers: 0,
       runEpoch: 0,
-      ...(serverModelId && { serverModelId }),
+      ...serverStamp(serverPick),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });

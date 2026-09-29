@@ -1,86 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { Brain, Scale, Zap } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { useAppToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import type { AiTask } from "@/lib/ai/tasks";
-import type { PresetKey } from "@/lib/ai/resolve-server-model";
-import { Enter, Zone, type Ico } from "@/components/settings/parts";
+import { AI_TASKS, DEFAULT_PRESET, PRESET_KEYS, type AiTask, type PresetKey } from "@/lib/ai/tasks";
+import type { Effort } from "@/lib/ai/core/call-options";
+import { Enter } from "@/components/settings/parts";
 import {
-  MapSummary, ModelPicker, NodeCard, RoutingMap, toMapModel, useRouting, type Hover, type PickedModel,
+  MapSummary, ModelPicker, NodeCard, PresetSwitch, RoutingMap, usePresetModels, useRouting, type Hover, type MapModel, type PresetPick,
 } from "@/components/settings/model-map";
 
-const summaryOf = (m: PickedModel) => ({
-  _id: m._id,
-  modelId: m.id,
-  name: m.name,
-  inputPricePerMillion: m.inputPricePerMillion,
-  outputPricePerMillion: m.outputPricePerMillion,
-});
-
-const SHORTCUT_ICONS: Record<PresetKey, Ico> = { fast: Zap, balanced: Scale, intelligent: Brain };
-
-/** What Recommended runs, drawn as the map users see. Click a task or a model card to change it. */
+/** Each preset's model and effort for every task, drawn as the map users see. Click a task or a model card to change it. */
 export default function AdminAiModelsPage() {
   const t = useTranslations("settingsAdmin.ai");
   const tc = useTranslations("common");
   const toast = useAppToast();
   const [hover, setHover] = useState<Hover>(null);
-  const routes = useQuery(api.aiModelConfig.queries.routing, {});
+  const [preset, setPreset] = useState<PresetKey>(DEFAULT_PRESET);
+  const presetModel = usePresetModels();
+  const setPresetPick = useMutation(api.aiModelConfig.admin.setPresetPick);
+  const modelOf = (task: AiTask) => presetModel?.(preset, task) ?? null;
+  const routing = useRouting({ modelFor: modelOf });
 
-  const setTaskModel = useMutation(api.aiModelConfig.admin.setTaskModel);
-  const setPresetModel = useMutation(api.aiModelConfig.admin.setPresetModel);
-  const fail = (error: unknown) => {
-    console.error("[settings] AI model change failed", error);
-    toast.error(tc("somethingWentWrong"), getErrorMessage(error, tc("somethingWentWrong")));
+  const route = (tasks: AiTask[], model: MapModel, effort?: Effort) => {
+    for (const task of tasks) {
+      setPresetPick({ preset, task, modelId: model._id!, ...(effort && { effort }) }).catch((error: unknown) => {
+        console.error("[settings] preset pick failed", error);
+        toast.error(tc("somethingWentWrong"), getErrorMessage(error, tc("somethingWentWrong")));
+      });
+    }
   };
-  // Bound per pick, so the optimistic update has the picked model's name and prices.
-  const route = (tasks: AiTask[], m: PickedModel) => {
-    const picked = summaryOf(m);
-    const run = setTaskModel.withOptimisticUpdate((store) => {
-      const current = store.getQuery(api.aiModelConfig.queries.routing, {});
-      if (current) {
-        store.setQuery(api.aiModelConfig.queries.routing, {}, {
-          ...current,
-          tasks: current.tasks.map((r) => (tasks.includes(r.task) ? { ...r, model: picked } : r)),
-        });
-      }
+  // The other presets' picks for these tasks, one click each.
+  const presetPicks = (tasks: AiTask[]): PresetPick[] =>
+    PRESET_KEYS.filter((id) => id !== preset).map((id) => {
+      const picked = tasks.flatMap((task) => {
+        const m = presetModel?.(id, task);
+        return m ? [{ task, m }] : [];
+      });
+      return { id, models: picked.map(({ m }) => m), onSelect: () => picked.forEach(({ task, m }) => route([task], m, m.effort)) };
     });
-    for (const task of tasks) run({ task, modelId: picked._id }).catch(fail);
-  };
-  const setShortcut = (preset: PresetKey, m: PickedModel) => {
-    const picked = summaryOf(m);
-    setPresetModel
-      .withOptimisticUpdate((store) => {
-        const current = store.getQuery(api.aiModelConfig.queries.routing, {});
-        if (current) {
-          store.setQuery(api.aiModelConfig.queries.routing, {}, {
-            ...current,
-            presets: current.presets.map((r) => (r.preset === preset ? { ...r, model: picked } : r)),
-          });
-        }
-      })({ preset, modelId: picked._id })
-      .catch(fail);
-  };
-
-  const routing = useRouting({
-    modelFor: (task) => {
-      const m = routes?.tasks.find((r) => r.task === task)?.model;
-      return m ? toMapModel(m) : null;
-    },
-  });
 
   return (
-    <Enter ready={routes !== undefined}>
-      <div className="space-y-8">
+    <Enter ready={presetModel !== undefined}>
+      <div className="space-y-6">
+        <PresetSwitch value={preset} onChange={setPreset} modelsOf={(p) => AI_TASKS.flatMap((task) => presetModel?.(p, task) ?? [])} />
         <MapSummary
           routing={routing}
-          title={t("modelCount", { count: routing.creditModels })}
-          subtitle={t("behindRecommended")}
+          title={t("modelCount", { count: routing.modelCount })}
           hovered={hover?.node}
           onHover={(id) => setHover(id ? { node: id } : null)}
         />
@@ -93,8 +62,13 @@ export default function AdminAiModelsPage() {
           wrapTask={(task, row) => (
             <ModelPicker
               align="start"
-              value={routes?.tasks.find((r) => r.task === task)?.model?.modelId}
+              current={modelOf(task) ?? undefined}
               onChange={(m) => route([task], m)}
+              onEffort={(effort) => {
+                const m = modelOf(task);
+                if (m) route([task], m, effort);
+              }}
+              presets={presetPicks([task])}
               trigger={
                 <button type="button" className="w-full rounded-l-xl">
                   {row}
@@ -104,41 +78,14 @@ export default function AdminAiModelsPage() {
           )}
           renderNode={(n) => (
             <ModelPicker
-              value={n.model.id}
+              current={n.model}
               onChange={(m) => route(n.tasks, m)}
+              onEffort={(effort) => route(n.tasks, n.model, effort)}
+              presets={presetPicks(n.tasks)}
               trigger={<NodeCard model={n.model} paidBy="credits" count={n.tasks.length} interactive />}
             />
           )}
         />
-
-        <Zone label={t("chatShortcuts")}>
-          <div className="grid gap-3 @min-[46rem]/configuration:grid-cols-3">
-            {(routes?.presets ?? []).map(({ preset, model }) => {
-              const Icon = SHORTCUT_ICONS[preset];
-              const caption = (
-                <>
-                  <Icon className="size-3" /> {t(`shortcuts.${preset}`)}
-                </>
-              );
-              return (
-                <ModelPicker
-                  key={preset}
-                  value={model?.modelId}
-                  onChange={(m) => setShortcut(preset, m)}
-                  trigger={
-                    <NodeCard
-                      model={model ? toMapModel(model) : { id: "", name: t("notSet"), inputPricePerMillion: 0, outputPricePerMillion: 0, unpriced: true }}
-                      paidBy="credits"
-                      count={0}
-                      interactive
-                      caption={caption}
-                    />
-                  }
-                />
-              );
-            })}
-          </div>
-        </Zone>
       </div>
     </Enter>
   );

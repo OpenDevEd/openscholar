@@ -1,7 +1,7 @@
 /**
- * The AI tasks OpenScholar routes to models. "Recommended" runs each on the
- * model an admin sets for it (`aiModelConfig` key `task.<id>`); "One model"
- * runs them all on the user's chosen model.
+ * The AI tasks OpenScholar routes to models. Each preset sets a model and an
+ * effort for every task (`aiModelConfig` key `preset.<preset>.<task>`); Custom
+ * holds the user's own pick for each.
  */
 export const CLOUD_TASKS = ["chat", "extraction", "screenAll"] as const;
 /** Tasks that run in the browser when the user pays with their own key. */
@@ -13,4 +13,11 @@ export type AiTask = (typeof AI_TASKS)[number];
 export const SEARCH_TASKS = ["questionToQuery", "refine", "broadenNarrow"] as const;
 export type SearchTask = (typeof SEARCH_TASKS)[number];
 
-export const taskConfigKey = (task: AiTask) => `task.${task}`;
+export const PRESET_KEYS = ["cheap", "fast", "balanced", "intelligent"] as const;
+export type PresetKey = (typeof PRESET_KEYS)[number];
+/** What a user runs on: a fixed preset, or their own pick for each task. */
+export type ModelChoice = PresetKey | "custom";
+/** The preset a user starts on, and the fallback when a pick is gone. */
+export const DEFAULT_PRESET: PresetKey = "balanced";
+
+export const presetConfigKey = (preset: PresetKey, task: AiTask) => `preset.${preset}.${task}`;

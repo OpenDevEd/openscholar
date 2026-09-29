@@ -20,7 +20,7 @@ import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
-import { resolveServerModelId } from "../../ai/serverModel";
+import { resolveTaskPick, serverStamp } from "../../ai/serverModel";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { assertBucketWithinLimits } from "../bucket/limits";
@@ -131,20 +131,16 @@ export const startJob = mutation({
       }
     }
 
-    // Pre-resolve so the composer's controlled value is never null. Default a new
-    // chat to the model the user's choice gives chat (Recommended unless they
-    // picked one model), which swapModel can still override per conversation.
-    let resolvedChatModelId: Id<"models"> | undefined = args.chatModelId;
-    if (args.mode === "chat" && resolvedChatModelId === undefined) {
-      resolvedChatModelId = (await resolveServerModelId(ctx, user._id, "chat")) ?? undefined;
-    }
+    // Pre-resolve so the composer's controlled value is never null. A new chat
+    // starts on the model and effort the user's choice gives chat, which
+    // swapModel can still change per conversation.
+    const chatPick =
+      args.mode !== "chat" ? null
+      : args.chatModelId !== undefined ? { modelId: args.chatModelId }
+      : await resolveTaskPick(ctx, user._id, "chat");
 
-    // Stamp the resolved per-user server model on extraction-mode jobs (credits
-    // path), read back at run by paperWorker via resolveOpenRouterModel.
-    const serverModelId =
-      args.mode === "extraction"
-        ? await resolveServerModelId(ctx, user._id, "extraction")
-        : undefined;
+    // Stamp what extraction runs on (credits path), read back at run by paperWorker.
+    const serverPick = args.mode === "extraction" ? await resolveTaskPick(ctx, user._id, "extraction") : null;
 
     const now = Date.now();
     const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
@@ -160,12 +156,13 @@ export const startJob = mutation({
             totalPapers: 0,
             runEpoch: 0,
             usePdfs: args.usePdfs ?? false,
-            ...(serverModelId && { serverModelId }),
+            ...serverStamp(serverPick),
             ...(estimate !== undefined && { estimatedCredits: estimate }),
           }
         : {
             messageCount: 0,
-            chatModelId: resolvedChatModelId,
+            chatModelId: chatPick?.modelId,
+            ...(chatPick?.effort && { chatEffort: chatPick.effort }),
           }),
     });
 
@@ -313,7 +310,7 @@ export const duplicateJob = mutation({
       .order("asc")
       .collect();
 
-    const dupServerModelId = await resolveServerModelId(ctx, user._id, "extraction");
+    const dupPick = await resolveTaskPick(ctx, user._id, "extraction");
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId: user._id,
       mode: "extraction" as const,
@@ -323,7 +320,7 @@ export const duplicateJob = mutation({
       totalPapers: 0,
       runEpoch: 0,
       usePdfs: oldJob.usePdfs ?? false,
-      ...(dupServerModelId && { serverModelId: dupServerModelId }),
+      ...serverStamp(dupPick),
       createdAt: now,
       updatedAt: now,
     });

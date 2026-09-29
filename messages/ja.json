@@ -3256,26 +3256,11 @@
     },
     "ai": {
       "modelCount": "{count, plural, other {# 個のモデル}}",
-      "behindRecommended": "「おすすめ」の中身",
-      "creditsOrKey": "クレジット、またはユーザーのキー",
-      "chatShortcuts": "チャットのショートカット",
-      "shortcuts": {
-        "fast": "高速",
-        "balanced": "バランス",
-        "intelligent": "高性能"
-      },
-      "notSet": "未設定"
+      "creditsOrKey": "クレジット、またはユーザーのキー"
     }
   },
   "settingsAi": {
-    "models": "モデル",
-    "recommended": "おすすめ",
-    "oneModel": "1つのモデル",
     "modelCount": "{count, plural, other {# 個のモデル}}",
-    "perTask": "タスクごとに選択",
-    "onEveryTask": "すべてのタスクで",
-    "onCloudTasks": "クラウドのタスクで",
-    "onBrowserTasks": "ブラウザのタスクで",
     "cloudOnly": "クラウドのみ",
     "openScholarCloud": "OpenScholar クラウド",
     "browserLabel": {
@@ -3283,7 +3268,6 @@
       "smart": "クラウド、次にブラウザ",
       "local": "ブラウザで"
     },
-    "keyTasks": "<b>検索ツールとスクリーニング</b>は、あなたのキーを使ってブラウザで実行できます。",
     "payWith": "支払い方法",
     "pay": {
       "credits": "クレジット",
@@ -3292,10 +3276,8 @@
     },
     "yourBrowser": "あなたのブラウザ",
     "yourKey": "あなたのキー",
-    "afterCredits": "クレジットの後",
     "credits": "クレジット",
     "taskCount": "{count, plural, other {# 件のタスク}}",
-    "addKey": "{provider} のキーを追加",
     "apiKey": "{provider} API キー",
     "getKey": "{provider} のキーを取得",
     "keyProvider": "キーのプロバイダー",
@@ -3305,7 +3287,6 @@
     "loadingModels": "モデルを読み込み中",
     "noModels": "モデルが見つかりません",
     "free": "無料",
-    "fallback": "予備",
     "signInToPick": "モデルを選ぶにはサインインしてください",
     "signInToUseCredits": "クレジットを使うにはサインインしてください",
     "creditsOff": "クレジットはオフです",
@@ -3319,6 +3300,27 @@
       "refine": "絞り込み",
       "translate": "翻訳",
       "broadenNarrow": "広げる / 狭める"
+    },
+    "preset": "プリセット",
+    "presets": {
+      "cheap": "低価格",
+      "fast": "高速",
+      "balanced": "バランス",
+      "intelligent": "高性能",
+      "custom": "カスタム"
+    },
+    "needsKey": "{provider} のキーが必要",
+    "presetsGroup": "プリセット",
+    "allModels": "すべてのモデル",
+    "effort": "推論の強さ",
+    "efforts": {
+      "none": "オフ",
+      "minimal": "最小",
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "xhigh": "最高",
+      "max": "最大"
     }
   }
 }

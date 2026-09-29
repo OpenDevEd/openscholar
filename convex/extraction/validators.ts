@@ -5,6 +5,7 @@
  */
 
 import { v } from "convex/values";
+import { effortValidator } from "../aiModelConfig/validators";
 import { errorCodeValidator } from "@/lib/errors/taxonomy";
 import { type AssertExactDoc } from "../lib/validators";
 
@@ -240,9 +241,12 @@ export const extractionJobFields = {
   ),
   chatThreadId: v.optional(v.string()),
   chatModelId: v.optional(v.id("models")),
+  /** The chat's reasoning effort; none means the model's default. */
+  chatEffort: v.optional(effortValidator),
   // Resolved per-user server model for extraction-mode runs (credits path).
   // Separate from chatModelId (chat-mode, user-swappable per conversation).
   serverModelId: v.optional(v.id("models")),
+  serverEffort: v.optional(effortValidator),
   lastMessageAt: v.optional(v.number()),
   messageCount: v.optional(v.number()),
   isGenerating: v.optional(v.boolean()),

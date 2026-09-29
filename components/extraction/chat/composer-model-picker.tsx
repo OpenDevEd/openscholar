@@ -86,20 +86,18 @@ export function ComposerModelPicker({
   const [open, setOpen] = useState(false);
   const sortedModels = useMemo(() => models, [models]);
 
-  // Preset shortcuts (Fast / Balanced / Intelligent) resolved to catalog rows.
-  const presetConfig = useQuery(api.aiModelConfig.queries.list, {});
-  const presetRows = useMemo(() => {
-    const order: Record<string, number> = {
-      "preset.fast": 0,
-      "preset.balanced": 1,
-      "preset.intelligent": 2,
-    };
-    return (presetConfig ?? [])
-      .filter((r) => r.key in order)
-      .sort((a, b) => order[a.key] - order[b.key])
-      .map((r) => ({ label: r.label ?? r.key, m: sortedModels.find((x) => x.modelId === r.modelId) }))
-      .filter((r): r is { label: string; m: ChatModelRow } => Boolean(r.m));
-  }, [presetConfig, sortedModels]);
+  // Each preset's chat model as a shortcut, resolved to the chat's catalog rows.
+  const tp = useTranslations("settingsAi");
+  const presets = useQuery(api.aiModelConfig.queries.presets, {});
+  const presetRows = useMemo(
+    () =>
+      (presets ?? []).flatMap(({ preset, tasks }) => {
+        const chat = tasks.find((r) => r.task === "chat")?.model;
+        const m = chat ? sortedModels.find((x) => x._id === chat._id) : undefined;
+        return m ? [{ label: tp(`presets.${preset}`), m }] : [];
+      }),
+    [presets, sortedModels, tp],
+  );
 
   const groups = useMemo(() => {
     const byProvider = new Map<string, typeof sortedModels>();

@@ -3246,26 +3246,11 @@
     },
     "ai": {
       "modelCount": "{count, plural, one {# model} other {# models}}",
-      "behindRecommended": "behind Recommended",
-      "creditsOrKey": "Credits, or the user's key",
-      "chatShortcuts": "Chat shortcuts",
-      "shortcuts": {
-        "fast": "Fast",
-        "balanced": "Balanced",
-        "intelligent": "Intelligent"
-      },
-      "notSet": "Not set"
+      "creditsOrKey": "Credits, or the user's key"
     }
   },
   "settingsAi": {
-    "models": "Models",
-    "recommended": "Recommended",
-    "oneModel": "One model",
     "modelCount": "{count, plural, one {# model} other {# models}}",
-    "perTask": "picked per task",
-    "onEveryTask": "on every task",
-    "onCloudTasks": "on cloud tasks",
-    "onBrowserTasks": "on browser tasks",
     "cloudOnly": "Cloud only",
     "openScholarCloud": "OpenScholar cloud",
     "browserLabel": {
@@ -3273,7 +3258,6 @@
       "smart": "Cloud, then your browser",
       "local": "In your browser"
     },
-    "keyTasks": "<b>Search tools and screening</b> can run in your browser on your key.",
     "payWith": "Pay with",
     "pay": {
       "credits": "Credits",
@@ -3282,10 +3266,8 @@
     },
     "yourBrowser": "Your browser",
     "yourKey": "Your key",
-    "afterCredits": "after credits",
     "credits": "Credits",
     "taskCount": "{count, plural, one {# task} other {# tasks}}",
-    "addKey": "Add your {provider} key",
     "apiKey": "{provider} API key",
     "getKey": "Get a {provider} key",
     "keyProvider": "Key provider",
@@ -3295,7 +3277,6 @@
     "loadingModels": "Loading models",
     "noModels": "No models found",
     "free": "Free",
-    "fallback": "fallback",
     "signInToPick": "Sign in to pick a model",
     "signInToUseCredits": "Sign in to use credits",
     "creditsOff": "Credits are off",
@@ -3309,6 +3290,27 @@
       "refine": "Refine",
       "translate": "Translate",
       "broadenNarrow": "Broaden / narrow"
+    },
+    "preset": "Preset",
+    "presets": {
+      "cheap": "Cheap",
+      "fast": "Fast",
+      "balanced": "Balanced",
+      "intelligent": "Intelligent",
+      "custom": "Custom"
+    },
+    "needsKey": "Needs your {provider} key",
+    "presetsGroup": "Presets",
+    "allModels": "All models",
+    "effort": "Reasoning effort",
+    "efforts": {
+      "none": "Off",
+      "minimal": "Minimal",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "xhigh": "Extra high",
+      "max": "Max"
     }
   }
 }

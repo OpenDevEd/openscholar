@@ -43,35 +43,35 @@ export const useEnhanceSearchQuery = createAIHook(
   api.ai.actions.enhanceSearchQuery,
   clientExecutor.enhanceSearchQuery,
   undefined,
-  { estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
+  { task: (params) => params.task ?? 'questionToQuery', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
 )
 
 export const useGenerateScreeningQuestions = createAIHook(
   api.ai.actions.generateScreeningQuestions,
   clientExecutor.generateScreeningQuestions,
   undefined,
-  { estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
+  { task: 'screening', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
 )
 
 export const useGenerateExtractionQuestions = createAIHook(
   api.ai.actions.generateExtractionQuestions,
   clientExecutor.generateExtractionQuestions,
   undefined,
-  { estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
+  { task: 'extraction', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
 )
 
 export const useTranslateQuery = createAIHook(
   api.ai.actions.translateQuery,
   clientExecutor.translateQuery,
   undefined,
-  { estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
+  { task: 'translate', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
 )
 
 export const useTranslatePaperContent = createAIHook(
   api.ai.actions.translatePaperContent,
   clientExecutor.translatePaperContent,
   undefined,
-  { estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
+  { task: 'translate', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
 )
 
 export const useGenerateScreeningResponses = createAIHook(
@@ -81,7 +81,7 @@ export const useGenerateScreeningResponses = createAIHook(
     ...result,
     responses: decodeQuestionResponseMap(result.responses),
   }),
-  { estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
+  { task: 'screening', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
 )
 
 export const useBatchScreeningResponses = createAIHook(
@@ -100,6 +100,7 @@ export const useBatchScreeningResponses = createAIHook(
     ),
   }),
   {
+    task: 'screening',
     allowSmartLocalFallback: false,
     estimateCredits: (params) =>
       Math.ceil(params.papers.length * ESTIMATED_CREDITS_PER_PAPER),
@@ -115,6 +116,7 @@ export const useBatchTranslations = createAIHook(
   clientExecutor.generateBatchTranslations,
   undefined,
   {
+    task: 'translate',
     estimateCredits: (params) =>
       Math.ceil(params.papers.length * ESTIMATED_CREDITS_PER_PAPER),
   },

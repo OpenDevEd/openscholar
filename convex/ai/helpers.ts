@@ -33,6 +33,7 @@ import { ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
 import { createError } from "../lib/errors";
 import { creditsForUsage } from "../../lib/pricing";
 import { reserveCredits, releaseCredits, settleCredits, tokenDetails } from "../billing/charge";
+import type { Effort } from "../../lib/ai/core/call-options";
 import type { UsageKind } from "../billing/validators";
 import type { AiTask } from "../../lib/ai/tasks";
 
@@ -147,20 +148,17 @@ export async function getModel() {
 }
 
 /**
- * Resolve the model a user's `task` runs on: their stored choice (Recommended
- * by default, or one model) → a concrete model instance + its pricing.
+ * The model and effort a user's `task` runs on (their preset's or Custom
+ * pick), with the model instance and its pricing.
  */
-export type ServerModel = Awaited<ReturnType<typeof resolveOpenRouterModel>>;
+export type ServerModel = Awaited<ReturnType<typeof resolveOpenRouterModel>> & { effort?: Effort };
 export async function resolveUserServerModel(
   ctx: ActionCtx,
   userId: Id<"users">,
   task: AiTask,
 ): Promise<ServerModel> {
-  const modelId = await ctx.runQuery(internal.ai.serverModel.resolveForUser, {
-    userId,
-    task,
-  });
-  return resolveOpenRouterModel(ctx, modelId);
+  const pick = await ctx.runQuery(internal.ai.serverModel.resolveForUser, { userId, task });
+  return { ...(await resolveOpenRouterModel(ctx, pick?.modelId ?? null)), effort: pick?.effort };
 }
 
 export type CreditTarget = {
@@ -242,7 +240,7 @@ async function requireAIUser(ctx: ActionCtx): Promise<Doc<"users">> {
 export async function withAuthAndCreditsBatch<T>(
   ctx: ActionCtx,
   operation: { description: string; kind: UsageKind; task: AiTask; estimate: number },
-  handler: (user: Doc<"users">, model: ServerModel["model"]) => Promise<{
+  handler: (user: Doc<"users">, model: ServerModel["model"], effort: Effort | undefined) => Promise<{
     result: T;
     totalUsage: Usage;
     trackingEntries?: AITrackingEntry[];
@@ -250,7 +248,7 @@ export async function withAuthAndCreditsBatch<T>(
 ): Promise<T> {
   try {
     const user = await requireAIUser(ctx);
-    const { model, pricing, modelSlug } = await resolveUserServerModel(ctx, user._id, operation.task);
+    const { model, pricing, modelSlug, effort } = await resolveUserServerModel(ctx, user._id, operation.task);
     const start = Date.now();
     let trackingEntries: AITrackingEntry[] | undefined;
     const { result, credits, usage } = await withCredits(
@@ -265,7 +263,7 @@ export async function withAuthAndCreditsBatch<T>(
       },
       pricing,
       async () => {
-        const outcome = await handler(user, model);
+        const outcome = await handler(user, model, effort);
         trackingEntries = outcome.trackingEntries;
         return { result: outcome.result, usage: outcome.totalUsage };
       },
@@ -355,7 +353,7 @@ export function createAIAction<
       try {
         const user = await requireAIUser(ctx);
         const task = typeof options.task === "function" ? options.task(args) : options.task;
-        const { model, pricing, modelSlug } = await resolveUserServerModel(ctx, user._id, task);
+        const { model, pricing, modelSlug, effort } = await resolveUserServerModel(ctx, user._id, task);
         const config = configFactory(args);
         const prompts = config.buildPrompts(config.input, 0);
         const inputForTracking = truncateForTracking(
@@ -375,7 +373,7 @@ export function createAIAction<
             },
             pricing,
             async () => {
-              const { output, usage } = await executeAIOperation({ model, ...config });
+              const { output, usage } = await executeAIOperation({ model, effort, ...config });
               return { result: output, usage };
             },
           );

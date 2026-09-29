@@ -446,7 +446,7 @@ export const generateResponse = internalAction({
             maxRetries: 0,
             // Claude caches the corpus and earlier turns; the thread id keeps
             // every turn on the same upstream host so that cache stays warm.
-            providerOptions: callOptions(model, { cache: true, sessionId: threadId }),
+            providerOptions: callOptions(model, { cache: true, sessionId: threadId, effort: meta.chatEffort }),
             onStepFinish: async ({ usage, providerMetadata }) => {
               stepUsages.push(usageOf({ usage, providerMetadata }));
               const inputTokens = usage?.inputTokens ?? 0;
@@ -1378,6 +1378,8 @@ export const swapModel = mutation({
     await requireAvailableModel(ctx, modelId);
     await ctx.db.patch(job._id, {
       chatModelId: modelId,
+      // The old effort may not suit the new model; it runs at its default.
+      chatEffort: undefined,
       updatedAt: Date.now(),
     });
     return null;

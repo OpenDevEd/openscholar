@@ -3256,26 +3256,11 @@
     },
     "ai": {
       "modelCount": "{count, plural, one {# मॉडल} other {# मॉडल}}",
-      "behindRecommended": "'सुझाया गया' के पीछे",
-      "creditsOrKey": "क्रेडिट्स, या यूज़र की की",
-      "chatShortcuts": "चैट शॉर्टकट",
-      "shortcuts": {
-        "fast": "तेज़",
-        "balanced": "संतुलित",
-        "intelligent": "समझदार"
-      },
-      "notSet": "सेट नहीं"
+      "creditsOrKey": "क्रेडिट्स, या यूज़र की की"
     }
   },
   "settingsAi": {
-    "models": "मॉडल",
-    "recommended": "सुझाया गया",
-    "oneModel": "एक मॉडल",
     "modelCount": "{count, plural, one {# मॉडल} other {# मॉडल}}",
-    "perTask": "हर काम के लिए चुने गए",
-    "onEveryTask": "हर काम पर",
-    "onCloudTasks": "क्लाउड के कामों पर",
-    "onBrowserTasks": "ब्राउज़र के कामों पर",
     "cloudOnly": "सिर्फ़ क्लाउड",
     "openScholarCloud": "OpenScholar क्लाउड",
     "browserLabel": {
@@ -3283,7 +3268,6 @@
       "smart": "पहले क्लाउड, फिर आपका ब्राउज़र",
       "local": "आपके ब्राउज़र में"
     },
-    "keyTasks": "<b>सर्च टूल और स्क्रीनिंग</b> आपकी की से आपके ब्राउज़र में चल सकते हैं।",
     "payWith": "भुगतान का तरीका",
     "pay": {
       "credits": "क्रेडिट्स",
@@ -3292,10 +3276,8 @@
     },
     "yourBrowser": "आपका ब्राउज़र",
     "yourKey": "आपकी की",
-    "afterCredits": "क्रेडिट्स के बाद",
     "credits": "क्रेडिट्स",
     "taskCount": "{count, plural, one {# काम} other {# काम}}",
-    "addKey": "अपनी {provider} की जोड़ें",
     "apiKey": "{provider} API की",
     "getKey": "{provider} की पाएं",
     "keyProvider": "की प्रदाता",
@@ -3305,7 +3287,6 @@
     "loadingModels": "मॉडल लोड हो रहे हैं",
     "noModels": "कोई मॉडल नहीं मिला",
     "free": "मुफ़्त",
-    "fallback": "बैकअप",
     "signInToPick": "मॉडल चुनने के लिए साइन इन करें",
     "signInToUseCredits": "क्रेडिट्स इस्तेमाल करने के लिए साइन इन करें",
     "creditsOff": "क्रेडिट्स बंद हैं",
@@ -3319,6 +3300,27 @@
       "refine": "बेहतर करें",
       "translate": "अनुवाद",
       "broadenNarrow": "बढ़ाएं / घटाएं"
+    },
+    "preset": "प्रीसेट",
+    "presets": {
+      "cheap": "सस्ता",
+      "fast": "तेज़",
+      "balanced": "संतुलित",
+      "intelligent": "समझदार",
+      "custom": "कस्टम"
+    },
+    "needsKey": "आपकी {provider} की चाहिए",
+    "presetsGroup": "प्रीसेट",
+    "allModels": "सभी मॉडल",
+    "effort": "तर्क का प्रयास",
+    "efforts": {
+      "none": "बंद",
+      "minimal": "न्यूनतम",
+      "low": "कम",
+      "medium": "मध्यम",
+      "high": "ऊँचा",
+      "xhigh": "बहुत ऊँचा",
+      "max": "अधिकतम"
     }
   }
 }

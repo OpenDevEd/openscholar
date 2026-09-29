@@ -15,6 +15,7 @@ import {
   type OperationConfig
 } from '../core/configs'
 import { toExtractionQuestions } from '../core/schemas'
+import type { Effort } from '../core/call-options'
 import type { AIProvider } from '@/lib/types'
 import { captureAIGeneration, captureAIGenerationBatch } from '@/lib/posthog-ai'
 import {
@@ -41,6 +42,7 @@ export interface AIConfig {
   provider: AIProvider
   apiKey: string
   model: string
+  effort?: Effort
 }
 
 export function createClientExecutor<TParams, TOutput, TResult>(
@@ -63,6 +65,7 @@ export function createClientExecutor<TParams, TOutput, TResult>(
     try {
       const { output, usage } = await executeAIOperation({
         model,
+        effort: config.effort,
         ...operationConfig,
       })
       const latencyMs = performance.now() - start
@@ -193,6 +196,7 @@ export async function generateBatchScreeningResponses(
   try {
     const { results, errors, usageByItemId, trackingByItemId } = await processScreeningBatch({
       model,
+      effort: config.effort,
       papers,
       questions,
     })
@@ -263,6 +267,7 @@ export async function generateBatchTranslations(
   try {
     const { results, errors, usageByItemId, trackingByItemId } = await processTranslationBatch({
       model,
+      effort: config.effort,
       papers,
       targetLanguage,
     })

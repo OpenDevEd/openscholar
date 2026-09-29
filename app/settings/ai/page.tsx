@@ -3,17 +3,17 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
-import { Box, Check, ChevronsUpDown, Coins, ExternalLink, KeyRound, Monitor, Plus, Save, Sparkles } from "lucide-react";
+import { Check, ChevronsUpDown, Coins, ExternalLink, KeyRound, Monitor, Save, Sparkles } from "lucide-react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { AnthropicIcon, getModelIcon, GoogleIcon, OpenAIIcon, OpenRouterIcon } from "@/components/icons/provider-icons";
+import { AnthropicIcon, GoogleIcon, OpenAIIcon, OpenRouterIcon } from "@/components/icons/provider-icons";
 import { useAIConfigStore } from "@/lib/store";
-import { getDefaultModelForProvider, getProviderConfig } from "@/lib/ai-models";
-import { toNativeModelId } from "@/lib/ai/native-model-id";
+import { getProviderConfig } from "@/lib/ai-models";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { resolveCreditsAvailability } from "@/lib/credits/availability";
@@ -23,15 +23,16 @@ import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { useAppToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import { stripProviderPrefix } from "@/lib/chat/model-display";
-import { BROWSER_TASKS, type AiTask } from "@/lib/ai/tasks";
+import { AI_TASKS, BROWSER_TASKS, DEFAULT_PRESET, PRESET_KEYS, type AiTask, type ModelChoice } from "@/lib/ai/tasks";
+import { keyFor, keyToAdd, type KeyProvider } from "@/lib/ai/keys";
+import type { Effort } from "@/lib/ai/core/call-options";
 import type { AIKeyMode, AIProvider } from "@/lib/types/ai.types";
 import { Enter, Segmented, type Ico } from "@/components/settings/parts";
 import {
-  MapSummary, ModelPicker, NodeCard, RoutingMap, toMapModel, useRouting, ZONE_LABEL, type Hover, type MapModel,
+  MapSummary, ModelPicker, NodeCard, PresetSwitch, RoutingMap, toMapModel, usePresetModels, useRouting, ZONE_LABEL,
+  type Hover, type MapModel, type MapNode, type PresetPick,
 } from "@/components/settings/model-map";
 
-type KeyProvider = Extract<AIProvider, "openai" | "google" | "anthropic" | "openrouter">;
 const PROVIDERS: Array<{ id: KeyProvider; icon: Ico }> = [
   { id: "openai", icon: OpenAIIcon },
   { id: "google", icon: GoogleIcon },
@@ -39,16 +40,14 @@ const PROVIDERS: Array<{ id: KeyProvider; icon: Ico }> = [
   { id: "openrouter", icon: OpenRouterIcon },
 ];
 
-/** The store keeps OpenRouter models as slugs and every other provider's as the id its own API takes. */
-const storedIdOf = (provider: AIProvider, slug: string) =>
-  provider === "openrouter" || provider === "azure" ? slug : toNativeModelId(slug, provider);
 const onBrowser = (task: AiTask) => (BROWSER_TASKS as readonly AiTask[]).includes(task);
+type Pick = { task: AiTask; modelId: Id<"models">; effort?: Effort };
 
 export default function AISettingsPage() {
   const t = useTranslations("settingsAi");
   const tc = useTranslations("common");
   const toast = useAppToast();
-  const { provider, model, setProvider, setModel, apiKey, setApiKey, apiKeyMode, setApiKeyMode } = useAIConfigStore();
+  const { provider, setProvider, apiKey, setApiKey, providerApiKeys, apiKeyMode, setApiKeyMode } = useAIConfigStore();
   const { phase } = useAuthReadiness();
   const signedIn = phase === "authenticated";
   const goToSignIn = useSignInRedirect();
@@ -56,27 +55,19 @@ export default function AISettingsPage() {
   const creditsEnabled = useFeatureFlagForPlan("credits.enabled", subscriptionState.planFeatures);
   const [hover, setHover] = useState<Hover>(null);
 
-  const routes = useQuery(api.aiModelConfig.queries.routing, creditsEnabled ? {} : "skip");
-  const config = useQuery(api.userAiConfig.queries.get, signedIn && creditsEnabled ? {} : "skip");
   const account = useOptionalAuthQuery(api.billing.accounts.mine, creditsEnabled ? {} : "skip");
-  const keyRow = useQuery(
-    api.models.queries.getCatalogOption,
-    provider === "openrouter" || provider === "azure" ? { modelId: model } : { modelId: model, provider },
-  );
-
-  const recommendedChat = routes?.tasks.find((r) => r.task === "chat")?.model ?? null;
-  const setPreset = useMutation(api.userAiConfig.mutations.setPreset).withOptimisticUpdate((store, { serverPreset }) => {
+  const presetModel = usePresetModels();
+  const settings = useQuery(api.userAiConfig.queries.get, signedIn ? {} : "skip");
+  const choose = useMutation(api.userAiConfig.mutations.choose).withOptimisticUpdate((store, { choice }) => {
     const current = store.getQuery(api.userAiConfig.queries.get, {});
-    store.setQuery(api.userAiConfig.queries.get, {}, {
-      serverPreset,
-      model: serverPreset === "recommended" ? null : (current?.model ?? recommendedChat),
-    });
+    if (current) store.setQuery(api.userAiConfig.queries.get, {}, { ...current, choice });
   });
-  const setCustomModel = useMutation(api.userAiConfig.mutations.setCustomModel);
+  const saveCustom = useMutation(api.userAiConfig.mutations.setCustom);
+  // Presets need credits; without them the user's own keys are all there is.
+  const choice: ModelChoice = creditsEnabled ? (settings?.choice ?? DEFAULT_PRESET) : "custom";
+  const isCustom = choice === "custom";
+  const keys: Record<string, string> = { ...providerApiKeys, [provider]: apiKey };
 
-  // The server returns no model when tasks run on Recommended, including when an admin hid the picked one.
-  const single = config?.model ?? null;
-  const one = single !== null;
   const pay = apiKeyMode;
   // Mirrors the executor: "Credits, then key" runs on the key alone when credits can't run.
   const creditsRun =
@@ -88,83 +79,103 @@ export default function AISettingsPage() {
       totalCredits: account.data?.balance,
       requiredCredits: ESTIMATED_CREDITS_PER_QUERY,
     }) !== "unavailable";
-  const browserOn: AIKeyMode = pay === "smart" && !creditsRun ? "local" : pay;
-  const keyModel: MapModel = keyRow
-    ? toMapModel(keyRow)
-    : { id: provider === "openrouter" ? model : `${provider}/${model}`, name: model, inputPricePerMillion: 0, outputPricePerMillion: 0, unpriced: true };
+  // Presets always run on credits; your own keys are part of Custom.
+  const browserOn: AIKeyMode = !isCustom ? "credits" : !creditsEnabled || (pay === "smart" && !creditsRun) ? "local" : pay;
 
+  // Custom that was never set up shows the preset the user is on.
+  const customModel = (task: AiTask) => {
+    const pick = settings?.custom.find((c) => c.task === task);
+    return pick?.model ? toMapModel(pick.model, pick.effort) : settings?.choice === "custom" ? null : (presetModel?.(settings?.choice ?? DEFAULT_PRESET, task) ?? null);
+  };
+  const modelsOf = (c: ModelChoice) => (task: AiTask) => (c === "custom" ? customModel(task) : (presetModel?.(c, task) ?? null));
+  const modelOf = modelsOf(choice);
   const routing = useRouting({
-    modelFor: (task) => {
-      if (!creditsEnabled) return null;
-      const picked = single ?? routes?.tasks.find((r) => r.task === task)?.model;
-      return picked ? toMapModel(picked) : null;
-    },
+    // Cloud tasks only run on credits.
+    modelFor: (task) => (creditsEnabled || onBrowser(task) ? modelOf(task) : null),
     onKey: (task) => browserOn === "local" && onBrowser(task),
-    keyModel,
-    fallback: browserOn === "smart",
   });
 
   const fail = (what: string) => (error: unknown) => {
     console.error(`[settings] ${what} failed`, error);
     toast.error(tc("somethingWentWrong"), getErrorMessage(error, tc("somethingWentWrong")));
   };
-  const chooseMode = (mode: "recommended" | "one") => {
-    if (!signedIn) {
-      toast.error(t("signInToPick"), undefined, { label: tc("signIn"), onClick: goToSignIn, icon: "arrow-right" });
-      return;
-    }
-    setPreset({ serverPreset: mode === "one" ? "custom" : "recommended" }).catch(fail("model mode change"));
+  const requireSignIn = () => {
+    if (signedIn) return true;
+    toast.error(t("signInToPick"), undefined, { label: tc("signIn"), onClick: goToSignIn, icon: "arrow-right" });
+    return false;
   };
+  const setCustom = (picks: Pick[]) => {
+    if (requireSignIn()) saveCustom({ picks }).catch(fail("model change"));
+  };
+  const pickAll = (tasks: AiTask[], model: MapModel, effort?: Effort) =>
+    setCustom(tasks.map((task) => ({ task, modelId: model._id!, ...(effort && { effort }) })));
+  // What each preset runs for these tasks; picking one copies those picks into Custom.
+  const presetPicks = (tasks: AiTask[]): PresetPick[] =>
+    PRESET_KEYS.map((id) => {
+      const picked = tasks.flatMap((task) => {
+        const m = presetModel?.(id, task);
+        return m?._id ? [{ task, modelId: m._id, ...(m.effort && { effort: m.effort }), model: m }] : [];
+      });
+      return { id, models: picked.map((p) => p.model), onSelect: () => setCustom(picked.map(({ model: _, ...pick }) => pick)) };
+    });
   const choosePay = (next: AIKeyMode) => {
-    if (next === "credits" && !creditsEnabled) {
+    if (next !== "local" && !creditsEnabled) {
       toast.error(t("creditsOff"), t("creditsOffDescription"));
       return;
     }
-    if (next === "credits" && !signedIn) {
+    if (next !== "local" && !signedIn) {
       toast.error(t("signInToUseCredits"), undefined, { label: tc("signIn"), onClick: goToSignIn, icon: "arrow-right" });
       return;
     }
     setApiKeyMode(next);
   };
-  const chooseProvider = (next: KeyProvider) => {
-    if (next === provider) return;
-    setProvider(next);
-    setModel(getDefaultModelForProvider(next));
+  const chooseModels = (next: ModelChoice) => {
+    if (next !== "custom" && !creditsEnabled) {
+      toast.error(t("creditsOff"), t("creditsOffDescription"));
+      return;
+    }
+    if (requireSignIn()) choose({ choice: next }).catch(fail("model choice"));
+  };
+  const caption = (n: MapNode) => {
+    if (n.paidBy === "key") {
+      const key = keyFor(n.model.id, keys);
+      return key ? (
+        <>
+          <KeyRound className="size-3" /> {t("yourKey")}
+          <span className="text-muted-foreground/60">{t("taskCount", { count: n.tasks.length })}</span>
+        </>
+      ) : (
+        <span className="flex items-center gap-1 text-destructive">
+          <KeyRound className="size-3" /> {t("needsKey", { provider: getProviderConfig(keyToAdd(n.model.id)).name })}
+        </span>
+      );
+    }
+    const fallsBack = pay === "smart" && n.tasks.some(onBrowser) && keyFor(n.model.id, keys);
+    return (
+      <>
+        <Coins className="size-3" /> {fallsBack ? t("pay.smart") : t("credits")}
+        <span className="text-muted-foreground/60">{t("taskCount", { count: n.tasks.length })}</span>
+      </>
+    );
   };
 
   const ready =
-    keyRow !== undefined &&
-    (!creditsEnabled || (routes !== undefined && (!signedIn || (config !== undefined && account.settlement === "ready"))));
+    presetModel !== undefined && (!signedIn || settings !== undefined) && (!signedIn || !creditsEnabled || account.settlement === "ready");
 
   return (
     <Enter ready={ready}>
       <div className="space-y-6">
+        <PresetSwitch
+          withCustom
+          value={choice}
+          onChange={chooseModels}
+          modelsOf={(c) => AI_TASKS.flatMap((task) => modelsOf(c)(task) ?? [])}
+        />
         <MapSummary
           routing={routing}
-          title={
-            !creditsEnabled
-              ? stripProviderPrefix(keyModel.name)
-              : single
-                ? stripProviderPrefix(single.name)
-                : t("modelCount", { count: routing.creditModels })
-          }
-          subtitle={!creditsEnabled ? t("onBrowserTasks") : !single ? t("perTask") : browserOn === "local" ? t("onCloudTasks") : t("onEveryTask")}
+          title={t("modelCount", { count: routing.modelCount })}
           hovered={hover?.node}
           onHover={(id) => setHover(id ? { node: id } : null)}
-          aside={
-            creditsEnabled ? (
-              <Segmented
-                size="md"
-                label={t("models")}
-                value={one ? "one" : "recommended"}
-                onChange={chooseMode}
-                options={[
-                  { id: "recommended", label: t("recommended"), icon: Sparkles },
-                  { id: "one", label: t("oneModel"), icon: Box },
-                ]}
-              />
-            ) : null
-          }
         />
 
         <RoutingMap
@@ -173,96 +184,103 @@ export default function AISettingsPage() {
           setHover={setHover}
           browserLabel={t(`browserLabel.${browserOn}`)}
           browserActive={browserOn === "local"}
-          renderNode={(n) =>
-            n.id === "key" ? (
-              <KeyNode
-                model={keyModel}
-                provider={provider}
-                apiKey={apiKey}
-                fallback={browserOn === "smart"}
-                onProvider={chooseProvider}
-                onModel={(picked) => setModel(storedIdOf(provider, picked.id))}
-                onSave={setApiKey}
-              />
-            ) : single ? (
+          wrapBrowserLabel={!isCustom ? undefined : (label) => (
+            <PayMenu pay={pay} onPay={choosePay} provider={provider} keys={keys} apiKey={apiKey} onProvider={setProvider} onSave={setApiKey}>
+              {label}
+            </PayMenu>
+          )}
+          wrapTask={!isCustom ? undefined : (task, row) => (
+            <ModelPicker
+              align="start"
+              current={modelOf(task) ?? undefined}
+              onChange={(m) => pickAll([task], m)}
+              onEffort={(effort) => {
+                const m = modelOf(task);
+                if (m) pickAll([task], m, effort);
+              }}
+              presets={presetPicks([task])}
+              trigger={
+                <button type="button" className="w-full rounded-l-xl">
+                  {row}
+                </button>
+              }
+            />
+          )}
+          renderNode={(n) => {
+            const card = isCustom ? (
               <ModelPicker
-                value={n.model.id}
-                onChange={(picked) => setCustomModel({ serverModelId: picked._id }).catch(fail("model change"))}
-                trigger={<NodeCard model={n.model} paidBy="credits" count={n.tasks.length} interactive />}
+                current={n.model}
+                onChange={(m) => pickAll(n.tasks, m)}
+                onEffort={(effort) => pickAll(n.tasks, n.model, effort)}
+                presets={presetPicks(n.tasks)}
+                trigger={<NodeCard model={n.model} paidBy={n.paidBy} count={n.tasks.length} interactive caption={caption(n)} />}
               />
             ) : (
-              <NodeCard model={n.model} paidBy="credits" count={n.tasks.length} />
-            )
-          }
+              <NodeCard model={n.model} paidBy={n.paidBy} count={n.tasks.length} caption={caption(n)} />
+            );
+            return n.id === routing.firstKey ? (
+              <div className="relative">
+                <div
+                  className="absolute left-0 flex items-center gap-1.5 rounded-t-xl bg-primary/10 pl-3 pr-4 text-xs font-medium text-primary"
+                  style={{ top: -ZONE_LABEL + 2, height: ZONE_LABEL - 2 }}
+                >
+                  <Monitor className="size-3.5" /> {t("yourBrowser")}
+                </div>
+                {card}
+              </div>
+            ) : (
+              card
+            );
+          }}
         />
-
-        <div className="flex items-center justify-between gap-6 rounded-2xl bg-muted/30 py-3 pl-5 pr-3 @max-[46rem]/configuration:flex-col @max-[46rem]/configuration:items-start @max-[46rem]/configuration:gap-3">
-          <p className="text-sm text-muted-foreground">
-            {t.rich("keyTasks", { b: (chunks: ReactNode) => <span className="font-medium text-foreground">{chunks}</span> })}
-          </p>
-          <Segmented
-            label={t("payWith")}
-            value={pay}
-            onChange={choosePay}
-            options={[
-              { id: "credits", label: t("pay.credits"), icon: Coins },
-              { id: "smart", label: t("pay.smart"), icon: Sparkles },
-              { id: "local", label: t("pay.local"), icon: KeyRound },
-            ]}
-          />
-        </div>
       </div>
     </Enter>
   );
 }
 
-/** The browser's model card: pick a provider, save its key, pick its model. */
-function KeyNode({
-  model, provider, apiKey, fallback, onProvider, onModel, onSave,
+/** The browser tasks' label as a control: how they're paid for, and the keys they can run on. */
+function PayMenu({
+  pay, onPay, provider, keys, apiKey, onProvider, onSave, children,
 }: {
-  model: MapModel;
+  pay: AIKeyMode;
+  onPay: (mode: AIKeyMode) => void;
   provider: AIProvider;
+  keys: Record<string, string>;
   apiKey: string;
-  fallback: boolean;
   onProvider: (p: KeyProvider) => void;
-  onModel: (m: MapModel) => void;
   onSave: (key: string) => void;
+  children: ReactNode;
 }) {
   const t = useTranslations("settingsAi");
-  const name = getProviderConfig(provider).name;
-  const Icon = PROVIDERS.find((p) => p.id === provider)?.icon ?? KeyRound;
-  const Brand = getModelIcon(model.id);
+  const saved = PROVIDERS.filter((p) => keys[p.id]);
   return (
     <Popover>
-      <div className="relative">
-        <div
-          className="absolute left-0 flex items-center gap-1.5 rounded-t-xl bg-primary/10 pl-3 pr-4 text-xs font-medium text-primary"
-          style={{ top: -ZONE_LABEL + 2, height: ZONE_LABEL - 2 }}
-        >
-          <Monitor className="size-3.5" /> {t("yourBrowser")}
-        </div>
-        <PopoverTrigger asChild>
-          <NodeCard
-            model={model}
-            paidBy="key"
-            count={0}
-            interactive
-            caption={
-              apiKey ? (
-                <>
-                  <Icon className="size-3" /> {t("yourKey")}
-                  {fallback ? <span className="text-muted-foreground/60">{t("afterCredits")}</span> : null}
-                </>
-              ) : (
-                <span className="flex items-center gap-1 text-primary">
-                  <Plus className="size-3" /> {t("addKey", { provider: name })}
+      <PopoverTrigger asChild>
+        <button type="button" className="-ml-1.5 flex items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
+          {children}
+          {saved.length ? (
+            <span className="flex -space-x-1">
+              {saved.map((p) => (
+                <span key={p.id} className="flex size-5 items-center justify-center rounded-full bg-background ring-2 ring-background">
+                  <p.icon className="size-3" />
                 </span>
-              )
-            }
-          />
-        </PopoverTrigger>
-      </div>
-      <PopoverContent align="end" className="w-[26rem] space-y-3 p-3">
+              ))}
+            </span>
+          ) : null}
+          <ChevronsUpDown className="size-3 text-muted-foreground/60" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[26rem] space-y-3 p-3">
+        <Segmented
+          label={t("payWith")}
+          value={pay}
+          onChange={onPay}
+          options={[
+            { id: "credits", label: t("pay.credits"), icon: Coins },
+            { id: "smart", label: t("pay.smart"), icon: Sparkles },
+            { id: "local", label: t("pay.local"), icon: KeyRound },
+          ]}
+        />
         <div className="grid grid-cols-4 gap-1" role="radiogroup" aria-label={t("keyProvider")}>
           {PROVIDERS.map((p) => (
             <button
@@ -272,30 +290,16 @@ function KeyNode({
               aria-checked={p.id === provider}
               onClick={() => onProvider(p.id)}
               className={cn(
-                "flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-xs transition-colors",
+                "relative flex h-14 flex-col items-center justify-center gap-1 rounded-lg text-xs transition-colors",
                 p.id === provider ? "bg-primary/15 text-primary ring-1 ring-primary/40" : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
               <p.icon className="size-4" /> {getProviderConfig(p.id).name}
+              {keys[p.id] ? <Check aria-label={t("saved")} className="absolute right-1.5 top-1.5 size-3 text-primary" /> : null}
             </button>
           ))}
         </div>
         <KeyInput key={provider} provider={provider} saved={apiKey} onSave={onSave} />
-        <ModelPicker
-          value={model.id}
-          onChange={onModel}
-          provider={provider === "openrouter" ? undefined : provider}
-          trigger={
-            <button
-              type="button"
-              className="flex h-10 w-full min-w-0 items-center gap-2 rounded-lg border border-border/60 bg-background px-3 text-left text-sm transition-colors hover:border-border"
-            >
-              <Brand className="size-4 shrink-0" />
-              <span className="min-w-0 flex-1 truncate font-medium">{stripProviderPrefix(model.name)}</span>
-              <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
-            </button>
-          }
-        />
       </PopoverContent>
     </Popover>
   );
