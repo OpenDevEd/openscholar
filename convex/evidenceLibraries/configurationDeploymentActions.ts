@@ -740,7 +740,8 @@ export const runConfigurationDeployment = internalAction({
         (error instanceof CoolifyClientError &&
           error.code === "COOLIFY_UNAVAILABLE") ||
         (error instanceof StorageSetupError &&
-          error.code === "STORAGE_UNAVAILABLE")
+          (error.code === "STORAGE_UNAVAILABLE" ||
+            (error.status ?? 0) >= 500))
       ) {
         try {
           const retry = await ctx.runMutation(

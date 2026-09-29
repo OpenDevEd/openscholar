@@ -121,7 +121,7 @@ function createRuntimeNetwork(input: {
     ),
   ];
   const deploymentUuid = "deployment-configuration-65";
-  let storageDown = false;
+  let storageDown: "unreachable" | "failing" | null = null;
   // Buckets made before JPEG covers allow PDFs and PNGs only.
   const buckets = new Map<string, Record<string, unknown>>();
   const bucket = (name: string) =>
@@ -179,7 +179,10 @@ function createRuntimeNetwork(input: {
       requests.push({ body, method, url });
 
       if (url.origin === STORAGE_ORIGIN) {
-        if (storageDown) throw new TypeError("fetch failed");
+        if (storageDown === "unreachable") throw new TypeError("fetch failed");
+        if (storageDown === "failing") {
+          return jsonResponse({ message: "Service Unavailable" }, 503);
+        }
         const name = decodeURIComponent(
           url.pathname.replace("/storage/v1/bucket/", ""),
         );
@@ -435,7 +438,7 @@ function createRuntimeNetwork(input: {
     fetchImpl,
     requests,
     buckets,
-    setStorageDown(down: boolean) {
+    setStorageDown(down: typeof storageDown) {
       storageDown = down;
     },
     environments,
@@ -1667,8 +1670,8 @@ describe("Evidence Library configuration deployment", () => {
     });
   });
 
-  it("waits out a storage outage before a software update touches the site", async () => {
-    const fixture = await createReadyLibrary("storage-outage");
+  it.each(["unreachable", "failing"] as const)("waits out %s storage before a software update touches the site", async (outage) => {
+    const fixture = await createReadyLibrary(`storage-${outage}`);
     const activeRevision = await fixture.t.run(async (ctx) => {
       const library = await ctx.db.get(fixture.created.libraryId);
       await ctx.db.insert("evidenceLibraryRuntimeReleases", {
@@ -1700,7 +1703,7 @@ describe("Evidence Library configuration deployment", () => {
       attemptCount: operation!.attemptCount,
     };
 
-    network.setStorageDown(true);
+    network.setStorageDown(outage);
     expect(
       await fixture.t.action(
         internal.evidenceLibraries.configurationDeploymentActions
@@ -1710,7 +1713,7 @@ describe("Evidence Library configuration deployment", () => {
     ).toEqual({ pollCount: 1, status: "running" });
     expect(network.commit).toBe(RUNTIME_COMMIT);
 
-    network.setStorageDown(false);
+    network.setStorageDown(null);
     expect(
       await fixture.t.action(
         internal.evidenceLibraries.configurationDeploymentActions
