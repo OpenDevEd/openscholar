@@ -150,7 +150,6 @@ export function CollectionManager({
     if (!trimmed) return;
     try {
       await createCollection({ name: trimmed });
-      toast.success(t("collectionCreated"));
       setNewName("");
       createInputRef.current?.focus();
     } catch (err) {
@@ -174,7 +173,6 @@ export function CollectionManager({
     }
     try {
       await renameCollection({ collectionId: editingId, name: trimmed });
-      toast.success(t("collectionRenamed"));
     } catch (err) {
       console.error("[CollectionManager] Failed to rename:", err);
     }

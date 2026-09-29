@@ -37,12 +37,12 @@ export default function AdminsPage() {
   const pager = pagerOf(matches.length, PER_PAGE, page, setPage);
   const shown = matches.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
 
-  const run = async (adminId: Id<"admins">, action: () => Promise<unknown>, done: string) => {
+  const run = async (adminId: Id<"admins">, action: () => Promise<unknown>, done?: string) => {
     setBusy(adminId);
     try {
       await action();
       setConfirm(null);
-      toast.success(done);
+      if (done) toast.success(done);
     } catch (error) {
       toast.error(getErrorMessage(error, tc("somethingWentWrong")));
     } finally {
@@ -52,7 +52,7 @@ export default function AdminsPage() {
 
   return (
     <Enter ready>
-      <Zone label={t("title")} aside={<AddAdmin onDone={(message) => toast.success(message)} />}>
+      <Zone label={t("title")} aside={<AddAdmin />}>
         <div className="space-y-3">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -97,7 +97,7 @@ export default function AdminsPage() {
                           variant="destructive"
                           size="sm"
                           disabled={busy === a._id}
-                          onClick={() => run(a._id, () => remove({ adminId: a._id }), a.joined ? t("removed") : t("inviteCancelled"))}
+                          onClick={() => run(a._id, () => remove({ adminId: a._id }))}
                         >
                           {busy === a._id ? <Loader2 className="animate-spin" /> : null}
                           {a.joined ? t("remove") : t("cancelInvite")}
@@ -145,7 +145,7 @@ export default function AdminsPage() {
 }
 
 /** Add an existing user, or invite an email that becomes an admin on first sign-in. */
-function AddAdmin({ onDone }: { onDone: (notice: string) => void }) {
+function AddAdmin() {
   const t = useTranslations("settingsAdmin.admins");
   const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
@@ -167,10 +167,8 @@ function AddAdmin({ onDone }: { onDone: (notice: string) => void }) {
     try {
       if (mode === "user" && picked) {
         await addUser({ userId: picked._id });
-        onDone(t("added", { name: picked.name ?? picked.email }));
       } else {
         await invite({ email: email.trim() });
-        onDone(t("inviteSent", { email: email.trim() }));
       }
       setOpen(false);
       setPicked(null);

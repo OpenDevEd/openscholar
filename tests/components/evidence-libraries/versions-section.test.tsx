@@ -183,9 +183,6 @@ describe("<VersionsSection>", () => {
     await waitFor(() =>
       expect(mocks.startRuntimeUpdate).toHaveBeenCalledWith({ libraryId: "library_123" }),
     );
-    expect(mocks.toast).toHaveBeenCalledWith("versions.updateStarted", {
-      description: "versions.updateStartedDescription:bbbbbbb",
-    });
   });
 
   it("shows each release's notes with its area, and keeps the commits behind a disclosure", async () => {
@@ -319,9 +316,6 @@ describe("<VersionsSection>", () => {
         revisionId: "rev_1",
       }),
     );
-    expect(mocks.toast).toHaveBeenCalledWith("versions.restoreStarted", {
-      description: "versions.restoreStartedDescription:r1,r4",
-    });
   });
 
   it("says nothing about the address while the library answers at it", async () => {

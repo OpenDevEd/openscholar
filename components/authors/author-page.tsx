@@ -231,14 +231,7 @@ export default function AuthorPage({
                 setFormError("Use a full http or https URL.");
                 return;
               }
-              if (
-                await update({
-                  ...draft,
-                  name: draft.name.trim(),
-                })
-              ) {
-                toast.success("Profile saved");
-              }
+              await update({ ...draft, name: draft.name.trim() });
             }}
           >
             <div className="space-y-4">

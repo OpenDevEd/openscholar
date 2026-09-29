@@ -433,9 +433,6 @@ vi.mock("@/components/extraction/chat/chat-job-view", () => ({
   }) => <div data-testid="chat-job-view" data-thread-id={threadId} />,
 }));
 
-vi.mock("@/components/extraction/completion-toast-observer", () => ({
-  CompletionToastObserver: () => null,
-}));
 
 vi.mock("@/components/extraction/cost-badge", () => ({
   CostBadge: () => <div>cost badge</div>,

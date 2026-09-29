@@ -5,7 +5,6 @@ import { Building2, KeyRound } from "lucide-react";
 import { useAction, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { toast } from "sonner";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,7 +148,6 @@ export function useOpenAlexSources({
     });
     setApiKey("");
     changeMode("custom");
-    toast.success(t("keySaved"));
   }
 
   function changeMode(mode: "openscholar" | "custom") {
@@ -173,7 +171,6 @@ export function useOpenAlexSources({
     await removeCredential({ libraryId });
     changeMode("openscholar");
     setApiKey("");
-    toast.success(t("keyRemoved"));
   }
 
   return {

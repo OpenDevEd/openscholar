@@ -24,7 +24,6 @@ import {
   buildBulkPatch,
 } from "@/lib/chat/chat-papers-selection";
 import { useAppToast } from "@/lib/toast";
-import { toast } from "sonner";
 import { optimisticallySendMessage } from "@convex-dev/agent/react";
 import { ChatErrorAlert } from "./chat-error-alert";
 import { classifyChatError, serializeChatError } from "@/lib/errors/taxonomy";
@@ -117,9 +116,7 @@ export function MessageComposer({
 
   const handleModelChange = useCallback(
     (modelId: Id<"models">, effort?: Effort) => {
-      void swapModel({ threadId, modelId, ...(effort && { effort }) })
-        .then(() => toast.success(t("chatModelChanged")))
-        .catch((err) => {
+      void swapModel({ threadId, modelId, ...(effort && { effort }) }).catch((err) => {
           appToast.error(t("chatFailedMessage"));
           console.error("swap model failed", err);
         });

@@ -67,7 +67,6 @@ export function SetupHero({
       return;
     }
     setCopied(true);
-    toast.success(tl("copied"), { description: address });
     if (copiedTimer.current) clearTimeout(copiedTimer.current);
     copiedTimer.current = setTimeout(() => setCopied(false), 2000);
   }

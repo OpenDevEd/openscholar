@@ -221,7 +221,6 @@ export function LibraryPageClient() {
       const exportItems = await fetchExportItems();
       if (exportItems.length === 0) return;
       exportLibraryAsCSV(exportItems);
-      toast.success(t("exportSuccess"));
     } catch (error) {
       console.error("[Library] Failed to export CSV:", error);
       toast.error(t("exportError"));
@@ -237,7 +236,6 @@ export function LibraryPageClient() {
       const exportItems = await fetchExportItems();
       if (exportItems.length === 0) return;
       exportLibraryAsJSON(exportItems);
-      toast.success(t("exportSuccess"));
     } catch (error) {
       console.error("[Library] Failed to export JSON:", error);
       toast.error(t("exportError"));
@@ -316,9 +314,6 @@ export function LibraryPageClient() {
         variant: "destructive",
         onConfirm: () => {
           removeItem({ itemId: item._id })
-            .then(() => {
-              toast.success(t("removedFromLibrary"));
-            })
             .catch((error) => {
               console.error("[Library] Failed to remove item:", error);
               toast.error(t("removeFromLibraryError"));

@@ -25,7 +25,6 @@ export function AuthorInvitations({profileId, showEmpty = false}: {profileId?: I
       setPending(true);
       try {
         await respond({invitationId: invitation.invitationId, accept});
-        toast.success(accept ? "Invitation accepted" : "Invitation declined");
         router.push(`/authors/${invitation.profileId}${accept ? "/configuration" : ""}`);
       } catch (error) { toast.error(readConvexErrorData(error)?.message ?? "Could not respond to invitation. Try again."); }
       finally { setPending(false); }

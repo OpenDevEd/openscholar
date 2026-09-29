@@ -245,7 +245,6 @@ function ProviderKeyField({
       .then(() => {
         setValue("");
         setReplacing(false);
-        toast.success(t("keySavedToast"));
       })
       .catch(() => toast.error(t("keyError")))
       .finally(() => setBusy(false));
