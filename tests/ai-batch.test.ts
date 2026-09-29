@@ -45,7 +45,7 @@ beforeEach(() => {
 
 describe("processBatch", () => {
   const makeConfig = () => ({
-    model: {} as LanguageModel,
+    model: { modelId: "openai/gpt-test" } as LanguageModel,
     toConfigInput: (paper: BatchPaper) => ({
       title: paper.title,
       abstract: paper.abstract,
@@ -154,7 +154,7 @@ describe("processScreeningBatch", () => {
     });
 
     const result = await processScreeningBatch({
-      model: {} as LanguageModel,
+      model: { modelId: "openai/gpt-test" } as LanguageModel,
       papers,
       questions,
     });
@@ -194,7 +194,7 @@ describe("processTranslationBatch", () => {
     });
 
     const result = await processTranslationBatch({
-      model: {} as LanguageModel,
+      model: { modelId: "openai/gpt-test" } as LanguageModel,
       papers,
       targetLanguage: "fr",
     });
@@ -228,7 +228,7 @@ describe("processTranslationBatch", () => {
     });
 
     await processTranslationBatch({
-      model: {} as LanguageModel,
+      model: { modelId: "openai/gpt-test" } as LanguageModel,
       papers,
     });
 

@@ -122,6 +122,8 @@ export const screenPaperAction = internalAction({
           const batchResult = await processScreeningBatch({
             model,
             effort: job.serverEffort,
+            decisionsKey: process.env.OPENROUTER_API_KEY,
+            sessionId: String(job._id),
             papers: [
               {
                 id: paperId,

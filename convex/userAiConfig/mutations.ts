@@ -2,7 +2,7 @@ import { mutation, type MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { aiTaskValidator, effortValidator, modelChoiceValidator } from "../aiModelConfig/validators";
 import { requireAuth } from "../lib/auth";
-import { requireAvailableModel, requireEffort } from "../models/catalog";
+import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import { resolveTaskPick, userAiConfig } from "../ai/serverModel";
 import { AI_TASKS } from "../../lib/ai/tasks";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -41,7 +41,11 @@ export const setCustom = mutation({
   returns: v.null(),
   handler: async (ctx, { picks }) => {
     const user = await requireAuth(ctx);
-    for (const pick of picks) requireEffort(await requireAvailableModel(ctx, pick.modelId), pick.effort);
+    for (const pick of picks) {
+      const model = await requireAvailableModel(ctx, pick.modelId);
+      requireEffort(model, pick.effort);
+      requireTaskModel(model, pick.task);
+    }
     const cfg = await userAiConfig(ctx, user._id);
     // A first edit keeps what every other task was running.
     const custom = { ...(cfg?.custom ?? (await currentPicks(ctx, user._id))) };

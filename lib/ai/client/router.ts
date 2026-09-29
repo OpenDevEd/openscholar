@@ -15,7 +15,6 @@ import type {
   GenerateExtractionQuestionsInput,
   TranslateQueryInput,
   TranslatePaperContentInput,
-  GenerateScreeningResponsesInput,
 } from '../core/types'
 import type {
   BatchScreeningResult,
@@ -32,7 +31,6 @@ export type GenerateScreeningQuestionsParams = GenerateScreeningQuestionsInput
 export type GenerateExtractionQuestionsParams = GenerateExtractionQuestionsInput
 export type TranslateQueryParams = TranslateQueryInput
 export type TranslatePaperContentParams = TranslatePaperContentInput
-export type GenerateScreeningResponsesParams = GenerateScreeningResponsesInput
 export type GenerateBatchScreeningResponsesParams = BatchScreeningParams
 export type GenerateBatchTranslationsParams = BatchTranslationParams
 export type { BatchScreeningResult, BatchTranslationResult }
@@ -72,16 +70,6 @@ export const useTranslatePaperContent = createAIHook(
   clientExecutor.translatePaperContent,
   undefined,
   { task: 'translate', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
-)
-
-export const useGenerateScreeningResponses = createAIHook(
-  api.ai.actions.generateScreeningResponses,
-  clientExecutor.generateScreeningResponses,
-  (result) => ({
-    ...result,
-    responses: decodeQuestionResponseMap(result.responses),
-  }),
-  { task: 'screening', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
 )
 
 export const useBatchScreeningResponses = createAIHook(

@@ -201,6 +201,7 @@ export default function AISettingsPage() {
                 if (m) pickAll([task], m, effort);
               }}
               presets={presetPicks([task])}
+              tasks={[task]}
               trigger={
                 <button type="button" className="w-full rounded-l-xl">
                   {row}
@@ -215,6 +216,7 @@ export default function AISettingsPage() {
                 onChange={(m) => pickAll(n.tasks, m)}
                 onEffort={(effort) => pickAll(n.tasks, n.model, effort)}
                 presets={presetPicks(n.tasks)}
+                tasks={n.tasks}
                 trigger={<NodeCard model={n.model} paidBy={n.paidBy} count={n.tasks.length} interactive caption={caption(n)} />}
               />
             ) : (

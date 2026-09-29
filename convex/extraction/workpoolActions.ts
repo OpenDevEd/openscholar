@@ -12,6 +12,7 @@ import { resolveOpenRouterModel } from "../chat/provider";
 type ExtractionModel = Awaited<ReturnType<typeof resolveOpenRouterModel>>["model"];
 type ExtractionPricing = Awaited<ReturnType<typeof resolveOpenRouterModel>>["pricing"];
 import { callOptions, type Effort } from "../../lib/ai/core/call-options";
+import { decideYesNo } from "../../lib/ai/decisions";
 import { usageOf } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";
 import {
@@ -1300,4 +1301,90 @@ export async function runExtractQuestionWithContext({
       ? { ...outcome.trackingEntry, latencyMs }
       : null,
   };
+}
+
+// ponytail: Jev reads at most ~32K tokens; full text past this many characters is left out.
+const DECISION_TEXT_CHARS = 80_000;
+
+/**
+ * Yes/no questions about one paper, answered by a decision model (Jev) in one
+ * call. Jev cites nothing and gives no reasoning, so answers follow the
+ * abstract-only rules: grounded when PDFs are off, best effort when they're on.
+ */
+export async function runDecisionQuestions({
+  context,
+  questions,
+  expectedEpoch,
+  modelSlug,
+  pricing,
+}: {
+  context: PaperExtractionContext;
+  questions: ReadonlyArray<Doc<"extractionQuestions">>;
+  expectedEpoch: number;
+  modelSlug: string;
+  pricing: ExtractionPricing;
+}): Promise<QuestionBatchOutcome[]> {
+  const outcomes: QuestionBatchOutcome[] = [];
+  const asked: Array<Doc<"extractionQuestions">> = [];
+  for (const question of questions) {
+    const reason = getQuestionEntrySkipReason({ job: context.job, existingResult: getExistingResult(context, question.key), expectedEpoch });
+    if (reason) outcomes.push({ status: "skipped", questionKey: question.key, reason });
+    else asked.push(question);
+  }
+  if (asked.length === 0) return outcomes;
+  if (!context.user) throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
+
+  const abstract = isUsableAbstract(context.paper.abstract) ? context.paper.abstract!.trim() : undefined;
+  const fullText = toEvidenceUnitDocs(context.evidenceUnits).map((unit) => unit.text).join("\n\n").slice(0, DECISION_TEXT_CHARS);
+  const state = { title: context.paper.title, ...(abstract && { abstract }), ...(fullText && { fullText }) };
+  const prompts = asked.map((q) => (q.description ? `${q.question} (${q.description})` : q.question));
+
+  const startedAt = Date.now();
+  try {
+    const { answers, usage } = await decideYesNo({
+      apiKey: process.env.OPENROUTER_API_KEY!,
+      model: modelSlug,
+      state,
+      questions: prompts,
+      sessionId: String(context.job._id),
+    });
+    const credits = creditsForUsage(usage, pricing);
+    asked.forEach((question, i) => {
+      const { answer, confidence } = answers[i]!;
+      const result: ExtractionQuestionResult = {
+        questionKey: question.key,
+        answer,
+        confidence: answer === null ? Math.min(confidence, STRICT_NULL_CONFIDENCE_CAP) : confidence,
+        citations: [],
+        citationStatus: answer === null ? "insufficient_evidence" : context.pdfEnabled ? "best_effort" : "grounded",
+        retrievalDiagnostics: {
+          denseCandidates: 0, lexicalCandidates: 0, fusedCandidates: 0, rerankedCandidates: 0, validatedCitations: 0,
+          strictNull: answer === null,
+        },
+        pdfContentUsed: Boolean(fullText),
+      };
+      // The one call is charged once, on the first question it answered.
+      outcomes.push({
+        status: "completed",
+        questionKey: question.key,
+        result,
+        creditsUsed: i === 0 ? credits : 0,
+        usage: i === 0 ? usage : { costUsd: 0 },
+        trackingEntry: i === 0
+          ? {
+              feature: "extraction_question_decision",
+              usage: { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 },
+              latencyMs: Date.now() - startedAt,
+              input: truncateForTracking(JSON.stringify({ questions: prompts })),
+              output: truncateForTracking(JSON.stringify(answers)),
+              temperature: 0,
+            }
+          : null,
+      });
+    });
+  } catch (error) {
+    console.error(`[runDecisionQuestions] ${modelSlug} failed for paper ${context.paper._id}`, error);
+    for (const question of asked) outcomes.push({ status: "failed", questionKey: question.key, error: classifyUnknownError(error) });
+  }
+  return outcomes;
 }

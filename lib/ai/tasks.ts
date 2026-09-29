@@ -29,3 +29,6 @@ export const effectiveChoice = (creditsEnabled: boolean, saved: ModelChoice | un
 /** The preset a task falls back to when Custom has no live pick for it. */
 export const fallbackPreset = (saved: ModelChoice | undefined): PresetKey =>
   saved && saved !== "custom" ? saved : DEFAULT_PRESET;
+
+/** Tasks a decision model (Jev) can do: yes/no screening. */
+export const DECISION_TASKS: readonly AiTask[] = ["screening", "screenAll"];

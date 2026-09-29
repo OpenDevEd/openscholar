@@ -20,7 +20,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { isVariant } from "@/lib/ai/native-model-id";
-import { BROWSER_TASKS, CLOUD_TASKS, PRESET_KEYS, type AiTask, type PresetKey } from "@/lib/ai/tasks";
+import { BROWSER_TASKS, CLOUD_TASKS, DECISION_TASKS, PRESET_KEYS, type AiTask, type PresetKey } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { Segmented, type Ico } from "./parts";
 
@@ -60,7 +60,7 @@ export const TASK_ICONS: Record<AiTask, Ico> = {
 
 /** One tint per provider, so a colour always means the same vendor. */
 const PROVIDER_TINT: Array<[string, string]> = [
-  ["anthropic/", "#d9a27c"], ["~anthropic/", "#d9a27c"], ["~typesafe/", "#a78bfa"], ["google/", "#60a5fa"],
+  ["anthropic/", "#d9a27c"], ["~anthropic/", "#d9a27c"], ["typesafe/", "#a78bfa"], ["google/", "#60a5fa"],
   ["openai/", "#34d399"], ["deepseek/", "#fb923c"], ["z-ai/", "#2dd4bf"], ["meta-llama/", "#818cf8"],
   ["mistralai/", "#f472b6"], ["x-ai/", "#e5e7eb"], ["qwen/", "#c084fc"],
 ];
@@ -158,6 +158,7 @@ export function ModelPicker({
   provider,
   align = "end",
   presets,
+  tasks = [],
 }: {
   /** The model and effort picked now. */
   current: MapModel | undefined;
@@ -169,6 +170,8 @@ export function ModelPicker({
   align?: "start" | "end";
   /** Quick picks listed first: what each preset runs for the same tasks. */
   presets?: PresetPick[];
+  /** The tasks this pick is for; decision models (Jev) are offered only when every one can take them. */
+  tasks?: AiTask[];
 }) {
   const tm = useTranslations("settingsAi");
   const [open, setOpen] = useState(false);
@@ -176,7 +179,8 @@ export function ModelPicker({
     run();
     setOpen(false);
   };
-  const catalog = useQuery(api.models.queries.listCatalogOptions, open ? (provider ? { provider } : {}) : "skip");
+  const decisions = tasks.length > 0 && tasks.every((task) => DECISION_TASKS.includes(task));
+  const catalog = useQuery(api.models.queries.listCatalogOptions, open ? { ...(provider && { provider }), ...(decisions && { decisions }) } : "skip");
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
