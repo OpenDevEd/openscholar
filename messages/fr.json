@@ -2379,6 +2379,7 @@
         "chip": {
           "importing": "Import en cours",
           "searching": "Mise à jour de la recherche",
+          "addingPdfs": "Ajout des PDF",
           "upToDate": "À jour",
           "failed": "Échec de l'import",
           "waiting": "Pas encore importée",
@@ -2386,7 +2387,8 @@
         },
         "steps": {
           "import": "Importer les notices",
-          "search": "Mettre à jour la recherche"
+          "search": "Mettre à jour la recherche",
+          "pdfs": "Ajouter les PDF"
         },
         "importProgress": "Progression de l'import",
         "searchProgress": "Progression de la mise à jour de la recherche",
@@ -2396,6 +2398,15 @@
         "searchSoFar": "notices rendues consultables pour l'instant",
         "started": "Commencé à {time}",
         "minutesLeft": "{minutes, plural, one {# min restante} other {# min restantes}}",
+        "hoursLeft": "{hours, number} h restantes",
+        "pdfProgress": "Progression des PDF",
+        "pdfsOfTotal": "sur {total, number} PDF",
+        "pdfsSoFar": "PDF jusqu’ici",
+        "pdfsAdded": "{count, number} ajoutés",
+        "pdfsMissed": "{count, number} impossibles à télécharger",
+        "pdfsStoppedAt": "PDF arrêtés à {time}",
+        "pdfsStillSearchable": "Toutes les notices restent consultables. Relancer reprend après le dernier PDF ajouté.",
+        "retryPdfs": "Relancer les PDF",
         "underAMinute": "Moins d'une minute restante",
         "searchable": "notices consultables",
         "changed": "{count, plural, one {# modifiée} other {# modifiées}} lors du dernier import, vérifié {when}",

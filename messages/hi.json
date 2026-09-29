@@ -2379,6 +2379,7 @@
         "chip": {
           "importing": "आयात हो रहा है",
           "searching": "खोज अपडेट हो रही है",
+          "addingPdfs": "PDF जोड़े जा रहे हैं",
           "upToDate": "अद्यतन",
           "failed": "आयात विफल",
           "waiting": "अभी आयात नहीं हुआ",
@@ -2386,7 +2387,8 @@
         },
         "steps": {
           "import": "रिकॉर्ड आयात करें",
-          "search": "खोज अपडेट करें"
+          "search": "खोज अपडेट करें",
+          "pdfs": "PDF जोड़ें"
         },
         "importProgress": "आयात की प्रगति",
         "searchProgress": "खोज अपडेट की प्रगति",
@@ -2396,6 +2398,15 @@
         "searchSoFar": "रिकॉर्ड अब तक खोजने योग्य हुए",
         "started": "{time} पर शुरू हुआ",
         "minutesLeft": "{minutes, plural, one {# मिनट बाकी} other {# मिनट बाकी}}",
+        "hoursLeft": "{hours, number} घंटे बाकी",
+        "pdfProgress": "PDF प्रगति",
+        "pdfsOfTotal": "{total, number} PDF में से",
+        "pdfsSoFar": "अब तक PDF",
+        "pdfsAdded": "{count, number} जोड़े गए",
+        "pdfsMissed": "{count, number} डाउनलोड नहीं हो सके",
+        "pdfsStoppedAt": "PDF {time} पर रुके",
+        "pdfsStillSearchable": "हर रिकॉर्ड खोजने योग्य रहता है। दोबारा चलाने पर आखिरी जोड़े गए PDF के बाद से काम जारी रहता है।",
+        "retryPdfs": "PDF दोबारा चलाएँ",
         "underAMinute": "एक मिनट से कम बाकी",
         "searchable": "रिकॉर्ड खोजने योग्य",
         "changed": "पिछले आयात में {count, plural, one {# बदला} other {# बदले}}, {when} जाँचा गया",
