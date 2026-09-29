@@ -247,7 +247,8 @@
 				"path": "sources[].provider",
 				"values": [
 					"zotero",
-					"openalex"
+					"openalex",
+					"openscholar"
 				]
 			},
 			{
