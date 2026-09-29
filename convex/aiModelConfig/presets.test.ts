@@ -78,6 +78,13 @@ describe("custom", () => {
     expect(await runsOn("chat")).toEqual({ modelId: flash });
   });
 
+  it("runs a row saved before presets as it will after the migration", async () => {
+    const { t, admin, flash, userId, runsOn } = await setup();
+    await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "fast", task: "chat", modelId: flash });
+    await t.run((ctx) => ctx.db.insert("userAiConfig", { userId, serverPreset: "fast", updatedAt: 1 }));
+    expect(await runsOn("chat")).toEqual({ modelId: flash });
+  });
+
   it("converts a row saved before presets before changing it", async () => {
     const { t, user, mine, userId, runsOn } = await setup();
     await t.run((ctx) => ctx.db.insert("userAiConfig", { userId, serverPreset: "custom", serverModelId: mine, updatedAt: 1 }));

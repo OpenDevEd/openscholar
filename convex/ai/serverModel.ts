@@ -58,6 +58,11 @@ export function fromLegacy(cfg: Doc<"userAiConfig">) {
   return { ...legacy, serverPreset: undefined, serverModelId: undefined } as Partial<Doc<"userAiConfig">>;
 }
 
+/** A row as it reads after migration, so a row saved before presets resolves the same before it's migrated. */
+export function withLegacy(cfg: Doc<"userAiConfig"> | null) {
+  return cfg && cfg.choice === undefined ? { ...cfg, ...fromLegacy(cfg) } : cfg;
+}
+
 /** The user's row, converted first if it was saved before presets. */
 export async function currentUserAiConfig(ctx: MutationCtx, userId: Id<"users">) {
   const cfg = await userAiConfig(ctx, userId);
@@ -71,7 +76,7 @@ export async function currentUserAiConfig(ctx: MutationCtx, userId: Id<"users">)
  * the default preset's. Null only when nothing is configured at all.
  */
 export async function resolveTaskPick(ctx: QueryCtx | MutationCtx, userId: Id<"users">, task: AiTask): Promise<TaskPick | null> {
-  const cfg = await userAiConfig(ctx, userId);
+  const cfg = withLegacy(await userAiConfig(ctx, userId));
   const choice = cfg?.choice ?? DEFAULT_PRESET;
   const picked = choice === "custom" ? await livePick(ctx, cfg?.custom?.[task]) : await presetPick(ctx, choice, task);
   return picked ?? (choice === DEFAULT_PRESET ? null : await presetPick(ctx, DEFAULT_PRESET, task));

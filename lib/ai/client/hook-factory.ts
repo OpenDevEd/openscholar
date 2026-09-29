@@ -79,7 +79,6 @@ function useKeyConfigs(isAuthenticated: boolean, creditsEnabled: boolean) {
     return {
       configFor,
       onCredits: isAuthenticated && creditsEnabled && (loading || choice !== 'custom'),
-      anyKey: Object.values(keys).some(Boolean),
     }
   }, [provider, apiKey, providerApiKeys, settings.data, settings.settlement, presets, isAuthenticated, creditsEnabled])
 }
@@ -98,7 +97,9 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
     const { phase } = useAuthReadiness()
     const isAuthenticated = phase === 'authenticated'
     const creditsEnabled = useFeatureFlag("credits.enabled")
-    const { configFor, onCredits, anyKey } = useKeyConfigs(isAuthenticated, creditsEnabled)
+    const { configFor, onCredits } = useKeyConfigs(isAuthenticated, creditsEnabled)
+    // Setup checks the task this hook usually runs; a search hook's task depends on its call.
+    const defaultTask = typeof options.task === 'function' ? options.task({} as TParams) : options.task
     // Presets run on credits; paying with your own key is part of Custom.
     const apiKeyMode = onCredits ? 'credits' : chosenMode
     const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, {})
@@ -106,11 +107,11 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
       () =>
         resolveModeConfigurability({
           mode: apiKeyMode,
-          hasApiKey: anyKey,
+          hasApiKey: Boolean(configFor(defaultTask).apiKey),
           creditsEnabled,
           isAuthenticated,
         }),
-      [apiKeyMode, creditsEnabled, anyKey, isAuthenticated]
+      [apiKeyMode, creditsEnabled, configFor, defaultTask, isAuthenticated]
     )
     const convexAction = useAction(actionRef)
 
