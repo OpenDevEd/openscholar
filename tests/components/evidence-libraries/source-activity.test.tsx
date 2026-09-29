@@ -70,7 +70,16 @@ describe("source activity band", () => {
 
   it("leaves the PDF step out for a source without PDFs", () => {
     renderBand({ ...base, pdfs: null, state: "running", phase: "import", done: 10, total: 100, startedAt: "2026-09-29T01:00:00.000Z", minutesLeft: 5 });
-
     expect(screen.queryByText("Add PDFs")).not.toBeInTheDocument();
+  });
+
+  it("leaves the PDF step out for an up-to-date source without PDFs", () => {
+    renderBand({ ...base, pdfs: null, state: "succeeded" });
+    expect(screen.queryByText("Add PDFs")).not.toBeInTheDocument();
+  });
+
+  it("shows the PDF step for a run adding PDFs even when it sent no counts", () => {
+    renderBand({ ...base, pdfs: undefined, state: "running", phase: "pdfs", done: 10, total: 100, startedAt: "2026-09-29T01:00:00.000Z", minutesLeft: 5 });
+    expect(screen.getByText("Add PDFs")).toBeInTheDocument();
   });
 });

@@ -89,3 +89,9 @@ it("accepts a source adding PDFs and one that stopped while adding them", async 
 
   expect(await saved()).toMatchObject([{ sources: [{ phase: "pdfs", pdfs: { added: 90 } }, { failedIn: "pdfs" }] }]);
 });
+
+it("refuses PDF counts that are not whole numbers from zero up", async () => {
+  const { post } = await setup();
+  const response = await post("2026-09-27T12:10:00.000Z", [{ ...upToDate, pdfs: { added: -1, missed: 0.5 } }]);
+  expect(response.status).toBe(400);
+});

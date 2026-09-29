@@ -128,12 +128,16 @@ function Connector({ lit }: { lit: boolean }) {
 function PhaseTrack({ status }: { status: SourceStatus | null }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources.status");
   const [importState, searchState, pdfState] = phaseStates(status);
+  const addsPdfs =
+    Boolean(status?.pdfs) ||
+    (status?.state === "running" && status.phase === "pdfs") ||
+    (status?.state === "failed" && status.failedIn === "pdfs");
   return (
     <div className="flex items-center gap-2">
       <Phase label={t("steps.import")} icon={Database} state={importState} compact={Boolean(status?.pdfs)} />
       <Connector lit={importState === "done"} />
-      <Phase label={t("steps.search")} icon={Search} state={searchState} compact={Boolean(status?.pdfs)} />
-      {status?.pdfs ? (
+      <Phase label={t("steps.search")} icon={Search} state={searchState} compact={addsPdfs} />
+      {addsPdfs ? (
         <>
           <Connector lit={searchState === "done"} />
           <Phase label={t("steps.pdfs")} icon={FileText} state={pdfState} compact />
