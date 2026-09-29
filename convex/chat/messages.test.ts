@@ -2276,3 +2276,24 @@ describe("retired chat model selection", () => {
     expect((await t.query(internal.chat.threads.getModelForThread, {threadId}))?.modelSupportedParameters).toBeNull();
   });
 });
+
+describe("chat.messages — reasoning effort", () => {
+  it("sets the chat's effort only to a level its model takes, and a model swap takes the shortcut's effort", async () => {
+    const t = createTestConvex();
+    const {userId, jobId, threadId} = await seedUserAndChatJob(t);
+    const {modelId} = await seedModelAndCredits(t, userId);
+    await t.run(ctx => ctx.db.patch(modelId, {reasoningEfforts: ["low", "medium", "high"], defaultEffort: "medium"}));
+    const caller = asCaller(t, "c_msg");
+
+    await caller.mutation(api.chat.messages.swapModel, {threadId, modelId, effort: "high"});
+    expect(await t.run(ctx => ctx.db.get(jobId))).toMatchObject({chatModelId: modelId, chatEffort: "high"});
+
+    await caller.mutation(api.chat.messages.setChatEffort, {threadId, effort: "low"});
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.chatEffort).toBe("low");
+    await expect(caller.mutation(api.chat.messages.setChatEffort, {threadId, effort: "max"})).rejects.toThrow(/doesn't take max/);
+
+    // A plain swap runs the model at its default.
+    await caller.mutation(api.chat.messages.swapModel, {threadId, modelId});
+    expect((await t.run(ctx => ctx.db.get(jobId)))?.chatEffort).toBeUndefined();
+  });
+});

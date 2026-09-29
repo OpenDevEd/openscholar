@@ -27,10 +27,12 @@ import { getProviderIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import type { AIProvider } from "@/lib/types/ai.types";
 import type { ChatModelRow } from "./chat-model-types";
+import type { Effort } from "@/lib/ai/core/call-options";
 
 interface ComposerModelPickerProps {
   value: Id<"models"> | null;
-  onChange: (id: Id<"models">) => void;
+  /** A preset shortcut passes the effort it runs chat at. */
+  onChange: (id: Id<"models">, effort?: Effort) => void;
   disabled?: boolean;
   models: ChatModelRow[];
 }
@@ -92,9 +94,9 @@ export function ComposerModelPicker({
   const presetRows = useMemo(
     () =>
       (presets ?? []).flatMap(({ preset, tasks }) => {
-        const chat = tasks.find((r) => r.task === "chat")?.model;
-        const m = chat ? sortedModels.find((x) => x._id === chat._id) : undefined;
-        return m ? [{ label: tp(`presets.${preset}`), m }] : [];
+        const chat = tasks.find((r) => r.task === "chat");
+        const m = chat?.model ? sortedModels.find((x) => x._id === chat.model!._id) : undefined;
+        return m ? [{ label: tp(`presets.${preset}`), m, effort: chat?.effort ?? undefined }] : [];
       }),
     [presets, sortedModels, tp],
   );
@@ -168,7 +170,7 @@ export function ComposerModelPicker({
             {presetRows.length > 0 ? (
               <>
                 <CommandGroup heading={t("chatModelPresets")}>
-                  {presetRows.map(({ label, m }) => {
+                  {presetRows.map(({ label, m, effort }) => {
                     const Icon = getProviderIcon(m.provider as AIProvider);
                     const isSelected = m._id === value;
                     return (
@@ -176,7 +178,7 @@ export function ComposerModelPicker({
                         key={`preset-${m._id}`}
                         value={`Preset ${label} ${stripProviderPrefix(m.name)}`}
                         onSelect={() => {
-                          onChange(m._id);
+                          onChange(m._id, effort);
                           setOpen(false);
                         }}
                         data-preset-option={label}

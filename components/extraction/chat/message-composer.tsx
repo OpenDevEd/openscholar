@@ -8,6 +8,8 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowUpIcon, SquareIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ComposerModelPicker } from "./composer-model-picker";
+import { ComposerEffortPicker } from "./composer-effort-picker";
+import type { Effort } from "@/lib/ai/core/call-options";
 import { WebSearchToggle } from "./web-search-toggle";
 import type { ChatModelRow } from "./chat-model-types";
 import { usePapersContext } from "./papers-context";
@@ -63,6 +65,7 @@ export function MessageComposer({
   );
   const abortGeneration = useMutation(api.chat.messages.abortGeneration);
   const swapModel = useMutation(api.chat.messages.swapModel);
+  const setChatEffort = useMutation(api.chat.messages.setChatEffort);
   const bulkSetChatPapers = useMutation(
     api.chat.chatPapers.bulkSetChatPapers,
   ).withOptimisticUpdate((localStore, args) => {
@@ -112,8 +115,8 @@ export function MessageComposer({
   }, [abortGeneration, generationAttemptId, stopPending, threadId]);
 
   const handleModelChange = useCallback(
-    (modelId: Id<"models">) => {
-      void swapModel({ threadId, modelId })
+    (modelId: Id<"models">, effort?: Effort) => {
+      void swapModel({ threadId, modelId, ...(effort && { effort }) })
         .then(() => toast.success(t("chatModelChanged")))
         .catch((err) => {
           appToast.error(t("chatFailedMessage"));
@@ -121,6 +124,16 @@ export function MessageComposer({
         });
     },
     [swapModel, threadId, appToast, t],
+  );
+
+  const handleEffortChange = useCallback(
+    (effort: Effort) => {
+      void setChatEffort({ threadId, effort }).catch((err) => {
+        appToast.error(t("chatFailedMessage"));
+        console.error("set chat effort failed", err);
+      });
+    },
+    [setChatEffort, threadId, appToast, t],
   );
 
   const handleKeyDown = useCallback(
@@ -280,6 +293,12 @@ export function MessageComposer({
               onChange={handleModelChange}
               disabled={jobIsGenerating}
               models={chatModels}
+            />
+            <ComposerEffortPicker
+              model={selectedModel}
+              value={job.chatEffort}
+              onChange={handleEffortChange}
+              disabled={jobIsGenerating}
             />
             <WebSearchToggle
               threadId={threadId}

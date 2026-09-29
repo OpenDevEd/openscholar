@@ -39,7 +39,8 @@ import type { ToolSet } from "ai";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
-import { requireAvailableModel } from "../models/catalog";
+import { requireAvailableModel, requireEffort } from "../models/catalog";
+import { effortValidator } from "../aiModelConfig/validators";
 import { paperChat } from "./agent";
 import { authorizeThreadAccess } from "./auth";
 import { resolveOpenRouterModel } from "./provider";
@@ -1367,21 +1368,31 @@ export const clearThread = mutation({
   },
 });
 
+/** Switch the chat's model. A preset shortcut passes its effort; otherwise the model runs at its default. */
 export const swapModel = mutation({
   args: {
     threadId: v.string(),
     modelId: v.id("models"),
+    effort: v.optional(effortValidator),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, modelId }) => {
+  handler: async (ctx, { threadId, modelId, effort }) => {
     const { job } = await authorizeThreadAccess(ctx, threadId);
-    await requireAvailableModel(ctx, modelId);
-    await ctx.db.patch(job._id, {
-      chatModelId: modelId,
-      // The old effort may not suit the new model; it runs at its default.
-      chatEffort: undefined,
-      updatedAt: Date.now(),
-    });
+    requireEffort(await requireAvailableModel(ctx, modelId), effort);
+    await ctx.db.patch(job._id, { chatModelId: modelId, chatEffort: effort, updatedAt: Date.now() });
+    return null;
+  },
+});
+
+/** Set the chat's reasoning effort; it applies from the next message. */
+export const setChatEffort = mutation({
+  args: { threadId: v.string(), effort: effortValidator },
+  returns: v.null(),
+  handler: async (ctx, { threadId, effort }) => {
+    const { job } = await authorizeThreadAccess(ctx, threadId);
+    if (!job.chatModelId) throw createError("VALIDATION_ERROR", "Pick a model for this chat first.");
+    requireEffort(await requireAvailableModel(ctx, job.chatModelId), effort);
+    await ctx.db.patch(job._id, { chatEffort: effort, updatedAt: Date.now() });
     return null;
   },
 });
