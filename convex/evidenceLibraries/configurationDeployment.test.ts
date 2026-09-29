@@ -28,6 +28,8 @@ vi.mock("./domainEgressNode", () => ({
 const ENCRYPTION_KEY = "33".repeat(32);
 const APPLICATION_UUID = "app000000000000000000001";
 const COOLIFY_ORIGIN = "http://coolify:8080";
+const STORAGE_ORIGIN = "https://storage.example.test";
+const MAX_PDF_BYTES = 52_428_800;
 const RUNTIME_COMMIT = "a".repeat(40);
 const NEWER_COMMIT = "b".repeat(40);
 const NEWER_RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"f".repeat(64)}`;
@@ -119,6 +121,17 @@ function createRuntimeNetwork(input: {
     ),
   ];
   const deploymentUuid = "deployment-configuration-65";
+  let storageDown: "unreachable" | "failing" | null = null;
+  // Buckets made before JPEG covers allow PDFs and PNGs only.
+  const buckets = new Map<string, Record<string, unknown>>();
+  const bucket = (name: string) =>
+    buckets.get(name) ?? {
+      id: name,
+      name,
+      public: name.startsWith("el-public-"),
+      file_size_limit: MAX_PDF_BYTES,
+      allowed_mime_types: ["application/pdf", "image/png"],
+    };
 
   const application = () => ({
     uuid: APPLICATION_UUID,
@@ -165,6 +178,17 @@ function createRuntimeNetwork(input: {
       const body = init?.body ? JSON.parse(String(init.body)) : null;
       requests.push({ body, method, url });
 
+      if (url.origin === STORAGE_ORIGIN) {
+        if (storageDown === "unreachable") throw new TypeError("fetch failed");
+        if (storageDown === "failing") {
+          return jsonResponse({ message: "Service Unavailable" }, 503);
+        }
+        const name = decodeURIComponent(
+          url.pathname.replace("/storage/v1/bucket/", ""),
+        );
+        if (method === "PUT") buckets.set(name, body);
+        return jsonResponse(bucket(name));
+      }
       if (url.origin === COOLIFY_ORIGIN) {
         // The address check asks what Coolify serves. Nothing but this
         // library, which never offers its own address as a candidate.
@@ -413,6 +437,10 @@ function createRuntimeNetwork(input: {
   return {
     fetchImpl,
     requests,
+    buckets,
+    setStorageDown(down: typeof storageDown) {
+      storageDown = down;
+    },
     environments,
     publicHealthMarkers,
     get commit() {
@@ -1593,6 +1621,15 @@ describe("Evidence Library configuration deployment", () => {
     expect(writes[0]).toBe(`/api/v1/applications/${APPLICATION_UUID}`);
     expect(writes.slice(1).every((path) => path.endsWith("/envs"))).toBe(true);
     expect(network.commit).toBe(NEWER_COMMIT);
+    // The new software stores JPEG covers, so the buckets must take them.
+    expect(
+      [...network.buckets.values()].map(
+        ({ allowed_mime_types }) => allowed_mime_types,
+      ),
+    ).toEqual([
+      ["application/pdf", "image/jpeg", "image/png"],
+      ["application/pdf", "image/jpeg", "image/png"],
+    ]);
     expect(
       network.environments.find(({ key }) => key === "SOURCE_COMMIT")?.value,
     ).toBe(NEWER_COMMIT);
@@ -1631,6 +1668,61 @@ describe("Evidence Library configuration deployment", () => {
       status: "succeeded",
       receipt: { runtimeCommit: NEWER_COMMIT },
     });
+  });
+
+  it.each(["unreachable", "failing"] as const)("waits out %s storage before a software update touches the site", async (outage) => {
+    const fixture = await createReadyLibrary(`storage-${outage}`);
+    const activeRevision = await fixture.t.run(async (ctx) => {
+      const library = await ctx.db.get(fixture.created.libraryId);
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: NEWER_COMMIT,
+        latestImage: NEWER_RUNTIME_IMAGE,
+        changes: [{ sha: NEWER_COMMIT, message: "feat: JPEG covers" }],
+        checkedAt: Date.now(),
+      });
+      return await ctx.db.get(library!.activeRevisionId!);
+    });
+    const started = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.startRuntimeUpdate,
+      { libraryId: fixture.created.libraryId },
+    );
+    const operation = await fixture.t.run((ctx) =>
+      ctx.db.get(started.operationId),
+    );
+    const network = createRuntimeNetwork({
+      libraryId: fixture.created.libraryId,
+      publicAddress: fixture.created.publicAddress,
+      revisionKey: activeRevision!.revisionKey,
+    });
+    vi.stubGlobal("fetch", network.fetchImpl);
+    const actionArgs = {
+      libraryId: fixture.created.libraryId,
+      operationId: started.operationId,
+      attemptToken: operation!.configurationAttemptToken!,
+      attemptCount: operation!.attemptCount,
+    };
+
+    network.setStorageDown(outage);
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).toEqual({ pollCount: 1, status: "running" });
+    expect(network.commit).toBe(RUNTIME_COMMIT);
+
+    network.setStorageDown(null);
+    expect(
+      await fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        actionArgs,
+      ),
+    ).toMatchObject({ status: "running" });
+    expect(network.commit).toBe(NEWER_COMMIT);
+    expect(network.buckets.size).toBe(2);
   });
 
   it("publishes changes the running software cannot read on the latest release, in the same step", async () => {

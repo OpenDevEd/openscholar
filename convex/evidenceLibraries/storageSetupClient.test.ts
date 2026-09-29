@@ -179,10 +179,12 @@ describe("Supabase storage setup client", () => {
     ).toEqual([
       expectedBucket(names.privateBucket, false, [
         "application/pdf",
+        "image/jpeg",
         "image/png",
       ]),
       expectedBucket(names.publicBucket, true, [
         "application/pdf",
+        "image/jpeg",
         "image/png",
       ]),
     ]);
@@ -200,10 +202,12 @@ describe("Supabase storage setup client", () => {
     const server = createStorageServer([
       expectedBucket(names.privateBucket, false, [
         "application/pdf",
+        "image/jpeg",
         "image/png",
       ]),
       expectedBucket(names.publicBucket, true, [
         "application/pdf",
+        "image/jpeg",
         "image/png",
       ]),
     ]);
@@ -220,10 +224,12 @@ describe("Supabase storage setup client", () => {
     const server = createStorageServer([
       expectedBucket(names.privateBucket, false, [
         "application/pdf",
+        "image/jpeg",
         "image/png",
       ]),
       expectedBucket(names.publicBucket, true, [
         "application/pdf",
+        "image/jpeg",
         "image/png",
       ]),
     ]);
@@ -253,6 +259,7 @@ describe("Supabase storage setup client", () => {
       [
         expectedBucket(names.privateBucket, false, [
           "application/pdf",
+          "image/jpeg",
           "image/png",
         ]),
       ],
@@ -291,6 +298,7 @@ describe("Supabase storage setup client", () => {
       {
         body: expectedBucket(names.privateBucket, false, [
           "application/pdf",
+          "image/jpeg",
           "image/png",
         ]),
         path: `/storage/v1/bucket/${names.privateBucket}`,
@@ -298,6 +306,7 @@ describe("Supabase storage setup client", () => {
       {
         body: expectedBucket(names.publicBucket, true, [
           "application/pdf",
+          "image/jpeg",
           "image/png",
         ]),
         path: `/storage/v1/bucket/${names.publicBucket}`,
@@ -315,6 +324,7 @@ describe("Supabase storage setup client", () => {
         expectedBucket(names.privateBucket, true, ["text/plain"]),
         expectedBucket(names.publicBucket, true, [
           "application/pdf",
+          "image/jpeg",
           "image/png",
         ]),
       ],

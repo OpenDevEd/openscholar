@@ -50,6 +50,10 @@ import {
   buildEvidenceLibraryLoginPageUrl,
 } from "./runtimeConfiguration";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
+import {
+  reconcileLibraryBuckets,
+  StorageSetupError,
+} from "./storageSetupClient";
 import type { RuntimeImageReference } from "./runtimeImageRegistry";
 
 const invalidConfiguration = (message: string) =>
@@ -126,6 +130,21 @@ export const runConfigurationDeployment = internalAction({
               row.sectionKey === "features" && featuresAiEnabled(row.payload),
           ),
         );
+        // Buckets keep the policy they were created with. A deployment brings
+        // them to the current one first, so new software can store new file
+        // types, such as JPEG covers.
+        if (prepared.requiresDeployment) {
+          await reconcileLibraryBuckets({
+            storageUrl: prepared.storage.url,
+            serviceRoleKey: decrypt(
+              prepared.storage.encryptedServiceRoleKey,
+              encryptionKey,
+            ),
+            privateBucket: prepared.storage.privateBucket,
+            publicBucket: prepared.storage.publicBucket,
+            maxPdfBytes: prepared.storage.maxPdfBytes,
+          });
+        }
       }
       const verifierUrl = requireRuntimeHttpsOrigin(
         "EL_RUNTIME_VERIFIER_URL",
@@ -713,12 +732,16 @@ export const runConfigurationDeployment = internalAction({
       );
     } catch (error) {
       // Coolify goes quiet for a moment while it redeploys an app or reloads
-      // its proxy for a new domain. The run is safe to repeat, so an outage
-      // waits on the same bounded poll as readiness instead of failing.
+      // its proxy for a new domain, and storage can drop a request. The run is
+      // safe to repeat, so an outage waits on the same bounded poll as
+      // readiness instead of failing.
       if (
         isRetryableReadinessError(error) ||
         (error instanceof CoolifyClientError &&
-          error.code === "COOLIFY_UNAVAILABLE")
+          error.code === "COOLIFY_UNAVAILABLE") ||
+        (error instanceof StorageSetupError &&
+          (error.code === "STORAGE_UNAVAILABLE" ||
+            (error.status ?? 0) >= 500))
       ) {
         try {
           const retry = await ctx.runMutation(
@@ -767,6 +790,7 @@ export const runConfigurationDeployment = internalAction({
       const safeError =
         error instanceof CoolifyClientError ||
         error instanceof ReadinessClientError ||
+        error instanceof StorageSetupError ||
         error instanceof PlatformEmbeddingKeyMissingError
           ? { code: error.code, message: error.message }
           : error instanceof ConfigurationAssemblyError
