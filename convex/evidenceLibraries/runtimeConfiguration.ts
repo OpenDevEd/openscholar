@@ -163,7 +163,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
         : undefined,
     ),
   });
-  const runtimeConfigJson = JSON.stringify(runtimeConfig);
+  const runtimeConfigJson = runtimeConfigText(runtimeConfig);
   return {
     runtimeConfig,
     runtimeConfigJson,
@@ -171,4 +171,13 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       .update(runtimeConfigJson)
       .digest("hex"),
   };
+}
+
+/**
+ * The configuration as the runtime receives it. Coolify writes it into a build-time .env file inside single quotes
+ * and cannot escape one there, so a library whose text had an apostrophe could not be deployed. Apostrophes go as
+ * JSON's \u0027 escape, which parses to the same text.
+ */
+export function runtimeConfigText(runtimeConfig: unknown) {
+  return JSON.stringify(runtimeConfig).replaceAll("'", "\\u0027");
 }
