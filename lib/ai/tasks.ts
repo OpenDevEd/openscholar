@@ -1,3 +1,5 @@
+import { isDecisionModel } from "./decisions";
+
 /**
  * The AI tasks OpenScholar routes to models. Each preset sets a model and an
  * effort for every task (`aiModelConfig` key `preset.<preset>.<task>`); Custom
@@ -32,3 +34,14 @@ export const fallbackPreset = (saved: ModelChoice | undefined): PresetKey =>
 
 /** Tasks a decision model (Jev) can do: yes/no screening. */
 export const DECISION_TASKS: readonly AiTask[] = ["screening", "screenAll"];
+
+/**
+ * Whether a model can do a task: a decision model (Jev) only screens, and every
+ * task but chat asks for a JSON-schema answer, which needs `structured_outputs`
+ * (`response_format` alone is plain JSON mode). The server enforces it; pickers
+ * filter with it.
+ */
+export function usableFor(model: { modelId: string; supportedParameters?: string[] }, task: AiTask) {
+  if (isDecisionModel(model.modelId)) return DECISION_TASKS.includes(task);
+  return task === "chat" || model.supportedParameters?.includes("structured_outputs") === true;
+}

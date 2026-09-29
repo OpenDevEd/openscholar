@@ -508,8 +508,6 @@
     "usePdfsTitle": "PDFを使用",
     "usePdfsDescription": "より豊かな抽出のためにPDF全文を含めます。それ以外は要約のみです。",
     "usePdfsAriaLabel": "抽出にPDFコンテンツを含める",
-    "modelPickerLabel": "チャットモデル",
-    "modelPickerPlaceholder": "モデルを選択",
     "pleaseSelectModel": "チャットモデルを選択してください",
     "abstractMissingTitle": "一部の論文に抄録がありません",
     "abstractMissingDescription": "選択した{total}件の論文のうち{missing}件に抄録がありません。これらの論文についてはチャットの回答が役に立たない場合があります。",
@@ -767,7 +765,6 @@
       "presetMax": "最大",
       "liveAnnouncement": "論文数を {count, number} 件に設定しました"
     },
-    "chatModelPresets": "Presets",
     "chatRetryResponseWith": "{model} で再生成",
     "chatRetryWithPrefix": "再生成に使うモデル",
     "chatRetryLoadingMessages": "会話を読み込んでいます…",
@@ -777,8 +774,6 @@
     "chatHintEnter": "↵ 送信",
     "chatHintShiftEnter": "⇧↵ 改行",
     "chatModelPickerTrigger": "モデルを変更",
-    "chatModelPickerSearch": "モデルを検索…",
-    "chatModelPickerEmpty": "モデルが見つかりません。",
     "chatModelPickerLoading": "モデルを読み込んでいます…",
     "chatJumpToLatest": "最新へ移動",
     "chatJumpToLatestWithCount": "{count, plural, other {# 件の新しいメッセージ}}",
@@ -2839,10 +2834,6 @@
       "modelsLabel": "Available models",
       "modelsHint": "Select every model readers may use.",
       "addModel": "モデルを追加",
-      "searchModels": "OpenRouterモデルを検索…",
-      "loadingModels": "OpenRouterモデルを読み込み中…",
-      "loadMoreModels": "さらにモデルを読み込む",
-      "noModels": "モデルが見つかりません。",
       "orderLabel": "Model order",
       "orderHint": "Drag the selected models into the order shown in the library.",
       "modelsEmpty": "Select at least one model.",
@@ -3286,9 +3277,7 @@
       "local": "自分のキー"
     },
     "yourBrowser": "あなたのブラウザ",
-    "yourKey": "あなたのキー",
     "credits": "クレジット",
-    "taskCount": "{count, plural, other {# 件のタスク}}",
     "apiKey": "{provider} API キー",
     "getKey": "{provider} のキーを取得",
     "keyProvider": "キーのプロバイダー",
@@ -3333,5 +3322,18 @@
       "xhigh": "最高",
       "max": "最大"
     }
+  },
+  "modelPicker": {
+    "vendors": "提供元",
+    "all": "すべて",
+    "other": "その他",
+    "model": "モデル",
+    "intelligence": "知能",
+    "context": "コンテキスト",
+    "cost": "100万あたり 入力 / 出力",
+    "free": "無料",
+    "source": "Artificial Analysis の Intelligence Index",
+    "back": "モデル一覧に戻る",
+    "default": "デフォルト"
   }
 }

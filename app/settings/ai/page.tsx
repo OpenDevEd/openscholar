@@ -29,9 +29,10 @@ import type { Effort } from "@/lib/ai/core/call-options";
 import type { AIKeyMode, AIProvider } from "@/lib/types/ai.types";
 import { Enter, Segmented, type Ico } from "@/components/settings/parts";
 import {
-  MapSummary, ModelPicker, NodeCard, PresetSwitch, RoutingMap, toMapModel, usePresetModels, useRouting, ZONE_LABEL,
+  MapSummary, NodeCard, PresetSwitch, RoutingMap, toMapModel, usePresetModels, useRouting, ZONE_LABEL,
   type Hover, type MapModel, type MapNode, type PresetPick,
 } from "@/components/settings/model-map";
+import { ModelPicker } from "@/components/models/model-picker";
 
 const PROVIDERS: Array<{ id: KeyProvider; icon: Ico }> = [
   { id: "openai", icon: OpenAIIcon },
@@ -138,27 +139,20 @@ export default function AISettingsPage() {
     }
     if (requireSignIn()) choose({ choice: next }).catch(fail("model choice"));
   };
-  const caption = (n: MapNode) => {
+  // What a card says in place of its price: only what the map itself doesn't show.
+  const note = (n: MapNode) => {
     if (n.paidBy === "key") {
-      const key = keyFor(n.model.id, keys);
-      return key ? (
-        <>
-          <KeyRound className="size-3" /> {t("yourKey")}
-          <span className="text-muted-foreground/60">{t("taskCount", { count: n.tasks.length })}</span>
-        </>
-      ) : (
+      return keyFor(n.model.id, keys) ? null : (
         <span className="flex items-center gap-1 text-destructive">
           <KeyRound className="size-3" /> {t("needsKey", { provider: getProviderConfig(keyToAdd(n.model.id)).name })}
         </span>
       );
     }
-    const fallsBack = pay === "smart" && n.tasks.some(onBrowser) && keyFor(n.model.id, keys);
-    return (
-      <>
-        <Coins className="size-3" /> {fallsBack ? t("pay.smart") : t("credits")}
-        <span className="text-muted-foreground/60">{t("taskCount", { count: n.tasks.length })}</span>
-      </>
-    );
+    return pay === "smart" && n.tasks.some(onBrowser) && keyFor(n.model.id, keys) ? (
+      <span className="flex items-center gap-1">
+        <Coins className="size-3" /> {t("pay.smart")}
+      </span>
+    ) : null;
   };
 
   const ready =
@@ -195,11 +189,8 @@ export default function AISettingsPage() {
             <ModelPicker
               align="start"
               current={modelOf(task) ?? undefined}
-              onChange={(m) => pickAll([task], m)}
-              onEffort={(effort) => {
-                const m = modelOf(task);
-                if (m) pickAll([task], m, effort);
-              }}
+              onChange={(m, effort) => pickAll([task], m, effort)}
+              efforts
               presets={presetPicks([task])}
               tasks={[task]}
               trigger={
@@ -213,14 +204,14 @@ export default function AISettingsPage() {
             const card = isCustom ? (
               <ModelPicker
                 current={n.model}
-                onChange={(m) => pickAll(n.tasks, m)}
-                onEffort={(effort) => pickAll(n.tasks, n.model, effort)}
+                onChange={(m, effort) => pickAll(n.tasks, m, effort)}
+                efforts
                 presets={presetPicks(n.tasks)}
                 tasks={n.tasks}
-                trigger={<NodeCard model={n.model} paidBy={n.paidBy} count={n.tasks.length} interactive caption={caption(n)} />}
+                trigger={<NodeCard model={n.model} paidBy={n.paidBy} interactive note={note(n)} />}
               />
             ) : (
-              <NodeCard model={n.model} paidBy={n.paidBy} count={n.tasks.length} caption={caption(n)} />
+              <NodeCard model={n.model} paidBy={n.paidBy} note={note(n)} />
             );
             return n.id === routing.firstKey ? (
               <div className="relative">

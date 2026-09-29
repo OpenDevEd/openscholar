@@ -508,8 +508,6 @@
     "usePdfsTitle": "Use PDFs",
     "usePdfsDescription": "Include full PDF content for richer extraction. Abstract-only otherwise.",
     "usePdfsAriaLabel": "Include PDF content in extraction",
-    "modelPickerLabel": "Chat model",
-    "modelPickerPlaceholder": "Select a model",
     "pleaseSelectModel": "Please select a chat model",
     "abstractMissingTitle": "Some papers are missing an abstract",
     "abstractMissingDescription": "{missing} of {total} selected papers have no abstract. Chat answers may be less useful for those papers.",
@@ -543,8 +541,6 @@
     "chatHintEnter": "↵ send",
     "chatHintShiftEnter": "⇧↵ newline",
     "chatModelPickerTrigger": "Change model",
-    "chatModelPickerSearch": "Search models…",
-    "chatModelPickerEmpty": "No models found.",
     "chatModelPickerLoading": "Loading models…",
     "chatJumpToLatest": "Jump to latest",
     "chatJumpToLatestWithCount": "{count, plural, one {# new message} other {# new messages}}",
@@ -783,8 +779,7 @@
       "presetHundred": "100",
       "presetMax": "Max",
       "liveAnnouncement": "Papers set to {count, number}"
-    },
-    "chatModelPresets": "Presets"
+    }
   },
   "sourcesPanel": {
     "meta": {
@@ -2831,10 +2826,6 @@
       "modelsLabel": "Available models",
       "modelsHint": "Select every model readers may use.",
       "addModel": "Add model",
-      "searchModels": "Search OpenRouter models…",
-      "loadingModels": "Loading OpenRouter models…",
-      "loadMoreModels": "Load more models",
-      "noModels": "No models found.",
       "orderLabel": "Model order",
       "orderHint": "Drag the selected models into the order shown in the library.",
       "modelsEmpty": "Select at least one model.",
@@ -3278,9 +3269,7 @@
       "local": "My key"
     },
     "yourBrowser": "Your browser",
-    "yourKey": "Your key",
     "credits": "Credits",
-    "taskCount": "{count, plural, one {# task} other {# tasks}}",
     "apiKey": "{provider} API key",
     "getKey": "Get a {provider} key",
     "keyProvider": "Key provider",
@@ -3325,5 +3314,18 @@
       "xhigh": "Extra high",
       "max": "Max"
     }
+  },
+  "modelPicker": {
+    "vendors": "Vendors",
+    "all": "All",
+    "other": "Other",
+    "model": "Model",
+    "intelligence": "Intelligence",
+    "context": "Context",
+    "cost": "Per 1M in / out",
+    "free": "Free",
+    "source": "Intelligence Index by Artificial Analysis",
+    "back": "Back to models",
+    "default": "Default"
   }
 }

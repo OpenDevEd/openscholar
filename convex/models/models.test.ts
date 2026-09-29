@@ -162,13 +162,7 @@ describe("models.queries.listCatalogOptions", () => {
       }
     });
 
-    const first = await t.query(api.models.queries.paginateCatalogOptions, {
-      paginationOpts: { numItems: 500, cursor: null },
-    });
-    const second = await t.query(api.models.queries.paginateCatalogOptions, {
-      paginationOpts: { numItems: 501, cursor: first.continueCursor },
-    });
-    expect([...first.page, ...second.page]).toHaveLength(1001);
+    expect(await t.query(api.models.queries.listCatalogOptions, {})).toHaveLength(1001);
     expect(
       await t.query(internal.models.queries.resolveEvidenceLibrarySelection, {
         modelIds: ["provider/model-1000", "provider/missing"],
@@ -182,7 +176,7 @@ describe("models.queries.listCatalogOptions", () => {
     });
   });
 
-  it("returns a compact settings catalog shape for a provider", async () => {
+  it("returns a compact settings catalog shape", async () => {
     const t = convexTest(schema);
     await seedModel(t, {
       modelId: "anthropic/claude-sonnet-4-5",
@@ -199,9 +193,7 @@ describe("models.queries.listCatalogOptions", () => {
       sortOrder: 1,
     });
 
-    const models = await t.query(api.models.queries.listCatalogOptions, {
-      provider: "anthropic",
-    });
+    const models = await t.query(api.models.queries.listCatalogOptions, {});
     expect(models).toHaveLength(1);
 
     expect(models[0]).toEqual({
@@ -219,7 +211,7 @@ describe("models.queries.listCatalogOptions", () => {
     });
   });
 
-  it("omits catalog fields the settings page does not use", async () => {
+  it("omits catalog fields the pickers don't use, and keeps what they filter on", async () => {
     const t = convexTest(schema);
     await seedModel(t, {
       modelId: "openai/gpt-4o",
@@ -231,16 +223,14 @@ describe("models.queries.listCatalogOptions", () => {
       supportedParameters: ["tools"],
     });
 
-    const models = await t.query(api.models.queries.listCatalogOptions, {
-      provider: "openai",
-    });
+    const models = await t.query(api.models.queries.listCatalogOptions, {});
 
     expect(models).toHaveLength(1);
     expect(models[0]).toHaveProperty("_id", expect.any(String));
     expect(models[0]).not.toHaveProperty("costMarkup");
     expect(models[0]).not.toHaveProperty("sortOrder");
     expect(models[0]).not.toHaveProperty("isServed");
-    expect(models[0]).not.toHaveProperty("supportedParameters");
+    expect(models[0]).toHaveProperty("supportedParameters", ["tools"]);
   });
 });
 

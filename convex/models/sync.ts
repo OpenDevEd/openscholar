@@ -46,6 +46,9 @@ const rawModelSchema = z.object({
     supported_efforts: z.array(z.string()).nullish(),
     default_effort: optionalText,
   }).optional(),
+  benchmarks: z.object({
+    artificial_analysis: z.object({intelligence_index: z.number().nullish()}).nullish(),
+  }).nullish(),
   knowledge_cutoff: optionalText,
   expiration_date: optionalText,
   default_parameters: z.object({
@@ -136,6 +139,7 @@ export function transformModel(raw: OpenRouterModel) {
 
     supportedParameters: raw.supported_parameters ?? undefined,
     ...reasoningOf(raw.reasoning),
+    intelligenceIndex: raw.benchmarks?.artificial_analysis?.intelligence_index ?? undefined,
 
     knowledgeCutoff: raw.knowledge_cutoff ?? undefined,
     expirationDate: raw.expiration_date ?? undefined,

@@ -2,10 +2,9 @@ import { internalQuery } from "../_generated/server";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import { DEFAULT_PRESET, presetConfigKey, type AiTask, type PresetKey } from "../../lib/ai/tasks";
+import { DEFAULT_PRESET, presetConfigKey, usableFor, type AiTask, type PresetKey } from "../../lib/ai/tasks";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { isDecisionModel } from "../../lib/ai/decisions";
-import { usableFor } from "../models/catalog";
 import { aiTaskValidator, taskPickValidator } from "../aiModelConfig/validators";
 
 /** A model a task runs on, and its reasoning effort (none: the model's default). */
@@ -86,6 +85,6 @@ export const resolveForUser = internalQuery({
 export async function modelSummary(ctx: QueryCtx, id: Id<"models"> | null) {
   const model = id ? await ctx.db.get("models", id) : null;
   if (!model) return null;
-  const { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, reasoningEfforts, defaultEffort, reasoningMandatory } = model;
-  return { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, reasoningEfforts, defaultEffort, reasoningMandatory };
+  const { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, reasoningEfforts, defaultEffort, reasoningMandatory, intelligenceIndex } = model;
+  return { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, reasoningEfforts, defaultEffort, reasoningMandatory, intelligenceIndex };
 }

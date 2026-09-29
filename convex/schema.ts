@@ -312,6 +312,8 @@ export default defineSchema({
     defaultEffort: v.optional(effortValidator),
     /** Reasoning can't be turned off ("none" is refused). */
     reasoningMandatory: v.optional(v.boolean()),
+    /** Artificial Analysis Intelligence Index, as OpenRouter reports it; absent when unmeasured. */
+    intelligenceIndex: v.optional(v.number()),
 
     // ── Lifecycle ──
     knowledgeCutoff: v.optional(v.string()),

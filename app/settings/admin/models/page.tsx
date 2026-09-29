@@ -14,6 +14,8 @@ import { useAppToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { Enter, LIST, Paged, pagerOf, Segmented, Tile } from "@/components/settings/parts";
+import { IntelligenceMeter, priceLabel } from "@/components/models/meters";
+import { tintOf } from "@/components/settings/model-map";
 
 type Show = "all" | "on" | "off";
 const PER_PAGE = 12;
@@ -23,33 +25,7 @@ const PROVIDER_NAMES: Record<string, string> = {
 };
 const providerName = (p: string) => PROVIDER_NAMES[p] ?? p.charAt(0).toUpperCase() + p.slice(1);
 
-/** One tint per provider, so a colour always means the same vendor. */
-const PROVIDER_TINT: Record<string, string> = {
-  anthropic: "#d9a27c", google: "#60a5fa", openai: "#34d399", deepseek: "#fb923c", "z-ai": "#2dd4bf",
-  "meta-llama": "#818cf8", mistralai: "#f472b6", qwen: "#c084fc",
-};
-const tintOf = (modelId: string) => PROVIDER_TINT[modelId.split("/")[0]!] ?? "#94a3b8";
-
 const context = (n?: number) => (n ? (n >= 1_000_000 ? `${Math.round(n / 100_000) / 10}M` : `${Math.round(n / 1000)}k`) : "");
-const money = (n: number) => (n === 0 ? "0" : n >= 10 ? `$${n.toFixed(0)}` : n >= 1 ? `$${n.toFixed(1).replace(/\.0$/, "")}` : `$${n.toFixed(2)}`);
-
-/** Five-step cost meter on a log scale from $0.05 to $50 per 1M tokens (input and output blended 1:3). */
-function CostMeter({ input, output, free }: { input: number; output: number; free: string }) {
-  const blended = (input + output * 3) / 4;
-  const level = blended <= 0 ? 0 : Math.max(1, Math.min(5, Math.ceil(((Math.log10(blended) + 1.3) / 3) * 5)));
-  return (
-    <span className="flex items-center gap-2">
-      <span className="flex h-3 items-end gap-[2px]" aria-hidden>
-        {[1, 2, 3, 4, 5].map((i) => (
-          <span key={i} className={cn("w-[3px] rounded-full", i <= level ? "bg-foreground/70" : "bg-foreground/15")} style={{ height: `${4 + i * 2}px` }} />
-        ))}
-      </span>
-      <span className="w-[5.5rem] text-right text-xs tabular-nums text-muted-foreground">
-        {blended === 0 ? free : `${money(input)} / ${money(output)}`}
-      </span>
-    </span>
-  );
-}
 
 export default function ModelListPage() {
   const t = useTranslations("settingsAdmin.models");
@@ -143,7 +119,10 @@ export default function ModelListPage() {
                     <span className="block truncate font-mono text-[11px] text-muted-foreground">{m.modelId}</span>
                   </span>
                   {m.contextLength ? <span className="w-12 text-right text-xs tabular-nums text-muted-foreground">{context(m.contextLength)}</span> : null}
-                  <CostMeter input={m.inputPricePerMillion} output={m.outputPricePerMillion} free={t("free")} />
+                  <IntelligenceMeter index={m.intelligenceIndex} className="w-24" />
+                  <span className="w-[5.5rem] text-right text-xs tabular-nums text-muted-foreground">
+                    {m.inputPricePerMillion + m.outputPricePerMillion === 0 ? t("free") : priceLabel(m.inputPricePerMillion, m.outputPricePerMillion)}
+                  </span>
                   <Switch
                     checked={m.on}
                     aria-label={t("offer", { model: stripProviderPrefix(m.name) })}
