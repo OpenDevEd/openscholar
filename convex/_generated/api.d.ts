@@ -8,6 +8,10 @@
  * @module
  */
 
+import type * as admins_access from "../admins/access.js";
+import type * as admins_invitations from "../admins/invitations.js";
+import type * as admins_mutations from "../admins/mutations.js";
+import type * as admins_queries from "../admins/queries.js";
 import type * as ai_actions from "../ai/actions.js";
 import type * as ai_config from "../ai/config.js";
 import type * as ai_helpers from "../ai/helpers.js";
@@ -36,6 +40,7 @@ import type * as billing_charge from "../billing/charge.js";
 import type * as billing_migrate from "../billing/migrate.js";
 import type * as billing_stripeWebhook from "../billing/stripeWebhook.js";
 import type * as billing_usage from "../billing/usage.js";
+import type * as billing_usageLog from "../billing/usageLog.js";
 import type * as billing_validators from "../billing/validators.js";
 import type * as chat_adminBackfill from "../chat/adminBackfill.js";
 import type * as chat_adminPerfSeed from "../chat/adminPerfSeed.js";
@@ -199,6 +204,7 @@ import type * as extraction_types from "../extraction/types.js";
 import type * as extraction_uploads from "../extraction/uploads.js";
 import type * as extraction_validators from "../extraction/validators.js";
 import type * as extraction_workpoolActions from "../extraction/workpoolActions.js";
+import type * as featureFlags_admin from "../featureFlags/admin.js";
 import type * as featureFlags_guard from "../featureFlags/guard.js";
 import type * as featureFlags_internal from "../featureFlags/internal.js";
 import type * as featureFlags_queries from "../featureFlags/queries.js";
@@ -231,7 +237,9 @@ import type * as library_counter from "../library/counter.js";
 import type * as library_mutations from "../library/mutations.js";
 import type * as library_queries from "../library/queries.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
+import type * as migrations_countBillingUsage from "../migrations/countBillingUsage.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
+import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
 import type * as models_mutations from "../models/mutations.js";
 import type * as models_queries from "../models/queries.js";
@@ -296,6 +304,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "admins/access": typeof admins_access;
+  "admins/invitations": typeof admins_invitations;
+  "admins/mutations": typeof admins_mutations;
+  "admins/queries": typeof admins_queries;
   "ai/actions": typeof ai_actions;
   "ai/config": typeof ai_config;
   "ai/helpers": typeof ai_helpers;
@@ -324,6 +336,7 @@ declare const fullApi: ApiFromModules<{
   "billing/migrate": typeof billing_migrate;
   "billing/stripeWebhook": typeof billing_stripeWebhook;
   "billing/usage": typeof billing_usage;
+  "billing/usageLog": typeof billing_usageLog;
   "billing/validators": typeof billing_validators;
   "chat/adminBackfill": typeof chat_adminBackfill;
   "chat/adminPerfSeed": typeof chat_adminPerfSeed;
@@ -487,6 +500,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/uploads": typeof extraction_uploads;
   "extraction/validators": typeof extraction_validators;
   "extraction/workpoolActions": typeof extraction_workpoolActions;
+  "featureFlags/admin": typeof featureFlags_admin;
   "featureFlags/guard": typeof featureFlags_guard;
   "featureFlags/internal": typeof featureFlags_internal;
   "featureFlags/queries": typeof featureFlags_queries;
@@ -519,7 +533,9 @@ declare const fullApi: ApiFromModules<{
   "library/mutations": typeof library_mutations;
   "library/queries": typeof library_queries;
   "maintenance/mutations": typeof maintenance_mutations;
+  "migrations/countBillingUsage": typeof migrations_countBillingUsage;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
+  "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;
   "models/mutations": typeof models_mutations;
   "models/queries": typeof models_queries;
@@ -616,4 +632,5 @@ export declare const components: {
   creditsAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"creditsAgg">;
   screeningResultStatusAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"screeningResultStatusAgg">;
   screeningQualifiedAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"screeningQualifiedAgg">;
+  usageAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"usageAgg">;
 };

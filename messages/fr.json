@@ -273,47 +273,47 @@
     "downgradeScheduledTo": "Rétrogradation planifiée vers"
   },
   "publicationSettings": {
-      "credentials": "Identifiants {provider}",
-      "sandbox": "Bac à sable",
-      "custom": "Identifiants personnalisés",
-      "sandboxTitle": "Bac à sable OpenScholar",
-      "sandboxHint": "Utilise notre compte de test. Les dépôts restent dans l’environnement de test du fournisseur.",
-      "title": "Publication",
-      "description": "Connectez les comptes utilisés pour enregistrer les DOI et archiver les publications.",
-      "loading": "Chargement des paramètres de publication…",
-      "storedHint": "Laissez vide pour conserver l’identifiant enregistré",
-      "saved": "Paramètres de publication enregistrés",
-      "activateHint": "Activez la configuration pour les appliquer à cette bibliothèque.",
-      "failure": "Les identifiants n’ont pas pu être vérifiés. Rien n’a été enregistré. Réessayez.",
-      "zenodoRequired": "Obligatoire lorsque Crossref est activé. Les fichiers sont archivés dès leur disponibilité.",
-      "zenodoHint": "Archivez les fichiers et créez des DOI Zenodo.",
-      "enableZenodo": "Activer Zenodo",
-      "token": "Jeton d’accès Zenodo",
-      "tokenHint": "Nécessite les autorisations deposit:write et deposit:actions.",
-      "createToken": "Créer un jeton Zenodo",
-      "license": "Licence des fichiers par défaut",
-      "licenseHint": "La licence appliquée aux fichiers archivés.",
-      "archiveDoi": "DOI d’archive par défaut",
-      "zenodoDoi": "DOI Zenodo",
-      "crossrefDoi": "Utiliser le DOI Crossref",
-      "crossrefHint": "Les créateurs réservent les DOI. Les éditeurs et propriétaires les activent.",
-      "enableCrossref": "Activer Crossref",
-      "login": "Identifiant Crossref",
-      "loginHint": "Pour un compte personnel, utilisez e-mail/rôle.",
-      "password": "Mot de passe Crossref",
-      "prefix": "Préfixe DOI",
-      "registrant": "Organisme déposant",
-      "depositorName": "Nom du déposant",
-      "email": "E-mail du déposant",
-      "namespace": "Espace de noms DOI",
-      "namespaceHint": "Utilise par défaut le nom dans l’adresse de cette bibliothèque.",
-      "libraryName": "Nom de la bibliothèque",
-      "checking": "Vérification des identifiants…",
-      "needsVerification": "Les modifications doivent être vérifiées avant l’enregistrement.",
-      "verified": "Vérifié le {date}",
-      "checkedBeforeSaving": "Les identifiants sont vérifiés avant l’enregistrement.",
-      "verifying": "Vérification…",
-      "verifySave": "Vérifier et enregistrer"
+    "credentials": "Identifiants {provider}",
+    "sandbox": "Bac à sable",
+    "custom": "Identifiants personnalisés",
+    "sandboxTitle": "Bac à sable OpenScholar",
+    "sandboxHint": "Utilise notre compte de test. Les dépôts restent dans l’environnement de test du fournisseur.",
+    "title": "Publication",
+    "description": "Connectez les comptes utilisés pour enregistrer les DOI et archiver les publications.",
+    "loading": "Chargement des paramètres de publication…",
+    "storedHint": "Laissez vide pour conserver l’identifiant enregistré",
+    "saved": "Paramètres de publication enregistrés",
+    "activateHint": "Activez la configuration pour les appliquer à cette bibliothèque.",
+    "failure": "Les identifiants n’ont pas pu être vérifiés. Rien n’a été enregistré. Réessayez.",
+    "zenodoRequired": "Obligatoire lorsque Crossref est activé. Les fichiers sont archivés dès leur disponibilité.",
+    "zenodoHint": "Archivez les fichiers et créez des DOI Zenodo.",
+    "enableZenodo": "Activer Zenodo",
+    "token": "Jeton d’accès Zenodo",
+    "tokenHint": "Nécessite les autorisations deposit:write et deposit:actions.",
+    "createToken": "Créer un jeton Zenodo",
+    "license": "Licence des fichiers par défaut",
+    "licenseHint": "La licence appliquée aux fichiers archivés.",
+    "archiveDoi": "DOI d’archive par défaut",
+    "zenodoDoi": "DOI Zenodo",
+    "crossrefDoi": "Utiliser le DOI Crossref",
+    "crossrefHint": "Les créateurs réservent les DOI. Les éditeurs et propriétaires les activent.",
+    "enableCrossref": "Activer Crossref",
+    "login": "Identifiant Crossref",
+    "loginHint": "Pour un compte personnel, utilisez e-mail/rôle.",
+    "password": "Mot de passe Crossref",
+    "prefix": "Préfixe DOI",
+    "registrant": "Organisme déposant",
+    "depositorName": "Nom du déposant",
+    "email": "E-mail du déposant",
+    "namespace": "Espace de noms DOI",
+    "namespaceHint": "Utilise par défaut le nom dans l’adresse de cette bibliothèque.",
+    "libraryName": "Nom de la bibliothèque",
+    "checking": "Vérification des identifiants…",
+    "needsVerification": "Les modifications doivent être vérifiées avant l’enregistrement.",
+    "verified": "Vérifié le {date}",
+    "checkedBeforeSaving": "Les identifiants sont vérifiés avant l’enregistrement.",
+    "verifying": "Vérification…",
+    "verifySave": "Vérifier et enregistrer"
   },
   "auth": {
     "organizationFeatureTitle": "Accès non autorisé",
@@ -330,10 +330,6 @@
     "syncErrorDescription": "Nous n'avons pas pu terminer l'initialisation de votre compte. Réessayez pour continuer.",
     "syncErrorAccess": "Votre session est valide, mais la synchronisation du compte est incomplète. Réessayez pour continuer.",
     "retrySync": "Réessayer la synchronisation"
-  },
-  "settings": {
-    "generalSettings": "Paramètres généraux",
-    "managePreferences": "Gérez vos préférences générales de l'application"
   },
   "aiSetupGate": {
     "title": "Configurer l'IA pour enrichir vos recherches",
@@ -455,65 +451,21 @@
     "secondaryModelDesc": "Question → query, Refine, Translate, Screening & Broaden / narrow run on your primary model — or set your own API key to run them in your browser, where the key is never shared with OpenScholar."
   },
   "billingPage": {
-    "billingAndPlans": "Facturation et forfaits",
-    "manageSubscription": "Gérez votre abonnement et votre utilisation.",
     "upgradePlan": "Passer à un forfait supérieur",
     "manageSubscriptionBtn": "Gérer l'abonnement",
-    "subscription": "Abonnement",
-    "planLabel": "Forfait {plan}",
-    "expiresOn": "Expire le",
-    "renewsOn": "Renouvelé le",
     "upgradeDescription": "Changez de plan pour débloquer plus de crédits et de fonctionnalités.",
-    "loadingBillingDetails": "Chargement des détails de facturation",
-    "fetchingSubscription": "Récupération de votre abonnement et de votre solde de crédits.",
-    "dangerZone": "Zone dangereuse",
-    "cancelImmediately": "Annuler immédiatement",
-    "cancelSubscriptionTitle": "Annuler l'abonnement immédiatement",
-    "cancelDescription": "Cela mettra immédiatement fin à votre abonnement et vous rétrogradera au forfait Gratuit.",
-    "cancelConfirm": "Êtes-vous sûr de vouloir annuler immédiatement ? Vous perdrez l'accès aux fonctionnalités payantes instantanément.",
-    "subscriptionCancelled": "Abonnement annulé immédiatement",
-    "failedCancel": "Échec de l'annulation de l'abonnement",
-    "totalBalance": "Solde total",
-    "freeCredits": "Crédits gratuits",
     "perMonth": "({amount}/mois)",
-    "freeCapReached": "Plafond de crédits gratuit atteint. Achetez des crédits supplémentaires pour un solde illimité.",
-    "purchasedCredits": "Crédits achetés",
-    "noExpiration": "Pas d'expiration ni de plafond",
-    "creditsOrder": "Les crédits sont consommés dans cet ordre : gratuits d'abord, puis achetés.",
     "failedToLoadDetails": "Échec du chargement des détails",
-    "networkErrorFetchingDetails": "Erreur réseau lors de la récupération des détails",
-    "statusPastDue": "En retard",
-    "statusCanceled": "Annulé",
-    "statusTrialing": "En essai",
-    "statusIncomplete": "Incomplet",
-    "statusIncompleteExpired": "Incomplet expiré",
-    "statusUnpaid": "Impayé",
-    "statusPaused": "En pause",
-    "gracePeriodNotice": "Un problème de facturation a été détecté. Vous conservez temporairement l'accès pendant les nouvelles tentatives de paiement.",
     "paymentFailedNotice": "Le paiement a échoué. Mettez à jour votre moyen de paiement pour continuer à utiliser les fonctionnalités premium.",
     "updatePaymentMethod": "Mettre à jour le moyen de paiement",
     "perInterval": "/ {interval}",
     "intervalMonth": "mois",
     "intervalYear": "an",
-    "topupBuyButton": "Acheter des crédits",
-    "topupProcessing": "Redirection…",
-    "topupCheckoutFailed": "Impossible de lancer le paiement de crédits.",
-    "topupSuccessTitle": "Achat de crédits démarré",
-    "topupSuccessDescription": "Nous ajouterons les crédits automatiquement après confirmation du paiement par Stripe.",
-    "topupCancelledTitle": "Paiement de crédits annulé",
-    "topupCancelledDescription": "Aucun frais n'a été prélevé. Vous pouvez réessayer à tout moment.",
-    "upgradesUnavailable": "Les mises à niveau sont temporairement indisponibles.",
-    "paymentPendingDefault": "Paiement en attente. Effectuez le paiement dans le portail Stripe pour activer vos crédits.",
-    "scheduledChangeTo": "Changement planifié vers",
-    "creditCapBanner": "Vos crédits gratuits ont atteint le maximum. Utilisez des crédits pour recevoir votre prochaine dotation mensuelle complète.",
-    "processingPurchase": "Traitement de votre achat...",
     "creditsAddedTitle": "Crédits ajoutés",
     "creditsAddedDescription": "{amount} crédits ont été ajoutés à votre solde.",
     "paymentReceived": "Paiement reçu. Votre offre et vos crédits se mettent à jour dès que Stripe le confirme.",
     "usage": {
-      "title": "Utilisation",
       "empty": "Aucun crédit utilisé pour l’instant.",
-      "loadMore": "Afficher plus",
       "showAll": "Tout afficher",
       "kinds": {
         "chat": "Chat",
@@ -524,7 +476,25 @@
         "wallet_api": "API Wallet",
         "refund": "Remboursement"
       }
-    }
+    },
+    "credits": "crédits",
+    "refillOn": "+{amount} le {date}",
+    "bought": "{amount} achetés",
+    "topUp": "Recharger",
+    "buyBundle": "Acheter {credits} crédits pour {price}",
+    "spendingLast30Days": "Dépenses des 30 derniers jours",
+    "spendingSummary": "{credits} crédits dépensés ces 30 derniers jours",
+    "onDay": "{credits} le {date}",
+    "today": "Aujourd'hui",
+    "plan": "Forfait",
+    "comparePlans": "Comparer les forfaits",
+    "creditsAMonth": "{amount} crédits par mois",
+    "endsOn": "Se termine le {date}",
+    "changesOn": "{plan} à partir du {date}",
+    "renewsOnDate": "Renouvelé le {date}",
+    "charges": "Débits",
+    "jobCharges": "Débits de cette tâche",
+    "chargesLabel": "débits"
   },
   "errors": {
     "unexpectedIssue": "Nous avons rencontré un problème inattendu. Veuillez réessayer ou revenir à une page stable.",
@@ -2054,22 +2024,15 @@
   },
   "connectionsPage": {
     "connectedApps": "Applications connectées",
-    "manageExternalApps": "Gérez les applications externes qui utilisent la génération IA via vos crédits.",
-    "loadingConnections": "Chargement des connexions...",
     "noConnectedApps": "Aucune application connectée",
     "noConnectedAppsDescription": "Lorsque des applications externes se connectent à votre portefeuille, elles apparaîtront ici.",
-    "activeCount": "Actives ({count})",
-    "revokedCount": "Révoquées ({count})",
     "revoking": "Révocation...",
-    "confirm": "Confirmer",
     "revoke": "Révoquer",
     "revokedBadge": "Révoquée",
     "created": "Créée {time}",
     "lastUsed": "Dernière utilisation {time}",
-    "justNow": "à l'instant",
-    "minutesAgo": "il y a {count}min",
-    "hoursAgo": "il y a {count}h",
-    "daysAgo": "il y a {count}j"
+    "apps": "applications",
+    "revokeApp": "Révoquer {app}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {
@@ -3280,6 +3243,124 @@
       "title": "Library not found",
       "description": "It may have been deleted, or it belongs to another organisation.",
       "back": "Back to libraries"
+    }
+  },
+  "settingsShell": {
+    "groups": {
+      "account": "Compte",
+      "research": "Recherche",
+      "admin": "Administration"
+    },
+    "items": {
+      "profile": "Profil",
+      "security": "Sécurité",
+      "switches": "Interrupteurs",
+      "modelList": "Liste des modèles",
+      "admins": "Administrateurs",
+      "plans": "Forfaits",
+      "users": "Utilisateurs"
+    },
+    "sharedDev": "Dev partagé",
+    "production": "Production",
+    "planChip": "Forfait {plan}"
+  },
+  "settingsProfile": {
+    "uploading": "Envoi…",
+    "changePhoto": "Changer la photo",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "saveName": "Enregistrer le nom",
+    "editName": "Modifier le nom",
+    "addYourName": "Ajoutez votre nom",
+    "verified": "Vérifié",
+    "aBrowser": "Un navigateur",
+    "browserOn": "{browser} sur {platform}",
+    "whereSignedIn": "Où vous êtes connecté",
+    "signOutEverywhereElse": "Se déconnecter partout ailleurs",
+    "devices": "appareils",
+    "now": "Maintenant",
+    "thisDevice": "Cet appareil",
+    "signOut": "Se déconnecter"
+  },
+  "settingsAdmin": {
+    "switches": {
+      "groups": {
+        "billing": "Facturation",
+        "extraction": "Extraction"
+      },
+      "flags": {
+        "credits": {
+          "label": "Crédits",
+          "hint": "Facturer les tâches d'IA en crédits"
+        },
+        "topups": {
+          "label": "Recharges de crédits",
+          "hint": "Vendre des crédits supplémentaires sur la page de facturation"
+        },
+        "subscriptions": {
+          "label": "Abonnements",
+          "hint": "Permettre d'acheter et de changer de forfait"
+        },
+        "enterprise": {
+          "label": "Carte Enterprise",
+          "hint": "Afficher Enterprise sur la page des tarifs"
+        },
+        "extraction": {
+          "label": "Extraction",
+          "hint": "Ouvrir l'espace aux organisations ayant l'extraction"
+        },
+        "startJobs": {
+          "label": "Lancer des tâches",
+          "hint": "Permettre de lancer de nouvelles tâches"
+        },
+        "chat": {
+          "label": "Mode chat",
+          "hint": "Poser des questions sur les articles d'une tâche"
+        },
+        "pdf": {
+          "label": "PDF complets",
+          "hint": "Lire le PDF de chaque article, pas seulement le résumé"
+        }
+      }
+    },
+    "models": {
+      "filterByProvider": "Filtrer par fournisseur",
+      "search": "Rechercher par nom ou identifiant",
+      "show": "Afficher",
+      "on": "Activés",
+      "off": "Désactivés",
+      "models": "modèles",
+      "free": "Gratuit",
+      "offer": "Proposer {model}",
+      "noMatches": "Aucun modèle ne correspond"
+    },
+    "admins": {
+      "title": "Administrateurs",
+      "admins": "administrateurs",
+      "search": "Rechercher par nom ou e-mail",
+      "you": "Vous",
+      "invited": "Invité",
+      "notDelivered": "Invitation non remise",
+      "remove": "Retirer",
+      "removeName": "Retirer {name}",
+      "removed": "Administrateur retiré.",
+      "cancelInvite": "Annuler l'invitation",
+      "cancelInviteFor": "Annuler l'invitation de {email}",
+      "inviteCancelled": "Invitation annulée.",
+      "resend": "Renvoyer l'invitation",
+      "resendTo": "Renvoyer l'invitation à {email}",
+      "inviteSent": "Invitation envoyée à {email}.",
+      "noMatches": "Aucun administrateur ne correspond",
+      "add": "Ajouter un administrateur",
+      "added": "{name} est maintenant administrateur.",
+      "how": "Comment ajouter",
+      "existingUser": "Utilisateur existant",
+      "inviteByEmail": "Inviter par e-mail",
+      "chooseUser": "Choisir un utilisateur",
+      "searchEmail": "Rechercher par e-mail",
+      "noUsers": "Aucun utilisateur trouvé",
+      "email": "Adresse e-mail",
+      "sendInvite": "Envoyer l'invitation"
     }
   }
 }

@@ -32,6 +32,7 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
   return {
     ...(current ? { plan: current.plan_id } : {}),
     pastDue: current?.past_due ?? false,
+    periodStart: onPaidPlan ? (current?.current_period_start ?? undefined) : undefined,
     renewsAt: onPaidPlan && !current?.canceled_at ? periodEnd : undefined,
     changesAt: current?.canceled_at ? periodEnd : undefined,
     nextPlan: scheduled?.plan_id,

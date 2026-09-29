@@ -9,6 +9,7 @@ import {
   type ClerkEventMetadata,
   type ClerkEventOutcome,
 } from "../webhooks/eventOrdering";
+import { claimAdminInvite } from "../admins/access";
 
 const clerkEventMetadataFields = {
   eventId: v.string(),
@@ -39,6 +40,7 @@ export const getUserById = internalQuery({
 type UserUpsertProjectionArgs = ClerkEventMetadata & {
   clerkId: string;
   email: string;
+  verifiedEmails?: string[];
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
@@ -67,16 +69,18 @@ export async function applyUserUpsertProjection(
         updatedAt: Date.now(),
       });
       await ensureBillingAccount(ctx, existing._id);
+      await claimAdminInvite(ctx, existing._id, args.email, args.verifiedEmails ?? []);
       return;
     }
 
-    await createUserWithDefaults(ctx, {
+    const userId = await createUserWithDefaults(ctx, {
       clerkId: args.clerkId,
       email: args.email,
       firstName: args.firstName,
       lastName: args.lastName,
       avatarUrl: args.avatarUrl,
     });
+    await claimAdminInvite(ctx, userId, args.email, args.verifiedEmails ?? []);
   });
 }
 
@@ -85,6 +89,7 @@ export const upsertUserFromClerk = internalMutation({
     ...clerkEventMetadataFields,
     clerkId: v.string(),
     email: v.string(),
+    verifiedEmails: v.optional(v.array(v.string())),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),

@@ -118,6 +118,21 @@ It's designed for systematic reviews and complex queries, not just keyword match
      to: `customer.updated`, `payment_method.attached`,
      `payment_method.detached`, `charge.refunded`.
    - `STRIPE_WEBHOOK_SECRET` is that endpoint's signing secret.
+   - The billing page pages through charges using a count kept in the
+     `usageAgg` aggregate. After deploying it to a deployment that already has
+     charges, count them once: `npx convex run migrations/countBillingUsage:run`.
+
+   Admin notes for this repo:
+   - Admins see an Admin group in settings: feature switches, which models
+     users can pick, and the admin list. The server refuses admin changes from
+     everyone else.
+   - Make the first admin of a deployment from the command line:
+     `npx convex run admins/mutations:grant '{"email": "you@example.org"}'`.
+     After that, admins add each other in settings. An invite by email becomes
+     an admin when that person signs up; it's sent through the platform mail
+     settings (`EL_SMTP_*`).
+   - Set `AUTUMN_DASHBOARD_URL` on the Convex deployment to show the Plans link
+     to Autumn's dashboard.
 
 4. **Run OpenScholar against the hosted development services**
 

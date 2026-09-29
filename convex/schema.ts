@@ -315,6 +315,8 @@ export default defineSchema({
 
     // ── Business layer (our overrides) ──
     isServed: v.boolean(),
+    /** Set by an admin to keep the model out of users' pickers. */
+    hidden: v.optional(v.boolean()),
     costMarkup: v.number(),
     sortOrder: v.number(),
     category: v.optional(v.string()),
@@ -329,6 +331,23 @@ export default defineSchema({
     .index("by_retiredAt", ["retiredAt"])
     .index("by_isServed_and_retiredAt_and_sortOrder", ["isServed", "retiredAt", "sortOrder"])
     .index("by_synced", ["syncedAt"]),
+
+  // ═══════════════════════════════════════════════════════════════
+  // ADMINS - who can change OpenScholar's live settings. A row without a
+  // user is an invite; it links to the user who signs up with its email.
+  // ═══════════════════════════════════════════════════════════════
+  admins: defineTable({
+    /** Lowercase. */
+    email: v.string(),
+    userId: v.optional(v.id("users")),
+    /** Absent for an admin granted from the command line. */
+    addedBy: v.optional(v.id("users")),
+    /** Whether the last invite email went out. */
+    delivery: v.optional(v.union(v.literal("sent"), v.literal("failed"))),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_userId", ["userId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // FEATURE FLAGS - Database-driven feature gating

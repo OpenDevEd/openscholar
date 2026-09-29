@@ -14,6 +14,7 @@ import { autumn, AutumnError } from "./autumn";
 import { refreshAccount } from "./accounts";
 import { billingUsageFields, usageKindValidator } from "./validators";
 import { recordJobCredits } from "../extraction/aggregates";
+import { insertUsage } from "./usageLog";
 
 /** Long enough for any single chat turn, paper, or batch we run. */
 const DEFAULT_HOLD_MS = 30 * 60_000;
@@ -195,7 +196,7 @@ export const recordUsage = internalMutation({
       .withIndex("by_charge", (q) => q.eq("chargeId", args.chargeId))
       .first();
     if (existing) return false;
-    await ctx.db.insert("billingUsage", args);
+    await insertUsage(ctx, args);
     if (args.jobId) {
       await recordJobCredits(ctx, {
         jobId: args.jobId,

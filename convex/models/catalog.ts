@@ -12,11 +12,14 @@ export function activeModels(ctx: QueryCtx, provider?: string) {
     : ctx.db.query("models").withIndex("by_retiredAt", q => q.eq("retiredAt", undefined));
 }
 
+/** Models users can pick: everything active that an admin hasn't hidden. */
+export const pickable = <T extends { hidden?: boolean }>(rows: T[]) => rows.filter((row) => !row.hidden);
+
 export const MODEL_UNAVAILABLE_MESSAGE = "Selected model is no longer available. Choose another model.";
 
 export async function requireAvailableModel(ctx: QueryCtx, modelId: Id<"models">) {
   const model = await ctx.db.get("models", modelId);
-  if (!model || model.retiredAt !== undefined) {
+  if (!model || model.retiredAt !== undefined || model.hidden) {
     throw createError("VALIDATION_ERROR", MODEL_UNAVAILABLE_MESSAGE);
   }
   return model;

@@ -1,8 +1,9 @@
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
 import { internalMutation, query } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { usageKindValidator } from "./validators";
+import { insertUsage, jobSpace, spendSpace, usageAgg, userSpace } from "./usageLog";
 
 /**
  * Claims a Stripe charge's refunded total for reversal, one caller at a time.
@@ -25,7 +26,7 @@ export const claimRefund = internalMutation({
     // Refund rows are keyed refund:<charge>:<refunded cents>.
     const previousCents = Math.max(0, ...rows.map((row) => Number(row.chargeId.split(":").at(-1)) || 0));
     if (args.refundedCents <= previousCents) return null;
-    await ctx.db.insert("billingUsage", {
+    await insertUsage(ctx, {
       userId: args.userId,
       chargeId: `refund:${args.stripeChargeId}:${args.refundedCents}`,
       credits: 0,
@@ -61,37 +62,68 @@ const usageRowValidator = v.object({
   createdAt: v.number(),
 });
 
-/** The user's charges, newest first, optionally only those for one of their jobs. */
-export const listMine = query({
-  args: { paginationOpts: paginationOptsValidator, jobId: v.optional(v.id("extractionJobs")) },
-  returns: v.object({
-    page: v.array(usageRowValidator),
-    isDone: v.boolean(),
-    continueCursor: v.string(),
-  }),
-  handler: async (ctx, { paginationOpts, jobId }) => {
+/** How many charges a page shows at most. */
+const MAX_PAGE_SIZE = 50;
+
+/**
+ * One page of the user's charges, newest first, with the total for page
+ * numbers. With `jobId`, only that job's charges (the job must be theirs).
+ */
+export const pageMine = query({
+  args: { page: v.number(), pageSize: v.number(), jobId: v.optional(v.id("extractionJobs")) },
+  returns: v.object({ total: v.number(), rows: v.array(usageRowValidator) }),
+  handler: async (ctx, { page, pageSize, jobId }) => {
     const user = await getCurrentUser(ctx);
-    const empty = { page: [], isDone: true, continueCursor: "" };
+    const empty = { total: 0, rows: [] };
     if (!user) return empty;
     if (jobId && (await ctx.db.get("extractionJobs", jobId))?.userId !== user._id) return empty;
-    const rows = jobId
-      ? ctx.db.query("billingUsage").withIndex("by_job", (q) => q.eq("jobId", jobId))
-      : ctx.db
-          .query("billingUsage")
-          .withIndex("by_user_and_createdAt", (q) => q.eq("userId", user._id));
-    const result = await rows.order("desc").paginate(paginationOpts);
-    return {
-      page: result.page.map(({ _id, credits, kind, description, jobId, model, createdAt }) => ({
-        _id,
-        credits,
-        kind,
-        description,
-        jobId,
-        model,
-        createdAt,
+    const namespace = jobId ? jobSpace(jobId) : userSpace(user._id);
+    const total = await usageAgg.count(ctx, { namespace });
+    const size = Math.min(Math.max(1, Math.floor(pageSize)), MAX_PAGE_SIZE);
+    const lastPage = Math.max(1, Math.ceil(total / size));
+    const start = (Math.min(Math.max(1, Math.floor(page)), lastPage) - 1) * size;
+    const end = Math.min(start + size, total);
+    if (start >= end) return { total, rows: [] };
+    // Offsets count from the newest charge: -1 is the latest.
+    const items = await usageAgg.atBatch(
+      ctx,
+      Array.from({ length: end - start }, (_, i) => ({ namespace, offset: -(start + i) - 1 })),
+    );
+    const rows = [];
+    for (const item of items) {
+      const row = await ctx.db.get("billingUsage", item.id as Id<"billingUsage">);
+      if (row) {
+        const { _id, credits, kind, description, jobId, model, createdAt } = row;
+        rows.push({ _id, credits, kind, description, jobId, model, createdAt });
+      }
+    }
+    return { total, rows };
+  },
+});
+
+const DAY = 86_400_000;
+const CHART_KINDS = usageKindValidator.members.map((m) => m.value).filter((kind) => kind !== "refund");
+
+/** Credits spent per day and kind over the last `days` days, oldest day first. */
+export const spendingMine = query({
+  args: { since: v.number(), days: v.number() },
+  returns: v.array(v.object({ day: v.number(), kind: usageKindValidator, credits: v.number() })),
+  handler: async (ctx, { since, days }) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+    const span = Math.min(Math.max(1, Math.floor(days)), 90);
+    const cells = CHART_KINDS.flatMap((kind) => Array.from({ length: span }, (_, day) => ({ kind, day })));
+    const sums = await usageAgg.sumBatch(
+      ctx,
+      cells.map(({ kind, day }) => ({
+        namespace: spendSpace(user._id, kind),
+        bounds: {
+          lower: { key: since + day * DAY, inclusive: true },
+          // The last day runs to now, so today's charges always count.
+          ...(day < span - 1 ? { upper: { key: since + (day + 1) * DAY, inclusive: false } } : {}),
+        },
       })),
-      isDone: result.isDone,
-      continueCursor: result.continueCursor,
-    };
+    );
+    return cells.map((cell, i) => ({ ...cell, credits: sums[i]! })).filter((cell) => cell.credits > 0);
   },
 });

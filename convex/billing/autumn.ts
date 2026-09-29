@@ -20,6 +20,7 @@ export type AutumnSubscription = {
   status: "active" | "scheduled" | "trialing" | "expired" | string;
   past_due: boolean;
   canceled_at: number | null;
+  current_period_start?: number | null;
   current_period_end: number | null;
   add_on: boolean;
 };

@@ -1,7 +1,7 @@
 import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { activeModels, MAX_CATALOG_MODELS } from "./catalog";
+import { activeModels, MAX_CATALOG_MODELS, pickable } from "./catalog";
 import type { Doc } from "../_generated/dataModel";
 
 const catalogOptionValidator = v.object({
@@ -41,7 +41,7 @@ async function modelsById(ctx: QueryCtx, modelIds: readonly string[]) {
       .query("models")
       .withIndex("by_model_id", (q) => q.eq("modelId", modelId))
       .unique();
-    if (model && model.retiredAt === undefined) models.push(model);
+    if (model && model.retiredAt === undefined && !model.hidden) models.push(model);
   }
   return models;
 }
@@ -54,7 +54,7 @@ async function modelsById(ctx: QueryCtx, modelIds: readonly string[]) {
 export const list = query({
   args: { provider: v.optional(v.string()) },
   handler: async (ctx, { provider }) => {
-    return await activeModels(ctx, provider).take(MAX_CATALOG_MODELS);
+    return pickable(await activeModels(ctx, provider).take(MAX_CATALOG_MODELS));
   },
 });
 
@@ -66,7 +66,7 @@ export const listCatalogOptions = query({
   args: { provider: v.optional(v.string()) },
   returns: v.array(catalogOptionValidator),
   handler: async (ctx, { provider }) => {
-    const rows = await activeModels(ctx, provider).take(MAX_CATALOG_MODELS);
+    const rows = pickable(await activeModels(ctx, provider).take(MAX_CATALOG_MODELS));
 
     return rows.map(catalogOption);
   },
@@ -77,7 +77,7 @@ export const paginateCatalogOptions = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, { paginationOpts }) => {
     const result = await activeModels(ctx).paginate(paginationOpts);
-    return { ...result, page: result.page.map(catalogOption) };
+    return { ...result, page: pickable(result.page).map(catalogOption) };
   },
 });
 
