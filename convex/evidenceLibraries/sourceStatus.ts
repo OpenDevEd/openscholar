@@ -23,7 +23,14 @@ const isCount = (value: number | null) => value === null || (Number.isInteger(va
 
 /** What the validator cannot say: times that parse and counts that are whole and not negative. */
 function isSensibleStatus(status: SourceStatus) {
-  const counts = [status.searchable, status.searchFailed, status.changed, ...Object.values(status.issues)];
+  const counts = [
+    status.searchable,
+    status.searchFailed,
+    status.changed,
+    ...Object.values(status.issues),
+    status.pdfs?.added ?? 0,
+    status.pdfs?.missed ?? 0,
+  ];
   const times = [status.lastSuccessAt];
   if (status.state === "running") {
     counts.push(status.done, status.total, status.minutesLeft);

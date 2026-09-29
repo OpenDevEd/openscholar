@@ -2515,6 +2515,7 @@
         "chip": {
           "importing": "Importing",
           "searching": "Updating search",
+          "addingPdfs": "Adding PDFs",
           "upToDate": "Up to date",
           "failed": "Import failed",
           "waiting": "Not imported yet",
@@ -2522,7 +2523,8 @@
         },
         "steps": {
           "import": "Import records",
-          "search": "Update search"
+          "search": "Update search",
+          "pdfs": "Add PDFs"
         },
         "importProgress": "Import progress",
         "searchProgress": "Search update progress",
@@ -2532,6 +2534,15 @@
         "searchSoFar": "records made searchable so far",
         "started": "Started {time}",
         "minutesLeft": "{minutes, plural, one {# min left} other {# min left}}",
+        "hoursLeft": "{hours, number} h left",
+        "pdfProgress": "PDF progress",
+        "pdfsOfTotal": "of {total, number} PDFs",
+        "pdfsSoFar": "PDFs so far",
+        "pdfsAdded": "{count, number} added",
+        "pdfsMissed": "{count, number} could not be downloaded",
+        "pdfsStoppedAt": "PDFs stopped at {time}",
+        "pdfsStillSearchable": "Every record stays searchable. Retrying carries on from the last PDF added.",
+        "retryPdfs": "Retry PDFs",
         "underAMinute": "Under a minute left",
         "searchable": "records searchable",
         "changed": "{count, plural, one {# changed} other {# changed}} in the last import, checked {when}",
