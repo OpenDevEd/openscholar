@@ -50,11 +50,8 @@ import { customPicksValidator, effortValidator, modelChoiceValidator } from "./a
 
 export default defineSchema({
   topicCatalog: defineTable(topicNodeFields)
-    .index("by_external_id", ["id"]).index("by_parent_and_name", ["parent", "name"]).index("by_level_and_name", ["level", "name"])
-    .index("by_level_and_domainId_and_name", ["level", "domainId", "name"])
-    .index("by_level_and_fieldId_and_name", ["level", "fieldId", "name"])
-    .index("by_level_and_subfieldId_and_name", ["level", "subfieldId", "name"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["level", "domainId", "fieldId", "subfieldId"] }),
+    .index("by_external_id", ["id"]).index("by_parent_and_name", ["parent", "name"])
+    .searchIndex("search_text", { searchField: "searchText" }),
   topicCatalogState: defineTable({revision: v.string(), complete: v.boolean()}).index("by_revision", ["revision"]),
   topicDetails: defineTable({id: v.string(), description: v.string(), keywords: v.array(v.string()), worksCount: v.number(), fetchedAt: v.number(), revision: v.string()}).index("by_external_id", ["id"]),
   topicLocations: defineTable({
