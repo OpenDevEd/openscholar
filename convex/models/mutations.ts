@@ -81,6 +81,7 @@ export const reconcileCatalog = internalMutation({
           costMarkup: existing.costMarkup,
           sortOrder: existing.sortOrder,
           category: existing.category,
+          hidden: existing.hidden,
           // Update timestamps
           syncedAt: now,
           updatedAt: now,

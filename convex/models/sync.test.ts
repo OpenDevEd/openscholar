@@ -75,7 +75,7 @@ describe("OpenRouter catalog refresh", () => {
     const oldId = await t.run(async ctx => ctx.db.insert("models", {
       modelId: "openai/old", name: "Old model", provider: "openai",
       inputPricePerMillion: 1, outputPricePerMillion: 2,
-      isServed: true, costMarkup: 1.8, sortOrder: 2, category: "curated",
+      isServed: true, costMarkup: 1.8, sortOrder: 2, category: "curated", hidden: true,
       syncedAt: 1, createdAt: 1, updatedAt: 1,
     }));
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({data: [RAW_BASE]})));
@@ -97,8 +97,10 @@ describe("OpenRouter catalog refresh", () => {
 
     fetch.mockResolvedValue(new Response(JSON.stringify({data: [{...RAW_BASE, id: "openai/old", name: "Returned model"}]})));
     await t.action(internal.models.sync.syncFromOpenRouter, {});
-    expect(await t.run(ctx => ctx.db.get(oldId))).toMatchObject({name: "Returned model", costMarkup: 1.8, sortOrder: 2, category: "curated", isServed: true});
+    expect(await t.run(ctx => ctx.db.get(oldId))).toMatchObject({name: "Returned model", costMarkup: 1.8, sortOrder: 2, category: "curated", isServed: true, hidden: true});
     expect((await t.run(ctx => ctx.db.get(oldId)))?.retiredAt).toBeUndefined();
+    // An admin switched it off, so a library can't offer it either.
+    expect((await t.query(internal.models.queries.resolveEvidenceLibrarySelection, {modelIds: ["openai/old"]})).allowedModelIds).toEqual([]);
     expect((await t.query(internal.models.queries.listServed, {})).map(m => m._id)).toEqual([oldId]);
   });
 

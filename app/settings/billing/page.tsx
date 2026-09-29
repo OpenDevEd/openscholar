@@ -176,66 +176,68 @@ export default function BillingPage() {
           </div>
         ) : null}
 
-        <section className="grid overflow-hidden rounded-2xl border border-border/60 @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
-          <div className="space-y-5 p-5">
-            <div>
-              <p className="text-4xl font-semibold tabular-nums tracking-tight">{format.number(account.balance)}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t("credits")}</p>
+        {creditsEnabled ? (
+          <section className="grid overflow-hidden rounded-2xl border border-border/60 @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
+            <div className="space-y-5 p-5">
+              <div>
+                <p className="text-4xl font-semibold tabular-nums tracking-tight">{format.number(account.balance)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("credits")}</p>
+              </div>
+              {cap > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-baseline justify-between text-xs">
+                    <span className="font-medium">{planName(plan)}</span>
+                    <span className="tabular-nums text-muted-foreground" data-testid="billing-free-credits">
+                      {format.number(fromPlan)} / {format.number(cap)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (fromPlan / cap) * 100)}%` }} />
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    {monthly > 0 && account.renewsAt !== undefined ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Repeat className="size-3.5" />
+                        {t("refillOn", { amount: format.number(monthly), date: date(account.renewsAt) })}
+                      </span>
+                    ) : null}
+                    {account.purchased > 0 ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Coins className="size-3.5" />
+                        {t("bought", { amount: format.number(account.purchased) })}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
             </div>
-            {creditsEnabled && cap > 0 ? (
-              <div className="space-y-2">
-                <div className="flex items-baseline justify-between text-xs">
-                  <span className="font-medium">{planName(plan)}</span>
-                  <span className="tabular-nums text-muted-foreground" data-testid="billing-free-credits">
-                    {format.number(fromPlan)} / {format.number(cap)}
-                  </span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (fromPlan / cap) * 100)}%` }} />
-                </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  {monthly > 0 && account.renewsAt !== undefined ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Repeat className="size-3.5" />
-                      {t("refillOn", { amount: format.number(monthly), date: date(account.renewsAt) })}
-                    </span>
-                  ) : null}
-                  {account.purchased > 0 ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Coins className="size-3.5" />
-                      {t("bought", { amount: format.number(account.purchased) })}
-                    </span>
-                  ) : null}
+            {topupsEnabled && bundles.length > 0 ? (
+              <div className="flex flex-col border-t border-border/60 bg-muted/20 @min-[46rem]/configuration:border-l @min-[46rem]/configuration:border-t-0">
+                <p className="px-5 pb-1 pt-4 text-xs font-medium text-muted-foreground">{t("topUp")}</p>
+                <div className="flex flex-1 flex-col justify-center p-2">
+                  {bundles.map((bundle) => (
+                    <button
+                      key={bundle.credits}
+                      type="button"
+                      disabled={buying !== null}
+                      onClick={() => buy(bundle.credits)}
+                      aria-label={t("buyBundle", { credits: format.number(bundle.credits), price: money(bundle.amount) })}
+                      className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/60 disabled:opacity-60"
+                    >
+                      <span className="flex-1 text-sm font-semibold tabular-nums">+{format.number(bundle.credits)}</span>
+                      <span className="text-sm tabular-nums text-muted-foreground">{money(bundle.amount)}</span>
+                      {buying === bundle.credits ? (
+                        <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                      ) : (
+                        <ArrowRight className="size-4 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
+                      )}
+                    </button>
+                  ))}
                 </div>
               </div>
             ) : null}
-          </div>
-          {creditsEnabled && topupsEnabled && bundles.length > 0 ? (
-            <div className="flex flex-col border-t border-border/60 bg-muted/20 @min-[46rem]/configuration:border-l @min-[46rem]/configuration:border-t-0">
-              <p className="px-5 pb-1 pt-4 text-xs font-medium text-muted-foreground">{t("topUp")}</p>
-              <div className="flex flex-1 flex-col justify-center p-2">
-                {bundles.map((bundle) => (
-                  <button
-                    key={bundle.credits}
-                    type="button"
-                    disabled={buying !== null}
-                    onClick={() => buy(bundle.credits)}
-                    aria-label={t("buyBundle", { credits: format.number(bundle.credits), price: money(bundle.amount) })}
-                    className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/60 disabled:opacity-60"
-                  >
-                    <span className="flex-1 text-sm font-semibold tabular-nums">+{format.number(bundle.credits)}</span>
-                    <span className="text-sm tabular-nums text-muted-foreground">{money(bundle.amount)}</span>
-                    {buying === bundle.credits ? (
-                      <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                    ) : (
-                      <ArrowRight className="size-4 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </section>
+          </section>
+        ) : null}
 
         {creditsEnabled ? (
           <Zone label={t("spendingLast30Days")}>

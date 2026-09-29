@@ -41,7 +41,7 @@ async function modelsById(ctx: QueryCtx, modelIds: readonly string[]) {
       .query("models")
       .withIndex("by_model_id", (q) => q.eq("modelId", modelId))
       .unique();
-    if (model && model.retiredAt === undefined) models.push(model);
+    if (model && model.retiredAt === undefined && !model.hidden) models.push(model);
   }
   return models;
 }

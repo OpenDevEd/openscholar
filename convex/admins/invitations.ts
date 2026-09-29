@@ -35,9 +35,9 @@ export const resend = action({
 async function deliver(ctx: ActionCtx, adminId: Id<"admins">) {
   const row = await ctx.runQuery(internal.admins.mutations.readInvite, { adminId });
   if (!row) return;
-  const mail = requireInvitationMail();
-  const url = new URL("/settings/admin", requireAppUrl()).href;
   try {
+    const mail = requireInvitationMail();
+    const url = new URL("/settings/admin", requireAppUrl()).href;
     await sendInvitationEmail(mail, {
       senderName: "OpenScholar",
       to: row.email,
