@@ -15,6 +15,7 @@ import { refreshAccount } from "./accounts";
 import { billingUsageFields, usageKindValidator } from "./validators";
 import { recordJobCredits } from "../extraction/aggregates";
 import { insertUsage } from "./usageLog";
+import type { Usage } from "../../lib/ai/core/types";
 
 /** Long enough for any single chat turn, paper, or batch we run. */
 const DEFAULT_HOLD_MS = 30 * 60_000;
@@ -99,7 +100,20 @@ const usageDetailsValidator = v.object({
   jobId: v.optional(v.id("extractionJobs")),
   model: v.optional(v.string()),
   costUsd: v.optional(v.number()),
+  cacheReadTokens: v.optional(v.number()),
+  cacheWriteTokens: v.optional(v.number()),
+  reasoningTokens: v.optional(v.number()),
 });
+/** What a charge records about the tokens behind it. */
+export function tokenDetails(usage: Usage) {
+  return {
+    ...(usage.costUsd !== undefined && { costUsd: usage.costUsd }),
+    cacheReadTokens: usage.cacheReadTokens ?? 0,
+    cacheWriteTokens: usage.cacheWriteTokens ?? 0,
+    reasoningTokens: usage.reasoningTokens ?? 0,
+  };
+}
+
 const settleValidator = v.object({
   userId: v.id("users"),
   chargeId: v.string(),

@@ -1,10 +1,12 @@
 import { v } from "convex/values";
 import { AI_TASKS, SEARCH_TASKS } from "../../lib/ai/tasks";
 import { PRESET_KEYS } from "../../lib/ai/resolve-server-model";
+import { EFFORTS } from "../../lib/ai/core/call-options";
 
 export const aiTaskValidator = v.union(...AI_TASKS.map((task) => v.literal(task)));
 export const searchTaskValidator = v.union(...SEARCH_TASKS.map((task) => v.literal(task)));
 export const presetKeyValidator = v.union(...PRESET_KEYS.map((preset) => v.literal(preset)));
+export const effortValidator = v.union(...EFFORTS.map((effort) => v.literal(effort)));
 export const serverPresetValidator = v.union(presetKeyValidator, v.literal("custom"), v.literal("recommended"));
 
 /** What the settings map shows for a model. */

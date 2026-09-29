@@ -1,6 +1,7 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { activeModels, MAX_CATALOG_MODELS } from "./catalog";
+import { effortValidator } from "../aiModelConfig/validators";
 
 /** Shape of a single model entry from the sync action. */
 const modelEntryValidator = v.object({
@@ -31,6 +32,9 @@ const modelEntryValidator = v.object({
   isModerated: v.optional(v.boolean()),
 
   supportedParameters: v.optional(v.array(v.string())),
+  reasoningEfforts: v.optional(v.array(effortValidator)),
+  defaultEffort: v.optional(effortValidator),
+  reasoningMandatory: v.optional(v.boolean()),
 
   knowledgeCutoff: v.optional(v.string()),
   expirationDate: v.optional(v.string()),

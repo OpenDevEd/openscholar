@@ -8,6 +8,7 @@ const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
 
 import { z } from "zod";
 import { MAX_CATALOG_MODELS } from "./catalog";
+import { EFFORTS, type Effort } from "../../lib/ai/core/call-options";
 
 const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 const optionalText = z.string().nullish();
@@ -37,6 +38,11 @@ const rawModelSchema = z.object({
     is_moderated: z.boolean().optional(),
   }).optional(),
   supported_parameters: z.array(z.string()).optional(),
+  reasoning: z.object({
+    mandatory: z.boolean().nullish(),
+    supported_efforts: z.array(z.string()).nullish(),
+    default_effort: optionalText,
+  }).optional(),
   knowledge_cutoff: optionalText,
   expiration_date: optionalText,
   default_parameters: z.object({
@@ -45,6 +51,21 @@ const rawModelSchema = z.object({
 });
 type OpenRouterModel = z.infer<typeof rawModelSchema>;
 const catalogSchema = z.object({data: z.array(rawModelSchema).min(1).max(MAX_CATALOG_MODELS)});
+
+/**
+ * The effort levels a model takes. OpenRouter lists none when every level is
+ * accepted; levels this app doesn't know yet are dropped.
+ */
+function reasoningOf(reasoning: OpenRouterModel["reasoning"]) {
+  if (!reasoning) return {};
+  const known = (level: string | null | undefined): level is Effort => EFFORTS.includes(level as Effort);
+  const efforts = reasoning.supported_efforts ? reasoning.supported_efforts.filter(known) : [...EFFORTS];
+  return {
+    reasoningEfforts: EFFORTS.filter((level) => efforts.includes(level)),
+    ...(known(reasoning.default_effort) && { defaultEffort: reasoning.default_effort }),
+    reasoningMandatory: reasoning.mandatory ?? false,
+  };
+}
 
 /**
  * Parse a pricing string (USD per token) into USD per million tokens.
@@ -121,6 +142,7 @@ export function transformModel(raw: OpenRouterModel) {
     isModerated: raw.top_provider?.is_moderated ?? undefined,
 
     supportedParameters: raw.supported_parameters ?? undefined,
+    ...reasoningOf(raw.reasoning),
 
     knowledgeCutoff: raw.knowledge_cutoff ?? undefined,
     expirationDate: raw.expiration_date ?? undefined,

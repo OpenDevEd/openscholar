@@ -14,6 +14,24 @@ const RAW_BASE = {
   },
 } as const;
 
+describe("transformModel — reasoning effort", () => {
+  it("keeps the effort levels a model takes, lowest first, dropping ones the app doesn't know", () => {
+    const out = transformModel({
+      ...RAW_BASE,
+      reasoning: { mandatory: false, supported_efforts: ["max", "high", "turbo", "low"], default_effort: "high" },
+    });
+    expect(out).toMatchObject({ reasoningEfforts: ["low", "high", "max"], defaultEffort: "high", reasoningMandatory: false });
+  });
+
+  it("takes every level when OpenRouter lists none, and no reasoning when the model has none", () => {
+    expect(transformModel({ ...RAW_BASE, reasoning: { mandatory: true } })).toMatchObject({
+      reasoningEfforts: ["none", "minimal", "low", "medium", "high", "xhigh", "max"],
+      reasoningMandatory: true,
+    });
+    expect(transformModel(RAW_BASE)).not.toHaveProperty("reasoningEfforts");
+  });
+});
+
 describe("transformModel — webSearchPrice unit", () => {
   it("treats pricing.web_search as dollars per call (not per token)", () => {
     const out = transformModel({

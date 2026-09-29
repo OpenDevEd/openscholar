@@ -77,10 +77,18 @@ describe("calculateCostInDollars", () => {
   });
 });
 
+describe("calculateCostInDollars with a reported cost", () => {
+  it("charges what OpenRouter reported instead of tokens at the catalog price", () => {
+    // 1M input tokens at $3/M would be $3; mostly cached, OpenRouter billed $0.60.
+    expect(calculateCostInDollars({ inputTokens: 1_000_000, cacheReadTokens: 900_000, costUsd: 0.6 }, { input: 3, output: 15 })).toBe(0.6);
+  });
+});
+
 describe("aggregateUsage", () => {
   it("returns zero totals for empty array", () => {
     const result = aggregateUsage([]);
-    expect(result).toEqual({
+    expect(result).not.toHaveProperty("costUsd");
+    expect(result).toMatchObject({
       promptTokens: 0,
       inputTokens: 0,
       completionTokens: 0,
@@ -96,7 +104,7 @@ describe("aggregateUsage", () => {
       outputTokens: 50,
     };
     const result = aggregateUsage([usage]);
-    expect(result).toEqual(usage);
+    expect(result).toMatchObject(usage);
   });
 
   it("sums all four fields across multiple Usage objects", () => {
@@ -121,7 +129,7 @@ describe("aggregateUsage", () => {
       },
     ];
     const result = aggregateUsage(usages);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       promptTokens: 450,
       inputTokens: 700,
       completionTokens: 225,
@@ -134,7 +142,7 @@ describe("aggregateUsage", () => {
       { promptTokens: 100 } as Usage,
       { completionTokens: 200 } as Usage,
     ]);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       promptTokens: 100,
       inputTokens: 0,
       completionTokens: 200,
@@ -149,5 +157,17 @@ describe("aggregateUsage", () => {
     ]);
     expect(result.promptTokens).toBe(30_000_000);
     expect(result.completionTokens).toBe(20_000_000);
+  });
+
+  it("sums cache and reasoning tokens, and a reported cost only when every call reported one", () => {
+    const reported = { inputTokens: 1000, cacheReadTokens: 800, cacheWriteTokens: 0, reasoningTokens: 40, costUsd: 0.002 };
+    expect(aggregateUsage([reported, { ...reported, cacheWriteTokens: 200, costUsd: 0.003 }])).toMatchObject({
+      cacheReadTokens: 1600,
+      cacheWriteTokens: 200,
+      reasoningTokens: 80,
+      costUsd: 0.005,
+    });
+    // One call without a reported cost sends the whole batch back to token prices.
+    expect(aggregateUsage([reported, { inputTokens: 1000 }])).not.toHaveProperty("costUsd");
   });
 });

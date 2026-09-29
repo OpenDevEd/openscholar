@@ -32,7 +32,7 @@ import {
 import { ESTIMATED_CREDITS_PER_QUERY } from "../lib/constants";
 import { createError } from "../lib/errors";
 import { creditsForUsage } from "../../lib/pricing";
-import { reserveCredits, releaseCredits, settleCredits } from "../billing/charge";
+import { reserveCredits, releaseCredits, settleCredits, tokenDetails } from "../billing/charge";
 import type { UsageKind } from "../billing/validators";
 import type { AiTask } from "../../lib/ai/tasks";
 
@@ -214,6 +214,7 @@ export async function withCredits<T>(
       description: target.description,
       jobId: target.jobId,
       model: target.model,
+      ...tokenDetails(outcome.usage),
     },
   });
   return { result: outcome.result, credits, usage: outcome.usage };

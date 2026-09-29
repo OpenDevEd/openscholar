@@ -45,6 +45,7 @@ import { authorContentFields } from "./authors/validators";
 
 import { topicNodeFields, metadataValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
+import { effortValidator } from "./aiModelConfig/validators";
 
 export default defineSchema({
   topicCatalog: defineTable(topicNodeFields)
@@ -301,6 +302,11 @@ export default defineSchema({
 
     // ── Capabilities ──
     supportedParameters: v.optional(v.array(v.string())),
+    // Reasoning effort levels the model takes, lowest first; absent when it doesn't reason.
+    reasoningEfforts: v.optional(v.array(effortValidator)),
+    defaultEffort: v.optional(effortValidator),
+    /** Reasoning can't be turned off ("none" is refused). */
+    reasoningMandatory: v.optional(v.boolean()),
 
     // ── Lifecycle ──
     knowledgeCutoff: v.optional(v.string()),

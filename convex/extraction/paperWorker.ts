@@ -11,7 +11,9 @@ import {
 import { chunk } from "./batching";
 import { getProcessableFlags } from "./content";
 import { resolveOpenRouterModel } from "../chat/provider";
-import { reserveCredits, settleCredits } from "../billing/charge";
+import { reserveCredits, settleCredits, tokenDetails } from "../billing/charge";
+import { aggregateUsage } from "../../lib/ai/core/cost";
+import type { Usage } from "../../lib/ai/core/types";
 import { estimatePaperCredits } from "../../lib/extraction/cost-estimate";
 import {
   batchSkipReasonToWorkerSkipReason,
@@ -32,7 +34,7 @@ const QUEUE_LEASE_MS = 60_000;
 
 type QuestionItem = Doc<"extractionQuestions">;
 
-type BatchRun = { stop: QueueStopStatus | null; credits: number };
+type BatchRun = { stop: QueueStopStatus | null; credits: number; usages: Usage[] };
 
 type PaperExtractionContextResult =
   | { status: "not_found" }
@@ -254,12 +256,12 @@ async function runQuestionBatch(
     )
     .map((outcome) => getQueueStatusForWorkerSkip(outcome.reason))
     .find((status) => status !== null);
-  if (stopStatus) return { stop: stopStatus, credits: 0 };
+  if (stopStatus) return { stop: stopStatus, credits: 0, usages: [] };
 
   const completed = outcomes.filter(isCompletedQuestionOutcome);
   const failed = outcomes.filter(isFailedQuestionOutcome);
   if (completed.length === 0 && failed.length === 0) {
-    return { stop: null, credits: 0 };
+    return { stop: null, credits: 0, usages: [] };
   }
 
   const writeResult = await ctx.runMutation(
@@ -281,6 +283,7 @@ async function runQuestionBatch(
         batchSkipReasonToWorkerSkipReason(writeResult.reason),
       ),
       credits: 0,
+      usages: [],
     };
   }
 
@@ -295,10 +298,9 @@ async function runQuestionBatch(
   }
 
   // Only answers that were saved are charged.
-  const credits = completed
-    .filter((outcome) => persisted.has(outcome.questionKey))
-    .reduce((sum, outcome) => sum + outcome.creditsUsed, 0);
-  return { stop: null, credits };
+  const charged = completed.filter((outcome) => persisted.has(outcome.questionKey));
+  const credits = charged.reduce((sum, outcome) => sum + outcome.creditsUsed, 0);
+  return { stop: null, credits, usages: charged.map((outcome) => outcome.usage) };
 }
 
 async function runQuestionBatches(
@@ -321,6 +323,7 @@ async function runQuestionBatches(
     context.job.serverModelId ?? null,
   );
   let credits = 0;
+  const usages: Usage[] = [];
   for (const batch of chunk(items, questionConcurrency)) {
     const run = await runQuestionBatch(ctx, {
       context,
@@ -331,9 +334,10 @@ async function runQuestionBatches(
       modelSlug,
     });
     credits += run.credits;
-    if (run.stop) return { stop: run.stop, credits };
+    usages.push(...run.usages);
+    if (run.stop) return { stop: run.stop, credits, usages };
   }
-  return { stop: null, credits };
+  return { stop: null, credits, usages };
 }
 
 type PaperReservation = { chargeId: string; reserved: number; description: string };
@@ -396,12 +400,13 @@ async function settlePaperCredits(
   job: Doc<"extractionJobs">,
   reservation: PaperReservation,
   credits: number,
+  usage: Usage,
 ): Promise<void> {
   await settleCredits(ctx, {
     userId: job.userId,
     chargeId: reservation.chargeId,
     credits,
-    usage: { kind: "extraction", description: reservation.description, jobId: job._id },
+    usage: { kind: "extraction", description: reservation.description, jobId: job._id, ...tokenDetails(usage) },
   });
 }
 
@@ -488,6 +493,7 @@ export const runPaperQueueItem = internalAction({
     if (!reservation) return null;
 
     let charged = 0;
+    const usages: Usage[] = [];
     try {
       await markPaperStatus(ctx, {
         paperId: paper._id,
@@ -550,6 +556,7 @@ export const runPaperQueueItem = internalAction({
         expectedEpoch: args.expectedEpoch,
       });
       charged += questionRun.credits;
+      usages.push(...questionRun.usages);
       if (questionRun.stop) {
         await updateQueueStatus(ctx, queueRow, questionRun.stop);
         return null;
@@ -565,7 +572,7 @@ export const runPaperQueueItem = internalAction({
         pdfEnabled: args.pdfEnabled,
       });
     } finally {
-      await settlePaperCredits(ctx, job, reservation, charged);
+      await settlePaperCredits(ctx, job, reservation, charged, aggregateUsage(usages));
     }
     return null;
   },
