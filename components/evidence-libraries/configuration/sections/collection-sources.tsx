@@ -5,7 +5,6 @@ import { useConvex, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { type RefObject, useRef } from "react";
 import { toast } from "sonner";
-import { Switch } from "@/components/ui/switch";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -20,7 +19,7 @@ import {
   type PickerSource,
   RemotePickerDialog,
 } from "./remote-picker-dialog";
-import { SourceRow } from "./source-row";
+import { SourceRow, SourceSwitch } from "./source-row";
 import type { SourceLive } from "./source-activity";
 
 /** OpenScholar's own icon, as the logo shows it. */
@@ -162,16 +161,13 @@ export function CollectionSourceRow({
       onRemove={onRemove}
       data-collection-id={entry.collectionId}
       controls={
-        <label className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Switch
-            checked={entry.settings.downloadPdfs}
-            aria-label={t("pdfs")}
-            onCheckedChange={(downloadPdfs) =>
-              controller.patch(entry.key, { settings: { ...entry.settings, downloadPdfs } })
-            }
-          />
-          {t("pdfs")}
-        </label>
+        <SourceSwitch
+          label={t("pdfs")}
+          checked={entry.settings.downloadPdfs}
+          onCheckedChange={(downloadPdfs) =>
+            controller.patch(entry.key, { settings: { ...entry.settings, downloadPdfs } })
+          }
+        />
       }
     />
   );

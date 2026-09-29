@@ -18,9 +18,20 @@
 
 import useSWR from "swr";
 import { hashSearchFilters } from "@/lib/openalex/filter-hash";
-import { searchOpenAlexCount } from "@/app/actions/openalex-count";
+import { countOpenAlexQuery, searchOpenAlexCount } from "@/app/actions/openalex-count";
+import type { OpenAlexWorksQuery } from "@/lib/openalex/search-params";
 import { toSearchFilters } from "@/lib/openalex/to-search-filters";
 import type { SearchResult } from "@/lib/types";
+
+const COUNT_OPTIONS = {
+  revalidateIfStale: false,
+  revalidateOnFocus: false,
+  revalidateOnReconnect: false,
+  dedupingInterval: 60_000,
+  keepPreviousData: true,
+  errorRetryCount: 2,
+  errorRetryInterval: 1000,
+};
 
 type UseHistoryCountResult = {
   count: number | undefined;
@@ -46,15 +57,7 @@ export function useHistoryCount(
       );
       return count;
     },
-    {
-      revalidateIfStale: false,
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 60_000,
-      keepPreviousData: true,
-      errorRetryCount: 2,
-      errorRetryInterval: 1000,
-    },
+    COUNT_OPTIONS,
   );
 
   return {
@@ -63,4 +66,14 @@ export function useHistoryCount(
     error: error as Error | undefined,
     refresh: () => mutate(),
   };
+}
+
+/** How many works a stored request finds, such as a library source's approved query; cached like the history counts. */
+export function useOpenAlexQueryCount(query: OpenAlexWorksQuery): number | undefined {
+  const { data } = useSWR<number>(
+    ["openalex-query-count", query.oql ?? "", query.filter ?? "", query.search ?? ""],
+    async () => (await countOpenAlexQuery(query)).count,
+    COUNT_OPTIONS,
+  );
+  return data;
 }

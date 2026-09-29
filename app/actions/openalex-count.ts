@@ -1,6 +1,7 @@
 "use server";
 
-import { fetchOpenAlexCount } from "@/lib/openalex/count";
+import { fetchOpenAlexCount, fetchOpenAlexQueryCount } from "@/lib/openalex/count";
+import type { OpenAlexWorksQuery } from "@/lib/openalex/search-params";
 import type { SearchFilters } from "@/lib/types";
 
 /**
@@ -13,4 +14,11 @@ export async function searchOpenAlexCount(
   filters: SearchFilters,
 ): Promise<{ count: number }> {
   return await fetchOpenAlexCount(query, filters);
+}
+
+/** The count of a stored request, such as a library source's approved query. */
+export async function countOpenAlexQuery(
+  query: OpenAlexWorksQuery,
+): Promise<{ count: number }> {
+  return await fetchOpenAlexQueryCount(query);
 }

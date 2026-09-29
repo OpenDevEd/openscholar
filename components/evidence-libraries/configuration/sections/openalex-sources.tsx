@@ -38,7 +38,8 @@ import { paramsToSearchResult } from "@/lib/search-params";
 import { readOpenAlexSourceSearch, sourceSearchHistoryId } from "@/lib/evidence-libraries/openalex-source-query";
 import { Field } from "../section-card";
 import { OpenAlexQuerySummary } from "./openalex-query-summary";
-import { SourceRow } from "./source-row";
+import { SourceCount, SourceRow, SourceSwitch } from "./source-row";
+import { useOpenAlexQueryCount } from "@/lib/hooks/use-history-count";
 import type { SourceLive } from "./source-activity";
 
 export const OpenAlexSearchDialog = dynamic(
@@ -209,6 +210,8 @@ export function OpenAlexSourceRow({
   live: SourceLive | null;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
+  // How many works the approved query finds now: what the library imports.
+  const count = useOpenAlexQueryCount(source.settings.approvedQuery.query);
   return (
     <SourceRow
       name={source.settings.name}
@@ -227,11 +230,20 @@ export function OpenAlexSourceRow({
       }
       metadata={[
         {
-          key: "pdfs",
-          label: t("pdfProcessing"),
-          value: source.settings.downloadPdfs ? t("on") : t("off"),
+          key: "records",
+          label: t("recordsLabel"),
+          value: <SourceCount count={count} />,
         },
       ]}
+      controls={
+        <SourceSwitch
+          label={t("pdfs")}
+          checked={source.settings.downloadPdfs}
+          onCheckedChange={(downloadPdfs) =>
+            controller.patch(source.key, { settings: { ...source.settings, downloadPdfs } })
+          }
+        />
+      }
       onEdit={() => controller.setEditing(source)}
       onToggle={() =>
         controller.patch(source.key, { enabled: !source.enabled })

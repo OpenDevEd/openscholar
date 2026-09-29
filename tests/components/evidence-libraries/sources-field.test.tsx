@@ -99,6 +99,10 @@ vi.mock("next-intl", () => ({
   useNow: () => new Date("2026-09-27T12:10:00.000Z"),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+// OpenAlex is not asked during tests; a search finds this many works.
+vi.mock("@/lib/hooks/use-history-count", () => ({
+  useOpenAlexQueryCount: () => 1234,
+}));
 
 const newSearch: OpenAlexSourceEntry = {
   key: "openalex-new",
@@ -247,6 +251,27 @@ describe("<SourcesField>", () => {
       "2020 - 2026",
     );
     expect(screen.queryByText(/2 sources/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a search's result count and switches each source's PDFs from its row", async () => {
+    queries({ connected: true, groups: [group42] });
+    const onChange = vi.fn();
+    render(<Harness initial={[zoteroSourceEntry("42"), openAlexSource]} onChange={onChange} />);
+    expect(screen.getByText("1,234")).toBeInTheDocument();
+    const [zoteroPdfs, openAlexPdfs] = screen.getAllByRole("switch", { name: `${ns}.pdfs` });
+    expect(zoteroPdfs).toBeChecked();
+    expect(openAlexPdfs).not.toBeChecked();
+
+    await userEvent.click(zoteroPdfs!);
+    expect(onChange).toHaveBeenLastCalledWith([
+      { ...zoteroSourceEntry("42"), settings: { downloadPdfs: false } },
+      openAlexSource,
+    ]);
+    await userEvent.click(openAlexPdfs!);
+    expect(onChange).toHaveBeenLastCalledWith([
+      { ...zoteroSourceEntry("42"), settings: { downloadPdfs: false } },
+      { ...openAlexSource, settings: { ...openAlexSource.settings, downloadPdfs: true } },
+    ]);
   });
 
   it("pauses an approved OpenAlex source in the saved draft", async () => {
