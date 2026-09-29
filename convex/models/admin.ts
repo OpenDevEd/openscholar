@@ -29,6 +29,7 @@ export const list = query({
         contextLength: v.optional(v.number()),
         inputPricePerMillion: v.number(),
         outputPricePerMillion: v.number(),
+        intelligenceIndex: v.optional(v.number()),
         on: v.boolean(),
       }),
     ),
@@ -64,6 +65,7 @@ export const list = query({
         ...(m.contextLength !== undefined ? { contextLength: m.contextLength } : {}),
         inputPricePerMillion: m.inputPricePerMillion,
         outputPricePerMillion: m.outputPricePerMillion,
+        intelligenceIndex: m.intelligenceIndex,
         on: !m.hidden,
       })),
     };

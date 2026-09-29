@@ -10,8 +10,9 @@ import { AI_TASKS, DEFAULT_PRESET, PRESET_KEYS, type AiTask, type PresetKey } fr
 import type { Effort } from "@/lib/ai/core/call-options";
 import { Enter } from "@/components/settings/parts";
 import {
-  MapSummary, ModelPicker, NodeCard, PresetSwitch, RoutingMap, usePresetModels, useRouting, type Hover, type MapModel, type PresetPick,
+  MapSummary, NodeCard, PresetSwitch, RoutingMap, usePresetModels, useRouting, type Hover, type MapModel, type PresetPick,
 } from "@/components/settings/model-map";
+import { ModelPicker } from "@/components/models/model-picker";
 
 /** Each preset's model and effort for every task, drawn as the map users see. Click a task or a model card to change it. */
 export default function AdminAiModelsPage() {
@@ -63,11 +64,8 @@ export default function AdminAiModelsPage() {
             <ModelPicker
               align="start"
               current={modelOf(task) ?? undefined}
-              onChange={(m) => route([task], m)}
-              onEffort={(effort) => {
-                const m = modelOf(task);
-                if (m) route([task], m, effort);
-              }}
+              onChange={(m, effort) => route([task], m, effort)}
+              efforts
               presets={presetPicks([task])}
               tasks={[task]}
               trigger={
@@ -80,11 +78,11 @@ export default function AdminAiModelsPage() {
           renderNode={(n) => (
             <ModelPicker
               current={n.model}
-              onChange={(m) => route(n.tasks, m)}
-              onEffort={(effort) => route(n.tasks, n.model, effort)}
+              onChange={(m, effort) => route(n.tasks, m, effort)}
+              efforts
               presets={presetPicks(n.tasks)}
                 tasks={n.tasks}
-              trigger={<NodeCard model={n.model} paidBy="credits" count={n.tasks.length} interactive />}
+              trigger={<NodeCard model={n.model} paidBy="credits" interactive />}
             />
           )}
         />

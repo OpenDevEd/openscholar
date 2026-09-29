@@ -130,7 +130,6 @@ vi.mock("@/convex/_generated/api", () => ({
     models: {
       queries: {
         listCatalogOptions: "listCatalogOptions",
-        paginateCatalogOptions: "paginateCatalogOptions",
       },
     },
   },
@@ -161,7 +160,7 @@ vi.mock("convex/react", () => ({
     query === "publishRuntime"
       ? harness.publishRuntimeAnswer
       : query === "listCatalogOptions"
-      ? TEST_AI_MODELS.map((modelId, index) => ({
+      ? [...TEST_AI_MODELS, "meta-llama/llama-4-maverick"].map((modelId, index) => ({
           _id: `display_model_${index}`,
           modelId,
           name: modelId,
@@ -170,21 +169,6 @@ vi.mock("convex/react", () => ({
           outputPricePerMillion: 2,
         }))
       : undefined,
-  usePaginatedQuery: (query: unknown) => ({
-    results:
-      query === "paginateCatalogOptions"
-        ? [...TEST_AI_MODELS, "meta-llama/llama-4-maverick"].map((modelId, index) => ({
-          _id: `model_${index}`,
-          modelId,
-          name: modelId,
-          provider: modelId.split("/")[0],
-          inputPricePerMillion: 1,
-          outputPricePerMillion: 2,
-        }))
-        : [],
-    status: "Exhausted",
-    loadMore: vi.fn(),
-  }),
   useAction: (action: unknown) =>
     action === "check"
       ? harness.checkAction

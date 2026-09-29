@@ -2,7 +2,7 @@ import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { isDecisionModel } from "../../lib/ai/decisions";
-import { DECISION_TASKS, type AiTask } from "../../lib/ai/tasks";
+import { usableFor, type AiTask } from "../../lib/ai/tasks";
 import { createError } from "../lib/errors";
 
 // ponytail: one transaction handles up to 2,000 active models. Increase only
@@ -33,16 +33,6 @@ export function requireEffort(model: Doc<"models">, effort: Effort | undefined) 
   if (effort && !model.reasoningEfforts?.includes(effort)) {
     throw createError("VALIDATION_ERROR", `${model.name} doesn't take ${effort} reasoning effort.`);
   }
-}
-
-/**
- * Whether a model can do a task: a decision model (Jev) only screens, and every
- * task but chat asks for a JSON-schema answer, which needs `structured_outputs`
- * (`response_format` alone is plain JSON mode).
- */
-export function usableFor(model: Pick<Doc<"models">, "modelId" | "supportedParameters">, task: AiTask) {
-  if (isDecisionModel(model.modelId)) return DECISION_TASKS.includes(task);
-  return task === "chat" || model.supportedParameters?.includes("structured_outputs") === true;
 }
 
 /** Refuses a model for a task it can't do. */

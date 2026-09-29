@@ -508,8 +508,6 @@
     "usePdfsTitle": "使用 PDF",
     "usePdfsDescription": "包含完整 PDF 内容以获得更丰富的提取结果。否则仅使用摘要。",
     "usePdfsAriaLabel": "在提取中包含 PDF 内容",
-    "modelPickerLabel": "对话模型",
-    "modelPickerPlaceholder": "选择一个模型",
     "pleaseSelectModel": "请选择一个对话模型",
     "abstractMissingTitle": "部分论文缺少摘要",
     "abstractMissingDescription": "已选择的 {total} 篇论文中有 {missing} 篇没有摘要。对于这些论文，对话回答可能帮助有限。",
@@ -777,7 +775,6 @@
       "presetMax": "最大",
       "liveAnnouncement": "论文数已设为 {count, number}"
     },
-    "chatModelPresets": "Presets",
     "chatRetryResponseWith": "使用 {model} 重新生成",
     "chatRetryWithPrefix": "重新生成所用模型",
     "chatRetryLoadingMessages": "正在加载对话…",
@@ -785,8 +782,6 @@
     "chatBack": "返回提取列表",
     "chatComposerPlaceholder": "就你的论文提出任何问题…",
     "chatModelPickerTrigger": "更换模型",
-    "chatModelPickerSearch": "搜索模型…",
-    "chatModelPickerEmpty": "未找到模型。",
     "chatModelPickerLoading": "正在加载模型…",
     "chatJumpToLatest": "跳到最新",
     "chatEmptyHeadline": "就你的论文提出任何问题",
@@ -2846,10 +2841,6 @@
       "modelsLabel": "Available models",
       "modelsHint": "Select every model readers may use.",
       "addModel": "添加模型",
-      "searchModels": "搜索 OpenRouter 模型…",
-      "loadingModels": "正在加载 OpenRouter 模型…",
-      "loadMoreModels": "加载更多模型",
-      "noModels": "未找到模型。",
       "orderLabel": "Model order",
       "orderHint": "Drag the selected models into the order shown in the library.",
       "modelsEmpty": "Select at least one model.",
@@ -3293,9 +3284,7 @@
       "local": "我的密钥"
     },
     "yourBrowser": "你的浏览器",
-    "yourKey": "你的密钥",
     "credits": "积分",
-    "taskCount": "{count, plural, other {# 个任务}}",
     "apiKey": "{provider} API 密钥",
     "getKey": "获取 {provider} 密钥",
     "keyProvider": "密钥提供商",
@@ -3340,5 +3329,18 @@
       "xhigh": "很高",
       "max": "最高"
     }
+  },
+  "modelPicker": {
+    "vendors": "提供商",
+    "all": "全部",
+    "other": "其他",
+    "model": "模型",
+    "intelligence": "智能",
+    "context": "上下文",
+    "cost": "每百万 输入 / 输出",
+    "free": "免费",
+    "source": "Artificial Analysis 智能指数",
+    "back": "返回模型列表",
+    "default": "默认"
   }
 }

@@ -508,8 +508,6 @@
     "usePdfsTitle": "Utiliser les PDF",
     "usePdfsDescription": "Inclure le contenu complet des PDF pour une extraction plus riche. Sinon, résumé uniquement.",
     "usePdfsAriaLabel": "Inclure le contenu des PDF dans l'extraction",
-    "modelPickerLabel": "Modèle de conversation",
-    "modelPickerPlaceholder": "Sélectionner un modèle",
     "pleaseSelectModel": "Veuillez sélectionner un modèle de conversation",
     "abstractMissingTitle": "Certains articles n'ont pas de résumé",
     "abstractMissingDescription": "{missing} des {total} articles sélectionnés n'ont pas de résumé. Les réponses de la conversation peuvent être moins utiles pour ces articles.",
@@ -777,7 +775,6 @@
       "presetMax": "Max",
       "liveAnnouncement": "Nombre d'articles défini sur {count, number}"
     },
-    "chatModelPresets": "Presets",
     "chatRetryResponseWith": "Régénérer avec {model}",
     "chatRetryWithPrefix": "Régénérer avec",
     "chatRetryLoadingMessages": "Chargement de la conversation…",
@@ -785,8 +782,6 @@
     "chatBack": "Retour aux extractions",
     "chatComposerPlaceholder": "Posez une question sur vos articles…",
     "chatModelPickerTrigger": "Changer de modèle",
-    "chatModelPickerSearch": "Rechercher des modèles…",
-    "chatModelPickerEmpty": "Aucun modèle trouvé.",
     "chatModelPickerLoading": "Chargement des modèles…",
     "chatJumpToLatest": "Aller au plus récent",
     "chatEmptyHeadline": "Posez une question sur vos articles",
@@ -2846,10 +2841,6 @@
       "modelsLabel": "Available models",
       "modelsHint": "Select every model readers may use.",
       "addModel": "Ajouter un modèle",
-      "searchModels": "Rechercher les modèles OpenRouter…",
-      "loadingModels": "Chargement des modèles OpenRouter…",
-      "loadMoreModels": "Charger plus de modèles",
-      "noModels": "Aucun modèle trouvé.",
       "orderLabel": "Model order",
       "orderHint": "Drag the selected models into the order shown in the library.",
       "modelsEmpty": "Select at least one model.",
@@ -3293,9 +3284,7 @@
       "local": "Ma clé"
     },
     "yourBrowser": "Votre navigateur",
-    "yourKey": "Votre clé",
     "credits": "Crédits",
-    "taskCount": "{count, plural, one {# tâche} other {# tâches}}",
     "apiKey": "Clé API {provider}",
     "getKey": "Obtenir une clé {provider}",
     "keyProvider": "Fournisseur de la clé",
@@ -3340,5 +3329,18 @@
       "xhigh": "Très élevé",
       "max": "Max"
     }
+  },
+  "modelPicker": {
+    "vendors": "Fournisseurs",
+    "all": "Tous",
+    "other": "Autres",
+    "model": "Modèle",
+    "intelligence": "Intelligence",
+    "context": "Contexte",
+    "cost": "Par 1M entrée / sortie",
+    "free": "Gratuit",
+    "source": "Indice d'intelligence par Artificial Analysis",
+    "back": "Retour aux modèles",
+    "default": "Par défaut"
   }
 }

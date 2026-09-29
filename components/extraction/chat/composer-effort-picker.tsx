@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Effort } from "@/lib/ai/core/call-options";
 import type { ChatModelRow } from "./chat-model-types";
+import { EffortMeter } from "@/components/models/meters";
 
 /** The chat's reasoning effort, for models that take one; a change applies from the next message. */
 export function ComposerEffortPicker({
@@ -40,7 +41,7 @@ export function ComposerEffortPicker({
             "hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground",
           )}
         >
-          <Brain className="size-3.5" />
+          {current ? <EffortMeter levels={levels} level={current} filled="bg-current" /> : <Brain className="size-3.5" />}
           {current ? t(`efforts.${current}`) : t("effort")}
           <ChevronDownIcon className="size-3 opacity-60" />
         </Button>
@@ -49,7 +50,8 @@ export function ComposerEffortPicker({
         <DropdownMenuLabel className="text-xs text-muted-foreground">{t("effort")}</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={current ?? ""} onValueChange={(next) => onChange(next as Effort)}>
           {levels.map((level) => (
-            <DropdownMenuRadioItem key={level} value={level} className="text-sm">
+            <DropdownMenuRadioItem key={level} value={level} className="gap-2.5 text-sm">
+              <EffortMeter levels={levels} level={level} />
               {t(`efforts.${level}`)}
             </DropdownMenuRadioItem>
           ))}

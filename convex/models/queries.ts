@@ -1,8 +1,7 @@
 import { query, internalQuery, type QueryCtx } from "../_generated/server";
-import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { activeModels, MAX_CATALOG_MODELS, pickable, usableFor } from "./catalog";
-import { aiTaskValidator } from "../aiModelConfig/validators";
+import { activeModels, MAX_CATALOG_MODELS, pickable } from "./catalog";
+import { effortValidator } from "../aiModelConfig/validators";
 import type { Doc } from "../_generated/dataModel";
 import { isVariant, toNativeModelId } from "../../lib/ai/native-model-id";
 
@@ -18,6 +17,11 @@ const catalogOptionValidator = v.object({
   category: v.optional(v.string()),
   modality: v.optional(v.string()),
   tokenizer: v.optional(v.string()),
+  intelligenceIndex: v.optional(v.number()),
+  reasoningEfforts: v.optional(v.array(effortValidator)),
+  defaultEffort: v.optional(effortValidator),
+  createdOnOpenRouter: v.optional(v.number()),
+  supportedParameters: v.optional(v.array(v.string())),
 });
 
 function catalogOption(model: Doc<"models">) {
@@ -33,6 +37,11 @@ function catalogOption(model: Doc<"models">) {
     category: model.category,
     modality: model.modality,
     tokenizer: model.tokenizer,
+    intelligenceIndex: model.intelligenceIndex,
+    reasoningEfforts: model.reasoningEfforts,
+    defaultEffort: model.defaultEffort,
+    createdOnOpenRouter: model.createdOnOpenRouter,
+    supportedParameters: model.supportedParameters,
   };
 }
 
@@ -61,20 +70,14 @@ export const list = query({
 });
 
 /**
- * Public query: compact catalog options for the settings UI.
- * Returns only the fields the page renders and avoids a live whole-row shape.
+ * Public query: every model users can pick, with the fields pickers show and
+ * filter by task on (`usableFor`). One subscription serves every picker on a page.
  */
 export const listCatalogOptions = query({
-  args: {
-    provider: v.optional(v.string()),
-    /** Only models that can do every one of these tasks; chat when omitted. */
-    tasks: v.optional(v.array(aiTaskValidator)),
-  },
+  args: {},
   returns: v.array(catalogOptionValidator),
-  handler: async (ctx, { provider, tasks }) => {
-    const all = pickable(await activeModels(ctx, provider).take(MAX_CATALOG_MODELS));
-    const needed = tasks?.length ? [...new Set(tasks)] : (["chat"] as const);
-    return all.filter((row) => needed.every((task) => usableFor(row, task))).map(catalogOption);
+  handler: async (ctx) => {
+    return pickable(await activeModels(ctx).take(MAX_CATALOG_MODELS)).map(catalogOption);
   },
 });
 
@@ -99,15 +102,6 @@ export const getCatalogOption = query({
       .withIndex("by_model_id", (q) => q.eq("modelId", modelId))
       .unique();
     return model && model.retiredAt === undefined && !model.hidden ? catalogOption(model) : null;
-  },
-});
-
-/** Complete catalog page for the Evidence Library model picker. */
-export const paginateCatalogOptions = query({
-  args: { paginationOpts: paginationOptsValidator },
-  handler: async (ctx, { paginationOpts }) => {
-    const result = await activeModels(ctx).paginate(paginationOpts);
-    return { ...result, page: pickable(result.page).filter((row) => usableFor(row, "chat")).map(catalogOption) };
   },
 });
 

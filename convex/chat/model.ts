@@ -2,7 +2,8 @@
 
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { activeModels, MAX_CATALOG_MODELS, pickable, usableFor } from "../models/catalog";
+import { activeModels, MAX_CATALOG_MODELS, pickable } from "../models/catalog";
+import { usableFor } from "../../lib/ai/tasks";
 import { effortValidator } from "../aiModelConfig/validators";
 
 export const listChatModels = query({

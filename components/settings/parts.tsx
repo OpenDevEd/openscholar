@@ -64,13 +64,16 @@ export function Segmented<T extends string>({
 }: {
   value: T;
   onChange: (v: T) => void;
-  options: Array<{ id: T; label: string; icon?: Ico; detail?: ReactNode }>;
+  /** `detail` sits after the label; `below` is a line under it, across the segment. */
+  options: Array<{ id: T; label: string; icon?: Ico; detail?: ReactNode; below?: ReactNode }>;
   label: string;
   size?: "sm" | "md" | "lg";
   /** Stretch across the row, with equal segments. */
   fill?: boolean;
 }) {
   const buttons = useRef<Partial<Record<string, HTMLButtonElement | null>>>({});
+  // Segments with a line under the label are two-line cards rather than pills.
+  const stacked = options.some((o) => o.below);
   const [box, setBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   useLayoutEffect(() => {
     const el = buttons.current[value];
@@ -90,7 +93,8 @@ export function Segmented<T extends string>({
       role="radiogroup"
       aria-label={label}
       className={cn(
-        "relative rounded-full bg-muted/60 p-1",
+        "relative bg-muted/60 p-1",
+        stacked ? "rounded-[1.375rem]" : "rounded-full",
         // Equal segments in one row, two by two on narrow screens.
         fill ? "@container/segments grid w-full auto-cols-fr grid-flow-col @max-[34rem]/configuration:grid-flow-row @max-[34rem]/configuration:grid-cols-2 @max-[34rem]/configuration:rounded-3xl" : "inline-flex shrink-0",
       )}
@@ -98,7 +102,10 @@ export function Segmented<T extends string>({
       {box ? (
         <span
           aria-hidden
-          className="absolute left-0 top-0 rounded-full bg-primary/15 ring-1 ring-primary/40 transition-[transform,width,height] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+          className={cn(
+            "absolute left-0 top-0 bg-primary/15 ring-1 ring-primary/40 transition-[transform,width,height] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
+            stacked ? "rounded-2xl" : "rounded-full",
+          )}
           style={{ width: box.width, height: box.height, transform: `translate(${box.left}px, ${box.top}px)` }}
         />
       ) : null}
@@ -115,9 +122,11 @@ export function Segmented<T extends string>({
             aria-checked={on}
             onClick={() => onChange(o.id)}
             className={cn(
-              "relative flex items-center gap-2 whitespace-nowrap rounded-full font-medium transition-colors",
-              size === "lg" ? "h-11 px-4 text-sm" : size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
+              "relative flex items-center gap-2 whitespace-nowrap font-medium transition-colors",
+              stacked ? "rounded-2xl" : "rounded-full",
+              stacked ? "px-4 py-2.5 text-sm" : size === "lg" ? "h-11 px-4 text-sm" : size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
               fill && "min-w-0 justify-center @min-[40rem]/segments:justify-between",
+              stacked && "flex-col items-stretch justify-center gap-2 @min-[40rem]/segments:justify-center",
               on ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -126,6 +135,7 @@ export function Segmented<T extends string>({
               <span className="truncate">{o.label}</span>
             </span>
             {o.detail ? <span className="@max-[40rem]/segments:hidden">{o.detail}</span> : null}
+            {o.below ? <span className="flex">{o.below}</span> : null}
           </button>
         );
       })}

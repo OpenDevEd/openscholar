@@ -84,9 +84,10 @@ describe("OpenRouter catalog refresh", () => {
     vi.stubGlobal("fetch", fetch);
     expect(await t.action(internal.models.sync.syncFromOpenRouter, {})).toBe(2);
     expect(listCalls(fetch)).toBe(1);
-    // Jev is in the catalog, offered only where a decision model can answer.
-    expect((await t.query(api.models.queries.listCatalogOptions, {})).map(m => m.modelId)).toEqual([RAW_BASE.id]);
-    expect(await t.query(api.models.queries.listCatalogOptions, {tasks: ["screening"]})).toEqual(
+    // Jev is in the catalog; pickers offer it only where a decision model can answer (usableFor).
+    const catalog = await t.query(api.models.queries.listCatalogOptions, {});
+    expect(catalog.map(m => m.modelId).sort()).toEqual([RAW_BASE.id, "typesafe/jev-1.13"].sort());
+    expect(catalog).toEqual(
       expect.arrayContaining([expect.objectContaining({modelId: "typesafe/jev-1.13", inputPricePerMillion: expect.closeTo(0.042, 6), outputPricePerMillion: 0})]),
     );
     const old = await t.run(ctx => ctx.db.get(oldId));
@@ -94,8 +95,7 @@ describe("OpenRouter catalog refresh", () => {
     expect(await t.query(internal.models.queries.getById, {modelId: oldId})).toBeNull();
     expect(await t.query(internal.models.queries.listServed, {})).toEqual([]);
     expect(await t.query(internal.models.queries.getServedByModelId, {modelId: "openai/old"})).toBeNull();
-    expect(await t.query(api.models.queries.listCatalogOptions, {provider: "openai"})).toEqual([]);
-    expect((await t.query(api.models.queries.paginateCatalogOptions, {paginationOpts: {cursor: null, numItems: 10}})).page.map(m => m.modelId)).toEqual([RAW_BASE.id]);
+    expect((await t.query(api.models.queries.listCatalogOptions, {})).map(m => m.modelId)).not.toContain("openai/old");
     expect((await t.query(api.chat.model.listChatModels, {})).map(m => m.modelId)).toEqual([RAW_BASE.id]);
     expect(await t.query(internal.models.queries.resolveEvidenceLibrarySelection, {modelIds: ["openai/old"]})).toEqual({catalogReady: true, allowedModelIds: [], modelMetadata: {}});
     expect(await t.query(internal.models.queries.getPricing, {modelId: "openai/old"})).toEqual({input: 1, output: 2});
@@ -142,8 +142,9 @@ describe("OpenRouter catalog refresh", () => {
       ? new Response("unavailable", {status: 503})
       : new Response(JSON.stringify({data: [{...RAW_BASE, name: "Renamed"}]})))));
     await t.action(internal.models.sync.syncFromOpenRouter, {});
-    expect((await t.query(api.models.queries.listCatalogOptions, {})).map(m => [m.modelId, m.name])).toEqual([[RAW_BASE.id, "Renamed"]]);
-    expect((await t.query(api.models.queries.listCatalogOptions, {tasks: ["screening"]})).map(m => [m.modelId, m.name])).toEqual([["typesafe/jev-1.13", "TypeSafe: Jev 1.13"]]);
+    expect((await t.query(api.models.queries.listCatalogOptions, {})).map(m => [m.modelId, m.name])).toEqual(
+      expect.arrayContaining([[RAW_BASE.id, "Renamed"], ["typesafe/jev-1.13", "TypeSafe: Jev 1.13"]]),
+    );
   });
 
   it("passes a timeout signal and stops on an aborted request", async () => {

@@ -1,28 +1,12 @@
 "use client";
 
-import {
-  useAction,
-  useMutation,
-  usePaginatedQuery,
-  useQuery,
-} from "convex/react";
-import type { FunctionReturnType } from "convex/server";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { ChevronDown, Plus, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -47,6 +31,7 @@ import {
   ToggleRow,
 } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
+import { ModelPicker } from "@/components/models/model-picker";
 
 const KEY_INSTANCE = "openrouter";
 
@@ -111,15 +96,16 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
             hint={t("modelsHint")}
             action={
               <ModelPicker
-                selected={models}
-                onAdd={(model) => setModels([...models, model])}
-                labels={{
-                  add: t("addModel"),
-                  empty: t("noModels"),
-                  loadMore: t("loadMoreModels"),
-                  loading: t("loadingModels"),
-                  search: t("searchModels"),
-                }}
+                current={undefined}
+                exclude={models}
+                onChange={(model) => setModels([...models, model.id])}
+                trigger={
+                  <Button type="button" variant="outline" size="sm" aria-label={t("addModel")}>
+                    <Plus className="size-3.5" />
+                    {t("addModel")}
+                    <ChevronDown className="size-3.5 text-muted-foreground" />
+                  </Button>
+                }
               />
             }
           >
@@ -222,127 +208,6 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
         </div>
       ) : null}
     </SectionShell>
-  );
-}
-
-type ModelOption = FunctionReturnType<
-  typeof api.models.queries.paginateCatalogOptions
->["page"][number];
-
-function ModelPicker({
-  selected,
-  onAdd,
-  labels,
-}: {
-  selected: string[];
-  onAdd: (modelId: string) => void;
-  labels: {
-    add: string;
-    empty: string;
-    loadMore: string;
-    loading: string;
-    search: string;
-  };
-}) {
-  const [open, setOpen] = useState(false);
-  const {
-    results: catalog,
-    status: catalogStatus,
-    loadMore,
-  } = usePaginatedQuery(
-    api.models.queries.paginateCatalogOptions,
-    open ? {} : "skip",
-    { initialNumItems: 500 },
-  );
-  const available = catalog.filter((model) => !selected.includes(model.modelId));
-  const groups = new Map<string, ModelOption[]>();
-  for (const model of available) {
-    groups.set(model.provider, [...(groups.get(model.provider) ?? []), model]);
-  }
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={catalogStatus === "Exhausted" && available.length === 0}
-          aria-label={labels.add}
-        >
-          <Plus className="size-3.5" />
-          {labels.add}
-          <ChevronDown className="size-3.5 text-muted-foreground" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(24rem,calc(100vw-2rem))] p-0">
-        <Command>
-          <CommandInput placeholder={labels.search} />
-          <CommandList className="max-h-80">
-            {catalogStatus === "LoadingFirstPage" ? (
-              <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-                <Spinner />
-                {labels.loading}
-              </div>
-            ) : (
-              <>
-                <CommandEmpty>{labels.empty}</CommandEmpty>
-                {Array.from(groups.entries()).map(([provider, options], index) => (
-                  <div key={provider}>
-                    {index > 0 ? <CommandSeparator /> : null}
-                    <CommandGroup heading={provider}>
-                      {options.map((model) => {
-                        const Icon = getModelIcon(model.modelId);
-                        return (
-                          <CommandItem
-                            key={model.modelId}
-                            value={`${provider} ${model.name} ${model.modelId}`}
-                            className="gap-2.5 py-2"
-                            onSelect={() => {
-                              onAdd(model.modelId);
-                              setOpen(false);
-                            }}
-                          >
-                            <Icon className="size-4 shrink-0 text-foreground/75" />
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate font-medium">
-                                {stripProviderPrefix(model.name)}
-                              </span>
-                              <code className="block truncate text-[11px] text-muted-foreground">
-                                {model.modelId}
-                              </code>
-                            </span>
-                          </CommandItem>
-                        );
-                      })}
-                    </CommandGroup>
-                  </div>
-                ))}
-              </>
-            )}
-          </CommandList>
-          {catalogStatus === "CanLoadMore" || catalogStatus === "LoadingMore" ? (
-            <div className="border-t border-border/60 p-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="w-full"
-                disabled={catalogStatus === "LoadingMore"}
-                onClick={() => loadMore(500)}
-              >
-                {catalogStatus === "LoadingMore" ? (
-                  <Spinner />
-                ) : (
-                  <Plus className="size-3.5" />
-                )}
-                {labels.loadMore}
-              </Button>
-            </div>
-          ) : null}
-        </Command>
-      </PopoverContent>
-    </Popover>
   );
 }
 

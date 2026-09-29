@@ -508,8 +508,6 @@
     "usePdfsTitle": "PDF का उपयोग करें",
     "usePdfsDescription": "समृद्ध निष्कर्षण के लिए पूरी PDF सामग्री शामिल करें। अन्यथा केवल सारांश।",
     "usePdfsAriaLabel": "निष्कर्षण में PDF सामग्री शामिल करें",
-    "modelPickerLabel": "चैट मॉडल",
-    "modelPickerPlaceholder": "एक मॉडल चुनें",
     "pleaseSelectModel": "कृपया एक चैट मॉडल चुनें",
     "abstractMissingTitle": "कुछ पेपरों में सार (abstract) नहीं है",
     "abstractMissingDescription": "चयनित {total} पेपरों में से {missing} में कोई सार नहीं है। उन पेपरों के लिए चैट उत्तर कम उपयोगी हो सकते हैं।",
@@ -777,7 +775,6 @@
       "presetMax": "अधिकतम",
       "liveAnnouncement": "शोधपत्रों की संख्या {count, number} पर सेट की गई"
     },
-    "chatModelPresets": "Presets",
     "chatRetryResponseWith": "{model} के साथ फिर से बनाएँ",
     "chatRetryWithPrefix": "इसके साथ फिर से बनाएँ",
     "chatRetryLoadingMessages": "बातचीत लोड हो रही है…",
@@ -785,8 +782,6 @@
     "chatBack": "एक्सट्रैक्शन पर वापस जाएँ",
     "chatComposerPlaceholder": "अपने पेपर के बारे में कुछ भी पूछें…",
     "chatModelPickerTrigger": "मॉडल बदलें",
-    "chatModelPickerSearch": "मॉडल खोजें…",
-    "chatModelPickerEmpty": "कोई मॉडल नहीं मिला।",
     "chatModelPickerLoading": "मॉडल लोड हो रहे हैं…",
     "chatJumpToLatest": "नवीनतम पर जाएँ",
     "chatEmptyHeadline": "अपने पेपर के बारे में कुछ भी पूछें",
@@ -2846,10 +2841,6 @@
       "modelsLabel": "Available models",
       "modelsHint": "Select every model readers may use.",
       "addModel": "मॉडल जोड़ें",
-      "searchModels": "OpenRouter मॉडल खोजें…",
-      "loadingModels": "OpenRouter मॉडल लोड हो रहे हैं…",
-      "loadMoreModels": "और मॉडल लोड करें",
-      "noModels": "कोई मॉडल नहीं मिला।",
       "orderLabel": "Model order",
       "orderHint": "Drag the selected models into the order shown in the library.",
       "modelsEmpty": "Select at least one model.",
@@ -3293,9 +3284,7 @@
       "local": "मेरी की"
     },
     "yourBrowser": "आपका ब्राउज़र",
-    "yourKey": "आपकी की",
     "credits": "क्रेडिट्स",
-    "taskCount": "{count, plural, one {# काम} other {# काम}}",
     "apiKey": "{provider} API की",
     "getKey": "{provider} की पाएं",
     "keyProvider": "की प्रदाता",
@@ -3340,5 +3329,18 @@
       "xhigh": "बहुत ऊँचा",
       "max": "अधिकतम"
     }
+  },
+  "modelPicker": {
+    "vendors": "प्रदाता",
+    "all": "सभी",
+    "other": "अन्य",
+    "model": "मॉडल",
+    "intelligence": "बुद्धिमत्ता",
+    "context": "संदर्भ",
+    "cost": "प्रति 1M इनपुट / आउटपुट",
+    "free": "निःशुल्क",
+    "source": "Artificial Analysis का इंटेलिजेंस इंडेक्स",
+    "back": "मॉडल पर वापस जाएँ",
+    "default": "डिफ़ॉल्ट"
   }
 }

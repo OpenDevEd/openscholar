@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { setupAggregates } from "../extraction/aggregates.test-support";
-import type { AiTask } from "../../lib/ai/tasks";
+import { usableFor, type AiTask } from "../../lib/ai/tasks";
 
 async function setup() {
   const t = convexTest(schema);
@@ -66,8 +66,10 @@ describe("presets", () => {
     await expect(admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "extraction", modelId: chatOnly })).rejects.toThrow(/structured answers/);
     await expect(user.mutation(api.userAiConfig.mutations.setCustom, { picks: [{ task: "translate", modelId: chatOnly }] })).rejects.toThrow(/structured answers/);
     await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "chat", modelId: chatOnly });
-    const offered = async (tasks?: AiTask[]) => (await t.query(api.models.queries.listCatalogOptions, tasks ? { tasks } : {})).map((m) => m._id);
-    expect(await offered()).toContain(chatOnly);
+    // What a picker for these tasks offers.
+    const offered = async (tasks: AiTask[]) =>
+      (await t.query(api.models.queries.listCatalogOptions, {})).filter((m) => tasks.every((task) => usableFor(m, task))).map((m) => m._id);
+    expect(await offered(["chat"])).toContain(chatOnly);
     expect(await offered(["chat", "extraction"])).not.toContain(chatOnly);
     // A pick saved before the rule no longer runs.
     await t.run((ctx) => ctx.db.insert("aiModelConfig", { key: "preset.balanced.extraction", modelId: "acme/chat-only", updatedAt: 1 }));

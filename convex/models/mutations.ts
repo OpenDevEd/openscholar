@@ -34,6 +34,7 @@ const modelEntryValidator = v.object({
   reasoningEfforts: v.optional(v.array(effortValidator)),
   defaultEffort: v.optional(effortValidator),
   reasoningMandatory: v.optional(v.boolean()),
+  intelligenceIndex: v.optional(v.number()),
 
   knowledgeCutoff: v.optional(v.string()),
   expirationDate: v.optional(v.string()),
