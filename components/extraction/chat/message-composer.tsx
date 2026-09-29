@@ -290,6 +290,7 @@ export function MessageComposer({
           <div className="flex items-center gap-1">
             <ComposerModelPicker
               value={job.chatModelId ?? null}
+              effort={job.chatEffort}
               onChange={handleModelChange}
               disabled={jobIsGenerating}
               models={chatModels}

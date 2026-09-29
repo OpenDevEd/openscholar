@@ -31,6 +31,8 @@ import type { Effort } from "@/lib/ai/core/call-options";
 
 interface ComposerModelPickerProps {
   value: Id<"models"> | null;
+  /** The chat's effort; none means its model's default. */
+  effort?: Effort;
   /** A preset shortcut passes the effort it runs chat at. */
   onChange: (id: Id<"models">, effort?: Effort) => void;
   disabled?: boolean;
@@ -80,6 +82,7 @@ function formatContextLength(n: number | undefined | null): string | null {
  */
 export function ComposerModelPicker({
   value,
+  effort: chatEffort,
   onChange,
   disabled,
   models,
@@ -172,10 +175,11 @@ export function ComposerModelPicker({
                 <CommandGroup heading={t("chatModelPresets")}>
                   {presetRows.map(({ label, m, effort }) => {
                     const Icon = getProviderIcon(m.provider as AIProvider);
-                    const isSelected = m._id === value;
+                    // A preset matches only on both its model and its effort.
+                    const isSelected = m._id === value && (effort ?? m.defaultEffort) === (chatEffort ?? m.defaultEffort);
                     return (
                       <CommandItem
-                        key={`preset-${m._id}`}
+                        key={`preset-${label}`}
                         value={`Preset ${label} ${stripProviderPrefix(m.name)}`}
                         onSelect={() => {
                           onChange(m._id, effort);

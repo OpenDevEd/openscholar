@@ -34,7 +34,7 @@ export function ComposerEffortPicker({
           variant="ghost"
           size="sm"
           disabled={disabled}
-          aria-label={t("effort")}
+          aria-label={current ? `${t("effort")}: ${t(`efforts.${current}`)}` : t("effort")}
           className={cn(
             "h-7 gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground",
             "hover:bg-accent hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground",
