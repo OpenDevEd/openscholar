@@ -295,6 +295,7 @@ export default defineSchema({
     cacheReadPricePerMillion: v.optional(v.number()),
     cacheWritePricePerMillion: v.optional(v.number()),
     reasoningPricePerMillion: v.optional(v.number()),
+    // Cleared by migrations/clearModelWebSearchPrice; drop once it has run everywhere.
     webSearchPrice: v.optional(v.number()),
     imagePricePerMillion: v.optional(v.number()),
     audioPricePerMillion: v.optional(v.number()),

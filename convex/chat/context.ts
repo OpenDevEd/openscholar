@@ -1,6 +1,7 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
+import { CHAT_WEB_SEARCHES_PER_REPLY } from "../../lib/pricing";
 import {
   filterAndPreservePositions,
   renderPaperCorpus,
@@ -41,7 +42,8 @@ export const WEB_SEARCH_SYSTEM_INSTRUCTION = [
   "  • You need to add adjacent on-topic context (e.g. a definition, a related dataset, a recent development).",
   "- Do NOT use web search for questions the corpus already answers.",
   "- When you cite a web result, do so by URL inline (markdown link). Never reuse [Pn] for web sources.",
-  "- One short, focused web query per call. Avoid redundant searches.",
+  "- Write queries that find scholarly and official sources: journal articles, preprints, and reports from universities, governments, and multilateral bodies. Avoid forums, social media, and content farms.",
+  `- One short, focused web query per call, at most ${CHAT_WEB_SEARCHES_PER_REPLY} per reply. Avoid redundant searches.`,
 ].join("\n");
 
 export const buildSystemPromptForJob = internalQuery({

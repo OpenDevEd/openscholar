@@ -69,7 +69,6 @@ vi.mock("@/convex/_generated/api", () => ({
     chat: {
       messages: {
         listThreadMessages: "listThreadMessages",
-        getChatWebSearchPricing: "getChatWebSearchPricing",
         regenerateLastAssistant: "regenerateLastAssistant",
       },
       sourceEvents: {

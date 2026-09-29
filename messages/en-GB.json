@@ -856,11 +856,8 @@
       "bodyOff": "Click to ground answers in real-time pages from the live web.",
       "bodyUnsupported": "The selected model can't run tool-based web searches. Switch models to enable.",
       "metaCost": "~{credits, number} credits per search",
-      "metaCostNote": "One reply may include several searches.",
-      "metaCostLoading": "Calculating cost…",
+      "metaCostNote": "Up to {searches, number} searches per reply.",
       "metaProvider": "via {provider}",
-      "providerTavilyBasic": "Tavily Basic",
-      "providerOpenRouter": "OpenRouter server tool",
       "statusOn": "On",
       "statusOff": "Off"
     }

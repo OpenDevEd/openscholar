@@ -5,9 +5,9 @@ export {
   type ConvertUsdToCreditsArgs,
 } from "./convert";
 export {
-  WEB_SEARCH_PRICING,
-  pickWebSearchPricing,
-  type PickWebSearchPricingArgs,
-  type WebSearchPath,
-  type WebSearchPricing,
+  CHAT_WEB_SEARCHES_PER_REPLY,
+  WEB_SEARCH_CREDITS,
+  WEB_SEARCH_ENGINE,
+  WEB_SEARCH_MAX_RESULTS,
+  WEB_SEARCH_USD,
 } from "./web-search";

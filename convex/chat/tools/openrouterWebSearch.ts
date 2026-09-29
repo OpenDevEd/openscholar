@@ -1,24 +1,24 @@
 import { openrouter } from "@openrouter/ai-sdk-provider";
+import {
+  CHAT_WEB_SEARCHES_PER_REPLY,
+  WEB_SEARCH_ENGINE,
+  WEB_SEARCH_MAX_RESULTS,
+} from "@/lib/pricing";
 
-export const ACADEMIC_SEARCH_PROMPT = [
-  "You are searching the web to supplement an academic paper corpus.",
-  "Prefer scholarly sources (journals, preprint servers, official institutional pages).",
-  "Avoid forums, social media, and content farms.",
-  "Return at most 5 high-relevance results.",
-].join(" ");
-
-export interface BuildOpenRouterWebSearchOptions {
-  academicBias?: boolean;
-  maxResults?: number;
-}
-
-export function buildOpenRouterWebSearchTool(
-  opts: BuildOpenRouterWebSearchOptions = {},
-) {
-  const { academicBias = true, maxResults = 5 } = opts;
-  return openrouter.tools.webSearch({
-    maxResults,
-    engine: "auto",
-    ...(academicBias ? { searchPrompt: ACADEMIC_SEARCH_PROMPT } : {}),
+/**
+ * OpenRouter's `openrouter:web_search` server tool. OpenRouter runs the
+ * searches, so the reply streams only the sources, and their fee is in the
+ * call's reported cost. The provider's factory sends its options at the tool's
+ * top level, where OpenRouter ignores them, so they go in `parameters` here.
+ */
+export function buildOpenRouterWebSearchTool() {
+  return Object.assign(openrouter.tools.webSearch({}), {
+    args: {
+      parameters: {
+        engine: WEB_SEARCH_ENGINE,
+        max_results: WEB_SEARCH_MAX_RESULTS,
+        max_uses: CHAT_WEB_SEARCHES_PER_REPLY,
+      },
+    },
   });
 }

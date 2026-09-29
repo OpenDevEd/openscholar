@@ -1,43 +1,35 @@
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { generateText, type ToolSet } from "ai";
 import { describe, expect, it } from "vitest";
-import {
-  ACADEMIC_SEARCH_PROMPT,
-  buildOpenRouterWebSearchTool,
-} from "./openrouterWebSearch";
+import { buildOpenRouterWebSearchTool } from "./openrouterWebSearch";
 
 describe("buildOpenRouterWebSearchTool", () => {
-  it("returns a provider-typed tool with the OpenRouter web_search id", () => {
-    const tool = buildOpenRouterWebSearchTool();
-    expect(tool.type).toBe("provider");
-    if (tool.type !== "provider") throw new Error("expected provider tool");
-    expect(tool.id).toBe("openrouter.web_search");
-  });
-
-  it("defaults to academic search prompt, maxResults=5, engine='auto'", () => {
-    const tool = buildOpenRouterWebSearchTool();
-    if (tool.type !== "provider") throw new Error("expected provider tool");
-    expect(tool.args).toEqual({
-      maxResults: 5,
-      searchPrompt: ACADEMIC_SEARCH_PROMPT,
-      engine: "auto",
+  it("sends its options inside `parameters`, the only place OpenRouter reads them", async () => {
+    let body: { tools?: unknown[] } = {};
+    const provider = createOpenRouter({
+      apiKey: "test",
+      fetch: async (_url, init) => {
+        body = JSON.parse(String(init?.body));
+        return Response.json({
+          id: "gen-1",
+          model: "openai/gpt-6-luna",
+          choices: [{ index: 0, message: { role: "assistant", content: "ok" }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        });
+      },
     });
-  });
 
-  it("omits searchPrompt when academicBias is false", () => {
-    const tool = buildOpenRouterWebSearchTool({ academicBias: false });
-    if (tool.type !== "provider") throw new Error("expected provider tool");
-    expect(tool.args).not.toHaveProperty("searchPrompt");
-    expect(tool.args.maxResults).toBe(5);
-    expect(tool.args.engine).toBe("auto");
-  });
+    await generateText({
+      model: provider.chat("openai/gpt-6-luna"),
+      prompt: "hi",
+      tools: { web_search: buildOpenRouterWebSearchTool() } as ToolSet,
+    });
 
-  it("forwards a custom maxResults", () => {
-    const tool = buildOpenRouterWebSearchTool({ maxResults: 10 });
-    if (tool.type !== "provider") throw new Error("expected provider tool");
-    expect(tool.args.maxResults).toBe(10);
-  });
-
-  it("exports the academic search prompt as a non-empty string", () => {
-    expect(typeof ACADEMIC_SEARCH_PROMPT).toBe("string");
-    expect(ACADEMIC_SEARCH_PROMPT.length).toBeGreaterThan(0);
+    expect(body.tools).toEqual([
+      {
+        type: "openrouter:web_search",
+        parameters: { engine: "exa", max_results: 5, max_uses: 3 },
+      },
+    ]);
   });
 });

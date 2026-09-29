@@ -26,7 +26,7 @@ const rawModelSchema = z.object({
   pricing: z.object({
     prompt: optionalText, completion: optionalText,
     input_cache_read: optionalText, input_cache_write: optionalText,
-    internal_reasoning: optionalText, web_search: optionalText,
+    internal_reasoning: optionalText,
     image: optionalText, audio: optionalText,
   }).optional(),
   context_length: optionalNumber,
@@ -82,20 +82,6 @@ function parsePerMillion(value?: string | null): number | null {
   return n * 1_000_000;
 }
 
-/**
- * Parse a flat-rate pricing string (USD per request/operation) directly.
- * Used for per-call OpenRouter fields like `pricing.web_search` whose values
- * are literal dollars per invocation (e.g., "0.01" → $0.01/call) — NOT
- * per-token fractions. Cross-ref openrouter.ai docs:
- *   "web_search: string — Cost per web search operation"
- */
-function parseDollars(value?: string | null): number | null {
-  if (!value) return null;
-  const n = parseFloat(value);
-  if (!Number.isFinite(n) || n < 0) return null;
-  return n;
-}
-
 /** Extract provider prefix from an OpenRouter model ID. */
 function extractProvider(modelId: string): string {
   const slashIdx = modelId.indexOf("/");
@@ -138,7 +124,6 @@ export function transformModel(raw: OpenRouterModel) {
     cacheReadPricePerMillion: parsePerMillion(raw.pricing?.input_cache_read) ?? undefined,
     cacheWritePricePerMillion: parsePerMillion(raw.pricing?.input_cache_write) ?? undefined,
     reasoningPricePerMillion: parsePerMillion(raw.pricing?.internal_reasoning) ?? undefined,
-    webSearchPrice: parseDollars(raw.pricing?.web_search) ?? undefined,
     // image/audio: per-token dollars (verified — Gemini bills images and
     // every audio-bearing model bills audio as input tokens; raw values
     // match each provider's published $/M token rate exactly).

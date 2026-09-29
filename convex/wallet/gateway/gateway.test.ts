@@ -1047,7 +1047,7 @@ describe("formatNonStreamingResponse", () => {
       text: "Hello, world!",
       toolCalls: [],
       finishReason: "stop",
-      usage: { inputTokens: 10, outputTokens: 5, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, webSearchRequests: 0 },
+      usage: { inputTokens: 10, outputTokens: 5, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
     });
 
     expect(response.id).toBe("gen_test-123");
@@ -1074,7 +1074,7 @@ describe("formatNonStreamingResponse", () => {
         { toolCallId: "call_def", toolName: "search", args: { query: "papers" } },
       ],
       finishReason: "tool-calls",
-      usage: { inputTokens: 20, outputTokens: 15, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, webSearchRequests: 0 },
+      usage: { inputTokens: 20, outputTokens: 15, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
     });
 
     expect(response.choices[0].message.content).toBeNull();
@@ -1100,7 +1100,7 @@ describe("formatNonStreamingResponse", () => {
       text: "The answer is 42.",
       toolCalls: [],
       finishReason: "stop",
-      usage: { inputTokens: 100, outputTokens: 50, reasoningTokens: 30, cacheReadTokens: 0, cacheWriteTokens: 0, webSearchRequests: 0 },
+      usage: { inputTokens: 100, outputTokens: 50, reasoningTokens: 30, cacheReadTokens: 0, cacheWriteTokens: 0 },
     });
 
     expect(response.usage.completion_tokens_details).toEqual({
@@ -1115,7 +1115,7 @@ describe("formatNonStreamingResponse", () => {
       text: "Cached response",
       toolCalls: [],
       finishReason: "stop",
-      usage: { inputTokens: 200, outputTokens: 25, reasoningTokens: 0, cacheReadTokens: 150, cacheWriteTokens: 0, webSearchRequests: 0 },
+      usage: { inputTokens: 200, outputTokens: 25, reasoningTokens: 0, cacheReadTokens: 150, cacheWriteTokens: 0 },
     });
 
     expect(response.usage.prompt_tokens_details).toEqual({
@@ -1130,7 +1130,7 @@ describe("formatNonStreamingResponse", () => {
       text: "Simple response",
       toolCalls: [],
       finishReason: "stop",
-      usage: { inputTokens: 10, outputTokens: 5, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, webSearchRequests: 0 },
+      usage: { inputTokens: 10, outputTokens: 5, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
     });
 
     expect(response.usage.prompt_tokens_details).toBeUndefined();
@@ -1430,7 +1430,6 @@ describe("extractEnhancedUsage", () => {
       reasoningTokens: 30,
       cacheReadTokens: 80,
       cacheWriteTokens: 20,
-      webSearchRequests: 0,
     });
   });
 
@@ -1442,7 +1441,6 @@ describe("extractEnhancedUsage", () => {
       reasoningTokens: 0,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
-      webSearchRequests: 0,
     });
   });
 
@@ -1470,7 +1468,6 @@ describe("calculateEnhancedModelCost", () => {
       reasoningTokens: 0,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
-      webSearchRequests: 0,
     };
 
     const cost = calculateEnhancedModelCost(usage, model);
@@ -1491,7 +1488,6 @@ describe("calculateEnhancedModelCost", () => {
       reasoningTokens: 200_000,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
-      webSearchRequests: 0,
     };
 
     const cost = calculateEnhancedModelCost(usage, model);
@@ -1511,7 +1507,6 @@ describe("calculateEnhancedModelCost", () => {
       reasoningTokens: 1_000_000,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
-      webSearchRequests: 0,
     };
 
     const cost = calculateEnhancedModelCost(usage, model);
@@ -1533,7 +1528,6 @@ describe("calculateEnhancedModelCost", () => {
       reasoningTokens: 0,
       cacheReadTokens: 800_000,
       cacheWriteTokens: 100_000,
-      webSearchRequests: 0,
     };
 
     const cost = calculateEnhancedModelCost(usage, model);
@@ -1552,7 +1546,6 @@ describe("calculateEnhancedModelCost", () => {
       reasoningTokens: 0,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
-      webSearchRequests: 0,
     };
     expect(calculateEnhancedModelCost(usage, model)).toBe(0);
   });
@@ -1605,7 +1598,6 @@ describe("formatUsage", () => {
       reasoningTokens: 0,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
-      webSearchRequests: 0,
     });
 
     expect(result.prompt_tokens).toBe(100);
@@ -1622,7 +1614,6 @@ describe("formatUsage", () => {
       reasoningTokens: 20,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
-      webSearchRequests: 0,
     });
 
     expect(result.completion_tokens_details).toEqual({ reasoning_tokens: 20 });
@@ -1635,7 +1626,6 @@ describe("formatUsage", () => {
       reasoningTokens: 0,
       cacheReadTokens: 75,
       cacheWriteTokens: 0,
-      webSearchRequests: 0,
     });
 
     expect(result.prompt_tokens_details).toEqual({ cached_tokens: 75 });
@@ -1648,7 +1638,6 @@ describe("formatUsage", () => {
       reasoningTokens: 40,
       cacheReadTokens: 150,
       cacheWriteTokens: 50,
-      webSearchRequests: 0,
     });
 
     expect(result.total_tokens).toBe(300);
@@ -1759,7 +1748,7 @@ describe("web search annotations in response", () => {
       text: "According to recent research, AI is advancing rapidly.",
       toolCalls: [],
       finishReason: "stop",
-      usage: { inputTokens: 50, outputTokens: 20, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, webSearchRequests: 3 },
+      usage: { inputTokens: 50, outputTokens: 20, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
       sources: [
         { url: "https://arxiv.org/abs/2401.12345", title: "AI Advances 2024" },
         { url: "https://nature.com/articles/ai-review", title: "Nature AI Review" },
@@ -1784,7 +1773,7 @@ describe("web search annotations in response", () => {
       text: "Hello world",
       toolCalls: [],
       finishReason: "stop",
-      usage: { inputTokens: 10, outputTokens: 5, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, webSearchRequests: 0 },
+      usage: { inputTokens: 10, outputTokens: 5, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
     });
 
     expect(response.choices[0].message.annotations).toBeUndefined();
@@ -1797,7 +1786,7 @@ describe("web search annotations in response", () => {
       text: "No sources",
       toolCalls: [],
       finishReason: "stop",
-      usage: { inputTokens: 10, outputTokens: 5, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, webSearchRequests: 0 },
+      usage: { inputTokens: 10, outputTokens: 5, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
       sources: [],
     });
 
@@ -1806,16 +1795,15 @@ describe("web search annotations in response", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// Web search — Streaming source tracking
+// Web search — Streaming sources
 // ═══════════════════════════════════════════════════════════════
 
-describe("web search source tracking in stream", () => {
+describe("web search sources in stream", () => {
   async function* mockWebSearchStream(): AsyncIterable<Record<string, unknown>> {
     yield { type: "source", sourceType: "url", id: "src_1", url: "https://arxiv.org/paper1", title: "Paper 1" };
     yield { type: "text-delta", textDelta: "According to " };
     yield { type: "source", sourceType: "url", id: "src_2", url: "https://nature.com/article", title: "Nature Article" };
     yield { type: "text-delta", textDelta: "research..." };
-    yield { type: "source", sourceType: "url", id: "src_3", url: "https://science.org/paper", title: "Science Paper" };
     yield {
       type: "finish-step",
       finishReason: "stop",
@@ -1824,9 +1812,34 @@ describe("web search source tracking in stream", () => {
     yield { type: "finish", finishReason: "stop" };
   }
 
-  it("reports the web source count before the response closes", async () => {
-    let reportedSourceCount = -1;
-    let closedBeforeDone = false;
+  async function readEvents(stream: ReadableStream<Uint8Array>) {
+    const text = await new Response(stream).text();
+    return text
+      .split("\n\n")
+      .map((event) => event.replace(/^data: /, ""))
+      .filter((data) => data.startsWith("{"))
+      .map((data) => JSON.parse(data) as { choices?: Array<{ delta: Record<string, unknown> }> });
+  }
+
+  it("streams each web source to the caller as a url_citation annotation", async () => {
+    const events = await readEvents(
+      createStreamingResponse({
+        id: "gen_ws_stream",
+        model: "openai/gpt-4o",
+        fullStream: mockWebSearchStream(),
+        includeUsage: false,
+      }),
+    );
+
+    const annotations = events.flatMap((event) => (event.choices?.[0]?.delta.annotations as unknown[]) ?? []);
+    expect(annotations).toEqual([
+      { type: "url_citation", url_citation: { url: "https://arxiv.org/paper1", title: "Paper 1" } },
+      { type: "url_citation", url_citation: { url: "https://nature.com/article", title: "Nature Article" } },
+    ]);
+  });
+
+  it("finishes billing before the response closes", async () => {
+    let closedBeforeDone = true;
     let closed = false;
 
     const stream = createStreamingResponse({
@@ -1834,9 +1847,8 @@ describe("web search source tracking in stream", () => {
       model: "openai/gpt-4o",
       fullStream: mockWebSearchStream(),
       includeUsage: false,
-      onDone: async (count) => {
+      onDone: async () => {
         closedBeforeDone = closed;
-        reportedSourceCount = count;
       },
     });
 
@@ -1844,139 +1856,32 @@ describe("web search source tracking in stream", () => {
     while (!(await reader.read()).done);
     closed = true;
 
-    expect(reportedSourceCount).toBe(3);
     expect(closedBeforeDone).toBe(false);
   });
 
-  it("reads the whole upstream and still reports after the client disconnects", async () => {
+  it("reads the whole upstream and still bills after the client disconnects", async () => {
     let upstreamFinished = false;
     async function* upstream(): AsyncIterable<Record<string, unknown>> {
       yield* mockWebSearchStream();
       upstreamFinished = true;
     }
-    let reportedSourceCount = -1;
     let done!: () => void;
-    const reported = new Promise<void>((resolve) => (done = resolve));
+    const billed = new Promise<void>((resolve) => (done = resolve));
 
     const stream = createStreamingResponse({
       id: "gen_ws_cancel",
       model: "openai/gpt-4o",
       fullStream: upstream(),
       includeUsage: false,
-      onDone: async (count) => {
-        reportedSourceCount = count;
-        done();
-      },
+      onDone: async () => done(),
     });
 
     const reader = stream.getReader();
     await reader.read();
     await reader.cancel();
-    await reported;
+    await billed;
 
     expect(upstreamFinished).toBe(true);
-    expect(reportedSourceCount).toBe(3);
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════
-// Web search — Cost calculation
-// ═══════════════════════════════════════════════════════════════
-
-describe("web search cost calculation", () => {
-  it("includes web search price in cost", () => {
-    const model = makeModel({
-      inputPricePerMillion: 2.5,
-      outputPricePerMillion: 10.0,
-      webSearchPrice: 0.025,
-    });
-    const usage: EnhancedUsage = {
-      inputTokens: 100_000,
-      outputTokens: 50_000,
-      reasoningTokens: 0,
-      cacheReadTokens: 0,
-      cacheWriteTokens: 0,
-      webSearchRequests: 3,
-    };
-
-    const cost = calculateEnhancedModelCost(usage, model);
-    // input: 0.1M * 2.5 = 0.25
-    // output: 0.05M * 10 = 0.5
-    // web search: 3 * 0.025 = 0.075
-    expect(cost).toBeCloseTo(0.825, 5);
-  });
-
-  it("falls back to OpenRouter server-tool rate per request when webSearchPrice is undefined", () => {
-    const model = makeModel({
-      inputPricePerMillion: 2.5,
-      outputPricePerMillion: 10.0,
-      // No webSearchPrice — model has no native web search.
-    });
-    const usage: EnhancedUsage = {
-      inputTokens: 100_000,
-      outputTokens: 50_000,
-      reasoningTokens: 0,
-      cacheReadTokens: 0,
-      cacheWriteTokens: 0,
-      webSearchRequests: 5,
-    };
-
-    const cost = calculateEnhancedModelCost(usage, model);
-    // input: 0.1M * 2.5 = 0.25
-    // output: 0.05M * 10 = 0.5
-    // web search: 5 * 0.02 server-tool fallback = 0.10
-    expect(cost).toBeCloseTo(0.85, 5);
-  });
-
-  it("handles zero web search requests", () => {
-    const model = makeModel({
-      inputPricePerMillion: 2.5,
-      outputPricePerMillion: 10.0,
-      webSearchPrice: 0.025,
-    });
-    const usage: EnhancedUsage = {
-      inputTokens: 100_000,
-      outputTokens: 50_000,
-      reasoningTokens: 0,
-      cacheReadTokens: 0,
-      cacheWriteTokens: 0,
-      webSearchRequests: 0,
-    };
-
-    const cost = calculateEnhancedModelCost(usage, model);
-    expect(cost).toBeCloseTo(0.75, 5);
-  });
-
-  it("falls back to OpenRouter server-tool rate when webSearchPrice is null but web search ran", () => {
-    // Many top OpenRouter models (e.g. openai/gpt-5) have no native web
-    // search and `pricing.web_search` is null. When the gateway invokes
-    // a web_search tool against such a model, OpenRouter falls back to
-    // the Exa/Parallel server tool at ~$0.02/call (5 results × $0.004).
-    // The previous code computed `webSearchRequests * (webSearchPrice ?? 0)`
-    // and silently recorded $0 — a billing leak. With pickWebSearchPricing
-    // we charge the server-tool rate so credit deductions match what
-    // OpenRouter actually bills us.
-    const model = makeModel({
-      inputPricePerMillion: 0,
-      outputPricePerMillion: 0,
-      // webSearchPrice intentionally undefined
-      costMarkup: 2.0,
-    });
-    const usage: EnhancedUsage = {
-      inputTokens: 0,
-      outputTokens: 0,
-      reasoningTokens: 0,
-      cacheReadTokens: 0,
-      cacheWriteTokens: 0,
-      webSearchRequests: 1,
-    };
-
-    const usdCost = calculateEnhancedModelCost(usage, model);
-    expect(usdCost).toBeCloseTo(0.02, 6);
-
-    const credits = convertUsdToCredits({ usd: usdCost, markup: model.costMarkup });
-    // ceil(0.02 × 2.0 × 10_000) = 400
-    expect(credits).toBe(400);
   });
 });
 
