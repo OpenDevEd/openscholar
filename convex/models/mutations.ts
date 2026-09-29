@@ -53,9 +53,11 @@ const modelEntryValidator = v.object({
 export const reconcileCatalog = internalMutation({
   args: {
     entries: v.array(modelEntryValidator),
+    /** Models this sync couldn't read, left as they are rather than retired. */
+    keep: v.optional(v.array(v.string())),
   },
   returns: v.number(),
-  handler: async (ctx, { entries }) => {
+  handler: async (ctx, { entries, keep = [] }) => {
     const now = Date.now();
     if (entries.length === 0 || entries.length > MAX_CATALOG_MODELS) {
       throw new Error("Catalog size is outside the sync limit");
@@ -64,7 +66,7 @@ export const reconcileCatalog = internalMutation({
     if (ids.size !== entries.length) throw new Error("Catalog contains duplicate model ids");
     const current = await activeModels(ctx).take(MAX_CATALOG_MODELS + 1);
     if (current.length > MAX_CATALOG_MODELS) throw new Error("Stored catalog exceeds the sync limit");
-    const retiring = current.filter(model => !ids.has(model.modelId));
+    const retiring = current.filter(model => !ids.has(model.modelId) && !keep.includes(model.modelId));
     if (retiring.length > Math.max(20, current.length / 2)) {
       throw new Error("OpenRouter catalog unexpectedly shrank; keeping the previous catalog");
     }

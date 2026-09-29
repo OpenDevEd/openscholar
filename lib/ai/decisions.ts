@@ -18,20 +18,40 @@ export class DecisionsError extends Error {
   }
 }
 
-// ponytail: ~4 characters a token keeps Jev's 32K-token context with room for the
-// questions and criteria; count tokens exactly if papers start getting refused.
-const MAX_STATE_CHARS = 100_000
+// Jev reads 32K tokens. Leave room for the criteria, the JSON around each question
+// and the paper's field names.
+const MAX_REQUEST_TOKENS = 28_000
+const PER_QUESTION_TOKENS = 80
+const TIMEOUT_MS = 60_000
+
+// ponytail: measured against Jev's usage: English runs ~0.15 tokens a character, while
+// digits, punctuation and Chinese run ~1 and an emoji 3. Letters count a quarter, other
+// characters 1, characters beyond the BMP 3. Use a tokenizer if papers get cut short.
+const tokensOf = (char: string) => (/[A-Za-z]/.test(char) ? 0.25 : char.length > 1 ? 3 : 1)
+
+/** The longest start of `text` within `budget` tokens, cut between whole characters, and its tokens. */
+function within(text: string, budget: number) {
+  let tokens = 0
+  let end = 0
+  for (const char of text) {
+    if (tokens + tokensOf(char) > budget) break
+    tokens += tokensOf(char)
+    end += char.length
+  }
+  return { text: text.slice(0, end), tokens }
+}
+const tokensIn = (text: string) => within(text, Infinity).tokens
 
 /**
  * A paper as Jev reads it, within its context: the title and questions always fit,
  * then the abstract, then as much full text as is left.
  */
 export function paperState(paper: { title: string; abstract?: string; fullText?: string }, questions: string[]) {
-  let room = MAX_STATE_CHARS - paper.title.length - questions.join('').length
-  const abstract = paper.abstract?.slice(0, Math.max(0, room))
-  room -= abstract?.length ?? 0
-  const fullText = paper.fullText?.slice(0, Math.max(0, room))
-  return { title: paper.title, ...(abstract && { abstract }), ...(fullText && { fullText }) }
+  let room = MAX_REQUEST_TOKENS - tokensIn(paper.title)
+  for (const question of questions) room -= tokensIn(question) + PER_QUESTION_TOKENS
+  const abstract = within(paper.abstract ?? '', room)
+  const fullText = within(paper.fullText ?? '', room - abstract.tokens).text
+  return { title: paper.title, ...(abstract.text && { abstract: abstract.text }), ...(fullText && { fullText }) }
 }
 
 /** A yes/no answer, null when the text doesn't say enough, with how sure Jev is. */
@@ -78,7 +98,8 @@ export async function decideYesNo({
       ),
       ...(sessionId && { session_id: sessionId.slice(0, 256) }),
     }),
-    signal,
+    // A stalled call must not hold a batch or its credit reservation open.
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]) : AbortSignal.timeout(TIMEOUT_MS),
   })
   if (!response.ok) {
     throw new DecisionsError(response.status, (await response.text().catch(() => '')).slice(0, 500))

@@ -211,7 +211,7 @@ async function fetchDecisionModel(slug: string): Promise<OpenRouterModel> {
   };
 }
 
-/** Two HTTP requests (the list, then the decision models) and one atomic write. Never schedules itself or retries. */
+/** The list, then each decision model's entry, then one atomic write. Never schedules itself or retries. */
 export const syncFromOpenRouter = internalAction({
   args: {},
   returns: v.number(),
@@ -226,13 +226,20 @@ export const syncFromOpenRouter = internalAction({
     }
     const text = await readCatalogResponse(response);
     const {data: listed} = catalogSchema.parse(JSON.parse(text));
-    const data = [...listed, ...(await Promise.all(DECISION_MODELS.map(fetchDecisionModel)))];
+    // A decision model that can't be read keeps its stored row, so one failed lookup
+    // neither stops the catalog from updating nor retires a model presets use.
+    const decisions = await Promise.allSettled(DECISION_MODELS.map(fetchDecisionModel));
+    const keep = DECISION_MODELS.filter((_, i) => decisions[i].status === "rejected");
+    decisions.forEach((result, i) => {
+      if (result.status === "rejected") console.error(`[syncFromOpenRouter] kept the stored ${DECISION_MODELS[i]}:`, result.reason);
+    });
+    const data = [...listed, ...decisions.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []))];
     if (new Set(data.map(model => model.id)).size !== data.length) {
       throw new Error("OpenRouter catalog contains duplicate model ids");
     }
     const entries = data.map(transformModel).filter(entry => entry !== null);
     if (entries.length === 0) throw new Error("OpenRouter catalog contains no models with usable pricing");
-    const total: number = await ctx.runMutation(internal.models.mutations.reconcileCatalog, {entries});
+    const total: number = await ctx.runMutation(internal.models.mutations.reconcileCatalog, {entries, keep});
     console.log(`[syncFromOpenRouter] Synced ${total} models in one pass`);
     return total;
   },

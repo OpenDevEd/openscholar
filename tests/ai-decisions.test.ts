@@ -49,10 +49,17 @@ describe("decideYesNo", () => {
     await expect(decideYesNo({ apiKey: "sk-or", model: JEV_MODEL, state: {}, questions: ["a?", "b?"] })).rejects.toMatchObject({ status: 502 });
   });
 
-  it("keeps a paper within Jev's context, trimming full text first", () => {
-    const state = paperState({ title: "T", abstract: "a".repeat(10), fullText: "f".repeat(200_000) }, ["q?"]);
-    expect(state.abstract).toHaveLength(10);
-    expect(state.title.length + state.abstract!.length + state.fullText!.length + "q?".length).toBe(100_000);
+  it("keeps a paper within Jev's 32K-token context, trimming full text first", () => {
+    const latin = paperState({ title: "T", abstract: "a".repeat(10), fullText: "f".repeat(200_000) }, ["q?"]);
+    expect(latin.abstract).toHaveLength(10);
+    expect(latin.fullText!.length).toBeGreaterThan(100_000);
+    // Chinese runs near a token per character, so the same paper length would overflow.
+    const chinese = paperState({ title: "T", abstract: "摘要", fullText: "研究".repeat(100_000) }, ["q?"]);
+    expect(chinese.abstract).toBe("摘要");
+    expect(chinese.fullText!.length).toBeLessThan(32_000);
+    // Digits cost a token each, and an emoji is never cut in half.
+    expect(paperState({ title: "T", fullText: "2024 ".repeat(10_000) }, ["q?"]).fullText!.length).toBeLessThan(32_000);
+    expect(paperState({ title: "T", fullText: "🧬".repeat(15_000) }, ["q?"]).fullText!.isWellFormed()).toBe(true);
   });
 });
 

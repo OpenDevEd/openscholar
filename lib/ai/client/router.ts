@@ -48,7 +48,8 @@ export const useGenerateScreeningQuestions = createAIHook(
   api.ai.actions.generateScreeningQuestions,
   clientExecutor.generateScreeningQuestions,
   undefined,
-  { task: 'screening', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
+  // Writing questions needs a text model; the Screening pick may be Jev, which only answers them.
+  { task: 'extraction', estimateCredits: () => ESTIMATED_CREDITS_PER_QUERY },
 )
 
 export const useGenerateExtractionQuestions = createAIHook(

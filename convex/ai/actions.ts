@@ -63,7 +63,8 @@ export const generateScreeningQuestions = createAIAction(
   (output) => ({
     questions: output.questions,
   }),
-  { kind: "screening", task: "screening" },
+  // Writing questions needs a text model; the Screening pick may be Jev, which only answers them.
+  { kind: "screening", task: "extraction" },
 );
 
 export const generateExtractionQuestions = createAIAction(

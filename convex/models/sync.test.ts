@@ -165,6 +165,18 @@ describe("OpenRouter catalog refresh", () => {
     expect(await t.run(ctx => ctx.db.system.query("_scheduled_functions").collect())).toEqual([]);
   });
 
+  it("keeps the stored Jev and still updates the catalog when Jev's entry can't be read", async () => {
+    const t = convexTest(schema, modules);
+    vi.stubGlobal("fetch", openRouter(() => new Response(JSON.stringify({data: [RAW_BASE]}))));
+    await t.action(internal.models.sync.syncFromOpenRouter, {});
+    vi.stubGlobal("fetch", vi.fn((url: string) => Promise.resolve(String(url).includes("/endpoints")
+      ? new Response("unavailable", {status: 503})
+      : new Response(JSON.stringify({data: [{...RAW_BASE, name: "Renamed"}]})))));
+    await t.action(internal.models.sync.syncFromOpenRouter, {});
+    const options = await t.query(api.models.queries.listCatalogOptions, {decisions: true});
+    expect(options.map(m => [m.modelId, m.name])).toEqual(expect.arrayContaining([[RAW_BASE.id, "Renamed"], ["typesafe/jev-1.13", "TypeSafe: Jev 1.13"]]));
+  });
+
   it("passes a timeout signal and stops on an aborted request", async () => {
     const t = convexTest(schema, modules);
     const fetch = vi.fn((_url: string, options?: RequestInit) => {
