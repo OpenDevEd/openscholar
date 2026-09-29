@@ -212,18 +212,13 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
   const levels = walletModel.reasoningEfforts ?? [];
   const effort = req.reasoning_effort && levels.length ? clamp(req.reasoning_effort, levels) : undefined;
   const ours = providerCallOptions(model, { effort });
-  // OpenRouter's web plugin runs one search on Exa before the model answers.
-  if (webSearch) {
-    ours.openrouter = {
-      ...ours.openrouter,
-      plugins: [{ id: "web", engine: WEB_SEARCH_ENGINE, max_results: WEB_SEARCH_MAX_RESULTS }],
-    };
-  }
+  const theirs = req.provider_options?.openrouter;
+  const plugins = webSearch ? withWebPlugin(theirs?.plugins) : undefined;
   const providerOptions: Record<string, Record<string, unknown>> = {
     ...ours,
     ...req.provider_options,
     // The caller's OpenRouter settings add to ours; a field they set themselves wins.
-    openrouter: { ...ours.openrouter, ...req.provider_options?.openrouter },
+    openrouter: { ...ours.openrouter, ...theirs, ...(plugins ? { plugins } : {}) },
   };
 
   // 11. Execute
@@ -262,6 +257,18 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
     );
   }
 });
+
+/**
+ * The caller's OpenRouter plugins plus the web plugin, which runs one search on
+ * Exa before the model answers. A web plugin the caller configured wins.
+ */
+export function withWebPlugin(callerPlugins: unknown): unknown[] {
+  const plugins = Array.isArray(callerPlugins) ? callerPlugins : [];
+  const hasWeb = plugins.some((plugin) => (plugin as { id?: unknown } | null)?.id === "web");
+  return hasWeb
+    ? plugins
+    : [...plugins, { id: "web", engine: WEB_SEARCH_ENGINE, max_results: WEB_SEARCH_MAX_RESULTS }];
+}
 
 // ─── Credit charge helper ───────────────────────────────────
 
@@ -477,7 +484,7 @@ export const handleModelsV1 = httpAction(async (ctx) => {
           ? m.cacheWritePricePerMillion * m.costMarkup
           : undefined,
         web_search_per_request: WEB_SEARCH_USD * m.costMarkup,
-        currency: "credits",
+        currency: "USD",
       },
 
       // Defaults

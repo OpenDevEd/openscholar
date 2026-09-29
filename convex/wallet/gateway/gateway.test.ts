@@ -3,7 +3,6 @@ import { describe, it, expect, vi } from "vitest";
 import { internal } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
-import { convertUsdToCredits } from "../../../lib/pricing";
 
 import { parseAndValidateRequest, convertToAISdkParams, normalizeSchemaForStrictMode } from "./parseRequest";
 import {
@@ -18,6 +17,7 @@ import {
   type EnhancedUsage,
 } from "./cost";
 import { mapFinishReason } from "./constants";
+import { withWebPlugin } from "./handler";
 
 // ─── Seed helpers ────────────────────────────────────────────
 
@@ -1882,6 +1882,19 @@ describe("web search sources in stream", () => {
     await billed;
 
     expect(upstreamFinished).toBe(true);
+  });
+});
+
+describe("withWebPlugin", () => {
+  it("keeps the caller's plugins and adds the Exa web plugin", () => {
+    expect(withWebPlugin([{ id: "response-healing" }])).toEqual([
+      { id: "response-healing" },
+      { id: "web", engine: "exa", max_results: 5 },
+    ]);
+  });
+
+  it("keeps a web plugin the caller configured", () => {
+    expect(withWebPlugin([{ id: "web", engine: "native" }])).toEqual([{ id: "web", engine: "native" }]);
   });
 });
 
