@@ -13,14 +13,16 @@ describe("clerk webhook normalization", () => {
       image_url: "https://cdn.test/avatar.png",
       primary_email_address_id: "email_2",
       email_addresses: [
-        { id: "email_1", email_address: "other@example.com" },
-        { id: "email_2", email_address: "primary@example.com" },
+        { id: "email_1", email_address: "other@example.com", verification: { status: "unverified" } },
+        { id: "email_2", email_address: "Primary@Example.com", verification: { status: "verified" } },
       ],
     });
 
     expect(args).toEqual({
       clerkId: "user_123",
-      email: "primary@example.com",
+      email: "Primary@Example.com",
+      // Only verified addresses can claim an admin invite.
+      verifiedEmails: ["primary@example.com"],
       firstName: "Ava",
       lastName: "Stone",
       avatarUrl: "https://cdn.test/avatar.png",
