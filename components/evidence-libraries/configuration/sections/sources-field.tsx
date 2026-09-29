@@ -499,7 +499,7 @@ export function SourcesField({
                 const target = removeTarget;
                 setRemoveTarget(null);
                 if (target?.kind === "zotero") void remove(target.groupId);
-                if (target?.kind === "collection") void collections.remove(target.entry);
+                if (target?.kind === "collection") collections.remove(target.entry);
               }}
             >
               {t("removeConfirm")}

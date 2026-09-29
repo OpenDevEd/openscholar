@@ -10,6 +10,7 @@ import {
 } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { writeAuditLogRecord } from "../lib/audit";
+import { requireAuth } from "../lib/auth";
 import { createError, readConvexErrorData } from "../lib/errors";
 import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
@@ -33,13 +34,6 @@ async function findConnection(
     .withIndex("by_libraryId_and_collectionId", (q) =>
       q.eq("libraryId", libraryId).eq("collectionId", collectionId),
     )
-    .unique();
-}
-
-async function signedInUser(ctx: ReadCtx, clerkUserId: string) {
-  return await ctx.db
-    .query("users")
-    .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId))
     .unique();
 }
 
@@ -77,15 +71,19 @@ export const listLibraryCollectionSources = query({
   },
 });
 
-/** Lets the library follow one of the signed-in owner's own collections. */
+/**
+ * Lets the library follow one of the signed-in owner's own collections. The
+ * connection stays when the source leaves a draft, so a discarded draft or an
+ * older revision still reads it; only the owner leaving ends the library's access.
+ */
 export const connectCollectionSource = mutation({
   args: { libraryId: v.id("evidenceLibraries"), collectionId: v.id("collections") },
   returns: v.object({ collectionId: v.id("collections"), name: v.string(), itemCount: v.number() }),
   handler: async (ctx, args) => {
     const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    const user = await signedInUser(ctx, access.clerkUserId);
+    const user = await requireAuth(ctx);
     const collection = await ctx.db.get("collections", args.collectionId);
-    if (!user || !collection || collection.userId !== user._id) {
+    if (!collection || collection.userId !== user._id) {
       throw createError("FORBIDDEN", "Only the collection's owner can add it to a library");
     }
     const fields = {
@@ -103,23 +101,6 @@ export const connectCollectionSource = mutation({
       metadata: { libraryId: args.libraryId, collectionId: args.collectionId },
     });
     return { collectionId: collection._id, name: collection.name, itemCount: collection.itemCount ?? 0 };
-  },
-});
-
-export const removeCollectionSource = mutation({
-  args: { libraryId: v.id("evidenceLibraries"), collectionId: v.id("collections") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    const existing = await findConnection(ctx, args.libraryId, args.collectionId);
-    if (!existing) return null;
-    await ctx.db.delete("evidenceLibraryCollectionSources", existing._id);
-    await writeAuditLogRecord(ctx, {
-      action: "evidence_library.collection_source.removed",
-      userId: access.clerkUserId,
-      metadata: { libraryId: args.libraryId, collectionId: args.collectionId },
-    });
-    return null;
   },
 });
 
@@ -185,8 +166,10 @@ export const readForLibrary = internalQuery({
     if ("refused" in allowed) return allowed;
     const { collection } = allowed;
     const version = String(collection.membershipRevision ?? 0);
+    // The contract caps a source name; the collection keeps its own.
+    const name = collection.name.slice(0, 255);
     if (args.knownVersion === version) {
-      return { version, name: collection.name, unchanged: true, items: [], nextCursor: null };
+      return { version, name, unchanged: true, items: [], nextCursor: null };
     }
     const page = await ctx.db
       .query("libraryItemCollections")
@@ -202,7 +185,7 @@ export const readForLibrary = internalQuery({
     );
     return {
       version,
-      name: collection.name,
+      name,
       unchanged: false,
       items: items.flat(),
       nextCursor: page.isDone ? null : page.continueCursor,

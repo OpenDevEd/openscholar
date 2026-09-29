@@ -88,7 +88,8 @@ export function collectionSourceEntry(
     collectionId: collection.collectionId,
     enabled: true,
     writebackEnabled: false,
-    settings: { name: collection.name, apiKeyMode, downloadPdfs: false },
+    // A source name holds 80 characters; the collection keeps its full name.
+    settings: { name: collection.name.slice(0, 80), apiKeyMode, downloadPdfs: false },
   };
 }
 

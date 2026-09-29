@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useConvex, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { type RefObject, useRef, useState } from "react";
+import { type RefObject, useRef } from "react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { api } from "@/convex/_generated/api";
@@ -52,9 +52,7 @@ export function useCollectionSources({
     { libraryId },
   );
   const connect = useMutation(api.evidenceLibraries.collectionSources.connectCollectionSource);
-  const disconnect = useMutation(api.evidenceLibraries.collectionSources.removeCollectionSource);
   const picker = useRef<PickerHandle>(null);
-  const [busyKey, setBusyKey] = useState<string | null>(null);
   const sources = value.filter(
     (source): source is OpenScholarCollectionSourceEntry => source.provider === "openscholar",
   );
@@ -85,16 +83,9 @@ export function useCollectionSources({
     return failed;
   }
 
-  async function remove(entry: OpenScholarCollectionSourceEntry) {
-    setBusyKey(entry.key);
-    try {
-      await disconnect({ libraryId, collectionId: entry.collectionId as Id<"collections"> });
-      commit(latest.current.filter((source) => source.key !== entry.key));
-    } catch {
-      toast.error(t("removeFailed"));
-    } finally {
-      setBusyKey(null);
-    }
+  // The connection stays on the server, so discarding the draft keeps the source working.
+  function remove(entry: OpenScholarCollectionSourceEntry) {
+    commit(latest.current.filter((source) => source.key !== entry.key));
   }
 
   function patch(key: string, change: Partial<OpenScholarCollectionSourceEntry>) {
@@ -108,7 +99,6 @@ export function useCollectionSources({
   return {
     sources,
     byId,
-    busyKey,
     open: () => picker.current?.open(),
     remove,
     patch,
@@ -167,7 +157,6 @@ export function CollectionSourceRow({
           : []
       }
       description={deleted ? t("collectionDeleted") : undefined}
-      disabled={controller.busyKey === entry.key}
       onToggle={() => controller.patch(entry.key, { enabled: paused })}
       onRemove={onRemove}
       data-collection-id={entry.collectionId}
