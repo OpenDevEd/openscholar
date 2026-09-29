@@ -71,3 +71,21 @@ it("refuses another library's credential and a report that breaks the contract",
   expect((await post("2026-09-27T12:10:00.000Z", [upToDate], token, { version: 2 })).status).toBe(400);
   expect(await saved()).toEqual([]);
 });
+
+it("accepts a source adding PDFs and one that stopped while adding them", async () => {
+  const { post, saved } = await setup();
+  const addingPdfs = { ...importing, provider: "openalex", key: "openalex-1", searchable: 300, phase: "pdfs", pdfs: { added: 90, missed: 30 } };
+  const stopped = {
+    ...upToDate,
+    provider: "openalex",
+    key: "openalex-2",
+    state: "failed",
+    failure: { code: "internal", details: "Storage upload failed", at: "2026-09-27T12:09:30.000Z" },
+    failedIn: "pdfs",
+    pdfs: { added: 90, missed: 30 },
+  };
+
+  expect((await post("2026-09-27T12:10:00.000Z", [addingPdfs, stopped])).status).toBe(200);
+
+  expect(await saved()).toMatchObject([{ sources: [{ phase: "pdfs", pdfs: { added: 90 } }, { failedIn: "pdfs" }] }]);
+});

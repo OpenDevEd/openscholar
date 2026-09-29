@@ -2525,6 +2525,7 @@
         "chip": {
           "importing": "正在导入",
           "searching": "正在更新搜索",
+          "addingPdfs": "正在添加 PDF",
           "upToDate": "已是最新",
           "failed": "导入失败",
           "waiting": "尚未导入",
@@ -2532,7 +2533,8 @@
         },
         "steps": {
           "import": "导入记录",
-          "search": "更新搜索"
+          "search": "更新搜索",
+          "pdfs": "添加 PDF"
         },
         "importProgress": "导入进度",
         "searchProgress": "搜索更新进度",
@@ -2542,6 +2544,15 @@
         "searchSoFar": "条记录已可搜索（目前）",
         "started": "{time} 开始",
         "minutesLeft": "剩余 {minutes, number} 分钟",
+        "hoursLeft": "剩余 {hours, number} 小时",
+        "pdfProgress": "PDF 进度",
+        "pdfsOfTotal": "/ {total, number} 个 PDF",
+        "pdfsSoFar": "个 PDF（目前）",
+        "pdfsAdded": "已添加 {count, number} 个",
+        "pdfsMissed": "{count, number} 个无法下载",
+        "pdfsStoppedAt": "PDF 添加于 {time} 停止",
+        "pdfsStillSearchable": "所有记录仍可搜索。重试会从最后添加的 PDF 之后继续。",
+        "retryPdfs": "重试 PDF",
         "underAMinute": "剩余不到 1 分钟",
         "searchable": "条记录可搜索",
         "changed": "上次导入更改了 {count, number} 条，{when}检查",

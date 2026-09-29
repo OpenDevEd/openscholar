@@ -4,6 +4,9 @@ import {
   Check,
   Database,
   ExternalLink,
+  FileCheck2,
+  FileText,
+  FileX2,
   RefreshCw,
   Search,
   TriangleAlert,
@@ -27,8 +30,12 @@ import { cn } from "@/lib/utils";
 import { DisclosureButton } from "../disclosure-button";
 import { type StatusTone } from "../status-chip";
 
+/** PDFs added to a source's records, and those that could not be downloaded. */
+type PdfCounts = NonNullable<SourceStatus["pdfs"]>;
 type Running = Extract<SourceStatus, { state: "running" }>;
 type Failed = Extract<SourceStatus, { state: "failed" }>;
+
+const RUNNING_CHIP = { import: "chip.importing", search: "chip.searching", pdfs: "chip.addingPdfs" } as const;
 
 /**
  * The row's chip: the state in one word, so a long list scans quickly.
@@ -39,9 +46,7 @@ export function useSourceStatusChip() {
   return (status: SourceStatus | null, paused: boolean): { label: string; tone: StatusTone } => {
     if (paused) return { label: t("chip.paused"), tone: "neutral" };
     if (!status || status.state === "idle") return { label: t("chip.waiting"), tone: "neutral" };
-    if (status.state === "running") {
-      return { label: t(status.phase === "import" ? "chip.importing" : "chip.searching"), tone: "running" };
-    }
+    if (status.state === "running") return { label: t(RUNNING_CHIP[status.phase]), tone: "running" };
     if (status.state === "failed") return { label: t("chip.failed"), tone: "danger" };
     return { label: t("chip.upToDate"), tone: "success" };
   };
@@ -56,10 +61,21 @@ const PHASE_LOOK: Record<PhaseState, { text: string; ring: string }> = {
   waiting: { text: "text-muted-foreground", ring: "bg-muted" },
 };
 
-function Phase({ label, icon: Icon, state }: { label: string; icon: LucideIcon; state: PhaseState }) {
+/** `compact` keeps only the current step labelled in a narrow row. */
+function Phase({
+  label,
+  icon: Icon,
+  state,
+  compact = false,
+}: {
+  label: string;
+  icon: LucideIcon;
+  state: PhaseState;
+  compact?: boolean;
+}) {
   const look = PHASE_LOOK[state];
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium", look.text)}>
+    <span className={cn("inline-flex shrink-0 items-center gap-1.5 text-xs font-medium", look.text)}>
       <span className={cn("grid size-6 place-items-center rounded-full", look.ring)}>
         {state === "running" ? (
           <Spinner role="presentation" aria-label={undefined} className="size-3.5" />
@@ -71,40 +87,58 @@ function Phase({ label, icon: Icon, state }: { label: string; icon: LucideIcon; 
           <Icon aria-hidden className="size-3.5" />
         )}
       </span>
-      {label}
+      <span className={cn(compact && (state === "done" || state === "waiting") && "@max-md/sources:sr-only")}>{label}</span>
     </span>
   );
 }
 
-function phaseStates(status: SourceStatus | null): [PhaseState, PhaseState] {
-  if (!status) return ["waiting", "waiting"];
+const PHASE_ORDER = ["import", "search", "pdfs"] as const;
+
+/** Each step's state: the ones before the current step are done. */
+function phaseStates(status: SourceStatus | null): [PhaseState, PhaseState, PhaseState] {
+  const upTo = (index: number, current: PhaseState): [PhaseState, PhaseState, PhaseState] => [
+    ...PHASE_ORDER.map((_, step) => (step < index ? "done" : step === index ? current : "waiting")),
+  ] as [PhaseState, PhaseState, PhaseState];
+  if (!status) return ["waiting", "waiting", "waiting"];
   switch (status.state) {
     case "running":
-      return status.phase === "import" ? ["running", "waiting"] : ["done", "running"];
+      return upTo(PHASE_ORDER.indexOf(status.phase), "running");
     case "succeeded":
-      return ["done", "done"];
+      return ["done", "done", "done"];
     case "failed":
-      return ["failed", "waiting"];
+      return status.failedIn === "pdfs" ? upTo(2, "failed") : upTo(0, "failed");
     case "idle":
-      return ["waiting", "waiting"];
+      return ["waiting", "waiting", "waiting"];
   }
 }
 
-/** Import records, then Update search, with the one under way lit. */
+function Connector({ lit }: { lit: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "h-px min-w-4 flex-1 transition-colors duration-500 motion-reduce:transition-none",
+        lit ? "bg-emerald-500/50" : "bg-border",
+      )}
+    />
+  );
+}
+
+/** Import records, Update search, then Add PDFs when the source has them, with the one under way lit. */
 function PhaseTrack({ status }: { status: SourceStatus | null }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources.status");
-  const [importState, searchState] = phaseStates(status);
+  const [importState, searchState, pdfState] = phaseStates(status);
   return (
     <div className="flex items-center gap-2">
-      <Phase label={t("steps.import")} icon={Database} state={importState} />
-      <span
-        aria-hidden
-        className={cn(
-          "h-px flex-1 transition-colors duration-500 motion-reduce:transition-none",
-          importState === "done" ? "bg-emerald-500/50" : "bg-border",
-        )}
-      />
-      <Phase label={t("steps.search")} icon={Search} state={searchState} />
+      <Phase label={t("steps.import")} icon={Database} state={importState} compact={Boolean(status?.pdfs)} />
+      <Connector lit={importState === "done"} />
+      <Phase label={t("steps.search")} icon={Search} state={searchState} compact={Boolean(status?.pdfs)} />
+      {status?.pdfs ? (
+        <>
+          <Connector lit={searchState === "done"} />
+          <Phase label={t("steps.pdfs")} icon={FileText} state={pdfState} compact />
+        </>
+      ) : null}
     </div>
   );
 }
@@ -122,15 +156,84 @@ function OpenEndedBar({ label }: { label: string }) {
   );
 }
 
+const SEGMENT = "h-full transition-[width] duration-700 ease-out motion-reduce:transition-none";
+
+/** PDFs added, then PDFs that could not be downloaded, along the PDFs to go through. */
+function PdfBar({ pdfs, total, label, tone }: { pdfs: PdfCounts; total: number; label: string; tone: "running" | "done" }) {
+  const share = (count: number) => `${total ? Math.min((count / total) * 100, 100) : 0}%`;
+  return (
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={total}
+      aria-valuenow={pdfs.added + pdfs.missed}
+      className="flex h-2 w-full overflow-hidden rounded-full bg-foreground/10"
+    >
+      <span className={cn(SEGMENT, tone === "running" ? "bg-primary" : "bg-emerald-500")} style={{ width: share(pdfs.added) }} />
+      <span className={cn(SEGMENT, "bg-foreground/25")} style={{ width: share(pdfs.missed) }} />
+    </div>
+  );
+}
+
+function PdfLegend({ pdfs, tone }: { pdfs: PdfCounts; tone: "running" | "done" }) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.status");
+  return (
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span className="inline-flex items-center gap-1">
+        <FileCheck2
+          aria-hidden
+          className={cn("size-3.5", tone === "running" ? "text-primary" : "text-emerald-600 dark:text-emerald-400")}
+        />
+        {t("pdfsAdded", { count: pdfs.added })}
+      </span>
+      {pdfs.missed ? (
+        <span className="inline-flex items-center gap-1">
+          <FileX2 aria-hidden className="size-3.5" />
+          {t("pdfsMissed", { count: pdfs.missed })}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** A source's PDFs so far: added, and those that could not be downloaded. */
+function PdfSummary({ pdfs, tone }: { pdfs: PdfCounts; tone: "running" | "done" }) {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.status");
+  const total = pdfs.added + pdfs.missed;
+  if (!total) return null;
+  return (
+    <div className="space-y-2 text-xs tabular-nums text-muted-foreground">
+      <PdfBar pdfs={pdfs} total={total} label={t("pdfProgress")} tone={tone} />
+      <PdfLegend pdfs={pdfs} tone={tone} />
+    </div>
+  );
+}
+
+function useTimeLeft() {
+  const t = useTranslations("evidenceLibraryConfiguration.sources.status");
+  return (minutes: number | null) =>
+    minutes === null
+      ? null
+      : minutes < 1
+        ? t("underAMinute")
+        : minutes >= 120
+          ? t("hoursLeft", { hours: Math.round(minutes / 60) })
+          : t("minutesLeft", { minutes });
+}
+
+const PROGRESS_LABEL = { import: "importProgress", search: "searchProgress", pdfs: "pdfProgress" } as const;
+
+const SO_FAR = { import: "soFar", search: "searchSoFar", pdfs: "pdfsSoFar" } as const;
+const OF_TOTAL = { import: "ofTotal", search: "searchOfTotal", pdfs: "pdfsOfTotal" } as const;
+
 function RunningActivity({ status }: { status: Running }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources.status");
   const format = useFormatter();
+  const timeLeft = useTimeLeft();
   const fraction = status.total ? status.done / status.total : null;
-  const label = t(status.phase === "import" ? "importProgress" : "searchProgress");
-  const unit =
-    status.total === null
-      ? t(status.phase === "import" ? "soFar" : "searchSoFar")
-      : t(status.phase === "import" ? "ofTotal" : "searchOfTotal", { total: status.total });
+  const label = t(PROGRESS_LABEL[status.phase]);
+  const pdfs = status.phase === "pdfs" ? status.pdfs : null;
   return (
     <div className="space-y-2">
       <div className="flex items-end justify-between gap-4">
@@ -138,7 +241,9 @@ function RunningActivity({ status }: { status: Running }) {
           <span className="text-3xl font-semibold leading-none tracking-tight tabular-nums">
             {format.number(status.done)}
           </span>
-          <span className="text-sm text-muted-foreground">{unit}</span>
+          <span className="text-sm text-muted-foreground">
+            {status.total === null ? t(SO_FAR[status.phase]) : t(OF_TOTAL[status.phase], { total: status.total })}
+          </span>
         </p>
         {fraction === null ? null : (
           <span className="text-lg font-semibold leading-none tabular-nums">
@@ -146,7 +251,9 @@ function RunningActivity({ status }: { status: Running }) {
           </span>
         )}
       </div>
-      {fraction === null ? (
+      {pdfs && status.total ? (
+        <PdfBar pdfs={pdfs} total={status.total} label={label} tone="running" />
+      ) : fraction === null ? (
         <OpenEndedBar label={label} />
       ) : (
         <Progress
@@ -155,15 +262,13 @@ function RunningActivity({ status }: { status: Running }) {
           className="h-2 bg-foreground/10 [&>[data-slot=progress-indicator]]:duration-700 [&>[data-slot=progress-indicator]]:ease-out motion-reduce:[&>[data-slot=progress-indicator]]:transition-none"
         />
       )}
-      <div className="flex items-center justify-between text-xs tabular-nums text-muted-foreground">
-        <span>{t("started", { time: format.dateTime(new Date(status.startedAt), { timeStyle: "short" }) })}</span>
-        <span>
-          {status.minutesLeft === null
-            ? null
-            : status.minutesLeft < 1
-              ? t("underAMinute")
-              : t("minutesLeft", { minutes: status.minutesLeft })}
-        </span>
+      <div className="flex items-center justify-between gap-4 text-xs tabular-nums text-muted-foreground">
+        {pdfs ? (
+          <PdfLegend pdfs={pdfs} tone="running" />
+        ) : (
+          <span>{t("started", { time: format.dateTime(new Date(status.startedAt), { timeStyle: "short" }) })}</span>
+        )}
+        <span className="shrink-0">{timeLeft(status.minutesLeft)}</span>
       </div>
     </div>
   );
@@ -179,31 +284,34 @@ function SucceededActivity({ status, issuesIn }: { status: SourceStatus; issuesI
   const issues = Object.values(status.issues).reduce((sum, count) => sum + count, 0);
   const checked = status.lastSuccessAt ? format.relativeTime(new Date(status.lastSuccessAt), now) : null;
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div className="space-y-1.5">
-        <p className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-3xl font-semibold leading-none tracking-tight tabular-nums">
-            {format.number(status.searchable ?? 0)}
-          </span>
-          <span className="text-sm text-muted-foreground">{t("searchable")}</span>
-        </p>
-        {checked ? (
-          <p className="text-xs text-muted-foreground">
-            {status.changed === null
-              ? t("checked", { when: checked })
-              : t("changed", { count: status.changed, when: checked })}
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="space-y-1.5">
+          <p className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-3xl font-semibold leading-none tracking-tight tabular-nums">
+              {format.number(status.searchable ?? 0)}
+            </span>
+            <span className="text-sm text-muted-foreground">{t("searchable")}</span>
           </p>
+          {checked ? (
+            <p className="text-xs text-muted-foreground">
+              {status.changed === null
+                ? t("checked", { when: checked })
+                : t("changed", { count: status.changed, when: checked })}
+            </p>
+          ) : null}
+        </div>
+        {issues > 0 ? (
+          <Button asChild variant="outline" size="sm">
+            <AdminAreaLink libraryId={issuesIn.libraryId} returnPath={issuesIn.returnPath}>
+              <TriangleAlert className="text-amber-600 dark:text-amber-400" />
+              {t("reviewIssues", { count: issues })}
+              <ExternalLink className="text-muted-foreground" />
+            </AdminAreaLink>
+          </Button>
         ) : null}
       </div>
-      {issues > 0 ? (
-        <Button asChild variant="outline" size="sm">
-          <AdminAreaLink libraryId={issuesIn.libraryId} returnPath={issuesIn.returnPath}>
-            <TriangleAlert className="text-amber-600 dark:text-amber-400" />
-            {t("reviewIssues", { count: issues })}
-            <ExternalLink className="text-muted-foreground" />
-          </AdminAreaLink>
-        </Button>
-      ) : null}
+      {status.pdfs ? <PdfSummary pdfs={status.pdfs} tone="done" /> : null}
     </div>
   );
 }
@@ -224,23 +332,28 @@ function FailedActivity({
   const now = useNow({ updateInterval: 30_000 });
   const [open, setOpen] = useState(false);
   const detailsId = useId();
+  const pdfs = status.failedIn === "pdfs" ? (status.pdfs ?? { added: 0, missed: 0 }) : null;
+  const at = format.dateTime(new Date(status.failure.at), { timeStyle: "short" });
   return (
     <div className="space-y-3">
       <div className="space-y-1">
         <p className="text-lg font-semibold leading-tight tracking-tight text-destructive">
-          {t("failedAt", { time: format.dateTime(new Date(status.failure.at), { timeStyle: "short" }) })}
+          {t(pdfs ? "pdfsStoppedAt" : "failedAt", { time: at })}
         </p>
         <p className="text-sm leading-relaxed">{t(`failure.${status.failure.code}`, { provider })}</p>
-        {status.lastSuccessAt ? (
+        {pdfs ? (
+          <p className="text-xs text-muted-foreground">{t("pdfsStillSearchable")}</p>
+        ) : status.lastSuccessAt ? (
           <p className="text-xs text-muted-foreground">
             {t("lastSuccess", { when: format.relativeTime(new Date(status.lastSuccessAt), now) })}
           </p>
         ) : null}
       </div>
+      {pdfs ? <PdfSummary pdfs={pdfs} tone="running" /> : null}
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" size="sm" onClick={onRetry} disabled={retrying}>
           {retrying ? <Spinner /> : <RefreshCw />}
-          {t("retry")}
+          {t(pdfs ? "retryPdfs" : "retry")}
         </Button>
         <DisclosureButton open={open} controls={detailsId} className="ml-0" onToggle={() => setOpen((value) => !value)}>
           {t("details")}
@@ -264,7 +377,7 @@ const BAND: Record<SourceStatus["state"] | "waiting", string> = {
 };
 
 /**
- * The foot of a source row: the two steps, then one large figure or
+ * The foot of a source row: the steps, then one large figure or
  * headline, tinted by state so the state reads before the words. A `null`
  * status is a source the library has not seen yet.
  */
@@ -358,12 +471,7 @@ export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
       );
   }
 
-  return (sourceKey: string, paused: boolean, provider: string): SourceLive | null => {
-    if (!report) return null;
-    const status = report.sources.find((source) => source.key === sourceKey) ?? null;
-    // A running import reports every few seconds; silence means the library
-    // stopped reporting, so its last progress is no longer known.
-    if (status?.state === "running" && now.getTime() - report.observedAt > STALE_RUNNING_MS) return null;
+  function live(sourceKey: string, paused: boolean, provider: string, status: SourceStatus | null): SourceLive {
     return {
       activity: paused ? null : (
         <SourceActivityBand
@@ -376,5 +484,14 @@ export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
       ),
       status: chip(status, paused),
     };
+  }
+
+  return (sourceKey: string, paused: boolean, provider: string): SourceLive | null => {
+    if (!report) return null;
+    const status = report.sources.find((source) => source.key === sourceKey) ?? null;
+    // A running import reports every few seconds; silence means the library
+    // stopped reporting, so its last progress is no longer known.
+    if (status?.state === "running" && now.getTime() - report.observedAt > STALE_RUNNING_MS) return null;
+    return live(sourceKey, paused, provider, status);
   };
 }

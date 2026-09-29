@@ -2525,6 +2525,7 @@
         "chip": {
           "importing": "インポート中",
           "searching": "検索を更新中",
+          "addingPdfs": "PDF を追加中",
           "upToDate": "最新",
           "failed": "インポート失敗",
           "waiting": "未インポート",
@@ -2532,7 +2533,8 @@
         },
         "steps": {
           "import": "レコードをインポート",
-          "search": "検索を更新"
+          "search": "検索を更新",
+          "pdfs": "PDF を追加"
         },
         "importProgress": "インポートの進捗",
         "searchProgress": "検索更新の進捗",
@@ -2542,6 +2544,15 @@
         "searchSoFar": "件を検索可能にしました（これまで）",
         "started": "{time} に開始",
         "minutesLeft": "残り {minutes, number} 分",
+        "hoursLeft": "残り {hours, number} 時間",
+        "pdfProgress": "PDF の進行状況",
+        "pdfsOfTotal": "/ {total, number} 件の PDF",
+        "pdfsSoFar": "件の PDF（これまで）",
+        "pdfsAdded": "{count, number} 件追加",
+        "pdfsMissed": "{count, number} 件ダウンロードできませんでした",
+        "pdfsStoppedAt": "PDF の追加が {time} に止まりました",
+        "pdfsStillSearchable": "すべてのレコードは検索できます。再試行すると最後に追加した PDF の続きから再開します。",
+        "retryPdfs": "PDF を再試行",
         "underAMinute": "残り 1 分未満",
         "searchable": "件のレコードを検索可能",
         "changed": "前回のインポートで {count, number} 件変更、{when}に確認",
