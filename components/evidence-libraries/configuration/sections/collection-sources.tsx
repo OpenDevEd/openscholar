@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useConvex, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { type RefObject, useRef } from "react";
 import { toast } from "sonner";
+import { OpenScholarIcon } from "@/components/icons/openalex-icon";
 import { Switch } from "@/components/ui/switch";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -24,7 +24,7 @@ import { SourceRow } from "./source-row";
 import type { SourceLive } from "./source-activity";
 
 export function CollectionSourceIcon() {
-  return <Image src="/icon.svg" alt="" width={16} height={16} className="size-4" />;
+  return <OpenScholarIcon className="size-4 text-primary" />;
 }
 
 /**
