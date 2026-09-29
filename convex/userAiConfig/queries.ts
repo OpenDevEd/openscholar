@@ -2,7 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { modelChoiceValidator } from "../aiModelConfig/validators";
 import { taskPickSummaryValidator } from "../aiModelConfig/queries";
-import { livePick, modelSummary, userAiConfig, withLegacy } from "../ai/serverModel";
+import { livePick, modelSummary, userAiConfig } from "../ai/serverModel";
 import { getCurrentUser } from "../lib/auth";
 import { AI_TASKS } from "../../lib/ai/tasks";
 
@@ -15,8 +15,8 @@ export const get = query({
   returns: v.union(v.null(), v.object({ choice: modelChoiceValidator, custom: v.array(taskPickSummaryValidator) })),
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
-    const cfg = withLegacy(user ? await userAiConfig(ctx, user._id) : null);
-    if (!cfg?.choice) return null;
+    const cfg = user ? await userAiConfig(ctx, user._id) : null;
+    if (!cfg) return null;
     return {
       choice: cfg.choice,
       custom: await Promise.all(

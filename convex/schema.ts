@@ -392,14 +392,8 @@ export default defineSchema({
   userAiConfig: defineTable({
     userId: v.id("users"),
     /** A preset, or "custom"; no row means the default preset. */
-    choice: v.optional(modelChoiceValidator),
+    choice: modelChoiceValidator,
     custom: v.optional(customPicksValidator),
-    // The old single-model choice. Only migrations/presetMaps reads it; it goes
-    // once shared dev is migrated (then `choice` becomes required).
-    serverPreset: v.optional(
-      v.union(v.literal("fast"), v.literal("balanced"), v.literal("intelligent"), v.literal("custom"), v.literal("recommended")),
-    ),
-    serverModelId: v.optional(v.id("models")),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 

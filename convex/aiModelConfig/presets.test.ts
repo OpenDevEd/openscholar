@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { setupAggregates } from "../extraction/aggregates.test-support";
@@ -78,58 +78,11 @@ describe("custom", () => {
     expect(await runsOn("chat")).toEqual({ modelId: flash });
   });
 
-  it("runs a row saved before presets as it will after the migration", async () => {
-    const { t, admin, flash, userId, runsOn } = await setup();
-    await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "fast", task: "chat", modelId: flash });
-    await t.run((ctx) => ctx.db.insert("userAiConfig", { userId, serverPreset: "fast", updatedAt: 1 }));
-    expect(await runsOn("chat")).toEqual({ modelId: flash });
-  });
-
-  it("converts a row saved before presets before changing it", async () => {
-    const { t, user, mine, userId, runsOn } = await setup();
-    await t.run((ctx) => ctx.db.insert("userAiConfig", { userId, serverPreset: "custom", serverModelId: mine, updatedAt: 1 }));
-    await user.mutation(api.userAiConfig.mutations.choose, { choice: "custom" });
-    expect(await runsOn("translate")).toEqual({ modelId: mine });
-    const cfg = await t.run((ctx) => ctx.db.query("userAiConfig").first());
-    expect(cfg?.serverPreset).toBeUndefined();
-  });
-
   it("falls back to Balanced's pick once an admin hides a Custom model", async () => {
     const { admin, user, sonnet, mine, runsOn } = await setup();
     await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "chat", modelId: sonnet });
     await user.mutation(api.userAiConfig.mutations.setCustom, { picks: [{ task: "chat", modelId: mine }] });
     await admin.mutation(api.models.admin.setOffered, { modelId: mine, on: false });
     expect(await runsOn("chat")).toEqual({ modelId: sonnet });
-  });
-});
-
-describe("migrating to preset maps", () => {
-  afterEach(() => vi.useRealTimers());
-
-  it("turns the old rows into preset maps and old choices into presets or Custom", async () => {
-    const { t, mine, userId, runsOn } = await setup();
-    await t.run(async (ctx) => {
-      for (const [key, modelId] of [["preset.balanced", "anthropic/sonnet"], ["preset.fast", "google/flash"], ["task.extraction", "google/flash"], ["default.openai", "gpt-4o"]]) {
-        await ctx.db.insert("aiModelConfig", { key: key!, modelId: modelId!, updatedAt: 1 });
-      }
-      await ctx.db.insert("userAiConfig", { userId, serverPreset: "custom", serverModelId: mine, updatedAt: 1 });
-    });
-
-    vi.useFakeTimers();
-    await t.mutation(internal.migrations.presetMaps.run, {});
-    await t.finishAllScheduledFunctions(vi.runAllTimers);
-
-    const keys = await t.run((ctx) => ctx.db.query("aiModelConfig").collect());
-    expect(keys.map((row) => row.key)).not.toContain("preset.balanced");
-    expect(keys.map((row) => row.key)).not.toContain("default.openai");
-    expect(keys.find((row) => row.key === "preset.balanced.chat")?.modelId).toBe("anthropic/sonnet");
-    expect(keys.find((row) => row.key === "preset.balanced.extraction")?.modelId).toBe("google/flash");
-    expect(keys.find((row) => row.key === "preset.fast.screening")?.modelId).toBe("google/flash");
-
-    // One model became Custom with that model on every task.
-    expect(await runsOn("screening")).toEqual({ modelId: mine });
-    const cfg = await t.run((ctx) => ctx.db.query("userAiConfig").first());
-    expect(cfg).toMatchObject({ choice: "custom" });
-    expect(cfg?.serverPreset).toBeUndefined();
   });
 });

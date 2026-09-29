@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { aiTaskValidator, effortValidator, modelChoiceValidator } from "../aiModelConfig/validators";
 import { requireAuth } from "../lib/auth";
 import { requireAvailableModel, requireEffort } from "../models/catalog";
-import { currentUserAiConfig, resolveTaskPick } from "../ai/serverModel";
+import { resolveTaskPick, userAiConfig } from "../ai/serverModel";
 import { AI_TASKS } from "../../lib/ai/tasks";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -24,7 +24,7 @@ export const choose = mutation({
   returns: v.null(),
   handler: async (ctx, { choice }) => {
     const user = await requireAuth(ctx);
-    const cfg = await currentUserAiConfig(ctx, user._id);
+    const cfg = await userAiConfig(ctx, user._id);
     const custom = choice === "custom" && !cfg?.custom ? await currentPicks(ctx, user._id) : cfg?.custom;
     const fields = { choice, custom, updatedAt: Date.now() };
     if (cfg) await ctx.db.patch("userAiConfig", cfg._id, fields);
@@ -42,7 +42,7 @@ export const setCustom = mutation({
   handler: async (ctx, { picks }) => {
     const user = await requireAuth(ctx);
     for (const pick of picks) requireEffort(await requireAvailableModel(ctx, pick.modelId), pick.effort);
-    const cfg = await currentUserAiConfig(ctx, user._id);
+    const cfg = await userAiConfig(ctx, user._id);
     // A first edit keeps what every other task was running.
     const custom = { ...(cfg?.custom ?? (await currentPicks(ctx, user._id))) };
     for (const { task, modelId, effort } of picks) custom[task] = effort ? { modelId, effort } : { modelId };

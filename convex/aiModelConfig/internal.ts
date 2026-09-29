@@ -12,7 +12,7 @@ const SONNET = "anthropic/claude-sonnet-4.6";
  * Starting picks. Slugs must be catalog rows users can pick, or the resolver
  * skips them; admins change them in Settings, Admin, AI models.
  */
-export function defaultPick(preset: PresetKey, task: AiTask): Pick {
+function defaultPick(preset: PresetKey, task: AiTask): Pick {
   switch (preset) {
     case "cheap":
       return { modelId: "deepseek/deepseek-v4.1-flash", effort: "low" };
@@ -26,7 +26,7 @@ export function defaultPick(preset: PresetKey, task: AiTask): Pick {
 }
 
 /** Writes a preset pick unless one exists; returns whether it wrote. */
-export async function insertPickIfMissing(ctx: MutationCtx, preset: PresetKey, task: AiTask, pick: Pick) {
+async function insertPickIfMissing(ctx: MutationCtx, preset: PresetKey, task: AiTask, pick: Pick) {
   const key = presetConfigKey(preset, task);
   const existing = await ctx.db
     .query("aiModelConfig")

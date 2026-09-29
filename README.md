@@ -137,9 +137,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
      (Cheap, Fast, Balanced, Intelligent) runs every task on. Users pick a preset,
      or Custom to choose each task themselves and use their own keys.
      `npx convex run aiModelConfig/internal:seed` adds the starting picks to a
-     deployment that doesn't have them; it never replaces an existing pick. A
-     deployment still on the old single-model choice moves over with
-     `npx convex run migrations/presetMaps:run`.
+     deployment that doesn't have them; it never replaces an existing pick.
 
 4. **Run OpenScholar against the hosted development services**
 
