@@ -50,6 +50,7 @@ import {
 import type { WebSearchPricing } from "@/lib/pricing";
 import { WebSearchStep } from "./web-search-step";
 import { CHAT_LINK_SAFETY } from "./link-safety-dialog";
+import { ChatCodeBlock, ChatTable } from "./chat-markdown-blocks";
 import { AbortedPill } from "./aborted-pill";
 import { ChatErrorAlert } from "./chat-error-alert";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -360,6 +361,8 @@ export function buildStreamdownComponents() {
       return createElement(tag, componentProps, rendered);
     };
   }
+  components.table = ChatTable;
+  components.code = ChatCodeBlock;
   return components;
 }
 

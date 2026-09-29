@@ -3,7 +3,7 @@
 import { Coins, Globe, Zap } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
-import { motion, useReducedMotion } from "motion/react";
+import { PromptInputButton } from "@/components/ai-elements/prompt-input";
 import {
   Tooltip,
   TooltipContent,
@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { modelSupportsWebSearch } from "@/lib/chat/web-search-capability";
-import { modeToggleSpring } from "@/lib/animation-config";
 import { api } from "@/convex/_generated/api";
 
 interface WebSearchToggleProps {
@@ -30,7 +29,6 @@ export function WebSearchToggle({
   isGenerating,
 }: WebSearchToggleProps) {
   const t = useTranslations("composer");
-  const reduceMotion = useReducedMotion();
   const setWebSearch = useMutation(api.chat.messages.setChatWebSearchEnabled);
   const pricing = useQuery(api.chat.messages.getChatWebSearchPricing, {
     threadId,
@@ -51,8 +49,6 @@ export function WebSearchToggle({
       : enabled
         ? t("webSearch.ariaDisable")
         : t("webSearch.ariaEnable");
-
-  const interactive = !disabled && !reduceMotion;
 
   const title =
     state === "on"
@@ -87,8 +83,7 @@ export function WebSearchToggle({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <motion.button
-          type="button"
+        <PromptInputButton
           aria-pressed={enabled}
           aria-disabled={disabled}
           aria-label={ariaLabel}
@@ -100,35 +95,21 @@ export function WebSearchToggle({
           data-web-search-credits-estimate={String(
             pricing?.creditsPerCall ?? 0,
           )}
-          whileHover={interactive ? { scale: 1.04 } : undefined}
-          whileTap={interactive ? { scale: 0.94 } : undefined}
-          transition={modeToggleSpring}
           onClick={() => {
             if (disabled) return;
             void setWebSearch({ threadId, enabled: !enabled });
           }}
           className={cn(
-            "relative inline-flex h-7 select-none items-center gap-1.5 rounded-full px-2.5 text-xs font-medium",
-            "outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            "transition-[background,color,box-shadow,border-color] duration-200",
+            "h-7 gap-1.5 rounded-full px-2 text-xs font-medium",
             disabled && "cursor-not-allowed opacity-50",
-            state === "off" &&
-              "text-muted-foreground hover:bg-accent hover:text-foreground",
-            state === "unsupported" && "text-muted-foreground/60",
-            state === "on" &&
-              "bg-gradient-to-r from-primary/15 via-primary/10 to-[oklch(0.55_0.15_293/0.12)] text-primary shadow-[inset_0_0_0_1px_oklch(0.7_0.17_54/0.30),0_0_18px_-4px_oklch(0.7_0.17_54/0.45)] hover:shadow-[inset_0_0_0_1px_oklch(0.7_0.17_54/0.45),0_0_22px_-2px_oklch(0.7_0.17_54/0.55)] dark:from-primary/20 dark:via-primary/10 dark:to-[oklch(0.65_0.15_293/0.18)]",
+            state === "on"
+              ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
-          <motion.span
-            className="relative inline-flex"
-            initial={false}
-            animate={reduceMotion ? undefined : { rotate: enabled ? 360 : 0 }}
-            transition={{ duration: 0.45, ease: [0.32, 0.72, 0, 1] }}
-          >
-            <Globe className="size-3.5" aria-hidden="true" />
-          </motion.span>
+          <Globe className="size-3.5" aria-hidden="true" />
           <span className="hidden sm:inline">{t("webSearch.label")}</span>
-        </motion.button>
+        </PromptInputButton>
       </TooltipTrigger>
       <TooltipContent
         side="top"

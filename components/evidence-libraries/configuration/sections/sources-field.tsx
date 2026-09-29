@@ -72,7 +72,7 @@ import {
   type PickerSource,
   RemotePickerDialog,
 } from "./remote-picker-dialog";
-import { DisclosureButton } from "../disclosure-button";
+import { Disclosure } from "../disclosure-button";
 import {
   DEFAULT_TAG_RULES,
   type TagRuleKey,
@@ -385,12 +385,14 @@ export function SourcesField({
             </TabsList>
             <TabsContent value="zotero" className="space-y-5">
               <AccountPanel account={account.data} />
-              <div className="space-y-3 border-t border-border/50 pt-5">
-                <DisclosureButton open={advancedOpen} controls="zotero-tag-rules" onToggle={() => setAdvancedOpen((open) => !open)}>
-                  {t("tagRulesHeading")}
-                </DisclosureButton>
-                {advancedOpen ? (
-                  <Panel id="zotero-tag-rules" tone="muted" className="space-y-4">
+              <Disclosure
+                open={advancedOpen}
+                onOpenChange={setAdvancedOpen}
+                label={t("tagRulesHeading")}
+                className="border-t border-border/50 pt-5"
+              >
+                <div className="pt-3">
+                  <Panel tone="muted" className="space-y-4">
                     <div className="space-y-0.5">
                       <p className="text-sm font-medium">
                         {t("tagRulesHeading")}
@@ -419,8 +421,8 @@ export function SourcesField({
                       })}
                     </div>
                   </Panel>
-                ) : null}
-              </div>
+                </div>
+              </Disclosure>
             </TabsContent>
             <TabsContent value="openalex">
               <OpenAlexAccessSettings source={openalex} />

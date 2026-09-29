@@ -59,7 +59,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyList } from "../fields";
 import { FieldError, SectionCard } from "../section-card";
-import { DisclosureButton } from "../disclosure-button";
+import { Disclosure } from "../disclosure-button";
 
 type Role = "Owner" | "Editor" | "Creator";
 export type AccessMember = {
@@ -627,10 +627,8 @@ export function TeamAccess({
         )}
         {!isProfile && (
           <div className="border-t border-border/50 px-4 py-3 text-xs text-muted-foreground">
-            <DisclosureButton open={rolesOpen} controls="library-roles" onToggle={() => setRolesOpen((open) => !open)}>
-              About library roles
-            </DisclosureButton>
-            {rolesOpen ? <dl id="library-roles" className="grid gap-3 pb-1 pt-3 sm:grid-cols-3">
+            <Disclosure open={rolesOpen} onOpenChange={setRolesOpen} label="About library roles">
+            <dl className="grid gap-3 pb-1 pt-3 sm:grid-cols-3">
               {(["Owner", "Editor", "Creator"] as const).map((role) => (
                 <div key={role}>
                   <dt className="mb-1 flex items-center gap-1.5 font-medium text-foreground">
@@ -646,7 +644,8 @@ export function TeamAccess({
                   <dd className="leading-relaxed">{roleHint[role]}</dd>
                 </div>
               ))}
-            </dl> : null}
+            </dl>
+            </Disclosure>
           </div>
         )}
       </SectionCard>
