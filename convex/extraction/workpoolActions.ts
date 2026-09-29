@@ -11,7 +11,9 @@ import { convertUsdToCredits, creditsForUsage } from "../../lib/pricing";
 import { resolveOpenRouterModel } from "../chat/provider";
 type ExtractionModel = Awaited<ReturnType<typeof resolveOpenRouterModel>>["model"];
 type ExtractionPricing = Awaited<ReturnType<typeof resolveOpenRouterModel>>["pricing"];
-import { STANDARD_PROVIDER_OPTIONS } from "../../lib/ai/core/schemas";
+import { callOptions } from "../../lib/ai/core/call-options";
+import { usageOf } from "../../lib/ai/core/cost";
+import type { Usage } from "../../lib/ai/core/types";
 import {
   truncateForTracking,
   type AITrackingEntry,
@@ -265,7 +267,7 @@ function toEvidenceContext(candidates: RetrievalCandidate[]) {
 
 type ExtractionWithUsage = {
   result: ExtractionQuestionResult;
-  usage: { inputTokens: number; outputTokens: number };
+  usage: Usage;
   prompt: string;
 };
 
@@ -293,15 +295,14 @@ async function extractQuestionAnswer(params: {
       toEvidenceContext(evidencePool),
     );
 
-    const { output: object, usage } = await generateText({
+    const generated = await generateText({
       model,
       output: Output.object({ schema: buildAnswerSchema(question.type) }),
       prompt,
       temperature: 0,
-      providerOptions: STANDARD_PROVIDER_OPTIONS as Parameters<
-        typeof generateText
-      >[0]["providerOptions"],
+      providerOptions: callOptions(model),
     });
+    const object = generated.output;
 
     const extracted = normalizeExtractionOutputForQuestion(
       question.type,
@@ -333,12 +334,10 @@ async function extractQuestionAnswer(params: {
       pdfContentUsed: citations.length > 0,
     };
 
-    const inputTokens = usage?.inputTokens ?? 0;
-    const outputTokens = usage?.outputTokens ?? 0;
 
     return {
       result,
-      usage: { inputTokens, outputTokens },
+      usage: usageOf(generated),
       prompt,
     };
   } catch (error) {
@@ -383,15 +382,14 @@ async function extractQuestionAnswerFromAbstract(params: {
       [],
     );
 
-    const { output: object, usage } = await generateText({
+    const generated = await generateText({
       model,
       output: Output.object({ schema: buildAnswerSchema(question.type) }),
       prompt,
       temperature: 0,
-      providerOptions: STANDARD_PROVIDER_OPTIONS as Parameters<
-        typeof generateText
-      >[0]["providerOptions"],
+      providerOptions: callOptions(model),
     });
+    const object = generated.output;
 
     const extracted = normalizeExtractionOutputForQuestion(
       question.type,
@@ -406,8 +404,6 @@ async function extractQuestionAnswerFromAbstract(params: {
         ? "Abstract-only mode: no direct support found in the abstract."
         : "Abstract-only mode: answer inferred from abstract content.";
 
-    const inputTokens = usage?.inputTokens ?? 0;
-    const outputTokens = usage?.outputTokens ?? 0;
 
     return {
       result: {
@@ -427,7 +423,7 @@ async function extractQuestionAnswerFromAbstract(params: {
         },
         pdfContentUsed: false,
       },
-      usage: { inputTokens, outputTokens },
+      usage: usageOf(generated),
       prompt,
     };
   } catch (error) {
@@ -878,7 +874,7 @@ export async function runDownloadAndIndexPdf(
 
 type PerQuestionOutcome = {
   result: ExtractionQuestionResult;
-  usage: { inputTokens: number; outputTokens: number };
+  usage: Usage;
   trackingEntry: AITrackingEntry | null;
 };
 
@@ -947,8 +943,8 @@ async function runOneQuestionExtraction(params: {
         trackingEntry: {
           feature: "extraction_question_abstract",
           usage: {
-            inputTokens: usage.inputTokens,
-            outputTokens: usage.outputTokens,
+            inputTokens: usage.inputTokens ?? 0,
+            outputTokens: usage.outputTokens ?? 0,
           },
           latencyMs: qLatency,
           input: truncateForTracking(prompt),
@@ -1064,8 +1060,8 @@ async function runOneQuestionExtraction(params: {
     trackingEntry: {
       feature: "extraction_question_pdf",
       usage: {
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
+        inputTokens: usage.inputTokens ?? 0,
+        outputTokens: usage.outputTokens ?? 0,
       },
       latencyMs: qLatency,
       input: truncateForTracking(prompt),
@@ -1089,6 +1085,7 @@ export type CompletedQuestionBatchItem = {
   questionKey: string;
   result: ExtractionQuestionResult;
   creditsUsed: number;
+  usage: Usage;
   trackingEntry: AITrackingEntry | null;
 };
 
@@ -1291,6 +1288,7 @@ export async function runExtractQuestionWithContext({
     questionKey: question.key,
     result: outcome.result,
     creditsUsed: creditsForUsage(outcome.usage, pricing),
+    usage: outcome.usage,
     trackingEntry: outcome.trackingEntry
       ? { ...outcome.trackingEntry, latencyMs }
       : null,

@@ -1,6 +1,7 @@
 import { generateText, Output, type LanguageModel } from 'ai'
 import { z } from 'zod'
-import { STANDARD_PROVIDER_OPTIONS } from './schemas'
+import { callOptions, type Effort } from './call-options'
+import { usageOf } from './cost'
 import { repairJSON, repairSingleField } from './validate'
 import {
   AIValidationError,
@@ -26,6 +27,9 @@ export interface ExecuteAIOperationConfig<TInput, TOutput> {
   retryConfig?: RetryConfig
   validator?: (output: TOutput) => TOutput | Promise<TOutput>
   postProcess?: (output: TOutput, input: TInput) => TOutput | Promise<TOutput>
+  effort?: Effort
+  /** Keeps the calls of one job on the same upstream host. */
+  sessionId?: string
 }
 
 export async function executeAIOperation<TInput, TOutput>(
@@ -41,6 +45,8 @@ export async function executeAIOperation<TInput, TOutput>(
     retryConfig = DEFAULT_RETRY_CONFIG,
     validator,
     postProcess,
+    effort,
+    sessionId,
   } = config
 
   const { maxRetries, shouldRetry, onRetry } = retryConfig
@@ -72,13 +78,13 @@ export async function executeAIOperation<TInput, TOutput>(
         model,
         output: Output.object({ schema }),
         experimental_repairToolCall: repairToolCall,
-        providerOptions: STANDARD_PROVIDER_OPTIONS as unknown as Parameters<typeof generateText>[0]['providerOptions'],
+        providerOptions: callOptions(model, { effort, sessionId }),
         temperature,
         system: prompts.system,
         prompt: prompts.prompt,
       })
 
-      const { output: object, usage } = result
+      const { output: object } = result
 
       let finalOutput = object as TOutput
 
@@ -110,7 +116,7 @@ export async function executeAIOperation<TInput, TOutput>(
 
       return {
         output: finalOutput,
-        usage: usage as Usage,
+        usage: usageOf(result),
       }
     } catch (error) {
       if (error instanceof AIValidationError || error instanceof AIMaxRetriesExceededError) {

@@ -47,24 +47,19 @@ export function calculateEnhancedModelCost(
 ): number {
   const perMillion = 1_000_000;
 
-  const inputCost =
-    (usage.inputTokens / perMillion) * model.inputPricePerMillion;
-  const outputCost =
-    (usage.outputTokens / perMillion) * model.outputPricePerMillion;
-
-  // Reasoning tokens — fall back to output price if no dedicated pricing
-  const reasoningPrice =
-    model.reasoningPricePerMillion ?? model.outputPricePerMillion;
-  const reasoningCost =
-    (usage.reasoningTokens / perMillion) * reasoningPrice;
-
-  // Cache tokens
+  // The AI SDK's input count includes cached tokens and its output count
+  // includes reasoning, so each part is priced once, at its own rate.
+  const uncachedInput = Math.max(0, usage.inputTokens - usage.cacheReadTokens - usage.cacheWriteTokens);
+  const inputCost = (uncachedInput / perMillion) * model.inputPricePerMillion;
   const cacheReadCost =
-    (usage.cacheReadTokens / perMillion) *
-    (model.cacheReadPricePerMillion ?? 0);
+    (usage.cacheReadTokens / perMillion) * (model.cacheReadPricePerMillion ?? model.inputPricePerMillion);
   const cacheWriteCost =
-    (usage.cacheWriteTokens / perMillion) *
-    (model.cacheWritePricePerMillion ?? 0);
+    (usage.cacheWriteTokens / perMillion) * (model.cacheWritePricePerMillion ?? model.inputPricePerMillion);
+
+  const visibleOutput = Math.max(0, usage.outputTokens - usage.reasoningTokens);
+  const outputCost = (visibleOutput / perMillion) * model.outputPricePerMillion;
+  const reasoningCost =
+    (usage.reasoningTokens / perMillion) * (model.reasoningPricePerMillion ?? model.outputPricePerMillion);
 
   // Web search — priced per request. When `model.webSearchPrice` is
   // null/undefined, the model has no native web search and OpenRouter

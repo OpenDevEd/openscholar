@@ -56,6 +56,12 @@ export const billingUsageFields = {
   jobId: v.optional(v.id("extractionJobs")),
   model: v.optional(v.string()),
   costUsd: v.optional(v.number()),
+  /** Input tokens served from the provider's prompt cache. */
+  cacheReadTokens: v.optional(v.number()),
+  /** Input tokens written to the prompt cache. */
+  cacheWriteTokens: v.optional(v.number()),
+  /** Output tokens spent reasoning. */
+  reasoningTokens: v.optional(v.number()),
   /** Set on refund reversals. */
   stripeChargeId: v.optional(v.string()),
   createdAt: v.number(),

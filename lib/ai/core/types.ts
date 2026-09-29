@@ -82,6 +82,14 @@ export interface Usage {
   inputTokens?: number
   completionTokens?: number
   outputTokens?: number
+  /** Input tokens the provider served from its prompt cache. */
+  cacheReadTokens?: number
+  /** Input tokens written to the prompt cache. */
+  cacheWriteTokens?: number
+  /** Output tokens spent reasoning; already counted in the output tokens. */
+  reasoningTokens?: number
+  /** What OpenRouter reports the call cost, in USD, cache and reasoning included. */
+  costUsd?: number
 }
 
 export interface GenerateExtractionQuestionsInput {

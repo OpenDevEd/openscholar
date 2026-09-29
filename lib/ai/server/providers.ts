@@ -62,12 +62,6 @@ export async function getProviderModel(
         }
       }
 
-      // Deployment-wide reasoning effort for OpenRouter calls, e.g. "low".
-      const reasoningEffort = process.env.OPENROUTER_REASONING_EFFORT
-      if (reasoningEffort) {
-        extraBody.reasoning = { effort: reasoningEffort }
-      }
-
       const openRouterOptions = {
         ...baseOptions,
         ...(Object.keys(extraBody).length > 0 && { extraBody }),

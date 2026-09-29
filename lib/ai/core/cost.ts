@@ -1,11 +1,29 @@
+import type { LanguageModelUsage, ProviderMetadata } from 'ai'
+import { pickProviderCostUsd } from '../../chat/pick-provider-cost'
 import type { Usage } from './types'
 
+/** Token counts and OpenRouter's reported cost from one AI SDK result. */
+export function usageOf(result: { usage: LanguageModelUsage; providerMetadata?: ProviderMetadata }): Usage {
+  const costUsd = pickProviderCostUsd(result.providerMetadata)
+  return {
+    inputTokens: result.usage.inputTokens ?? 0,
+    outputTokens: result.usage.outputTokens ?? 0,
+    cacheReadTokens: result.usage.inputTokenDetails.cacheReadTokens ?? 0,
+    cacheWriteTokens: result.usage.inputTokenDetails.cacheWriteTokens ?? 0,
+    reasoningTokens: result.usage.outputTokenDetails.reasoningTokens ?? 0,
+    ...(costUsd !== null && { costUsd }),
+  }
+}
+
+/** The reported cost when there is one, else tokens at the catalog price. */
 export function calculateCostInDollars(
   usage: Usage,
   pricing: { input: number; output: number },
 ): number {
-  const promptTokens = usage.promptTokens ?? usage.inputTokens ?? 0
-  const completionTokens = usage.completionTokens ?? usage.outputTokens ?? 0
+  if (usage.costUsd !== undefined) return usage.costUsd
+  // `||`, not `??`: an aggregate carries zero aliases next to the real counts.
+  const promptTokens = usage.promptTokens || usage.inputTokens || 0
+  const completionTokens = usage.completionTokens || usage.outputTokens || 0
 
   if (!promptTokens && !completionTokens) return 0
 
@@ -18,13 +36,16 @@ export function calculateCostInDollars(
  * Useful for batch operations where each item generates usage.
  */
 export function aggregateUsage(usages: Usage[]): Usage {
-  return usages.reduce(
-    (acc, usage) => ({
-      promptTokens: (acc.promptTokens || 0) + (usage.promptTokens || 0),
-      inputTokens: (acc.inputTokens || 0) + (usage.inputTokens || 0),
-      completionTokens: (acc.completionTokens || 0) + (usage.completionTokens || 0),
-      outputTokens: (acc.outputTokens || 0) + (usage.outputTokens || 0),
-    }),
-    { promptTokens: 0, inputTokens: 0, completionTokens: 0, outputTokens: 0 } as Usage
-  )
+  const sum = (key: keyof Usage) => usages.reduce((total, usage) => total + (usage[key] ?? 0), 0)
+  return {
+    promptTokens: sum('promptTokens'),
+    inputTokens: sum('inputTokens'),
+    completionTokens: sum('completionTokens'),
+    outputTokens: sum('outputTokens'),
+    cacheReadTokens: sum('cacheReadTokens'),
+    cacheWriteTokens: sum('cacheWriteTokens'),
+    reasoningTokens: sum('reasoningTokens'),
+    // A reported total only when every call reported its cost; otherwise tokens × price for all.
+    ...(usages.length > 0 && usages.every((usage) => usage.costUsd !== undefined) && { costUsd: sum('costUsd') }),
+  }
 }

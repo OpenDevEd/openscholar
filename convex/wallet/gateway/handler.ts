@@ -8,7 +8,8 @@ import {
   formatNonStreamingResponse,
   createStreamingResponse,
 } from "./formatResponse";
-import { buildReasoningProviderOptions } from "./reasoning";
+import { callOptions as providerCallOptions, clamp } from "../../../lib/ai/core/call-options";
+import { pickProviderCostUsd } from "../../../lib/chat/pick-provider-cost";
 import {
   calculateEnhancedModelCost,
   extractEnhancedUsage,
@@ -170,6 +171,8 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
       "openrouter",
       undefined,
       routedModelId,
+      // Needed for OpenRouter to report the call's cost, which is what we charge.
+      { openrouterUsageInclude: true },
     );
   } catch (e) {
     console.error("[gateway] Provider model creation failed:", e);
@@ -207,18 +210,18 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
   // 9. Convert request to AI SDK params
   const aiSdkParams = convertToAISdkParams(req);
 
-  // 10. Build provider options (reasoning + pass-through)
-  let providerOptions: Record<string, Record<string, unknown>> | undefined;
-  if (req.reasoning_effort) {
-    providerOptions = buildReasoningProviderOptions(
-      walletModel.provider,
-      req.reasoning_effort,
-      walletModel,
-    );
-  }
-  if (req.provider_options) {
-    providerOptions = { ...providerOptions, ...req.provider_options };
-  }
+  // 10. Provider options: the requested effort (models that reason, and never
+  //     "none" where reasoning can't be turned off), then the caller's own.
+  //     A level the model doesn't take rounds down to one it does.
+  const levels = walletModel.reasoningEfforts ?? [];
+  const effort = req.reasoning_effort && levels.length ? clamp(req.reasoning_effort, levels) : undefined;
+  const ours = providerCallOptions(model, { effort });
+  const providerOptions: Record<string, Record<string, unknown>> = {
+    ...ours,
+    ...req.provider_options,
+    // The caller's OpenRouter settings add to ours; a field they set themselves wins.
+    openrouter: { ...ours.openrouter, ...req.provider_options?.openrouter },
+  };
 
   // 11. Execute
   const responseId = generateResponseId();
@@ -262,8 +265,15 @@ export const handleChatCompletions = httpAction(async (ctx, request) => {
 
 // ─── Credit charge helper ───────────────────────────────────
 
+/** OpenRouter's cost summed over every step, or null when any step didn't report one. */
+function reportedCostUsd(stepMetadata: unknown[]): number | null {
+  const costs = stepMetadata.map(pickProviderCostUsd);
+  return costs.length > 0 && costs.every((cost) => cost !== null) ? costs.reduce<number>((sum, cost) => sum + cost!, 0) : null;
+}
+
 type ChargeFn = {
-  settle: (usage: EnhancedUsage) => Promise<void>;
+  /** `reportedUsd` is OpenRouter's cost for the call; tokens × price only when it's missing. */
+  settle: (usage: EnhancedUsage, reportedUsd: number | null) => Promise<void>;
   release: () => Promise<void>;
 };
 
@@ -274,8 +284,8 @@ function makeChargeFn(
   chargeId: string,
 ): ChargeFn {
   return {
-    settle: async (usage) => {
-      const costUsd = calculateEnhancedModelCost(usage, walletModel);
+    settle: async (usage, reportedUsd) => {
+      const costUsd = reportedUsd ?? calculateEnhancedModelCost(usage, walletModel);
       await settleCredits(ctx, {
         userId: keyResult.userId,
         chargeId,
@@ -285,6 +295,9 @@ function makeChargeFn(
           description: `${keyResult.appName}: ${walletModel.name}`,
           model: walletModel.modelId,
           costUsd,
+          cacheReadTokens: usage.cacheReadTokens,
+          cacheWriteTokens: usage.cacheWriteTokens,
+          reasoningTokens: usage.reasoningTokens,
         },
       });
     },
@@ -342,7 +355,7 @@ function handleStreaming(params: {
       try {
         const enhanced = extractEnhancedUsage(await streamResult.totalUsage);
         enhanced.webSearchRequests = sourceCount;
-        await charge.settle(enhanced);
+        await charge.settle(enhanced, reportedCostUsd((await streamResult.steps).map((step) => step.providerMetadata)));
       } catch (e) {
         console.error("[gateway] Credit charge failed:", e);
         await charge.release().catch(() => undefined);
@@ -384,9 +397,9 @@ async function handleNonStreaming(params: {
     }));
 
   // Deduct credits
-  const enhanced = extractEnhancedUsage(result.usage);
+  const enhanced = extractEnhancedUsage(result.totalUsage);
   enhanced.webSearchRequests = sources.length;
-  await charge.settle(enhanced);
+  await charge.settle(enhanced, reportedCostUsd(result.steps.map((step) => step.providerMetadata)));
 
   // Format tool calls — AI SDK v6 uses `input` not `args`
   const toolCalls = (result.toolCalls ?? []).map(

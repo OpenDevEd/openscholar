@@ -20,10 +20,10 @@ import {
  *      web-search policy — corpus is PRIMARY, web is a fill-the-gaps
  *      tool, [Pn] is paper-only.
  *
- * The split is intentional: the corpus message is the cache-hot prefix
- * once OpenRouter's v6 provider starts forwarding cache_control through
- * the Responses API. For V1 neither branch carries
- * providerOptions.cacheControl — the provider drops them silently.
+ * The order is what keeps chat cheap: nothing that changes between turns
+ * comes before the corpus, so the provider's prompt cache (see
+ * callOptions) reuses it on every turn. The web-search policy goes last so
+ * turning it on doesn't move the corpus.
  */
 
 /**

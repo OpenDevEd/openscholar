@@ -70,7 +70,10 @@ import { resolveLatestAssistantTurn } from "../../lib/chat/latest-assistant-turn
 import { pickProviderCostUsd } from "../../lib/chat/pick-provider-cost";
 import { errorToLogString } from "../lib/errors";
 import { assertChatConcurrencyAvailable } from "./concurrency";
-import { reserveCredits, releaseCredits, settleCredits } from "../billing/charge";
+import { reserveCredits, releaseCredits, settleCredits, tokenCounts, tokenDetails } from "../billing/charge";
+import { callOptions } from "../../lib/ai/core/call-options";
+import { aggregateUsage, usageOf } from "../../lib/ai/core/cost";
+import type { Usage } from "../../lib/ai/core/types";
 import { convertUsdToCredits, WEB_SEARCH_PRICING } from "../../lib/pricing";
 import { calculateCostInDollars } from "../../lib/ai/core/cost";
 
@@ -364,6 +367,7 @@ export const generateResponse = internalAction({
     // its OpenRouter generation record.
     let completedUsd = 0;
     let completedTokens = 0;
+    const stepUsages: Usage[] = [];
     const completedGenerations = new Set<string>();
     let finished = false;
     let webSearchUsd = 0;
@@ -440,7 +444,11 @@ export const generateResponse = internalAction({
             // abort over a ~2s wait for a retry that mid-stream can't
             // salvage anyway.
             maxRetries: 0,
+            // Claude caches the corpus and earlier turns; the thread id keeps
+            // every turn on the same upstream host so that cache stays warm.
+            providerOptions: callOptions(model, { cache: true, sessionId: threadId }),
             onStepFinish: async ({ usage, providerMetadata }) => {
+              stepUsages.push(usageOf({ usage, providerMetadata }));
               const inputTokens = usage?.inputTokens ?? 0;
               const outputTokens = usage?.outputTokens ?? 0;
               completedTokens += inputTokens + outputTokens;
@@ -619,6 +627,7 @@ export const generateResponse = internalAction({
           chargeId,
           generationId: unfinishedGeneration,
           extraUsd: completedUsd + webSearchUsd,
+          earlierTokens: tokenCounts(aggregateUsage(stepUsages)),
           attempt: 0,
         });
         settledOrScheduled = true;
@@ -628,7 +637,15 @@ export const generateResponse = internalAction({
           userId,
           chargeId,
           credits: convertUsdToCredits({ usd }) || 1,
-          usage: { kind: "chat", description: "Chat message", jobId, model: modelSlug, costUsd: usd },
+          usage: {
+            kind: "chat",
+            description: "Chat message",
+            jobId,
+            model: modelSlug,
+            ...tokenDetails(aggregateUsage(stepUsages)),
+            // Includes web search, which the model's own cost doesn't.
+            costUsd: usd,
+          },
         });
         settledOrScheduled = true;
       }

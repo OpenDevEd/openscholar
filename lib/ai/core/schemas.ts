@@ -70,15 +70,3 @@ export const toExtractionQuestions = (output: z.infer<typeof extractionQuestions
     ...(description ? { description } : {}),
   })),
 })
-
-export const STANDARD_PROVIDER_OPTIONS = {
-  google: {
-    thinkingConfig: {
-      thinkingBudget: 0, // Disables thinking for Gemini 2.5 models
-      thinkingLevel: 'minimal' as const, // Minimal thinking for Gemini 3 models
-    },
-  },
-  openai: {
-    reasoningEffort: 'minimal' as const,
-  },
-} as const
