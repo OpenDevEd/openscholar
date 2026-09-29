@@ -11,8 +11,13 @@ const useFunderNameStore = create<{ names: Record<string, string> }>()(
   persist(() => ({ names: {} }), { name: "funder-names", storage: createJSONStorage(() => localStorage) }),
 );
 
+/** Best effort: if the browser can't store them (full, blocked), they still last for this visit. */
 export function rememberFunderNames(names: Record<string, string>) {
-  useFunderNameStore.setState((state) => ({ names: { ...state.names, ...names } }));
+  try {
+    useFunderNameStore.setState((state) => ({ names: { ...state.names, ...names } }));
+  } catch (error) {
+    console.warn("Funder names could not be saved in the browser", error);
+  }
 }
 
 /** Names for funder ids such as F4320311904: saved ones at once, others looked up once and then saved. */

@@ -52,9 +52,9 @@ export function FunderFilter({
       onSearch={setSearch}
       onToggle={(id) => {
         if (selected.includes(id)) return onChange(selected.filter((one) => one !== id));
+        onChange([...selected, id]);
         // Saved as it is picked, so chips for this search never have to look the name up.
         rememberFunderNames({ [id]: names[id] });
-        onChange([...selected, id]);
       }}
     />
   );
