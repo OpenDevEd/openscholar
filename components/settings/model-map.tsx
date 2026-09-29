@@ -19,6 +19,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
+import { isVariant } from "@/lib/ai/native-model-id";
 import { BROWSER_TASKS, CLOUD_TASKS, type AiTask } from "@/lib/ai/tasks";
 import type { Ico } from "./parts";
 
@@ -113,7 +114,7 @@ export function ModelPicker({
           <CommandList className="h-80 max-h-80">
             <CommandEmpty>{catalog === undefined ? tm("loadingModels") : tm("noModels")}</CommandEmpty>
             <CommandGroup>
-              {(catalog ?? []).map((row) => {
+              {(catalog ?? []).filter((row) => !provider || !isVariant(row.modelId)).map((row) => {
                 const model = toMapModel(row);
                 const Brand = getModelIcon(model.id);
                 return (

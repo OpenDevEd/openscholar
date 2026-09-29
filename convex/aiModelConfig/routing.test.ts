@@ -44,7 +44,7 @@ describe("task routing", () => {
   });
 
   it("runs every task on one model, and falls back to Recommended once an admin hides it", async () => {
-    const { admin, user, mine, cheap, runsOn } = await setup();
+    const { t, admin, user, mine, cheap, runsOn } = await setup();
     await admin.mutation(api.aiModelConfig.admin.setTaskModel, { task: "extraction", modelId: cheap });
     await user.mutation(api.userAiConfig.mutations.setCustomModel, { serverModelId: mine });
     expect(await runsOn("chat")).toBe(mine);
@@ -54,6 +54,8 @@ describe("task routing", () => {
     expect(await runsOn("extraction")).toBe(cheap);
     // The settings map shows Recommended, since that's what runs.
     expect((await user.query(api.userAiConfig.queries.get, {}))?.model).toBeNull();
+    // A job stamped with it before the admin hid it can't run it either.
+    expect(await t.query(internal.models.queries.getById, { modelId: mine })).toBeNull();
     // Hidden models can't be routed to either.
     await expect(admin.mutation(api.aiModelConfig.admin.setTaskModel, { task: "chat", modelId: mine })).rejects.toThrow();
   });
@@ -68,12 +70,15 @@ describe("task routing", () => {
 
   it("finds the browser key's model from the id the provider's own API takes", async () => {
     const { t } = await setup();
-    await t.run((ctx) =>
-      ctx.db.insert("models", {
-        modelId: "anthropic/claude-sonnet-4.6", name: "Anthropic: Claude Sonnet 4.6", provider: "anthropic",
-        inputPricePerMillion: 3, outputPricePerMillion: 15, isServed: true, costMarkup: 1, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1,
-      }),
-    );
+    // The OpenRouter-only `:free` variant shares the native id but isn't what the key calls.
+    for (const [modelId, price] of [["anthropic/claude-sonnet-4.6:free", 0], ["anthropic/claude-sonnet-4.6", 3]] as const) {
+      await t.run((ctx) =>
+        ctx.db.insert("models", {
+          modelId, name: modelId, provider: "anthropic",
+          inputPricePerMillion: price, outputPricePerMillion: 15, isServed: true, costMarkup: 1, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1,
+        }),
+      );
+    }
     const row = await t.query(api.models.queries.getCatalogOption, { modelId: "claude-sonnet-4-6", provider: "anthropic" });
     expect(row?.modelId).toBe("anthropic/claude-sonnet-4.6");
   });

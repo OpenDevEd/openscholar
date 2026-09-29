@@ -23,6 +23,9 @@
 
 export type NativeProvider = "openai" | "anthropic" | "google" | "deepseek";
 
+/** OpenRouter-only variants (`:free`, `:extended`) that a provider's own API doesn't offer. */
+export const isVariant = (openRouterId: string) => openRouterId.includes(":");
+
 /** Drop the leading `vendor/` segment and any OpenRouter `:variant` suffix. */
 function baseId(openRouterId: string): string {
   const afterSlash = openRouterId.includes("/")

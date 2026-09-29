@@ -15,6 +15,9 @@ import { useAIConfigStore } from "@/lib/store";
 import { getDefaultModelForProvider, getProviderConfig } from "@/lib/ai-models";
 import { toNativeModelId } from "@/lib/ai/native-model-id";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
+import { resolveCreditsAvailability } from "@/lib/credits/availability";
+import { ESTIMATED_CREDITS_PER_QUERY } from "@/convex/lib/constants";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
@@ -55,6 +58,7 @@ export default function AISettingsPage() {
 
   const routes = useQuery(api.aiModelConfig.queries.routing, creditsEnabled ? {} : "skip");
   const config = useQuery(api.userAiConfig.queries.get, signedIn && creditsEnabled ? {} : "skip");
+  const account = useOptionalAuthQuery(api.billing.accounts.mine, creditsEnabled ? {} : "skip");
   const keyRow = useQuery(
     api.models.queries.getCatalogOption,
     provider === "openrouter" || provider === "azure" ? { modelId: model } : { modelId: model, provider },
@@ -70,11 +74,20 @@ export default function AISettingsPage() {
   });
   const setCustomModel = useMutation(api.userAiConfig.mutations.setCustomModel);
 
-  const one = config !== undefined && config !== null && config.serverPreset !== "recommended";
-  const single = one ? (config.model ?? recommendedChat) : null;
+  // The server returns no model when tasks run on Recommended, including when an admin hid the picked one.
+  const single = config?.model ?? null;
+  const one = single !== null;
   const pay = apiKeyMode;
   // Mirrors the executor: "Credits, then key" runs on the key alone when credits can't run.
-  const creditsRun = creditsEnabled && signedIn;
+  const creditsRun =
+    creditsEnabled &&
+    signedIn &&
+    resolveCreditsAvailability({
+      isAuthenticated: signedIn,
+      settlement: account.settlement === "ready" ? "settled" : "loading",
+      totalCredits: account.data?.balance,
+      requiredCredits: ESTIMATED_CREDITS_PER_QUERY,
+    }) !== "unavailable";
   const browserOn: AIKeyMode = pay === "smart" && !creditsRun ? "local" : pay;
   const keyModel: MapModel = keyRow
     ? toMapModel(keyRow)
@@ -120,7 +133,8 @@ export default function AISettingsPage() {
   };
 
   const ready =
-    keyRow !== undefined && (!creditsEnabled || (routes !== undefined && (!signedIn || config !== undefined)));
+    keyRow !== undefined &&
+    (!creditsEnabled || (routes !== undefined && (!signedIn || (config !== undefined && account.settlement === "ready"))));
 
   return (
     <Enter ready={ready}>

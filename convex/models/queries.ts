@@ -3,7 +3,7 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { activeModels, MAX_CATALOG_MODELS, pickable } from "./catalog";
 import type { Doc } from "../_generated/dataModel";
-import { toNativeModelId } from "../../lib/ai/native-model-id";
+import { isVariant, toNativeModelId } from "../../lib/ai/native-model-id";
 
 const catalogOptionValidator = v.object({
   _id: v.id("models"),
@@ -86,7 +86,7 @@ export const getCatalogOption = query({
   handler: async (ctx, { modelId, provider }) => {
     if (provider) {
       const rows = pickable(await activeModels(ctx, provider).take(MAX_CATALOG_MODELS));
-      const model = rows.find((row) => toNativeModelId(row.modelId, provider) === modelId);
+      const model = rows.find((row) => !isVariant(row.modelId) && toNativeModelId(row.modelId, provider) === modelId);
       return model ? catalogOption(model) : null;
     }
     const model = await ctx.db
@@ -189,7 +189,7 @@ export const getById = internalQuery({
   ),
   handler: async (ctx, { modelId }) => {
     const row = await ctx.db.get(modelId);
-    if (!row || row.retiredAt !== undefined) return null;
+    if (!row || row.retiredAt !== undefined || row.hidden) return null;
     return {
       _id: row._id,
       modelId: row.modelId,
