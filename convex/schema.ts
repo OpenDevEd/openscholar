@@ -39,6 +39,7 @@ import {
   organizationMembershipFields,
 } from "./evidenceLibraries/validators";
 import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidators";
+import { evidenceLibraryCollectionSourceFields } from "./evidenceLibraries/collectionSourceValidators";
 import { evidenceLibrarySourceStatusFields } from "./evidenceLibraries/sourceStatusValidators";
 
 import { authorContentFields } from "./authors/validators";
@@ -239,6 +240,9 @@ export default defineSchema({
   evidenceLibraryZoteroGroups: defineTable(evidenceLibraryZoteroGroupFields)
     .index("by_libraryId", ["libraryId"])
     .index("by_libraryId_and_groupId", ["libraryId", "groupId"]),
+
+  evidenceLibraryCollectionSources: defineTable(evidenceLibraryCollectionSourceFields)
+    .index("by_libraryId_and_collectionId", ["libraryId", "collectionId"]),
 
   evidenceLibraryServedHosts: defineTable(
     evidenceLibraryServedHostsFields,
@@ -901,6 +905,8 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     itemCount: v.optional(v.number()),
+    // Goes up on every item added or removed; libraries following the collection compare it.
+    membershipRevision: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   // ═══════════════════════════════════════════════════════════════

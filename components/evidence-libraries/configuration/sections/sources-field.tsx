@@ -39,7 +39,10 @@ import {
 } from "@/convex/zotero/sourceEntry";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { getConvexSiteUrl } from "@/lib/convex-site";
-import type { EvidenceSourceEntry } from "@/lib/evidence-libraries/configuration/sources";
+import type {
+  EvidenceSourceEntry,
+  OpenScholarCollectionSourceEntry,
+} from "@/lib/evidence-libraries/configuration/sources";
 import { ChipInput, EmptyList, MetaList, Panel } from "../fields";
 import { FieldError } from "../section-card";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
@@ -65,6 +68,11 @@ import {
   useOpenAlexSources,
 } from "./openalex-sources";
 import { SourceRow } from "./source-row";
+import {
+  CollectionSourceIcon,
+  CollectionSourceRow,
+  useCollectionSources,
+} from "./collection-sources";
 import { type SourceLive, useSourceActivity } from "./source-activity";
 import { type StatusTone } from "../status-chip";
 import {
@@ -168,7 +176,11 @@ export function SourcesField({
   const addButton = useRef<HTMLButtonElement>(null);
   const openalex = useOpenAlexSources({ libraryId, value, onChange });
   const liveFor = useSourceActivity(libraryId);
-  const [removeId, setRemoveId] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<
+    | { kind: "zotero"; groupId: string }
+    | { kind: "collection"; entry: OpenScholarCollectionSourceEntry }
+    | null
+  >(null);
   const [busyGroupId, setBusyGroupId] = useState<string | null>(null);
   // Convex calls finish after other rows may have changed; edits always start
   // from the newest draft, not the one captured when the call began.
@@ -178,6 +190,13 @@ export function SourcesField({
     latest.current = next;
     onChange(next);
   }
+  const collections = useCollectionSources({
+    libraryId,
+    value,
+    latest,
+    commit,
+    apiKeyMode: openalex.mode === "custom" && openalex.customCredential ? "custom" : "platform",
+  });
 
   const connected = account.data?.connected === true;
   const zoteroSources = value.filter(
@@ -265,7 +284,7 @@ export function SourcesField({
               live={liveFor(entry.key, !entry.enabled, "Zotero")}
               onPatch={(patch) => patchEntry(entry.groupId, patch)}
               onReconnect={() => reconnect(entry.groupId)}
-              onRemove={() => setRemoveId(entry.groupId)}
+              onRemove={() => setRemoveTarget({ kind: "zotero", groupId: entry.groupId })}
             />
           ))}
           {openalex.sources.map((source) => (
@@ -274,6 +293,15 @@ export function SourcesField({
               source={source}
               live={liveFor(source.key, !source.enabled, "OpenAlex")}
               controller={openalex}
+            />
+          ))}
+          {collections.sources.map((entry) => (
+            <CollectionSourceRow
+              key={entry.key}
+              entry={entry}
+              controller={collections}
+              live={liveFor(entry.key, !entry.enabled, "OpenScholar")}
+              onRemove={() => setRemoveTarget({ kind: "collection", entry })}
             />
           ))}
         </ul>
@@ -354,6 +382,15 @@ export function SourcesField({
                   {t("openAlexSearch")}
                   <span className="block text-xs text-muted-foreground">
                     {t("openAlexSearchHint")}
+                  </span>
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => collections.open()}>
+                <CollectionSourceIcon />
+                <span>
+                  {t("openScholarCollection")}
+                  <span className="block text-xs text-muted-foreground">
+                    {t("openScholarCollectionHint")}
                   </span>
                 </span>
               </DropdownMenuItem>
@@ -442,22 +479,27 @@ export function SourcesField({
         />
       ) : null}
 
+      {collections.picker}
+
       <AlertDialog
-        open={removeId !== null}
-        onOpenChange={(open) => !open && setRemoveId(null)}
+        open={removeTarget !== null}
+        onOpenChange={(open) => !open && setRemoveTarget(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("removeTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {removeTarget?.kind === "collection" ? t("removeCollectionTitle") : t("removeTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription>{t("removeBody")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("picker.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                const id = removeId;
-                setRemoveId(null);
-                if (id) void remove(id);
+                const target = removeTarget;
+                setRemoveTarget(null);
+                if (target?.kind === "zotero") void remove(target.groupId);
+                if (target?.kind === "collection") void collections.remove(target.entry);
               }}
             >
               {t("removeConfirm")}

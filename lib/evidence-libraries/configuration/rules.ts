@@ -24,7 +24,12 @@ import {
 } from "./links";
 import { resolveSchemaPointer } from "./section-registry";
 import type { ZoteroSourceEntry } from "@/convex/zotero/sourceEntry";
-import type { EvidenceSourceEntry, OpenAlexSourceEntry } from "./sources";
+import {
+  collectionSourceKey,
+  type EvidenceSourceEntry,
+  type OpenAlexSourceEntry,
+  type OpenScholarCollectionSourceEntry,
+} from "./sources";
 import {
   TAG_RULE_KEYS,
   type TagRuleKey,
@@ -938,6 +943,24 @@ function readSources(payload: unknown): EvidenceSourceEntry[] {
         };
         // Kept even when incomplete: dropping it would rewrite the row
         // without it on the next save. Validation names what is missing.
+        return [parsed];
+      }
+      if (row.provider === "openscholar") {
+        const settings = record(row.settings);
+        const collectionId = text(row.collectionId);
+        if (!collectionId) return [];
+        const parsed: OpenScholarCollectionSourceEntry = {
+          key: text(row.key) || collectionSourceKey(collectionId),
+          provider: "openscholar",
+          collectionId,
+          enabled: flag(row.enabled, true),
+          writebackEnabled: false,
+          settings: {
+            name: text(settings.name),
+            apiKeyMode: settings.apiKeyMode === "custom" ? "custom" : "platform",
+            downloadPdfs: flag(settings.downloadPdfs, false),
+          },
+        };
         return [parsed];
       }
       const groupId = text(row.groupId);

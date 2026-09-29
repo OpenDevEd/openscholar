@@ -31,12 +31,65 @@ export type OpenAlexSourceEntry = {
   };
 };
 
-export type EvidenceSourceEntry = ZoteroSourceEntry | OpenAlexSourceEntry;
+/** One of the owner's OpenScholar collections, which the library follows live. Its items resolve through OpenAlex. */
+export type OpenScholarCollectionSourceEntry = {
+  key: string;
+  provider: "openscholar";
+  collectionId: string;
+  enabled: boolean;
+  writebackEnabled: false;
+  settings: {
+    /** The collection's name when it was added; the library reads the current one itself. */
+    name: string;
+    apiKeyMode: "platform" | "custom";
+    downloadPdfs: boolean;
+  };
+};
+
+export type EvidenceSourceEntry =
+  | ZoteroSourceEntry
+  | OpenAlexSourceEntry
+  | OpenScholarCollectionSourceEntry;
+
+/** Sources whose records are OpenAlex works, read with the library's OpenAlex key. */
+export type OpenAlexWorksSourceEntry = OpenAlexSourceEntry | OpenScholarCollectionSourceEntry;
 
 export function isOpenAlexSource(
   source: EvidenceSourceEntry,
 ): source is OpenAlexSourceEntry {
   return source.provider === "openalex";
+}
+
+export function readsOpenAlexWorks(
+  source: EvidenceSourceEntry,
+): source is OpenAlexWorksSourceEntry {
+  return source.provider === "openalex" || source.provider === "openscholar";
+}
+
+/** The source with OpenAlex read through the platform's key or the library's own. */
+export function withOpenAlexKeyMode<T extends OpenAlexWorksSourceEntry>(
+  source: T,
+  apiKeyMode: "platform" | "custom",
+): T {
+  return { ...source, settings: { ...source.settings, apiKeyMode } };
+}
+
+export function collectionSourceKey(collectionId: string): string {
+  return `openscholar-${collectionId}`;
+}
+
+export function collectionSourceEntry(
+  collection: { collectionId: string; name: string },
+  apiKeyMode: "platform" | "custom",
+): OpenScholarCollectionSourceEntry {
+  return {
+    key: collectionSourceKey(collection.collectionId),
+    provider: "openscholar",
+    collectionId: collection.collectionId,
+    enabled: true,
+    writebackEnabled: false,
+    settings: { name: collection.name, apiKeyMode, downloadPdfs: false },
+  };
 }
 
 export function newOpenAlexQueryVersion(): string {

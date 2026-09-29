@@ -6,6 +6,7 @@ import { v, type Infer } from "convex/values";
  */
 const failureCodeValidator = v.union(
   v.literal("access_denied"),
+  v.literal("owner_left"),
   v.literal("not_found"),
   v.literal("missing_key"),
   v.literal("invalid_query"),
@@ -22,6 +23,7 @@ const base = {
     v.literal("zotero"),
     v.literal("mendeley"),
     v.literal("openalex"),
+    v.literal("openscholar"),
     v.literal("dspace"),
     v.literal("eprints"),
   ),
