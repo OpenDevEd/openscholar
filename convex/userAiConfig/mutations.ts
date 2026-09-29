@@ -1,77 +1,54 @@
-import { requireAvailableModel } from "../models/catalog";
-import { mutation } from "../_generated/server";
+import { mutation, type MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
-import { serverPresetValidator } from "../aiModelConfig/validators";
+import { aiTaskValidator, effortValidator, modelChoiceValidator } from "../aiModelConfig/validators";
 import { requireAuth } from "../lib/auth";
-import { recommendedModelId } from "../ai/serverModel";
-import type { Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
-import type { ServerPreset } from "../../lib/ai/resolve-server-model";
+import { requireAvailableModel, requireEffort } from "../models/catalog";
+import { currentUserAiConfig, resolveTaskPick } from "../ai/serverModel";
+import { AI_TASKS } from "../../lib/ai/tasks";
+import type { Doc, Id } from "../_generated/dataModel";
 
-async function writeUserConfig(
-  ctx: MutationCtx,
-  userId: Id<"users">,
-  fields: { serverPreset?: ServerPreset; serverModelId?: Id<"models"> },
-) {
-  const existing = await ctx.db
-    .query("userAiConfig")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .unique();
+type CustomPicks = NonNullable<Doc<"userAiConfig">["custom"]>;
 
-  if (existing) {
-    await ctx.db.patch("userAiConfig", existing._id, { ...fields, updatedAt: Date.now() });
-  } else {
-    // New row needs a serverPreset; default to the chosen one or Recommended.
-    await ctx.db.insert("userAiConfig", {
-      userId,
-      serverPreset: fields.serverPreset ?? "recommended",
-      serverModelId: fields.serverModelId,
-      updatedAt: Date.now(),
-    });
-  }
-}
-
-/** The user's remembered custom model, if it's still offered. */
-async function rememberedModel(ctx: MutationCtx, userId: Id<"users">) {
-  const cfg = await ctx.db
-    .query("userAiConfig")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .unique();
-  const row = cfg?.serverModelId ? await ctx.db.get("models", cfg.serverModelId) : null;
-  return row && row.retiredAt === undefined && !row.hidden ? row : null;
+/** What every task runs on now, as a Custom map. */
+async function currentPicks(ctx: MutationCtx, userId: Id<"users">): Promise<CustomPicks> {
+  const picks = await Promise.all(AI_TASKS.map(async (task) => [task, await resolveTaskPick(ctx, userId, task)] as const));
+  return Object.fromEntries(picks.filter(([, pick]) => pick !== null)) as CustomPicks;
 }
 
 /**
- * Switch the active server preset. serverModelId is left untouched (sticky), so
- * the remembered custom model survives a toggle. Switching to custom with
- * nothing live remembered starts from Recommended's chat model.
+ * Switch to a preset or to Custom. Custom keeps its earlier picks; the first
+ * time, it starts as a copy of what the user was running.
  */
-export const setPreset = mutation({
-  args: { serverPreset: serverPresetValidator },
+export const choose = mutation({
+  args: { choice: modelChoiceValidator },
   returns: v.null(),
-  handler: async (ctx, args) => {
+  handler: async (ctx, { choice }) => {
     const user = await requireAuth(ctx);
-    const remembered = args.serverPreset === "custom" ? await rememberedModel(ctx, user._id) : null;
-    const seed = args.serverPreset === "custom" && !remembered ? await recommendedModelId(ctx, "chat") : null;
-    await writeUserConfig(ctx, user._id, { serverPreset: args.serverPreset, ...(seed && { serverModelId: seed }) });
+    const cfg = await currentUserAiConfig(ctx, user._id);
+    const custom = choice === "custom" && !cfg?.custom ? await currentPicks(ctx, user._id) : cfg?.custom;
+    const fields = { choice, custom, updatedAt: Date.now() };
+    if (cfg) await ctx.db.patch("userAiConfig", cfg._id, fields);
+    else await ctx.db.insert("userAiConfig", { userId: user._id, ...fields });
     return null;
   },
 });
 
-/**
- * Pick a custom server model. Validates the model is served, then sets
- * serverPreset = "custom" and remembers the model id.
- */
-export const setCustomModel = mutation({
-  args: { serverModelId: v.id("models") },
+/** Set Custom's model and effort for some tasks, and switch to Custom. */
+export const setCustom = mutation({
+  args: {
+    picks: v.array(v.object({ task: aiTaskValidator, modelId: v.id("models"), effort: v.optional(effortValidator) })),
+  },
   returns: v.null(),
-  handler: async (ctx, args) => {
+  handler: async (ctx, { picks }) => {
     const user = await requireAuth(ctx);
-
-    // Custom accepts any catalog model (isServed is curation, not a runtime gate).
-    await requireAvailableModel(ctx, args.serverModelId);
-
-    await writeUserConfig(ctx, user._id, { serverPreset: "custom", serverModelId: args.serverModelId });
+    for (const pick of picks) requireEffort(await requireAvailableModel(ctx, pick.modelId), pick.effort);
+    const cfg = await currentUserAiConfig(ctx, user._id);
+    // A first edit keeps what every other task was running.
+    const custom = { ...(cfg?.custom ?? (await currentPicks(ctx, user._id))) };
+    for (const { task, modelId, effort } of picks) custom[task] = effort ? { modelId, effort } : { modelId };
+    const fields = { choice: "custom" as const, custom, updatedAt: Date.now() };
+    if (cfg) await ctx.db.patch("userAiConfig", cfg._id, fields);
+    else await ctx.db.insert("userAiConfig", { userId: user._id, ...fields });
     return null;
   },
 });

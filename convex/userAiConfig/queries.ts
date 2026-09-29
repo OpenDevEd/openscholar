@@ -1,37 +1,30 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { modelSummaryValidator, serverPresetValidator } from "../aiModelConfig/validators";
-import { modelSummary, oneModelId } from "../ai/serverModel";
+import { modelChoiceValidator } from "../aiModelConfig/validators";
+import { taskPickSummaryValidator } from "../aiModelConfig/queries";
+import { livePick, modelSummary, userAiConfig, withLegacy } from "../ai/serverModel";
 import { getCurrentUser } from "../lib/auth";
+import { AI_TASKS } from "../../lib/ai/tasks";
 
 /**
- * The current user's server-model choice, or null if unauthenticated or never
- * set (which means Recommended). `model` is the one model every task runs on,
- * or null when tasks run on Recommended, including when the picked model is no
- * longer offered.
+ * The signed-in user's choice and Custom picks, or null when signed out or
+ * never set (the default preset). A pick whose model is gone shows as null.
  */
 export const get = query({
   args: {},
-  returns: v.union(
-    v.null(),
-    v.object({
-      serverPreset: serverPresetValidator,
-      model: v.union(modelSummaryValidator, v.null()),
-    }),
-  ),
+  returns: v.union(v.null(), v.object({ choice: modelChoiceValidator, custom: v.array(taskPickSummaryValidator) })),
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const cfg = await ctx.db
-      .query("userAiConfig")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .unique();
-    if (!cfg) return null;
-
+    const cfg = withLegacy(user ? await userAiConfig(ctx, user._id) : null);
+    if (!cfg?.choice) return null;
     return {
-      serverPreset: cfg.serverPreset,
-      model: await modelSummary(ctx, await oneModelId(ctx, user._id)),
+      choice: cfg.choice,
+      custom: await Promise.all(
+        AI_TASKS.map(async (task) => {
+          const pick = await livePick(ctx, cfg.custom?.[task]);
+          return { task, model: await modelSummary(ctx, pick?.modelId ?? null), effort: pick?.effort ?? null };
+        }),
+      ),
     };
   },
 });

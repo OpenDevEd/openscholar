@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
-import { useAction } from 'convex/react'
+import { useAction, useQuery } from 'convex/react'
 import type { FunctionReference } from 'convex/server'
 import { api } from '@/convex/_generated/api'
 import { useAuthReadiness } from '@/components/providers/convex-provider'
@@ -15,6 +15,8 @@ import {
   AIInsufficientCreditsError,
 } from '@/lib/ai/core/errors'
 import type { AIConfig } from './executor'
+import { keyFor, keyModelId } from '../keys'
+import { effectiveChoice, fallbackPreset, type AiTask } from '../tasks'
 import {
   type AIExecutionErrorReason,
   type CreditsSettlement,
@@ -33,6 +35,8 @@ export interface AIHookResult<TParams, TResult> {
 }
 
 export interface AIHookOptions<TParams> {
+  /** Which task this is, which picks its model and key. */
+  task: AiTask | ((params: TParams) => AiTask)
   estimateCredits?: (params: TParams) => number
   allowSmartLocalFallback?: boolean
 }
@@ -47,40 +51,67 @@ function mapExecutionError(reason: AIExecutionErrorReason): Error {
   return new AICreditsDisabledError()
 }
 
-function useLocalConfig(): AIConfig {
-  const { provider, apiKey, model } = useAIConfigStore()
-  return useMemo(
-    () => ({ provider, apiKey, model }),
-    [provider, apiKey, model]
-  )
+/**
+ * How each task runs on the user's own keys: the pick they run on (Custom's,
+ * else their preset's, else the default preset's, as on the server), on
+ * whichever saved key can run that model. Signed-in users on a preset, or
+ * whose settings are still loading, run on credits.
+ */
+function useKeyConfigs(isAuthenticated: boolean, creditsEnabled: boolean) {
+  const { provider, apiKey, providerApiKeys } = useAIConfigStore()
+  const settings = useOptionalAuthQuery(api.userAiConfig.queries.get, {})
+  const presets = useQuery(api.aiModelConfig.queries.presets, {})
+  return useMemo(() => {
+    const keys: Record<string, string> = { ...providerApiKeys, [provider]: apiKey }
+    const saved = settings.data?.choice
+    const choice = effectiveChoice(creditsEnabled, saved)
+    const presetPicks = presets?.find((p) => p.preset === (choice === 'custom' ? fallbackPreset(saved) : choice))?.tasks
+    const configFor = (task: AiTask): AIConfig => {
+      const custom = choice === 'custom' ? settings.data?.custom.find((p) => p.task === task) : undefined
+      const pick = custom?.model ? custom : presetPicks?.find((p) => p.task === task)
+      const slug = pick?.model?.modelId
+      const key = slug ? keyFor(slug, keys) : null
+      return slug && key
+        ? { provider: key, apiKey: keys[key]!, model: keyModelId(slug, key), effort: pick?.effort ?? undefined }
+        : { provider: 'openrouter', apiKey: '', model: '' }
+    }
+    const loading = isAuthenticated && settings.settlement !== 'ready'
+    return {
+      configFor,
+      onCredits: isAuthenticated && creditsEnabled && (loading || choice !== 'custom'),
+    }
+  }, [provider, apiKey, providerApiKeys, settings.data, settings.settlement, presets, isAuthenticated, creditsEnabled])
 }
 
 export function createAIHook<TParams extends Record<string, unknown>, TResult>(
   actionRef: FunctionReference<'action', 'public', TParams, TResult>,
   executorFn: (params: TParams, config: AIConfig) => Promise<TResult>,
-  transformCreditsResult?: (result: TResult, params: TParams) => TResult,
-  options: AIHookOptions<TParams> = {},
+  transformCreditsResult: ((result: TResult, params: TParams) => TResult) | undefined,
+  options: AIHookOptions<TParams>,
 ): () => AIHookResult<TParams, TResult> {
   return function useAIOperation() {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<Error | null>(null)
 
-    const { apiKeyMode } = useAIConfigStore()
-    const localConfig = useLocalConfig()
-    const hasApiKey = Boolean(localConfig.apiKey)
+    const { apiKeyMode: chosenMode } = useAIConfigStore()
     const { phase } = useAuthReadiness()
     const isAuthenticated = phase === 'authenticated'
     const creditsEnabled = useFeatureFlag("credits.enabled")
+    const { configFor, onCredits } = useKeyConfigs(isAuthenticated, creditsEnabled)
+    // Setup checks the task this hook usually runs; a search hook's task depends on its call.
+    const defaultTask = typeof options.task === 'function' ? options.task({} as TParams) : options.task
+    // Presets run on credits; paying with your own key is part of Custom.
+    const apiKeyMode = onCredits ? 'credits' : chosenMode
     const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, {})
     const isConfigured = useMemo(
       () =>
         resolveModeConfigurability({
           mode: apiKeyMode,
-          hasApiKey,
+          hasApiKey: Boolean(configFor(defaultTask).apiKey),
           creditsEnabled,
           isAuthenticated,
         }),
-      [apiKeyMode, creditsEnabled, hasApiKey, isAuthenticated]
+      [apiKeyMode, creditsEnabled, configFor, defaultTask, isAuthenticated]
     )
     const convexAction = useAction(actionRef)
 
@@ -90,6 +121,9 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
         setError(null)
 
         try {
+          const task = typeof options.task === 'function' ? options.task(params) : options.task
+          const localConfig = configFor(task)
+          const hasApiKey = Boolean(localConfig.apiKey)
           const requiredCredits = Math.max(
             0,
             Math.ceil(
@@ -165,12 +199,10 @@ export function createAIHook<TParams extends Record<string, unknown>, TResult>(
         creditsEnabled,
         creditsQuery.data?.balance,
         creditsQuery.settlement,
+        configFor,
         executorFn,
-        hasApiKey,
         isAuthenticated,
-        localConfig,
-        options.allowSmartLocalFallback,
-        options.estimateCredits,
+        options,
         transformCreditsResult,
       ]
     )

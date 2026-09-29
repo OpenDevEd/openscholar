@@ -28,8 +28,10 @@ describe("callOptions", () => {
     expect(callOptions(model("google.generative-ai", "gemini-3-pro"), { effort: "xhigh" })).toEqual({
       google: { thinkingConfig: { thinkingLevel: "high" } },
     });
-    expect(callOptions(model("anthropic.messages", "claude-sonnet-4-6"), { effort: "xhigh" })).toEqual({ anthropic: { effort: "high" } });
-    // Anthropic has no "off" effort; its thinking stays as the model defaults.
+    // Claude reasons only with thinking on, so the level sets its budget.
+    expect(callOptions(model("anthropic.messages", "claude-sonnet-4-6"), { effort: "high" })).toEqual({
+      anthropic: { thinking: { type: "enabled", budgetTokens: 16384 } },
+    });
     expect(callOptions(model("anthropic.messages", "claude-sonnet-4-6"), { effort: "none" })).toEqual({});
   });
 

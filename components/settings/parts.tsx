@@ -60,31 +60,46 @@ export function Segmented<T extends string>({
   options,
   label,
   size = "sm",
+  fill = false,
 }: {
   value: T;
   onChange: (v: T) => void;
-  options: Array<{ id: T; label: string; icon?: Ico }>;
+  options: Array<{ id: T; label: string; icon?: Ico; detail?: ReactNode }>;
   label: string;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
+  /** Stretch across the row, with equal segments. */
+  fill?: boolean;
 }) {
   const buttons = useRef<Partial<Record<string, HTMLButtonElement | null>>>({});
-  const [box, setBox] = useState<{ left: number; width: number } | null>(null);
+  const [box, setBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   useLayoutEffect(() => {
     const el = buttons.current[value];
-    if (!el) return;
-    const measure = () => setBox({ left: el.offsetLeft, width: el.offsetWidth });
+    // A value outside the options (picked elsewhere) leaves nothing highlighted.
+    if (!el) {
+      setBox(null);
+      return;
+    }
+    const measure = () => setBox({ left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight });
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
   }, [value]);
   return (
-    <div role="radiogroup" aria-label={label} className="relative inline-flex shrink-0 rounded-full bg-muted/60 p-1">
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className={cn(
+        "relative rounded-full bg-muted/60 p-1",
+        // Equal segments in one row, two by two on narrow screens.
+        fill ? "@container/segments grid w-full auto-cols-fr grid-flow-col @max-[34rem]/configuration:grid-flow-row @max-[34rem]/configuration:grid-cols-2 @max-[34rem]/configuration:rounded-3xl" : "inline-flex shrink-0",
+      )}
+    >
       {box ? (
         <span
           aria-hidden
-          className="absolute inset-y-1 left-0 rounded-full bg-primary/15 ring-1 ring-primary/40 transition-[transform,width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
-          style={{ width: box.width, transform: `translateX(${box.left}px)` }}
+          className="absolute left-0 top-0 rounded-full bg-primary/15 ring-1 ring-primary/40 transition-[transform,width,height] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+          style={{ width: box.width, height: box.height, transform: `translate(${box.left}px, ${box.top}px)` }}
         />
       ) : null}
       {options.map((o) => {
@@ -101,12 +116,16 @@ export function Segmented<T extends string>({
             onClick={() => onChange(o.id)}
             className={cn(
               "relative flex items-center gap-2 whitespace-nowrap rounded-full font-medium transition-colors",
-              size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
+              size === "lg" ? "h-11 px-4 text-sm" : size === "md" ? "h-9 px-4 text-sm" : "h-8 px-3 text-xs",
+              fill && "min-w-0 justify-center @min-[40rem]/segments:justify-between",
               on ? "text-primary" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {o.icon ? <o.icon className={size === "md" ? "size-4" : "size-3.5"} /> : null}
-            {o.label}
+            <span className="flex min-w-0 items-center gap-2">
+              {o.icon ? <o.icon className={size === "sm" ? "size-3.5" : "size-4"} /> : null}
+              <span className="truncate">{o.label}</span>
+            </span>
+            {o.detail ? <span className="@max-[40rem]/segments:hidden">{o.detail}</span> : null}
           </button>
         );
       })}

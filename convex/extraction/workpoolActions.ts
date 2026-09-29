@@ -11,7 +11,7 @@ import { convertUsdToCredits, creditsForUsage } from "../../lib/pricing";
 import { resolveOpenRouterModel } from "../chat/provider";
 type ExtractionModel = Awaited<ReturnType<typeof resolveOpenRouterModel>>["model"];
 type ExtractionPricing = Awaited<ReturnType<typeof resolveOpenRouterModel>>["pricing"];
-import { callOptions } from "../../lib/ai/core/call-options";
+import { callOptions, type Effort } from "../../lib/ai/core/call-options";
 import { usageOf } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";
 import {
@@ -273,6 +273,7 @@ type ExtractionWithUsage = {
 
 async function extractQuestionAnswer(params: {
   model: ExtractionModel;
+  effort?: Effort;
   question: {
     key: string;
     question: string;
@@ -286,7 +287,7 @@ async function extractQuestionAnswer(params: {
     "validatedCitations" | "strictNull"
   >;
 }): Promise<ExtractionWithUsage> {
-  const { model, question, abstract, evidencePool, diagnosticsSeed } = params;
+  const { model, effort, question, abstract, evidencePool, diagnosticsSeed } = params;
 
   try {
     const prompt = buildEnhancedExtractionPrompt(
@@ -300,7 +301,7 @@ async function extractQuestionAnswer(params: {
       output: Output.object({ schema: buildAnswerSchema(question.type) }),
       prompt,
       temperature: 0,
-      providerOptions: callOptions(model),
+      providerOptions: callOptions(model, { effort }),
     });
     const object = generated.output;
 
@@ -364,6 +365,7 @@ async function extractQuestionAnswer(params: {
 
 async function extractQuestionAnswerFromAbstract(params: {
   model: ExtractionModel;
+  effort?: Effort;
   question: {
     key: string;
     question: string;
@@ -373,7 +375,7 @@ async function extractQuestionAnswerFromAbstract(params: {
   abstract: string;
   pdfEnabled: boolean;
 }): Promise<ExtractionWithUsage> {
-  const { model, question, abstract } = params;
+  const { model, effort, question, abstract } = params;
 
   try {
     const prompt = buildEnhancedExtractionPrompt(
@@ -387,7 +389,7 @@ async function extractQuestionAnswerFromAbstract(params: {
       output: Output.object({ schema: buildAnswerSchema(question.type) }),
       prompt,
       temperature: 0,
-      providerOptions: callOptions(model),
+      providerOptions: callOptions(model, { effort }),
     });
     const object = generated.output;
 
@@ -898,12 +900,14 @@ async function runOneQuestionExtraction(params: {
   abstractPresent: boolean;
   units: EvidenceUnitDoc[];
   pdfEnabled: boolean;
+  effort?: Effort;
 }): Promise<PerQuestionOutcome> {
   const {
     ctx,
     paperId,
     jobId,
     model,
+    effort,
     question,
     abstractText,
     abstractPresent,
@@ -917,6 +921,7 @@ async function runOneQuestionExtraction(params: {
       const { result, usage, prompt } = await extractQuestionAnswerFromAbstract(
         {
           model,
+          effort,
           question,
           abstract: abstractText,
           pdfEnabled,
@@ -1032,6 +1037,7 @@ async function runOneQuestionExtraction(params: {
   const qStart = Date.now();
   const { result, usage, prompt } = await extractQuestionAnswer({
     model,
+    effort,
     question,
     abstract: abstractText,
     evidencePool,
@@ -1271,6 +1277,7 @@ export async function runExtractQuestionWithContext({
     paperId: context.paper._id,
     jobId: context.job._id,
     model,
+    effort: context.job.serverEffort,
     question: {
       key: question.key,
       question: question.question,

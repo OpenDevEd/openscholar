@@ -45,7 +45,7 @@ import { authorContentFields } from "./authors/validators";
 
 import { topicNodeFields, metadataValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
-import { effortValidator } from "./aiModelConfig/validators";
+import { customPicksValidator, effortValidator, modelChoiceValidator } from "./aiModelConfig/validators";
 
 export default defineSchema({
   topicCatalog: defineTable(topicNodeFields)
@@ -370,14 +370,15 @@ export default defineSchema({
   }).index("by_key", ["key"]),
 
   // ═══════════════════════════════════════════════════════════════
-  // AI_MODEL_CONFIG - global curated model config: credit presets
-  // (preset.fast/balanced/intelligent) + per-provider defaults
-  // (default.openai/anthropic/google/openrouter). Decoupled from the
-  // OpenRouter sync; mirrors the featureFlags key-keyed pattern.
+  // AI_MODEL_CONFIG - global curated model config: each preset's pick
+  // for each task (preset.<preset>.<task>) and the per-provider defaults
+  // for browser keys (default.<provider>).
   // ═══════════════════════════════════════════════════════════════
   aiModelConfig: defineTable({
-    key: v.string(), // "preset.fast" | "preset.balanced" | "preset.intelligent" | "default.<provider>"
+    key: v.string(),
     modelId: v.string(), // model slug the key resolves to
+    /** Reasoning effort for preset picks; none means the model's default. */
+    effort: v.optional(effortValidator),
     label: v.optional(v.string()),
     blurb: v.optional(v.string()),
     sortOrder: v.optional(v.number()),
@@ -385,19 +386,18 @@ export default defineSchema({
   }).index("by_key", ["key"]),
 
   // ═══════════════════════════════════════════════════════════════
-  // USER_AI_CONFIG - per-user server-model choice (credits path).
-  // serverModelId is sticky: only read when serverPreset === "custom",
-  // and never cleared when switching to a named preset.
+  // USER_AI_CONFIG - what a user's AI tasks run on: a preset, or Custom
+  // with their own pick for each task.
   // ═══════════════════════════════════════════════════════════════
   userAiConfig: defineTable({
     userId: v.id("users"),
-    /** "recommended" (the default without a row) runs each task on its admin-set model. */
-    serverPreset: v.union(
-      v.literal("fast"),
-      v.literal("balanced"),
-      v.literal("intelligent"),
-      v.literal("custom"),
-      v.literal("recommended"),
+    /** A preset, or "custom"; no row means the default preset. */
+    choice: v.optional(modelChoiceValidator),
+    custom: v.optional(customPicksValidator),
+    // The old single-model choice. Only migrations/presetMaps reads it; it goes
+    // once shared dev is migrated (then `choice` becomes required).
+    serverPreset: v.optional(
+      v.union(v.literal("fast"), v.literal("balanced"), v.literal("intelligent"), v.literal("custom"), v.literal("recommended")),
     ),
     serverModelId: v.optional(v.id("models")),
     updatedAt: v.number(),
@@ -815,6 +815,7 @@ export default defineSchema({
     targetCollectionId: v.optional(v.id("collections")),
     // Resolved per-user server model for this bulk screening run (credits path).
     serverModelId: v.optional(v.id("models")),
+    serverEffort: v.optional(effortValidator),
     createdAt: v.number(),
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),

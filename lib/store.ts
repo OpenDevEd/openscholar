@@ -139,13 +139,14 @@ interface KeywordExpansionState {
 }
 
 interface AIConfigState {
+  /** The provider whose key the settings page is editing. */
   provider: AIProvider
-  model: string
+  /** That provider's key. */
   apiKey: string
   apiKeyMode: AIKeyMode
+  /** Every saved key, by provider. */
   providerApiKeys: Record<string, string>
   setProvider: (provider: AIProvider) => void
-  setModel: (model: string) => void
   setApiKey: (apiKey: string) => void
   setApiKeyMode: (mode: AIKeyMode) => void
   clearConfig: () => void
@@ -800,7 +801,6 @@ export const useAIConfigStore = create<AIConfigState>()(
   persist(
     (set) => ({
       provider: 'openrouter',
-      model: 'openrouter/free',
       apiKey: '',
       apiKeyMode: 'smart',
       providerApiKeys: {},
@@ -815,7 +815,6 @@ export const useAIConfigStore = create<AIConfigState>()(
             providerApiKeys,
           };
         }),
-      setModel: (model) => set({ model }),
       setApiKey: (apiKey) =>
         set((state) => ({
           apiKey,
@@ -825,40 +824,20 @@ export const useAIConfigStore = create<AIConfigState>()(
           },
         })),
       setApiKeyMode: (apiKeyMode) => set({ apiKeyMode }),
-      clearConfig: () => set({ provider: 'openrouter', model: 'openrouter/free', apiKey: '', apiKeyMode: 'smart', providerApiKeys: {} }),
+      clearConfig: () => set({ provider: 'openrouter', apiKey: '', apiKeyMode: 'smart', providerApiKeys: {} }),
     }),
     {
       name: 'ai-config-storage',
-      version: 5,
-      migrate: (persistedState: unknown, version: number) => {
-        const state = persistedState as { provider?: string; model?: string; apiKeyMode?: string; providerApiKeys?: Record<string, string>; dollarsUsed?: unknown; budget?: unknown };
-        if (version === 0) {
-          return {
-            ...state,
-            model: state.provider === 'openai' ? 'o4-mini-2025-04-16' : state.provider === 'google' ? 'gemini-2.5-flash' : undefined,
-          };
-        }
-        if (version === 1 || version === 2) {
-          return {
-            ...state,
-            apiKeyMode: 'smart',
-          };
-        }
-        if (version === 3) {
-          // Remove budget tracking fields
-          const { dollarsUsed, budget, ...rest } = state;
-          return {
-            ...rest,
-            apiKeyMode: 'smart',
-          };
-        }
-        if (version === 4) {
-          return {
-            ...state,
-            apiKeyMode: 'smart',
-          };
-        }
-        return state;
+      version: 6,
+      // Keeps the saved keys and pay mode; older fields (a single key model, budgets) are dropped.
+      migrate: (persistedState: unknown) => {
+        const state = persistedState as Partial<Pick<AIConfigState, 'provider' | 'apiKey' | 'apiKeyMode' | 'providerApiKeys'>>;
+        return {
+          provider: state.provider ?? 'openrouter',
+          apiKey: state.apiKey ?? '',
+          apiKeyMode: state.apiKeyMode ?? 'smart',
+          providerApiKeys: state.providerApiKeys ?? {},
+        };
       },
     }
   )

@@ -3256,26 +3256,11 @@
     },
     "ai": {
       "modelCount": "{count, plural, one {# modèle} other {# modèles}}",
-      "behindRecommended": "derrière Recommandé",
-      "creditsOrKey": "Crédits, ou la clé de l'utilisateur",
-      "chatShortcuts": "Raccourcis du chat",
-      "shortcuts": {
-        "fast": "Rapide",
-        "balanced": "Équilibré",
-        "intelligent": "Intelligent"
-      },
-      "notSet": "Non défini"
+      "creditsOrKey": "Crédits, ou la clé de l'utilisateur"
     }
   },
   "settingsAi": {
-    "models": "Modèles",
-    "recommended": "Recommandé",
-    "oneModel": "Un seul modèle",
     "modelCount": "{count, plural, one {# modèle} other {# modèles}}",
-    "perTask": "choisis par tâche",
-    "onEveryTask": "pour toutes les tâches",
-    "onCloudTasks": "pour les tâches cloud",
-    "onBrowserTasks": "pour les tâches du navigateur",
     "cloudOnly": "Cloud uniquement",
     "openScholarCloud": "Cloud OpenScholar",
     "browserLabel": {
@@ -3283,7 +3268,6 @@
       "smart": "Le cloud, puis votre navigateur",
       "local": "Dans votre navigateur"
     },
-    "keyTasks": "<b>Les outils de recherche et le criblage</b> peuvent s'exécuter dans votre navigateur avec votre clé.",
     "payWith": "Payer avec",
     "pay": {
       "credits": "Crédits",
@@ -3292,10 +3276,8 @@
     },
     "yourBrowser": "Votre navigateur",
     "yourKey": "Votre clé",
-    "afterCredits": "après les crédits",
     "credits": "Crédits",
     "taskCount": "{count, plural, one {# tâche} other {# tâches}}",
-    "addKey": "Ajouter votre clé {provider}",
     "apiKey": "Clé API {provider}",
     "getKey": "Obtenir une clé {provider}",
     "keyProvider": "Fournisseur de la clé",
@@ -3305,7 +3287,6 @@
     "loadingModels": "Chargement des modèles",
     "noModels": "Aucun modèle trouvé",
     "free": "Gratuit",
-    "fallback": "secours",
     "signInToPick": "Connectez-vous pour choisir un modèle",
     "signInToUseCredits": "Connectez-vous pour utiliser des crédits",
     "creditsOff": "Les crédits sont désactivés",
@@ -3319,6 +3300,27 @@
       "refine": "Affiner",
       "translate": "Traduire",
       "broadenNarrow": "Élargir / restreindre"
+    },
+    "preset": "Préréglage",
+    "presets": {
+      "cheap": "Économique",
+      "fast": "Rapide",
+      "balanced": "Équilibré",
+      "intelligent": "Intelligent",
+      "custom": "Personnalisé"
+    },
+    "needsKey": "Nécessite votre clé {provider}",
+    "presetsGroup": "Préréglages",
+    "allModels": "Tous les modèles",
+    "effort": "Effort de raisonnement",
+    "efforts": {
+      "none": "Désactivé",
+      "minimal": "Minimal",
+      "low": "Faible",
+      "medium": "Moyen",
+      "high": "Élevé",
+      "xhigh": "Très élevé",
+      "max": "Max"
     }
   }
 }

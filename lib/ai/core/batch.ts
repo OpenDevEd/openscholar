@@ -14,6 +14,7 @@ import type { LanguageModel } from 'ai'
 import type { BatchPaper, BatchError } from './batch-types'
 import type { Usage } from './types'
 import { executeAIOperation } from './execute'
+import type { Effort } from './call-options'
 import type { OperationConfig } from './configs'
 
 // ═══════════════════════════════════════════════════════════════
@@ -23,6 +24,8 @@ import type { OperationConfig } from './configs'
 export interface BatchProcessorConfig<TItem, TConfigInput, TOutput, TResult> {
   /** The AI model to use */
   model: LanguageModel
+  /** Its reasoning effort; none means the model's default */
+  effort?: Effort
   /** Function to transform item to config input */
   toConfigInput: (item: TItem) => TConfigInput
   /** Function to create operation config from config input */
@@ -60,7 +63,7 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
   items: TItem[],
   config: BatchProcessorConfig<TItem, TConfigInput, TOutput, TResult>
 ): Promise<BatchProcessorResult<TResult>> {
-  const { model, toConfigInput, getOperationConfig, formatResult, getItemId } = config
+  const { model, effort, toConfigInput, getOperationConfig, formatResult, getItemId } = config
   
   const results: Record<string, TResult> = {}
   const errors: BatchError[] = []
@@ -77,6 +80,7 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
     const start = Date.now()
     const { output, usage } = await executeAIOperation({
       model,
+      effort,
       ...operationConfig,
     })
     const latencyMs = Date.now() - start
@@ -129,12 +133,13 @@ export interface ScreeningBatchConfig {
   model: LanguageModel
   papers: BatchPaper[]
   questions: string[]
+  effort?: Effort
 }
 
 export async function processScreeningBatch(
   config: ScreeningBatchConfig
 ): Promise<BatchProcessorResult<ScreeningResultData>> {
-  const { model, papers, questions } = config
+  const { model, effort, papers, questions } = config
 
   return processBatch<
     BatchPaper,
@@ -145,6 +150,7 @@ export async function processScreeningBatch(
     papers,
     {
       model,
+      effort,
       toConfigInput: (paper) => ({
         title: paper.title,
         abstract: paper.abstract,
@@ -172,12 +178,13 @@ export interface TranslationBatchConfig {
   model: LanguageModel
   papers: BatchPaper[]
   targetLanguage?: string
+  effort?: Effort
 }
 
 export async function processTranslationBatch(
   config: TranslationBatchConfig
 ): Promise<BatchProcessorResult<TranslationResultData>> {
-  const { model, papers, targetLanguage } = config
+  const { model, effort, papers, targetLanguage } = config
 
   return processBatch<
     BatchPaper,
@@ -188,6 +195,7 @@ export async function processTranslationBatch(
     papers,
     {
       model,
+      effort,
       toConfigInput: (paper) => ({
         title: paper.title,
         abstract: paper.abstract,

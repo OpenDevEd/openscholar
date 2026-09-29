@@ -1,5 +1,6 @@
 import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
+import { effortValidator } from "../aiModelConfig/validators";
 import type { Doc } from "../_generated/dataModel";
 import {
   screeningJobStatusValidator,
@@ -340,6 +341,7 @@ export const getJobInternal = internalQuery({
       scoringConfig: screeningScoringConfigValidator,
       targetCollectionId: v.optional(v.id("collections")),
       serverModelId: v.optional(v.id("models")),
+      serverEffort: v.optional(effortValidator),
       createdAt: v.number(),
       updatedAt: v.number(),
     })
@@ -361,6 +363,7 @@ export const getJobInternal = internalQuery({
       scoringConfig: job.scoringConfig,
       targetCollectionId: job.targetCollectionId,
       serverModelId: job.serverModelId,
+      serverEffort: job.serverEffort,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
     };

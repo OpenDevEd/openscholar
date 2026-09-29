@@ -18,6 +18,11 @@ export interface CallOptionsArgs {
   cache?: boolean
 }
 
+// ponytail: fixed budgets per level; switch to Anthropic's adaptive thinking once every Claude model a key can pick supports it.
+const ANTHROPIC_BUDGET: Record<Exclude<Effort, 'none'>, number> = {
+  minimal: 1024, low: 2048, medium: 8192, high: 16384, xhigh: 24576, max: 32000,
+}
+
 /** The nearest level in `allowed` at or below `effort`, else the lowest. */
 export function clamp<T extends Effort>(effort: Effort, allowed: readonly T[]): T {
   const rank = EFFORTS.indexOf(effort)
@@ -60,8 +65,9 @@ export function callOptions(model: LanguageModel, { effort, sessionId, cache }: 
         },
       }
     case 'anthropic':
-      return effort && effort !== 'none' && effort !== 'minimal'
-        ? { anthropic: { effort: clamp(effort, ['low', 'medium', 'high', 'max']) } }
+      // Claude only reasons with thinking on; the budget follows the level.
+      return effort && effort !== 'none'
+        ? { anthropic: { thinking: { type: 'enabled', budgetTokens: ANTHROPIC_BUDGET[effort] } } }
         : {}
     default:
       return {}

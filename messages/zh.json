@@ -3256,26 +3256,11 @@
     },
     "ai": {
       "modelCount": "{count, plural, other {# 个模型}}",
-      "behindRecommended": "支撑“推荐”",
-      "creditsOrKey": "积分，或用户的密钥",
-      "chatShortcuts": "聊天快捷方式",
-      "shortcuts": {
-        "fast": "快速",
-        "balanced": "均衡",
-        "intelligent": "智能"
-      },
-      "notSet": "未设置"
+      "creditsOrKey": "积分，或用户的密钥"
     }
   },
   "settingsAi": {
-    "models": "模型",
-    "recommended": "推荐",
-    "oneModel": "单一模型",
     "modelCount": "{count, plural, other {# 个模型}}",
-    "perTask": "按任务选择",
-    "onEveryTask": "用于所有任务",
-    "onCloudTasks": "用于云端任务",
-    "onBrowserTasks": "用于浏览器任务",
     "cloudOnly": "仅云端",
     "openScholarCloud": "OpenScholar 云端",
     "browserLabel": {
@@ -3283,7 +3268,6 @@
       "smart": "先云端，再浏览器",
       "local": "在你的浏览器中"
     },
-    "keyTasks": "<b>搜索工具和筛选</b>可以在你的浏览器中使用你的密钥运行。",
     "payWith": "支付方式",
     "pay": {
       "credits": "积分",
@@ -3292,10 +3276,8 @@
     },
     "yourBrowser": "你的浏览器",
     "yourKey": "你的密钥",
-    "afterCredits": "积分用完后",
     "credits": "积分",
     "taskCount": "{count, plural, other {# 个任务}}",
-    "addKey": "添加你的 {provider} 密钥",
     "apiKey": "{provider} API 密钥",
     "getKey": "获取 {provider} 密钥",
     "keyProvider": "密钥提供商",
@@ -3305,7 +3287,6 @@
     "loadingModels": "正在加载模型",
     "noModels": "未找到模型",
     "free": "免费",
-    "fallback": "备用",
     "signInToPick": "登录后选择模型",
     "signInToUseCredits": "登录后使用积分",
     "creditsOff": "积分已关闭",
@@ -3319,6 +3300,27 @@
       "refine": "优化",
       "translate": "翻译",
       "broadenNarrow": "扩大 / 缩小"
+    },
+    "preset": "预设",
+    "presets": {
+      "cheap": "经济",
+      "fast": "快速",
+      "balanced": "均衡",
+      "intelligent": "智能",
+      "custom": "自定义"
+    },
+    "needsKey": "需要你的 {provider} 密钥",
+    "presetsGroup": "预设",
+    "allModels": "全部模型",
+    "effort": "推理强度",
+    "efforts": {
+      "none": "关闭",
+      "minimal": "最低",
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "xhigh": "很高",
+      "max": "最高"
     }
   }
 }

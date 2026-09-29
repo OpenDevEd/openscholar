@@ -1,39 +1,26 @@
 import { v } from "convex/values";
-import { mutation, type MutationCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import { mutation } from "../_generated/server";
 import { requireAdmin } from "../admins/access";
-import { requireAvailableModel } from "../models/catalog";
-import { taskConfigKey } from "../../lib/ai/tasks";
-import { aiTaskValidator, presetKeyValidator } from "./validators";
+import { requireAvailableModel, requireEffort } from "../models/catalog";
+import { presetConfigKey } from "../../lib/ai/tasks";
+import { aiTaskValidator, effortValidator, presetKeyValidator } from "./validators";
 
-async function setConfigModel(ctx: MutationCtx, key: string, modelId: Id<"models">) {
-  const model = await requireAvailableModel(ctx, modelId);
-  const row = await ctx.db
-    .query("aiModelConfig")
-    .withIndex("by_key", (q) => q.eq("key", key))
-    .unique();
-  if (row) await ctx.db.patch("aiModelConfig", row._id, { modelId: model.modelId, updatedAt: Date.now() });
-  else await ctx.db.insert("aiModelConfig", { key, modelId: model.modelId, updatedAt: Date.now() });
-}
-
-/** Sets the model Recommended runs a task on. */
-export const setTaskModel = mutation({
-  args: { task: aiTaskValidator, modelId: v.id("models") },
+/** Sets the model and effort a preset runs a task on. */
+export const setPresetPick = mutation({
+  args: { preset: presetKeyValidator, task: aiTaskValidator, modelId: v.id("models"), effort: v.optional(effortValidator) },
   returns: v.null(),
-  handler: async (ctx, { task, modelId }) => {
+  handler: async (ctx, { preset, task, modelId, effort }) => {
     await requireAdmin(ctx);
-    await setConfigModel(ctx, taskConfigKey(task), modelId);
-    return null;
-  },
-});
-
-/** Sets the model behind one of the chat composer's shortcuts. */
-export const setPresetModel = mutation({
-  args: { preset: presetKeyValidator, modelId: v.id("models") },
-  returns: v.null(),
-  handler: async (ctx, { preset, modelId }) => {
-    await requireAdmin(ctx);
-    await setConfigModel(ctx, `preset.${preset}`, modelId);
+    const model = await requireAvailableModel(ctx, modelId);
+    requireEffort(model, effort);
+    const key = presetConfigKey(preset, task);
+    const row = await ctx.db
+      .query("aiModelConfig")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    const fields = { modelId: model.modelId, effort, updatedAt: Date.now() };
+    if (row) await ctx.db.patch("aiModelConfig", row._id, fields);
+    else await ctx.db.insert("aiModelConfig", { key, ...fields });
     return null;
   },
 });

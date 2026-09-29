@@ -1,75 +1,102 @@
 import { internalQuery } from "../_generated/server";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import { resolveServerModelChoice, type PresetKey } from "../../lib/ai/resolve-server-model";
-import { taskConfigKey, type AiTask } from "../../lib/ai/tasks";
-import { aiTaskValidator } from "../aiModelConfig/validators";
+import { AI_TASKS, DEFAULT_PRESET, presetConfigKey, type AiTask, type PresetKey } from "../../lib/ai/tasks";
+import type { Effort } from "../../lib/ai/core/call-options";
+import { aiTaskValidator, taskPickValidator } from "../aiModelConfig/validators";
 
-/** The model used when nothing else resolves. */
-export const DEFAULT_SERVER_PRESET: PresetKey = "balanced";
+/** A model a task runs on, and its reasoning effort (none: the model's default). */
+export type TaskPick = { modelId: Id<"models">; effort?: Effort };
 
-/** An `aiModelConfig` key (`preset.<key>` or `task.<task>`) → the live model it points at. */
-export async function configModelId(ctx: QueryCtx | MutationCtx, key: string): Promise<Id<"models"> | null> {
+const offered = (model: Doc<"models"> | null): model is Doc<"models"> =>
+  model !== null && model.retiredAt === undefined && !model.hidden;
+
+/** The effort, if the model still takes it; otherwise the model's own default. */
+function withEffort(model: Doc<"models">, effort: Effort | undefined): TaskPick {
+  return effort && model.reasoningEfforts?.includes(effort) ? { modelId: model._id, effort } : { modelId: model._id };
+}
+
+/** A preset's pick for a task, if it points at a model users can pick. */
+export async function presetPick(ctx: QueryCtx | MutationCtx, preset: PresetKey, task: AiTask): Promise<TaskPick | null> {
   const cfg = await ctx.db
     .query("aiModelConfig")
-    .withIndex("by_key", (q) => q.eq("key", key))
+    .withIndex("by_key", (q) => q.eq("key", presetConfigKey(preset, task)))
     .unique();
   if (!cfg) return null;
   const model = await ctx.db
     .query("models")
     .withIndex("by_model_id", (q) => q.eq("modelId", cfg.modelId))
     .unique();
-  return model && model.retiredAt === undefined && !model.hidden ? model._id : null;
+  return offered(model) ? withEffort(model, cfg.effort) : null;
 }
 
-/** The model Recommended runs a task on: the admin's pick for it, else the default preset. */
-export async function recommendedModelId(ctx: QueryCtx | MutationCtx, task: AiTask): Promise<Id<"models"> | null> {
-  return (await configModelId(ctx, taskConfigKey(task))) ?? (await configModelId(ctx, `preset.${DEFAULT_SERVER_PRESET}`));
+/** A stored pick, if its model is still offered. */
+export async function livePick(ctx: QueryCtx | MutationCtx, pick: TaskPick | undefined): Promise<TaskPick | null> {
+  const model = pick ? await ctx.db.get("models", pick.modelId) : null;
+  return offered(model) ? withEffort(model, pick?.effort) : null;
 }
 
-/**
- * The one model every task runs on when the user picked one (custom or a
- * preset), or null on Recommended, or when that model is no longer offered.
- */
-export async function oneModelId(ctx: QueryCtx | MutationCtx, userId: Id<"users">): Promise<Id<"models"> | null> {
-  const cfg = await ctx.db
+export async function userAiConfig(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
+  return await ctx.db
     .query("userAiConfig")
     .withIndex("by_user", (q) => q.eq("userId", userId))
     .unique();
-  const decision = resolveServerModelChoice(
-    cfg ? { serverPreset: cfg.serverPreset, serverModelId: cfg.serverModelId ?? null } : null,
-  );
-  if (decision.kind === "custom") {
-    const row = await ctx.db.get("models", decision.modelId as Id<"models">);
-    return row && row.retiredAt === undefined && !row.hidden ? row._id : null;
-  }
-  return decision.kind === "preset" ? await configModelId(ctx, `preset.${decision.preset}`) : null;
 }
 
 /**
- * The model a user's `task` runs on, for stamping on a job or running an AI
- * action on credits. Returns null only if nothing is configured at all.
+ * The new fields for a row saved before presets: Recommended becomes the
+ * default preset, One model becomes Custom with that model on every task.
+ * Also clears the old fields. Used by the migration and before any write.
  */
-export async function resolveServerModelId(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
-  task: AiTask,
-): Promise<Id<"models"> | null> {
-  return (await oneModelId(ctx, userId)) ?? (await recommendedModelId(ctx, task));
+export function fromLegacy(cfg: Doc<"userAiConfig">) {
+  const legacy =
+    cfg.choice !== undefined ? {}
+    : cfg.serverPreset === "custom" && cfg.serverModelId
+      ? { choice: "custom" as const, custom: Object.fromEntries(AI_TASKS.map((task) => [task, { modelId: cfg.serverModelId! }])) }
+      : { choice: cfg.serverPreset === "fast" || cfg.serverPreset === "intelligent" ? cfg.serverPreset : DEFAULT_PRESET };
+  return { ...legacy, serverPreset: undefined, serverModelId: undefined } as Partial<Doc<"userAiConfig">>;
 }
 
-/** Action-callable wrapper around resolveServerModelId (actions have no ctx.db). */
+/** A row as it reads after migration, so a row saved before presets resolves the same before it's migrated. */
+export function withLegacy(cfg: Doc<"userAiConfig"> | null) {
+  return cfg && cfg.choice === undefined ? { ...cfg, ...fromLegacy(cfg) } : cfg;
+}
+
+/** The user's row, converted first if it was saved before presets. */
+export async function currentUserAiConfig(ctx: MutationCtx, userId: Id<"users">) {
+  const cfg = await userAiConfig(ctx, userId);
+  if (!cfg || (cfg.serverPreset === undefined && cfg.serverModelId === undefined)) return cfg;
+  await ctx.db.patch("userAiConfig", cfg._id, fromLegacy(cfg));
+  return await ctx.db.get("userAiConfig", cfg._id);
+}
+
+/**
+ * What a user's `task` runs on: their Custom pick, else their preset's, else
+ * the default preset's. Null only when nothing is configured at all.
+ */
+export async function resolveTaskPick(ctx: QueryCtx | MutationCtx, userId: Id<"users">, task: AiTask): Promise<TaskPick | null> {
+  const cfg = withLegacy(await userAiConfig(ctx, userId));
+  const choice = cfg?.choice ?? DEFAULT_PRESET;
+  const picked = choice === "custom" ? await livePick(ctx, cfg?.custom?.[task]) : await presetPick(ctx, choice, task);
+  return picked ?? (choice === DEFAULT_PRESET ? null : await presetPick(ctx, DEFAULT_PRESET, task));
+}
+
+/** Job fields that record what a background run uses. */
+export const serverStamp = (pick: TaskPick | null) =>
+  pick ? { serverModelId: pick.modelId, ...(pick.effort && { serverEffort: pick.effort }) } : {};
+
+/** Action-callable wrapper around resolveTaskPick (actions have no ctx.db). */
 export const resolveForUser = internalQuery({
   args: { userId: v.id("users"), task: aiTaskValidator },
-  returns: v.union(v.id("models"), v.null()),
-  handler: async (ctx, { userId, task }) => resolveServerModelId(ctx, userId, task),
+  returns: v.union(taskPickValidator, v.null()),
+  handler: async (ctx, { userId, task }) => resolveTaskPick(ctx, userId, task),
 });
 
 /** The fields the settings map shows for a model, or null when there's none. */
 export async function modelSummary(ctx: QueryCtx, id: Id<"models"> | null) {
   const model = id ? await ctx.db.get("models", id) : null;
   if (!model) return null;
-  const { _id, modelId, name, inputPricePerMillion, outputPricePerMillion } = model;
-  return { _id, modelId, name, inputPricePerMillion, outputPricePerMillion };
+  const { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, reasoningEfforts, defaultEffort, reasoningMandatory } = model;
+  return { _id, modelId, name, inputPricePerMillion, outputPricePerMillion, reasoningEfforts, defaultEffort, reasoningMandatory };
 }

@@ -210,9 +210,10 @@ export const generateBatchTranslations = action({
           task: "translate",
           estimate: Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
         },
-        async (_user, model) => {
+        async (_user, model, effort) => {
           const { results, errors, usages, usageByItemId, trackingByItemId } = await processTranslationBatch({
             model,
+            effort,
             papers,
             targetLanguage,
           });
@@ -312,9 +313,10 @@ export const generateBatchScreeningResponses = action({
           task: "screening",
           estimate: Math.ceil(papers.length * ESTIMATED_CREDITS_PER_PAPER),
         },
-        async (_user, model) => {
+        async (_user, model, effort) => {
           const { results, errors, usages, usageByItemId, trackingByItemId } = await processScreeningBatch({
             model,
+            effort,
             papers,
             questions,
           });

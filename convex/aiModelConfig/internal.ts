@@ -1,77 +1,53 @@
-import { internalMutation } from "../_generated/server";
+import { internalMutation, type MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
+import { AI_TASKS, PRESET_KEYS, presetConfigKey, type AiTask, type PresetKey } from "../../lib/ai/tasks";
+import type { Effort } from "../../lib/ai/core/call-options";
+
+type Pick = { modelId: string; effort?: Effort };
+const HEAVY: readonly AiTask[] = ["chat", "extraction", "screenAll"];
+const FLASH_LITE = "google/gemini-3.1-flash-lite-preview";
+const SONNET = "anthropic/claude-sonnet-4.6";
 
 /**
- * Upsert one curated model-config row by key. Seeding + admin use.
+ * Starting picks. Slugs must be catalog rows users can pick, or the resolver
+ * skips them; admins change them in Settings, Admin, AI models.
  */
-export const upsert = internalMutation({
-  args: {
-    key: v.string(),
-    modelId: v.string(),
-    label: v.optional(v.string()),
-    blurb: v.optional(v.string()),
-    sortOrder: v.optional(v.number()),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("aiModelConfig")
-      .withIndex("by_key", (q) => q.eq("key", args.key))
-      .unique();
+export function defaultPick(preset: PresetKey, task: AiTask): Pick {
+  switch (preset) {
+    case "cheap":
+      return { modelId: "deepseek/deepseek-v4.1-flash", effort: "low" };
+    case "fast":
+      return { modelId: FLASH_LITE, effort: "minimal" };
+    case "balanced":
+      return HEAVY.includes(task) && task !== "extraction" ? { modelId: SONNET, effort: "medium" } : { modelId: FLASH_LITE, effort: "low" };
+    case "intelligent":
+      return HEAVY.includes(task) ? { modelId: "anthropic/claude-opus-4.8", effort: "high" } : { modelId: SONNET, effort: "medium" };
+  }
+}
 
-    if (existing) {
-      await ctx.db.patch("aiModelConfig", existing._id, {
-        modelId: args.modelId,
-        label: args.label,
-        blurb: args.blurb,
-        sortOrder: args.sortOrder,
-        updatedAt: Date.now(),
-      });
-    } else {
-      await ctx.db.insert("aiModelConfig", { ...args, updatedAt: Date.now() });
-    }
-    return null;
-  },
-});
+/** Writes a preset pick unless one exists; returns whether it wrote. */
+export async function insertPickIfMissing(ctx: MutationCtx, preset: PresetKey, task: AiTask, pick: Pick) {
+  const key = presetConfigKey(preset, task);
+  const existing = await ctx.db
+    .query("aiModelConfig")
+    .withIndex("by_key", (q) => q.eq("key", key))
+    .unique();
+  if (existing) return false;
+  await ctx.db.insert("aiModelConfig", { key, ...pick, updatedAt: Date.now() });
+  return true;
+}
 
-// NOTE: preset slugs MUST be served rows in the `models` catalog or the resolver
-// can't map them. These match the current dev catalog's served set; re-point via
-// `upsert` whenever the catalog changes.
-const DEFAULTS: Array<{ key: string; modelId: string; label?: string; blurb?: string; sortOrder?: number }> = [
-  // Credit presets — the three server tiers (served catalog slugs).
-  { key: "preset.fast", modelId: "google/gemini-3.1-flash-lite-preview", label: "Fast", blurb: "Quickest & cheapest — screening, bulk work", sortOrder: 0 },
-  { key: "preset.balanced", modelId: "anthropic/claude-sonnet-4.6", label: "Balanced", blurb: "Best quality for the price — most work", sortOrder: 1 },
-  { key: "preset.intelligent", modelId: "anthropic/claude-opus-4.8", label: "Intelligent", blurb: "Deepest reasoning — hard, long papers", sortOrder: 2 },
-  // What Recommended runs each task on. Screening stays on the balanced preset until it moves to Jev.
-  { key: "task.chat", modelId: "anthropic/claude-sonnet-4.6" },
-  { key: "task.extraction", modelId: "google/gemini-3.1-flash-lite-preview" },
-  { key: "task.questionToQuery", modelId: "google/gemini-3.1-flash-lite-preview" },
-  { key: "task.refine", modelId: "google/gemini-3.1-flash-lite-preview" },
-  { key: "task.translate", modelId: "google/gemini-3.1-flash-lite-preview" },
-  { key: "task.broadenNarrow", modelId: "google/gemini-3.1-flash-lite-preview" },
-  // Per-provider defaults (BYOK native ids; OpenRouter = server custom default).
-  { key: "default.openai", modelId: "gpt-4o" },
-  { key: "default.anthropic", modelId: "claude-sonnet-4-5" },
-  { key: "default.google", modelId: "gemini-2.5-flash" },
-  { key: "default.openrouter", modelId: "anthropic/claude-sonnet-4.6" },
-];
-
-/**
- * Seed curated defaults. Idempotent — only inserts keys that don't exist yet.
- */
+/** Seeds every preset's starting picks. Idempotent: it never replaces a pick. */
 export const seed = internalMutation({
   args: {},
-  returns: v.null(),
+  returns: v.number(),
   handler: async (ctx) => {
-    for (const d of DEFAULTS) {
-      const existing = await ctx.db
-        .query("aiModelConfig")
-        .withIndex("by_key", (q) => q.eq("key", d.key))
-        .unique();
-      if (!existing) {
-        await ctx.db.insert("aiModelConfig", { ...d, updatedAt: Date.now() });
+    let written = 0;
+    for (const preset of PRESET_KEYS) {
+      for (const task of AI_TASKS) {
+        if (await insertPickIfMissing(ctx, preset, task, defaultPick(preset, task))) written++;
       }
     }
-    return null;
+    return written;
   },
 });

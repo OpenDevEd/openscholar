@@ -8,8 +8,8 @@ import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
-  ArrowUpDown, Check, ChevronsUpDown, Cloud, Coins, Filter, KeyRound, Languages, ListChecks, MessageSquare, Search,
-  TableProperties, Wand2,
+  ArrowUpDown, Brain, Check, ChevronsUpDown, Cloud, Coins, Filter, KeyRound, Languages, ListChecks, MessageSquare, PiggyBank, SlidersHorizontal,
+  Search, TableProperties, Wand2, Scale, Zap,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -20,8 +20,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { isVariant } from "@/lib/ai/native-model-id";
-import { BROWSER_TASKS, CLOUD_TASKS, type AiTask } from "@/lib/ai/tasks";
-import type { Ico } from "./parts";
+import { BROWSER_TASKS, CLOUD_TASKS, PRESET_KEYS, type AiTask, type PresetKey } from "@/lib/ai/tasks";
+import type { Effort } from "@/lib/ai/core/call-options";
+import { Segmented, type Ico } from "./parts";
 
 export type MapModel = {
   _id?: Id<"models">;
@@ -32,7 +33,19 @@ export type MapModel = {
   outputPricePerMillion: number;
   /** A key model the catalog doesn't list, so there's no price to show. */
   unpriced?: boolean;
+  /** The effort this pick runs at; none means the model's default. */
+  effort?: Effort;
+  /** The effort levels the model takes, lowest first; absent when it doesn't reason. */
+  reasoningEfforts?: Effort[];
+  defaultEffort?: Effort;
 };
+
+/** Whether a model takes a reasoning effort. */
+export const reasons = (model: MapModel) => Boolean(model.reasoningEfforts?.length);
+/** The effort a model runs at: its pick's, else its own default. Null when it doesn't reason or OpenRouter names no default. */
+export const effortOf = (model: MapModel): Effort | null => (reasons(model) ? (model.effort ?? model.defaultEffort ?? null) : null);
+
+export const PRESET_ICONS: Record<PresetKey, Ico> = { cheap: PiggyBank, fast: Zap, balanced: Scale, intelligent: Brain };
 
 export const TASK_ICONS: Record<AiTask, Ico> = {
   chat: MessageSquare,
@@ -57,7 +70,7 @@ export const tintOf = (modelId: string) => PROVIDER_TINT.find(([prefix]) => mode
 const money = (n: number) => (n >= 10 ? `$${n.toFixed(0)}` : n >= 1 ? `$${n.toFixed(1).replace(/\.0$/, "")}` : `$${n.toFixed(2)}`);
 
 /** Five-step cost meter on a log scale from $0.05 to $50 per 1M tokens (input and output blended 1:3). */
-export function CostMeter({ model, className }: { model: MapModel; className?: string }) {
+export function CostMeter({ model, className, bars = false }: { model: MapModel; className?: string; bars?: boolean }) {
   const tm = useTranslations("settingsAi");
   const blended = (model.inputPricePerMillion + model.outputPricePerMillion * 3) / 4;
   const level = blended <= 0 || model.unpriced ? 0 : Math.max(1, Math.min(5, Math.ceil(((Math.log10(blended) + 1.3) / 3) * 5)));
@@ -68,9 +81,11 @@ export function CostMeter({ model, className }: { model: MapModel; className?: s
           <span key={i} className={cn("w-[3px] rounded-full", i <= level ? "bg-foreground/70" : "bg-foreground/15")} style={{ height: `${4 + i * 2}px` }} />
         ))}
       </span>
-      <span className="w-[5.5rem] text-right text-xs tabular-nums text-muted-foreground">
-        {model.unpriced ? null : blended === 0 ? tm("free") : `${money(model.inputPricePerMillion)} / ${money(model.outputPricePerMillion)}`}
-      </span>
+      {bars ? null : (
+        <span className="w-[5.5rem] text-right text-xs tabular-nums text-muted-foreground">
+          {model.unpriced ? null : blended === 0 ? tm("free") : `${money(model.inputPricePerMillion)} / ${money(model.outputPricePerMillion)}`}
+        </span>
+      )}
     </span>
   );
 }
@@ -78,32 +93,89 @@ export function CostMeter({ model, className }: { model: MapModel; className?: s
 /** A catalog model, which always has an id. */
 export type PickedModel = MapModel & { _id: Id<"models"> };
 
-export function toMapModel(row: {
-  _id: Id<"models">;
-  modelId: string;
-  name: string;
-  inputPricePerMillion: number;
-  outputPricePerMillion: number;
-}): PickedModel {
-  return { _id: row._id, id: row.modelId, name: row.name, inputPricePerMillion: row.inputPricePerMillion, outputPricePerMillion: row.outputPricePerMillion };
+export function toMapModel(
+  row: {
+    _id: Id<"models">;
+    modelId: string;
+    name: string;
+    inputPricePerMillion: number;
+    outputPricePerMillion: number;
+    reasoningEfforts?: Effort[];
+    defaultEffort?: Effort;
+  },
+  effort?: Effort | null,
+): PickedModel {
+  return {
+    _id: row._id,
+    id: row.modelId,
+    name: row.name,
+    inputPricePerMillion: row.inputPricePerMillion,
+    outputPricePerMillion: row.outputPricePerMillion,
+    reasoningEfforts: row.reasoningEfforts,
+    defaultEffort: row.defaultEffort,
+    ...(effort && { effort }),
+  };
+}
+
+export type PresetPick = { id: PresetKey; models: MapModel[]; onSelect: () => void };
+
+/** A preset in the picker: its name, then the model (or models) it runs for these tasks. */
+function PresetPickItem({ preset, current, onSelect }: { preset: PresetPick; current: MapModel | undefined; onSelect: () => void }) {
+  const tm = useTranslations("settingsAi");
+  const Icon = PRESET_ICONS[preset.id];
+  const models = [...new Map(preset.models.map((m) => [`${m.id}:${effortOf(m)}`, m])).values()];
+  const [only] = models;
+  const onlyEffort = only && models.length === 1 ? effortOf(only) : null;
+  return (
+    <CommandItem value={`${tm(`presets.${preset.id}`)} ${models.map((m) => m.name).join(" ")}`} onSelect={onSelect}>
+      <Icon />
+      <span className="w-20 shrink-0 font-medium">{tm(`presets.${preset.id}`)}</span>
+      <span className="flex min-w-0 flex-1 items-center gap-1.5 text-muted-foreground">
+        {models.map((m) => {
+          const Brand = getModelIcon(m.id);
+          return <Brand key={m.id} className="size-3.5 shrink-0" />;
+        })}
+        <span className="truncate">{models.map((m) => stripProviderPrefix(m.name)).join(", ")}</span>
+        {onlyEffort ? <span className="shrink-0 text-xs">{tm(`efforts.${onlyEffort}`)}</span> : null}
+      </span>
+      {models.length === 1 && only ? <CostMeter model={only} /> : null}
+      <Check
+        className={cn(
+          "text-primary",
+          only && models.length === 1 && current && only.id === current.id && onlyEffort === effortOf(current) ? "opacity-100" : "opacity-0",
+        )}
+      />
+    </CommandItem>
+  );
 }
 
 /** Searchable picker over the models users can pick; `provider` narrows it to one vendor. */
 export function ModelPicker({
-  value,
+  current,
   onChange,
+  onEffort,
   trigger,
   provider,
   align = "end",
+  presets,
 }: {
-  value: string | undefined;
+  /** The model and effort picked now. */
+  current: MapModel | undefined;
   onChange: (model: PickedModel) => void;
+  /** Shown when set, for a model that reasons: change the effort it runs at. */
+  onEffort?: (effort: Effort) => void;
   trigger: ReactNode;
   provider?: string;
   align?: "start" | "end";
+  /** Quick picks listed first: what each preset runs for the same tasks. */
+  presets?: PresetPick[];
 }) {
   const tm = useTranslations("settingsAi");
   const [open, setOpen] = useState(false);
+  const pick = (run: () => void) => () => {
+    run();
+    setOpen(false);
+  };
   const catalog = useQuery(api.models.queries.listCatalogOptions, open ? (provider ? { provider } : {}) : "skip");
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -113,7 +185,14 @@ export function ModelPicker({
           <CommandInput placeholder={tm("searchModels")} />
           <CommandList className="h-80 max-h-80">
             <CommandEmpty>{catalog === undefined ? tm("loadingModels") : tm("noModels")}</CommandEmpty>
-            <CommandGroup>
+            {presets?.length ? (
+              <CommandGroup heading={tm("presetsGroup")}>
+                {presets.map((p) => (
+                  <PresetPickItem key={p.id} preset={p} current={current} onSelect={pick(p.onSelect)} />
+                ))}
+              </CommandGroup>
+            ) : null}
+            <CommandGroup heading={presets?.length ? tm("allModels") : undefined}>
               {(catalog ?? []).filter((row) => !provider || !isVariant(row.modelId)).map((row) => {
                 const model = toMapModel(row);
                 const Brand = getModelIcon(model.id);
@@ -121,21 +200,30 @@ export function ModelPicker({
                   <CommandItem
                     key={model.id}
                     value={`${model.name} ${model.id}`}
-                    onSelect={() => {
-                      onChange(model);
-                      setOpen(false);
-                    }}
+                    onSelect={pick(() => onChange(model))}
                   >
                     <Brand />
                     <span className="min-w-0 flex-1 truncate">{stripProviderPrefix(model.name)}</span>
                     <CostMeter model={model} />
-                    <Check className={cn("text-primary", value === model.id ? "opacity-100" : "opacity-0")} />
+                    <Check className={cn("text-primary", current?.id === model.id ? "opacity-100" : "opacity-0")} />
                   </CommandItem>
                 );
               })}
             </CommandGroup>
           </CommandList>
         </Command>
+        {onEffort && current && reasons(current) ? (
+          <div className="flex items-center justify-between gap-3 border-t border-border/60 px-3 py-2">
+            <span className="text-xs font-medium text-muted-foreground">{tm("effort")}</span>
+            <Segmented
+              label={tm("effort")}
+              // No highlight until a level is picked when OpenRouter names no default.
+              value={effortOf(current) ?? ("" as Effort)}
+              onChange={onEffort}
+              options={current.reasoningEfforts!.map((level) => ({ id: level, label: tm(`efforts.${level}`) }))}
+            />
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );
@@ -154,20 +242,21 @@ const TASK_Y = Object.fromEntries([
   ...CLOUD_TASKS.map((t, i) => [t, LABEL + i * ROW + ROW / 2]),
   ...BROWSER_TASKS.map((t, i) => [t, BROWSER_TOP + LABEL + i * ROW + ROW / 2]),
 ]) as Record<AiTask, number>;
-const BROWSER_LABEL_Y = BROWSER_TOP + LABEL / 2;
 const EASE = [0.32, 0.72, 0, 1] as const;
 
 export type MapNode = { id: string; model: MapModel; paidBy: "credits" | "key"; tasks: AiTask[]; target: number };
-type Edge = { task: AiTask | "fallback"; node: string; y0: number; dashed?: boolean };
+type Edge = { task: AiTask; node: string; y0: number };
 export type Hover = { task?: AiTask; node?: string } | null;
+
+const onKey = (n: MapNode) => (n.paidBy === "key" ? 1 : 0);
 
 /**
  * Stacks nodes near the mean height of their tasks without overlapping or leaving
- * the frame. The key card always goes last, with room above it for its tab.
+ * the frame. Cards on the user's key go last, with room above the first for its tab.
  */
 function placeNodes(nodes: MapNode[], height: number): Record<string, number> {
-  const sorted = [...nodes].sort((a, b) => (a.id === "key" ? 1 : b.id === "key" ? -1 : a.target - b.target));
-  const gapBefore = (i: number) => NODE_GAP + (sorted[i]!.id === "key" ? ZONE_LABEL : 0);
+  const sorted = [...nodes].sort((a, b) => onKey(a) - onKey(b) || a.target - b.target);
+  const gapBefore = (i: number) => NODE_GAP + (onKey(sorted[i]!) && !onKey(sorted[i - 1]!) ? ZONE_LABEL : 0);
   const tops: number[] = [];
   sorted.forEach((n, i) => {
     const want = Math.max(LABEL, n.target - NODE_H / 2);
@@ -187,45 +276,39 @@ export type Routing = ReturnType<typeof useRouting>;
 /** Lays out the map: which node each task runs on, and where the nodes sit. */
 export function useRouting({
   modelFor,
-  onKey = () => false,
-  keyModel,
-  fallback = false,
+  onKey: runsOnKey = () => false,
 }: {
   modelFor: (t: AiTask) => MapModel | null;
+  /** Whether the task runs on the user's own key rather than on credits. */
   onKey?: (t: AiTask) => boolean;
-  keyModel?: MapModel;
-  fallback?: boolean;
 }) {
   const edges: Edge[] = [];
-  for (const task of [...CLOUD_TASKS, ...BROWSER_TASKS]) {
-    const model = onKey(task) ? keyModel : modelFor(task);
-    if (model) edges.push({ task, node: onKey(task) ? "key" : model.id, y0: TASK_Y[task] });
-  }
-  if (fallback && keyModel) edges.push({ task: "fallback", node: "key", y0: BROWSER_LABEL_Y, dashed: true });
-
   const nodes: MapNode[] = [];
-  for (const e of edges) {
-    let n = nodes.find((x) => x.id === e.node);
-    if (!n) {
-      n =
-        e.node === "key"
-          ? { id: "key", model: keyModel!, paidBy: "key", tasks: [], target: 0 }
-          : { id: e.node, model: modelFor(e.task as AiTask)!, paidBy: "credits", tasks: [], target: 0 };
-      nodes.push(n);
-    }
-    if (e.task !== "fallback") n.tasks.push(e.task);
+  for (const task of [...CLOUD_TASKS, ...BROWSER_TASKS]) {
+    const model = modelFor(task);
+    if (!model) continue;
+    const paidBy = runsOnKey(task) ? "key" : "credits";
+    const id = `${paidBy}:${model.id}:${effortOf(model) ?? ""}`;
+    edges.push({ task, node: id, y0: TASK_Y[task] });
+    let n = nodes.find((x) => x.id === id);
+    if (!n) nodes.push((n = { id, model, paidBy, tasks: [], target: 0 }));
+    n.tasks.push(task);
   }
-  for (const n of nodes) {
-    const ys = n.tasks.length ? n.tasks.map((t) => TASK_Y[t]) : [TASK_Y.screening, TASK_Y.broadenNarrow];
-    n.target = ys.reduce((a, b) => a + b, 0) / ys.length;
-  }
+  for (const n of nodes) n.target = n.tasks.reduce((sum, t) => sum + TASK_Y[t], 0) / n.tasks.length;
   // Grow past the task list when the cards need more room than it has.
-  const stacked = LABEL + nodes.length * (NODE_H + NODE_GAP) - NODE_GAP + (nodes.some((n) => n.id === "key") ? ZONE_LABEL : 0);
+  const stacked = LABEL + nodes.length * (NODE_H + NODE_GAP) - NODE_GAP + (nodes.some(onKey) ? ZONE_LABEL : 0);
   const height = Math.max(HEIGHT, stacked);
   const tops = placeNodes(nodes, height);
   const ordered = [...nodes].sort((a, b) => tops[a.id]! - tops[b.id]!);
-  const colorOf = (id: string) => (id === "key" ? KEY_TINT : tintOf(nodes.find((n) => n.id === id)!.model.id));
-  return { edges, nodes, ordered, tops, height, colorOf, creditModels: nodes.filter((n) => n.paidBy === "credits").length };
+  const colorOf = (id: string) => {
+    const n = nodes.find((x) => x.id === id)!;
+    return n.paidBy === "key" ? KEY_TINT : tintOf(n.model.id);
+  };
+  return {
+    edges, nodes, ordered, tops, height, colorOf,
+    firstKey: ordered.find(onKey)?.id,
+    modelCount: new Set(nodes.map((n) => n.model.id)).size,
+  };
 }
 
 /** The map. `renderNode` draws each model card; `wrapTask` can turn a task row into a trigger. */
@@ -237,6 +320,7 @@ export function RoutingMap({
   browserActive,
   renderNode,
   wrapTask,
+  wrapBrowserLabel,
 }: {
   routing: Routing;
   hover: Hover;
@@ -245,6 +329,8 @@ export function RoutingMap({
   browserActive?: boolean;
   renderNode: (n: MapNode) => ReactNode;
   wrapTask?: (task: AiTask, row: ReactNode) => ReactNode;
+  /** Turns the browser tasks' label into a control, such as how they're paid for. */
+  wrapBrowserLabel?: (label: ReactNode) => ReactNode;
 }) {
   const tm = useTranslations("settingsAi");
   const { edges, nodes, tops, height, colorOf } = routing;
@@ -297,11 +383,13 @@ export function RoutingMap({
           {CLOUD_TASKS.map(taskRow)}
           <div style={{ height: GAP }} />
           <div className={cn("flex items-center pl-3 text-xs font-medium transition-colors", browserActive ? "text-primary" : "text-muted-foreground")} style={{ height: LABEL }}>
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span key={browserLabel} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-                {browserLabel}
-              </motion.span>
-            </AnimatePresence>
+            {(wrapBrowserLabel ?? ((label: ReactNode) => label))(
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span key={browserLabel} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                  {browserLabel}
+                </motion.span>
+              </AnimatePresence>,
+            )}
           </div>
           {BROWSER_TASKS.map(taskRow)}
         </div>
@@ -315,8 +403,7 @@ export function RoutingMap({
               transition={{ duration: 0.45, ease: EASE }}
               fill="none"
               stroke={colorOf(e.node)}
-              strokeWidth={e.dashed ? 1.5 : 2}
-              strokeDasharray={e.dashed ? "5 5" : undefined}
+              strokeWidth={2}
               strokeLinecap="round"
               vectorEffect="non-scaling-stroke"
             />
@@ -357,6 +444,7 @@ export function NodeCard({
   const key = paidBy === "key";
   const Brand = getModelIcon(model.id);
   const tint = key ? KEY_TINT : tintOf(model.id);
+  const effort = effortOf(model);
   return (
     <button
       type="button"
@@ -382,9 +470,12 @@ export function NodeCard({
             </>
           )}
         </span>
-        <TooltipHint label={stripProviderPrefix(model.name)} onlyWhenClipped>
-          <span className="block truncate text-sm font-semibold">{stripProviderPrefix(model.name)}</span>
-        </TooltipHint>
+        <span className="flex min-w-0 items-baseline gap-2">
+          <TooltipHint label={stripProviderPrefix(model.name)} onlyWhenClipped>
+            <span className="block truncate text-sm font-semibold">{stripProviderPrefix(model.name)}</span>
+          </TooltipHint>
+          {effort ? <span className="shrink-0 text-xs text-muted-foreground">{tm(`efforts.${effort}`)}</span> : null}
+        </span>
         <CostMeter model={model} className="justify-between" />
       </span>
       {interactive ? <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" /> : null}
@@ -396,20 +487,16 @@ export function NodeCard({
 export function MapSummary({
   routing,
   title,
-  subtitle,
   hovered,
   onHover,
-  aside,
 }: {
   routing: Routing;
   title: ReactNode;
-  subtitle: ReactNode;
   hovered?: string;
   onHover: (id: string | null) => void;
-  aside?: ReactNode;
 }) {
   const tm = useTranslations("settingsAi");
-  const shown = routing.ordered.filter((n) => n.tasks.length > 0 || n.id === "key");
+  const shown = routing.ordered;
   const total = routing.nodes.reduce((sum, n) => sum + n.tasks.length, 0);
   // Tiles are 48px and overlap by 12px; past five they overlap more so the stack never widens the header.
   const step = shown.length > 1 ? Math.min(36, 144 / (shown.length - 1)) : 36;
@@ -443,7 +530,6 @@ export function MapSummary({
         <div className="min-w-0 space-y-2">
           <h2 className="flex items-baseline gap-2 truncate">
             <span className="text-2xl font-semibold tracking-tight">{title}</span>
-            <span className="text-base text-muted-foreground">{subtitle}</span>
           </h2>
           <div className="flex w-72 max-w-full gap-1" onMouseLeave={() => onHover(null)}>
             {shown.map((n) => {
@@ -459,7 +545,7 @@ export function MapSummary({
                 >
                   <span className="h-1.5 rounded-full" style={{ backgroundColor: routing.colorOf(n.id), opacity: dim ? 0.25 : 1 }} />
                   <span className={cn("truncate text-[11px] tabular-nums", dim ? "text-muted-foreground/40" : "text-muted-foreground")}>
-                    {n.tasks.length ? `${n.tasks.length}/${total}` : tm("fallback")}
+                    {`${n.tasks.length}/${total}`}
                   </span>
                 </motion.div>
               );
@@ -467,7 +553,73 @@ export function MapSummary({
           </div>
         </div>
       </div>
-      {aside ? <div className="shrink-0">{aside}</div> : null}
     </div>
   );
+}
+
+/** The presets as one full-width switch, each with what its models cost on average; Custom sits apart. */
+export function PresetSwitch<T extends PresetKey | "custom">({
+  value,
+  onChange,
+  modelsOf,
+  withCustom = false,
+}: {
+  value: T;
+  onChange: (choice: T) => void;
+  /** The models a choice runs its tasks on. */
+  modelsOf: (choice: T) => MapModel[];
+  withCustom?: boolean;
+}) {
+  const tm = useTranslations("settingsAi");
+  const average = (models: MapModel[]): MapModel => ({
+    id: "average",
+    name: "",
+    inputPricePerMillion: models.reduce((sum, m) => sum + m.inputPricePerMillion, 0) / Math.max(models.length, 1),
+    outputPricePerMillion: models.reduce((sum, m) => sum + m.outputPricePerMillion, 0) / Math.max(models.length, 1),
+  });
+  const presets = (
+    <Segmented
+      fill
+      size="lg"
+      label={tm("preset")}
+      value={value}
+      onChange={onChange}
+      options={PRESET_KEYS.map((id) => ({
+        id: id as T,
+        label: tm(`presets.${id}`),
+        icon: PRESET_ICONS[id],
+        detail: <CostMeter model={average(modelsOf(id as T))} bars />,
+      }))}
+    />
+  );
+  if (!withCustom) return presets;
+  const on = value === "custom";
+  return (
+    <div className="flex items-center gap-3 @max-[34rem]/configuration:flex-col @max-[34rem]/configuration:items-stretch">
+      <div className="min-w-0 flex-1">{presets}</div>
+      <button
+        type="button"
+        aria-pressed={on}
+        onClick={() => onChange("custom" as T)}
+        className={cn(
+          "flex h-[3.25rem] shrink-0 items-center justify-center gap-2 rounded-full border px-6 text-sm font-medium transition-colors",
+          on
+            ? "border-primary/40 bg-primary/15 text-primary"
+            : "border-dashed border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground",
+        )}
+      >
+        <SlidersHorizontal className="size-4" /> {tm("presets.custom")}
+      </button>
+    </div>
+  );
+}
+
+/** What each preset runs a task on, from the preset maps; undefined while loading. */
+export function usePresetModels() {
+  const presets = useQuery(api.aiModelConfig.queries.presets, {});
+  if (!presets) return undefined;
+  return (preset: PresetKey, task: AiTask): PickedModel | null => {
+    const pick = presets.find((p) => p.preset === preset)?.tasks.find((r) => r.task === task);
+    return pick?.model ? toMapModel(pick.model, pick.effort) : null;
+  };
 }
