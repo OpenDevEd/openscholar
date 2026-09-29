@@ -1,6 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { z } from "zod";
+import { publicLibraryHeaders } from "./library-shield";
 
 const cardSchema = z.object({
   key: z.string(), title: z.string().nullable(), itemType: z.string(),
@@ -12,7 +13,7 @@ const cardSchema = z.object({
 export const readPublicationCard = unstable_cache(async (libraryId: string, itemKey: string, baseUrl: string) => {
   const url = new URL(`/api/item/${encodeURIComponent(itemKey)}`, baseUrl);
   url.searchParams.set("view", "card");
-  const response = await fetch(url, {cache: "no-store", signal: AbortSignal.timeout(10000)});
+  const response = await fetch(url, {cache: "no-store", headers: publicLibraryHeaders("application/json"), signal: AbortSignal.timeout(10000)});
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Publication metadata unavailable for ${libraryId}/${itemKey}: ${response.status}`);
   const body = await response.json();

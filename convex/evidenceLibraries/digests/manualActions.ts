@@ -1,5 +1,6 @@
 "use node";
 
+import {publicLibraryHeaders} from "../../../lib/evidence-libraries/library-shield";
 import { v } from "convex/values";
 import { z } from "zod";
 import { internal } from "../../_generated/api";
@@ -27,7 +28,7 @@ export const send = action({
     try {
       const response = await fetch(new URL("/api/v1/openscholar/digests", target.targetBaseUrl), {
         method: "POST",
-        headers: {Authorization: `Bearer ${decrypt(target.encryptedMachineCredential, key)}`},
+        headers: {Authorization: `Bearer ${decrypt(target.encryptedMachineCredential, key)}`, ...publicLibraryHeaders("application/json")},
         signal: AbortSignal.timeout(30_000),
         redirect: "error",
       });
