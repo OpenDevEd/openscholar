@@ -15,7 +15,6 @@ import {
   type MutationCtx,
 } from "../_generated/server";
 import { v } from "convex/values";
-import { effortValidator } from "../aiModelConfig/validators";
 import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { assertCallerOwnsJob, authorizeThreadAccess } from "./auth";
@@ -604,7 +603,6 @@ export const getModelForThread = internalQuery({
       jobId: v.id("extractionJobs"),
       userId: v.id("users"),
       chatModelId: v.union(v.id("models"), v.null()),
-      chatEffort: v.optional(effortValidator),
       webSearchEnabled: v.boolean(),
       modelSupportedParameters: v.union(v.array(v.string()), v.null()),
     }),
@@ -626,7 +624,6 @@ export const getModelForThread = internalQuery({
       jobId: job._id,
       userId: job.userId,
       chatModelId: job.chatModelId ?? null,
-      chatEffort: job.chatEffort,
       webSearchEnabled: job.webSearchEnabled ?? false,
       modelSupportedParameters,
     };

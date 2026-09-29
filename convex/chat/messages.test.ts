@@ -2297,3 +2297,32 @@ describe("chat.messages — reasoning effort", () => {
     expect((await t.run(ctx => ctx.db.get(jobId)))?.chatEffort).toBeUndefined();
   });
 });
+
+describe("chat.messages — effort per turn", () => {
+  const scheduledEffort = (t: ReturnType<typeof createTestConvex>) =>
+    t.run(async (ctx) => {
+      const jobs = await ctx.db.system.query("_scheduled_functions").collect();
+      const generate = jobs.filter((job) => job.name.includes("generateResponse")).at(-1);
+      // No effort means the model's default; convex-test turns undefined into null both ways.
+      return (generate?.args[0] as { chatEffort?: string | null } | undefined)?.chatEffort ?? "default";
+    });
+
+  it("takes the effort with the model when a turn starts, and drops a level the model no longer takes", async () => {
+    const t = createTestConvex();
+    const {userId, jobId, threadId} = await seedUserAndChatJob(t);
+    await seedChatPapers(t, jobId, [true]);
+    const {modelId} = await seedModelAndCredits(t, userId);
+    await t.run(ctx => ctx.db.patch(modelId, {reasoningEfforts: ["low", "high"], defaultEffort: "low"}));
+    await t.run(ctx => ctx.db.patch(jobId, {chatModelId: modelId, chatEffort: "high"}));
+    const caller = asCaller(t, "c_msg");
+
+    await caller.mutation(api.chat.messages.sendMessage, {threadId, prompt: "hi"});
+    expect(await scheduledEffort(t)).toBe("high");
+
+    // The catalog dropped "high": the next turn runs at the model's default.
+    await t.run(ctx => ctx.db.patch(modelId, {reasoningEfforts: ["low"]}));
+    await t.run(ctx => ctx.db.patch(jobId, {isGenerating: undefined}));
+    await caller.mutation(api.chat.messages.sendMessage, {threadId, prompt: "again"});
+    expect(await scheduledEffort(t)).toBe("default");
+  });
+});

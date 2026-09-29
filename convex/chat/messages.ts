@@ -37,7 +37,7 @@ import {
 } from "@convex-dev/agent";
 import type { ToolSet } from "ai";
 import { components, internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { requireAvailableModel, requireEffort } from "../models/catalog";
 import { effortValidator } from "../aiModelConfig/validators";
@@ -281,11 +281,19 @@ export const sendMessage = mutation({
       promptMessageId: messageId,
       generationAttemptId,
       chatModelId: job.chatModelId ?? null,
+      chatEffort: await liveChatEffort(ctx, job),
     });
 
     return null;
   },
 });
+
+/** The chat's effort if its model still takes it; a level the catalog dropped runs at the default. */
+async function liveChatEffort(ctx: MutationCtx, job: Doc<"extractionJobs">) {
+  if (!job.chatEffort || !job.chatModelId) return undefined;
+  const model = await ctx.db.get("models", job.chatModelId);
+  return model?.reasoningEfforts?.includes(job.chatEffort) ? job.chatEffort : undefined;
+}
 
 export const generateResponse = internalAction({
   args: {
@@ -293,11 +301,13 @@ export const generateResponse = internalAction({
     promptMessageId: v.string(),
     generationAttemptId: v.optional(v.string()),
     chatModelId: v.optional(v.union(v.id("models"), v.null())),
+    /** Taken with the model when the turn starts, so a later change only affects the next turn. */
+    chatEffort: v.optional(effortValidator),
   },
   returns: v.null(),
   handler: async (
     ctx,
-    { threadId, promptMessageId, generationAttemptId, chatModelId },
+    { threadId, promptMessageId, generationAttemptId, chatModelId, chatEffort },
   ) => {
     const meta = await ctx.runQuery(internal.chat.threads.getModelForThread, {
       threadId,
@@ -447,7 +457,7 @@ export const generateResponse = internalAction({
             maxRetries: 0,
             // Claude caches the corpus and earlier turns; the thread id keeps
             // every turn on the same upstream host so that cache stays warm.
-            providerOptions: callOptions(model, { cache: true, sessionId: threadId, effort: meta.chatEffort }),
+            providerOptions: callOptions(model, { cache: true, sessionId: threadId, effort: chatEffort }),
             onStepFinish: async ({ usage, providerMetadata }) => {
               stepUsages.push(usageOf({ usage, providerMetadata }));
               const inputTokens = usage?.inputTokens ?? 0;
@@ -1322,6 +1332,7 @@ export const regenerateLastAssistant = mutation({
       promptMessageId: latestTurn.promptMessageId,
       generationAttemptId,
       chatModelId: job.chatModelId ?? null,
+      chatEffort: await liveChatEffort(ctx, job),
     });
     return { started: true, generationAttemptId };
   },

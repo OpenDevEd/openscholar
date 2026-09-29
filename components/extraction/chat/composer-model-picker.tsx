@@ -148,7 +148,7 @@ export function ComposerModelPicker({
           data-model-id={value ?? ""}
           data-provider={selected?.provider ?? ""}
           className={cn(
-            "h-7 gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground",
+            "h-7 min-w-0 shrink gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground",
             "hover:bg-accent hover:text-foreground",
             "data-[state=open]:bg-accent data-[state=open]:text-foreground",
           )}
@@ -156,7 +156,7 @@ export function ComposerModelPicker({
           {selected ? (
             <TriggerIcon className="size-3.5 text-foreground/80" />
           ) : null}
-          <span className="max-w-[200px] truncate">{triggerLabel}</span>
+          <span className="min-w-0 max-w-[200px] truncate">{triggerLabel}</span>
           <ChevronDownIcon className="size-3 opacity-60" />
         </Button>
       </PopoverTrigger>

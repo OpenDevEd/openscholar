@@ -287,7 +287,8 @@ export function MessageComposer({
         />
 
         <div className="flex items-center justify-between gap-2 px-2 pb-2 pt-1">
-          <div className="flex items-center gap-1">
+          {/* On a narrow composer the model name truncates; the other controls keep their size. */}
+          <div className="flex min-w-0 items-center gap-1 [&>*:not(:first-child)]:shrink-0">
             <ComposerModelPicker
               value={job.chatModelId ?? null}
               effort={job.chatEffort}
