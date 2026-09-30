@@ -22,6 +22,20 @@ const KIND_TINT = { screening: KIND.screening!.tint };
 
 export type SheetKind = "history" | "share" | "topup";
 
+/**
+ * Shadows at the top and bottom of a scrolling list, shown only while there is more
+ * to scroll that way. Pure CSS: card-coloured covers scroll with the content and hide
+ * the fixed shadows at either end.
+ */
+const SCROLL_SHADOWS = {
+  background: [
+    "linear-gradient(var(--card) 30%, transparent) center top / 100% 40px no-repeat local",
+    "linear-gradient(transparent, var(--card) 70%) center bottom / 100% 40px no-repeat local",
+    "radial-gradient(farthest-side at 50% 0, color-mix(in oklab, var(--foreground) 16%, transparent), transparent) center top / 100% 12px no-repeat scroll",
+    "radial-gradient(farthest-side at 50% 100%, color-mix(in oklab, var(--foreground) 16%, transparent), transparent) center bottom / 100% 12px no-repeat scroll",
+  ].join(", "),
+};
+
 export const SHEET_SPRING = { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.9 };
 
 /** Where a card sits with `depth` cards on top of it: smaller, and nudged left so its edge shows. */
@@ -90,14 +104,12 @@ function SheetHeader({ title, detail, onBack }: { title: string; detail?: string
   );
 }
 
-type Record = { kind: keyof typeof KIND; label: string };
 type Member = { initial: string; name: string; tint: string; here?: boolean };
 type Chat = {
   id: string;
   title: string;
   last: string;
   when: string;
-  records: Record[];
   members?: Member[];
   org?: string;
   mine: boolean;
@@ -119,12 +131,10 @@ const CHATS: Array<{ group: string; live?: boolean; chats: Chat[] }> = [
     chats: [
       {
         id: "c3", title: "Mother-tongue instruction, Kenya and Uganda", last: "Tightened the search to 2015 onwards", when: "Mon", mine: false, org: "OpenDevEd",
-        records: [{ kind: "search", label: "142 results" }],
         members: [{ ...JOSEPH, here: true }, { ...SARA, here: true }, AMINA],
       },
       {
         id: "c5", title: "Teacher coaching cost-effectiveness", last: "Screened 140 papers, 38 included", when: "14 Sep", mine: true,
-        records: [{ kind: "search", label: "140 results" }, { kind: "screening", label: "140 papers" }],
         members: [JOSEPH, SARA],
         running: { label: "Screening", total: OTHER_SCREENING.total, start: OTHER_SCREENING.start },
       },
@@ -135,11 +145,9 @@ const CHATS: Array<{ group: string; live?: boolean; chats: Chat[] }> = [
     chats: [
       {
         id: "c1", title: "Structured pedagogy in sub-Saharan Africa", last: "Saved 4 included studies to a new collection", when: "Now", mine: true, current: true,
-        records: [{ kind: "search", label: "24 results" }, { kind: "screening", label: "24 screened" }, { kind: "collection", label: "4 papers" }],
       },
       {
         id: "c2", title: "Retrieval practice in secondary maths", last: "Extracted effect sizes and sample sizes", when: "09:12", mine: true,
-        records: [{ kind: "search", label: "86 results" }, { kind: "extraction", label: "31 papers" }],
       },
     ],
   },
@@ -148,11 +156,9 @@ const CHATS: Array<{ group: string; live?: boolean; chats: Chat[] }> = [
     chats: [
       {
         id: "c4", title: "EGRA validity studies", last: "Compared 12 instruments across countries", when: "Sun", mine: true,
-        records: [{ kind: "collection", label: "12 papers" }, { kind: "extraction", label: "12 papers" }],
       },
       {
         id: "c6", title: "Digital literacy tools in Malawi", last: "Found 3 recent reviews", when: "2 Sep", mine: false,
-        records: [{ kind: "search", label: "57 results" }],
         members: [MARC],
       },
     ],
@@ -265,19 +271,11 @@ function ChatRow({ chat, index, onShare }: { chat: Chat; index: number; onShare:
           {chat.current ? "Open now" : chat.when}
         </span>
       </div>
-      <div className="mt-1 flex h-5 items-center">
-        <Status chat={chat} />
-      </div>
-      <div className="mt-2 flex items-center gap-1.5">
-        {chat.records.map((r, i) => (
-          <span key={i} className="flex h-6 items-center gap-1.5 rounded-full bg-muted/60 pl-0.5 pr-2 text-[11px] font-medium text-foreground/80">
-            <KindTile kind={r.kind} size="sm" />
-            <span className="tabular-nums">{r.label}</span>
-          </span>
-        ))}
-        <span className="ml-auto">
-          <Members members={chat.members} org={chat.org} />
+      <div className="mt-1 flex h-6 items-center gap-3">
+        <span className="flex min-w-0 flex-1 items-center">
+          <Status chat={chat} />
         </span>
+        <Members members={chat.members} org={chat.org} />
       </div>
       {/* Out of the flow, so the hover action never adds height to the row. */}
       <div className="absolute right-2 top-2 hidden group-hover:block">
@@ -341,7 +339,7 @@ export function HistorySheet({ onBack, onShare }: { onBack: () => void; onShare:
         A filter change mounts a fresh list that fades and staggers in. No exit wait: waiting
         for the old list to leave stranded a stale list when the filter changed quickly.
       */}
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3 pt-3">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3 pt-3" style={SCROLL_SHADOWS}>
           <motion.div
             key={`${scope}|${q}`}
             className="space-y-4"
@@ -381,25 +379,6 @@ function LiveIcon() {
   );
 }
 
-/** The records that come with access to a chat. */
-function Includes({ chat }: { chat: string }) {
-  const records = CHATS.flatMap((g) => g.chats).find((c) => c.title === chat)?.records ?? [];
-  if (!records.length) return null;
-  return (
-    <div className="space-y-2 rounded-2xl bg-muted/40 p-3">
-      <p className="text-xs font-medium text-muted-foreground">They can also open</p>
-      <div className="flex flex-wrap gap-1.5">
-        {records.map((r, i) => (
-          <span key={i} className="flex h-7 items-center gap-1.5 rounded-full bg-background/60 pl-1 pr-2.5 text-xs font-medium">
-            <KindTile kind={r.kind} size="sm" />
-            <span className="tabular-nums">{r.label}</span>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 type Access = "view" | "chat";
 type Person = { id: string; name: string; detail: string; tint: string; org?: boolean; owner?: boolean; access: Access };
 
@@ -417,7 +396,7 @@ export function ShareSheet({ chat, onBack }: { chat: string; onBack: () => void 
   return (
     <>
       <SheetHeader title="Share this chat" detail={chat} onBack={onBack} />
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-3 py-3">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-3 py-3" style={SCROLL_SHADOWS}>
         <label className="flex h-10 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
           <UserPlus className="size-4 text-muted-foreground" />
           <input placeholder="Add people or an organization" aria-label="Add people or an organization" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
@@ -457,9 +436,8 @@ export function ShareSheet({ chat, onBack }: { chat: string; onBack: () => void 
             </motion.li>
           ))}
         </ul>
-        <Includes chat={chat} />
         <p className="px-2 text-xs leading-relaxed text-muted-foreground">
-          People who can chat send messages as themselves. Anything the assistant does for them runs with their own access and credits.
+          They see this conversation. Searches, collections and libraries in it keep their own access. People who can chat send messages as themselves, and the assistant acts for them with their own access and credits.
         </p>
       </div>
       <div className="border-t border-border/50 p-3">
@@ -534,7 +512,7 @@ export function TopUpSheet({
   return (
     <>
       <SheetHeader title="Add credits" detail="Without leaving the chat" onBack={onBack} />
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5" style={SCROLL_SHADOWS}>
         <div>
           <p className="text-4xl font-semibold tracking-tight">
             <AnimatedNumber value={shown} />
