@@ -3,9 +3,10 @@
 // The results page beside the assistant, reduced to what the mock needs. It
 // renders from the same state the assistant changes, so edits show up live.
 
-import { useEffect } from "react";
+import { useEffect, type Ref } from "react";
 import { AnimatePresence, motion, useReducedMotion, useSpring, useTransform } from "motion/react";
-import { Check, CircleHelp, FolderCheck, Quote, Search, SlidersHorizontal, Sparkles, Undo2, X } from "lucide-react";
+import { Check, CircleHelp, FolderCheck, Quote, Search, SlidersHorizontal, Undo2, X } from "lucide-react";
+import { LogoMark } from "./logo-mark";
 import { cn } from "@/lib/utils";
 import { EASE } from "@/components/settings/model-map";
 import {
@@ -41,10 +42,14 @@ const DECISION: Record<Decision, { icon: typeof Check; label: string; className:
   unsure: { icon: CircleHelp, label: "To check", className: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
 };
 
-function PaperRow({ paper, decision, collected, index }: { paper: Paper; decision?: Decision; collected?: boolean; index: number }) {
+/** `ref` comes from AnimatePresence, which needs it to lift exiting rows out of the flow. */
+function PaperRow({
+  paper, decision, collected, index, ref,
+}: { paper: Paper; decision?: Decision; collected?: boolean; index: number; ref?: Ref<HTMLLIElement> }) {
   const d = decision ? DECISION[decision] : null;
   return (
     <motion.li
+      ref={ref}
       layout
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
@@ -178,7 +183,7 @@ export function ResultsPane({ page, onUndo }: { page: PageState; onUndo: () => v
                 transition={{ duration: 0.35, ease: EASE }}
                 className="flex shrink-0 items-center gap-1 rounded-full bg-primary/10 py-1 pl-2.5 pr-1 text-xs font-medium text-primary"
               >
-                <Sparkles className="size-3" /> Changed by the assistant
+                <LogoMark size={13} /> Changed by the assistant
                 <button
                   type="button"
                   onClick={onUndo}

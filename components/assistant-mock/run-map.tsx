@@ -5,13 +5,20 @@
 
 import type { ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, CircleHelp, Coins, Copy, ExternalLink, Sparkles, Undo2, X } from "lucide-react";
+import { Check, CircleHelp, Coins, Copy, ExternalLink, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { EASE } from "@/components/settings/model-map";
 import { BALANCE, COLLECTION_NAME, KIND, SCREEN_CREDITS, SCREEN_TOTALS, VERSIONS } from "./data";
+import { LogoMark } from "./logo-mark";
+
+/** Text that shimmers while work runs, and holds still when motion is reduced. */
+export function WorkingText({ children }: { children: string }) {
+  const reduceMotion = useReducedMotion();
+  return reduceMotion ? <span className="text-muted-foreground">{children}</span> : <Shimmer as="span">{children}</Shimmer>;
+}
 
 export type Step = {
   kind: keyof typeof KIND;
@@ -58,8 +65,8 @@ export function RunMap({ steps, plain }: { steps: Step[]; plain?: boolean }) {
       animate={{ height: Math.max(0, height) }}
       transition={reduceMotion ? { duration: 0 } : { duration: 0.45, ease: EASE }}
     >
-      <span className="absolute left-0.5 top-0 flex size-5 items-center justify-center rounded-md bg-primary/15 text-primary">
-        <Sparkles className="size-3" />
+      <span className="absolute left-0.5 top-0 flex size-5 items-center justify-center rounded-md bg-primary/10">
+        <LogoMark size={14} />
       </span>
       <svg className="overflow-visible" width={GUTTER} height={height} aria-hidden>
         {steps.map((s, i) => (
@@ -91,7 +98,7 @@ export function RunMap({ steps, plain }: { steps: Step[]; plain?: boolean }) {
                 <KindTile kind={s.kind} working={s.status === "working"} />
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <p className={cn("truncate text-sm font-semibold", s.status === "undone" && "line-through decoration-muted-foreground/60")}>
-                    {s.status === "working" ? <Shimmer as="span">{s.title}</Shimmer> : s.title}
+                    {s.status === "working" ? <WorkingText>{s.title}</WorkingText> : s.title}
                   </p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">{s.detail}</div>
                 </div>
@@ -214,7 +221,7 @@ export function JobCard({ done, total, counts }: { done: number; total: number; 
         <KindTile kind="screening" working={!finished} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">
-            {finished ? "Screened 24 papers" : <Shimmer as="span">Screening 24 papers</Shimmer>}
+            {finished ? "Screened 24 papers" : <WorkingText>Screening 24 papers</WorkingText>}
           </p>
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <Coins className="size-3" /> <span className="tabular-nums">{credits}</span> credits
@@ -244,7 +251,7 @@ export function JobCard({ done, total, counts }: { done: number; total: number; 
 }
 
 /** A collection the assistant made, by name and ID, with undo. */
-export function CollectionCard({ undone, onUndo }: { undone: boolean; onUndo: () => void }) {
+export function CollectionCard({ undone, canUndo, onUndo }: { undone: boolean; canUndo: boolean; onUndo: () => void }) {
   return (
     <div className={cn("flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 p-3 transition-opacity", undone && "opacity-50")}>
       <KindTile kind="collection" />
@@ -266,7 +273,7 @@ export function CollectionCard({ undone, onUndo }: { undone: boolean; onUndo: ()
       </div>
       {undone ? (
         <span className="px-2 text-xs text-muted-foreground">Removed</span>
-      ) : (
+      ) : !canUndo ? null : (
         <button
           type="button"
           onClick={onUndo}
