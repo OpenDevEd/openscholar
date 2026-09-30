@@ -440,7 +440,7 @@ export function JobCard({
           </TooltipHint>
         ) : (
           // The same slot keeps its size, so nothing beside it moves when the job ends.
-          <span className="flex size-7 shrink-0 items-center justify-center">
+          <span className="-mr-1 flex size-7 shrink-0 items-center justify-center">
             {cancelled ? (
               <CircleSlash className="size-4 text-muted-foreground" aria-label="Cancelled" />
             ) : (

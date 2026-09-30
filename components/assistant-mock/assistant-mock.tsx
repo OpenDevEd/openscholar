@@ -116,7 +116,7 @@ function viewOf(pathname: string) {
 class Stopped extends Error {}
 
 /** A job on its own clock: Stop ends the reply, never the job; only its Cancel does. */
-type Job = { cancelled: boolean; progress: number; hold: number; spent: number; done: Promise<boolean> };
+type Job = { cancelled: boolean; settled: boolean; progress: number; hold: number; spent: number; done: Promise<boolean> };
 type Reply = { id: number; spent: number; cap: number; paused: boolean };
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -229,7 +229,7 @@ export function AssistantOverlay() {
    */
   const runJob = (id: number, hold: number, spent: number, ticks: Array<[ms: number, progress: number, apply: () => void]>): Job => {
     charge(hold);
-    const job: Job = { cancelled: false, progress: 0, hold, spent, done: Promise.resolve(false) };
+    const job: Job = { cancelled: false, settled: false, progress: 0, hold, spent, done: Promise.resolve(false) };
     job.done = (async () => {
       for (const [ms, progress, apply] of ticks) {
         await sleep(ms);
@@ -237,6 +237,7 @@ export function AssistantOverlay() {
         job.progress = progress;
         apply();
       }
+      job.settled = true;
       charge(-(hold - spent));
       return true;
     })();
@@ -251,7 +252,7 @@ export function AssistantOverlay() {
   };
   const cancelJob = (id: number) => {
     const job = jobs.current.get(id);
-    if (!job || job.cancelled) return;
+    if (!job || job.cancelled || job.settled) return;
     job.cancelled = true;
     charge(-(job.hold - Math.round(job.spent * job.progress)));
     patch(id, (t) => ({ cards: t.cards.map((c): Card => (c.type === "job" || c.type === "extract" ? { ...c, cancelled: true } : c)) }));
@@ -374,7 +375,9 @@ export function AssistantOverlay() {
     ticks.push([600, 0, () => setCard(id, 0, { type: "job", done: 0 })]);
     for (let done = 1; done <= 24; done++) ticks.push([done === 1 ? 710 : 210, done / 24, () => setCard(id, 0, { type: "job", done })]);
     const job = runJob(id, SCREEN_HOLD, SCREEN_SPENT, ticks);
-    return followUp(token, id, 1, (t) => afterScreening(t, id, job));
+    // What the follow-up has finished, so Continue picks up after it rather than repeating it.
+    const progress = { settled: false };
+    return followUp(token, id, 1, (t) => afterScreening(t, id, job, progress));
   };
 
   /** Runs what a reply does once its job ends, keeping it so a stopped reply can continue. */
@@ -385,17 +388,23 @@ export function AssistantOverlay() {
     return ok;
   };
 
-  const afterScreening = async (token: number, id: number, job: Job) => {
+  const afterScreening = async (token: number, id: number, job: Job, progress: { settled: boolean }) => {
     if (!(await follow(token, job))) {
       await stream(token, id, `Okay, I cancelled the screening at ${Math.round(job.progress * 24)} of 24. The decisions it made so far are kept.`);
       return false;
     }
+    if (progress.settled) return summarizeScreening(token, id);
     await wait(token, 500);
     // Unclear answers that decide whether a paper is in get checked here, not left for a person.
     await work(token, id, 1, { kind: "screening", title: "Checking the 3 unclear papers", detail: <Facts items={[{ icon: CircleHelp, value: 3, label: "unclear", tone: "warn" }, { icon: Globe, label: "OpenAlex records" }]} />, status: "working" },
       { title: "Settled 2 of the 3 unclear", detail: <Facts items={[{ icon: X, value: SETTLED, label: "excluded" }, { icon: CircleHelp, value: 3 - SETTLED, label: "still unclear", tone: "warn" }]} />, onUndo: () => unsettle(id) }, 1800, 6);
     setCard(id, 0, { type: "job", done: 24, settled: true });
+    progress.settled = true;
     await wait(token, 400);
+    return summarizeScreening(token, id);
+  };
+
+  const summarizeScreening = async (token: number, id: number) => {
     await stream(
       token,
       id,
@@ -565,6 +574,8 @@ export function AssistantOverlay() {
       return;
     }
     if (busy || next >= PROMPTS.length) return;
+    // A new request moves on from any stopped reply; its job keeps running on its card.
+    continuations.current.clear();
     const snap = snapshot();
     setDraft("");
     setTurns((all) => [...all, { kind: "user", id: ++ids.current, text, step: next, snap }]);
@@ -576,6 +587,14 @@ export function AssistantOverlay() {
     const user = turns.find((t): t is UserTurn => t.kind === "user" && t.id === userId);
     if (!user) return;
     halt();
+    // Replies after this message go, and their jobs with them, without refunds: the snapshot restores the balance.
+    for (const t of turns) {
+      if (t.id <= userId) continue;
+      const job = jobs.current.get(t.id);
+      if (job) job.cancelled = true;
+      jobs.current.delete(t.id);
+      continuations.current.delete(t.id);
+    }
     restore(user.snap);
     const edited = text !== undefined && text.trim() !== user.text;
     // The collection current when the message was sent comes back as it was, undo and all.
@@ -592,7 +611,7 @@ export function AssistantOverlay() {
   /** Continues a stopped reply: it waits for its job, if still running, then finishes what it was doing. */
   const resume = (id: number) => {
     const rest = continuations.current.get(id);
-    if (!rest) return;
+    if (!rest || busy) return;
     const token = ++run.current;
     setBusy(true);
     setReply({ id, spent: replyRef.current?.id === id ? replyRef.current.spent : 0, cap: REPLY_CAP, paused: false });
