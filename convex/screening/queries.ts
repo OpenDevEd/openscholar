@@ -10,6 +10,9 @@ import {
 } from "./validators";
 import { getCurrentUser } from "../lib/auth";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
+
+/** Most screening jobs one history request lists; each one also reads its progress. */
+const MAX_LISTED_SCREENING_JOBS = 100;
 import { readScreeningProgressCounts } from "./aggregates";
 import { buildScreeningProgressSnapshot } from "./progress";
 
@@ -205,7 +208,7 @@ export const listUserScreeningJobs = query({
       .query("screeningJobs")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
-      .take(args.limit ?? 20);
+      .take(Math.min(args.limit ?? 20, MAX_LISTED_SCREENING_JOBS));
 
     return Promise.all(
       jobs.map(async (job) => {

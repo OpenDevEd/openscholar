@@ -2,7 +2,6 @@
   "unboundedReads": {
     "bounded": {
       "convex/apiKeys/queries.ts:keys:apiKeys": "A user's own API keys: a handful.",
-      "convex/authors/profiles.ts:associations:authorPublications": "One author profile's publication links: a few thousand for the most prolific authors, about 200 bytes each.",
       "convex/authors/publications.ts:previous:authorPublications": "The author links of one library record: one per author.",
       "convex/billing/migrate.ts:legacyAccounts:creditTransactions": "One user's legacy credit transactions in the one-off billing migration; that ledger stopped growing when billing moved to Autumn.",
       "convex/billing/migrate.ts:legacyAccounts:subscriptions": "One user's legacy subscriptions in the one-off billing migration: a few.",
@@ -20,7 +19,6 @@
       "convex/evidenceLibraries/domainPlan.ts:rows:evidenceLibraryDomains": "One library's domains: at most MAX_EVIDENCE_LIBRARY_DOMAINS (5).",
       "convex/evidenceLibraries/domains.ts:claimDomainRoutes:evidenceLibraryConfigOperations": "A library's operations that are queued or running now: one or two at a time.",
       "convex/evidenceLibraries/domains.ts:readEvidenceLibraryDomains:evidenceLibraryDomains": "One library's domains: at most MAX_EVIDENCE_LIBRARY_DOMAINS (5).",
-      "convex/evidenceLibraries/invitations.ts:invitations:evidenceLibraryInvitations": "Invitations to one address for one library: a new one only after the last was answered, cancelled or expired, and a library can send 20 an hour.",
       "convex/evidenceLibraries/invitations.ts:users:users": "Accounts with one email address: one.",
       "convex/evidenceLibraries/queries.ts:listTeam:evidenceLibraryInvitations": "One library's pending invitations: 20 can be sent an hour and each expires after 7 days, so at most 3,360.",
       "convex/evidenceLibraries/queries.ts:readEvidenceLibraries:evidenceLibraryMembers": "One person's library memberships: a few.",
@@ -62,6 +60,9 @@
       "convex/library/queries.ts:collectLibraryItems:libraryItems": "A full-text search result, which Convex caps at 1,024 rows.",
       "convex/maintenance/mutations.ts:apiKeys:apiKeys": "A user's own API keys: a handful.",
       "convex/maintenance/mutations.ts:zoteroConns:zoteroConnections": "A user's Zotero connections: one or two.",
+      "convex/migrations/recountExtractionJobs.ts:countJob:extractionPaperErrors": "The one-off recount of a job's rows, which only runs where extraction data exists today (dev, whose largest job had 1,018 results on 2026-09-30); remove it with the migration.",
+      "convex/migrations/recountExtractionJobs.ts:countJob:extractionPapers": "One job's papers: at most PAPER_LIMIT (1,000).",
+      "convex/migrations/recountExtractionJobs.ts:countJob:extractionResults": "The one-off recount of a job's rows, which only runs where extraction data exists today (dev, whose largest job had 1,018 results on 2026-09-30); remove it with the migration.",
       "convex/organizationFeatures.ts:memberships:organizationMemberships": "One person's active organization memberships: a few.",
       "convex/topics/publications.ts:hasPublicTopic:topicLocations": "One publication's locations: one per library record of that publication, and a library holds a publication once.",
       "convex/users/internal.ts:grants:evidenceLibraryMembers": "One person's library memberships: a few.",
@@ -102,6 +103,11 @@
       "convex/library/queries.ts:browseLibrary": "#353",
       "convex/library/queries.ts:searchLibrary": "#353",
       "convex/library/queries.ts:listLibrary": "#353"
+    }
+  },
+  "argumentSizedTakes": {
+    "bounded": {
+      "convex/topics/publications.ts:list": "The handler refuses a limit outside 1 to 50 before it reads."
     }
   }
 }

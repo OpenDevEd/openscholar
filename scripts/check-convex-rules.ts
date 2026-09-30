@@ -6,6 +6,9 @@
 //   limits is listed under unboundedReads.pending with the issue that bounds it.
 // - Every public function (`query`, `mutation`, `action`) is defined with an object that
 //   has a `returns` validator, unless listed under missingReturns.pending with its issue.
+// - No handler reads as many rows as its caller asks: a `.take(n)` whose `n` comes from the
+//   function's arguments is clamped with `Math.min`, or listed under
+//   argumentSizedTakes.bounded with why it stays small.
 // - No public query reads the clock, in its handler or any function it calls:
 //   `Date.now()` or `new Date()` in a query breaks its caching and reactivity. Schedule
 //   the change instead, or pass the time in.
@@ -109,6 +112,43 @@ function clockRead(root: ts.Node): string | null {
 }
 
 const BUILDERS = ["query", "mutation", "action"];
+const ALL_BUILDERS = [...BUILDERS, "internalQuery", "internalMutation", "internalAction"];
+const argumentSizedTakes: string[] = [];
+
+/** `.take(n)` calls in `handler` whose `n` comes from the handler's arguments and isn't clamped. */
+function takesSizedByArguments(handler: ts.Node): ts.CallExpression[] {
+  if (!ts.isFunctionLike(handler)) return [];
+  const argsParameter = handler.parameters[1];
+  if (!argsParameter) return [];
+  const names = new Set<ts.Symbol>();
+  const collect = (binding: ts.BindingName) => {
+    if (ts.isIdentifier(binding)) { const symbol = checker.getSymbolAtLocation(binding); if (symbol) names.add(symbol); }
+    else for (const element of binding.elements) if (ts.isBindingElement(element)) collect(element.name);
+  };
+  collect(argsParameter.name);
+  const found: ts.CallExpression[] = [];
+  const isClamped = (size: ts.Node) => ts.isCallExpression(size) && size.expression.getText() === "Math.min";
+  const readsArguments = (expression: ts.Node) => {
+    let reads = false;
+    const scan = (part: ts.Node) => { if (ts.isIdentifier(part) && names.has(checker.getSymbolAtLocation(part)!)) reads = true; ts.forEachChild(part, scan); };
+    scan(expression);
+    return reads;
+  };
+  const visit = (node: ts.Node) => {
+    // A local set from the arguments, and not clamped, carries them on.
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && !isClamped(node.initializer) && readsArguments(node.initializer)) {
+      const symbol = checker.getSymbolAtLocation(node.name);
+      if (symbol) names.add(symbol);
+    }
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "take" && node.arguments[0]) {
+      const size = node.arguments[0];
+      if (!isClamped(size) && readsArguments(size)) found.push(node);
+    }
+    ts.forEachChild(node, visit);
+  };
+  if ("body" in handler && handler.body) visit(handler.body);
+  return found;
+}
 const reads: string[] = [];
 const missingReturns: string[] = [];
 const problems: string[] = [];
@@ -139,6 +179,12 @@ for (const tree of program.getSourceFiles().filter((file) => sources.includes(re
     if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "Migrations" && !/\binternalMutation\b/.test(node.arguments?.[1]?.getText() ?? "")) {
       problems.push(`${file}: pass { internalMutation } from convex/lib/functions.ts to new Migrations(...), so migrations run the database triggers.`);
     }
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && ALL_BUILDERS.includes(node.initializer.expression.text)) {
+      const definition = node.initializer.arguments[0];
+      const handler = definition && ts.isObjectLiteralExpression(definition) ? definition.properties.find((p) => p.name && ts.isIdentifier(p.name) && p.name.text === "handler") : undefined;
+      const handlerFn = handler && ts.isPropertyAssignment(handler) ? (ts.isIdentifier(handler.initializer) ? declarationOf(handler.initializer) ?? handler.initializer : handler.initializer) : handler;
+      if (handlerFn && takesSizedByArguments(handlerFn).length) argumentSizedTakes.push(`${file}:${node.name.text}`);
+    }
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && BUILDERS.includes(node.initializer.expression.text)) {
       const kind = node.initializer.expression.text;
       const definition = node.initializer.arguments[0];
@@ -166,7 +212,7 @@ if (process.argv.includes("--list")) {
 }
 
 type Listed = { bounded: Record<string, string>; pending: Record<string, string> };
-const rules = JSON.parse(readFileSync("scripts/convex-rules.json", "utf8")) as { unboundedReads: Listed; missingReturns: { pending: Record<string, string> } };
+const rules = JSON.parse(readFileSync("scripts/convex-rules.json", "utf8")) as { unboundedReads: Listed; missingReturns: { pending: Record<string, string> }; argumentSizedTakes: { bounded: Record<string, string> } };
 const issue = /^#\d+$/;
 
 const found = new Set(reads);
@@ -188,6 +234,13 @@ for (const fn of missingReturns) if (!(fn in rules.missingReturns.pending)) prob
 for (const [fn, ref] of Object.entries(rules.missingReturns.pending)) {
   if (!withoutReturns.has(fn)) problems.push(`${fn}: listed as missing returns but has one now; remove it.`);
   if (!issue.test(ref)) problems.push(`${fn}: pending needs the issue that adds its validator.`);
+}
+
+const sizedByArguments = new Set(argumentSizedTakes);
+for (const fn of argumentSizedTakes) if (!(fn in rules.argumentSizedTakes.bounded)) problems.push(`${fn}: .take() is sized by the function's arguments; clamp it with Math.min, or list it with why it stays small.`);
+for (const [fn, reason] of Object.entries(rules.argumentSizedTakes.bounded)) {
+  if (!sizedByArguments.has(fn)) problems.push(`${fn}: listed as an argument-sized take but no longer is; remove it.`);
+  if (reason.trim().length < 15) problems.push(`${fn}: say why its size stays small.`);
 }
 
 if (problems.length) {
