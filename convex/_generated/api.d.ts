@@ -249,6 +249,7 @@ import type * as models_mutations from "../models/mutations.js";
 import type * as models_queries from "../models/queries.js";
 import type * as models_sync from "../models/sync.js";
 import type * as organizationFeatures from "../organizationFeatures.js";
+import type * as research_records from "../research/records.js";
 import type * as screening_aggregates from "../screening/aggregates.js";
 import type * as screening_completion from "../screening/completion.js";
 import type * as screening_lifecycle from "../screening/lifecycle.js";
@@ -548,6 +549,7 @@ declare const fullApi: ApiFromModules<{
   "models/queries": typeof models_queries;
   "models/sync": typeof models_sync;
   organizationFeatures: typeof organizationFeatures;
+  "research/records": typeof research_records;
   "screening/aggregates": typeof screening_aggregates;
   "screening/completion": typeof screening_completion;
   "screening/lifecycle": typeof screening_lifecycle;

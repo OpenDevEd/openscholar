@@ -33,6 +33,8 @@ import { HistoryItem } from "./history-item";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
+import { useResearchStatus } from "@/lib/research/provider";
+import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 import posthog from "posthog-js";
 
@@ -75,8 +77,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     () => (excludeId ? allHistory.filter((item) => item.id !== excludeId) : allHistory),
     [allHistory, excludeId],
   );
-  // History and view settings are saved in the browser; wait for them rather than flash an empty list.
-  const listReady = usePersistedStoreReady(useSearchHistoryStore);
+  const { ready: listReady, error, retry } = useResearchStatus();
   const settingsReady = usePersistedStoreReady(useUIStore);
   const ready = listReady && settingsReady;
   const {
@@ -238,7 +239,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
 
   const list = (
     <div className="p-4 md:p-6">
-      {!ready ? <ListLoading label={tc("loading")} /> : <CommandCenterList
+      {!ready ? error ? <AuthStatePanel variant="sync_error_retry" onRetry={retry} /> : <ListLoading label={tc("loading")} /> : <CommandCenterList
         items={paginatedHistory}
         viewMode={historyViewMode}
         keyExtractor={(item) => item.id}

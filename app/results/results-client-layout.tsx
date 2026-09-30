@@ -1,7 +1,19 @@
 "use client";
 
-import React, { Suspense } from "react";
+import React, { Suspense, useContext } from "react";
+import { useParams } from "next/navigation";
 import { SearchProvider, SearchInitializer } from "@/lib/search";
+import { ResearchLoading } from "@/lib/research/provider";
+import { ResearchContext } from "@/lib/research/binding";
+import { useSearchHistoryStore } from "@/lib/store";
+
+function InitializeResults({ children }: { children: React.ReactNode }) {
+  const account = useContext(ResearchContext);
+  const { searchId } = useParams<{ searchId?: string }>();
+  const saved = useSearchHistoryStore(state => state.searchHistory.some(search => search.id === searchId));
+  // An existing account record owns its state. A stale URL must not overwrite it.
+  return account && saved ? children : <SearchInitializer>{children}</SearchInitializer>;
+}
 
 export function ResultsClientLayout({
   children,
@@ -16,11 +28,11 @@ export function ResultsClientLayout({
         </div>
       }
     >
-      <SearchInitializer>
+      <ResearchLoading><InitializeResults>
         <SearchProvider>
           {children}
         </SearchProvider>
-      </SearchInitializer>
+      </InitializeResults></ResearchLoading>
     </Suspense>
   );
 }

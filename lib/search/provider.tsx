@@ -4,11 +4,11 @@
  * SearchProvider - Single Source of Truth for Search State
  * 
  * This provider:
- * 1. Reads URL params via nuqs (the source of truth)
+ * 1. Reads account records for signed-in searches and URL params for local searches
  * 2. Provides a single SWR instance for data fetching
  * 3. Shares search state with all child components via context
  * 
- * NO useEffects for syncing - URL is truth, SWR handles caching.
+ * SWR handles result fetching and caching.
  */
 
 import { createContext, useContext, useMemo, useCallback, useEffect, useRef, type ReactNode } from 'react';
@@ -27,6 +27,8 @@ import { SearchError, rejectedQuery } from './search-error';
 import { OQL_FIELD } from '../openalex/oql';
 import { buildOpenAlexWorksQuery } from '../openalex/works-query';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
+import { ResearchContext } from '../research/binding';
+import { searchResultToParams } from '../search-params/converters';
 import { validateAndExpandKeywordsSilently } from '../keyword-validation';
 import type { SearchFilters, SearchField, PaperResult } from '../types';
 import type { SearchContextValue, SearchParams, SearchResultData, SetQueryOptions } from './types';
@@ -109,26 +111,28 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   const routeParams = useParams<{ searchId: string }>();
   const searchId = local?.searchId ?? routeParams?.searchId ?? '';
   
-  // Read URL params via nuqs - THIS IS THE SOURCE OF TRUTH
+  const account = useContext(ResearchContext);
   const [routeUrlParams, setRouteUrlParams] = useQueryStates(searchParamsParsers, {
     history: 'push',
     shallow: false,
   });
   // An OQL query can outgrow a URL, so an OQL search keeps it only in its history entry.
-  const storedQuery = useSearchHistoryStore(
-    (state) => state.searchHistory.find((entry) => entry.id === searchId)?.query ?? '',
+  const storedSearch = useSearchHistoryStore(
+    (state) => state.searchHistory.find((entry) => entry.id === searchId),
   );
-  const routeIsOql = routeUrlParams.field === OQL_FIELD;
+  const storedQuery = storedSearch?.query ?? '';
+  const savedParams = useMemo(() => account && storedSearch ? { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(storedSearch), q: storedQuery } : null, [account, storedSearch, storedQuery]);
+  const routeIsOql = (savedParams ?? routeUrlParams).field === OQL_FIELD;
   const routeSearchParams = useMemo(
-    () => (routeIsOql ? { ...routeUrlParams, q: storedQuery } : routeUrlParams),
-    [routeIsOql, routeUrlParams, storedQuery],
+    () => savedParams ?? (routeIsOql ? { ...routeUrlParams, q: storedQuery } : routeUrlParams),
+    [savedParams, routeIsOql, routeUrlParams, storedQuery],
   );
   const urlParams = local ? local.params : routeSearchParams;
   const onLocalParamsChange = local?.onParamsChange;
   const setUrlParams = useCallback(
     (updates: Partial<SearchParams>, options?: { scroll?: boolean }) => {
-      const fromOql = (local ? local.params.field : routeUrlParams.field) === OQL_FIELD;
-      const toOql = (updates.field ?? (local ? local.params.field : routeUrlParams.field)) === OQL_FIELD;
+      const fromOql = (local ? local.params.field : routeSearchParams.field) === OQL_FIELD;
+      const toOql = (updates.field ?? (local ? local.params.field : routeSearchParams.field)) === OQL_FIELD;
       // Switching between keywords and OQL without a query starts an empty one,
       // since neither reads the other. The old query stays in the query history.
       const switching = toOql !== fromOql;
@@ -144,7 +148,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
         options,
       );
     },
-    [onLocalParamsChange, setRouteUrlParams, routeUrlParams.field, local, searchId],
+    [onLocalParamsChange, setRouteUrlParams, routeSearchParams.field, local, searchId],
   );
 
   const currentParams = urlParams as SearchParams;
@@ -510,11 +514,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     // Skip history tracking when navigating through history (preview mode)
     if (searchId && q !== currentQuery && !options?.skipHistory) {
       addQueryToHistory(searchId, q, field as SearchField);
-    } else if (searchId && oqlInvolved) {
+    } else if (searchId && (oqlInvolved || account)) {
       // The URL does not carry an OQL query, so the entry must follow previews too.
       updateSearchResult(searchId, { query: q });
     }
-  }, [setUrlParams, searchId, getSearchResult, addQueryToHistory, local, routeIsOql, updateSearchResult, urlParams.field, syncToStore]);
+  }, [setUrlParams, searchId, getSearchResult, addQueryToHistory, local, routeIsOql, updateSearchResult, urlParams.field, syncToStore, account]);
   
   const setField = useCallback((field: SearchField) => {
     setUrlParams({ field });
@@ -612,6 +616,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     setUrlParams(updates as Partial<typeof urlParams>);
     // Convert URL param keys to store field names and sync
     const storeUpdates: Record<string, unknown> = {};
+    if ('q' in updates && account) storeUpdates.query = updates.q;
     if ('field' in updates) storeUpdates.field = updates.field;
     if ('sort' in updates) storeUpdates.sortBy = updates.sort;
     if ('yf' in updates || 'yt' in updates) {
@@ -657,7 +662,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     if (Object.keys(storeUpdates).length > 0) {
       syncToStore(storeUpdates);
     }
-  }, [setUrlParams, syncToStore, urlParams]);
+  }, [setUrlParams, syncToStore, urlParams, account]);
   
   // Reset filters to defaults
   const resetFilters = useCallback(() => {

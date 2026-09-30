@@ -47,8 +47,28 @@ import { authorContentFields } from "./authors/validators";
 import { topicNodeFields, metadataValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator } from "./aiModelConfig/validators";
+import { searchValidator, shortcutValidator, ratingValidator } from "../lib/research/records";
 
 export default defineSchema({
+  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: searchValidator, responseChunks: v.optional(v.array(v.id("researchResponseChunks"))) })
+    .index("by_user", ["userId"])
+    .index("by_user_and_createdAt", ["userId", "data.createdAt"])
+    .index("by_user_and_localId", ["userId", "localId"]),
+  searchRevisions: defineTable({
+    userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
+    author: v.union(v.literal("user"), v.literal("assistant")),
+    data: searchValidator, deleted: v.boolean(), createdAt: v.number(),
+    responseChunks: v.optional(v.array(v.id("researchResponseChunks"))),
+  }).index("by_search_and_revision", ["searchId", "revision"]),
+  researchResponseChunks: defineTable({ responses: searchValidator.fields.screeningResponses }),
+  queryShortcuts: defineTable({ userId: v.id("users"), data: shortcutValidator })
+    .index("by_user", ["userId"])
+    .index("by_user_and_shorthand", ["userId", "data.shorthand"]),
+  paperRatings: defineTable({ userId: v.id("users"), data: ratingValidator })
+    .index("by_user", ["userId"])
+    .index("by_user_and_paperId", ["userId", "data.paperId"]),
+  researchReceipts: defineTable({ userId: v.id("users"), key: v.string(), fingerprint: v.optional(v.string()) })
+    .index("by_user_and_key", ["userId", "key"]),
   topicCatalog: defineTable(topicNodeFields)
     .index("by_external_id", ["id"]).index("by_parent_and_name", ["parent", "name"])
     .searchIndex("search_text", { searchField: "searchText" }),

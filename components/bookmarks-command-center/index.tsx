@@ -21,6 +21,8 @@ import type { BookmarkSortBy } from "@/lib/types";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
+import { useResearchStatus } from "@/lib/research/provider";
+import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { CommandCenterFileActions, CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { CommandCenterList } from "@/components/command-center/command-center-list";
@@ -92,7 +94,7 @@ export function BookmarksCommandCenter() {
     importKeywords,
   } = useKeywordExpansionStore();
   // Bookmarks and view settings are saved in the browser; wait for them rather than flash an empty list.
-  const listReady = usePersistedStoreReady(useKeywordExpansionStore);
+  const { ready: listReady, error, retry } = useResearchStatus();
   const settingsReady = usePersistedStoreReady(useUIStore);
   const ready = listReady && settingsReady;
   const {
@@ -263,7 +265,7 @@ export function BookmarksCommandCenter() {
 
       {/* List */}
       <div className="p-4 md:p-6">
-        {!ready ? <ListLoading label={tc("loading")} /> : <CommandCenterList
+        {!ready ? error ? <AuthStatePanel variant="sync_error_retry" onRetry={retry} /> : <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={paginatedBookmarks}
           viewMode={bookmarkViewMode}
           keyExtractor={(bookmark) => bookmark.name}
