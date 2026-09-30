@@ -3,7 +3,7 @@
 
 import { ConvexReactClient, useConvexAuth, useMutation, type Preloaded } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
+import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { useLocale } from "next-intl";
 import { useTheme } from "next-themes";
 import {
@@ -11,10 +11,8 @@ import {
   type ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useRef,
-  useState,
+  useSyncExternalStore,
 } from "react";
 import { api } from "@/convex/_generated/api";
 import { PostHogIdentify } from "@/components/posthog-identify";
@@ -25,11 +23,10 @@ import {
 import { FeatureFlagProvider } from "@/lib/feature-flags/provider";
 import { BillingCatalogProvider } from "@/lib/billing/catalog-provider";
 import { ResearchStateProvider } from "@/lib/research/provider";
+import { UserSync } from "@/lib/auth/user-sync";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-const MAX_SYNC_RETRIES = 6;
-const BASE_RETRY_MS = 1000;
-const MAX_RETRY_MS = 30000;
+const noSubscription = () => () => {};
 
 export type AuthReadinessPhase =
   | "initializing"
@@ -92,114 +89,20 @@ export function useAuthReadiness() {
 }
 
 function AuthReadinessProvider({ children }: { children: ReactNode }) {
-  const { userId } = useAuth();
-  return <AccountReadinessProvider key={userId ?? "anonymous"}>{children}</AccountReadinessProvider>;
-}
-
-function AccountReadinessProvider({ children }: { children: ReactNode }) {
-  const { isLoaded, isSignedIn } = useAuth();
-  const { user } = useUser();
+  const { isLoaded, isSignedIn, userId, sessionId } = useAuth();
   const { isAuthenticated, isLoading } = useConvexAuth();
   const ensureUser = useMutation(api.users.mutations.ensureUser);
-  const hasSynced = useRef(false);
-  const syncInFlight = useRef(false);
-  const retryAttemptRef = useRef(0);
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [syncAttempt, setSyncAttempt] = useState(0);
-  const [syncState, setSyncState] = useState<"idle" | "syncing" | "synced" | "error">(
-    "idle",
+  const sessionKey = `${userId ?? "anonymous"}:${sessionId ?? "initializing"}`;
+  const sync = useMemo(
+    () => new UserSync(sessionKey, () => ensureUser({})),
+    [sessionKey, ensureUser],
   );
-
-  const clearRetryTimer = useCallback(() => {
-    if (retryTimerRef.current) {
-      clearTimeout(retryTimerRef.current);
-      retryTimerRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => {
-    return clearRetryTimer;
-  }, [clearRetryTimer]);
-
-  useEffect(() => {
-    const hasAuthSession = !isLoaded || Boolean(user) || Boolean(isSignedIn);
-
-    if (!isAuthenticated) {
-      if (hasAuthSession) {
-        return;
-      }
-
-      hasSynced.current = false;
-      syncInFlight.current = false;
-      retryAttemptRef.current = 0;
-      setSyncAttempt(0);
-      setSyncState("idle");
-      clearRetryTimer();
-      return;
-    }
-
-    if (hasSynced.current) {
-      if (syncState !== "synced") {
-        setSyncState("synced");
-      }
-      return;
-    }
-
-    if (syncState === "error") {
-      return;
-    }
-
-    if (isLoading || syncInFlight.current) {
-      if (syncState === "idle") {
-        setSyncState("syncing");
-      }
-      return;
-    }
-
-    syncInFlight.current = true;
-    setSyncState("syncing");
-    void ensureUser({})
-      .then(() => {
-        hasSynced.current = true;
-        retryAttemptRef.current = 0;
-        setSyncAttempt(0);
-        setSyncState("synced");
-        clearRetryTimer();
-      })
-      .catch((error) => {
-        hasSynced.current = false;
-        retryAttemptRef.current += 1;
-        const retryAttempt = retryAttemptRef.current;
-        if (retryAttempt > MAX_SYNC_RETRIES) {
-          console.error("[Auth] ensureUser sync failed; retry budget exhausted", error);
-          setSyncState("error");
-          clearRetryTimer();
-          return;
-        }
-        const delayMs = Math.min(
-          BASE_RETRY_MS * (2 ** (retryAttempt - 1)),
-          MAX_RETRY_MS,
-        );
-        console.error(`[Auth] ensureUser sync failed; retrying in ${delayMs}ms`, error);
-        clearRetryTimer();
-        retryTimerRef.current = setTimeout(() => {
-          setSyncAttempt((attempt) => attempt + 1);
-        }, delayMs);
-      })
-      .finally(() => {
-        syncInFlight.current = false;
-      });
-  }, [
-    clearRetryTimer,
-    ensureUser,
-    isAuthenticated,
-    isLoaded,
-    isLoading,
-    isSignedIn,
-    syncAttempt,
-    syncState,
-    user,
-  ]);
+  const canSync = Boolean(isLoaded && isSignedIn && userId && isAuthenticated && !isLoading);
+  const syncState = useSyncExternalStore(
+    canSync ? sync.subscribe : noSubscription,
+    sync.getSnapshot,
+    sync.getServerSnapshot,
+  );
 
   const phase: AuthReadinessPhase = useMemo(() => {
     if (isAuthenticated && syncState === "synced") {
@@ -218,14 +121,8 @@ function AccountReadinessProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, isLoaded, isLoading, isSignedIn, syncState]);
 
   const retryUserSync = useCallback(() => {
-    if (!isAuthenticated) return;
-    hasSynced.current = false;
-    syncInFlight.current = false;
-    retryAttemptRef.current = 0;
-    setSyncState("idle");
-    clearRetryTimer();
-    setSyncAttempt((attempt) => attempt + 1);
-  }, [clearRetryTimer, isAuthenticated]);
+    if (canSync) sync.retry();
+  }, [canSync, sync]);
 
   const contextValue = useMemo<AuthReadinessContextValue>(
     () => ({
