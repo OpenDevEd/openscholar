@@ -2,12 +2,10 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { setupAggregates } from "../extraction/aggregates.test-support";
 import { usableFor, type AiTask } from "../../lib/ai/tasks";
 
 async function setup() {
   const t = convexTest(schema);
-  setupAggregates(t);
   const model = (modelId: string, reasoningEfforts?: Array<"low" | "medium" | "high">, supportedParameters = ["structured_outputs"]) =>
     t.run((ctx) =>
       ctx.db.insert("models", {

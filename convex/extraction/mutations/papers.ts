@@ -9,7 +9,7 @@
  * idempotently.
  */
 
-import { internalMutation } from "../../_generated/server";
+import { internalMutation } from "../../lib/functions";
 import { v } from "convex/values";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { getFlag } from "../../featureFlags/guard";

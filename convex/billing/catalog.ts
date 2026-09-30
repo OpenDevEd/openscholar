@@ -10,7 +10,7 @@ import {
   query,
   type QueryCtx,
   type MutationCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { internal } from "../_generated/api";
 import { autumn, type AutumnFeature, type AutumnPlan } from "./autumn";
 import { billingCatalogValidator, type BillingCatalog, type CatalogPlan } from "./validators";

@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query, mutation } from "../_generated/server";
+import { query, mutation } from "../lib/functions";
 import schema from "../schema";
 import { requireProfileAccess } from "./access";
 

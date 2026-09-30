@@ -8,7 +8,6 @@ import { describe, expect, it, vi } from "vitest";
 import { internal, api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { setupAggregates } from "./aggregates.test-support";
 import { creditsAgg } from "./aggregates";
 
 const CLERK_ID = "clerk_job_costs";
@@ -57,7 +56,6 @@ const jobCost = (t: ReturnType<typeof convexTest>, jobId: Id<"extractionJobs">) 
 describe("job credit totals", () => {
   it("adds every settled charge against the job, counting a repeated charge once", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { userId, jobId } = await seedJob(t);
 
     expect(await charge(t, { userId, jobId, chargeId: "extraction:a", credits: 7 })).toBe(true);
@@ -69,7 +67,6 @@ describe("job credit totals", () => {
 
   it("clears the total when the job is deleted", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { userId, jobId } = await seedJob(t);
     await charge(t, { userId, jobId, chargeId: "extraction:a", credits: 7 });
 

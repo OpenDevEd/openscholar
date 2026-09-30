@@ -7,7 +7,7 @@
  */
 
 import { defineRateLimits } from "convex-helpers/server/rateLimit";
-import { internalMutation } from "../_generated/server";
+import { internalMutation } from "./functions";
 import { v } from "convex/values";
 
 const SECOND = 1000;

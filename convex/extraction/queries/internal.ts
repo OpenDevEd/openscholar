@@ -162,24 +162,6 @@ export const getPaperExtractionContext = internalQuery({
   },
 });
 
-/**
- * Plan-05 retry: load every `extractionResults` row for a job whose
- * status is "pending". Retained for internal retry/debug callers that
- * need to inspect reset rows after `retryFailedQuestions` runs.
- */
-export const getPendingResultsInternal = internalQuery({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.array(extractionResultValidator),
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("extractionResults")
-      .withIndex("by_job_status", (q) =>
-        q.eq("jobId", args.jobId).eq("status", "pending"),
-      )
-      .collect();
-  },
-});
-
 export const getJobProgressInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({

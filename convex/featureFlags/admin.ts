@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation } from "../_generated/server";
+import { mutation } from "../lib/functions";
 import { FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { requireAdmin } from "../admins/access";
 import { createError } from "../lib/errors";

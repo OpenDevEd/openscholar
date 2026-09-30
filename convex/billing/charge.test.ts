@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { setupAggregates } from "../extraction/aggregates.test-support";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "./billing.test-support";
 import { convertUsdToCredits } from "../../lib/pricing";
 
@@ -73,7 +72,6 @@ describe("settling a charge", () => {
   it("charges above the reservation, stopping at a zero balance", async () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.1)));
     const t = convexTest(schema);
-    setupAggregates(t);
     const { userId, jobId } = await seedChat(t, 1_000);
     await hold(userId, "chat:over", 200);
 
@@ -97,7 +95,6 @@ describe("settling a charge", () => {
   it("records the cache and reasoning tokens of the earlier steps and the stopped one", async () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.01)));
     const t = convexTest(schema);
-    setupAggregates(t);
     const { userId, jobId } = await seedChat(t, 1_000);
     await hold(userId, "chat:stopped", 200);
 
@@ -117,7 +114,6 @@ describe("settling a charge", () => {
   it("still charges once when the hold was released before the work finished", async () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.01)));
     const t = convexTest(schema);
-    setupAggregates(t);
     const { userId, jobId } = await seedChat(t, 1_000);
     await hold(userId, "chat:late", 200);
     await t.action(internal.billing.charge.releaseLock, { userId, chargeId: "chat:late", attempt: 0 });
@@ -142,7 +138,6 @@ describe("settling a charge", () => {
   it("retries a settle that failed and charges it once", async () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.01)));
     const t = convexTest(schema);
-    setupAggregates(t);
     const { userId, jobId } = await seedChat(t, 1_000);
     await hold(userId, "chat:retry", 200);
     fakeAutumn.failNextTrack = true;

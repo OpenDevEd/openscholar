@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "../_generated/server";
+import { mutation, query } from "../lib/functions";
 import { requireAdmin } from "../admins/access";
 import { activeModels, MAX_CATALOG_MODELS } from "./catalog";
 

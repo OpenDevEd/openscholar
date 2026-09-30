@@ -6,6 +6,8 @@ import type { MutationCtx } from "../convex/_generated/server";
 // Mock _generated/server so mutation() returns the definition object directly,
 // giving us access to the .handler function
 vi.mock("../convex/_generated/server", () => createMockMutationDef());
+// The app's builders wrap mutations with the database triggers; these tests call handlers directly.
+vi.mock("../convex/lib/functions", () => createMockMutationDef());
 
 // Mock createUserWithDefaults and ensureBillingAccount to track calls
 vi.mock("../convex/lib/userCreation", () => ({

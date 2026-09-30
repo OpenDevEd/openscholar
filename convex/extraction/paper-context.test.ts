@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { setupAggregates } from "./aggregates.test-support";
 
 async function seedPaperContextFixture(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
@@ -91,7 +90,6 @@ async function seedPaperContextFixture(t: ReturnType<typeof convexTest>) {
 describe("paper extraction context", () => {
   it("loads the stable per-paper extraction state in one internal query", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const ids = await seedPaperContextFixture(t);
 
     const context = await t.query(

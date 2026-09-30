@@ -12,7 +12,6 @@ import { startAbortPoller } from "../../lib/chat/abort-poller";
 import { STOP_ABORT_POLL_INTERVAL_MS } from "./messages";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import { convertUsdToCredits, creditsForUsage } from "../../lib/pricing";
-import { setupAggregates } from "../extraction/aggregates.test-support";
 import { parseChatError } from "../../lib/errors/taxonomy";
 
 // Capture the composed abortSignal the library hands to doStream so
@@ -415,7 +414,6 @@ function createTestConvex() {
   const t = convexTest(schema);
   registerAgentComponent(t);
   // Settled chat charges add to the job's credit total.
-  setupAggregates(t);
   return t;
 }
 

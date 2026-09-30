@@ -6,18 +6,16 @@
  * "M permanent (breakdown)" affordance. Returns zeros for an unowned
  * job — caller-safe (same pattern as queries/costs.ts).
  *
- * The summarization itself is pure (`lib/extraction/retry-summary.ts`);
- * this query just assembles inputs from extractionResults.
+ * It reads the job's result counters (`../resultCounts.ts`), kept by a
+ * trigger on every write, so it stays a few reads however large the job
+ * is (#351). The summarization itself is pure (`lib/extraction/retry-summary.ts`).
  */
 
 import { query } from "../../_generated/server";
 import { v } from "convex/values";
 import { resolveOwnedJob } from "../access";
-import { loadResultsByJob } from "./_shared";
-import {
-  summarizeRetryable,
-  type RetryableResultInput,
-} from "../../../lib/extraction/retry-summary";
+import { summarizeRetryable } from "../../../lib/extraction/retry-summary";
+import { readResultCounts } from "../resultCounts";
 
 export const getRetryableSummary = query({
   args: { jobId: v.id("extractionJobs") },
@@ -32,13 +30,6 @@ export const getRetryableSummary = query({
       return { retryableCount: 0, permanentCount: 0, permanentBreakdown: {} };
     }
 
-    const resultsByPaper = await loadResultsByJob(ctx, jobId);
-    const inputs: RetryableResultInput[] = [];
-    for (const rows of resultsByPaper.values()) {
-      for (const r of rows) {
-        inputs.push({ status: r.status, lastError: r.lastError });
-      }
-    }
-    return summarizeRetryable(inputs);
+    return summarizeRetryable(await readResultCounts(ctx, jobId));
   },
 });

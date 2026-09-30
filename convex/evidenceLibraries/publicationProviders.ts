@@ -6,7 +6,7 @@ import {
   internalMutation,
   type QueryCtx,
   type MutationCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import type { Id } from "../_generated/dataModel";
 import { requireEvidenceLibraryAccess } from "./access";
 import { requireNoRunningOperation } from "./aiProviderKey";

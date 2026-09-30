@@ -2,12 +2,14 @@
 // Each flow that is fixed to fit adds its case here.
 import { convexTest } from "convex-test";
 import { getDocumentSize } from "convex/values";
-import { describe, expect, it } from "vitest";
-import { api } from "../_generated/api";
+import { describe, expect, it, vi } from "vitest";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { readEveryResultsPage } from "../../lib/extraction/export";
 import { RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
 import { MAX_SIZE, seedAccount, seedExtractionJob, seedLibrary } from "../lib/maxSize.test-support";
+import { seedCreditsForTest } from "../billing/billing.test-support";
+import { setupExtractionPaperWorkpool } from "../extraction/queue/workpool.test-support";
 
 const filters = { searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [] };
 
@@ -34,6 +36,44 @@ describe("at the largest sizes the product allows", () => {
     expect(papers).toHaveLength(MAX_SIZE.papersPerJob);
     expect(papers.every((paper) => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
   }, 300_000);
+
+  it("a 1,000-paper, 50-question extraction job shows its progress and retry summaries", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    const { jobId } = await seedExtractionJob(t, userId);
+    const results = MAX_SIZE.papersPerJob * MAX_SIZE.questionsPerJob;
+    expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ answeredTotal: results, totalQuestions: results });
+    expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toEqual({ retryableCount: 0, permanentCount: 0, permanentBreakdown: {} });
+  }, 300_000);
+
+  // A retry batch's work is 25 papers × their questions whatever the job's size, so 100
+  // papers with the most questions test the largest batch; more papers only add batches.
+  it("a 50-question job whose every result failed retries in batches", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      setupExtractionPaperWorkpool(t);
+      const { userId, as } = await seedAccount(t);
+      await t.run((ctx) => seedCreditsForTest(ctx, { userId, paid: 10_000_000 }));
+      const { jobId } = await seedExtractionJob(t, userId, { papers: 100, failed: true });
+      await t.run((ctx) => ctx.db.patch("extractionJobs", jobId, { status: "failed" }));
+      const results = 100 * MAX_SIZE.questionsPerJob;
+      expect(await as.mutation(api.extraction.mutations.retry.retryFailedQuestions, { jobId })).toMatchObject({ retryableCount: results });
+      // Each scheduled batch runs as its own transaction, within Convex's limits.
+      for (const done = new Set<string>(); ;) {
+        const next = await t.run(async (ctx) => (await ctx.db.system.query("_scheduled_functions").collect()).find((fn) => fn.name.includes("resetRetryBatch") && !done.has(fn._id)));
+        if (!next) break;
+        done.add(next._id);
+        await t.mutation(internal.extraction.mutations.retry.resetRetryBatch, next.args[0] as never);
+      }
+      expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toMatchObject({ retryableCount: 0 });
+      const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
+      expect(job).toMatchObject({ status: "extracting", runEpoch: 1 });
+      expect(job?.retryReset).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 120_000);
 
   it("a 10,000-paper library browses page by page", async () => {
     const t = convexTest(schema);

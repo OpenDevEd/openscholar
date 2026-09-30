@@ -1,6 +1,6 @@
 import { v, type Infer } from "convex/values";
 import { validate } from "convex-helpers/validators";
-import { httpAction, internalMutation, query } from "../_generated/server";
+import { httpAction, internalMutation, query } from "../lib/functions";
 import { internal } from "../_generated/api";
 import { createError, readConvexErrorData } from "../lib/errors";
 import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";

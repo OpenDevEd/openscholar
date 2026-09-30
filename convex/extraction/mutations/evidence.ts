@@ -5,7 +5,7 @@
  * MAX_EVIDENCE_UNITS_PER_PAPER cardinality bound is enforced.
  */
 
-import { internalMutation } from "../../_generated/server";
+import { internalMutation } from "../../lib/functions";
 import { v } from "convex/values";
 import { MAX_EVIDENCE_UNITS_PER_PAPER } from "../../lib/queryBounds";
 

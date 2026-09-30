@@ -8,7 +8,6 @@ import {
   recordQualifiedResult,
   recordTerminalResult,
 } from "./aggregates";
-import { setupScreeningAggregates } from "./aggregates.test-support";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
@@ -498,7 +497,6 @@ describe("persistQualifiedScreeningResult", () => {
 describe("finalizeScreeningJobFromAggregates", () => {
   it("finalizes from aggregate counts only", async () => {
     const t = convexTest(schema);
-    setupScreeningAggregates(t);
     setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_finalize");
     const job = await seedScreeningJob(t, user._id, "processing");
@@ -552,7 +550,6 @@ describe("handleScreeningComplete", () => {
     vi.useFakeTimers();
     try {
       const t = convexTest(schema);
-      setupScreeningAggregates(t);
       const user = await seedUser(t, "clerk_complete_success");
       const collection = await seedCollection(t, user._id);
       const job = await seedScreeningJob(t, user._id, "processing");
@@ -647,7 +644,6 @@ describe("handleScreeningComplete", () => {
     vi.useFakeTimers();
     try {
       const t = convexTest(schema);
-      setupScreeningAggregates(t);
       const user = await seedUser(t, "clerk_complete_failed");
       const job = await seedScreeningJob(t, user._id, "processing");
 
@@ -703,7 +699,6 @@ describe("handleScreeningComplete", () => {
       vi.useFakeTimers();
       try {
         const t = convexTest(schema);
-        setupScreeningAggregates(t);
         const user = await seedUser(t, `clerk_${status}`);
         const job = await seedScreeningJob(t, user._id, status);
         const result = await seedScreeningResult(t, job._id, {
