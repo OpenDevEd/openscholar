@@ -46,6 +46,9 @@ export async function currentAnswers(ctx: Read, screeningId: Id<"screenings">): 
 /**
  * The answers at each of `versions`, rebuilt from one pass over the history, so a page of
  * revisions reads the history once.
+ * ponytail: the pass reads every change up to the newest version asked for, so a screening
+ * with about 30,000 answer changes over its life reaches a query's read limit. Undo (#342)
+ * restores revisions and brings checkpoints or a paged restore.
  */
 export async function answersAtVersions(ctx: Read, screeningId: Id<"screenings">, versions: number[]): Promise<Map<number, Responses>> {
   const result = new Map<number, Responses>();
