@@ -1,4 +1,4 @@
-import { mutation, query, internalMutation } from "../_generated/server";
+import { mutation, query } from "../_generated/server";
 import { v } from "convex/values";
 import schema from "../schema";
 import { requireAuth } from "../lib/auth";
@@ -26,6 +26,7 @@ export const createCollection = mutation({
     return await ctx.db.insert("collections", {
       userId: user._id,
       name: trimmed,
+      itemCount: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -78,29 +79,6 @@ export const deleteCollection = mutation({
     }
     await ctx.db.delete("collections", args.collectionId);
     return null;
-  },
-});
-
-export const backfillCollectionCounts = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    // Cardinality: small total collection count across all users
-    const collections = await ctx.db.query("collections").collect();
-    let backfilled = 0;
-
-    for (const collection of collections) {
-      if (collection.itemCount !== undefined) continue;
-
-      const memberships = await ctx.db
-        .query("libraryItemCollections")
-        .withIndex("by_collection", (q) => q.eq("collectionId", collection._id))
-        .collect();
-
-      await ctx.db.patch("collections", collection._id, { itemCount: memberships.length });
-      backfilled++;
-    }
-
-    console.log(`Backfilled itemCount for ${backfilled} collections`);
   },
 });
 
@@ -188,7 +166,7 @@ export const removeFromCollection = mutation({
 
 export const getCollectionsWithCounts = query({
   args: {},
-  returns: v.array(v.object({ ...schema.doc("collections").fields, itemCount: v.number() })),
+  returns: v.array(schema.doc("collections")),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
 
@@ -198,14 +176,8 @@ export const getCollectionsWithCounts = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    // Read denormalized counter (fallback to 0 for unbackfilled)
-    const result = collections.map((collection) => ({
-      ...collection,
-      itemCount: collection.itemCount ?? 0,
-    }));
-
     // Sort alphabetically by name (case-insensitive)
-    return result.sort((a, b) => a.name.localeCompare(b.name));
+    return collections.sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 

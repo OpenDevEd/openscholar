@@ -12,7 +12,7 @@ async function touchCollection(
   countChange: 1 | -1,
 ) {
   await ctx.db.patch("collections", collection._id, {
-    itemCount: Math.max(0, (collection.itemCount ?? 0) + countChange),
+    itemCount: Math.max(0, collection.itemCount + countChange),
     membershipRevision: (collection.membershipRevision ?? 0) + 1,
   });
 }

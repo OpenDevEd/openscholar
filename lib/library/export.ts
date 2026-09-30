@@ -1,6 +1,19 @@
 import { downloadAsFile, jsonToCSV } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
 
+/** Every item of a paged library view, one page per query, so an export of any size fits (#352). */
+export async function readEveryLibraryPage<Item>(
+  readPage: (cursor: string | null) => Promise<{ page: Item[]; isDone: boolean; continueCursor: string }>,
+): Promise<Item[]> {
+  const items: Item[] = [];
+  for (let cursor: string | null = null; ;) {
+    const result = await readPage(cursor);
+    items.push(...result.page);
+    if (result.isDone) return items;
+    cursor = result.continueCursor;
+  }
+}
+
 interface LibraryExportItem {
   [key: string]: string | number | boolean;
   title: string;

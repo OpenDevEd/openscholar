@@ -23,6 +23,8 @@ interface LibraryCommandCenterProps {
   onSearchChange: (value: string) => void;
   totalCount?: number;
   filteredCount?: number;
+  /** The filtered count stopped before the end, so it's shown as "1,000+". */
+  filteredCountIsAtLeast?: boolean;
   activeFilterLabels: string[];
   viewMode: LibraryViewMode;
   onViewModeChange: (mode: LibraryViewMode) => void;
@@ -36,6 +38,7 @@ export function LibraryCommandCenter({
   onSearchChange,
   totalCount,
   filteredCount,
+  filteredCountIsAtLeast = false,
   activeFilterLabels,
   viewMode,
   onViewModeChange,
@@ -57,6 +60,7 @@ export function LibraryCommandCenter({
                   <>
                     <AnimatedCount
                       value={filteredCount}
+                      atLeast={filteredCountIsAtLeast}
                       className="text-lg font-semibold text-foreground"
                     />
                     <span className="text-muted-foreground">/ {totalCount} {tc("results")}</span>
