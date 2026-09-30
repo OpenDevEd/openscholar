@@ -284,29 +284,26 @@ export function ApprovalCard({
         ) : null}
       </div>
       {ask.queue ? (
-        <div className="mx-4 mb-3 flex items-center gap-3 rounded-xl bg-background/70 px-3 py-2.5">
-          <Hourglass className="size-4 shrink-0 text-muted-foreground" />
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <p className="text-xs font-medium">Starts after your other screening</p>
-            {/* The screening it waits for, with how far it has got. */}
-            <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
-              <KindTile kind="screening" size="sm" />
-              <span className="min-w-0 truncate">{OTHER_SCREENING.chat}</span>
-              <span className="h-1 w-10 shrink-0 overflow-hidden rounded-full bg-foreground/10">
-                <span
-                  className="block h-full rounded-full"
-                  style={{ width: `${(OTHER_SCREENING.start / OTHER_SCREENING.total) * 100}%`, backgroundColor: KIND.screening!.tint }}
-                />
-              </span>
-              <span className="shrink-0 tabular-nums">
-                {OTHER_SCREENING.start}/{OTHER_SCREENING.total}
-              </span>
-            </div>
+        // One left edge: what happens, which screening it waits for, and how far that one has got.
+        <div className="mx-4 mb-3 space-y-1.5 rounded-xl bg-background/70 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <span className="font-medium">Waits for your other screening</span>
+            <Link href="/settings/billing" className="shrink-0 font-medium text-primary hover:underline">
+              See plans
+            </Link>
           </div>
-
-          <Link href="/settings/billing" className="shrink-0 text-xs font-medium text-primary hover:underline">
-            See plans
-          </Link>
+          <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+            <span className="min-w-0 truncate">{OTHER_SCREENING.chat}</span>
+            <span className="shrink-0 tabular-nums">
+              {OTHER_SCREENING.start} of {OTHER_SCREENING.total}
+            </span>
+          </div>
+          <div className="h-1 overflow-hidden rounded-full bg-foreground/10">
+            <span
+              className="block h-full rounded-full"
+              style={{ width: `${(OTHER_SCREENING.start / OTHER_SCREENING.total) * 100}%`, backgroundColor: KIND.screening!.tint }}
+            />
+          </div>
         </div>
       ) : null}
       {ask.credits ? (
