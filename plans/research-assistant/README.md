@@ -1,7 +1,9 @@
 # Research assistant that can do everything a user can
 
-Milestone: OS-17, issues OpenDevEd/openalex-count#321–#329. Workflow rules
-live in the root `AGENTS.md` and `docs/agents/project.md`.
+Milestone: OS-17, issues OpenDevEd/openalex-count#321–#329, #334–#336, #341 and
+#342. Supporting issues in other milestones: #51 and #343 (OS-12), #337, #339
+and #344 (OS-14), #338 (OS-13), and OpenDevEd/new-el#465 (EL-16). Workflow
+rules live in the root `AGENTS.md` and `docs/agents/project.md`.
 
 ## Problem
 
@@ -70,8 +72,16 @@ everything a user can, calling the same actions as the UI:
    that task becomes a feature. The job is the showpiece: a live card in the
    thread with progress, credits and results, and a short readout when it
    finishes.
-10. **Build on Convex agent and AI SDK 7.** See "Tools considered" for why
-    the other frameworks were not adopted.
+11. **Every request ends in a result.** When a tool can't give a person what
+    they'd reasonably expect from a request, the tool changes; the assistant
+    never stops at a limitation an issue here could remove. That means jobs
+    take sets of papers by ID and resolve them on the server (#341), every
+    reversible change returns the command that reverses it (#342), a job over
+    a plan limit waits in a queue instead of being refused (#335), and a
+    finished job wakes the chat so the assistant carries on (#328), including
+    settling unclear screening answers itself. Numbers the assistant shows
+    come from the real estimators and job results. Added on 2026-09-30, after
+    checking every step of the mock against the code.
 
 ## Decision changes
 
@@ -136,13 +146,22 @@ generated from the entry. The CI check lists `convex/` public functions
 against the registry and a reasoned exempt list, such as auth plumbing and
 webhooks.
 
-### Records (#322)
+### Records (#322, built in PR #332)
 
 - `searches`: owner, query, field, filters with the `SearchResult` filter
-  shape, sort, last page, query and question history, screening questions and
-  responses.
+  shape, sort, last page, query and question history, and screening
+  questions. Screening answers are stored in chunks inside the search today;
+  #334 moves them to their own table first, because changing one answer
+  stores every response of the search again.
 - `searchRevisions`: every change, recording whether a user or the assistant
-  made it. Undo applies a revision.
+  made it. Undo restores a revision through a restore command (#342).
+- Every change goes through `applyCommand(ctx, userId, command, author)` in
+  `convex/research/records.ts`, with a receipt per request so a retried tool
+  call applies once. Assistant tools call it directly with
+  `author: "assistant"`. The read queries still check the browser's account;
+  #323 gives them user-ID cores.
+- Searches and collections get a text search index for account search
+  (#327). Saved papers already have one.
 - `queryShortcuts`: today's Bookmarks page.
 - `paperRatings`.
 
@@ -187,27 +206,81 @@ Each message carries the route, the IDs on screen, the page, the selection
 and the open panel. The same view goes to presence, so shared chats see each
 other's context.
 
-### Jobs (#328)
 
-Start through the registry after approval. The tool returns the job ID at
-once. A live card renders from the job's own queries. Completion adds a
-thread event, and the assistant writes a readout.
+### Paper sets (#341)
+
+Screening, extraction and collection changes take a paper set instead of
+paper objects from the browser: a saved search, a collection, saved papers, a
+screening's included or unclear papers, or a list of IDs. One resolver on the
+server turns it into papers. A saved search maps its fields to the parameters
+`buildOpenAlexWorksQuery` takes, the builder the results page and extraction
+already share, so it returns the same papers as its results page. The resolver
+removes duplicates with #51's check (DOI, then normalized title and year,
+across different OpenAlex IDs) and applies the job's paper limit.
+
+### Screening record (#334)
+
+One table holds every screening answer: one row per search or collection and
+paper, with each question's answer, Jev's confidence and who set it (the
+model, a person or the assistant). The results page, Screen all and the
+assistant read and write it. When a job finishes, the assistant checks the
+papers whose unclear answers decide whether they're in, settles what it can
+through the same action a person uses, and offers undo (#328). There is no
+separate review screen.
+
+### Undo (#342)
+
+A reversible action's registry entry returns the command that reverses it,
+and the assistant keeps it on the step that made the change: a search revision
+to restore, the exact papers a collection change added or removed, the draft
+section rows it replaced, the answers it settled. When someone else has
+changed the record since, undo says so instead of overwriting them.
+
+### Evidence Library homepage (#329, OpenDevEd/new-el#465)
+
+Homepage text is `home.intro`, plus `identity.tagline` and
+`identity.description` for page titles and search results. Featuring an
+OpenScholar collection connects it as a source and places it in the
+Collections section's order. new-el#465 makes each connected OpenScholar
+collection a library collection with a key derived from its ID, and lets the
+order name one whose first import hasn't run yet. Publishing reports the
+operation's stages (queued, assembling, validating, publishing, activating)
+and its failure reason.
+
+## Requests and what they need
+
+| A person asks | They expect | Changes that make it work |
+|---|---|---|
+| Tighten this search | Versions tried with their counts, the best applied, undo | #336, #343, #342 |
+| Screen them | The whole search screened, duplicates caught, unclear papers settled, results on the search page | #334, #341, #51, #335, #328 |
+| Save the included ones to a collection | Works after the screening, without picking a collection first, undoable | #341, #342 |
+| Compare their designs and samples | A table, an answer built from it, follow-up fields without starting over | #341, #344, #337, #339 |
+| Feature them on our library's homepage | The collection first on the homepage, with text written, as a draft | #329, new-el#465 |
+| Publish it | Progress in the real stages, a plain failure reason, retry | #329 |
 
 ## Scope and order
 
 | Step | Issue | Depends on |
 |---|---|---|
-| 1 | #321 AI SDK 7 and agent 0.7 | none |
-| 2 | #322 Searches, shortcuts and ratings in Convex | none |
+| 1 | #321 AI SDK 7 and agent 0.7 (done, PR #331) | none |
+| 2 | #322 Searches, shortcuts and ratings in Convex (done, PR #332) | none |
 | 3 | #323 Action registry and CI gate | none |
-| 4 | #324 Assistant threads and sharing | #321, #323 |
-| 5 | #325 Extraction only, chat from a search | #322, #324 |
-| 6 | #326 Context budget | #324 |
-| 7 | #327 Tools for searches, shortcuts, collections, saved papers, ratings, view, account search and the @ picker | #322, #323, #326 |
-| 8 | #328 Screening and extraction with approval and job cards | #327 |
-| 9 | #329 Evidence Library drafts | #327 |
+| 4 | #334 Screening record; its first step, the answers table, can start now | #322; paper sets from #341 |
+| 5 | #341 Paper sets by ID | #323, #51 |
+| 6 | #342 Undo for every reversible change | #323 |
+| 7 | #324 Assistant threads and sharing | #321, #323 |
+| 8 | #325 Extraction only, chat from a search | #322, #324 |
+| 9 | #326 Context budget | #324 |
+| 10 | #327 Tools for searches, shortcuts, collections, saved papers, ratings, view, account search and the @ picker | #322, #323, #326, #342 |
+| 11 | #335 Screening limits per plan, with a queue | #334 |
+| 12 | #328 Screening and extraction with approval and job cards | #327, #334, #335, #341 |
+| 13 | #329 Evidence Library drafts, homepage and publishing | #327, new-el#465 |
 
-Steps 1–3 can run in parallel.
+Steps 3 and 4 can start at once. These have no dependency on the steps above
+and can run in parallel: #336 (query count check), #337 and #339 (extraction
+calls and quotes), #343 (Sub-Saharan Africa), #344 (fields added to a job),
+#51 (duplicates across OpenAlex IDs) and new-el#465. #338 (agreement with
+people) follows #334.
 
 Later, without issues yet:
 
@@ -215,7 +288,7 @@ Later, without issues yet:
   assistant, and exported to PDF through Typst;
 - an MCP server over the registry;
 - features built as the assistant needs them: findings (#60), full text (#57),
-  deduplication, clustering, and repeatable citation chasing.
+  clustering, and repeatable citation chasing.
 
 ## Data migration
 
@@ -225,7 +298,10 @@ Later, without issues yet:
 - Production (`main`) has no chat. Shared dev's chat jobs (6 on 2026-09-30),
   `chatPapers`, `chatSourceEvents` and chat-mode fields are development data.
   They're deleted with #325, not migrated.
-- New tables need no migration.
+- Screening answers saved on searches are user data. #334 moves them, with
+  their chunks, into the answers table, verifies the move, and only then
+  deletes the chunk storage.
+
 
 ## Checks
 
@@ -234,8 +310,10 @@ Later, without issues yet:
 - #322: import from a real exported local store, run twice, with no
   duplicates.
 - #323: the CI gate fails on a deliberately unregistered public mutation.
-- #326: a scripted thread of several hundred turns with many tool calls stays
-  under budget and still answers from early decisions.
+- #334: the answers migration on a copy of shared dev's searches loses no
+  answer, and changing one answer writes one row.
+- #341: saved searches with filters, OQL and sorting resolve to the same
+  papers, in the same order, as their results pages.
 - #327 and #328: an eval set of scripted tasks checks tool choice, arguments,
   credits spent and outcome. For example: search for primary-school RCTs,
   save 50 to a new collection, screen them.
@@ -249,7 +327,9 @@ Later, without issues yet:
 - The assistant covers every registered action.
 - Extraction has no chat code.
 - History, shortcuts and ratings are server records for signed-in users.
-- The eval set passes on shared dev.
+
+- Every eval task ends with a result. No step stops at a limitation that one
+  of these issues removes.
 
 ## Risks
 
@@ -262,5 +342,6 @@ Later, without issues yet:
   running cost is shown.
 - **Registry coverage.** The exempt list must shrink over time. A permanent
   exempt entry needs a stated reason.
-- **Upgrade breakage.** The AI SDK 7 upgrade touches every AI call. #321
-  lands on its own, before assistant work.
+
+- **Work across repositories.** Featuring a collection needs new-el#465
+  released to the library before #329 can ship it.
