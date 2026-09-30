@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { FileSpreadsheet, FileJson, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +41,17 @@ export function ExportDialog({
   const tc = useTranslations("common");
   const toast = useAppToast();
   const [isLoading, setIsLoading] = useState(false);
+  // Each export gets a number; closing the dialog moves it on, so a canceled export's
+  // papers, arriving later, are dropped instead of downloaded.
+  const exportRun = useRef(0);
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
+      exportRun.current++;
+      setIsLoading(false);
+    }
+    onOpenChange(next);
+  };
 
   const [format, setFormat] = useState<"csv" | "json" | "excel">("csv");
   const [includeMetadata, setIncludeMetadata] = useState(true);
@@ -58,9 +69,11 @@ export function ExportDialog({
       includeCitations,
     };
 
+    const run = ++exportRun.current;
     setIsLoading(true);
     try {
       const papers = await loadPapers();
+      if (run !== exportRun.current) return;
       if (format === "csv") {
         exportToCSV(papers, questions, options);
       } else if (format === "json") {
@@ -68,12 +81,13 @@ export function ExportDialog({
       } else {
         await exportToExcel(papers, questions, options);
       }
-      onOpenChange(false);
+      handleOpenChange(false);
     } catch (error) {
+      if (run !== exportRun.current) return;
       console.error("[Extraction] Failed to export results:", error);
       toast.io.downloadFailed(t(`${format}Label`));
     } finally {
-      setIsLoading(false);
+      if (run === exportRun.current) setIsLoading(false);
     }
   };
 
@@ -81,7 +95,7 @@ export function ExportDialog({
     label ?? tc("paperCount", { count: paperCount });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{t("exportResults")}</DialogTitle>
@@ -199,7 +213,7 @@ export function ExportDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
             {tc("cancel")}
           </Button>
           <Button disabled={isLoading || paperCount === 0} onClick={handleExport}>

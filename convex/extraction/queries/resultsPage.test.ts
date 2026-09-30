@@ -290,4 +290,28 @@ describe("getJobResultsPage", () => {
     expect(whole.totalFiltered).toBeGreaterThan(7);
     expect(exported.map((paper) => paper._id)).toEqual(whole.items.map((paper) => paper._id));
   });
+
+  it("is read again from the start when a paper moves between pages mid-export", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithProjectionCorpus(t);
+    const auth = t.withIdentity(OWNER_IDENTITY);
+    const view = { filters: DEFAULT_FILTERS, sortBy: "confidence-high" as const, pageSize: 20 };
+    const firstPage = await getResultsPage(auth, jobId, view);
+    if (firstPage.status !== "ok") throw new Error("unreachable");
+
+    let moved = false;
+    const exported = await readEveryResultsPage(async (page) => {
+      if (page === 2 && !moved) {
+        // The last paper of page 1 drops to the bottom, pulling one from page 2 up.
+        moved = true;
+        await t.run((ctx) => ctx.db.patch(firstPage.items.at(-1)!._id, { avgConfidence: 0 }));
+      }
+      return getResultsPage(auth, jobId, { ...view, page });
+    });
+
+    const ids = exported.map((paper) => paper._id);
+    expect(moved).toBe(true);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toHaveLength(firstPage.totalFiltered);
+  });
 });

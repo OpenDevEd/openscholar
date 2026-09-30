@@ -35,6 +35,9 @@ describe("at the largest sizes the product allows", () => {
     const papers = await readEveryResultsPage((page) => as.query(api.extraction.queries.getJobResultsPage, { jobId, page, pageSize: RESULTS_PAGE_SIZE_MAX, filters, sortBy: "default" }));
     expect(papers).toHaveLength(MAX_SIZE.papersPerJob);
     expect(papers.every((paper) => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
+    // A search reads only its matches, so its largest page fits too.
+    const searched = await readEveryResultsPage((page) => as.query(api.extraction.queries.getJobResultsPage, { jobId, page, pageSize: RESULTS_PAGE_SIZE_MAX, filters: { ...filters, searchQuery: "tutoring" }, sortBy: "default" }));
+    expect(searched.length).toBeGreaterThan(RESULTS_PAGE_SIZE_MAX);
   }, 300_000);
 
   it("a 1,000-paper, 50-question extraction job shows its progress and retry summaries", async () => {

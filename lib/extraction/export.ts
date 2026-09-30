@@ -1,20 +1,41 @@
 import type { PaperWithResults, Question } from './filtering';
 
+type ResultsPage<Item> = { status: string; page: number; totalPages: number; totalFiltered: number; items: Item[] };
+
 /**
  * Every paper of a results view, read one page per query so an export of any size stays
- * within Convex's per-query limits (#352).
+ * within Convex's per-query limits (#352). Pages are separate reads, so a paper whose
+ * sort position or filter match changes mid-walk would be read twice or missed: the walk
+ * starts again when the view's total changes or a paper comes back twice, and gives up
+ * after `attempts` walks.
  */
-export async function readEveryResultsPage<Item>(
-  readPage: (page: number) => Promise<{ status: string; page: number; totalPages: number; items: Item[] }>,
+export async function readEveryResultsPage<Item extends { _id: string }>(
+  readPage: (page: number) => Promise<ResultsPage<Item>>,
+  attempts = 3,
 ): Promise<Item[]> {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const items = await walkResultsPages(readPage);
+    if (items) return items;
+  }
+  throw new Error("The results kept changing while they were exported");
+}
+
+/** One walk over every page, or null when the view changed during it. */
+async function walkResultsPages<Item extends { _id: string }>(readPage: (page: number) => Promise<ResultsPage<Item>>) {
   const items: Item[] = [];
+  const seen = new Set<string>();
+  let total: number | undefined;
   for (let page = 1; ; page++) {
     const result = await readPage(page);
     if (result.status !== "ok") throw new Error(`Results unavailable: ${result.status}`);
-    // A page past the end, after papers were filtered out meanwhile, comes back as the last page again.
-    if (result.page !== page) return items;
-    items.push(...result.items);
-    if (page >= result.totalPages) return items;
+    total ??= result.totalFiltered;
+    if (result.totalFiltered !== total) return null;
+    for (const item of result.items) {
+      if (seen.has(item._id)) return null;
+      seen.add(item._id);
+      items.push(item);
+    }
+    if (page >= result.totalPages) return items.length === total ? items : null;
   }
 }
 

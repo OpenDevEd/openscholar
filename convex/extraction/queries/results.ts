@@ -175,33 +175,36 @@ function matchesProjectionFilters(
 async function readFilteredJobPapers(
   ctx: QueryCtx,
   args: {
-    jobId: Id<"extractionJobs">;
+    job: Doc<"extractionJobs">;
     filters: NormalizedResultsFilters;
     sortBy: ResultsSortBy;
     limit: number;
   },
 ) {
-  const allPapers = await ctx.db
-    .query("extractionPapers")
-    .withIndex("by_job_processable", (q) =>
-      q.eq("jobId", args.jobId).eq("processable", true),
-    )
-    .order("asc")
-    .take(args.limit);
-
-  assertProjectionReady(args.jobId, allPapers);
-
-  const candidatePapers = args.filters.searchQuery
+  const jobId = args.job._id;
+  // A search reads only its matches: reading every paper as well would take a
+  // 1,000-paper job's page of 200 past the 16 MiB a query may read. The job's
+  // processable paper count, set when its papers were saved, stands in for the total.
+  const searched = Boolean(args.filters.searchQuery);
+  const candidatePapers = searched
     ? await ctx.db
         .query("extractionPapers")
         .withSearchIndex("search_by_job_text", (q) =>
           q
             .search("searchText", args.filters.searchQuery)
-            .eq("jobId", args.jobId)
+            .eq("jobId", jobId)
             .eq("processable", true),
         )
         .take(args.limit)
-    : allPapers;
+    : await ctx.db
+        .query("extractionPapers")
+        .withIndex("by_job_processable", (q) =>
+          q.eq("jobId", jobId).eq("processable", true),
+        )
+        .order("asc")
+        .take(args.limit);
+
+  assertProjectionReady(jobId, candidatePapers);
 
   const filteredPapers = sortFilteredPapers(
     candidatePapers.filter((paper) => matchesProjectionFilters(paper, args.filters)),
@@ -209,7 +212,7 @@ async function readFilteredJobPapers(
   );
 
   return {
-    totalAll: allPapers.length,
+    totalAll: searched ? (args.job.totalPapers ?? 0) : candidatePapers.length,
     totalFiltered: filteredPapers.length,
     filteredPapers,
   };
@@ -286,7 +289,7 @@ export const getJobResultsPage = query({
     const { totalAll, totalFiltered, filteredPapers } = await readFilteredJobPapers(
       ctx,
       {
-        jobId: args.jobId,
+        job: access.job,
         filters,
         sortBy: args.sortBy,
         limit,
