@@ -48,8 +48,11 @@ export async function seedAccount(t: Test, clerkId = "max_size_user") {
   return { userId, as: t.withIdentity({ subject: clerkId, tokenIdentifier: `${clerkId}|test` }) };
 }
 
-/** An extraction job of `papers` × `questions`, every result completed: about 3.9 KB a paper and 0.9 KB a result. */
-export async function seedExtractionJob(t: Test, userId: Id<"users">, { papers = MAX_SIZE.papersPerJob as number, questions = MAX_SIZE.questionsPerJob as number } = {}) {
+/**
+ * An extraction job of `papers` × `questions`: about 3.9 KB a paper and 0.9 KB a result.
+ * Every result completed, or with `failed`, every result failed with a retryable error.
+ */
+export async function seedExtractionJob(t: Test, userId: Id<"users">, { papers = MAX_SIZE.papersPerJob as number, questions = MAX_SIZE.questionsPerJob as number, failed = false } = {}) {
   const [jobId] = await insertMany(t, "extractionJobs", [{ userId, mode: "extraction", sourceType: "history", status: "completed", totalPapers: papers, name: "Max-size job", createdAt: 1, updatedAt: 1 }]);
   const keys = Array.from({ length: questions }, (_, i) => `q${i}`);
   await insertMany(t, "extractionQuestions", keys.map((key, order) => ({ jobId, key, order, question: `${text(80, order)}?`, type: "string", createdAt: 1 })));
@@ -59,8 +62,9 @@ export async function seedExtractionJob(t: Test, userId: Id<"users">, { papers =
     searchText: text(1_500, i), questionAnswerTokens: keys.map((key) => `${key}::${text(8, i)}`), avgConfidence: 0.8, hasErrors: false, hasPdfSource: false, isOpenAccess: false, completedAt: 1,
   })));
   await insertMany(t, "extractionResults", paperIds.flatMap((paperId, p) => keys.map((questionKey, q) => ({
-    jobId, paperId, questionKey, status: "completed", answer: text(120, p + q), reasoning: text(500, p + q), confidence: 0.8,
-    citations: [], citationStatus: "best_effort", attemptCount: 1, billed: true, creditsUsed: 1, processedAt: 1,
+    jobId, paperId, questionKey, answer: text(120, p + q), reasoning: text(500, p + q), confidence: 0.8,
+    citations: [], citationStatus: "best_effort", attemptCount: 1, creditsUsed: 1, processedAt: 1,
+    ...(failed ? { status: "failed", billed: false, lastError: { code: "rate_limit", message: "429", at: 1 } } : { status: "completed", billed: true }),
   }))), 500);
   return { jobId, paperIds, questionKeys: keys };
 }

@@ -12,11 +12,11 @@ import { seedOrganizationFeatures } from "../../organizationFeatures.test-suppor
  */
 
 import { convexTest, type TestConvex } from "convex-test";
-import { describe, it, expect } from "vitest";
-import { api } from "../../_generated/api";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
+import { api, internal } from "../../_generated/api";
 import schema from "../../schema";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { applyRetryResetTx } from "./retry";
+import { markPaperTerminalTx } from "../paperLifecycle";
 import {
   seedCreditsForTest,
 } from "../../billing/billing.test-support";
@@ -169,11 +169,29 @@ async function seedJob(
   });
 }
 
+/**
+ * Runs the scheduled retry batches one at a time, as the scheduler would. Fake timers keep
+ * the scheduler itself from running them, and from starting paper workers.
+ */
+async function runRetryBatches(t: ExtractionTest): Promise<number> {
+  const done = new Set<string>();
+  for (;;) {
+    const next = await t.run(async (ctx) =>
+      (await ctx.db.system.query("_scheduled_functions").collect()).find(
+        (fn) => fn.name.includes("resetRetryBatch") && !done.has(fn._id),
+      ),
+    );
+    if (!next) return done.size;
+    done.add(next._id);
+    await t.mutation(internal.extraction.mutations.retry.resetRetryBatch, next.args[0] as never);
+  }
+}
+
 async function retryAndReadQueuedWork(
   t: ExtractionTest,
   jobId: Id<"extractionJobs">,
 ): Promise<{
-  result: { retryableCount: number; queued: number; dispatched: number };
+  result: { retryableCount: number };
   job: Doc<"extractionJobs"> | null;
   queueRows: Array<Doc<"extractionPaperQueue">>;
   retryRows: Array<Doc<"extractionResults">>;
@@ -183,6 +201,7 @@ async function retryAndReadQueuedWork(
     api.extraction.mutations.retry.retryFailedQuestions,
     { jobId },
   );
+  await runRetryBatches(t);
   const [job, queueRows, retryRows] = await t.run(async (ctx) => {
     return await Promise.all([
       ctx.db.get(jobId),
@@ -203,9 +222,13 @@ async function retryAndReadQueuedWork(
   return { result, job, queueRows, retryRows };
 }
 
-describe("applyRetryResetTx — state changes", () => {
+beforeEach(() => { vi.useFakeTimers(); });
+afterEach(() => { vi.useRealTimers(); });
+
+describe("retry reset — state changes", () => {
   it("resets only retryable failures; leaves permanents, completed, and billed rows untouched", async () => {
     const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
     const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
     const { jobId, paperId } = await seedJob(t, userId, {
       jobStatus: "completed",
@@ -222,14 +245,9 @@ describe("applyRetryResetTx — state changes", () => {
       ],
     });
 
-    const retryableCount = await t.run(async (ctx) => {
-      const job = await ctx.db.get(jobId);
-      if (!job) throw new Error("job disappeared");
-      return await applyRetryResetTx(ctx, job);
-    });
-
-    // 3 retryable: 2× rate_limit + 1× network.
-    expect(retryableCount).toBe(3);
+    const { result } = await retryAndReadQueuedWork(t, jobId);
+    // The counters count the billed failure as retryable; the reset skips it.
+    expect(result.retryableCount).toBe(4);
 
     // Inspect every row and assert the invariants.
     const rows = await t.run((ctx) =>
@@ -274,60 +292,61 @@ describe("applyRetryResetTx — state changes", () => {
     // indexingBilled stays true (never re-index on retry).
     expect(paper?.indexingBilled).toBe(true);
 
-    // Job un-terminaled, error cleared.
+    // Job un-terminaled, error cleared, and free to finish again.
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.status).toBe("extracting");
     expect(job?.runEpoch).toBe(1);
     expect(job?.error).toBeUndefined();
     expect(job?.completedAt).toBeUndefined();
+    expect(job?.retryResetPending).toBeUndefined();
   });
 
-  it("returns 0 and makes no changes when the job has only permanent failures", async () => {
+  it("resets a job's papers in batches until every paper is seen", async () => {
     const t = convexTest(schema);
-    const { userId } = await seedFlagsAndCredits(t);
-    const { jobId, paperId } = await seedJob(t, userId, {
-      jobStatus: "completed",
-      paperStatus: "completed",
-      rows: [
-        { kind: "completed", key: "q1" },
-        { kind: "failed", key: "q_pdf", code: "pdf_invalid" },
-        { kind: "failed", key: "q_mod", code: "moderation" },
-      ],
+    setupExtractionPaperWorkpool(t);
+    const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
+    const { jobId } = await seedJob(t, userId, { rows: [{ kind: "failed", key: "q1", code: "rate_limit" }] });
+    await t.run(async (ctx) => {
+      await ctx.db.patch(jobId, { totalPapers: 60 });
+      for (let i = 1; i < 60; i++) {
+        const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:batch_${i}`, title: `Paper ${i}`, status: "completed", indexingBilled: true, ragEntryId: `rag:${i}`, isIndexed: true });
+        await ctx.db.insert("extractionResults", { jobId, paperId, questionKey: "q1", answer: null, citations: [], citationStatus: "extraction_error", status: "failed", billed: false, attemptCount: 1, lastError: { code: "rate_limit", message: "429", at: 1 }, processedAt: 1 });
+      }
     });
-
-    const count = await t.run(async (ctx) => {
-      const job = await ctx.db.get(jobId);
-      if (!job) throw new Error("job disappeared");
-      return await applyRetryResetTx(ctx, job);
-    });
-
-    expect(count).toBe(0);
-    // Job status unchanged.
-    const job = await t.run((ctx) => ctx.db.get(jobId));
-    expect(job?.status).toBe("completed");
-    const paper = await t.run((ctx) => ctx.db.get(paperId));
-    expect(paper?.status).toBe("completed");
+    await t.withIdentity(OWNER_IDENTITY).mutation(api.extraction.mutations.retry.retryFailedQuestions, { jobId });
+    expect(await runRetryBatches(t)).toBe(3);
+    const statuses = await t.run(async (ctx) => (await ctx.db.query("extractionResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).map((row) => row.status));
+    expect(statuses.filter((status) => status === "pending")).toHaveLength(60);
   });
 
-  it("un-terminals creditsExhausted → extracting (plan-03 resume path)", async () => {
+  it("doesn't finish a retried job while a retried paper is still extracting", async () => {
     const t = convexTest(schema);
-    const { userId } = await seedFlagsAndCredits(t);
-    const { jobId } = await seedJob(t, userId, {
-      jobStatus: "creditsExhausted",
-      paperStatus: "failed",
-      rows: [{ kind: "failed", key: "q1", code: "insufficient_credits" }],
+    setupExtractionPaperWorkpool(t);
+    const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
+    const { jobId, paperId: first } = await seedJob(t, userId, { rows: [{ kind: "failed", key: "q1", code: "rate_limit" }] });
+    const second = await t.run(async (ctx) => {
+      await ctx.db.patch(jobId, { totalPapers: 2 });
+      const id = await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:retry_paper_2", title: "Paper 2", status: "completed", indexingBilled: true, ragEntryId: "rag:2", isIndexed: true });
+      await ctx.db.insert("extractionResults", { jobId, paperId: id, questionKey: "q1", answer: null, citations: [], citationStatus: "extraction_error", status: "failed", billed: false, attemptCount: 1, lastError: { code: "rate_limit", message: "429", at: 1 }, processedAt: 1 });
+      return id;
     });
+    await t.withIdentity(OWNER_IDENTITY).mutation(api.extraction.mutations.retry.retryFailedQuestions, { jobId });
+    const finalize = () => t.mutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId, expectedEpoch: 1 });
+    const status = async () => (await t.run((ctx) => ctx.db.get(jobId)))?.status;
 
-    const count = await t.run(async (ctx) => {
-      const job = await ctx.db.get(jobId);
-      if (!job) throw new Error("job disappeared");
-      return await applyRetryResetTx(ctx, job);
-    });
+    // Before the reset runs, the job can't finish.
+    await finalize();
+    expect(await status()).toBe("extracting");
+    await runRetryBatches(t);
 
-    expect(count).toBe(1);
-    const job = await t.run((ctx) => ctx.db.get(jobId));
-    expect(job?.status).toBe("extracting");
-    expect(job?.runEpoch).toBe(1);
+    // One retried paper finishes: the other is still extracting.
+    await t.run((ctx) => markPaperTerminalTx(ctx, first, "completed"));
+    await finalize();
+    expect(await status()).toBe("extracting");
+
+    await t.run((ctx) => markPaperTerminalTx(ctx, second, "completed"));
+    await finalize();
+    expect(await status()).toBe("completed");
   });
 });
 
@@ -478,8 +497,6 @@ describe("retryFailedQuestions — public mutation guards", () => {
     );
 
     expect(result.retryableCount).toBe(1);
-    expect(result.queued).toBe(1);
-    expect(result.dispatched).toBe(1);
     expect(job?.status).toBe("extracting");
     expect(job?.runEpoch).toBe(1);
     expect(queueRows).toHaveLength(1);
