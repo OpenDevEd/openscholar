@@ -319,7 +319,7 @@ function makeChargeFn(
 
 type AISdkCallOptions = Parameters<typeof streamText>[0];
 
-function buildCallOptions(
+export function buildCallOptions(
   model: Awaited<ReturnType<typeof getProviderModel>>,
   aiSdkParams: ReturnType<typeof convertToAISdkParams>,
   providerOptions?: Record<string, Record<string, unknown>>,
@@ -356,14 +356,14 @@ function handleStreaming(params: {
     id: responseId,
     model: walletModel.modelId,
     fullStream:
-      streamResult.fullStream as unknown as AsyncIterable<
+      streamResult.stream as unknown as AsyncIterable<
         Record<string, unknown>
       >,
     includeUsage,
     // Charge before the response closes; release the hold if it fails.
     onDone: async () => {
       try {
-        await charge.settle(extractEnhancedUsage(await streamResult.totalUsage), reportedCostUsd((await streamResult.steps).map((step) => step.providerMetadata)));
+        await charge.settle(extractEnhancedUsage(await streamResult.usage), reportedCostUsd((await streamResult.steps).map((step) => step.providerMetadata)));
       } catch (e) {
         console.error("[gateway] Credit charge failed:", e);
         await charge.release().catch(() => undefined);
@@ -405,10 +405,10 @@ async function handleNonStreaming(params: {
     }));
 
   // Deduct credits
-  const enhanced = extractEnhancedUsage(result.totalUsage);
+  const enhanced = extractEnhancedUsage(result.usage);
   await charge.settle(enhanced, reportedCostUsd(result.steps.map((step) => step.providerMetadata)));
 
-  // Format tool calls — AI SDK v6 uses `input` not `args`
+  // Convert SDK tool inputs to the wallet response format.
   const toolCalls = (result.toolCalls ?? []).map(
     (tc: { toolCallId: string; toolName: string; input: unknown }) => ({
       toolCallId: tc.toolCallId,

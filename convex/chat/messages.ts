@@ -423,6 +423,8 @@ export const generateResponse = internalAction({
           {
             promptMessageId,
             model,
+            // Paper context is assembled from trusted server-owned system messages.
+            allowSystemInMessages: true,
             abortSignal: abortController.signal,
             ...(tools ? { tools } : {}),
             // Retries serve no user when the stream is live — the user
@@ -433,7 +435,7 @@ export const generateResponse = internalAction({
             // Claude caches the corpus and earlier turns; the thread id keeps
             // every turn on the same upstream host so that cache stays warm.
             providerOptions: callOptions(model, { cache: true, sessionId: threadId, effort: chatEffort }),
-            onStepFinish: async ({ usage, providerMetadata }) => {
+            onStepEnd: async ({ usage, providerMetadata }) => {
               stepUsages.push(usageOf({ usage, providerMetadata }));
               const inputTokens = usage?.inputTokens ?? 0;
               const outputTokens = usage?.outputTokens ?? 0;
@@ -445,15 +447,12 @@ export const generateResponse = internalAction({
                 calculateCostInDollars({ inputTokens, outputTokens }, pricing);
               if (capturedGenerationId) completedGenerations.add(capturedGenerationId);
             },
-            onFinish: async () => {
+            onEnd: async () => {
               finished = true;
             },
             onAbort: ({ steps }) => {
-              // AI SDK calls onAbort fire-and-forget at stream-text.ts:1206
-              // — any await inside this body becomes a dangling promise
-              // from the action's perspective. We restrict ourselves to
-              // synchronous side-effects and surface the abort to the
-              // action body via streamAbortedByUser.
+              // The SDK awaits this callback. Leave billing and finalization
+              // to the action body after the stream has been consumed.
               streamAbortedByUser = true;
               console.info("[chat] stream aborted by user", {
                 jobId,
@@ -500,7 +499,7 @@ export const generateResponse = internalAction({
       } catch (err) {
         streamErrored = true;
         // The agent's `streamText` wrapper re-throws stream errors
-        // (node_modules/@convex-dev/agent/src/client/streamText.ts:180).
+        // (node_modules/@convex-dev/agent/src/vercel/client/streamText.ts).
         // We land here for every stream-time failure — and sometimes
         // before onError got a chance, when the agent's call.fail
         // itself threw inside finalizeMessage. Force-transition the

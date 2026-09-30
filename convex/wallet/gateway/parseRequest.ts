@@ -147,6 +147,7 @@ export function parseAndValidateRequest(body: unknown): ParseResult {
 // ─── Conversion to AI SDK parameters ────────────────────────
 
 export interface AISdkParams {
+  allowSystemInMessages: true;
   messages: Array<Record<string, unknown>>;
   tools?: Record<string, ReturnType<typeof tool>>;
   toolChoice?: "auto" | "none" | "required" | { type: "tool"; toolName: string };
@@ -162,6 +163,8 @@ export interface AISdkParams {
 
 export function convertToAISdkParams(request: ChatCompletionRequest): AISdkParams {
   const params: AISdkParams = {
+    // Wallet callers supply their own instructions through the OpenAI messages API.
+    allowSystemInMessages: true,
     messages: convertMessages(request.messages),
   };
 
