@@ -17,26 +17,30 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { exportToCSV, exportToJSON, exportToExcel } from "@/lib/extraction/export";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { useTranslations } from "next-intl";
+import { useAppToast } from "@/lib/toast";
 
 interface ExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  papers: PaperWithResults[];
+  /** Read when the user exports, so opening the dialog reads nothing. */
+  loadPapers: () => Promise<PaperWithResults[]>;
+  paperCount: number;
   questions: Question[];
   label?: string;
-  isLoading?: boolean;
 }
 
 export function ExportDialog({
   open,
   onOpenChange,
-  papers,
+  loadPapers,
+  paperCount,
   questions,
   label,
-  isLoading = false,
 }: ExportDialogProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
+  const toast = useAppToast();
+  const [isLoading, setIsLoading] = useState(false);
 
   const [format, setFormat] = useState<"csv" | "json" | "excel">("csv");
   const [includeMetadata, setIncludeMetadata] = useState(true);
@@ -45,7 +49,7 @@ export function ExportDialog({
   const [includeCitations, setIncludeCitations] = useState(false);
 
   const handleExport = async () => {
-    if (isLoading || papers.length === 0) return;
+    if (isLoading || paperCount === 0) return;
 
     const options = {
       includeMetadata,
@@ -54,19 +58,27 @@ export function ExportDialog({
       includeCitations,
     };
 
-    if (format === "csv") {
-      exportToCSV(papers, questions, options);
-    } else if (format === "json") {
-      exportToJSON(papers, questions, options);
-    } else {
-      await exportToExcel(papers, questions, options);
+    setIsLoading(true);
+    try {
+      const papers = await loadPapers();
+      if (format === "csv") {
+        exportToCSV(papers, questions, options);
+      } else if (format === "json") {
+        exportToJSON(papers, questions, options);
+      } else {
+        await exportToExcel(papers, questions, options);
+      }
+      onOpenChange(false);
+    } catch (error) {
+      console.error("[Extraction] Failed to export results:", error);
+      toast.io.downloadFailed(t(`${format}Label`));
+    } finally {
+      setIsLoading(false);
     }
-
-    onOpenChange(false);
   };
 
   const displayLabel =
-    label ?? tc("paperCount", { count: papers.length });
+    label ?? tc("paperCount", { count: paperCount });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,7 +202,7 @@ export function ExportDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {tc("cancel")}
           </Button>
-          <Button disabled={isLoading || papers.length === 0} onClick={handleExport}>
+          <Button disabled={isLoading || paperCount === 0} onClick={handleExport}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

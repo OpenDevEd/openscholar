@@ -66,7 +66,8 @@ export function BulkActionsBar({
       <ExportDialog
         open={exportDialogOpen}
         onOpenChange={setExportDialogOpen}
-        papers={papers}
+        loadPapers={async () => papers}
+        paperCount={papers.length}
         questions={questions}
         label={tc("paperCount", { count: selectedIds.size })}
       />

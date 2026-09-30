@@ -5,6 +5,8 @@ import { getDocumentSize } from "convex/values";
 import { describe, expect, it } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import { readEveryResultsPage } from "../../lib/extraction/export";
+import { RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
 import { MAX_SIZE, seedAccount, seedExtractionJob, seedLibrary } from "../lib/maxSize.test-support";
 
 const filters = { searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [] };
@@ -20,6 +22,18 @@ describe("at the largest sizes the product allows", () => {
     const details = await as.query(api.extraction.queries.getJobDetails, { jobId });
     expect(details).toMatchObject({ status: "ok" });
   }, 120_000);
+
+  it("a 1,000-paper, 50-question extraction job exports page by page", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    const { jobId } = await seedExtractionJob(t, userId);
+    // Asking for more than the largest page gets the largest page.
+    const first = await as.query(api.extraction.queries.getJobResultsPage, { jobId, page: 1, pageSize: MAX_SIZE.papersPerJob, filters, sortBy: "default" });
+    expect(first.items).toHaveLength(RESULTS_PAGE_SIZE_MAX);
+    const papers = await readEveryResultsPage((page) => as.query(api.extraction.queries.getJobResultsPage, { jobId, page, pageSize: RESULTS_PAGE_SIZE_MAX, filters, sortBy: "default" }));
+    expect(papers).toHaveLength(MAX_SIZE.papersPerJob);
+    expect(papers.every((paper) => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
+  }, 300_000);
 
   it("a 10,000-paper library browses page by page", async () => {
     const t = convexTest(schema);

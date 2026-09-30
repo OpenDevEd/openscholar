@@ -1,6 +1,24 @@
 import type { PaperWithResults, Question } from './filtering';
 
 /**
+ * Every paper of a results view, read one page per query so an export of any size stays
+ * within Convex's per-query limits (#352).
+ */
+export async function readEveryResultsPage<Item>(
+  readPage: (page: number) => Promise<{ status: string; page: number; totalPages: number; items: Item[] }>,
+): Promise<Item[]> {
+  const items: Item[] = [];
+  for (let page = 1; ; page++) {
+    const result = await readPage(page);
+    if (result.status !== "ok") throw new Error(`Results unavailable: ${result.status}`);
+    // A page past the end, after papers were filtered out meanwhile, comes back as the last page again.
+    if (result.page !== page) return items;
+    items.push(...result.items);
+    if (page >= result.totalPages) return items;
+  }
+}
+
+/**
  * Downloads a file with the given content
  */
 function downloadFile(content: string | Blob, filename: string, mimeType: string): void {
