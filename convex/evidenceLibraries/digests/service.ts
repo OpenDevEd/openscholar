@@ -1,6 +1,6 @@
 import { ConvexError } from "convex/values";
 import { v } from "convex/values";
-import { internalAction, internalMutation, internalQuery, httpAction, type MutationCtx } from "../../_generated/server";
+import { internalAction, internalMutation, internalQuery, httpAction, type MutationCtx } from "../../lib/functions";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { authenticateLibraryServiceCredential } from "../credentials";

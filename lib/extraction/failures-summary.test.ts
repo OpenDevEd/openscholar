@@ -1,17 +1,23 @@
 import { describe, expect, it } from "vitest";
-import {
-  summarizeFailures,
-  type FailureInput,
-} from "@/lib/extraction/failures-summary";
+import { summarizeFailures } from "@/lib/extraction/failures-summary";
+
+type FailureInput = { code: string };
+
+/** The per-code counts the paper error counters hold for these rows. */
+const summarize = (rows: ReadonlyArray<FailureInput>) => {
+  const counts: Record<string, number> = {};
+  for (const { code } of rows) counts[code] = (counts[code] ?? 0) + 1;
+  return summarizeFailures(counts);
+};
 
 describe("summarizeFailures", () => {
   it("R1: empty list → total:0, byCode:[]", () => {
-    expect(summarizeFailures([])).toEqual({ total: 0, byCode: [] });
+    expect(summarize([])).toEqual({ total: 0, byCode: [] });
   });
 
   it("R2: single error → one byCode entry with count:1 and retryable flag", () => {
     const input: FailureInput[] = [{ code: "rate_limit" }];
-    expect(summarizeFailures(input)).toEqual({
+    expect(summarize(input)).toEqual({
       total: 1,
       byCode: [{ code: "rate_limit", count: 1, retryable: true }],
     });
@@ -23,7 +29,7 @@ describe("summarizeFailures", () => {
       { code: "pdf_invalid" },
       { code: "pdf_invalid" },
     ];
-    expect(summarizeFailures(input)).toEqual({
+    expect(summarize(input)).toEqual({
       total: 3,
       byCode: [{ code: "pdf_invalid", count: 3, retryable: false }],
     });
@@ -40,7 +46,7 @@ describe("summarizeFailures", () => {
       { code: "rate_limit" },
       { code: "rate_limit" }, // count 2 → second
     ];
-    const { byCode } = summarizeFailures(input);
+    const { byCode } = summarize(input);
     expect(byCode.map((e) => e.code)).toEqual([
       "pdf_invalid", // count 3
       "rate_limit", // count 2
@@ -60,7 +66,7 @@ describe("summarizeFailures", () => {
       { code: "auth" },
       { code: "auth" },
     ];
-    const result = summarizeFailures(input);
+    const result = summarize(input);
     const sum = result.byCode.reduce((acc, e) => acc + e.count, 0);
     expect(result.total).toBe(sum);
     expect(result.total).toBe(7);
@@ -75,7 +81,7 @@ describe("summarizeFailures", () => {
       { code: "insufficient_credits" }, // retryable:true
     ];
     const byCodeMap = Object.fromEntries(
-      summarizeFailures(input).byCode.map((e) => [e.code, e.retryable]),
+      summarize(input).byCode.map((e) => [e.code, e.retryable]),
     );
     expect(byCodeMap).toEqual({
       rate_limit: true,
@@ -94,7 +100,7 @@ describe("summarizeFailures", () => {
       { code: "future_unseen_code" },
       { code: "also_unseen" },
     ];
-    const result = summarizeFailures(input);
+    const result = summarize(input);
     expect(result.total).toBe(2);
     for (const entry of result.byCode) {
       expect(entry.retryable).toBe(true);
@@ -116,8 +122,8 @@ describe("summarizeFailures", () => {
     ];
     const snapshot = JSON.parse(JSON.stringify(input));
 
-    const first = summarizeFailures(input);
-    const second = summarizeFailures(input);
+    const first = summarize(input);
+    const second = summarize(input);
 
     // Deterministic output.
     expect(first).toEqual(second);

@@ -10,7 +10,6 @@ import {
   recordQualifiedResult,
   recordTerminalResult,
 } from "./aggregates";
-import { setupScreeningAggregates } from "./aggregates.test-support";
 
 type Ctx = TestConvex<typeof schema>;
 
@@ -74,7 +73,6 @@ async function insertResult(
 describe("screening aggregates", () => {
   test("reading an empty job returns all-zero counts", async () => {
     const t = convexTest(schema);
-    setupScreeningAggregates(t);
     const jobId = await seedJob(t);
 
     await expect(
@@ -89,7 +87,6 @@ describe("screening aggregates", () => {
 
   test("terminal statuses and qualified results are counted independently", async () => {
     const t = convexTest(schema);
-    setupScreeningAggregates(t);
     const jobId = await seedJob(t);
 
     const completedQualified = await insertResult(t, jobId, {
@@ -118,7 +115,6 @@ describe("screening aggregates", () => {
 
   test("record helpers are idempotent under replay", async () => {
     const t = convexTest(schema);
-    setupScreeningAggregates(t);
     const jobId = await seedJob(t);
     const completedQualified = await insertResult(t, jobId, {
       status: "completed",
@@ -144,7 +140,6 @@ describe("screening aggregates", () => {
 
   test("forget helpers remove a result from both aggregates", async () => {
     const t = convexTest(schema);
-    setupScreeningAggregates(t);
     const jobId = await seedJob(t);
     const completedQualified = await insertResult(t, jobId, {
       status: "completed",
@@ -170,7 +165,6 @@ describe("screening aggregates", () => {
 
   test("clearScreeningAggregates only wipes the targeted job namespace", async () => {
     const t = convexTest(schema);
-    setupScreeningAggregates(t);
     const jobId = await seedJob(t);
     const otherJobId = await seedJob(t);
     const firstJobResult = await insertResult(t, jobId, {

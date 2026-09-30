@@ -1,6 +1,7 @@
 "use node";
 
 import { v } from "convex/values";
+import { retryOnConflict } from "../lib/retryOnConflict";
 import { internal } from "../_generated/api";
 import { internalAction, type ActionCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -261,7 +262,8 @@ async function runQuestionBatch(
     return { stop: null, credits: 0, usages: [] };
   }
 
-  const writeResult = await ctx.runMutation(
+  // Many workers write one job's results at once; a write conflict must not lose answers.
+  const writeResult = await retryOnConflict(() => ctx.runMutation(
     internal.extraction.mutations.results.recordQuestionBatch,
     {
       paperId: context.paper._id,
@@ -272,7 +274,7 @@ async function runQuestionBatch(
         error: toFailureError(outcome.error),
       })),
     },
-  );
+  ));
 
   if (writeResult.status === "skipped") {
     return {
@@ -574,9 +576,9 @@ export const runPaperQueueItem = internalAction({
         return null;
       }
 
-      await ctx.runMutation(internal.extraction.mutations.results.finalizePaper, {
+      await retryOnConflict(() => ctx.runMutation(internal.extraction.mutations.results.finalizePaper, {
         paperId: paper._id,
-      });
+      }));
       await completeQueueItem(ctx, queueRow, {
         status: "completed",
         paperConcurrency: args.paperConcurrency,

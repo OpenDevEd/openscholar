@@ -11,7 +11,7 @@
  * helpers directly through Workpool actions.
  */
 
-import { internalMutation } from "../../../_generated/server";
+import { internalMutation } from "../../../lib/functions";
 import { v } from "convex/values";
 import { writeJobSources } from "../../jobSources";
 import { extractionStamp } from "../../../ai/serverModel";
@@ -51,7 +51,10 @@ export const maybeFinalizeJob = internalMutation({
       // while the job is parked — the resume path
       // owns status transitions back to active.
       job.status === "paused" ||
-      job.status === "creditsExhausted"
+      job.status === "creditsExhausted" ||
+      // A retry is still putting papers back to extracting in batches; the last batch
+      // clears this and checks again (mutations/retry.ts).
+      job.retryReset
     ) {
       return null;
     }

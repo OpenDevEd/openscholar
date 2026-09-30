@@ -199,6 +199,10 @@ const BUCKET_ITEM_ZOTERO = {
 };
 
 describe("startJob — extraction mode", () => {
+  // What startJob schedules must not run after the test ends, in a later test.
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
   it("creates an extraction job and schedules queue setup", async () => {
     const t = convexTest(schema);
     await seedUserAndFlags(t);
@@ -242,6 +246,10 @@ describe("startJob — extraction mode", () => {
 });
 
 describe("startJob — chat mode", () => {
+  // What startJob schedules must not run after the test ends, in a later test.
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
   it("creates a chat job with messageCount initialised when the chat flag is ON", async () => {
     const t = convexTest(schema);
     await seedUserAndFlags(t, { chat: true });

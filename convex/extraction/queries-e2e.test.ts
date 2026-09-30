@@ -4,7 +4,6 @@ import { describe, test, expect } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { seedFullJobGraph, SEED_IDENTITY } from "./tests/seed";
-import { setupAggregates } from "./aggregates.test-support";
 
 /**
  * Safety net SN-3 (P3 plan): drive every public query once against a
@@ -19,7 +18,6 @@ import { setupAggregates } from "./aggregates.test-support";
 
 async function seedAndAuth() {
   const t = convexTest(schema);
-  setupAggregates(t);
   const ids = await seedFullJobGraph(t);
   const FLAG_KEYS = ["extraction.enabled"] as const;
   await t.run(async (ctx) => {

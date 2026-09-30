@@ -4,7 +4,7 @@ import {
   mutation,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import {
   AI_PROVIDER,
   AI_PROVIDER_CREDENTIAL_KEY,

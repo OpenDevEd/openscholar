@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation } from "../_generated/server";
+import { mutation } from "../lib/functions";
 import { requireEvidenceLibraryAccess, readLibraryRole } from "./access";
 import { createError } from "../lib/errors";
 

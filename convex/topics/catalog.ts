@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, type ActionCtx } from "../_generated/server";
+import { action, internalMutation, internalQuery, type ActionCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import { topicCatalogRequestSchema, type TopicNode } from "../../lib/topics/contract";
 import tree from "../../lib/topics/openalex-topics.json";

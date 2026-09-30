@@ -1,4 +1,4 @@
-import { internalMutation, type MutationCtx } from "../_generated/server";
+import { internalMutation, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
 import { AI_TASKS, DECISION_TASKS, PRESET_KEYS, presetConfigKey, type AiTask, type PresetKey } from "../../lib/ai/tasks";
 import { JEV_MODEL } from "../../lib/ai/decisions";

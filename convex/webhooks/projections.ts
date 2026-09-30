@@ -1,4 +1,4 @@
-import { internalMutation, type MutationCtx } from "../_generated/server";
+import { internalMutation, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
 import {
   clerkEventOutcomeValidator,

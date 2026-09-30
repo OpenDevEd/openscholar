@@ -7,7 +7,7 @@ import {
   query,
   type ActionCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import type { Doc } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";

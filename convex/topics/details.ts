@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { v } from "convex/values";
-import { action, internalAction, internalMutation, internalQuery, type ActionCtx } from "../_generated/server";
+import { action, internalAction, internalMutation, internalQuery, type ActionCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";

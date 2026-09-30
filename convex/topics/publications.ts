@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
-import { internalMutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
+import { internalMutation, query, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
 import { createError } from "../lib/errors";

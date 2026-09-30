@@ -32,12 +32,12 @@
  *
  * Writes:
  *
- *   - `incPaperOutcome(ctx, jobId, isSuccess)` lands one `inc()` call on
- *     a random shard. Idempotent at the paper-lifecycle level via the paper's
- *     prior terminal-status check in `markPaperTerminalTx`; this helper
- *     never double-counts within a single transition because the caller
- *     guards on `isTerminalPaperStatus(paper.status)` before invoking
- *     us.
+ *   - `countPaperChange` is the database trigger on `extractionPapers`
+ *     (`convex/lib/triggers.ts`). A paper counts as processed while it is
+ *     completed and as failed while it is in another terminal status, so a
+ *     retry that puts a paper back to extracting takes it out of the count
+ *     and finishing it again puts it back (#351). Counting from each paper's
+ *     current status keeps the counters exact whichever function writes it.
  *
  * Cascade:
  *
@@ -48,33 +48,60 @@
 
 import { ShardedCounter } from "@convex-dev/sharded-counter";
 import { components } from "../_generated/api";
+import { transactionCounter } from "../lib/transactionCounter";
 import type {
   GenericMutationCtx,
   GenericQueryCtx,
 } from "convex/server";
-import type { Id } from "../_generated/dataModel";
+import type { Change } from "convex-helpers/server/triggers";
+import type { DataModel, Doc, Id } from "../_generated/dataModel";
+import { isTerminalPaperStatus } from "./paperLifecycle";
 
 type RunMutationCtx = {
   runMutation: GenericMutationCtx<never>["runMutation"];
+  db: object;
+  innerDb?: object;
 };
 type RunQueryCtx = { runQuery: GenericQueryCtx<never>["runQuery"] };
 
-const jobProcessedCounter = new ShardedCounter<Id<"extractionJobs">>(
+// One counter per transaction, so a shard collision doesn't repeat on every retry
+// (../lib/transactionCounter.ts).
+const jobProcessedCounter = transactionCounter(() => new ShardedCounter<Id<"extractionJobs">>(
   components.extractionProcessedCounter,
   { defaultShards: 64 },
-);
-const jobFailedCounter = new ShardedCounter<Id<"extractionJobs">>(
+));
+const jobFailedCounter = transactionCounter(() => new ShardedCounter<Id<"extractionJobs">>(
   components.extractionFailedCounter,
   { defaultShards: 64 },
-);
+));
 
-export async function incPaperOutcome(
+/** The counter a paper counts in: finished papers the job processes. */
+function outcomeOf(paper: Pick<Doc<"extractionPapers">, "status" | "processable">) {
+  if (paper.processable === false || !isTerminalPaperStatus(paper.status)) return null;
+  return paper.status === "completed" ? jobProcessedCounter : jobFailedCounter;
+}
+
+/** Keeps the processed and failed counts in step with each paper's status. */
+export async function countPaperChange(
+  ctx: RunMutationCtx,
+  change: Change<DataModel, "extractionPapers">,
+): Promise<void> {
+  const before = change.oldDoc && outcomeOf(change.oldDoc);
+  const after = change.newDoc && outcomeOf(change.newDoc);
+  if (before === after && change.oldDoc?.jobId === change.newDoc?.jobId) return;
+  if (before) await before.for(ctx).dec(ctx, change.oldDoc!.jobId);
+  if (after) await after.for(ctx).inc(ctx, change.newDoc!.jobId);
+}
+
+/** Sets a job's processed and failed counts, as the recount for jobs saved before counting does. */
+export async function setJobCounters(
   ctx: RunMutationCtx,
   jobId: Id<"extractionJobs">,
-  isSuccess: boolean,
+  counts: JobCounters,
 ): Promise<void> {
-  const counter = isSuccess ? jobProcessedCounter : jobFailedCounter;
-  await counter.inc(ctx, jobId);
+  await clearJobCounters(ctx, jobId);
+  if (counts.processed) await jobProcessedCounter.for(ctx).add(ctx, jobId, counts.processed);
+  if (counts.failed) await jobFailedCounter.for(ctx).add(ctx, jobId, counts.failed);
 }
 
 export type JobCounters = {
@@ -87,8 +114,8 @@ export async function readJobCounters(
   jobId: Id<"extractionJobs">,
 ): Promise<JobCounters> {
   const [processed, failed] = await Promise.all([
-    jobProcessedCounter.count(ctx, jobId),
-    jobFailedCounter.count(ctx, jobId),
+    jobProcessedCounter.read.count(ctx, jobId),
+    jobFailedCounter.read.count(ctx, jobId),
   ]);
   return { processed, failed };
 }
@@ -98,7 +125,7 @@ export async function clearJobCounters(
   jobId: Id<"extractionJobs">,
 ): Promise<void> {
   await Promise.all([
-    jobProcessedCounter.reset(ctx, jobId),
-    jobFailedCounter.reset(ctx, jobId),
+    jobProcessedCounter.for(ctx).reset(ctx, jobId),
+    jobFailedCounter.for(ctx).reset(ctx, jobId),
   ]);
 }

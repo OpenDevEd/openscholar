@@ -1,5 +1,5 @@
 import { internal } from "../_generated/api";
-import { internalMutation } from "../_generated/server";
+import { internalMutation } from "../lib/functions";
 import { v } from "convex/values";
 import { requireNonBlankProvisioningValue } from "./provisioning";
 import {

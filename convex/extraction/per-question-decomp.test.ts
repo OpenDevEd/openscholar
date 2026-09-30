@@ -16,7 +16,6 @@ import { describe, it, expect } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
-import { setupAggregates } from "./aggregates.test-support";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
@@ -147,7 +146,6 @@ async function recordFailedQuestion(
 describe("plan-02 per-question decomposition", () => {
   it("3 papers × 5 questions → 15 result rows, 3 paper-completes, 1 job-complete", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const questionKeys = ["q1", "q2", "q3", "q4", "q5"];
     const { jobId, paperIds } = await seedJobWithPapersAndQuestions(
       t,
@@ -198,7 +196,6 @@ describe("plan-02 per-question decomposition", () => {
 
   it("finalizePaper with mix of completed + hard-failed questions → completed with failedQuestions", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const questionKeys = ["q1", "q2", "q3"];
     const { jobId, paperIds } = await seedJobWithPapersAndQuestions(
       t,
@@ -244,7 +241,6 @@ describe("plan-02 per-question decomposition", () => {
 
   it("finalizePaper is a no-op while a question is still pending", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const questionKeys = ["q1", "q2"];
     const { paperIds } = await seedJobWithPapersAndQuestions(t, {
       paperCount: 1,
@@ -270,7 +266,6 @@ describe("plan-02 per-question decomposition", () => {
 
   it("finalizePaper completes after concurrent question completions land", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const questionKeys = ["q1", "q2"];
     const { jobId, paperIds } = await seedJobWithPapersAndQuestions(
       t,
@@ -306,7 +301,6 @@ describe("plan-02 per-question decomposition", () => {
 
   it("recordQuestionBatch is idempotent under worker retry — one result row, credits counted once", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { paperIds } = await seedJobWithPapersAndQuestions(
       t,
       { paperCount: 1, questionKeys: ["q1"], startingCredits: 100 },
@@ -347,7 +341,6 @@ describe("plan-02 per-question decomposition", () => {
 
   it("recordQuestionBatch skips stale-epoch persists", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { jobId, paperIds } = await seedJobWithPapersAndQuestions(
       t,
       { paperCount: 1, questionKeys: ["q1"], startingCredits: 100 },
@@ -378,7 +371,6 @@ describe("plan-02 per-question decomposition", () => {
 
   it("retryable failure → subsequent success upgrades the same row", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { paperIds } = await seedJobWithPapersAndQuestions(t, {
       paperCount: 1,
       questionKeys: ["q1"],
@@ -441,7 +433,6 @@ describe("plan-02 per-question decomposition", () => {
 
   it("all hard-failed questions → paper fails, failedPapers++", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const questionKeys = ["q1", "q2"];
     const { jobId, paperIds } = await seedJobWithPapersAndQuestions(t, {
       paperCount: 1,

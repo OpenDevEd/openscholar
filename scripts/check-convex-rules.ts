@@ -12,6 +12,9 @@
 // - No public query reads the clock, in its handler or any function it calls:
 //   `Date.now()` or `new Date()` in a query breaks its caching and reactivity. Schedule
 //   the change instead, or pass the time in.
+// - Mutations run through the database triggers (#351): `mutation` and `internalMutation`
+//   come from convex/lib/functions.ts, never from `_generated/server`, and every
+//   `new Migrations(...)` is given that `internalMutation`.
 //
 // It reads the code with TypeScript's type checker, so a loop over a helper that returns
 // a query, a named handler and a helper in another file are all followed.
@@ -166,6 +169,16 @@ for (const tree of program.getSourceFiles().filter((file) => sources.includes(re
       add(node, tableOf(node.expression.expression));
     }
     if (ts.isForOfStatement(node) && node.awaitModifier && isDatabaseQuery(node.expression)) add(node, tableOf(node.expression));
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && /_generated\/server$/.test(node.moduleSpecifier.text) && file !== "convex/lib/functions.ts" && !node.importClause?.isTypeOnly) {
+      const bindings = node.importClause?.namedBindings;
+      if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) {
+        const imported = (element.propertyName ?? element.name).text;
+        if (!element.isTypeOnly && (imported === "mutation" || imported === "internalMutation")) problems.push(`${file}: import \`${imported}\` from convex/lib/functions.ts, so its writes run the database triggers.`);
+      }
+    }
+    if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "Migrations" && !/\binternalMutation\b/.test(node.arguments?.[1]?.getText() ?? "")) {
+      problems.push(`${file}: pass { internalMutation } from convex/lib/functions.ts to new Migrations(...), so migrations run the database triggers.`);
+    }
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && ALL_BUILDERS.includes(node.initializer.expression.text)) {
       const definition = node.initializer.arguments[0];
       const handler = definition && ts.isObjectLiteralExpression(definition) ? definition.properties.find((p) => p.name && ts.isIdentifier(p.name) && p.name.text === "handler") : undefined;
