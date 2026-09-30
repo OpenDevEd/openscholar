@@ -231,6 +231,8 @@ import type * as lib_opaqueTokenDigest from "../lib/opaqueTokenDigest.js";
 import type * as lib_queryBounds from "../lib/queryBounds.js";
 import type * as lib_query_states from "../lib/query_states.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
+import type * as lib_retryOnConflict from "../lib/retryOnConflict.js";
+import type * as lib_transactionCounter from "../lib/transactionCounter.js";
 import type * as lib_triggers from "../lib/triggers.js";
 import type * as lib_userActionRegistry from "../lib/userActionRegistry.js";
 import type * as lib_userActions from "../lib/userActions.js";
@@ -540,6 +542,8 @@ declare const fullApi: ApiFromModules<{
   "lib/queryBounds": typeof lib_queryBounds;
   "lib/query_states": typeof lib_query_states;
   "lib/rateLimit": typeof lib_rateLimit;
+  "lib/retryOnConflict": typeof lib_retryOnConflict;
+  "lib/transactionCounter": typeof lib_transactionCounter;
   "lib/triggers": typeof lib_triggers;
   "lib/userActionRegistry": typeof lib_userActionRegistry;
   "lib/userActions": typeof lib_userActions;

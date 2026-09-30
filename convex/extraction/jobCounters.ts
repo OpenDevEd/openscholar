@@ -48,6 +48,7 @@
 
 import { ShardedCounter } from "@convex-dev/sharded-counter";
 import { components } from "../_generated/api";
+import { transactionCounter } from "../lib/transactionCounter";
 import type {
   GenericMutationCtx,
   GenericQueryCtx,
@@ -58,17 +59,21 @@ import { isTerminalPaperStatus } from "./paperLifecycle";
 
 type RunMutationCtx = {
   runMutation: GenericMutationCtx<never>["runMutation"];
+  db: object;
+  innerDb?: object;
 };
 type RunQueryCtx = { runQuery: GenericQueryCtx<never>["runQuery"] };
 
-const jobProcessedCounter = new ShardedCounter<Id<"extractionJobs">>(
+// One counter per transaction, so a shard collision doesn't repeat on every retry
+// (../lib/transactionCounter.ts).
+const jobProcessedCounter = transactionCounter(() => new ShardedCounter<Id<"extractionJobs">>(
   components.extractionProcessedCounter,
   { defaultShards: 64 },
-);
-const jobFailedCounter = new ShardedCounter<Id<"extractionJobs">>(
+));
+const jobFailedCounter = transactionCounter(() => new ShardedCounter<Id<"extractionJobs">>(
   components.extractionFailedCounter,
   { defaultShards: 64 },
-);
+));
 
 /** The counter a paper counts in: finished papers the job processes. */
 function outcomeOf(paper: Pick<Doc<"extractionPapers">, "status" | "processable">) {
@@ -84,8 +89,8 @@ export async function countPaperChange(
   const before = change.oldDoc && outcomeOf(change.oldDoc);
   const after = change.newDoc && outcomeOf(change.newDoc);
   if (before === after && change.oldDoc?.jobId === change.newDoc?.jobId) return;
-  if (before) await before.dec(ctx, change.oldDoc!.jobId);
-  if (after) await after.inc(ctx, change.newDoc!.jobId);
+  if (before) await before.for(ctx).dec(ctx, change.oldDoc!.jobId);
+  if (after) await after.for(ctx).inc(ctx, change.newDoc!.jobId);
 }
 
 /** Sets a job's processed and failed counts, as the recount for jobs saved before counting does. */
@@ -95,8 +100,8 @@ export async function setJobCounters(
   counts: JobCounters,
 ): Promise<void> {
   await clearJobCounters(ctx, jobId);
-  if (counts.processed) await jobProcessedCounter.add(ctx, jobId, counts.processed);
-  if (counts.failed) await jobFailedCounter.add(ctx, jobId, counts.failed);
+  if (counts.processed) await jobProcessedCounter.for(ctx).add(ctx, jobId, counts.processed);
+  if (counts.failed) await jobFailedCounter.for(ctx).add(ctx, jobId, counts.failed);
 }
 
 export type JobCounters = {
@@ -109,8 +114,8 @@ export async function readJobCounters(
   jobId: Id<"extractionJobs">,
 ): Promise<JobCounters> {
   const [processed, failed] = await Promise.all([
-    jobProcessedCounter.count(ctx, jobId),
-    jobFailedCounter.count(ctx, jobId),
+    jobProcessedCounter.read.count(ctx, jobId),
+    jobFailedCounter.read.count(ctx, jobId),
   ]);
   return { processed, failed };
 }
@@ -120,7 +125,7 @@ export async function clearJobCounters(
   jobId: Id<"extractionJobs">,
 ): Promise<void> {
   await Promise.all([
-    jobProcessedCounter.reset(ctx, jobId),
-    jobFailedCounter.reset(ctx, jobId),
+    jobProcessedCounter.for(ctx).reset(ctx, jobId),
+    jobFailedCounter.for(ctx).reset(ctx, jobId),
   ]);
 }

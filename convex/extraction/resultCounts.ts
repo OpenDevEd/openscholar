@@ -12,20 +12,24 @@ import { ShardedCounter } from "@convex-dev/sharded-counter";
 import type { GenericMutationCtx, GenericQueryCtx } from "convex/server";
 import type { Change } from "convex-helpers/server/triggers";
 import { components } from "../_generated/api";
+import { transactionCounter } from "../lib/transactionCounter";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
 import { ERROR_CODES, isRetryable } from "../../lib/errors/taxonomy";
 import { isResultRetryableFailure } from "../../lib/extraction/retry-summary";
 
-type RunMutationCtx = { runMutation: GenericMutationCtx<DataModel>["runMutation"] };
+type RunMutationCtx = { runMutation: GenericMutationCtx<DataModel>["runMutation"]; db: object; innerDb?: object };
 type RunQueryCtx = { runQuery: GenericQueryCtx<DataModel>["runQuery"] };
 type Result = Pick<Doc<"extractionResults">, "jobId" | "status" | "lastError">;
 
 /** Error codes whose failures can't be retried; each gets its own counter. */
 export const PERMANENT_ERROR_CODES = Object.entries(isRetryable).filter(([, retryable]) => retryable === false).map(([code]) => code);
 
-// Results are written by up to 25 workers at once per job; paper errors once per failed attempt.
-const counter = new ShardedCounter<string>(components.extractionResultCounter, { defaultShards: 16 });
-const errorCounter = new ShardedCounter<string>(components.extractionResultCounter, { defaultShards: 4 });
+// Up to 25 workers write one job's results at once (5 papers × 5 question batches). A load
+// run with 30 writers on 16 shards lost 38 of 600 writes to write conflicts on the shards;
+// 64 shards, like the paper counters in ./jobCounters.ts, keep writers on different ones.
+// Paper errors are written once per failed attempt, far less often.
+const counter = transactionCounter(() => new ShardedCounter<string>(components.extractionResultCounter, { defaultShards: 64 }));
+const errorCounter = transactionCounter(() => new ShardedCounter<string>(components.extractionResultCounter, { defaultShards: 16 }));
 const key = (jobId: Id<"extractionJobs">, bucket: string) => `${jobId}|${bucket}`;
 const BUCKETS = ["total", "completed", "retryable", ...PERMANENT_ERROR_CODES.map((code) => `permanent:${code}`)];
 
@@ -42,44 +46,44 @@ export function bucketsOf(result: Result): string[] {
 export async function countResultChange(ctx: RunMutationCtx, change: Change<DataModel, "extractionResults">) {
   const before = change.oldDoc ? bucketsOf(change.oldDoc).map((bucket) => key(change.oldDoc!.jobId, bucket)) : [];
   const after = change.newDoc ? bucketsOf(change.newDoc).map((bucket) => key(change.newDoc!.jobId, bucket)) : [];
-  for (const name of before) if (!after.includes(name)) await counter.dec(ctx, name);
-  for (const name of after) if (!before.includes(name)) await counter.inc(ctx, name);
+  for (const name of before) if (!after.includes(name)) await counter.for(ctx).dec(ctx, name);
+  for (const name of after) if (!before.includes(name)) await counter.for(ctx).inc(ctx, name);
 }
 
 export type ResultCounts = { total: number; completed: number; retryable: number; permanent: Record<string, number> };
 
 /** A job's result counts. */
 export async function readResultCounts(ctx: RunQueryCtx, jobId: Id<"extractionJobs">): Promise<ResultCounts> {
-  const [total, completed, retryable, ...permanent] = await Promise.all(BUCKETS.map((bucket) => counter.count(ctx, key(jobId, bucket))));
+  const [total, completed, retryable, ...permanent] = await Promise.all(BUCKETS.map((bucket) => counter.read.count(ctx, key(jobId, bucket))));
   return { total, completed, retryable, permanent: Object.fromEntries(PERMANENT_ERROR_CODES.flatMap((code, i) => (permanent[i] ? [[code, permanent[i]]] : []))) };
 }
 
 /** Sets a job's counts to `counts`, as the recount for jobs saved before counting does. */
 export async function setResultCounts(ctx: RunMutationCtx, jobId: Id<"extractionJobs">, counts: Map<string, number>) {
   for (const bucket of BUCKETS) {
-    await counter.reset(ctx, key(jobId, bucket));
+    await counter.for(ctx).reset(ctx, key(jobId, bucket));
     const value = counts.get(bucket) ?? 0;
-    if (value) await counter.add(ctx, key(jobId, bucket), value);
+    if (value) await counter.for(ctx).add(ctx, key(jobId, bucket), value);
   }
 }
 
 /** Counts a paper error under its code: the trigger on `extractionPaperErrors`. */
 export async function countPaperErrorChange(ctx: RunMutationCtx, change: Change<DataModel, "extractionPaperErrors">) {
-  if (change.oldDoc) await errorCounter.dec(ctx, key(change.oldDoc.jobId, `error:${change.oldDoc.code}`));
-  if (change.newDoc) await errorCounter.inc(ctx, key(change.newDoc.jobId, `error:${change.newDoc.code}`));
+  if (change.oldDoc) await errorCounter.for(ctx).dec(ctx, key(change.oldDoc.jobId, `error:${change.oldDoc.code}`));
+  if (change.newDoc) await errorCounter.for(ctx).inc(ctx, key(change.newDoc.jobId, `error:${change.newDoc.code}`));
 }
 
 /** A job's paper errors per code, leaving out codes with none. */
 export async function readPaperErrorCounts(ctx: RunQueryCtx, jobId: Id<"extractionJobs">): Promise<Record<string, number>> {
-  const counts = await Promise.all(ERROR_CODES.map((code) => errorCounter.count(ctx, key(jobId, `error:${code}`))));
+  const counts = await Promise.all(ERROR_CODES.map((code) => errorCounter.read.count(ctx, key(jobId, `error:${code}`))));
   return Object.fromEntries(ERROR_CODES.flatMap((code, i) => (counts[i] ? [[code, counts[i]]] : [])));
 }
 
 /** Sets a job's paper error counts to `counts`, as the recount for jobs saved before counting does. */
 export async function setPaperErrorCounts(ctx: RunMutationCtx, jobId: Id<"extractionJobs">, counts: Map<string, number>) {
   for (const code of ERROR_CODES) {
-    await errorCounter.reset(ctx, key(jobId, `error:${code}`));
+    await errorCounter.for(ctx).reset(ctx, key(jobId, `error:${code}`));
     const value = counts.get(code) ?? 0;
-    if (value) await errorCounter.add(ctx, key(jobId, `error:${code}`), value);
+    if (value) await errorCounter.for(ctx).add(ctx, key(jobId, `error:${code}`), value);
   }
 }
