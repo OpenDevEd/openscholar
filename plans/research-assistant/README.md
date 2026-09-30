@@ -30,8 +30,8 @@ everything a user can, calling the same actions as the UI:
 ## Fixed decisions (2026-09-30)
 
 1. **Extraction becomes extraction only.** The assistant is a separate
-   feature. "Start chat" opens an assistant thread with the search attached
-   by ID; papers are no longer copied into the prompt.
+   feature. "Start chat" opens an assistant thread on that search,
+   referenced by ID; papers are no longer copied into the prompt.
 2. **The assistant can do everything a user can, and nothing more.** Every
    user action is registered once in an action registry. The UI mutation and
    the assistant tool are both generated from that entry. A CI check fails
@@ -52,8 +52,10 @@ everything a user can, calling the same actions as the UI:
 6. **Chats belong to people.** The owner grants read or write access to users
    or organizations, and an organization grant covers every member. Tools run
    as whoever sent the message, with that person's permissions and credits.
-7. **Chats range freely.** A chat starts from whatever it was opened on and
-   can attach more records as it goes.
+7. **Chats range over the whole account.** Nothing is attached to a chat: the
+   assistant can reach every record the person can, through account search.
+   Typing @ in a message points at one record precisely, and the message
+   stores that record's ID.
 8. **Spending credits always asks first.** The approval card shows the
    estimate and offers **Allow once** and **Always allow in this chat**. The
    allowance is stored per chat and per person, can carry a per-action credit
@@ -133,8 +135,8 @@ Results are never stored. They're fetched on the server through
 
 ### Assistant threads (#324)
 
-- `assistantThreads`: owner, title, attached record IDs, and the
-  `@convex-dev/agent` thread ID.
+- `assistantThreads`: owner, title, the IDs of the records it has worked on,
+  and the `@convex-dev/agent` thread ID.
 - `assistantThreadAccess`: principal (user or organization) and role (`read`
   or `write`).
 - `assistantAllowances`: thread, user, kind (`spendCredits`), optional
@@ -144,8 +146,8 @@ Results are never stored. They're fetched on the server through
 ### Context per turn (#326)
 
 1. Instructions and the core tools. These never change, so they stay cached.
-2. A snapshot rebuilt from Convex: attached records, open jobs, the user's
-   current view.
+2. A snapshot rebuilt from Convex: the records its messages point at with @,
+   the records it has worked on, open jobs, the user's current view.
 3. A running summary of older turns, compacted in large chunks under a
    per-model budget.
 4. Recent turns, with old tool results cut to one line.
