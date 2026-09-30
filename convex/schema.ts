@@ -47,7 +47,7 @@ import { authorContentFields } from "./authors/validators";
 import { topicNodeFields, metadataValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator } from "./aiModelConfig/validators";
-import { searchValidator, shortcutValidator, ratingValidator } from "../lib/research/records";
+import { paperAnswersValidator, searchValidator, shortcutValidator, ratingValidator } from "../lib/research/records";
 
 export default defineSchema({
   searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: searchValidator, responseChunks: v.optional(v.array(v.id("researchResponseChunks"))) })
@@ -59,8 +59,20 @@ export default defineSchema({
     author: v.union(v.literal("user"), v.literal("assistant")),
     data: searchValidator, deleted: v.boolean(), createdAt: v.number(),
     responseChunks: v.optional(v.array(v.id("researchResponseChunks"))),
+    // The screening version this revision saw; its answers are the history up to it.
+    answersVersion: v.optional(v.number()),
   }).index("by_search_and_revision", ["searchId", "revision"]),
   researchResponseChunks: defineTable({ responses: searchValidator.fields.screeningResponses }),
+  // Page screening of a saved search: one screening per search, its answers one row per
+  // paper, and an append-only history of each paper's answers that old revisions are
+  // rebuilt from. `version` counts the writes to its answers, so a revision finds its answers exactly.
+  screenings: defineTable({ userId: v.id("users"), searchId: v.id("searches"), version: v.number(), createdAt: v.number() })
+    .index("by_search", ["searchId"]),
+  screeningAnswers: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator })
+    .index("by_screening_and_paper", ["screeningId", "paperId"]),
+  // A paper's answers after each change; an empty list means its answers were removed.
+  screeningAnswerHistory: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.number(), at: v.number() })
+    .index("by_screening_and_version", ["screeningId", "version"]),
   queryShortcuts: defineTable({ userId: v.id("users"), data: shortcutValidator })
     .index("by_user", ["userId"])
     .index("by_user_and_shorthand", ["userId", "data.shorthand"]),
