@@ -3,14 +3,15 @@
 // What the assistant did in a turn, drawn like the AI settings routing map: the
 // request at the top, a tinted curve out to each step's card, one card per step.
 
-import type { ReactNode } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, CircleHelp, Coins, Copy, ExternalLink, Undo2, X } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
+import Link from "next/link";
+import { AnimatePresence, motion, useReducedMotion, useSpring, useTransform } from "motion/react";
+import { ArrowRight, Check, ChevronRight, CircleHelp, CircleStop, Coins, Copy, ExternalLink, Folder, FolderPlus, Hourglass, Plus, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { EASE } from "@/components/settings/model-map";
-import { BALANCE, COLLECTED, COLLECTION_NAME, KIND, SCREEN_CREDITS, VERSIONS } from "./data";
+import { KIND, OTHER_SCREENING, SCREEN_CREDITS, VERSIONS } from "./data";
 import { LogoMark } from "./logo-mark";
 
 /**
@@ -35,7 +36,7 @@ export type Step = {
   kind: keyof typeof KIND;
   title: string;
   detail: ReactNode;
-  status: "working" | "done" | "undone";
+  status: "working" | "done" | "undone" | "stopped";
   onUndo?: () => void;
 };
 
@@ -89,7 +90,7 @@ export function RunMap({ steps, plain }: { steps: Step[]; plain?: boolean }) {
             strokeWidth={2}
             strokeLinecap="round"
             initial={reduceMotion ? false : { pathLength: 0 }}
-            animate={{ pathLength: 1, opacity: s.status === "undone" ? 0.25 : 1 }}
+            animate={{ pathLength: 1, opacity: s.status === "undone" || s.status === "stopped" ? 0.25 : 1 }}
             transition={{ duration: 0.5, ease: EASE }}
           />
         ))}
@@ -102,7 +103,7 @@ export function RunMap({ steps, plain }: { steps: Step[]; plain?: boolean }) {
               className="absolute inset-x-0"
               style={{ top: ORIGIN + i * (CARD + GAP) }}
               initial={{ opacity: 0, x: -8, scale: 0.97 }}
-              animate={{ opacity: s.status === "undone" ? 0.5 : 1, x: 0, scale: 1 }}
+              animate={{ opacity: s.status === "undone" || s.status === "stopped" ? 0.55 : 1, x: 0, scale: 1 }}
               transition={{ duration: 0.4, ease: EASE, delay: reduceMotion ? 0 : 0.15 }}
             >
               <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-3" style={{ height: CARD }}>
@@ -123,6 +124,8 @@ export function RunMap({ steps, plain }: { steps: Step[]; plain?: boolean }) {
                   </button>
                 ) : s.status === "done" && !plain ? (
                   <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-label="Done" />
+                ) : s.status === "stopped" ? (
+                  <CircleStop className="size-4 shrink-0 text-muted-foreground" aria-label="Stopped" />
                 ) : null}
               </div>
             </motion.div>
@@ -154,8 +157,26 @@ export function VersionBars() {
   );
 }
 
-/** Asks before spending credits. */
-/** What an approval card asks for. `credits` is set when it spends them; `always` offers the per-chat allowance. */
+/**
+ * A number that rolls to each new value, the way iOS counts a balance up. It
+ * jumps straight there when motion is reduced.
+ */
+export function AnimatedNumber({ value }: { value: number }) {
+  const reduceMotion = useReducedMotion();
+  const spring = useSpring(value, { stiffness: 120, damping: 22 });
+  const text = useTransform(spring, (n) => Math.round(n).toLocaleString());
+  // The spring is an animation system outside React: point it at each new value.
+  useEffect(() => {
+    if (reduceMotion) spring.jump(value);
+    else spring.set(value);
+  }, [spring, value, reduceMotion]);
+  return <motion.span className="tabular-nums">{text}</motion.span>;
+}
+
+/**
+ * What an approval card asks for. `credits` is set when it spends them; `always`
+ * offers the per-chat allowance; `queue` says it waits for the other screening.
+ */
 export type Ask = {
   kind: keyof typeof KIND;
   title: string;
@@ -164,22 +185,33 @@ export type Ask = {
   always: boolean;
   confirm: string;
   decline: string;
+  queue?: boolean;
 };
 
-/** Asks before spending credits or making something public. */
+/**
+ * Asks before spending credits or making something public. When the balance can't
+ * cover it, the buttons turn into a top-up, and turn back once the credits land.
+ */
 export function ApprovalCard({
   ask,
   status,
+  balance,
   onAllow,
   onAlways,
   onDecline,
+  onTopUp,
 }: {
   ask: Ask;
   status: "pending" | "allowed" | "declined";
+  balance: number;
   onAllow: () => void;
   onAlways: () => void;
   onDecline: () => void;
+  onTopUp: () => void;
 }) {
+  const short = ask.credits !== undefined && ask.credits > balance;
+  // The bar is your balance; the filled part is what this takes from it.
+  const share = ask.credits ? Math.min(1, ask.credits / Math.max(balance, 1)) : 0;
   return (
     <div className="overflow-hidden rounded-2xl border border-primary/30 bg-primary/[0.04]">
       <div className="flex items-start gap-3 p-4">
@@ -207,33 +239,81 @@ export function ApprovalCard({
           </TooltipHint>
         ) : null}
       </div>
+      {ask.queue ? (
+        <div className="mx-4 mb-3 flex items-center gap-3 rounded-xl bg-background/70 px-3 py-2.5">
+          <Hourglass className="size-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium">Your plan runs one screening at a time</p>
+            <p className="truncate text-xs text-muted-foreground">Starts when “{OTHER_SCREENING.chat}” finishes</p>
+          </div>
+          <Link href="/settings/billing" className="shrink-0 text-xs font-medium text-primary hover:underline">
+            See plans
+          </Link>
+        </div>
+      ) : null}
       {ask.credits ? (
-        <div className="flex items-center gap-2 px-4 pb-4 text-xs text-muted-foreground">
-          <Coins className="size-3.5 text-primary" />
-          <span className="font-medium text-foreground">About {ask.credits} credits</span>
-          <span className="ml-auto flex items-center gap-1.5 tabular-nums">
-            {BALANCE.toLocaleString()}
-            <ArrowRight className="size-3" />
-            <span className="font-medium text-foreground">{(BALANCE - ask.credits).toLocaleString()}</span> left
-          </span>
+        <div className="space-y-2 px-4 pb-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Coins className="size-3.5 text-primary" />
+            <span className="font-medium text-foreground">About {ask.credits} credits</span>
+            <span className="ml-auto flex items-center gap-1.5">
+              <AnimatedNumber value={balance} />
+              <ArrowRight className="size-3" />
+              {/* Both labels hold their place, so the row never reflows when the balance changes. */}
+              <span className="grid font-medium [&>*]:col-start-1 [&>*]:row-start-1 [&>*]:text-right">
+                <motion.span initial={false} animate={{ opacity: short ? 1 : 0 }} className="tabular-nums text-amber-600 dark:text-amber-400">
+                  {ask.credits - balance > 0 ? ask.credits - balance : 0} short
+                </motion.span>
+                <motion.span initial={false} animate={{ opacity: short ? 0 : 1 }} className="text-foreground">
+                  <AnimatedNumber value={Math.max(0, balance - ask.credits)} /> left
+                </motion.span>
+              </span>
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10">
+            <motion.span
+              className={cn("block h-full rounded-full", short ? "bg-amber-400" : "bg-primary")}
+              initial={false}
+              animate={{ width: `${share * 100}%` }}
+              transition={{ type: "spring", stiffness: 170, damping: 26 }}
+            />
+          </div>
         </div>
       ) : (
         <p className="px-4 pb-4 text-xs text-muted-foreground">Visitors see this as soon as it's live. It asks every time.</p>
       )}
-      <AnimatePresence initial={false} mode="wait">
+      <AnimatePresence initial={false}>
         {status === "pending" ? (
-          <motion.div
-            key="ask"
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3, ease: EASE }}
-            className={cn("grid gap-2 border-t border-primary/15 p-3", ask.always ? "grid-cols-2" : "grid-cols-[1fr_auto]")}
-          >
-            <Button className="h-9" onClick={onAllow}>{ask.confirm}</Button>
-            {ask.always ? (
-              <Button className="h-9" variant="secondary" onClick={onAlways}>Always allow in this chat</Button>
-            ) : (
-              <Button className="h-9 px-4" variant="secondary" onClick={onDecline}>Not now</Button>
-            )}
+          <motion.div key="ask" exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3, ease: EASE }} className="border-t border-primary/15">
+            {/* The two sets of buttons share one cell and cross-fade, so the card keeps its height. */}
+            <div className="grid p-3 [&>*]:col-start-1 [&>*]:row-start-1">
+              <motion.div
+                initial={false}
+                animate={{ opacity: short ? 0 : 1, scale: short ? 0.98 : 1 }}
+                transition={{ duration: 0.25, ease: EASE }}
+                inert={short}
+                className={cn("grid gap-2", ask.always ? "grid-cols-2" : "grid-cols-[1fr_auto]")}
+              >
+                <Button className="h-9" onClick={onAllow}>{ask.confirm}</Button>
+                {ask.always ? (
+                  <Button className="h-9" variant="secondary" onClick={onAlways}>Always allow in this chat</Button>
+                ) : (
+                  <Button className="h-9 px-4" variant="secondary" onClick={onDecline}>Not now</Button>
+                )}
+              </motion.div>
+              <motion.div
+                initial={false}
+                animate={{ opacity: short ? 1 : 0, scale: short ? 1 : 0.98 }}
+                transition={{ duration: 0.25, ease: EASE }}
+                inert={!short}
+                className="grid grid-cols-[1fr_auto] gap-2"
+              >
+                <Button className="h-9 gap-1.5" onClick={onTopUp}>
+                  <Plus className="size-4" /> Add credits
+                </Button>
+                <Button className="h-9 px-4" variant="secondary" onClick={onDecline}>Not now</Button>
+              </motion.div>
+            </div>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -241,18 +321,45 @@ export function ApprovalCard({
   );
 }
 
-/** A running screening, updating as papers are decided. */
-export function JobCard({ done, total, counts }: { done: number; total: number; counts: { include: number; exclude: number; unsure: number } }) {
+/**
+ * A screening job. It first waits for the other screening when the plan runs one
+ * at a time, then fills in as papers are decided. Waiting and running share one
+ * frame, cross-fading their bar and legend, so the card never changes size.
+ */
+export function JobCard({
+  done,
+  total,
+  counts,
+  waiting,
+  stopped,
+}: {
+  done: number;
+  total: number;
+  counts: { include: number; exclude: number; unsure: number };
+  /** How far the other screening has got, while this one waits for it. */
+  waiting?: number;
+  stopped?: boolean;
+}) {
   const finished = done >= total;
+  const queued = waiting !== undefined;
   const credits = Math.round((done / total) * SCREEN_CREDITS);
   const seg = (n: number) => `${(n / total) * 100}%`;
+  const fade = (on: boolean) => ({ initial: false as const, animate: { opacity: on ? 1 : 0 }, transition: { duration: 0.3, ease: EASE } });
   return (
     <div className="rounded-2xl border border-border/60 bg-muted/40 p-4">
       <div className="flex items-center gap-3">
-        <KindTile kind="screening" working={!finished} />
+        <KindTile kind="screening" working={!finished && !stopped} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">
-            {finished ? "Screened 24 papers" : <WorkingText>Screening 24 papers</WorkingText>}
+          <p className="truncate text-sm font-semibold">
+            {queued && !stopped ? (
+              <WorkingText>Waiting to screen 24 papers</WorkingText>
+            ) : stopped ? (
+              `Stopped at ${done} of ${total}`
+            ) : finished ? (
+              "Screened 24 papers"
+            ) : (
+              <WorkingText>Screening 24 papers</WorkingText>
+            )}
           </p>
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <Coins className="size-3" /> <span className="tabular-nums">{credits}</span> credits
@@ -263,35 +370,140 @@ export function JobCard({ done, total, counts }: { done: number; total: number; 
           <span className="font-normal text-muted-foreground"> / {total}</span>
         </span>
       </div>
-      {/* One track: included, excluded and unclear fill it from the left as papers are decided. */}
-      <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-foreground/10">
-        <motion.span className="h-full bg-emerald-500" animate={{ width: seg(counts.include) }} transition={{ duration: 0.3, ease: EASE }} />
-        <motion.span className="h-full bg-slate-400/70" animate={{ width: seg(counts.exclude) }} transition={{ duration: 0.3, ease: EASE }} />
-        <motion.span className="h-full bg-amber-400" animate={{ width: seg(counts.unsure) }} transition={{ duration: 0.3, ease: EASE }} />
+      <div className="mt-3 grid h-2 [&>*]:col-start-1 [&>*]:row-start-1">
+        {/* The other screening's progress, in the screening tint. */}
+        <motion.div {...fade(queued)} className="h-2 overflow-hidden rounded-full bg-foreground/10">
+          <motion.span
+            className="block h-full rounded-full"
+            style={{ backgroundColor: KIND.screening!.tint }}
+            initial={false}
+            animate={{ width: `${((waiting ?? OTHER_SCREENING.total) / OTHER_SCREENING.total) * 100}%` }}
+            transition={{ duration: 0.25, ease: EASE }}
+          />
+        </motion.div>
+        {/* One track: included, excluded and unclear fill it from the left as papers are decided. */}
+        <motion.div {...fade(!queued)} className="flex h-2 overflow-hidden rounded-full bg-foreground/10">
+          <motion.span className="h-full bg-emerald-500" animate={{ width: seg(counts.include) }} transition={{ duration: 0.3, ease: EASE }} />
+          <motion.span className="h-full bg-slate-400/70" animate={{ width: seg(counts.exclude) }} transition={{ duration: 0.3, ease: EASE }} />
+          <motion.span className="h-full bg-amber-400" animate={{ width: seg(counts.unsure) }} transition={{ duration: 0.3, ease: EASE }} />
+        </motion.div>
       </div>
-      <div className="mt-2.5 flex items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><Check className="size-3 text-emerald-600" /> <span className="tabular-nums">{counts.include}</span> included</span>
-        <span className="flex items-center gap-1"><X className="size-3" /> <span className="tabular-nums">{counts.exclude}</span> excluded</span>
-        <span className="flex items-center gap-1"><CircleHelp className="size-3 text-amber-600" /> <span className="tabular-nums">{counts.unsure}</span> to check</span>
-        <button type="button" className="ml-auto flex items-center gap-1 font-medium text-foreground/80 hover:text-foreground">
-          Open <ExternalLink className="size-3" />
-        </button>
+      <div className="mt-2.5 grid text-xs text-muted-foreground [&>*]:col-start-1 [&>*]:row-start-1">
+        <motion.div {...fade(queued)} inert={!queued} className="flex min-w-0 items-center gap-2">
+          <Hourglass className="size-3 shrink-0" />
+          <span className="min-w-0 truncate">{OTHER_SCREENING.chat}</span>
+          <span className="ml-auto shrink-0 tabular-nums">
+            {waiting ?? OTHER_SCREENING.total} of {OTHER_SCREENING.total}
+          </span>
+        </motion.div>
+        <motion.div {...fade(!queued)} inert={queued} className="flex items-center gap-4">
+          <span className="flex items-center gap-1"><Check className="size-3 text-emerald-600" /> <span className="tabular-nums">{counts.include}</span> included</span>
+          <span className="flex items-center gap-1"><X className="size-3" /> <span className="tabular-nums">{counts.exclude}</span> excluded</span>
+          <span className="flex items-center gap-1"><CircleHelp className="size-3 text-amber-600" /> <span className="tabular-nums">{counts.unsure}</span> to check</span>
+          <button type="button" className="ml-auto flex items-center gap-1 font-medium text-foreground/80 hover:text-foreground">
+            Open <ExternalLink className="size-3" />
+          </button>
+        </motion.div>
       </div>
     </div>
   );
 }
 
-/** A collection the assistant made, by name and ID, with undo. */
-export function CollectionCard({ undone, canUndo, onUndo }: { undone: boolean; canUndo: boolean; onUndo: () => void }) {
+/** One way to answer a question the assistant asks back. */
+export type Option = { id: string; name: string; detail: string };
+
+/**
+ * A question the assistant asks instead of guessing: tap an answer, or type one in
+ * the composer. Once answered, the other options fold away and the pick stays.
+ */
+export function QuestionCard({
+  question,
+  hint,
+  options,
+  picked,
+  typed,
+  onPick,
+}: {
+  question: string;
+  hint: string;
+  options: readonly Option[];
+  picked: string | null;
+  /** What the person typed instead of tapping, if they did. */
+  typed?: string;
+  onPick: (id: string) => void;
+}) {
+  const shown = picked === null ? options : options.filter((o) => o.id === picked);
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border/60 bg-muted/40">
+      <div className="flex items-center gap-3 px-4 pb-2 pt-4">
+        <KindTile kind="collection" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">{question}</p>
+          <p className="truncate text-xs text-muted-foreground">{typed ? `You answered “${typed}”` : picked ? "Answered" : hint}</p>
+        </div>
+      </div>
+      <ul className="px-2 pb-2">
+        <AnimatePresence initial={false}>
+          {shown.map((o, i) => (
+            <motion.li
+              key={o.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.3, ease: EASE, delay: 0.05 + i * 0.05 } }}
+              exit={{ opacity: 0, height: 0, transition: { duration: 0.3, ease: EASE } }}
+              className="overflow-hidden"
+            >
+              <button
+                type="button"
+                disabled={picked !== null}
+                onClick={() => onPick(o.id)}
+                className="group flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-background/70 active:scale-[0.99] disabled:hover:bg-transparent"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background/80 text-muted-foreground">
+                  {o.id === "new" ? <FolderPlus className="size-4" /> : <Folder className="size-4" />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{o.name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{o.detail}</span>
+                </span>
+                {picked === o.id ? (
+                  <motion.span initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 500, damping: 28 }}>
+                    <Check className="size-4 text-primary" aria-label="Picked" />
+                  </motion.span>
+                ) : (
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5" />
+                )}
+              </button>
+            </motion.li>
+          ))}
+        </AnimatePresence>
+      </ul>
+    </div>
+  );
+}
+
+/** A collection the assistant filled, by name and ID, with undo. */
+export function CollectionCard({
+  name,
+  count,
+  undone,
+  canUndo,
+  onUndo,
+}: {
+  name: string;
+  count: number;
+  undone: boolean;
+  canUndo: boolean;
+  onUndo: () => void;
+}) {
   return (
     <div className={cn("flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 p-3 transition-opacity", undone && "opacity-50")}>
       <KindTile kind="collection" />
       <div className="min-w-0 flex-1">
-        <TooltipHint label={COLLECTION_NAME} onlyWhenClipped>
-          <p className="truncate text-sm font-semibold">{COLLECTION_NAME}</p>
+        <TooltipHint label={name} onlyWhenClipped>
+          <p className="truncate text-sm font-semibold">{name}</p>
         </TooltipHint>
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="tabular-nums">{COLLECTED} papers</span>
+          <span className="tabular-nums">{count} papers</span>
           <span className="flex items-center gap-1 rounded-md bg-foreground/6 px-1.5 py-0.5 font-mono text-[11px]">
             col_7f3kq2
             <TooltipHint label="Copy ID">

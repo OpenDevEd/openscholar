@@ -2,16 +2,19 @@
 
 // Mock of the research assistant: an overlay that hovers above every page of the
 // app and folds into a launcher. A scripted run stands in for the model and plays
-// entirely inside the chat; it doesn't change the page underneath.
+// entirely inside the chat; it doesn't change the page underneath. Along the way it
+// hits what real use hits: a plan limit, a question back, a credit shortfall and a
+// failed publish, and any reply can be stopped, retried or edited.
 
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { ArrowUp, ChevronDown, Coins, Eye, MessagesSquare, PictureInPicture2, Plus, RotateCcw, Sparkles, SquarePen, UserPlus, X } from "lucide-react";
+import { ArrowUp, ChevronDown, CircleStop, Coins, Eye, MessagesSquare, Pencil, PictureInPicture2, Plus, RotateCcw, Sparkles, Square, SquarePen, UserPlus, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Conversation, ConversationContent } from "@/components/ai-elements/conversation";
-import { useTranslations } from "next-intl";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { EffortMeter } from "@/components/models/meters";
 import { ModelPicker } from "@/components/models/model-picker";
@@ -19,29 +22,36 @@ import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
 import { StatusIcon } from "@/components/evidence-libraries/configuration/status-chip";
 import { EASE, effortOf, usePresetModels, type PickedModel, type PresetPick } from "@/components/settings/model-map";
-import { ApprovalCard, CollectionCard, JobCard, KindTile, RunMap, VersionBars, WorkingText, type Ask, type Step } from "./run-map";
+import { ApprovalCard, CollectionCard, JobCard, KindTile, QuestionCard, RunMap, VersionBars, WorkingText, type Ask, type Step } from "./run-map";
 import { LogoMark } from "./logo-mark";
-import { Dim, EdgeGlow, HistorySheet, SHEET_SPRING, Sheet, ShareSheet, stackedUnder, type SheetKind } from "./sheets";
+import { AttachSheet, Dim, EdgeGlow, HistorySheet, SHEET_SPRING, Sheet, ShareSheet, TopUpSheet, stackedUnder, type SheetKind } from "./sheets";
 import { Cite, EXTRACT_CELLS, ExtractionCard } from "./extraction";
 import {
-  COLLECTED, COLLECTION_NAME, EXTRACT_CREDITS, KIND, LIBRARY, ORIGINAL_COUNT, SCREEN_CREDITS, SCREEN_ORDER, TIGHT_COUNT,
-  type Decision,
+  BALANCE, COLLECTED, COLLECTION_CHOICES, COLLECTION_NAME, EXTRACT_CREDITS, LIBRARY, MAIN_SEARCH, ORIGINAL_COUNT, OTHER_SCREENING,
+  SCREEN_CREDITS, SCREEN_ORDER, TIGHT_COUNT, type Attachment, type Decision,
 } from "./data";
 
 type Card =
   | { type: "approval"; ask: Ask; status: "pending" | "allowed" | "declined" }
-  | { type: "job"; done: number }
+  | { type: "job"; done: number; waiting?: number }
   | { type: "extract"; filled: number }
-  | { type: "collection"; undone: boolean }
-  | { type: "publish"; stage: number };
-type AssistantTurn = { kind: "assistant"; id: number; steps: Step[]; text: string; shown: number; cards: Card[] };
-type Turn = { kind: "user"; id: number; text: string } | AssistantTurn;
+  | { type: "question"; picked: string | null; typed?: string }
+  | { type: "collection"; undone: boolean; name: string; count: number }
+  | { type: "publish"; stage: number; failed?: boolean };
+type AssistantTurn = { kind: "assistant"; id: number; steps: Step[]; text: string; shown: number; cards: Card[]; stopped?: boolean };
+/** What a message changes, saved when it's sent, so a retry or an edit can start from there again. */
+type Snapshot = { attached: Attachment[]; always: boolean; balance: number; collection: Home };
+type UserTurn = { kind: "user"; id: number; text: string; step: number; snap: Snapshot; edited?: boolean };
+type Turn = UserTurn | AssistantTurn;
 type Choice = "once" | "always" | "no";
+/** Where the included studies went. */
+type Home = { name: string; count: number };
+type Answer = { id: string; typed?: string };
 
 const PROMPTS = [
   "Tighten this to structured pedagogy studies in sub-Saharan Africa",
   "Screen them. Keep trials and quasi-experiments in primary schools",
-  "Save the included ones to a new collection",
+  "Save the included ones to a collection",
   "Compare the designs and samples in these studies",
   "Feature them on our Evidence Library's homepage",
   "Publish it",
@@ -49,6 +59,7 @@ const PROMPTS = [
 const TITLE = "Structured pedagogy in sub-Saharan Africa";
 const PANEL_W = 440;
 const SHELL_SPRING = { type: "spring" as const, stiffness: 380, damping: 36, mass: 0.9 };
+const START_HOME: Home = { name: COLLECTION_NAME, count: COLLECTED };
 
 const SCREEN_ASK: Ask = {
   kind: "screening",
@@ -58,6 +69,7 @@ const SCREEN_ASK: Ask = {
   always: true,
   confirm: "Allow once",
   decline: "Don't screen",
+  queue: true,
 };
 const EXTRACT_ASK: Ask = {
   kind: "extraction",
@@ -68,14 +80,14 @@ const EXTRACT_ASK: Ask = {
   confirm: "Allow once",
   decline: "Don't extract",
 };
-const PUBLISH_ASK: Ask = {
+const publishAsk = (collection: string): Ask => ({
   kind: "publish",
   title: "Publish the new homepage",
-  items: ["A tagline", "A description", `The featured collection “${COLLECTION_NAME}”`],
+  items: ["A tagline", "A description", `The featured collection “${collection}”`],
   always: false,
   confirm: "Publish",
   decline: "Don't publish",
-};
+});
 const PUBLISH_STAGES = ["Checking the settings", "Building the library", "Rolling it out"];
 
 /** What the assistant says it can see, from the route the user is on. */
@@ -96,26 +108,35 @@ function viewOf(pathname: string) {
 
 class Stopped extends Error {}
 
+type OpenSheet = { kind: SheetKind; chat: string; balance?: number; need?: number; purpose?: Ask };
+
 export function AssistantOverlay() {
   const pathname = usePathname();
   const view = viewOf(pathname);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [always, setAlwaysState] = useState(false);
+  const [balance, setBalanceState] = useState(BALANCE);
+  const [home, setHome] = useState<Home>(START_HOME);
   const [busy, setBusy] = useState(false);
   const [next, setNext] = useState(0);
   const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(true);
   // Sheets stacked over the panel, bottom first.
-  const [sheets, setSheets] = useState<Array<{ kind: SheetKind; chat: string }>>([]);
-  const [attached, setAttached] = useState<Array<keyof typeof KIND>>(["search"]);
+  const [sheets, setSheets] = useState<OpenSheet[]>([]);
+  const [attached, setAttached] = useState<Attachment[]>([MAIN_SEARCH]);
   const run = useRef(0);
   const ids = useRef(0);
-  // The pending approval answers only the run that asked for it.
+  // Each wait on the person answers only the run that asked.
   const decide = useRef<{ token: number; resolve: (choice: Choice) => void } | null>(null);
-  // Read at the approval gate, so revoking mid-step counts.
+  const question = useRef<{ token: number; resolve: (answer: Answer) => void } | null>(null);
+  const retryWait = useRef<{ token: number; resolve: () => void } | null>(null);
+  // Read at the gates, so a change mid-step counts.
   const alwaysRef = useRef(false);
+  const balanceRef = useRef(BALANCE);
   // The turn whose collection is current; an older card's undo does nothing.
   const collectionOwner = useRef<number | null>(null);
+  // The first publish in a chat fails, so the retry shows.
+  const publishFailed = useRef(false);
   const composer = useRef<HTMLTextAreaElement>(null);
 
   // Timers are an outside system: stop the scripted run when the overlay unmounts.
@@ -138,7 +159,12 @@ export function AssistantOverlay() {
     alwaysRef.current = value;
     setAlwaysState(value);
   };
-  const attach = (kind: keyof typeof KIND) => setAttached((a) => (a.includes(kind) ? a : [...a, kind]));
+  const setBalance = (value: number) => {
+    balanceRef.current = value;
+    setBalanceState(value);
+  };
+  const attach = (a: Attachment) => setAttached((all) => (all.some((x) => x.id === a.id) ? all : [...all, a]));
+  const detach = (id: string) => setAttached((all) => all.filter((a) => a.id !== id));
   const wait = (token: number, ms: number) =>
     new Promise<void>((resolve, reject) => setTimeout(() => (token === run.current ? resolve() : reject(new Stopped())), ms));
   const patch = (id: number, fn: (t: AssistantTurn) => Partial<AssistantTurn>) =>
@@ -166,10 +192,10 @@ export function AssistantOverlay() {
   };
   /**
    * Shows the approval card and waits for an answer. A credits ask is skipped once the
-   * user has allowed credits for this chat; publishing asks every time.
+   * user has allowed credits for this chat and the balance covers it; publishing asks every time.
    */
   const approve = async (token: number, id: number, ask: Ask): Promise<{ choice: Choice; asked: boolean }> => {
-    if (ask.always && alwaysRef.current) return { choice: "always", asked: false };
+    if (ask.always && alwaysRef.current && (ask.credits ?? 0) <= balanceRef.current) return { choice: "always", asked: false };
     addCard(id, { type: "approval", ask, status: "pending" });
     const choice = await new Promise<Choice>((resolve) => {
       decide.current = { token, resolve };
@@ -182,12 +208,19 @@ export function AssistantOverlay() {
   };
   /** Puts the running job where the approval card was, or adds it when nothing was asked. */
   const startJob = (id: number, asked: boolean, card: Card) => (asked ? setCard(id, 0, card) : addCard(id, card));
-  /** Stops the running script: pending approvals close, and the collection made on the old search goes. */
-  const cancelRun = () => {
+  const charge = (credits: number) => setBalance(balanceRef.current - credits);
+  /** Stops whatever runs, and drops every wait on the person. */
+  const halt = () => {
     run.current++;
     decide.current = null;
-    collectionOwner.current = null;
+    question.current = null;
+    retryWait.current = null;
     setBusy(false);
+  };
+  /** Stops the running script: pending approvals close, and the collection made on the old search goes. */
+  const cancelRun = () => {
+    halt();
+    collectionOwner.current = null;
     setTurns((all) =>
       all.map((t) =>
         t.kind === "assistant"
@@ -201,11 +234,30 @@ export function AssistantOverlay() {
       ),
     );
   };
+  /** Stop, from the composer: the reply keeps what it had shown, marked as stopped. */
+  const stop = () => {
+    halt();
+    setTurns((all) =>
+      all.map((t, i): Turn =>
+        t.kind === "assistant" && i === all.length - 1
+          ? {
+              ...t,
+              stopped: true,
+              text: t.text.slice(0, t.shown),
+              steps: t.steps.map((s) => (s.status === "working" ? { ...s, status: "stopped" } : s)),
+              cards: t.cards
+                .filter((c) => !(c.type === "question" && c.picked === null))
+                .map((c): Card => (c.type === "approval" && c.status === "pending" ? { ...c, status: "declined" } : c)),
+            }
+          : t,
+      ),
+    );
+  };
 
   const undoSearch = (id: number) => {
     cancelRun();
     setNext(0);
-    setAttached(["search"]);
+    setAttached([MAIN_SEARCH]);
     patch(id, (t) => ({ steps: t.steps.map((s) => (s.kind === "write" ? { ...s, status: "undone", onUndo: undefined } : s)) }));
   };
 
@@ -231,9 +283,17 @@ export function AssistantOverlay() {
       await stream(token, id, "Okay, I haven't screened anything. Your search is unchanged.");
       return false;
     }
-    attach("screening");
-    startJob(id, asked, { type: "job", done: 0 });
-    await wait(token, 400);
+    charge(SCREEN_CREDITS);
+    attach({ id: "screening", kind: "screening", label: "Screening, 24 papers" });
+    // The plan runs one screening at a time, so this one waits for the other to finish.
+    startJob(id, asked, { type: "job", done: 0, waiting: OTHER_SCREENING.start });
+    for (let w = OTHER_SCREENING.start + 1; w <= OTHER_SCREENING.total; w++) {
+      await wait(token, 300);
+      setCard(id, 0, { type: "job", done: 0, waiting: w });
+    }
+    await wait(token, 600);
+    setCard(id, 0, { type: "job", done: 0 });
+    await wait(token, 500);
     for (let done = 1; done <= 24; done++) {
       await wait(token, 210);
       setCard(id, 0, { type: "job", done });
@@ -248,15 +308,40 @@ export function AssistantOverlay() {
   };
 
   const collect = async (token: number, id: number) => {
-    await work(token, id, 0, { kind: "collection", title: "Creating a collection", detail: COLLECTION_NAME, status: "working" },
-      { title: "Created a collection" }, 900);
-    await work(token, id, 1, { kind: "collection", title: "Adding the included studies", detail: "From the screening", status: "working" },
+    await work(token, id, 0, { kind: "collection", title: "Looking at your collections", detail: "For one these fit", status: "working" },
+      { title: "Found 2 that could fit", detail: "Or they can go in a new one" }, 1000);
+    // Asks instead of guessing, and waits for a tap or a typed name.
+    addCard(id, { type: "question", picked: null });
+    const answer = await new Promise<Answer>((resolve) => {
+      question.current = { token, resolve };
+    });
+    question.current = null;
+    if (token !== run.current) throw new Stopped();
+    patch(id, (t) => ({ cards: t.cards.map((c): Card => (c.type === "question" ? { ...c, picked: answer.id, typed: answer.typed } : c)) }));
+    const choice = COLLECTION_CHOICES.find((c) => c.id === answer.id)!;
+    const name = answer.typed ?? choice.name;
+    const fresh = choice.id === "new";
+    const count = choice.count + COLLECTED;
+    // The pick shows for a moment, then the card folds into the run as a step, so the
+    // turn still reads top to bottom.
+    await wait(token, 750);
+    patch(id, (t) => ({ cards: t.cards.filter((c) => c.type !== "question") }));
+    addStep(id, { kind: "collection", title: answer.typed ? `You named it “${name}”` : `You chose ${name}`, detail: "Where the 4 studies go", status: "done" });
+    await wait(token, 450);
+    await work(token, id, 2, { kind: "collection", title: fresh ? "Creating the collection" : `Opening ${name}`, detail: name, status: "working" },
+      { title: fresh ? "Created the collection" : `Opened ${name}` }, 900);
+    await work(token, id, 3, { kind: "collection", title: "Adding the included studies", detail: "From the screening", status: "working" },
       { title: `Added ${COLLECTED} studies`, detail: "One was listed twice, so it's in once" }, 900);
     collectionOwner.current = id;
-    attach("collection");
-    addCard(id, { type: "collection", undone: false });
+    setHome({ name, count });
+    attach({ id: "collection", kind: "collection", label: name });
+    addCard(id, { type: "collection", undone: false, name, count });
     await wait(token, 300);
-    await stream(token, id, "Done. The 4 included studies are in the new collection, and it's attached to this chat.");
+    await stream(
+      token,
+      id,
+      fresh ? `Done. The 4 included studies are in “${name}”, and it's attached to this chat.` : `Done. “${name}” has ${count} papers now, and it's attached to this chat.`,
+    );
   };
 
   const extract = async (token: number, id: number) => {
@@ -267,7 +352,8 @@ export function AssistantOverlay() {
       await stream(token, id, "Okay, I haven't extracted anything.");
       return false;
     }
-    attach("extraction");
+    charge(EXTRACT_CREDITS);
+    attach({ id: "extraction", kind: "extraction", label: "Extraction, 4 papers" });
     startJob(id, asked, { type: "extract", filled: 0 });
     await wait(token, 400);
     for (let filled = 1; filled <= EXTRACT_CELLS; filled++) {
@@ -284,7 +370,7 @@ export function AssistantOverlay() {
   };
 
   const undoFeature = (id: number) => {
-    setAttached((a) => a.filter((k) => k !== "library"));
+    detach("l1");
     setNext((n) => Math.min(n, 4));
     patch(id, (t) => ({ steps: t.steps.map((s) => (s.kind === "library" ? { ...s, status: "undone", onUndo: undefined } : s)) }));
   };
@@ -294,52 +380,99 @@ export function AssistantOverlay() {
       { title: "Read the library's draft", detail: "No tagline or description yet" }, 900);
     await work(token, id, 1, { kind: "library", title: "Writing the homepage text", detail: "Tagline and description", status: "working" },
       { title: "Wrote the homepage text" }, 1400);
-    await work(token, id, 2, { kind: "library", title: "Featuring the collection", detail: COLLECTION_NAME, status: "working" },
+    await work(token, id, 2, { kind: "library", title: "Featuring the collection", detail: home.name, status: "working" },
       { title: "Featured the collection", onUndo: () => undoFeature(id) }, 900);
-    attach("library");
-    await stream(token, id, `I added a tagline, a description, and the new collection first in the featured list. It's saved as a draft of ${LIBRARY.name}, so visitors don't see it yet.`);
+    attach({ id: "l1", kind: "library", label: LIBRARY.name, detail: LIBRARY.address });
+    await stream(token, id, `I added a tagline, a description, and “${home.name}” first in the featured list. It's saved as a draft of ${LIBRARY.name}, so visitors don't see it yet.`);
   };
 
   const publish = async (token: number, id: number) => {
     await work(token, id, 0, { kind: "publish", title: "Checking the draft", detail: "Every section", status: "working" },
       { title: "Checked the draft", detail: "Ready to publish" }, 900);
-    const { choice } = await approve(token, id, PUBLISH_ASK);
+    const { choice } = await approve(token, id, publishAsk(home.name));
     if (choice === "no") {
       await stream(token, id, "Okay, it stays a draft.");
       return false;
     }
     setCard(id, 0, { type: "publish", stage: 0 });
-    for (let stage = 1; stage <= PUBLISH_STAGES.length; stage++) {
+    await wait(token, 1300);
+    setCard(id, 0, { type: "publish", stage: 1 });
+    if (!publishFailed.current) {
+      await wait(token, 1700);
+      publishFailed.current = true;
+      setCard(id, 0, { type: "publish", stage: 1, failed: true });
+      await stream(token, id, "The build timed out on our side, so nothing changed for visitors and the draft is safe. Try again when you're ready.");
+      await new Promise<void>((resolve) => {
+        retryWait.current = { token, resolve };
+      });
+      retryWait.current = null;
+      if (token !== run.current) throw new Stopped();
+      patch(id, () => ({ text: "", shown: 0 }));
+      setCard(id, 0, { type: "publish", stage: 1 });
+    }
+    for (let stage = 2; stage <= PUBLISH_STAGES.length; stage++) {
       await wait(token, 1300);
       setCard(id, 0, { type: "publish", stage });
     }
-    await stream(token, id, `It's live at ${LIBRARY.address}, with the new homepage and the collection featured first.`);
+    await stream(token, id, `It's live at ${LIBRARY.address}, with the new homepage and “${home.name}” featured first.`);
     return true;
   };
 
-  const send = async (text: string) => {
-    if (busy || next >= PROMPTS.length || !text.trim()) return;
+  const SCRIPT = [optimize, screen, collect, extract, feature, publish];
+
+  /** Runs one step of the script as a new reply. */
+  const execute = async (step: number) => {
     const token = ++run.current;
-    const step = next;
-    const user = ++ids.current;
     const id = ++ids.current;
-    setDraft("");
     setBusy(true);
-    setTurns((all) => [...all, { kind: "user", id: user, text }, { kind: "assistant", id, steps: [], text: "", shown: 0, cards: [] }]);
+    setTurns((all) => [...all, { kind: "assistant", id, steps: [], text: "", shown: 0, cards: [] }]);
     try {
       await wait(token, 450);
-      if (step === 0) await optimize(token, id);
-      if (step === 1 && !(await screen(token, id))) return;
-      if (step === 2) await collect(token, id);
-      if (step === 3 && !(await extract(token, id))) return;
-      if (step === 4) await feature(token, id);
-      if (step === 5 && !(await publish(token, id))) return;
+      if ((await SCRIPT[step]!(token, id)) === false) return;
       setNext(step + 1);
     } catch (error) {
       if (!(error instanceof Stopped)) throw error;
     } finally {
       if (token === run.current) setBusy(false);
     }
+  };
+
+  const snapshot = (): Snapshot => ({ attached, always: alwaysRef.current, balance: balanceRef.current, collection: home });
+  const restore = (snap: Snapshot) => {
+    setAttached(snap.attached);
+    setAlways(snap.always);
+    setBalance(snap.balance);
+    setHome(snap.collection);
+  };
+
+  const send = (raw: string) => {
+    const text = raw.trim();
+    if (!text) return;
+    // A typed reply to a question answers it: here, the name of a new collection.
+    if (question.current?.token === run.current) {
+      setDraft("");
+      question.current.resolve({ id: "new", typed: text });
+      return;
+    }
+    if (busy || next >= PROMPTS.length) return;
+    const snap = snapshot();
+    setDraft("");
+    setTurns((all) => [...all, { kind: "user", id: ++ids.current, text, step: next, snap }]);
+    void execute(next);
+  };
+
+  /** Runs a message again from where it was sent, dropping what came after it; `text` edits it first. */
+  const rerun = (userId: number, text?: string) => {
+    const user = turns.find((t): t is UserTurn => t.kind === "user" && t.id === userId);
+    if (!user) return;
+    halt();
+    restore(user.snap);
+    // A collection made by a reply that's being dropped can't be undone from it any more.
+    if (collectionOwner.current !== null && collectionOwner.current > userId) collectionOwner.current = null;
+    const edited = text !== undefined && text.trim() !== user.text;
+    setTurns((all) => [...all.slice(0, all.findIndex((t) => t.id === userId)), { ...user, text: text?.trim() || user.text, edited: user.edited || edited }]);
+    setNext(user.step);
+    void execute(user.step);
   };
 
   const answer = (choice: Choice) => {
@@ -349,24 +482,33 @@ export function AssistantOverlay() {
     composer.current?.focus();
     pending.resolve(choice);
   };
+  const pick = (id: string) => {
+    if (question.current?.token === run.current) question.current.resolve({ id });
+  };
+  const retryPublish = () => {
+    if (retryWait.current?.token === run.current) retryWait.current.resolve();
+  };
 
   const restart = () => {
     cancelRun();
     setTurns([]);
     setAlways(false);
+    setBalance(BALANCE);
+    setHome(START_HOME);
+    publishFailed.current = false;
     setNext(0);
     setDraft("");
-    setAttached(["search"]);
+    setAttached([MAIN_SEARCH]);
   };
 
   const undoCollection = (id: number) => {
     if (collectionOwner.current !== id) return;
     collectionOwner.current = null;
-    setAttached((a) => a.filter((k) => k !== "collection"));
+    detach("collection");
     patch(id, (t) => ({ cards: t.cards.map((c) => (c.type === "collection" ? { ...c, undone: true } : c)) }));
   };
 
-  const push = (kind: SheetKind, chat: string) => setSheets((all) => [...all, { kind, chat }]);
+  const push = (sheet: OpenSheet) => setSheets((all) => [...all, sheet]);
   const pop = () => setSheets((all) => all.slice(0, -1));
   const fold = () => {
     setSheets([]);
@@ -375,7 +517,12 @@ export function AssistantOverlay() {
   const depth = sheets.length;
   const chatTitle = turns.length ? TITLE : "New chat";
 
-  const cards = turns.flatMap((t) => (t.kind === "assistant" ? t.cards : []));
+  const last = turns.at(-1);
+  const lastCards = last?.kind === "assistant" ? last.cards : [];
+  const asking = lastCards.some((c) => c.type === "question" && c.picked === null);
+  const pendingAsk = lastCards.flatMap((c) => (c.type === "approval" && c.status === "pending" && c.ask.credits ? [c.ask] : []))[0];
+  const lastUser = turns.findLast((t) => t.kind === "user")?.id ?? null;
+  const cards = turns.flatMap((t) => (t.kind === "assistant" && !t.stopped ? t.cards : []));
   const screening = cards.find((c): c is Extract<Card, { type: "job" }> => c.type === "job");
   const extraction = cards.find((c): c is Extract<Card, { type: "extract" }> => c.type === "extract");
   const running =
@@ -430,25 +577,42 @@ export function AssistantOverlay() {
               >
                 <Header
                   title={chatTitle}
-                  onHistory={() => push("history", chatTitle)}
-                  onShare={() => push("share", chatTitle)}
+                  onHistory={() => push({ kind: "history", chat: chatTitle })}
+                  onShare={() => push({ kind: "share", chat: chatTitle })}
+                  onAttach={() => push({ kind: "attach", chat: chatTitle })}
                   attached={attached}
+                  onDetach={detach}
                   always={always}
                   onStopAlways={() => setAlways(false)}
                   onRestart={restart}
                   onCollapse={fold}
                 />
-                <Thread turns={turns} onAnswer={answer} onUndoCollection={undoCollection} busy={busy} view={view} />
+                <Thread
+                  turns={turns}
+                  view={view}
+                  attached={attached}
+                  balance={balance}
+                  busy={busy}
+                  lastUser={lastUser}
+                  onAnswer={answer}
+                  onTopUp={() => push({ kind: "topup", chat: chatTitle, balance, need: (pendingAsk?.credits ?? 0) - balance, purpose: pendingAsk })}
+                  onPick={pick}
+                  onRetryPublish={retryPublish}
+                  onUndoCollection={undoCollection}
+                  onRerun={rerun}
+                />
                 <Footer
                   suggestion={suggestion}
                   done={!busy && next >= PROMPTS.length}
-                  onSuggestion={(s) => void send(s)}
+                  onSuggestion={send}
                   onRestart={restart}
                   composer={composer}
                   draft={draft}
                   setDraft={setDraft}
                   busy={busy}
-                  onSend={() => void send(draft.trim() || suggestion || "")}
+                  asking={asking}
+                  onSend={() => send(draft.trim() || suggestion || "")}
+                  onStop={stop}
                   view={view}
                 />
               </motion.div>
@@ -458,9 +622,29 @@ export function AssistantOverlay() {
               {sheets.map((sheet, i) => (
                 <Sheet key={`${i}-${sheet.kind}`} index={i} depth={depth - 1 - i}>
                   {sheet.kind === "history" ? (
-                    <HistorySheet onBack={pop} onShare={(chat) => push("share", chat)} />
-                  ) : (
+                    <HistorySheet onBack={pop} onShare={(chat) => push({ kind: "share", chat })} />
+                  ) : sheet.kind === "share" ? (
                     <ShareSheet chat={sheet.chat} onBack={pop} />
+                  ) : sheet.kind === "attach" ? (
+                    <AttachSheet
+                      attached={attached}
+                      onBack={pop}
+                      onDone={(all) => {
+                        setAttached(all);
+                        pop();
+                      }}
+                    />
+                  ) : (
+                    <TopUpSheet
+                      balance={sheet.balance ?? balance}
+                      need={sheet.need ?? 0}
+                      purpose={sheet.purpose}
+                      onBack={pop}
+                      onBought={(credits) => {
+                        setBalance(balanceRef.current + credits);
+                        pop();
+                      }}
+                    />
                   )}
                 </Sheet>
               ))}
@@ -476,27 +660,36 @@ export function AssistantOverlay() {
   );
 }
 
-/** A publish in progress: each stage checks off, then the library is live. */
-function PublishCard({ stage }: { stage: number }) {
+/** A publish in progress: each stage checks off, then the library is live. A failed stage offers a retry. */
+function PublishCard({ stage, failed, stopped, onRetry }: { stage: number; failed?: boolean; stopped?: boolean; onRetry: () => void }) {
   const live = stage >= PUBLISH_STAGES.length;
+  const still = failed || stopped;
   return (
-    <div className="rounded-2xl border border-border/60 bg-muted/40 p-4">
-      <div className="flex items-center gap-3">
-        <KindTile kind="publish" working={!live} />
+    <div className={cn("rounded-2xl border bg-muted/40 p-4 transition-colors", failed ? "border-destructive/30" : "border-border/60")}>
+      <div className="flex h-9 items-center gap-3">
+        <KindTile kind="publish" working={!live && !still} />
         <p className="min-w-0 flex-1 text-sm font-semibold">
-          {live ? "Published" : <WorkingText>Publishing the new homepage</WorkingText>}
+          {live ? "Published" : failed ? "Couldn't publish" : stopped ? "Publishing stopped" : <WorkingText>Publishing the new homepage</WorkingText>}
         </p>
         {live ? (
           <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">Live</span>
+        ) : failed && !stopped ? (
+          <Button size="sm" variant="secondary" className="h-8 gap-1.5 rounded-full px-3" onClick={onRetry}>
+            <RotateCcw className="size-3.5" /> Try again
+          </Button>
         ) : null}
       </div>
       <ol className="mt-3 space-y-2">
-        {PUBLISH_STAGES.map((label, i) => (
-          <li key={label} className="flex items-center gap-2.5 text-sm">
-            <StatusIcon tone={i < stage ? "success" : i === stage ? "running" : "neutral"} label={i < stage ? "Done" : i === stage ? "Running" : "Waiting"} />
-            <span className={cn(i > stage ? "text-muted-foreground" : "text-foreground/90")}>{label}</span>
-          </li>
-        ))}
+        {PUBLISH_STAGES.map((label, i) => {
+          const tone = i < stage ? "success" : i === stage && !live ? (failed ? "danger" : stopped ? "neutral" : "running") : "neutral";
+          return (
+            <li key={label} className="flex items-center gap-2.5 text-sm">
+              <StatusIcon tone={tone} label={tone === "success" ? "Done" : tone === "danger" ? "Failed" : tone === "running" ? "Running" : "Waiting"} />
+              <span className={cn(i > stage ? "text-muted-foreground" : "text-foreground/90")}>{label}</span>
+              {tone === "danger" ? <span className="text-xs text-muted-foreground">Timed out</span> : null}
+            </li>
+          );
+        })}
       </ol>
     </div>
   );
@@ -566,39 +759,45 @@ function Launcher({ working, progress, onOpen }: { working: boolean; progress: n
 
 function Thread({
   turns,
-  onAnswer,
-  onUndoCollection,
-  busy,
   view,
+  attached,
+  balance,
+  busy,
+  lastUser,
+  onAnswer,
+  onTopUp,
+  onPick,
+  onRetryPublish,
+  onUndoCollection,
+  onRerun,
 }: {
   turns: Turn[];
-  onAnswer: (choice: Choice) => void;
-  onUndoCollection: (id: number) => void;
-  busy: boolean;
   view: string;
+  attached: Attachment[];
+  balance: number;
+  busy: boolean;
+  lastUser: number | null;
+  onAnswer: (choice: Choice) => void;
+  onTopUp: () => void;
+  onPick: (id: string) => void;
+  onRetryPublish: () => void;
+  onUndoCollection: (id: number) => void;
+  onRerun: (userId: number, text?: string) => void;
 }) {
   return (
     <Conversation className="min-h-0 flex-1 [mask-image:linear-gradient(to_bottom,transparent,black_18px)]">
       <ConversationContent className="gap-5 overflow-x-clip px-4 py-4">
-        {turns.length === 0 ? <Empty view={view} /> : null}
-        {turns.map((t) =>
-          t.kind === "user" ? (
-            <motion.div
-              key={t.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, ease: EASE }}
-              className="ml-10 self-end rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm"
-            >
-              {t.text}
-            </motion.div>
-          ) : (
+        {turns.length === 0 ? <Empty view={view} attached={attached} /> : null}
+        {turns.map((t, i) => {
+          if (t.kind === "user") return <UserBubble key={t.id} turn={t} editable={t.id === lastUser} onEdit={(text) => onRerun(t.id, text)} />;
+          const asker = turns[i - 1];
+          return (
             <div key={t.id} className="space-y-3">
-              {t.steps.length ? <RunMap steps={t.steps} /> : <Thinking />}
+              {t.steps.length ? <RunMap steps={t.steps} /> : t.stopped ? null : <Thinking />}
               <AnimatePresence mode="popLayout" initial={false}>
-                {t.cards.map((c, i) => (
+                {t.cards.map((c, j) => (
                   <motion.div
-                    key={`${i}-${c.type}`}
+                    key={`${j}-${c.type}`}
                     layout="position"
                     initial={{ opacity: 0, scale: 0.97, y: 6 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -609,28 +808,142 @@ function Thread({
                       <ApprovalCard
                         ask={c.ask}
                         status={c.status}
+                        balance={balance}
                         onAllow={() => onAnswer("once")}
                         onAlways={() => onAnswer("always")}
                         onDecline={() => onAnswer("no")}
+                        onTopUp={onTopUp}
                       />
                     ) : c.type === "job" ? (
-                      <JobCard done={c.done} total={24} counts={countUpTo(c.done)} />
+                      <JobCard done={c.done} total={24} counts={countUpTo(c.done)} waiting={c.waiting} stopped={t.stopped} />
                     ) : c.type === "extract" ? (
-                      <ExtractionCard filled={c.filled} />
+                      <ExtractionCard filled={c.filled} stopped={t.stopped} />
                     ) : c.type === "publish" ? (
-                      <PublishCard stage={c.stage} />
+                      <PublishCard stage={c.stage} failed={c.failed} stopped={t.stopped} onRetry={onRetryPublish} />
+                    ) : c.type === "question" ? (
+                      <QuestionCard
+                        question="Where should the 4 studies go?"
+                        hint="Pick one, or type a name for a new collection"
+                        options={COLLECTION_CHOICES.map((o) => ({ id: o.id, name: o.name, detail: o.id === "new" ? o.detail : `${o.detail}, adds 4` }))}
+                        picked={c.picked}
+                        typed={c.typed}
+                        onPick={onPick}
+                      />
                     ) : (
-                      <CollectionCard undone={c.undone} canUndo={!busy} onUndo={() => onUndoCollection(t.id)} />
+                      <CollectionCard name={c.name} count={c.count} undone={c.undone} canUndo={!busy} onUndo={() => onUndoCollection(t.id)} />
                     )}
                   </motion.div>
                 ))}
               </AnimatePresence>
               {t.text ? <Reply text={t.text} shown={t.shown} /> : null}
+              {t.stopped && asker?.kind === "user" ? <StoppedRow onRetry={() => onRerun(asker.id)} /> : null}
             </div>
-          ),
-        )}
+          );
+        })}
       </ConversationContent>
     </Conversation>
+  );
+}
+
+/** Under a reply that was stopped: it says so, and offers to run the message again. */
+function StoppedRow({ onRetry }: { onRetry: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      className="flex h-8 items-center gap-2 text-xs text-muted-foreground"
+    >
+      <CircleStop className="size-3.5" /> You stopped this reply
+      <button
+        type="button"
+        onClick={onRetry}
+        className="ml-1 flex h-7 items-center gap-1 rounded-full px-2.5 font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
+      >
+        <RotateCcw className="size-3" /> Try again
+      </button>
+    </motion.div>
+  );
+}
+
+/**
+ * A message you sent. The latest one can be edited in place: the bubble turns into
+ * an editor, and sending runs it again from there, dropping the replies after it.
+ */
+function UserBubble({ turn, editable, onEdit }: { turn: UserTurn; editable: boolean; onEdit: (text: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(turn.text);
+  const save = () => {
+    if (!text.trim()) return;
+    setEditing(false);
+    onEdit(text);
+  };
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      className={cn("group relative ml-10 self-end", editing && "w-[calc(100%-2.5rem)]")}
+    >
+      <AnimatePresence mode="popLayout" initial={false}>
+        {editing ? (
+          <motion.div
+            key="edit"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 420, damping: 32 }}
+            style={{ transformOrigin: "100% 50%" }}
+            className="rounded-2xl rounded-br-sm border border-primary/40 bg-background p-2 ring-2 ring-primary/15"
+          >
+            <textarea
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- the editor opens on purpose, from the edit button
+              autoFocus
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  save();
+                }
+                if (e.key === "Escape") setEditing(false);
+              }}
+              rows={2}
+              aria-label="Edit your message"
+              className="block w-full resize-none bg-transparent px-2 py-1 text-sm outline-none"
+            />
+            <div className="flex justify-end gap-1.5 pt-1">
+              <Button size="sm" variant="ghost" className="h-7 rounded-full px-3" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" className="h-7 rounded-full px-3" disabled={!text.trim()} onClick={save}>
+                Send
+              </Button>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div key="view" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2, ease: EASE }} style={{ transformOrigin: "100% 50%" }}>
+            <div className="rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm">{turn.text}</div>
+            {turn.edited ? <p className="mt-1 pr-1 text-right text-[11px] text-muted-foreground">Edited</p> : null}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {editable && !editing ? (
+        // Out of the flow, beside the bubble, so it never moves the message.
+        <div className="absolute -left-9 top-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+          <IconButton
+            small
+            label="Edit"
+            icon={<Pencil className="size-3.5" />}
+            onClick={() => {
+              setText(turn.text);
+              setEditing(true);
+            }}
+          />
+        </div>
+      ) : null}
+    </motion.div>
   );
 }
 
@@ -649,7 +962,7 @@ function Thinking() {
   );
 }
 
-function Empty({ view }: { view: string }) {
+function Empty({ view, attached }: { view: string; attached: Attachment[] }) {
   return (
     <div className="space-y-5 pt-2">
       <div className="space-y-1">
@@ -665,7 +978,7 @@ function Empty({ view }: { view: string }) {
         <RunMap
           steps={[
             { kind: "navigate", title: view, detail: "The page you're on", status: "done" },
-            { kind: "search", title: "structured pedagogy early grade reading", detail: "Attached to this chat", status: "done" },
+            ...attached.map((a): Step => ({ kind: a.kind, title: a.label, detail: "Attached to this chat", status: "done" })),
           ]}
           plain
         />
@@ -674,19 +987,15 @@ function Empty({ view }: { view: string }) {
   );
 }
 
-const CHIP_LABEL: Partial<Record<keyof typeof KIND, string>> = {
-  search: "structured pedagogy early grade reading",
-  screening: "Screening, 24 papers",
-  collection: COLLECTION_NAME,
-  extraction: "Extraction, 4 papers",
-  library: LIBRARY.name,
-};
+const CHIP_SPRING = { type: "spring" as const, stiffness: 480, damping: 32 };
 
 function Header({
   title,
   onHistory,
   onShare,
+  onAttach,
   attached,
+  onDetach,
   always,
   onStopAlways,
   onRestart,
@@ -695,7 +1004,9 @@ function Header({
   title: string;
   onHistory: () => void;
   onShare: () => void;
-  attached: Array<keyof typeof KIND>;
+  onAttach: () => void;
+  attached: Attachment[];
+  onDetach: (id: string) => void;
   always: boolean;
   onStopAlways: () => void;
   onRestart: () => void;
@@ -727,48 +1038,63 @@ function Header({
           <IconButton label="Fold into a bubble  ⌘J" icon={<PictureInPicture2 className="size-4" />} onClick={onCollapse} />
         </div>
       </div>
-      <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 [mask-image:linear-gradient(to_right,black_85%,transparent)] [scrollbar-width:none]">
-        <AnimatePresence initial={false}>
-          {attached.map((k) => (
-            <motion.span
-              key={k}
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.85 }}
-              transition={{ type: "spring", stiffness: 480, damping: 32 }}
-              className="flex h-7 max-w-[13rem] shrink-0 items-center gap-1.5 rounded-full bg-muted/60 pl-1 pr-2.5 text-xs font-medium"
-            >
-              <KindTile kind={k} size="sm" />
-              <TooltipHint label={CHIP_LABEL[k] ?? ""} onlyWhenClipped>
-                <span className="truncate">{CHIP_LABEL[k]}</span>
-              </TooltipHint>
-            </motion.span>
-          ))}
-          {always ? (
-            <motion.span
-              key="always"
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.85 }}
-              transition={{ type: "spring", stiffness: 480, damping: 32 }}
-              className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary/10 pl-2.5 pr-1 text-xs font-medium text-primary"
-            >
-              <Coins className="size-3" /> Credits allowed
-              <TooltipHint label="Ask before spending credits again">
-                <button
-                  type="button"
-                  aria-label="Ask before spending credits again"
-                  onClick={onStopAlways}
-                  className="flex size-5 items-center justify-center rounded-full hover:bg-primary/15"
-                >
-                  <X className="size-3" />
-                </button>
-              </TooltipHint>
-            </motion.span>
-          ) : null}
-        </AnimatePresence>
+      {/* The chips scroll; Attach stays pinned at the end, outside the fade. */}
+      <div className="-mx-4 flex items-center gap-1 pr-4">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pl-4 pr-3 [mask-image:linear-gradient(to_right,black_85%,transparent)] [scrollbar-width:none]">
+          <AnimatePresence initial={false} mode="popLayout">
+            {attached.map((a) => (
+              <motion.span
+                key={a.id}
+                layout="position"
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={CHIP_SPRING}
+                className="flex h-7 max-w-[13rem] shrink-0 items-center gap-1.5 rounded-full bg-muted/60 pl-1 pr-1 text-xs font-medium"
+              >
+                <KindTile kind={a.kind} size="sm" />
+                <TooltipHint label={a.label} onlyWhenClipped>
+                  <span className="truncate">{a.label}</span>
+                </TooltipHint>
+                <TooltipHint label="Detach">
+                  <button
+                    type="button"
+                    aria-label={`Detach ${a.label}`}
+                    onClick={() => onDetach(a.id)}
+                    className="flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:bg-foreground/10 hover:text-foreground"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </TooltipHint>
+              </motion.span>
+            ))}
+            {always ? (
+              <motion.span
+                key="always"
+                layout="position"
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={CHIP_SPRING}
+                className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary/10 pl-2.5 pr-1 text-xs font-medium text-primary"
+              >
+                <Coins className="size-3" /> Credits allowed
+                <TooltipHint label="Ask before spending credits again">
+                  <button
+                    type="button"
+                    aria-label="Ask before spending credits again"
+                    onClick={onStopAlways}
+                    className="flex size-5 items-center justify-center rounded-full hover:bg-primary/15"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </TooltipHint>
+              </motion.span>
+            ) : null}
+          </AnimatePresence>
+        </div>
         <span className="shrink-0">
-          <IconButton label="Attach" icon={<Plus className="size-3.5" />} small />
+          <IconButton label="Attach" icon={<Plus className="size-3.5" />} onClick={onAttach} small />
         </span>
       </div>
     </div>
@@ -854,7 +1180,9 @@ function Footer({
   draft,
   setDraft,
   busy,
+  asking,
   onSend,
+  onStop,
   view,
 }: {
   suggestion: string | null;
@@ -865,9 +1193,14 @@ function Footer({
   draft: string;
   setDraft: (v: string) => void;
   busy: boolean;
+  /** The assistant asked something; a typed message answers it. */
+  asking: boolean;
   onSend: () => void;
+  onStop: () => void;
   view: string;
 }) {
+  // While a reply runs, Send becomes Stop, unless there's a typed answer to send.
+  const stopping = busy && !(asking && draft.trim());
   return (
     <div className="space-y-2 p-3 pt-0">
       <div className="h-8">
@@ -913,7 +1246,7 @@ function Footer({
             }
           }}
           rows={2}
-          placeholder="Ask, or tell me what to change"
+          placeholder={asking ? "Or type a name for a new collection" : "Ask, or tell me what to change"}
           aria-label="Message the assistant"
           className="block w-full resize-none bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground"
         />
@@ -922,15 +1255,25 @@ function Footer({
             <Eye className="size-3" /> Sees {view}
           </span>
           <ModelPill />
-          <TooltipHint label="Send">
+          <TooltipHint label={stopping ? "Stop" : "Send"}>
             <button
               type="button"
-              aria-label="Send"
-              disabled={busy}
-              onClick={onSend}
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+              aria-label={stopping ? "Stop" : "Send"}
+              onClick={stopping ? onStop : onSend}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              <ArrowUp className="size-4" />
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={stopping ? "stop" : "send"}
+                  initial={{ opacity: 0, scale: 0.4, rotate: stopping ? -90 : 90 }}
+                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                  exit={{ opacity: 0, scale: 0.4 }}
+                  transition={{ type: "spring", stiffness: 520, damping: 30 }}
+                  className="flex"
+                >
+                  {stopping ? <Square className="size-3 fill-current" /> : <ArrowUp className="size-4" />}
+                </motion.span>
+              </AnimatePresence>
             </button>
           </TooltipHint>
         </div>

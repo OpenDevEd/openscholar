@@ -4,20 +4,23 @@
 // slides in from the right, and the one underneath steps back, shifts left so its
 // edge peeks out, and dims. Each layer is its own card; nothing sits behind them.
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useFormatter } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Building2, Check, ChevronLeft, Eye, Link2, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus } from "lucide-react";
+import { ArrowRight, Building2, Check, ChevronLeft, Eye, Link2, Loader2, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus } from "lucide-react";
+import { useBillingCatalog } from "@/lib/billing/catalog-provider";
+import { topUpBundles } from "@/lib/billing/catalog";
 import { cn } from "@/lib/utils";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Segmented } from "@/components/settings/parts";
 import { EASE } from "@/components/settings/model-map";
-import { KindTile } from "./run-map";
+import { AnimatedNumber, KindTile, type Ask } from "./run-map";
 import { LogoMark } from "./logo-mark";
-import { KIND } from "./data";
+import { ATTACHABLE, KIND, OTHER_SCREENING, type Attachment } from "./data";
 
 const KIND_TINT = { screening: KIND.screening!.tint };
 
-export type SheetKind = "history" | "share";
+export type SheetKind = "history" | "share" | "attach" | "topup";
 
 export const SHEET_SPRING = { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.9 };
 
@@ -123,7 +126,7 @@ const CHATS: Array<{ group: string; live?: boolean; chats: Chat[] }> = [
         id: "c5", title: "Teacher coaching cost-effectiveness", last: "Screened 140 papers, 38 included", when: "14 Sep", mine: true,
         records: [{ kind: "search", label: "140 results" }, { kind: "screening", label: "140 papers" }],
         members: [JOSEPH, SARA],
-        running: { label: "Screening", total: 140, start: 58 },
+        running: { label: "Screening", total: OTHER_SCREENING.total, start: OTHER_SCREENING.start },
       },
     ],
   },
@@ -479,6 +482,236 @@ export function ShareSheet({ chat, onBack }: { chat: string; onBack: () => void 
             </motion.span>
           </AnimatePresence>
         </button>
+      </div>
+    </>
+  );
+}
+
+
+type Tab = keyof typeof ATTACHABLE;
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: "search", label: "Searches" },
+  { id: "collection", label: "Collections" },
+  { id: "library", label: "Libraries" },
+  { id: "paper", label: "Papers" },
+];
+const EVERYTHING = Object.values(ATTACHABLE).flat();
+const LISTED = new Set(EVERYTHING.map((a) => a.id));
+
+/**
+ * Picks what the assistant works with. Rows tick on and off like iOS lists; nothing
+ * changes until Done. Records the assistant made itself, such as a screening, stay put.
+ */
+export function AttachSheet({ attached, onBack, onDone }: { attached: Attachment[]; onBack: () => void; onDone: (next: Attachment[]) => void }) {
+  const [tab, setTab] = useState<Tab>("search");
+  const [query, setQuery] = useState("");
+  const [picked, setPicked] = useState(() => new Set(attached.map((a) => a.id)));
+  const before = new Set(attached.map((a) => a.id));
+  const adds = [...picked].filter((id) => !before.has(id)).length;
+  const removes = [...before].filter((id) => LISTED.has(id) && !picked.has(id)).length;
+  const q = query.trim().toLowerCase();
+  const rows = ATTACHABLE[tab].filter((a) => !q || a.label.toLowerCase().includes(q) || a.detail?.toLowerCase().includes(q));
+  const toggle = (id: string) =>
+    setPicked((all) => {
+      const next = new Set(all);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const done = () => {
+    const kept = attached.filter((a) => !LISTED.has(a.id) || picked.has(a.id));
+    const added = EVERYTHING.filter((a) => picked.has(a.id) && !before.has(a.id));
+    onDone([...kept, ...added]);
+  };
+  const action = adds && removes ? "Update" : adds ? `Attach ${adds}` : removes ? `Detach ${removes}` : "Done";
+  return (
+    <>
+      <SheetHeader title="Attach to this chat" detail="The assistant can read and work on what's attached" onBack={onBack} />
+      <div className="space-y-2.5 px-3 pt-3">
+        <label className="flex h-9 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
+          <Search className="size-3.5 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${TABS.find((t) => t.id === tab)!.label.toLowerCase()}`}
+            aria-label="Search what to attach"
+            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+          />
+        </label>
+        <Segmented
+          label="What to attach"
+          value={tab}
+          onChange={setTab}
+          fill
+          options={TABS}
+        />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3 pt-3">
+        {/* A tab or search change mounts a fresh list that staggers in. */}
+        <motion.ul key={`${tab}|${q}`} className="space-y-0.5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
+          {rows.map((a, i) => {
+            const on = picked.has(a.id);
+            return (
+              <motion.li key={a.id} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, ease: EASE, delay: 0.04 + i * 0.03 }}>
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggle(a.id)}
+                  className={cn("flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors", on ? "bg-primary/[0.07]" : "hover:bg-muted/50")}
+                >
+                  <KindTile kind={a.kind} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{a.label}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{a.detail}</span>
+                  </span>
+                  <span
+                    className={cn(
+                      "flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors",
+                      on ? "border-primary bg-primary text-primary-foreground" : "border-foreground/25",
+                    )}
+                  >
+                    <AnimatePresence initial={false}>
+                      {on ? (
+                        <motion.span
+                          key="on"
+                          initial={{ scale: 0.3, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.3, opacity: 0 }}
+                          transition={{ type: "spring", stiffness: 600, damping: 30 }}
+                        >
+                          <Check className="size-3" strokeWidth={3} />
+                        </motion.span>
+                      ) : null}
+                    </AnimatePresence>
+                  </span>
+                </button>
+              </motion.li>
+            );
+          })}
+          {rows.length === 0 ? <p className="px-3 py-6 text-sm text-muted-foreground">Nothing matches.</p> : null}
+        </motion.ul>
+      </div>
+      <div className="border-t border-border/50 p-3">
+        <button type="button" onClick={done} className="flex h-10 w-full items-center justify-center rounded-xl bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span key={action} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2, ease: EASE }}>
+              {action}
+            </motion.span>
+          </AnimatePresence>
+        </button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Adds credits without leaving the chat, from the same bundles as the billing page.
+ * Buying rolls the balance up, shows a check, then the sheet closes by itself.
+ */
+export function TopUpSheet({
+  balance,
+  need,
+  purpose,
+  onBack,
+  onBought,
+}: {
+  balance: number;
+  need: number;
+  /** The ask the credits are for. */
+  purpose?: Ask;
+  onBack: () => void;
+  onBought: (credits: number) => void;
+}) {
+  const format = useFormatter();
+  const catalog = useBillingCatalog();
+  const real = catalog ? topUpBundles(catalog) : [];
+  // Before Autumn's first sync there are no prices, so the mock falls back to plain amounts.
+  const bundles: Array<{ credits: number; amount?: number }> = real.length ? real : [500, 2000, 5000].map((credits) => ({ credits }));
+  const [buying, setBuying] = useState<number | null>(null);
+  const [bought, setBought] = useState<number | null>(null);
+  const timers = useRef<number[]>([]);
+  // Timers stand in for checkout; clear them if the sheet goes first.
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  const buy = (credits: number) => {
+    setBuying(credits);
+    timers.current.push(
+      window.setTimeout(() => {
+        setBuying(null);
+        setBought(credits);
+      }, 900),
+      window.setTimeout(() => onBought(credits), 2000),
+    );
+  };
+  const money = (amount: number) =>
+    format.number(amount, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", trailingZeroDisplay: "stripIfInteger" });
+  const shown = balance + (bought ?? 0);
+  return (
+    <>
+      <SheetHeader title="Add credits" detail="Without leaving the chat" onBack={onBack} />
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5">
+        <div>
+          <p className="text-4xl font-semibold tracking-tight">
+            <AnimatedNumber value={shown} />
+          </p>
+          <div className="mt-1 flex h-5 items-center text-sm text-muted-foreground">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {bought ? (
+                <motion.span
+                  key="added"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                  className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400"
+                >
+                  <Check className="size-4" /> Added {format.number(bought)} credits
+                </motion.span>
+              ) : (
+                <motion.span key="need" exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2, ease: EASE }}>
+                  credits, <span className="font-medium text-amber-600 dark:text-amber-400">{need} short</span>
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+        {purpose ? (
+          <div className="flex items-center gap-3 rounded-2xl bg-muted/40 px-3 py-2.5">
+            <KindTile kind={purpose.kind} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{purpose.title}</span>
+              <span className="block text-xs text-muted-foreground">Waiting in the chat</span>
+            </span>
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">About {purpose.credits} credits</span>
+          </div>
+        ) : null}
+        <div className="rounded-2xl border border-border/60 bg-muted/20 p-1.5">
+          {bundles.map((bundle, i) => (
+            <motion.button
+              key={bundle.credits}
+              type="button"
+              disabled={buying !== null || bought !== null}
+              onClick={() => buy(bundle.credits)}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: bought !== null && bought !== bundle.credits ? 0.4 : 1, y: 0 }}
+              transition={{ duration: 0.3, ease: EASE, delay: bought === null ? 0.08 + i * 0.05 : 0 }}
+              className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted/60 disabled:hover:bg-transparent"
+            >
+              <span className="flex-1 text-sm font-semibold tabular-nums">+{format.number(bundle.credits)}</span>
+              {bundle.amount !== undefined ? <span className="text-sm tabular-nums text-muted-foreground">{money(bundle.amount)}</span> : null}
+              <span className="flex size-4 items-center justify-center">
+                {buying === bundle.credits ? (
+                  <Loader2 className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" />
+                ) : bought === bundle.credits ? (
+                  <motion.span initial={{ scale: 0.3 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 26 }}>
+                    <Check className="size-4 text-emerald-500" />
+                  </motion.span>
+                ) : (
+                  <ArrowRight className="size-4 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
+                )}
+              </span>
+            </motion.button>
+          ))}
+        </div>
+        <p className="px-1 text-xs leading-relaxed text-muted-foreground">The assistant still asks before it spends them.</p>
       </div>
     </>
   );

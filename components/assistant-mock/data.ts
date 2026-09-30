@@ -4,7 +4,7 @@
 // library are made up for the mock.
 
 import type { ComponentType } from "react";
-import { Compass, FolderPlus, LibraryBig, ListChecks, PenLine, Rocket, Search, TableProperties, TestTubes } from "lucide-react";
+import { Compass, FileText, FolderPlus, LibraryBig, ListChecks, PenLine, Rocket, Search, TableProperties, TestTubes } from "lucide-react";
 
 export type Decision = "include" | "exclude" | "unsure";
 
@@ -34,7 +34,8 @@ export const SCREEN_ORDER: Decision[] = [
 export const COLLECTED = 4;
 export const SCREEN_CREDITS = 36;
 export const EXTRACT_CREDITS = 28;
-export const BALANCE = 1884;
+/** Enough to screen, then a few credits short of the extraction, so the top-up shows. */
+export const BALANCE = 60;
 export const COLLECTION_NAME = "Structured pedagogy trials, sub-Saharan Africa";
 
 export type Ico = ComponentType<{ className?: string }>;
@@ -50,6 +51,7 @@ export const KIND: Record<string, { icon: Ico; tint: string }> = {
   navigate: { icon: Compass, tint: "#94a3b8" },
   library: { icon: LibraryBig, tint: "#f472b6" },
   publish: { icon: Rocket, tint: "var(--primary)" },
+  paper: { icon: FileText, tint: "#eab308" },
 };
 
 /** One extracted value; `missing` when the abstract doesn't say. */
@@ -89,4 +91,39 @@ export const LIBRARY = {
   description:
     "Trials and quasi-experiments on structured pedagogy, coaching and teacher guides for early grade reading across sub-Saharan Africa, screened by the OpenDevEd team.",
   collections: ["Mother-tongue instruction", "Teacher coaching"],
+};
+
+/**
+ * The screening already running in another chat. The plan runs one screening at a
+ * time, so a new one waits for it. The same job shows in the history sheet.
+ */
+export const OTHER_SCREENING = { chat: "Teacher coaching cost-effectiveness", start: 126, total: 140 };
+
+/** Where the included studies can go when the assistant asks. */
+export const COLLECTION_CHOICES = [
+  { id: "new", name: COLLECTION_NAME, detail: "A new collection", count: 0 },
+  { id: "coaching", name: "Teacher coaching", detail: "12 papers", count: 12 },
+  { id: "mother", name: "Mother-tongue instruction", detail: "8 papers", count: 8 },
+] as const;
+
+/** Something attached to the chat; the assistant can read it and work on it. */
+export type Attachment = { id: string; kind: keyof typeof KIND; label: string; detail?: string };
+
+export const MAIN_SEARCH: Attachment = { id: "s1", kind: "search", label: "structured pedagogy early grade reading", detail: "215 results" };
+
+/** What the attach sheet offers, by tab. Made up for the mock, apart from the papers. */
+export const ATTACHABLE: Record<"search" | "collection" | "library" | "paper", Attachment[]> = {
+  search: [
+    MAIN_SEARCH,
+    { id: "s2", kind: "search", label: "mother-tongue instruction Kenya Uganda", detail: "142 results" },
+    { id: "s3", kind: "search", label: "teacher coaching cost-effectiveness", detail: "140 results" },
+    { id: "s4", kind: "search", label: "retrieval practice secondary maths", detail: "86 results" },
+  ],
+  collection: [
+    { id: "c1", kind: "collection", label: "Teacher coaching", detail: "12 papers" },
+    { id: "c2", kind: "collection", label: "Mother-tongue instruction", detail: "8 papers" },
+    { id: "c3", kind: "collection", label: "EGRA validity studies", detail: "12 papers" },
+  ],
+  library: [{ id: "l1", kind: "library", label: LIBRARY.name, detail: LIBRARY.address }],
+  paper: EXTRACT_ROWS.map((row) => ({ id: `p${row.cite}`, kind: "paper" as const, label: row.paper, detail: row.design.value })),
 };

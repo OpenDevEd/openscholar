@@ -21,16 +21,17 @@ export function Cite({ n }: { n: number }) {
   );
 }
 
-export function ExtractionCard({ filled }: { filled: number }) {
+export function ExtractionCard({ filled, stopped }: { filled: number; stopped?: boolean }) {
   const finished = filled >= EXTRACT_CELLS;
+  const papers = Math.floor(filled / EXTRACT_FIELDS.length);
   const credits = Math.round((filled / EXTRACT_CELLS) * EXTRACT_CREDITS);
   return (
     <div className="overflow-hidden rounded-2xl border border-border/60 bg-muted/40">
       <div className="flex items-center gap-3 p-4 pb-3">
-        <KindTile kind="extraction" working={!finished} />
+        <KindTile kind="extraction" working={!finished && !stopped} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">
-            {finished ? "Extracted from 4 papers" : <WorkingText>Extracting from 4 papers</WorkingText>}
+            {finished ? "Extracted from 4 papers" : stopped ? `Stopped at ${papers} of 4 papers` : <WorkingText>Extracting from 4 papers</WorkingText>}
           </p>
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <Coins className="size-3" /> <span className="tabular-nums">{credits}</span> credits
