@@ -22,8 +22,8 @@ export const VERSIONS = [
 /**
  * Every decision, in the order OpenAlex returns the 24 (the page shows the first 8).
  * Included: the Kenya trial, a storybook RCT, the Ghana bilingual RCT, and a Ghana
- * quasi-experiment that OpenAlex lists twice. To check: no abstract, or a report on a
- * trial that isn't one itself.
+ * quasi-experiment that OpenAlex lists twice. Unclear: one with no abstract, and two
+ * reports on a trial that aren't trials themselves, which the assistant then settles.
  */
 export const SCREEN_ORDER: Decision[] = [
   "include", "unsure", "exclude", "exclude", "exclude", "unsure", "unsure", "exclude",
@@ -32,6 +32,8 @@ export const SCREEN_ORDER: Decision[] = [
 ];
 /** The included studies once the duplicate is counted once. */
 export const COLLECTED = 4;
+/** Unclear papers the assistant settles itself after the screening: both report on a trial without being one. */
+export const SETTLED = 2;
 export const SCREEN_CREDITS = 36;
 export const EXTRACT_CREDITS = 28;
 /** Enough to screen, then a few credits short of the extraction, so the top-up shows. */

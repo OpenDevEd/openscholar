@@ -29,12 +29,12 @@ import { Cite, EXTRACT_CELLS, ExtractionCard } from "./extraction";
 import { MentionComposer, MessageText } from "./mentions";
 import {
   ACCOUNT, BALANCE, COLLECTED, COLLECTION_CHOICES, COLLECTION_NAME, EXTRACT_CREDITS, LIBRARY, ORIGINAL_COUNT, OTHER_SCREENING,
-  SCREEN_CREDITS, SCREEN_ORDER, SEARCH_NAME, TIGHT_COUNT, type Decision,
+  SCREEN_CREDITS, SCREEN_ORDER, SEARCH_NAME, SETTLED, TIGHT_COUNT, type Decision,
 } from "./data";
 
 type Card =
   | { type: "approval"; ask: Ask; status: "pending" | "allowed" | "declined" }
-  | { type: "job"; done: number; waiting?: number }
+  | { type: "job"; done: number; waiting?: number; settled?: boolean }
   | { type: "extract"; filled: number }
   | { type: "question"; picked: string | null; typed?: string }
   | { type: "collection"; undone: boolean; name: string; count: number }
@@ -301,13 +301,25 @@ export function AssistantOverlay() {
       setCard(id, 0, { type: "job", done });
     }
     await wait(token, 500);
+    // Unclear answers that decide whether a paper is in get checked here, not left for a person.
+    await work(token, id, 1, { kind: "screening", title: "Checking the 3 unclear papers", detail: "Their unclear answers decide whether they're in", status: "working" },
+      { title: "Settled 2 of the 3 unclear", detail: "Both report on a trial without being one", onUndo: () => unsettle(id) }, 1800);
+    setCard(id, 0, { type: "job", done: 24, settled: true });
+    await wait(token, 400);
     await stream(
       token,
       id,
-      "5 of the 24 are trials or quasi-experiments in primary schools, and one of those is listed twice. 16 are reviews, case studies, surveys or policy analyses. 3 need you: one has no abstract, and two report on a trial without being one.",
+      "5 of the 24 are trials or quasi-experiments in primary schools, and one of those is listed twice. I checked the 3 that came back unclear, using their full OpenAlex records: two report on a trial without being one, so they're out. The last has no abstract anywhere I can reach and its title doesn't say, so it stays unclear and isn't included.",
     );
     return true;
   };
+
+  /** Undo for the settled answers: the two go back to unclear. */
+  const unsettle = (id: number) =>
+    patch(id, (t) => ({
+      cards: t.cards.map((c): Card => (c.type === "job" ? { ...c, settled: false } : c)),
+      steps: t.steps.map((st, i) => (i === 1 ? { ...st, status: "undone", onUndo: undefined } : st)),
+    }));
 
   const collect = async (token: number, id: number) => {
     await work(token, id, 0, { kind: "collection", title: "Looking at your collections", detail: "For one these fit", status: "working" },
@@ -799,7 +811,7 @@ function Thread({
                         onTopUp={onTopUp}
                       />
                     ) : c.type === "job" ? (
-                      <JobCard done={c.done} total={24} counts={countUpTo(c.done)} waiting={c.waiting} stopped={t.stopped} />
+                      <JobCard done={c.done} total={24} counts={countUpTo(c.done, c.settled)} waiting={c.waiting} stopped={t.stopped} />
                     ) : c.type === "extract" ? (
                       <ExtractionCard filled={c.filled} stopped={t.stopped} />
                     ) : c.type === "publish" ? (
@@ -933,9 +945,14 @@ function UserBubble({ turn, editable, onEdit }: { turn: UserTurn; editable: bool
   );
 }
 
-function countUpTo(done: number) {
+/** Decisions so far; once the assistant settles the unclear ones, two of them move to excluded. */
+function countUpTo(done: number, settled?: boolean) {
   const counts = { include: 0, exclude: 0, unsure: 0 };
   for (const d of SCREEN_ORDER.slice(0, done) as Decision[]) counts[d]++;
+  if (settled) {
+    counts.unsure -= SETTLED;
+    counts.exclude += SETTLED;
+  }
   return counts;
 }
 

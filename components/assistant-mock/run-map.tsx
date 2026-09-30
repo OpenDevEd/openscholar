@@ -399,7 +399,7 @@ export function JobCard({
         <motion.div {...fade(!queued)} inert={queued} className="flex items-center gap-4">
           <span className="flex items-center gap-1"><Check className="size-3 text-emerald-600" /> <span className="tabular-nums">{counts.include}</span> included</span>
           <span className="flex items-center gap-1"><X className="size-3" /> <span className="tabular-nums">{counts.exclude}</span> excluded</span>
-          <span className="flex items-center gap-1"><CircleHelp className="size-3 text-amber-600" /> <span className="tabular-nums">{counts.unsure}</span> to check</span>
+          <span className="flex items-center gap-1"><CircleHelp className="size-3 text-amber-600" /> <span className="tabular-nums">{counts.unsure}</span> unclear</span>
           <button type="button" className="ml-auto flex items-center gap-1 font-medium text-foreground/80 hover:text-foreground">
             Open <ExternalLink className="size-3" />
           </button>
