@@ -26,7 +26,7 @@
  * without requiring the public mutation's auth/rate-limit shell.
  */
 
-import { mutation } from "../../_generated/server";
+import { mutation } from "../../lib/functions";
 import type { MutationCtx } from "../../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../../_generated/dataModel";

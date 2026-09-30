@@ -7,7 +7,7 @@ import {
   query,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { requireEvidenceLibraryAccess } from "../evidenceLibraries/access";
 import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";

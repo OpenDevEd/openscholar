@@ -32,12 +32,12 @@
  *
  * Writes:
  *
- *   - `incPaperOutcome(ctx, jobId, isSuccess)` lands one `inc()` call on
- *     a random shard. Idempotent at the paper-lifecycle level via the paper's
- *     prior terminal-status check in `markPaperTerminalTx`; this helper
- *     never double-counts within a single transition because the caller
- *     guards on `isTerminalPaperStatus(paper.status)` before invoking
- *     us.
+ *   - `countPaperChange` is the database trigger on `extractionPapers`
+ *     (`convex/lib/triggers.ts`). A paper counts as processed while it is
+ *     completed and as failed while it is in another terminal status, so a
+ *     retry that puts a paper back to extracting takes it out of the count
+ *     and finishing it again puts it back (#351). Counting from each paper's
+ *     current status keeps the counters exact whichever function writes it.
  *
  * Cascade:
  *
@@ -52,7 +52,9 @@ import type {
   GenericMutationCtx,
   GenericQueryCtx,
 } from "convex/server";
-import type { Id } from "../_generated/dataModel";
+import type { Change } from "convex-helpers/server/triggers";
+import type { DataModel, Doc, Id } from "../_generated/dataModel";
+import { isTerminalPaperStatus } from "./paperLifecycle";
 
 type RunMutationCtx = {
   runMutation: GenericMutationCtx<never>["runMutation"];
@@ -68,13 +70,33 @@ const jobFailedCounter = new ShardedCounter<Id<"extractionJobs">>(
   { defaultShards: 64 },
 );
 
-export async function incPaperOutcome(
+/** The counter a paper counts in: finished papers the job processes. */
+function outcomeOf(paper: Pick<Doc<"extractionPapers">, "status" | "processable">) {
+  if (paper.processable === false || !isTerminalPaperStatus(paper.status)) return null;
+  return paper.status === "completed" ? jobProcessedCounter : jobFailedCounter;
+}
+
+/** Keeps the processed and failed counts in step with each paper's status. */
+export async function countPaperChange(
+  ctx: RunMutationCtx,
+  change: Change<DataModel, "extractionPapers">,
+): Promise<void> {
+  const before = change.oldDoc && outcomeOf(change.oldDoc);
+  const after = change.newDoc && outcomeOf(change.newDoc);
+  if (before === after && change.oldDoc?.jobId === change.newDoc?.jobId) return;
+  if (before) await before.dec(ctx, change.oldDoc!.jobId);
+  if (after) await after.inc(ctx, change.newDoc!.jobId);
+}
+
+/** Sets a job's processed and failed counts, as the recount for jobs saved before counting does. */
+export async function setJobCounters(
   ctx: RunMutationCtx,
   jobId: Id<"extractionJobs">,
-  isSuccess: boolean,
+  counts: JobCounters,
 ): Promise<void> {
-  const counter = isSuccess ? jobProcessedCounter : jobFailedCounter;
-  await counter.inc(ctx, jobId);
+  await clearJobCounters(ctx, jobId);
+  if (counts.processed) await jobProcessedCounter.add(ctx, jobId, counts.processed);
+  if (counts.failed) await jobFailedCounter.add(ctx, jobId, counts.failed);
 }
 
 export type JobCounters = {

@@ -4,7 +4,6 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { seedCreditsForTest } from "../billing/billing.test-support";
-import { setupAggregates } from "./aggregates.test-support";
 
 async function seedBatchResultFixture(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
@@ -76,7 +75,6 @@ async function seedBatchResultFixture(t: ReturnType<typeof convexTest>) {
 describe("recordQuestionBatch", () => {
   it("persists mixed question successes and failures without overwriting already billed rows", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { paperId } = await seedBatchResultFixture(t);
 
     const result = await t.mutation(
@@ -164,7 +162,6 @@ describe("recordQuestionBatch", () => {
 
   it("reports a stale epoch without writing question rows", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { paperId } = await seedBatchResultFixture(t);
 
     const result = await t.mutation(

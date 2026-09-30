@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import { internalMutation, internalQuery, mutation, query } from "../_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "../lib/functions";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { rateLimit } from "../lib/rateLimit";

@@ -7,7 +7,7 @@
  * only actions import, so queries and mutations never bundle the AI SDK.
  */
 import { v, type GenericValidator, type Infer, type ObjectType, type PropertyValidators } from "convex/values";
-import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
+import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./functions";
 import type { Id } from "../_generated/dataModel";
 import { requireActiveUser, requireAuth } from "./auth";
 

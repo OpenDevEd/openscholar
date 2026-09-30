@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation } from "../_generated/server";
+import { mutation } from "../lib/functions";
 import { requireAdmin } from "../admins/access";
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import { presetConfigKey } from "../../lib/ai/tasks";

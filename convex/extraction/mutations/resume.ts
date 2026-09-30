@@ -30,7 +30,7 @@ import { requireOrganizationFeature } from "../../organizationFeatures";
  *   only the questions without a saved answer, then finalises.
  */
 
-import { mutation } from "../../_generated/server";
+import { mutation } from "../../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import { requireAuth } from "../../lib/auth";

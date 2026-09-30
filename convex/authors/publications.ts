@@ -1,6 +1,6 @@
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import { internalMutation, query } from "../_generated/server";
+import { internalMutation, query } from "../lib/functions";
 import { authenticateLibraryServiceCredential } from "../evidenceLibraries/credentials";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
 import { createError } from "../lib/errors";

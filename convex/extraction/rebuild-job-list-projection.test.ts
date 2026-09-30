@@ -3,7 +3,6 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { setupAggregates } from "./aggregates.test-support";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
@@ -88,7 +87,6 @@ async function seedPreProjectionJob(t: ReturnType<typeof convexTest>) {
 describe("rebuildJobListProjection", () => {
   it("repairs pre-projection jobs instead of relying on a runtime fallback", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { jobId } = await seedPreProjectionJob(t);
     const auth = t.withIdentity(OWNER_IDENTITY);
 

@@ -647,6 +647,7 @@ export declare const components: {
   agent: import("@convex-dev/agent/_generated/component.js").ComponentApi<"agent">;
   extractionProcessedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"extractionProcessedCounter">;
   extractionFailedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"extractionFailedCounter">;
+  extractionResultCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"extractionResultCounter">;
   creditsAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"creditsAgg">;
   screeningResultStatusAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"screeningResultStatusAgg">;
   screeningQualifiedAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"screeningQualifiedAgg">;

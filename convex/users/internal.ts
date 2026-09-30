@@ -1,4 +1,4 @@
-import { internalMutation, internalQuery, type MutationCtx } from "../_generated/server";
+import { internalMutation, internalQuery, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { userValidator } from "../lib/validators";

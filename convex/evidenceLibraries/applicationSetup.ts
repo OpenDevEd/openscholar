@@ -1,7 +1,7 @@
 import { readPublicationProviderSource, readPublicationProviderPayload, requireUnchangedPublicationProviders } from "./publicationProviders";
 import { publicationPayloadValidator } from "./publicationValidators";
 import { internal } from "../_generated/api";
-import { internalMutation, internalQuery } from "../_generated/server";
+import { internalMutation, internalQuery } from "../lib/functions";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";

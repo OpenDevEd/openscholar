@@ -2,7 +2,7 @@ import { requireOrganizationFeature } from "../organizationFeatures";
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import schema from "../schema";
 import { v, type Infer } from "convex/values";
-import { mutation, query, internalQuery, internalMutation } from "../_generated/server";
+import { mutation, query, internalQuery, internalMutation } from "../lib/functions";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";

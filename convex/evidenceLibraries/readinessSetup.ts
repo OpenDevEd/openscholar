@@ -2,7 +2,7 @@ import { requireUnchangedPublicationProviders } from "./publicationProviders";
 import { internal } from "../_generated/api";
 import { requireUnchangedAiProviderKey } from "./aiProviderKey";
 import { requireUnchangedOpenAlexKey } from "./openAlexSourceKey";
-import { internalMutation } from "../_generated/server";
+import { internalMutation } from "../lib/functions";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import {

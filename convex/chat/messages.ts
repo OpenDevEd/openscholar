@@ -26,7 +26,7 @@ import {
   mutation,
   type QueryCtx,
   query,
-} from "../_generated/server";
+} from "../lib/functions";
 import { v } from "convex/values";
 import { paginationOptsValidator, type PaginationOptions } from "convex/server";
 import {

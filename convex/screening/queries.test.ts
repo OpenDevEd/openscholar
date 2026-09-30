@@ -7,11 +7,9 @@ import {
   recordQualifiedResult,
   recordTerminalResult,
 } from "./aggregates";
-import { setupScreeningAggregates } from "./aggregates.test-support";
 
 function createScreeningTest() {
   const t = convexTest(schema);
-  setupScreeningAggregates(t);
   return t;
 }
 

@@ -8,6 +8,9 @@
 //   unless listed under missingReturns.pending with its issue.
 // - No public query reads the clock: `Date.now()` in a query breaks its caching and
 //   reactivity. Schedule a change instead, or pass the time in.
+// - Mutations run through the database triggers (#351): `mutation` and `internalMutation`
+//   come from convex/lib/functions.ts, never from `_generated/server`, and every
+//   `new Migrations(...)` is given that `internalMutation`.
 //
 // Reads are keyed by file, enclosing function and table, so edits elsewhere don't move them.
 // Run with `npm run check:convex-rules`; `-- --list` prints every read's key, `-- --list --verbose` its query too.
@@ -68,6 +71,7 @@ function publicFunction(node: ts.Node) {
 const reads: string[] = [];
 const missingReturns: string[] = [];
 const clockReads: string[] = [];
+const untriggered: string[] = [];
 for (const file of files("convex")) {
   const tree = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
   const seen = new Map<string, number>();
@@ -86,6 +90,16 @@ for (const file of files("convex")) {
       // A loop over a variable reads the query the variable was set to.
       const source = ts.isIdentifier(node.expression) ? declaredQuery(tree, node.expression.text) ?? node.expression : node.expression;
       if (/\.query\(/.test(source.getText())) add(node, tableOf(source));
+    }
+    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && /_generated\/server$/.test(node.moduleSpecifier.text) && file !== "convex/lib/functions.ts" && !node.importClause?.isTypeOnly) {
+      const bindings = node.importClause?.namedBindings;
+      if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) {
+        const imported = (element.propertyName ?? element.name).text;
+        if (!element.isTypeOnly && (imported === "mutation" || imported === "internalMutation")) untriggered.push(`${file}: import \`${imported}\` from convex/lib/functions.ts, so its writes run the database triggers.`);
+      }
+    }
+    if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "Migrations" && !/\binternalMutation\b/.test(node.arguments?.[1]?.getText() ?? "")) {
+      untriggered.push(`${file}: pass { internalMutation } from convex/lib/functions.ts to new Migrations(...), so migrations run the database triggers.`);
     }
     const fn = publicFunction(node);
     if (fn) {
@@ -130,6 +144,7 @@ for (const [fn, ref] of Object.entries(rules.missingReturns.pending)) {
 }
 
 for (const fn of clockReads) problems.push(`${fn}: a query can't read the clock; schedule the change or pass the time in.`);
+problems.push(...untriggered);
 
 if (problems.length) {
   console.error(`Convex rules: ${problems.length} problem${problems.length === 1 ? "" : "s"}.\n\n${problems.join("\n")}`);

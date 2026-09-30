@@ -4,7 +4,7 @@ import {
   query,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import type { Doc } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import {

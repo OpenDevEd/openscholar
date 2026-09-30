@@ -10,7 +10,7 @@
  *     fires maybeFinalizeJob. Re-running after terminal is a no-op.
  */
 
-import { internalMutation, type MutationCtx } from "../../_generated/server";
+import { internalMutation, type MutationCtx } from "../../lib/functions";
 import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { internal } from "../../_generated/api";

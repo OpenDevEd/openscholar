@@ -1,11 +1,12 @@
 import { Migrations } from "@convex-dev/migrations";
+import { internalMutation } from "../lib/functions";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import { internalQuery } from "../_generated/server";
 import { moveSearchAnswers, verifyMovedAnswers } from "../research/records";
 
-const migrations = new Migrations<DataModel>(components.migrations);
+const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
 /**
  * Moves page-screening answers out of the chunks on saved searches and their revisions,

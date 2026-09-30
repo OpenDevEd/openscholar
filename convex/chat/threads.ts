@@ -13,7 +13,7 @@ import {
   mutation,
   type ActionCtx,
   type MutationCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
