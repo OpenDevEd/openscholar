@@ -1,69 +1,91 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
-import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
+import { mutation, type MutationCtx, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
+import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Author } from "../lib/userActions";
 import {
   applySearchEdit, commandValidator, ratingValidator, searchValidator, shortcutValidator,
   type ResearchCommand, type SavedSearch,
 } from "../../lib/research/records";
 
 const accountArgs = { accountId: v.string() };
-const pageArgs = { ...accountArgs, paginationOpts: paginationOptsValidator };
+const pageArgs = { paginationOpts: paginationOptsValidator };
 async function account(ctx: Parameters<typeof requireAuth>[0], expected: string) {
   const user = await requireAuth(ctx);
   if (user.clerkId !== expected) throw new Error("Account changed. Retry after signing in.");
   return user._id;
 }
 
-export const searches = query({
+// Each action is defined once; the page's function and the assistant's are made from it.
+
+export const searchesAction = defineUserQuery({
+  path: "research/records:searches",
+  description: "Lists the person's saved searches, newest first, a page at a time. Each has an ID the other search tools take.",
   args: pageArgs,
   returns: paginationResultValidator(searchValidator),
-  handler: async (ctx, args) => {
-    const userId = await account(ctx, args.accountId);
+  run: async (ctx, userId, args) => {
     const page = await ctx.db.query("searches").withIndex("by_user_and_createdAt", q => q.eq("userId", userId)).order("desc").paginate(args.paginationOpts);
     return { ...page, page: await Promise.all(page.page.map(row => hydrate(ctx, row))) };
   },
 });
-export const shortcuts = query({
+export const searches = accountQuery(searchesAction);
+export const searchesForAssistant = assistantQuery(searchesAction);
+
+export const shortcutsAction = defineUserQuery({
+  path: "research/records:shortcuts",
+  description: "Lists the person's query shortcuts (the Bookmarks page): a short name that expands to a longer query.",
   args: pageArgs,
   returns: paginationResultValidator(shortcutValidator),
-  handler: async (ctx, args) => {
-    const userId = await account(ctx, args.accountId);
+  run: async (ctx, userId, args) => {
     const page = await ctx.db.query("queryShortcuts").withIndex("by_user", q => q.eq("userId", userId)).paginate(args.paginationOpts);
     return { ...page, page: page.page.map(row => row.data) };
   },
 });
-export const ratings = query({
+export const shortcuts = accountQuery(shortcutsAction);
+export const shortcutsForAssistant = assistantQuery(shortcutsAction);
+
+export const ratingsAction = defineUserQuery({
+  path: "research/records:ratings",
+  description: "Lists the papers the person has rated, each with its rating from 0 to 5.",
   args: pageArgs,
   returns: paginationResultValidator(ratingValidator),
-  handler: async (ctx, args) => {
-    const userId = await account(ctx, args.accountId);
+  run: async (ctx, userId, args) => {
     const page = await ctx.db.query("paperRatings").withIndex("by_user", q => q.eq("userId", userId)).paginate(args.paginationOpts);
     return { ...page, page: page.page.map(row => row.data) };
   },
 });
-export const getSearch = query({
-  args: { ...accountArgs, id: v.string() },
+export const ratings = accountQuery(ratingsAction);
+export const ratingsForAssistant = assistantQuery(ratingsAction);
+
+export const getSearchAction = defineUserQuery({
+  path: "research/records:getSearch",
+  description: "Reads one saved search by ID: its query, filters, sort, page, and screening questions and answers.",
+  args: { id: v.string() },
   returns: v.union(searchValidator, v.null()),
-  handler: async (ctx, args) => {
-    const userId = await account(ctx, args.accountId);
+  run: async (ctx, userId, args) => {
     const search = await findSearch(ctx, userId, args.id);
     return search ? hydrate(ctx, search) : null;
   },
 });
-export const revisions = query({
+export const getSearch = accountQuery(getSearchAction);
+export const getSearchForAssistant = assistantQuery(getSearchAction);
+
+export const revisionsAction = defineUserQuery({
+  path: "research/records:revisions",
+  description: "Lists a saved search's earlier versions, newest first, each marked as made by the person or by the assistant.",
   args: { ...pageArgs, id: v.string() },
   returns: paginationResultValidator(v.object({ revision: v.number(), author: v.union(v.literal("user"), v.literal("assistant")), data: searchValidator, deleted: v.boolean(), createdAt: v.number() })),
-  handler: async (ctx, args) => {
-    const userId = await account(ctx, args.accountId);
+  run: async (ctx, userId, args) => {
     const search = await findSearch(ctx, userId, args.id);
     if (!search) return { page: [], isDone: true, continueCursor: "" };
     const page = await ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", search._id)).order("desc").paginate(args.paginationOpts);
     return { ...page, page: await Promise.all(page.page.map(async row => ({ revision: row.revision, author: row.author, data: await hydrate(ctx, row), deleted: row.deleted, createdAt: row.createdAt }))) };
   },
 });
+export const revisions = accountQuery(revisionsAction);
+export const revisionsForAssistant = assistantQuery(revisionsAction);
 
 function findSearch(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, localId: string) {
   return ctx.db.query("searches").withIndex("by_user_and_localId", q => q.eq("userId", userId).eq("localId", localId)).unique();
@@ -163,18 +185,28 @@ async function received(ctx: MutationCtx, userId: Id<"users">, key: string) {
   return await ctx.db.query("researchReceipts").withIndex("by_user_and_key", q => q.eq("userId", userId).eq("key", key)).unique();
 }
 
-export const change = mutation({
-  args: { ...accountArgs, requestId: v.string(), command: commandValidator },
+export const changeAction = defineUserMutation({
+  path: "research/records:change",
+  description:
+    "Changes the person's research records: create, edit or delete a saved search, set or remove a query shortcut, or rate a paper. Edits to a search show live on the person's open page and are kept as revisions.",
+  args: { requestId: v.string(), command: commandValidator },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const userId = await account(ctx, args.accountId);
+  spendsCredits: false,
+  outsideEffect: false,
+  // Search changes are kept as revisions, but nothing restores one yet, and shortcuts and ratings keep no history (#342).
+  undoable: false,
+  retryKey: "requestId",
+  // The receipt makes a retried request apply once, from the page or from the assistant.
+  run: async (ctx, userId, args, author: Author) => {
     const key = `change:${args.requestId}`;
     if (await received(ctx, userId, key)) return null;
-    await applyCommand(ctx, userId, args.command, "user");
+    await applyCommand(ctx, userId, args.command, author);
     await ctx.db.insert("researchReceipts", { userId, key });
     return null;
   },
 });
+export const change = accountMutation(changeAction);
+export const changeForAssistant = assistantMutation(changeAction);
 
 export const importBatch = mutation({
   args: { ...accountArgs, searches: v.array(searchValidator), shortcuts: v.array(shortcutValidator), ratings: v.array(ratingValidator) },

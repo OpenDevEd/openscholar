@@ -173,6 +173,9 @@ jobs:
       - name: Check every OpenAlex request carries the key
         run: npm run check:openalex-key
 
+      - name: Check every user action is registered for the assistant
+        run: npm run check:user-actions
+
       # The browser job builds Next.js on the same guest at the same time. Fifteen jsdom workers on a shared CPU share pushed single tests
       # past their timeouts; eight finish sooner.
       - name: Run unit and contract tests

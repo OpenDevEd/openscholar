@@ -28,6 +28,16 @@ function assertActiveUser(user: Doc<"users">): Doc<"users"> {
   return user;
 }
 
+/**
+ * The user an internal call acts for, such as an assistant tool acting for the person
+ * who sent the message. Refuses a missing, suspended or deleted account, as `requireAuth` does.
+ */
+export async function requireActiveUser(ctx: AuthContext, userId: Id<"users">): Promise<Doc<"users">> {
+  const user = await ctx.db.get("users", userId);
+  if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
+  return assertActiveUser(user);
+}
+
 export async function getCurrentUser(
   ctx: AuthContext
 ): Promise<Doc<"users"> | null> {
