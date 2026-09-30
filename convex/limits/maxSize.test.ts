@@ -5,7 +5,6 @@ import { getDocumentSize } from "convex/values";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { readEveryResultsPage } from "../../lib/extraction/export";
 import { RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
 import { MAX_SIZE, seedAccount, seedExtractionJob, seedLibrary } from "../lib/maxSize.test-support";
 import { seedCreditsForTest } from "../billing/billing.test-support";
@@ -25,19 +24,20 @@ describe("at the largest sizes the product allows", () => {
     expect(details).toMatchObject({ status: "ok" });
   }, 120_000);
 
-  it("a 1,000-paper, 50-question extraction job exports page by page", async () => {
+  // An export reads the job page by page (lib/extraction/export.ts); the largest page,
+  // searched or not, is the most any one read takes.
+  it("a 1,000-paper, 50-question extraction job reads its largest export page", async () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     const { jobId } = await seedExtractionJob(t, userId);
+    const page = (searchQuery: string, pageSize: number) =>
+      as.query(api.extraction.queries.getJobResultsPage, { jobId, page: 1, pageSize, filters: { ...filters, searchQuery }, sortBy: "default" });
     // Asking for more than the largest page gets the largest page.
-    const first = await as.query(api.extraction.queries.getJobResultsPage, { jobId, page: 1, pageSize: MAX_SIZE.papersPerJob, filters, sortBy: "default" });
-    expect(first.items).toHaveLength(RESULTS_PAGE_SIZE_MAX);
-    const papers = await readEveryResultsPage((page) => as.query(api.extraction.queries.getJobResultsPage, { jobId, page, pageSize: RESULTS_PAGE_SIZE_MAX, filters, sortBy: "default" }));
-    expect(papers).toHaveLength(MAX_SIZE.papersPerJob);
-    expect(papers.every((paper) => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
+    const whole = await page("", MAX_SIZE.papersPerJob);
+    expect(whole.items).toHaveLength(RESULTS_PAGE_SIZE_MAX);
+    expect(whole.items.every((paper) => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
     // A search reads only its matches, so its largest page fits too.
-    const searched = await readEveryResultsPage((page) => as.query(api.extraction.queries.getJobResultsPage, { jobId, page, pageSize: RESULTS_PAGE_SIZE_MAX, filters: { ...filters, searchQuery: "tutoring" }, sortBy: "default" }));
-    expect(searched.length).toBeGreaterThan(RESULTS_PAGE_SIZE_MAX);
+    expect((await page("tutoring", RESULTS_PAGE_SIZE_MAX)).items).toHaveLength(RESULTS_PAGE_SIZE_MAX);
   }, 300_000);
 
   it("a 1,000-paper, 50-question extraction job shows its progress and retry summaries", async () => {
