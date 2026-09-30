@@ -1,4 +1,5 @@
 import OpenAlexClient from "@sickrin/openalex-sdk";
+import { withEncodedValues } from "./openalex/works-url";
 
 /**
  * OpenAlex SDK singleton. Used by every `"use server"` action that wraps
@@ -10,9 +11,16 @@ import OpenAlexClient from "@sickrin/openalex-sdk";
  * us to OpenAlex. Both are passed explicitly rather than left to the SDK's
  * own environment defaults, which read a different email variable.
  */
-const client = new OpenAlexClient(
+const sdk = new OpenAlexClient(
   process.env.OPENALEX_CONTACT_EMAIL ?? null,
   process.env.OPENALEX_API_KEY ?? null,
 );
+
+/** The SDK, with every search's text encoded before the SDK pastes it into a URL. */
+const client = {
+  works: (parameters: Parameters<typeof sdk.works>[0]) => sdk.works(withEncodedValues(parameters ?? {})),
+  authors: (parameters: Parameters<typeof sdk.authors>[0]) => sdk.authors(withEncodedValues(parameters ?? {})),
+  author: (id: string) => sdk.author(id),
+};
 
 export default client;
