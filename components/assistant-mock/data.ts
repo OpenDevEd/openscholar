@@ -61,7 +61,7 @@ export type ExtractRow = { cite: number; paper: string; design: Cell; setting: C
 
 export const EXTRACT_FIELDS = [
   { key: "design", label: "Design" },
-  { key: "setting", label: "Country and grades" },
+  { key: "setting", label: "Setting" },
   { key: "sample", label: "Sample" },
 ] as const;
 

@@ -1,10 +1,12 @@
 "use client";
 
-// A running extraction: a table that fills in cell by cell as the job reads each
-// paper, with gaps marked where the abstract doesn't say, then the findings.
+// A running extraction that fills in as the job reads each paper, with gaps marked
+// where the abstract doesn't say, then the findings.
 
+import { useState } from "react";
 import { motion } from "motion/react";
-import { Coins, ExternalLink, FileSearch } from "lucide-react";
+import { Coins, ExternalLink, FileSearch, FlaskConical, MapPin, Users } from "lucide-react";
+import { Segmented } from "@/components/settings/parts";
 import { cn } from "@/lib/utils";
 import { EASE } from "@/components/settings/model-map";
 import { KindTile, WorkingText } from "./run-map";
@@ -21,7 +23,16 @@ export function Cite({ n }: { n: number }) {
   );
 }
 
+const FIELD_ICONS = { design: FlaskConical, setting: MapPin, sample: Users } as const;
+type FieldKey = (typeof EXTRACT_FIELDS)[number]["key"];
+
+/**
+ * A running extraction, read one field at a time: pick Design, Country and grades
+ * or Sample, and the four papers line up under it for comparison. Each row holds the
+ * height of its longest value, so switching fields or values arriving never moves it.
+ */
 export function ExtractionCard({ filled, stopped }: { filled: number; stopped?: boolean }) {
+  const [field, setField] = useState<FieldKey>("design");
   const finished = filled >= EXTRACT_CELLS;
   const papers = Math.floor(filled / EXTRACT_FIELDS.length);
   const credits = Math.round((filled / EXTRACT_CELLS) * EXTRACT_CREDITS);
@@ -41,57 +52,65 @@ export function ExtractionCard({ filled, stopped }: { filled: number; stopped?: 
           Open <ExternalLink className="size-3" />
         </button>
       </div>
-      <div className="border-t border-border/50">
-        <div className="grid grid-cols-[1.5rem_1fr_1fr_1fr] gap-x-4 px-4 py-2.5 text-[11px] font-medium text-muted-foreground">
-          <span />
-          {EXTRACT_FIELDS.map((f) => (
-            <span key={f.key}>{f.label}</span>
-          ))}
-        </div>
-        {EXTRACT_ROWS.map((row, r) => (
-          // The paper leads its row; its values sit under it, in the header's columns.
-          <div key={row.cite} className="grid grid-cols-[1.5rem_1fr_1fr_1fr] items-start gap-x-4 gap-y-1.5 border-t border-border/40 px-4 py-3.5">
-            <Cite n={row.cite} />
-            <p className="col-span-3 flex h-[18px] min-w-0 items-center gap-2 text-xs font-medium text-foreground/80">
-              <span className="truncate">{row.paper}</span>
-              {row.needsPdf && filled >= (r + 1) * EXTRACT_FIELDS.length ? (
-                <motion.span
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, ease: EASE }}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-px text-[11px] text-amber-700 dark:text-amber-300"
-                >
-                  <FileSearch className="size-3" /> Needs the PDF
-                </motion.span>
-              ) : null}
-            </p>
-            {EXTRACT_FIELDS.map((f, c) => {
-              const cell = row[f.key];
-              const shown = r * EXTRACT_FIELDS.length + c < filled;
-              return (
-                // The value is laid out from the start, invisible, so the row has its final height before it arrives.
-                <div key={f.key} className={cn("relative text-xs leading-relaxed", c === 0 && "col-start-2")}>
-                  <motion.span
-                    aria-hidden={!shown}
-                    initial={false}
-                    animate={{ opacity: shown ? 1 : 0, y: shown ? 0 : 3 }}
-                    transition={{ duration: 0.3, ease: EASE }}
-                    className={cn("block", cell.missing ? "italic text-muted-foreground" : "text-foreground/90")}
-                  >
-                    {cell.value}
-                  </motion.span>
-                  <motion.span
-                    aria-hidden
-                    initial={false}
-                    animate={{ opacity: shown ? 0 : 1 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute left-0 top-[5px] h-2.5 w-4/5 rounded-full bg-foreground/[0.07]"
-                  />
+      <div className="px-3 pb-3">
+        <Segmented
+          label="Field"
+          value={field}
+          onChange={setField}
+          fill
+          options={EXTRACT_FIELDS.map((f) => ({ id: f.key, label: f.label, icon: FIELD_ICONS[f.key] }))}
+        />
+        <ol className="mt-2 space-y-0.5">
+          {EXTRACT_ROWS.map((row, r) => (
+            <li key={row.cite} className="flex gap-3 rounded-xl px-2 py-2.5">
+              <span className="flex h-5 items-center">
+                <Cite n={row.cite} />
+              </span>
+              <div className="min-w-0 flex-1">
+                {/* Every field's value shares one cell; only the picked one shows. */}
+                <div className="grid text-sm leading-snug [&>*]:col-start-1 [&>*]:row-start-1">
+                  {EXTRACT_FIELDS.map((f, c) => {
+                    const cell = row[f.key];
+                    const on = f.key === field;
+                    const shown = r * EXTRACT_FIELDS.length + c < filled;
+                    return (
+                      <div key={f.key} className="relative" aria-hidden={!on}>
+                        <motion.span
+                          initial={false}
+                          animate={{ opacity: on && shown ? 1 : 0, y: on && shown ? 0 : 3 }}
+                          transition={{ duration: 0.25, ease: EASE }}
+                          className={cn("block", cell.missing ? "italic text-muted-foreground" : "font-medium text-foreground")}
+                        >
+                          {cell.value}
+                        </motion.span>
+                        <motion.span
+                          aria-hidden
+                          initial={false}
+                          animate={{ opacity: on && !shown ? 1 : 0 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute left-0 top-1 h-3 w-3/5 rounded-full bg-foreground/[0.07]"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        ))}
+                <p className="mt-1 flex h-[18px] min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                  <span className="truncate">{row.paper}</span>
+                  {row.needsPdf && filled >= (r + 1) * EXTRACT_FIELDS.length ? (
+                    <motion.span
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3, ease: EASE }}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-px text-[11px] font-medium text-amber-700 dark:text-amber-300"
+                    >
+                      <FileSearch className="size-3" /> Needs the PDF
+                    </motion.span>
+                  ) : null}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
       </div>
     </div>
   );
