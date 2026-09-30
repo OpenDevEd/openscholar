@@ -1,7 +1,9 @@
-import { AssistantMock } from "@/components/assistant-mock/assistant-mock";
+"use client";
 
-export const metadata = { title: "Assistant mock" };
+import { ResultsPane } from "@/components/assistant-mock/results-pane";
+import { useMock } from "@/components/assistant-mock/context";
 
-export default function AssistantMockPage() {
-  return <AssistantMock />;
+export default function AssistantMockResultsPage() {
+  const { page, undoSearch } = useMock();
+  return <ResultsPane page={page} onUndo={undoSearch} />;
 }

@@ -1,9 +1,10 @@
 // Mock data for the assistant design. Papers, queries and result counts are real
-// OpenAlex data (title-and-abstract search, 2026-09-30); screening decisions and
-// credit figures are made up for the mock.
+// OpenAlex data (title-and-abstract search, 2026-09-30). Screening decisions and
+// extraction values were read from each paper's OpenAlex abstract. Credit figures,
+// the library and its settings are made up for the mock.
 
 import type { ComponentType } from "react";
-import { FolderPlus, ListChecks, PenLine, Search, TableProperties, TestTubes } from "lucide-react";
+import { Compass, FolderPlus, LibraryBig, ListChecks, PenLine, Rocket, Search, TableProperties, TestTubes } from "lucide-react";
 
 export type Paper = {
   id: string;
@@ -55,14 +56,27 @@ export const TIGHT_PAPERS: Array<Paper & { decision: Decision }> = [
   { id: "W3158464575", title: "Building back better to avert a learning catastrophe: Estimating learning loss from COVID-19 school shutdowns in Africa and facilitating short-term and long-term learning recovery", year: 2021, authors: ["Noam Angrist", "Andreas de Barros", "Radhika Bhula"], venue: "International Journal of Educational Development", cites: 135, decision: "exclude" },
   { id: "W4392908153", title: "How do structured pedagogy programmes affect reading instruction in African early grade classrooms?", year: 2024, authors: ["Ursula Hoadley"], venue: "International Journal of Educational Development", cites: 20, decision: "exclude" },
   { id: "W4414186757", title: "Comparing Teacher Attitudes Toward Early Grade Reading Reform in Northern and Central Uganda", year: 2025, authors: ["Jonathan Marino", "Medadi Erisa Ssentanda"], venue: "Nordic Journal of Comparative and International Education", cites: 1, decision: "exclude" },
-  { id: "W2789743020", title: "Implementing large-scale instructional technology in Kenya: Changing instructional practice and developing accountability in a National Education System", year: 2017, authors: ["Benjamin Piper", "Arbogast Oyanga", "Jessica Mejía"], venue: "International Journal of Education and Development using ICT", cites: 21, decision: "include" },
-  { id: "W4210654187", title: "The Challenge of Sustaining Effective Teaching: Spillovers, Fade-out, and the Cost-effectiveness of Teacher Development Programs", year: 2022, authors: ["Jacobus Cilliers", "Brahm Fleisch", "Janeli Kotzé"], venue: "Economics of Education Review", cites: 22, decision: "include" },
+  { id: "W2789743020", title: "Implementing large-scale instructional technology in Kenya: Changing instructional practice and developing accountability in a National Education System", year: 2017, authors: ["Benjamin Piper", "Arbogast Oyanga", "Jessica Mejía"], venue: "International Journal of Education and Development using ICT", cites: 21, decision: "unsure" },
+  { id: "W4210654187", title: "The Challenge of Sustaining Effective Teaching: Spillovers, Fade-out, and the Cost-effectiveness of Teacher Development Programs", year: 2022, authors: ["Jacobus Cilliers", "Brahm Fleisch", "Janeli Kotzé"], venue: "Economics of Education Review", cites: 22, decision: "unsure" },
   { id: "W7168244385", title: "Time to read: A critical review of early grade reading curriculum policy and enactment in South Africa", year: 2026, authors: ["Colleen Boyd"], venue: "Journal of Education", cites: 0, decision: "exclude" },
 ];
 
-/** Totals across all 24, of which the page shows the first 8. */
-export const SCREEN_TOTALS = { include: 9, exclude: 11, unsure: 4 };
+/**
+ * Every decision, in the order OpenAlex returns the 24 (the page shows the first 8).
+ * Included: the Kenya trial, a storybook RCT, the Ghana bilingual RCT, and a Ghana
+ * quasi-experiment that OpenAlex lists twice. To check: no abstract, or a report on a
+ * trial that isn't one itself.
+ */
+export const SCREEN_ORDER: Decision[] = [
+  "include", "unsure", "exclude", "exclude", "exclude", "unsure", "unsure", "exclude",
+  "exclude", "exclude", "exclude", "exclude", "exclude", "include", "exclude", "exclude",
+  "include", "exclude", "include", "include", "exclude", "exclude", "exclude", "exclude",
+];
+export const SCREEN_TOTALS = { include: 5, exclude: 16, unsure: 3 };
+/** The included studies once the duplicate is counted once. */
+export const COLLECTED = 4;
 export const SCREEN_CREDITS = 36;
+export const EXTRACT_CREDITS = 28;
 export const BALANCE = 1884;
 export const COLLECTION_NAME = "Structured pedagogy trials, sub-Saharan Africa";
 
@@ -76,4 +90,46 @@ export const KIND: Record<string, { icon: Ico; tint: string }> = {
   screening: { icon: ListChecks, tint: "#a78bfa" },
   extraction: { icon: TableProperties, tint: "#fb923c" },
   collection: { icon: FolderPlus, tint: "#2dd4bf" },
+  navigate: { icon: Compass, tint: "#94a3b8" },
+  library: { icon: LibraryBig, tint: "#f472b6" },
+  publish: { icon: Rocket, tint: "var(--primary)" },
+};
+
+/** One extracted value; `missing` when the abstract doesn't say. */
+export type Cell = { value: string; missing?: boolean };
+export type ExtractRow = { cite: number; paper: string; design: Cell; setting: Cell; sample: Cell; needsPdf?: boolean };
+
+export const EXTRACT_FIELDS = [
+  { key: "design", label: "Design" },
+  { key: "setting", label: "Country and grades" },
+  { key: "sample", label: "Sample" },
+] as const;
+
+/** Read from each paper's abstract; nothing here is filled in beyond what it says. */
+export const EXTRACT_ROWS: ExtractRow[] = [
+  {
+    cite: 1, paper: "Piper, Zuilkowski and Dubeck, 2018",
+    design: { value: "RCT, 3 arms and a control" }, setting: { value: "Kenya, grades 1 and 2" }, sample: { value: "Not in the abstract", missing: true },
+  },
+  {
+    cite: 2, paper: "Fleisch and Schöer, 2022",
+    design: { value: "RCT, per its title" }, setting: { value: "No abstract", missing: true }, sample: { value: "No abstract", missing: true }, needsPdf: true,
+  },
+  {
+    cite: 3, paper: "Lee, Moussa and Zuilkowski, 2026",
+    design: { value: "Randomized trial" }, setting: { value: "Ghana, grades 2 and 3" }, sample: { value: "3,559 students, 198 schools" },
+  },
+  {
+    cite: 4, paper: "Agyeman-Badu, 2022",
+    design: { value: "Quasi-experiment, matched control" }, setting: { value: "Ghana, primary" }, sample: { value: "2,400 pupils, 80 schools" },
+  },
+];
+
+export const LIBRARY = {
+  name: "Foundational Learning Evidence",
+  address: "foundational-learning.opendev.space",
+  tagline: "Structured pedagogy for early grade reading in sub-Saharan Africa",
+  description:
+    "Trials and quasi-experiments on structured pedagogy, coaching and teacher guides for early grade reading across sub-Saharan Africa, screened by the OpenDevEd team.",
+  collections: ["Mother-tongue instruction", "Teacher coaching"],
 };

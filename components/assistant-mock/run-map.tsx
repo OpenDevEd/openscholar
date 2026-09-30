@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { EASE } from "@/components/settings/model-map";
-import { BALANCE, COLLECTION_NAME, KIND, SCREEN_CREDITS, SCREEN_TOTALS, VERSIONS } from "./data";
+import { BALANCE, COLLECTED, COLLECTION_NAME, KIND, SCREEN_CREDITS, VERSIONS } from "./data";
 import { LogoMark } from "./logo-mark";
 
 /**
@@ -155,12 +155,26 @@ export function VersionBars() {
 }
 
 /** Asks before spending credits. */
+/** What an approval card asks for. `credits` is set when it spends them; `always` offers the per-chat allowance. */
+export type Ask = {
+  kind: keyof typeof KIND;
+  title: string;
+  items: string[];
+  credits?: number;
+  always: boolean;
+  confirm: string;
+  decline: string;
+};
+
+/** Asks before spending credits or making something public. */
 export function ApprovalCard({
+  ask,
   status,
   onAllow,
   onAlways,
   onDecline,
 }: {
+  ask: Ask;
   status: "pending" | "allowed" | "declined";
   onAllow: () => void;
   onAlways: () => void;
@@ -169,19 +183,22 @@ export function ApprovalCard({
   return (
     <div className="overflow-hidden rounded-2xl border border-primary/30 bg-primary/[0.04]">
       <div className="flex items-start gap-3 p-4">
-        <KindTile kind="screening" />
+        <KindTile kind={ask.kind} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Screen 24 papers</p>
+          <p className="text-sm font-semibold">{ask.title}</p>
           <ol className="mt-1.5 space-y-1 text-sm text-muted-foreground">
-            <li className="flex gap-2"><span className="tabular-nums text-foreground/50">1</span> Is it a randomized or quasi-experimental study?</li>
-            <li className="flex gap-2"><span className="tabular-nums text-foreground/50">2</span> Is it set in primary schools?</li>
+            {ask.items.map((item, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="tabular-nums text-foreground/50">{i + 1}</span> {item}
+              </li>
+            ))}
           </ol>
         </div>
         {status === "pending" ? (
-          <TooltipHint label="Don't screen">
+          <TooltipHint label={ask.decline}>
             <button
               type="button"
-              aria-label="Don't screen"
+              aria-label={ask.decline}
               onClick={onDecline}
               className="-mr-1 -mt-1 flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
             >
@@ -190,25 +207,33 @@ export function ApprovalCard({
           </TooltipHint>
         ) : null}
       </div>
-      <div className="flex items-center gap-2 px-4 pb-4 text-xs text-muted-foreground">
-        <Coins className="size-3.5 text-primary" />
-        <span className="font-medium text-foreground">About {SCREEN_CREDITS} credits</span>
-        <span className="ml-auto flex items-center gap-1.5 tabular-nums">
-          {BALANCE.toLocaleString()}
-          <ArrowRight className="size-3" />
-          <span className="font-medium text-foreground">{(BALANCE - SCREEN_CREDITS).toLocaleString()}</span> left
-        </span>
-      </div>
+      {ask.credits ? (
+        <div className="flex items-center gap-2 px-4 pb-4 text-xs text-muted-foreground">
+          <Coins className="size-3.5 text-primary" />
+          <span className="font-medium text-foreground">About {ask.credits} credits</span>
+          <span className="ml-auto flex items-center gap-1.5 tabular-nums">
+            {BALANCE.toLocaleString()}
+            <ArrowRight className="size-3" />
+            <span className="font-medium text-foreground">{(BALANCE - ask.credits).toLocaleString()}</span> left
+          </span>
+        </div>
+      ) : (
+        <p className="px-4 pb-4 text-xs text-muted-foreground">Visitors see this as soon as it's live. It asks every time.</p>
+      )}
       <AnimatePresence initial={false} mode="wait">
         {status === "pending" ? (
           <motion.div
             key="ask"
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3, ease: EASE }}
-            className="grid grid-cols-2 gap-2 border-t border-primary/15 p-3"
+            className={cn("grid gap-2 border-t border-primary/15 p-3", ask.always ? "grid-cols-2" : "grid-cols-[1fr_auto]")}
           >
-            <Button className="h-9" onClick={onAllow}>Allow once</Button>
-            <Button className="h-9" variant="secondary" onClick={onAlways}>Always allow in this chat</Button>
+            <Button className="h-9" onClick={onAllow}>{ask.confirm}</Button>
+            {ask.always ? (
+              <Button className="h-9" variant="secondary" onClick={onAlways}>Always allow in this chat</Button>
+            ) : (
+              <Button className="h-9 px-4" variant="secondary" onClick={onDecline}>Not now</Button>
+            )}
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -266,7 +291,7 @@ export function CollectionCard({ undone, canUndo, onUndo }: { undone: boolean; c
           <p className="truncate text-sm font-semibold">{COLLECTION_NAME}</p>
         </TooltipHint>
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="tabular-nums">{SCREEN_TOTALS.include} papers</span>
+          <span className="tabular-nums">{COLLECTED} papers</span>
           <span className="flex items-center gap-1 rounded-md bg-foreground/6 px-1.5 py-0.5 font-mono text-[11px]">
             col_7f3kq2
             <TooltipHint label="Copy ID">

@@ -131,8 +131,8 @@ const CHATS: Array<{ group: string; live?: boolean; chats: Chat[] }> = [
     group: "Today",
     chats: [
       {
-        id: "c1", title: "Structured pedagogy in sub-Saharan Africa", last: "Saved 9 included papers to a new collection", when: "Now", mine: true, current: true,
-        records: [{ kind: "search", label: "24 results" }, { kind: "screening", label: "24 screened" }, { kind: "collection", label: "9 papers" }],
+        id: "c1", title: "Structured pedagogy in sub-Saharan Africa", last: "Saved 4 included studies to a new collection", when: "Now", mine: true, current: true,
+        records: [{ kind: "search", label: "24 results" }, { kind: "screening", label: "24 screened" }, { kind: "collection", label: "4 papers" }],
       },
       {
         id: "c2", title: "Retrieval practice in secondary maths", last: "Extracted effect sizes and sample sizes", when: "09:12", mine: true,
