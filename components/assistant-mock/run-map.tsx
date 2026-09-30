@@ -6,12 +6,12 @@
 import { useEffect, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion, useSpring, useTransform } from "motion/react";
-import { ArrowRight, Check, ChevronRight, CircleHelp, CircleStop, Coins, Copy, ExternalLink, Folder, FolderPlus, Hourglass, Plus, Undo2, X } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, CircleHelp, CircleSlash, CircleStop, Coins, Copy, ExternalLink, Folder, FolderPlus, Hourglass, Plus, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { EASE } from "@/components/settings/model-map";
-import { KIND, OTHER_SCREENING, SCREEN_CREDITS, VERSIONS } from "./data";
+import { KIND, OTHER_SCREENING, SCREEN_SPENT, VERSIONS } from "./data";
 import { LogoMark } from "./logo-mark";
 
 /**
@@ -310,7 +310,7 @@ export function ApprovalCard({
         <div className="space-y-2 px-4 pb-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Coins className="size-3.5 text-primary" />
-            <span className="font-medium text-foreground">About {ask.credits} credits</span>
+            <span className="font-medium text-foreground">Up to {ask.credits} credits</span>
             <span className="ml-auto flex items-center gap-1.5">
               <AnimatedNumber value={balance} />
               <ArrowRight className="size-3" />
@@ -386,30 +386,33 @@ export function JobCard({
   total,
   counts,
   waiting,
-  stopped,
+  cancelled,
+  onCancel,
 }: {
   done: number;
   total: number;
   counts: { include: number; exclude: number; unsure: number };
   /** How far the other screening has got, while this one waits for it. */
   waiting?: number;
-  stopped?: boolean;
+  /** Cancelled from its card; Stop in the composer never cancels a job. */
+  cancelled?: boolean;
+  onCancel: () => void;
 }) {
   const finished = done >= total;
   const queued = waiting !== undefined;
-  const credits = Math.round((done / total) * SCREEN_CREDITS);
+  const credits = Math.round((done / total) * SCREEN_SPENT);
   const seg = (n: number) => `${(n / total) * 100}%`;
   const fade = (on: boolean) => ({ initial: false as const, animate: { opacity: on ? 1 : 0 }, transition: { duration: 0.3, ease: EASE } });
   return (
     <div className="rounded-2xl border border-border/60 bg-muted/40 p-4">
       <div className="flex items-center gap-3">
-        <KindTile kind="screening" working={!finished && !stopped} />
+        <KindTile kind="screening" working={!finished && !cancelled} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">
-            {queued && !stopped ? (
+            {queued && !cancelled ? (
               <WorkingText>Waiting to screen 24 papers</WorkingText>
-            ) : stopped ? (
-              `Stopped at ${done} of ${total}`
+            ) : cancelled ? (
+              `Cancelled at ${done} of ${total}`
             ) : finished ? (
               "Screened 24 papers"
             ) : (
@@ -424,6 +427,27 @@ export function JobCard({
           {done}
           <span className="font-normal text-muted-foreground"> / {total}</span>
         </span>
+        {!finished && !cancelled ? (
+          <TooltipHint label="Cancel the screening">
+            <button
+              type="button"
+              aria-label="Cancel the screening"
+              onClick={onCancel}
+              className="-mr-1 flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </TooltipHint>
+        ) : (
+          // The same slot keeps its size, so nothing beside it moves when the job ends.
+          <span className="flex size-7 shrink-0 items-center justify-center">
+            {cancelled ? (
+              <CircleSlash className="size-4 text-muted-foreground" aria-label="Cancelled" />
+            ) : (
+              <Check className="size-4 text-emerald-600 dark:text-emerald-400" aria-label="Done" />
+            )}
+          </span>
+        )}
       </div>
       <div className="mt-3 grid h-2 [&>*]:col-start-1 [&>*]:row-start-1">
         {/* The other screening's progress, in the screening tint. */}

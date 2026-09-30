@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { ArrowRight, ArrowUp, Check, ChevronDown, CircleHelp, CircleStop, Coins, Copy, Eye, FileText, Folder, FolderPlus, Globe, LayoutList, ListChecks, Search, SlidersHorizontal, TableProperties, MessagesSquare, Pencil, PictureInPicture2, RotateCcw, Sparkles, Square, SquarePen, UserPlus, X } from "lucide-react";
+import { ArrowRight, ArrowUp, Check, ChevronDown, CircleHelp, CirclePause, CircleStop, Coins, Copy, Eye, FileText, Folder, FolderPlus, Globe, LayoutList, ListChecks, Search, SlidersHorizontal, TableProperties, MessagesSquare, Pencil, PictureInPicture2, Play, RotateCcw, Sparkles, Square, SquarePen, UserPlus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,14 +29,14 @@ import { Dim, EdgeGlow, HistorySheet, SHEET_SPRING, Sheet, ShareSheet, TopUpShee
 import { Cite, EXTRACT_CELLS, ExtractionCard } from "./extraction";
 import { MentionComposer, MessageText } from "./mentions";
 import {
-  ACCOUNT, BALANCE, COLLECTED, COLLECTION_CHOICES, COLLECTION_NAME, EXTRACT_CREDITS, LIBRARY, ORIGINAL_COUNT, OTHER_SCREENING,
-  SCREEN_CREDITS, SCREEN_ORDER, SEARCH_NAME, SETTLED, TIGHT_COUNT, type Decision,
+  ACCOUNT, BALANCE, COLLECTED, COLLECTION_CHOICES, COLLECTION_NAME, EXTRACT_HOLD, EXTRACT_SPENT, LIBRARY, ORIGINAL_COUNT, OTHER_SCREENING,
+  REPLY_CAP, SCREEN_HOLD, SCREEN_ORDER, SCREEN_SPENT, SEARCH_NAME, SETTLED, TIGHT_COUNT, type Decision,
 } from "./data";
 
 type Card =
   | { type: "approval"; ask: Ask; status: "pending" | "allowed" | "declined" }
-  | { type: "job"; done: number; waiting?: number; settled?: boolean }
-  | { type: "extract"; filled: number }
+  | { type: "job"; done: number; waiting?: number; settled?: boolean; cancelled?: boolean }
+  | { type: "extract"; filled: number; cancelled?: boolean }
   | { type: "question"; picked: string | null; typed?: string }
   | { type: "collection"; undone: boolean; name: string; count: number }
   | { type: "publish"; stage: number; failed?: boolean };
@@ -67,7 +67,7 @@ const SCREEN_ASK: Ask = {
   kind: "screening",
   title: "Screen 24 papers",
   items: ["Is it a randomized or quasi-experimental study?", "Is it set in primary schools?"],
-  credits: SCREEN_CREDITS,
+  credits: SCREEN_HOLD,
   always: true,
   confirm: "Allow once",
   decline: "Don't screen",
@@ -77,7 +77,7 @@ const EXTRACT_ASK: Ask = {
   kind: "extraction",
   title: "Extract from 4 papers",
   items: ["Study design", "Country and grades", "Sample size"],
-  credits: EXTRACT_CREDITS,
+  credits: EXTRACT_HOLD,
   always: true,
   confirm: "Allow once",
   decline: "Don't extract",
@@ -92,7 +92,10 @@ const publishAsk = (collection: string): Ask => ({
 });
 /** What the homepage text step writes: the visible intro, plus the tagline and description search results show. */
 const HOME_TEXT = ["Intro", "Tagline", "Description"];
-const PUBLISH_STAGES = ["Checking the settings", "Building the library", "Rolling it out"];
+/** The publish operation's stages: queued, assembling, validating, publishing, activating. */
+const PUBLISH_STAGES = ["Queued", "Putting the settings together", "Checking them", "Publishing", "Switching the library over"];
+/** The stage the first publish in a chat fails at, the way the watchdog fails a publish whose worker stops answering. */
+const PUBLISH_FAILS_AT = 3;
 
 /** What the assistant says it can see, from the route the user is on. */
 function viewOf(pathname: string) {
@@ -111,6 +114,11 @@ function viewOf(pathname: string) {
 }
 
 class Stopped extends Error {}
+
+/** A job on its own clock: Stop ends the reply, never the job; only its Cancel does. */
+type Job = { cancelled: boolean; progress: number; hold: number; spent: number; done: Promise<boolean> };
+type Reply = { id: number; spent: number; cap: number; paused: boolean };
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 type OpenSheet = { kind: SheetKind; chat: string; balance?: number; need?: number; purpose?: Ask };
 
@@ -133,6 +141,13 @@ export function AssistantOverlay() {
   const decide = useRef<{ token: number; resolve: (choice: Choice) => void } | null>(null);
   const question = useRef<{ token: number; resolve: (answer: Answer) => void } | null>(null);
   const retryWait = useRef<{ token: number; resolve: () => void } | null>(null);
+  const capWait = useRef<{ token: number; resolve: () => void } | null>(null);
+  // The running reply's own spending against its cap; the ref is what the script reads.
+  const [reply, setReplyState] = useState<Reply | null>(null);
+  const replyRef = useRef<Reply | null>(null);
+  // Jobs by the turn that started them, and what a stopped turn still has to do once its job ends.
+  const jobs = useRef(new Map<number, Job>());
+  const continuations = useRef(new Map<number, { step: number; run: (token: number) => Promise<boolean | void> }>());
   // Read at the gates, so a change mid-step counts.
   const alwaysRef = useRef(false);
   const balanceRef = useRef(BALANCE);
@@ -144,8 +159,14 @@ export function AssistantOverlay() {
   const publishFailed = useRef(false);
   const composer = useRef<HTMLTextAreaElement>(null);
 
-  // Timers are an outside system: stop the scripted run when the overlay unmounts.
-  useEffect(() => () => void run.current++, []);
+  // Timers are an outside system: stop the scripted run and every job when the overlay unmounts.
+  useEffect(() => {
+    const running = jobs.current;
+    return () => {
+      run.current++;
+      for (const job of running.values()) job.cancelled = true;
+    };
+  }, []);
   // A keyboard shortcut is an outside system too: ⌘J or Ctrl+J opens and closes the panel.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -181,7 +202,62 @@ export function AssistantOverlay() {
   const addStep = (id: number, step: Step) => patch(id, (t) => ({ steps: [...t.steps, step] }));
   const setCard = (id: number, i: number, card: Card) => patch(id, (t) => ({ cards: t.cards.map((c, j) => (j === i ? card : c)) }));
   const addCard = (id: number, card: Card) => patch(id, (t) => ({ cards: [...t.cards, card] }));
-  const stream = async (token: number, id: number, text: string) => {
+  const setReply = (value: Reply | null) => {
+    replyRef.current = value;
+    setReplyState(value);
+  };
+  /** Charges the reply's own AI use, pausing at its cap until the person allows more. */
+  const spend = async (token: number, id: number, credits: number) => {
+    const current = replyRef.current;
+    if (!current || current.id !== id) return;
+    let cap = current.cap;
+    if (current.spent + credits > cap) {
+      setReply({ ...current, paused: true });
+      await new Promise<void>((resolve) => {
+        capWait.current = { token, resolve };
+      });
+      capWait.current = null;
+      if (token !== run.current) throw new Stopped();
+      cap += REPLY_CAP;
+    }
+    setReply({ id, spent: current.spent + credits, cap, paused: false });
+    charge(credits);
+  };
+  /**
+   * Runs a job on its own clock, one tick at a time. It holds `hold` credits, spends
+   * `spent` in step with its progress, and returns the rest when it ends or is cancelled.
+   */
+  const runJob = (id: number, hold: number, spent: number, ticks: Array<[ms: number, progress: number, apply: () => void]>): Job => {
+    charge(hold);
+    const job: Job = { cancelled: false, progress: 0, hold, spent, done: Promise.resolve(false) };
+    job.done = (async () => {
+      for (const [ms, progress, apply] of ticks) {
+        await sleep(ms);
+        if (job.cancelled) return false;
+        job.progress = progress;
+        apply();
+      }
+      charge(-(hold - spent));
+      return true;
+    })();
+    jobs.current.set(id, job);
+    return job;
+  };
+  /** Waits for a job as part of a reply: a stopped reply stops waiting, and the job carries on. */
+  const follow = async (token: number, job: Job) => {
+    const finished = await job.done;
+    if (token !== run.current) throw new Stopped();
+    return finished;
+  };
+  const cancelJob = (id: number) => {
+    const job = jobs.current.get(id);
+    if (!job || job.cancelled) return;
+    job.cancelled = true;
+    charge(-(job.hold - Math.round(job.spent * job.progress)));
+    patch(id, (t) => ({ cards: t.cards.map((c): Card => (c.type === "job" || c.type === "extract" ? { ...c, cancelled: true } : c)) }));
+  };
+  const stream = async (token: number, id: number, text: string, cost = 2) => {
+    await spend(token, id, cost);
     patch(id, () => ({ text, shown: 0 }));
     let shown = 0;
     for (const w of text.split(/(?<= )/)) {
@@ -192,7 +268,8 @@ export function AssistantOverlay() {
     }
   };
   /** A step that runs for a while, then settles with its final title and detail. */
-  const work = async (token: number, id: number, i: number, step: Step, done: Partial<Step>, ms: number) => {
+  const work = async (token: number, id: number, i: number, step: Step, done: Partial<Step>, ms: number, cost = 1) => {
+    await spend(token, id, cost);
     addStep(id, step);
     await wait(token, ms);
     setStep(id, i, { ...done, status: "done" });
@@ -222,6 +299,7 @@ export function AssistantOverlay() {
     decide.current = null;
     question.current = null;
     retryWait.current = null;
+    capWait.current = null;
     setBusy(false);
   };
   /** Stops the running script: pending approvals close, an unanswered question goes, and so does the collection made on the old search. */
@@ -271,13 +349,13 @@ export function AssistantOverlay() {
     await work(token, id, 0, { kind: "search", title: "Reading your search", detail: <Facts items={[{ icon: Search, label: "Query" }, { icon: SlidersHorizontal, label: "Filters" }]} />, status: "working" },
       { title: "Read your search", detail: <Facts items={[{ value: ORIGINAL_COUNT, label: "results" }, { value: 6, label: "on this page" }]} /> }, 1100);
     await work(token, id, 1, { kind: "versions", title: "Trying tighter versions", detail: <Facts items={[{ value: 3, label: "versions" }, { icon: Globe, label: "OpenAlex counts" }]} />, status: "working" },
-      { title: "Tried 3 versions", detail: <VersionBars /> }, 1700);
+      { title: "Tried 3 versions", detail: <VersionBars /> }, 1700, 6);
     await work(token, id, 2, { kind: "write", title: "Updating your search", detail: <Facts items={[{ icon: Search, label: "Query" }, { icon: SlidersHorizontal, value: 2, label: "filters" }]} />, status: "working" },
       { title: "Updated your search", detail: <Facts items={[{ value: <>{ORIGINAL_COUNT} <ArrowRight className="inline size-3" /> {TIGHT_COUNT}</>, label: "results" }]} />, onUndo: () => undoSearch(id) }, 1200);
     await stream(
       token,
       id,
-      "Most of the first page was off-topic: reading software, middle-school reform, Latin America. I added the other names this approach goes by, kept articles from 2015 on, and limited it to African countries. That leaves 24, and the first page is on target now.",
+      "Most of the first page was off-topic: reading software, middle-school reform, Latin America. I added the other names this approach goes by, kept articles from 2015 on, and limited it to Sub-Saharan Africa. That leaves 24, and the first page is on target now.",
     );
   };
 
@@ -289,24 +367,33 @@ export function AssistantOverlay() {
       await stream(token, id, "Okay, I haven't screened anything. Your search is unchanged.");
       return false;
     }
-    charge(SCREEN_CREDITS);
     // The plan runs one screening at a time, so this one waits for the other to finish.
     startJob(id, asked, { type: "job", done: 0, waiting: OTHER_SCREENING.start });
-    for (let w = OTHER_SCREENING.start + 1; w <= OTHER_SCREENING.total; w++) {
-      await wait(token, 300);
-      setCard(id, 0, { type: "job", done: 0, waiting: w });
-    }
-    await wait(token, 600);
-    setCard(id, 0, { type: "job", done: 0 });
-    await wait(token, 500);
-    for (let done = 1; done <= 24; done++) {
-      await wait(token, 210);
-      setCard(id, 0, { type: "job", done });
+    const ticks: Array<[number, number, () => void]> = [];
+    for (let w = OTHER_SCREENING.start + 1; w <= OTHER_SCREENING.total; w++) ticks.push([300, 0, () => setCard(id, 0, { type: "job", done: 0, waiting: w })]);
+    ticks.push([600, 0, () => setCard(id, 0, { type: "job", done: 0 })]);
+    for (let done = 1; done <= 24; done++) ticks.push([done === 1 ? 710 : 210, done / 24, () => setCard(id, 0, { type: "job", done })]);
+    const job = runJob(id, SCREEN_HOLD, SCREEN_SPENT, ticks);
+    return followUp(token, id, 1, (t) => afterScreening(t, id, job));
+  };
+
+  /** Runs what a reply does once its job ends, keeping it so a stopped reply can continue. */
+  const followUp = async (token: number, id: number, step: number, rest: (token: number) => Promise<boolean>) => {
+    continuations.current.set(id, { step, run: rest });
+    const ok = await rest(token);
+    continuations.current.delete(id);
+    return ok;
+  };
+
+  const afterScreening = async (token: number, id: number, job: Job) => {
+    if (!(await follow(token, job))) {
+      await stream(token, id, `Okay, I cancelled the screening at ${Math.round(job.progress * 24)} of 24. The decisions it made so far are kept.`);
+      return false;
     }
     await wait(token, 500);
     // Unclear answers that decide whether a paper is in get checked here, not left for a person.
     await work(token, id, 1, { kind: "screening", title: "Checking the 3 unclear papers", detail: <Facts items={[{ icon: CircleHelp, value: 3, label: "unclear", tone: "warn" }, { icon: Globe, label: "OpenAlex records" }]} />, status: "working" },
-      { title: "Settled 2 of the 3 unclear", detail: <Facts items={[{ icon: X, value: SETTLED, label: "excluded" }, { icon: CircleHelp, value: 3 - SETTLED, label: "still unclear", tone: "warn" }]} />, onUndo: () => unsettle(id) }, 1800);
+      { title: "Settled 2 of the 3 unclear", detail: <Facts items={[{ icon: X, value: SETTLED, label: "excluded" }, { icon: CircleHelp, value: 3 - SETTLED, label: "still unclear", tone: "warn" }]} />, onUndo: () => unsettle(id) }, 1800, 6);
     setCard(id, 0, { type: "job", done: 24, settled: true });
     await wait(token, 400);
     await stream(
@@ -357,6 +444,7 @@ export function AssistantOverlay() {
       token,
       id,
       fresh ? `Done. The 4 included studies are in “${name}”.` : `Done. “${name}” has ${count} papers now.`,
+      1,
     );
   };
 
@@ -368,20 +456,24 @@ export function AssistantOverlay() {
       await stream(token, id, "Okay, I haven't extracted anything.");
       return false;
     }
-    charge(EXTRACT_CREDITS);
     startJob(id, asked, { type: "extract", filled: 0 });
-    await wait(token, 400);
-    for (let filled = 1; filled <= EXTRACT_CELLS; filled++) {
-      await wait(token, 360);
-      setCard(id, 0, { type: "extract", filled });
-    }
-    await wait(token, 500);
-    await stream(
-      token,
-      id,
-      "Three of the four can be compared. The Kenya trial found the full package worked best: coaching, a book for every pupil and structured lesson plans [1]. Ghana's bilingual programme lifted every reading skill it measured, by up to 0.43 SD, and more where teachers and pupils share a first language [3]. The Ghana teacher-training study found a clear gain in numeracy and a smaller one in literacy [4]. The storybook trial has no abstract, so I need its PDF to include it [2].",
-    );
-    return true;
+    const ticks: Array<[number, number, () => void]> = [];
+    for (let filled = 1; filled <= EXTRACT_CELLS; filled++) ticks.push([filled === 1 ? 760 : 360, filled / EXTRACT_CELLS, () => setCard(id, 0, { type: "extract", filled })]);
+    const job = runJob(id, EXTRACT_HOLD, EXTRACT_SPENT, ticks);
+    return followUp(token, id, 3, async (t) => {
+      if (!(await follow(t, job))) {
+        await stream(t, id, "Okay, I cancelled the extraction. The values it had read so far are kept.");
+        return false;
+      }
+      await wait(t, 500);
+      await stream(
+        t,
+        id,
+        "Three are randomized trials and one a quasi-experiment. Ghana's bilingual trial has the largest sample, 3,559 students in 198 schools, in grades 2 and 3 [3]. The Kenya trial compares three arms with a control in grades 1 and 2, but its abstract gives no sample [1]. The Ghana quasi-experiment matched 2,400 pupils across 80 primary schools [4]. The storybook study has no abstract, so its title is all there is: it calls itself a randomized trial [2].",
+        3,
+      );
+      return true;
+    });
   };
 
   const undoFeature = (id: number) => {
@@ -391,25 +483,27 @@ export function AssistantOverlay() {
 
   const feature = async (token: number, id: number) => {
     await work(token, id, 0, { kind: "library", title: "Reading the library's draft", detail: LIBRARY.name, status: "working" },
-      { title: "Read the library's draft", detail: <Facts items={HOME_TEXT.map((label) => ({ label: `No ${label.toLowerCase()}`, tone: "missing" as const }))} /> }, 900);
+      { title: "Read the library's draft", detail: <Facts items={HOME_TEXT.map((label) => ({ label: `No ${label.toLowerCase()}`, tone: "missing" as const }))} /> }, 900, 2);
     await work(token, id, 1, { kind: "library", title: "Writing the homepage text", detail: <Facts items={HOME_TEXT.map((label) => ({ label }))} />, status: "working" },
-      { title: "Wrote the homepage text", detail: <Facts items={HOME_TEXT.map((label) => ({ icon: Check, label, tone: "good" as const }))} /> }, 1400);
+      { title: "Wrote the homepage text", detail: <Facts items={HOME_TEXT.map((label) => ({ icon: Check, label, tone: "good" as const }))} /> }, 1400, 12);
     await work(token, id, 2, { kind: "library", title: "Featuring the collection", detail: homeRef.current.name, status: "working" },
-      { title: "Featured the collection", onUndo: () => undoFeature(id) }, 900);
+      { title: "Featured the collection", onUndo: () => undoFeature(id) }, 900, 2);
     await stream(token, id, `I wrote the homepage intro, a tagline and a description, and put “${homeRef.current.name}” first among the homepage collections. It's saved as a draft of ${LIBRARY.name}, so visitors don't see it yet.`);
   };
 
   const publish = async (token: number, id: number) => {
     await work(token, id, 0, { kind: "publish", title: "Checking the draft", detail: <Facts items={[{ icon: LayoutList, label: "All sections" }]} />, status: "working" },
-      { title: "Checked the draft", detail: <Facts items={[{ icon: Check, label: "No issues", tone: "good" }]} /> }, 900);
+      { title: "Checked the draft", detail: <Facts items={[{ icon: Check, label: "No issues", tone: "good" }]} /> }, 900, 2);
     const { choice } = await approve(token, id, publishAsk(homeRef.current.name));
     if (choice === "no") {
       await stream(token, id, "Okay, it stays a draft.");
       return false;
     }
     setCard(id, 0, { type: "publish", stage: 0 });
-    await wait(token, 1300);
-    setCard(id, 0, { type: "publish", stage: 1 });
+    for (let stage = 1; stage <= PUBLISH_FAILS_AT; stage++) {
+      await wait(token, 900);
+      setCard(id, 0, { type: "publish", stage });
+    }
     if (!publishFailed.current) {
       await wait(token, 1700);
       publishFailed.current = true;
@@ -417,19 +511,19 @@ export function AssistantOverlay() {
       const retried = new Promise<void>((resolve) => {
         retryWait.current = { token, resolve };
       });
-      setCard(id, 0, { type: "publish", stage: 1, failed: true });
-      await stream(token, id, "The build timed out on our side, so nothing changed for visitors and the draft is safe. Try again when you're ready.");
+      setCard(id, 0, { type: "publish", stage: PUBLISH_FAILS_AT, failed: true });
+      await stream(token, id, "The library didn't confirm the new settings in time, so it kept the old ones. Nothing changed for visitors, and the draft is safe. Trying again publishes the same approved draft.", 1);
       await retried;
       retryWait.current = null;
       if (token !== run.current) throw new Stopped();
       patch(id, () => ({ text: "", shown: 0 }));
-      setCard(id, 0, { type: "publish", stage: 1 });
+      setCard(id, 0, { type: "publish", stage: PUBLISH_FAILS_AT });
     }
-    for (let stage = 2; stage <= PUBLISH_STAGES.length; stage++) {
-      await wait(token, 1300);
+    for (let stage = PUBLISH_FAILS_AT + 1; stage <= PUBLISH_STAGES.length; stage++) {
+      await wait(token, 1100);
       setCard(id, 0, { type: "publish", stage });
     }
-    await stream(token, id, `It's live at ${LIBRARY.address}, with the new homepage and “${homeRef.current.name}” first among its collections.`);
+    await stream(token, id, `It's live at ${LIBRARY.address}, with the new homepage and “${homeRef.current.name}” first among its collections.`, 1);
     return true;
   };
 
@@ -440,6 +534,7 @@ export function AssistantOverlay() {
     const token = ++run.current;
     const id = ++ids.current;
     setBusy(true);
+    setReply({ id, spent: 0, cap: REPLY_CAP, paused: false });
     setTurns((all) => [...all, { kind: "assistant", id, steps: [], text: "", shown: 0, cards: [] }]);
     try {
       await wait(token, 450);
@@ -494,6 +589,30 @@ export function AssistantOverlay() {
     void execute(user.step);
   };
 
+  /** Continues a stopped reply: it waits for its job, if still running, then finishes what it was doing. */
+  const resume = (id: number) => {
+    const rest = continuations.current.get(id);
+    if (!rest) return;
+    const token = ++run.current;
+    setBusy(true);
+    setReply({ id, spent: replyRef.current?.id === id ? replyRef.current.spent : 0, cap: REPLY_CAP, paused: false });
+    patch(id, (t) => ({ stopped: false, text: "", shown: 0, steps: t.steps.filter((s) => s.status !== "stopped") }));
+    void (async () => {
+      try {
+        const ok = await rest.run(token);
+        continuations.current.delete(id);
+        if (ok !== false) setNext(rest.step + 1);
+      } catch (error) {
+        if (!(error instanceof Stopped)) throw error;
+      } finally {
+        if (token === run.current) setBusy(false);
+      }
+    })();
+  };
+  const allowMore = () => {
+    if (capWait.current?.token === run.current) capWait.current.resolve();
+  };
+
   const answer = (choice: Choice) => {
     const pending = decide.current;
     if (!pending || pending.token !== run.current) return;
@@ -510,6 +629,10 @@ export function AssistantOverlay() {
 
   const restart = () => {
     cancelRun();
+    for (const job of jobs.current.values()) job.cancelled = true;
+    jobs.current.clear();
+    continuations.current.clear();
+    setReply(null);
     setTurns([]);
     setAlways(false);
     setBalance(BALANCE);
@@ -539,7 +662,7 @@ export function AssistantOverlay() {
   const asking = lastCards.some((c) => c.type === "question" && c.picked === null);
   const pendingAsk = lastCards.flatMap((c) => (c.type === "approval" && c.status === "pending" && c.ask.credits ? [c.ask] : []))[0];
   const lastUser = turns.findLast((t) => t.kind === "user")?.id ?? null;
-  const cards = turns.flatMap((t) => (t.kind === "assistant" && !t.stopped ? t.cards : []));
+  const cards = turns.flatMap((t) => (t.kind === "assistant" ? t.cards.filter((c) => !("cancelled" in c && c.cancelled)) : []));
   const screening = cards.find((c): c is Extract<Card, { type: "job" }> => c.type === "job");
   const extraction = cards.find((c): c is Extract<Card, { type: "extract" }> => c.type === "extract");
   const running =
@@ -548,7 +671,9 @@ export function AssistantOverlay() {
       : screening && screening.done < 24
         ? screening.done / 24
         : null;
-  const suggestion = !busy && next < PROMPTS.length ? PROMPTS[next] : null;
+  // A stopped reply that can continue offers Continue in the thread, so no new request is suggested.
+  const resumable = last?.kind === "assistant" && last.stopped && continuations.current.has(last.id);
+  const suggestion = !busy && !resumable && next < PROMPTS.length ? PROMPTS[next] : null;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -611,6 +736,9 @@ export function AssistantOverlay() {
                   onRetryPublish={retryPublish}
                   onUndoCollection={undoCollection}
                   onRerun={rerun}
+                  onCancelJob={cancelJob}
+                  canContinue={(id) => continuations.current.has(id)}
+                  onContinue={resume}
                 />
                 <Footer
                   suggestion={suggestion}
@@ -624,6 +752,8 @@ export function AssistantOverlay() {
                   asking={asking}
                   onSend={() => send(draft.trim() || suggestion || "")}
                   onStop={stop}
+                  reply={busy ? reply : null}
+                  onAllowMore={allowMore}
                   always={always}
                   onStopAlways={() => setAlways(false)}
                   view={view}
@@ -687,7 +817,7 @@ function PublishCard({ stage, failed, stopped, onRetry }: { stage: number; faile
             <li key={label} className="flex items-center gap-2.5 text-sm">
               <StatusIcon tone={tone} label={tone === "success" ? "Done" : tone === "danger" ? "Failed" : tone === "running" ? "Running" : "Waiting"} />
               <span className={cn(i > stage ? "text-muted-foreground" : "text-foreground/90")}>{label}</span>
-              {tone === "danger" ? <span className="text-xs text-muted-foreground">Timed out</span> : null}
+              {tone === "danger" ? <span className="text-xs text-muted-foreground">No answer</span> : null}
             </li>
           );
         })}
@@ -770,6 +900,9 @@ function Thread({
   onRetryPublish,
   onUndoCollection,
   onRerun,
+  onCancelJob,
+  canContinue,
+  onContinue,
 }: {
   turns: Turn[];
   view: string;
@@ -782,6 +915,10 @@ function Thread({
   onRetryPublish: () => void;
   onUndoCollection: (id: number) => void;
   onRerun: (userId: number, text?: string) => void;
+  onCancelJob: (turnId: number) => void;
+  /** Whether a stopped reply still has work to finish once its job ends. */
+  canContinue: (turnId: number) => boolean;
+  onContinue: (turnId: number) => void;
 }) {
   return (
     <Conversation className="min-h-0 flex-1" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px)` }}>
@@ -814,9 +951,9 @@ function Thread({
                         onTopUp={onTopUp}
                       />
                     ) : c.type === "job" ? (
-                      <JobCard done={c.done} total={24} counts={countUpTo(c.done, c.settled)} waiting={c.waiting} stopped={t.stopped} />
+                      <JobCard done={c.done} total={24} counts={countUpTo(c.done, c.settled)} waiting={c.waiting} cancelled={c.cancelled} onCancel={() => onCancelJob(t.id)} />
                     ) : c.type === "extract" ? (
-                      <ExtractionCard filled={c.filled} stopped={t.stopped} />
+                      <ExtractionCard filled={c.filled} cancelled={c.cancelled} onCancel={() => onCancelJob(t.id)} />
                     ) : c.type === "publish" ? (
                       <PublishCard stage={c.stage} failed={c.failed} stopped={t.stopped} onRetry={onRetryPublish} />
                     ) : c.type === "question" ? (
@@ -843,7 +980,9 @@ function Thread({
                 ))}
               </AnimatePresence>
               {t.text ? <Reply text={t.text} shown={t.shown} /> : null}
-              {t.stopped && asker?.kind === "user" ? <StoppedRow onRetry={() => onRerun(asker.id)} /> : null}
+              {t.stopped && asker?.kind === "user" ? (
+                canContinue(t.id) ? <StoppedRow resumable onRetry={() => onContinue(t.id)} /> : <StoppedRow onRetry={() => onRerun(asker.id)} />
+              ) : null}
             </div>
           );
         })}
@@ -852,8 +991,11 @@ function Thread({
   );
 }
 
-/** Under a reply that was stopped: it says so, and offers to run the message again. */
-function StoppedRow({ onRetry }: { onRetry: () => void }) {
+/**
+ * Under a reply that was stopped: it says so, and offers to run the message again. When
+ * its job is still going, Stop left the job alone, so it offers to continue instead.
+ */
+function StoppedRow({ onRetry, resumable }: { onRetry: () => void; resumable?: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 4 }}
@@ -861,13 +1003,13 @@ function StoppedRow({ onRetry }: { onRetry: () => void }) {
       transition={{ duration: 0.3, ease: EASE }}
       className="flex h-8 items-center gap-2 text-xs text-muted-foreground"
     >
-      <CircleStop className="size-3.5" /> You stopped this reply
+      <CircleStop className="size-3.5" /> {resumable ? "You stopped this reply. The job keeps going" : "You stopped this reply"}
       <button
         type="button"
         onClick={onRetry}
         className="ml-1 flex h-7 items-center gap-1 rounded-full px-2.5 font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
       >
-        <RotateCcw className="size-3" /> Try again
+        {resumable ? <Play className="size-3" /> : <RotateCcw className="size-3" />} {resumable ? "Continue" : "Try again"}
       </button>
     </motion.div>
   );
@@ -1114,6 +1256,40 @@ function IconButton({ label, icon, onClick, small }: { label: string; icon: Reac
   );
 }
 
+/**
+ * What the running reply has spent on its own AI use, against its per-reply cap. At the
+ * cap the reply pauses here until the person allows more.
+ */
+function ReplyMeter({ reply, onAllowMore }: { reply: Reply; onAllowMore: () => void }) {
+  // One cell: the meter and the pause cross-fade, so the row never changes size.
+  return (
+    <div className="grid h-8 items-center text-xs [&>*]:col-start-1 [&>*]:row-start-1">
+      <motion.div initial={false} animate={{ opacity: reply.paused ? 0 : 1 }} inert={reply.paused} className="flex items-center gap-2 pl-1">
+        <Coins className="size-3.5 text-muted-foreground" />
+        <span className="text-muted-foreground">This reply</span>
+        <span className="h-1 w-16 overflow-hidden rounded-full bg-foreground/10">
+          <motion.span
+            className="block h-full rounded-full bg-primary"
+            initial={false}
+            animate={{ width: `${Math.min(1, reply.spent / reply.cap) * 100}%` }}
+            transition={{ duration: 0.3, ease: EASE }}
+          />
+        </span>
+        <span className="tabular-nums text-muted-foreground">
+          <span className="font-medium text-foreground">{reply.spent}</span> of {reply.cap} credits
+        </span>
+      </motion.div>
+      <motion.div initial={false} animate={{ opacity: reply.paused ? 1 : 0 }} inert={!reply.paused} className="flex items-center gap-2 pl-1">
+        <CirclePause className="size-3.5 text-amber-600 dark:text-amber-400" />
+        <span className="font-medium text-amber-700 dark:text-amber-400">Paused at this reply's {reply.cap}-credit cap</span>
+        <Button size="sm" variant="secondary" className="h-7 rounded-full px-3" onClick={onAllowMore}>
+          Allow {REPLY_CAP} more
+        </Button>
+      </motion.div>
+    </div>
+  );
+}
+
 function Footer({
   suggestion,
   done,
@@ -1126,6 +1302,8 @@ function Footer({
   asking,
   onSend,
   onStop,
+  reply,
+  onAllowMore,
   always,
   onStopAlways,
   view,
@@ -1142,6 +1320,9 @@ function Footer({
   asking: boolean;
   onSend: () => void;
   onStop: () => void;
+  /** The running reply's own spending, shown while it runs. */
+  reply: Reply | null;
+  onAllowMore: () => void;
   /** Credits are allowed for this chat; the chip turns that off. */
   always: boolean;
   onStopAlways: () => void;
@@ -1154,7 +1335,17 @@ function Footer({
       <div className="flex h-8 items-center gap-2">
         <div className="min-w-0 flex-1">
           <AnimatePresence mode="wait" initial={false}>
-            {suggestion ? (
+            {reply ? (
+              <motion.div
+                key="reply"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.25, ease: EASE }}
+              >
+                <ReplyMeter reply={reply} onAllowMore={onAllowMore} />
+              </motion.div>
+            ) : suggestion ? (
               <motion.button
                 key={suggestion}
                 type="button"

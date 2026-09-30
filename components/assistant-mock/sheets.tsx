@@ -544,7 +544,7 @@ export function TopUpSheet({
                 <span className="block truncate text-sm font-medium">{purpose.title}</span>
                 <span className="block text-xs text-muted-foreground">Waiting in the chat</span>
               </span>
-              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">About {purpose.credits} credits</span>
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">Up to {purpose.credits} credits</span>
             </div>
           ) : null}
           <div className="rounded-2xl border border-border/60 bg-muted/20 p-1.5">

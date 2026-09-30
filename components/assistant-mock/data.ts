@@ -16,7 +16,7 @@ export const TIGHT_COUNT = 24;
 export const VERSIONS = [
   { label: "Add synonyms", count: 43 },
   { label: "Articles since 2015", count: 28 },
-  { label: "African countries", count: 24 },
+  { label: "Sub-Saharan Africa", count: 24 },
 ];
 
 /**
@@ -34,10 +34,20 @@ export const SCREEN_ORDER: Decision[] = [
 export const COLLECTED = 4;
 /** Unclear papers the assistant settles itself after the screening: both report on a trial without being one. */
 export const SETTLED = 2;
-export const SCREEN_CREDITS = 36;
-export const EXTRACT_CREDITS = 28;
-/** Enough to screen, then a few credits short of the extraction, so the top-up shows. */
-export const BALANCE = 60;
+/**
+ * Credits a job holds before it runs, from the real estimators: screening holds 4.5 per
+ * paper (`ESTIMATED_CREDITS_PER_PAPER`), extraction 5 per question per paper at its high
+ * estimate (`estimatePaperCredits`). What a job actually spends is made up for the mock;
+ * the rest of the hold comes back when it ends.
+ */
+export const SCREEN_HOLD = 24 * 4.5;
+export const SCREEN_SPENT = 62;
+export const EXTRACT_HOLD = 3 * 4 * 5;
+export const EXTRACT_SPENT = 17;
+/** Credits one reply may spend on its own AI use before it pauses; set per chat, made up here. */
+export const REPLY_CAP = 15;
+/** Enough to screen, then short of the extraction's hold, so the top-up shows. */
+export const BALANCE = 120;
 export const COLLECTION_NAME = "Structured pedagogy trials, sub-Saharan Africa";
 
 export type Ico = ComponentType<{ className?: string }>;
@@ -58,7 +68,7 @@ export const KIND: Record<string, { icon: Ico; tint: string }> = {
 
 /** One extracted value; `missing` when the abstract doesn't say. */
 export type Cell = { value: string; missing?: boolean };
-export type ExtractRow = { cite: number; paper: string; design: Cell; setting: Cell; sample: Cell; needsPdf?: boolean };
+export type ExtractRow = { cite: number; paper: string; design: Cell; setting: Cell; sample: Cell; titleOnly?: boolean };
 
 export const EXTRACT_FIELDS = [
   { key: "design", label: "Design" },
@@ -74,7 +84,7 @@ export const EXTRACT_ROWS: ExtractRow[] = [
   },
   {
     cite: 2, paper: "Fleisch and Schöer, 2022",
-    design: { value: "RCT, per its title" }, setting: { value: "No abstract", missing: true }, sample: { value: "No abstract", missing: true }, needsPdf: true,
+    design: { value: "RCT, per its title" }, setting: { value: "No abstract", missing: true }, sample: { value: "No abstract", missing: true }, titleOnly: true,
   },
   {
     cite: 3, paper: "Lee, Moussa and Zuilkowski, 2026",
@@ -88,7 +98,8 @@ export const EXTRACT_ROWS: ExtractRow[] = [
 
 export const LIBRARY = {
   name: "Foundational Learning Evidence",
-  address: "foundational-learning.opendev.space",
+  // Libraries live at <name>-lib.<platform domain>; shared dev's platform domain is opendev.space.
+  address: "foundational-learning-evidence-lib.opendev.space",
   tagline: "Structured pedagogy for early grade reading in sub-Saharan Africa",
   description:
     "Trials and quasi-experiments on structured pedagogy, coaching and teacher guides for early grade reading across sub-Saharan Africa, screened by the OpenDevEd team.",

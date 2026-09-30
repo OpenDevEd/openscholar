@@ -5,12 +5,13 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Coins, ExternalLink, FileSearch, FlaskConical, MapPin, Users } from "lucide-react";
+import { Check, CircleSlash, Coins, ExternalLink, FlaskConical, MapPin, Type, Users, X } from "lucide-react";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { Segmented } from "@/components/settings/parts";
 import { cn } from "@/lib/utils";
 import { EASE } from "@/components/settings/model-map";
 import { KindTile, WorkingText } from "./run-map";
-import { EXTRACT_CREDITS, EXTRACT_FIELDS, EXTRACT_ROWS } from "./data";
+import { EXTRACT_FIELDS, EXTRACT_ROWS, EXTRACT_SPENT } from "./data";
 
 export const EXTRACT_CELLS = EXTRACT_ROWS.length * EXTRACT_FIELDS.length;
 
@@ -31,23 +32,44 @@ type FieldKey = (typeof EXTRACT_FIELDS)[number]["key"];
  * or Sample, and the four papers line up under it for comparison. Each row holds the
  * height of its longest value, so switching fields or values arriving never moves it.
  */
-export function ExtractionCard({ filled, stopped }: { filled: number; stopped?: boolean }) {
+export function ExtractionCard({ filled, cancelled, onCancel }: { filled: number; cancelled?: boolean; onCancel: () => void }) {
   const [field, setField] = useState<FieldKey>("design");
   const finished = filled >= EXTRACT_CELLS;
   const papers = Math.floor(filled / EXTRACT_FIELDS.length);
-  const credits = Math.round((filled / EXTRACT_CELLS) * EXTRACT_CREDITS);
+  const credits = Math.round((filled / EXTRACT_CELLS) * EXTRACT_SPENT);
   return (
     <div className="overflow-hidden rounded-2xl border border-border/60 bg-muted/40">
       <div className="flex items-center gap-3 p-4 pb-3">
-        <KindTile kind="extraction" working={!finished && !stopped} />
+        <KindTile kind="extraction" working={!finished && !cancelled} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">
-            {finished ? "Extracted from 4 papers" : stopped ? `Stopped at ${papers} of 4 papers` : <WorkingText>Extracting from 4 papers</WorkingText>}
+            {finished ? "Extracted from 4 papers" : cancelled ? `Cancelled at ${papers} of 4 papers` : <WorkingText>Extracting from 4 papers</WorkingText>}
           </p>
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <Coins className="size-3" /> <span className="tabular-nums">{credits}</span> credits
           </p>
         </div>
+        {!finished && !cancelled ? (
+          <TooltipHint label="Cancel the extraction">
+            <button
+              type="button"
+              aria-label="Cancel the extraction"
+              onClick={onCancel}
+              className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </TooltipHint>
+        ) : (
+          // The same slot keeps its size, so nothing beside it moves when the job ends.
+          <span className="flex size-7 shrink-0 items-center justify-center">
+            {cancelled ? (
+              <CircleSlash className="size-4 text-muted-foreground" aria-label="Cancelled" />
+            ) : (
+              <Check className="size-4 text-emerald-600 dark:text-emerald-400" aria-label="Done" />
+            )}
+          </span>
+        )}
         <button type="button" className="flex items-center gap-1 text-xs font-medium text-foreground/80 hover:text-foreground">
           Open <ExternalLink className="size-3" />
         </button>
@@ -96,14 +118,14 @@ export function ExtractionCard({ filled, stopped }: { filled: number; stopped?: 
                 </div>
                 <p className="mt-1 flex h-[18px] min-w-0 items-center gap-2 text-xs text-muted-foreground">
                   <span className="truncate">{row.paper}</span>
-                  {row.needsPdf && filled >= (r + 1) * EXTRACT_FIELDS.length ? (
+                  {row.titleOnly && filled >= (r + 1) * EXTRACT_FIELDS.length ? (
                     <motion.span
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.3, ease: EASE }}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-px text-[11px] font-medium text-amber-700 dark:text-amber-300"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-foreground/[0.06] px-1.5 py-px text-[11px] font-medium text-muted-foreground"
                     >
-                      <FileSearch className="size-3" /> Needs the PDF
+                      <Type className="size-3" /> Title only
                     </motion.span>
                   ) : null}
                 </p>
