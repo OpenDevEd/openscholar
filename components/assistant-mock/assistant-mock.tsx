@@ -7,14 +7,18 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { ArrowUp, Coins, Eye, MessagesSquare, PictureInPicture2, Plus, RotateCcw, Sparkles, SquarePen, UserPlus, X } from "lucide-react";
+import { ArrowUp, ChevronDown, Coins, Eye, MessagesSquare, PictureInPicture2, Plus, RotateCcw, Sparkles, SquarePen, UserPlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Conversation, ConversationContent } from "@/components/ai-elements/conversation";
-import { OpenAIIcon } from "@/components/icons/provider-icons";
+import { useTranslations } from "next-intl";
+import { getModelIcon } from "@/components/icons/provider-icons";
 import { EffortMeter } from "@/components/models/meters";
+import { ModelPicker } from "@/components/models/model-picker";
+import { stripProviderPrefix } from "@/lib/chat/model-display";
+import { PRESET_KEYS } from "@/lib/ai/tasks";
 import { StatusIcon } from "@/components/evidence-libraries/configuration/status-chip";
-import { EASE } from "@/components/settings/model-map";
+import { EASE, effortOf, usePresetModels, type PickedModel, type PresetPick } from "@/components/settings/model-map";
 import { ApprovalCard, CollectionCard, JobCard, KindTile, RunMap, VersionBars, WorkingText, type Ask, type Step } from "./run-map";
 import { LogoMark } from "./logo-mark";
 import { Dim, EdgeGlow, HistorySheet, SHEET_SPRING, Sheet, ShareSheet, stackedUnder, type SheetKind } from "./sheets";
@@ -715,7 +719,6 @@ function Header({
               {title}
             </motion.p>
           </AnimatePresence>
-          <ModelChip />
         </div>
         <div className="flex items-center">
           <IconButton label="Chats" icon={<MessagesSquare className="size-4" />} onClick={onHistory} />
@@ -772,17 +775,56 @@ function Header({
   );
 }
 
-function ModelChip() {
+/**
+ * The chat's model and effort, beside Send, on the shared model picker with each
+ * preset's chat model first. It starts on the Balanced preset's chat model.
+ */
+function ModelPill() {
+  const tm = useTranslations("settingsAi");
+  const presetModel = usePresetModels();
+  const [picked, setPicked] = useState<PickedModel | null>(null);
+  const model = picked ?? presetModel?.("balanced", "chat") ?? null;
+  const presets: PresetPick[] = presetModel
+    ? PRESET_KEYS.flatMap((preset) => {
+        const m = presetModel(preset, "chat");
+        return m ? [{ id: preset, models: [m], onSelect: () => setPicked(m) }] : [];
+      })
+    : [];
+  const effort = model ? effortOf(model) : null;
+  const Brand = getModelIcon(model?.id ?? "");
   return (
-    <button type="button" className="-ml-1 flex h-5 items-center gap-1.5 rounded-full px-1 text-xs text-muted-foreground hover:text-foreground">
-      <span className="flex" style={{ color: "#34d399" }}>
-        <OpenAIIcon className="size-3" />
-      </span>
-      GPT-6 Luna
-      <span className="ml-1 flex items-center gap-1">
-        <EffortMeter levels={["low", "medium", "high"]} level="medium" filled="bg-current" /> Medium
-      </span>
-    </button>
+    <ModelPicker
+      align="end"
+      side="top"
+      tasks={["chat"]}
+      presets={presets}
+      efforts
+      current={model ?? undefined}
+      onChange={(m, e) => setPicked(e ? { ...m, effort: e } : m)}
+      trigger={
+        // Right-aligned, so while the presets load nothing beside it moves when it fills in.
+        <button
+          type="button"
+          aria-label="Model and effort"
+          className={cn(
+            "ml-auto flex h-8 min-w-0 items-center gap-2 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground",
+            !model && "pointer-events-none opacity-0",
+          )}
+        >
+          <Brand className="size-3.5 shrink-0 text-foreground/80" />
+          <TooltipHint label={model ? stripProviderPrefix(model.name) : ""} onlyWhenClipped>
+            <span className="min-w-0 truncate">{model ? stripProviderPrefix(model.name) : ""}</span>
+          </TooltipHint>
+          {model?.reasoningEfforts && effort ? (
+            <span className="flex shrink-0 items-center gap-1.5">
+              <EffortMeter levels={model.reasoningEfforts} level={effort} filled="bg-current" />
+              {tm(`efforts.${effort}`)}
+            </span>
+          ) : null}
+          <ChevronDown className="size-3 shrink-0 opacity-60" />
+        </button>
+      }
+    />
   );
 }
 
@@ -877,16 +919,17 @@ function Footer({
           className="block w-full resize-none bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground"
         />
         <div className="flex items-center gap-2 px-2 pb-2">
-          <span className="flex h-7 items-center gap-1.5 rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground">
+          <span className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground">
             <Eye className="size-3" /> Sees {view}
           </span>
+          <ModelPill />
           <TooltipHint label="Send">
             <button
               type="button"
               aria-label="Send"
               disabled={busy}
               onClick={onSend}
-              className="ml-auto flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
             >
               <ArrowUp className="size-4" />
             </button>
