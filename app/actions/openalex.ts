@@ -1,14 +1,13 @@
 "use server";
 import { createSearchParameters } from "@/lib/utils";
 import client from "@/lib/openalex";
-import { buildUrl } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
 import type { Work, Works } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { readOpenAlexWorks } from "@/lib/openalex/read-works";
 import type { SearchFilters } from "@/lib/types";
 import type { QueryErrorDetail } from "@/lib/search/search-error";
 import { OQL_FIELD, worksOql } from "@/lib/openalex/oql";
 import { fetchOqlWorks } from "@/lib/openalex/oql-works";
-import { OPENALEX_API, openAlexUrl } from "@/lib/openalex/request-url";
+import { worksUrl } from "@/lib/openalex/works-url";
 
 /** OpenAlex's largest page. */
 const SEARCH_PAGE_SIZE = 200;
@@ -33,16 +32,7 @@ async function probeOpenAlexError(
   searchParams: ReturnType<typeof createSearchParameters>
 ): Promise<{ status: number | null; message: string }> {
   try {
-    const base = buildUrl(
-      OPENALEX_API,
-      "works",
-      searchParams.search,
-      undefined,
-      searchParams.filter,
-      undefined,
-      searchParams.sortBy
-    );
-    const res = await fetch(openAlexUrl(base, { per_page: "1" }));
+    const res = await fetch(worksUrl({ search: searchParams.search, filter: searchParams.filter, sortBy: searchParams.sortBy }, { per_page: "1" }));
     let message = "";
     try {
       const body = (await res.json()) as { message?: string; error?: string };

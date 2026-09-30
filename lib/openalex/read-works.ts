@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { buildUrl, convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
+import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
 import type { SearchParameters, Work } from "@sickrin/openalex-sdk/dist/src/types/work";
-import { OPENALEX_API, openAlexUrl } from "./request-url";
+import { worksUrl } from "./works-url";
 
 const goals = z.array(z.object({id: z.string(), display_name: z.string(), score: z.number()})).optional();
 const responseSchema = z.object({
@@ -17,7 +17,7 @@ const responseSchema = z.object({
  * Server side only: it reads the OpenAlex key.
  */
 export async function readOpenAlexWorks(parameters: SearchParameters & {cursor: string}) {
-  const url = openAlexUrl(buildUrl(OPENALEX_API, "works", parameters.search, parameters.searchField, parameters.filter, parameters.groupBy, parameters.sortBy), { cursor: parameters.cursor, "per-page": String(parameters.perPage ?? 10) });
+  const url = worksUrl(parameters, { cursor: parameters.cursor, "per-page": String(parameters.perPage ?? 10) });
   const response = await fetch(url, {signal: AbortSignal.timeout(12000), next: {revalidate: 60}});
   if (!response.ok) throw new Error(`OpenAlex publications unavailable: ${response.status}`);
   const parsed = responseSchema.parse(await response.json());

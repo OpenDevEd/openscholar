@@ -85,6 +85,14 @@ describe("readSearchPage", () => {
     expect(url.searchParams.get("api_key")).toBe("platform-key");
   });
 
+  // The SDK's URL builder pastes search text in as it is; "#" would end the query and drop the key.
+  it("sends search text with URL characters intact, and the key with it", async () => {
+    await readSearchPage("C# & R+D", filters, "*");
+    const { url } = requests[0]!;
+    expect(url.searchParams.get("filter")).toContain("title_and_abstract.search:C# & R+D");
+    expect(url.searchParams.get("api_key")).toBe("platform-key");
+  });
+
   it("posts an OQL search page at the cursor with OpenScholar's key", async () => {
     const res = await readSearchPage("title has (tutor)", { ...filters, searchField: "oql" }, "next-page");
     expect(res).toMatchObject({ ok: true, nextCursor: "next-page" });
