@@ -17,6 +17,8 @@ import type {
   BookmarkData,
 } from './types';
 import { MIN_YEAR } from './constants';
+import { bindResearchStore } from './research/binding';
+import { importSearchRecord } from './research/records';
 
 // Fallback UUID generator for mobile compatibility
 const generateUUID = (): string => {
@@ -45,13 +47,13 @@ const removeQuestionFromResponses = (
     ])
   );
 
-interface RatingsState {
+export interface RatingsState {
   ratings: Record<string, number>
   setRating: (paperId: string, rating: number | null) => void
   clearRatings: () => void
 }
 
-interface SearchHistoryState {
+export interface SearchHistoryState {
   searchHistory: SearchResult[]
   addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory' | 'screeningQuestions' | 'screeningResponses' | 'questionHistory'> & { questionHistory?: QuestionHistoryEntry[] }) => string
   updateSearchResult: (id: string, updates: Partial<Omit<SearchResult, 'id' | 'createdAt'>>) => void
@@ -125,7 +127,7 @@ interface FocusModeSettingsState {
   resetSettings: () => void
 }
 
-interface KeywordExpansionState {
+export interface KeywordExpansionState {
   keywords: Record<string, BookmarkData>
   addKeyword: (shorthand: string, expansion: string) => void
   updateKeyword: (shorthand: string, expansion: string) => void
@@ -152,7 +154,7 @@ interface AIConfigState {
   clearConfig: () => void
 }
 
-export const useRatingsStore = create<RatingsState>()(
+export const localRatingsStore = create<RatingsState>()(
   persist(
     (set) => ({
       ratings: {},
@@ -296,7 +298,7 @@ export function migrateSearchHistoryState(persistedState: unknown, version: numb
   return state;
 }
 
-export const useSearchHistoryStore = create<SearchHistoryState>()(
+export const localSearchHistoryStore = create<SearchHistoryState>()(
   persist(
     (set, get) => ({
       searchHistory: [],
@@ -533,39 +535,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
         return result.id;
       },
       importSearchHistory: (data) => {
-        let importedCount = 0;
-        const validItems: SearchResult[] = [];
-        
-        data.forEach((item) => {
-          // Map different possible field names to our expected format
-          const query = String(item.search_query || item.query || '');
-          const count = typeof item.count === 'number' ? item.count : 0;
-          const field = String(item.field || 'title_and_abstract');
-
-          // Skip items without required fields (allow empty query but require count)
-          if (query === undefined || query === null || typeof count !== 'number') {
-            return;
-          }
-          
-          // Create a new search result with generated ID and timestamps
-          const id = generateUUID();
-          const now = new Date().toISOString();
-          const newResult: SearchResult = {
-            id,
-            query,
-            queryHistory: [{ query, timestamp: now, field: field as SearchField }],
-            questionHistory: [],
-            screeningQuestions: [],
-            screeningResponses: {},
-            count,
-            field: field as SearchField,
-            createdAt: now,
-            updatedAt: now,
-          };
-          
-          validItems.push(newResult);
-          importedCount++;
-        });
+        const validItems = data.map(item => importSearchRecord(item, generateUUID()));
         
         if (validItems.length > 0) {
           set((state) => ({
@@ -573,7 +543,7 @@ export const useSearchHistoryStore = create<SearchHistoryState>()(
           }));
         }
         
-        return importedCount;
+        return validItems.length;
       },
     }),
     {
@@ -703,7 +673,7 @@ export const useFocusModeSettingsStore = create<FocusModeSettingsState>()(
   )
 )
 
-export const useKeywordExpansionStore = create<KeywordExpansionState>()(
+export const localKeywordExpansionStore = create<KeywordExpansionState>()(
   persist(
     (set, get) => ({
       keywords: {},
@@ -1258,3 +1228,7 @@ export const useTransientScreeningStore = create<{
     }
   )
 );
+
+export const useSearchHistoryStore = Object.assign(bindResearchStore(localSearchHistoryStore, 'history'), { persist: localSearchHistoryStore.persist });
+export const useKeywordExpansionStore = Object.assign(bindResearchStore(localKeywordExpansionStore, 'shortcuts'), { persist: localKeywordExpansionStore.persist });
+export const useRatingsStore = Object.assign(bindResearchStore(localRatingsStore, 'ratings'), { persist: localRatingsStore.persist });

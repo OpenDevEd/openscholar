@@ -24,6 +24,7 @@ import {
 } from "@/lib/auth/clerk-ui-config";
 import { FeatureFlagProvider } from "@/lib/feature-flags/provider";
 import { BillingCatalogProvider } from "@/lib/billing/catalog-provider";
+import { ResearchStateProvider } from "@/lib/research/provider";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const MAX_SYNC_RETRIES = 6;
@@ -91,6 +92,11 @@ export function useAuthReadiness() {
 }
 
 function AuthReadinessProvider({ children }: { children: ReactNode }) {
+  const { userId } = useAuth();
+  return <AccountReadinessProvider key={userId ?? "anonymous"}>{children}</AccountReadinessProvider>;
+}
+
+function AccountReadinessProvider({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -234,7 +240,7 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
   return (
     <AuthReadinessContext.Provider value={contextValue}>
       <PostHogIdentify />
-      {children}
+      <ResearchStateProvider>{children}</ResearchStateProvider>
     </AuthReadinessContext.Provider>
   );
 }
