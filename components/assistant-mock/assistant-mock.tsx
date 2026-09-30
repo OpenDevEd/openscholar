@@ -1,30 +1,26 @@
 "use client";
 
-// Mock of the research assistant. It lives in the layout, so it stays with the user
-// across pages: a scripted run stands in for the model, and the pages beside it
-// render from the state it changes, the way a Convex record would update them.
-// The panel folds into a launcher that would follow the user to every page.
+// Mock of the research assistant: an overlay that hovers above every page of the
+// app and folds into a launcher. A scripted run stands in for the model and plays
+// entirely inside the chat; it doesn't change the page underneath.
 
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { ArrowUp, Coins, Eye, MessagesSquare, PictureInPicture2, Plus, RotateCcw, Search, Settings2, Sparkles, SquarePen, UserPlus, X } from "lucide-react";
+import { ArrowUp, Coins, Eye, MessagesSquare, PictureInPicture2, Plus, RotateCcw, Sparkles, SquarePen, UserPlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Conversation, ConversationContent } from "@/components/ai-elements/conversation";
 import { OpenAIIcon } from "@/components/icons/provider-icons";
 import { EffortMeter } from "@/components/models/meters";
-import { Segmented } from "@/components/settings/parts";
 import { StatusIcon } from "@/components/evidence-libraries/configuration/status-chip";
 import { EASE } from "@/components/settings/model-map";
-import type { PageState } from "./results-pane";
 import { ApprovalCard, CollectionCard, JobCard, KindTile, RunMap, VersionBars, WorkingText, type Ask, type Step } from "./run-map";
 import { LogoMark } from "./logo-mark";
 import { Dim, EdgeGlow, HistorySheet, SHEET_SPRING, Sheet, ShareSheet, stackedUnder, type SheetKind } from "./sheets";
 import { Cite, EXTRACT_CELLS, ExtractionCard } from "./extraction";
-import { LIBRARY_START, MockContext, type LibraryState } from "./context";
 import {
-  COLLECTED, COLLECTION_NAME, EXTRACT_CREDITS, KIND, LIBRARY, ORIGINAL_COUNT, SCREEN_CREDITS, SCREEN_ORDER, TIGHT_COUNT, TIGHT_PAPERS,
+  COLLECTED, COLLECTION_NAME, EXTRACT_CREDITS, KIND, LIBRARY, ORIGINAL_COUNT, SCREEN_CREDITS, SCREEN_ORDER, TIGHT_COUNT,
   type Decision,
 } from "./data";
 
@@ -48,10 +44,7 @@ const PROMPTS = [
 ];
 const TITLE = "Structured pedagogy in sub-Saharan Africa";
 const PANEL_W = 440;
-const RESULTS = "/assistant-mock";
-const LIBRARY_PAGE = "/assistant-mock/library";
-
-const START: PageState = { optimized: false, highlight: false, decided: 0, collected: false };
+const SHELL_SPRING = { type: "spring" as const, stiffness: 380, damping: 36, mass: 0.9 };
 
 const SCREEN_ASK: Ask = {
   kind: "screening",
@@ -81,15 +74,28 @@ const PUBLISH_ASK: Ask = {
 };
 const PUBLISH_STAGES = ["Checking the settings", "Building the library", "Rolling it out"];
 
+/** What the assistant says it can see, from the route the user is on. */
+function viewOf(pathname: string) {
+  if (pathname.startsWith("/results")) return "Search results";
+  if (pathname.startsWith("/history")) return "History";
+  if (pathname.startsWith("/bookmarks")) return "Bookmarks";
+  if (pathname.startsWith("/library")) return "Library";
+  if (pathname.startsWith("/extraction/")) return "Extraction job";
+  if (pathname.startsWith("/extraction")) return "Extraction";
+  if (/^\/evidence-libraries\/[^/]+\/configuration/.test(pathname)) return "Library settings";
+  if (pathname.startsWith("/evidence-libraries")) return "Evidence Libraries";
+  if (pathname.startsWith("/topics")) return "Topics";
+  if (pathname.startsWith("/authors")) return "Authors";
+  if (pathname.startsWith("/settings")) return "Settings";
+  return "Home";
+}
+
 class Stopped extends Error {}
 
-export function AssistantMock({ children }: { children: ReactNode }) {
-  const router = useRouter();
+export function AssistantOverlay() {
   const pathname = usePathname();
-  const onLibrary = pathname.endsWith("/library");
+  const view = viewOf(pathname);
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [page, setPage] = useState<PageState>(START);
-  const [library, setLibrary] = useState<LibraryState>(LIBRARY_START);
   const [always, setAlwaysState] = useState(false);
   const [busy, setBusy] = useState(false);
   const [next, setNext] = useState(0);
@@ -104,14 +110,11 @@ export function AssistantMock({ children }: { children: ReactNode }) {
   const decide = useRef<{ token: number; resolve: (choice: Choice) => void } | null>(null);
   // Read at the approval gate, so revoking mid-step counts.
   const alwaysRef = useRef(false);
-  // The turn whose collection is on the page; an older card's undo does nothing.
+  // The turn whose collection is current; an older card's undo does nothing.
   const collectionOwner = useRef<number | null>(null);
-  const libraryOwner = useRef<number | null>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
-  const where = useRef(pathname);
-  where.current = pathname;
 
-  // Timers are an outside system: stop the scripted run when the layout unmounts.
+  // Timers are an outside system: stop the scripted run when the overlay unmounts.
   useEffect(() => () => void run.current++, []);
   // A keyboard shortcut is an outside system too: ⌘J or Ctrl+J opens and closes the panel.
   useEffect(() => {
@@ -151,24 +154,11 @@ export function AssistantMock({ children }: { children: ReactNode }) {
       patch(id, () => ({ shown: n }));
     }
   };
-  /** Types a value into a library field, the way the page would show a live edit. */
-  const typeInto = async (token: number, field: "tagline" | "description", text: string) => {
-    for (let n = 1; n <= text.length; n += 3) {
-      await wait(token, 14);
-      const value = text.slice(0, n);
-      setLibrary((l) => ({ ...l, [field]: value }));
-    }
-    setLibrary((l) => ({ ...l, [field]: text }));
-  };
-  /** Opens a page for the user; a browser-side step that stores nothing. */
-  const go = async (token: number, id: number, href: string, title: string) => {
-    if (where.current === href) return false;
-    addStep(id, { kind: "navigate", title: `Opening ${title}`, detail: "In this tab", status: "working" });
-    await wait(token, 600);
-    router.push(href);
-    await wait(token, 500);
-    patch(id, (t) => ({ steps: t.steps.map((s) => (s.kind === "navigate" && s.status === "working" ? { ...s, title: `Opened ${title}`, status: "done" } : s)) }));
-    return true;
+  /** A step that runs for a while, then settles with its final title and detail. */
+  const work = async (token: number, id: number, i: number, step: Step, done: Partial<Step>, ms: number) => {
+    addStep(id, step);
+    await wait(token, ms);
+    setStep(id, i, { ...done, status: "done" });
   };
   /**
    * Shows the approval card and waits for an answer. A credits ask is skipped once the
@@ -188,7 +178,7 @@ export function AssistantMock({ children }: { children: ReactNode }) {
   };
   /** Puts the running job where the approval card was, or adds it when nothing was asked. */
   const startJob = (id: number, asked: boolean, card: Card) => (asked ? setCard(id, 0, card) : addCard(id, card));
-  /** Stops the running script: pending approvals close, and records made on the old search go. */
+  /** Stops the running script: pending approvals close, and the collection made on the old search goes. */
   const cancelRun = () => {
     run.current++;
     decide.current = null;
@@ -210,39 +200,28 @@ export function AssistantMock({ children }: { children: ReactNode }) {
 
   const undoSearch = (id: number) => {
     cancelRun();
-    setPage(START);
     setNext(0);
     setAttached(["search"]);
     patch(id, (t) => ({ steps: t.steps.map((s) => (s.kind === "write" ? { ...s, status: "undone", onUndo: undefined } : s)) }));
   };
 
   const optimize = async (token: number, id: number) => {
-    // Steps after an "Opened …" step shift down by one.
-    const at = (await go(token, id, RESULTS, "your search")) ? 1 : 0;
-    addStep(id, { kind: "search", title: "Reading your search", detail: "Keywords and filters", status: "working" });
-    await wait(token, 1100);
-    setStep(id, at, { title: "Read your search", detail: <span className="tabular-nums">{ORIGINAL_COUNT} results, 6 on this page</span>, status: "done" });
-    addStep(id, { kind: "versions", title: "Trying tighter versions", detail: "Running each one against OpenAlex", status: "working" });
-    await wait(token, 1700);
-    setStep(id, at + 1, { title: "Tried 3 versions", detail: <VersionBars />, status: "done" });
-    addStep(id, { kind: "write", title: "Updating your search", detail: "Query and 2 filters", status: "working" });
-    await wait(token, 700);
-    setPage({ ...START, optimized: true, highlight: true });
-    await wait(token, 500);
-    setStep(id, at + 2, { title: "Updated your search", detail: <span className="tabular-nums">{ORIGINAL_COUNT} → {TIGHT_COUNT} results</span>, status: "done", onUndo: () => undoSearch(id) });
+    await work(token, id, 0, { kind: "search", title: "Reading your search", detail: "Keywords and filters", status: "working" },
+      { title: "Read your search", detail: <span className="tabular-nums">{ORIGINAL_COUNT} results, 6 on this page</span> }, 1100);
+    await work(token, id, 1, { kind: "versions", title: "Trying tighter versions", detail: "Running each one against OpenAlex", status: "working" },
+      { title: "Tried 3 versions", detail: <VersionBars /> }, 1700);
+    await work(token, id, 2, { kind: "write", title: "Updating your search", detail: "Query and 2 filters", status: "working" },
+      { title: "Updated your search", detail: <span className="tabular-nums">{ORIGINAL_COUNT} → {TIGHT_COUNT} results</span>, onUndo: () => undoSearch(id) }, 1200);
     await stream(
       token,
       id,
       "Most of the first page was off-topic: reading software, middle-school reform, Latin America. I added the other names this approach goes by, kept articles from 2015 on, and limited it to African countries. That leaves 24, and the first page is on target now.",
     );
-    await wait(token, 1200);
-    setPage((p) => ({ ...p, highlight: false }));
   };
 
   const screen = async (token: number, id: number) => {
-    addStep(id, { kind: "screening", title: "Setting up a screening", detail: "2 questions for 24 papers", status: "working" });
-    await wait(token, 1000);
-    setStep(id, 0, { title: "Set up a screening", detail: "2 questions for 24 papers", status: "done" });
+    await work(token, id, 0, { kind: "screening", title: "Setting up a screening", detail: "2 questions for 24 papers", status: "working" },
+      { title: "Set up a screening" }, 1000);
     const { choice, asked } = await approve(token, id, SCREEN_ASK);
     if (choice === "no") {
       await stream(token, id, "Okay, I haven't screened anything. Your search is unchanged.");
@@ -254,7 +233,6 @@ export function AssistantMock({ children }: { children: ReactNode }) {
     for (let done = 1; done <= 24; done++) {
       await wait(token, 210);
       setCard(id, 0, { type: "job", done });
-      setPage((p) => ({ ...p, decided: Math.min(done, TIGHT_PAPERS.length) }));
     }
     await wait(token, 500);
     await stream(
@@ -266,14 +244,11 @@ export function AssistantMock({ children }: { children: ReactNode }) {
   };
 
   const collect = async (token: number, id: number) => {
-    addStep(id, { kind: "collection", title: "Creating a collection", detail: COLLECTION_NAME, status: "working" });
-    await wait(token, 900);
-    setStep(id, 0, { title: "Created a collection", detail: COLLECTION_NAME, status: "done" });
-    addStep(id, { kind: "collection", title: "Adding the included studies", detail: "From the screening", status: "working" });
-    await wait(token, 900);
-    setStep(id, 1, { title: `Added ${COLLECTED} studies`, detail: "One was listed twice, so it's in once", status: "done" });
+    await work(token, id, 0, { kind: "collection", title: "Creating a collection", detail: COLLECTION_NAME, status: "working" },
+      { title: "Created a collection" }, 900);
+    await work(token, id, 1, { kind: "collection", title: "Adding the included studies", detail: "From the screening", status: "working" },
+      { title: `Added ${COLLECTED} studies`, detail: "One was listed twice, so it's in once" }, 900);
     collectionOwner.current = id;
-    setPage((p) => ({ ...p, collected: true }));
     attach("collection");
     addCard(id, { type: "collection", undone: false });
     await wait(token, 300);
@@ -281,9 +256,8 @@ export function AssistantMock({ children }: { children: ReactNode }) {
   };
 
   const extract = async (token: number, id: number) => {
-    addStep(id, { kind: "extraction", title: "Setting up an extraction", detail: "3 fields for 4 papers", status: "working" });
-    await wait(token, 1000);
-    setStep(id, 0, { title: "Set up an extraction", detail: "3 fields for 4 papers", status: "done" });
+    await work(token, id, 0, { kind: "extraction", title: "Setting up an extraction", detail: "3 fields for 4 papers", status: "working" },
+      { title: "Set up an extraction" }, 1000);
     const { choice, asked } = await approve(token, id, EXTRACT_ASK);
     if (choice === "no") {
       await stream(token, id, "Okay, I haven't extracted anything.");
@@ -305,54 +279,36 @@ export function AssistantMock({ children }: { children: ReactNode }) {
     return true;
   };
 
-  const undoLibrary = () => {
-    const owner = libraryOwner.current;
-    if (owner === null) return;
-    libraryOwner.current = null;
-    setLibrary(LIBRARY_START);
+  const undoFeature = (id: number) => {
     setAttached((a) => a.filter((k) => k !== "library"));
     setNext((n) => Math.min(n, 4));
-    patch(owner, (t) => ({ steps: t.steps.map((s) => (s.kind === "library" ? { ...s, status: "undone", onUndo: undefined } : s)) }));
+    patch(id, (t) => ({ steps: t.steps.map((s) => (s.kind === "library" ? { ...s, status: "undone", onUndo: undefined } : s)) }));
   };
 
   const feature = async (token: number, id: number) => {
-    const base = (await go(token, id, LIBRARY_PAGE, "your library's settings")) ? 1 : 0;
-    addStep(id, { kind: "library", title: "Reading the draft", detail: LIBRARY.name, status: "working" });
-    await wait(token, 900);
-    setStep(id, base, { title: "Read the draft", detail: "No tagline or description yet", status: "done" });
-    addStep(id, { kind: "library", title: "Writing the homepage text", detail: "Tagline and description", status: "working" });
-    libraryOwner.current = id;
-    setLibrary((l) => ({ ...l, highlight: true, changed: true }));
+    await work(token, id, 0, { kind: "library", title: "Reading the library's draft", detail: LIBRARY.name, status: "working" },
+      { title: "Read the library's draft", detail: "No tagline or description yet" }, 900);
+    await work(token, id, 1, { kind: "library", title: "Writing the homepage text", detail: "Tagline and description", status: "working" },
+      { title: "Wrote the homepage text" }, 1400);
+    await work(token, id, 2, { kind: "library", title: "Featuring the collection", detail: COLLECTION_NAME, status: "working" },
+      { title: "Featured the collection", onUndo: () => undoFeature(id) }, 900);
     attach("library");
-    await typeInto(token, "tagline", LIBRARY.tagline);
-    await typeInto(token, "description", LIBRARY.description);
-    setStep(id, base + 1, { title: "Wrote the homepage text", detail: "Tagline and description", status: "done" });
-    addStep(id, { kind: "library", title: "Featuring the collection", detail: COLLECTION_NAME, status: "working" });
-    await wait(token, 700);
-    setLibrary((l) => ({ ...l, collections: [COLLECTION_NAME] }));
-    setStep(id, base + 2, { title: "Featured the collection", detail: COLLECTION_NAME, status: "done", onUndo: undoLibrary });
-    await stream(token, id, "It's saved as a draft, so visitors don't see it yet. Publishing makes it live.");
-    await wait(token, 1500);
-    setLibrary((l) => ({ ...l, highlight: false }));
+    await stream(token, id, `I added a tagline, a description, and the new collection first in the featured list. It's saved as a draft of ${LIBRARY.name}, so visitors don't see it yet.`);
   };
 
   const publish = async (token: number, id: number) => {
-    await go(token, id, LIBRARY_PAGE, "your library's settings");
-    addStep(id, { kind: "publish", title: "Checking the draft", detail: "Every section", status: "working" });
-    await wait(token, 900);
-    patch(id, (t) => ({ steps: t.steps.map((s) => (s.kind === "publish" ? { ...s, title: "Checked the draft", detail: "Ready to publish", status: "done" } : s)) }));
+    await work(token, id, 0, { kind: "publish", title: "Checking the draft", detail: "Every section", status: "working" },
+      { title: "Checked the draft", detail: "Ready to publish" }, 900);
     const { choice } = await approve(token, id, PUBLISH_ASK);
     if (choice === "no") {
       await stream(token, id, "Okay, it stays a draft.");
       return false;
     }
     setCard(id, 0, { type: "publish", stage: 0 });
-    setLibrary((l) => ({ ...l, status: "publishing" }));
     for (let stage = 1; stage <= PUBLISH_STAGES.length; stage++) {
       await wait(token, 1300);
       setCard(id, 0, { type: "publish", stage });
     }
-    setLibrary((l) => ({ ...l, status: "live", changed: false }));
     await stream(token, id, `It's live at ${LIBRARY.address}, with the new homepage and the collection featured first.`);
     return true;
   };
@@ -392,10 +348,7 @@ export function AssistantMock({ children }: { children: ReactNode }) {
 
   const restart = () => {
     cancelRun();
-    libraryOwner.current = null;
     setTurns([]);
-    setPage(START);
-    setLibrary(LIBRARY_START);
     setAlways(false);
     setNext(0);
     setDraft("");
@@ -405,7 +358,6 @@ export function AssistantMock({ children }: { children: ReactNode }) {
   const undoCollection = (id: number) => {
     if (collectionOwner.current !== id) return;
     collectionOwner.current = null;
-    setPage((p) => ({ ...p, collected: false }));
     setAttached((a) => a.filter((k) => k !== "collection"));
     patch(id, (t) => ({ cards: t.cards.map((c) => (c.type === "collection" ? { ...c, undone: true } : c)) }));
   };
@@ -429,126 +381,93 @@ export function AssistantMock({ children }: { children: ReactNode }) {
         ? screening.done / 24
         : null;
   const suggestion = !busy && next < PROMPTS.length ? PROMPTS[next] : null;
-  const view = onLibrary ? "Library settings, Identity" : page.optimized ? "Results, page 1 of 3" : "Results, page 1 of 36";
-  const undoSearchFromPage = () => {
-    const last = [...turns].reverse().find((t): t is AssistantTurn => t.kind === "assistant" && t.steps.some((s) => s.kind === "write"));
-    if (last) undoSearch(last.id);
-  };
 
   return (
     <MotionConfig reducedMotion="user">
-      <MockContext.Provider value={{ page, library, undoSearch: undoSearchFromPage, undoLibrary }}>
-        <EdgeGlow open={open} working={busy} />
-        <div className="flex min-h-dvh gap-3 overflow-x-clip p-3 sm:p-4">
-          <div className="min-w-0 flex-1 py-2">
-            <div className="mx-auto mb-4 flex w-full max-w-5xl justify-center">
-              <Segmented
-                label="Page"
-                value={onLibrary ? "library" : "results"}
-                onChange={(v) => router.push(v === "library" ? LIBRARY_PAGE : RESULTS)}
-                options={[
-                  { id: "results", label: "Search results", icon: Search },
-                  { id: "library", label: "Library settings", icon: Settings2 },
-                ]}
-              />
-            </div>
-            {children}
-          </div>
-
-          {/* The dock's width animates, so the page beside it recenters smoothly instead of jumping. */}
-          <motion.div
-            className="relative z-10 shrink-0"
-            initial={false}
-            animate={{ width: open ? PANEL_W : 0 }}
-            transition={{ duration: 0.5, ease: EASE }}
+      <EdgeGlow open={open} working={busy} />
+      {/* The panel hovers above the page: it's fixed, and the page underneath keeps its full width. */}
+      <AnimatePresence>
+        {open ? (
+          <motion.aside
+            key="panel"
+            layoutId="assistant-shell"
+            // Measure only when the panel opens or folds, never on other re-renders.
+            layoutDependency={open}
+            transition={SHELL_SPRING}
+            className="fixed bottom-3 right-3 top-3 z-40 max-w-[calc(100vw-1.5rem)] sm:bottom-4 sm:right-4 sm:top-4"
+            style={{ width: PANEL_W, borderRadius: 18 }}
+            aria-label="OpenScholar assistant"
           >
-            <div className="sticky top-4 h-[calc(100dvh-2rem)]">
-              <AnimatePresence>
-                {open ? (
-                  <motion.aside
-                    key="panel"
-                    layoutId="assistant-shell"
-                    // Measure only when the panel opens or folds, never on other re-renders.
-                    layoutDependency={open}
-                    transition={{ type: "spring", stiffness: 380, damping: 36, mass: 0.9 }}
-                    className="absolute right-0 top-0 h-full"
-                    style={{ width: PANEL_W, borderRadius: 16 }}
-                    aria-label="OpenScholar assistant"
-                  >
-                    <motion.div
-                      className="absolute inset-0 flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm"
-                      style={{ transformOrigin: "0% 50%" }}
-                      initial={false}
-                      animate={stackedUnder(depth)}
-                      transition={SHEET_SPRING}
-                    >
-                      <TooltipHint label="Fold away  ⌘J">
-                        <motion.button
-                          type="button"
-                          layoutId="assistant-logo"
-                          layoutDependency={open}
-                          onClick={fold}
-                          aria-label="Fold the assistant away"
-                          transition={{ type: "spring", stiffness: 380, damping: 36, mass: 0.9 }}
-                          className="absolute left-4 top-3.5 z-10 flex size-9 items-center justify-center rounded-xl bg-primary/10 hover:bg-primary/15"
-                        >
-                          <LogoMark size={24} draw working={busy} />
-                        </motion.button>
-                      </TooltipHint>
-                      <motion.div
-                        className="flex min-h-0 flex-1 flex-col"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1, transition: { delay: 0.16, duration: 0.25 } }}
-                        exit={{ opacity: 0, transition: { duration: 0.08 } }}
-                      >
-                        <Header
-                          title={chatTitle}
-                          onHistory={() => push("history", chatTitle)}
-                          onShare={() => push("share", chatTitle)}
-                          attached={attached}
-                          always={always}
-                          onStopAlways={() => setAlways(false)}
-                          onRestart={restart}
-                          onCollapse={fold}
-                        />
-                        <Thread turns={turns} onAnswer={answer} onUndoCollection={undoCollection} busy={busy} onLibrary={onLibrary} />
-                        <Footer
-                          suggestion={suggestion}
-                          done={!busy && next >= PROMPTS.length}
-                          onSuggestion={(s) => void send(s)}
-                          onRestart={restart}
-                          composer={composer}
-                          draft={draft}
-                          setDraft={setDraft}
-                          busy={busy}
-                          onSend={() => void send(draft.trim() || suggestion || "")}
-                          view={view}
-                        />
-                      </motion.div>
-                      <Dim on={depth > 0} />
-                    </motion.div>
-                    <AnimatePresence>
-                      {sheets.map((sheet, i) => (
-                        <Sheet key={`${i}-${sheet.kind}`} index={i} depth={depth - 1 - i}>
-                          {sheet.kind === "history" ? (
-                            <HistorySheet onBack={pop} onShare={(chat) => push("share", chat)} />
-                          ) : (
-                            <ShareSheet chat={sheet.chat} onBack={pop} />
-                          )}
-                        </Sheet>
-                      ))}
-                    </AnimatePresence>
-                  </motion.aside>
-                ) : null}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        </div>
+            <motion.div
+              className="absolute inset-0 flex flex-col overflow-hidden rounded-[18px] border border-border/70 bg-card/[0.97] shadow-[0_24px_80px_-24px_rgb(0_0_0/0.55),0_0_0_1px_rgb(255_255_255/0.03)] backdrop-blur-xl"
+              style={{ transformOrigin: "0% 50%" }}
+              initial={false}
+              animate={stackedUnder(depth)}
+              transition={SHEET_SPRING}
+            >
+              <TooltipHint label="Fold away  ⌘J">
+                <motion.button
+                  type="button"
+                  layoutId="assistant-logo"
+                  layoutDependency={open}
+                  onClick={fold}
+                  aria-label="Fold the assistant away"
+                  transition={SHELL_SPRING}
+                  className="absolute left-4 top-3.5 z-10 flex size-9 items-center justify-center rounded-xl bg-primary/10 hover:bg-primary/15"
+                >
+                  <LogoMark size={24} draw working={busy} />
+                </motion.button>
+              </TooltipHint>
+              <motion.div
+                className="flex min-h-0 flex-1 flex-col"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { delay: 0.16, duration: 0.25 } }}
+                exit={{ opacity: 0, transition: { duration: 0.08 } }}
+              >
+                <Header
+                  title={chatTitle}
+                  onHistory={() => push("history", chatTitle)}
+                  onShare={() => push("share", chatTitle)}
+                  attached={attached}
+                  always={always}
+                  onStopAlways={() => setAlways(false)}
+                  onRestart={restart}
+                  onCollapse={fold}
+                />
+                <Thread turns={turns} onAnswer={answer} onUndoCollection={undoCollection} busy={busy} view={view} />
+                <Footer
+                  suggestion={suggestion}
+                  done={!busy && next >= PROMPTS.length}
+                  onSuggestion={(s) => void send(s)}
+                  onRestart={restart}
+                  composer={composer}
+                  draft={draft}
+                  setDraft={setDraft}
+                  busy={busy}
+                  onSend={() => void send(draft.trim() || suggestion || "")}
+                  view={view}
+                />
+              </motion.div>
+              <Dim on={depth > 0} />
+            </motion.div>
+            <AnimatePresence>
+              {sheets.map((sheet, i) => (
+                <Sheet key={`${i}-${sheet.kind}`} index={i} depth={depth - 1 - i}>
+                  {sheet.kind === "history" ? (
+                    <HistorySheet onBack={pop} onShare={(chat) => push("share", chat)} />
+                  ) : (
+                    <ShareSheet chat={sheet.chat} onBack={pop} />
+                  )}
+                </Sheet>
+              ))}
+            </AnimatePresence>
+          </motion.aside>
+        ) : null}
+      </AnimatePresence>
 
-        <AnimatePresence>
-          {!open ? <Launcher key="launcher" working={busy} progress={running} onOpen={() => setOpen(true)} /> : null}
-        </AnimatePresence>
-      </MockContext.Provider>
+      <AnimatePresence>
+        {!open ? <Launcher key="launcher" working={busy} progress={running} onOpen={() => setOpen(true)} /> : null}
+      </AnimatePresence>
     </MotionConfig>
   );
 }
@@ -646,18 +565,18 @@ function Thread({
   onAnswer,
   onUndoCollection,
   busy,
-  onLibrary,
+  view,
 }: {
   turns: Turn[];
   onAnswer: (choice: Choice) => void;
   onUndoCollection: (id: number) => void;
   busy: boolean;
-  onLibrary: boolean;
+  view: string;
 }) {
   return (
     <Conversation className="min-h-0 flex-1 [mask-image:linear-gradient(to_bottom,transparent,black_18px)]">
       <ConversationContent className="gap-5 overflow-x-clip px-4 py-4">
-        {turns.length === 0 ? <Empty onLibrary={onLibrary} /> : null}
+        {turns.length === 0 ? <Empty view={view} /> : null}
         {turns.map((t) =>
           t.kind === "user" ? (
             <motion.div
@@ -726,13 +645,13 @@ function Thinking() {
   );
 }
 
-function Empty({ onLibrary }: { onLibrary: boolean }) {
+function Empty({ view }: { view: string }) {
   return (
     <div className="space-y-5 pt-2">
       <div className="space-y-1">
-        <p className="text-base font-semibold">{onLibrary ? "Ask about this library" : "Ask about this search"}</p>
+        <p className="text-base font-semibold">Ask about anything here</p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          I can see the page you&apos;re on. Ask a question, or tell me what to change and I&apos;ll change it here.
+          I can see the page you&apos;re on and use everything you can: search, screen, extract, collect and publish. Tell me what to do and I&apos;ll do it.
         </p>
       </div>
       <div className="space-y-2">
@@ -740,19 +659,10 @@ function Empty({ onLibrary }: { onLibrary: boolean }) {
           <Eye className="size-3.5" /> What I can see
         </p>
         <RunMap
-          steps={
-            onLibrary
-              ? [
-                  { kind: "library", title: LIBRARY.name, detail: "Draft, not yet published", status: "done" },
-                  { kind: "write", title: "No tagline or description", detail: "Identity section", status: "done" },
-                  { kind: "collection", title: "2 featured collections", detail: "Home page", status: "done" },
-                ]
-              : [
-                  { kind: "search", title: "structured pedagogy early grade reading", detail: "Keywords, title and abstract", status: "done" },
-                  { kind: "versions", title: "215 results", detail: "Page 1 of 36, 6 papers showing", status: "done" },
-                  { kind: "write", title: "No filters", detail: "Any year, any type, any country", status: "done" },
-                ]
-          }
+          steps={[
+            { kind: "navigate", title: view, detail: "The page you're on", status: "done" },
+            { kind: "search", title: "structured pedagogy early grade reading", detail: "Attached to this chat", status: "done" },
+          ]}
           plain
         />
       </div>

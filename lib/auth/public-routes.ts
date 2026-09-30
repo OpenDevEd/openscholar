@@ -13,7 +13,6 @@ export const PUBLIC_UNAUTHENTICATED_PATHS = [
   "/api/openalex/search",
   "/data/:path*", // PostHog proxy - must work when signed out
   "/connect", // Wallet connection consent flow
-  "/assistant-mock/:path*", // Design mock, not for release
 ] as const;
 
 function normalizePathname(pathname: string) {

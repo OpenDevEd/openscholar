@@ -19,6 +19,7 @@ import { ConsentAwareGoogleAnalytics } from "@/components/google-analytics";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { preloadQuery } from "convex/nextjs";
+import { AssistantOverlay } from "@/components/assistant-mock/assistant-mock";
 import { api } from "@/convex/_generated/api";
 
 const outfit = Outfit({
@@ -105,6 +106,8 @@ export default async function RootLayout({
                       </div>
                       <Toaster />
                       <ConfirmationHost />
+                      {/* Design mock of the research assistant (OS-17), hovering over every page. */}
+                      <AssistantOverlay />
                       <CookieConsentBanner />
                       <ConsentAwareGoogleAnalytics />
                     </TooltipProvider>
