@@ -177,6 +177,11 @@ export const resumeExtraction = mutation({
       });
     }
 
+    // A retry stopped while it reset the job's failures carries on where it stopped.
+    if (job.retryReset && decision.nextStatus === "extracting") {
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch: nextEpoch });
+    }
+
     return { resumed: true };
   },
 });

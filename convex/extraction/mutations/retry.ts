@@ -72,20 +72,17 @@ const RETRY_PAPERS_PER_BATCH = 25;
 /**
  * Resets one batch of a job's papers for a retry: their retryable failures go back to
  * pending, the papers back to extracting, and they're queued. The next batch is scheduled
- * until every paper is seen; the last one lets the job finish again. Stops when the job
- * is paused, cancelled or retried again, leaving the rest failed for a later retry.
+ * until every paper is seen; the last one lets the job finish again. A pause or credit
+ * stop halts the batches with the job's `retryReset` cursor kept, and resuming the job
+ * carries on from it under the new epoch.
  */
 export const resetRetryBatch = internalMutation({
-  args: { jobId: v.id("extractionJobs"), epoch: v.number(), cursor: v.union(v.string(), v.null()) },
+  args: { jobId: v.id("extractionJobs"), epoch: v.number() },
   returns: v.null(),
-  handler: async (ctx, { jobId, epoch, cursor }) => {
+  handler: async (ctx, { jobId, epoch }) => {
     const job = await ctx.db.get("extractionJobs", jobId);
-    if (!job || (job.runEpoch ?? 0) !== epoch || !job.retryResetPending) return null;
-    if (job.status !== "extracting") {
-      await ctx.db.patch("extractionJobs", jobId, { retryResetPending: undefined });
-      return null;
-    }
-    const page = await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).paginate({ cursor, numItems: RETRY_PAPERS_PER_BATCH });
+    if (!job?.retryReset || (job.runEpoch ?? 0) !== epoch || job.status !== "extracting") return null;
+    const page = await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).paginate({ cursor: job.retryReset.cursor, numItems: RETRY_PAPERS_PER_BATCH });
     const retryPapers: Array<{ paperId: Id<"extractionPapers">; questionKeys: string[] }> = [];
     for (const paper of page.page) {
       const results = await ctx.db.query("extractionResults").withIndex("by_paper", (q) => q.eq("paperId", paper._id)).take(MAX_QUESTIONS_PER_JOB);
@@ -114,10 +111,11 @@ export const resetRetryBatch = internalMutation({
       });
     }
     if (!page.isDone) {
-      await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch, cursor: page.continueCursor });
+      await ctx.db.patch("extractionJobs", jobId, { retryReset: { cursor: page.continueCursor } });
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch });
       return null;
     }
-    await ctx.db.patch("extractionJobs", jobId, { retryResetPending: undefined });
+    await ctx.db.patch("extractionJobs", jobId, { retryReset: undefined });
     // Retried papers may all have finished while later batches ran.
     await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId, expectedEpoch: epoch });
     return null;
@@ -176,8 +174,7 @@ export const retryFailedQuestions = mutation({
       );
     }
 
-    // The job's counters give the retryable count without reading its results. It can
-    // include a billed failure, which the reset skips, so the estimate errs high.
+    // The job's counters give the retryable count without reading its results.
     const { retryable: retryableCount } = await readResultCounts(ctx, jobId);
 
     if (retryableCount === 0) {
@@ -206,14 +203,14 @@ export const retryFailedQuestions = mutation({
     await ctx.db.patch("extractionJobs", jobId, {
       status: "extracting" as const,
       runEpoch: epoch,
-      retryResetPending: true,
+      retryReset: { cursor: null },
       error: undefined,
       completedAt: undefined,
       pausedAt: undefined,
       pausedFromStatus: undefined,
       updatedAt: Date.now(),
     });
-    await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch, cursor: null });
+    await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch });
 
     return { jobId, retryableCount };
   },

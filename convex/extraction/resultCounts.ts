@@ -19,7 +19,7 @@ import { isResultRetryableFailure } from "../../lib/extraction/retry-summary";
 
 type RunMutationCtx = { runMutation: GenericMutationCtx<DataModel>["runMutation"]; db: object; innerDb?: object };
 type RunQueryCtx = { runQuery: GenericQueryCtx<DataModel>["runQuery"] };
-type Result = Pick<Doc<"extractionResults">, "jobId" | "status" | "lastError">;
+type Result = Pick<Doc<"extractionResults">, "jobId" | "status" | "lastError" | "billed">;
 
 /** Error codes whose failures can't be retried; each gets its own counter. */
 export const PERMANENT_ERROR_CODES = Object.entries(isRetryable).filter(([, retryable]) => retryable === false).map(([code]) => code);
@@ -37,8 +37,10 @@ const BUCKETS = ["total", "completed", "retryable", ...PERMANENT_ERROR_CODES.map
 export function bucketsOf(result: Result): string[] {
   const buckets = ["total"];
   if (result.status === "completed") buckets.push("completed");
-  // A failure that can't be retried always has one of the permanent codes.
-  if (result.status === "failed") buckets.push(isResultRetryableFailure(result) ? "retryable" : `permanent:${result.lastError!.code}`);
+  // A failure that can't be retried always has one of the permanent codes. A billed one is
+  // never retried (that would bill it again), so it counts in neither.
+  if (result.status === "failed" && !isResultRetryableFailure(result)) buckets.push(`permanent:${result.lastError!.code}`);
+  else if (result.status === "failed" && result.billed !== true) buckets.push("retryable");
   return buckets;
 }
 

@@ -55,7 +55,7 @@ describe("at the largest sizes the product allows", () => {
       expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toMatchObject({ retryableCount: 0 });
       const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
       expect(job).toMatchObject({ status: "extracting", runEpoch: 1 });
-      expect(job?.retryResetPending).toBeUndefined();
+      expect(job?.retryReset).toBeUndefined();
     } finally {
       vi.useRealTimers();
     }

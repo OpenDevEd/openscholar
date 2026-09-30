@@ -233,7 +233,8 @@ export const extractionJobFields = {
   pausedAt: v.optional(v.number()),
   pausedFromStatus: v.optional(pausedFromStatusValidator),
   // Set while a retry resets failed results in batches (#351); the job doesn't finish until it clears.
-  retryResetPending: v.optional(v.boolean()),
+  /** Set while a retry resets the job's failures a batch at a time; where the next batch starts. */
+  retryReset: v.optional(v.object({ cursor: v.union(v.string(), v.null()) })),
   estimatedCredits: v.optional(
     v.object({
       low: v.number(),

@@ -7,23 +7,36 @@ import { internalMutation } from "../lib/functions";
 import { readJobCounters, setJobCounters } from "../extraction/jobCounters";
 import { bucketsOf, readPaperErrorCounts, readResultCounts, setPaperErrorCounts, setResultCounts } from "../extraction/resultCounts";
 import { isTerminalPaperStatus } from "../extraction/paperLifecycle";
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
+
+/**
+ * Most result and paper error rows one job's recount reads: with its papers, about 13 MB
+ * of the 16 MiB a transaction may read.
+ */
+const RECOUNT_MAX_ROWS = 10_000;
+
+async function readAll<T>(rows: { take(n: number): Promise<T[]> }, jobId: Id<"extractionJobs">, limit: number) {
+  const all = await rows.take(limit + 1);
+  if (all.length > limit) throw new Error(`Job ${jobId} has more than ${limit} rows of one kind, more than one transaction can recount`);
+  return all;
+}
 
 /** Every count a job's counters should hold, recounted from its rows. */
 async function countJob(ctx: Pick<QueryCtx, "db">, jobId: Id<"extractionJobs">) {
   const jobs = { processed: 0, failed: 0 };
-  for (const paper of await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()) {
+  for (const paper of await readAll(ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)), jobId, PAPER_LIMIT)) {
     if (paper.processable === false || !isTerminalPaperStatus(paper.status)) continue;
     if (paper.status === "completed") jobs.processed++;
     else jobs.failed++;
   }
   const results = new Map<string, number>();
-  for (const result of await ctx.db.query("extractionResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()) {
+  for (const result of await readAll(ctx.db.query("extractionResults").withIndex("by_job", (q) => q.eq("jobId", jobId)), jobId, RECOUNT_MAX_ROWS)) {
     for (const bucket of bucketsOf(result)) results.set(bucket, (results.get(bucket) ?? 0) + 1);
   }
   const errors = new Map<string, number>();
-  for (const error of await ctx.db.query("extractionPaperErrors").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()) {
+  for (const error of await readAll(ctx.db.query("extractionPaperErrors").withIndex("by_job", (q) => q.eq("jobId", jobId)), jobId, RECOUNT_MAX_ROWS)) {
     errors.set(error.code, (errors.get(error.code) ?? 0) + 1);
   }
   return { jobs, results, errors };
@@ -35,9 +48,10 @@ async function countJob(ctx: Pick<QueryCtx, "db">, jobId: Id<"extractionJobs">) 
  * transaction, so a row written meanwhile is counted exactly once, by the recount or by
  * its trigger. Safe to run again.
  *
- * ponytail: one transaction per job. Extraction data only exists on dev (the largest job
- * on shared dev has 1,018 results, 2026-09-30); a job with tens of thousands of results
- * would need the recount split.
+ * ponytail: one job per transaction, up to RECOUNT_MAX_ROWS results; a larger job fails
+ * the run by name. Extraction data only exists on dev (the largest job on shared dev has
+ * 1,018 results, 2026-09-30). Recounting a larger job over several transactions would
+ * need its writes paused, or rows written between pages would be counted twice.
  *
  *   npx convex run migrations/recountExtractionJobs:run '{"dryRun": true}'
  *   npx convex run migrations/recountExtractionJobs:run
@@ -45,6 +59,7 @@ async function countJob(ctx: Pick<QueryCtx, "db">, jobId: Id<"extractionJobs">) 
  */
 export const recount = migrations.define({
   table: "extractionJobs",
+  batchSize: 1,
   migrateOne: async (ctx, job) => {
     const { jobs, results, errors } = await countJob(ctx, job._id);
     await setJobCounters(ctx, job._id, jobs);
@@ -60,7 +75,7 @@ export const verify = internalQuery({
   args: { paginationOpts: v.object({ cursor: v.union(v.string(), v.null()), numItems: v.number() }) },
   returns: v.object({ mismatches: v.array(v.string()), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, { paginationOpts }) => {
-    const page = await ctx.db.query("extractionJobs").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 20) });
+    const page = await ctx.db.query("extractionJobs").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 1) });
     const mismatches: string[] = [];
     for (const job of page.page) {
       const expected = await countJob(ctx, job._id);

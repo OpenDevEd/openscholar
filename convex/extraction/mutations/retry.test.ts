@@ -246,8 +246,8 @@ describe("retry reset — state changes", () => {
     });
 
     const { result } = await retryAndReadQueuedWork(t, jobId);
-    // The counters count the billed failure as retryable; the reset skips it.
-    expect(result.retryableCount).toBe(4);
+    // The billed failure isn't counted: the reset skips it.
+    expect(result.retryableCount).toBe(3);
 
     // Inspect every row and assert the invariants.
     const rows = await t.run((ctx) =>
@@ -298,12 +298,10 @@ describe("retry reset — state changes", () => {
     expect(job?.runEpoch).toBe(1);
     expect(job?.error).toBeUndefined();
     expect(job?.completedAt).toBeUndefined();
-    expect(job?.retryResetPending).toBeUndefined();
+    expect(job?.retryReset).toBeUndefined();
   });
 
-  it("resets a job's papers in batches until every paper is seen", async () => {
-    const t = convexTest(schema);
-    setupExtractionPaperWorkpool(t);
+  async function seedSixtyFailedPapers(t: ExtractionTest) {
     const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
     const { jobId } = await seedJob(t, userId, { rows: [{ kind: "failed", key: "q1", code: "rate_limit" }] });
     await t.run(async (ctx) => {
@@ -313,10 +311,37 @@ describe("retry reset — state changes", () => {
         await ctx.db.insert("extractionResults", { jobId, paperId, questionKey: "q1", answer: null, citations: [], citationStatus: "extraction_error", status: "failed", billed: false, attemptCount: 1, lastError: { code: "rate_limit", message: "429", at: 1 }, processedAt: 1 });
       }
     });
+    return jobId;
+  }
+  const pendingResults = (t: ExtractionTest, jobId: Id<"extractionJobs">) =>
+    t.run(async (ctx) => (await ctx.db.query("extractionResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).filter((row) => row.status === "pending").length);
+
+  it("resets a job's papers in batches until every paper is seen", async () => {
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    const jobId = await seedSixtyFailedPapers(t);
     await t.withIdentity(OWNER_IDENTITY).mutation(api.extraction.mutations.retry.retryFailedQuestions, { jobId });
     expect(await runRetryBatches(t)).toBe(3);
-    const statuses = await t.run(async (ctx) => (await ctx.db.query("extractionResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect()).map((row) => row.status));
-    expect(statuses.filter((status) => status === "pending")).toHaveLength(60);
+    expect(await pendingResults(t, jobId)).toBe(60);
+  });
+
+  it("carries on resetting after the job is paused and resumed mid-reset", async () => {
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    const jobId = await seedSixtyFailedPapers(t);
+    const owner = t.withIdentity(OWNER_IDENTITY);
+    await owner.mutation(api.extraction.mutations.retry.retryFailedQuestions, { jobId });
+    await t.mutation(internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch: 1 });
+    expect(await pendingResults(t, jobId)).toBe(25);
+
+    await owner.mutation(api.extraction.mutations.pause.pauseExtraction, { jobId });
+    await runRetryBatches(t);
+    expect(await pendingResults(t, jobId)).toBe(25);
+
+    await owner.mutation(api.extraction.mutations.resume.resumeExtraction, { jobId });
+    await runRetryBatches(t);
+    expect(await pendingResults(t, jobId)).toBe(60);
+    expect((await t.run((ctx) => ctx.db.get(jobId)))?.retryReset).toBeUndefined();
   });
 
   it("doesn't finish a retried job while a retried paper is still extracting", async () => {
