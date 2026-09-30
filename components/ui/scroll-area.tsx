@@ -5,6 +5,15 @@ import { ScrollArea as ScrollAreaPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * An edge shade: a shadow cast from the edge, darkest where it starts, over content
+ * that fades into the card. No line, so it reads as the edge above casting it.
+ */
+const SHADE =
+  "pointer-events-none absolute inset-x-0 h-6 transition-opacity duration-200 [--shade:rgb(0_0_0/0.09)] dark:[--shade:rgb(0_0_0/0.5)]"
+const shade = (to: "top" | "bottom") =>
+  `linear-gradient(to ${to}, var(--shade), transparent 10px), linear-gradient(to ${to}, var(--card), transparent)`
+
 function ScrollArea({
   className,
   children,
@@ -53,20 +62,9 @@ function ScrollArea({
       </ScrollAreaPrimitive.Viewport>
       {shades ? (
         <>
-          <span
-            aria-hidden
-            className={cn(
-              "from-card pointer-events-none absolute inset-x-0 top-0 h-6 border-t border-border/70 bg-gradient-to-b to-transparent transition-opacity duration-200",
-              edges.top ? "opacity-100" : "opacity-0"
-            )}
-          />
-          <span
-            aria-hidden
-            className={cn(
-              "from-card pointer-events-none absolute inset-x-0 bottom-0 h-6 border-b border-border/70 bg-gradient-to-t to-transparent transition-opacity duration-200",
-              edges.bottom ? "opacity-100" : "opacity-0"
-            )}
-          />
+          <span aria-hidden className={cn(SHADE, "top-0", edges.top ? "opacity-100" : "opacity-0")} style={{ background: shade("bottom") }} />
+          <span aria-hidden className={cn(SHADE, "bottom-0", edges.bottom ? "opacity-100" : "opacity-0")} style={{ background: shade("top") }} />
+
         </>
       ) : null}
       <ScrollBar />

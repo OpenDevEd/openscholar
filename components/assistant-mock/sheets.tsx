@@ -300,7 +300,7 @@ export function HistorySheet({ onBack, onShare }: { onBack: () => void; onShare:
   return (
     <>
       <SheetHeader title="Chats" detail="2 happening now" onBack={onBack} />
-      <div className="space-y-2.5 px-3 pt-3">
+      <div className="space-y-2.5 px-3 pb-2 pt-3">
         <div className="flex items-center gap-2">
           <label className="flex h-9 flex-1 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
             <Search className="size-3.5 text-muted-foreground" />
@@ -335,7 +335,7 @@ export function HistorySheet({ onBack, onShare }: { onBack: () => void; onShare:
         for the old list to leave stranded a stale list when the filter changed quickly.
       */}
       <ScrollArea shades className="min-h-0 flex-1">
-        <div className="px-2 pb-3 pt-3">
+        <div className="px-2 pb-3 pt-1">
             <motion.div
               key={`${scope}|${q}`}
               className="space-y-4"
