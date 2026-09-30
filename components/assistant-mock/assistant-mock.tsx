@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
+import { EDGE_FADE } from "@/components/ui/scroll-area";
 import { Conversation, ConversationContent } from "@/components/ai-elements/conversation";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { EffortMeter } from "@/components/models/meters";
@@ -783,7 +784,7 @@ function Thread({
   onRerun: (userId: number, text?: string) => void;
 }) {
   return (
-    <Conversation className="min-h-0 flex-1 [mask-image:linear-gradient(to_bottom,transparent,black_18px)]">
+    <Conversation className="min-h-0 flex-1" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px)` }}>
       <ConversationContent className="gap-5 overflow-x-clip px-4 py-4">
         {turns.length === 0 ? <Empty view={view} /> : null}
         {turns.map((t, i) => {

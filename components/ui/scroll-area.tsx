@@ -5,14 +5,8 @@ import { ScrollArea as ScrollAreaPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
-/**
- * An edge shade: a shadow cast from the edge, darkest where it starts, over content
- * that fades into the card. No line, so it reads as the edge above casting it.
- */
-const SHADE =
-  "pointer-events-none absolute inset-x-0 h-6 transition-opacity duration-200 [--shade:rgb(0_0_0/0.09)] dark:[--shade:rgb(0_0_0/0.5)]"
-const shade = (to: "top" | "bottom") =>
-  `linear-gradient(to ${to}, var(--shade), transparent 10px), linear-gradient(to ${to}, var(--card), transparent)`
+/** How far content fades at an edge that has more to scroll; the same fade as the assistant's thread. */
+export const EDGE_FADE = 18
 
 function ScrollArea({
   className,
@@ -20,7 +14,7 @@ function ScrollArea({
   shades = false,
   ...props
 }: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
-  /** Fades the content under an edge that has more to scroll, with a hairline. */
+  /** Fades the content out at an edge that has more to scroll. */
   shades?: boolean
 }) {
   const viewport = React.useRef<HTMLDivElement>(null)
@@ -52,6 +46,13 @@ function ScrollArea({
         ref={viewport}
         data-slot="scroll-area-viewport"
         onScroll={shades ? measure : undefined}
+        style={
+          shades
+            ? {
+                maskImage: `linear-gradient(to bottom, transparent, black ${edges.top ? EDGE_FADE : 0}px, black calc(100% - ${edges.bottom ? EDGE_FADE : 0}px), transparent)`,
+              }
+            : undefined
+        }
         className={cn(
           "focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1",
           // Radix lays its content out as a table, which lets long text grow instead of truncating.
@@ -60,13 +61,6 @@ function ScrollArea({
       >
         {shades ? <div ref={content}>{children}</div> : children}
       </ScrollAreaPrimitive.Viewport>
-      {shades ? (
-        <>
-          <span aria-hidden className={cn(SHADE, "top-0", edges.top ? "opacity-100" : "opacity-0")} style={{ background: shade("bottom") }} />
-          <span aria-hidden className={cn(SHADE, "bottom-0", edges.bottom ? "opacity-100" : "opacity-0")} style={{ background: shade("top") }} />
-
-        </>
-      ) : null}
       <ScrollBar />
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
