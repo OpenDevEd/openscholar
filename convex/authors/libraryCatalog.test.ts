@@ -12,7 +12,7 @@ async function setupCatalog() {
   const libraryId = await t.run(async ctx => {
     await seedOrganizationFeatures(ctx, ["profile-owner", "library-owner"], { authors: true });
     for (const clerkId of ["profile-owner", "library-owner"]) {
-      await ctx.db.insert("users", {clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1});
+      await ctx.db.insert("users", {libraryItemCount: 0, clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1});
     }
     const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: "org_catalog", evidenceLibrariesEnabled: true, name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
     await ctx.db.insert("organizationMemberships", {organizationId, clerkMembershipId: "membership", clerkUserId: "library-owner", role: "org:admin", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});

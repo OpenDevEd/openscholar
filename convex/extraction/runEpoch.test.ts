@@ -8,6 +8,7 @@ async function seedUser(t: ReturnType<typeof convexTest>): Promise<Id<"users">> 
   return await t.run(async (ctx) => {
     const now = Date.now();
     return await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "clerk_run_epoch",
       email: "run-epoch@test.com",
       state: "active" as const,

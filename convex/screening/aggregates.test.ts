@@ -16,7 +16,7 @@ type Ctx = TestConvex<typeof schema>;
 async function seedJob(t: Ctx): Promise<Id<"screeningJobs">> {
   return await t.run(async (ctx) => {
     const now = Date.now();
-    const userId = await ctx.db.insert("users", {
+    const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
       clerkId: "clerk_screening_agg",
       email: "screening-agg@test.com",
       firstName: "Screening",

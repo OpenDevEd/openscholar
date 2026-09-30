@@ -6,7 +6,6 @@ import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { requireAuth } from "../lib/auth";
 import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
-import { resolveLibraryCount } from "./counter";
 
 /**
  * Papers one page of a filtered view reads at most. A sparse filter gets a short page
@@ -371,7 +370,7 @@ export const getLibraryFilteredCount = query({
     const hasFilters = Boolean(searchText) || hasNonCollectionLibraryFilters(args);
 
     if (!args.collectionId && !hasFilters) {
-      return { count: await resolveLibraryCount(ctx, user._id, user.libraryItemCount), capped: false };
+      return { count: user.libraryItemCount, capped: false };
     }
     if (args.collectionId && !hasFilters) {
       const collection = await ctx.db.get("collections", args.collectionId);
@@ -400,6 +399,6 @@ export const getLibraryCount = query({
   returns: v.number(),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
-    return await resolveLibraryCount(ctx, user._id, user.libraryItemCount);
+    return user.libraryItemCount;
   },
 });

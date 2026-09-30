@@ -427,6 +427,7 @@ async function seedUserAndChatJob(
 ) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "c_msg",
       email: "m@t",
       state: "active",
@@ -535,7 +536,7 @@ describe("chat.messages — auth + mode gating", () => {
     const t = createTestConvex();
     const { threadId } = await seedUserAndChatJob(t);
     await t.run(async (ctx) =>
-      ctx.db.insert("users", {
+      ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_other",
         email: "o@t",
         state: "active",
@@ -685,7 +686,7 @@ describe("chat.messages.setChatWebSearchEnabled", () => {
     const t = createTestConvex();
     const { jobId, threadId } = await seedUserAndChatJob(t);
     await t.run(async (ctx) =>
-      ctx.db.insert("users", {
+      ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_other",
         email: "o@t",
         state: "active",
@@ -756,7 +757,7 @@ describe("chat.messages.setChatWebSearchEnabled", () => {
     // Seed only the user; do NOT create a chat job for them, so any
     // threadId we pass cannot resolve to one of their rows.
     await t.run(async (ctx) =>
-      ctx.db.insert("users", {
+      ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_msg",
         email: "m@t",
         state: "active",

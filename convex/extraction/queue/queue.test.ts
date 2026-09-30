@@ -9,6 +9,7 @@ async function seedQueueJob(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: `clerk_queue_${now}`,
       email: "queue@test.com",
       state: "active" as const,
@@ -74,6 +75,7 @@ async function seedEligibleQueueJob(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: `clerk_queue_many_${now}`,
       email: "queue-many@test.com",
       state: "active" as const,
@@ -113,6 +115,7 @@ async function seedRetryQueueJob(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: `clerk_queue_retry_${now}`,
       email: "queue-retry@test.com",
       state: "active" as const,

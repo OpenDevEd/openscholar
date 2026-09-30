@@ -52,12 +52,11 @@
       "convex/featureFlags/internal.ts:adoptPlanFeatures:featureFlags": "Every feature flag: a fixed set of about ten.",
       "convex/featureFlags/queries.ts:getAll:featureFlags": "Every feature flag: a fixed set of about ten.",
       "convex/lib/locks.ts:expired:userResourceLocks": "One user's locks of one kind: one, plus any that expired.",
+      "convex/library/collections.ts:collections:collections": "One user's collections: at most MAX_COLLECTIONS_PER_USER (500).",
       "convex/library/collections.ts:collections:collections#2": "One user's collections: at most MAX_COLLECTIONS_PER_USER (500).",
-      "convex/library/collections.ts:collections:collections#3": "One user's collections: at most MAX_COLLECTIONS_PER_USER (500).",
-      "convex/library/collections.ts:memberships:libraryItemCollections#2": "The collections one saved paper belongs to: at most MAX_COLLECTIONS_PER_USER (500).",
+      "convex/library/collections.ts:memberships:libraryItemCollections": "The collections one saved paper belongs to: at most MAX_COLLECTIONS_PER_USER (500).",
       "convex/library/mutations.ts:memberships:libraryItemCollections": "The collections one saved paper belongs to: at most MAX_COLLECTIONS_PER_USER (500).",
       "convex/library/mutations.ts:memberships:libraryItemCollections#2": "The collections one saved paper belongs to: at most MAX_COLLECTIONS_PER_USER (500).",
-      "convex/library/queries.ts:collectLibraryItems:libraryItems": "A full-text search result, which Convex caps at 1,024 rows.",
       "convex/maintenance/mutations.ts:apiKeys:apiKeys": "A user's own API keys: a handful.",
       "convex/maintenance/mutations.ts:zoteroConns:zoteroConnections": "A user's Zotero connections: one or two.",
       "convex/organizationFeatures.ts:memberships:organizationMemberships": "One person's active organization memberships: a few.",
@@ -80,11 +79,6 @@
       "convex/evidenceLibraries/queries.ts:readLibraryPeople:evidenceLibraryMembers": "#357",
       "convex/evidenceLibraries/queries.ts:readLibraryPeople:organizationMemberships": "#357",
       "convex/evidenceLibraries/teardown.ts:operations:evidenceLibraryConfigOperations": "#357",
-      "convex/extraction/sources/library.ts:junctions:libraryItemCollections": "#353",
-      "convex/extraction/sources/library.ts:junctions:libraryItemCollections#2": "#353",
-      "convex/library/collections.ts:collections:collections": "#353",
-      "convex/library/collections.ts:memberships:libraryItemCollections": "#353",
-      "convex/library/mutations.ts:users:users": "#353",
       "convex/research/answers.ts:answersAtVersions:screeningAnswerHistory": "#342",
       "convex/research/answers.ts:currentAnswers:?": "#334",
       "convex/research/answers.ts:existing:?": "#334",
@@ -94,13 +88,7 @@
     }
   },
   "missingReturns": {
-    "pending": {
-      "convex/extraction/sources/library.ts:list": "#353",
-      "convex/extraction/sources/library.ts:listAllIds": "#353",
-      "convex/library/queries.ts:browseLibrary": "#353",
-      "convex/library/queries.ts:searchLibrary": "#353",
-      "convex/library/queries.ts:listLibrary": "#353"
-    }
+    "pending": {}
   },
   "argumentSizedTakes": {
     "bounded": {

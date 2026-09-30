@@ -107,6 +107,7 @@ async function seedScenario(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: `clerk_fp_${clerkSuffix}`,
       email: `fp_${clerkSuffix}@test.com`,
       state: "active" as const,

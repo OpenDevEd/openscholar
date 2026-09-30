@@ -24,6 +24,7 @@ async function seedJobWithMixedFailures(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: CLERK_OWNER,
       email: "retry@test.com",
       state: "active" as const,
@@ -147,7 +148,7 @@ describe("getRetryableSummary", () => {
     // Seed a foreign user so the identity is valid-but-not-owner.
     await t.run(async (ctx) => {
       const now = Date.now();
-      await ctx.db.insert("users", {
+      await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "clerk_retry_summary_other",
         email: "other@test.com",
         state: "active" as const,
@@ -189,7 +190,7 @@ describe("getRetryableSummary", () => {
     const t = convexTest(schema);
     const { jobId } = await t.run(async (ctx) => {
       const now = Date.now();
-      const userId = await ctx.db.insert("users", {
+      const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: CLERK_OWNER,
         email: "retry@test.com",
         state: "active" as const,

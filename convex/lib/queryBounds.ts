@@ -1,9 +1,4 @@
-/** Maximum library items returned in a single browse/list query.
- * Based on practical upper bound of a user's library size. */
-export const MAX_LIBRARY_BROWSE = 10_000;
-
-/** Maximum collection memberships loaded for filtering.
- * Matches MAX_LIBRARY_BROWSE since a collection is a subset of library. */
+/** Maximum collection memberships loaded for filtering: a library's practical upper size. */
 export const MAX_COLLECTION_MEMBERS = 10_000;
 
 /** Most collections one user can make, so every list of their collections stays small. */

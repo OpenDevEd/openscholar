@@ -92,7 +92,7 @@ async function seedLibrarySmokeFixture(args: {
     }
   }
 
-  const [filteredCount, totalCount] = await Promise.all([
+  const [{ count: filteredCount }, totalCount] = await Promise.all([
     client.query(api.library.queries.getLibraryFilteredCount, {
       sortBy: "savedAt",
       sortOrder: "desc",

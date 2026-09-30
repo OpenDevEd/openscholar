@@ -31,6 +31,7 @@ async function seedUser(t: TestInstance): Promise<Id<"users">> {
   return await t.run(async (ctx) => {
     const now = Date.now();
     return await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "clerk_chatpapers",
       email: "chatpapers@test.com",
       state: "active" as const,

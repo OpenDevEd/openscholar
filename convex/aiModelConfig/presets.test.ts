@@ -20,10 +20,10 @@ async function setup() {
   // JSON mode without schemas isn't enough for the tasks that parse an answer.
   const chatOnly = await model("acme/chat-only", undefined, ["response_format", "tools"]);
   const userId = await t.run((ctx) =>
-    ctx.db.insert("users", { clerkId: "clerk_user", email: "user@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }),
+    ctx.db.insert("users", {libraryItemCount: 0,  clerkId: "clerk_user", email: "user@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }),
   );
   await t.run((ctx) =>
-    ctx.db.insert("users", { clerkId: "clerk_admin", email: "admin@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }),
+    ctx.db.insert("users", {libraryItemCount: 0,  clerkId: "clerk_admin", email: "admin@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 }),
   );
   await t.mutation(internal.admins.mutations.grant, { email: "admin@test.local" });
   const user = t.withIdentity({ subject: "clerk_user" });

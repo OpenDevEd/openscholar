@@ -104,7 +104,7 @@ describe("deleteExtractionInternal cascade", () => {
 
     // Seed only a user + job (no papers, questions, or anything)
     const { userId, jobId } = await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {
+      const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "clerk_empty_job",
         email: "empty@test.com",
         firstName: "Test",

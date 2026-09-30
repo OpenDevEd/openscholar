@@ -16,6 +16,7 @@ async function seedJob(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: CLERK_ID,
       email: "job-costs@test.local",
       state: "active" as const,

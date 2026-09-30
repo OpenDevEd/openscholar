@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { ConvexError } from "convex/values";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import { readEveryLibraryPage } from "../../lib/library/export";
 import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -14,6 +15,7 @@ async function seedUser(
 ) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId,
       email,
       firstName: "Test",
@@ -833,29 +835,19 @@ describe("browseLibrary with collectionId filter", () => {
     await seedJunctionRow(t, user!._id, collection!._id, first!._id);
     await seedJunctionRow(t, user!._id, collection!._id, second!._id);
 
-    const firstPage = await asUser.query(api.library.queries.browseLibrary, {
-      sortBy: "savedAt",
-      sortOrder: "desc",
-      collectionId: collection!._id,
-      paginationOpts: { numItems: 1, cursor: null },
-    });
+    const walked = await readEveryLibraryPage((cursor) =>
+      asUser.query(api.library.queries.browseLibrary, {
+        sortBy: "savedAt",
+        sortOrder: "desc",
+        collectionId: collection!._id,
+        paginationOpts: { numItems: 1, cursor },
+      }),
+    );
 
-    expect(firstPage.page.map((item) => item.title)).toEqual([
+    expect(walked.map((item) => item.title)).toEqual([
       "First in collection",
-    ]);
-    expect(firstPage.isDone).toBe(false);
-
-    const secondPage = await asUser.query(api.library.queries.browseLibrary, {
-      sortBy: "savedAt",
-      sortOrder: "desc",
-      collectionId: collection!._id,
-      paginationOpts: { numItems: 1, cursor: firstPage.continueCursor },
-    });
-
-    expect(secondPage.page.map((item) => item.title)).toEqual([
       "Second in collection",
     ]);
-    expect(secondPage.isDone).toBe(true);
   });
 
   it("when collectionId is undefined, all items are returned (existing behavior)", async () => {

@@ -15,6 +15,7 @@ export async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
     const now = Date.now();
 
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "clerk_cascade_test",
       email: "cascade@test.com",
       firstName: "Test",

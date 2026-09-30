@@ -14,7 +14,7 @@ async function setup() {
     const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_sources", evidenceLibrariesEnabled: true, name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
     const users = new Map<string, Awaited<ReturnType<typeof ctx.db.insert<"users">>>>();
     for (const clerkId of ["owner", "colleague"]) {
-      users.set(clerkId, await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 }));
+      users.set(clerkId, await ctx.db.insert("users", {libraryItemCount: 0,  clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 }));
       await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `membership-${clerkId}`, clerkUserId: clerkId, role: "org:admin", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
     }
     const libraryId = await ctx.db.insert("evidenceLibraries", { organizationId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });

@@ -19,6 +19,7 @@ async function seedPreProjectionJob(t: ReturnType<typeof convexTest>) {
     const now = Date.now();
     await seedOrganizationFeatures(ctx, [CLERK_OWNER], { extraction: true });
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: CLERK_OWNER,
       email: "rebuild-projection@test.com",
       state: "active" as const,

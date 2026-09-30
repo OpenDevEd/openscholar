@@ -23,6 +23,7 @@ async function seedChat(t: ReturnType<typeof convexTest>, credits: number) {
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: `clerk_settle_${now}`,
       email: "settle@test.local",
       state: "active" as const,

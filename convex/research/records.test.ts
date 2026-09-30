@@ -28,7 +28,7 @@ const paginationOpts = { cursor: null, numItems: 25 };
 async function setup() {
   const t = convexTest({ schema, transactionLimits: true });
   const ids = await t.run(async ctx => {
-    const seed = (clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@example.com`, state: "active", createdAt: 1, updatedAt: 1 });
+    const seed = (clerkId: string) => ctx.db.insert("users", {libraryItemCount: 0,  clerkId, email: `${clerkId}@example.com`, state: "active", createdAt: 1, updatedAt: 1 });
     return { alice: await seed("alice"), bob: await seed("bob") };
   });
   return { t, ids, alice: t.withIdentity({ subject: "alice" }), bob: t.withIdentity({ subject: "bob" }) };

@@ -124,6 +124,7 @@ async function seedUserAndFlags(
     const now = Date.now();
     await seedOrganizationFeatures(ctx, [STARTJOB_CLERK], { extraction: true });
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: STARTJOB_CLERK,
       email: "startjob@test.com",
       firstName: "S",

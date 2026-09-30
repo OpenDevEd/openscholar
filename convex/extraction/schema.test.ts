@@ -9,7 +9,7 @@ describe("extractionJobs schema", () => {
   it("accepts a chat-mode job without extraction-only fields", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {
+      const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_chat",
         email: "c@test",
         state: "active",
@@ -38,7 +38,7 @@ describe("extractionJobs schema", () => {
   it("accepts an extraction-mode job with all counter fields populated", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {
+      const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_ext",
         email: "e@test",
         state: "active",
@@ -66,7 +66,7 @@ describe("extractionJobs schema", () => {
   it("can be queried via the by_user_mode_updated index for one mode", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {
+      const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_mix",
         email: "m@test",
         state: "active",
@@ -95,7 +95,7 @@ describe("extractionJobs schema", () => {
   it("can be queried via the by_chatThread index", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {
+      const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_thread",
         email: "t@test",
         state: "active",

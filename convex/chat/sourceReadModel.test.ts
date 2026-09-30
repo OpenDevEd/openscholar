@@ -19,6 +19,7 @@ async function seedChatJob(
 ): Promise<Id<"extractionJobs">> {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "source_read_model_user",
       email: "source-read-model@test.com",
       state: "active",

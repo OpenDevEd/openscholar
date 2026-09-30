@@ -15,8 +15,8 @@ async function setup() {
     await seedOrganizationFeatures(ctx, ["owner", "editor"], { authors: true });
     const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
     return {
-      owner: await ctx.db.insert("users", {...fields, clerkId: "owner", email: "owner@example.org"}),
-      editor: await ctx.db.insert("users", {...fields, clerkId: "editor", email: "editor@example.org"}),
+      owner: await ctx.db.insert("users", {libraryItemCount: 0, ...fields, clerkId: "owner", email: "owner@example.org"}),
+      editor: await ctx.db.insert("users", {libraryItemCount: 0, ...fields, clerkId: "editor", email: "editor@example.org"}),
     };
   });
   const owner = t.withIdentity({subject: "owner"});
