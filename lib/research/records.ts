@@ -49,6 +49,8 @@ export const searchFields = {
   updatedAt: v.string(),
 };
 export const searchValidator = v.object(searchFields);
+/** Who set a screening answer. `unrecorded` is for answers saved before this was recorded. */
+export const answerSourceValidator = v.union(v.literal("model"), v.literal("person"), v.literal("assistant"), v.literal("unrecorded"));
 export type SavedSearch = Infer<typeof searchValidator>;
 const { id: _id, createdAt: _createdAt, ...editableFields } = searchFields;
 export const editValidator = v.union(
@@ -58,7 +60,8 @@ export const editValidator = v.union(
   v.object({ kind: v.literal("addScreeningQuestion"), question: v.string() }),
   v.object({ kind: v.literal("replaceScreeningQuestion"), question: v.string(), replacement: v.union(v.string(), v.null()) }),
   v.object({ kind: v.literal("clearScreeningQuestions") }),
-  v.object({ kind: v.literal("responses"), paperId: v.string(), responses: answers }),
+  // `by` says whether the model or the person gave these answers, so each is recorded with who set it.
+  v.object({ kind: v.literal("responses"), paperId: v.string(), responses: answers, by: v.optional(v.union(v.literal("model"), v.literal("person"))) }),
   v.object({ kind: v.literal("clearResponses"), paperId: v.optional(v.string()) }),
   v.object({ kind: v.literal("removeQuestionResponses"), question: v.string() }),
 );
