@@ -1,5 +1,6 @@
 import { requireOrganizationFeature } from "../organizationFeatures";
-import { paginationOptsValidator, type PaginationOptions } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
+import schema from "../schema";
 import { v, type Infer } from "convex/values";
 import { mutation, query, internalQuery, internalMutation } from "../_generated/server";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -36,8 +37,12 @@ export async function createProfile(ctx: MutationCtx, ownerId: Id<"users">, name
   return await ctx.db.insert("authorProfiles", {...content, ownerId, revision: 1, updatedAt: Date.now()});
 }
 
+/** A profile as pages show it, with its photo's URL. */
+const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union(v.string(), v.null())};
+
 export const create = mutation({
   args: {name: v.string()},
+  returns: v.id("authorProfiles"),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
     await requireOrganizationFeature(ctx, "authors");
@@ -47,6 +52,7 @@ export const create = mutation({
 
 export const get = query({
   args: {profileId: v.string()},
+  returns: v.union(v.null(), v.object({...profileWithPhoto, role: v.union(v.literal("owner"), v.literal("editor"), v.null())})),
   handler: async (ctx, {profileId}) => {
     const id = ctx.db.normalizeId("authorProfiles", profileId);
     if (!id) return null;
@@ -66,6 +72,7 @@ export function searchProfilePage(ctx: QueryCtx, term: string, paginationOpts: P
 
 export const list = query({
   args: {search: v.string(), paginationOpts: paginationOptsValidator},
+  returns: paginationResultValidator(v.object(profileWithPhoto)),
   handler: async (ctx, args) => {
     await requireOrganizationFeature(ctx, "authors");
     const rows = await searchProfilePage(ctx, args.search, args.paginationOpts);
@@ -79,11 +86,12 @@ async function saveContent(ctx: MutationCtx, args: {profileId: Id<"authorProfile
   if (profile.revision !== args.expectedRevision) throw createError("CONFLICT", "This profile changed while you were editing. Reload it before saving.");
   if (args.featured) {
     if (args.featured.length > 1000 || new Set(args.featured).size !== args.featured.length) throw createError("VALIDATION_ERROR", "Invalid publication selection");
-    const associations = await ctx.db.query("authorPublications").withIndex("by_profileId", q => q.eq("profileId", args.profileId)).collect();
-    const available = new Set(associations.map(row => row._id));
-    if (args.featured.some(id => !available.has(id))) throw createError("VALIDATION_ERROR", "Only associated publications can be selected");
+    // Reads only the featured publications and the ones ranked now, never every association.
+    const featured = await Promise.all(args.featured.map(id => ctx.db.get("authorPublications", id)));
+    if (featured.some(row => row?.profileId !== args.profileId)) throw createError("VALIDATION_ERROR", "Only associated publications can be selected");
     const ranks = new Map(args.featured.map((id, rank) => [id, rank]));
-    for (const association of associations) {
+    const ranked = await ctx.db.query("authorPublications").withIndex("by_profileId_and_rank", q => q.eq("profileId", args.profileId).gte("rank", 0)).take(1000);
+    for (const association of [...ranked.filter(row => !ranks.has(row._id)), ...featured.map(row => row!)]) {
       const rank = ranks.get(association._id);
       if (association.rank !== rank) await ctx.db.patch("authorPublications", association._id, {rank});
     }

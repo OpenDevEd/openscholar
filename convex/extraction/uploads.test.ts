@@ -82,8 +82,7 @@ describe("recordUploadedFile", () => {
       throw new Error("expected ConvexError VALIDATION_ERROR");
     } catch (e) {
       expect(e).toBeInstanceOf(ConvexError);
-      const raw = (e as ConvexError<string>).data;
-      const parsed = JSON.parse(raw) as { code: string; message?: string };
+      const parsed = (e as ConvexError<{ code: string; message?: string }>).data;
       expect(parsed.code).toBe("VALIDATION_ERROR");
       expect(parsed.message).toMatch(/100 MB/);
     }

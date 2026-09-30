@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const mail = vi.hoisted(() => ({ sendMail: vi.fn(), close: vi.fn() }));
@@ -68,8 +68,30 @@ describe("library invitations", () => {
         await ctx.db.patch("users", user!._id, { state: "suspended" });
       }
     });
+    if (reason === "expired") await fixture.t.mutation(internal.evidenceLibraries.invitations.expire, { invitationId: invitation.invitationId });
     expect(await fixture.outside.query(api.organizationFeatures.get, {})).toEqual({ evidenceLibraries: false, authors: false, extraction: false });
     expect(await fixture.outside.query(api.evidenceLibraries.invitations.listMine, {})).toEqual([]);
+  });
+
+  it("expires an invitation when its time is up, counting from the latest send", async () => {
+    const fixture = await setup();
+    vi.useFakeTimers();
+    try {
+      const listed = async () => (await fixture.outside.query(api.evidenceLibraries.invitations.listMine, {})).length;
+      const day = 86_400_000;
+      await fixture.invite();
+      vi.advanceTimersByTime(3 * day);
+      await fixture.invite();
+      // The first send's expiry runs at day 7 and leaves the re-sent invitation pending.
+      vi.advanceTimersByTime(5 * day);
+      await fixture.t.finishInProgressScheduledFunctions();
+      expect(await listed()).toBe(1);
+      vi.advanceTimersByTime(3 * day);
+      await fixture.t.finishInProgressScheduledFunctions();
+      expect(await listed()).toBe(0);
+      const [invitation] = await fixture.t.run(ctx => ctx.db.query("evidenceLibraryInvitations").collect());
+      expect(invitation.state).toBe("expired");
+    } finally { vi.useRealTimers(); }
   });
 
   it("rejects an unverified email and a cancelled invitation", async () => {

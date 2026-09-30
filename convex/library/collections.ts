@@ -1,8 +1,9 @@
 import { mutation, query, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import schema from "../schema";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
+import { MAX_COLLECTION_MEMBERS, MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
 
 // ═══════════════════════════════════════════════════════════════
@@ -17,6 +18,10 @@ export const createCollection = mutation({
     const trimmed = args.name.trim();
     if (!trimmed) {
       throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
+    }
+    const existing = await ctx.db.query("collections").withIndex("by_user", (q) => q.eq("userId", user._id)).take(MAX_COLLECTIONS_PER_USER);
+    if (existing.length >= MAX_COLLECTIONS_PER_USER) {
+      throw createError("VALIDATION_ERROR", `You can have up to ${MAX_COLLECTIONS_PER_USER} collections. Delete one to make another.`);
     }
     return await ctx.db.insert("collections", {
       userId: user._id,
@@ -101,6 +106,7 @@ export const backfillCollectionCounts = internalMutation({
 
 export const listCollections = query({
   args: {},
+  returns: v.array(schema.doc("collections")),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
     // Cardinality: ~1-50 collections per user (user-created)
@@ -182,6 +188,7 @@ export const removeFromCollection = mutation({
 
 export const getCollectionsWithCounts = query({
   args: {},
+  returns: v.array(v.object({ ...schema.doc("collections").fields, itemCount: v.number() })),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
 
@@ -204,6 +211,7 @@ export const getCollectionsWithCounts = query({
 
 export const getItemCollections = query({
   args: { libraryItemId: v.id("libraryItems") },
+  returns: v.array(v.id("collections")),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 

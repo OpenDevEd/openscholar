@@ -44,7 +44,7 @@ export async function ensureCatalog(ctx: ActionCtx): Promise<null> {
   for (let offset = 0; offset < tree.length; offset += 100) await ctx.runMutation(internal.topics.catalog.seed, {offset});
   return null;
 }
-export const initialize = action({args: {}, handler: ensureCatalog});
+export const initialize = action({args: {}, returns: v.null(), handler: ensureCatalog});
 function output(node: TopicNode): TopicNode {
   return {id: node.id, name: node.name, parent: node.parent, level: node.level, path: node.path, childCount: node.childCount};
 }

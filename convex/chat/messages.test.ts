@@ -607,11 +607,7 @@ describe("chat.messages — auth + mode gating", () => {
       .mutation(api.chat.messages.sendMessage, { threadId, prompt: "hi" })
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ConvexError);
-    // convex-test serializes .data to a JSON string on the caught error.
-    const envelope = JSON.parse((err as ConvexError<string>).data) as {
-      code: string;
-      message?: string;
-    };
+    const envelope = (err as ConvexError<{ code: string; message?: string }>).data;
     expect(envelope.code).toBe("NO_SOURCES_INCLUDED");
 
     // Guard short-circuits before any saveMessage / job.patch runs.

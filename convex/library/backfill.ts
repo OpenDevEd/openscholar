@@ -17,16 +17,11 @@ export const backfillPaperData = internalAction({
     cursor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // 1. Get a batch of items missing paperData
-    const batch = await ctx.runMutation(
+    // 1. The next page of items, and which of them are missing paperData
+    const batch = await ctx.runQuery(
       internal.library.backfillMutations.getItemsMissingPaperData,
-      { limit: BATCH_SIZE, cursor: args.cursor },
+      { paginationOpts: { numItems: BATCH_SIZE, cursor: args.cursor ?? null } },
     );
-
-    if (batch.items.length === 0) {
-      console.log("[Backfill] No more items to backfill. Done!");
-      return;
-    }
 
     console.log(
       `[Backfill] Processing ${batch.items.length} items...`,
@@ -83,12 +78,12 @@ export const backfillPaperData = internalAction({
       `[Backfill] Batch complete: ${successCount} success, ${failCount} failed`,
     );
 
-    // Schedule next batch if there are more items
-    if (batch.hasMore) {
+    // Schedule the next page until every item has been seen
+    if (!batch.isDone) {
       await ctx.scheduler.runAfter(
         1000, // 1 second delay between batches
         internal.library.backfill.backfillPaperData,
-        { cursor: batch.nextCursor },
+        { cursor: batch.continueCursor },
       );
     } else {
       console.log("[Backfill] All items processed!");
