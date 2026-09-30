@@ -3,7 +3,7 @@
 // A running extraction: a table that fills in cell by cell as the job reads each
 // paper, with gaps marked where the abstract doesn't say, then the findings.
 
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { Coins, ExternalLink, FileSearch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EASE } from "@/components/settings/model-map";
@@ -41,53 +41,55 @@ export function ExtractionCard({ filled, stopped }: { filled: number; stopped?: 
           Open <ExternalLink className="size-3" />
         </button>
       </div>
-      {/* Every cell has its final size from the start, so values arriving never move the table. */}
       <div className="border-t border-border/50">
-        <div className="grid grid-cols-[1.5rem_1fr_1fr_1fr] gap-x-3 px-4 py-2 text-[11px] font-medium text-muted-foreground">
+        <div className="grid grid-cols-[1.5rem_1fr_1fr_1fr] gap-x-4 px-4 py-2.5 text-[11px] font-medium text-muted-foreground">
           <span />
           {EXTRACT_FIELDS.map((f) => (
             <span key={f.key}>{f.label}</span>
           ))}
         </div>
         {EXTRACT_ROWS.map((row, r) => (
-          <div key={row.cite} className="grid grid-cols-[1.5rem_1fr_1fr_1fr] items-start gap-x-3 border-t border-border/40 px-4 py-2.5">
+          // The paper leads its row; its values sit under it, in the header's columns.
+          <div key={row.cite} className="grid grid-cols-[1.5rem_1fr_1fr_1fr] items-start gap-x-4 gap-y-1.5 border-t border-border/40 px-4 py-3.5">
             <Cite n={row.cite} />
+            <p className="col-span-3 flex h-[18px] min-w-0 items-center gap-2 text-xs font-medium text-foreground/80">
+              <span className="truncate">{row.paper}</span>
+              {row.needsPdf && filled >= (r + 1) * EXTRACT_FIELDS.length ? (
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, ease: EASE }}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-px text-[11px] text-amber-700 dark:text-amber-300"
+                >
+                  <FileSearch className="size-3" /> Needs the PDF
+                </motion.span>
+              ) : null}
+            </p>
             {EXTRACT_FIELDS.map((f, c) => {
               const cell = row[f.key];
               const shown = r * EXTRACT_FIELDS.length + c < filled;
               return (
-                <div key={f.key} className="min-h-8 text-xs leading-snug">
-                  <AnimatePresence mode="wait" initial={false}>
-                    {shown ? (
-                      <motion.span
-                        key="value"
-                        initial={{ opacity: 0, y: 3 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, ease: EASE }}
-                        className={cn("block", cell.missing ? "italic text-muted-foreground" : "text-foreground/90")}
-                      >
-                        {cell.value}
-                      </motion.span>
-                    ) : (
-                      <motion.span
-                        key="pending"
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.12 }}
-                        className="mt-1 block h-2.5 w-4/5 rounded-full bg-foreground/[0.07]"
-                      />
-                    )}
-                  </AnimatePresence>
+                // The value is laid out from the start, invisible, so the row has its final height before it arrives.
+                <div key={f.key} className={cn("relative text-xs leading-relaxed", c === 0 && "col-start-2")}>
+                  <motion.span
+                    aria-hidden={!shown}
+                    initial={false}
+                    animate={{ opacity: shown ? 1 : 0, y: shown ? 0 : 3 }}
+                    transition={{ duration: 0.3, ease: EASE }}
+                    className={cn("block", cell.missing ? "italic text-muted-foreground" : "text-foreground/90")}
+                  >
+                    {cell.value}
+                  </motion.span>
+                  <motion.span
+                    aria-hidden
+                    initial={false}
+                    animate={{ opacity: shown ? 0 : 1 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute left-0 top-[5px] h-2.5 w-4/5 rounded-full bg-foreground/[0.07]"
+                  />
                 </div>
               );
             })}
-            <p className="col-span-3 col-start-2 mt-1 truncate text-[11px] text-muted-foreground">
-              {row.paper}
-              {row.needsPdf && filled >= (r + 1) * EXTRACT_FIELDS.length ? (
-                <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-px font-medium text-amber-700 dark:text-amber-300">
-                  <FileSearch className="size-3" /> Needs the PDF
-                </span>
-              ) : null}
-            </p>
           </div>
         ))}
       </div>
