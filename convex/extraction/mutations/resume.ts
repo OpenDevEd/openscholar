@@ -53,6 +53,7 @@ import { getFlag } from "../../featureFlags/guard";
 import {
   dispatchPaperQueueWindowTx,
   enqueueInitialPapersForJobTx,
+  enqueueRetryPapersForJobTx,
 } from "../queue/mutations";
 
 export const resumeExtraction = mutation({
@@ -160,9 +161,31 @@ export const resumeExtraction = mutation({
         { jobId, expectedEpoch: nextEpoch },
       );
     } else if (nonTerminalPaperIds.length > 0) {
+      // A paper queued for a retry before the pause is queued for the same questions
+      // again; a full run would redo its answered and permanently failed questions.
+      const initialPaperIds: typeof nonTerminalPaperIds = [];
+      const retryPapers: Array<{ paperId: (typeof nonTerminalPaperIds)[number]; questionKeys: string[] }> = [];
+      for (const paperId of nonTerminalPaperIds) {
+        const lastQueued = await ctx.db
+          .query("extractionPaperQueue")
+          .withIndex("by_paper_and_epoch_and_kind", (q) => q.eq("paperId", paperId))
+          .order("desc")
+          .first();
+        if (lastQueued?.kind === "retry" && lastQueued.questionKeys?.length) {
+          retryPapers.push({ paperId, questionKeys: lastQueued.questionKeys });
+        } else {
+          initialPaperIds.push(paperId);
+        }
+      }
       await enqueueInitialPapersForJobTx(ctx, {
         jobId,
-        paperIds: nonTerminalPaperIds,
+        paperIds: initialPaperIds,
+        expectedEpoch: nextEpoch,
+        priority: 0,
+      });
+      await enqueueRetryPapersForJobTx(ctx, {
+        jobId,
+        retryPapers,
         expectedEpoch: nextEpoch,
         priority: 0,
       });

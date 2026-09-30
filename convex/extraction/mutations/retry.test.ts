@@ -341,7 +341,12 @@ describe("retry reset — state changes", () => {
     await owner.mutation(api.extraction.mutations.resume.resumeExtraction, { jobId });
     await runRetryBatches(t);
     expect(await pendingResults(t, jobId)).toBe(60);
-    expect((await t.run((ctx) => ctx.db.get(jobId)))?.retryReset).toBeUndefined();
+    const job = await t.run((ctx) => ctx.db.get(jobId));
+    expect(job?.retryReset).toBeUndefined();
+    // Papers reset before the pause are queued again for their retried question only.
+    const queued = await t.run((ctx) => ctx.db.query("extractionPaperQueue").withIndex("by_job_and_epoch_and_status", (q) => q.eq("jobId", jobId).eq("runEpoch", job!.runEpoch!)).collect());
+    expect(queued.length).toBeGreaterThanOrEqual(25);
+    expect(queued.every((row) => row.kind === "retry" && row.questionKeys?.join() === "q1")).toBe(true);
   });
 
   it("doesn't finish a retried job while a retried paper is still extracting", async () => {

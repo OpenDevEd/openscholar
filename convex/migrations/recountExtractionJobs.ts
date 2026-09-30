@@ -2,7 +2,7 @@ import { Migrations } from "@convex-dev/migrations";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { DataModel, Id } from "../_generated/dataModel";
-import { internalQuery, type QueryCtx } from "../_generated/server";
+import { internalAction, internalQuery, type QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { readJobCounters, setJobCounters } from "../extraction/jobCounters";
 import { bucketsOf, readPaperErrorCounts, readResultCounts, setPaperErrorCounts, setResultCounts } from "../extraction/resultCounts";
@@ -70,12 +70,27 @@ export const recount = migrations.define({
 
 export const run = migrations.runner(internal.migrations.recountExtractionJobs.recount);
 
-/** Jobs whose counters don't match a recount of their rows; empty when every count holds. */
-export const verify = internalQuery({
-  args: { paginationOpts: v.object({ cursor: v.union(v.string(), v.null()), numItems: v.number() }) },
+/** Every job whose counters don't match a recount of its rows; empty when every count holds. */
+export const verify = internalAction({
+  args: {},
+  returns: v.array(v.string()),
+  handler: async (ctx): Promise<string[]> => {
+    const mismatches: string[] = [];
+    for (let cursor: string | null = null; ;) {
+      const page: { mismatches: string[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.recountExtractionJobs.verifyPage, { cursor });
+      mismatches.push(...page.mismatches);
+      if (page.isDone) return mismatches;
+      cursor = page.continueCursor;
+    }
+  },
+});
+
+/** One job's check for `verify`. */
+export const verifyPage = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()) },
   returns: v.object({ mismatches: v.array(v.string()), isDone: v.boolean(), continueCursor: v.string() }),
-  handler: async (ctx, { paginationOpts }) => {
-    const page = await ctx.db.query("extractionJobs").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 1) });
+  handler: async (ctx, { cursor }) => {
+    const page = await ctx.db.query("extractionJobs").paginate({ cursor, numItems: 1 });
     const mismatches: string[] = [];
     for (const job of page.page) {
       const expected = await countJob(ctx, job._id);

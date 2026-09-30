@@ -10,7 +10,7 @@ import { setJobCounters } from "./jobCounters";
 import { setPaperErrorCounts, setResultCounts } from "./resultCounts";
 
 type Test = ReturnType<typeof convexTest>;
-const verify = (t: Test) => t.query(internal.migrations.recountExtractionJobs.verify, { paginationOpts: { cursor: null, numItems: 20 } });
+const verify = async (t: Test) => ({ mismatches: await t.action(internal.migrations.recountExtractionJobs.verify, {}) });
 const failed = (code: string) => ({ status: "failed" as const, answer: null, citationStatus: "extraction_error" as const, lastError: { code: code as never, message: code, at: 1 } });
 const completed = { status: "completed" as const, answer: "ok", citationStatus: "grounded" as const };
 
