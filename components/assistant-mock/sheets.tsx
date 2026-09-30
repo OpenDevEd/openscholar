@@ -6,7 +6,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Building2, Check, ChevronLeft, Eye, Link2, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, Users } from "lucide-react";
+import { Building2, Check, ChevronLeft, Eye, Link2, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Segmented } from "@/components/settings/parts";
@@ -36,7 +36,12 @@ export function Sheet({
 }) {
   return (
     <motion.div
-      className="absolute inset-0 flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[-18px_0_48px_-18px_rgb(0_0_0/0.55)]"
+      role="dialog"
+      aria-modal="false"
+      tabIndex={-1}
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- a new sheet takes focus, like a dialog
+      autoFocus
+      className="absolute inset-0 flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[-18px_0_48px_-18px_rgb(0_0_0/0.55)] outline-none"
       style={{ transformOrigin: "0% 50%", zIndex: 20 + index }}
       initial={{ x: "calc(100% + 24px)", scale: 1 }}
       animate={stackedUnder(depth)}
@@ -162,8 +167,8 @@ function Avatar({ member }: { member: Member }) {
         <motion.span
           aria-hidden
           className="absolute inset-0 rounded-full"
-          style={{ boxShadow: `0 0 0 2px ${member.tint}` }}
-          animate={{ scale: [1, 1.55], opacity: [0.7, 0] }}
+          style={{ boxShadow: `0 0 0 1.5px ${member.tint}` }}
+          animate={{ scale: [1.15, 1.7], opacity: [0.6, 0] }}
           transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
         />
       ) : null}
@@ -172,7 +177,7 @@ function Avatar({ member }: { member: Member }) {
         style={{
           backgroundColor: `color-mix(in oklab, ${member.tint} 24%, var(--card))`,
           color: member.tint,
-          boxShadow: member.here ? `0 0 0 3.5px ${member.tint}` : undefined,
+          boxShadow: member.here ? `0 0 0 2px var(--card), 0 0 0 3.5px ${member.tint}` : undefined,
         }}
       >
         {member.initial}
@@ -298,7 +303,7 @@ export function HistorySheet({ onBack, onShare }: { onBack: () => void; onShare:
   let row = 0;
   return (
     <>
-      <SheetHeader title="Chats" detail="Yours, and the ones shared with you" onBack={onBack} />
+      <SheetHeader title="Chats" detail="2 happening now" onBack={onBack} />
       <div className="space-y-2.5 px-3 pt-3">
         <div className="flex items-center gap-2">
           <label className="flex h-9 flex-1 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
@@ -325,7 +330,7 @@ export function HistorySheet({ onBack, onShare }: { onBack: () => void; onShare:
           options={[
             { id: "all", label: "All" },
             { id: "mine", label: "Mine" },
-            { id: "shared", label: "Shared with me", icon: Users },
+            { id: "shared", label: "Shared with me" },
           ]}
         />
       </div>
@@ -370,6 +375,25 @@ function LiveIcon() {
     >
       <Radio className="size-3.5" />
     </motion.span>
+  );
+}
+
+/** The records that come with access to a chat. */
+function Includes({ chat }: { chat: string }) {
+  const records = CHATS.flatMap((g) => g.chats).find((c) => c.title === chat)?.records ?? [];
+  if (!records.length) return null;
+  return (
+    <div className="space-y-2 rounded-2xl bg-muted/40 p-3">
+      <p className="text-xs font-medium text-muted-foreground">They can also open</p>
+      <div className="flex flex-wrap gap-1.5">
+        {records.map((r, i) => (
+          <span key={i} className="flex h-7 items-center gap-1.5 rounded-full bg-background/60 pl-1 pr-2.5 text-xs font-medium">
+            <KindTile kind={r.kind} size="sm" />
+            <span className="tabular-nums">{r.label}</span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -430,6 +454,7 @@ export function ShareSheet({ chat, onBack }: { chat: string; onBack: () => void 
             </motion.li>
           ))}
         </ul>
+        <Includes chat={chat} />
         <p className="px-2 text-xs leading-relaxed text-muted-foreground">
           People who can chat send messages as themselves. Anything the assistant does for them runs with their own access and credits.
         </p>

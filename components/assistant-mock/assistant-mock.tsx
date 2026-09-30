@@ -6,8 +6,8 @@
 // The panel folds into a launcher that would follow the user to every page.
 
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
-import { ArrowUp, Coins, Eye, History, PictureInPicture2, Plus, RotateCcw, Sparkles, UserPlus, X } from "lucide-react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { ArrowUp, Coins, Eye, MessagesSquare, PictureInPicture2, Plus, RotateCcw, Sparkles, SquarePen, UserPlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Conversation, ConversationContent } from "@/components/ai-elements/conversation";
@@ -284,7 +284,7 @@ export function AssistantMock() {
   return (
     <MotionConfig reducedMotion="user">
       <EdgeGlow open={open} working={busy} />
-      <LayoutGroup>
+      <>
         <div className="flex min-h-dvh gap-3 overflow-x-clip p-3 sm:p-4">
           <div className="min-w-0 flex-1 py-2">
             <ResultsPane
@@ -309,6 +309,8 @@ export function AssistantMock() {
                   <motion.aside
                     key="panel"
                     layoutId="assistant-shell"
+                    // Measure only when the panel opens or folds, never on other re-renders.
+                    layoutDependency={open}
                     transition={{ type: "spring", stiffness: 380, damping: 36, mass: 0.9 }}
                     className="absolute right-0 top-0 h-full"
                     style={{ width: PANEL_W, borderRadius: 16 }}
@@ -325,6 +327,7 @@ export function AssistantMock() {
                       <motion.button
                         type="button"
                         layoutId="assistant-logo"
+                        layoutDependency={open}
                         onClick={fold}
                         aria-label="Fold the assistant away"
                         transition={{ type: "spring", stiffness: 380, damping: 36, mass: 0.9 }}
@@ -386,7 +389,7 @@ export function AssistantMock() {
         <AnimatePresence>
           {!open ? <Launcher key="launcher" working={busy} progress={running} onOpen={() => setOpen(true)} /> : null}
         </AnimatePresence>
-      </LayoutGroup>
+      </>
     </MotionConfig>
   );
 }
@@ -398,6 +401,7 @@ function Launcher({ working, progress, onOpen }: { working: boolean; progress: n
       <motion.button
         type="button"
         layoutId="assistant-shell"
+        layoutDependency={false}
         onClick={onOpen}
         aria-label="Open the assistant"
         transition={{ type: "spring", stiffness: 380, damping: 36, mass: 0.9 }}
@@ -406,6 +410,7 @@ function Launcher({ working, progress, onOpen }: { working: boolean; progress: n
       >
         <motion.span
           layoutId="assistant-logo"
+          layoutDependency={false}
           transition={{ type: "spring", stiffness: 380, damping: 36, mass: 0.9 }}
           className="relative flex size-11 items-center justify-center rounded-xl"
         >
@@ -446,7 +451,7 @@ function Thread({
   busy: boolean;
 }) {
   return (
-    <Conversation className="min-h-0 flex-1">
+    <Conversation className="min-h-0 flex-1 [mask-image:linear-gradient(to_bottom,transparent,black_18px)]">
       <ConversationContent className="gap-5 overflow-x-clip px-4 py-4">
         {turns.length === 0 ? <Empty /> : null}
         {turns.map((t) =>
@@ -591,9 +596,9 @@ function Header({
           <ModelChip />
         </div>
         <div className="flex items-center">
-          <IconButton label="Chats" icon={<History className="size-4" />} onClick={onHistory} />
+          <IconButton label="Chats" icon={<MessagesSquare className="size-4" />} onClick={onHistory} />
           <IconButton label="Share this chat" icon={<UserPlus className="size-4" />} onClick={onShare} />
-          <IconButton label="Start over" icon={<RotateCcw className="size-4" />} onClick={onRestart} />
+          <IconButton label="New chat" icon={<SquarePen className="size-4" />} onClick={onRestart} />
           <IconButton label="Fold into a bubble  ⌘J" icon={<PictureInPicture2 className="size-4" />} onClick={onCollapse} />
         </div>
       </div>
@@ -601,7 +606,6 @@ function Header({
         <AnimatePresence initial={false}>
           {attached.map((k) => (
             <motion.span
-              layout="position"
               key={k}
               initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -617,7 +621,6 @@ function Header({
           ))}
           {always ? (
             <motion.span
-              layout="position"
               key="always"
               initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -639,9 +642,9 @@ function Header({
             </motion.span>
           ) : null}
         </AnimatePresence>
-        <motion.span layout="position" className="shrink-0">
+        <span className="shrink-0">
           <IconButton label="Attach" icon={<Plus className="size-3.5" />} small />
-        </motion.span>
+        </span>
       </div>
     </div>
   );
@@ -654,7 +657,9 @@ function ModelChip() {
         <OpenAIIcon className="size-3" />
       </span>
       GPT-6 Luna
-      <EffortMeter levels={["low", "medium", "high"]} level="medium" filled="bg-current" />
+      <span className="ml-1 flex items-center gap-1">
+        <EffortMeter levels={["low", "medium", "high"]} level="medium" filled="bg-current" /> Medium
+      </span>
     </button>
   );
 }

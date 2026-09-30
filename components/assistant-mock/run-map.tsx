@@ -5,19 +5,30 @@
 
 import type { ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, CircleHelp, Coins, Copy, ExternalLink, Undo2, X } from "lucide-react";
+import { ArrowRight, Check, CircleHelp, Coins, Copy, ExternalLink, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { Shimmer } from "@/components/ai-elements/shimmer";
 import { EASE } from "@/components/settings/model-map";
 import { BALANCE, COLLECTION_NAME, KIND, SCREEN_CREDITS, SCREEN_TOTALS, VERSIONS } from "./data";
 import { LogoMark } from "./logo-mark";
 
-/** Text that shimmers while work runs, and holds still when motion is reduced. */
+/**
+ * Text that a light sweeps across while work runs. It never drops below the muted
+ * text colour, so the words stay readable mid-sweep; it holds still when motion is reduced.
+ */
 export function WorkingText({ children }: { children: string }) {
   const reduceMotion = useReducedMotion();
-  return reduceMotion ? <span className="text-muted-foreground">{children}</span> : <Shimmer as="span">{children}</Shimmer>;
+  if (reduceMotion) return <span className="text-muted-foreground">{children}</span>;
+  return (
+    <motion.span
+      className="bg-[linear-gradient(90deg,var(--muted-foreground)_0%,var(--muted-foreground)_38%,var(--foreground)_50%,var(--muted-foreground)_62%,var(--muted-foreground)_100%)] bg-[length:250%_100%] bg-clip-text text-transparent"
+      animate={{ backgroundPosition: ["100% 0%", "-150% 0%"] }}
+      transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
+    >
+      {children}
+    </motion.span>
+  );
 }
 
 export type Step = {
@@ -155,7 +166,6 @@ export function ApprovalCard({
   onAlways: () => void;
   onDecline: () => void;
 }) {
-  const share = SCREEN_CREDITS / BALANCE;
   return (
     <div className="overflow-hidden rounded-2xl border border-primary/30 bg-primary/[0.04]">
       <div className="flex items-start gap-3 p-4">
@@ -180,18 +190,14 @@ export function ApprovalCard({
           </TooltipHint>
         ) : null}
       </div>
-      <div className="flex items-center gap-3 px-4 pb-4 text-xs text-muted-foreground">
+      <div className="flex items-center gap-2 px-4 pb-4 text-xs text-muted-foreground">
         <Coins className="size-3.5 text-primary" />
         <span className="font-medium text-foreground">About {SCREEN_CREDITS} credits</span>
-        <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10">
-          <motion.span
-            className="block h-full rounded-full bg-primary"
-            initial={{ width: 0 }}
-            animate={{ width: `${Math.max(2, share * 100)}%` }}
-            transition={{ duration: 0.6, ease: EASE, delay: 0.2 }}
-          />
+        <span className="ml-auto flex items-center gap-1.5 tabular-nums">
+          {BALANCE.toLocaleString()}
+          <ArrowRight className="size-3" />
+          <span className="font-medium text-foreground">{(BALANCE - SCREEN_CREDITS).toLocaleString()}</span> left
         </span>
-        <span className="tabular-nums">{BALANCE.toLocaleString()} left</span>
       </div>
       <AnimatePresence initial={false} mode="wait">
         {status === "pending" ? (
