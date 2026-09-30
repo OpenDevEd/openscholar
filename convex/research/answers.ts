@@ -1,16 +1,17 @@
 /**
- * Screening answers for saved searches, one row per paper and question, so changing
- * an answer writes that answer and nothing else. Every change is also appended to a
- * history, which is how an old revision of a search shows the answers it had.
+ * Screening answers for saved searches, one row per paper holding its answer to each
+ * question, so changing an answer writes that paper's row and nothing else. Every change
+ * also appends the paper's new answers to a history under the screening's next version,
+ * which is how an old revision of a search shows the answers it had.
  */
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { SavedSearch } from "../../lib/research/records";
 
 /** Who set an answer. `unrecorded` is for answers saved before this was recorded. */
-export type AnswerSource = Doc<"screeningAnswers">["setBy"];
+export type AnswerSource = Doc<"screeningAnswers">["answers"][number]["setBy"];
 type Responses = SavedSearch["screeningResponses"];
-type Answer = boolean | null;
+type PaperAnswers = Doc<"screeningAnswers">["answers"];
 type Read = Pick<QueryCtx, "db">;
 type Write = Pick<MutationCtx, "db">;
 
@@ -24,59 +25,60 @@ async function ensureScreening(ctx: Write, userId: Id<"users">, searchId: Id<"se
   return (await ctx.db.get("screenings", await ctx.db.insert("screenings", { userId, searchId, version: 0, createdAt: Date.now() })))!;
 }
 
-/** Rows grouped by paper, in the shape a saved search carries. */
-function group(rows: Array<{ paperId: string; question: string; answer: Answer }>): Responses {
-  const byPaper = new Map<string, Responses[number]["responses"]>();
-  for (const row of rows) {
-    const list = byPaper.get(row.paperId) ?? [];
-    list.push({ question: row.question, response: row.answer });
-    byPaper.set(row.paperId, list);
-  }
-  return Array.from(byPaper, ([paperId, responses]) => ({ paperId, responses }));
+/** Papers and their answers in the shape a saved search carries. */
+function toResponses(papers: Iterable<{ paperId: string; answers: PaperAnswers }>): Responses {
+  return Array.from(papers, ({ paperId, answers }) => ({ paperId, responses: answers.map(({ question, answer }) => ({ question, response: answer })) }));
 }
 
-/** A search's current answers. A screening holds as many rows as the papers screened, so this reads them all. */
-export async function currentAnswers(ctx: Read, screeningId: Id<"screenings">): Promise<Responses> {
-  return group(await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper_and_question", (q) => q.eq("screeningId", screeningId)).collect());
-}
-
-/** The answers as they were at screening version `version`, rebuilt from the history. */
-export async function answersAt(ctx: Read, screeningId: Id<"screenings">, version: number): Promise<Responses> {
-  const state = new Map<string, { paperId: string; question: string; answer: Answer }>();
-  const history = ctx.db.query("screeningAnswerHistory").withIndex("by_screening_and_version", (q) => q.eq("screeningId", screeningId).lte("version", version));
-  for await (const row of history) {
-    const key = JSON.stringify([row.paperId, row.question]);
-    if (row.removed) state.delete(key);
-    else state.set(key, { paperId: row.paperId, question: row.question, answer: row.answer ?? null });
-  }
-  return group([...state.values()].sort((a, b) => (a.paperId < b.paperId ? -1 : a.paperId > b.paperId ? 1 : 0)));
-}
-
-type Change = { paperId: string; question: string; answer: Answer | "removed" };
+const paperRows = (ctx: Read, screeningId: Id<"screenings">) =>
+  ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId));
 
 /**
- * Applies changes to the current rows and appends each one to the history under the
- * screening's next version. Returns the screening's version afterwards.
+ * A search's current answers.
+ * ponytail: reads every screened paper, as the chunks did; a list page of searches holding
+ * about 32,000 screened papers between them reaches a query's read limit. The results page
+ * reading answers per search (#334) removes the ceiling.
  */
-async function apply(ctx: Write, screening: Doc<"screenings">, changes: Change[], setBy: AnswerSource, at: number) {
+export async function currentAnswers(ctx: Read, screeningId: Id<"screenings">): Promise<Responses> {
+  return toResponses(await paperRows(ctx, screeningId).collect());
+}
+
+/**
+ * The answers at each of `versions`, rebuilt from one pass over the history, so a page of
+ * revisions reads the history once.
+ */
+export async function answersAtVersions(ctx: Read, screeningId: Id<"screenings">, versions: number[]): Promise<Map<number, Responses>> {
+  const result = new Map<number, Responses>();
+  const pending = [...new Set(versions)].sort((a, b) => a - b);
+  if (!pending.length) return result;
+  const state = new Map<string, PaperAnswers>();
+  const snapshot = () => toResponses([...state].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([paperId, answers]) => ({ paperId, answers })));
+  const history = ctx.db.query("screeningAnswerHistory").withIndex("by_screening_and_version", (q) => q.eq("screeningId", screeningId).lte("version", pending.at(-1)!));
+  for await (const row of history) {
+    while (pending.length && row.version > pending[0]) result.set(pending.shift()!, snapshot());
+    if (row.answers.length) state.set(row.paperId, row.answers);
+    else state.delete(row.paperId);
+  }
+  for (const version of pending) result.set(version, snapshot());
+  return result;
+}
+
+/**
+ * Writes each paper's next answers where they changed, and appends them to the history
+ * under the screening's next version. An empty list removes the paper. Returns the
+ * screening's version afterwards.
+ * ponytail: one transaction, so about 8,000 changed papers at once reach Convex's write limit.
+ */
+async function apply(ctx: Write, screening: Doc<"screenings">, updates: Array<{ paperId: string; answers: PaperAnswers }>, existing: Map<string, Doc<"screeningAnswers">>, at: number) {
   const version = screening.version + 1;
   let changed = false;
-  for (const change of changes) {
-    const row = await ctx.db
-      .query("screeningAnswers")
-      .withIndex("by_screening_and_paper_and_question", (q) => q.eq("screeningId", screening._id).eq("paperId", change.paperId).eq("question", change.question))
-      .unique();
-    const entry = { screeningId: screening._id, paperId: change.paperId, question: change.question, setBy, version, at };
-    if (change.answer === "removed") {
-      if (!row) continue;
-      await ctx.db.delete("screeningAnswers", row._id);
-      await ctx.db.insert("screeningAnswerHistory", { ...entry, removed: true });
-    } else {
-      if (row && row.answer === change.answer) continue;
-      if (row) await ctx.db.patch("screeningAnswers", row._id, { answer: change.answer, setBy, updatedAt: at });
-      else await ctx.db.insert("screeningAnswers", { screeningId: screening._id, paperId: change.paperId, question: change.question, answer: change.answer, setBy, updatedAt: at });
-      await ctx.db.insert("screeningAnswerHistory", { ...entry, answer: change.answer });
-    }
+  for (const { paperId, answers } of updates) {
+    const row = existing.get(paperId);
+    if (JSON.stringify(row?.answers ?? []) === JSON.stringify(answers)) continue;
+    if (!answers.length) await ctx.db.delete("screeningAnswers", row!._id);
+    else if (row) await ctx.db.patch("screeningAnswers", row._id, { answers });
+    else await ctx.db.insert("screeningAnswers", { screeningId: screening._id, paperId, answers });
+    await ctx.db.insert("screeningAnswerHistory", { screeningId: screening._id, paperId, answers, version, at });
     changed = true;
   }
   if (!changed) return screening.version;
@@ -84,31 +86,57 @@ async function apply(ctx: Write, screening: Doc<"screenings">, changes: Change[]
   return version;
 }
 
-/** Sets some of one paper's answers, reading only that paper's rows. */
-export async function setPaperAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, paperId: string, responses: Responses[number]["responses"], setBy: AnswerSource, at: number) {
-  const screening = await ensureScreening(ctx, userId, searchId);
-  await apply(ctx, screening, responses.map(({ question, response }) => ({ paperId, question, answer: response })), setBy, at);
+async function paperRow(ctx: Read, screeningId: Id<"screenings">, paperId: string) {
+  const row = await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId).eq("paperId", paperId)).unique();
+  return new Map(row ? [[paperId, row]] : []);
 }
 
-/** Removes one paper's answers, reading only that paper's rows. */
-export async function clearPaperAnswers(ctx: Write, searchId: Id<"searches">, paperId: string, setBy: AnswerSource, at: number) {
+/**
+ * Sets some of one paper's answers, reading only that paper's row. Setting the same answer
+ * from a different source is a change: a person confirming the model's answer is recorded.
+ */
+export async function setPaperAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, paperId: string, responses: Responses[number]["responses"], setBy: AnswerSource, at: number) {
+  const screening = await ensureScreening(ctx, userId, searchId);
+  const existing = await paperRow(ctx, screening._id, paperId);
+  const answers = [...(existing.get(paperId)?.answers ?? [])];
+  for (const { question, response } of responses) {
+    const index = answers.findIndex((value) => value.question === question);
+    if (index >= 0 && answers[index].answer === response && answers[index].setBy === setBy) continue;
+    const value = { question, answer: response, setBy, updatedAt: at };
+    if (index >= 0) answers[index] = value;
+    else answers.push(value);
+  }
+  await apply(ctx, screening, [{ paperId, answers }], existing, at);
+}
+
+/** Removes one paper's answers, reading only that paper's row. */
+export async function clearPaperAnswers(ctx: Write, searchId: Id<"searches">, paperId: string, at: number) {
   const screening = await screeningFor(ctx, searchId);
   if (!screening) return;
-  const rows = await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper_and_question", (q) => q.eq("screeningId", screening._id).eq("paperId", paperId)).collect();
-  await apply(ctx, screening, rows.map((row) => ({ paperId, question: row.question, answer: "removed" as const })), setBy, at);
+  await apply(ctx, screening, [{ paperId, answers: [] }], await paperRow(ctx, screening._id, paperId), at);
 }
 
 /**
  * Makes the answers exactly `next`: for edits that change many papers at once, for new
- * searches, and for the move out of chunks. Returns the screening's version afterwards,
- * or undefined when the search has no screening.
+ * searches, and for the move out of chunks. An answer that keeps its value keeps who set it.
+ * Returns the screening's version afterwards, or undefined when the search has no screening.
  */
 export async function replaceAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, next: Responses, setBy: AnswerSource, at: number) {
-  const existing = await screeningFor(ctx, searchId);
-  if (!existing && next.length === 0) return undefined;
-  const screening = existing ?? (await ensureScreening(ctx, userId, searchId));
-  const wanted = new Map(next.flatMap((row) => row.responses.map((value) => [JSON.stringify([row.paperId, value.question]), { paperId: row.paperId, question: value.question, answer: value.response }] as const)));
-  const current = existing ? await currentAnswers(ctx, screening._id) : [];
-  const removed = current.flatMap((row) => row.responses.filter((value) => !wanted.has(JSON.stringify([row.paperId, value.question]))).map((value) => ({ paperId: row.paperId, question: value.question, answer: "removed" as const })));
-  return apply(ctx, screening, [...removed, ...wanted.values()], setBy, at);
+  const found = await screeningFor(ctx, searchId);
+  if (!found && next.length === 0) return undefined;
+  const screening = found ?? (await ensureScreening(ctx, userId, searchId));
+  const existing = new Map(found ? (await paperRows(ctx, screening._id).collect()).map((row) => [row.paperId, row] as const) : []);
+  const wanted = new Map(next.map((row) => [row.paperId, row.responses] as const));
+  const updates = [...existing.keys()].filter((paperId) => !wanted.has(paperId)).map((paperId) => ({ paperId, answers: [] as PaperAnswers }));
+  for (const [paperId, responses] of wanted) {
+    const previous = existing.get(paperId)?.answers ?? [];
+    updates.push({
+      paperId,
+      answers: responses.map(({ question, response }) => {
+        const kept = previous.find((value) => value.question === question && value.answer === response);
+        return kept ?? { question, answer: response, setBy, updatedAt: at };
+      }),
+    });
+  }
+  return apply(ctx, screening, updates, existing, at);
 }

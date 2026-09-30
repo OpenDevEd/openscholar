@@ -51,6 +51,8 @@ export const searchFields = {
 export const searchValidator = v.object(searchFields);
 /** Who set a screening answer. `unrecorded` is for answers saved before this was recorded. */
 export const answerSourceValidator = v.union(v.literal("model"), v.literal("person"), v.literal("assistant"), v.literal("unrecorded"));
+/** One paper's screening answers, each with who set it and when. */
+export const paperAnswersValidator = v.array(v.object({ question: v.string(), answer: v.union(v.boolean(), v.null()), setBy: answerSourceValidator, updatedAt: v.number() }));
 export type SavedSearch = Infer<typeof searchValidator>;
 const { id: _id, createdAt: _createdAt, ...editableFields } = searchFields;
 export const editValidator = v.union(

@@ -4,7 +4,7 @@ import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
-import { answersAt, clearPaperAnswers, currentAnswers, replaceAnswers, screeningFor, setPaperAnswers, type AnswerSource } from "./answers";
+import { answersAtVersions, clearPaperAnswers, currentAnswers, replaceAnswers, screeningFor, setPaperAnswers, type AnswerSource } from "./answers";
 import {
   applySearchEdit, commandValidator, ratingValidator, searchValidator, shortcutValidator,
   type ResearchCommand, type SavedSearch,
@@ -65,7 +65,8 @@ export const revisions = query({
     const search = await findSearch(ctx, userId, args.id);
     if (!search) return { page: [], isDone: true, continueCursor: "" };
     const page = await ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", search._id)).order("desc").paginate(args.paginationOpts);
-    return { ...page, page: await Promise.all(page.page.map(async row => ({ revision: row.revision, author: row.author, data: await hydrate(ctx, row), deleted: row.deleted, createdAt: row.createdAt }))) };
+    const data = await hydrateRevisions(ctx, search._id, page.page);
+    return { ...page, page: page.page.map((row, i) => ({ revision: row.revision, author: row.author, data: data[i], deleted: row.deleted, createdAt: row.createdAt })) };
   },
 });
 
@@ -73,20 +74,20 @@ function findSearch(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, localId: str
   return ctx.db.query("searches").withIndex("by_user_and_localId", q => q.eq("userId", userId).eq("localId", localId)).unique();
 }
 
-type SearchRow = Pick<Doc<"searches">, "_id" | "data" | "responseChunks">;
-type RevisionRow = Pick<Doc<"searchRevisions">, "searchId" | "data" | "responseChunks" | "answersVersion">;
+type RevisionRow = Pick<Doc<"searchRevisions">, "data" | "responseChunks" | "answersVersion">;
 
-/**
- * A search, or one of its revisions, with its screening answers: the search's current
- * answer rows, or for a revision the answers at the screening version it saw.
- */
-async function hydrate(ctx: Pick<QueryCtx, "db">, row: SearchRow | RevisionRow): Promise<SavedSearch> {
-  if ("searchId" in row) {
-    const screening = row.answersVersion === undefined ? null : await screeningFor(ctx, row.searchId);
-    return { ...row.data, screeningResponses: screening ? await answersAt(ctx, screening._id, row.answersVersion!) : await legacyResponses(ctx, row) };
-  }
+/** A search with its current screening answers. */
+async function hydrate(ctx: Pick<QueryCtx, "db">, row: Pick<Doc<"searches">, "_id" | "data" | "responseChunks">): Promise<SavedSearch> {
   const screening = await screeningFor(ctx, row._id);
   return { ...row.data, screeningResponses: screening ? await currentAnswers(ctx, screening._id) : await legacyResponses(ctx, row) };
+}
+
+/** Revisions of one search, each with the answers at the screening version it saw. */
+async function hydrateRevisions(ctx: Pick<QueryCtx, "db">, searchId: Id<"searches">, rows: RevisionRow[]): Promise<SavedSearch[]> {
+  const versions = rows.flatMap(row => (row.answersVersion === undefined ? [] : [row.answersVersion]));
+  const screening = versions.length ? await screeningFor(ctx, searchId) : null;
+  const answers = screening ? await answersAtVersions(ctx, screening._id, versions) : new Map();
+  return Promise.all(rows.map(async row => ({ ...row.data, screeningResponses: row.answersVersion === undefined || !screening ? await legacyResponses(ctx, row) : answers.get(row.answersVersion)! })));
 }
 
 /**
@@ -103,23 +104,27 @@ async function legacyResponses(ctx: Pick<QueryCtx, "db">, row: Pick<Doc<"searche
 /**
  * Moves one search's answers out of its chunks: each revision's answers go into the
  * history as a version the revision then points at, and the search's current answers
- * into answer rows. Every search saved by the old code has a `responseChunks` field, and moving clears it, so
- * a search moves once. Deleted searches are reached through their revisions. Safe to run again.
+ * into answer rows. Revisions before the first answer need no version: their chunks are
+ * empty. Every search saved by the old code has a `responseChunks` field, and moving clears
+ * it, so a search moves once. Deleted searches are reached through their revisions. Safe to run again.
  */
 export async function moveSearchAnswers(ctx: MutationCtx, searchId: Id<"searches">, userId: Id<"users">) {
   const search = await ctx.db.get("searches", searchId);
   if (search?.responseChunks === undefined && search !== null) return false;
   if (await screeningFor(ctx, searchId)) return false;
   const revisions = await ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", searchId)).collect();
-  const snapshots: Array<{ revision?: Id<"searchRevisions">; at: number; answers: SavedSearch["screeningResponses"] }> = await Promise.all(revisions.map(async row => ({ revision: row._id, at: row.createdAt, answers: await legacyResponses(ctx, row) })));
-  if (search) snapshots.push({ revision: undefined, at: Date.now(), answers: await legacyResponses(ctx, search) });
-  const moved = snapshots.some(snapshot => snapshot.answers.length > 0);
-  if (moved) for (const snapshot of snapshots) {
-    const answersVersion = await replaceAnswers(ctx, userId, searchId, snapshot.answers, "unrecorded", snapshot.at);
-    if (snapshot.revision) await ctx.db.patch("searchRevisions", snapshot.revision, { answersVersion });
+  let previous: string | undefined;
+  let answersVersion: number | undefined;
+  for (const row of [...revisions, ...(search ? [search] : [])]) {
+    // The old code reused a search's chunks until its answers changed, so a large search
+    // has few distinct chunk lists. Replaying only those keeps the move within one transaction's limits.
+    const chunks = JSON.stringify(row.responseChunks ?? row.data.screeningResponses);
+    if (chunks !== previous) answersVersion = await replaceAnswers(ctx, userId, searchId, await legacyResponses(ctx, row), "unrecorded", "searchId" in row ? row.createdAt : Date.now());
+    previous = chunks;
+    if ("searchId" in row && answersVersion !== undefined) await ctx.db.patch("searchRevisions", row._id, { answersVersion });
   }
   if (search) await ctx.db.patch("searches", search._id, { responseChunks: undefined });
-  return moved;
+  return answersVersion !== undefined;
 }
 
 /** Answers in a comparable order, whatever order they were stored in. */
@@ -141,7 +146,7 @@ export async function verifyMovedAnswers(ctx: QueryCtx) {
       if ((await legacyResponses(ctx, row)).length > 0) waiting++;
       continue;
     }
-    if (normalized(await legacyResponses(ctx, row)) !== normalized((await hydrate(ctx, row)).screeningResponses)) mismatches.push(`${row.searchId} revision ${row.revision}`);
+    if (normalized(await legacyResponses(ctx, row)) !== normalized((await hydrateRevisions(ctx, row.searchId, [row]))[0].screeningResponses)) mismatches.push(`${row.searchId} revision ${row.revision}`);
   }
   for await (const search of ctx.db.query("searches")) if (search.responseChunks !== undefined) waiting++;
   return { revisions, waiting, mismatches };
@@ -188,7 +193,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       // One paper's answers: the page writes these one paper at a time, so they touch only that paper and make no revision.
       if (edit.kind === "responses" || (edit.kind === "clearResponses" && edit.paperId)) {
         if (edit.kind === "responses") await setPaperAnswers(ctx, userId, search._id, edit.paperId, edit.responses, answerSource(author, edit.by), now.getTime());
-        else await clearPaperAnswers(ctx, search._id, edit.paperId!, answerSource(author), now.getTime());
+        else await clearPaperAnswers(ctx, search._id, edit.paperId!, now.getTime());
         await ctx.db.patch("searches", search._id, { data: { ...search.data, updatedAt: now.toISOString() } });
         return;
       }

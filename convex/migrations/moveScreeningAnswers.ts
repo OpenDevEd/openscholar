@@ -19,6 +19,10 @@ const migrations = new Migrations<DataModel>(components.migrations);
  *
  * Chunks stay readable until `verify` reports no mismatches and nothing waiting on the
  * live deployment; a later change removes them.
+ *
+ * ponytail: each search moves in one transaction and `verify` is one query. Chunk storage only
+ * ever ran on dev (2026-09-30: 31 revisions and one chunk on shared dev), far inside both;
+ * a deployment with large screenings would need the move split per revision.
  */
 export const moveAnswers = migrations.define({
   table: "searchRevisions",

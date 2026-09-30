@@ -22,7 +22,7 @@ const batch = { accountId: "alice", searches: [record], shortcuts: [{ shorthand:
 const paginationOpts = { cursor: null, numItems: 25 };
 
 async function setup() {
-  const t = convexTest(schema);
+  const t = convexTest({ schema, transactionLimits: true });
   const ids = await t.run(async ctx => {
     const seed = (clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@example.com`, state: "active", createdAt: 1, updatedAt: 1 });
     return { alice: await seed("alice"), bob: await seed("bob") };
@@ -31,10 +31,10 @@ async function setup() {
 }
 
 describe("account research records", () => {
-  it("stores one row per answer, so changing one answer writes one row, and old revisions keep their answers", async () => {
+  it("stores one row per paper, so changing one answer writes one row, and old revisions keep their answers", async () => {
     const { alice, t } = await setup();
     const question = "هل هذه تجربة؟ ".repeat(60);
-    const large = { ...record, screeningResponses: Array.from({ length: 1500 }, (_, i) => ({ paperId: `W${i}`, responses: [{ question, response: true }] })) };
+    const large = { ...record, screeningResponses: Array.from({ length: 1500 }, (_, i) => ({ paperId: `W${i}`, responses: [{ question, response: true }, { question: "Adults?", response: i % 2 === 0 }, { question: "In Africa?", response: null }] })) };
     const current = async () => restoreSearch((await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id }))!);
     const count = (table: "screeningAnswers" | "screeningAnswerHistory" | "searchRevisions") => t.run(async ctx => (await ctx.db.query(table).collect()).length);
     await alice.mutation(api.research.records.importBatch, { ...batch, searches: [large] });
@@ -45,10 +45,12 @@ describe("account research records", () => {
     expect(await count("screeningAnswerHistory")).toBe(history + 1);
     expect(await count("screeningAnswers")).toBe(1500);
     expect(await count("searchRevisions")).toBe(1);
-    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "large-page", command: { kind: "editSearch", id: record.id, edit: { kind: "patch", fields: { page: 2 }, clear: [] } } });
-    const [latest, first] = (await alice.query(api.research.records.revisions, { accountId: "alice", id: record.id, paginationOpts })).page.map(row => restoreSearch(row.data).screeningResponses);
-    expect(first).toEqual(restoreSearch(large).screeningResponses);
-    expect(latest.W7[question]).toBe(false);
+    // A full page of revisions of a large screening reads within one query's limits.
+    for (let page = 2; page <= 25; page++) await alice.mutation(api.research.records.change, { accountId: "alice", requestId: `page-${page}`, command: { kind: "editSearch", id: record.id, edit: { kind: "patch", fields: { page }, clear: [] } } });
+    const revisions = (await alice.query(api.research.records.revisions, { accountId: "alice", id: record.id, paginationOpts })).page.map(row => restoreSearch(row.data).screeningResponses);
+    expect(revisions).toHaveLength(25);
+    expect(revisions.at(-1)).toEqual(restoreSearch(large).screeningResponses);
+    expect(revisions[0].W7[question]).toBe(false);
     expect((await current()).screeningResponses.W7[question]).toBe(false);
   });
 
@@ -113,8 +115,12 @@ describe("account research records", () => {
     expect(revisions.page[1].data).toEqual(record);
     expect(restoreSearch(revisions.page[0].data).screeningResponses).toEqual({ W1: { "Randomized?": false }, W2: { "Randomized?": false } });
     const answers = await t.run(ctx => ctx.db.query("screeningAnswers").collect());
-    expect(answers.map(row => [row.paperId, row.setBy]).sort()).toEqual([["W1", "assistant"], ["W2", "person"]]);
+    expect(answers.map(row => [row.paperId, row.answers[0].setBy]).sort()).toEqual([["W1", "assistant"], ["W2", "person"]]);
     expect((await t.run(ctx => ctx.db.query("screeningAnswerHistory").collect())).filter(row => row.paperId === "W2")).toHaveLength(2);
+    // A person confirming the model's answer is a change, though the value is the same.
+    for (const by of ["model", "person"] as const) await alice.mutation(api.research.records.change, { ...args, requestId: by, command: { ...args.command, edit: { ...args.command.edit, paperId: "W3", responses: [{ question: "Randomized?", response: true }], by } } });
+    const confirmed = await t.run(ctx => ctx.db.query("screeningAnswerHistory").collect());
+    expect(confirmed.filter(row => row.paperId === "W3").map(row => row.answers[0].setBy)).toEqual(["model", "person"]);
   });
 
   it("merges independent paper answers and removes only a renamed question's answers", async () => {
@@ -182,7 +188,7 @@ describe("account research records", () => {
     expect(await t.run(ctx => verifyMovedAnswers(ctx))).toEqual({ revisions: 4, waiting: 0, mismatches: [] });
     expect((await t.run(ctx => ctx.db.get("searches", live)))?.responseChunks).toBeUndefined();
     const history = await t.run(ctx => ctx.db.query("screeningAnswerHistory").collect());
-    expect(history.every(row => row.setBy === "unrecorded")).toBe(true);
+    expect(history.every(row => row.answers.every(answer => answer.setBy === "unrecorded"))).toBe(true);
     expect(history).toHaveLength(2 + 3 + 2 + 1); // per revision: two set; one removed, one changed, one set; two removed; the deleted search's one
   });
 
