@@ -805,7 +805,7 @@ function ModelPill() {
         // Right-aligned, so while the presets load nothing beside it moves when it fills in.
         <button
           type="button"
-          aria-label="Model and effort"
+          aria-label={model ? [stripProviderPrefix(model.name), effort && tm(`efforts.${effort}`)].filter(Boolean).join(", ") : "Model"}
           className={cn(
             "ml-auto flex h-8 min-w-0 items-center gap-2 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground",
             !model && "pointer-events-none opacity-0",
@@ -816,9 +816,8 @@ function ModelPill() {
             <span className="min-w-0 truncate">{model ? stripProviderPrefix(model.name) : ""}</span>
           </TooltipHint>
           {model?.reasoningEfforts && effort ? (
-            <span className="flex shrink-0 items-center gap-1.5">
-              <EffortMeter levels={model.reasoningEfforts} level={effort} filled="bg-current" />
-              {tm(`efforts.${effort}`)}
+            <span className="shrink-0">
+              <EffortMeter levels={model.reasoningEfforts} level={effort} filled="bg-current" small />
             </span>
           ) : null}
           <ChevronDown className="size-3 shrink-0 opacity-60" />

@@ -31,16 +31,17 @@ export function IntelligenceMeter({ index, className }: { index?: number | null;
 }
 
 /** Reasoning effort as rising bars, out of the levels the model takes; "none" fills none. */
-export function EffortMeter({ levels, level, filled = "bg-primary" }: { levels: Effort[]; level: Effort; filled?: string }) {
+export function EffortMeter({ levels, level, filled = "bg-primary", small }: { levels: Effort[]; level: Effort; filled?: string; small?: boolean }) {
   const scale: Effort[] = levels.filter((l) => l !== "none");
   const on = scale.indexOf(level) + 1;
+  const [low, high] = small ? [3, 10] : [5, 16];
   return (
-    <span className="flex h-4 items-end gap-[3px]" aria-hidden>
+    <span className={cn("flex items-end", small ? "h-2.5 gap-[2px]" : "h-4 gap-[3px]")} aria-hidden>
       {scale.map((l, i) => (
         <span
           key={l}
-          className={cn("w-[3px] rounded-full", i < on ? filled : "bg-foreground/15")}
-          style={{ height: `${5 + (i * 11) / Math.max(1, scale.length - 1)}px` }}
+          className={cn("rounded-full", small ? "w-[2px]" : "w-[3px]", i < on ? filled : "bg-foreground/15")}
+          style={{ height: `${low + (i * (high - low)) / Math.max(1, scale.length - 1)}px` }}
         />
       ))}
     </span>
