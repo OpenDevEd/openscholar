@@ -8,7 +8,7 @@ import {
   type ActionCtx,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";

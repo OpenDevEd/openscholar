@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
-import { setupAggregates } from "../aggregates.test-support";
 import { setupExtractionPaperWorkpool } from "./workpool.test-support";
 import { fakeAutumn, installFakeAutumn, seedCreditsForTest } from "../../billing/billing.test-support";
 
@@ -332,7 +331,6 @@ describe("extraction paper queue worker", () => {
 
   it("pauses the job and parks the paper when its credits can't be reserved", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { userId, jobId, paperId, queueId } = await seedAlreadyAnsweredPaper(t, {
       credits: 2,
       answered: false,
@@ -419,7 +417,6 @@ describe("extraction paper queue worker", () => {
 
   it("marks an unprocessable paper download_failed and completes the queue item", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { paperId, queueId } = await seedLeasedUnprocessablePaper(t);
 
     await t.action(internal.extraction.paperWorker.runPaperQueueItem, {
@@ -441,7 +438,6 @@ describe("extraction paper queue worker", () => {
 
   it("finalizes an already answered paper without re-running question work", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const { paperId, queueId } = await seedAlreadyAnsweredPaper(t);
 
     await t.action(internal.extraction.paperWorker.runPaperQueueItem, {
@@ -472,7 +468,6 @@ describe("extraction paper queue worker", () => {
 
   it("dispatches the next pending paper when a worker opens capacity", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     setupExtractionPaperWorkpool(t);
     const {
       completedPaperId,

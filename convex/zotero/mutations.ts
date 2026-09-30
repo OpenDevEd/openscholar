@@ -1,7 +1,7 @@
 /**
  * Zotero mutations - OAuth flow and connection management
  */
-import { mutation, internalMutation } from "../_generated/server";
+import { mutation, internalMutation } from "../lib/functions";
 import { v } from "convex/values";
 import { getCurrentUser, requireAuth } from "../lib/auth";
 

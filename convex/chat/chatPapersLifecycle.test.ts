@@ -15,7 +15,6 @@ import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { setupAggregates } from "../extraction/aggregates.test-support";
 
 type TestInstance = ReturnType<typeof convexTest>;
 
@@ -164,7 +163,6 @@ describe("persistPreparedSourcesForJob seeds chatPapers", () => {
 describe("deleteExtractionInternal cascade clears chatPapers", () => {
   it("drains chatPapers for a chat-mode job across the self-rescheduling batches", async () => {
     const t = convexTest(schema);
-    setupAggregates(t);
     const userId = await seedUser(t);
     const jobId = await insertChatJob(t, userId);
 

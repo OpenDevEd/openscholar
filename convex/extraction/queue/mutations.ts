@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { WorkId } from "@convex-dev/workpool";
 import { internal } from "../../_generated/api";
-import { internalMutation, type MutationCtx } from "../../_generated/server";
+import { internalMutation, type MutationCtx } from "../../lib/functions";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { extractionPaperPool } from "../../workpool";
 import { extractionQueueStatusValidator } from "../validators";

@@ -1,4 +1,4 @@
-import { internalMutation } from "../_generated/server";
+import { internalMutation } from "../lib/functions";
 import { v } from "convex/values";
 import { activeModels, MAX_CATALOG_MODELS } from "./catalog";
 import { effortValidator } from "../aiModelConfig/validators";

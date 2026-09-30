@@ -2,7 +2,7 @@ import {
   mutation,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";

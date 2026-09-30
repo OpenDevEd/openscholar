@@ -2,12 +2,10 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { setupAggregates } from "../extraction/aggregates.test-support";
 import { insertUsage } from "./usageLog";
 
 async function setup() {
   const t = convexTest(schema);
-  setupAggregates(t);
   const { userId, jobId } = await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { clerkId: "clerk_pages", email: "pages@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
     const jobId = await ctx.db.insert("extractionJobs", { userId, mode: "chat", sourceType: "history", name: "c", messageCount: 0, createdAt: 0, updatedAt: 0 });

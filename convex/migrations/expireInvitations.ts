@@ -1,8 +1,9 @@
 import { Migrations } from "@convex-dev/migrations";
+import { internalMutation } from "../lib/functions";
 import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 
-const migrations = new Migrations<DataModel>(components.migrations);
+const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
 /**
  * Invitations saved before expiry was scheduled (#350): a pending one past its time is

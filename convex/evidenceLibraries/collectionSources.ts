@@ -7,7 +7,7 @@ import {
   query,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { internal } from "../_generated/api";
 import { writeAuditLogRecord } from "../lib/audit";
 import { requireAuth } from "../lib/auth";

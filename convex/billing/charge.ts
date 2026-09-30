@@ -7,7 +7,7 @@
  *   await settleCredits(ctx, { userId, chargeId, credits: actual, usage });
  */
 import { v, type Infer } from "convex/values";
-import { internalAction, internalMutation, internalQuery, type ActionCtx } from "../_generated/server";
+import { internalAction, internalMutation, internalQuery, type ActionCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { autumn, AutumnError } from "./autumn";

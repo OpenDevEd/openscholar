@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, query } from "../_generated/server";
+import { internalMutation, query } from "../lib/functions";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { usageKindValidator } from "./validators";

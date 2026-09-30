@@ -1,4 +1,4 @@
-import { mutation, internalMutation } from "../_generated/server";
+import { mutation, internalMutation } from "../lib/functions";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";

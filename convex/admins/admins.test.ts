@@ -2,7 +2,6 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { setupAggregates } from "../extraction/aggregates.test-support";
 
 async function seedUser(t: ReturnType<typeof convexTest>, clerkId: string, email: string) {
   return await t.run((ctx) =>
@@ -12,7 +11,6 @@ async function seedUser(t: ReturnType<typeof convexTest>, clerkId: string, email
 
 async function setup() {
   const t = convexTest(schema);
-  setupAggregates(t);
   const adminId = await seedUser(t, "clerk_admin", "admin@test.local");
   const memberId = await seedUser(t, "clerk_member", "member@test.local");
   await t.mutation(internal.admins.mutations.grant, { email: "Admin@test.local" });

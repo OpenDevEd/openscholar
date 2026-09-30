@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import { internalMutation, internalQuery, mutation, query } from "../_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "../lib/functions";
 import { requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvitations } from "./access";
 import { getCurrentUser } from "../lib/auth";
 import { rateLimit } from "../lib/rateLimit";

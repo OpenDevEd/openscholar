@@ -5,7 +5,7 @@
  * functions, deleteExtraction's scheduler hop).
  */
 
-import { internalMutation } from "../../../_generated/server";
+import { internalMutation } from "../../../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../../../_generated/api";
 import { batchDeleteByIndex } from "../../../lib/cascade";

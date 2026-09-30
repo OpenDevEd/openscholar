@@ -4,7 +4,7 @@ import {
   mutation,
   type MutationCtx,
   type QueryCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import {
   OPENALEX_API_CREDENTIAL_KEY,
   OPENALEX_API_KEY_INSTANCE,

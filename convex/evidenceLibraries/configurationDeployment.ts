@@ -11,7 +11,7 @@ import {
   internalQuery,
   mutation,
   type MutationCtx,
-} from "../_generated/server";
+} from "../lib/functions";
 import { v } from "convex/values";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
 import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";

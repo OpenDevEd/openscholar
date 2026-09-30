@@ -14,7 +14,7 @@
  * cascades for both modes (cascade is mode-agnostic).
  */
 
-import { mutation } from "../../_generated/server";
+import { mutation } from "../../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";

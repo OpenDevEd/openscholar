@@ -8,16 +8,12 @@
  * answered/total counts for the headline, so the component does not
  * need to reason about paginated result slices.
  *
- * Data source:
- *   - `extractionPaperErrors.by_job` — one row per failed attempt;
- *     bounded per job, indexed.
- *   - `extractionResults.by_job` — one row per per-question result;
- *     bounded (papers × questions). Answered = `status === "completed"`,
- *     total = row count.
+ * Data source: the job's result and paper error counters
+ * (`../resultCounts.ts`), kept by triggers on every write, so the query
+ * reads a few counters however large the job is (#351). Answered =
+ * completed results, total = every result.
  *
- * The summarization itself is pure (`lib/extraction/failures-summary.ts`);
- * this query just assembles inputs and defers classification to the
- * shared taxonomy.
+ * The summarization itself is pure (`lib/extraction/failures-summary.ts`).
  *
  * Caller-safe: returns zeros for unowned / missing jobs, matching
  * queries/costs.ts and queries/retry.ts.
@@ -26,10 +22,8 @@
 import { query } from "../../_generated/server";
 import { v } from "convex/values";
 import { resolveOwnedJob } from "../access";
-import {
-  summarizeFailures,
-  type FailureInput,
-} from "../../../lib/extraction/failures-summary";
+import { summarizeFailures } from "../../../lib/extraction/failures-summary";
+import { readPaperErrorCounts, readResultCounts } from "../resultCounts";
 
 export const getMixedSuccessSummary = query({
   args: { jobId: v.id("extractionJobs") },
@@ -56,29 +50,11 @@ export const getMixedSuccessSummary = query({
       };
     }
 
-    const [errorRows, resultRows] = await Promise.all([
-      ctx.db
-        .query("extractionPaperErrors")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect(),
-      ctx.db
-        .query("extractionResults")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect(),
-    ]);
-
-    const inputs: FailureInput[] = errorRows.map((row) => ({ code: row.code }));
-    const failureSummary = summarizeFailures(inputs);
-
-    let answeredTotal = 0;
-    for (const r of resultRows) {
-      if (r.status === "completed") answeredTotal += 1;
-    }
-
+    const [counts, errors] = await Promise.all([readResultCounts(ctx, jobId), readPaperErrorCounts(ctx, jobId)]);
     return {
-      ...failureSummary,
-      answeredTotal,
-      totalQuestions: resultRows.length,
+      ...summarizeFailures(errors),
+      answeredTotal: counts.completed,
+      totalQuestions: counts.total,
     };
   },
 });

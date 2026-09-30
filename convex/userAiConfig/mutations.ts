@@ -1,4 +1,4 @@
-import { mutation, type MutationCtx } from "../_generated/server";
+import { mutation, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
 import { aiTaskValidator, effortValidator, modelChoiceValidator } from "../aiModelConfig/validators";
 import { requireAuth } from "../lib/auth";

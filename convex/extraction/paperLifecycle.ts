@@ -12,7 +12,6 @@ import {
   type PaperStatus,
 } from "./stateMachine";
 import { recomputePaperListProjection } from "./listProjection";
-import { incPaperOutcome } from "./jobCounters";
 
 /**
  * Terminal paper statuses. Any transition into one of these is
@@ -115,17 +114,7 @@ export async function markPaperTerminalTx(
   await ctx.db.patch("extractionPapers", paperId, patch);
   await recomputePaperListProjection(ctx, paperId);
 
-  // Tier B: per-job processed/failed counts now live in a sharded
-  // counter (see ./jobCounters.ts). Two writers landing terminal
-  // transitions for the same job almost always hit different shards,
-  // so the P-way OCC retry storm on the singleton extractionJobs row
-  // is gone. We also stop bumping `extractionJobs.updatedAt` on the
-  // per-paper path — the finalization write on the final transition is
-  // the only updatedAt source from per-paper code
-  // now, which is enough for "last activity" sort.
-  if (paper.processable !== false) {
-    await incPaperOutcome(ctx, paper.jobId, newStatus === "completed");
-  }
-
+  // The job's processed/failed counts follow this status change through the
+  // trigger on extractionPapers (./jobCounters.ts).
   return { applied: true, paper };
 }
