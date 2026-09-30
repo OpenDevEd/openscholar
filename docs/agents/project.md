@@ -57,10 +57,17 @@ supported process changed. Read the page back before claiming success.
 The assistant can do everything a user can, through the same actions
 (`plans/research-assistant/README.md`, milestone OS-17).
 
-- Every new or changed user action needs an assistant tool. Once the action
-  registry lands (#323), add the action's registry entry; CI fails on a public
-  mutation or action that is neither registered nor exempt with a reason.
-  Until then, name the tool the action needs in the pull request.
+- Every new or changed user action ships with its registry entry
+  (`convex/lib/userActions.ts`). Define it once with `defineUserQuery` or
+  `defineUserMutation` (a core that takes the acting user), export the public
+  function built from it and its `…ForAssistant` twin, and add the entry to
+  `USER_ACTIONS` in `convex/lib/userActionRegistry.ts`. The assistant's tool is
+  built from that list.
+- `npm run check:user-actions` runs in CI and fails on any public Convex
+  function or Next.js server action that is neither registered nor listed in
+  `scripts/user-actions-exempt.json`. That file lists plumbing, with the reason
+  it isn't a user action, and pending user actions, with the issue that will
+  register them. Plumbing is never a place for a missing user action.
 - Tools address records by ID. The assistant changes what a user sees by
   changing the Convex record the page renders.
 - Reading at scale runs through OpenScholar's own features (screening,
