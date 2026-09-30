@@ -30,8 +30,10 @@ everything a user can, calling the same actions as the UI:
 ## Fixed decisions (2026-09-30)
 
 1. **Extraction becomes extraction only.** The assistant is a separate
-   feature. "Start chat" opens an assistant thread on that search,
-   referenced by ID; papers are no longer copied into the prompt.
+   feature. "Start chat" opens an assistant thread with an @ mention of
+   that search already in the composer, so the first message carries its ID;
+   papers are no longer copied into the prompt. Changed on 2026-09-30, see
+   "Decision changes".
 2. **The assistant can do everything a user can, and nothing more.** Every
    user action is registered once in an action registry. The UI mutation and
    the assistant tool are both generated from that entry. A CI check fails
@@ -53,9 +55,9 @@ everything a user can, calling the same actions as the UI:
    or organizations, and an organization grant covers every member. Tools run
    as whoever sent the message, with that person's permissions and credits.
 7. **Chats range over the whole account.** Nothing is attached to a chat: the
-   assistant can reach every record the person can, through account search.
+   assistant can reach every record the sender can, through account search.
    Typing @ in a message points at one record precisely, and the message
-   stores that record's ID.
+   stores that record's ID. Changed on 2026-09-30, see "Decision changes".
 8. **Spending credits always asks first.** The approval card shows the
    estimate and offers **Allow once** and **Always allow in this chat**. The
    allowance is stored per chat and per person, can carry a per-action credit
@@ -70,6 +72,20 @@ everything a user can, calling the same actions as the UI:
    finishes.
 10. **Build on Convex agent and AI SDK 7.** See "Tools considered" for why
     the other frameworks were not adopted.
+
+## Decision changes
+
+- **2026-09-30, decisions 1 and 7.** Was: a chat starts from whatever it
+  was opened on and can attach more records as it goes, and "Start chat"
+  opens a thread with the search attached by ID. Now: nothing is attached.
+  The assistant reaches every record the sender can through account search,
+  and @ in a message points at one record by ID; "Start chat" puts an @
+  mention of the search in the composer. Reason: the assistant can already
+  reach everything the person can, so attaching only added a step and a
+  second list to manage, while @ keeps the one thing attaching did well,
+  pointing at an exact record. Proof: the assistant mock on branch
+  `mock/research-assistant` (commit 9f607773) runs the whole flow without
+  attaching, with the @ picker in the composer.
 
 ## Tools considered (2026-09-30)
 
@@ -146,8 +162,13 @@ Results are never stored. They're fetched on the server through
 ### Context per turn (#326)
 
 1. Instructions and the core tools. These never change, so they stay cached.
-2. A snapshot rebuilt from Convex: the records its messages point at with @,
-   the records it has worked on, open jobs, the user's current view.
+2. A snapshot rebuilt from Convex for the person sending the message: the
+   records the current message and the recent turns point at with @, open
+   jobs, and the sender's current view. Each record is checked against the
+   sender's access first, so one they can't open never reaches the model,
+   including after access is revoked. The thread keeps the IDs of every
+   record it has worked on, and tools load any of them on demand, so the
+   snapshot stays bounded however long the chat runs.
 3. A running summary of older turns, compacted in large chunks under a
    per-model budget.
 4. Recent turns, with old tool results cut to one line.
@@ -182,7 +203,7 @@ thread event, and the assistant writes a readout.
 | 4 | #324 Assistant threads and sharing | #321, #323 |
 | 5 | #325 Extraction only, chat from a search | #322, #324 |
 | 6 | #326 Context budget | #324 |
-| 7 | #327 Tools for searches, shortcuts, collections, saved papers, ratings, view | #322, #323, #326 |
+| 7 | #327 Tools for searches, shortcuts, collections, saved papers, ratings, view, account search and the @ picker | #322, #323, #326 |
 | 8 | #328 Screening and extraction with approval and job cards | #327 |
 | 9 | #329 Evidence Library drafts | #327 |
 
