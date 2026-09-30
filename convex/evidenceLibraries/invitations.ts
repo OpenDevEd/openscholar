@@ -22,9 +22,8 @@ export const prepare = internalMutation({
     for (const user of users) {
       if (await readLibraryRole(ctx, access.library, user.clerkId)) throw createError("CONFLICT", "This person already has library access");
     }
-    const invitations = await ctx.db.query("evidenceLibraryInvitations")
-      .withIndex("by_libraryId_and_email", q => q.eq("libraryId", args.libraryId).eq("email", email)).collect();
-    const pending = invitations.find(i => i.state === "pending");
+    const pending = await ctx.db.query("evidenceLibraryInvitations")
+      .withIndex("by_libraryId_and_email_and_state", q => q.eq("libraryId", args.libraryId).eq("email", email).eq("state", "pending")).first();
     const expiresAt = Date.now() + 7 * 86400000;
     const invitationId = pending?._id ?? await ctx.db.insert("evidenceLibraryInvitations", { ...args, email, invitedBy: access.clerkUserId, expiresAt, state: "pending", delivery: "queued" });
     if (pending) await ctx.db.patch("evidenceLibraryInvitations", pending._id, { role: args.role, invitedBy: access.clerkUserId, expiresAt, delivery: "queued" });

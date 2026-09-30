@@ -114,6 +114,7 @@ export default defineSchema({
     itemKey: v.string(),
     rank: v.optional(v.number()),
   }).index("by_profileId", ["profileId"])
+    .index("by_profileId_and_rank", ["profileId", "rank"])
     .index("by_libraryId_and_itemKey", ["libraryId", "itemKey"]),
 
   authorProfiles: defineTable({
@@ -185,7 +186,7 @@ export default defineSchema({
     expiresAt: v.number(),
     state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
     delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
-  }).index("by_libraryId_and_email", ["libraryId", "email"])
+  }).index("by_libraryId_and_email_and_state", ["libraryId", "email", "state"])
     .index("by_libraryId_and_state", ["libraryId", "state"])
     .index("by_email_and_state", ["email", "state"]),
 

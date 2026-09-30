@@ -86,11 +86,12 @@ async function saveContent(ctx: MutationCtx, args: {profileId: Id<"authorProfile
   if (profile.revision !== args.expectedRevision) throw createError("CONFLICT", "This profile changed while you were editing. Reload it before saving.");
   if (args.featured) {
     if (args.featured.length > 1000 || new Set(args.featured).size !== args.featured.length) throw createError("VALIDATION_ERROR", "Invalid publication selection");
-    const associations = await ctx.db.query("authorPublications").withIndex("by_profileId", q => q.eq("profileId", args.profileId)).collect();
-    const available = new Set(associations.map(row => row._id));
-    if (args.featured.some(id => !available.has(id))) throw createError("VALIDATION_ERROR", "Only associated publications can be selected");
+    // Reads only the featured publications and the ones ranked now, never every association.
+    const featured = await Promise.all(args.featured.map(id => ctx.db.get("authorPublications", id)));
+    if (featured.some(row => row?.profileId !== args.profileId)) throw createError("VALIDATION_ERROR", "Only associated publications can be selected");
     const ranks = new Map(args.featured.map((id, rank) => [id, rank]));
-    for (const association of associations) {
+    const ranked = await ctx.db.query("authorPublications").withIndex("by_profileId_and_rank", q => q.eq("profileId", args.profileId).gte("rank", 0)).take(1000);
+    for (const association of [...ranked.filter(row => !ranks.has(row._id)), ...featured.map(row => row!)]) {
       const rank = ranks.get(association._id);
       if (association.rank !== rank) await ctx.db.patch("authorPublications", association._id, {rank});
     }
