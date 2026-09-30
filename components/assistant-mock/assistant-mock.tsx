@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { ArrowUp, ChevronDown, CircleStop, Coins, Eye, MessagesSquare, Pencil, PictureInPicture2, RotateCcw, Sparkles, Square, SquarePen, UserPlus, X } from "lucide-react";
+import { ArrowRight, ArrowUp, Check, ChevronDown, CircleHelp, CircleStop, Coins, Copy, Eye, FileText, Folder, FolderPlus, Globe, LayoutList, ListChecks, Search, SlidersHorizontal, TableProperties, MessagesSquare, Pencil, PictureInPicture2, RotateCcw, Sparkles, Square, SquarePen, UserPlus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
 import { StatusIcon } from "@/components/evidence-libraries/configuration/status-chip";
 import { EASE, effortOf, usePresetModels, type PickedModel, type PresetPick } from "@/components/settings/model-map";
-import { ApprovalCard, CollectionCard, JobCard, KindTile, QuestionCard, RunMap, VersionBars, WorkingText, type Ask, type Step } from "./run-map";
+import { ApprovalCard, CollectionCard, Facts, JobCard, KindTile, QuestionCard, RunMap, VersionBars, WorkingText, type Ask, type Step } from "./run-map";
 import { LogoMark } from "./logo-mark";
 import { Dim, EdgeGlow, HistorySheet, SHEET_SPRING, Sheet, ShareSheet, TopUpSheet, stackedUnder, type SheetKind } from "./sheets";
 import { Cite, EXTRACT_CELLS, ExtractionCard } from "./extraction";
@@ -84,11 +84,13 @@ const EXTRACT_ASK: Ask = {
 const publishAsk = (collection: string): Ask => ({
   kind: "publish",
   title: "Publish the new homepage",
-  items: ["A tagline", "A description", `The featured collection “${collection}”`],
+  items: ["The homepage intro", "A tagline and description", `“${collection}” first among the homepage collections`],
   always: false,
   confirm: "Publish",
   decline: "Don't publish",
 });
+/** What the homepage text step writes: the visible intro, plus the tagline and description search results show. */
+const HOME_TEXT = ["Intro", "Tagline", "Description"];
 const PUBLISH_STAGES = ["Checking the settings", "Building the library", "Rolling it out"];
 
 /** What the assistant says it can see, from the route the user is on. */
@@ -265,12 +267,12 @@ export function AssistantOverlay() {
   };
 
   const optimize = async (token: number, id: number) => {
-    await work(token, id, 0, { kind: "search", title: "Reading your search", detail: "Keywords and filters", status: "working" },
-      { title: "Read your search", detail: <span className="tabular-nums">{ORIGINAL_COUNT} results, 6 on this page</span> }, 1100);
-    await work(token, id, 1, { kind: "versions", title: "Trying tighter versions", detail: "Running each one against OpenAlex", status: "working" },
+    await work(token, id, 0, { kind: "search", title: "Reading your search", detail: <Facts items={[{ icon: Search, label: "Query" }, { icon: SlidersHorizontal, label: "Filters" }]} />, status: "working" },
+      { title: "Read your search", detail: <Facts items={[{ value: ORIGINAL_COUNT, label: "results" }, { value: 6, label: "on this page" }]} /> }, 1100);
+    await work(token, id, 1, { kind: "versions", title: "Trying tighter versions", detail: <Facts items={[{ value: 3, label: "versions" }, { icon: Globe, label: "OpenAlex counts" }]} />, status: "working" },
       { title: "Tried 3 versions", detail: <VersionBars /> }, 1700);
-    await work(token, id, 2, { kind: "write", title: "Updating your search", detail: "Query and 2 filters", status: "working" },
-      { title: "Updated your search", detail: <span className="tabular-nums">{ORIGINAL_COUNT} → {TIGHT_COUNT} results</span>, onUndo: () => undoSearch(id) }, 1200);
+    await work(token, id, 2, { kind: "write", title: "Updating your search", detail: <Facts items={[{ icon: Search, label: "Query" }, { icon: SlidersHorizontal, value: 2, label: "filters" }]} />, status: "working" },
+      { title: "Updated your search", detail: <Facts items={[{ value: <>{ORIGINAL_COUNT} <ArrowRight className="inline size-3" /> {TIGHT_COUNT}</>, label: "results" }]} />, onUndo: () => undoSearch(id) }, 1200);
     await stream(
       token,
       id,
@@ -279,7 +281,7 @@ export function AssistantOverlay() {
   };
 
   const screen = async (token: number, id: number) => {
-    await work(token, id, 0, { kind: "screening", title: "Setting up a screening", detail: "2 questions for 24 papers", status: "working" },
+    await work(token, id, 0, { kind: "screening", title: "Setting up a screening", detail: <Facts items={[{ icon: ListChecks, value: 2, label: "questions" }, { icon: FileText, value: 24, label: "papers" }]} />, status: "working" },
       { title: "Set up a screening" }, 1000);
     const { choice, asked } = await approve(token, id, SCREEN_ASK);
     if (choice === "no") {
@@ -302,8 +304,8 @@ export function AssistantOverlay() {
     }
     await wait(token, 500);
     // Unclear answers that decide whether a paper is in get checked here, not left for a person.
-    await work(token, id, 1, { kind: "screening", title: "Checking the 3 unclear papers", detail: "Their unclear answers decide whether they're in", status: "working" },
-      { title: "Settled 2 of the 3 unclear", detail: "Both report on a trial without being one", onUndo: () => unsettle(id) }, 1800);
+    await work(token, id, 1, { kind: "screening", title: "Checking the 3 unclear papers", detail: <Facts items={[{ icon: CircleHelp, value: 3, label: "unclear", tone: "warn" }, { icon: Globe, label: "OpenAlex records" }]} />, status: "working" },
+      { title: "Settled 2 of the 3 unclear", detail: <Facts items={[{ icon: X, value: SETTLED, label: "excluded" }, { icon: CircleHelp, value: 3 - SETTLED, label: "still unclear", tone: "warn" }]} />, onUndo: () => unsettle(id) }, 1800);
     setCard(id, 0, { type: "job", done: 24, settled: true });
     await wait(token, 400);
     await stream(
@@ -322,8 +324,8 @@ export function AssistantOverlay() {
     }));
 
   const collect = async (token: number, id: number) => {
-    await work(token, id, 0, { kind: "collection", title: "Looking at your collections", detail: "For one these fit", status: "working" },
-      { title: "Found 2 that could fit", detail: "Or they can go in a new one" }, 1000);
+    await work(token, id, 0, { kind: "collection", title: "Looking at your collections", detail: <Facts items={[{ icon: Folder, value: 3, label: "collections" }]} />, status: "working" },
+      { title: "Checked your 3 collections", detail: <Facts items={[{ icon: Folder, value: 2, label: "could fit" }]} /> }, 1000);
     // Asks instead of guessing, and waits for a tap or a typed name.
     addCard(id, { type: "question", picked: null });
     const answer = await new Promise<Answer>((resolve) => {
@@ -340,12 +342,12 @@ export function AssistantOverlay() {
     // turn still reads top to bottom.
     await wait(token, 750);
     patch(id, (t) => ({ cards: t.cards.filter((c) => c.type !== "question") }));
-    addStep(id, { kind: "collection", title: answer.typed ? `You named it “${name}”` : `You chose ${name}`, detail: "Where the 4 studies go", status: "done" });
+    addStep(id, { kind: "collection", title: answer.typed ? `You named it “${name}”` : `You chose ${name}`, detail: <Facts items={[{ icon: FileText, value: COLLECTED, label: "studies" }]} />, status: "done" });
     await wait(token, 450);
-    await work(token, id, 2, { kind: "collection", title: fresh ? "Creating the collection" : `Opening ${name}`, detail: name, status: "working" },
+    await work(token, id, 2, { kind: "collection", title: fresh ? "Creating the collection" : `Opening ${name}`, detail: fresh ? name : <Facts items={[{ value: choice.count, label: "papers" }]} />, status: "working" },
       { title: fresh ? "Created the collection" : `Opened ${name}` }, 900);
-    await work(token, id, 3, { kind: "collection", title: "Adding the included studies", detail: "From the screening", status: "working" },
-      { title: `Added ${COLLECTED} studies`, detail: "One was listed twice, so it's in once" }, 900);
+    await work(token, id, 3, { kind: "collection", title: "Adding the included studies", detail: <Facts items={[{ icon: ListChecks, value: COLLECTED, label: "included" }]} />, status: "working" },
+      { title: `Added ${COLLECTED} studies`, detail: <Facts items={[{ icon: Check, value: COLLECTED, label: "added", tone: "good" }, { icon: Copy, value: 1, label: "duplicate skipped" }]} /> }, 900);
     collectionOwner.current = id;
     setHome({ name, count });
     addCard(id, { type: "collection", undone: false, name, count });
@@ -358,7 +360,7 @@ export function AssistantOverlay() {
   };
 
   const extract = async (token: number, id: number) => {
-    await work(token, id, 0, { kind: "extraction", title: "Setting up an extraction", detail: "3 fields for 4 papers", status: "working" },
+    await work(token, id, 0, { kind: "extraction", title: "Setting up an extraction", detail: <Facts items={[{ icon: TableProperties, value: 3, label: "fields" }, { icon: FileText, value: 4, label: "papers" }]} />, status: "working" },
       { title: "Set up an extraction" }, 1000);
     const { choice, asked } = await approve(token, id, EXTRACT_ASK);
     if (choice === "no") {
@@ -388,17 +390,17 @@ export function AssistantOverlay() {
 
   const feature = async (token: number, id: number) => {
     await work(token, id, 0, { kind: "library", title: "Reading the library's draft", detail: LIBRARY.name, status: "working" },
-      { title: "Read the library's draft", detail: "No tagline or description yet" }, 900);
-    await work(token, id, 1, { kind: "library", title: "Writing the homepage text", detail: "Tagline and description", status: "working" },
-      { title: "Wrote the homepage text" }, 1400);
+      { title: "Read the library's draft", detail: <Facts items={HOME_TEXT.map((label) => ({ label: `No ${label.toLowerCase()}`, tone: "missing" as const }))} /> }, 900);
+    await work(token, id, 1, { kind: "library", title: "Writing the homepage text", detail: <Facts items={HOME_TEXT.map((label) => ({ label }))} />, status: "working" },
+      { title: "Wrote the homepage text", detail: <Facts items={HOME_TEXT.map((label) => ({ icon: Check, label, tone: "good" as const }))} /> }, 1400);
     await work(token, id, 2, { kind: "library", title: "Featuring the collection", detail: homeRef.current.name, status: "working" },
       { title: "Featured the collection", onUndo: () => undoFeature(id) }, 900);
-    await stream(token, id, `I added a tagline, a description, and “${homeRef.current.name}” first in the featured list. It's saved as a draft of ${LIBRARY.name}, so visitors don't see it yet.`);
+    await stream(token, id, `I wrote the homepage intro, a tagline and a description, and put “${homeRef.current.name}” first among the homepage collections. It's saved as a draft of ${LIBRARY.name}, so visitors don't see it yet.`);
   };
 
   const publish = async (token: number, id: number) => {
-    await work(token, id, 0, { kind: "publish", title: "Checking the draft", detail: "Every section", status: "working" },
-      { title: "Checked the draft", detail: "Ready to publish" }, 900);
+    await work(token, id, 0, { kind: "publish", title: "Checking the draft", detail: <Facts items={[{ icon: LayoutList, label: "All sections" }]} />, status: "working" },
+      { title: "Checked the draft", detail: <Facts items={[{ icon: Check, label: "No issues", tone: "good" }]} /> }, 900);
     const { choice } = await approve(token, id, publishAsk(homeRef.current.name));
     if (choice === "no") {
       await stream(token, id, "Okay, it stays a draft.");
@@ -426,7 +428,7 @@ export function AssistantOverlay() {
       await wait(token, 1300);
       setCard(id, 0, { type: "publish", stage });
     }
-    await stream(token, id, `It's live at ${LIBRARY.address}, with the new homepage and “${homeRef.current.name}” featured first.`);
+    await stream(token, id, `It's live at ${LIBRARY.address}, with the new homepage and “${homeRef.current.name}” first among its collections.`);
     return true;
   };
 
@@ -820,7 +822,15 @@ function Thread({
                       <QuestionCard
                         question="Where should the 4 studies go?"
                         hint="Pick one, or type a name for a new collection"
-                        options={COLLECTION_CHOICES.map((o) => ({ id: o.id, name: o.name, detail: o.id === "new" ? o.detail : `${o.detail}, adds 4` }))}
+                        options={COLLECTION_CHOICES.map((o) => ({
+                          id: o.id,
+                          name: o.name,
+                          detail: (
+                            <Facts
+                              items={o.id === "new" ? [{ icon: FolderPlus, label: "New collection" }] : [{ value: o.count, label: "papers" }, { value: `+${COLLECTED}`, label: "new", tone: "good" }]}
+                            />
+                          ),
+                        }))}
                         picked={c.picked}
                         typed={c.typed}
                         onPick={onPick}
@@ -981,7 +991,7 @@ function Empty({ view }: { view: string }) {
         <RunMap
           steps={[
             { kind: "navigate", title: view, detail: "The page you're on", status: "done" },
-            { kind: "account", title: "Everything in your account", detail: ACCOUNT, status: "done" },
+            ...ACCOUNT.map((a): Step => ({ kind: a.kind, title: a.title, detail: a.latest, status: "done" })),
           ]}
           plain
         />

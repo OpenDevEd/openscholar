@@ -3,7 +3,7 @@
 // What the assistant did in a turn, drawn like the AI settings routing map: the
 // request at the top, a tinted curve out to each step's card, one card per step.
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { ArrowRight, Check, ChevronRight, CircleHelp, CircleStop, Coins, Copy, ExternalLink, Folder, FolderPlus, Hourglass, Plus, Undo2, X } from "lucide-react";
@@ -29,6 +29,48 @@ export function WorkingText({ children }: { children: string }) {
     >
       {children}
     </motion.span>
+  );
+}
+
+/** One fact on a card: an icon, a number and a short label, instead of a sentence. */
+export type Fact = {
+  icon?: ComponentType<{ className?: string }>;
+  /** The icon's colour, such as a record kind's tint. */
+  tint?: string;
+  value?: ReactNode;
+  label: string;
+  /** `missing` is dashed and muted, `good` green, `warn` amber. */
+  tone?: "missing" | "good" | "warn";
+};
+
+/** Facts as a row of small chips that never wraps; plain names truncate instead. */
+export function Facts({ items }: { items: Fact[] }) {
+  return (
+    <span className="flex min-w-0 items-center gap-1 overflow-hidden">
+      {items.map((fact, i) => (
+        <span
+          key={i}
+          className={cn(
+            "flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-[11px]",
+            fact.tone === "missing"
+              ? "border border-dashed border-foreground/20 text-muted-foreground"
+              : fact.tone === "good"
+                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                : fact.tone === "warn"
+                  ? "bg-amber-500/12 text-amber-700 dark:text-amber-400"
+                  : "bg-foreground/[0.06] text-muted-foreground",
+          )}
+        >
+          {fact.icon ? (
+            <span className="flex" style={fact.tint ? { color: fact.tint } : undefined}>
+              <fact.icon className="size-3" />
+            </span>
+          ) : null}
+          {fact.value !== undefined ? <span className="font-semibold tabular-nums text-foreground/90">{fact.value}</span> : null}
+          {fact.label}
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -112,7 +154,9 @@ export function RunMap({ steps, plain }: { steps: Step[]; plain?: boolean }) {
                   <p className={cn("truncate text-sm font-semibold", s.status === "undone" && "line-through decoration-muted-foreground/60")}>
                     {s.status === "working" ? <WorkingText>{s.title}</WorkingText> : s.title}
                   </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">{s.detail}</div>
+                  <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-muted-foreground">
+                    {typeof s.detail === "string" ? <span className="truncate">{s.detail}</span> : s.detail}
+                  </div>
                 </div>
                 {s.status === "done" && s.onUndo ? (
                   <button
@@ -242,10 +286,24 @@ export function ApprovalCard({
       {ask.queue ? (
         <div className="mx-4 mb-3 flex items-center gap-3 rounded-xl bg-background/70 px-3 py-2.5">
           <Hourglass className="size-4 shrink-0 text-muted-foreground" />
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium">Your plan runs one screening at a time</p>
-            <p className="truncate text-xs text-muted-foreground">Starts when “{OTHER_SCREENING.chat}” finishes</p>
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <p className="text-xs font-medium">Starts after your other screening</p>
+            {/* The screening it waits for, with how far it has got. */}
+            <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+              <KindTile kind="screening" size="sm" />
+              <span className="min-w-0 truncate">{OTHER_SCREENING.chat}</span>
+              <span className="h-1 w-10 shrink-0 overflow-hidden rounded-full bg-foreground/10">
+                <span
+                  className="block h-full rounded-full"
+                  style={{ width: `${(OTHER_SCREENING.start / OTHER_SCREENING.total) * 100}%`, backgroundColor: KIND.screening!.tint }}
+                />
+              </span>
+              <span className="shrink-0 tabular-nums">
+                {OTHER_SCREENING.start}/{OTHER_SCREENING.total}
+              </span>
+            </div>
           </div>
+
           <Link href="/settings/billing" className="shrink-0 text-xs font-medium text-primary hover:underline">
             See plans
           </Link>
@@ -410,7 +468,7 @@ export function JobCard({
 }
 
 /** One way to answer a question the assistant asks back. */
-export type Option = { id: string; name: string; detail: string };
+export type Option = { id: string; name: string; detail: ReactNode };
 
 /**
  * A question the assistant asks instead of guessing: tap an answer, or type one in
@@ -463,7 +521,7 @@ export function QuestionCard({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{o.name}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{o.detail}</span>
+                  <span className="mt-0.5 flex">{o.detail}</span>
                 </span>
                 {picked === o.id ? (
                   <motion.span initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 500, damping: 28 }}>

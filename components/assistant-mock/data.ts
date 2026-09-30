@@ -4,7 +4,7 @@
 // library are made up for the mock.
 
 import type { ComponentType } from "react";
-import { Boxes, Compass, FileText, FolderPlus, LibraryBig, ListChecks, PenLine, Rocket, Search, TableProperties, TestTubes } from "lucide-react";
+import { Compass, FileText, FolderPlus, LibraryBig, ListChecks, PenLine, Rocket, Search, TableProperties, TestTubes } from "lucide-react";
 
 export type Decision = "include" | "exclude" | "unsure";
 
@@ -54,7 +54,6 @@ export const KIND: Record<string, { icon: Ico; tint: string }> = {
   library: { icon: LibraryBig, tint: "#f472b6" },
   publish: { icon: Rocket, tint: "var(--primary)" },
   paper: { icon: FileText, tint: "#eab308" },
-  account: { icon: Boxes, tint: "#38bdf8" },
 };
 
 /** One extracted value; `missing` when the abstract doesn't say. */
@@ -109,11 +108,19 @@ export const COLLECTION_CHOICES = [
   { id: "mother", name: "Mother-tongue instruction", detail: "8 papers", count: 8 },
 ] as const;
 
-/** What the assistant can search in your account; made up for the mock. */
-export const ACCOUNT = "12 searches, 3 collections, 48 saved papers, 1 Evidence Library";
-
 /** The search the first message means, found in your history. */
 export const SEARCH_NAME = "structured pedagogy early grade reading";
+
+/**
+ * What the assistant can search in your account, one branch per kind, each with
+ * its newest record. The counts are made up for the mock; the names are its data.
+ */
+export const ACCOUNT: Array<{ kind: keyof typeof KIND; title: string; latest: string }> = [
+  { kind: "search", title: "12 searches", latest: SEARCH_NAME },
+  { kind: "collection", title: "3 collections", latest: "Teacher coaching" },
+  { kind: "paper", title: "48 saved papers", latest: EXTRACT_ROWS[0]!.paper },
+  { kind: "library", title: "1 Evidence Library", latest: LIBRARY.name },
+];
 
 /** Something in your account a message can point at with @. Made up for the mock, apart from the papers. */
 export type Mentionable = { id: string; kind: keyof typeof KIND; label: string; detail: string };
