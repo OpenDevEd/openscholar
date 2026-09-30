@@ -73,5 +73,10 @@ export async function readTopicDetail(ctx: ActionCtx, args: {id: string; library
  }
 export const get = action({
   args: {id: v.string()},
+  returns: v.object({
+    contractVersion: v.literal(1), id: v.string(), name: v.string(), description: v.string(), keywords: v.array(v.string()),
+    path: v.array(v.object({id: v.string(), name: v.string()})), worksCount: v.number(), fetchedAt: v.string(), revision: v.string(),
+    publicBaseUrl: v.string(), topicUrl: v.string(),
+  }),
   handler: (ctx, args) => readTopicDetail(ctx, args),
 });

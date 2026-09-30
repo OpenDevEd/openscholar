@@ -1,5 +1,6 @@
 import { requireOrganizationFeature } from "../organizationFeatures";
-import { paginationOptsValidator, type PaginationOptions } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
+import schema from "../schema";
 import { v, type Infer } from "convex/values";
 import { mutation, query, internalQuery, internalMutation } from "../_generated/server";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -36,8 +37,12 @@ export async function createProfile(ctx: MutationCtx, ownerId: Id<"users">, name
   return await ctx.db.insert("authorProfiles", {...content, ownerId, revision: 1, updatedAt: Date.now()});
 }
 
+/** A profile as pages show it, with its photo's URL. */
+const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union(v.string(), v.null())};
+
 export const create = mutation({
   args: {name: v.string()},
+  returns: v.id("authorProfiles"),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
     await requireOrganizationFeature(ctx, "authors");
@@ -47,6 +52,7 @@ export const create = mutation({
 
 export const get = query({
   args: {profileId: v.string()},
+  returns: v.union(v.null(), v.object({...profileWithPhoto, role: v.union(v.literal("owner"), v.literal("editor"), v.null())})),
   handler: async (ctx, {profileId}) => {
     const id = ctx.db.normalizeId("authorProfiles", profileId);
     if (!id) return null;
@@ -66,6 +72,7 @@ export function searchProfilePage(ctx: QueryCtx, term: string, paginationOpts: P
 
 export const list = query({
   args: {search: v.string(), paginationOpts: paginationOptsValidator},
+  returns: paginationResultValidator(v.object(profileWithPhoto)),
   handler: async (ctx, args) => {
     await requireOrganizationFeature(ctx, "authors");
     const rows = await searchProfilePage(ctx, args.search, args.paginationOpts);

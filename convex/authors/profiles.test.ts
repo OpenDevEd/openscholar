@@ -38,6 +38,34 @@ describe("author profiles", () => {
       expect(mail.sendMail.mock.lastCall?.[0].html).toContain(`href="https://app.example.org/authors/${profileId}/invitation"`);
     } finally { vi.unstubAllEnvs(); }
   });
+  it("expires a profile invitation when its time is up, and never one that was answered", async () => {
+    const {t, owner, editor, profileId} = await setup();
+    vi.useFakeTimers();
+    try {
+      const day = 86_400_000;
+      const invite = () => owner.mutation(internal.authors.invitations.prepare, {profileId, email: "editor@example.org"});
+      const listed = async () => (await editor.query(api.authors.invitations.listMine, {})).length;
+      await invite();
+      vi.advanceTimersByTime(3 * day);
+      await invite();
+      // The first send's expiry runs at day 7 and leaves the re-sent invitation pending.
+      vi.advanceTimersByTime(5 * day);
+      await t.finishInProgressScheduledFunctions();
+      expect(await listed()).toBe(1);
+      expect((await owner.query(api.authors.members.list, {profileId})).invitations).toHaveLength(1);
+      vi.advanceTimersByTime(3 * day);
+      await t.finishInProgressScheduledFunctions();
+      expect(await listed()).toBe(0);
+      expect((await owner.query(api.authors.members.list, {profileId})).invitations).toHaveLength(0);
+      // An invitation cancelled before its time stays cancelled when its expiry runs.
+      const cancelled = await invite();
+      await owner.mutation(api.authors.invitations.cancel, {invitationId: cancelled});
+      vi.advanceTimersByTime(8 * day);
+      await t.finishInProgressScheduledFunctions();
+      expect((await t.run(ctx => ctx.db.get("authorProfileInvitations", cancelled)))?.state).toBe("cancelled");
+    } finally { vi.useRealTimers(); }
+  });
+
   it("keeps profile ownership separate from organization roles", async () => {
     const {t, owner, editor, profileId} = await setup();
     await expect(t.mutation(api.authors.profiles.create, {name: content.name})).rejects.toThrow();

@@ -136,7 +136,7 @@ export default defineSchema({
     email: v.string(),
     invitedBy: v.id("users"),
     expiresAt: v.number(),
-    state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled")),
+    state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
     delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
   }).index("by_profileId_and_email", ["profileId", "email"])
     .index("by_email_and_state", ["email", "state"]),
@@ -183,7 +183,7 @@ export default defineSchema({
     role: v.union(v.literal("editor"), v.literal("creator")),
     invitedBy: v.string(),
     expiresAt: v.number(),
-    state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled")),
+    state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
     delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
   }).index("by_libraryId_and_email", ["libraryId", "email"])
     .index("by_email_and_state", ["email", "state"]),

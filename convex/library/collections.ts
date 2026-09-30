@@ -1,5 +1,6 @@
 import { mutation, query, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import schema from "../schema";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
@@ -101,6 +102,7 @@ export const backfillCollectionCounts = internalMutation({
 
 export const listCollections = query({
   args: {},
+  returns: v.array(schema.doc("collections")),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
     // Cardinality: ~1-50 collections per user (user-created)
@@ -182,6 +184,7 @@ export const removeFromCollection = mutation({
 
 export const getCollectionsWithCounts = query({
   args: {},
+  returns: v.array(v.object({ ...schema.doc("collections").fields, itemCount: v.number() })),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
 
@@ -204,6 +207,7 @@ export const getCollectionsWithCounts = query({
 
 export const getItemCollections = query({
   args: { libraryItemId: v.id("libraryItems") },
+  returns: v.array(v.id("collections")),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
 

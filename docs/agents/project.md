@@ -144,6 +144,27 @@ settings, so every change to its shape ships a migration.
   changed page, and check the browser plus terminal.
 - GitHub CI runs the full pre-merge suite.
 
+## Convex limits
+
+Every page, export and count works at the largest sizes the product allows
+(milestone OS-18).
+
+- Convex tests run under Convex's transaction limits: `vitest.config.ts`
+  aliases `convex-test` to `tests/convex-test-with-limits.ts`. A flow that
+  holds a whole job, library or history in one read fails its test the way it
+  would fail in production.
+- `convex/lib/maxSize.test-support.ts` generates the largest sizes the product
+  allows, at the row sizes measured on shared dev. A flow that reads more than
+  one page proves it with a case in `convex/limits/maxSize.test.ts`.
+- `convex-test` runs one transaction at a time, so it never shows a write
+  conflict. Counters and anything else written in parallel are proven on a real
+  backend as well.
+- `npm run check:convex-rules` runs in CI. It fails on a `.collect()` or
+  `for await` over a query that isn't listed in `scripts/convex-rules.json`
+  (bounded, with why its rows stay few, or pending, with its issue), on a public
+  function without a `returns` validator, and on a public query that reads the
+  clock.
+
 ## References
 
 - Test rules: `docs/test-quality.md`.

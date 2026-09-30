@@ -49,6 +49,10 @@ export const replaceFromLibrary = internalMutation({
 
 export const list = query({
   args: {profileId: v.string()},
+  returns: v.array(v.object({
+    id: v.id("authorPublications"), itemKey: v.string(), rank: v.optional(v.number()),
+    library: v.object({id: v.id("evidenceLibraries"), name: v.string(), url: v.string()}),
+  })),
   handler: async (ctx, args) => {
     const profileId = ctx.db.normalizeId("authorProfiles", args.profileId);
     if (!profileId) return [];

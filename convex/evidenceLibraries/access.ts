@@ -18,7 +18,7 @@ export async function readPendingLibraryInvitations(
   if (user.state !== "active") return [];
   const invitations = await ctx.db.query("evidenceLibraryInvitations")
     .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).collect();
-  const rows = await Promise.all(invitations.filter(i => i.expiresAt > Date.now()).map(async invitation => {
+  const rows = await Promise.all(invitations.map(async invitation => {
     const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
     if (!library || library.state === "disabled") return null;
     const organization = await ctx.db.get("organizations", library.organizationId);

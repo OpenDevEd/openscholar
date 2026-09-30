@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { internalMutation, internalQuery, mutation, query } from "../_generated/server";
 import { requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvitations } from "./access";
 import { getCurrentUser } from "../lib/auth";
@@ -24,11 +25,25 @@ export const prepare = internalMutation({
     const invitations = await ctx.db.query("evidenceLibraryInvitations")
       .withIndex("by_libraryId_and_email", q => q.eq("libraryId", args.libraryId).eq("email", email)).collect();
     const pending = invitations.find(i => i.state === "pending");
-    if (pending) {
-      await ctx.db.patch("evidenceLibraryInvitations", pending._id, { role: args.role, invitedBy: access.clerkUserId, expiresAt: Date.now() + 7 * 86400000, delivery: "queued" });
-      return pending._id;
-    }
-    return await ctx.db.insert("evidenceLibraryInvitations", { ...args, email, invitedBy: access.clerkUserId, expiresAt: Date.now() + 7 * 86400000, state: "pending", delivery: "queued" });
+    const expiresAt = Date.now() + 7 * 86400000;
+    const invitationId = pending?._id ?? await ctx.db.insert("evidenceLibraryInvitations", { ...args, email, invitedBy: access.clerkUserId, expiresAt, state: "pending", delivery: "queued" });
+    if (pending) await ctx.db.patch("evidenceLibraryInvitations", pending._id, { role: args.role, invitedBy: access.clerkUserId, expiresAt, delivery: "queued" });
+    await ctx.scheduler.runAt(expiresAt, internal.evidenceLibraries.invitations.expire, { invitationId });
+    return invitationId;
+  },
+});
+
+/**
+ * Marks an invitation expired once its time is up, so lists filter on its state and
+ * never on the clock. A re-sent invitation has a later time and waits for its own run.
+ */
+export const expire = internalMutation({
+  args: { invitationId: v.id("evidenceLibraryInvitations") },
+  returns: v.null(),
+  handler: async (ctx, { invitationId }) => {
+    const invitation = await ctx.db.get("evidenceLibraryInvitations", invitationId);
+    if (invitation?.state === "pending" && invitation.expiresAt <= Date.now()) await ctx.db.patch("evidenceLibraryInvitations", invitationId, { state: "expired" });
+    return null;
   },
 });
 
@@ -83,6 +98,11 @@ export const change = mutation({
 
 export const listMine = query({
   args: {},
+  returns: v.array(v.object({
+    invitationId: v.id("evidenceLibraryInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
+    role: v.union(v.literal("editor"), v.literal("creator")),
+    organization: v.object({ name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
+  })),
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
     return user ? await readPendingLibraryInvitations(ctx, user) : [];

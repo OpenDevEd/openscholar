@@ -8,6 +8,7 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
 import { readActiveTopicsEnabled } from "../evidenceLibraries/activeTopics";
 import { topicAssociationRequestSchema, topicIdSchema } from "../../lib/topics/contract";
+import { metadataValidator } from "./validators";
 import { normalizeDoi, publicationGroupKey } from "../../lib/topics/identity";
 import { authenticate } from "./auth";
 
@@ -148,8 +149,11 @@ async function hasPublicTopic(ctx: QueryCtx, libraries: PublicLibraries, topicId
   return false;
 }
 /** Page over materialized publication groups, not per-library records. The cursor is the last group key, which deliveries never move. */
+const publicLibraryValidator = v.object({id: v.id("evidenceLibraries"), name: v.string(), url: v.string()});
+
 export const list = query({
   args: {topicId: v.string(), cursor: v.union(v.string(), v.null()), limit: v.number()},
+  returns: v.object({groups: v.array(v.object({key: v.string()})), updating: v.boolean(), nextCursor: v.union(v.string(), v.null())}),
   handler: async (ctx, args) => {
     if (!topicIdSchema.safeParse(args.topicId).success || !Number.isInteger(args.limit) || args.limit < 1 || args.limit > 50 || (args.cursor?.length ?? 0) > 2200) throw createError("VALIDATION_ERROR", "Invalid publications page");
     const state = await ctx.db.query("topicProjectionState").withIndex("by_key", q => q.eq("key", "publications")).unique();
@@ -167,6 +171,10 @@ export const list = query({
 /** Every location is paged independently; large groups never silently lose links. */
 export const locations = query({
   args: {groupKey: v.string(), paginationOpts: paginationOptsValidator},
+  returns: v.object({
+    locations: v.array(v.object({id: v.id("topicLocations"), itemKey: v.string(), topicIds: v.array(v.string()), metadata: metadataValidator, library: publicLibraryValidator})),
+    nextCursor: v.union(v.string(), v.null()),
+  }),
   handler: async (ctx, args) => {
     if (args.groupKey.length > 2200 || args.paginationOpts.numItems > 100) throw createError("VALIDATION_ERROR", "Invalid location page");
     const page = await ctx.db.query("topicLocations").withIndex("by_groupKey_and_libraryId_and_itemKey", q => q.eq("groupKey", args.groupKey)).paginate(args.paginationOpts);
