@@ -17,7 +17,40 @@ import {
   type EnhancedUsage,
 } from "./cost";
 import { mapFinishReason } from "./constants";
-import { withWebPlugin } from "./handler";
+import { buildCallOptions, withWebPlugin } from "./handler";
+import { generateText } from "ai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+
+describe("wallet SDK transport", () => {
+  it("forwards wallet system messages through the SDK to the provider", async () => {
+    let sentMessages: unknown;
+    const provider = createOpenRouter({
+      apiKey: "test",
+      fetch: async (_url, init) => {
+        sentMessages = JSON.parse(String(init?.body)).messages;
+        return Response.json({
+          id: "gen-wallet-system",
+          model: "test/model",
+          choices: [{ index: 0, message: { role: "assistant", content: "OK" }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 4, completion_tokens: 1, total_tokens: 5 },
+        });
+      },
+    });
+    const params = convertToAISdkParams({
+      model: "test/model",
+      messages: [
+        { role: "system", content: "Answer briefly." },
+        { role: "user", content: "Hello" },
+      ],
+    });
+    const result = await generateText(buildCallOptions(provider.chat("test/model"), params));
+    expect(result.text).toBe("OK");
+    expect(sentMessages).toEqual([
+      { role: "system", content: [{ type: "text", text: "Answer briefly." }] },
+      { role: "user", content: "Hello" },
+    ]);
+  });
+});
 
 // ─── Seed helpers ────────────────────────────────────────────
 

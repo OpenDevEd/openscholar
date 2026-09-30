@@ -59,7 +59,7 @@ export async function executeAIOperation<TInput, TOutput>(
 
       const repairToolCall: Parameters<typeof generateText>[0]['experimental_repairToolCall'] =
         async ({ toolCall, error }) => {
-          // v6: toolCall.input is already a stringified JSON string
+          // Tool input is already a JSON string.
           const rawInput = toolCall.input
           const errorMsg = error instanceof Error ? error.message : String(error)
 
@@ -80,7 +80,7 @@ export async function executeAIOperation<TInput, TOutput>(
         experimental_repairToolCall: repairToolCall,
         providerOptions: callOptions(model, { effort, sessionId }),
         temperature,
-        system: prompts.system,
+        instructions: prompts.system,
         prompt: prompts.prompt,
       })
 
@@ -116,7 +116,7 @@ export async function executeAIOperation<TInput, TOutput>(
 
       return {
         output: finalOutput,
-        usage: usageOf(result),
+        usage: usageOf(result.finalStep),
       }
     } catch (error) {
       if (error instanceof AIValidationError || error instanceof AIMaxRetriesExceededError) {

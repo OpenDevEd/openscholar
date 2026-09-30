@@ -36,8 +36,8 @@ export async function getProviderModel(
       return createOpenAI(baseOptions)(modelId)
     }
     case 'google': {
-      const { createGoogleGenerativeAI } = await import('@ai-sdk/google')
-      return createGoogleGenerativeAI(baseOptions)(modelId)
+      const { createGoogle } = await import('@ai-sdk/google')
+      return createGoogle(baseOptions)(modelId)
     }
     case 'anthropic': {
       const { createAnthropic } = await import('@ai-sdk/anthropic')

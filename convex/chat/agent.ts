@@ -1,5 +1,5 @@
-import { Agent, stepCountIs } from "@convex-dev/agent";
-import type { ModelMessage } from "ai";
+import { Agent } from "@convex-dev/agent";
+import { isStepCount, type ModelMessage } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { components, internal } from "../_generated/api";
 import { SERVER_AI_CONFIG } from "../ai/config";
@@ -12,7 +12,7 @@ import { chatSearchesWeb } from "../../lib/chat/web-search-capability";
  *   via resolveOpenRouterModel(ctx, job.chatModelId).
  * - No embeddingModel: chat has no RAG path; answers come from abstracts
  *   embedded directly in the system prompt.
- * - stopWhen: stepCountIs(5) is a CAP, not a forced step count. Single-
+ * - stopWhen: isStepCount(5) is a CAP, not a forced step count. Single-
  *   turn questions still terminate at step 1; the cap exists to bound
  *   tool loops (web search → reflect → answer) at five steps total.
  * - Billing is handled in chat/messages.generateResponse after the
@@ -69,5 +69,5 @@ export const paperChat: Agent = new Agent(components.agent, {
   storageOptions: {
     saveMessages: "promptAndOutput",
   },
-  stopWhen: stepCountIs(5),
+  stopWhen: isStepCount(5),
 });

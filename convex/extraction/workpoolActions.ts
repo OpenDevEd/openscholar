@@ -339,7 +339,7 @@ async function extractQuestionAnswer(params: {
 
     return {
       result,
-      usage: usageOf(generated),
+      usage: usageOf(generated.finalStep),
       prompt,
     };
   } catch (error) {
@@ -426,7 +426,7 @@ async function extractQuestionAnswerFromAbstract(params: {
         },
         pdfContentUsed: false,
       },
-      usage: usageOf(generated),
+      usage: usageOf(generated.finalStep),
       prompt,
     };
   } catch (error) {
