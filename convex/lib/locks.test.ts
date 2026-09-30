@@ -60,12 +60,7 @@ describe("acquireBatchLock", () => {
       .catch((e: unknown) => e);
 
     expect(err).toBeInstanceOf(ConvexError);
-    // convex-test serializes ConvexError.data into a JSON string when the
-    // error crosses the runtime boundary. Parse to inspect the structured
-    // payload (code + kind discriminator).
-    const data = JSON.parse(
-      (err as ConvexError<string>).data,
-    ) as { code: string; kind?: string };
+    const data = (err as ConvexError<{ code: string; kind?: string }>).data;
     expect(data.code).toBe("BATCH_ACTION_ALREADY_RUNNING");
     expect(data.kind).toBe("batch_screening");
   });

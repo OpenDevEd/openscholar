@@ -5,9 +5,11 @@ import path from "path";
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "."),
-    },
+    alias: [
+      { find: "@", replacement: path.resolve(__dirname, ".") },
+      // Every Convex test runs under Convex's transaction limits (#350).
+      { find: /^convex-test$/, replacement: path.resolve(__dirname, "tests/convex-test-with-limits.ts") },
+    ],
   },
   test: {
     environment: "node",

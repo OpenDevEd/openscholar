@@ -37,9 +37,7 @@ describe("rateLimit.consume — batch action buckets", () => {
       .catch((e: unknown) => e);
 
     expect(err).toBeInstanceOf(ConvexError);
-    const data = JSON.parse(
-      (err as ConvexError<string>).data,
-    ) as { kind?: string; name?: string };
+    const data = (err as ConvexError<{ kind?: string; name?: string }>).data;
     expect(data.kind).toBe("RateLimited");
     expect(data.name).toBe("batch-screening");
   });
@@ -63,9 +61,7 @@ describe("rateLimit.consume — batch action buckets", () => {
       .catch((e: unknown) => e);
 
     expect(err).toBeInstanceOf(ConvexError);
-    const data = JSON.parse(
-      (err as ConvexError<string>).data,
-    ) as { kind?: string; name?: string };
+    const data = (err as ConvexError<{ kind?: string; name?: string }>).data;
     expect(data.kind).toBe("RateLimited");
     expect(data.name).toBe("batch-translation");
   });

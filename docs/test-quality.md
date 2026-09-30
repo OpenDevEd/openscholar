@@ -14,6 +14,8 @@ Use the smallest honest boundary:
 |---|---|---|
 | Pure calculation or validation | Unit test | Return value or error |
 | Convex mutation or transaction | Integration test | Rows, jobs, and rollback |
+| Convex read at full size | Integration test under Convex's limits, seeded by `convex/lib/maxSize.test-support.ts` | The page, count or export at the largest size the product allows |
+| Parallel Convex writes | Load run on a real backend | Counts and rows match a full recount |
 | Route or authentication contract | HTTP test | Status, headers, body, and saved state |
 | User interaction | Browser test | Roles, labels, visible state, URL, and resulting data |
 | Layout or visual styling | Screenshot or visual check | Rendered result at the needed viewport |
