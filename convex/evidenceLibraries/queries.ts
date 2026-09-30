@@ -762,8 +762,7 @@ export const listTeam = query({
     const people = await readLibraryPeople(ctx, access.library);
     people.sort((a, b) => (a.person.name || a.person.email).localeCompare(b.person.name || b.person.email));
     return {
-      invitations: (await ctx.db.query("evidenceLibraryInvitations").withIndex("by_libraryId_and_email", q => q.eq("libraryId", args.libraryId)).collect())
-        .filter(i => i.state === "pending")
+      invitations: (await ctx.db.query("evidenceLibraryInvitations").withIndex("by_libraryId_and_state", q => q.eq("libraryId", args.libraryId).eq("state", "pending")).collect())
         .map(i => ({ invitationId: i._id, email: i.email, role: i.role, delivery: i.delivery })),
       organizationName: access.organization.name,
       owners: people.filter(p => p.role === "owner").map(p => p.person),

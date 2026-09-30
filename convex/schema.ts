@@ -186,6 +186,7 @@ export default defineSchema({
     state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
     delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
   }).index("by_libraryId_and_email", ["libraryId", "email"])
+    .index("by_libraryId_and_state", ["libraryId", "state"])
     .index("by_email_and_state", ["email", "state"]),
 
   evidenceLibraryMembers: defineTable({

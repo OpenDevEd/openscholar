@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { ConvexError } from "convex/values";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import type { Doc, Id } from "../_generated/dataModel";
 
 // Helper: create a user directly in the mock DB, return user doc
@@ -153,6 +154,17 @@ describe("createCollection", () => {
         name: "My Papers",
       })
     ).rejects.toThrow();
+  });
+
+  it("refuses a collection past the per-user cap, so a user's collection lists stay small", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    await t.run(async (ctx) => {
+      for (let i = 0; i < MAX_COLLECTIONS_PER_USER; i++) await ctx.db.insert("collections", { userId: user!._id, name: `c${i}`, createdAt: 1, updatedAt: 1 });
+    });
+    await expect(asUser.mutation(api.library.collections.createCollection, { name: "One more" })).rejects.toThrow(/VALIDATION_ERROR/);
+    expect(await asUser.query(api.library.collections.listCollections, {})).toHaveLength(MAX_COLLECTIONS_PER_USER);
   });
 
   it("rejects empty name (ConvexError with VALIDATION_ERROR)", async () => {

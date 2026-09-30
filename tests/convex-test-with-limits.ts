@@ -31,8 +31,8 @@ const config = readFileSync(path.resolve(__dirname, "../convex/convex.config.ts"
 const components = [...config.matchAll(/app\.use\((aggregate|shardedCounter), \{ name: "(\w+)" \}\)/g)].map(([, kind, name]) => ({ kind, name }));
 
 export function convexTest(schemaOrOptions?: Schema | Options, modules?: Modules) {
-  const options = isOptions(schemaOrOptions) ? schemaOrOptions : { schema: schemaOrOptions, modules };
-  const t = baseConvexTest({ transactionLimits: true, ...options } as never) as ReturnType<typeof baseConvexTest>;
+  const options: Options = isOptions(schemaOrOptions) ? schemaOrOptions : { schema: schemaOrOptions, modules };
+  const t = baseConvexTest({ ...options, transactionLimits: options.transactionLimits ?? true } as never) as ReturnType<typeof baseConvexTest>;
   for (const { kind, name } of components) (kind === "aggregate" ? registerAggregate : registerShardedCounter)(t as never, name);
   return withTriggersInRun(t);
 }
