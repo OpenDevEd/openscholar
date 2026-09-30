@@ -23,18 +23,53 @@ const KIND_TINT = { screening: KIND.screening!.tint };
 export type SheetKind = "history" | "share" | "topup";
 
 /**
- * Shadows at the top and bottom of a scrolling list, shown only while there is more
- * to scroll that way. Pure CSS: card-coloured covers scroll with the content and hide
- * the fixed shadows at either end.
+ * A scrolling sheet body with a shade at each edge that has more to scroll: the rows
+ * fade under it and a hairline marks the edge. The shades sit above the rows, so text
+ * passing the edge is covered rather than cut.
  */
-const SCROLL_SHADOWS = {
-  background: [
-    "linear-gradient(var(--card) 30%, transparent) center top / 100% 40px no-repeat local",
-    "linear-gradient(transparent, var(--card) 70%) center bottom / 100% 40px no-repeat local",
-    "radial-gradient(farthest-side at 50% 0, color-mix(in oklab, var(--foreground) 16%, transparent), transparent) center top / 100% 12px no-repeat scroll",
-    "radial-gradient(farthest-side at 50% 100%, color-mix(in oklab, var(--foreground) 16%, transparent), transparent) center bottom / 100% 12px no-repeat scroll",
-  ].join(", "),
-};
+function ScrollShade({ className, children }: { className?: string; children: ReactNode }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ top: false, bottom: false });
+  const measure = () => {
+    const el = scroller.current;
+    if (!el) return;
+    const top = el.scrollTop > 1;
+    const bottom = el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+    setEdges((e) => (e.top === top && e.bottom === bottom ? e : { top, bottom }));
+  };
+  // The list's size is an outside system: rows animate in, filters change it, the window resizes.
+  useEffect(() => {
+    const observer = new ResizeObserver(measure);
+    if (scroller.current) observer.observe(scroller.current);
+    if (content.current) observer.observe(content.current);
+    measure();
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div className="relative min-h-0 flex-1">
+      <div ref={scroller} onScroll={measure} className="h-full overflow-y-auto overflow-x-hidden">
+        <div ref={content} className={className}>
+          {children}
+        </div>
+      </div>
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 h-6 border-t border-border/70 bg-gradient-to-b from-card to-transparent transition-opacity duration-200",
+          edges.top ? "opacity-100" : "opacity-0",
+        )}
+      />
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 h-6 border-b border-border/70 bg-gradient-to-t from-card to-transparent transition-opacity duration-200",
+          edges.bottom ? "opacity-100" : "opacity-0",
+        )}
+      />
+    </div>
+  );
+}
 
 export const SHEET_SPRING = { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.9 };
 
@@ -161,6 +196,14 @@ const CHATS: Array<{ group: string; live?: boolean; chats: Chat[] }> = [
         id: "c6", title: "Digital literacy tools in Malawi", last: "Found 3 recent reviews", when: "2 Sep", mine: false,
         members: [MARC],
       },
+      { id: "c7", title: "Pre-primary teacher training in Rwanda", last: "Screened 62 papers, 11 included", when: "28 Aug", mine: true },
+      { id: "c8", title: "Girls' secondary school completion", last: "Built a collection of 19 studies", when: "21 Aug", mine: true },
+      {
+        id: "c9", title: "Tutoring at scale in Latin America", last: "Compared costs per learner", when: "14 Aug", mine: false, org: "OpenDevEd",
+        members: [SARA],
+      },
+      { id: "c10", title: "School feeding and attendance", last: "Extracted sample sizes from 40 trials", when: "2 Aug", mine: true },
+      { id: "c11", title: "Mobile phone numeracy lessons", last: "Tightened the search to 2018 onwards", when: "19 Jul", mine: true },
     ],
   },
 ];
@@ -339,7 +382,7 @@ export function HistorySheet({ onBack, onShare }: { onBack: () => void; onShare:
         A filter change mounts a fresh list that fades and staggers in. No exit wait: waiting
         for the old list to leave stranded a stale list when the filter changed quickly.
       */}
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3 pt-3" style={SCROLL_SHADOWS}>
+      <ScrollShade className="px-2 pb-3 pt-3">
           <motion.div
             key={`${scope}|${q}`}
             className="space-y-4"
@@ -360,7 +403,7 @@ export function HistorySheet({ onBack, onShare }: { onBack: () => void; onShare:
             ))}
             {groups.length === 0 ? <p className="px-3 py-6 text-sm text-muted-foreground">No chats match.</p> : null}
           </motion.div>
-      </div>
+      </ScrollShade>
     </>
   );
 }
@@ -396,7 +439,7 @@ export function ShareSheet({ chat, onBack }: { chat: string; onBack: () => void 
   return (
     <>
       <SheetHeader title="Share this chat" detail={chat} onBack={onBack} />
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-3 py-3" style={SCROLL_SHADOWS}>
+      <ScrollShade className="space-y-4 px-3 py-3">
         <label className="flex h-10 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
           <UserPlus className="size-4 text-muted-foreground" />
           <input placeholder="Add people or an organization" aria-label="Add people or an organization" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
@@ -439,7 +482,7 @@ export function ShareSheet({ chat, onBack }: { chat: string; onBack: () => void 
         <p className="px-2 text-xs leading-relaxed text-muted-foreground">
           They see this conversation. Searches, collections and libraries in it keep their own access. People who can chat send messages as themselves, and the assistant acts for them with their own access and credits.
         </p>
-      </div>
+      </ScrollShade>
       <div className="border-t border-border/50 p-3">
         <button
           type="button"
@@ -512,7 +555,7 @@ export function TopUpSheet({
   return (
     <>
       <SheetHeader title="Add credits" detail="Without leaving the chat" onBack={onBack} />
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5" style={SCROLL_SHADOWS}>
+      <ScrollShade className="space-y-5 px-4 py-5">
         <div>
           <p className="text-4xl font-semibold tracking-tight">
             <AnimatedNumber value={shown} />
@@ -576,7 +619,7 @@ export function TopUpSheet({
           ))}
         </div>
         <p className="px-1 text-xs leading-relaxed text-muted-foreground">The assistant still asks before it spends them.</p>
-      </div>
+      </ScrollShade>
     </>
   );
 }
