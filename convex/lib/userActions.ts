@@ -1,7 +1,7 @@
 /**
  * The action registry: every user action is defined once, as a core that takes the
  * acting user, and both the public function the UI calls and the assistant's tool
- * come from that one entry. `scripts/check-user-actions.mjs` fails CI when a public
+ * come from that one entry. `scripts/check-user-actions.ts` fails CI when a public
  * function is neither registered in `userActionRegistry.ts` nor exempt with a reason.
  * The assistant's tools are built from the same entries in `assistantTools.ts`, which
  * only actions import, so queries and mutations never bundle the AI SDK.
@@ -9,7 +9,7 @@
 import { v, type GenericValidator, type Infer, type ObjectType, type PropertyValidators } from "convex/values";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
-import { requireAuth } from "./auth";
+import { requireActiveUser, requireAuth } from "./auth";
 
 /** Who made a change: the person themselves, or the assistant acting for them. */
 export type Author = "user" | "assistant";
@@ -55,6 +55,11 @@ export const defineUserMutation = <Args extends PropertyValidators, Returns exte
 /** The internal twin of a public function, which the assistant's tools call with the sender's user ID. */
 export const assistantPath = (path: string) => `${path}ForAssistant`;
 
+/** Marks a Convex function as built from the registry entry at `path`; the gate reads this at runtime. */
+function tagged<Fn extends object>(fn: Fn, path: string): Fn {
+  return Object.assign(fn, { userActionPath: path });
+}
+
 const accountArg = { accountId: v.string() };
 const userArg = { userId: v.id("users") };
 
@@ -78,11 +83,14 @@ function split<Args extends PropertyValidators>(args: ObjectType<Args & typeof a
 
 /** The public query the UI calls, for the signed-in user. */
 export function userQuery<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserQuery<Args, Returns>) {
-  return query<Args, Returns, Promise<Infer<Returns>>>({
-    args: entry.args,
-    returns: entry.returns,
-    handler: async (ctx, args) => entry.run(ctx, (await requireAuth(ctx))._id, args as ObjectType<Args>),
-  });
+  return tagged(
+    query<Args, Returns, Promise<Infer<Returns>>>({
+      args: entry.args,
+      returns: entry.returns,
+      handler: async (ctx, args) => entry.run(ctx, (await requireAuth(ctx))._id, args as ObjectType<Args>),
+    }),
+    entry.path,
+  );
 }
 
 /**
@@ -90,58 +98,75 @@ export function userQuery<Args extends PropertyValidators, Returns extends Gener
  * Clerk ID, so a tab left open after switching account can't read the other one.
  */
 export function accountQuery<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserQuery<Args, Returns>) {
-  return query<Args & typeof accountArg, Returns, Promise<Infer<Returns>>>({
-    args: { ...entry.args, ...accountArg },
-    returns: entry.returns,
-    handler: async (ctx, args) => {
-      const { accountId, rest } = split<Args>(args);
-      return entry.run(ctx, await accountUser(ctx, accountId), rest);
-    },
-  });
+  return tagged(
+    query<Args & typeof accountArg, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...accountArg },
+      returns: entry.returns,
+      handler: async (ctx, args) => {
+        const { accountId, rest } = split<Args>(args);
+        return entry.run(ctx, await accountUser(ctx, accountId), rest);
+      },
+    }),
+    entry.path,
+  );
 }
 
 /** The same query for the assistant, run as the user who sent the message. */
 export function assistantQuery<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserQuery<Args, Returns>) {
-  return internalQuery<Args & typeof userArg, Returns, Promise<Infer<Returns>>>({
-    args: { ...entry.args, ...userArg },
-    returns: entry.returns,
-    handler: async (ctx, args) => {
-      const { userId, rest } = asUser<Args>(args);
-      return entry.run(ctx, userId, rest);
-    },
-  });
+  return tagged(
+    internalQuery<Args & typeof userArg, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...userArg },
+      returns: entry.returns,
+      handler: async (ctx, args) => {
+        const { userId, rest } = asUser<Args>(args);
+        // The sender may have been suspended or deleted since the turn began.
+        return entry.run(ctx, (await requireActiveUser(ctx, userId))._id, rest);
+      },
+    }),
+    entry.path,
+  );
 }
 
 /** The public mutation the UI calls, for the signed-in user. */
 export function userMutation<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserMutation<Args, Returns>) {
-  return mutation<Args, Returns, Promise<Infer<Returns>>>({
-    args: entry.args,
-    returns: entry.returns,
-    handler: async (ctx, args) => entry.run(ctx, (await requireAuth(ctx))._id, args as ObjectType<Args>, "user"),
-  });
+  return tagged(
+    mutation<Args, Returns, Promise<Infer<Returns>>>({
+      args: entry.args,
+      returns: entry.returns,
+      handler: async (ctx, args) => entry.run(ctx, (await requireAuth(ctx))._id, args as ObjectType<Args>, "user"),
+    }),
+    entry.path,
+  );
 }
 
 /** The public mutation for pages that load for one account; see `accountQuery`. */
 export function accountMutation<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserMutation<Args, Returns>) {
-  return mutation<Args & typeof accountArg, Returns, Promise<Infer<Returns>>>({
-    args: { ...entry.args, ...accountArg },
-    returns: entry.returns,
-    handler: async (ctx, args) => {
-      const { accountId, rest } = split<Args>(args);
-      return entry.run(ctx, await accountUser(ctx, accountId), rest, "user");
-    },
-  });
+  return tagged(
+    mutation<Args & typeof accountArg, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...accountArg },
+      returns: entry.returns,
+      handler: async (ctx, args) => {
+        const { accountId, rest } = split<Args>(args);
+        return entry.run(ctx, await accountUser(ctx, accountId), rest, "user");
+      },
+    }),
+    entry.path,
+  );
 }
 
 /** The same mutation for the assistant: it runs as the sender and records the assistant as the author. */
 export function assistantMutation<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserMutation<Args, Returns>) {
-  return internalMutation<Args & typeof userArg, Returns, Promise<Infer<Returns>>>({
-    args: { ...entry.args, ...userArg },
-    returns: entry.returns,
-    handler: async (ctx, args) => {
-      const { userId, rest } = asUser<Args>(args);
-      return entry.run(ctx, userId, rest, "assistant");
-    },
-  });
+  return tagged(
+    internalMutation<Args & typeof userArg, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...userArg },
+      returns: entry.returns,
+      handler: async (ctx, args) => {
+        const { userId, rest } = asUser<Args>(args);
+        // The sender may have been suspended or deleted since the turn began.
+        return entry.run(ctx, (await requireActiveUser(ctx, userId))._id, rest, "assistant");
+      },
+    }),
+    entry.path,
+  );
 }
 

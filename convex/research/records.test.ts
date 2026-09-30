@@ -177,6 +177,17 @@ describe("research actions as assistant tools", () => {
     expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toEqual(record);
   });
 
+  it("refuse a sender whose account was suspended or deleted during the turn", async () => {
+    const { t, ids } = await setup();
+    const tools = assistantTools(actionCtx(t), ids.alice, USER_ACTIONS);
+    for (const state of ["suspended", "deleted"] as const) {
+      await t.run(ctx => ctx.db.patch("users", ids.alice, { state }));
+      await expect(tools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: `read-${state}` })).rejects.toThrow();
+      await expect(tools.research_records_change.execute!({ command: { kind: "createSearch", search: record } }, { ...call, toolCallId: `write-${state}` })).rejects.toThrow();
+    }
+    expect(await t.run(ctx => ctx.db.query("searches").collect())).toEqual([]);
+  });
+
   it("offer every registered action to the model, with the retry key left to the tool", async () => {
     const { t, ids } = await setup();
     const tools = assistantTools(actionCtx(t), ids.alice, USER_ACTIONS);
