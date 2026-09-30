@@ -8,8 +8,31 @@ import { cn } from "@/lib/utils"
 function ScrollArea({
   className,
   children,
+  shades = false,
   ...props
-}: React.ComponentProps<typeof ScrollAreaPrimitive.Root>) {
+}: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
+  /** Fades the content under an edge that has more to scroll, with a hairline. */
+  shades?: boolean
+}) {
+  const viewport = React.useRef<HTMLDivElement>(null)
+  const content = React.useRef<HTMLDivElement>(null)
+  const [edges, setEdges] = React.useState({ top: false, bottom: false })
+  const measure = React.useCallback(() => {
+    const el = viewport.current
+    if (!el) return
+    const top = el.scrollTop > 1
+    const bottom = el.scrollTop + el.clientHeight < el.scrollHeight - 1
+    setEdges((e) => (e.top === top && e.bottom === bottom ? e : { top, bottom }))
+  }, [])
+  // The content's size is an outside system: rows arrive, filters change it, the window resizes.
+  React.useEffect(() => {
+    if (!shades) return
+    const observer = new ResizeObserver(measure)
+    if (viewport.current) observer.observe(viewport.current)
+    if (content.current) observer.observe(content.current)
+    measure()
+    return () => observer.disconnect()
+  }, [shades, measure])
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
@@ -17,11 +40,35 @@ function ScrollArea({
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
+        ref={viewport}
         data-slot="scroll-area-viewport"
-        className="focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1"
+        onScroll={shades ? measure : undefined}
+        className={cn(
+          "focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1",
+          // Radix lays its content out as a table, which lets long text grow instead of truncating.
+          shades && "[&>div]:!block"
+        )}
       >
-        {children}
+        {shades ? <div ref={content}>{children}</div> : children}
       </ScrollAreaPrimitive.Viewport>
+      {shades ? (
+        <>
+          <span
+            aria-hidden
+            className={cn(
+              "from-card pointer-events-none absolute inset-x-0 top-0 h-6 border-t border-border/70 bg-gradient-to-b to-transparent transition-opacity duration-200",
+              edges.top ? "opacity-100" : "opacity-0"
+            )}
+          />
+          <span
+            aria-hidden
+            className={cn(
+              "from-card pointer-events-none absolute inset-x-0 bottom-0 h-6 border-b border-border/70 bg-gradient-to-t to-transparent transition-opacity duration-200",
+              edges.bottom ? "opacity-100" : "opacity-0"
+            )}
+          />
+        </>
+      ) : null}
       <ScrollBar />
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>

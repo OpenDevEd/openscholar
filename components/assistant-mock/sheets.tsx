@@ -12,6 +12,7 @@ import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 import { topUpBundles } from "@/lib/billing/catalog";
 import { cn } from "@/lib/utils";
 import { TooltipHint } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Segmented } from "@/components/settings/parts";
 import { EASE } from "@/components/settings/model-map";
 import { AnimatedNumber, KindTile, type Ask } from "./run-map";
@@ -21,55 +22,6 @@ import { KIND, OTHER_SCREENING } from "./data";
 const KIND_TINT = { screening: KIND.screening!.tint };
 
 export type SheetKind = "history" | "share" | "topup";
-
-/**
- * A scrolling sheet body with a shade at each edge that has more to scroll: the rows
- * fade under it and a hairline marks the edge. The shades sit above the rows, so text
- * passing the edge is covered rather than cut.
- */
-function ScrollShade({ className, children }: { className?: string; children: ReactNode }) {
-  const scroller = useRef<HTMLDivElement>(null);
-  const content = useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = useState({ top: false, bottom: false });
-  const measure = () => {
-    const el = scroller.current;
-    if (!el) return;
-    const top = el.scrollTop > 1;
-    const bottom = el.scrollTop + el.clientHeight < el.scrollHeight - 1;
-    setEdges((e) => (e.top === top && e.bottom === bottom ? e : { top, bottom }));
-  };
-  // The list's size is an outside system: rows animate in, filters change it, the window resizes.
-  useEffect(() => {
-    const observer = new ResizeObserver(measure);
-    if (scroller.current) observer.observe(scroller.current);
-    if (content.current) observer.observe(content.current);
-    measure();
-    return () => observer.disconnect();
-  }, []);
-  return (
-    <div className="relative min-h-0 flex-1">
-      <div ref={scroller} onScroll={measure} className="h-full overflow-y-auto overflow-x-hidden">
-        <div ref={content} className={className}>
-          {children}
-        </div>
-      </div>
-      <span
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 h-6 border-t border-border/70 bg-gradient-to-b from-card to-transparent transition-opacity duration-200",
-          edges.top ? "opacity-100" : "opacity-0",
-        )}
-      />
-      <span
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 h-6 border-b border-border/70 bg-gradient-to-t from-card to-transparent transition-opacity duration-200",
-          edges.bottom ? "opacity-100" : "opacity-0",
-        )}
-      />
-    </div>
-  );
-}
 
 export const SHEET_SPRING = { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.9 };
 
@@ -382,28 +334,30 @@ export function HistorySheet({ onBack, onShare }: { onBack: () => void; onShare:
         A filter change mounts a fresh list that fades and staggers in. No exit wait: waiting
         for the old list to leave stranded a stale list when the filter changed quickly.
       */}
-      <ScrollShade className="px-2 pb-3 pt-3">
-          <motion.div
-            key={`${scope}|${q}`}
-            className="space-y-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.18 }}
-          >
-            {groups.map(({ group, live, chats }) => (
-              <section key={group} className="space-y-1">
-                <h3 className="flex items-center gap-1.5 px-3 pb-0.5 text-xs font-medium text-muted-foreground">
-                  {live ? <LiveIcon /> : null}
-                  {group}
-                </h3>
-                {chats.map((c) => (
-                  <ChatRow key={c.id} chat={c} index={row++} onShare={onShare} />
-                ))}
-              </section>
-            ))}
-            {groups.length === 0 ? <p className="px-3 py-6 text-sm text-muted-foreground">No chats match.</p> : null}
-          </motion.div>
-      </ScrollShade>
+      <ScrollArea shades className="min-h-0 flex-1">
+        <div className="px-2 pb-3 pt-3">
+            <motion.div
+              key={`${scope}|${q}`}
+              className="space-y-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.18 }}
+            >
+              {groups.map(({ group, live, chats }) => (
+                <section key={group} className="space-y-1">
+                  <h3 className="flex items-center gap-1.5 px-3 pb-0.5 text-xs font-medium text-muted-foreground">
+                    {live ? <LiveIcon /> : null}
+                    {group}
+                  </h3>
+                  {chats.map((c) => (
+                    <ChatRow key={c.id} chat={c} index={row++} onShare={onShare} />
+                  ))}
+                </section>
+              ))}
+              {groups.length === 0 ? <p className="px-3 py-6 text-sm text-muted-foreground">No chats match.</p> : null}
+            </motion.div>
+        </div>
+      </ScrollArea>
     </>
   );
 }
@@ -439,50 +393,52 @@ export function ShareSheet({ chat, onBack }: { chat: string; onBack: () => void 
   return (
     <>
       <SheetHeader title="Share this chat" detail={chat} onBack={onBack} />
-      <ScrollShade className="space-y-4 px-3 py-3">
-        <label className="flex h-10 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
-          <UserPlus className="size-4 text-muted-foreground" />
-          <input placeholder="Add people or an organization" aria-label="Add people or an organization" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
-        </label>
-        <ul className="space-y-1">
-          {people.map((p, i) => (
-            <motion.li
-              key={p.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: EASE, delay: 0.12 + i * 0.05 }}
-              className="flex items-center gap-3 rounded-xl px-2 py-2"
-            >
-              <span
-                className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
-                style={{ backgroundColor: `color-mix(in oklab, ${p.tint} 20%, transparent)`, color: p.tint }}
+      <ScrollArea shades className="min-h-0 flex-1">
+        <div className="space-y-4 px-3 py-3">
+          <label className="flex h-10 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
+            <UserPlus className="size-4 text-muted-foreground" />
+            <input placeholder="Add people or an organization" aria-label="Add people or an organization" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
+          </label>
+          <ul className="space-y-1">
+            {people.map((p, i) => (
+              <motion.li
+                key={p.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: EASE, delay: 0.12 + i * 0.05 }}
+                className="flex items-center gap-3 rounded-xl px-2 py-2"
               >
-                {p.org ? <Building2 className="size-4" /> : p.name.slice(0, 1)}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{p.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{p.detail}</p>
-              </div>
-              {p.owner ? (
-                <span className="px-2 text-xs text-muted-foreground">Can chat</span>
-              ) : (
-                <Segmented
-                  label={`${p.name}'s access`}
-                  value={p.access}
-                  onChange={(access) => setPeople((all) => all.map((x) => (x.id === p.id ? { ...x, access } : x)))}
-                  options={[
-                    { id: "view", label: "View", icon: Eye },
-                    { id: "chat", label: "Chat", icon: MessageSquare },
-                  ]}
-                />
-              )}
-            </motion.li>
-          ))}
-        </ul>
-        <p className="px-2 text-xs leading-relaxed text-muted-foreground">
-          They see this conversation. Searches, collections and libraries in it keep their own access. People who can chat send messages as themselves, and the assistant acts for them with their own access and credits.
-        </p>
-      </ScrollShade>
+                <span
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+                  style={{ backgroundColor: `color-mix(in oklab, ${p.tint} 20%, transparent)`, color: p.tint }}
+                >
+                  {p.org ? <Building2 className="size-4" /> : p.name.slice(0, 1)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{p.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{p.detail}</p>
+                </div>
+                {p.owner ? (
+                  <span className="px-2 text-xs text-muted-foreground">Can chat</span>
+                ) : (
+                  <Segmented
+                    label={`${p.name}'s access`}
+                    value={p.access}
+                    onChange={(access) => setPeople((all) => all.map((x) => (x.id === p.id ? { ...x, access } : x)))}
+                    options={[
+                      { id: "view", label: "View", icon: Eye },
+                      { id: "chat", label: "Chat", icon: MessageSquare },
+                    ]}
+                  />
+                )}
+              </motion.li>
+            ))}
+          </ul>
+          <p className="px-2 text-xs leading-relaxed text-muted-foreground">
+            They see this conversation. Searches, collections and libraries in it keep their own access. People who can chat send messages as themselves, and the assistant acts for them with their own access and credits.
+          </p>
+        </div>
+      </ScrollArea>
       <div className="border-t border-border/50 p-3">
         <button
           type="button"
@@ -555,71 +511,73 @@ export function TopUpSheet({
   return (
     <>
       <SheetHeader title="Add credits" detail="Without leaving the chat" onBack={onBack} />
-      <ScrollShade className="space-y-5 px-4 py-5">
-        <div>
-          <p className="text-4xl font-semibold tracking-tight">
-            <AnimatedNumber value={shown} />
-          </p>
-          <div className="mt-1 flex h-5 items-center text-sm text-muted-foreground">
-            <AnimatePresence mode="popLayout" initial={false}>
-              {bought ? (
-                <motion.span
-                  key="added"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, ease: EASE }}
-                  className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400"
-                >
-                  <Check className="size-4" /> Added {format.number(bought)} credits
-                </motion.span>
-              ) : (
-                <motion.span key="need" exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2, ease: EASE }}>
-                  credits, <span className="font-medium text-amber-600 dark:text-amber-400">{need} short</span>
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-        {purpose ? (
-          <div className="flex items-center gap-3 rounded-2xl bg-muted/40 px-3 py-2.5">
-            <KindTile kind={purpose.kind} />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">{purpose.title}</span>
-              <span className="block text-xs text-muted-foreground">Waiting in the chat</span>
-            </span>
-            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">About {purpose.credits} credits</span>
-          </div>
-        ) : null}
-        <div className="rounded-2xl border border-border/60 bg-muted/20 p-1.5">
-          {bundles.map((bundle, i) => (
-            <motion.button
-              key={bundle.credits}
-              type="button"
-              disabled={buying !== null || bought !== null}
-              onClick={() => buy(bundle.credits)}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: bought !== null && bought !== bundle.credits ? 0.4 : 1, y: 0 }}
-              transition={{ duration: 0.3, ease: EASE, delay: bought === null ? 0.08 + i * 0.05 : 0 }}
-              className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted/60 disabled:hover:bg-transparent"
-            >
-              <span className="flex-1 text-sm font-semibold tabular-nums">+{format.number(bundle.credits)}</span>
-              {bundle.amount !== undefined ? <span className="text-sm tabular-nums text-muted-foreground">{money(bundle.amount)}</span> : null}
-              <span className="flex size-4 items-center justify-center">
-                {buying === bundle.credits ? (
-                  <Loader2 className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" />
-                ) : bought === bundle.credits ? (
-                  <motion.span initial={{ scale: 0.3 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 26 }}>
-                    <Check className="size-4 text-emerald-500" />
+      <ScrollArea shades className="min-h-0 flex-1">
+        <div className="space-y-5 px-4 py-5">
+          <div>
+            <p className="text-4xl font-semibold tracking-tight">
+              <AnimatedNumber value={shown} />
+            </p>
+            <div className="mt-1 flex h-5 items-center text-sm text-muted-foreground">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {bought ? (
+                  <motion.span
+                    key="added"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, ease: EASE }}
+                    className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400"
+                  >
+                    <Check className="size-4" /> Added {format.number(bought)} credits
                   </motion.span>
                 ) : (
-                  <ArrowRight className="size-4 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
+                  <motion.span key="need" exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2, ease: EASE }}>
+                    credits, <span className="font-medium text-amber-600 dark:text-amber-400">{need} short</span>
+                  </motion.span>
                 )}
+              </AnimatePresence>
+            </div>
+          </div>
+          {purpose ? (
+            <div className="flex items-center gap-3 rounded-2xl bg-muted/40 px-3 py-2.5">
+              <KindTile kind={purpose.kind} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">{purpose.title}</span>
+                <span className="block text-xs text-muted-foreground">Waiting in the chat</span>
               </span>
-            </motion.button>
-          ))}
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">About {purpose.credits} credits</span>
+            </div>
+          ) : null}
+          <div className="rounded-2xl border border-border/60 bg-muted/20 p-1.5">
+            {bundles.map((bundle, i) => (
+              <motion.button
+                key={bundle.credits}
+                type="button"
+                disabled={buying !== null || bought !== null}
+                onClick={() => buy(bundle.credits)}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: bought !== null && bought !== bundle.credits ? 0.4 : 1, y: 0 }}
+                transition={{ duration: 0.3, ease: EASE, delay: bought === null ? 0.08 + i * 0.05 : 0 }}
+                className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted/60 disabled:hover:bg-transparent"
+              >
+                <span className="flex-1 text-sm font-semibold tabular-nums">+{format.number(bundle.credits)}</span>
+                {bundle.amount !== undefined ? <span className="text-sm tabular-nums text-muted-foreground">{money(bundle.amount)}</span> : null}
+                <span className="flex size-4 items-center justify-center">
+                  {buying === bundle.credits ? (
+                    <Loader2 className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" />
+                  ) : bought === bundle.credits ? (
+                    <motion.span initial={{ scale: 0.3 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 26 }}>
+                      <Check className="size-4 text-emerald-500" />
+                    </motion.span>
+                  ) : (
+                    <ArrowRight className="size-4 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
+                  )}
+                </span>
+              </motion.button>
+            ))}
+          </div>
+          <p className="px-1 text-xs leading-relaxed text-muted-foreground">The assistant still asks before it spends them.</p>
         </div>
-        <p className="px-1 text-xs leading-relaxed text-muted-foreground">The assistant still asks before it spends them.</p>
-      </ScrollShade>
+      </ScrollArea>
     </>
   );
 }
