@@ -16,11 +16,11 @@ import { Segmented } from "@/components/settings/parts";
 import { EASE } from "@/components/settings/model-map";
 import { AnimatedNumber, KindTile, type Ask } from "./run-map";
 import { LogoMark } from "./logo-mark";
-import { ATTACHABLE, KIND, OTHER_SCREENING, type Attachment } from "./data";
+import { KIND, OTHER_SCREENING } from "./data";
 
 const KIND_TINT = { screening: KIND.screening!.tint };
 
-export type SheetKind = "history" | "share" | "attach" | "topup";
+export type SheetKind = "history" | "share" | "topup";
 
 export const SHEET_SPRING = { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.9 };
 
@@ -488,122 +488,6 @@ export function ShareSheet({ chat, onBack }: { chat: string; onBack: () => void 
 }
 
 
-type Tab = keyof typeof ATTACHABLE;
-const TABS: Array<{ id: Tab; label: string }> = [
-  { id: "search", label: "Searches" },
-  { id: "collection", label: "Collections" },
-  { id: "library", label: "Libraries" },
-  { id: "paper", label: "Papers" },
-];
-const EVERYTHING = Object.values(ATTACHABLE).flat();
-const LISTED = new Set(EVERYTHING.map((a) => a.id));
-
-/**
- * Picks what the assistant works with. Rows tick on and off like iOS lists; nothing
- * changes until Done. Records the assistant made itself, such as a screening, stay put.
- */
-export function AttachSheet({ attached, onBack, onDone }: { attached: Attachment[]; onBack: () => void; onDone: (next: Attachment[]) => void }) {
-  const [tab, setTab] = useState<Tab>("search");
-  const [query, setQuery] = useState("");
-  const [picked, setPicked] = useState(() => new Set(attached.map((a) => a.id)));
-  const before = new Set(attached.map((a) => a.id));
-  const adds = [...picked].filter((id) => !before.has(id)).length;
-  const removes = [...before].filter((id) => LISTED.has(id) && !picked.has(id)).length;
-  const q = query.trim().toLowerCase();
-  const rows = ATTACHABLE[tab].filter((a) => !q || a.label.toLowerCase().includes(q) || a.detail?.toLowerCase().includes(q));
-  const toggle = (id: string) =>
-    setPicked((all) => {
-      const next = new Set(all);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  const done = () => {
-    const kept = attached.filter((a) => !LISTED.has(a.id) || picked.has(a.id));
-    const added = EVERYTHING.filter((a) => picked.has(a.id) && !before.has(a.id));
-    onDone([...kept, ...added]);
-  };
-  const action = adds && removes ? "Update" : adds ? `Attach ${adds}` : removes ? `Detach ${removes}` : "Done";
-  return (
-    <>
-      <SheetHeader title="Attach to this chat" detail="The assistant can read and work on what's attached" onBack={onBack} />
-      <div className="space-y-2.5 px-3 pt-3">
-        <label className="flex h-9 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
-          <Search className="size-3.5 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={`Search ${TABS.find((t) => t.id === tab)!.label.toLowerCase()}`}
-            aria-label="Search what to attach"
-            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
-          />
-        </label>
-        <Segmented
-          label="What to attach"
-          value={tab}
-          onChange={setTab}
-          fill
-          options={TABS}
-        />
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3 pt-3">
-        {/* A tab or search change mounts a fresh list that staggers in. */}
-        <motion.ul key={`${tab}|${q}`} className="space-y-0.5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
-          {rows.map((a, i) => {
-            const on = picked.has(a.id);
-            return (
-              <motion.li key={a.id} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, ease: EASE, delay: 0.04 + i * 0.03 }}>
-                <button
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => toggle(a.id)}
-                  className={cn("flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors", on ? "bg-primary/[0.07]" : "hover:bg-muted/50")}
-                >
-                  <KindTile kind={a.kind} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{a.label}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{a.detail}</span>
-                  </span>
-                  <span
-                    className={cn(
-                      "flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors",
-                      on ? "border-primary bg-primary text-primary-foreground" : "border-foreground/25",
-                    )}
-                  >
-                    <AnimatePresence initial={false}>
-                      {on ? (
-                        <motion.span
-                          key="on"
-                          initial={{ scale: 0.3, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0.3, opacity: 0 }}
-                          transition={{ type: "spring", stiffness: 600, damping: 30 }}
-                        >
-                          <Check className="size-3" strokeWidth={3} />
-                        </motion.span>
-                      ) : null}
-                    </AnimatePresence>
-                  </span>
-                </button>
-              </motion.li>
-            );
-          })}
-          {rows.length === 0 ? <p className="px-3 py-6 text-sm text-muted-foreground">Nothing matches.</p> : null}
-        </motion.ul>
-      </div>
-      <div className="border-t border-border/50 p-3">
-        <button type="button" onClick={done} className="flex h-10 w-full items-center justify-center rounded-xl bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90">
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.span key={action} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2, ease: EASE }}>
-              {action}
-            </motion.span>
-          </AnimatePresence>
-        </button>
-      </div>
-    </>
-  );
-}
-
 /**
  * Adds credits without leaving the chat, from the same bundles as the billing page.
  * Buying rolls the balance up, shows a check, then the sheet closes by itself.
@@ -620,6 +504,7 @@ export function TopUpSheet({
   /** The ask the credits are for. */
   purpose?: Ask;
   onBack: () => void;
+  /** Credits land the moment the check shows, so closing the sheet early keeps them. */
   onBought: (credits: number) => void;
 }) {
   const format = useFormatter();
@@ -638,8 +523,9 @@ export function TopUpSheet({
       window.setTimeout(() => {
         setBuying(null);
         setBought(credits);
+        onBought(credits);
       }, 900),
-      window.setTimeout(() => onBought(credits), 2000),
+      window.setTimeout(onBack, 2000),
     );
   };
   const money = (amount: number) =>

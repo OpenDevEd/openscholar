@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { ArrowUp, ChevronDown, CircleStop, Coins, Eye, MessagesSquare, Pencil, PictureInPicture2, Plus, RotateCcw, Sparkles, Square, SquarePen, UserPlus, X } from "lucide-react";
+import { ArrowUp, ChevronDown, CircleStop, Coins, Eye, MessagesSquare, Pencil, PictureInPicture2, RotateCcw, Sparkles, Square, SquarePen, UserPlus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,11 +24,12 @@ import { StatusIcon } from "@/components/evidence-libraries/configuration/status
 import { EASE, effortOf, usePresetModels, type PickedModel, type PresetPick } from "@/components/settings/model-map";
 import { ApprovalCard, CollectionCard, JobCard, KindTile, QuestionCard, RunMap, VersionBars, WorkingText, type Ask, type Step } from "./run-map";
 import { LogoMark } from "./logo-mark";
-import { AttachSheet, Dim, EdgeGlow, HistorySheet, SHEET_SPRING, Sheet, ShareSheet, TopUpSheet, stackedUnder, type SheetKind } from "./sheets";
+import { Dim, EdgeGlow, HistorySheet, SHEET_SPRING, Sheet, ShareSheet, TopUpSheet, stackedUnder, type SheetKind } from "./sheets";
 import { Cite, EXTRACT_CELLS, ExtractionCard } from "./extraction";
+import { MentionComposer, MessageText } from "./mentions";
 import {
-  BALANCE, COLLECTED, COLLECTION_CHOICES, COLLECTION_NAME, EXTRACT_CREDITS, LIBRARY, MAIN_SEARCH, ORIGINAL_COUNT, OTHER_SCREENING,
-  SCREEN_CREDITS, SCREEN_ORDER, TIGHT_COUNT, type Attachment, type Decision,
+  ACCOUNT, BALANCE, COLLECTED, COLLECTION_CHOICES, COLLECTION_NAME, EXTRACT_CREDITS, LIBRARY, ORIGINAL_COUNT, OTHER_SCREENING,
+  SCREEN_CREDITS, SCREEN_ORDER, SEARCH_NAME, TIGHT_COUNT, type Decision,
 } from "./data";
 
 type Card =
@@ -40,7 +41,7 @@ type Card =
   | { type: "publish"; stage: number; failed?: boolean };
 type AssistantTurn = { kind: "assistant"; id: number; steps: Step[]; text: string; shown: number; cards: Card[]; stopped?: boolean };
 /** What a message changes, saved when it's sent, so a retry or an edit can start from there again. */
-type Snapshot = { attached: Attachment[]; always: boolean; balance: number; collection: Home };
+type Snapshot = { always: boolean; balance: number; home: Home; owner: number | null };
 type UserTurn = { kind: "user"; id: number; text: string; step: number; snap: Snapshot; edited?: boolean };
 type Turn = UserTurn | AssistantTurn;
 type Choice = "once" | "always" | "no";
@@ -49,7 +50,7 @@ type Home = { name: string; count: number };
 type Answer = { id: string; typed?: string };
 
 const PROMPTS = [
-  "Tighten this to structured pedagogy studies in sub-Saharan Africa",
+  `Tighten @${SEARCH_NAME} to sub-Saharan Africa`,
   "Screen them. Keep trials and quasi-experiments in primary schools",
   "Save the included ones to a collection",
   "Compare the designs and samples in these studies",
@@ -116,14 +117,13 @@ export function AssistantOverlay() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [always, setAlwaysState] = useState(false);
   const [balance, setBalanceState] = useState(BALANCE);
-  const [home, setHome] = useState<Home>(START_HOME);
+  const [home, setHomeState] = useState<Home>(START_HOME);
   const [busy, setBusy] = useState(false);
   const [next, setNext] = useState(0);
   const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(true);
   // Sheets stacked over the panel, bottom first.
   const [sheets, setSheets] = useState<OpenSheet[]>([]);
-  const [attached, setAttached] = useState<Attachment[]>([MAIN_SEARCH]);
   const run = useRef(0);
   const ids = useRef(0);
   // Each wait on the person answers only the run that asked.
@@ -133,6 +133,8 @@ export function AssistantOverlay() {
   // Read at the gates, so a change mid-step counts.
   const alwaysRef = useRef(false);
   const balanceRef = useRef(BALANCE);
+  // The script reads where the studies went from here, so a rerun sees the restored value.
+  const homeRef = useRef<Home>(START_HOME);
   // The turn whose collection is current; an older card's undo does nothing.
   const collectionOwner = useRef<number | null>(null);
   // The first publish in a chat fails, so the retry shows.
@@ -163,8 +165,10 @@ export function AssistantOverlay() {
     balanceRef.current = value;
     setBalanceState(value);
   };
-  const attach = (a: Attachment) => setAttached((all) => (all.some((x) => x.id === a.id) ? all : [...all, a]));
-  const detach = (id: string) => setAttached((all) => all.filter((a) => a.id !== id));
+  const setHome = (value: Home) => {
+    homeRef.current = value;
+    setHomeState(value);
+  };
   const wait = (token: number, ms: number) =>
     new Promise<void>((resolve, reject) => setTimeout(() => (token === run.current ? resolve() : reject(new Stopped())), ms));
   const patch = (id: number, fn: (t: AssistantTurn) => Partial<AssistantTurn>) =>
@@ -217,7 +221,7 @@ export function AssistantOverlay() {
     retryWait.current = null;
     setBusy(false);
   };
-  /** Stops the running script: pending approvals close, and the collection made on the old search goes. */
+  /** Stops the running script: pending approvals close, an unanswered question goes, and so does the collection made on the old search. */
   const cancelRun = () => {
     halt();
     collectionOwner.current = null;
@@ -226,7 +230,7 @@ export function AssistantOverlay() {
         t.kind === "assistant"
           ? {
               ...t,
-              cards: t.cards.map((c): Card =>
+              cards: t.cards.filter((c) => !(c.type === "question" && c.picked === null)).map((c): Card =>
                 c.type === "approval" && c.status === "pending" ? { ...c, status: "declined" } : c.type === "collection" ? { ...c, undone: true } : c,
               ),
             }
@@ -257,7 +261,6 @@ export function AssistantOverlay() {
   const undoSearch = (id: number) => {
     cancelRun();
     setNext(0);
-    setAttached([MAIN_SEARCH]);
     patch(id, (t) => ({ steps: t.steps.map((s) => (s.kind === "write" ? { ...s, status: "undone", onUndo: undefined } : s)) }));
   };
 
@@ -284,7 +287,6 @@ export function AssistantOverlay() {
       return false;
     }
     charge(SCREEN_CREDITS);
-    attach({ id: "screening", kind: "screening", label: "Screening, 24 papers" });
     // The plan runs one screening at a time, so this one waits for the other to finish.
     startJob(id, asked, { type: "job", done: 0, waiting: OTHER_SCREENING.start });
     for (let w = OTHER_SCREENING.start + 1; w <= OTHER_SCREENING.total; w++) {
@@ -334,13 +336,12 @@ export function AssistantOverlay() {
       { title: `Added ${COLLECTED} studies`, detail: "One was listed twice, so it's in once" }, 900);
     collectionOwner.current = id;
     setHome({ name, count });
-    attach({ id: "collection", kind: "collection", label: name });
     addCard(id, { type: "collection", undone: false, name, count });
     await wait(token, 300);
     await stream(
       token,
       id,
-      fresh ? `Done. The 4 included studies are in “${name}”, and it's attached to this chat.` : `Done. “${name}” has ${count} papers now, and it's attached to this chat.`,
+      fresh ? `Done. The 4 included studies are in “${name}”.` : `Done. “${name}” has ${count} papers now.`,
     );
   };
 
@@ -353,7 +354,6 @@ export function AssistantOverlay() {
       return false;
     }
     charge(EXTRACT_CREDITS);
-    attach({ id: "extraction", kind: "extraction", label: "Extraction, 4 papers" });
     startJob(id, asked, { type: "extract", filled: 0 });
     await wait(token, 400);
     for (let filled = 1; filled <= EXTRACT_CELLS; filled++) {
@@ -370,7 +370,6 @@ export function AssistantOverlay() {
   };
 
   const undoFeature = (id: number) => {
-    detach("l1");
     setNext((n) => Math.min(n, 4));
     patch(id, (t) => ({ steps: t.steps.map((s) => (s.kind === "library" ? { ...s, status: "undone", onUndo: undefined } : s)) }));
   };
@@ -380,16 +379,15 @@ export function AssistantOverlay() {
       { title: "Read the library's draft", detail: "No tagline or description yet" }, 900);
     await work(token, id, 1, { kind: "library", title: "Writing the homepage text", detail: "Tagline and description", status: "working" },
       { title: "Wrote the homepage text" }, 1400);
-    await work(token, id, 2, { kind: "library", title: "Featuring the collection", detail: home.name, status: "working" },
+    await work(token, id, 2, { kind: "library", title: "Featuring the collection", detail: homeRef.current.name, status: "working" },
       { title: "Featured the collection", onUndo: () => undoFeature(id) }, 900);
-    attach({ id: "l1", kind: "library", label: LIBRARY.name, detail: LIBRARY.address });
-    await stream(token, id, `I added a tagline, a description, and “${home.name}” first in the featured list. It's saved as a draft of ${LIBRARY.name}, so visitors don't see it yet.`);
+    await stream(token, id, `I added a tagline, a description, and “${homeRef.current.name}” first in the featured list. It's saved as a draft of ${LIBRARY.name}, so visitors don't see it yet.`);
   };
 
   const publish = async (token: number, id: number) => {
     await work(token, id, 0, { kind: "publish", title: "Checking the draft", detail: "Every section", status: "working" },
       { title: "Checked the draft", detail: "Ready to publish" }, 900);
-    const { choice } = await approve(token, id, publishAsk(home.name));
+    const { choice } = await approve(token, id, publishAsk(homeRef.current.name));
     if (choice === "no") {
       await stream(token, id, "Okay, it stays a draft.");
       return false;
@@ -400,11 +398,13 @@ export function AssistantOverlay() {
     if (!publishFailed.current) {
       await wait(token, 1700);
       publishFailed.current = true;
-      setCard(id, 0, { type: "publish", stage: 1, failed: true });
-      await stream(token, id, "The build timed out on our side, so nothing changed for visitors and the draft is safe. Try again when you're ready.");
-      await new Promise<void>((resolve) => {
+      // Listen for Try again before the card offers it, so an early click counts.
+      const retried = new Promise<void>((resolve) => {
         retryWait.current = { token, resolve };
       });
+      setCard(id, 0, { type: "publish", stage: 1, failed: true });
+      await stream(token, id, "The build timed out on our side, so nothing changed for visitors and the draft is safe. Try again when you're ready.");
+      await retried;
       retryWait.current = null;
       if (token !== run.current) throw new Stopped();
       patch(id, () => ({ text: "", shown: 0 }));
@@ -414,7 +414,7 @@ export function AssistantOverlay() {
       await wait(token, 1300);
       setCard(id, 0, { type: "publish", stage });
     }
-    await stream(token, id, `It's live at ${LIBRARY.address}, with the new homepage and “${home.name}” featured first.`);
+    await stream(token, id, `It's live at ${LIBRARY.address}, with the new homepage and “${homeRef.current.name}” featured first.`);
     return true;
   };
 
@@ -437,12 +437,12 @@ export function AssistantOverlay() {
     }
   };
 
-  const snapshot = (): Snapshot => ({ attached, always: alwaysRef.current, balance: balanceRef.current, collection: home });
+  const snapshot = (): Snapshot => ({ always: alwaysRef.current, balance: balanceRef.current, home: homeRef.current, owner: collectionOwner.current });
   const restore = (snap: Snapshot) => {
-    setAttached(snap.attached);
     setAlways(snap.always);
     setBalance(snap.balance);
-    setHome(snap.collection);
+    setHome(snap.home);
+    collectionOwner.current = snap.owner;
   };
 
   const send = (raw: string) => {
@@ -467,10 +467,14 @@ export function AssistantOverlay() {
     if (!user) return;
     halt();
     restore(user.snap);
-    // A collection made by a reply that's being dropped can't be undone from it any more.
-    if (collectionOwner.current !== null && collectionOwner.current > userId) collectionOwner.current = null;
     const edited = text !== undefined && text.trim() !== user.text;
-    setTurns((all) => [...all.slice(0, all.findIndex((t) => t.id === userId)), { ...user, text: text?.trim() || user.text, edited: user.edited || edited }]);
+    // The collection current when the message was sent comes back as it was, undo and all.
+    const kept = turns.slice(0, turns.findIndex((t) => t.id === userId)).map((t): Turn =>
+      t.kind === "assistant" && t.id === user.snap.owner
+        ? { ...t, cards: t.cards.map((c): Card => (c.type === "collection" ? { ...c, undone: false } : c)) }
+        : t,
+    );
+    setTurns([...kept, { ...user, text: text?.trim() || user.text, edited: user.edited || edited }]);
     setNext(user.step);
     void execute(user.step);
   };
@@ -498,13 +502,11 @@ export function AssistantOverlay() {
     publishFailed.current = false;
     setNext(0);
     setDraft("");
-    setAttached([MAIN_SEARCH]);
   };
 
   const undoCollection = (id: number) => {
     if (collectionOwner.current !== id) return;
     collectionOwner.current = null;
-    detach("collection");
     patch(id, (t) => ({ cards: t.cards.map((c) => (c.type === "collection" ? { ...c, undone: true } : c)) }));
   };
 
@@ -579,18 +581,12 @@ export function AssistantOverlay() {
                   title={chatTitle}
                   onHistory={() => push({ kind: "history", chat: chatTitle })}
                   onShare={() => push({ kind: "share", chat: chatTitle })}
-                  onAttach={() => push({ kind: "attach", chat: chatTitle })}
-                  attached={attached}
-                  onDetach={detach}
-                  always={always}
-                  onStopAlways={() => setAlways(false)}
                   onRestart={restart}
                   onCollapse={fold}
                 />
                 <Thread
                   turns={turns}
                   view={view}
-                  attached={attached}
                   balance={balance}
                   busy={busy}
                   lastUser={lastUser}
@@ -613,6 +609,8 @@ export function AssistantOverlay() {
                   asking={asking}
                   onSend={() => send(draft.trim() || suggestion || "")}
                   onStop={stop}
+                  always={always}
+                  onStopAlways={() => setAlways(false)}
                   view={view}
                 />
               </motion.div>
@@ -625,25 +623,13 @@ export function AssistantOverlay() {
                     <HistorySheet onBack={pop} onShare={(chat) => push({ kind: "share", chat })} />
                   ) : sheet.kind === "share" ? (
                     <ShareSheet chat={sheet.chat} onBack={pop} />
-                  ) : sheet.kind === "attach" ? (
-                    <AttachSheet
-                      attached={attached}
-                      onBack={pop}
-                      onDone={(all) => {
-                        setAttached(all);
-                        pop();
-                      }}
-                    />
                   ) : (
                     <TopUpSheet
                       balance={sheet.balance ?? balance}
                       need={sheet.need ?? 0}
                       purpose={sheet.purpose}
                       onBack={pop}
-                      onBought={(credits) => {
-                        setBalance(balanceRef.current + credits);
-                        pop();
-                      }}
+                      onBought={(credits) => setBalance(balanceRef.current + credits)}
                     />
                   )}
                 </Sheet>
@@ -760,7 +746,6 @@ function Launcher({ working, progress, onOpen }: { working: boolean; progress: n
 function Thread({
   turns,
   view,
-  attached,
   balance,
   busy,
   lastUser,
@@ -773,7 +758,6 @@ function Thread({
 }: {
   turns: Turn[];
   view: string;
-  attached: Attachment[];
   balance: number;
   busy: boolean;
   lastUser: number | null;
@@ -787,7 +771,7 @@ function Thread({
   return (
     <Conversation className="min-h-0 flex-1 [mask-image:linear-gradient(to_bottom,transparent,black_18px)]">
       <ConversationContent className="gap-5 overflow-x-clip px-4 py-4">
-        {turns.length === 0 ? <Empty view={view} attached={attached} /> : null}
+        {turns.length === 0 ? <Empty view={view} /> : null}
         {turns.map((t, i) => {
           if (t.kind === "user") return <UserBubble key={t.id} turn={t} editable={t.id === lastUser} onEdit={(text) => onRerun(t.id, text)} />;
           const asker = turns[i - 1];
@@ -924,7 +908,9 @@ function UserBubble({ turn, editable, onEdit }: { turn: UserTurn; editable: bool
           </motion.div>
         ) : (
           <motion.div key="view" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2, ease: EASE }} style={{ transformOrigin: "100% 50%" }}>
-            <div className="rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm">{turn.text}</div>
+            <div className="rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm leading-6">
+              <MessageText text={turn.text} />
+            </div>
             {turn.edited ? <p className="mt-1 pr-1 text-right text-[11px] text-muted-foreground">Edited</p> : null}
           </motion.div>
         )}
@@ -962,13 +948,13 @@ function Thinking() {
   );
 }
 
-function Empty({ view, attached }: { view: string; attached: Attachment[] }) {
+function Empty({ view }: { view: string }) {
   return (
     <div className="space-y-5 pt-2">
       <div className="space-y-1">
         <p className="text-base font-semibold">Ask about anything here</p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          I can see the page you&apos;re on and use everything you can: search, screen, extract, collect and publish. Tell me what to do and I&apos;ll do it.
+          I can see the page you&apos;re on and use everything you can: search, screen, extract, collect and publish. Type @ to point at something exact.
         </p>
       </div>
       <div className="space-y-2">
@@ -978,7 +964,7 @@ function Empty({ view, attached }: { view: string; attached: Attachment[] }) {
         <RunMap
           steps={[
             { kind: "navigate", title: view, detail: "The page you're on", status: "done" },
-            ...attached.map((a): Step => ({ kind: a.kind, title: a.label, detail: "Attached to this chat", status: "done" })),
+            { kind: "account", title: "Everything in your account", detail: ACCOUNT, status: "done" },
           ]}
           plain
         />
@@ -987,33 +973,21 @@ function Empty({ view, attached }: { view: string; attached: Attachment[] }) {
   );
 }
 
-const CHIP_SPRING = { type: "spring" as const, stiffness: 480, damping: 32 };
-
 function Header({
   title,
   onHistory,
   onShare,
-  onAttach,
-  attached,
-  onDetach,
-  always,
-  onStopAlways,
   onRestart,
   onCollapse,
 }: {
   title: string;
   onHistory: () => void;
   onShare: () => void;
-  onAttach: () => void;
-  attached: Attachment[];
-  onDetach: (id: string) => void;
-  always: boolean;
-  onStopAlways: () => void;
   onRestart: () => void;
   onCollapse: () => void;
 }) {
   return (
-    <div className="space-y-3 border-b border-border/50 px-4 pb-3 pt-3.5">
+    <div className="border-b border-border/50 px-4 pb-3 pt-3.5">
       <div className="flex items-center gap-2.5">
         {/* The logo itself sits on the panel, above this spacer, so it can fly into the launcher. */}
         <span className="size-9 shrink-0" aria-hidden />
@@ -1037,65 +1011,6 @@ function Header({
           <IconButton label="New chat" icon={<SquarePen className="size-4" />} onClick={onRestart} />
           <IconButton label="Fold into a bubble  ⌘J" icon={<PictureInPicture2 className="size-4" />} onClick={onCollapse} />
         </div>
-      </div>
-      {/* The chips scroll; Attach stays pinned at the end, outside the fade. */}
-      <div className="-mx-4 flex items-center gap-1 pr-4">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pl-4 pr-3 [mask-image:linear-gradient(to_right,black_85%,transparent)] [scrollbar-width:none]">
-          <AnimatePresence initial={false} mode="popLayout">
-            {attached.map((a) => (
-              <motion.span
-                key={a.id}
-                layout="position"
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.85 }}
-                transition={CHIP_SPRING}
-                className="flex h-7 max-w-[13rem] shrink-0 items-center gap-1.5 rounded-full bg-muted/60 pl-1 pr-1 text-xs font-medium"
-              >
-                <KindTile kind={a.kind} size="sm" />
-                <TooltipHint label={a.label} onlyWhenClipped>
-                  <span className="truncate">{a.label}</span>
-                </TooltipHint>
-                <TooltipHint label="Detach">
-                  <button
-                    type="button"
-                    aria-label={`Detach ${a.label}`}
-                    onClick={() => onDetach(a.id)}
-                    className="flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 hover:bg-foreground/10 hover:text-foreground"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </TooltipHint>
-              </motion.span>
-            ))}
-            {always ? (
-              <motion.span
-                key="always"
-                layout="position"
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.85 }}
-                transition={CHIP_SPRING}
-                className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary/10 pl-2.5 pr-1 text-xs font-medium text-primary"
-              >
-                <Coins className="size-3" /> Credits allowed
-                <TooltipHint label="Ask before spending credits again">
-                  <button
-                    type="button"
-                    aria-label="Ask before spending credits again"
-                    onClick={onStopAlways}
-                    className="flex size-5 items-center justify-center rounded-full hover:bg-primary/15"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </TooltipHint>
-              </motion.span>
-            ) : null}
-          </AnimatePresence>
-        </div>
-        <span className="shrink-0">
-          <IconButton label="Attach" icon={<Plus className="size-3.5" />} onClick={onAttach} small />
-        </span>
       </div>
     </div>
   );
@@ -1183,6 +1098,8 @@ function Footer({
   asking,
   onSend,
   onStop,
+  always,
+  onStopAlways,
   view,
 }: {
   suggestion: string | null;
@@ -1197,58 +1114,82 @@ function Footer({
   asking: boolean;
   onSend: () => void;
   onStop: () => void;
+  /** Credits are allowed for this chat; the chip turns that off. */
+  always: boolean;
+  onStopAlways: () => void;
   view: string;
 }) {
   // While a reply runs, Send becomes Stop, unless there's a typed answer to send.
   const stopping = busy && !(asking && draft.trim());
   return (
     <div className="space-y-2 p-3 pt-0">
-      <div className="h-8">
-        <AnimatePresence mode="wait" initial={false}>
-          {suggestion ? (
-            <motion.button
-              key={suggestion}
-              type="button"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.25, ease: EASE }}
-              onClick={() => onSuggestion(suggestion)}
-              className="flex h-8 max-w-full items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 text-xs font-medium text-foreground/80 hover:border-border hover:bg-muted/50"
+      <div className="flex h-8 items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <AnimatePresence mode="wait" initial={false}>
+            {suggestion ? (
+              <motion.button
+                key={suggestion}
+                type="button"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.25, ease: EASE }}
+                onClick={() => onSuggestion(suggestion)}
+                className="flex h-8 max-w-full items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 text-xs font-medium text-foreground/80 hover:border-border hover:bg-muted/50"
+              >
+                <Sparkles className="size-3 shrink-0 text-primary" />
+                <span className="truncate">
+                  <MessageText text={suggestion} />
+                </span>
+              </motion.button>
+            ) : done ? (
+              <motion.button
+                key="again"
+                type="button"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.25, ease: EASE }}
+                onClick={onRestart}
+                className="flex h-8 items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 text-xs font-medium text-foreground/80 hover:bg-muted/50"
+              >
+                <RotateCcw className="size-3" /> Play it again
+              </motion.button>
+            ) : null}
+          </AnimatePresence>
+        </div>
+        <AnimatePresence initial={false}>
+          {always ? (
+            <motion.span
+              key="always"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              transition={{ type: "spring", stiffness: 480, damping: 32 }}
+              className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 pl-2.5 pr-1 text-xs font-medium text-primary"
             >
-              <Sparkles className="size-3 shrink-0 text-primary" /> <span className="truncate">{suggestion}</span>
-            </motion.button>
-          ) : done ? (
-            <motion.button
-              key="again"
-              type="button"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.25, ease: EASE }}
-              onClick={onRestart}
-              className="flex h-8 items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 text-xs font-medium text-foreground/80 hover:bg-muted/50"
-            >
-              <RotateCcw className="size-3" /> Play it again
-            </motion.button>
+              <Coins className="size-3" /> Credits allowed
+              <TooltipHint label="Ask before spending credits again">
+                <button
+                  type="button"
+                  aria-label="Ask before spending credits again"
+                  onClick={onStopAlways}
+                  className="flex size-5 items-center justify-center rounded-full hover:bg-primary/15"
+                >
+                  <X className="size-3" />
+                </button>
+              </TooltipHint>
+            </motion.span>
           ) : null}
         </AnimatePresence>
       </div>
       <div className="rounded-2xl border border-border/60 bg-background shadow-xs focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
-        <textarea
-          ref={composer}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              onSend();
-            }
-          }}
-          rows={2}
-          placeholder={asking ? "Or type a name for a new collection" : "Ask, or tell me what to change"}
-          aria-label="Message the assistant"
-          className="block w-full resize-none bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground"
+        <MentionComposer
+          composer={composer}
+          draft={draft}
+          setDraft={setDraft}
+          onSend={onSend}
+          placeholder={asking ? "Or type a name for a new collection" : "Ask, or type @ to point at something"}
         />
         <div className="flex items-center gap-2 px-2 pb-2">
           <span className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground">

@@ -4,7 +4,7 @@
 // library are made up for the mock.
 
 import type { ComponentType } from "react";
-import { Compass, FileText, FolderPlus, LibraryBig, ListChecks, PenLine, Rocket, Search, TableProperties, TestTubes } from "lucide-react";
+import { Boxes, Compass, FileText, FolderPlus, LibraryBig, ListChecks, PenLine, Rocket, Search, TableProperties, TestTubes } from "lucide-react";
 
 export type Decision = "include" | "exclude" | "unsure";
 
@@ -52,6 +52,7 @@ export const KIND: Record<string, { icon: Ico; tint: string }> = {
   library: { icon: LibraryBig, tint: "#f472b6" },
   publish: { icon: Rocket, tint: "var(--primary)" },
   paper: { icon: FileText, tint: "#eab308" },
+  account: { icon: Boxes, tint: "#38bdf8" },
 };
 
 /** One extracted value; `missing` when the abstract doesn't say. */
@@ -106,24 +107,22 @@ export const COLLECTION_CHOICES = [
   { id: "mother", name: "Mother-tongue instruction", detail: "8 papers", count: 8 },
 ] as const;
 
-/** Something attached to the chat; the assistant can read it and work on it. */
-export type Attachment = { id: string; kind: keyof typeof KIND; label: string; detail?: string };
+/** What the assistant can search in your account; made up for the mock. */
+export const ACCOUNT = "12 searches, 3 collections, 48 saved papers, 1 Evidence Library";
 
-export const MAIN_SEARCH: Attachment = { id: "s1", kind: "search", label: "structured pedagogy early grade reading", detail: "215 results" };
+/** The search the first message means, found in your history. */
+export const SEARCH_NAME = "structured pedagogy early grade reading";
 
-/** What the attach sheet offers, by tab. Made up for the mock, apart from the papers. */
-export const ATTACHABLE: Record<"search" | "collection" | "library" | "paper", Attachment[]> = {
-  search: [
-    MAIN_SEARCH,
-    { id: "s2", kind: "search", label: "mother-tongue instruction Kenya Uganda", detail: "142 results" },
-    { id: "s3", kind: "search", label: "teacher coaching cost-effectiveness", detail: "140 results" },
-    { id: "s4", kind: "search", label: "retrieval practice secondary maths", detail: "86 results" },
-  ],
-  collection: [
-    { id: "c1", kind: "collection", label: "Teacher coaching", detail: "12 papers" },
-    { id: "c2", kind: "collection", label: "Mother-tongue instruction", detail: "8 papers" },
-    { id: "c3", kind: "collection", label: "EGRA validity studies", detail: "12 papers" },
-  ],
-  library: [{ id: "l1", kind: "library", label: LIBRARY.name, detail: LIBRARY.address }],
-  paper: EXTRACT_ROWS.map((row) => ({ id: `p${row.cite}`, kind: "paper" as const, label: row.paper, detail: row.design.value })),
-};
+/** Something in your account a message can point at with @. Made up for the mock, apart from the papers. */
+export type Mentionable = { id: string; kind: keyof typeof KIND; label: string; detail: string };
+
+export const MENTIONABLE: Mentionable[] = [
+  { id: "s1", kind: "search", label: SEARCH_NAME, detail: "Search, 215 results" },
+  { id: "s2", kind: "search", label: "mother-tongue instruction Kenya Uganda", detail: "Search, 142 results" },
+  { id: "s3", kind: "search", label: "teacher coaching cost-effectiveness", detail: "Search, 140 results" },
+  { id: "c1", kind: "collection", label: "Teacher coaching", detail: "Collection, 12 papers" },
+  { id: "c2", kind: "collection", label: "Mother-tongue instruction", detail: "Collection, 8 papers" },
+  { id: "c3", kind: "collection", label: "EGRA validity studies", detail: "Collection, 12 papers" },
+  { id: "l1", kind: "library", label: LIBRARY.name, detail: "Evidence Library" },
+  ...EXTRACT_ROWS.map((row) => ({ id: `p${row.cite}`, kind: "paper" as const, label: row.paper, detail: "Saved paper" })),
+];
