@@ -5,6 +5,10 @@ import schema from "../schema";
 import { applyCommand } from "./records";
 import { restoreSearch, serializeSearch, type SavedSearch } from "../../lib/research/records";
 import { convexToJson } from "convex/values";
+import { asSchema } from "ai";
+import type { ActionCtx } from "../_generated/server";
+import { assistantTools } from "../lib/assistantTools";
+import { USER_ACTIONS } from "../lib/userActionRegistry";
 
 const record: SavedSearch = {
   id: "local-original", query: "tutoring AND randomized", field: "title_and_abstract", count: 42,
@@ -143,5 +147,43 @@ describe("account research records", () => {
     expect(first.isDone).toBe(false);
     expect(second.isDone).toBe(true);
     expect(new Set([...first.page, ...second.page].map(row => row.id)).size).toBe(30);
+  });
+});
+
+describe("research actions as assistant tools", () => {
+  // The tools run inside an agent's action; this context passes their calls to the test backend.
+  const actionCtx = (t: ReturnType<typeof convexTest>) =>
+    ({ runQuery: t.query, runMutation: t.mutation }) as unknown as ActionCtx;
+  const call = { messages: [], context: undefined };
+
+  it("act as the sender, record the assistant as author, and apply a retried call once", async () => {
+    const { t, ids, alice } = await setup();
+    const tools = assistantTools(actionCtx(t), ids.alice, USER_ACTIONS);
+    const create = { command: { kind: "createSearch" as const, search: record } };
+    await tools.research_records_change.execute!(create, { ...call, toolCallId: "call-1" });
+    await tools.research_records_change.execute!(create, { ...call, toolCallId: "call-1" });
+    expect(await t.run(ctx => ctx.db.query("searches").collect())).toHaveLength(1);
+    const history = await alice.query(api.research.records.revisions, { accountId: "alice", id: record.id, paginationOpts });
+    expect(history.page.map(row => row.author)).toEqual(["assistant"]);
+    expect(await tools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: "call-2" })).toEqual(record);
+  });
+
+  it("never reach another account's records", async () => {
+    const { t, ids, alice } = await setup();
+    await alice.mutation(api.research.records.importBatch, batch);
+    const bobTools = assistantTools(actionCtx(t), ids.bob, USER_ACTIONS);
+    expect(await bobTools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: "call-3" })).toBeNull();
+    await bobTools.research_records_change.execute!({ command: { kind: "deleteSearch", id: record.id } }, { ...call, toolCallId: "call-4" });
+    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toEqual(record);
+  });
+
+  it("offer every registered action to the model, with the retry key left to the tool", async () => {
+    const { t, ids } = await setup();
+    const tools = assistantTools(actionCtx(t), ids.alice, USER_ACTIONS);
+    expect(Object.keys(tools)).toHaveLength(USER_ACTIONS.length);
+    for (const entry of USER_ACTIONS) {
+      const schema = await asSchema(tools[entry.path.replace(/[/:]/g, "_")]!.inputSchema).jsonSchema;
+      expect(Object.keys((schema as { properties?: object }).properties ?? {})).toEqual(Object.keys(entry.args).filter(name => name !== (entry.kind === "mutation" ? entry.retryKey : undefined)));
+    }
   });
 });
