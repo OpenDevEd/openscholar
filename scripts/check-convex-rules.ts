@@ -1,14 +1,17 @@
 // Convex rules from the Convex reviewer (get-convex/agent-skills), checked in CI (#350):
 //
-// - Every read of a whole query result, `.collect()` or `for await` over `ctx.db.query(...)`,
+// - Every read of a whole query result, `.collect()` or `for await` over a database query,
 //   is bounded or known. A bounded read is listed in scripts/convex-rules.json under
 //   unboundedReads.bounded with why its rows stay few; one that can grow past Convex's
 //   limits is listed under unboundedReads.pending with the issue that bounds it.
-// - Every public function (`query`, `mutation`, `action`) has a `returns` validator,
-//   unless listed under missingReturns.pending with its issue.
-// - No public query reads the clock: `Date.now()` in a query breaks its caching and
-//   reactivity. Schedule a change instead, or pass the time in.
+// - Every public function (`query`, `mutation`, `action`) is defined with an object that
+//   has a `returns` validator, unless listed under missingReturns.pending with its issue.
+// - No public query reads the clock, in its handler or any function it calls:
+//   `Date.now()` or `new Date()` in a query breaks its caching and reactivity. Schedule
+//   the change instead, or pass the time in.
 //
+// It reads the code with TypeScript's type checker, so a loop over a helper that returns
+// a query, a named handler and a helper in another file are all followed.
 // Reads are keyed by file, enclosing function and table, so edits elsewhere don't move them.
 // Run with `npm run check:convex-rules`; `-- --list` prints every read's key, `-- --list --verbose` its query too.
 
@@ -24,6 +27,13 @@ function files(dir: string): string[] {
   });
 }
 
+const sources = files("convex");
+const config = ts.getParsedCommandLineOfConfigFile("tsconfig.json", {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} });
+const program = ts.createProgram(sources, { ...config?.options, noEmit: true });
+const checker = program.getTypeChecker();
+const relative = (file: string) => path.relative(process.cwd(), file);
+const inProject = (file: string) => !file.includes("node_modules") && !file.endsWith(".d.ts");
+
 /** The name of the nearest named function or variable holding `node`. */
 function enclosingName(node: ts.Node): string {
   for (let current: ts.Node | undefined = node.parent; current; current = current.parent) {
@@ -35,8 +45,12 @@ function enclosingName(node: ts.Node): string {
   return "(module)";
 }
 
-/** The table a query chain reads, from its `.query("table")` call. */
+/** The table a query chain reads, from its `.query("table")` call, following a variable that holds it. */
 function tableOf(expression: ts.Expression): string {
+  if (ts.isIdentifier(expression)) {
+    const declaration = checker.getSymbolAtLocation(expression)?.declarations?.[0];
+    if (declaration && ts.isVariableDeclaration(declaration) && declaration.initializer) return tableOf(declaration.initializer);
+  }
   let current: ts.Node = expression;
   while (ts.isCallExpression(current) || ts.isPropertyAccessExpression(current) || ts.isAwaitExpression(current) || ts.isParenthesizedExpression(current)) {
     if (ts.isCallExpression(current) && ts.isPropertyAccessExpression(current.expression) && current.expression.name.text === "query" && current.arguments[0] && ts.isStringLiteral(current.arguments[0])) return current.arguments[0].text;
@@ -45,53 +59,88 @@ function tableOf(expression: ts.Expression): string {
   return "?";
 }
 
-/** The initializer of `const name = ...` in the file, when it builds a query. */
-function declaredQuery(tree: ts.SourceFile, name: string): ts.Expression | undefined {
-  let found: ts.Expression | undefined;
-  const visit = (node: ts.Node) => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === name && node.initializer && /\.query\(/.test(node.initializer.getText())) found = node.initializer;
-    if (!found) ts.forEachChild(node, visit);
-  };
-  visit(tree);
-  return found;
+/** Whether `node` is a Convex database query, by its type. */
+function isDatabaseQuery(node: ts.Expression) {
+  const name = checker.getTypeAtLocation(node).getSymbol()?.getName() ?? "";
+  return ["Query", "OrderedQuery", "QueryInitializer"].includes(name);
 }
 
-/** `export const name = query({...})`, `mutation({...})` or `action({...})`: a public function defined in place. */
-function publicFunction(node: ts.Node) {
-  if (!ts.isVariableDeclaration(node) || !ts.isIdentifier(node.name) || !node.initializer || !ts.isCallExpression(node.initializer)) return null;
-  const call = node.initializer;
-  const kind = ts.isIdentifier(call.expression) ? call.expression.text : "";
-  if (!["query", "mutation", "action"].includes(kind) || !call.arguments[0] || !ts.isObjectLiteralExpression(call.arguments[0])) return null;
-  return { name: node.name.text, kind, definition: call.arguments[0] };
+/** The function a call or reference leads to, when it's defined in this repository. */
+function declarationOf(node: ts.Node): ts.Node | undefined {
+  let symbol = checker.getSymbolAtLocation(node);
+  if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol);
+  const declaration = symbol?.declarations?.[0];
+  if (!declaration || !inProject(declaration.getSourceFile().fileName)) return undefined;
+  if (ts.isVariableDeclaration(declaration) && declaration.initializer && ts.isFunctionLike(declaration.initializer)) return declaration.initializer;
+  return ts.isFunctionLike(declaration) ? declaration : undefined;
 }
 
+/** Where `root`, or any function it calls, reads the clock. */
+function clockRead(root: ts.Node): string | null {
+  const seen = new Set<ts.Node>();
+  const queue = [root];
+  while (queue.length) {
+    const current = queue.pop()!;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    let found: string | null = null;
+    const visit = (node: ts.Node) => {
+      if (found) return;
+      const isNow = ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.getText() === "Date.now";
+      const isNewDate = ts.isNewExpression(node) && node.expression.getText() === "Date" && !node.arguments?.length;
+      if (isNow || isNewDate) {
+        const { line } = node.getSourceFile().getLineAndCharacterOfPosition(node.getStart());
+        found = `${relative(node.getSourceFile().fileName)}:${line + 1}`;
+        return;
+      }
+      if (ts.isCallExpression(node)) {
+        const target = declarationOf(ts.isPropertyAccessExpression(node.expression) ? node.expression.name : node.expression);
+        if (target) queue.push(target);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(current);
+    if (found) return found;
+  }
+  return null;
+}
+
+const BUILDERS = ["query", "mutation", "action"];
 const reads: string[] = [];
 const missingReturns: string[] = [];
-const clockReads: string[] = [];
-for (const file of files("convex")) {
-  const tree = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
+const problems: string[] = [];
+const verbose = process.argv.includes("--verbose");
+
+for (const tree of program.getSourceFiles().filter((file) => sources.includes(relative(file.fileName)))) {
+  const file = relative(tree.fileName);
   const seen = new Map<string, number>();
   const add = (node: ts.Node, table: string) => {
     const base = `${file}:${enclosingName(node)}:${table}`;
     const count = (seen.get(base) ?? 0) + 1;
     seen.set(base, count);
     reads.push(count === 1 ? base : `${base}#${count}`);
-    if (process.argv.includes("--verbose")) console.log(reads.at(-1), "=>", node.getText().replace(/\s+/g, " ").slice(0, 170));
+    if (verbose) console.log(reads.at(-1), "=>", node.getText().replace(/\s+/g, " ").slice(0, 170));
   };
   const visit = (node: ts.Node) => {
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "collect" && node.arguments.length === 0) {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "collect" && node.arguments.length === 0 && isDatabaseQuery(node.expression.expression)) {
       add(node, tableOf(node.expression.expression));
     }
-    if (ts.isForOfStatement(node) && node.awaitModifier) {
-      // A loop over a variable reads the query the variable was set to.
-      const source = ts.isIdentifier(node.expression) ? declaredQuery(tree, node.expression.text) ?? node.expression : node.expression;
-      if (/\.query\(/.test(source.getText())) add(node, tableOf(source));
-    }
-    const fn = publicFunction(node);
-    if (fn) {
-      const properties = new Set(fn.definition.properties.map((p) => (p.name && ts.isIdentifier(p.name) ? p.name.text : "")));
-      if (!properties.has("returns")) missingReturns.push(`${file}:${fn.name}`);
-      if (fn.kind === "query" && /\bDate\.now\(\)/.test(fn.definition.getText())) clockReads.push(`${file}:${fn.name}`);
+    if (ts.isForOfStatement(node) && node.awaitModifier && isDatabaseQuery(node.expression)) add(node, tableOf(node.expression));
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && BUILDERS.includes(node.initializer.expression.text)) {
+      const kind = node.initializer.expression.text;
+      const definition = node.initializer.arguments[0];
+      const name = `${file}:${node.name.text}`;
+      if (!definition || !ts.isObjectLiteralExpression(definition)) problems.push(`${name}: define the ${kind} with an object, so its validators are checked.`);
+      else {
+        const property = (key: string) => definition.properties.find((p) => p.name && ts.isIdentifier(p.name) && p.name.text === key);
+        if (!property("returns")) missingReturns.push(name);
+        const handler = property("handler");
+        if (kind === "query" && handler) {
+          const body = ts.isPropertyAssignment(handler) ? (ts.isIdentifier(handler.initializer) ? declarationOf(handler.initializer) ?? handler.initializer : handler.initializer) : handler;
+          const where = clockRead(body);
+          if (where) problems.push(`${name}: a query can't read the clock (${where}); schedule the change or pass the time in.`);
+        }
+      }
     }
     ts.forEachChild(node, visit);
   };
@@ -105,7 +154,6 @@ if (process.argv.includes("--list")) {
 
 type Listed = { bounded: Record<string, string>; pending: Record<string, string> };
 const rules = JSON.parse(readFileSync("scripts/convex-rules.json", "utf8")) as { unboundedReads: Listed; missingReturns: { pending: Record<string, string> } };
-const problems: string[] = [];
 const issue = /^#\d+$/;
 
 const found = new Set(reads);
@@ -128,8 +176,6 @@ for (const [fn, ref] of Object.entries(rules.missingReturns.pending)) {
   if (!withoutReturns.has(fn)) problems.push(`${fn}: listed as missing returns but has one now; remove it.`);
   if (!issue.test(ref)) problems.push(`${fn}: pending needs the issue that adds its validator.`);
 }
-
-for (const fn of clockReads) problems.push(`${fn}: a query can't read the clock; schedule the change or pass the time in.`);
 
 if (problems.length) {
   console.error(`Convex rules: ${problems.length} problem${problems.length === 1 ? "" : "s"}.\n\n${problems.join("\n")}`);

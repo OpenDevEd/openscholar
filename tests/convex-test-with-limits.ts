@@ -18,6 +18,6 @@ const isOptions = (value: unknown): value is Options =>
   typeof value === "object" && value !== null && !("tables" in value);
 
 export function convexTest(schemaOrOptions?: Schema | Options, modules?: Modules) {
-  const options = isOptions(schemaOrOptions) ? schemaOrOptions : { schema: schemaOrOptions, modules };
-  return baseConvexTest({ transactionLimits: true, ...options } as never) as ReturnType<typeof baseConvexTest>;
+  const options: Options = isOptions(schemaOrOptions) ? schemaOrOptions : { schema: schemaOrOptions, modules };
+  return baseConvexTest({ ...options, transactionLimits: options.transactionLimits ?? true } as never) as ReturnType<typeof baseConvexTest>;
 }
