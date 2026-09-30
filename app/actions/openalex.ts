@@ -8,8 +8,8 @@ import type { SearchFilters } from "@/lib/types";
 import type { QueryErrorDetail } from "@/lib/search/search-error";
 import { OQL_FIELD, worksOql } from "@/lib/openalex/oql";
 import { fetchOqlWorks } from "@/lib/openalex/oql-works";
+import { OPENALEX_API, openAlexUrl } from "@/lib/openalex/request-url";
 
-const OPENALEX_BASE_URL = "https://api.openalex.org";
 /** OpenAlex's largest page. */
 const SEARCH_PAGE_SIZE = 200;
 
@@ -34,7 +34,7 @@ async function probeOpenAlexError(
 ): Promise<{ status: number | null; message: string }> {
   try {
     const base = buildUrl(
-      OPENALEX_BASE_URL,
+      OPENALEX_API,
       "works",
       searchParams.search,
       undefined,
@@ -42,10 +42,7 @@ async function probeOpenAlexError(
       undefined,
       searchParams.sortBy
     );
-    const mailto = process.env.OPENALEX_CONTACT_EMAIL;
-    const url = `${base}&per_page=1${mailto ? `&mailto=${encodeURIComponent(mailto)}` : ""}`;
-
-    const res = await fetch(url);
+    const res = await fetch(openAlexUrl(base, { per_page: "1" }));
     let message = "";
     try {
       const body = (await res.json()) as { message?: string; error?: string };

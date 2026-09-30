@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { openAlexUrl } from "./request-url";
 
 export type FunderOption = { id: string; name: string; detail?: string };
 
@@ -11,11 +12,7 @@ const fundersSchema = z.object({
 });
 
 async function readOpenAlex(path: string, parameters: Record<string, string>): Promise<unknown> {
-  const url = new URL(path, "https://api.openalex.org/");
-  for (const [key, value] of Object.entries(parameters)) url.searchParams.set(key, value);
-  if (process.env.OPENALEX_CONTACT_EMAIL) url.searchParams.set("mailto", process.env.OPENALEX_CONTACT_EMAIL);
-  if (process.env.OPENALEX_API_KEY) url.searchParams.set("api_key", process.env.OPENALEX_API_KEY);
-  const response = await fetch(url, { signal: AbortSignal.timeout(12000), next: { revalidate: 3600 } });
+  const response = await fetch(openAlexUrl(path, parameters), { signal: AbortSignal.timeout(12000), next: { revalidate: 3600 } });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     console.error("OpenAlex funder lookup failed", { path, status: response.status, body: body.slice(0, 500) });

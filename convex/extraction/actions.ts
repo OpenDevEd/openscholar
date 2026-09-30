@@ -19,6 +19,7 @@ import {
   mapOpenAlexWorkToPaperData,
   type OpenAlexWork,
 } from "../../lib/openalex/work-mapper";
+import { openAlexUrl } from "../../lib/openalex/request-url";
 import { dedupeExpandedSources, expandJobSources } from "./expandSources";
 import { OLD_SEARCH_MESSAGE } from "./jobSources";
 import { createError } from "../lib/errors";
@@ -32,8 +33,6 @@ import {
   type ClassifiedError,
 } from "@/lib/errors/taxonomy";
 
-const OPENALEX_WORKS_URL = "https://api.openalex.org/works";
-const OPENALEX_ROOT_URL = "https://api.openalex.org/";
 
 // Per-mutation chunk size for createPaperRecords. The per-paper payload
 // after the citedByCount/venueName/workType strip is roughly 1.5–2 KB
@@ -220,14 +219,10 @@ export async function runFetchPapersFromHistory(
 
   // An OQL search goes in a POST body to the API root: it outgrows the URL limit.
   const { oql } = searchFilters.openAlexQuery;
-  const url = `${oql ? OPENALEX_ROOT_URL : OPENALEX_WORKS_URL}?${searchParams.toString()}`;
-  console.log(`[fetchPapersFromHistory] Fetching: ${url}${oql ? ` (OQL, ${oql.length} characters)` : ""}`);
-  // Without OpenScholar's key a search costs 10 of 1,000 shared daily credits.
-  // Added after the log line so the key stays out of the logs.
-  const apiKey = process.env.OPENALEX_API_KEY;
-  const requestUrl = apiKey ? `${url}&api_key=${encodeURIComponent(apiKey)}` : url;
+  const url = openAlexUrl(oql ? "" : "works", Object.fromEntries(searchParams));
+  console.log(`[fetchPapersFromHistory] Fetching: ${url.pathname}?${searchParams.toString()}${oql ? ` (OQL, ${oql.length} characters)` : ""}`);
 
-  const response = await fetch(requestUrl, {
+  const response = await fetch(url, {
     method: oql ? "POST" : "GET",
     headers: {
       "User-Agent": `OpenAlex-Count/1.0 (mailto:${contactEmail})`,

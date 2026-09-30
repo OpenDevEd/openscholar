@@ -7,6 +7,7 @@ import { requireAppUrl } from "../lib/env";
 import { topicIdSchema, type TopicNode } from "../../lib/topics/contract";
 import { CATALOG_REVISION } from "../../lib/topics/catalog";
 import type { Doc } from "../_generated/dataModel";
+import { openAlexUrl } from "../../lib/openalex/request-url";
 
 const provider = z.object({id: z.string(), description: z.string().max(100000), keywords: z.array(z.string().max(1000)).max(1000), works_count: z.number().int().nonnegative()});
 const DAY = 86_400_000;
@@ -30,9 +31,7 @@ export const save = internalMutation({
   },
 });
 async function fetchTopicDetail(id: string) {
-  const url = new URL(`https://api.openalex.org/topics/${id}`);
-  if (process.env.OPENALEX_API_KEY) url.searchParams.set("api_key", process.env.OPENALEX_API_KEY);
-  const response = await fetch(url, {signal: AbortSignal.timeout(10000)});
+  const response = await fetch(openAlexUrl(`topics/${id}`), {signal: AbortSignal.timeout(10000)});
   if (!response.ok) throw new Error(`OpenAlex topic returned ${response.status}`);
   const topic = provider.parse(await response.json());
   if (topic.id.replace("https://openalex.org/", "") !== id) throw new Error("OpenAlex returned a different topic");

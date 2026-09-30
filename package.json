@@ -15,6 +15,7 @@
     "schema:sync:evidence-library-config": "node scripts/sync-evidence-library-config-contract.mjs",
     "check:email-template": "node scripts/sync-library-email-template.mjs --check",
     "check:animation-clash": "node scripts/check-animation-clash.mjs",
+    "check:openalex-key": "bash scripts/check-openalex-key.sh",
     "schema:check:evidence-library-config": "node scripts/sync-evidence-library-config-contract.mjs --check",
     "test:perf": "vitest bench --config vitest.perf.config.ts",
     "test:e2e:auth": "playwright test e2e/auth.spec.ts --config=playwright.config.ts",

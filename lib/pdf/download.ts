@@ -8,6 +8,7 @@
 
 import { buildZoteroHeaders } from "../zotero-utils";
 import { MAX_PDF_BYTES } from "../files/limits";
+import { openAlexUrl } from "../openalex/request-url";
 import {
   safeFetchPdf,
   UnsafeUrlError,
@@ -293,7 +294,7 @@ async function fetchAlternativeOaUrls(doi: string): Promise<string[]> {
   // Fetch from OpenAlex
   try {
     const response = await fetch(
-      `https://api.openalex.org/works/doi:${encodeURIComponent(cleanDoi)}?select=locations`,
+      openAlexUrl(`works/doi:${encodeURIComponent(cleanDoi)}`, { select: "locations" }),
       {
         headers: {
           "User-Agent": "OpenCode-PDFFetcher/1.0",

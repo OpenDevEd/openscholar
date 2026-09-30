@@ -3,9 +3,9 @@
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { openAlexUrl } from "../../lib/openalex/request-url";
 
 const BATCH_SIZE = 25;
-const OPENALEX_API_BASE = "https://api.openalex.org/works";
 const DELAY_BETWEEN_REQUESTS_MS = 100; // Respect OpenAlex rate limits
 
 /**
@@ -43,10 +43,7 @@ export const backfillPaperData = internalAction({
           ? item.openalexId.split("/").pop()!
           : item.openalexId;
 
-        const url = new URL(`${OPENALEX_API_BASE}/${workId}`);
-        if (process.env.OPENALEX_API_KEY) url.searchParams.set("api_key", process.env.OPENALEX_API_KEY);
-        if (process.env.OPENALEX_CONTACT_EMAIL) url.searchParams.set("mailto", process.env.OPENALEX_CONTACT_EMAIL);
-        const response = await fetch(url);
+        const response = await fetch(openAlexUrl(`works/${workId}`));
 
         if (!response.ok) {
           console.warn(

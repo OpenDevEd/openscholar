@@ -170,6 +170,9 @@ jobs:
       - name: Check animation and transition clashes
         run: npm run check:animation-clash
 
+      - name: Check every OpenAlex request carries the key
+        run: npm run check:openalex-key
+
       # The browser job builds Next.js on the same guest at the same time. Fifteen jsdom workers on a shared CPU share pushed single tests
       # past their timeouts; eight finish sooner.
       - name: Run unit and contract tests

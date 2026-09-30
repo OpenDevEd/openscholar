@@ -20,6 +20,7 @@ import { createSearchParameters } from "@/lib/utils";
 import type { SearchFilters } from "@/lib/types";
 import { OQL_FIELD, worksOql } from "./oql";
 import { fetchOqlWorks } from "./oql-works";
+import { openAlexUrl } from "./request-url";
 import type { OpenAlexWorksQuery } from "./search-params";
 
 export async function fetchOpenAlexCount(
@@ -56,14 +57,7 @@ async function fetchOpenAlexQueryCount(
     if (!result.ok) throw new Error(`OpenAlex API error: ${result.message}`);
     return { count: result.data.meta.count };
   }
-  const url = new URL("https://api.openalex.org/works");
-  if (query.filter) url.searchParams.set("filter", query.filter);
-  if (query.search) url.searchParams.set("search", query.search);
-  url.searchParams.set("per-page", "1");
-  url.searchParams.set("select", "id");
-  if (process.env.OPENALEX_API_KEY) url.searchParams.set("api_key", process.env.OPENALEX_API_KEY);
-  if (process.env.OPENALEX_CONTACT_EMAIL) url.searchParams.set("mailto", process.env.OPENALEX_CONTACT_EMAIL);
-  const response = await fetch(url);
+  const response = await fetch(openAlexUrl("works", { filter: query.filter || undefined, search: query.search || undefined, "per-page": "1", select: "id" }));
   if (!response.ok) throw new Error(`OpenAlex API error: ${response.status}`);
   const body = (await response.json()) as { meta: { count: number } };
   return { count: body.meta.count };
