@@ -369,9 +369,9 @@ export function AssistantMock() {
                       {sheets.map((sheet, i) => (
                         <Sheet key={`${i}-${sheet.kind}`} index={i} depth={depth - 1 - i}>
                           {sheet.kind === "history" ? (
-                            <HistorySheet back={i > 0} onBack={pop} onShare={(chat) => push("share", chat)} />
+                            <HistorySheet onBack={pop} onShare={(chat) => push("share", chat)} />
                           ) : (
-                            <ShareSheet back={i > 0} chat={sheet.chat} onBack={pop} />
+                            <ShareSheet chat={sheet.chat} onBack={pop} />
                           )}
                         </Sheet>
                       ))}
@@ -447,7 +447,7 @@ function Thread({
 }) {
   return (
     <Conversation className="min-h-0 flex-1">
-      <ConversationContent className="gap-5 px-4 py-4">
+      <ConversationContent className="gap-5 overflow-x-clip px-4 py-4">
         {turns.length === 0 ? <Empty /> : null}
         {turns.map((t) =>
           t.kind === "user" ? (
@@ -467,7 +467,7 @@ function Thread({
                 {t.cards.map((c, i) => (
                   <motion.div
                     key={`${i}-${c.type}`}
-                    layout
+                    layout="position"
                     initial={{ opacity: 0, scale: 0.97, y: 6 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.97 }}
@@ -601,7 +601,7 @@ function Header({
         <AnimatePresence initial={false}>
           {attached.map((k) => (
             <motion.span
-              layout
+              layout="position"
               key={k}
               initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -617,7 +617,7 @@ function Header({
           ))}
           {always ? (
             <motion.span
-              layout
+              layout="position"
               key="always"
               initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -639,7 +639,7 @@ function Header({
             </motion.span>
           ) : null}
         </AnimatePresence>
-        <motion.span layout className="shrink-0">
+        <motion.span layout="position" className="shrink-0">
           <IconButton label="Attach" icon={<Plus className="size-3.5" />} small />
         </motion.span>
       </div>

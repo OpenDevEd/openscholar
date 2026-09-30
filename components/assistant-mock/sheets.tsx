@@ -4,15 +4,18 @@
 // slides in from the right, and the one underneath steps back, shifts left so its
 // edge peeks out, and dims. Each layer is its own card; nothing sits behind them.
 
-import { useState, type ReactNode } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { Building2, Check, ChevronLeft, Eye, Link2, MessageSquare, Search, Share2, SquarePen, UserPlus, Users, X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Building2, Check, ChevronLeft, Eye, Link2, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Segmented } from "@/components/settings/parts";
 import { EASE } from "@/components/settings/model-map";
 import { KindTile } from "./run-map";
-import type { KIND } from "./data";
+import { LogoMark } from "./logo-mark";
+import { KIND } from "./data";
+
+const KIND_TINT = { screening: KIND.screening!.tint };
 
 export type SheetKind = "history" | "share";
 
@@ -58,17 +61,17 @@ export function Dim({ on }: { on: boolean }) {
   );
 }
 
-function SheetHeader({ title, detail, onBack, back }: { title: string; detail?: string; onBack: () => void; back: boolean }) {
+function SheetHeader({ title, detail, onBack }: { title: string; detail?: string; onBack: () => void }) {
   return (
     <div className="flex items-center gap-2 border-b border-border/50 px-3 py-3">
-      <TooltipHint label={back ? "Back" : "Close"}>
+      <TooltipHint label="Back">
         <button
           type="button"
-          aria-label={back ? "Back" : "Close"}
+          aria-label="Back"
           onClick={onBack}
           className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
         >
-          {back ? <ChevronLeft className="size-4" /> : <X className="size-4" />}
+          <ChevronLeft className="size-4" />
         </button>
       </TooltipHint>
       <div className="min-w-0">
@@ -80,21 +83,45 @@ function SheetHeader({ title, detail, onBack, back }: { title: string; detail?: 
 }
 
 type Record = { kind: keyof typeof KIND; label: string };
+type Member = { initial: string; name: string; tint: string; here?: boolean };
 type Chat = {
   id: string;
   title: string;
   last: string;
   when: string;
   records: Record[];
-  /** Initials and tints of the people it's shared with. */
-  people?: Array<{ initial: string; tint: string }>;
+  members?: Member[];
   org?: string;
   mine: boolean;
   current?: boolean;
+  /** The assistant is running a job in this chat right now. */
+  running?: { label: string; total: number; start: number };
 };
 
-// Past chats are made up for the mock.
-const CHATS: Array<{ group: string; chats: Chat[] }> = [
+const JOSEPH: Member = { initial: "J", name: "Joseph", tint: "#2dd4bf" };
+const SARA: Member = { initial: "S", name: "Sara", tint: "#a78bfa" };
+const AMINA: Member = { initial: "A", name: "Amina", tint: "#fb923c" };
+const MARC: Member = { initial: "M", name: "Marc", tint: "#60a5fa" };
+
+// Past chats and people are made up for the mock.
+const CHATS: Array<{ group: string; live?: boolean; chats: Chat[] }> = [
+  {
+    group: "Happening now",
+    live: true,
+    chats: [
+      {
+        id: "c3", title: "Mother-tongue instruction, Kenya and Uganda", last: "Tightened the search to 2015 onwards", when: "Mon", mine: false, org: "OpenDevEd",
+        records: [{ kind: "search", label: "142 results" }],
+        members: [{ ...JOSEPH, here: true }, { ...SARA, here: true }, AMINA],
+      },
+      {
+        id: "c5", title: "Teacher coaching cost-effectiveness", last: "Screened 140 papers, 38 included", when: "14 Sep", mine: true,
+        records: [{ kind: "search", label: "140 results" }, { kind: "screening", label: "140 papers" }],
+        members: [JOSEPH, SARA],
+        running: { label: "Screening", total: 140, start: 58 },
+      },
+    ],
+  },
   {
     group: "Today",
     chats: [
@@ -109,31 +136,16 @@ const CHATS: Array<{ group: string; chats: Chat[] }> = [
     ],
   },
   {
-    group: "This week",
+    group: "Earlier",
     chats: [
-      {
-        id: "c3", title: "Mother-tongue instruction, Kenya and Uganda", last: "Tightened the search to 2015 onwards", when: "Mon", mine: false, org: "OpenDevEd",
-        records: [{ kind: "search", label: "142 results" }],
-        people: [{ initial: "J", tint: "#2dd4bf" }, { initial: "S", tint: "#a78bfa" }, { initial: "A", tint: "#fb923c" }],
-      },
       {
         id: "c4", title: "EGRA validity studies", last: "Compared 12 instruments across countries", when: "Sun", mine: true,
         records: [{ kind: "collection", label: "12 papers" }, { kind: "extraction", label: "12 papers" }],
       },
-    ],
-  },
-  {
-    group: "Earlier",
-    chats: [
-      {
-        id: "c5", title: "Teacher coaching cost-effectiveness", last: "Screened 140 papers, 38 included", when: "14 Sep", mine: true,
-        records: [{ kind: "search", label: "140 results" }, { kind: "screening", label: "140 screened" }],
-        people: [{ initial: "J", tint: "#2dd4bf" }, { initial: "S", tint: "#a78bfa" }],
-      },
       {
         id: "c6", title: "Digital literacy tools in Malawi", last: "Found 3 recent reviews", when: "2 Sep", mine: false,
         records: [{ kind: "search", label: "57 results" }],
-        people: [{ initial: "M", tint: "#60a5fa" }],
+        members: [MARC],
       },
     ],
   },
@@ -141,40 +153,101 @@ const CHATS: Array<{ group: string; chats: Chat[] }> = [
 
 type Scope = "all" | "mine" | "shared";
 
-function Avatars({ people, org }: { people?: Chat["people"]; org?: string }) {
-  if (!people?.length && !org) return null;
+/** A member's initial; someone in the chat right now gets a ring that ripples outward. */
+function Avatar({ member }: { member: Member }) {
+  const reduceMotion = useReducedMotion();
+  return (
+    <span className="relative flex size-6 shrink-0">
+      {member.here && !reduceMotion ? (
+        <motion.span
+          aria-hidden
+          className="absolute inset-0 rounded-full"
+          style={{ boxShadow: `0 0 0 2px ${member.tint}` }}
+          animate={{ scale: [1, 1.55], opacity: [0.7, 0] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+        />
+      ) : null}
+      <span
+        className="relative flex size-6 items-center justify-center rounded-full text-[11px] font-semibold ring-2 ring-card"
+        style={{
+          backgroundColor: `color-mix(in oklab, ${member.tint} 24%, var(--card))`,
+          color: member.tint,
+          boxShadow: member.here ? `0 0 0 3.5px ${member.tint}` : undefined,
+        }}
+      >
+        {member.initial}
+      </span>
+    </span>
+  );
+}
+
+function Members({ members, org }: { members?: Member[]; org?: string }) {
+  if (!members?.length && !org) return null;
   return (
     <span className="flex shrink-0 items-center -space-x-1.5">
       {org ? (
         <TooltipHint label={`Everyone in ${org}`}>
-          <span className="flex size-6 items-center justify-center rounded-full bg-[color-mix(in_oklab,#60a5fa_22%,var(--card))] text-[#60a5fa] ring-2 ring-card">
+          <span className="relative flex size-6 items-center justify-center rounded-full bg-[color-mix(in_oklab,#60a5fa_22%,var(--card))] text-[#60a5fa] ring-2 ring-card">
             <Building2 className="size-3" />
           </span>
         </TooltipHint>
       ) : null}
-      {people?.map((p, i) => (
-        <span
-          key={i}
-          className="flex size-6 items-center justify-center rounded-full text-[11px] font-semibold ring-2 ring-card"
-          style={{ backgroundColor: `color-mix(in oklab, ${p.tint} 24%, var(--card))`, color: p.tint }}
-        >
-          {p.initial}
-        </span>
-      ))}
+      {members?.map((m) => <Avatar key={m.name} member={m} />)}
     </span>
   );
+}
+
+/** A job the assistant is running in another chat, ticking along while you watch. */
+function Running({ running }: { running: NonNullable<Chat["running"]> }) {
+  const [done, setDone] = useState(running.start);
+  // A timer stands in for the job's live progress.
+  useEffect(() => {
+    const id = setInterval(() => setDone((d) => (d >= running.total ? d : d + 1)), 260);
+    return () => clearInterval(id);
+  }, [running.total]);
+  const finished = done >= running.total;
+  return (
+    <span className="flex min-w-0 flex-1 items-center gap-2 text-xs">
+      <LogoMark size={18} working={!finished} />
+      <span className="shrink-0 font-medium text-foreground/90">
+        {finished ? "Screened" : running.label} <span className="tabular-nums">{done}</span>
+        <span className="text-muted-foreground"> of {running.total}</span>
+      </span>
+      <span className="h-1 min-w-8 flex-1 overflow-hidden rounded-full bg-foreground/10">
+        <motion.span
+          className="block h-full rounded-full"
+          style={{ backgroundColor: KIND_TINT.screening }}
+          initial={false}
+          animate={{ width: `${(done / running.total) * 100}%` }}
+          transition={{ duration: 0.25, ease: EASE }}
+        />
+      </span>
+    </span>
+  );
+}
+
+function Status({ chat }: { chat: Chat }) {
+  const here = chat.members?.filter((m) => m.here) ?? [];
+  if (chat.running) return <Running running={chat.running} />;
+  if (here.length) {
+    const names = here.map((m) => m.name);
+    return (
+      <span className="truncate text-xs font-medium text-foreground/90">
+        {names.length === 1 ? `${names[0]} is here` : `${names.slice(0, -1).join(", ")} and ${names.at(-1)} are here`}
+      </span>
+    );
+  }
+  return <span className="truncate text-xs text-muted-foreground">{chat.last}</span>;
 }
 
 function ChatRow({ chat, index, onShare }: { chat: Chat; index: number; onShare: (title: string) => void }) {
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, x: 16 }}
+      initial={{ opacity: 0, x: 12 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.35, ease: EASE, delay: 0.1 + index * 0.035 }}
+      transition={{ duration: 0.3, ease: EASE, delay: 0.06 + index * 0.03 }}
       className={cn(
-        "group relative space-y-1.5 rounded-2xl px-3 py-3",
+        "group relative rounded-2xl px-3 py-3",
         chat.current ? "bg-primary/[0.07] ring-1 ring-inset ring-primary/25" : "hover:bg-muted/50",
       )}
     >
@@ -184,8 +257,10 @@ function ChatRow({ chat, index, onShare }: { chat: Chat; index: number; onShare:
           {chat.current ? "Open now" : chat.when}
         </span>
       </div>
-      <p className="truncate text-xs text-muted-foreground">{chat.last}</p>
-      <div className="flex items-center gap-1.5 pt-0.5">
+      <div className="mt-1 flex h-5 items-center">
+        <Status chat={chat} />
+      </div>
+      <div className="mt-2 flex items-center gap-1.5">
         {chat.records.map((r, i) => (
           <span key={i} className="flex h-6 items-center gap-1.5 rounded-full bg-muted/60 pl-0.5 pr-2 text-[11px] font-medium text-foreground/80">
             <KindTile kind={r.kind} size="sm" />
@@ -193,33 +268,37 @@ function ChatRow({ chat, index, onShare }: { chat: Chat; index: number; onShare:
           </span>
         ))}
         <span className="ml-auto">
-          <Avatars people={chat.people} org={chat.org} />
+          <Members members={chat.members} org={chat.org} />
         </span>
       </div>
-      <TooltipHint label="Share">
-        <button
-          type="button"
-          aria-label={`Share ${chat.title}`}
-          onClick={() => onShare(chat.title)}
-          className="absolute right-2 top-2 hidden size-7 items-center justify-center rounded-full bg-card text-muted-foreground shadow-xs hover:text-foreground group-hover:flex"
-        >
-          <Share2 className="size-3.5" />
-        </button>
-      </TooltipHint>
+      {/* Out of the flow, so the hover action never adds height to the row. */}
+      <div className="absolute right-2 top-2 hidden group-hover:block">
+        <TooltipHint label="Share">
+          <button
+            type="button"
+            aria-label={`Share ${chat.title}`}
+            onClick={() => onShare(chat.title)}
+            className="flex size-7 items-center justify-center rounded-full bg-card text-muted-foreground shadow-xs hover:text-foreground"
+          >
+            <Share2 className="size-3.5" />
+          </button>
+        </TooltipHint>
+      </div>
     </motion.div>
   );
 }
 
-export function HistorySheet({ onBack, onShare, back }: { onBack: () => void; onShare: (title: string) => void; back: boolean }) {
+export function HistorySheet({ onBack, onShare }: { onBack: () => void; onShare: (title: string) => void }) {
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<Scope>("all");
   const q = query.trim().toLowerCase();
   const keep = (c: Chat) =>
     (scope === "all" || (scope === "mine" ? c.mine : !c.mine)) && (!q || c.title.toLowerCase().includes(q) || c.last.toLowerCase().includes(q));
   const groups = CHATS.map((g) => ({ ...g, chats: g.chats.filter(keep) })).filter((g) => g.chats.length);
+  let row = 0;
   return (
     <>
-      <SheetHeader title="Chats" detail="Yours, and the ones shared with you" onBack={onBack} back={back} />
+      <SheetHeader title="Chats" detail="Yours, and the ones shared with you" onBack={onBack} />
       <div className="space-y-2.5 px-3 pt-3">
         <div className="flex items-center gap-2">
           <label className="flex h-9 flex-1 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
@@ -250,20 +329,47 @@ export function HistorySheet({ onBack, onShare, back }: { onBack: () => void; on
           ]}
         />
       </div>
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 pb-3 pt-3">
-        <AnimatePresence mode="popLayout" initial={false}>
-          {groups.map(({ group, chats }) => (
-            <motion.section key={group} layout className="space-y-1" exit={{ opacity: 0 }}>
-              <h3 className="px-3 pb-0.5 text-xs font-medium text-muted-foreground">{group}</h3>
-              {chats.map((c, i) => (
-                <ChatRow key={c.id} chat={c} index={i} onShare={onShare} />
-              ))}
-            </motion.section>
-          ))}
-        </AnimatePresence>
-        {groups.length === 0 ? <p className="px-3 py-6 text-sm text-muted-foreground">No chats match.</p> : null}
+      {/*
+        A filter change mounts a fresh list that fades and staggers in. No exit wait: waiting
+        for the old list to leave stranded a stale list when the filter changed quickly.
+      */}
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3 pt-3">
+          <motion.div
+            key={`${scope}|${q}`}
+            className="space-y-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.18 }}
+          >
+            {groups.map(({ group, live, chats }) => (
+              <section key={group} className="space-y-1">
+                <h3 className="flex items-center gap-1.5 px-3 pb-0.5 text-xs font-medium text-muted-foreground">
+                  {live ? <LiveIcon /> : null}
+                  {group}
+                </h3>
+                {chats.map((c) => (
+                  <ChatRow key={c.id} chat={c} index={row++} onShare={onShare} />
+                ))}
+              </section>
+            ))}
+            {groups.length === 0 ? <p className="px-3 py-6 text-sm text-muted-foreground">No chats match.</p> : null}
+          </motion.div>
       </div>
     </>
+  );
+}
+
+/** A radio-wave icon that breathes, for the live group. */
+function LiveIcon() {
+  const reduceMotion = useReducedMotion();
+  return (
+    <motion.span
+      className="flex text-emerald-500"
+      animate={reduceMotion ? undefined : { opacity: [1, 0.35, 1] }}
+      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+    >
+      <Radio className="size-3.5" />
+    </motion.span>
   );
 }
 
@@ -278,13 +384,13 @@ const PEOPLE: Person[] = [
   { id: "p2", name: "Sara Haddad", detail: "sara@example.org", tint: "#a78bfa", access: "view" },
 ];
 
-export function ShareSheet({ chat, onBack, back }: { chat: string; onBack: () => void; back: boolean }) {
+export function ShareSheet({ chat, onBack }: { chat: string; onBack: () => void }) {
   const [people, setPeople] = useState(PEOPLE);
   const [copied, setCopied] = useState(false);
   return (
     <>
-      <SheetHeader title="Share this chat" detail={chat} onBack={onBack} back={back} />
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3">
+      <SheetHeader title="Share this chat" detail={chat} onBack={onBack} />
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-3 py-3">
         <label className="flex h-10 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
           <UserPlus className="size-4 text-muted-foreground" />
           <input placeholder="Add people or an organization" aria-label="Add people or an organization" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
