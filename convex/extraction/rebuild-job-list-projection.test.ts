@@ -6,7 +6,6 @@ import schema from "../schema";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
-import { incPaperOutcome } from "./jobCounters";
 
 const CLERK_OWNER = "clerk_rebuild_projection";
 const OWNER_IDENTITY = {
@@ -78,7 +77,6 @@ async function seedPreProjectionJob(t: ReturnType<typeof convexTest>) {
       processedAt: now,
     });
 
-    await incPaperOutcome(ctx, jobId, true);
 
     return { jobId };
   });

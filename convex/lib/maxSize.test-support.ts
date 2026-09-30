@@ -28,7 +28,7 @@ export function text(length: number, seed = 0) {
   return out.slice(0, length);
 }
 
-/** Inserts in transactions small enough for the seeding itself to stay within the limits. */
+/** Inserts in transactions small enough for the seeding itself, and the triggers it runs, to stay within the limits. */
 export async function insertMany<T extends TableNames>(t: Test, table: T, docs: Array<Record<string, unknown>>, perTransaction = 1_000) {
   const ids: Array<Id<T>> = [];
   for (let i = 0; i < docs.length; i += perTransaction) {
@@ -61,7 +61,7 @@ export async function seedExtractionJob(t: Test, userId: Id<"users">, { papers =
   await insertMany(t, "extractionResults", paperIds.flatMap((paperId, p) => keys.map((questionKey, q) => ({
     jobId, paperId, questionKey, status: "completed", answer: text(120, p + q), reasoning: text(500, p + q), confidence: 0.8,
     citations: [], citationStatus: "best_effort", attemptCount: 1, billed: true, creditsUsed: 1, processedAt: 1,
-  }))), 2_000);
+  }))), 500);
   return { jobId, paperIds, questionKeys: keys };
 }
 

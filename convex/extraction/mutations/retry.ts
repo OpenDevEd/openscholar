@@ -5,8 +5,10 @@
  * question results from a completed, failed, or credits-exhausted job.
  *
  * Mirrors the duplicateJob auth / rate-limit / ownership shape, but
- * does NOT duplicate the job row — it un-terminals the existing row
- * and re-dispatches retry paper queue rows.
+ * does NOT duplicate the job row — it un-terminals the existing row,
+ * then `resetRetryBatch` resets the failures a batch of papers at a time
+ * and re-dispatches retry paper queue rows, so a job of any size can be
+ * retried (#351). The job can't finish until the last batch has run.
  *
  * Guards:
  *   - `status ∈ {completed, failed, creditsExhausted}` (state-machine edges
@@ -19,14 +21,12 @@
  *   - Indexing is NEVER re-run. Retry reuses the paper's existing
  *     `ragEntryId` and `isIndexed`; retry rows skip download
  *     and indexing.
- *   - Pre-flight credit check via `estimateRetryCredits` × balance.
- *
- * The state-mutation core is split out as `applyRetryResetTx` so tests
- * can run it in isolation via `t.run(ctx => applyRetryResetTx(ctx, …))`
- * without requiring the public mutation's auth/rate-limit shell.
+ *   - Pre-flight credit check via `estimateRetryCredits` × balance, from the
+ *     job's retryable count (`../resultCounts.ts`).
  */
 
-import { mutation } from "../../lib/functions";
+import { internalMutation, mutation } from "../../lib/functions";
+import { internal } from "../../_generated/api";
 import type { MutationCtx } from "../../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../../_generated/dataModel";
@@ -43,12 +43,12 @@ import {
 import {
   EXTRACTION_PAPER_CONCURRENCY,
   EXTRACTION_QUESTION_CONCURRENCY,
-  PAPER_LIMIT,
 } from "../../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { estimateRetryCredits } from "../../../lib/extraction/cost-estimate";
 import { availableCredits as readAvailableCredits } from "../../billing/accounts";
 import { isResultRetryableFailure } from "../../../lib/extraction/retry-summary";
+import { readResultCounts } from "../resultCounts";
 import { recomputePaperListProjection } from "../listProjection";
 import {
   dispatchPaperQueueWindowTx,
@@ -61,108 +61,68 @@ const ALLOWED_RETRY_STATUSES: readonly JobStatus[] = [
   "creditsExhausted",
 ];
 
-async function listRetryableFailures(
-  ctx: MutationCtx,
-  jobId: Id<"extractionJobs">,
-): Promise<Doc<"extractionResults">[]> {
-  const failedResults = await ctx.db
-    .query("extractionResults")
-    .withIndex("by_job_status", (q) =>
-      q.eq("jobId", jobId).eq("status", "failed"),
-    )
-    .take(PAPER_LIMIT * MAX_QUESTIONS_PER_JOB);
+/**
+ * Papers reset per batch. Each batch reads a paper's results (at most
+ * MAX_QUESTIONS_PER_JOB), resets its retryable failures and recomputes its list
+ * projection, so a batch stays far inside a transaction's limits however many of the
+ * job's results failed (#351).
+ */
+const RETRY_PAPERS_PER_BATCH = 25;
 
-  return failedResults.filter((result) => {
-    if (result.billed === true) return false;
-    return isResultRetryableFailure({
-      status: result.status,
-      lastError: result.lastError,
-    });
-  });
-}
-
-type RetryPaperWork = {
-  paperId: Id<"extractionPapers">;
-  questionKeys: string[];
-};
-
-type RetryResetResult = {
-  retryableCount: number;
-  retryPapers: RetryPaperWork[];
-  nextEpoch: number;
-};
-
-function groupRetryableFailuresByPaper(
-  retryable: ReadonlyArray<Doc<"extractionResults">>,
-): RetryPaperWork[] {
-  const byPaper = new Map<Id<"extractionPapers">, string[]>();
-  for (const result of retryable) {
-    const existing = byPaper.get(result.paperId);
-    if (existing) existing.push(result.questionKey);
-    else byPaper.set(result.paperId, [result.questionKey]);
-  }
-  return Array.from(byPaper.entries()).map(([paperId, questionKeys]) => ({
-    paperId,
-    questionKeys,
-  }));
-}
-
-async function applyRetryResetForRowsTx(
-  ctx: MutationCtx,
-  job: Doc<"extractionJobs">,
-  retryable: ReadonlyArray<Doc<"extractionResults">>,
-): Promise<RetryResetResult> {
-  const retryPapers = groupRetryableFailuresByPaper(retryable);
-  if (retryable.length === 0) {
-    return {
-      retryableCount: 0,
-      retryPapers,
-      nextEpoch: job.runEpoch ?? 0,
-    };
-  }
-
-  const now = Date.now();
-  const paperIdsToReset = new Set<Id<"extractionPapers">>();
-
-  for (const r of retryable) {
-    await ctx.db.patch(r._id, {
-      status: "pending" as const,
-      lastError: undefined,
-    });
-    paperIdsToReset.add(r.paperId);
-  }
-
-  for (const paperId of paperIdsToReset) {
-    const paper = await ctx.db.get("extractionPapers", paperId);
-    if (!paper) continue;
-    if (paper.status === "completed" || paper.status === "failed") {
-      assertValidPaperTransition(paper.status, "extracting");
-      await ctx.db.patch(paperId, {
-        status: "extracting" as const,
-        completedAt: undefined,
-      });
-      await recomputePaperListProjection(ctx, paperId);
+/**
+ * Resets one batch of a job's papers for a retry: their retryable failures go back to
+ * pending, the papers back to extracting, and they're queued. The next batch is scheduled
+ * until every paper is seen; the last one lets the job finish again. Stops when the job
+ * is paused, cancelled or retried again, leaving the rest failed for a later retry.
+ */
+export const resetRetryBatch = internalMutation({
+  args: { jobId: v.id("extractionJobs"), epoch: v.number(), cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { jobId, epoch, cursor }) => {
+    const job = await ctx.db.get("extractionJobs", jobId);
+    if (!job || (job.runEpoch ?? 0) !== epoch || !job.retryResetPending) return null;
+    if (job.status !== "extracting") {
+      await ctx.db.patch("extractionJobs", jobId, { retryResetPending: undefined });
+      return null;
     }
-  }
-
-  assertValidJobTransition(job.status as JobStatus, "extracting");
-  const nextEpoch = (job.runEpoch ?? 0) + 1;
-  await ctx.db.patch(job._id, {
-    status: "extracting" as const,
-    runEpoch: nextEpoch,
-    error: undefined,
-    completedAt: undefined,
-    pausedAt: undefined,
-    pausedFromStatus: undefined,
-    updatedAt: now,
-  });
-
-  return {
-    retryableCount: retryable.length,
-    retryPapers,
-    nextEpoch,
-  };
-}
+    const page = await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).paginate({ cursor, numItems: RETRY_PAPERS_PER_BATCH });
+    const retryPapers: Array<{ paperId: Id<"extractionPapers">; questionKeys: string[] }> = [];
+    for (const paper of page.page) {
+      const results = await ctx.db.query("extractionResults").withIndex("by_paper", (q) => q.eq("paperId", paper._id)).take(MAX_QUESTIONS_PER_JOB);
+      // A billed result is never reset: that would bill it again.
+      const retryable = results.filter((result) => result.billed !== true && isResultRetryableFailure(result));
+      if (!retryable.length) continue;
+      for (const result of retryable) await ctx.db.patch("extractionResults", result._id, { status: "pending", lastError: undefined });
+      if (paper.status === "completed" || paper.status === "failed") {
+        assertValidPaperTransition(paper.status, "extracting");
+        await ctx.db.patch("extractionPapers", paper._id, { status: "extracting", completedAt: undefined });
+        await recomputePaperListProjection(ctx, paper._id);
+      }
+      retryPapers.push({ paperId: paper._id, questionKeys: retryable.map((result) => result.questionKey) });
+    }
+    if (retryPapers.length) {
+      const runtime = await resolveRetryQueueRuntime(ctx, job);
+      await enqueueRetryPapersForJobTx(ctx, { jobId, expectedEpoch: epoch, retryPapers, priority: 0 });
+      await dispatchPaperQueueWindowTx(ctx, {
+        jobId,
+        expectedEpoch: epoch,
+        paperConcurrency: runtime.paperConcurrency,
+        leaseOwner: `retry:${jobId}:${epoch}`,
+        leaseMs: 60_000,
+        questionConcurrency: runtime.questionConcurrency,
+        pdfEnabled: runtime.pdfEnabled,
+      });
+    }
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch, cursor: page.continueCursor });
+      return null;
+    }
+    await ctx.db.patch("extractionJobs", jobId, { retryResetPending: undefined });
+    // Retried papers may all have finished while later batches ran.
+    await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId, expectedEpoch: epoch });
+    return null;
+  },
+});
 
 async function resolveRetryQueueRuntime(
   ctx: MutationCtx,
@@ -180,41 +140,13 @@ async function resolveRetryQueueRuntime(
   };
 }
 
-/**
- * Reset retryable failed results on a job, flip the containing papers
- * and the job itself back to "extracting". Pure tx logic — no dispatch
- * dispatch. Returns the count of rows reset (0 means nothing to retry).
- *
- * Pre-condition: caller has already asserted auth / ownership / job
- * status / preflight credits. Exported so tests can invoke it via
- * `t.run(…)`.
- */
-export async function applyRetryResetTx(
-  ctx: MutationCtx,
-  job: Doc<"extractionJobs">,
-): Promise<number> {
-  const retryable = await listRetryableFailures(ctx, job._id);
-  const reset = await applyRetryResetForRowsTx(ctx, job, retryable);
-  return reset.retryableCount;
-}
-
 export const retryFailedQuestions = mutation({
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({
     jobId: v.id("extractionJobs"),
     retryableCount: v.number(),
-    queued: v.number(),
-    dispatched: v.number(),
   }),
-  handler: async (
-    ctx,
-    { jobId },
-  ): Promise<{
-    jobId: Id<"extractionJobs">;
-    retryableCount: number;
-    queued: number;
-    dispatched: number;
-  }> => {
+  handler: async (ctx, { jobId }) => {
     await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
 
@@ -244,11 +176,9 @@ export const retryFailedQuestions = mutation({
       );
     }
 
-    // Count retryable rows (for the preflight estimate). We re-scan
-    // inside `applyRetryResetTx` — same tx, so the read is cheap and
-    // keeps the preflight value source-of-truth aligned with the reset.
-    const retryableFailures = await listRetryableFailures(ctx, jobId);
-    const retryableCount = retryableFailures.length;
+    // The job's counters give the retryable count without reading its results. It can
+    // include a billed failure, which the reset skips, so the estimate errs high.
+    const { retryable: retryableCount } = await readResultCounts(ctx, jobId);
 
     if (retryableCount === 0) {
       throw createError("VALIDATION_ERROR", "No retryable failures to retry");
@@ -271,29 +201,21 @@ export const retryFailedQuestions = mutation({
       }
     }
 
-    const reset = await applyRetryResetForRowsTx(ctx, job, retryableFailures);
-    const runtime = await resolveRetryQueueRuntime(ctx, job);
-    const queued = await enqueueRetryPapersForJobTx(ctx, {
-      jobId,
-      expectedEpoch: reset.nextEpoch,
-      retryPapers: reset.retryPapers,
-      priority: 0,
+    assertValidJobTransition(job.status as JobStatus, "extracting");
+    const epoch = (job.runEpoch ?? 0) + 1;
+    await ctx.db.patch("extractionJobs", jobId, {
+      status: "extracting" as const,
+      runEpoch: epoch,
+      retryResetPending: true,
+      error: undefined,
+      completedAt: undefined,
+      pausedAt: undefined,
+      pausedFromStatus: undefined,
+      updatedAt: Date.now(),
     });
-    const dispatch = await dispatchPaperQueueWindowTx(ctx, {
-      jobId,
-      expectedEpoch: reset.nextEpoch,
-      paperConcurrency: runtime.paperConcurrency,
-      leaseOwner: `retry:${jobId}:${reset.nextEpoch}`,
-      leaseMs: 60_000,
-      questionConcurrency: runtime.questionConcurrency,
-      pdfEnabled: runtime.pdfEnabled,
-    });
+    await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch, cursor: null });
 
-    return {
-      jobId,
-      retryableCount: reset.retryableCount,
-      queued: queued.enqueued + queued.existing,
-      dispatched: dispatch.dispatched,
-    };
+    return { jobId, retryableCount };
   },
 });
+

@@ -5,7 +5,7 @@ import schema from "../schema";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
-import { incPaperOutcome, readJobCounters } from "./jobCounters";
+import { readJobCounters } from "./jobCounters";
 
 async function seedJob(
   t: ReturnType<typeof convexTest>,
@@ -96,15 +96,12 @@ describe("maybeFinalizeJob terminal-state guard", () => {
     const t = convexTest(schema);
     const { jobId, paperId } = await seedJob(t, "extracting");
 
-    // Simulate the counter bump that markPaperTerminalTx performs whenever a
-    // paper reaches a terminal state. maybeFinalizeJob now relies on these
-    // counters rather than scanning papers.
+    // The trigger on extractionPapers counts the paper as processed once it's completed.
     await t.run(async (ctx) => {
       await ctx.db.patch("extractionPapers", paperId, {
         status: "completed",
         completedAt: Date.now(),
       });
-      await incPaperOutcome(ctx, jobId, true);
     });
 
     await t.mutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });
@@ -127,7 +124,6 @@ describe("maybeFinalizeJob terminal-state guard", () => {
       await ctx.db.patch("extractionJobs", jobId, {
         runEpoch: 3,
       });
-      await incPaperOutcome(ctx, jobId, true);
     });
 
     await t.mutation(

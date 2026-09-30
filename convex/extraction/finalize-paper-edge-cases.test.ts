@@ -36,7 +36,7 @@ import schema from "../schema";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
-import { incPaperOutcome, readJobCounters } from "./jobCounters";
+import { readJobCounters } from "./jobCounters";
 
 type JobStatusFixture =
   | "pending"
@@ -77,8 +77,6 @@ interface SeedOpts {
   questionKeys?: string[];
   results?: ResultFixture[];
   totalPapers?: number;
-  processedPapers?: number;
-  failedPapers?: number;
   startingCredits?: number;
   clerkSuffix?: string;
 }
@@ -102,8 +100,6 @@ async function seedScenario(
     questionKeys = ["q1"],
     results = [],
     totalPapers = 1,
-    processedPapers = 0,
-    failedPapers = 0,
     startingCredits = 1_000,
     clerkSuffix = String(Math.random()).slice(2),
   } = opts;
@@ -134,13 +130,6 @@ async function seedScenario(
       createdAt: now,
       updatedAt: now,
     });
-    // Tier B: counters live in sharded counters off-row. Bump per request.
-    for (let i = 0; i < processedPapers; i++) {
-      await incPaperOutcome(ctx, jobId, true);
-    }
-    for (let i = 0; i < failedPapers; i++) {
-      await incPaperOutcome(ctx, jobId, false);
-    }
     for (let i = 0; i < questionKeys.length; i++) {
       await ctx.db.insert("extractionQuestions", {
         jobId,
@@ -275,10 +264,8 @@ describe("finalizePaper — paper-level idempotency", () => {
     async (initial, expected) => {
       const t = convexTest(schema);
       const { jobId, paperId } = await seedScenario(t, {
+        // Seeding a finished paper counts it, as markPaperTerminalTx would have.
         paperStatus: initial,
-        // Seed the counter as if markPaperTerminalTx already ran.
-        processedPapers: initial === "completed" ? 1 : 0,
-        failedPapers: initial === "completed" ? 0 : 1,
         results: [{ questionKey: "q1", status: "completed", billed: true }],
       });
       const before = await t.run((ctx) => readJobCounters(ctx, jobId));

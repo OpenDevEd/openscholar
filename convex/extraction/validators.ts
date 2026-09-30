@@ -232,6 +232,8 @@ export const extractionJobFields = {
   usePdfs: v.optional(v.boolean()),
   pausedAt: v.optional(v.number()),
   pausedFromStatus: v.optional(pausedFromStatusValidator),
+  // Set while a retry resets failed results in batches (#351); the job doesn't finish until it clears.
+  retryResetPending: v.optional(v.boolean()),
   estimatedCredits: v.optional(
     v.object({
       low: v.number(),
