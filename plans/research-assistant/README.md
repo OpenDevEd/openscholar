@@ -259,13 +259,16 @@ paper objects from the browser: a saved search, a collection, saved papers, a
 screening's included or unclear papers, or a list of IDs. One resolver on the
 server turns it into papers. A saved search maps its fields to the parameters
 `buildOpenAlexWorksQuery` takes, the builder the results page and extraction
-already share, so it returns the same papers as its results page. The set is
+already share, and applies the rating filters ("only rated papers" and the
+rating range) from the account's `paperRatings`, as the results page does in
+the browser. So it returns the same papers as its results page. The set is
 resolved into a fixed list before approval, recording the source's revision,
 the papers in order, duplicates removed and anything left out; the job runs on
 that list, so papers added while it waits don't change what was approved.
-"All results", "this page" and "selected papers" are separate choices. When
-the paper limit cuts a request short, the approval card says so and offers
-the rest in further batches. Duplicates are matched conservatively: the same
+"All results", "this page" and "selected papers" are separate choices. A set
+larger than one job allows runs as several batches under one approval, with
+one total estimate, queued through #335, so "screen them" covers the whole
+search. Duplicates are matched conservatively: the same
 normalized DOI or OpenAlex ID merges, title and year merge only when no DOIs
 conflict, and every alias and its source is kept.
 
@@ -277,7 +280,9 @@ the picker has to work. Its answers are keyed by screening and paper: the
 model's original answer and its confidence, per question when the model
 reports one, any change with who made it (the model, a named person or the
 assistant) and when, and whether a person reviewed or accepted it. A search
-points at the screening it shows. The results page, Screen all and the
+points at the screening it shows. Search revisions point at the screening and the
+time instead of answer chunks, and restoring an old revision rebuilds its
+answers from the screening's history. The results page, Screen all and the
 assistant read and write it. When a job finishes, the assistant checks the
 papers whose unclear answers could decide whether they're in: per question,
 the scoring rules give the lowest and highest points an unclear answer allows,
