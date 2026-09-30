@@ -52,6 +52,21 @@ supported process changed. Read the page back before claiming success.
   `components/ui/tooltip`. The only native `title` left is on the hidden
   `Z3988` spans, which carry citation data for Zotero.
 
+## Research assistant
+
+The assistant can do everything a user can, through the same actions
+(`plans/research-assistant/README.md`, milestone OS-17).
+
+- Every new or changed user action needs an assistant tool. Once the action
+  registry lands (#323), add the action's registry entry; CI fails on a public
+  mutation or action that is neither registered nor exempt with a reason.
+  Until then, name the tool the action needs in the pull request.
+- Tools address records by ID. The assistant changes what a user sees by
+  changing the Convex record the page renders.
+- Reading at scale runs through OpenScholar's own features (screening,
+  extraction, findings), not general-purpose sub-agents. A sub-agent task that
+  recurs becomes a feature.
+
 ## Development services
 
 `/Users/mcharrad/Documents/Github/openscholar/dev-self` is the integration
