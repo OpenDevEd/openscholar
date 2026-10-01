@@ -6,7 +6,7 @@ import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { requireAuth } from "../lib/auth";
 import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
-import { resolveLibraryCount } from "./counter";
+import { libraryCount } from "./counter";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { LIBRARY_SEARCH_RESULTS_MAX as SEARCH_RESULTS_MAX } from "../../lib/library/limits";
 
@@ -376,7 +376,7 @@ export const getLibraryFilteredCount = query({
     const hasFilters = Boolean(searchText) || hasNonCollectionLibraryFilters(args);
 
     if (!args.collectionId && !hasFilters) {
-      return { count: await resolveLibraryCount(ctx, user._id, user.libraryItemCount), capped: false };
+      return { count: await libraryCount(ctx, user), capped: false };
     }
     if (args.collectionId && !hasFilters) {
       const collection = await ctx.db.get("collections", args.collectionId);
@@ -407,7 +407,7 @@ export const getLibraryCount = query({
   returns: v.number(),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
-    return await resolveLibraryCount(ctx, user._id, user.libraryItemCount);
+    return await libraryCount(ctx, user);
   },
 });
 

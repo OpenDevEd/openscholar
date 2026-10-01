@@ -947,6 +947,12 @@ export default defineSchema({
     .index("by_job_openalexId", ["jobId", "openalexId"])
     .index("by_job_and_pendingAnswers", ["jobId", "pendingAnswers"]),
 
+  // How many papers a person has saved. It has its own row, not a field on `users`, because
+  // every mutation of the person's reads their user row: a bulk save rewriting it would make
+  // their other edits conflict (#383). `users.libraryItemCount` is read until
+  // migrations/moveLibraryCounts gives everyone a row.
+  libraryCounts: defineTable({ userId: v.id("users"), count: v.number() }).index("by_user", ["userId"]),
+
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEMS - User's saved paper library
   // ═══════════════════════════════════════════════════════════════
