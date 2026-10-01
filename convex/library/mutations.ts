@@ -4,7 +4,8 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
-import { assistantMutation, defineUserMutation, userMutation } from "../lib/userActions";
+import { assistantMutation, defineUserMutation, userMutation, type Author } from "../lib/userActions";
+import { applyCommand } from "../research/records";
 import { resolveLibraryCount } from "./counter";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
 
@@ -94,6 +95,14 @@ export async function upsertLibraryItem(
   );
 }
 
+/**
+ * Mirrors a library rating into the person's research ratings, which search cards
+ * show, so the page and the assistant leave both the same.
+ */
+async function setResearchRating(ctx: MutationCtx, userId: Id<"users">, paperId: string, rating: number | null, author: Author) {
+  await applyCommand(ctx, userId, { kind: "rating", paperId, rating }, author);
+}
+
 async function ownedCollection(ctx: MutationCtx, userId: Id<"users">, collectionId: Id<"collections">) {
   const collection = await ctx.db.get("collections", collectionId);
   if (!collection || collection.userId !== userId) {
@@ -111,9 +120,11 @@ export const saveToLibraryAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, userId, { rating, ...paper }) => {
+  run: async (ctx, userId, { rating, ...paper }, author) => {
     if (rating !== undefined) requireRating(rating);
-    return await upsertLibraryItem(ctx, userId, paper, rating);
+    const id = await upsertLibraryItem(ctx, userId, paper, rating);
+    if (rating !== undefined) await setResearchRating(ctx, userId, paper.openalexId, rating, author);
+    return id;
   },
 });
 export const saveToLibrary = userMutation(saveToLibraryAction);
@@ -127,11 +138,12 @@ export const clearLibraryRatingAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, userId, args) => {
+  run: async (ctx, userId, args, author) => {
     const item = await findItem(ctx, userId, args.openalexId);
     if (item && item.rating !== undefined) {
       await ctx.db.patch("libraryItems", item._id, { rating: undefined, updatedAt: Date.now() });
     }
+    await setResearchRating(ctx, userId, args.openalexId, null, author);
     return null;
   },
 });
@@ -147,7 +159,7 @@ export const removeFromLibraryAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, userId, args) => {
+  run: async (ctx, userId, args, author) => {
     const item = await findItem(ctx, userId, args.openalexId);
     if (!item) return null;
     // Bounded: one saved paper belongs to at most MAX_COLLECTIONS_PER_USER collections.
@@ -157,6 +169,7 @@ export const removeFromLibraryAction = defineUserMutation({
       .collect();
     for (const membership of memberships) await removeCollectionMembership(ctx, membership);
     await countedWrite(ctx, userId, -1, () => ctx.db.delete("libraryItems", item._id));
+    await setResearchRating(ctx, userId, item.openalexId, null, author);
     const { _id, _creationTime, userId: _owner, ...kept } = item;
     return { ...kept, collectionIds: memberships.map((membership) => membership.collectionId) };
   },
@@ -173,7 +186,7 @@ export const restoreLibraryItemAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, userId, { paper }) => {
+  run: async (ctx, userId, { paper }, author) => {
     const { collectionIds, ...item } = paper;
     if (collectionIds.length > MAX_COLLECTIONS_PER_USER) {
       throw createError("VALIDATION_ERROR", "Too many collections.");
@@ -186,11 +199,13 @@ export const restoreLibraryItemAction = defineUserMutation({
       libraryItemId = existing._id;
       if (existing.rating === undefined && item.rating !== undefined) {
         await ctx.db.patch("libraryItems", existing._id, { rating: item.rating, updatedAt: Date.now() });
+        await setResearchRating(ctx, userId, item.openalexId, item.rating, author);
       }
     } else {
       libraryItemId = await countedWrite(ctx, userId, 1, () =>
         ctx.db.insert("libraryItems", { ...item, userId, updatedAt: Date.now() }),
       );
+      if (item.rating !== undefined) await setResearchRating(ctx, userId, item.openalexId, item.rating, author);
     }
     for (const collectionId of collectionIds) {
       const collection = await ctx.db.get("collections", collectionId);

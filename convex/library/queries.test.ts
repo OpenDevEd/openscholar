@@ -1068,6 +1068,32 @@ describe("saving without a rating", () => {
     expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);
   });
 
+  it("keeps the research rating search cards show in step with the library", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const researchRating = async () =>
+      await t.run(async (ctx) =>
+        (await ctx.db
+          .query("paperRatings")
+          .withIndex("by_user_and_paperId", (q) => q.eq("userId", user!._id).eq("data.paperId", paper.openalexId))
+          .unique())?.data.rating ?? null,
+      );
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 3 });
+    expect(await researchRating()).toBe(3);
+
+    await asUser.mutation(api.library.mutations.clearLibraryRating, { openalexId: paper.openalexId });
+    expect(await researchRating()).toBeNull();
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 5 });
+    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
+    expect(await researchRating()).toBeNull();
+
+    await asUser.mutation(api.library.mutations.restoreLibraryItem, { paper: removed! });
+    expect(await researchRating()).toBe(5);
+  });
+
   it("adds an unsaved paper to a collection by saving it once, and takes it out without unsaving it", async () => {
     const t = convexTest(schema);
     await seedUser(t, "clerk_user1", "user1@test.com");

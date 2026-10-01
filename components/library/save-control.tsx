@@ -10,7 +10,6 @@ import { BookCheck, BookPlus, Folder, FolderCheck, Plus } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useRatingsStore } from "@/lib/store";
 import { trimPaperData, type WorkInput } from "@/lib/library/trim-paper-data";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { Badge } from "@/components/ui/badge";
@@ -90,7 +89,6 @@ export function useSavePaper(paper: WorkInput | undefined) {
     }
     if (!ready || !paper) return;
     const { setSaved } = usePending.getState();
-    const { setRating } = useRatingsStore.getState();
     const id = paper.id;
     setSaved(id, !isSaved);
     if (!isSaved) {
@@ -104,7 +102,7 @@ export function useSavePaper(paper: WorkInput | undefined) {
     }
     remove({ openalexId: id })
       .then((removed) => {
-        setRating(id, null);
+        // The server clears and restores the research rating with the paper.
         if (!removed) return;
         toast(t("removed"), {
           description: removed.title,
@@ -112,18 +110,10 @@ export function useSavePaper(paper: WorkInput | undefined) {
           action: {
             label: t("undo"),
             onClick: () => {
-              restore({ paper: removed })
-                .then(() => {
-                  // A rating given since the removal wins, as it does on the server.
-                  const current = useRatingsStore.getState().ratings[id];
-                  if (removed.rating !== undefined && current === undefined) {
-                    setRating(id, removed.rating);
-                  }
-                })
-                .catch((error) => {
-                  console.error("[Library] Failed to restore:", error);
-                  toast.error(t("restoreError"));
-                });
+              restore({ paper: removed }).catch((error) => {
+                console.error("[Library] Failed to restore:", error);
+                toast.error(t("restoreError"));
+              });
             },
           },
         });
