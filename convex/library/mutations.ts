@@ -6,7 +6,7 @@ import { createError } from "../lib/errors";
 import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { assistantMutation, defineUserMutation, userMutation, type Author } from "../lib/userActions";
 import { applyCommand } from "../research/records";
-import { resolveLibraryCount } from "./counter";
+import { libraryCountRow, resolveLibraryCount } from "./counter";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
 
 /** What the library keeps about a paper, apart from its rating. */
@@ -46,15 +46,23 @@ async function findItem(ctx: MutationCtx, userId: Id<"users">, openalexId: strin
 }
 
 /**
- * Runs a write that adds or removes one paper and keeps the person's library count.
- * The count is read before the write, because a missing one is repaired by counting papers.
+ * Runs a write that adds or removes one paper and keeps the person's library count, in its
+ * own row so the user row stays unwritten (#383). The count is read before the write,
+ * because a missing one is repaired by counting papers; only a person without a count row
+ * yet has their user row read, to start it.
  */
 async function countedWrite<T>(ctx: MutationCtx, userId: Id<"users">, change: 1 | -1, write: () => Promise<T>) {
-  const user = await ctx.db.get("users", userId);
-  const current = user ? await resolveLibraryCount(ctx, userId, user.libraryItemCount) : null;
+  const row = await libraryCountRow(ctx, userId);
+  let current = row?.count ?? null;
+  if (!row) {
+    const user = await ctx.db.get("users", userId);
+    current = user ? await resolveLibraryCount(ctx, userId, user.libraryItemCount) : null;
+  }
   const result = await write();
   if (current !== null) {
-    await ctx.db.patch("users", userId, { libraryItemCount: Math.max(0, current + change) });
+    const count = Math.max(0, current + change);
+    if (row) await ctx.db.patch("libraryCounts", row._id, { count });
+    else await ctx.db.insert("libraryCounts", { userId, count });
   }
   return result;
 }
