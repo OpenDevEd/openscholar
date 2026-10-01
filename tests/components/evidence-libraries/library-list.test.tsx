@@ -22,12 +22,12 @@ beforeEach(() => {
   mocks.query.mockImplementation((name: string) => ({ isReady: true, data: name === "libraries" ? libraries : name === "organizations" ? [{id: "org_1", name: "Research team"}] : [] }));
 });
 describe("Library access list", () => {
-  it("uses each library role for configuration access and each library id for admin navigation", () => {
+  it("uses each library role for configuration access and sends admin links to the library itself", () => {
     render(<LibraryList />);
     for (const role of ["owner", "editor", "creator"]) {
       const row = within(screen.getByText(`${role} library`).closest("li")!);
       const admin = row.getByRole("link", { name: "Open admin" });
-      expect(admin).toHaveAttribute("href", `/evidence-libraries/${role}/admin`);
+      expect(admin).toHaveAttribute("href", `https://${role}.example.org/admin`);
       // Links out to a library open a new tab and leave OpenScholar where it was.
       expect(admin).toHaveAttribute("target", "_blank");
       if (role === "owner") expect(row.getByRole("link", { name: "Configure" })).toHaveAttribute("href", "/evidence-libraries/owner/configuration");

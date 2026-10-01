@@ -22,20 +22,6 @@ import type { LibrarySignIn } from "./oauthClientSync";
 export const EVIDENCE_LIBRARY_SEARCH_HOST = "http://meilisearch:7700";
 export const EVIDENCE_LIBRARY_SEARCH_INDEX = "evidence_library";
 
-/**
- * Where a library sends someone who opens its admin area without a session:
- * the OpenScholar page that signs them in and hands the session back.
- */
-export function buildEvidenceLibraryLoginPageUrl(input: {
-  libraryId: Id<"evidenceLibraries">;
-  appOrigin: string;
-}): string {
-  return new URL(
-    `/evidence-libraries/${encodeURIComponent(input.libraryId)}/admin`,
-    input.appOrigin,
-  ).toString();
-}
-
 /** The library's page in OpenScholar, which its admin area links back to. */
 function buildEvidenceLibraryPageUrl(input: {
   libraryId: Id<"evidenceLibraries">;

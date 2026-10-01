@@ -767,16 +767,6 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       await Promise.all(approvedQueries.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
-    const adminCodes = await ctx.db
-      .query("evidenceLibraryAdminLoginCodes")
-      .withIndex("by_libraryId_and_codeDigest", (query) =>
-        query.eq("libraryId", args.libraryId),
-      )
-      .take(BATCH_SIZE);
-    if (adminCodes.length > 0) {
-      await Promise.all(adminCodes.map((row) => ctx.db.delete(row._id)));
-      return { complete: false };
-    }
     const credentials = await ctx.db
       .query("evidenceLibraryCredentials")
       .withIndex("by_libraryId", (query) =>

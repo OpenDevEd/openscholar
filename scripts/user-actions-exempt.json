@@ -87,8 +87,6 @@
     "evidenceLibraries/addressActions:checkAddress": "#329",
     "evidenceLibraries/addressActions:moveLibraryAddress": "#329",
     "evidenceLibraries/addressActions:reserveAddress": "#329",
-    "evidenceLibraries/adminHandoff:readAdminHandoffState": "#329",
-    "evidenceLibraries/adminHandoffActions:issueAdminHandoff": "#329",
     "evidenceLibraries/aiProviderKey:removeAiProviderKey": "#329",
     "evidenceLibraries/collectionSources:connectCollectionSource": "#329",
     "evidenceLibraries/collectionSources:listLibraryCollectionSources": "#329",

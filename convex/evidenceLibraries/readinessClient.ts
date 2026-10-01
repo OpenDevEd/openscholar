@@ -244,12 +244,6 @@ function requireInput(input: ReadinessCheckInput) {
       "Evidence Library revision is missing",
     );
   }
-  if (!input.loginPageUrl.trim()) {
-    throw new ReadinessClientError(
-      "READINESS_CONFIG_INVALID",
-      "Evidence Library login page address is missing",
-    );
-  }
   if (!input.verifierToken.trim()) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
@@ -1007,44 +1001,17 @@ async function requirePage(
   );
 }
 
-/**
- * The address the library sends a signed-out visitor of `/admin` to. Only
- * the exact login page for this library counts, so a page that merely starts
- * with the same text, or one on a look-alike host, is refused.
- */
-function isLibraryLoginPage(destination: URL, loginPageUrl: string): boolean {
-  let expected: URL;
-  try {
-    expected = new URL(loginPageUrl);
-  } catch {
-    return false;
-  }
-  return (
-    destination.origin === expected.origin &&
-    destination.pathname === expected.pathname
-  );
-}
-
-/**
- * Where software that signs people in through the OpenScholar OAuth
- * application sends a signed-out visitor of `/admin`: its own route that
- * starts the sign-in, on the same address.
- */
+/** The library's own route that starts OpenScholar sign-in for `/admin`. */
 const LIBRARY_SIGN_IN_PATH = "/api/admin/sign-in";
 
 /**
- * A signed-out `/admin` does not render a page: the runtime answers `307` and
- * sends the browser to sign in. Older software sends it to this library's
- * OpenScholar login page; newer software to its own sign-in route, which
- * starts the OpenScholar OAuth flow. Only those exact answers count as ready.
- * A page of its own, or another kind of redirect, means the library runs
- * software that does not follow this contract.
+ * A signed-out `/admin` does not render a page: the runtime answers `307` to
+ * its own sign-in route on the same address, which starts the OpenScholar
+ * OAuth flow. Only that exact answer counts as ready. A page of its own, or
+ * another kind of redirect, means the library runs software that does not
+ * follow this contract.
  */
-async function requireAdminPage(
-  fetchImpl: typeof fetch,
-  url: URL,
-  loginPageUrl: string,
-) {
+async function requireAdminPage(fetchImpl: typeof fetch, url: URL) {
   const notReady = new ReadinessClientError(
     "PAGE_NOT_READY",
     "The Evidence Library admin page is not ready",
@@ -1065,10 +1032,10 @@ async function requireAdminPage(
       } catch {
         throw notReady;
       }
-      const startsOwnSignIn =
-        destination.origin === url.origin &&
-        destination.pathname === LIBRARY_SIGN_IN_PATH;
-      if (!startsOwnSignIn && !isLibraryLoginPage(destination, loginPageUrl)) {
+      if (
+        destination.origin !== url.origin ||
+        destination.pathname !== LIBRARY_SIGN_IN_PATH
+      ) {
         throw notReady;
       }
     },
@@ -1134,8 +1101,6 @@ export type ReadinessCheckInput = {
    * must send visitors to `targetBaseUrl` rather than answer itself.
    */
   platformBaseUrl?: string;
-  /** Where the library sends a signed-out visitor of `/admin`. */
-  loginPageUrl: string;
   /**
    * Used only for requests to `targetBaseUrl`. When that is a customer's
    * domain it is a client pinned to the addresses that were checked, which
@@ -1205,11 +1170,7 @@ export async function requireLibraryRuntimePublicReady(
   }
   await Promise.all([
     requirePage(targetFetchImpl, new URL("/lib", targetOrigin), "public page"),
-    requireAdminPage(
-      targetFetchImpl,
-      new URL("/admin", targetOrigin),
-      input.loginPageUrl,
-    ),
+    requireAdminPage(targetFetchImpl, new URL("/admin", targetOrigin)),
   ]);
   return { status: "ready" };
 }

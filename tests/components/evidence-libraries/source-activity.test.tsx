@@ -29,7 +29,7 @@ function renderBand(status: SourceStatus, onRetry = vi.fn()) {
       <SourceActivityBand
         status={status}
         provider="OpenAlex"
-        issuesIn={{ libraryId: "library", returnPath: "/admin" }}
+        issuesIn={{ address: "https://library.example.test", path: "/admin" }}
         onRetry={onRetry}
         retrying={false}
       />

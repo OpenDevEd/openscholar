@@ -43,7 +43,7 @@ describe("<ConfigurationWorkspace>", () => {
     const { unmount } = await renderWorkspace();
     expect(
       screen.getByRole("link", { name: "evidenceLibraries.list.openAdmin" }),
-    ).toHaveAttribute("href", "/evidence-libraries/library_123/admin");
+    ).toHaveAttribute("href", "https://saved-library.example.test/admin");
 
     unmount();
     queryMock.mockReturnValue(draftResult({ state: "provisioning" }));

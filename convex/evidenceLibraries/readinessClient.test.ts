@@ -63,7 +63,10 @@ function activeHealthResponse(
   return json(activeHealth(revision), 200, { "X-OpenScholar-Route": marker });
 }
 
-const LOGIN_PAGE_URL =
+// The library's own route that starts OpenScholar sign-in.
+const SIGN_IN_URL = "https://climate.libraries.example.test/api/admin/sign-in";
+// Where software before OpenScholar sign-in sent a signed-out admin.
+const OLD_LOGIN_PAGE_URL =
   "https://app.example.test/evidence-libraries/kh74ezgjwdv2nkbq/admin";
 
 function input(fetchImpl: typeof fetch) {
@@ -73,7 +76,6 @@ function input(fetchImpl: typeof fetch) {
     runtimeImage: RUNTIME_IMAGE,
     revisionKey: REVISION,
     targetBaseUrl: "https://climate.libraries.example.test",
-    loginPageUrl: LOGIN_PAGE_URL,
     verifierUrl: "https://runtime-verifier.example.test",
     verifierToken: "verifier-token-value",
     fetchImpl,
@@ -265,7 +267,7 @@ describe("Evidence Library readiness client", () => {
       if (url.endsWith("/admin")) {
         return new Response(null, {
           status: 307,
-          headers: { location: `${LOGIN_PAGE_URL}?return=%2Fadmin` },
+          headers: { location: `${SIGN_IN_URL}?return=%2Fadmin` },
         });
       }
       return new Response("ready", { status: 200 });
@@ -325,7 +327,7 @@ describe("Evidence Library readiness client", () => {
       }
       return new Response(null, {
         status: 307,
-        headers: { location: LOGIN_PAGE_URL },
+        headers: { location: `${targetOrigin}/api/admin/sign-in` },
       });
     });
 
@@ -408,7 +410,7 @@ describe("Evidence Library readiness client", () => {
       if (url.endsWith("/admin")) {
         return new Response(null, {
           status: 307,
-          headers: { location: LOGIN_PAGE_URL },
+          headers: { location: SIGN_IN_URL },
         });
       }
       return new Response("ready", { status: 200 });
@@ -438,7 +440,7 @@ describe("Evidence Library readiness client", () => {
       if (url.endsWith("/admin")) {
         return new Response(null, {
           status: 307,
-          headers: { location: LOGIN_PAGE_URL },
+          headers: { location: SIGN_IN_URL },
         });
       }
       return new Response("ready", { status: 200 });
@@ -469,19 +471,6 @@ describe("Evidence Library readiness client", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(12);
   });
 
-  it("accepts the admin route sending a signed-out visitor to this library's login page", async () => {
-    const fetchImpl = adminAnswer(
-      new Response(null, {
-        status: 307,
-        headers: { location: `${LOGIN_PAGE_URL}?return=%2Fadmin` },
-      }),
-    );
-
-    await expect(requireLibraryRuntimeReady(input(fetchImpl))).resolves.toEqual(
-      { status: "ready" },
-    );
-  });
-
   it("accepts the admin route sending a signed-out visitor to its own sign-in", async () => {
     const fetchImpl = adminAnswer(
       new Response(null, {
@@ -496,6 +485,13 @@ describe("Evidence Library readiness client", () => {
   });
 
   it.each([
+    {
+      label: "OpenScholar's old login page",
+      answer: new Response(null, {
+        status: 307,
+        headers: { location: `${OLD_LOGIN_PAGE_URL}?return=%2Fadmin` },
+      }),
+    },
     {
       label: "a sign-in route on another site",
       answer: new Response(null, {
@@ -536,10 +532,10 @@ describe("Evidence Library readiness client", () => {
       answer: new Response("boom", { status: 502 }),
     },
     ...[301, 302, 303, 308].map((status) => ({
-      label: `a ${status} to the right login page`,
+      label: `a ${status} to the library's own sign-in`,
       answer: new Response(null, {
         status,
-        headers: { location: LOGIN_PAGE_URL },
+        headers: { location: SIGN_IN_URL },
       }),
     })),
     {
@@ -552,26 +548,26 @@ describe("Evidence Library readiness client", () => {
       label: "a redirect to an address that only starts the same",
       answer: new Response(null, {
         status: 307,
-        headers: { location: `${LOGIN_PAGE_URL}-evil` },
+        headers: { location: `${SIGN_IN_URL}-evil` },
       }),
     },
     {
-      label: "a redirect to the login page on another site",
+      label: "a redirect to the sign-in route on a look-alike site",
       answer: new Response(null, {
         status: 307,
         headers: {
-          location: LOGIN_PAGE_URL.replace(
-            "app.example.test",
-            "app.example.test.evil.example",
+          location: SIGN_IN_URL.replace(
+            "climate.libraries.example.test",
+            "climate.libraries.example.test.evil.example",
           ),
         },
       }),
     },
     {
-      label: "a redirect to a path below the login page",
+      label: "a redirect to a path below the sign-in route",
       answer: new Response(null, {
         status: 307,
-        headers: { location: `${LOGIN_PAGE_URL}/deeper` },
+        headers: { location: `${SIGN_IN_URL}/deeper` },
       }),
     },
   ])("refuses the admin route answering with $label", async ({ answer }) => {
@@ -593,7 +589,7 @@ describe("Evidence Library readiness client", () => {
       if (url.endsWith("/lib")) {
         return new Response(null, {
           status: 307,
-          headers: { location: LOGIN_PAGE_URL },
+          headers: { location: SIGN_IN_URL },
         });
       }
       return new Response("ready", { status: 200 });
@@ -681,7 +677,7 @@ describe("Evidence Library readiness client", () => {
       if (url.endsWith("/admin")) {
         return new Response(null, {
           status: 307,
-          headers: { location: LOGIN_PAGE_URL },
+          headers: { location: SIGN_IN_URL },
         });
       }
       return new Response("ready", { status: 200 });
@@ -925,7 +921,7 @@ describe("Evidence Library address ownership", () => {
         if (url.pathname === "/admin") {
           return new Response("", {
             status: 302,
-            headers: { location: LOGIN_PAGE_URL },
+            headers: { location: SIGN_IN_URL },
           });
         }
         return new Response("", {

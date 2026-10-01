@@ -241,6 +241,7 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
     draft,
     hasUnpublishedChanges,
     library,
+    liveAddress,
     operation,
     sections,
   } = draftQuery.data;
@@ -251,6 +252,7 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
       libraryId={draft.libraryId}
       libraryName={library.name}
       libraryState={library.state}
+      liveAddress={liveAddress}
       editVersion={draft.editVersion}
       saved={sections}
       hasUnpublishedChanges={hasUnpublishedChanges}
@@ -265,6 +267,7 @@ function Workspace({
   libraryId,
   libraryName,
   libraryState,
+  liveAddress,
   editVersion,
   saved,
   hasUnpublishedChanges,
@@ -275,6 +278,7 @@ function Workspace({
   libraryId: Id<"evidenceLibraries">;
   libraryName: string;
   libraryState: DraftResult["library"]["state"];
+  liveAddress: string | null;
   editVersion: number;
   saved: readonly SectionRow[];
   hasUnpublishedChanges: boolean;
@@ -488,9 +492,9 @@ function Workspace({
                 {saving ? <Spinner /> : <Save />}
                 <span className={BAR_LABEL}>{saving ? t("saving") : t("save")}</span>
               </Button>
-              {libraryState === "active" && !operationRunning && !activating ? (
+              {libraryState === "active" && liveAddress && !operationRunning && !activating ? (
                 <Button asChild variant="outline" size="sm" className={BAR_ACTION}>
-                  <AdminAreaLink libraryId={libraryId}>
+                  <AdminAreaLink address={liveAddress}>
                     <ExternalLink />
                     <span className={BAR_LABEL}>{tList("openAdmin")}</span>
                   </AdminAreaLink>

@@ -252,7 +252,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                         </Link>
                       ) : (
                         <AdminAreaLink
-                          libraryId={library.id}
+                          address={`https://${library.address}`}
                           className="truncate text-sm font-medium hover:underline"
                         >
                           {library.name}
@@ -341,7 +341,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                           </Button>
                         )}
                         <Button asChild size="sm" variant="outline">
-                          <AdminAreaLink libraryId={library.id}>
+                          <AdminAreaLink address={`https://${library.address}`}>
                             <ExternalLink />
                             Open admin
                           </AdminAreaLink>

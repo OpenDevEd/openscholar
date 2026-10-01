@@ -245,6 +245,7 @@ export default defineSchema({
     .index("by_libraryId", ["libraryId"])
     .index("by_libraryId_and_credentialKey", ["libraryId", "credentialKey"]),
 
+  // Old one-time admin sign-in codes, kept only until they are purged.
   evidenceLibraryAdminLoginCodes: defineTable(
     evidenceLibraryAdminLoginCodeFields,
   ).index("by_libraryId_and_codeDigest", ["libraryId", "codeDigest"]),

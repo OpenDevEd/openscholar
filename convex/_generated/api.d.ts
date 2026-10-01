@@ -68,9 +68,6 @@ import type * as evidenceLibraries_access from "../evidenceLibraries/access.js";
 import type * as evidenceLibraries_activeTopics from "../evidenceLibraries/activeTopics.js";
 import type * as evidenceLibraries_addressActions from "../evidenceLibraries/addressActions.js";
 import type * as evidenceLibraries_addressRecovery from "../evidenceLibraries/addressRecovery.js";
-import type * as evidenceLibraries_adminHandoff from "../evidenceLibraries/adminHandoff.js";
-import type * as evidenceLibraries_adminHandoffActions from "../evidenceLibraries/adminHandoffActions.js";
-import type * as evidenceLibraries_adminLoginCodes from "../evidenceLibraries/adminLoginCodes.js";
 import type * as evidenceLibraries_aiProviderKey from "../evidenceLibraries/aiProviderKey.js";
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
 import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibraries/applicationSetupActions.js";
@@ -108,6 +105,7 @@ import type * as evidenceLibraries_domains from "../evidenceLibraries/domains.js
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
 import type * as evidenceLibraries_invitationActions from "../evidenceLibraries/invitationActions.js";
 import type * as evidenceLibraries_invitations from "../evidenceLibraries/invitations.js";
+import type * as evidenceLibraries_legacyAdminLoginCodes from "../evidenceLibraries/legacyAdminLoginCodes.js";
 import type * as evidenceLibraries_members from "../evidenceLibraries/members.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
 import type * as evidenceLibraries_oauthClientSync from "../evidenceLibraries/oauthClientSync.js";
@@ -392,9 +390,6 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/activeTopics": typeof evidenceLibraries_activeTopics;
   "evidenceLibraries/addressActions": typeof evidenceLibraries_addressActions;
   "evidenceLibraries/addressRecovery": typeof evidenceLibraries_addressRecovery;
-  "evidenceLibraries/adminHandoff": typeof evidenceLibraries_adminHandoff;
-  "evidenceLibraries/adminHandoffActions": typeof evidenceLibraries_adminHandoffActions;
-  "evidenceLibraries/adminLoginCodes": typeof evidenceLibraries_adminLoginCodes;
   "evidenceLibraries/aiProviderKey": typeof evidenceLibraries_aiProviderKey;
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
   "evidenceLibraries/applicationSetupActions": typeof evidenceLibraries_applicationSetupActions;
@@ -432,6 +427,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
   "evidenceLibraries/invitationActions": typeof evidenceLibraries_invitationActions;
   "evidenceLibraries/invitations": typeof evidenceLibraries_invitations;
+  "evidenceLibraries/legacyAdminLoginCodes": typeof evidenceLibraries_legacyAdminLoginCodes;
   "evidenceLibraries/members": typeof evidenceLibraries_members;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
   "evidenceLibraries/oauthClientSync": typeof evidenceLibraries_oauthClientSync;
