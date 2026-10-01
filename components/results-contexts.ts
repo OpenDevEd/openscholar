@@ -36,11 +36,11 @@ export const ScreeningContext = createContext<ScreeningContextValue>({});
 export const TranslationContext = createContext<TranslationContextValue>({});
 
 /**
- * Server-authoritative ratings from the database (openalexId → rating).
- * Provided on the library page where Convex query data is available.
- * Undefined on the search page (falls back to Zustand cache).
+ * Server-authoritative ratings from the database (openalexId → rating, or null for a
+ * paper saved without one). Provided on the library page where Convex query data is
+ * available. Undefined on the search page (falls back to Zustand cache).
  */
-export const ServerRatingsContext = createContext<Map<string, number> | undefined>(undefined);
+export const ServerRatingsContext = createContext<Map<string, number | null> | undefined>(undefined);
 
 /**
  * Resolves the effective rating for a paper.
@@ -49,5 +49,6 @@ export const ServerRatingsContext = createContext<Map<string, number> | undefine
 export function useEffectiveRating(paperId: string): number | undefined {
   const serverRatings = useContext(ServerRatingsContext);
   const cachedRating = useRatingsStore((state) => state.ratings[paperId]);
-  return serverRatings?.get(paperId) ?? cachedRating;
+  if (serverRatings?.has(paperId)) return serverRatings.get(paperId) ?? undefined;
+  return cachedRating;
 }

@@ -553,9 +553,11 @@ export function OpenAccessBadge({
 export function DOIBadge({
   doi,
   compact = false,
+  className,
 }: {
   doi?: string;
   compact?: boolean;
+  className?: string;
 }) {
   const tAcc = useTranslations("accessibility");
   if (!doi) return null;
@@ -587,21 +589,26 @@ export function DOIBadge({
   }
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => window.open(doiUrl, "_blank")}
-      onMouseDown={(e) => {
-        if (e.button === 1) {
-          e.preventDefault();
-          window.open(doiUrl, "_blank");
-        }
-      }}
-      className="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 cursor-pointer flex-shrink-0"
-    >
-      <ExternalLink className="h-3 w-3" />
-      <span className="text-xs font-mono">{shortDoi}</span>
-    </Button>
+    <TooltipHint label={shortDoi} onlyWhenClipped>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => window.open(doiUrl, "_blank")}
+        onMouseDown={(e) => {
+          if (e.button === 1) {
+            e.preventDefault();
+            window.open(doiUrl, "_blank");
+          }
+        }}
+        className={cn(
+          "flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 cursor-pointer flex-shrink-0",
+          className,
+        )}
+      >
+        <ExternalLink className="h-3 w-3" />
+        <span className="truncate text-xs font-mono">{shortDoi}</span>
+      </Button>
+    </TooltipHint>
   );
 }
 

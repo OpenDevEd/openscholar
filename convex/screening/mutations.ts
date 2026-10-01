@@ -19,7 +19,7 @@ import {
   getCancelableScreeningWorkIds,
   isTerminalScreeningJobStatus,
 } from "./lifecycle";
-import { resolveLibraryCount } from "../library/counter";
+import { upsertLibraryItem } from "../library/mutations";
 import { addCollectionMembership } from "../library/collectionMembership";
 import {
   readScreeningProgressCounts,
@@ -240,79 +240,6 @@ export const markScreeningJobCreditsExhausted = internalMutation({
 });
 
 /**
- * Save a qualifying paper to the user's library (no auth, internal only).
- *
- * Uses upsert semantics: if paper already exists for user, updates rating.
- * If new, inserts and increments denormalized libraryItemCount.
- */
-export const saveQualifiedPaperToLibrary = internalMutation({
-  args: {
-    userId: v.id("users"),
-    openalexId: v.string(),
-    rating: v.number(),
-    title: v.string(),
-    authors: v.optional(v.string()),
-    doi: v.optional(v.string()),
-    abstract: v.optional(v.string()),
-    publicationYear: v.optional(v.number()),
-    paperData: v.optional(v.string()),
-  },
-  returns: v.id("libraryItems"),
-  handler: async (ctx, args) => {
-    const searchableText = [args.title, args.abstract, args.authors]
-      .filter(Boolean)
-      .join(" ");
-
-    // Upsert: check if paper already in user's library
-    const existing = await ctx.db
-      .query("libraryItems")
-      .withIndex("by_user_openalexId", (q) =>
-        q.eq("userId", args.userId).eq("openalexId", args.openalexId)
-      )
-      .unique();
-
-    if (existing) {
-      await ctx.db.patch("libraryItems", existing._id, {
-        rating: args.rating,
-        searchableText,
-        updatedAt: Date.now(),
-      });
-      return existing._id;
-    }
-
-    const user = await ctx.db.get("users", args.userId);
-    const currentCount = user
-      ? await resolveLibraryCount(ctx, args.userId, user.libraryItemCount)
-      : null;
-
-    // New save: insert full document
-    const id = await ctx.db.insert("libraryItems", {
-      userId: args.userId,
-      openalexId: args.openalexId,
-      rating: args.rating,
-      title: args.title,
-      authors: args.authors,
-      doi: args.doi,
-      abstract: args.abstract,
-      publicationYear: args.publicationYear,
-      ...(args.paperData !== undefined && { paperData: args.paperData }),
-      searchableText,
-      savedAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    // Increment denormalized counter
-    if (currentCount !== null) {
-      await ctx.db.patch("users", args.userId, {
-        libraryItemCount: currentCount + 1,
-      });
-    }
-
-    return id;
-  },
-});
-
-/**
  * Add a library item to a collection (no auth, internal only).
  *
  * Idempotent: if already in collection, no-op.
@@ -367,18 +294,18 @@ export const persistQualifiedScreeningResult = internalMutation({
       return null;
     }
 
-    const libraryItemId = await ctx.runMutation(
-      internal.screening.mutations.saveQualifiedPaperToLibrary,
+    const libraryItemId = await upsertLibraryItem(
+      ctx,
+      job.userId,
       {
-        userId: job.userId,
         openalexId: screeningResult.openalexId,
-        rating: screeningResult.stars ?? 0,
         title: screeningResult.title,
         authors: screeningResult.authors?.join(", "),
         doi: screeningResult.doi,
         abstract: screeningResult.abstract,
         publicationYear: screeningResult.publicationYear,
       },
+      screeningResult.stars ?? 0,
     );
 
     if (job.targetCollectionId) {
