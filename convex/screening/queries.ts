@@ -9,6 +9,9 @@ import {
   screeningResultStatusValidator,
 } from "./validators";
 import { getCurrentUser } from "../lib/auth";
+import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
+import { availableCredits } from "../billing/accounts";
+import { estimateScreening } from "./estimate";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 
 /** Most screening jobs one history request lists; each one also reads its progress. */
@@ -290,6 +293,25 @@ export const getScreeningResultsForExport = query({
       .query("screeningResults")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .take(MAX_SCREENING_PAPERS_PER_JOB);
+    // What the job answered, by question key: a result whose answers haven't moved yet, waiting
+    // or from before #334, still holds them; a moved one reads the model's answers from its
+    // screening's history as of the move, whatever a person or a later run changed since.
+    const screeningId = job.screeningId;
+    const answersOf = async (result: (typeof results)[number]) => {
+      if (result.answers || !screeningId || result.answersVersion === undefined) return result.answers;
+      const version = result.answersVersion;
+      const row = await ctx.db
+        .query("screeningAnswerHistory")
+        .withIndex("by_screening_and_paper_and_version", (q) => q.eq("screeningId", screeningId).eq("paperId", result.openalexId).lte("version", version))
+        .order("desc")
+        .first();
+      if (!row) return undefined;
+      return Object.fromEntries(job.questions.map((q) => {
+        const entry = row.answers.find((value) => value.question === q.question);
+        return [q.key, entry?.model ? entry.model.answer : (entry?.answer ?? null)];
+      }));
+    };
+    const answers = await Promise.all(results.map(answersOf));
 
     return {
       job: {
@@ -302,14 +324,14 @@ export const getScreeningResultsForExport = query({
         createdAt: job.createdAt,
         completedAt: job.completedAt,
       },
-      results: results.map((r) => ({
+      results: results.map((r, i) => ({
         openalexId: r.openalexId,
         title: r.title,
         authors: r.authors,
         publicationYear: r.publicationYear,
         doi: r.doi,
         status: r.status,
-        answers: r.answers,
+        answers: answers[i],
         score: r.score,
         stars: r.stars,
         qualified: r.qualified,
@@ -411,3 +433,13 @@ export const getResultInternal = internalQuery({
     };
   },
 });
+
+export const estimateAction = defineUserQuery({
+  path: "screening/queries:estimate",
+  description: "Estimates the credits screening a number of papers holds, against the person's balance, and how many papers that balance covers.",
+  args: { papers: v.number() },
+  returns: v.object({ credits: v.number(), available: v.number(), affordablePapers: v.number() }),
+  run: async (ctx, userId, args) => estimateScreening(args.papers, await availableCredits(ctx, userId)),
+});
+export const estimate = userQuery(estimateAction);
+export const estimateForAssistant = assistantQuery(estimateAction);

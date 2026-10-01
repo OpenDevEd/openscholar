@@ -3,8 +3,8 @@ import type { Doc } from "../_generated/dataModel";
 type ScreeningJobStatus = Doc<"screeningJobs">["status"];
 type ScreeningResultStatus = Doc<"screeningResults">["status"];
 
+// The answers themselves go to the job's screening; the row keeps what is worked out from them.
 export type CompletedScreeningRowDetails = {
-  answers: Record<string, boolean | null>;
   score: number;
   stars: number;
   qualified: boolean;

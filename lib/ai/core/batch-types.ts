@@ -36,6 +36,9 @@ export interface BatchScreeningParams {
 
 export interface ScreeningResultData {
   responses: Record<string, boolean | null>
+  /** The model's confidence in each response, by question (0-1). */
+  confidences: Record<string, number>
+  /** The mean of `confidences`. */
   confidence: number
 }
 

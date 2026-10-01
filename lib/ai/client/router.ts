@@ -84,6 +84,7 @@ export const useBatchScreeningResponses = createAIHook(
         {
           ...data,
           responses: decodeQuestionResponseMap(data.responses),
+          confidences: decodeQuestionResponseMap(data.confidences),
         },
       ])
     ),

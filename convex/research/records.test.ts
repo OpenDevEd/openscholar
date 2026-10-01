@@ -204,6 +204,23 @@ describe("account research records", () => {
     expect(confirmed.filter(row => row.paperId === "W3").map(row => row.answers[0].setBy)).toEqual(["model", "person"]);
   });
 
+  it("keeps the model's answer and its confidence when a person changes the answer (#334)", async () => {
+    const { alice, t } = await setup();
+    await alice.mutation(api.research.records.importBatch, batch);
+    const respond = (requestId: string, by: "model" | "person", responses: Array<{ question: string; response: boolean | null; confidence?: number }>) =>
+      alice.mutation(api.research.records.change, { accountId: "alice", requestId, command: { kind: "editSearch", id: record.id, edit: { kind: "responses", paperId: "W9", responses, by } } });
+    await respond("model", "model", [{ question: "Randomized?", response: null, confidence: 0.4 }, { question: "Adults?", response: true, confidence: 0.9 }]);
+    await respond("person", "person", [{ question: "Randomized?", response: true }]);
+    const row = await t.run(ctx => ctx.db.query("screeningAnswers").filter(q => q.eq(q.field("paperId"), "W9")).unique());
+    expect(row?.answers.map(({ question, answer, setBy, model }) => ({ question, answer, setBy, model: model && { answer: model.answer, confidence: model.confidence } }))).toEqual([
+      { question: "Randomized?", answer: true, setBy: "person", model: { answer: null, confidence: 0.4 } },
+      { question: "Adults?", answer: true, setBy: "model", model: { answer: true, confidence: 0.9 } },
+    ]);
+    // What the search shows is the current answer.
+    const shown = (await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id }))?.screeningResponses.find(r => r.paperId === "W9");
+    expect(shown?.responses).toEqual([{ question: "Randomized?", response: true }, { question: "Adults?", response: true }]);
+  });
+
   it("merges independent paper answers and removes only a renamed question's answers", async () => {
     const { alice } = await setup();
     await alice.mutation(api.research.records.importBatch, batch);

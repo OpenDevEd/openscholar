@@ -546,11 +546,62 @@ describe("finalizeScreeningJobFromAggregates", () => {
   });
 });
 
+describe("Screen all on a saved search", () => {
+  it("answers into the search's screening, so its page shows them next to its own answers (#334)", async () => {
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const user = await seedUser(t, "clerk_test");
+    await seedCredits(t, user._id, 100, 0);
+    const asUser = t.withIdentity({ subject: "clerk_test" });
+    const search = {
+      id: "local-search", query: "tutoring", field: "title" as const, count: 2, queryHistoryCount: 1, questionCount: 0, questionText: "",
+      screeningQuestions: [{ question: "Is this relevant?" }], screeningResponses: [{ paperId: "https://openalex.org/W2", responses: [{ question: "Is this relevant?", response: false }] }],
+      createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z",
+    };
+    await asUser.mutation(api.research.records.importBatch, { accountId: "clerk_test", searches: [{ search, history: { queryHistory: [], questionHistory: [] } }], shortcuts: [], ratings: [] });
+
+    const { jobId } = await asUser.mutation(api.screening.mutations.createScreeningJob, {
+      papers: makePapers(1), questions: [...defaultQuestions, { key: "q2", question: "Adults?" }], scoringConfig: defaultScoringConfig, searchId: search.id,
+    });
+    const result = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique());
+    vi.useFakeTimers();
+    await t.mutation(internal.screening.mutations.handleScreeningComplete, {
+      workId: "work_search",
+      context: { jobId, resultId: result!._id },
+      result: { kind: "success", returnValue: { responses: encodeQuestionResponseMap({ "Is this relevant?": true }), confidences: encodeQuestionResponseMap({ "Is this relevant?": 0.8 }), confidence: 0.8 } },
+    });
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+    vi.useRealTimers();
+    const shown = await asUser.query(api.research.records.getSearch, { accountId: "clerk_test", id: search.id });
+    expect(shown?.screeningResponses).toEqual([
+      { paperId: "https://openalex.org/W1", responses: [{ question: "Is this relevant?", response: true }, { question: "Adults?", response: null }] },
+      { paperId: "https://openalex.org/W2", responses: [{ question: "Is this relevant?", response: false }] },
+    ]);
+    // The search took on the job's question it didn't have, so its page shows that answer too.
+    expect(shown?.screeningQuestions).toEqual([{ question: "Is this relevant?" }, { question: "Adults?" }]);
+    const screenings = await t.run((ctx) => ctx.db.query("screenings").collect());
+    expect(screenings).toHaveLength(1);
+  });
+
+  it("refuses a search that isn't the person's", async () => {
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const user = await seedUser(t, "clerk_test");
+    await seedCredits(t, user._id, 100, 0);
+    const asUser = t.withIdentity({ subject: "clerk_test" });
+    await expect(asUser.mutation(api.screening.mutations.createScreeningJob, {
+      papers: makePapers(1), questions: defaultQuestions, scoringConfig: defaultScoringConfig, searchId: "someone-elses",
+    })).rejects.toThrow("Search not found");
+  });
+});
+
 describe("handleScreeningComplete", () => {
   it("keeps qualified completion row-local until scheduled follow-ups run", async () => {
     vi.useFakeTimers();
     try {
       const t = convexTest(schema);
+      setupScreeningWorkpool(t);
       const user = await seedUser(t, "clerk_complete_success");
       const collection = await seedCollection(t, user._id);
       const job = await seedScreeningJob(t, user._id, "processing");
@@ -577,6 +628,7 @@ describe("handleScreeningComplete", () => {
             responses: encodeQuestionResponseMap({
               "Is this relevant?": true,
             }),
+            confidences: encodeQuestionResponseMap({ "Is this relevant?": 0.91 }),
             confidence: 0.91,
           },
         },
@@ -596,11 +648,15 @@ describe("handleScreeningComplete", () => {
           .collect();
 
         expect(updatedResult?.status).toBe("completed");
-        expect(updatedResult?.answers).toEqual({ q1: true });
+        // The answer waits on the row, with the model's confidence in it, for the job's writer.
+        expect(updatedResult).toMatchObject({ answers: { q1: true }, confidences: { q1: 0.91 }, pendingAnswers: true });
         expect(updatedResult?.savedToLibrary).toBeUndefined();
         expect(updatedJob?.status).toBe("processing");
         expect(libraryItems).toHaveLength(0);
-        expect(scheduledFunctions).toHaveLength(2);
+        expect(scheduledFunctions.map((fn) => fn.name).filter((name) => name.startsWith("screening/mutations"))).toEqual([
+          "screening/mutations:persistQualifiedScreeningResult",
+          "screening/mutations:finalizeScreeningJobFromAggregates",
+        ]);
       });
 
       await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
@@ -623,6 +679,12 @@ describe("handleScreeningComplete", () => {
           )
           .collect();
         const counts = await readScreeningProgressCounts(ctx, job._id);
+        // Then the answer is in the job's screening, with the model's confidence, and not on the row.
+        const answerRows = await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", updatedJob!.screeningId!)).collect();
+        expect(answerRows.map((row) => ({ paperId: row.paperId, answers: row.answers.map(({ question, answer, setBy, model }) => ({ question, answer, setBy, confidence: model?.confidence })) }))).toEqual([
+          { paperId: "https://openalex.org/Wsuccess", answers: [{ question: "Is this relevant?", answer: true, setBy: "model", confidence: 0.91 }] },
+        ]);
+        expect([updatedResult?.answers, updatedResult?.confidences, updatedResult?.pendingAnswers]).toEqual([undefined, undefined, undefined]);
 
         expect(updatedResult?.savedToLibrary).toBe(true);
         expect(updatedResult?.libraryItemId).toBeDefined();

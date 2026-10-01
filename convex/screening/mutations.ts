@@ -1,7 +1,8 @@
 import { mutation, internalMutation } from "../lib/functions";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
 import {
   screeningPaperInputValidator,
   screeningQuestionValidator,
@@ -12,7 +13,6 @@ import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { resolveTaskPick, serverStamp } from "../ai/serverModel";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
-import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
 import { screeningPool } from "../workpool";
 import {
   getCancelableScreeningWorkIds,
@@ -29,6 +29,11 @@ import { deriveCompletionTransition } from "./completion";
 import { buildScreeningProgressSnapshot } from "./progress";
 import { scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
+import { ensureScreening } from "../research/answers";
+import { drainLater } from "./drain";
+import { estimateScreening } from "./estimate";
+import { applyCommand, moveSearchAnswers } from "../research/records";
+
 import { availableCredits } from "../billing/accounts";
 
 /**
@@ -45,6 +50,8 @@ export const createScreeningJob = mutation({
     questions: v.array(screeningQuestionValidator),
     scoringConfig: screeningScoringConfigValidator,
     targetCollectionId: v.optional(v.id("collections")),
+    // The saved search screened, by its ID in the browser; its page shows the answers.
+    searchId: v.optional(v.string()),
   },
   returns: v.object({ jobId: v.id("screeningJobs") }),
   handler: async (ctx, args) => {
@@ -83,7 +90,7 @@ export const createScreeningJob = mutation({
     // 4. Credit pre-flight check
     const totalAvailable = await availableCredits(ctx, user._id);
 
-    const estimatedCost = Math.ceil(args.papers.length * ESTIMATED_CREDITS_PER_PAPER);
+    const estimatedCost = estimateScreening(args.papers.length, totalAvailable).credits;
     if (totalAvailable < estimatedCost) {
       throw createError(
         "INSUFFICIENT_CREDITS",
@@ -95,6 +102,25 @@ export const createScreeningJob = mutation({
     // back at run by screenPaperAction).
     const serverPick = await resolveTaskPick(ctx, user._id, "screenAll");
     const now = Date.now();
+    let screeningId: Id<"screenings">;
+    if (args.searchId) {
+      const localId = args.searchId;
+      const search = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", user._id).eq("localId", localId)).unique();
+      if (!search) throw createError("NOT_FOUND", "Search not found");
+      // A search still holding answers in chunks moves them before it has a screening.
+      await moveSearchAnswers(ctx, search._id, user._id);
+      // The search's page shows answers to its own questions, so it takes on the job's it
+      // lacks, all in one edit with one revision.
+      const asked = new Set(search.data.screeningQuestions.map(({ question }) => question));
+      const missing = [...new Set(args.questions.map((q) => q.question))].filter((question) => !asked.has(question));
+      if (missing.length) {
+        const screeningQuestions = [...search.data.screeningQuestions, ...missing.map((question) => ({ question }))];
+        await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, "user");
+      }
+      screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
+    } else {
+      screeningId = await ctx.db.insert("screenings", { userId: user._id, version: 0, createdAt: now });
+    }
     const jobId = await ctx.db.insert("screeningJobs", {
       userId: user._id,
       status: "processing",
@@ -102,6 +128,7 @@ export const createScreeningJob = mutation({
       questions: args.questions,
       scoringConfig: args.scoringConfig,
       targetCollectionId: args.targetCollectionId,
+      screeningId,
       ...serverStamp(serverPick),
       createdAt: now,
       updatedAt: now,
@@ -377,17 +404,25 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
     }
 
     let transition;
+    let pending: { answers: Record<string, boolean | null>; confidences: Record<string, number> } | null = null;
     if (result.kind === "success" && job.status === "processing") {
       const data = result.returnValue as {
         responses: Record<string, boolean | null>;
+        // Missing from results returned before #334.
+        confidences?: Record<string, number>;
         confidence: number;
       };
       const decodedResponses = decodeQuestionResponseMap(data.responses);
+      const decodedConfidences = decodeQuestionResponseMap(data.confidences ?? {});
       const answers: Record<string, boolean | null> = {};
       for (const q of job.questions) {
         const response = decodedResponses[q.question];
         answers[q.key] = response ?? null;
       }
+      pending = {
+        answers,
+        confidences: Object.fromEntries(job.questions.flatMap((q) => (decodedConfidences[q.question] === undefined ? [] : [[q.key, decodedConfidences[q.question]]]))),
+      };
 
       const { score, stars, qualified } = scorePaper(answers, job.scoringConfig);
       transition = deriveCompletionTransition({
@@ -395,7 +430,6 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
         jobStatus: job.status,
         resultKind: "success",
         completedRowDetails: {
-          answers,
           score,
           stars,
           qualified,
@@ -416,10 +450,14 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
 
     const completedAt = Date.now();
     if (transition.rowPatch.status === "completed") {
+      // The answers wait on this row, which no other paper writes, until the job's one
+      // writer moves them to the screening the search's page reads (./drain.ts).
       await ctx.db.patch("screeningResults", context.resultId, {
         ...transition.rowPatch,
         completedAt,
+        ...(pending ? { ...pending, pendingAnswers: true as const } : {}),
       });
+      if (pending) await drainLater(ctx, context.jobId);
     } else {
       await ctx.db.patch("screeningResults", context.resultId, {
         ...transition.rowPatch,
