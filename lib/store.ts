@@ -18,7 +18,7 @@ import type {
 } from './types';
 import { MIN_YEAR } from './constants';
 import { bindResearchStore } from './research/binding';
-import { importSearchRecord } from './research/records';
+import { historySummary, importSearchRecord, withQuestion } from './research/records';
 
 // Fallback UUID generator for mobile compatibility
 const generateUUID = (): string => {
@@ -55,9 +55,12 @@ export interface RatingsState {
 
 export interface SearchHistoryState {
   searchHistory: SearchResult[]
-  addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory' | 'screeningQuestions' | 'screeningResponses' | 'questionHistory'> & { questionHistory?: QuestionHistoryEntry[] }) => string
+  addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory' | 'screeningQuestions' | 'screeningResponses' | 'questionHistory' | 'queryHistoryCount' | 'questionCount' | 'latestQuestion' | 'questionText'> & { questionHistory?: QuestionHistoryEntry[] }) => string
   updateSearchResult: (id: string, updates: Partial<Omit<SearchResult, 'id' | 'createdAt'>>) => void
   addQueryToHistory: (id: string, query: string, field: SearchField) => void
+  removeQueryHistoryEntry: (id: string, entry: QueryHistoryEntry) => void
+  /** Gives search `id` the history of search `from`. */
+  copySearchHistory: (id: string, from: string) => void
   addQuestionToHistory: (id: string, question: string) => void
   addScreeningQuestion: (id: string, question: string) => void
   updateScreeningQuestion: (id: string, questionIndex: number, updates: Partial<ScreeningQuestionEntry>) => void
@@ -295,6 +298,16 @@ export function migrateSearchHistoryState(persistedState: unknown, version: numb
     }
   }
 
+  // Migration for version 7 -> 8: the summary a search keeps of its history (#354)
+  if (version <= 7) {
+    if (state.searchHistory) {
+      state.searchHistory = state.searchHistory.map((item: Record<string, unknown>) => ({
+        ...item,
+        ...historySummary((item.queryHistory || []) as unknown[], (item.questionHistory || []) as Array<{ question: string }>),
+      }));
+    }
+  }
+
   return state;
 }
 
@@ -305,11 +318,14 @@ export const localSearchHistoryStore = create<SearchHistoryState>()(
       addSearchResult: (result) => {
         const id = generateUUID();
         const now = new Date().toISOString();
+        const queryHistory = [{ query: result.query, timestamp: now, field: result.field }];
+        const questionHistory = result.questionHistory || [];
         const newResult: SearchResult = {
           ...result,
           id,
-          queryHistory: [{ query: result.query, timestamp: now, field: result.field }],
-          questionHistory: result.questionHistory || [],
+          queryHistory,
+          questionHistory,
+          ...historySummary(queryHistory, questionHistory),
           screeningQuestions: [],
           screeningResponses: {},
           createdAt: now,
@@ -339,12 +355,35 @@ export const localSearchHistoryStore = create<SearchHistoryState>()(
               ? {
                   ...item,
                   query,
-                  queryHistory: [...item.queryHistory, { query, timestamp: now, field }],
+                  queryHistory: [...(item.queryHistory ?? []), { query, timestamp: now, field }],
+                  queryHistoryCount: item.queryHistoryCount + 1,
                   updatedAt: now
                 }
               : item
           ),
         }));
+      },
+      removeQueryHistoryEntry: (id, entry) => {
+        set((state) => ({
+          searchHistory: state.searchHistory.map((item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  queryHistory: (item.queryHistory ?? []).filter((current) => current.timestamp !== entry.timestamp || current.query !== entry.query),
+                  queryHistoryCount: Math.max(0, item.queryHistoryCount - 1),
+                  updatedAt: new Date().toISOString(),
+                }
+              : item
+          ),
+        }));
+      },
+      copySearchHistory: (id, from) => {
+        set((state) => {
+          const source = state.searchHistory.find((item) => item.id === from);
+          if (!source) return state;
+          const { queryHistory, questionHistory, queryHistoryCount, questionCount, latestQuestion, questionText } = source;
+          return { searchHistory: state.searchHistory.map((item) => item.id === id ? { ...item, queryHistory, questionHistory, queryHistoryCount, questionCount, latestQuestion, questionText, updatedAt: new Date().toISOString() } : item) };
+        });
       },
       addQuestionToHistory: (id, question) => {
         const now = new Date().toISOString();
@@ -353,7 +392,8 @@ export const localSearchHistoryStore = create<SearchHistoryState>()(
             item.id === id
               ? {
                   ...item,
-                  questionHistory: [...item.questionHistory, { question, timestamp: now }],
+                  questionHistory: [...(item.questionHistory ?? []), { question, timestamp: now }],
+                  ...withQuestion(item, question),
                   updatedAt: now
                 }
               : item
@@ -517,6 +557,7 @@ export const localSearchHistoryStore = create<SearchHistoryState>()(
             ...result,
             id,
             questionHistory: result.questionHistory || [],
+            ...historySummary(result.queryHistory || [], result.questionHistory || []),
             screeningQuestions: result.screeningQuestions || [],
             screeningResponses: result.screeningResponses || {},
             createdAt: now,
@@ -548,7 +589,7 @@ export const localSearchHistoryStore = create<SearchHistoryState>()(
     }),
     {
       name: 'search-history-store',
-      version: 7, // Increment when migrations are needed
+      version: 8, // Increment when migrations are needed
       migrate: migrateSearchHistoryState,
     }
   )

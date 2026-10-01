@@ -197,15 +197,14 @@ function buildSearchHistoryContext(
   searchResult: SearchResult | undefined,
   fallbackResearchQuestion: string
 ): SearchHistoryContext {
-  const questionHistory = searchResult?.questionHistory || [];
   const screeningQuestions = searchResult?.screeningQuestions || [];
 
-  const lastQuestion = questionHistory[questionHistory.length - 1]?.question?.trim() || "";
+  const lastQuestion = searchResult?.latestQuestion?.trim() || "";
   const fallbackQuestion = fallbackResearchQuestion.trim();
 
   return {
     research_question: lastQuestion || fallbackQuestion || null,
-    research_question_count: questionHistory.length,
+    research_question_count: searchResult?.questionCount ?? 0,
     screening_questions: screeningQuestions.map((item) => item.question),
     screening_question_count: screeningQuestions.length,
   };

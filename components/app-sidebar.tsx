@@ -564,8 +564,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       updatedAt={search.updatedAt}
                       isActive={search.id === effectiveSearchId}
                       isCollapsed={isCollapsed && !isMobile}
-                      queryHistory={search.queryHistory}
-                      questionHistory={search.questionHistory}
+                      search={search}
                       screeningQuestions={search.screeningQuestions}
                       screeningResponses={search.screeningResponses}
                       onClick={() => handleSearchHistoryClick(search.id)}

@@ -4,7 +4,7 @@ import type { FunctionReference } from "convex/server";
 import { api } from "../../convex/_generated/api";
 import type { SearchHistoryState, KeywordExpansionState, RatingsState } from "../store";
 import type { SearchResult, BookmarkData } from "../types";
-import { applySearchEdit, importSearchRecord, restoreSearch, serializeResponses, serializeSearch, serializeSearchPatch, type ResearchCommand, type SavedSearch, type SearchEdit } from "./records";
+import { applySearchEdit, historySummary, importSearchRecord, restoreSearch, serializeResponses, serializeSearch, serializeSearchPatch, type ResearchCommand, type SavedSearch, type SearchEdit } from "./records";
 import { activateResearch, type ResearchStores } from "./binding";
 import { migrateLocalResearch, ResearchImportError } from "./migrate";
 
@@ -50,9 +50,15 @@ export function watchPages<T>(client: ConvexReactClient, query: PageQuery<T>, ac
 
 function newSearch(input: Parameters<SearchHistoryState["addSearchResult"]>[0]): SearchResult {
   const now = new Date().toISOString();
+  const queryHistory = [{ query: input.query, field: input.field, timestamp: now }];
+  const questionHistory = input.questionHistory ?? [];
   return { ...input, id: crypto.randomUUID(), createdAt: now, updatedAt: now,
-    queryHistory: [{ query: input.query, field: input.field, timestamp: now }],
-    questionHistory: input.questionHistory ?? [], screeningQuestions: [], screeningResponses: {} };
+    queryHistory, questionHistory, ...historySummary(queryHistory, questionHistory), screeningQuestions: [], screeningResponses: {} };
+}
+
+/** A search to create on the account, with the history it starts with. */
+function createSearch(search: SearchResult): ResearchCommand {
+  return { kind: "createSearch", search: serializeSearch(search), history: { queryHistory: search.queryHistory ?? [], questionHistory: search.questionHistory ?? [] } };
 }
 
 function expand(query: string, keywords: Record<string, BookmarkData>) {
@@ -89,10 +95,15 @@ export class ResearchSession {
     };
     const history = createStore<SearchHistoryState>(() => ({
       searchHistory: [],
-      addSearchResult: input => { const search = newSearch(input); this.dispatch({ kind: "createSearch", search: serializeSearch(search) }); return search.id; },
+      addSearchResult: input => { const search = newSearch(input); this.dispatch(createSearch(search)); return search.id; },
       updateSearchResult: (id, updates) => edit(id, serializeSearchPatch(updates)),
       addQueryToHistory: (id, query, field) => edit(id, { kind: "query", query, field }),
       addQuestionToHistory: (id, question) => edit(id, { kind: "question", question }),
+      removeQueryHistoryEntry: (id, entry) => edit(id, { kind: "removeQueryHistoryEntry", query: entry.query, timestamp: entry.timestamp }),
+      copySearchHistory: (id, from) => {
+        const source = current(from);
+        if (source) edit(id, { kind: "copyHistory", from, summary: { queryHistoryCount: source.queryHistoryCount, questionCount: source.questionCount, ...(source.latestQuestion === undefined ? {} : { latestQuestion: source.latestQuestion }), questionText: source.questionText } });
+      },
       addScreeningQuestion: (id, question) => edit(id, { kind: "addScreeningQuestion", question }),
       updateScreeningQuestion: (id, index, updates) => { if (updates.question !== undefined) replaceQuestion(id, index, updates.question); },
       removeScreeningQuestion: (id, index) => replaceQuestion(id, index, null),
@@ -108,8 +119,7 @@ export class ResearchSession {
       migrateSearchResult: search => search.id,
       importSearchHistory: rows => {
         for (const row of rows) {
-          const search = importSearchRecord(row);
-          this.dispatch({ kind: "createSearch", search: serializeSearch(search) });
+          this.dispatch(createSearch(importSearchRecord(row)));
         }
         return rows.length;
       },
@@ -245,7 +255,7 @@ export class ResearchSession {
           if (row.id !== command.id) return row;
           const edit = command.edit;
           if (edit.kind === "query" && row.query === edit.query && row.field === edit.field) return row;
-          if (edit.kind === "question" && row.questionHistory.at(-1)?.question === edit.question) return row;
+          if (edit.kind === "question" && row.latestQuestion === edit.question) return row;
           if (edit.kind === "addScreeningQuestion" && row.screeningQuestions.some(q => q.question === edit.question)) return row;
           return applySearchEdit(row, edit, row.updatedAt);
         }); break;

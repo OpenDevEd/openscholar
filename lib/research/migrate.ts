@@ -2,9 +2,10 @@ import type { ConvexReactClient } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { localKeywordExpansionStore, localRatingsStore, localSearchHistoryStore } from "../store";
 import { importSearchRecord, serializeSearch } from "./records";
+import type { QueryHistoryEntry, QuestionHistoryEntry } from "../types";
 
 const CLAIMS_KEY = "research-import-owners";
-type ImportBatch = { accountId: string; searches: ReturnType<typeof serializeSearch>[]; shortcuts: Array<{ shorthand: string; expansion: string; createdAt: number }>; ratings: Array<{ paperId: string; rating: number }> };
+type ImportBatch = { accountId: string; searches: Array<{ search: ReturnType<typeof serializeSearch>; history: { queryHistory: QueryHistoryEntry[]; questionHistory: QuestionHistoryEntry[] } }>; shortcuts: Array<{ shorthand: string; expansion: string; createdAt: number }>; ratings: Array<{ paperId: string; rating: number }> };
 type LocalItem = { key: string; add: (batch: ImportBatch) => void; acknowledge: () => void; bytes: number };
 
 export class ResearchImportError extends Error {
@@ -31,9 +32,11 @@ export async function importLocalResearch(
     try {
     const data = serializeSearch(search);
     const serialized = JSON.stringify(data);
+    // The history this browser kept goes with it, to the search's history rows.
+    const history = { queryHistory: search.queryHistory ?? [], questionHistory: search.questionHistory ?? [] };
     items.push({
-      key: `search:${search.id}`, bytes: serialized.length * 2,
-      add: batch => batch.searches.push(data),
+      key: `search:${search.id}`, bytes: (serialized.length + JSON.stringify(history).length) * 2,
+      add: batch => batch.searches.push({ search: data, history }),
       acknowledge: () => localSearchHistoryStore.setState(state => ({ searchHistory: state.searchHistory.filter(current => current.id !== search.id || JSON.stringify(serializeSearch(current)) !== serialized) })),
     });
     } catch (error) { failures.push(error); }

@@ -18,7 +18,10 @@ import { QueryText } from "@/components/ui/query-text";
 const LONG_QUERY_CHARS = 240;
 
 interface QueryEvolutionProps {
+  /** The queries read so far, oldest first; the newest may be all of them. */
   queryHistory: QueryHistoryEntry[];
+  /** All of the search's queries, read or not. */
+  total: number;
   currentQuery: string;
   className?: string;
 }
@@ -39,6 +42,7 @@ function truncateQuery(query: string, maxLength: number = 20): string {
  */
 export function QueryEvolution({
   queryHistory,
+  total,
   currentQuery,
   className,
 }: QueryEvolutionProps) {
@@ -49,14 +53,15 @@ export function QueryEvolution({
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Don't render if there's only one or no queries
-  if (!queryHistory || queryHistory.length <= 1) {
+  if (total <= 1) {
     return null;
   }
 
-  // Get queries in reverse chronological order (newest first)
+  // Get queries in reverse chronological order (newest first). While they're read, the
+  // preview line shows only the count, at the same height.
   const sortedHistory = [...queryHistory].reverse();
   const previewQueries = sortedHistory.slice(1, 3);
-  const remainingCount = sortedHistory.length - 2;
+  const remainingCount = total - 2;
 
   return (
     <div className={cn("pt-2 border-t border-border/30", className)}>

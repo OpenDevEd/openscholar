@@ -9,7 +9,7 @@ interface MigratedSearchHistoryState {
     yearRange?: [number, number];
     isYearRangeEnabled?: boolean;
     queryHistory?: Array<{ query: string; timestamp: string }>;
-    questionHistory?: unknown[];
+    questionHistory?: Array<{ question: string }>;
     screeningQuestions?: Array<{ question: string }>;
     screeningResponses?: Record<string, Record<string, string>>;
     language?: string;
@@ -152,14 +152,14 @@ describe("migrateSearchHistoryState", () => {
     ]);
   });
 
-  it("version 7 -> 7: no-op (already at current version)", () => {
+  it("version 7 -> 8: summarizes the history each search keeps", () => {
     const input = {
       searchHistory: [
         {
           query: "q",
           isYearRangeEnabled: true,
           queryHistory: [{ query: "q", timestamp: "2024-01-01T00:00:00.000Z" }],
-          questionHistory: [],
+          questionHistory: [{ question: "Does it work?" }, { question: "For whom?" }, { question: "Does it work?" }],
           screeningQuestions: [{ question: "Is it good?" }],
           screeningResponses: { paper1: { q1: "yes" } },
           language: "en",
@@ -169,7 +169,8 @@ describe("migrateSearchHistoryState", () => {
 
     const result = migrate(structuredClone(input), 7);
 
-    expect(result).toEqual(input);
+    expect(result).toEqual({ searchHistory: [{ ...input.searchHistory[0], queryHistoryCount: 1, questionCount: 3, latestQuestion: "Does it work?", questionText: "Does it work?\nFor whom?" }] });
+    expect(migrate(structuredClone(result), 8)).toEqual(result);
   });
 
   it("handles empty searchHistory array", () => {

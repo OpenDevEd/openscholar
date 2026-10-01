@@ -46,7 +46,7 @@ describe("local research import acknowledgement", () => {
     let acknowledge!: (value: null) => void;
     const request = new Promise<null>(resolve => { acknowledge = resolve; });
     const promise = importLocalResearch("alice", async batch => {
-      expect(batch.searches[0]).toMatchObject({ id, researchAreas: ["17"], includeRetracted: true, page: 4, screeningResponses: [{ paperId: "W1", responses: [{ question: "Randomized?", response: true }] }] });
+      expect(batch.searches[0].search).toMatchObject({ id, researchAreas: ["17"], includeRetracted: true, page: 4, screeningResponses: [{ paperId: "W1", responses: [{ question: "Randomized?", response: true }] }] });
       return request;
     }, () => true);
     expect(localSearchHistoryStore.getState().getSearchResult(id)?.count).toBe(12);
@@ -67,7 +67,7 @@ describe("local research import acknowledgement", () => {
     expect(await importLocalResearch("alice", async () => { throw new Error("Offline"); }, () => true)).toHaveLength(3);
     expect(localSearchHistoryStore.getState().getSearchResult(id)?.query).toBe("education");
     await importLocalResearch("alice", async batch => {
-      expect(batch.searches.map(row => row.id)).toEqual([id]);
+      expect(batch.searches.map(row => row.search.id)).toEqual([id]);
       expect(JSON.stringify(batch)).not.toContain("test-user-owned-key");
       return null;
     }, () => true);
@@ -85,7 +85,7 @@ describe("local research import acknowledgement", () => {
     await importLocalResearch("alice", async () => null, () => true);
     expect(localSearchHistoryStore.getState().searchHistory).toEqual([]);
     const freshId = seed();
-    await importLocalResearch("bob", async batch => { expect(batch.searches[0].id).toBe(freshId); return null; }, () => true);
+    await importLocalResearch("bob", async batch => { expect(batch.searches[0].search.id).toBe(freshId); return null; }, () => true);
     expect(localSearchHistoryStore.getState().searchHistory).toEqual([]);
   });
 
@@ -104,7 +104,7 @@ describe("local research import acknowledgement", () => {
     const sizes: number[] = [];
     await importLocalResearch("alice", async batch => {
       sizes.push(batch.searches.length + batch.shortcuts.length + batch.ratings.length);
-      ids.push(...batch.searches.map(row => row.id));
+      ids.push(...batch.searches.map(row => row.search.id));
       return null;
     }, () => true);
     expect(sizes).toEqual([25, 25, 11]);

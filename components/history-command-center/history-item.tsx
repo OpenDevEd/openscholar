@@ -34,6 +34,7 @@ import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { HistoryQueryExpansion } from "./history-query-expansion";
 import { subtleSpring } from "@/lib/animation-config";
 import type { SearchResult } from "@/lib/types";
+import { useSearchHistoryEntries } from "@/lib/research/history";
 import {
   getFieldLabel,
   getSortLabel,
@@ -79,8 +80,12 @@ export function HistoryItem({
   const { addKeyword, keywords } = useKeywordExpansionStore();
 
   const idColor = getIdColor(item.id);
-  const queryHistoryCount = item.queryHistory?.length || 0;
-  const latestQuestion = item.questionHistory?.[item.questionHistory.length - 1]?.question;
+  const queryHistoryCount = item.queryHistoryCount;
+  const latestQuestion = item.latestQuestion;
+  // Read when the history is opened, which waits for it, so it opens at its full size.
+  const history = useSearchHistoryEntries(item, "query", isQueryHistoryOpen);
+  const showHistory = isQueryHistoryOpen && queryHistoryCount > 1 && !history.isLoading;
+  const historyProps = { queryHistory: history.entries, total: history.total, onLoadOlder: history.hasOlder ? history.loadOlder : undefined };
 
   // Find the actual index in the full history for deletion
   const actualIndex = searchHistory.findIndex((h) => h.id === item.id);
@@ -275,10 +280,10 @@ export function HistoryItem({
         )}
 
         {/* Query history expansion */}
-        {isQueryHistoryOpen && queryHistoryCount > 1 && (
+        {showHistory && (
           <div className="px-3 pb-3">
             <HistoryQueryExpansion
-              queryHistory={item.queryHistory}
+              {...historyProps}
               currentQuery={item.query}
               searchId={item.id}
               readOnly={Boolean(pickLabel)}
@@ -305,7 +310,7 @@ export function HistoryItem({
           "transition-[background-color,border-color,box-shadow] duration-200"
         )}
       >
-        {isQueryHistoryOpen && queryHistoryCount > 1 ? (
+        {showHistory ? (
           /* Mini-page view: header + scrollable history */
           <>
             {/* Mini-page header */}
@@ -335,7 +340,7 @@ export function HistoryItem({
             {/* Scrollable history content */}
             <div className="flex-1 overflow-y-auto">
               <HistoryQueryExpansion
-                queryHistory={item.queryHistory}
+                {...historyProps}
                 currentQuery={item.query}
                 searchId={item.id}
                 readOnly={Boolean(pickLabel)}
@@ -701,10 +706,10 @@ export function HistoryItem({
         </div>
 
         {/* Query history expansion */}
-        {isQueryHistoryOpen && queryHistoryCount > 1 && (
+        {showHistory && (
           <div className="mt-4">
             <HistoryQueryExpansion
-              queryHistory={item.queryHistory}
+              {...historyProps}
               currentQuery={item.query}
               searchId={item.id}
               readOnly={Boolean(pickLabel)}

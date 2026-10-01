@@ -32,6 +32,10 @@ interface HistoryQueryExpansionProps {
   onQuerySelect?: (query: string) => void;
   hideHeader?: boolean;
   readOnly?: boolean;
+  /** All of the search's queries; `queryHistory` may hold only the newest of them. */
+  total?: number;
+  /** Reads older queries; called when the list is scrolled to its end. */
+  onLoadOlder?: () => void;
 }
 
 export function HistoryQueryExpansion({
@@ -41,6 +45,8 @@ export function HistoryQueryExpansion({
   onQuerySelect,
   hideHeader = false,
   readOnly = false,
+  total,
+  onLoadOlder,
 }: HistoryQueryExpansionProps) {
   const toast = useAppToast();
   const th = useTranslations("historyPage");
@@ -54,7 +60,7 @@ export function HistoryQueryExpansion({
   const [bookmarkingIndex, setBookmarkingIndex] = useState<number | null>(null);
   const [bookmarkName, setBookmarkName] = useState("");
 
-  const { updateSearchResult, getSearchResult } = useSearchHistoryStore();
+  const { removeQueryHistoryEntry } = useSearchHistoryStore();
   const { addKeyword, keywords } = useKeywordExpansionStore();
 
   if (!queryHistory || queryHistory.length <= 1) {
@@ -70,17 +76,8 @@ export function HistoryQueryExpansion({
   };
 
   const handleDeleteEntry = (queryIndex: number) => {
-    const searchResult = getSearchResult(searchId);
-    if (!searchResult) return;
-
-    const updatedQueryHistory = searchResult.queryHistory.filter(
-      (_, index) => index !== queryIndex
-    );
-
-    updateSearchResult(searchId, {
-      queryHistory: updatedQueryHistory,
-    });
-
+    const entry = queryHistory[queryIndex];
+    if (entry) removeQueryHistoryEntry(searchId, entry);
   };
 
   const handleBookmarkSubmit = (query: string) => {
@@ -134,13 +131,19 @@ export function HistoryQueryExpansion({
           <div className="px-3 py-2 border-b border-border/40 bg-muted/40">
             <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <Clock className="h-3.5 w-3.5" />
-              <span>{th("queryHistoryCount", { count: queryHistory.length })}</span>
+              <span>{th("queryHistoryCount", { count: total ?? queryHistory.length })}</span>
             </div>
           </div>
         )}
 
         {/* Timeline */}
-        <div className="max-h-64 overflow-y-auto">
+        <div
+          className="max-h-64 overflow-y-auto"
+          onScroll={onLoadOlder && ((event) => {
+            const list = event.currentTarget;
+            if (list.scrollTop + list.clientHeight >= list.scrollHeight - 48) onLoadOlder();
+          })}
+        >
           {reversedHistory.map((entry, index) => {
             const isCurrent = index === 0;
             const originalIndex = queryHistory.length - 1 - index;

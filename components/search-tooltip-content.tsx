@@ -7,7 +7,7 @@
  */
 
 import React from "react";
-import { QueryHistoryEntry } from "@/lib/types/search.types";
+import type { SearchResult } from "@/lib/types/search.types";
 import { cn } from "@/lib/utils";
 import { Clock } from "lucide-react";
 import { FilterChips } from "@/components/ui/filter-display";
@@ -15,6 +15,7 @@ import type { FilterParams } from "@/lib/filters";
 import { QueryEvolution } from "@/components/ui/query-evolution";
 import { QueryText } from "@/components/ui/query-text";
 import { useLocale, useFormatter, useNow } from "next-intl";
+import { useSearchHistoryEntries } from "@/lib/research/history";
 
 interface SearchTooltipContentProps {
   id: string;
@@ -23,8 +24,8 @@ interface SearchTooltipContentProps {
   createdAt: string;
   updatedAt: string;
   filters: FilterParams;
-  queryHistory?: QueryHistoryEntry[];
-  // Note: questionHistory and screening props removed - not shown in tooltip
+  /** The search, whose query history the tooltip shows; read when the tooltip opens. */
+  search?: SearchResult;
 }
 
 export function SearchTooltipContent({
@@ -33,8 +34,9 @@ export function SearchTooltipContent({
   count,
   createdAt,
   filters,
-  queryHistory,
+  search,
 }: SearchTooltipContentProps) {
+  const history = useSearchHistoryEntries(search, "query");
   const locale = useLocale();
   const format = useFormatter();
   const now = useNow();
@@ -63,9 +65,10 @@ export function SearchTooltipContent({
       <FilterChips filters={filters} size="compact" />
 
       {/* Query Evolution: Expandable mini-list */}
-      {queryHistory && queryHistory.length > 1 && (
+      {(search?.queryHistoryCount ?? 0) > 1 && (
         <QueryEvolution
-          queryHistory={queryHistory}
+          queryHistory={history.entries}
+          total={history.total}
           currentQuery={query}
         />
       )}

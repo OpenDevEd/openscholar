@@ -58,8 +58,7 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
   const searchResult = getSearchResult(searchId);
   const screeningQuestions = searchResult?.screeningQuestions || [];
 
-  const lastQuestionFromHistory =
-    searchResult?.questionHistory?.[searchResult.questionHistory.length - 1]?.question;
+  const lastQuestionFromHistory = searchResult?.latestQuestion;
   const searchQuery = searchResult?.query || "";
   const researchQuestion =
     lastQuestionFromHistory ||

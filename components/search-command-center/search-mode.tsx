@@ -77,10 +77,8 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
   useEffect(() => {
     if (effectiveSearchId) {
       const currentSearch = getSearchResult(effectiveSearchId);
-      if (currentSearch?.questionHistory?.length) {
-        const latestQuestion =
-          currentSearch.questionHistory[currentSearch.questionHistory.length - 1].question;
-        setCurrentQuestion(latestQuestion);
+      if (currentSearch?.latestQuestion) {
+        setCurrentQuestion(currentSearch.latestQuestion);
       } else {
         setCurrentQuestion("");
       }

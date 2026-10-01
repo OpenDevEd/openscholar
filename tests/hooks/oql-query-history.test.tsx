@@ -17,6 +17,12 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }));
+// Signed out: the search keeps its history in this browser.
+vi.mock("@clerk/nextjs", () => ({ useAuth: () => ({ userId: null }) }));
+vi.mock("convex/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("convex/react")>()),
+  usePaginatedQuery: () => ({ results: [], status: "Exhausted", loadMore: vi.fn() }),
+}));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/lib/toast", () => ({ useAppToast: () => ({ search: { failed: vi.fn() } }) }));
 vi.mock("@/lib/search-utils", async (importOriginal) => ({
@@ -48,6 +54,9 @@ function seed(history: Entry[]) {
         field: current.field,
         queryHistory: history.map((entry) => ({ ...entry, timestamp: now })),
         questionHistory: [],
+        queryHistoryCount: history.length,
+        questionCount: 0,
+        questionText: "",
         screeningQuestions: [],
         screeningResponses: {},
         count: 0,

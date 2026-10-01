@@ -196,11 +196,9 @@ function SearchWorkspace({
                 excludeId: search.searchId,
                 onPick: (entry) => {
                   const picked = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(entry) };
-                  useSearchHistoryStore.getState().updateSearchResult(search.searchId, {
-                    ...paramsToSearchResult(picked),
-                    queryHistory: entry.queryHistory,
-                    questionHistory: entry.questionHistory,
-                  });
+                  const history = useSearchHistoryStore.getState();
+                  history.updateSearchResult(search.searchId, paramsToSearchResult(picked));
+                  history.copySearchHistory(search.searchId, entry.id);
                   setParams(() => picked);
                   if (!name) setName(entry.query.slice(0, 80));
                   setChoosingFromHistory(false);

@@ -93,9 +93,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     const query = searchFilter.toLowerCase();
     return searchHistory.filter((item) => {
       const matchesQuery = item.query?.toLowerCase().includes(query);
-      const matchesQuestion = item.questionHistory?.some((q) =>
-        q.question?.toLowerCase().includes(query),
-      );
+      const matchesQuestion = item.questionText.toLowerCase().includes(query);
       return matchesQuery || matchesQuestion;
     });
   }, [searchHistory, searchFilter]);

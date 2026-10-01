@@ -10,13 +10,25 @@ export const fieldValidator = v.union(...[
   "title_and_abstract", "title", "abstract", "fulltext", "display_name", "oql",
 ].map((field) => v.literal(field as SearchResult["field"])));
 
+export const queryHistoryEntryValidator = v.object({ query: v.string(), timestamp: v.string(), field: v.optional(fieldValidator) });
+export const questionHistoryEntryValidator = v.object({ question: v.string(), timestamp: v.string() });
+/** A search's earlier queries and questions, as saved before they had their own rows (#354). */
+export const historyArrays = { queryHistory: v.array(queryHistoryEntryValidator), questionHistory: v.array(questionHistoryEntryValidator) };
+
+/** The most of a search's past questions kept on the search itself, for filtering the history page by them. */
+export const QUESTION_TEXT_MAX = 4_000;
+
 export const searchFields = {
   id: v.string(),
   query: v.string(),
   field: fieldValidator,
   count: v.number(),
-  queryHistory: v.array(v.object({ query: v.string(), timestamp: v.string(), field: v.optional(fieldValidator) })),
-  questionHistory: v.array(v.object({ question: v.string(), timestamp: v.string() })),
+  // The search's history lives in its own rows (convex/research/records.ts: searchHistory);
+  // the search keeps only what lists show of it.
+  queryHistoryCount: v.number(),
+  questionCount: v.number(),
+  latestQuestion: v.optional(v.string()),
+  questionText: v.string(),
   screeningQuestions: v.array(v.object({ question: v.string() })),
   screeningResponses: v.array(v.object({ paperId: v.string(), responses: answers })),
   dateRange: v.optional(v.object({ from: v.optional(v.string()), to: v.optional(v.string()) })),
@@ -49,6 +61,27 @@ export const searchFields = {
   updatedAt: v.string(),
 };
 export const searchValidator = v.object(searchFields);
+
+/**
+ * A search as stored. One saved before its history had its own rows (#354) still holds the
+ * history arrays and no summary, until migrations/moveSearchHistory moves it.
+ */
+export const storedSearchValidator = v.object({
+  ...searchFields,
+  queryHistoryCount: v.optional(v.number()),
+  questionCount: v.optional(v.number()),
+  questionText: v.optional(v.string()),
+  queryHistory: v.optional(historyArrays.queryHistory),
+  questionHistory: v.optional(historyArrays.questionHistory),
+});
+export type StoredSearch = Infer<typeof storedSearchValidator>;
+
+/** A stored search as the app reads it: its history summarised, never the arrays. */
+export function currentSearch(stored: StoredSearch): SavedSearch {
+  const { queryHistory, questionHistory, ...rest } = stored;
+  if (!queryHistory && !questionHistory && rest.queryHistoryCount !== undefined) return rest as SavedSearch;
+  return { ...rest, ...historySummary(queryHistory ?? [], questionHistory ?? []) };
+}
 /** Who set a screening answer. `unrecorded` is for answers saved before this was recorded. */
 export const answerSourceValidator = v.union(v.literal("model"), v.literal("person"), v.literal("assistant"), v.literal("unrecorded"));
 /** One paper's screening answers, each with who set it and when. */
@@ -59,6 +92,9 @@ export const editValidator = v.union(
   v.object({ kind: v.literal("patch"), fields: v.object(partial(editableFields)), clear: strings }),
   v.object({ kind: v.literal("query"), query: v.string(), field: fieldValidator }),
   v.object({ kind: v.literal("question"), question: v.string() }),
+  v.object({ kind: v.literal("removeQueryHistoryEntry"), query: v.string(), timestamp: v.string() }),
+  // Gives the search another search's history. `summary` is that search's, for the page to show at once.
+  v.object({ kind: v.literal("copyHistory"), from: v.string(), summary: v.object({ queryHistoryCount: v.number(), questionCount: v.number(), latestQuestion: v.optional(v.string()), questionText: v.string() }) }),
   v.object({ kind: v.literal("addScreeningQuestion"), question: v.string() }),
   v.object({ kind: v.literal("replaceScreeningQuestion"), question: v.string(), replacement: v.union(v.string(), v.null()) }),
   v.object({ kind: v.literal("clearScreeningQuestions") }),
@@ -75,16 +111,19 @@ export function importSearchRecord(row: Record<string, unknown>, id = crypto.ran
   const query = String(row.search_query ?? row.query ?? "");
   const field = (row.field ?? "title_and_abstract") as SearchResult["field"];
   const known = Object.fromEntries(Object.entries(row).filter(([key]) => key in searchFields));
+  const queryHistory = Array.isArray(row.queryHistory) && row.queryHistory.length ? row.queryHistory as SearchResult["queryHistory"] & object : [{ query, field, timestamp: now }];
+  const questionHistory = Array.isArray(row.questionHistory) ? row.questionHistory as SearchResult["questionHistory"] & object : [];
   return {
-    field, queryHistory: [{ query, field, timestamp: now }], questionHistory: [],
-    screeningQuestions: [], screeningResponses: {}, createdAt: now, updatedAt: now,
-    ...known, id, query, count: Number(row.count ?? 0),
+    field, screeningQuestions: [], screeningResponses: {}, createdAt: now, updatedAt: now,
+    ...known, ...historySummary(queryHistory, questionHistory), queryHistory, questionHistory, id, query, count: Number(row.count ?? 0),
   } as SearchResult;
 }
 
 export function serializeSearch(search: SearchResult): SavedSearch {
-  // Dates in older localStorage exports are already strings.
-  const known = Object.fromEntries(Object.entries(search).filter(([key]) => key in searchFields));
+  // Dates in older localStorage exports are already strings. A search held in this browser
+  // carries its whole history, which its summary is taken from.
+  const summary = search.queryHistory ? historySummary(search.queryHistory, search.questionHistory ?? []) : {};
+  const known = Object.fromEntries(Object.entries({ ...search, ...summary }).filter(([key]) => key in searchFields));
   return JSON.parse(JSON.stringify({ ...known, screeningResponses: Object.entries(search.screeningResponses ?? {}).map(([paperId, responses]) => ({ paperId, responses: serializeResponses(responses) })) })) as SavedSearch;
 }
 
@@ -111,6 +150,21 @@ export function restoreSearch(search: SavedSearch): SearchResult {
   };
 }
 
+/** What a search keeps of its questions once `question` is added. */
+export function withQuestion(search: Pick<SavedSearch, "questionCount" | "questionText">, question: string) {
+  const known = search.questionText.split("\n").includes(question);
+  const text = known ? search.questionText : search.questionText ? `${search.questionText}\n${question}` : question;
+  // The newest questions are kept when the text passes the limit.
+  return { questionCount: search.questionCount + 1, latestQuestion: question, questionText: text.length > QUESTION_TEXT_MAX ? text.slice(-QUESTION_TEXT_MAX) : text };
+}
+
+/** The summary a search keeps of a full history. */
+export function historySummary(queries: readonly unknown[], questions: ReadonlyArray<{ question: string }>) {
+  let summary = { queryHistoryCount: queries.length, questionCount: 0, latestQuestion: undefined as string | undefined, questionText: "" };
+  for (const { question } of questions) summary = { ...summary, ...withQuestion(summary, question) };
+  return summary;
+}
+
 function withoutQuestion(responses: SavedSearch["screeningResponses"], question: string) {
   return responses.map(row => ({ ...row, responses: row.responses.filter(value => value.question !== question) }));
 }
@@ -130,11 +184,19 @@ export function applySearchEdit(search: SavedSearch, edit: SearchEdit, now: stri
       return { ...next, updatedAt: now };
     }
     case "query":
-      changes = { query: edit.query, field: edit.field, queryHistory: [...search.queryHistory, { query: edit.query, field: edit.field, timestamp: now }] };
+      changes = { query: edit.query, field: edit.field, queryHistoryCount: search.queryHistoryCount + 1 };
       break;
     case "question":
-      changes = { questionHistory: [...search.questionHistory, { question: edit.question, timestamp: now }] };
+      changes = withQuestion(search, edit.question);
       break;
+    case "removeQueryHistoryEntry":
+      changes = { queryHistoryCount: Math.max(0, search.queryHistoryCount - 1) };
+      break;
+    case "copyHistory": {
+      const { latestQuestion, ...summary } = edit.summary;
+      changes = { ...summary, latestQuestion };
+      break;
+    }
     case "addScreeningQuestion":
       changes = { screeningQuestions: [...search.screeningQuestions, { question: edit.question }] };
       break;
@@ -167,7 +229,8 @@ export function applySearchEdit(search: SavedSearch, edit: SearchEdit, now: stri
 export const shortcutValidator = v.object({ shorthand: v.string(), expansion: v.string(), createdAt: v.number() });
 export const ratingValidator = v.object({ paperId: v.string(), rating: v.number() });
 export const commandValidator = v.union(
-  v.object({ kind: v.literal("createSearch"), search: searchValidator }),
+  // `history`: the earlier queries and questions of a search brought from this browser or a file.
+  v.object({ kind: v.literal("createSearch"), search: searchValidator, history: v.optional(v.object(historyArrays)) }),
   v.object({ kind: v.literal("editSearch"), id: v.string(), edit: editValidator }),
   v.object({ kind: v.literal("deleteSearch"), id: v.string() }),
   v.object({ kind: v.literal("shortcut"), shorthand: v.string(), value: v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null()) }),
