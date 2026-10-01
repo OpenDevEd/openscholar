@@ -841,7 +841,7 @@ Go.
 ## Plan 18 — production configuration evolution
 
 ```text
-Implement plans/evidence-library-configuration-v2/18-safe-stored-configuration-upgrades.md as the integration owner. Read plans/evidence-library-configuration-v2/00-README.md, Plan 15 Decision 7, AGENTS.md, convex/_generated/ai/guidelines.md, the `ponytail`, `unslop`, `test-decision` and `convex-migration-helper` skills, both migration-helper references, and docs/test-quality.md first. Depends on merged plans 01-16 and runtime contract commit 937bb65e.
+Implement plans/evidence-library-configuration-v2/18-safe-stored-configuration-upgrades.md as the integration owner. Read plans/evidence-library-configuration-v2/00-README.md, Plan 15 Decision 7, AGENTS.md, convex/_generated/ai/guidelines.md, the `ponytail`, `unslop`, `test-decision` and `convex-migrate` skills (`convex-migrate` replaced `convex-migration-helper` upstream), its references, and docs/test-quality.md first. Depends on merged plans 01-16 and runtime contract commit 937bb65e.
 
 Allow one working day. Create lane M (`codex/owner-config-migrations`) in its own worktree and Convex Cloud deployment. After it merges, push Deploy A from dev-self, tag every missing header and verify zero missing versions. Only then create lanes R (`codex/config-migration-wiring`) and E (`codex/config-migration-errors`) from the new origin/dev with separate worktrees and Convex Cloud deployments. Only dev-self may upload to the shared production deployment. Keep working without asking questions the plan or repository already answers.
 

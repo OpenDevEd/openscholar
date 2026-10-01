@@ -9,15 +9,16 @@
  * are sharded, so rows written in parallel land on different shards and don't conflict.
  */
 import { ShardedCounter } from "@convex-dev/sharded-counter";
-import type { GenericMutationCtx, GenericQueryCtx } from "convex/server";
+import type { GenericQueryCtx } from "convex/server";
 import type { Change } from "convex-helpers/server/triggers";
 import { components } from "../_generated/api";
 import { transactionCounter } from "../lib/transactionCounter";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
 import { ERROR_CODES, isRetryable } from "../../lib/errors/taxonomy";
 import { isResultRetryableFailure } from "../../lib/extraction/retry-summary";
+import type { MutationCtx } from "../_generated/server";
 
-type RunMutationCtx = { runMutation: GenericMutationCtx<DataModel>["runMutation"]; db: object; innerDb?: object };
+type RunMutationCtx = MutationCtx & { innerDb?: object };
 type RunQueryCtx = { runQuery: GenericQueryCtx<DataModel>["runQuery"] };
 type Result = Pick<Doc<"extractionResults">, "jobId" | "status" | "lastError" | "billed">;
 
