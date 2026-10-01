@@ -72,16 +72,20 @@ export default defineSchema({
   }).index("by_search_and_kind_and_position", ["searchId", "kind", "position"])
     .index("by_search_and_kind_and_timestamp", ["searchId", "kind", "timestamp"]),
   researchResponseChunks: defineTable({ responses: searchValidator.fields.screeningResponses }),
-  // Page screening of a saved search: one screening per search, its answers one row per
-  // paper, and an append-only history of each paper's answers that old revisions are
-  // rebuilt from. `version` counts the writes to its answers, so a revision finds its answers exactly.
-  screenings: defineTable({ userId: v.id("users"), searchId: v.id("searches"), version: v.number(), createdAt: v.number() })
+  // A screening's answers, one row per paper, and an append-only history of each paper's
+  // answers that old revisions are rebuilt from. A saved search has one screening, which its
+  // page and its Screen all jobs both answer into; a Screen all job run before #334 has its
+  // own, with no search. `version` counts the writes to its answers, so a revision finds its
+  // answers exactly.
+  screenings: defineTable({ userId: v.id("users"), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number() })
     .index("by_search", ["searchId"]),
   screeningAnswers: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator })
     .index("by_screening_and_paper", ["screeningId", "paperId"]),
   // A paper's answers after each change; an empty list means its answers were removed.
   screeningAnswerHistory: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.number(), at: v.number() })
-    .index("by_screening_and_version", ["screeningId", "version"]),
+    .index("by_screening_and_version", ["screeningId", "version"])
+    // A paper's answers as of a version: what a Screen all job answered, for its export.
+    .index("by_screening_and_paper_and_version", ["screeningId", "paperId", "version"]),
   queryShortcuts: defineTable({ userId: v.id("users"), data: shortcutValidator })
     .index("by_user", ["userId"])
     .index("by_user_and_shorthand", ["userId", "data.shorthand"]),
@@ -879,6 +883,9 @@ export default defineSchema({
       minimumScore: v.optional(v.number()),
     }),
     targetCollectionId: v.optional(v.id("collections")),
+    // The screening its answers go to. Required once migrations/moveScreeningJobAnswers has
+    // run on every deployment.
+    screeningId: v.optional(v.id("screenings")),
     // Resolved per-user server model for this bulk screening run (credits path).
     serverModelId: v.optional(v.id("models")),
     serverEffort: v.optional(effortValidator),
@@ -906,7 +913,15 @@ export default defineSchema({
       v.literal("failed"),
       v.literal("skipped"),
     ),
+    // A finished paper's answers by question key, with the model's confidence in each, waiting
+    // (`pendingAnswers`) to move to the job's screening (convex/screening/drain.ts). Results
+    // saved before #334 hold answers without the mark until migrations/moveScreeningJobAnswers.
     answers: v.optional(v.record(v.string(), v.union(v.boolean(), v.null()))),
+    confidences: v.optional(v.record(v.string(), v.number())),
+    pendingAnswers: v.optional(v.literal(true)),
+    // The screening's version once this paper's answers moved there; its export reads the
+    // job's answers as of it, whatever has changed since.
+    answersVersion: v.optional(v.number()),
     score: v.optional(v.number()),
     stars: v.optional(v.number()),
     qualified: v.optional(v.boolean()),
@@ -928,7 +943,8 @@ export default defineSchema({
   })
     .index("by_job", ["jobId"])
     .index("by_job_status", ["jobId", "status"])
-    .index("by_job_openalexId", ["jobId", "openalexId"]),
+    .index("by_job_openalexId", ["jobId", "openalexId"])
+    .index("by_job_and_pendingAnswers", ["jobId", "pendingAnswers"]),
 
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEMS - User's saved paper library

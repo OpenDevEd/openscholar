@@ -84,8 +84,15 @@ export function currentSearch(stored: StoredSearch): SavedSearch {
 }
 /** Who set a screening answer. `unrecorded` is for answers saved before this was recorded. */
 export const answerSourceValidator = v.union(v.literal("model"), v.literal("person"), v.literal("assistant"), v.literal("unrecorded"));
-/** One paper's screening answers, each with who set it and when. */
-export const paperAnswersValidator = v.array(v.object({ question: v.string(), answer: v.union(v.boolean(), v.null()), setBy: answerSourceValidator, updatedAt: v.number() }));
+/**
+ * One paper's screening answers, each with who set it and when. `model` is the model's own
+ * answer and its confidence in it, kept when a person or the assistant changes the answer;
+ * the answer was reviewed when someone else set it after the model.
+ */
+export const paperAnswersValidator = v.array(v.object({
+  question: v.string(), answer: v.union(v.boolean(), v.null()), setBy: answerSourceValidator, updatedAt: v.number(),
+  model: v.optional(v.object({ answer: v.union(v.boolean(), v.null()), confidence: v.optional(v.number()), at: v.number() })),
+}));
 export type SavedSearch = Infer<typeof searchValidator>;
 // A search's history summary changes only with its history, never by a patch.
 const { id: _id, createdAt: _createdAt, queryHistoryCount: _queries, questionCount: _questions, latestQuestion: _latest, questionText: _text, ...editableFields } = searchFields;
@@ -101,8 +108,12 @@ export const editValidator = v.union(
   v.object({ kind: v.literal("addScreeningQuestion"), question: v.string() }),
   v.object({ kind: v.literal("replaceScreeningQuestion"), question: v.string(), replacement: v.union(v.string(), v.null()) }),
   v.object({ kind: v.literal("clearScreeningQuestions") }),
-  // `by` says whether the model or the person gave these answers, so each is recorded with who set it.
-  v.object({ kind: v.literal("responses"), paperId: v.string(), responses: answers, by: v.optional(v.union(v.literal("model"), v.literal("person"))) }),
+  // `by` says whether the model or the person gave these answers, so each is recorded with who
+  // set it. The model's answers carry its confidence in each when it reported one.
+  v.object({
+    kind: v.literal("responses"), paperId: v.string(), by: v.optional(v.union(v.literal("model"), v.literal("person"))),
+    responses: v.array(v.object({ question: v.string(), response: answer, confidence: v.optional(v.number()) })),
+  }),
   v.object({ kind: v.literal("clearResponses"), paperId: v.optional(v.string()) }),
   v.object({ kind: v.literal("removeQuestionResponses"), question: v.string() }),
 );

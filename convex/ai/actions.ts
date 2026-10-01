@@ -248,6 +248,8 @@ export const generateBatchScreeningResponses = action({
       v.string(),
       v.object({
         responses: v.record(v.string(), v.union(v.boolean(), v.null())),
+        // The confidence in each answer, under the same encoded keys.
+        confidences: v.record(v.string(), v.number()),
         confidence: v.number(),
       })
     ),
@@ -308,6 +310,7 @@ export const generateBatchScreeningResponses = action({
               {
                 ...result,
                 responses: encodeQuestionResponseMap(result.responses),
+                confidences: encodeQuestionResponseMap(result.confidences),
               },
             ])
           );

@@ -68,7 +68,8 @@ export interface SearchHistoryState {
   removeScreeningQuestion: (id: string, questionIndex: number) => void
   clearScreeningQuestions: (id: string) => void
   setScreeningResponse: (searchId: string, paperId: string, question: string, response: boolean | null) => void
-  setScreeningResponses: (searchId: string, paperId: string, responses: Record<string, boolean | null>) => void
+  /** The model's answers for one paper; `confidences` is its confidence in each, by question. */
+  setScreeningResponses: (searchId: string, paperId: string, responses: Record<string, boolean | null>, confidences?: Record<string, number>) => void
   getScreeningResponse: (searchId: string, paperId: string, question: string) => boolean | null | undefined
   clearScreeningResponses: (searchId: string, paperId?: string) => void
   removeScreeningQuestionFromAllPapers: (searchId: string, question: string) => void

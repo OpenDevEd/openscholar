@@ -19,7 +19,8 @@ export function screeningFor(ctx: Read, searchId: Id<"searches">) {
   return ctx.db.query("screenings").withIndex("by_search", (q) => q.eq("searchId", searchId)).unique();
 }
 
-async function ensureScreening(ctx: Write, userId: Id<"users">, searchId: Id<"searches">) {
+/** The screening a search's page and its Screen all jobs answer into. */
+export async function ensureScreening(ctx: Write, userId: Id<"users">, searchId: Id<"searches">) {
   const existing = await screeningFor(ctx, searchId);
   if (existing) return existing;
   return (await ctx.db.get("screenings", await ctx.db.insert("screenings", { userId, searchId, version: 0, createdAt: Date.now() })))!;
@@ -95,21 +96,56 @@ async function paperRow(ctx: Read, screeningId: Id<"screenings">, paperId: strin
 }
 
 /**
+ * The model's own answer to keep when someone else changes `current`: its `model` part, or
+ * for a model answer saved before that part existed, the answer itself.
+ */
+function modelAnswer(current: PaperAnswers[number] | undefined) {
+  if (current?.model) return current.model;
+  return current?.setBy === "model" ? { answer: current.answer, at: current.updatedAt } : undefined;
+}
+
+/** Answers to set: the model's carry its confidence in each when it reported one. */
+type NewAnswers = Array<Responses[number]["responses"][number] & { confidence?: number }>;
+
+/**
  * Sets some of one paper's answers, reading only that paper's row. Setting the same answer
  * from a different source is a change: a person confirming the model's answer is recorded.
+ * The model's own answer stays with each answer whoever changes it later.
  */
-export async function setPaperAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, paperId: string, responses: Responses[number]["responses"], setBy: AnswerSource, at: number) {
-  const screening = await ensureScreening(ctx, userId, searchId);
+export async function setPaperAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, paperId: string, responses: NewAnswers, setBy: AnswerSource, at: number) {
+  await answerPaper(ctx, (await ensureScreening(ctx, userId, searchId))._id, paperId, responses, setBy, at);
+}
+
+/**
+ * `setPaperAnswers` on a screening already in hand, such as a Screen all job's. It reads the
+ * screening again, so several calls in one transaction each take the next version.
+ */
+export async function answerPaper(ctx: Write, screeningId: Id<"screenings">, paperId: string, responses: NewAnswers, setBy: AnswerSource, at: number) {
+  const screening = (await ctx.db.get("screenings", screeningId))!;
   const existing = await paperRow(ctx, screening._id, paperId);
   const answers = [...(existing.get(paperId)?.answers ?? [])];
-  for (const { question, response } of responses) {
+  for (const { question, response, confidence } of responses) {
     const index = answers.findIndex((value) => value.question === question);
-    if (index >= 0 && answers[index].answer === response && answers[index].setBy === setBy) continue;
-    const value = { question, answer: response, setBy, updatedAt: at };
+    const current = index >= 0 ? answers[index] : undefined;
+    let value: PaperAnswers[number];
+    if (setBy === "model") {
+      const model = { answer: response, ...(confidence === undefined ? {} : { confidence }), at };
+      if (current?.model?.answer === response && current.model.confidence === confidence) continue;
+      // The model never replaces an answer a person or the assistant gave, even one given
+      // before its own answer arrives; it's kept as the model's. Answers from before who set
+      // them was recorded are mostly the model's, so a new run replaces them.
+      value = current && (current.setBy === "person" || current.setBy === "assistant")
+        ? { ...current, model }
+        : { question, answer: response, setBy, updatedAt: at, model };
+    } else {
+      if (current?.answer === response && current.setBy === setBy) continue;
+      const model = modelAnswer(current);
+      value = { question, answer: response, setBy, updatedAt: at, ...(model ? { model } : {}) };
+    }
     if (index >= 0) answers[index] = value;
     else answers.push(value);
   }
-  await apply(ctx, screening, [{ paperId, answers }], existing, at);
+  return apply(ctx, screening, [{ paperId, answers }], existing, at);
 }
 
 /** Removes one paper's answers, reading only that paper's row. */
@@ -137,7 +173,9 @@ export async function replaceAnswers(ctx: Write, userId: Id<"users">, searchId: 
       paperId,
       answers: responses.map(({ question, response }) => {
         const kept = previous.find((value) => value.question === question && value.answer === response);
-        return kept ?? { question, answer: response, setBy, updatedAt: at };
+        // A changed answer keeps the model's own answer to the question.
+        const model = modelAnswer(previous.find((value) => value.question === question));
+        return kept ?? { question, answer: response, setBy, updatedAt: at, ...(model ? { model } : {}) };
       }),
     });
   }

@@ -259,6 +259,7 @@ import type * as migrations_clearModelWebSearchPrice from "../migrations/clearMo
 import type * as migrations_countBillingUsage from "../migrations/countBillingUsage.js";
 import type * as migrations_expireInvitations from "../migrations/expireInvitations.js";
 import type * as migrations_moveScreeningAnswers from "../migrations/moveScreeningAnswers.js";
+import type * as migrations_moveScreeningJobAnswers from "../migrations/moveScreeningJobAnswers.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_recountExtractionJobs from "../migrations/recountExtractionJobs.js";
@@ -273,6 +274,8 @@ import type * as research_answers from "../research/answers.js";
 import type * as research_records from "../research/records.js";
 import type * as screening_aggregates from "../screening/aggregates.js";
 import type * as screening_completion from "../screening/completion.js";
+import type * as screening_drain from "../screening/drain.js";
+import type * as screening_estimate from "../screening/estimate.js";
 import type * as screening_lifecycle from "../screening/lifecycle.js";
 import type * as screening_mutations from "../screening/mutations.js";
 import type * as screening_progress from "../screening/progress.js";
@@ -580,6 +583,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/countBillingUsage": typeof migrations_countBillingUsage;
   "migrations/expireInvitations": typeof migrations_expireInvitations;
   "migrations/moveScreeningAnswers": typeof migrations_moveScreeningAnswers;
+  "migrations/moveScreeningJobAnswers": typeof migrations_moveScreeningJobAnswers;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/recountExtractionJobs": typeof migrations_recountExtractionJobs;
@@ -594,6 +598,8 @@ declare const fullApi: ApiFromModules<{
   "research/records": typeof research_records;
   "screening/aggregates": typeof screening_aggregates;
   "screening/completion": typeof screening_completion;
+  "screening/drain": typeof screening_drain;
+  "screening/estimate": typeof screening_estimate;
   "screening/lifecycle": typeof screening_lifecycle;
   "screening/mutations": typeof screening_mutations;
   "screening/progress": typeof screening_progress;
@@ -676,6 +682,7 @@ export declare const components: {
   workpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"workpool">;
   screeningWorkpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"screeningWorkpool">;
   extractionPaperWorkpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"extractionPaperWorkpool">;
+  screeningAnswersWorkpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"screeningAnswersWorkpool">;
   agent: import("@convex-dev/agent/_generated/component.js").ComponentApi<"agent">;
   extractionProcessedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"extractionProcessedCounter">;
   extractionFailedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"extractionFailedCounter">;

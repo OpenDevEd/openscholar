@@ -137,6 +137,12 @@ export interface ScreeningBatchConfig {
   sessionId?: string
 }
 
+/** A paper's screening, keeping the confidence in each answer; the overall figure is their mean. */
+export function screeningResult(responses: Record<string, boolean | null>, confidences: Record<string, number>): ScreeningResultData {
+  const values = Object.values(confidences)
+  return { responses, confidences, confidence: values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1) }
+}
+
 export async function processScreeningBatch(
   config: ScreeningBatchConfig
 ): Promise<BatchProcessorResult<ScreeningResultData>> {
@@ -150,10 +156,10 @@ export async function processScreeningBatch(
       const start = Date.now()
       const state = paperState({ title: paper.title, abstract: paper.abstract || 'No abstract available' }, questions)
       const { answers, usage } = await decideYesNo({ apiKey: decisionsKey, model: modelSlug, state, questions, sessionId })
-      const result: ScreeningResultData = {
-        responses: Object.fromEntries(questions.map((question, i) => [question, answers[i]!.answer])),
-        confidence: answers.reduce((sum, a) => sum + a.confidence, 0) / Math.max(answers.length, 1),
-      }
+      const result = screeningResult(
+        Object.fromEntries(questions.map((question, i) => [question, answers[i]!.answer])),
+        Object.fromEntries(questions.map((question, i) => [question, answers[i]!.confidence])),
+      )
       return {
         result,
         usage,
@@ -165,7 +171,7 @@ export async function processScreeningBatch(
   return processBatch<
     BatchPaper,
     GenerateScreeningResponsesInput,
-    { responses: Record<string, boolean | null>; confidence: number },
+    { responses: Record<string, boolean | null>; confidences: Record<string, number> },
     ScreeningResultData
   >(
     papers,
@@ -178,10 +184,7 @@ export async function processScreeningBatch(
         questions,
       }),
       getOperationConfig: getScreeningResponsesConfig,
-      formatResult: (output) => ({
-        responses: output.responses as Record<string, boolean | null>,
-        confidence: output.confidence,
-      }),
+      formatResult: (output) => screeningResult(output.responses, output.confidences),
       getItemId: (paper) => paper.id,
     }
   )
