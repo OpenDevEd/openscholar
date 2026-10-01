@@ -102,7 +102,7 @@ export function RatingSelector({ paperId, paperResult, variant = "default" }: Ra
         value={currentRating?.toString() || "no-rating"}
         onValueChange={handleRatingChange}
       >
-        <SelectTrigger className="h-8 w-auto min-w-[4rem] px-2">
+        <SelectTrigger size="sm" className="w-auto min-w-[4rem] px-2">
           <SelectValue placeholder={t('noRating')} />
         </SelectTrigger>
         <SelectContent>

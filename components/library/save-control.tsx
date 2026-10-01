@@ -133,12 +133,17 @@ export function SaveControl({
           aria-label={label}
           onClick={() => toggleSaved(paperId, rating)}
           className={cn(
+            "bg-transparent",
             compact && "px-2 has-[>svg]:px-2",
             isSaved &&
               "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary dark:bg-primary/15 dark:hover:bg-primary/20",
           )}
         >
-          {isSaved ? <BookCheck /> : <BookPlus />}
+          {isSaved ? (
+            <BookCheck />
+          ) : (
+            <BookPlus className="text-muted-foreground" />
+          )}
           {!compact && (
             <span className="inline-grid [&>*]:col-start-1 [&>*]:row-start-1">
               <span className={cn(isSaved && "invisible")}>{t("save")}</span>
@@ -156,12 +161,12 @@ export function SaveControl({
               variant="outline"
               size="sm"
               aria-label={t("addToCollection")}
-              className="px-2 has-[>svg]:px-2"
+              className="bg-transparent px-2 has-[>svg]:px-2"
             >
               {memberIds.size > 0 ? (
                 <FolderCheck className="text-primary" />
               ) : (
-                <Folder />
+                <Folder className="text-muted-foreground" />
               )}
             </Button>
           </PopoverTrigger>
