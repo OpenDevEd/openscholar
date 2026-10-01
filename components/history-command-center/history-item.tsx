@@ -82,8 +82,17 @@ export function HistoryItem({
   const idColor = getIdColor(item.id);
   const queryHistoryCount = item.queryHistoryCount;
   const latestQuestion = item.latestQuestion;
-  // Read when the history is opened, which waits for it, so it opens at its full size.
-  const history = useSearchHistoryEntries(item, "query", isQueryHistoryOpen);
+  // Read from when the pointer reaches the History button; the history waits for it, so it
+  // opens at its full size.
+  const [isHistoryWanted, setIsHistoryWanted] = useState(false);
+  const history = useSearchHistoryEntries(item, "query", isQueryHistoryOpen || isHistoryWanted);
+  const historyButtonProps = {
+    onClick: () => setIsQueryHistoryOpen(!isQueryHistoryOpen),
+    onPointerEnter: () => setIsHistoryWanted(true),
+    onPointerLeave: () => setIsHistoryWanted(false),
+    onFocus: () => setIsHistoryWanted(true),
+    onBlur: () => setIsHistoryWanted(false),
+  };
   const showHistory = isQueryHistoryOpen && queryHistoryCount > 1 && !history.isLoading;
   const historyProps = { queryHistory: history.entries, total: history.total, onLoadOlder: history.hasOlder ? history.loadOlder : undefined };
 
@@ -194,7 +203,7 @@ export function HistoryItem({
                       "h-7 w-7",
                       isQueryHistoryOpen && "bg-muted text-foreground"
                     )}
-                    onClick={() => setIsQueryHistoryOpen(!isQueryHistoryOpen)}
+                    {...historyButtonProps}
                   >
                     <History className="h-3 w-3" />
                   </Button>
@@ -641,7 +650,7 @@ export function HistoryItem({
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 gap-1 text-muted-foreground hover:text-foreground"
-                onClick={() => setIsQueryHistoryOpen(!isQueryHistoryOpen)}
+                {...historyButtonProps}
               >
                 <History className="h-3 w-3" />
                 <span className="text-xs">{queryHistoryCount}</span>

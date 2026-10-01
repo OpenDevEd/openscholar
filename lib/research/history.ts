@@ -7,7 +7,7 @@ import { api } from "../../convex/_generated/api";
 import type { QueryHistoryEntry, QuestionHistoryEntry, SearchResult } from "../types";
 
 /** History entries read at once; a longer history reads more as it's scrolled or stepped through. */
-const HISTORY_PAGE = 100;
+const HISTORY_PAGE = 25;
 
 type Kind = "query" | "question";
 type Entry<K extends Kind> = K extends "query" ? QueryHistoryEntry : QuestionHistoryEntry;
