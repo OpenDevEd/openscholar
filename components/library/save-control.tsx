@@ -117,7 +117,6 @@ export function SaveControl({
     setNewName("");
   };
 
-  const variant = isSaved ? "outline-primary" : "outline";
   const label = isSaved ? t("removeFromLibrary") : t("saveToLibrary");
 
   return (
@@ -128,12 +127,16 @@ export function SaveControl({
     >
       <TooltipHint label={compact ? label : undefined}>
         <Button
-          variant={variant}
+          variant="outline"
           size="sm"
           aria-pressed={isSaved}
           aria-label={label}
           onClick={() => toggleSaved(paperId, rating)}
-          className={cn(compact && "px-2 has-[>svg]:px-2")}
+          className={cn(
+            compact && "px-2 has-[>svg]:px-2",
+            isSaved &&
+              "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary dark:bg-primary/15 dark:hover:bg-primary/20",
+          )}
         >
           {isSaved ? <BookCheck /> : <BookPlus />}
           {!compact && (
@@ -150,12 +153,16 @@ export function SaveControl({
         <TooltipHint label={t("addToCollection")}>
           <PopoverTrigger asChild>
             <Button
-              variant={variant}
+              variant="outline"
               size="sm"
               aria-label={t("addToCollection")}
               className="px-2 has-[>svg]:px-2"
             >
-              {memberIds.size > 0 ? <FolderCheck /> : <Folder />}
+              {memberIds.size > 0 ? (
+                <FolderCheck className="text-primary" />
+              ) : (
+                <Folder />
+              )}
             </Button>
           </PopoverTrigger>
         </TooltipHint>
