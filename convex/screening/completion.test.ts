@@ -5,7 +5,6 @@ import {
 } from "./completion";
 
 const completedRowDetails: CompletedScreeningRowDetails = {
-  answers: { q1: true, q2: null },
   score: 3,
   stars: 2,
   qualified: true,
@@ -25,7 +24,6 @@ describe("deriveCompletionTransition", () => {
       kind: "patch",
       rowPatch: {
         status: "completed",
-        answers: { q1: true, q2: null },
         score: 3,
         stars: 2,
         qualified: true,

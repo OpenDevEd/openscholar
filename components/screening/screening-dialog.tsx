@@ -303,6 +303,8 @@ export function ScreeningDialog({
           minimumScore,
         },
         targetCollectionId: selectedCollectionId,
+        // Its answers show on this search's page.
+        searchId,
       });
 
       toast.success(t("submitSuccess"), { duration: 3000 });
@@ -332,6 +334,7 @@ export function ScreeningDialog({
     }
   }, [
     search,
+    searchId,
     keyedQuestions,
     scoringRules,
     starThresholds,

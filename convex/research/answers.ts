@@ -19,7 +19,8 @@ export function screeningFor(ctx: Read, searchId: Id<"searches">) {
   return ctx.db.query("screenings").withIndex("by_search", (q) => q.eq("searchId", searchId)).unique();
 }
 
-async function ensureScreening(ctx: Write, userId: Id<"users">, searchId: Id<"searches">) {
+/** The screening a search's page and its Screen all jobs answer into. */
+export async function ensureScreening(ctx: Write, userId: Id<"users">, searchId: Id<"searches">) {
   const existing = await screeningFor(ctx, searchId);
   if (existing) return existing;
   return (await ctx.db.get("screenings", await ctx.db.insert("screenings", { userId, searchId, version: 0, createdAt: Date.now() })))!;
@@ -103,7 +104,15 @@ type NewAnswers = Array<Responses[number]["responses"][number] & { confidence?: 
  * The model's own answer stays with each answer whoever changes it later.
  */
 export async function setPaperAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, paperId: string, responses: NewAnswers, setBy: AnswerSource, at: number) {
-  const screening = await ensureScreening(ctx, userId, searchId);
+  await answerPaper(ctx, (await ensureScreening(ctx, userId, searchId))._id, paperId, responses, setBy, at);
+}
+
+/**
+ * `setPaperAnswers` on a screening already in hand, such as a Screen all job's. It reads the
+ * screening again, so several calls in one transaction each take the next version.
+ */
+export async function answerPaper(ctx: Write, screeningId: Id<"screenings">, paperId: string, responses: NewAnswers, setBy: AnswerSource, at: number) {
+  const screening = (await ctx.db.get("screenings", screeningId))!;
   const existing = await paperRow(ctx, screening._id, paperId);
   const answers = [...(existing.get(paperId)?.answers ?? [])];
   for (const { question, response, confidence } of responses) {

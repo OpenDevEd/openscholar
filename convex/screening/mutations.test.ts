@@ -546,6 +546,51 @@ describe("finalizeScreeningJobFromAggregates", () => {
   });
 });
 
+describe("Screen all on a saved search", () => {
+  it("answers into the search's screening, so its page shows them next to its own answers (#334)", async () => {
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const user = await seedUser(t, "clerk_test");
+    await seedCredits(t, user._id, 100, 0);
+    const asUser = t.withIdentity({ subject: "clerk_test" });
+    const search = {
+      id: "local-search", query: "tutoring", field: "title" as const, count: 2, queryHistoryCount: 1, questionCount: 0, questionText: "",
+      screeningQuestions: [{ question: "Is this relevant?" }], screeningResponses: [{ paperId: "https://openalex.org/W2", responses: [{ question: "Is this relevant?", response: false }] }],
+      createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z",
+    };
+    await asUser.mutation(api.research.records.importBatch, { accountId: "clerk_test", searches: [{ search, history: { queryHistory: [], questionHistory: [] } }], shortcuts: [], ratings: [] });
+
+    const { jobId } = await asUser.mutation(api.screening.mutations.createScreeningJob, {
+      papers: makePapers(1), questions: defaultQuestions, scoringConfig: defaultScoringConfig, searchId: search.id,
+    });
+    const result = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique());
+    await t.mutation(internal.screening.mutations.handleScreeningComplete, {
+      workId: "work_search",
+      context: { jobId, resultId: result!._id },
+      result: { kind: "success", returnValue: { responses: encodeQuestionResponseMap({ "Is this relevant?": true }), confidences: encodeQuestionResponseMap({ "Is this relevant?": 0.8 }), confidence: 0.8 } },
+    });
+
+    const shown = await asUser.query(api.research.records.getSearch, { accountId: "clerk_test", id: search.id });
+    expect(shown?.screeningResponses).toEqual([
+      { paperId: "https://openalex.org/W1", responses: [{ question: "Is this relevant?", response: true }] },
+      { paperId: "https://openalex.org/W2", responses: [{ question: "Is this relevant?", response: false }] },
+    ]);
+    const screenings = await t.run((ctx) => ctx.db.query("screenings").collect());
+    expect(screenings).toHaveLength(1);
+  });
+
+  it("refuses a search that isn't the person's", async () => {
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const user = await seedUser(t, "clerk_test");
+    await seedCredits(t, user._id, 100, 0);
+    const asUser = t.withIdentity({ subject: "clerk_test" });
+    await expect(asUser.mutation(api.screening.mutations.createScreeningJob, {
+      papers: makePapers(1), questions: defaultQuestions, scoringConfig: defaultScoringConfig, searchId: "someone-elses",
+    })).rejects.toThrow("Search not found");
+  });
+});
+
 describe("handleScreeningComplete", () => {
   it("keeps qualified completion row-local until scheduled follow-ups run", async () => {
     vi.useFakeTimers();
@@ -577,6 +622,7 @@ describe("handleScreeningComplete", () => {
             responses: encodeQuestionResponseMap({
               "Is this relevant?": true,
             }),
+            confidences: encodeQuestionResponseMap({ "Is this relevant?": 0.91 }),
             confidence: 0.91,
           },
         },
@@ -585,6 +631,10 @@ describe("handleScreeningComplete", () => {
       await t.run(async (ctx) => {
         const updatedResult = await ctx.db.get("screeningResults", result._id);
         const updatedJob = await ctx.db.get("screeningJobs", job._id);
+        // The answer is in the job's screening, with the model's confidence in it.
+        const answerRows = updatedJob?.screeningId
+          ? await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", updatedJob.screeningId!)).collect()
+          : [];
         const libraryItems = await ctx.db
           .query("libraryItems")
           .withIndex("by_user_openalexId", (q) =>
@@ -596,7 +646,10 @@ describe("handleScreeningComplete", () => {
           .collect();
 
         expect(updatedResult?.status).toBe("completed");
-        expect(updatedResult?.answers).toEqual({ q1: true });
+        expect(updatedResult?.answers).toBeUndefined();
+        expect(answerRows.map((row) => ({ paperId: row.paperId, answers: row.answers.map(({ question, answer, setBy, model }) => ({ question, answer, setBy, confidence: model?.confidence })) }))).toEqual([
+          { paperId: "https://openalex.org/Wsuccess", answers: [{ question: "Is this relevant?", answer: true, setBy: "model", confidence: 0.91 }] },
+        ]);
         expect(updatedResult?.savedToLibrary).toBeUndefined();
         expect(updatedJob?.status).toBe("processing");
         expect(libraryItems).toHaveLength(0);
