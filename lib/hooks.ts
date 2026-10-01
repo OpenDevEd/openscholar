@@ -134,19 +134,26 @@ export function useQueryHistory(
   const canGoPrevious = loadedIndex > 0 || history.hasOlder;
   const canGoNext = queryHistory.length > 0 && stepsBack > 0;
 
-  // A step moves only to a query already read; a position past them, kept from an earlier
-  // visit, reads older queries until it's reached. Older queries are read a few steps
-  // before the arrows reach them.
-  const step = useCallback((delta: -1 | 1) => {
-    const entry = queryHistory[loadedIndex + delta];
-    if (entry) {
-      setStepsBack(key, stepsBack - delta);
-      showEntry(entry);
+  // Older queries are read a few steps before the arrows reach them. A step to one not read
+  // yet, from a place kept from an earlier visit or pressed faster than the reads, reads it
+  // first; presses during that read are dropped, so each moves from where the last landed.
+  const isReading = useRef(false);
+  const step = useCallback(async (delta: -1 | 1) => {
+    if (isReading.current) return;
+    const target = stepsBack - delta;
+    const loaded = queryHistory[loadedIndex + delta];
+    if (loaded && loadedIndex + delta <= HISTORY_READ_AHEAD && history.hasOlder) history.loadOlder();
+    let entry: QueryHistoryEntry | undefined = loaded;
+    if (!entry && history.hasOlder) {
+      isReading.current = true;
+      try { entry = await history.readAt(target); } finally { isReading.current = false; }
     }
-    if (loadedIndex + delta <= HISTORY_READ_AHEAD && history.hasOlder) history.loadOlder();
+    if (!entry) return;
+    setStepsBack(key, target);
+    showEntry(entry);
   }, [loadedIndex, stepsBack, queryHistory, showEntry, key, setStepsBack, history]);
-  const goToPrevious = useCallback(() => step(-1), [step]);
-  const goToNext = useCallback(() => { if (canGoNext) step(1); }, [canGoNext, step]);
+  const goToPrevious = useCallback(() => { void step(-1); }, [step]);
+  const goToNext = useCallback(() => { if (canGoNext) void step(1); }, [canGoNext, step]);
 
   return {
     queryHistory,
