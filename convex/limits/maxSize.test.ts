@@ -7,7 +7,10 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { readEveryLibraryPage } from "../../lib/library/export";
 import { RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
-import { MAX_SIZE, seedAccount, seedExtractionJob, seedLibrary } from "../lib/maxSize.test-support";
+import { MAX_SIZE, insertMany, seedAccount, seedExtractionJob, seedLibrary, text } from "../lib/maxSize.test-support";
+import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { assertApprovedQueriesUnchanged } from "../evidenceLibraries/approvedQueries";
+import { isAcceptableSavedConfigurationTarget } from "../evidenceLibraries/operations";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "../extraction/queue/workpool.test-support";
 
@@ -122,6 +125,50 @@ describe("at the largest sizes the product allows", () => {
     // Rating 4 and up never meets year 1990 in the seed: the count reads past 4,000 large papers.
     const count = await as.query(api.library.queries.getLibraryFilteredCount, { sortBy: "savedAt", sortOrder: "desc", minRating: 4, yearTo: 1990 });
     expect(count).toEqual({ count: 0, capped: true });
+  }, 300_000);
+
+  it("an Evidence Library with 1,000 revisions, operations and people checks sources, lists its team and tears down", async () => {
+    vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
+    vi.stubEnv("EL_COOLIFY_ENVIRONMENT", "development");
+    vi.stubEnv("EL_ALLOW_DEVELOPMENT_TEARDOWN", "true");
+    try {
+      const fixture = await createReadySetupFixture("max_size_library");
+      const libraryId = fixture.created.libraryId;
+      const { section, operation, organizationId } = await fixture.t.run(async (ctx) => ({
+        section: (await ctx.db.query("evidenceLibraryConfigSections").withIndex("by_libraryId_and_kind_and_sectionKey", (q) => q.eq("libraryId", libraryId).eq("kind", "revision").eq("sectionKey", "identity")).first())!,
+        operation: (await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_createdAt", (q) => q.eq("libraryId", libraryId)).first())!,
+        organizationId: (await ctx.db.get("evidenceLibraries", libraryId))!.organizationId,
+      }));
+      const strip = <T extends { _id: unknown; _creationTime: unknown }>({ _id, _creationTime, ...doc }: T) => doc;
+      // Sources revisions about 20 KB each, as a long-lived library's grow: 20 MB together.
+      const sources = (i: number) => [
+        { provider: "openalex", settings: { approvedQuery: { version: `version-${i % 10}`, approvedAt: "2026-01-01T00:00:00.000Z", query: { search: `query ${i % 10}` } } } },
+        { provider: "filler", settings: { note: text(20_000, i) } },
+      ];
+      await insertMany(fixture.t, "evidenceLibraryConfigSections", Array.from({ length: 1_000 }, (_, i) => ({ ...strip(section), sectionKey: "sources", payload: sources(i), createdAt: i })), 100);
+      // Configuration deployments, as every activation edit makes.
+      await insertMany(fixture.t, "evidenceLibraryConfigOperations", Array.from({ length: 1_000 }, (_, i) => ({ ...strip(operation), kind: "publish", status: "succeeded", activationEditVersion: i + 1, idempotencyKey: `max-size-${i}`, createdAt: i + 10, updatedAt: i + 10 })), 200);
+      // With the fixture's Owner, 1,000 organization members: the most a team page lists.
+      const people = Array.from({ length: 999 }, (_, i) => `user_max_${i}`);
+      const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
+      await insertMany(fixture.t, "users", people.map((clerkId) => ({ clerkId, email: `${clerkId}@example.org`, state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 })));
+      await insertMany(fixture.t, "organizationMemberships", people.map((clerkUserId, i) => ({ organizationId, clerkMembershipId: `orgmem_max_${i}`, clerkUserId, role: "org:member", state: "active", ...stamp })));
+      await insertMany(fixture.t, "evidenceLibraryMembers", people.map((clerkUserId) => ({ libraryId, clerkUserId, role: "editor", grantedBy: "user_max_admin", grantedAt: 1 })));
+      // The library is recorded, as every library is once migrations/recordApprovedQueries has run.
+      await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { approvedQueriesRecorded: true }));
+
+      await fixture.t.run(async (ctx) => assertApprovedQueriesUnchanged(ctx, (await ctx.db.get("evidenceLibraries", libraryId))!, sources(3)));
+      // A recorded version given another query is still refused.
+      const changed = [{ provider: "openalex", settings: { approvedQuery: { version: "version-3", approvedAt: "2026-01-01T00:00:00.000Z", query: { search: "another" } } } }];
+      await expect(fixture.t.run(async (ctx) => assertApprovedQueriesUnchanged(ctx, (await ctx.db.get("evidenceLibraries", libraryId))!, changed))).rejects.toThrow(/cannot be changed/);
+      const team = await fixture.admin.query(api.evidenceLibraries.queries.listTeam, { libraryId });
+      expect(team.editors.length).toBe(999);
+      await fixture.t.run(async (ctx) => isAcceptableSavedConfigurationTarget(ctx, (await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_createdAt", (q) => q.eq("libraryId", libraryId)).order("desc").first())!));
+      const library = await fixture.t.run(async (ctx) => (await ctx.db.get("evidenceLibraries", libraryId))!);
+      expect(await fixture.admin.mutation(api.evidenceLibraries.teardown.requestDevelopmentTeardown, { libraryId, confirmationName: library.name })).toMatchObject({ status: "queued" });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   }, 300_000);
 
   it("generates rows at the measured sizes", async () => {

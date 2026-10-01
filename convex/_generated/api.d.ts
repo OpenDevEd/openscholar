@@ -74,6 +74,7 @@ import type * as evidenceLibraries_adminLoginCodes from "../evidenceLibraries/ad
 import type * as evidenceLibraries_aiProviderKey from "../evidenceLibraries/aiProviderKey.js";
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
 import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibraries/applicationSetupActions.js";
+import type * as evidenceLibraries_approvedQueries from "../evidenceLibraries/approvedQueries.js";
 import type * as evidenceLibraries_collectionSourceValidators from "../evidenceLibraries/collectionSourceValidators.js";
 import type * as evidenceLibraries_collectionSources from "../evidenceLibraries/collectionSources.js";
 import type * as evidenceLibraries_configurationDeployment from "../evidenceLibraries/configurationDeployment.js";
@@ -252,6 +253,7 @@ import type * as migrations_clearModelWebSearchPrice from "../migrations/clearMo
 import type * as migrations_countBillingUsage from "../migrations/countBillingUsage.js";
 import type * as migrations_expireInvitations from "../migrations/expireInvitations.js";
 import type * as migrations_moveScreeningAnswers from "../migrations/moveScreeningAnswers.js";
+import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_recountExtractionJobs from "../migrations/recountExtractionJobs.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
 import type * as models_admin from "../models/admin.js";
@@ -386,6 +388,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/aiProviderKey": typeof evidenceLibraries_aiProviderKey;
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
   "evidenceLibraries/applicationSetupActions": typeof evidenceLibraries_applicationSetupActions;
+  "evidenceLibraries/approvedQueries": typeof evidenceLibraries_approvedQueries;
   "evidenceLibraries/collectionSourceValidators": typeof evidenceLibraries_collectionSourceValidators;
   "evidenceLibraries/collectionSources": typeof evidenceLibraries_collectionSources;
   "evidenceLibraries/configurationDeployment": typeof evidenceLibraries_configurationDeployment;
@@ -564,6 +567,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/countBillingUsage": typeof migrations_countBillingUsage;
   "migrations/expireInvitations": typeof migrations_expireInvitations;
   "migrations/moveScreeningAnswers": typeof migrations_moveScreeningAnswers;
+  "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/recountExtractionJobs": typeof migrations_recountExtractionJobs;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
   "models/admin": typeof models_admin;

@@ -6,6 +6,7 @@ import { requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvita
 import { getCurrentUser } from "../lib/auth";
 import { rateLimit } from "../lib/rateLimit";
 import { createError } from "../lib/errors";
+import { assertLibraryHasRoom } from "./members";
 
 const roleValidator = v.union(v.literal("editor"), v.literal("creator"));
 const invitationArgs = { libraryId: v.id("evidenceLibraries"), email: v.string(), role: roleValidator };
@@ -124,6 +125,7 @@ export const respondVerified = internalMutation({
     if (args.accept) {
       const member = await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", invitation.libraryId).eq("clerkUserId", identity.subject)).unique();
       // An outstanding invitation cannot overwrite a role granted since it was sent.
+      if (!member) await assertLibraryHasRoom(ctx, invitation.libraryId);
       if (!member) await ctx.db.insert("evidenceLibraryMembers", { libraryId: invitation.libraryId, clerkUserId: identity.subject, role: invitation.role, grantedBy: invitation.invitedBy, grantedAt: Date.now() });
     }
     await ctx.db.patch("evidenceLibraryInvitations", invitation._id, { state: args.accept ? "accepted" : "declined" });
