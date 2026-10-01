@@ -33,9 +33,8 @@ describe("public route auth matrix", () => {
     expect(isPublicPath("/sign-in#hash")).toBe(true);
   });
 
-  it("has explicit API public allowances only where intended", () => {
-    expect(isPublicPath("/api/openalex/search")).toBe(true);
-    expect(isPublicPath("/api/openalex/search?foo=bar")).toBe(true);
+  it("keeps API routes signed in", () => {
+    expect(isPublicPath("/api/openalex/search")).toBe(false);
     expect(isPublicPath("/api/private")).toBe(false);
   });
 });

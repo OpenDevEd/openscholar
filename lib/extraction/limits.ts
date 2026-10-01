@@ -18,6 +18,9 @@ export const PAPER_PULL_DEFAULT = 200;
 /** Most papers one results page shows; an export reads pages of this size. */
 export const RESULTS_PAGE_SIZE_MAX = 200;
 
+/** Longest chat prompt the server takes: about 8,000 tokens. */
+export const CHAT_PROMPT_MAX_CHARS = 32_000;
+
 /** Chat replies a user can have generating at once. */
 export const CHAT_CONCURRENCY_LIMIT = 3;
 

@@ -85,7 +85,8 @@ export default defineSchema({
     .index("by_external_id", ["id"]).index("by_parent_and_name", ["parent", "name"])
     .searchIndex("search_text", { searchField: "searchText" }),
   topicCatalogState: defineTable({revision: v.string(), complete: v.boolean()}).index("by_revision", ["revision"]),
-  topicDetails: defineTable({id: v.string(), description: v.string(), keywords: v.array(v.string()), worksCount: v.number(), fetchedAt: v.number(), revision: v.string()}).index("by_external_id", ["id"]),
+  // `refreshRequestedAt`: when a reader last asked for this stale topic to be fetched again (#355).
+  topicDetails: defineTable({id: v.string(), description: v.string(), keywords: v.array(v.string()), worksCount: v.number(), fetchedAt: v.number(), revision: v.string(), refreshRequestedAt: v.optional(v.number())}).index("by_external_id", ["id"]),
   topicLocations: defineTable({
     libraryId: v.id("evidenceLibraries"), itemKey: v.string(), generation: v.number(), publishedRevision: v.number(),
     state: v.union(v.literal("published"), v.literal("unpublished")),
@@ -168,6 +169,10 @@ export default defineSchema({
     .index("by_organizationId_and_state", ["organizationId", "state"])
     .index("by_clerkUserId_and_state", ["clerkUserId", "state"]),
 
+  // Each approved OpenAlex query version a library has published, with its query's
+  // fingerprint, so a sources save checks versions without reading every revision (#357).
+  evidenceLibraryApprovedQueries: defineTable({ libraryId: v.id("evidenceLibraries"), version: v.string(), fingerprint: v.string() })
+    .index("by_libraryId_and_version", ["libraryId", "version"]),
   evidenceLibraries: defineTable(evidenceLibraryFields)
     .index("by_organizationId", ["organizationId"])
     .index("by_organizationId_and_name_and_state", [
@@ -286,6 +291,11 @@ export default defineSchema({
       "activationEditVersion",
     ])
     .index("by_libraryId_and_createdAt", ["libraryId", "createdAt"])
+    // Publish operations newest first, where configuration deployments are found (#357).
+    .index("by_libraryId_and_kind_and_createdAt", ["libraryId", "kind", "createdAt"])
+    // Queued work that already ran, which blocks a teardown (#357).
+    .index("by_libraryId_and_status_and_attemptCount", ["libraryId", "status", "attemptCount"])
+    .index("by_libraryId_and_status_and_startedAt", ["libraryId", "status", "startedAt"])
     .index("by_libraryId_and_status_and_updatedAt", [
       "libraryId",
       "status",
@@ -646,6 +656,10 @@ export default defineSchema({
     .index("by_user_mode_updated", ["userId", "mode", "updatedAt"])
     // Cross-user iteration by mode (admin backfills, ops tooling).
     .index("by_mode", ["mode"])
+    // Chats generating now, per user and across users, oldest first: the concurrency
+    // check and the stale lock sweep read only these (#355).
+    .index("by_user_and_mode_and_isGenerating_and_generatingStartedAt", ["userId", "mode", "isGenerating", "generatingStartedAt"])
+    .index("by_mode_and_isGenerating_and_generatingStartedAt", ["mode", "isGenerating", "generatingStartedAt"])
     // Reverse lookup: thread -> job (auth + lock acquisition).
     .index("by_chatThread", ["chatThreadId"]),
 

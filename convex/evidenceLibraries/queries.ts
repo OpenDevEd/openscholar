@@ -14,9 +14,11 @@ import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
+import { MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ } from "../lib/queryBounds";
 import { evidenceLibraryTeardownStepValidator } from "./validators";
 import {
   readLibraryRole,
+  libraryRoleFrom,
   requireEvidenceLibraryAccess,
   readEvidenceLibraryAccess,
 } from "./access";
@@ -123,7 +125,8 @@ export async function readEvidenceLibraries(ctx: QueryCtx) {
       .collect(),
   ]);
   const owned = await Promise.all(memberships.filter(({membership}) => membership.role === "org:admin").map(({membership}) =>
-    ctx.db.query("evidenceLibraries").withIndex("by_organizationId", q => q.eq("organizationId", membership.organizationId)).collect()));
+    // An organization makes at most MAX_LIBRARIES_PER_ORGANIZATION libraries (mutations.ts).
+    ctx.db.query("evidenceLibraries").withIndex("by_organizationId", q => q.eq("organizationId", membership.organizationId)).take(MAX_LIBRARIES_PER_ORGANIZATION)));
   const assigned = await Promise.all(assignments.map(m => ctx.db.get("evidenceLibraries", m.libraryId)));
   const candidates = new Map([...owned.flat(), ...assigned].filter((library): library is Doc<"evidenceLibraries"> => library !== null).map(library => [library._id, library]));
   const accessible = await Promise.all([...candidates.values()].map(async library =>
@@ -730,16 +733,24 @@ const teamPersonValidator = v.object({
 async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
   const [memberships, assignments] = await Promise.all([
     ctx.db.query("organizationMemberships")
-      .withIndex("by_organizationId_and_state", q => q.eq("organizationId", library.organizationId).eq("state", "active")).collect(),
+      .withIndex("by_organizationId_and_state", q => q.eq("organizationId", library.organizationId).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS_READ + 1),
+    // A library grants at most MAX_LIBRARY_MEMBERS people (./members.ts).
     ctx.db.query("evidenceLibraryMembers")
-      .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id)).collect(),
+      .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id)).take(MAX_LIBRARY_MEMBERS),
   ]);
-  const memberIds = new Set(memberships.map(m => m.clerkUserId));
-  const userIds = new Set([...memberIds, ...assignments.map(m => m.clerkUserId)]);
+  if (memberships.length > MAX_ORGANIZATION_MEMBERS_READ) {
+    throw createError("VALIDATION_ERROR", `This organization has more than ${MAX_ORGANIZATION_MEMBERS_READ.toLocaleString("en")} members, more than the team page lists.`);
+  }
+  const membershipOf = new Map(memberships.map(m => [m.clerkUserId, m]));
+  const assignmentOf = new Map(assignments.map(m => [m.clerkUserId, m]));
+  const memberIds = new Set(membershipOf.keys());
+  const userIds = new Set([...memberIds, ...assignmentOf.keys()]);
+  // Roles come from the rows read above, so each person costs one more read: their user.
+  const organization = await ctx.db.get("organizations", library.organizationId);
   return await Promise.all([...userIds].map(async clerkUserId => {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
     return {
-      role: await readLibraryRole(ctx, library, clerkUserId),
+      role: libraryRoleFrom(library, organization, { user, membership: membershipOf.get(clerkUserId) ?? null, assignment: assignmentOf.get(clerkUserId) ?? null }),
       canAdd: memberIds.has(clerkUserId) && user?.state !== "deleted" && library.state !== "disabled",
       person: { clerkUserId, name: [user?.firstName, user?.lastName].filter(Boolean).join(" "), email: user?.email ?? "", imageUrl: user?.avatarUrl },
     };

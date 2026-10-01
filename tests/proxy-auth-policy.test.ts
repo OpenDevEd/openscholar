@@ -24,6 +24,5 @@ describe("proxy auth policy", () => {
     expect(shouldProtectPath("/")).toBe(false);
     expect(shouldProtectPath("/sign-in")).toBe(false);
     expect(shouldProtectPath("/sign-up/foo")).toBe(false);
-    expect(shouldProtectPath("/api/openalex/search")).toBe(false);
   });
 });

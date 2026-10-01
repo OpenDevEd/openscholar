@@ -17,6 +17,9 @@ import {
   evidenceLibraryRequestableOperationKindValidator,
 } from "./validators";
 
+/** Newest publish operations read to find the newest configuration deployment. */
+const NEWEST_PUBLISHES_READ = 50;
+
 type OperationReadCtx = QueryCtx | MutationCtx;
 type ConfigurationDeploymentTarget = NonNullable<
   Doc<"evidenceLibraryConfigOperations">["configurationDeploymentTarget"]
@@ -134,21 +137,17 @@ export async function isAcceptableSavedConfigurationTarget(
   ) {
     return false;
   }
-  const operations = ctx.db
+  // Configuration deployments are publish operations, and nearly every publish is one, so
+  // the newest is among the newest few publishes. Not finding one among them reads as a
+  // stale target, which only means the next attempt assembles a new one.
+  const publishes = await ctx.db
     .query("evidenceLibraryConfigOperations")
-    .withIndex("by_libraryId_and_createdAt", (query) =>
-      query.eq("libraryId", operation.libraryId),
+    .withIndex("by_libraryId_and_kind_and_createdAt", (query) =>
+      query.eq("libraryId", operation.libraryId).eq("kind", "publish"),
     )
-    .order("desc");
-  let newestConfigurationOperation:
-    | Doc<"evidenceLibraryConfigOperations">
-    | undefined;
-  for await (const candidate of operations) {
-    if (isConfigurationDeploymentOperation(candidate)) {
-      newestConfigurationOperation = candidate;
-      break;
-    }
-  }
+    .order("desc")
+    .take(NEWEST_PUBLISHES_READ);
+  const newestConfigurationOperation = publishes.find(isConfigurationDeploymentOperation);
   if (newestConfigurationOperation?._id !== operation._id) return false;
   const runtimeBinding = library.runtimeBindingId
     ? await ctx.db.get(
@@ -222,19 +221,16 @@ export async function reissueConfigurationDeploymentOperation(
     return;
   }
 
-  let newestCreatedAt = operation.createdAt;
-  const operations = ctx.db
+  // The command must come after the newest configuration deployment; the newest operation
+  // of any kind is at least as new, and is one read.
+  const newest = await ctx.db
     .query("evidenceLibraryConfigOperations")
     .withIndex("by_libraryId_and_createdAt", (query) =>
       query.eq("libraryId", operation.libraryId),
     )
-    .order("desc");
-  for await (const candidate of operations) {
-    if (isConfigurationDeploymentOperation(candidate)) {
-      newestCreatedAt = Math.max(newestCreatedAt, candidate.createdAt);
-      break;
-    }
-  }
+    .order("desc")
+    .first();
+  const newestCreatedAt = Math.max(operation.createdAt, newest?.createdAt ?? 0);
   const commandAt = Math.max(Date.now(), newestCreatedAt) + 1;
   await ctx.db.patch(operation._id, {
     configurationDeploymentTarget: undefined,

@@ -22,6 +22,7 @@ import { countOpenAlexQueries, searchOpenAlexCount } from "@/app/actions/openale
 import type { OpenAlexWorksQuery } from "@/lib/openalex/search-params";
 import { toSearchFilters } from "@/lib/openalex/to-search-filters";
 import type { SearchResult } from "@/lib/types";
+import { unlessLimited } from "@/lib/openalex/limited";
 
 const COUNT_OPTIONS = {
   revalidateIfStale: false,
@@ -51,10 +52,10 @@ export function useHistoryCount(
     key,
     async () => {
       if (!entry) throw new Error("useHistoryCount: missing entry");
-      const { count } = await searchOpenAlexCount(
+      const { count } = await unlessLimited(searchOpenAlexCount(
         entry.query,
         toSearchFilters(entry),
-      );
+      ));
       return count;
     },
     COUNT_OPTIONS,
@@ -76,7 +77,7 @@ export function useHistoryCount(
 export function useOpenAlexQueryCounts(queries: readonly OpenAlexWorksQuery[]): readonly (number | null)[] {
   const { data, error } = useSWR<(number | null)[]>(
     queries.length ? ["openalex-query-counts", JSON.stringify(queries)] : null,
-    () => countOpenAlexQueries([...queries]),
+    () => unlessLimited(countOpenAlexQueries([...queries])),
     // A cached list refreshes on the next visit, at most once a minute.
     { ...COUNT_OPTIONS, keepPreviousData: false, revalidateIfStale: true },
   );

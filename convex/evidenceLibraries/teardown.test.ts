@@ -46,6 +46,11 @@ describe("development Evidence Library teardown", () => {
         observedAt: 1,
         sources: [],
       });
+      await ctx.db.insert("evidenceLibraryApprovedQueries", {
+        libraryId: fixture.created.libraryId,
+        version: "v1",
+        fingerprint: "{}",
+      });
     });
     const requested = await fixture.admin.mutation(
       api.evidenceLibraries.teardown.requestDevelopmentTeardown,
@@ -93,8 +98,9 @@ describe("development Evidence Library teardown", () => {
         jobs: await ctx.db.query("evidenceLibraryDigestJobs").collect(),
         files: await ctx.db.system.query("_storage").collect(),
         sourceStatus: await ctx.db.query("evidenceLibrarySourceStatus").collect(),
+        approvedQueries: await ctx.db.query("evidenceLibraryApprovedQueries").collect(),
       })),
-    ).resolves.toEqual({ jobs: [], files: [], sourceStatus: [] });
+    ).resolves.toEqual({ jobs: [], files: [], sourceStatus: [], approvedQueries: [] });
     await expect(
       fixture.t.run((ctx) => ctx.db.get(fixture.organizationId)),
     ).resolves.toMatchObject({ state: "active" });
@@ -173,6 +179,27 @@ describe("development Evidence Library teardown", () => {
     await fixture.t.run((ctx) =>
       ctx.db.patch(fixture.created.setupOperationId, { status: "queued" }),
     );
+
+    await expect(
+      fixture.admin.mutation(
+        api.evidenceLibraries.teardown.requestDevelopmentTeardown,
+        {
+          libraryId: fixture.created.libraryId,
+          confirmationName: "Climate Evidence",
+        },
+      ),
+    ).rejects.toThrow(/wait for the current library operation/i);
+  });
+
+  it("still refuses a retry waiting behind many queued operations that never started", async () => {
+    const fixture = await createActivatedSetupFixture("teardown_retry_crowd");
+    await fixture.t.run(async (ctx) => {
+      const { _id, _creationTime, ...setup } = (await ctx.db.get(fixture.created.setupOperationId))!;
+      await ctx.db.patch(fixture.created.setupOperationId, { status: "queued", updatedAt: 10_000 });
+      for (let i = 0; i < 150; i++) {
+        await ctx.db.insert("evidenceLibraryConfigOperations", { ...setup, status: "queued", attemptCount: 0, startedAt: undefined, idempotencyKey: `untouched-${i}`, updatedAt: i });
+      }
+    });
 
     await expect(
       fixture.admin.mutation(

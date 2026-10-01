@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { CHAT_PROMPT_MAX_CHARS } from "@/lib/extraction/limits";
 import { ConvexError } from "convex/values";
 import { convexTest } from "convex-test";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -614,6 +615,18 @@ describe("chat.messages — auth + mode gating", () => {
     expect(job?.messageCount).toBe(0);
     expect(job?.isGenerating).toBeUndefined();
     expect(job?.lastMessageAt).toBeUndefined();
+  });
+
+  it("sendMessage refuses a prompt over the length limit", async () => {
+    const t = createTestConvex();
+    const { jobId, threadId } = await seedUserAndChatJob(t);
+    await seedChatPapers(t, jobId, [true]);
+
+    const err = await asCaller(t, "c_msg")
+      .mutation(api.chat.messages.sendMessage, { threadId, prompt: "x".repeat(CHAT_PROMPT_MAX_CHARS + 1) })
+      .catch((e: unknown) => e);
+    expect((err as ConvexError<{ code: string }>).data.code).toBe("VALIDATION_ERROR");
+    expect((await t.run((ctx) => ctx.db.get(jobId)))?.messageCount).toBe(0);
   });
 
   it("sendMessage succeeds when at least one chatPapers row is included", async () => {

@@ -69,8 +69,24 @@ export async function readLibraryRole(
   const assignment = await ctx.db.query("evidenceLibraryMembers")
     .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id).eq("clerkUserId", clerkUserId))
     .unique();
-  if (!assignment) return null;
-  return assignment.role;
+  return libraryRoleFrom(library, organization, { user, membership, assignment });
+}
+
+/**
+ * A person's role from rows already read: their user, active organization membership and
+ * library grant. readLibraryRole reads them for one person; the team page reads them for
+ * everyone at once (#357).
+ */
+export function libraryRoleFrom(
+  library: Doc<"evidenceLibraries">,
+  organization: Doc<"organizations"> | null,
+  rows: { user: Doc<"users"> | null; membership: Pick<Doc<"organizationMemberships">, "role"> | null; assignment: Pick<Doc<"evidenceLibraryMembers">, "role"> | null },
+): EvidenceLibraryAdminRole | null {
+  if (rows.user?.state === "deleted") return null;
+  if (!organization || organization.state !== "active") return null;
+  if (rows.membership?.role === "org:admin") return "owner";
+  if (library.state === "disabled") return null;
+  return rows.assignment?.role ?? null;
 }
 
 export async function readEvidenceLibraryAccess(
