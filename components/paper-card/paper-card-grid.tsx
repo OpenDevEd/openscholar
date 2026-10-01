@@ -188,18 +188,28 @@ export function PaperCardGrid({
           {/* Footer: Rating and citations */}
           <div
             role="group"
-            className="flex items-center justify-between pt-3 mt-auto border-t border-border/50"
+            className="flex flex-wrap items-center gap-2 pt-3 mt-auto border-t border-border/50"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
+            {/* Narrow cards give the rating its own row; the breakpoints fit five stars, save and the counts */}
             {!hide?.rating && (
-              <div className="flex items-center gap-2">
-                <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+              <>
+                <div
+                  className={cn(
+                    "basis-full",
+                    isCompact
+                      ? "@min-[18.5rem]/card:basis-auto"
+                      : "@min-[22.5rem]/card:basis-auto",
+                  )}
+                >
+                  <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+                </div>
                 <SaveControl paperId={result.id} compact />
-              </div>
+              </>
             )}
-            
-            <div className="flex items-center gap-2">
+
+            <div className="ml-auto flex items-center gap-2">
               {/* Cited by count */}
               <TooltipHint label={tp("citedByCount", { count: format.number(result.cited_by_count ?? 0) })}>
                 <button

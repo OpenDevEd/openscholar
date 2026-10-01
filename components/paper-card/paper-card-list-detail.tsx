@@ -340,7 +340,7 @@ export function PaperCardListDetail({
         {isMobile ? (
           /* Mobile Layout */
           <div className="space-y-3 pt-3 border-t border-border/50">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               {!hide?.rating && (
                 <div className="flex items-center gap-2">
                   <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
@@ -362,13 +362,19 @@ export function PaperCardListDetail({
                     }
                   />
                 )}
+              </div>
+            </div>
+
+            {/* Full-text links get their own row: beside rating and save they don't fit a phone */}
+            {((result.open_access?.is_oa && result.open_access?.oa_url) || result.doi) && (
+              <div className="flex flex-wrap items-center gap-2">
                 <OpenAccessBadge
                   isOA={result.open_access?.is_oa}
                   oaUrl={result.open_access?.oa_url}
                 />
-                <DOIBadge doi={result.doi} compact />
+                <DOIBadge doi={result.doi} />
               </div>
-            </div>
+            )}
 
             {/* Citation cards */}
             <div className="grid grid-cols-3 gap-2">
