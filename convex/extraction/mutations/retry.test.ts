@@ -37,6 +37,7 @@ async function seedFlagsAndCredits(
     const now = Date.now();
     await seedOrganizationFeatures(ctx, [CLERK], { extraction: true });
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: CLERK,
       email: "retry@test.com",
       state: "active" as const,
@@ -403,7 +404,7 @@ describe("retryFailedQuestions — public mutation guards", () => {
     await t.run(async (ctx) => {
       const now = Date.now();
       await seedOrganizationFeatures(ctx, ["clerk_retry_other"], { extraction: true });
-      await ctx.db.insert("users", {
+      await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "clerk_retry_other",
         email: "other@test.com",
         state: "active" as const,

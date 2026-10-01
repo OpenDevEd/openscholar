@@ -16,6 +16,7 @@ async function seedUser(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: overrides?.clerkId ?? "clerk_wallet_test",
       email: overrides?.email ?? "wallet@test.com",
       firstName: "Wallet",
@@ -37,6 +38,7 @@ async function seedUserWithCredits(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "clerk_wallet_credit_test",
       email: "walletcredit@test.com",
       firstName: "Wallet",

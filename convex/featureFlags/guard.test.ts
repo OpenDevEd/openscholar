@@ -7,6 +7,7 @@ import { requireFeature } from "./guard";
 async function seed(t: ReturnType<typeof convexTest>, features: string[]) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: `clerk_${features.join("_") || "none"}`,
       email: "flags@test.local",
       state: "active" as const,

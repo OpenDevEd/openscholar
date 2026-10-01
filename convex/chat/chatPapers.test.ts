@@ -33,6 +33,7 @@ async function seedUser(
   return await t.run(async (ctx) => {
     const now = Date.now();
     return await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId,
       email: `${clerkId}@test.com`,
       state: "active" as const,

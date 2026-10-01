@@ -313,7 +313,7 @@ describe("Evidence Library identity projections", () => {
   it("removes library grants and pending invitations only under the revoked organization", async () => {
     const t = convexTest(schema);
     const ids = await t.run(async ctx => {
-      await ctx.db.insert("users", { clerkId: "user_123", email: "person@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("users", {libraryItemCount: 0,  clerkId: "user_123", email: "person@example.org", state: "active", createdAt: 1, updatedAt: 1 });
       const organizationId = await ctx.db.insert("organizations", { ...organizationSnapshot, state: "active", createdAt: 1, updatedAt: 1 });
       const otherOrganizationId = await ctx.db.insert("organizations", { ...organizationSnapshot, clerkOrganizationId: "other_org", slug: "other", state: "active", createdAt: 1, updatedAt: 1 });
       const libraryIds: Id<"evidenceLibraries">[] = [];

@@ -1,42 +1,9 @@
-import { mutation, internalMutation } from "../lib/functions";
+import { mutation } from "../lib/functions";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { MAX_LIBRARY_BROWSE } from "../lib/queryBounds";
 import { resolveLibraryCount } from "./counter";
 import { removeCollectionMembership } from "./collectionMembership";
-
-export const backfillLibraryCount = internalMutation({
-  args: { userId: v.id("users"), count: v.number() },
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get("users", args.userId);
-    if (!user || user.libraryItemCount !== undefined) return;
-    await ctx.db.patch("users", args.userId, { libraryItemCount: args.count });
-  },
-});
-
-export const backfillAllLibraryCounts = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    // Cardinality: small user base, safe to collect
-    const users = await ctx.db.query("users").collect();
-    let backfilled = 0;
-
-    for (const user of users) {
-      if (user.libraryItemCount !== undefined) continue;
-
-      const items = await ctx.db
-        .query("libraryItems")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .take(MAX_LIBRARY_BROWSE);
-
-      await ctx.db.patch("users", user._id, { libraryItemCount: items.length });
-      backfilled++;
-    }
-
-    console.log(`Backfilled libraryItemCount for ${backfilled} users`);
-  },
-});
 
 export const saveToLibrary = mutation({
   args: {

@@ -1,6 +1,26 @@
 import { downloadAsFile, jsonToCSV } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
 
+/**
+ * Every item of a paged library view, one page per query, so an export of any size fits
+ * (#352). Pages continue from index cursors, so a removed paper shifts nothing, and a
+ * paper whose sort value changes mid-export is kept once.
+ *
+ * ponytail: a paper whose sort value moves it into pages already read is missed; a
+ * snapshot export would need the view frozen while it's read.
+ */
+export async function readEveryLibraryPage<Item extends { _id: string }>(
+  readPage: (cursor: string | null) => Promise<{ page: Item[]; isDone: boolean; continueCursor: string }>,
+): Promise<Item[]> {
+  const items = new Map<string, Item>();
+  for (let cursor: string | null = null; ;) {
+    const result = await readPage(cursor);
+    for (const item of result.page) if (!items.has(item._id)) items.set(item._id, item);
+    if (result.isDone) return [...items.values()];
+    cursor = result.continueCursor;
+  }
+}
+
 interface LibraryExportItem {
   [key: string]: string | number | boolean;
   title: string;

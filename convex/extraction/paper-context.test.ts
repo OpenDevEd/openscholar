@@ -8,6 +8,7 @@ async function seedPaperContextFixture(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "clerk_paper_context",
       email: "paper-context@test.com",
       state: "active" as const,

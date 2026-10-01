@@ -31,6 +31,7 @@ async function seedUserAndCredits(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: CLERK,
       email: "resume@test.com",
       state: "active" as const,
@@ -350,7 +351,7 @@ describe("resumeExtraction — auth + mode guards", () => {
     });
     await t.run(async (ctx) => {
       const now = Date.now();
-      await ctx.db.insert("users", {
+      await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "clerk_resume_other",
         email: "other@test.com",
         state: "active" as const,

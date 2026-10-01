@@ -30,6 +30,7 @@ async function seedJobWithSources(
 ) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "c_ctx",
       email: "x@t",
       state: "active",
@@ -179,7 +180,7 @@ describe("buildSystemPromptForJob", () => {
   it("surfaces citedByCount, venueName, and workType for OpenAlex-sourced papers", async () => {
     const t = convexTest(schema);
     const jobId = await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {
+      const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_metrics",
         email: "metrics@t",
         state: "active",

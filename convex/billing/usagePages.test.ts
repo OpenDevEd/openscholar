@@ -7,7 +7,7 @@ import { insertUsage } from "./usageLog";
 async function setup() {
   const t = convexTest(schema);
   const { userId, jobId } = await t.run(async (ctx) => {
-    const userId = await ctx.db.insert("users", { clerkId: "clerk_pages", email: "pages@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
+    const userId = await ctx.db.insert("users", {libraryItemCount: 0,  clerkId: "clerk_pages", email: "pages@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
     const jobId = await ctx.db.insert("extractionJobs", { userId, mode: "chat", sourceType: "history", name: "c", messageCount: 0, createdAt: 0, updatedAt: 0 });
     return { userId, jobId };
   });

@@ -33,6 +33,7 @@ describe("Autumn's webhook", () => {
   async function seedUser(t: ReturnType<typeof convexTest>) {
     return await t.run((ctx) =>
       ctx.db.insert("users", {
+        libraryItemCount: 0,
         clerkId: "clerk_webhook",
         email: "webhook@test.local",
         state: "active" as const,

@@ -4,6 +4,7 @@ import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { readEveryLibraryPage } from "../../lib/library/export";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
@@ -478,82 +479,43 @@ describe("searchLibrary", () => {
   });
 });
 
-describe("listLibrary", () => {
-  it("sorts searched items using the requested sort order instead of search relevance", async () => {
+describe("a filtered library view, read page by page", () => {
+  it("keeps each page's place when a paper before it is removed", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const items: Array<Awaited<ReturnType<typeof seedLibraryItem>>> = [];
+    for (let i = 1; i <= 4; i++) items.push(await seedLibraryItem(t, user!._id, { title: `Paper ${i}`, rating: 4, savedAt: 1_000 - i, openalexId: `https://openalex.org/W${i}` }));
+    const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, minRating: 3 };
+    const read = (cursor: string | null, endCursor?: string) => asUser.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { cursor, numItems: 2, ...(endCursor ? { endCursor } : {}) } });
+    const first = await read(null);
+    const second = await read(first.continueCursor);
 
-    await seedLibraryItem(t, user!._id, {
-      title: "Gamma machine paper",
-      searchableText: "machine gamma paper",
-      citedByCount: 10,
-      openalexId: "https://openalex.org/W1",
-    });
-    await seedLibraryItem(t, user!._id, {
-      title: "Alpha machine paper",
-      searchableText: "machine alpha paper",
-      citedByCount: 3,
-      openalexId: "https://openalex.org/W2",
-    });
-    await seedLibraryItem(t, user!._id, {
-      title: "Beta machine paper",
-      searchableText: "machine beta paper",
-      citedByCount: 30,
-      openalexId: "https://openalex.org/W3",
-    });
-
-    const result = await asUser.query(api.library.queries.listLibrary, {
-      searchText: "machine",
-      sortBy: "title",
-      sortOrder: "asc",
-    });
-
-    expect(result.map((item) => item.title)).toEqual([
-      "Alpha machine paper",
-      "Beta machine paper",
-      "Gamma machine paper",
-    ]);
+    await t.run((ctx) => ctx.db.delete("libraryItems", items[0]!._id));
+    // The page hook asks again for each page between the cursors it already has.
+    const again = [...(await read(null, first.continueCursor)).page, ...(await read(first.continueCursor, second.continueCursor)).page];
+    expect(again.map((item) => item.title)).toEqual(["Paper 2", "Paper 3", "Paper 4"]);
   });
 
-  it("returns the full filtered set for export-style library views", async () => {
+  it("returns every match once, in the view's order, as an export reads it", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const collectionId = await asUser.mutation(api.library.collections.createCollection, { name: "Picked" });
+    for (let i = 0; i < 24; i++) {
+      const item = await seedLibraryItem(t, user!._id, { title: `Paper ${i}`, rating: (i % 5) + 1, publicationYear: 2010 + (i % 12), savedAt: 1_000 + i, openalexId: `https://openalex.org/W${i}` });
+      if (i % 3 !== 0) await asUser.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: item!._id });
+    }
+    const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, minRating: 2, maxRating: 4, yearFrom: 2012, collectionId };
+    const exported = await readEveryLibraryPage((cursor) => asUser.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { cursor, numItems: 2 } }));
 
-    await seedLibraryItem(t, user!._id, {
-      title: "Keep me",
-      rating: 4,
-      publicationYear: 2021,
-      savedAt: 1200,
-      openalexId: "https://openalex.org/W1",
-    });
-    await seedLibraryItem(t, user!._id, {
-      title: "Too old",
-      rating: 4,
-      publicationYear: 2010,
-      savedAt: 1000,
-      openalexId: "https://openalex.org/W2",
-    });
-    await seedLibraryItem(t, user!._id, {
-      title: "Too low rated",
-      rating: 1,
-      publicationYear: 2022,
-      savedAt: 1400,
-      openalexId: "https://openalex.org/W3",
-    });
-
-    const result = await asUser.query(api.library.queries.listLibrary, {
-      sortBy: "savedAt",
-      sortOrder: "desc",
-      minRating: 3,
-      maxRating: 4,
-      savedAfter: 1100,
-      yearFrom: 2020,
-    });
-
-    expect(result).toHaveLength(1);
-    expect(result[0].title).toBe("Keep me");
+    const expected = Array.from({ length: 24 }, (_, i) => i)
+      .filter((i) => i % 3 !== 0 && (i % 5) + 1 >= 2 && (i % 5) + 1 <= 4 && 2010 + (i % 12) >= 2012)
+      .reverse()
+      .map((i) => `Paper ${i}`);
+    expect(expected.length).toBeGreaterThan(4);
+    expect(exported.map((item) => item.title)).toEqual(expected);
+    expect(await asUser.query(api.library.queries.getLibraryFilteredCount, view)).toEqual({ count: expected.length, capped: false });
   });
 });
 
@@ -590,6 +552,48 @@ describe("getLibraryCount", () => {
     expect(count).toBe(3);
   });
 
+  it("returns the live item count when the stored counter is missing", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W2",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+
+    expect(count).toBe(2);
+  });
+
+  it("returns the repaired count after the counter migration runs", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W2",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W3",
+    });
+
+    await t.action(internal.migrations.backfillLibraryCounters.backfillUsers, {});
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+
+    expect(count).toBe(3);
+  });
   it("does NOT count items belonging to other users", async () => {
     const t = convexTest(schema);
     const user1 = await seedUser(t, "clerk_user1", "user1@test.com", {
@@ -615,48 +619,6 @@ describe("getLibraryCount", () => {
     expect(count).toBe(2);
   });
 
-  it("returns the live item count when the stored counter is missing", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
-      libraryItemCount: undefined,
-    });
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W1",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W2",
-    });
-
-    const count = await asUser.query(api.library.queries.getLibraryCount, {});
-
-    expect(count).toBe(2);
-  });
-
-  it("returns the repaired count after an explicit backfill runs", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
-      libraryItemCount: undefined,
-    });
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W1",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W2",
-    });
-    await seedLibraryItem(t, user!._id, {
-      openalexId: "https://openalex.org/W3",
-    });
-
-    await t.mutation(internal.library.mutations.backfillAllLibraryCounts, {});
-
-    const count = await asUser.query(api.library.queries.getLibraryCount, {});
-
-    expect(count).toBe(3);
-  });
 });
 
 describe("getLibraryFilteredCount", () => {
@@ -708,7 +670,7 @@ describe("getLibraryFilteredCount", () => {
       collectionId,
     });
 
-    expect(count).toBe(2);
+    expect(count).toEqual({ count: 2, capped: false });
   });
 
   it("returns the exact filtered count for search and numeric filters", async () => {
@@ -755,7 +717,7 @@ describe("getLibraryFilteredCount", () => {
       yearFrom: 2020,
     });
 
-    expect(count).toBe(2);
+    expect(count).toEqual({ count: 2, capped: false });
   });
 
   it("returns the live item count when no filters are active and the stored counter is missing", async () => {
@@ -779,7 +741,7 @@ describe("getLibraryFilteredCount", () => {
       sortOrder: "desc",
     });
 
-    expect(count).toBe(2);
+    expect(count).toEqual({ count: 2, capped: false });
   });
 });
 

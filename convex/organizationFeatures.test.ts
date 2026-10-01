@@ -12,7 +12,7 @@ describe("organization feature access", () => {
   test("unions every active membership without using active organization claims", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("users", {
+      await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "member",
         email: "member@example.org",
         state: "active",
@@ -38,7 +38,7 @@ describe("organization feature access", () => {
   test("revocation, disabled features and deleted organizations immediately remove grants", async () => {
     const t = convexTest(schema, modules);
     const id = await t.run(async (ctx) => {
-      await ctx.db.insert("users", {
+      await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "member",
         email: "member@example.org",
         state: "active",
@@ -81,7 +81,7 @@ describe("organization feature access", () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
       for (const clerkId of ["member", "outsider"])
-        await ctx.db.insert("users", {
+        await ctx.db.insert("users", {libraryItemCount: 0, 
           clerkId,
           email: `${clerkId}@example.org`,
           state: "active",
@@ -111,7 +111,7 @@ test("the creation picker and authorization use the same eligible organizations"
   const t = convexTest(schema, modules);
   const [first, second, memberOnly, disabled, foreign] = await t.run(
     async (ctx) => {
-      await ctx.db.insert("users", {
+      await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "owner",
         email: "owner@example.org",
         state: "active",

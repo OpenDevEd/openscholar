@@ -10,6 +10,7 @@ import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
   useProtectedPaginatedQuery,
+  useProtectedStreamPaginatedQuery,
   useProtectedQuery,
 } from "@/lib/auth/use-auth-query";
 import { showConfirmation } from "@/lib/confirmation";
@@ -27,7 +28,8 @@ import {
 } from "@/lib/library/search-params";
 import { MIN_YEAR } from "@/lib/constants";
 import type { DateRange } from "react-day-picker";
-import { exportLibraryAsCSV, exportLibraryAsJSON } from "@/lib/library/export";
+import { exportLibraryAsCSV, exportLibraryAsJSON, readEveryLibraryPage } from "@/lib/library/export";
+import { LIBRARY_SEARCH_RESULTS_MAX } from "@/lib/library/limits";
 import { libraryItemToPaperResult } from "@/lib/library/library-item-to-paper-result";
 import {
   downloadLibraryItem,
@@ -56,6 +58,8 @@ import { LibraryItemActions } from "./library-item-shared";
 import { LibraryItemSkeleton } from "./library-item-skeleton";
 
 const PAGE_SIZE = 20;
+/** Papers an export reads per query. */
+const EXPORT_PAGE_SIZE = 500;
 
 const GRID_CLASSES: Record<ViewMode, string> = {
   "list-simple": "flex flex-col gap-2",
@@ -164,7 +168,7 @@ export function LibraryPageClient() {
     filteredCountQueryArgs,
   );
 
-  const browseItems = useProtectedPaginatedQuery(
+  const browseItems = useProtectedStreamPaginatedQuery(
     api.library.queries.browseLibrary,
     queryText ? "skip" : libraryFilters,
     { initialNumItems: PAGE_SIZE },
@@ -207,12 +211,16 @@ export function LibraryPageClient() {
 
   const [isExporting, setIsExporting] = useState(false);
 
-  const fetchExportItems = useCallback(async () => {
-    return await convex.query(
-      api.library.queries.listLibrary,
-      filteredCountQueryArgs,
-    );
-  }, [convex, filteredCountQueryArgs]);
+  const fetchExportItems = useCallback(
+    () =>
+      readEveryLibraryPage((cursor) => {
+        const paginationOpts = { cursor, numItems: EXPORT_PAGE_SIZE };
+        return queryText
+          ? convex.query(api.library.queries.searchLibrary, { ...libraryFilters, searchText: queryText, paginationOpts: { cursor, numItems: LIBRARY_SEARCH_RESULTS_MAX } })
+          : convex.query(api.library.queries.browseLibrary, { ...libraryFilters, paginationOpts });
+      }),
+    [convex, libraryFilters, queryText],
+  );
 
   const handleExportCSV = useCallback(async () => {
     if (isExporting) return;
@@ -383,8 +391,16 @@ export function LibraryPageClient() {
     pageResults.length > 0 ? (effectivePage - 1) * PAGE_SIZE + 1 : 0;
   const rangeEnd = rangeStart + pageResults.length - 1;
   const filteredTotal =
-    filteredTotalCount ??
-    (paginatedItems.status === "Exhausted" ? filteredItems.length : undefined);
+    filteredTotalCount && !filteredTotalCount.capped
+      ? filteredTotalCount.count
+      : paginatedItems.status === "Exhausted"
+        ? filteredItems.length
+        : undefined;
+  // A count that stopped before the end: at least this many, and at least what's loaded.
+  const filteredAtLeast =
+    filteredTotal === undefined && filteredTotalCount?.capped
+      ? Math.max(filteredTotalCount.count, filteredItems.length)
+      : undefined;
   const totalPages =
     filteredTotal === undefined
       ? undefined
@@ -598,7 +614,8 @@ export function LibraryPageClient() {
                   rawSearch={rawSearch}
                   onSearchChange={setRawSearch}
                   totalCount={totalCount}
-                  filteredCount={filteredTotal}
+                  filteredCount={filteredTotal ?? filteredAtLeast}
+                  filteredCountIsAtLeast={filteredAtLeast !== undefined}
                   activeFilterLabels={activeFilterLabels}
                   viewMode={params.view}
                   onViewModeChange={(mode) =>
@@ -610,7 +627,7 @@ export function LibraryPageClient() {
                     !isExporting &&
                     !isEmptyLibrary &&
                     !isNoResults &&
-                    (filteredTotal ?? 0) !== 0
+                    (filteredTotal ?? filteredAtLeast ?? 0) !== 0
                   }
                 />
 
@@ -680,9 +697,8 @@ export function LibraryPageClient() {
                             start: rangeStart,
                             end: rangeEnd,
                             total:
-                              filteredTotal === undefined
-                                ? `${filteredItems.length}+`
-                                : filteredTotal,
+                              filteredTotal ??
+                              `${format.number(filteredAtLeast ?? filteredItems.length)}+`,
                           })}
                         </p>
 

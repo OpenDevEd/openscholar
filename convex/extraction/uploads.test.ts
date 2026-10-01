@@ -16,6 +16,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
     const now = Date.now();
     await seedOrganizationFeatures(ctx, ["clerk_uploader"], { extraction: true });
     await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "clerk_uploader",
       email: "uploader@test.com",
       firstName: "U",

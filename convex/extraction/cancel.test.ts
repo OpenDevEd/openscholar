@@ -10,6 +10,7 @@ async function seedUserAndJob(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId,
       email: `${clerkId}@test.com`,
       firstName: "Test",

@@ -5,7 +5,7 @@ import schema from "../schema";
 
 async function seedUser(t: ReturnType<typeof convexTest>, clerkId: string, email: string) {
   return await t.run((ctx) =>
-    ctx.db.insert("users", { clerkId, email, state: "active" as const, createdAt: 1, updatedAt: 1 }),
+    ctx.db.insert("users", { libraryItemCount: 0, clerkId, email, state: "active" as const, createdAt: 1, updatedAt: 1 }),
   );
 }
 

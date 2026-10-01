@@ -29,7 +29,6 @@ vi.mock("@/convex/_generated/api", () => ({
         getLibraryFilteredCount: "library:getLibraryFilteredCount",
         browseLibrary: "library:browseLibrary",
         searchLibrary: "library:searchLibrary",
-        listLibrary: "library:listLibrary",
       },
       mutations: {
         removeFromLibrary: "library:removeFromLibrary",
@@ -135,6 +134,7 @@ vi.mock("convex/react", () => ({
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: protectedQueryMock,
   useProtectedPaginatedQuery: protectedPaginatedQueryMock,
+  useProtectedStreamPaginatedQuery: protectedPaginatedQueryMock,
 }));
 
 vi.mock("@/lib/hooks/use-debounced-value", () => ({
@@ -161,7 +161,8 @@ vi.mock("@/lib/store", () => ({
   ),
 }));
 
-vi.mock("@/lib/library/export", () => ({
+vi.mock("@/lib/library/export", async (importOriginal) => ({
+  readEveryLibraryPage: (await importOriginal<typeof import("@/lib/library/export")>()).readEveryLibraryPage,
   exportLibraryAsCSV: exportCsvMock,
   exportLibraryAsJSON: exportJsonMock,
 }));
@@ -402,12 +403,12 @@ function resetQueryFixtures() {
         searchText?: string;
       };
       if (filters.collectionId === "collection_1") {
-        return 84;
+        return { count: 84, capped: false };
       }
       if (filters.searchText === "machine") {
-        return 25;
+        return { count: 25, capped: false };
       }
-      return 42;
+      return { count: 42, capped: false };
     },
   );
   setPaginatedQueryFixture(api.library.queries.browseLibrary, {
@@ -470,7 +471,7 @@ function seedCollectionScopedCounts() {
     { _id: "collection_1", name: "Focus set", itemCount: 84 },
   ]);
   setProtectedQueryFixture(api.library.queries.getLibraryCount, 86);
-  setProtectedQueryFixture(api.library.queries.getLibraryFilteredCount, 84);
+  setProtectedQueryFixture(api.library.queries.getLibraryFilteredCount, { count: 84, capped: false });
   setPaginatedQueryFixture(api.library.queries.browseLibrary, {
     results: buildItems(20, { titlePrefix: "Focus Paper" }),
     status: "Exhausted",
@@ -483,7 +484,7 @@ function seedSearchThenBrowseFixtures() {
     api.library.queries.getLibraryFilteredCount,
     (args: unknown) => {
       const filters = args as { searchText?: string };
-      return filters.searchText === "machine" ? 25 : 42;
+      return { count: filters.searchText === "machine" ? 25 : 42, capped: false };
     },
   );
   setPaginatedQueryFixture(api.library.queries.searchLibrary, {
@@ -526,10 +527,13 @@ describe("LibraryPageClient", () => {
     resetQueryFixtures();
     configureProtectedQueryMocks();
     configurePaginatedMocks();
-    convexQueryMock.mockResolvedValue(buildItems(25));
+    convexQueryMock.mockImplementation(async (_query, args: { paginationOpts: { cursor: string | null } }) =>
+      args.paginationOpts.cursor === null
+        ? { page: buildItems(25).slice(0, 20), isDone: false, continueCursor: "page-2" }
+        : { page: buildItems(25).slice(20), isDone: true, continueCursor: "" });
   });
 
-  it("mounts browseLibrary through the protected paginated wrapper instead of listLibrary", () => {
+  it("mounts browseLibrary through the protected paginated wrapper", () => {
     render(<LibraryPageClient />);
 
     expect(protectedQueryMock).toHaveBeenCalledTimes(3);
@@ -594,23 +598,37 @@ describe("LibraryPageClient", () => {
     });
   });
 
-  it("exports through an explicit point-in-time listLibrary query", async () => {
+  it("exports the whole view by reading it page by page", async () => {
     render(<LibraryPageClient />);
 
     expect(convexQueryMock).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "export csv" }));
 
     await waitFor(() => {
-      expect(convexQueryMock).toHaveBeenCalledTimes(1);
+      expect(exportCsvMock).toHaveBeenCalledWith(buildItems(25));
     });
-    expect(convexQueryMock.mock.calls[0][1]).toEqual(
+    expect(convexQueryMock).toHaveBeenCalledTimes(2);
+    expect(convexQueryMock.mock.calls[0][0]).toBe(api.library.queries.browseLibrary);
+    expect(convexQueryMock.mock.calls[1][1]).toEqual(
       expect.objectContaining({
         sortBy: "savedAt",
         sortOrder: "desc",
-        searchText: undefined,
+        paginationOpts: expect.objectContaining({ cursor: "page-2" }),
       }),
     );
-    expect(exportCsvMock).toHaveBeenCalledWith(buildItems(25));
+  });
+
+  it("shows a count that stopped before the end as at least that many", () => {
+    queryStateStore.value.rmin = 4;
+    setProtectedQueryFixture(api.library.queries.getLibraryFilteredCount, { count: 1000, capped: true });
+    setPaginatedQueryFixture(api.library.queries.browseLibrary, {
+      results: buildItems(20),
+      status: "CanLoadMore",
+    });
+
+    render(<LibraryPageClient />);
+
+    expect(screen.getByText("Showing 1-20 of 1000+ papers")).toBeInTheDocument();
   });
 
   it("renders exact collection totals and range copy", () => {

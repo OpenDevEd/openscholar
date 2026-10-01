@@ -21,6 +21,7 @@ async function seedUser(
 ) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId,
       email,
       firstName: "Test",

@@ -4,6 +4,7 @@ import { describe, it, expect } from "vitest";
 import { api } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
+import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 const identity = {
   subject: "clerk_lib",
@@ -20,6 +21,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
     const now = Date.now();
     await seedOrganizationFeatures(ctx, ["clerk_lib", "clerk_other"], { extraction: true });
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "clerk_lib",
       email: "lib@test.com",
       firstName: "L",
@@ -30,6 +32,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
       lastLoginAt: now,
     });
     const otherUserId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "clerk_other",
       email: "other@test.com",
       firstName: "O",
@@ -61,12 +64,14 @@ async function seed(t: ReturnType<typeof convexTest>) {
     const collectionId = await ctx.db.insert("collections", {
       userId,
       name: "Favorites",
+      itemCount: 0,
       createdAt: now,
       updatedAt: now,
     });
     const otherCollectionId = await ctx.db.insert("collections", {
       userId: otherUserId,
       name: "Theirs",
+      itemCount: 0,
       createdAt: now,
       updatedAt: now,
     });
@@ -301,5 +306,19 @@ describe("extraction.sources.library.listAllIds with collectionId", () => {
     expect(res.items).toHaveLength(1);
     expect(res.items[0]._id).toBe(unfiledItemId);
     expect(res.truncated).toBe(false);
+  });
+
+  it("says a searched unfiled selection may be incomplete when there were more hits than it read", async () => {
+    const t = convexTest(schema);
+    const { userId, collectionId } = await seed(t);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < PAPER_LIMIT + 5; i++) {
+        const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/Wmany${i}`, rating: 3, title: `Many ${i}`, searchableText: "many papers", savedAt: i, updatedAt: i });
+        if (i % 2 === 0) await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: i });
+      }
+    });
+    const res = await t.withIdentity(identity).query(api.extraction.sources.library.listAllIds, { collectionId: "unfiled", query: "many" });
+    expect(res.items.length).toBeLessThan(PAPER_LIMIT);
+    expect(res.truncated).toBe(true);
   });
 });

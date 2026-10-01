@@ -11,6 +11,7 @@ async function seedUser(
 ) {
   return await t.run(async (ctx) =>
     ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId,
       email: `${clerkId}@t`,
       state: "active",

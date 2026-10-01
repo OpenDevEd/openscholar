@@ -9,6 +9,7 @@ async function seedBatchResultFixture(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "clerk_results_batch",
       email: "results-batch@test.com",
       state: "active" as const,

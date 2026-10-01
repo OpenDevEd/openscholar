@@ -9,7 +9,7 @@ vi.mock("nodemailer", () => ({ default: { createTransport: () => mail } }));
 async function setup(extraSections: Record<string, unknown> = {}) {
   const fixture = await createActivatedSetupFixture("invitations", extraSections);
   const libraryId = fixture.created.libraryId;
-  await fixture.t.run(ctx => ctx.db.insert("users", { clerkId: "outside", email: "outside@example.org", state: "active", createdAt: 1, updatedAt: 1 }));
+  await fixture.t.run(ctx => ctx.db.insert("users", {libraryItemCount: 0,  clerkId: "outside", email: "outside@example.org", state: "active", createdAt: 1, updatedAt: 1 }));
   const outside = fixture.t.withIdentity({ subject: "outside" });
   const invite = () => fixture.admin.action(api.evidenceLibraries.invitationActions.invite, { libraryId, email: "Outside@example.org", role: "creator" });
   return { ...fixture, libraryId, outside, invite };

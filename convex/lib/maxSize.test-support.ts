@@ -75,11 +75,15 @@ export async function seedExtractionJob(t: Test, userId: Id<"users">, { papers =
   return { jobId, paperIds, questionKeys: keys };
 }
 
-/** A library of `items` saved papers, about 2.1 KB each, with ratings 1 to 5 and every item in one collection. */
-export async function seedLibrary(t: Test, userId: Id<"users">, { items = MAX_SIZE.libraryItems as number } = {}) {
+/**
+ * A library of `items` saved papers, about 2.1 KB each plus an `abstractChars` abstract,
+ * with ratings 1 to 5 and every item in one collection.
+ */
+export async function seedLibrary(t: Test, userId: Id<"users">, { items = MAX_SIZE.libraryItems as number, abstractChars = 0 } = {}) {
   const itemIds = await insertMany(t, "libraryItems", Array.from({ length: items }, (_, i) => ({
     userId, openalexId: `https://openalex.org/W${i}`, rating: (i % 5) + 1, title: text(100, i), authors: text(60, i), publicationYear: 1990 + (i % 35),
     journal: text(40, i), citedByCount: i % 500, paperData: text(1_700, i), searchableText: text(160, i), savedAt: 1_700_000_000_000 + i, updatedAt: 1,
+    ...(abstractChars ? { abstract: text(abstractChars, i) } : {}),
   })));
   const [collectionId] = await insertMany(t, "collections", [{ userId, name: "Everything", itemCount: items, createdAt: 1, updatedAt: 1 }]);
   await insertMany(t, "libraryItemCollections", itemIds.map((libraryItemId) => ({ userId, collectionId, libraryItemId, assignedAt: 1 })), 3_000);

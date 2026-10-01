@@ -34,6 +34,7 @@ async function seedJobWithErrors(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: CLERK_OWNER,
       email: "owner@test.com",
       state: "active" as const,
@@ -166,7 +167,7 @@ describe("getMixedSuccessSummary", () => {
     const { jobId } = await seedJobWithErrors(t, ["rate_limit"]);
     await t.run(async (ctx) => {
       const now = Date.now();
-      await ctx.db.insert("users", {
+      await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "clerk_mixed_other",
         email: "other@test.com",
         state: "active" as const,

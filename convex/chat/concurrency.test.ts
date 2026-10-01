@@ -12,6 +12,7 @@ async function seedChatJob(
 ) {
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {
+      libraryItemCount: 0,
       clerkId: "c_conc",
       email: "c@t",
       state: "active",
@@ -62,7 +63,7 @@ describe("acquireThreadLock / releaseThreadLock", () => {
     const t = convexTest(schema);
     // Seed 3 in-flight chats (the default cap), then try to acquire a 4th.
     const userId = await t.run(async (ctx) =>
-      ctx.db.insert("users", {
+      ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_cap",
         email: "c@t",
         state: "active",
@@ -196,7 +197,7 @@ describe("cleanupZombieChatLocks", () => {
     const STALE = Date.now() - 6 * 60 * 1000;
 
     const { chatStaleId, extractionStaleId } = await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {
+      const userId = await ctx.db.insert("users", {libraryItemCount: 0, 
         clerkId: "c_h4_r1",
         email: "h4r1@t",
         state: "active",

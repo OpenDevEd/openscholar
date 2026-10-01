@@ -187,7 +187,6 @@
     "library/queries:browseLibrary": "#327",
     "library/queries:getLibraryCount": "#327",
     "library/queries:getLibraryFilteredCount": "#327",
-    "library/queries:listLibrary": "#327",
     "library/queries:searchLibrary": "#327",
     "models/admin:list": "#323",
     "models/admin:setOffered": "#323",

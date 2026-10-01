@@ -247,6 +247,7 @@ import type * as library_counter from "../library/counter.js";
 import type * as library_mutations from "../library/mutations.js";
 import type * as library_queries from "../library/queries.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
+import type * as migrations_backfillLibraryCounters from "../migrations/backfillLibraryCounters.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
 import type * as migrations_countBillingUsage from "../migrations/countBillingUsage.js";
 import type * as migrations_expireInvitations from "../migrations/expireInvitations.js";
@@ -558,6 +559,7 @@ declare const fullApi: ApiFromModules<{
   "library/mutations": typeof library_mutations;
   "library/queries": typeof library_queries;
   "maintenance/mutations": typeof maintenance_mutations;
+  "migrations/backfillLibraryCounters": typeof migrations_backfillLibraryCounters;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
   "migrations/countBillingUsage": typeof migrations_countBillingUsage;
   "migrations/expireInvitations": typeof migrations_expireInvitations;
