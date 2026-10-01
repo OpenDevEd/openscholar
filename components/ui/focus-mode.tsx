@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import {
-  useRatingsStore,
   useFocusModeSettingsStore,
   useUIStore,
 } from "@/lib/store";
@@ -18,14 +17,12 @@ import { useIsMobile } from "@/lib/hooks";
 import { useTranslations } from "next-intl";
 
 import { useTranslate } from "../paper-card";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { trimPaperData } from "@/lib/library/trim-paper-data";
-import { useAuthReadiness } from "@/components/providers/convex-provider";
 
 import { PaperContent } from "@/components/focus-mode/paper-content";
 import type { PaperContentProps } from "@/components/focus-mode/paper-content";
 import { FocusModeHeader } from "@/components/focus-mode/focus-mode-header";
+import { useSavePaper } from "@/components/library/save-control";
+import { useRatePaper } from "@/components/rating-selector";
 import { FocusModeSettings } from "@/components/focus-mode/focus-mode-settings";
 import type { PaperResult } from "@/lib/types";
 
@@ -50,13 +47,10 @@ export function FocusMode({
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(
     null
   );
-  const { setRating } = useRatingsStore();
   const settings = useFocusModeSettingsStore();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
-  const { phase } = useAuthReadiness();
-  const saveToLibraryMutation = useMutation(api.library.mutations.saveToLibrary);
-  const removeFromLibraryMutation = useMutation(api.library.mutations.removeFromLibraryByOpenalexId);
+  const ratePaper = useRatePaper();
 
   const tLabels = useTranslations("labels");
   const tAccessibility = useTranslations("accessibility");
@@ -74,6 +68,7 @@ export function FocusMode({
   const wasOpenRef = useRef(isOpen);
 
   const currentPaper = papers[currentIndex];
+  const savePaper = useSavePaper(currentPaper);
 
   const trackFocusModeClosed = () => {
     if (!focusModeStartTimeRef.current) {
@@ -212,36 +207,10 @@ export function FocusMode({
 
   const handleRatingChange = useCallback(
     (paperId: string, rating: string) => {
-      const newRating = rating === "no-rating" ? null : parseInt(rating);
-
-      // 1. Always update Zustand (optimistic, localStorage)
-      if (rating === "no-rating") {
-        setRating(paperId, null);
-      } else {
-        setRating(paperId, parseInt(rating));
-      }
-
-      // 2. If signed-in: save to library on rate, remove from library on clear
-      if (phase === "authenticated" && newRating !== null) {
-        // Find the paper object from the papers array
-        const paper = papers.find((p) => p.id === paperId);
-        if (paper) {
-          const trimmed = trimPaperData(paper);
-          saveToLibraryMutation({
-            ...trimmed,
-            rating: newRating,
-            paperData: JSON.stringify(paper),
-          }).catch((error) => {
-            console.error("[Library] Failed to save to library:", error);
-          });
-        }
-      } else if (phase === "authenticated" && newRating === null) {
-        removeFromLibraryMutation({ openalexId: paperId }).catch((error) => {
-          console.error("[Library] Failed to remove from library:", error);
-        });
-      }
+      const paper = papers.find((p) => p.id === paperId);
+      if (paper) ratePaper(paper, rating === "no-rating" ? null : parseInt(rating));
     },
-    [setRating, phase, papers, saveToLibraryMutation, removeFromLibraryMutation]
+    [papers, ratePaper]
   );
 
   const goToNext = () => {
@@ -351,6 +320,11 @@ export function FocusMode({
           e.preventDefault();
           handleRatingChange(currentPaper.id, e.key);
           break;
+        case "b":
+        case "B":
+          e.preventDefault();
+          savePaper.toggle();
+          break;
         case "s":
         case "S":
           e.preventDefault();
@@ -376,6 +350,7 @@ export function FocusMode({
     translatedContent,
     showTranslated,
     handleRatingChange,
+    savePaper.toggle,
   ]);
 
   const goToIndex = (index: number) => {

@@ -7,6 +7,7 @@ import schema from "../schema";
 import { requireAuth } from "../lib/auth";
 import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
 import { resolveLibraryCount } from "./counter";
+import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { LIBRARY_SEARCH_RESULTS_MAX as SEARCH_RESULTS_MAX } from "../../lib/library/limits";
 
 /**
@@ -95,12 +96,11 @@ function matchesLibraryFilters(
     return false;
   }
 
-  if (args.minRating !== undefined && item.rating < args.minRating) {
-    return false;
-  }
-
-  if (args.maxRating !== undefined && item.rating > args.maxRating) {
-    return false;
+  if (args.minRating !== undefined || args.maxRating !== undefined) {
+    // A rating filter only matches rated papers.
+    if (item.rating === undefined) return false;
+    if (args.minRating !== undefined && item.rating < args.minRating) return false;
+    if (args.maxRating !== undefined && item.rating > args.maxRating) return false;
   }
 
   if (args.savedAfter !== undefined && item.savedAt < args.savedAfter) {
@@ -410,3 +410,24 @@ export const getLibraryCount = query({
     return await resolveLibraryCount(ctx, user._id, user.libraryItemCount);
   },
 });
+
+export const savedPaperAction = defineUserQuery({
+  path: "library/queries:savedPaper",
+  description: "Whether a paper is in the person's library, and whether it's in any of their collections.",
+  args: { openalexId: v.string() },
+  returns: v.union(v.object({ libraryItemId: v.id("libraryItems"), inCollection: v.boolean() }), v.null()),
+  run: async (ctx, userId, args) => {
+    const item = await ctx.db
+      .query("libraryItems")
+      .withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", args.openalexId))
+      .unique();
+    if (!item) return null;
+    const membership = await ctx.db
+      .query("libraryItemCollections")
+      .withIndex("by_item", (q) => q.eq("libraryItemId", item._id))
+      .first();
+    return { libraryItemId: item._id, inCollection: membership !== null };
+  },
+});
+export const savedPaper = userQuery(savedPaperAction);
+export const savedPaperForAssistant = assistantQuery(savedPaperAction);

@@ -148,13 +148,29 @@ export function showStyledToast(
   );
 }
 
+/**
+ * Wraps a modal's onInteractOutside so pressing a toast's button, such as Undo,
+ * doesn't count as outside and close the modal.
+ */
+export function withToastsInside<Event extends { target: EventTarget | null; preventDefault(): void }>(
+  handler?: (event: Event) => void,
+) {
+  return (event: Event) => {
+    if (event.target instanceof Element && event.target.closest("[data-sonner-toaster]")) {
+      event.preventDefault();
+    }
+    handler?.(event);
+  };
+}
+
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();
 
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
-      className="toaster group"
+      // A modal blocks pointer events outside itself; toasts stay pressable above it.
+      className="toaster group pointer-events-auto"
       position="bottom-right"
       visibleToasts={4}
       expand

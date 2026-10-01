@@ -931,12 +931,12 @@ export default defineSchema({
     .index("by_job_openalexId", ["jobId", "openalexId"]),
 
   // ═══════════════════════════════════════════════════════════════
-  // LIBRARY ITEMS - User's saved paper library (rated papers)
+  // LIBRARY ITEMS - User's saved paper library
   // ═══════════════════════════════════════════════════════════════
   libraryItems: defineTable({
     userId: v.id("users"),
     openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
-    rating: v.number(), // 0-5
+    rating: v.optional(v.number()), // 0-5; unset when the paper was saved without rating it
     title: v.string(),
     authors: v.optional(v.string()), // Flattened: "John Doe, Jane Smith"
     doi: v.optional(v.string()),

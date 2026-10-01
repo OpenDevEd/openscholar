@@ -11,6 +11,7 @@ import { getEffectiveSearchId } from "@/lib/utils";
 import { useIsTablet } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "@/components/rating-selector";
+import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Quote } from "lucide-react";
 import { useTranslate, useCitationHandlers } from "./hooks";
@@ -84,7 +85,10 @@ export function PaperCardListSimple({
             onKeyDown={(e) => e.stopPropagation()}
           >
             {!hide?.rating && (
-              <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+              <div className="flex items-center gap-2">
+                <RatingSelector paper={result} variant="compact" />
+                <SaveControl paper={result} compact />
+              </div>
             )}
           </div>
 

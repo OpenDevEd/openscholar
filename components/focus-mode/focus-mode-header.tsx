@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { DownloadMenu } from "@/components/download-menu";
 import { RatingSelector } from "@/components/rating-selector";
+import { SaveControl } from "@/components/library/save-control";
 import { useEffectiveRating } from "@/components/results-contexts";
 import type { PaperResult } from "@/lib/types";
 
@@ -145,18 +146,25 @@ export function FocusModeHeader({
                 </span>
               </div>
             ))}
+            <div className="ml-3 flex items-center gap-1">
+              <SaveControl paper={currentPaper} />
+              <span className="text-xs text-muted-foreground bg-muted px-1 rounded">
+                B
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Second row: Navigation and actions */}
-        <div className="flex items-center justify-center md:justify-end gap-1 md:mr-8">
+        {/* Phones wrap this into two rows: rating, save and navigation, then the tools */}
+        <div className="flex flex-wrap items-center gap-1 md:flex-nowrap md:justify-end md:mr-8">
           {/* Compact rating selector - only on mobile */}
-          <div className="md:hidden">
-            <RatingSelector paperId={currentPaper.id} paperResult={currentPaper} variant="compact" />
+          <div className="order-1 flex items-center gap-1 md:hidden">
+            <RatingSelector paper={currentPaper} variant="compact" />
+            <SaveControl paper={currentPaper} compact />
           </div>
-          <div className="w-px h-4 bg-border mx-1 md:hidden"></div>
 
-          <div className="flex items-center gap-1">
+          <div className="order-4 flex items-center gap-1 md:order-none">
             <Button
               variant={showTranslated ? "outline-primary" : "outline"}
               size="sm"
@@ -197,62 +205,67 @@ export function FocusModeHeader({
               S
             </span>
           </div>
-          <div className="w-px h-4 bg-border mx-1"></div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onGoToPrevious}
-              disabled={currentIndex === 0}
-            >
-              <ChevronLeft className="h-3 w-3" />
-            </Button>
-            <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-              &larr;
-            </span>
+          <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+          <div className="order-2 ml-auto flex items-center gap-1 md:order-none md:ml-0">
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onGoToPrevious}
+                disabled={currentIndex === 0}
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                &larr;
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onGoToNext}
+                disabled={currentIndex === totalPapers - 1}
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                &rarr;
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onGoToNext}
-              disabled={currentIndex === totalPapers - 1}
-            >
-              <ChevronRight className="h-3 w-3" />
-            </Button>
-            <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-              &rarr;
-            </span>
-          </div>
-          <div className="w-px h-4 bg-border mx-1"></div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(currentPaper.id, "_blank")}
-            >
-              <ExternalLink className="h-3 w-3" />
-            </Button>
-            <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-              O
-            </span>
-          </div>
-          <CitationControl paper={currentPaper} compact={false} />
-          <div className="flex items-center gap-1">
-            <DownloadMenu
-              variant="icon"
-              onDownloadJSON={() => onDownloadItem(currentPaper, "json")}
-              onDownloadCSV={() => onDownloadItem(currentPaper, "csv")}
-              onDownloadEssentialJSON={() =>
-                onDownloadEssentialItem(currentPaper, "json")
-              }
-              onDownloadEssentialCSV={() =>
-                onDownloadEssentialItem(currentPaper, "csv")
-              }
-            />
-            <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-              D
-            </span>
+          <div className="order-3 basis-full md:hidden" />
+          <div className="order-5 w-px h-4 bg-border mx-1 md:order-none"></div>
+          <div className="order-6 flex items-center gap-1 md:order-none">
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(currentPaper.id, "_blank")}
+              >
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                O
+              </span>
+            </div>
+            <CitationControl paper={currentPaper} compact={false} />
+            <div className="flex items-center gap-1">
+              <DownloadMenu
+                variant="icon"
+                onDownloadJSON={() => onDownloadItem(currentPaper, "json")}
+                onDownloadCSV={() => onDownloadItem(currentPaper, "csv")}
+                onDownloadEssentialJSON={() =>
+                  onDownloadEssentialItem(currentPaper, "json")
+                }
+                onDownloadEssentialCSV={() =>
+                  onDownloadEssentialItem(currentPaper, "csv")
+                }
+              />
+              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                D
+              </span>
+            </div>
           </div>
         </div>
       </div>
