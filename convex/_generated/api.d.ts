@@ -105,7 +105,6 @@ import type * as evidenceLibraries_domains from "../evidenceLibraries/domains.js
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
 import type * as evidenceLibraries_invitationActions from "../evidenceLibraries/invitationActions.js";
 import type * as evidenceLibraries_invitations from "../evidenceLibraries/invitations.js";
-import type * as evidenceLibraries_legacyAdminLoginCodes from "../evidenceLibraries/legacyAdminLoginCodes.js";
 import type * as evidenceLibraries_members from "../evidenceLibraries/members.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
 import type * as evidenceLibraries_oauthClientSync from "../evidenceLibraries/oauthClientSync.js";
@@ -427,7 +426,6 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
   "evidenceLibraries/invitationActions": typeof evidenceLibraries_invitationActions;
   "evidenceLibraries/invitations": typeof evidenceLibraries_invitations;
-  "evidenceLibraries/legacyAdminLoginCodes": typeof evidenceLibraries_legacyAdminLoginCodes;
   "evidenceLibraries/members": typeof evidenceLibraries_members;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
   "evidenceLibraries/oauthClientSync": typeof evidenceLibraries_oauthClientSync;
