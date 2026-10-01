@@ -553,6 +553,11 @@ function migrateVersionSevenToEight(
   for (const row of next.sections) {
     if (row.sectionKey !== "features" || !isRecord(row.payload)) continue;
     const { login, userCollections, ...payload } = row.payload;
+    for (const [name, value] of [["login", login], ["userCollections", userCollections]] as const) {
+      if (value !== undefined && typeof value !== "boolean") {
+        throw new Error(`Saved features.${name} is not a yes or no`);
+      }
+    }
     // Off is the default, so only a library that had either switch on keeps one.
     row.payload =
       login === true || userCollections === true

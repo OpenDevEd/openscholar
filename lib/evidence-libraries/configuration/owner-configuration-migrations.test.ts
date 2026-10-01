@@ -124,6 +124,9 @@ describe("owner configuration migrations", () => {
     expect(features({ login: true, userCollections: false })).toEqual({ collections: true, readerAccounts: true });
     expect(features({ login: false, userCollections: false })).toEqual({ collections: true });
     expect(features({})).toEqual({ collections: true });
+    // A value that is not a yes or no cannot be read as either.
+    expect(() => features({ login: "true" })).toThrow();
+    expect(() => features({ userCollections: null })).toThrow();
   });
 
   it("adds an Identity assets container without changing its other values", () => {

@@ -61,6 +61,7 @@ import {
   OAuthClientBusyError,
   syncLibraryOAuthClientFor,
   syncLibrarySignIn,
+  type LibrarySignIn,
 } from "./oauthClientSync";
 
 /**
@@ -68,6 +69,18 @@ import {
  * sign-in callback. A failure leaves extra callbacks, which the next
  * deployment removes, so it does not undo a deployment that worked.
  */
+function namesCurrentOAuthClient(runtimeConfigJson: string, signIn: LibrarySignIn, encryptionKey: string) {
+  const oauth = (
+    JSON.parse(runtimeConfigJson) as {
+      authentication?: { openScholar?: { oauth?: { clientId?: string; clientSecret?: string } } };
+    }
+  ).authentication?.openScholar?.oauth;
+  return (
+    oauth?.clientId === signIn.oauth.clientId &&
+    oauth.clientSecret === decrypt(signIn.oauth.encryptedClientSecret, encryptionKey)
+  );
+}
+
 async function narrowLibraryOAuthCallbacks(
   ctx: ActionCtx,
   libraryId: Id<"evidenceLibraries">,
@@ -395,6 +408,14 @@ export const runConfigurationDeployment = internalAction({
         throw new CoolifyClientError(
           "CONFIGURATION_TARGET_INVALID",
           "The saved Evidence Library configuration target is invalid",
+        );
+      }
+      // A retry reuses the configuration it saved. If Clerk's application
+      // was replaced since, that copy names a client Clerk no longer has.
+      if (!namesCurrentOAuthClient(runtimeConfigJson, signIn, encryptionKey)) {
+        throw new CoolifyClientError(
+          "CONFIGURATION_TARGET_INVALID",
+          "OpenScholar sign-in for this library changed after this publish was prepared. Publish again.",
         );
       }
       const runtimeImage = requireTargetRuntimeImage(target.runtimeImage);

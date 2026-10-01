@@ -1418,6 +1418,66 @@ describe("Evidence Library configuration deployment", () => {
     ).resolves.toMatchObject({ status: "succeeded" });
   });
 
+  it("refuses to retry with a saved OAuth client Clerk no longer has", async () => {
+    const deployment = await activateChangedConfiguration("retry-replaced-oauth");
+    const network = createRuntimeNetwork({
+      libraryId: deployment.fixture.created.libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    stubFetch(network.fetchImpl);
+    const actionArgs = {
+      libraryId: deployment.fixture.created.libraryId,
+      operationId: deployment.activated.operationId,
+      attemptToken: deployment.attemptToken,
+      attemptCount: deployment.attemptCount,
+    };
+    network.failReadiness();
+    await deployment.fixture.t.action(
+      internal.evidenceLibraries.configurationDeploymentActions
+        .runConfigurationDeployment,
+      actionArgs,
+    );
+    await failSavedConfigurationDeployment(deployment);
+    network.restoreReadiness();
+    // Removed from Clerk by hand: the next sync makes a new application.
+    clerk.applications.clear();
+
+    await deployment.fixture.admin.mutation(
+      api.evidenceLibraries.configurationDeployment
+        .retryConfigurationDeployment,
+      {
+        libraryId: deployment.fixture.created.libraryId,
+        operationId: deployment.activated.operationId,
+      },
+    );
+    const claimed = await deployment.fixture.t.run((ctx) =>
+      ctx.db.get(deployment.activated.operationId),
+    );
+    assert(claimed?.configurationAttemptToken, "Expected the retry to claim the deployment");
+    const writesBeforeRetry = network.requests.filter(
+      ({ method, url }) =>
+        method === "PUT" && url.pathname === "/api/openscholar/configuration",
+    ).length;
+    await expect(
+      deployment.fixture.t.action(
+        internal.evidenceLibraries.configurationDeploymentActions
+          .runConfigurationDeployment,
+        {
+          ...actionArgs,
+          attemptToken: claimed.configurationAttemptToken,
+          attemptCount: claimed.attemptCount,
+        },
+      ),
+    ).resolves.toEqual({ status: "failed" });
+    expect(
+      network.requests.filter(
+        ({ method, url }) =>
+          method === "PUT" && url.pathname === "/api/openscholar/configuration",
+      ),
+    ).toHaveLength(writesBeforeRetry);
+  });
+
   it("bases a publish after a failed publish on the live revision", async () => {
     const deployment = await activateChangedConfiguration(
       "publish-after-failure",

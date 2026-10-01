@@ -203,7 +203,10 @@ export async function syncLibrarySignIn(
   const secretKey = requireRuntimeEnvironment("CLERK_SECRET_KEY", configurationError);
   const [row, instance] = await Promise.all([
     ctx.runQuery(internal.evidenceLibraries.oauthClients.readOAuthClient, { libraryId: input.libraryId }),
-    readClerkInstanceUrls(secretKey),
+    readClerkInstanceUrls(secretKey).catch(async (error: unknown) => {
+      if (error instanceof ClerkApiError) await recordFailure(ctx, input.libraryId, error);
+      throw error;
+    }),
   ]);
   if (!row?.clientId || !row.encryptedClientSecret) {
     throw new Error("The library has no OpenScholar sign-in application");
