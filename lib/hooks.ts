@@ -131,28 +131,32 @@ export function useQueryHistory(
     [setQuery],
   );
 
-  const canGoPrevious = loadedIndex > 0 || history.hasOlder;
-  const canGoNext = queryHistory.length > 0 && stepsBack > 0;
+  const canGoPrevious = stepsBack < history.total - 1;
+  const canGoNext = stepsBack > 0;
 
   // Older queries are read a few steps before the arrows reach them. A step to one not read
-  // yet, from a place kept from an earlier visit or pressed faster than the reads, reads it
-  // first; presses during that read are dropped, so each moves from where the last landed.
-  const isReading = useRef(false);
+  // yet, from a place kept from an earlier visit or pressed during a read, reads it first.
+  // Its result is dropped if anything moved meanwhile: another press, a new query, another
+  // search, or these arrows going away.
+  const readToken = useRef(0);
+  useEffect(() => () => { readToken.current += 1; }, [key]);
   const step = useCallback(async (delta: -1 | 1) => {
-    if (isReading.current) return;
     const target = stepsBack - delta;
     const loaded = queryHistory[loadedIndex + delta];
-    if (loaded && loadedIndex + delta <= HISTORY_READ_AHEAD && history.hasOlder) history.loadOlder();
-    let entry: QueryHistoryEntry | undefined = loaded;
-    if (!entry && history.hasOlder) {
-      isReading.current = true;
-      try { entry = await history.readAt(target); } finally { isReading.current = false; }
+    if (loaded) {
+      if (loadedIndex + delta <= HISTORY_READ_AHEAD && history.hasOlder) history.loadOlder();
+      setStepsBack(key, target);
+      showEntry(loaded);
+      return;
     }
-    if (!entry) return;
+    const token = ++readToken.current;
+    const positions = useQueryHistoryIndexStore.getState().indices;
+    const entry = await history.readAt(target);
+    if (!entry || token !== readToken.current || useQueryHistoryIndexStore.getState().indices !== positions) return;
     setStepsBack(key, target);
     showEntry(entry);
   }, [loadedIndex, stepsBack, queryHistory, showEntry, key, setStepsBack, history]);
-  const goToPrevious = useCallback(() => { void step(-1); }, [step]);
+  const goToPrevious = useCallback(() => { if (canGoPrevious) void step(-1); }, [canGoPrevious, step]);
   const goToNext = useCallback(() => { if (canGoNext) void step(1); }, [canGoNext, step]);
 
   return {
