@@ -199,13 +199,14 @@ function AddAdmin() {
           <DialogTitle>{t("add")}</DialogTitle>
         </DialogHeader>
         <form
-          className="space-y-4"
+          className="flex flex-col gap-4"
           onSubmit={(e) => {
             e.preventDefault();
             if (canSubmit) void submit();
           }}
         >
           <Segmented
+            className="self-start"
             label={t("how")}
             value={mode}
             onChange={(m) => {

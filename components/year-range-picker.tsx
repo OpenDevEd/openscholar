@@ -202,7 +202,7 @@ export function YearRangePicker({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-muted-foreground">
                     {tc("from")}
                   </label>
@@ -222,7 +222,7 @@ export function YearRangePicker({
                     placeholder={MIN_YEAR.toString()}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-muted-foreground">
                     {tc("to")}
                   </label>

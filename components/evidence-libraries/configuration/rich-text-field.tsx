@@ -227,7 +227,7 @@ function LinkButton({ active, href, onApply, onRemove }: { active: boolean; href
         </TooltipTrigger>
         <TooltipContent>Link</TooltipContent>
       </Tooltip>
-      <PopoverContent align="start" className="w-80 space-y-2 p-3">
+      <PopoverContent align="start" className="flex w-80 flex-col gap-2 p-3">
         <Input
           autoFocus
           value={draft}

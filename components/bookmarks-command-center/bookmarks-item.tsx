@@ -269,7 +269,7 @@ export function BookmarksItem({
 
               {/* Expansion */}
               {isEditing ? (
-                <div className="space-y-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                <div className="flex flex-col gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                   <Textarea
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
@@ -416,7 +416,7 @@ export function BookmarksItem({
       {/* Content */}
       <div className={cn("flex-1", isCompact ? "p-2.5" : "p-3")}>
         {isEditing ? (
-          <div className="space-y-3 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+          <div className="flex flex-col gap-3 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
             <Textarea
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}

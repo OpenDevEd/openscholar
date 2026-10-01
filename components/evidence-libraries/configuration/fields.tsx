@@ -425,7 +425,7 @@ export function ColourField({
                   style={{ background: valid ? value : "transparent" }}
                 />
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-64 space-y-3">
+              <PopoverContent align="start" className="flex w-64 flex-col gap-3">
                 <input
                   type="color"
                   aria-label={t("pickColour")}
@@ -658,7 +658,7 @@ export function ListRow({
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <div className="min-w-0 flex-1 space-y-3">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-col gap-3">{children}</div>
       {hideRemove ? null : (
         <Button
           type="button"

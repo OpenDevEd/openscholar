@@ -63,7 +63,7 @@ export function CollectionSelector({
 
   if (isCreating) {
     return (
-      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+      <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
         <div className="flex items-center gap-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
             <FolderPlus className="h-4 w-4 text-primary" />

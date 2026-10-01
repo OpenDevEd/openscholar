@@ -538,7 +538,7 @@ export function QuestionBuilder() {
           {t("addNewQuestion")}
         </h4>
 
-        <form onSubmit={handleAdd} className="space-y-3">
+        <form onSubmit={handleAdd} className="flex flex-col gap-3">
           <Input
             ref={questionInputRef}
             value={newQuestion.question}

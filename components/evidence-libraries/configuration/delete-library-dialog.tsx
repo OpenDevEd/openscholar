@@ -76,7 +76,7 @@ export function DeleteLibraryDialog({
           <AlertDialogTitle>{t("title")}</AlertDialogTitle>
           <AlertDialogDescription>{t("body", { name, address })}</AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           <Label htmlFor={inputId}>{t("typeToConfirm", { name })}</Label>
           <Input
             id={inputId}
