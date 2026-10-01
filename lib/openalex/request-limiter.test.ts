@@ -11,10 +11,12 @@ describe("RequestLimiter", () => {
     expect(limiter.take("a", limit, 1, 20_000)).toBe(false);
   });
 
-  it("stops at the day's total even when the minute has refilled", () => {
+  it("stops at the day's total even when the minute has refilled, until the day is over", () => {
     const limiter = new RequestLimiter();
     for (let minute = 0; minute < 5; minute++) limiter.take("a", limit, 1, minute * 60_000);
     expect(limiter.take("a", limit, 1, 10 * 60_000)).toBe(false);
+    expect(limiter.take("a", limit, 1, 23 * 60 * 60_000)).toBe(false);
+    expect(limiter.take("a", limit, 1, 24 * 60 * 60_000)).toBe(true);
   });
 
   it("takes several requests at once only when all fit, and keeps visitors apart", () => {

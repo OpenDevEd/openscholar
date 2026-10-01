@@ -75,6 +75,9 @@ async function callOpenAlexSDK(
     return { ok: true, data };
   } catch (error) {
     console.error("OpenAlex SDK Error:", error);
+    // The probe asks OpenAlex again, so it's counted too.
+    const limited = await spendOne();
+    if (limited) return limited;
     const { status, message } = await probeOpenAlexError(searchParams);
     return { ok: false, status, message };
   }

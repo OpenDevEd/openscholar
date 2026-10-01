@@ -17,7 +17,9 @@ const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
 
 type Bucket = { tokens: number; at: number };
-type Buckets = { minute: Bucket; day: Bucket };
+/** Requests counted since a day began: a fixed window, so a day never allows more than its total. */
+type Day = { used: number; since: number };
+type Buckets = { minute: Bucket; day: Day };
 
 /** A token bucket's tokens at `now`, refilled at `capacity` per `period`. */
 function refill(bucket: Bucket, capacity: number, period: number, now: number) {
@@ -25,26 +27,26 @@ function refill(bucket: Bucket, capacity: number, period: number, now: number) {
 }
 
 /**
- * Token buckets per key, held in this server's memory.
+ * A minute's token bucket and a day's fixed count per key, held in this server's memory.
  *
  * ponytail: per process. dev.openscholar.ai runs as one container, so this is every
- * request; with several instances each would allow the full limit, and the buckets
- * would move to Convex's rateLimits table.
+ * request; with several instances each would allow the full limit, and the counts
+ * would move to Convex's rateLimits table. A restart forgets the counts.
  */
 export class RequestLimiter {
   private readonly buckets = new Map<string, Buckets>();
 
   constructor(private readonly maxKeys = 100_000) {}
 
-  /** Takes `count` requests for `key`; false, taking none, when either bucket is short. */
+  /** Takes `count` requests for `key`; false, taking none, when the minute or the day is short. */
   take(key: string, limit: RequestLimit, count = 1, now = Date.now()): boolean {
     const held = this.buckets.get(key);
     const minute = refill(held?.minute ?? { tokens: limit.perMinute, at: now }, limit.perMinute, MINUTE, now);
-    const day = refill(held?.day ?? { tokens: limit.perDay, at: now }, limit.perDay, DAY, now);
-    const allowed = minute.tokens >= count && day.tokens >= count;
+    const day = held && now - held.day.since < DAY ? { ...held.day } : { used: 0, since: now };
+    const allowed = minute.tokens >= count && day.used + count <= limit.perDay;
     if (allowed) {
       minute.tokens -= count;
-      day.tokens -= count;
+      day.used += count;
     }
     // Re-inserted last, so the oldest key is first to go when the map is full.
     this.buckets.delete(key);
