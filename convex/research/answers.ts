@@ -94,18 +94,23 @@ async function paperRow(ctx: Read, screeningId: Id<"screenings">, paperId: strin
   return new Map(row ? [[paperId, row]] : []);
 }
 
+/** Answers to set: the model's carry its confidence in each when it reported one. */
+type NewAnswers = Array<Responses[number]["responses"][number] & { confidence?: number }>;
+
 /**
  * Sets some of one paper's answers, reading only that paper's row. Setting the same answer
  * from a different source is a change: a person confirming the model's answer is recorded.
+ * The model's own answer stays with each answer whoever changes it later.
  */
-export async function setPaperAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, paperId: string, responses: Responses[number]["responses"], setBy: AnswerSource, at: number) {
+export async function setPaperAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, paperId: string, responses: NewAnswers, setBy: AnswerSource, at: number) {
   const screening = await ensureScreening(ctx, userId, searchId);
   const existing = await paperRow(ctx, screening._id, paperId);
   const answers = [...(existing.get(paperId)?.answers ?? [])];
-  for (const { question, response } of responses) {
+  for (const { question, response, confidence } of responses) {
     const index = answers.findIndex((value) => value.question === question);
     if (index >= 0 && answers[index].answer === response && answers[index].setBy === setBy) continue;
-    const value = { question, answer: response, setBy, updatedAt: at };
+    const model = setBy === "model" ? { answer: response, ...(confidence === undefined ? {} : { confidence }), at } : answers[index]?.model;
+    const value = { question, answer: response, setBy, updatedAt: at, ...(model ? { model } : {}) };
     if (index >= 0) answers[index] = value;
     else answers.push(value);
   }
@@ -137,7 +142,9 @@ export async function replaceAnswers(ctx: Write, userId: Id<"users">, searchId: 
       paperId,
       answers: responses.map(({ question, response }) => {
         const kept = previous.find((value) => value.question === question && value.answer === response);
-        return kept ?? { question, answer: response, setBy, updatedAt: at };
+        // A changed answer keeps the model's own answer to the question.
+        const model = previous.find((value) => value.question === question)?.model;
+        return kept ?? { question, answer: response, setBy, updatedAt: at, ...(model ? { model } : {}) };
       }),
     });
   }

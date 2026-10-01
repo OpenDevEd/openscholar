@@ -109,7 +109,10 @@ export class ResearchSession {
       removeScreeningQuestion: (id, index) => replaceQuestion(id, index, null),
       clearScreeningQuestions: id => edit(id, { kind: "clearScreeningQuestions" }),
       setScreeningResponse: (id, paperId, question, response) => edit(id, { kind: "responses", paperId, responses: [{ question, response }], by: "person" }),
-      setScreeningResponses: (id, paperId, responses) => edit(id, { kind: "responses", paperId, responses: serializeResponses(responses), by: "model" }),
+      setScreeningResponses: (id, paperId, responses, confidences) => edit(id, {
+        kind: "responses", paperId, by: "model",
+        responses: serializeResponses(responses).map((value) => (confidences?.[value.question] === undefined ? value : { ...value, confidence: confidences[value.question] })),
+      }),
       getScreeningResponse: (id, paperId, question) => current(id)?.screeningResponses[paperId]?.[question],
       clearScreeningResponses: (id, paperId) => edit(id, { kind: "clearResponses", ...(paperId === undefined ? {} : { paperId }) }),
       removeScreeningQuestionFromAllPapers: (id, question) => edit(id, { kind: "removeQuestionResponses", question }),

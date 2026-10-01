@@ -412,9 +412,9 @@ export function ResultsList({
 
   // Stable callback for batch screening results
   const handleBatchResults = useCallback(
-    (paperId: string, responses: Record<string, boolean | null>) => {
+    (paperId: string, responses: Record<string, boolean | null>, confidences?: Record<string, number>) => {
       if (searchId) {
-        setScreeningResponses(searchId, paperId, responses);
+        setScreeningResponses(searchId, paperId, responses, confidences);
       }
     },
     [searchId, setScreeningResponses]

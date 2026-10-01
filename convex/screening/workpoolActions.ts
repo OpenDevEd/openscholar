@@ -23,6 +23,8 @@ import { captureServerEvent } from "../../lib/posthog-server";
 
 type ScreeningActionResult = {
   responses: Record<string, boolean | null>;
+  // The confidence in each answer, under the same encoded keys.
+  confidences: Record<string, number>;
   confidence: number;
 };
 
@@ -50,6 +52,7 @@ export const screenPaperAction = internalAction({
   handler: async (ctx, args): Promise<ScreeningActionResult> => {
     const emptyResult: ScreeningActionResult = {
       responses: {},
+      confidences: {},
       confidence: 0,
     };
 
@@ -161,7 +164,7 @@ export const screenPaperAction = internalAction({
             // Return tracking even for failures so the $ai_generation event is sent.
             // The workpool will mark this item as failed via the thrown error.
             return {
-              result: { responses: {}, confidence: 0 },
+              result: { responses: {}, confidences: {}, confidence: 0 },
               totalUsage,
               trackingEntries,
             };
@@ -180,9 +183,10 @@ export const screenPaperAction = internalAction({
         screeningResult.responses
       );
 
-      // 7. Return for onComplete handler
+      // 7. Return for onComplete handler, with the confidence in each answer under the same keys
       return {
         responses: encodedResponses,
+        confidences: encodeQuestionResponseMap(screeningResult.confidences),
         confidence: screeningResult.confidence,
       };
     } catch (error: unknown) {

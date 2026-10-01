@@ -17,9 +17,9 @@ export function decodeQuestionKey(key: string): string {
   }
 }
 
-export function encodeQuestionResponseMap(
-  responses: Record<string, boolean | null>
-): Record<string, boolean | null> {
+export function encodeQuestionResponseMap<T>(
+  responses: Record<string, T>
+): Record<string, T> {
   return Object.fromEntries(
     Object.entries(responses).map(([question, response]) => [
       encodeQuestionKey(question),
@@ -28,9 +28,9 @@ export function encodeQuestionResponseMap(
   );
 }
 
-export function decodeQuestionResponseMap(
-  responses: Record<string, boolean | null>
-): Record<string, boolean | null> {
+export function decodeQuestionResponseMap<T>(
+  responses: Record<string, T>
+): Record<string, T> {
   return Object.fromEntries(
     Object.entries(responses).map(([key, response]) => [
       decodeQuestionKey(key),

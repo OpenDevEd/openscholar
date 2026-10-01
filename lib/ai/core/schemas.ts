@@ -21,22 +21,22 @@ export const screeningQuestionsSchema = z.object({
 
 export function createScreeningResponsesSchema(questions: string[]) {
   const responseProperties: Record<string, z.ZodTypeAny> = {}
+  const confidenceProperties: Record<string, z.ZodTypeAny> = {}
 
   for (const question of questions) {
     responseProperties[question] = z.union([z.boolean(), z.null()]).describe(
       `Response to: "${question}" (true=yes, false=no, null=unclear)`
     )
+    confidenceProperties[question] = z.number().min(0).max(1).describe(`Confidence in the response to: "${question}" (0-1)`)
   }
 
   return z.object({
     responses: z.object(responseProperties).describe(
       'An object where keys are screening questions and values are boolean responses (true=yes, false=no, null=unclear)'
     ),
-    confidence: z
-      .number()
-      .min(0)
-      .max(1)
-      .describe('Overall confidence level in the screening results (0-1)'),
+    confidences: z.object(confidenceProperties).describe(
+      'An object where keys are the same screening questions and values are the confidence in each response (0-1)'
+    ),
   })
 }
 

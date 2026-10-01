@@ -66,18 +66,20 @@ describe("ai schemas", () => {
     const questions = ["Is this RCT?", "Adults only?"];
     const schema = createScreeningResponsesSchema(questions);
 
-    it("accepts valid responses with boolean values", () => {
+    const confidences = (rct: number, adults: number) => ({ "Is this RCT?": rct, "Adults only?": adults });
+
+    it("accepts valid responses with boolean values, and a confidence for each", () => {
       const result = schema.parse({
         responses: { "Is this RCT?": true, "Adults only?": false },
-        confidence: 0.85,
+        confidences: confidences(0.85, 0.6),
       });
-      expect(result.confidence).toBe(0.85);
+      expect(result.confidences).toEqual(confidences(0.85, 0.6));
     });
 
     it("accepts null response values", () => {
       const result = schema.parse({
         responses: { "Is this RCT?": null, "Adults only?": true },
-        confidence: 0.5,
+        confidences: confidences(0.5, 0.9),
       });
       expect(result.responses["Is this RCT?"]).toBeNull();
     });
@@ -85,7 +87,7 @@ describe("ai schemas", () => {
     it("rejects confidence above 1", () => {
       const result = schema.safeParse({
         responses: { "Is this RCT?": true, "Adults only?": false },
-        confidence: 1.5,
+        confidences: confidences(1.5, 0.5),
       });
       expect(result.success).toBe(false);
     });
@@ -93,14 +95,15 @@ describe("ai schemas", () => {
     it("rejects negative confidence", () => {
       const result = schema.safeParse({
         responses: { "Is this RCT?": true, "Adults only?": false },
-        confidence: -0.1,
+        confidences: confidences(0.5, -0.1),
       });
       expect(result.success).toBe(false);
     });
 
-    it("rejects missing confidence", () => {
+    it("rejects a question without its confidence", () => {
       const result = schema.safeParse({
         responses: { "Is this RCT?": true, "Adults only?": false },
+        confidences: { "Is this RCT?": 0.8 },
       });
       expect(result.success).toBe(false);
     });
