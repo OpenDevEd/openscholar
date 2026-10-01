@@ -72,27 +72,58 @@ export async function hasPlanFeature(
 }
 
 export const writeSnapshot = internalMutation({
-  args: { userId: v.id("users"), snapshot: billingAccountSnapshotValidator },
+  // `withCard` says the snapshot's card was fetched; without it the cached card stays.
+  args: { userId: v.id("users"), snapshot: billingAccountSnapshotValidator, withCard: v.boolean() },
   returns: v.null(),
-  handler: async (ctx, { userId, snapshot }) => {
+  handler: async (ctx, { userId, snapshot, withCard }) => {
     const existing = await readAccount(ctx, userId);
-    const row = { ...snapshot, userId, refreshedAt: Date.now() };
+    const card = withCard ? snapshot.card : existing?.card;
+    const row = { ...snapshot, card, userId, refreshedAt: Date.now() };
     if (existing) await ctx.db.replace(existing._id, row);
     else await ctx.db.insert("billingAccounts", row);
     return null;
   },
 });
 
-/** Fetches the customer from Autumn and stores the snapshot. */
+/**
+ * Fetches the customer from Autumn and stores the snapshot. The card costs
+ * Autumn a call to Stripe, so only billing screens and card events ask for it.
+ */
 export async function refreshAccount(
   ctx: ActionCtx,
   userId: Id<"users">,
-  profile: { email?: string; name?: string } = {},
+  options: { email?: string; name?: string; card?: boolean } = {},
 ): Promise<BillingAccountSnapshot> {
-  const snapshot = snapshotFromCustomer(await autumn.customer(userId, profile));
-  await ctx.runMutation(internal.billing.accounts.writeSnapshot, { userId, snapshot });
+  const snapshot = snapshotFromCustomer(await autumn.customer(userId, options));
+  await ctx.runMutation(internal.billing.accounts.writeSnapshot, { userId, snapshot, withCard: options.card ?? false });
   return snapshot;
 }
+
+/** How long charges wait before the account re-reads Autumn, so a burst of them reads it once. */
+const REFRESH_DELAY_MS = 3_000;
+/** A queued refresh older than this failed; the next charge queues another. */
+const REFRESH_STUCK_MS = 60_000;
+
+/**
+ * Re-reads the account from Autumn shortly, unless a re-read is already
+ * queued. Charges call it instead of reading Autumn themselves, so parallel
+ * work doesn't write the account row once per charge.
+ */
+export async function requestRefresh(ctx: MutationCtx, userId: Id<"users">) {
+  const account = await readAccount(ctx, userId);
+  if (account?.refreshQueuedAt && Date.now() - account.refreshQueuedAt < REFRESH_STUCK_MS) return;
+  if (account) await ctx.db.patch("billingAccounts", account._id, { refreshQueuedAt: Date.now() });
+  await ctx.scheduler.runAfter(REFRESH_DELAY_MS, internal.billing.accounts.refresh, { userId });
+}
+
+export const refresh = internalAction({
+  args: { userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    await refreshAccount(ctx, userId);
+    return null;
+  },
+});
 
 /**
  * Creates the Autumn customer and grants the one-time signup credits.
@@ -134,7 +165,7 @@ export const refreshMine = action({
     if (!user) return null;
     const account = await ctx.runQuery(internal.billing.accounts.forUser, { userId: user._id });
     if (account && Date.now() - account.refreshedAt < REFRESH_AFTER_MS) return null;
-    await refreshAccount(ctx, user._id);
+    await refreshAccount(ctx, user._id, { card: true });
     return null;
   },
 });

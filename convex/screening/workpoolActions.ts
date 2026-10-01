@@ -116,6 +116,7 @@ export const screenPaperAction = internalAction({
           userId: job.userId as Id<"users">,
           chargeId: `screening:${args.resultId}:${crypto.randomUUID()}`,
           estimate: Math.ceil(ESTIMATED_CREDITS_PER_PAPER),
+          hold: false,
           kind: "screening",
           description: "Bulk screening",
           model: serverModelSlug,

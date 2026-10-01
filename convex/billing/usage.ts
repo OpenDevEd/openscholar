@@ -78,7 +78,7 @@ export const pageMine = query({
     if (!user) return empty;
     if (jobId && (await ctx.db.get("extractionJobs", jobId))?.userId !== user._id) return empty;
     const namespace = jobId ? jobSpace(jobId) : userSpace(user._id);
-    const total = await usageAgg.count(ctx, { namespace });
+    const total = await usageAgg.count(ctx, { namespace, stale: true });
     const size = Math.min(Math.max(1, Math.floor(pageSize)), MAX_PAGE_SIZE);
     const lastPage = Math.max(1, Math.ceil(total / size));
     const start = (Math.min(Math.max(1, Math.floor(page)), lastPage) - 1) * size;
@@ -88,6 +88,7 @@ export const pageMine = query({
     const items = await usageAgg.atBatch(
       ctx,
       Array.from({ length: end - start }, (_, i) => ({ namespace, offset: -(start + i) - 1 })),
+      { stale: true },
     );
     const rows = [];
     for (const item of items) {
@@ -123,6 +124,7 @@ export const spendingMine = query({
           ...(day < span - 1 ? { upper: { key: since + (day + 1) * DAY, inclusive: false } } : {}),
         },
       })),
+      { stale: true },
     );
     return cells.map((cell, i) => ({ ...cell, credits: sums[i]! })).filter((cell) => cell.credits > 0);
   },

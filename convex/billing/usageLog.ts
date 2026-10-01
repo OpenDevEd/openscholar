@@ -16,24 +16,24 @@ export const userSpace = (userId: Id<"users">) => `user:${userId}`;
 export const jobSpace = (jobId: Id<"extractionJobs">) => `job:${jobId}`;
 export const spendSpace = (userId: Id<"users">, kind: Doc<"billingUsage">["kind"]) => `spend:${userId}:${kind}`;
 
-/** Counts a charge. Safe to call again for the same row. */
+/**
+ * Counts a charge. Safe to call again for the same row. The counts are queued
+ * and applied by the aggregate's own batch worker, so charges settling at the
+ * same moment don't conflict on the newest nodes; reads use `stale: true`.
+ */
 export async function countUsage(
   ctx: MutationCtx,
   row: Pick<Doc<"billingUsage">, "_id" | "userId" | "jobId" | "createdAt" | "kind" | "credits">,
 ) {
-  await usageAgg.insertIfDoesNotExist(ctx, { namespace: userSpace(row.userId), key: row.createdAt, id: row._id });
-  // Refunds are recorded before their credits are known, and the chart leaves them out.
-  if (row.kind !== "refund") {
-    await usageAgg.insertIfDoesNotExist(ctx, {
-      namespace: spendSpace(row.userId, row.kind),
-      key: row.createdAt,
-      id: row._id,
-      sumValue: row.credits,
-    });
-  }
-  if (row.jobId) {
-    await usageAgg.insertIfDoesNotExist(ctx, { namespace: jobSpace(row.jobId), key: row.createdAt, id: row._id });
-  }
+  const item = { key: row.createdAt, id: row._id };
+  await usageAgg.enqueueBatch(ctx, [
+    { type: "insertIfDoesNotExist", namespace: userSpace(row.userId), ...item },
+    // Refunds are recorded before their credits are known, and the chart leaves them out.
+    ...(row.kind !== "refund"
+      ? [{ type: "insertIfDoesNotExist" as const, namespace: spendSpace(row.userId, row.kind), ...item, sumValue: row.credits }]
+      : []),
+    ...(row.jobId ? [{ type: "insertIfDoesNotExist" as const, namespace: jobSpace(row.jobId), ...item }] : []),
+  ]);
 }
 
 /** The one way to add a charge row: inserts it and counts it. */

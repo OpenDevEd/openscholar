@@ -63,7 +63,7 @@ export const choosePlan = action({
       planId: plan,
       successUrl: returnUrl("checkout"),
     });
-    await refreshAccount(ctx, user._id);
+    await refreshAccount(ctx, user._id, { card: true });
     return { url: result.payment_url };
   },
 });
@@ -74,10 +74,10 @@ export const keepPlan = action({
   returns: v.null(),
   handler: async (ctx): Promise<null> => {
     const user = await requireUser(ctx);
-    const account = await refreshAccount(ctx, user._id);
+    const account = await refreshAccount(ctx, user._id, { card: true });
     if (account.plan && account.changesAt) {
       await autumn.update({ customerId: user._id, planId: account.plan, cancelAction: "uncancel" });
-      await refreshAccount(ctx, user._id);
+      await refreshAccount(ctx, user._id, { card: true });
     }
     return null;
   },
@@ -106,7 +106,7 @@ export const previewPlan = action({
     await requireChoosablePlan(ctx, plan);
     const [preview, customer] = await Promise.all([
       autumn.previewAttach(user._id, plan),
-      autumn.customer(user._id),
+      autumn.customer(user._id, { card: true }),
     ]);
     const card = customer.payment_method?.card;
     return {
@@ -136,7 +136,7 @@ export const buyCredits = action({
       credits,
       successUrl: returnUrl("topup"),
     });
-    await refreshAccount(ctx, user._id);
+    await refreshAccount(ctx, user._id, { card: true });
     return { url: result.payment_url };
   },
 });

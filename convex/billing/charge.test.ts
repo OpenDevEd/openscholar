@@ -50,7 +50,9 @@ async function usageFor(t: ReturnType<typeof convexTest>, chargeId: string) {
   return rows.find((row) => row.chargeId === chargeId) ?? null;
 }
 
-async function hold(userId: Id<"users">, chargeId: string, credits: number) {
+/** Holds credits as reserveCredits does: the hold with its scheduled release, then Autumn's lock. */
+async function hold(t: ReturnType<typeof convexTest>, userId: Id<"users">, chargeId: string, credits: number) {
+  await t.mutation(internal.billing.charge.hold, { userId, chargeId, credits, expiresAt: Date.now() + 60_000 });
   const response = await fetch("https://autumn.test/v1/balances.check", {
     method: "POST",
     body: JSON.stringify({
@@ -74,7 +76,7 @@ describe("settling a charge", () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.1)));
     const t = convexTest(schema);
     const { userId, jobId } = await seedChat(t, 1_000);
-    await hold(userId, "chat:over", 200);
+    await hold(t, userId, "chat:over", 200);
 
     await t.action(internal.chat.billing.settleFromOpenRouter, {
       userId,
@@ -97,7 +99,7 @@ describe("settling a charge", () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.01)));
     const t = convexTest(schema);
     const { userId, jobId } = await seedChat(t, 1_000);
-    await hold(userId, "chat:stopped", 200);
+    await hold(t, userId, "chat:stopped", 200);
 
     await t.action(internal.chat.billing.settleFromOpenRouter, {
       userId,
@@ -116,7 +118,7 @@ describe("settling a charge", () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.01)));
     const t = convexTest(schema);
     const { userId, jobId } = await seedChat(t, 1_000);
-    await hold(userId, "chat:late", 200);
+    await hold(t, userId, "chat:late", 200);
     await t.action(internal.billing.charge.releaseLock, { userId, chargeId: "chat:late", attempt: 0 });
     expect(fakeAutumn.balance(userId)).toBe(1_000);
 
@@ -140,8 +142,8 @@ describe("settling a charge", () => {
     vi.stubGlobal("fetch", fakeAutumnFetch(openRouterGeneration(0.01)));
     const t = convexTest(schema);
     const { userId, jobId } = await seedChat(t, 1_000);
-    await hold(userId, "chat:retry", 200);
-    fakeAutumn.failNextTrack = true;
+    await hold(t, userId, "chat:retry", 200);
+    fakeAutumn.failNext = "balances.finalize";
 
     vi.useFakeTimers();
     await t.action(internal.chat.billing.settleFromOpenRouter, {
@@ -160,5 +162,89 @@ describe("settling a charge", () => {
     // $0.01 is 130 credits.
     expect(fakeAutumn.balance(userId)).toBe(1_000 - 130);
     expect((await usageFor(t, "chat:retry"))?.credits).toBe(130);
+  });
+});
+
+describe("holding and charging", () => {
+  beforeEach(() => fakeAutumn.reset());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  const usage = { kind: "screening" as const, description: "Bulk screening" };
+  const calls = (path: string) => fakeAutumn.calls.filter((call) => call.path === path);
+  const releases = (t: ReturnType<typeof convexTest>) =>
+    t.run(async (ctx) =>
+      (await ctx.db.system.query("_scheduled_functions").collect()).filter((fn) => fn.name.includes("releaseLock")),
+    );
+
+  it("confirms a held charge at its real amount with one call, and cancels its release", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 1_000);
+    await hold(t, userId, "c:held", 200);
+
+    await t.action(internal.billing.charge.retrySettle, { userId, chargeId: "c:held", credits: 130, usage, attempt: 0 });
+
+    expect(fakeAutumn.balance(userId)).toBe(870);
+    expect(fakeAutumn.locks.size).toBe(0);
+    expect(calls("balances.finalize").map((call) => call.body)).toEqual([{ lock_id: "c:held", action: "confirm", override_value: 130 }]);
+    expect(calls("balances.track")).toHaveLength(0);
+    expect((await releases(t)).map((fn) => fn.state.kind)).toEqual(["canceled"]);
+    expect(await t.run((ctx) => ctx.db.query("billingHolds").collect())).toEqual([]);
+  });
+
+  it("doesn't charge again when a confirm landed and recording it failed", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 1_000);
+    await hold(t, userId, "c:landed", 200);
+    // The first attempt began, confirmed, and failed before recording the charge.
+    await t.mutation(internal.billing.charge.beginSettle, { chargeId: "c:landed" });
+    await fetch("https://autumn.test/v1/balances.finalize", {
+      method: "POST",
+      body: JSON.stringify({ lock_id: "c:landed", action: "confirm", override_value: 130 }),
+    });
+
+    await t.action(internal.billing.charge.retrySettle, { userId, chargeId: "c:landed", credits: 130, usage, attempt: 0 });
+
+    expect(fakeAutumn.balance(userId)).toBe(870);
+    expect((await usageFor(t, "c:landed"))?.credits).toBe(130);
+  });
+
+  it("charges bulk work without a hold in one track, and zeroes the cached balance when it runs out", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 10);
+
+    await t.action(internal.billing.charge.retrySettle, { userId, chargeId: "c:bulk", credits: 30, usage, attempt: 0 });
+
+    expect(calls("balances.track")).toHaveLength(1);
+    expect(calls("balances.check")).toHaveLength(0);
+    expect((await usageFor(t, "c:bulk"))?.credits).toBe(10);
+    // Before the queued refresh runs, so parallel papers stop at once.
+    expect(await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())?.balance)).toBe(0);
+  });
+
+  it("re-reads the account from Autumn once for a burst of charges, without asking Stripe for the card", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    vi.useFakeTimers();
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 1_000);
+    await t.run(async (ctx) => {
+      const account = await ctx.db.query("billingAccounts").first();
+      await ctx.db.patch("billingAccounts", account!._id, { card: { brand: "visa", last4: "4242" } });
+    });
+
+    for (let i = 0; i < 5; i++) {
+      await t.action(internal.billing.charge.retrySettle, { userId, chargeId: `c:burst${i}`, credits: 10, usage, attempt: 0 });
+    }
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(calls("customers.get_or_create").map((call) => call.body.expand)).toEqual([undefined]);
+    const account = await t.run((ctx) => ctx.db.query("billingAccounts").first());
+    expect(account).toMatchObject({ balance: 950, card: { brand: "visa", last4: "4242" } });
+    expect(account?.refreshQueuedAt).toBeUndefined();
   });
 });

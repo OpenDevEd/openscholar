@@ -22,7 +22,6 @@ import { resolveOpenRouterModel } from "../chat/provider";
 import type { AIProvider } from "../../lib/types/ai.types";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType, type GenericValidator } from "convex/values";
-import { captureAIGenerationServer, captureAIGenerationBatchServer } from "../../lib/posthog-server";
 import {
   type AITrackingEntry,
   truncateForTracking,
@@ -171,11 +170,17 @@ export type CreditTarget = {
   description: string;
   jobId?: Id<"extractionJobs">;
   model?: string;
+  /**
+   * False for bulk work of small, bounded items (a Screen all paper): nothing
+   * is held; the work runs while the cached balance has credits, and its
+   * cost is charged after with one `track`, as Firecrawl bills each page of a crawl.
+   */
+  hold?: boolean;
 };
 
 /**
- * Runs AI work that costs credits. Reserves `estimate` first and refuses the
- * work when the balance can't cover it. Afterwards it charges what the tokens
+ * Runs AI work that costs credits. Reserves `estimate` first (unless `hold`
+ * is false) and refuses the work when the balance can't cover it. Afterwards it charges what the tokens
  * actually cost; releases the reservation if the work throws.
  */
 export async function withCredits<T>(
@@ -184,12 +189,11 @@ export async function withCredits<T>(
   pricing: Pricing,
   work: () => Promise<{ result: T; usage: Usage }>,
 ): Promise<{ result: T; credits: number; usage: Usage }> {
-  const reserved = await reserveCredits(ctx, {
-    userId: target.userId,
-    chargeId: target.chargeId,
-    credits: target.estimate,
-  });
-  if (!reserved) {
+  const allowed =
+    target.hold === false
+      ? ((await ctx.runQuery(internal.billing.accounts.forUser, { userId: target.userId }))?.balance ?? 0) > 0
+      : await reserveCredits(ctx, { userId: target.userId, chargeId: target.chargeId, credits: target.estimate });
+  if (!allowed) {
     throw createError(
       "AI_INSUFFICIENT_CREDITS",
       `Insufficient credits: this needs about ${target.estimate} credits`,
@@ -199,7 +203,7 @@ export async function withCredits<T>(
   try {
     outcome = await work();
   } catch (error) {
-    await releaseCredits(ctx, target);
+    if (target.hold !== false) await releaseCredits(ctx, target);
     throw error;
   }
   const credits = creditsForUsage(outcome.usage, pricing);
@@ -269,14 +273,14 @@ export async function withAuthAndCreditsBatch<T>(
       },
     );
     if (trackingEntries && trackingEntries.length > 0) {
-      await captureAIGenerationBatchServer(
-        user.clerkId,
-        "openrouter" as AIProvider,
-        modelSlug,
-        trackingEntries.map((entry) => ({ ...entry, creditsDeducted: credits })),
-      );
+      await ctx.scheduler.runAfter(0, internal.lib.analytics.captureAIGenerationBatch, {
+        distinctId: user.clerkId,
+        provider: "openrouter",
+        modelId: modelSlug,
+        entries: trackingEntries.map((entry) => ({ ...entry, creditsDeducted: credits })),
+        });
     } else {
-      await captureAIGenerationServer({
+      await ctx.scheduler.runAfter(0, internal.lib.analytics.captureAIGeneration, { params: {
         distinctId: user.clerkId,
         provider: "openrouter" as AIProvider,
         modelId: modelSlug,
@@ -286,7 +290,7 @@ export async function withAuthAndCreditsBatch<T>(
         input: `Batch: ${operation.description}`,
         output: "Completed (aggregated)",
         creditsDeducted: credits,
-      });
+      } });
     }
     return result;
   } catch (error) {
@@ -318,12 +322,12 @@ export async function withUserCredits<T>(
       return { result: outcome.result, usage: outcome.totalUsage };
     });
     if (trackingEntries && trackingEntries.length > 0) {
-      await captureAIGenerationBatchServer(
-        user.clerkId,
-        "openrouter" as AIProvider,
-        target.model ?? SERVER_AI_CONFIG.model,
-        trackingEntries.map((entry) => ({ ...entry, creditsDeducted: credits })),
-      );
+      await ctx.scheduler.runAfter(0, internal.lib.analytics.captureAIGenerationBatch, {
+        distinctId: user.clerkId,
+        provider: "openrouter",
+        modelId: target.model ?? SERVER_AI_CONFIG.model,
+        entries: trackingEntries.map((entry) => ({ ...entry, creditsDeducted: credits })),
+        });
     }
     return result;
   } catch (error) {
@@ -377,7 +381,7 @@ export function createAIAction<
               return { result: output, usage };
             },
           );
-          await captureAIGenerationServer({
+          await ctx.scheduler.runAfter(0, internal.lib.analytics.captureAIGeneration, { params: {
             distinctId: user.clerkId,
             provider: "openrouter" as AIProvider,
             modelId: modelSlug,
@@ -388,10 +392,10 @@ export function createAIAction<
             output: truncateForTracking(JSON.stringify(result)),
             temperature: config.temperature,
             creditsDeducted: credits,
-          });
+          } });
           return formatOutput(result, args);
         } catch (error) {
-          await captureAIGenerationServer({
+          await ctx.scheduler.runAfter(0, internal.lib.analytics.captureAIGeneration, { params: {
             distinctId: user.clerkId,
             provider: "openrouter" as AIProvider,
             modelId: modelSlug,
@@ -405,7 +409,7 @@ export function createAIAction<
             httpStatus: extractHttpStatus(error),
             errorCode: extractErrorCode(error),
             temperature: config.temperature,
-          });
+          } });
           throw error;
         }
       } catch (error) {

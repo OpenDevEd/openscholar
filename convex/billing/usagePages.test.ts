@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { insertUsage } from "./usageLog";
@@ -14,6 +14,15 @@ async function setup() {
   return { t, userId, jobId, me: t.withIdentity({ subject: "clerk_pages" }) };
 }
 
+/** Charges are counted by the aggregate's batch worker, a moment after they're recorded. */
+async function counted(t: ReturnType<typeof convexTest>) {
+  vi.useFakeTimers();
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  vi.useRealTimers();
+}
+
+afterEach(() => vi.useRealTimers());
+
 describe("charge pages", () => {
   it("pages through charges newest first, with the total, overall and for one job", async () => {
     const { t, userId, jobId, me } = await setup();
@@ -25,6 +34,7 @@ describe("charge pages", () => {
         });
       }
     });
+    await counted(t);
 
     const first = await me.query(api.billing.usage.pageMine, { page: 1, pageSize: 4 });
     expect(first.total).toBe(11);
@@ -48,6 +58,7 @@ describe("charge pages", () => {
     await t.mutation(internal.migrations.countBillingUsage.run, {});
     // Running it again counts nothing twice.
     await t.mutation(internal.migrations.countBillingUsage.run, {});
+    await counted(t);
     const page = await me.query(api.billing.usage.pageMine, { page: 1, pageSize: 10 });
     expect(page.total).toBe(3);
     expect(page.rows.map((r) => r.credits)).toEqual([3, 2, 1]);
@@ -66,6 +77,7 @@ describe("charge pages", () => {
       await row("d", "refund", 0, since + DAY);
       await row("before", "chat", 999, since - 1);
     });
+    await counted(t);
     const cells = await me.query(api.billing.usage.spendingMine, { since, days: 2 });
     expect(cells).toEqual(
       expect.arrayContaining([

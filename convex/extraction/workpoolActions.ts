@@ -19,7 +19,6 @@ import {
   truncateForTracking,
   type AITrackingEntry,
 } from "../../lib/posthog-ai-shared";
-import { captureAIGenerationServer } from "../../lib/posthog-server";
 import type { AIProvider } from "../../lib/types";
 import { createError } from "../lib/errors";
 import { downloadPdf, type DownloadPdfResult } from "../../lib/pdf/download";
@@ -1148,7 +1147,7 @@ export function batchSkipReasonToWorkerSkipReason(reason: string): WorkerSkipRea
   return "job_terminal";
 }
 
-export async function captureCompletedQuestionTracking({
+export async function captureCompletedQuestionTracking(ctx: ActionCtx, {
   distinctId,
   outcomes,
   persistedQuestionKeys,
@@ -1167,7 +1166,7 @@ export async function captureCompletedQuestionTracking({
       ) {
         return;
       }
-      await captureAIGenerationServer({
+      await ctx.scheduler.runAfter(0, internal.lib.analytics.captureAIGeneration, { params: {
         distinctId,
         provider: "openrouter" as AIProvider,
         modelId: modelSlug,
@@ -1178,7 +1177,7 @@ export async function captureCompletedQuestionTracking({
         output: outcome.trackingEntry.output,
         temperature: outcome.trackingEntry.temperature,
         creditsDeducted: outcome.creditsUsed,
-      });
+      } });
     }),
   );
 }

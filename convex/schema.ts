@@ -476,7 +476,8 @@ export default defineSchema({
   // BILLING - balances and plans live in Autumn (convex/billing).
   // billingAccounts caches each user's plan, features and balance;
   // billingCatalog caches Autumn's plans and features;
-  // billingUsage records every settled charge.
+  // billingUsage records every settled charge; billingHolds the Autumn
+  // locks still held, with the release scheduled for each one's expiry.
   // ═══════════════════════════════════════════════════════════════
   billingAccounts: defineTable(billingAccountFields)
     .index("by_user", ["userId"])
@@ -487,6 +488,12 @@ export default defineSchema({
     .index("by_user_and_createdAt", ["userId", "createdAt"])
     .index("by_job", ["jobId"])
     .index("by_stripe_charge", ["stripeChargeId"]),
+  billingHolds: defineTable({
+    userId: v.id("users"),
+    chargeId: v.string(),
+    credits: v.number(),
+    release: v.id("_scheduled_functions"),
+  }).index("by_charge", ["chargeId"]),
 
   // Retired billing tables: credits, creditTransactions, subscriptions,
   // billingCustomers, stripeEventLogs, and chatGenerationUsages. Only

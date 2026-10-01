@@ -33,6 +33,8 @@ export const billingAccountFields = {
   ...billingAccountSnapshotValidator.fields,
   userId: v.id("users"),
   refreshedAt: v.number(),
+  /** Set while a refresh from Autumn is scheduled, so charges don't schedule more. */
+  refreshQueuedAt: v.optional(v.number()),
 };
 
 export const usageKindValidator = v.union(
