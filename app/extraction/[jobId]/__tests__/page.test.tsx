@@ -11,7 +11,9 @@ const {
   resultsFiltersSpy,
   smartPaginationSpy,
   exportDialogSpy,
+  convexQueryMock,
 } = vi.hoisted(() => ({
+  convexQueryMock: vi.fn(),
   pushMock: vi.fn(),
   currentJobIdMock: { value: "job_1" },
   resultsFiltersSpy: vi.fn(
@@ -96,16 +98,14 @@ const {
   ),
   exportDialogSpy: vi.fn(
     ({
-      papers = [],
-      isLoading,
+      paperCount,
     }: {
-      papers?: Array<{ _id: string }>;
-      isLoading?: boolean;
+      paperCount: number;
+      loadPapers: () => Promise<Array<{ _id: string }>>;
     }) => (
       <div
         data-testid="export-dialog"
-        data-papers-count={String(papers.length)}
-        data-loading={String(Boolean(isLoading))}
+        data-papers-count={String(paperCount)}
       />
     ),
   ),
@@ -287,34 +287,10 @@ const extractionResultsPageQueryResult = {
   },
 } as const;
 
-const extractionResultsExportQueryResult = {
-  "": {
-    status: "ok" as const,
-    totalAll: 293,
-    totalFiltered: 293,
-    items: buildPageRows(1, 293),
-  },
-  "Paper 250": {
-    status: "ok" as const,
-    totalAll: 293,
-    totalFiltered: 1,
-    items: buildPageRows(250, 1),
-  },
-} as const;
-
 type MockResultsPageData =
   (typeof extractionResultsPageQueryResult)[keyof typeof extractionResultsPageQueryResult];
-type MockResultsExportData =
-  (typeof extractionResultsExportQueryResult)[keyof typeof extractionResultsExportQueryResult];
 
 function buildResultsPageHookResult(data: MockResultsPageData) {
-  return {
-    ...mockQueryResult,
-    data,
-  } as unknown as MockProtectedQueryHookResult;
-}
-
-function buildResultsExportHookResult(data: MockResultsExportData) {
   return {
     ...mockQueryResult,
     data,
@@ -339,6 +315,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("convex/react", () => ({
   useMutation: () => vi.fn(),
+  useConvex: () => ({ query: convexQueryMock }),
 }));
 
 vi.mock("motion/react", () => {
@@ -877,7 +854,7 @@ describe("JobDetailPage", () => {
     ).not.toBeNull();
   });
 
-  it("opens export-all with the full filtered corpus instead of the current page rows", () => {
+  it("opens export-all with the full filtered corpus instead of the current page rows", async () => {
     (
       authQuery.useProtectedQuery as unknown as {
         mockImplementation: (
@@ -889,22 +866,6 @@ describe("JobDetailPage", () => {
       }
     ).mockImplementation((_query, args) => {
       if (args === "skip") return mockSkippedQueryResult;
-      if (
-        typeof args === "object" &&
-        args !== null &&
-        "filters" in args &&
-        !("page" in args) &&
-        !("pageSize" in args)
-      ) {
-        const { filters } = args as {
-          filters: { searchQuery?: string };
-        };
-        return buildResultsExportHookResult(
-          extractionResultsExportQueryResult[
-            `${filters.searchQuery ?? ""}` as keyof typeof extractionResultsExportQueryResult
-          ],
-        );
-      }
       if (
         typeof args === "object" &&
         args !== null &&
@@ -930,6 +891,11 @@ describe("JobDetailPage", () => {
       return extractionSharedProtectedQueryResult;
     });
 
+    convexQueryMock.mockImplementation(async (_query, args: { page: number; pageSize: number; filters: { searchQuery?: string } }) =>
+      extractionResultsPageQueryResult[
+        `${args.page}:${args.pageSize}:${args.filters.searchQuery ?? ""}` as keyof typeof extractionResultsPageQueryResult
+      ]);
+
     render(<JobDetailPage />);
 
     fireEvent.click(screen.getByRole("button", { name: "set page size 25" }));
@@ -943,5 +909,8 @@ describe("JobDetailPage", () => {
       "data-displayed-count",
       "25",
     );
+    // The export reads every page of the filtered view, not the 25 rows on screen.
+    const papers = await exportDialogSpy.mock.lastCall![0].loadPapers();
+    expect(papers.map((paper) => paper._id)).toEqual(buildPageRows(1, 293).map((paper) => paper._id));
   });
 });

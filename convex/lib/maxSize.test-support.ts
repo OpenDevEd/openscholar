@@ -29,11 +29,17 @@ export function text(length: number, seed = 0) {
 }
 
 /** Inserts in transactions small enough for the seeding itself, and the triggers it runs, to stay within the limits. */
+/** Taken before any test fakes timers, so seeding still yields under them. */
+const realSetImmediate = globalThis.setImmediate;
+
 export async function insertMany<T extends TableNames>(t: Test, table: T, docs: Array<Record<string, unknown>>, perTransaction = 1_000) {
   const ids: Array<Id<T>> = [];
   for (let i = 0; i < docs.length; i += perTransaction) {
     const slice = docs.slice(i, i + perTransaction);
     ids.push(...(await t.run((ctx) => Promise.all(slice.map((doc) => ctx.db.insert(table, doc as never))))));
+    // convex-test runs a transaction as one chain of microtasks; without a turn of the
+    // event loop between batches, seeding a job ran past vitest's 60 s RPC timeout on CI.
+    await new Promise((resolve) => realSetImmediate(resolve));
   }
   return ids;
 }

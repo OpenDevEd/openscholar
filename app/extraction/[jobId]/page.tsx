@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useConvex, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -54,6 +54,8 @@ import { TableView, CardView, SplitView } from "@/components/extraction/results-
 import { SmartPagination } from "@/components/extraction/smart-pagination";
 import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
 import { ExportDialog } from "@/components/extraction/export-dialog";
+import { readEveryResultsPage } from "@/lib/extraction/export";
+import { RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
 import { ChatJobView } from "@/components/extraction/chat/chat-job-view";
@@ -219,27 +221,19 @@ export default function JobDetailPage() {
   );
   const resultsPage = resultsPageQuery.data;
 
-  const exportResultsArgs = useMemo(
+  const convex = useConvex();
+  const loadAllPapers = useCallback(
     () =>
-      isExtractionJob && exportDialogOpen && exportMode === "all"
-        ? {
-            jobId,
-            filters: serializedResultsFilters,
-            sortBy: resultsSortBy,
-          }
-        : "skip",
-    [
-      exportDialogOpen,
-      exportMode,
-      isExtractionJob,
-      jobId,
-      serializedResultsFilters,
-      resultsSortBy,
-    ],
-  );
-  const exportResultsQuery = useProtectedQuery(
-    api.extraction.queries.getJobResultsForExport,
-    exportResultsArgs,
+      readEveryResultsPage((page) =>
+        convex.query(api.extraction.queries.getJobResultsPage, {
+          jobId,
+          page,
+          pageSize: RESULTS_PAGE_SIZE_MAX,
+          filters: serializedResultsFilters,
+          sortBy: resultsSortBy,
+        }),
+      ) as Promise<PaperWithResults[]>,
+    [convex, jobId, serializedResultsFilters, resultsSortBy],
   );
 
   const questions: Question[] = useMemo(() => {
@@ -299,19 +293,7 @@ export default function JobDetailPage() {
     () => papersWithResults.filter(p => selectedIds.has(p._id)),
     [papersWithResults, selectedIds]
   );
-  const exportAllPapers = useMemo(
-    () =>
-      exportResultsQuery.data?.status === "ok"
-        ? (exportResultsQuery.data.items as PaperWithResults[])
-        : [],
-    [exportResultsQuery.data],
-  );
-  const exportDialogPapers =
-    exportMode === "all" ? exportAllPapers : selectedPapers;
-  const exportDialogLoading =
-    exportMode === "all" &&
-    exportResultsArgs !== "skip" &&
-    (exportResultsQuery.isDeferred || exportResultsQuery.data === undefined);
+  const loadSelectedPapers = useCallback(async () => selectedPapers, [selectedPapers]);
 
   const handleTableSelectionChange = useCallback((newIds: Set<string>) => {
     setSelection(newIds);
@@ -925,9 +907,9 @@ export default function JobDetailPage() {
                 <ExportDialog
                   open={exportDialogOpen}
                   onOpenChange={setExportDialogOpen}
-                  papers={exportDialogPapers}
+                  loadPapers={exportMode === 'all' ? loadAllPapers : loadSelectedPapers}
+                  paperCount={exportMode === 'all' ? authoritativeFilteredPapers : selectedPapers.length}
                   questions={questions}
-                  isLoading={exportDialogLoading}
                   label={
                     exportMode === 'all'
                       ? authoritativeFilteredPapers === 1
