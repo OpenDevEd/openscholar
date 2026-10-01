@@ -8,6 +8,7 @@ import type { QueryErrorDetail } from "@/lib/search/search-error";
 import { OQL_FIELD, worksOql } from "@/lib/openalex/oql";
 import { fetchOqlWorks } from "@/lib/openalex/oql-works";
 import { worksUrl } from "@/lib/openalex/works-url";
+import { OpenAlexRequestLimitError, spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
 
 /** OpenAlex's largest page. */
 const SEARCH_PAGE_SIZE = 200;
@@ -50,10 +51,23 @@ async function probeOpenAlexError(
   }
 }
 
+/** Counts one OpenAlex request against the caller, or the limit as a result to show them. */
+async function spendOne(): Promise<{ ok: false; status: number; message: string } | null> {
+  try {
+    await spendOpenAlexRequests();
+    return null;
+  } catch (error) {
+    if (error instanceof OpenAlexRequestLimitError) return { ok: false, status: error.status, message: error.message };
+    throw error;
+  }
+}
+
 async function callOpenAlexSDK(
   query: string,
   filters: SearchFilters
 ): Promise<SearchActionResult> {
+  const limited = await spendOne();
+  if (limited) return limited;
   const searchParams = createSearchParameters(query, filters);
   if (filters.searchField === OQL_FIELD) {
     return fetchOqlWorks(worksOql(query, searchParams.filter ?? {}), {
@@ -92,6 +106,8 @@ export async function readSearchPage(
   filters: SearchFilters,
   cursor: string,
 ): Promise<SearchPageResult> {
+  const limited = await spendOne();
+  if (limited) return limited;
   const params = createSearchParameters(query, filters, { perPageOverride: SEARCH_PAGE_SIZE });
   if (filters.searchField === OQL_FIELD) {
     const result = await fetchOqlWorks(worksOql(query, params.filter ?? {}), {

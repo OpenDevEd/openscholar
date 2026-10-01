@@ -646,6 +646,10 @@ export default defineSchema({
     .index("by_user_mode_updated", ["userId", "mode", "updatedAt"])
     // Cross-user iteration by mode (admin backfills, ops tooling).
     .index("by_mode", ["mode"])
+    // Chats generating now, per user and across users, oldest first: the concurrency
+    // check and the stale lock sweep read only these (#355).
+    .index("by_user_and_mode_and_isGenerating_and_generatingStartedAt", ["userId", "mode", "isGenerating", "generatingStartedAt"])
+    .index("by_mode_and_isGenerating_and_generatingStartedAt", ["mode", "isGenerating", "generatingStartedAt"])
     // Reverse lookup: thread -> job (auth + lock acquisition).
     .index("by_chatThread", ["chatThreadId"]),
 

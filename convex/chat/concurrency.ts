@@ -10,14 +10,13 @@
  *
  * Zombie cleanup: if a Convex runtime death wipes out generateResponse
  * between acquire and the finally-release, the lock would never clear.
- * A 5-minute cron sweeps any row where isGenerating is still true and
- * generatingStartedAt > 5 minutes ago.
+ * A lock older than STALE_LOCK_MS stops counting against the user's
+ * limit, and a 5-minute cron (convex/crons.ts) releases it.
  */
 
 import {
   internalMutation,
   type MutationCtx,
-  type QueryCtx,
 } from "../lib/functions";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
@@ -27,29 +26,30 @@ import { CHAT_CONCURRENCY_LIMIT } from "@/lib/extraction/limits";
 const STALE_LOCK_MS = 5 * 60 * 1000;
 
 /**
- * Counts a user's in-flight chats by scanning every chat-mode row under
- * the userId prefix. O(user's chat count) — if it becomes hot, promote
- * to a denormalised counter on the user row.
+ * A user's chats generating now, up to `limit`: only chats whose lock is
+ * younger than STALE_LOCK_MS, read from the index of generating chats.
  */
 async function countUserInFlightChats(
-  ctx: QueryCtx | MutationCtx,
+  ctx: MutationCtx,
   userId: Id<"users">,
+  limit: number,
 ): Promise<number> {
-  const chatJobs = await ctx.db
+  const cutoff = Date.now() - STALE_LOCK_MS;
+  const generating = await ctx.db
     .query("extractionJobs")
-    .withIndex("by_user_mode_updated", (q) =>
-      q.eq("userId", userId).eq("mode", "chat"),
+    .withIndex("by_user_and_mode_and_isGenerating_and_generatingStartedAt", (q) =>
+      q.eq("userId", userId).eq("mode", "chat").eq("isGenerating", true).gte("generatingStartedAt", cutoff),
     )
-    .collect();
-  return chatJobs.filter((j) => j.isGenerating === true).length;
+    .take(limit);
+  return generating.length;
 }
 
 export async function assertChatConcurrencyAvailable(
-  ctx: QueryCtx | MutationCtx,
+  ctx: MutationCtx,
   userId: Id<"users">,
 ) {
   const limit = CHAT_CONCURRENCY_LIMIT;
-  const inFlight = await countUserInFlightChats(ctx, userId);
+  const inFlight = await countUserInFlightChats(ctx, userId, limit);
   if (inFlight >= limit) {
     throw createError(
       "CONFLICT",
@@ -128,10 +128,13 @@ export const releaseThreadLock = internalMutation({
   },
 });
 
+/** Stale locks one sweep releases; a larger backlog clears over the following runs. */
+const SWEEP_BATCH = 200;
+
 /**
- * 5-minute cron entry point. Iterates every chat row with a stale lock
- * and clears it. `isGenerating` rows with fresh timestamps stay
- * untouched; non-chat rows are excluded by the `by_mode` index gate.
+ * 5-minute cron entry point (convex/crons.ts). Releases chat locks older
+ * than STALE_LOCK_MS, read from the index of generating chats, so fresh
+ * locks and finished chats are never read.
  */
 export const cleanupZombieChatLocks = internalMutation({
   args: {},
@@ -139,11 +142,13 @@ export const cleanupZombieChatLocks = internalMutation({
   handler: async (ctx) => {
     const cutoff = Date.now() - STALE_LOCK_MS;
     let cleared = 0;
-    for await (const row of ctx.db
+    const stale = await ctx.db
       .query("extractionJobs")
-      .withIndex("by_mode", (q) => q.eq("mode", "chat"))) {
-      if (!row.isGenerating) continue;
-      if ((row.generatingStartedAt ?? 0) >= cutoff) continue;
+      .withIndex("by_mode_and_isGenerating_and_generatingStartedAt", (q) =>
+        q.eq("mode", "chat").eq("isGenerating", true).lt("generatingStartedAt", cutoff),
+      )
+      .take(SWEEP_BATCH);
+    for (const row of stale) {
       await ctx.db.patch(row._id, {
         isGenerating: false,
         generatingStartedAt: undefined,

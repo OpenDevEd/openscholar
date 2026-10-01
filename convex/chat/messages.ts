@@ -75,6 +75,7 @@ import {
   WEB_SEARCH_CREDITS,
 } from "../../lib/pricing";
 import { calculateCostInDollars } from "../../lib/ai/core/cost";
+import { CHAT_PROMPT_MAX_CHARS } from "@/lib/extraction/limits";
 
 export const STOP_ABORT_POLL_INTERVAL_MS = 500;
 
@@ -219,6 +220,9 @@ export const sendMessage = mutation({
   handler: async (ctx, { threadId, prompt }) => {
     if (prompt.trim().length === 0) {
       throw createError("VALIDATION_ERROR", "Prompt must not be empty");
+    }
+    if (prompt.length > CHAT_PROMPT_MAX_CHARS) {
+      throw createError("VALIDATION_ERROR", `A message can be at most ${CHAT_PROMPT_MAX_CHARS.toLocaleString("en")} characters.`);
     }
     const { job } = await authorizeThreadAccess(ctx, threadId);
     if (job.chatModelId) await requireAvailableModel(ctx, job.chatModelId);
