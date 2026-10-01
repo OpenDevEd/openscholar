@@ -712,6 +712,6 @@ was not sent through another planning pass.
 - Convex stateful migrations component:
   https://github.com/get-convex/migrations
 - Repository migration skill and references:
-  `.agents/skills/convex-migration-helper/`.
+  https://github.com/get-convex/agent-skills/tree/7a6fcc6882f344577a34365fdadbd0f8f8c467d7/skills/convex-migration-helper/.
 - Current snapshot and deployment code named above, checked on `dev` at
   `65aa588c`.

@@ -49,19 +49,13 @@
 import { ShardedCounter } from "@convex-dev/sharded-counter";
 import { components } from "../_generated/api";
 import { transactionCounter } from "../lib/transactionCounter";
-import type {
-  GenericMutationCtx,
-  GenericQueryCtx,
-} from "convex/server";
+import type { GenericQueryCtx } from "convex/server";
 import type { Change } from "convex-helpers/server/triggers";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
 import { isTerminalPaperStatus } from "./paperLifecycle";
 
-type RunMutationCtx = {
-  runMutation: GenericMutationCtx<never>["runMutation"];
-  db: object;
-  innerDb?: object;
-};
+type RunMutationCtx = MutationCtx & { innerDb?: object };
 type RunQueryCtx = { runQuery: GenericQueryCtx<never>["runQuery"] };
 
 // One counter per transaction, so a shard collision doesn't repeat on every retry
