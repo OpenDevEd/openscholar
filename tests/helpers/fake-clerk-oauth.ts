@@ -1,5 +1,5 @@
-// Clerk's Backend API for OAuth applications, kept in memory. Every other
-// request goes to the fetch it wraps.
+// Clerk's Backend API for OAuth applications and the instance's domain, kept
+// in memory. Every other request goes to the fetch it wraps.
 
 export type FakeClerkApplication = {
   id: string;
@@ -11,7 +11,10 @@ export type FakeClerkApplication = {
 };
 
 const CLERK_PREFIX = "https://api.clerk.com/v1/oauth_applications";
+const DOMAINS_URL = "https://api.clerk.com/v1/domains";
 const DISCOVERY_URL = "https://clerk.example.test/.well-known/openid-configuration";
+export const FAKE_CLERK_ISSUER = "https://clerk.example.test";
+export const FAKE_CLERK_ACCOUNT_URL = "https://accounts.example.test/user";
 
 export function createFakeClerkOAuth() {
   const applications = new Map<string, FakeClerkApplication>();
@@ -50,7 +53,7 @@ export function createFakeClerkOAuth() {
         id: `oa_${sequence}`,
         name: input.name,
         client_id: `client_${sequence}`,
-        client_secret: `secret_${sequence}_0`,
+        client_secret: `fake_clerk_secret_${sequence}_0`,
         redirect_uris: input.redirect_uris,
         discovery_url: DISCOVERY_URL,
       };
@@ -62,7 +65,7 @@ export function createFakeClerkOAuth() {
     if (method === "GET" && !action) return json(200, publicShape(application));
     if (method === "POST" && action === "rotate_secret") {
       sequence += 1;
-      application.client_secret = `secret_${application.id}_${sequence}`;
+      application.client_secret = `fake_clerk_secret_${application.id}_${sequence}`;
       return json(200, application);
     }
     if (method === "PATCH") {
@@ -85,6 +88,17 @@ export function createFakeClerkOAuth() {
     wrap(fetchImpl: typeof fetch): typeof fetch {
       return (async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = new URL(input instanceof Request ? input.url : String(input));
+        if (url.href === DOMAINS_URL) {
+          return json(200, {
+            data: [
+              {
+                is_satellite: false,
+                frontend_api_url: FAKE_CLERK_ISSUER,
+                accounts_portal_url: new URL(FAKE_CLERK_ACCOUNT_URL).origin,
+              },
+            ],
+          });
+        }
         if (!url.href.startsWith(CLERK_PREFIX)) return fetchImpl(input, init);
         const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
         const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;

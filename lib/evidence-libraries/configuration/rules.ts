@@ -532,7 +532,7 @@ export type ConfigurationDraft = {
   home: HomeDraft;
 };
 
-/** Feature switches the page shows, in their groups. Accounts and AI come later. */
+/** Feature switches the page shows, in their groups. AI has its own section. */
 export const FEATURE_GROUPS = [
   { key: "appearance", features: ["themeSwitcher", "languageSwitcher"] },
   {
@@ -546,6 +546,7 @@ export const FEATURE_GROUPS = [
     ],
   },
   { key: "exports", features: ["downloads", "atomFeed"] },
+  { key: "accounts", features: ["readerAccounts"] },
 ] as const satisfies readonly {
   key: string;
   features: readonly FeatureKey[];

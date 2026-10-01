@@ -188,3 +188,25 @@ export async function deleteOAuthApplication(secretKey: string, applicationId: s
     throw error;
   }
 }
+
+/**
+ * Where this Clerk instance issues tokens and keeps its account pages, read
+ * from its primary domain. A library verifies OpenScholar's tokens against the
+ * first and sends readers to the second to change their name or picture.
+ */
+export async function readClerkInstanceUrls(secretKey: string) {
+  const { body } = await clerkRequest(secretKey, "GET", "/domains");
+  const domains = isRecord(body) && Array.isArray(body.data) ? body.data : [];
+  const primary = domains.find((domain) => isRecord(domain) && domain.is_satellite === false);
+  if (
+    !isRecord(primary) ||
+    typeof primary.frontend_api_url !== "string" ||
+    typeof primary.accounts_portal_url !== "string"
+  ) {
+    throw new ClerkApiError("Clerk answered without a primary domain", 200, undefined, undefined);
+  }
+  return {
+    issuer: new URL(primary.frontend_api_url).origin,
+    accountUrl: new URL("/user", primary.accounts_portal_url).toString(),
+  };
+}

@@ -17,6 +17,7 @@ import { decrypt } from "../lib/crypto";
 import type { ZoteroGroupScopes } from "../zotero/groupAccess";
 import { createSourceCredentials } from "./sourceCredentials";
 import { createAiProviderKey } from "./aiProviderKey";
+import type { LibrarySignIn } from "./oauthClientSync";
 
 export const EVIDENCE_LIBRARY_SEARCH_HOST = "http://meilisearch:7700";
 export const EVIDENCE_LIBRARY_SEARCH_INDEX = "evidence_library";
@@ -31,6 +32,17 @@ export function buildEvidenceLibraryLoginPageUrl(input: {
 }): string {
   return new URL(
     `/evidence-libraries/${encodeURIComponent(input.libraryId)}/admin`,
+    input.appOrigin,
+  ).toString();
+}
+
+/** The library's page in OpenScholar, which its admin area links back to. */
+function buildEvidenceLibraryPageUrl(input: {
+  libraryId: Id<"evidenceLibraries">;
+  appOrigin: string;
+}): string {
+  return new URL(
+    `/evidence-libraries/${encodeURIComponent(input.libraryId)}`,
     input.appOrigin,
   ).toString();
 }
@@ -53,6 +65,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
     encryptedAuthentication: string;
     encryptedDatabaseUrl: string;
   };
+  signIn: LibrarySignIn;
   search: { host: string; encryptedKey: string; index: string };
   storage: {
     url: string;
@@ -95,10 +108,19 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       updatedAt: new Date(input.assembledAt).toISOString(),
       libraryId: input.libraryId,
       convexSiteUrl: input.origins.convexSite,
-      loginPageUrl: buildEvidenceLibraryLoginPageUrl({
+      libraryUrl: buildEvidenceLibraryPageUrl({
         libraryId: input.libraryId,
         appOrigin: input.origins.app,
       }),
+      accountUrl: input.signIn.accountUrl,
+      oauth: {
+        issuer: input.signIn.oauth.issuer,
+        clientId: input.signIn.oauth.clientId,
+        clientSecret: decrypt(
+          input.signIn.oauth.encryptedClientSecret,
+          input.encryptionKey,
+        ),
+      },
       machineCredential: decrypt(
         input.credentials.encryptedMachine,
         input.encryptionKey,

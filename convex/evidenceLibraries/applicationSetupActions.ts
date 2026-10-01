@@ -32,6 +32,8 @@ import {
   fetchRecommendedRuntimeRelease,
   RuntimeReleaseError,
 } from "./runtimeReleases";
+import { ClerkApiError } from "./clerkOAuthApplications";
+import { OAuthClientBusyError, syncLibrarySignIn } from "./oauthClientSync";
 
 const invalidData = (message: string) => createError("INVALID_DATA", message);
 
@@ -128,6 +130,14 @@ export const runApplicationSetup = internalAction({
         internal.evidenceLibraries.queries.readLibraryTeamForAssembly,
         { libraryId: args.libraryId },
       );
+      // Signing in through OpenScholar has to work from the library's first
+      // answer, so its OAuth application exists before the configuration
+      // that names it.
+      const signIn = await syncLibrarySignIn(ctx, {
+        libraryId: args.libraryId,
+        origins: [prepared.targetBaseUrl],
+        mode: "include",
+      });
       const configuration = assembleEvidenceLibraryRuntimePayload({
         assembledAt: Date.now(),
         encryptionKey,
@@ -149,6 +159,7 @@ export const runApplicationSetup = internalAction({
           encryptedAuthentication: prepared.encryptedAuthenticationSecret,
           encryptedDatabaseUrl: prepared.encryptedDatabaseUrl,
         },
+        signIn,
         search: {
           host: EVIDENCE_LIBRARY_SEARCH_HOST,
           encryptedKey: prepared.encryptedSearchKey,
@@ -240,7 +251,8 @@ export const runApplicationSetup = internalAction({
       if (
         !(error instanceof RuntimeReleaseError) &&
         !(error instanceof CoolifyClientError) &&
-        !(error instanceof ConfigurationAssemblyError)
+        !(error instanceof ConfigurationAssemblyError) &&
+        !(error instanceof OAuthClientBusyError)
       ) {
         // Owners see a generic message; keep the real cause in the logs.
         console.error("Evidence Library application setup failed", error);
@@ -253,6 +265,11 @@ export const runApplicationSetup = internalAction({
             }
           : error instanceof CoolifyClientError
             ? { code: error.code, message: error.message }
+            : error instanceof ClerkApiError || error instanceof OAuthClientBusyError
+              ? {
+                  code: "OAUTH_CLIENT_SYNC_FAILED",
+                  message: "OpenScholar sign-in could not be set up for this library",
+                }
             : error instanceof ConfigurationAssemblyError
               ? {
                   code: "APPLICATION_CONFIG_INVALID",

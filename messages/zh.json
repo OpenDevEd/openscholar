@@ -2654,7 +2654,8 @@
       "groups": {
         "appearance": "Appearance",
         "discovery": "Discovery",
-        "exports": "Exports"
+        "exports": "Exports",
+        "accounts": "Accounts"
       },
       "labels": {
         "themeSwitcher": "Light / dark switch",
@@ -2665,7 +2666,8 @@
         "authorFilter": "Author filter",
         "yearsDropdown": "Year dropdown",
         "downloads": "Citation downloads",
-        "atomFeed": "Atom feed link"
+        "atomFeed": "Atom feed link",
+        "readerAccounts": "Reader accounts"
       },
       "hints": {
         "themeSwitcher": "Let people choose light or dark mode.",
@@ -2676,7 +2678,8 @@
         "authorFilter": "Let people filter by author.",
         "yearsDropdown": "Show a year picker in the search bar.",
         "downloads": "Offer citation downloads for publications and the whole library.",
-        "atomFeed": "Show a link to the Atom feed."
+        "atomFeed": "Show a link to the Atom feed.",
+        "readerAccounts": "Let readers sign in with OpenScholar to bookmark records and keep collections."
       },
       "needs": "Turn on {feature} first.",
       "needsSearch": {

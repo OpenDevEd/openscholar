@@ -19,7 +19,12 @@ export type ManagedEvidenceLibraryConfiguration = {
   updatedAt: string;
   libraryId: string;
   convexSiteUrl: string;
-  loginPageUrl: string;
+  /** The library's page in OpenScholar, which its admin area links back to. */
+  libraryUrl: string;
+  /** The Clerk account page where readers change their name and picture. */
+  accountUrl: string;
+  /** The library's own OAuth application on OpenScholar's Clerk instance. */
+  oauth: { issuer: string; clientId: string; clientSecret: string };
   machineCredential: string;
   authenticationSecret: string;
   databaseUrl: string;
@@ -225,8 +230,10 @@ export type AssembledEvidenceLibraryConfiguration = Record<string, unknown> & {
     openScholar: {
       convexSiteUrl: string;
       libraryId: string;
-      loginPageUrl: string;
+      libraryUrl: string;
+      accountUrl: string;
       machineCredential: string;
+      oauth: { issuer: string; clientId: string; clientSecret: string };
     };
     secret: string;
   };
@@ -367,12 +374,13 @@ export function assembleEvidenceLibraryConfiguration({
         publication: managed.publication ?? {},
       },
       authentication: {
-        google: {},
         openScholar: {
           convexSiteUrl: managed.convexSiteUrl,
           libraryId: managed.libraryId,
-          loginPageUrl: managed.loginPageUrl,
+          libraryUrl: managed.libraryUrl,
+          accountUrl: managed.accountUrl,
           machineCredential: managed.machineCredential,
+          oauth: managed.oauth,
         },
         secret: managed.authenticationSecret,
       },
