@@ -47,21 +47,27 @@ import { authorContentFields } from "./authors/validators";
 import { topicNodeFields, metadataValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator } from "./aiModelConfig/validators";
-import { paperAnswersValidator, searchValidator, shortcutValidator, ratingValidator } from "../lib/research/records";
+import { fieldValidator, paperAnswersValidator, searchValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
 
 export default defineSchema({
-  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: searchValidator, responseChunks: v.optional(v.array(v.id("researchResponseChunks"))) })
+  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator, responseChunks: v.optional(v.array(v.id("researchResponseChunks"))) })
     .index("by_user", ["userId"])
     .index("by_user_and_createdAt", ["userId", "data.createdAt"])
     .index("by_user_and_localId", ["userId", "localId"]),
   searchRevisions: defineTable({
     userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
     author: v.union(v.literal("user"), v.literal("assistant")),
-    data: searchValidator, deleted: v.boolean(), createdAt: v.number(),
+    data: storedSearchValidator, deleted: v.boolean(), createdAt: v.number(),
     responseChunks: v.optional(v.array(v.id("researchResponseChunks"))),
     // The screening version this revision saw; its answers are the history up to it.
     answersVersion: v.optional(v.number()),
   }).index("by_search_and_revision", ["searchId", "revision"]),
+  // A search's earlier queries and research questions, in the order they were made (#354).
+  searchHistory: defineTable({
+    userId: v.id("users"), searchId: v.id("searches"), kind: v.union(v.literal("query"), v.literal("question")),
+    text: v.string(), field: v.optional(fieldValidator), timestamp: v.string(), position: v.number(),
+  }).index("by_search_and_kind_and_position", ["searchId", "kind", "position"])
+    .index("by_search_and_kind_and_timestamp", ["searchId", "kind", "timestamp"]),
   researchResponseChunks: defineTable({ responses: searchValidator.fields.screeningResponses }),
   // Page screening of a saved search: one screening per search, its answers one row per
   // paper, and an append-only history of each paper's answers that old revisions are

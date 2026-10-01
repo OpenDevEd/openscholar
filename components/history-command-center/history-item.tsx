@@ -34,6 +34,7 @@ import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
 import { HistoryQueryExpansion } from "./history-query-expansion";
 import { subtleSpring } from "@/lib/animation-config";
 import type { SearchResult } from "@/lib/types";
+import { useSearchHistoryEntries } from "@/lib/research/history";
 import {
   getFieldLabel,
   getSortLabel,
@@ -79,8 +80,21 @@ export function HistoryItem({
   const { addKeyword, keywords } = useKeywordExpansionStore();
 
   const idColor = getIdColor(item.id);
-  const queryHistoryCount = item.queryHistory?.length || 0;
-  const latestQuestion = item.questionHistory?.[item.questionHistory.length - 1]?.question;
+  const queryHistoryCount = item.queryHistoryCount;
+  const latestQuestion = item.latestQuestion;
+  // Read from when the pointer reaches the History button; the history waits for it, so it
+  // opens at its full size.
+  const [isHistoryWanted, setIsHistoryWanted] = useState(false);
+  const history = useSearchHistoryEntries(item, "query", isQueryHistoryOpen || isHistoryWanted);
+  const historyButtonProps = {
+    onClick: () => setIsQueryHistoryOpen(!isQueryHistoryOpen),
+    onPointerEnter: () => setIsHistoryWanted(true),
+    onPointerLeave: () => setIsHistoryWanted(false),
+    onFocus: () => setIsHistoryWanted(true),
+    onBlur: () => setIsHistoryWanted(false),
+  };
+  const showHistory = isQueryHistoryOpen && queryHistoryCount > 1 && !history.isLoading;
+  const historyProps = { queryHistory: history.entries, total: history.total, onLoadOlder: history.hasOlder ? history.loadOlder : undefined };
 
   // Find the actual index in the full history for deletion
   const actualIndex = searchHistory.findIndex((h) => h.id === item.id);
@@ -189,7 +203,7 @@ export function HistoryItem({
                       "h-7 w-7",
                       isQueryHistoryOpen && "bg-muted text-foreground"
                     )}
-                    onClick={() => setIsQueryHistoryOpen(!isQueryHistoryOpen)}
+                    {...historyButtonProps}
                   >
                     <History className="h-3 w-3" />
                   </Button>
@@ -275,10 +289,10 @@ export function HistoryItem({
         )}
 
         {/* Query history expansion */}
-        {isQueryHistoryOpen && queryHistoryCount > 1 && (
+        {showHistory && (
           <div className="px-3 pb-3">
             <HistoryQueryExpansion
-              queryHistory={item.queryHistory}
+              {...historyProps}
               currentQuery={item.query}
               searchId={item.id}
               readOnly={Boolean(pickLabel)}
@@ -305,7 +319,7 @@ export function HistoryItem({
           "transition-[background-color,border-color,box-shadow] duration-200"
         )}
       >
-        {isQueryHistoryOpen && queryHistoryCount > 1 ? (
+        {showHistory ? (
           /* Mini-page view: header + scrollable history */
           <>
             {/* Mini-page header */}
@@ -335,7 +349,7 @@ export function HistoryItem({
             {/* Scrollable history content */}
             <div className="flex-1 overflow-y-auto">
               <HistoryQueryExpansion
-                queryHistory={item.queryHistory}
+                {...historyProps}
                 currentQuery={item.query}
                 searchId={item.id}
                 readOnly={Boolean(pickLabel)}
@@ -636,7 +650,7 @@ export function HistoryItem({
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 gap-1 text-muted-foreground hover:text-foreground"
-                onClick={() => setIsQueryHistoryOpen(!isQueryHistoryOpen)}
+                {...historyButtonProps}
               >
                 <History className="h-3 w-3" />
                 <span className="text-xs">{queryHistoryCount}</span>
@@ -701,10 +715,10 @@ export function HistoryItem({
         </div>
 
         {/* Query history expansion */}
-        {isQueryHistoryOpen && queryHistoryCount > 1 && (
+        {showHistory && (
           <div className="mt-4">
             <HistoryQueryExpansion
-              queryHistory={item.queryHistory}
+              {...historyProps}
               currentQuery={item.query}
               searchId={item.id}
               readOnly={Boolean(pickLabel)}

@@ -11,6 +11,7 @@ import type { QueryHistoryEntry, SearchField, SearchFilters } from '@/lib/types'
 
 // Import the new search context
 import { useSearchOptional, type SearchParams, type SetQueryOptions } from './search';
+import { useSearchHistoryEntries } from "./research/history";
 
 // Shared store for query history navigation index, keyed by searchId.
 // Lives here (not in lib/store) because it's an implementation detail of useQueryHistory.
@@ -88,10 +89,15 @@ export function useEffectiveSearchId(): string | undefined {
   return getEffectiveSearchId(pathname, search?.searchId || undefined);
 }
 
+/** How many steps before the oldest read query the arrows read older ones. */
+const HISTORY_READ_AHEAD = 5;
+
 /**
  * Shared query history navigation hook.
  * Tracks position in a search's queryHistory and exposes prev/next navigation.
  * Calls setQuery with { skipHistory: true } so navigation doesn't create new entries.
+ * The position is kept as steps back from the newest query, so reading older queries
+ * (lib/research/history.ts) doesn't move it.
  */
 export function useQueryHistory(
   searchId: string | null | undefined,
@@ -101,20 +107,22 @@ export function useQueryHistory(
   const currentSearchResult = useSearchHistoryStore((state) =>
     searchId ? state.searchHistory.find((item) => item.id === searchId) : null
   );
-  const queryHistory = currentSearchResult?.queryHistory || [];
+  const stepsBack = useQueryHistoryIndexStore((s) => s.indices[key] ?? 0);
+  // A position kept from an earlier visit is read with the first page.
+  const history = useSearchHistoryEntries(currentSearchResult, "query", true, stepsBack + HISTORY_READ_AHEAD + 1);
+  const queryHistory = history.entries;
 
-  const defaultIndex = queryHistory.length > 0 ? queryHistory.length - 1 : 0;
-  const historyIndex = useQueryHistoryIndexStore((s) => s.indices[key] ?? defaultIndex);
-  const setHistoryIndex = useQueryHistoryIndexStore((s) => s.set);
-  const prevHistoryLengthRef = useRef(queryHistory.length);
+  const setStepsBack = useQueryHistoryIndexStore((s) => s.set);
+  const loadedIndex = queryHistory.length - 1 - stepsBack;
+  const prevTotalRef = useRef(history.total);
 
   // Jump to latest only when a NEW entry is added (not when navigating)
   useEffect(() => {
-    if (queryHistory.length > prevHistoryLengthRef.current) {
-      setHistoryIndex(key, queryHistory.length - 1);
+    if (history.total > prevTotalRef.current) {
+      setStepsBack(key, 0);
     }
-    prevHistoryLengthRef.current = queryHistory.length;
-  }, [queryHistory.length, key, setHistoryIndex]);
+    prevTotalRef.current = history.total;
+  }, [history.total, key, setStepsBack]);
 
   // Entries from before scopes were saved are keyword queries.
   const showEntry = useCallback(
@@ -123,29 +131,27 @@ export function useQueryHistory(
     [setQuery],
   );
 
-  const canGoPrevious = queryHistory.length > 0 && historyIndex > 0;
-  const canGoNext = queryHistory.length > 0 && historyIndex < queryHistory.length - 1;
+  const canGoPrevious = loadedIndex > 0 || history.hasOlder;
+  const canGoNext = queryHistory.length > 0 && stepsBack > 0;
 
-  const goToPrevious = useCallback(() => {
-    if (canGoPrevious) {
-      const prevIndex = historyIndex - 1;
-      setHistoryIndex(key, prevIndex);
-      showEntry(queryHistory[prevIndex]);
+  // A step moves only to a query already read; a position past them, kept from an earlier
+  // visit, reads older queries until it's reached. Older queries are read a few steps
+  // before the arrows reach them.
+  const step = useCallback((delta: -1 | 1) => {
+    const entry = queryHistory[loadedIndex + delta];
+    if (entry) {
+      setStepsBack(key, stepsBack - delta);
+      showEntry(entry);
     }
-  }, [canGoPrevious, historyIndex, queryHistory, showEntry, key, setHistoryIndex]);
-
-  const goToNext = useCallback(() => {
-    if (canGoNext) {
-      const nextIndex = historyIndex + 1;
-      setHistoryIndex(key, nextIndex);
-      showEntry(queryHistory[nextIndex]);
-    }
-  }, [canGoNext, historyIndex, queryHistory, showEntry, key, setHistoryIndex]);
+    if (loadedIndex + delta <= HISTORY_READ_AHEAD && history.hasOlder) history.loadOlder();
+  }, [loadedIndex, stepsBack, queryHistory, showEntry, key, setStepsBack, history]);
+  const goToPrevious = useCallback(() => step(-1), [step]);
+  const goToNext = useCallback(() => { if (canGoNext) step(1); }, [canGoNext, step]);
 
   return {
     queryHistory,
-    historyIndex,
-    historyLength: queryHistory.length,
+    historyIndex: Math.max(0, history.total - 1 - stepsBack),
+    historyLength: history.total,
     canGoPrevious,
     canGoNext,
     goToPrevious,

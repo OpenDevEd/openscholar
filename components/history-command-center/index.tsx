@@ -93,9 +93,10 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     const query = searchFilter.toLowerCase();
     return searchHistory.filter((item) => {
       const matchesQuery = item.query?.toLowerCase().includes(query);
-      const matchesQuestion = item.questionHistory?.some((q) =>
-        q.question?.toLowerCase().includes(query),
-      );
+      // A search held in this browser has all its questions; an account's keeps their text.
+      const matchesQuestion = item.questionHistory
+        ? item.questionHistory.some((entry) => entry.question.toLowerCase().includes(query))
+        : item.questionText.toLowerCase().includes(query);
       return matchesQuery || matchesQuestion;
     });
   }, [searchHistory, searchFilter]);

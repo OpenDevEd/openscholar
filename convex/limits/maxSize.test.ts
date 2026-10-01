@@ -127,6 +127,43 @@ describe("at the largest sizes the product allows", () => {
     expect(count).toEqual({ count: 0, capped: true });
   }, 300_000);
 
+  it("a search of the longest OQL query edited 200 times, and a history page of 25 such searches, load (#354)", async () => {
+    const t = convexTest({ schema, transactionLimits: true });
+    const clerkId = "max_size_user";
+    const { as } = await seedAccount(t, clerkId);
+    const query = (i: number) => `${i} ${text(MAX_SIZE.oqlQueryChars - 6, i)}`;
+    const search = (id: string, i: number) => ({ id, query: query(i), field: "oql" as const, count: 1, queryHistoryCount: 0, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: `2026-09-01T00:00:${String(i).padStart(2, "0")}.000Z`, updatedAt: "2026-09-01T00:00:00.000Z" });
+    const change = (requestId: string, command: unknown) => as.mutation(api.research.records.change, { accountId: clerkId, requestId, command: command as never });
+    for (let i = 0; i < 25; i++) await change(`create-${i}`, { kind: "createSearch", search: search(`search-${i}`, i) });
+    for (let i = 1; i <= 200; i++) await change(`edit-${i}`, { kind: "editSearch", id: "search-0", edit: { kind: "query", query: query(1000 + i), field: "oql" } });
+    const paginationOpts = { cursor: null, numItems: 25 };
+    const page = await as.query(api.research.records.searches, { accountId: clerkId, paginationOpts });
+    expect(page.page).toHaveLength(25);
+    expect(page.page.find((row) => row.id === "search-0")?.queryHistoryCount).toBe(201);
+    expect((await as.query(api.research.records.revisions, { accountId: clerkId, id: "search-0", paginationOpts })).page).toHaveLength(25);
+    const history = await as.query(api.research.records.searchHistory, { accountId: clerkId, id: "search-0", kind: "query", paginationOpts: { cursor: null, numItems: 100 } });
+    expect(history.page).toHaveLength(100);
+    expect(history.page[0].text).toBe(query(1200));
+  }, 300_000);
+
+  it("a search saved before #354 with 44 revisions of the longest OQL query lists every revision (#354)", async () => {
+    const t = convexTest({ schema, transactionLimits: true });
+    const clerkId = "max_size_user";
+    const { userId, as } = await seedAccount(t, clerkId);
+    // Each revision then held the whole history: the 44th, 44 copies of the query.
+    const queryHistory = Array.from({ length: 44 }, (_, i) => ({ query: `${i} ${text(MAX_SIZE.oqlQueryChars - 6, i)}`, field: "oql" as const, timestamp: "2026-09-01T00:00:00.000Z" }));
+    const data = (revision: number) => ({ id: "legacy", query: queryHistory[revision - 1].query, field: "oql" as const, count: 1, queryHistory: queryHistory.slice(0, revision), questionHistory: [], screeningQuestions: [], screeningResponses: [], createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" });
+    const searchId = await t.run((ctx) => ctx.db.insert("searches", { userId, localId: "legacy", data: data(44), revision: 44 }));
+    for (let revision = 1; revision <= 44; revision++) await t.run((ctx) => ctx.db.insert("searchRevisions", { userId, searchId, revision, author: "user", data: data(revision), deleted: false, createdAt: revision }));
+    const revisions: number[] = [];
+    for (let cursor: string | null = null, isDone = false; !isDone;) {
+      const page: { page: Array<{ revision: number }>; isDone: boolean; continueCursor: string } = await as.query(api.research.records.revisions, { accountId: clerkId, id: "legacy", paginationOpts: { cursor, numItems: 25 } });
+      revisions.push(...page.page.map((row) => row.revision));
+      ({ isDone, continueCursor: cursor } = page);
+    }
+    expect(revisions).toEqual(Array.from({ length: 44 }, (_, i) => 44 - i));
+  }, 300_000);
+
   it("an Evidence Library with 1,000 revisions, operations and people checks sources, lists its team and tears down", async () => {
     vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
     vi.stubEnv("EL_COOLIFY_ENVIRONMENT", "development");

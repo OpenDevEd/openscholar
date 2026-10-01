@@ -12,8 +12,7 @@ import { USER_ACTIONS } from "../lib/userActionRegistry";
 
 const record: SavedSearch = {
   id: "local-original", query: "tutoring AND randomized", field: "title_and_abstract", count: 42,
-  queryHistory: [{ query: "tutoring", field: "title", timestamp: "2026-08-01T12:00:00Z" }],
-  questionHistory: [{ question: "Does tutoring work?", timestamp: "2026-08-01T11:00:00Z" }],
+  queryHistoryCount: 1, questionCount: 1, latestQuestion: "Does tutoring work?", questionText: "Does tutoring work?",
   screeningQuestions: [{ question: "Randomized?" }], screeningResponses: [{ paperId: "W1", responses: [{ question: "Randomized?", response: true }] }, { paperId: "W2", responses: [{ question: "Randomized?", response: null }] }],
   createdAt: "2026-08-01T11:00:00Z", updatedAt: "2026-09-01T12:00:00Z",
   dateRange: { from: "2020-01-01T00:00:00Z", to: "2025-12-31T00:00:00Z" }, yearRange: [2020, 2025], filterType: "date", isYearRangeEnabled: true,
@@ -22,7 +21,13 @@ const record: SavedSearch = {
   openAccessOnly: true, workTypes: ["article"], workLanguages: ["en"], institutionTypes: ["education"], funders: ["F123"],
   minCitations: 3, hasAbstract: true, includeRetracted: false, language: "fr", page: 3, chatJobIdsByAccountId: { alice: "prior-chat" },
 };
-const batch = { accountId: "alice", searches: [record], shortcuts: [{ shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1700000000000 }], ratings: [{ paperId: "https://openalex.org/W1", rating: 4 }] };
+const history = {
+  queryHistory: [{ query: "tutoring", field: "title" as const, timestamp: "2026-08-01T12:00:00Z" }],
+  questionHistory: [{ question: "Does tutoring work?", timestamp: "2026-08-01T11:00:00Z" }],
+};
+/** A search as this browser imports it, with the history it kept. */
+const imported = (search: SavedSearch) => ({ search, history });
+const batch = { accountId: "alice", searches: [imported(record)], shortcuts: [{ shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1700000000000 }], ratings: [{ paperId: "https://openalex.org/W1", rating: 4 }] };
 const paginationOpts = { cursor: null, numItems: 25 };
 
 async function setup() {
@@ -41,7 +46,7 @@ describe("account research records", () => {
     const large = { ...record, screeningResponses: Array.from({ length: 1500 }, (_, i) => ({ paperId: `W${i}`, responses: [{ question, response: true }, { question: "Adults?", response: i % 2 === 0 }, { question: "In Africa?", response: null }] })) };
     const current = async () => restoreSearch((await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id }))!);
     const count = (table: "screeningAnswers" | "screeningAnswerHistory" | "searchRevisions") => t.run(async ctx => (await ctx.db.query(table).collect()).length);
-    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [large] });
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported(large)] });
     expect(await current()).toEqual(restoreSearch(large));
     expect(await count("screeningAnswers")).toBe(1500);
     const history = await count("screeningAnswerHistory");
@@ -61,7 +66,7 @@ describe("account research records", () => {
   it("orders imported history by its original creation date", async () => {
     const { alice } = await setup();
     const rows = [3, 1, 2].map(day => ({ ...record, id: `day-${day}`, createdAt: `2026-09-0${day}T00:00:00.000Z` }));
-    await alice.mutation(api.research.records.importBatch, { ...batch, searches: rows });
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: rows.map(imported) });
     expect((await alice.query(api.research.records.searches, { accountId: "alice", paginationOpts })).page.map(row => row.id)).toEqual(["day-3", "day-2", "day-1"]);
   });
   it("preserves Unicode, dollar-prefixed, and long screening questions through Convex serialization", async () => {
@@ -69,8 +74,8 @@ describe("account research records", () => {
     const question = "$ هل كانت الدراسة عشوائية؟ " + "long question ".repeat(100);
     const original = { ...restoreSearch(record), screeningQuestions: [{ question }], screeningResponses: { W1: { [question]: true } } };
     const search = serializeSearch(original);
-    const args = { ...batch, searches: [search] };
-    expect(convexToJson(args)).toMatchObject({ searches: [{ screeningQuestions: [{ question }] }] });
+    const args = { ...batch, searches: [imported(search)] };
+    expect(convexToJson(args)).toMatchObject({ searches: [{ search: { screeningQuestions: [{ question }] } }] });
     await alice.mutation(api.research.records.importBatch, args);
     const stored = await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id });
     expect(restoreSearch(stored!).screeningResponses).toEqual(original.screeningResponses);
@@ -87,10 +92,80 @@ describe("account research records", () => {
     const after = await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id });
     expect(after?.query).toBe("updated");
     expect(after?.screeningResponses).toEqual(record.screeningResponses);
-    expect(after?.queryHistory).toHaveLength(2);
-    expect(Date.parse(after!.queryHistory[1].timestamp)).toBeGreaterThan(Date.parse(record.updatedAt));
+    expect(after?.queryHistoryCount).toBe(2);
+    const queries = (await alice.query(api.research.records.searchHistory, { accountId: "alice", id: record.id, kind: "query", paginationOpts })).page;
+    expect(queries.map(entry => entry.text)).toEqual(["updated", "tutoring"]);
+    expect(Date.parse(queries[0].timestamp)).toBeGreaterThan(Date.parse(record.updatedAt));
     expect(await t.run(ctx => ctx.db.query("searches").collect())).toHaveLength(1);
     expect(await t.run(ctx => ctx.db.query("searchRevisions").collect())).toHaveLength(2);
+  });
+
+  it("keeps each search's history in rows that its counts match, newest first a page at a time", async () => {
+    const { alice } = await setup();
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported(record), imported({ ...record, id: "other" })] });
+    const edit = (id: string, requestId: string, edit: unknown) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command: { kind: "editSearch", id, edit } as never });
+    const entries = async (id: string, kind: "query" | "question", numItems = 25) => (await alice.query(api.research.records.searchHistory, { accountId: "alice", id, kind, paginationOpts: { cursor: null, numItems } })).page.map(entry => entry.text);
+    for (const query of ["second", "third"]) await edit(record.id, query, { kind: "query", query, field: "title" });
+    await edit(record.id, "question", { kind: "question", question: "For whom?" });
+    expect(await entries(record.id, "query")).toEqual(["third", "second", "tutoring"]);
+    expect(await entries(record.id, "question")).toEqual(["For whom?", "Does tutoring work?"]);
+    const first = await alice.query(api.research.records.searchHistory, { accountId: "alice", id: record.id, kind: "query", paginationOpts: { cursor: null, numItems: 2 } });
+    const rest = await alice.query(api.research.records.searchHistory, { accountId: "alice", id: record.id, kind: "query", paginationOpts: { cursor: first.continueCursor, numItems: 2 } });
+    expect([...first.page, ...rest.page].map(entry => entry.text)).toEqual(["third", "second", "tutoring"]);
+    await edit(record.id, "remove", { kind: "removeQueryHistoryEntry", ...history.queryHistory[0] });
+    await expect(edit(record.id, "remove-again", { kind: "removeQueryHistoryEntry", ...history.queryHistory[0] })).rejects.toThrow("History entry not found.");
+    expect(await entries(record.id, "query")).toEqual(["third", "second"]);
+    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toMatchObject({ queryHistoryCount: 2, questionCount: 2, latestQuestion: "For whom?", questionText: "Does tutoring work?\nFor whom?" });
+    // A copy gives the other search this one's parameters and history at once, and the real counts.
+    const source = (await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id }))!;
+    const copy = (id: string, requestId: string) => edit(id, requestId, { kind: "copySearch", from: record.id, fromUpdatedAt: source.updatedAt, fields: { query: "copied" }, clear: [], summary: { queryHistoryCount: 99, questionCount: 0, questionText: "" } });
+    await copy("other", "copy");
+    expect(await entries("other", "query")).toEqual(["third", "second"]);
+    expect(await entries("other", "question")).toEqual(["For whom?", "Does tutoring work?"]);
+    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: "other" })).toMatchObject({ query: "copied", queryHistoryCount: 2, questionCount: 2, latestQuestion: "For whom?" });
+    // A search given its own history keeps it.
+    await copy(record.id, "copy-to-itself");
+    expect(await entries(record.id, "query")).toEqual(["third", "second"]);
+    // A search changed since it was chosen isn't copied, and counts change only with the history.
+    await edit(record.id, "fourth", { kind: "query", query: "fourth", field: "title" });
+    await expect(copy("other", "stale")).rejects.toThrow("That search changed. Choose it again.");
+    await expect(edit("other", "patch-count", { kind: "patch", fields: { queryHistoryCount: 999 }, clear: [] })).rejects.toThrow("Validator error");
+    expect(await entries("other", "query")).toEqual(["third", "second"]);
+  });
+
+  it("removes exactly the chosen entry of two with the same query and time", async () => {
+    const { alice } = await setup();
+    const timestamp = "2026-08-01T12:00:00Z";
+    const twins = { queryHistory: [{ query: "tutoring", field: "title" as const, timestamp }, { query: "tutoring", field: "abstract" as const, timestamp }], questionHistory: [] };
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [{ search: record, history: twins }] });
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "remove", command: { kind: "editSearch", id: record.id, edit: { kind: "removeQueryHistoryEntry", query: "tutoring", field: "abstract", timestamp } } });
+    const left = (await alice.query(api.research.records.searchHistory, { accountId: "alice", id: record.id, kind: "query", paginationOpts })).page;
+    expect(left).toEqual([{ text: "tutoring", field: "title", timestamp }]);
+  });
+
+  it("records a copy that changes only the history, so an earlier choice of that search is stale", async () => {
+    const { alice } = await setup();
+    const other = { queryHistory: [{ query: "other", field: "title" as const, timestamp: "2026-08-01T12:00:00Z" }], questionHistory: history.questionHistory };
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported(record), { search: { ...record, id: "same-fields" }, history: other }, imported({ ...record, id: "third" })] });
+    const get = async (id: string) => (await alice.query(api.research.records.getSearch, { accountId: "alice", id }))!;
+    const chosen = await get("same-fields");
+    const copy = (id: string, from: string, fromUpdatedAt: string, requestId: string) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command: { kind: "editSearch", id, edit: { kind: "copySearch", from, fromUpdatedAt, fields: {}, clear: [], summary: { queryHistoryCount: 1, questionCount: 1, questionText: "" } } } });
+    await copy("same-fields", record.id, (await get(record.id)).updatedAt, "history-only");
+    expect((await get("same-fields")).updatedAt).not.toBe(chosen.updatedAt);
+    await expect(copy("third", "same-fields", chosen.updatedAt, "stale")).rejects.toThrow("That search changed. Choose it again.");
+  });
+
+  it("refuses a copy over a history too long to replace, and changes nothing", async () => {
+    const { alice } = await setup();
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported(record), imported({ ...record, id: "long" })] });
+    const edit = (requestId: string, edit: unknown) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command: { kind: "editSearch", id: "long", edit } as never });
+    for (let i = 0; i < 300; i++) await edit(`query-${i}`, { kind: "query", query: `query ${i}`, field: "title" });
+    const before = await alice.query(api.research.records.getSearch, { accountId: "alice", id: "long" });
+    const source = (await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id }))!;
+    await expect(edit("copy", { kind: "copySearch", from: record.id, fromUpdatedAt: source.updatedAt, fields: { query: "copied" }, clear: [], summary: { queryHistoryCount: 1, questionCount: 1, questionText: "" } }))
+      .rejects.toThrow("This search has more than 300 query history entries to replace.");
+    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: "long" })).toEqual(before);
+    expect((await alice.query(api.research.records.searchHistory, { accountId: "alice", id: "long", kind: "query", paginationOpts: { cursor: null, numItems: 1 } })).page[0].text).toBe("query 299");
   });
 
   it("denies anonymous and cross-account access, including an account switch during import", async () => {
@@ -148,8 +223,8 @@ describe("account research records", () => {
     await expect(alice.mutation(api.research.records.importBatch, { ...batch, ratings: [{ paperId: "W1", rating: 6 }] })).rejects.toThrow();
     expect(await t.run(ctx => ctx.db.query("searches").collect())).toEqual([]);
     await alice.mutation(api.research.records.importBatch, batch);
-    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [{ ...record, query: "local changed" }] });
-    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [{ ...record, query: "local changed" }] });
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported({ ...record, query: "local changed" })] });
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported({ ...record, query: "local changed" })] });
     expect((await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id }))?.query).toBe(record.query);
     const rows = await t.run(ctx => ctx.db.query("searches").collect());
     expect(rows).toHaveLength(2);
@@ -158,7 +233,7 @@ describe("account research records", () => {
 
   it("paginates beyond the first batch without losing records", async () => {
     const { alice } = await setup();
-    for (let start = 0; start < 30; start += 10) await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: Array.from({ length: 10 }, (_, i) => ({ ...record, id: `local-${start + i}` })), shortcuts: [], ratings: [] });
+    for (let start = 0; start < 30; start += 10) await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: Array.from({ length: 10 }, (_, i) => imported({ ...record, id: `local-${start + i}` })), shortcuts: [], ratings: [] });
     const first = await alice.query(api.research.records.searches, { accountId: "alice", paginationOpts });
     const second = await alice.query(api.research.records.searches, { accountId: "alice", paginationOpts: { numItems: 25, cursor: first.continueCursor } });
     expect(first.isDone).toBe(false);
@@ -227,7 +302,7 @@ describe("research actions as assistant tools", () => {
     expect(await t.run(ctx => ctx.db.query("searches").collect())).toHaveLength(1);
     const history = await alice.query(api.research.records.revisions, { accountId: "alice", id: record.id, paginationOpts });
     expect(history.page.map(row => row.author)).toEqual(["assistant"]);
-    expect(await tools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: "call-2" })).toEqual(record);
+    expect(await tools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: "call-2" })).toEqual({ ...record, questionCount: 0, questionText: "", latestQuestion: undefined });
   });
 
   it("never reach another account's records", async () => {
