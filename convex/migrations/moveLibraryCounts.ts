@@ -47,16 +47,18 @@ export const verifyPage = internalQuery({
   },
 });
 
-/** People without a count row; empty when done. */
+/** How many people have no count row, with the first few of them; `missing` is 0 when done. */
 export const verify = internalAction({
   args: {},
-  returns: v.array(v.string()),
-  handler: async (ctx): Promise<string[]> => {
-    const problems: string[] = [];
+  returns: v.object({ missing: v.number(), sample: v.array(v.string()) }),
+  handler: async (ctx): Promise<{ missing: number; sample: string[] }> => {
+    let missing = 0;
+    const sample: string[] = [];
     for (let cursor: string | null = null; ;) {
       const page: { problems: string[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.moveLibraryCounts.verifyPage, { cursor });
-      problems.push(...page.problems);
-      if (page.isDone) return problems;
+      missing += page.problems.length;
+      sample.push(...page.problems.slice(0, 20 - sample.length));
+      if (page.isDone) return { missing, sample };
       cursor = page.continueCursor;
     }
   },

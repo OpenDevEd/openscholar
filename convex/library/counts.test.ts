@@ -42,14 +42,29 @@ describe("library counts", () => {
       const rows = await t.run((ctx) => ctx.db.query("libraryCounts").collect());
       expect(Object.fromEntries(rows.map((row) => [row.userId, row.count]))).toEqual({ [counted]: 3, [saver]: 3 });
       // Someone without a count is left for backfillUsers, then a run from the start.
-      expect(await t.action(internal.migrations.moveLibraryCounts.verify, {})).toEqual([expect.stringContaining("no library count row")]);
+      expect(await t.action(internal.migrations.moveLibraryCounts.verify, {})).toEqual({ missing: 1, sample: [expect.stringContaining("no library count row")] });
       await t.action(internal.migrations.backfillLibraryCounters.backfillUsers, {});
       await t.mutation(internal.migrations.moveLibraryCounts.run, { reset: true });
       await t.finishAllScheduledFunctions(vi.runAllTimers);
-      expect(await t.action(internal.migrations.moveLibraryCounts.verify, {})).toEqual([]);
+      expect(await t.action(internal.migrations.moveLibraryCounts.verify, {})).toEqual({ missing: 0, sample: [] });
       expect((await t.run((ctx) => ctx.db.query("libraryCounts").collect())).map((row) => row.count).sort()).toEqual([0, 3, 3]);
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("a person's count row", () => {
+  it("starts at zero with a new account, and goes when the account is removed", async () => {
+    const t = convexTest(schema);
+    const userId = await t.withIdentity({ subject: "fresh", email: "fresh@test.local" }).mutation(api.users.mutations.ensureUser, {});
+    const rowsOf = () => t.run((ctx) => ctx.db.query("libraryCounts").withIndex("by_user", (q) => q.eq("userId", userId)).collect());
+    expect((await rowsOf()).map((row) => row.count)).toEqual([0]);
+
+    // Past the retention period, cleanup removes a deleted account and what it held.
+    await t.run((ctx) => ctx.db.patch("users", userId, { state: "deleted", updatedAt: 1 }));
+    await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+    expect(await t.run((ctx) => ctx.db.get("users", userId))).toBeNull();
+    expect(await rowsOf()).toEqual([]);
   });
 });
