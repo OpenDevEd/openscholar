@@ -181,9 +181,10 @@ function protectedPaginatedQuery(usePaginated: typeof usePaginatedQuery) {
   };
 }
 
-export const useProtectedPaginatedQuery = protectedPaginatedQuery(usePaginatedQuery);
+// Each hook is looked up when it runs, not when this module loads, as before.
+export const useProtectedPaginatedQuery = protectedPaginatedQuery(((...args) => usePaginatedQuery(...args)) as typeof usePaginatedQuery);
 /**
  * For queries paged with convex-helpers streams: their pages hold their place only when
  * the hook pins each page's end cursor, which convex-helpers' hook does.
  */
-export const useProtectedStreamPaginatedQuery = protectedPaginatedQuery(useStreamPaginatedQuery);
+export const useProtectedStreamPaginatedQuery = protectedPaginatedQuery(((...args) => useStreamPaginatedQuery(...args)) as typeof usePaginatedQuery);
