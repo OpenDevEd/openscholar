@@ -67,18 +67,26 @@ async function recordFailure(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">,
   await ctx.runMutation(internal.evidenceLibraries.oauthClients.recordOAuthClientError, { libraryId, error: failure });
 }
 
-/** Runs `work` holding the library's sync lease, and records what Clerk said if it fails. */
+/**
+ * Runs `work` holding the library's sync lease, and records what Clerk said
+ * if it fails. A sync for a library that is gone does nothing.
+ */
 async function withOAuthClientLease(
   ctx: ActionCtx,
   libraryId: Id<"evidenceLibraries">,
+  purpose: "sync" | "delete",
   work: (token: string) => Promise<void>,
 ) {
   const token = randomUUID();
-  const claimed: boolean = await ctx.runMutation(internal.evidenceLibraries.oauthClients.claimOAuthClientLease, {
-    libraryId,
-    token,
-  });
-  if (!claimed) throw new OAuthClientBusyError();
+  const claim: "claimed" | "busy" | "gone" = await ctx.runMutation(
+    internal.evidenceLibraries.oauthClients.claimOAuthClientLease,
+    { libraryId, token, purpose },
+  );
+  if (claim === "busy") throw new OAuthClientBusyError();
+  if (claim === "gone") {
+    console.warn("[evidence-library] skipped the OAuth application of a deleted library", { libraryId });
+    return;
+  }
   try {
     await work(token);
   } catch (error) {
@@ -145,7 +153,7 @@ export async function syncLibraryOAuthClientFor(
     encryptionKey: requireRuntimeEnvironment("ENCRYPTION_KEY", configurationError),
   };
   const wanted = libraryOAuthRedirectUris(input.origins);
-  await withOAuthClientLease(ctx, input.libraryId, async (token) => {
+  await withOAuthClientLease(ctx, input.libraryId, "sync", async (token) => {
     const row: Doc<"evidenceLibraryOAuthClients"> | null = await ctx.runQuery(
       internal.evidenceLibraries.oauthClients.readOAuthClient,
       { libraryId: input.libraryId },
@@ -179,7 +187,7 @@ export async function syncLibraryOAuthClientFor(
 /** Deletes the library's application, including any an unanswered attempt left. */
 export async function deleteLibraryOAuthClientFor(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">) {
   const secretKey = requireRuntimeEnvironment("CLERK_SECRET_KEY", configurationError);
-  await withOAuthClientLease(ctx, libraryId, async (token) => {
+  await withOAuthClientLease(ctx, libraryId, "delete", async (token) => {
     const row: Doc<"evidenceLibraryOAuthClients"> | null = await ctx.runQuery(
       internal.evidenceLibraries.oauthClients.readOAuthClient,
       { libraryId },
@@ -214,38 +222,62 @@ export const deleteLibraryOAuthClient = internalAction({
   },
 });
 
+/** Minutes before each retry of one library whose sync Clerk could not take. */
+const BACKFILL_RETRY_MINUTES = [1, 5, 30, 120];
+
 /**
  * Gives every live library an OAuth application for the addresses it answers
- * on. Safe to run again: a library that has one only gains missing callbacks.
+ * on. Each library is its own job, so one that fails is retried on its own.
+ * Safe to run again: a library that has one only gains missing callbacks.
  */
 export const backfillLibraryOAuthClients = internalAction({
   args: { cursor: v.union(v.string(), v.null()) },
-  returns: v.object({ synced: v.number(), failed: v.number(), isDone: v.boolean() }),
+  returns: v.object({ scheduled: v.number(), isDone: v.boolean() }),
   handler: async (ctx, args) => {
-    const page: {
-      libraries: { libraryId: Id<"evidenceLibraries">; origins: string[] }[];
-      continueCursor: string;
-      isDone: boolean;
-    } = await ctx.runQuery(internal.evidenceLibraries.oauthClients.readLiveLibraryOrigins, args);
-    let synced = 0;
-    let failed = 0;
-    for (const library of page.libraries) {
-      try {
-        await syncLibraryOAuthClientFor(ctx, { ...library, mode: "include" });
-        synced += 1;
-      } catch (error) {
-        failed += 1;
-        console.error("[evidence-library] OAuth application backfill failed", {
-          libraryId: library.libraryId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
+    const page: { libraryIds: Id<"evidenceLibraries">[]; continueCursor: string; isDone: boolean } =
+      await ctx.runQuery(internal.evidenceLibraries.oauthClients.readLiveLibraryPage, args);
+    for (const libraryId of page.libraryIds) {
+      await ctx.scheduler.runAfter(0, internal.evidenceLibraries.oauthClientSync.backfillLibraryOAuthClient, {
+        libraryId,
+        attempt: 1,
+      });
     }
     if (!page.isDone) {
       await ctx.scheduler.runAfter(0, internal.evidenceLibraries.oauthClientSync.backfillLibraryOAuthClients, {
         cursor: page.continueCursor,
       });
     }
-    return { synced, failed, isDone: page.isDone };
+    return { scheduled: page.libraryIds.length, isDone: page.isDone };
+  },
+});
+
+/** One library's backfill, reading its addresses again when it runs. */
+export const backfillLibraryOAuthClient = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), attempt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const origins: string[] | null = await ctx.runQuery(
+      internal.evidenceLibraries.oauthClients.readLibraryLiveOrigins,
+      { libraryId: args.libraryId },
+    );
+    if (!origins) return null;
+    try {
+      await syncLibraryOAuthClientFor(ctx, { libraryId: args.libraryId, origins, mode: "include" });
+    } catch (error) {
+      const delay = BACKFILL_RETRY_MINUTES[args.attempt - 1];
+      if (isRetryableOAuthClientError(error) && delay !== undefined) {
+        await ctx.scheduler.runAfter(delay * 60_000, internal.evidenceLibraries.oauthClientSync.backfillLibraryOAuthClient, {
+          libraryId: args.libraryId,
+          attempt: args.attempt + 1,
+        });
+        return null;
+      }
+      console.error("[evidence-library] OAuth application backfill failed", {
+        libraryId: args.libraryId,
+        attempt: args.attempt,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return null;
   },
 });

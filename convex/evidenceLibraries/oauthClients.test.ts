@@ -22,6 +22,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
@@ -105,7 +106,11 @@ describe("a library's OpenScholar OAuth application", () => {
 
   it("waits for a sync of the same library that is still under way", async () => {
     const { t, libraryId, sync } = await setup();
-    await t.mutation(internal.evidenceLibraries.oauthClients.claimOAuthClientLease, { libraryId, token: "other-sync" });
+    await t.mutation(internal.evidenceLibraries.oauthClients.claimOAuthClientLease, {
+      libraryId,
+      token: "other-sync",
+      purpose: "sync",
+    });
 
     await expect(sync(["https://library.example.test"])).rejects.toThrow("under way");
     // Two overlapping syncs would each have created one.
@@ -140,12 +145,36 @@ describe("a library's OpenScholar OAuth application", () => {
       });
     });
 
+    vi.useFakeTimers();
     await t.action(internal.evidenceLibraries.oauthClientSync.backfillLibraryOAuthClients, { cursor: null });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
 
     expect(appsNamedFor(libraryId)[0].redirect_uris).toEqual([
       callback("https://custom.example.test"),
       callback("https://oauth.example.test"),
     ]);
+  });
+
+  it("retries a library the backfill could not reach Clerk for", async () => {
+    const { t, libraryId } = await setup();
+    clerk.interruptNext(() => new Response(null, { status: 503 }));
+
+    vi.useFakeTimers();
+    await t.action(internal.evidenceLibraries.oauthClientSync.backfillLibraryOAuthClients, { cursor: null });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(appsNamedFor(libraryId)).toHaveLength(1);
+  });
+
+  it("does nothing for a library that has been deleted", async () => {
+    const { t, libraryId, sync, row } = await setup();
+    await t.run((ctx) => ctx.db.delete("evidenceLibraries", libraryId));
+
+    await sync(["https://library.example.test"]);
+
+    // A late sync must not bring back what the teardown removed.
+    expect(appsNamedFor(libraryId)).toEqual([]);
+    expect(await row()).toBeNull();
   });
 
   it("is made again when someone deleted it in Clerk", async () => {

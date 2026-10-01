@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { internalQuery, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { readAttachedDomainOrigins } from "./domains";
@@ -51,12 +51,28 @@ export const readOAuthClient = internalQuery({
 
 /**
  * Takes the library's sync lease, recording the intent to provision first if
- * there is no row yet. Answers false while another sync holds it.
+ * there is no row yet. `busy` while another sync holds it. `gone` when a sync
+ * finds the library deleted or being deleted, so a late one cannot bring back
+ * the application its teardown removed.
  */
 export const claimOAuthClientLease = internalMutation({
-  args: { libraryId: v.id("evidenceLibraries"), token: v.string() },
-  returns: v.boolean(),
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    token: v.string(),
+    purpose: v.union(v.literal("sync"), v.literal("delete")),
+  },
+  returns: v.union(v.literal("claimed"), v.literal("busy"), v.literal("gone")),
   handler: async (ctx, args) => {
+    if (args.purpose === "sync") {
+      const library = await ctx.db.get("evidenceLibraries", args.libraryId);
+      const teardown = await ctx.db
+        .query("evidenceLibraryConfigOperations")
+        .withIndex("by_libraryId_and_idempotencyKey", (q) =>
+          q.eq("libraryId", args.libraryId).eq("idempotencyKey", `development-teardown:${args.libraryId}`),
+        )
+        .unique();
+      if (!library || teardown) return "gone";
+    }
     const now = Date.now();
     const lease = { token: args.token, expiresAt: now + OAUTH_CLIENT_LEASE_MS };
     const row = await readRow(ctx, args.libraryId);
@@ -68,11 +84,11 @@ export const claimOAuthClientLease = internalMutation({
         lease,
         updatedAt: now,
       });
-      return true;
+      return "claimed";
     }
-    if (row.lease && row.lease.expiresAt > now && row.lease.token !== args.token) return false;
+    if (row.lease && row.lease.expiresAt > now && row.lease.token !== args.token) return "busy";
     await ctx.db.patch("evidenceLibraryOAuthClients", row._id, { lease, updatedAt: now });
-    return true;
+    return "claimed";
   },
 });
 
@@ -165,16 +181,34 @@ export const removeOAuthClientRecord = internalMutation({
 
 const LIBRARY_PAGE_SIZE = 25;
 
+async function readLiveOrigins(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
+  const liveOrigin = await readEvidenceLibraryAdminLaunchTarget(ctx, library);
+  const binding = library.runtimeBindingId
+    ? await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId)
+    : null;
+  if (!liveOrigin || !binding) return null;
+  return [binding.targetBaseUrl, liveOrigin, ...(await readAttachedDomainOrigins(ctx, library._id))];
+}
+
 /**
- * Every live library and the addresses it answers on, a page at a time: what
- * gives libraries made before OAuth applications existed their own. The
- * platform address stays even when a custom domain is the library's main one,
- * because it keeps sending visitors on.
+ * The addresses a live library answers on now, or null when it is not live.
+ * The platform address stays even when a custom domain is the library's main
+ * one, because it keeps sending visitors on.
  */
-export const readLiveLibraryOrigins = internalQuery({
+export const readLibraryLiveOrigins = internalQuery({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.union(v.null(), v.array(v.string())),
+  handler: async (ctx, args) => {
+    const library = await ctx.db.get("evidenceLibraries", args.libraryId);
+    return library ? await readLiveOrigins(ctx, library) : null;
+  },
+});
+
+/** The live libraries on one page of the library list, for the backfill. */
+export const readLiveLibraryPage = internalQuery({
   args: { cursor: v.union(v.string(), v.null()) },
   returns: v.object({
-    libraries: v.array(v.object({ libraryId: v.id("evidenceLibraries"), origins: v.array(v.string()) })),
+    libraryIds: v.array(v.id("evidenceLibraries")),
     continueCursor: v.string(),
     isDone: v.boolean(),
   }),
@@ -182,18 +216,10 @@ export const readLiveLibraryOrigins = internalQuery({
     const page = await ctx.db
       .query("evidenceLibraries")
       .paginate({ numItems: LIBRARY_PAGE_SIZE, cursor: args.cursor });
-    const libraries = [];
+    const libraryIds = [];
     for (const library of page.page) {
-      const liveOrigin = await readEvidenceLibraryAdminLaunchTarget(ctx, library);
-      const binding = library.runtimeBindingId
-        ? await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId)
-        : null;
-      if (!liveOrigin || !binding) continue;
-      libraries.push({
-        libraryId: library._id,
-        origins: [binding.targetBaseUrl, liveOrigin, ...(await readAttachedDomainOrigins(ctx, library._id))],
-      });
+      if (await readLiveOrigins(ctx, library)) libraryIds.push(library._id);
     }
-    return { libraries, continueCursor: page.continueCursor, isDone: page.isDone };
+    return { libraryIds, continueCursor: page.continueCursor, isDone: page.isDone };
   },
 });
