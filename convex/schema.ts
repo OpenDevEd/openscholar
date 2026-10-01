@@ -168,6 +168,10 @@ export default defineSchema({
     .index("by_organizationId_and_state", ["organizationId", "state"])
     .index("by_clerkUserId_and_state", ["clerkUserId", "state"]),
 
+  // Each approved OpenAlex query version a library has published, with its query's
+  // fingerprint, so a sources save checks versions without reading every revision (#357).
+  evidenceLibraryApprovedQueries: defineTable({ libraryId: v.id("evidenceLibraries"), version: v.string(), fingerprint: v.string() })
+    .index("by_libraryId_and_version", ["libraryId", "version"]),
   evidenceLibraries: defineTable(evidenceLibraryFields)
     .index("by_organizationId", ["organizationId"])
     .index("by_organizationId_and_name_and_state", [
@@ -286,6 +290,8 @@ export default defineSchema({
       "activationEditVersion",
     ])
     .index("by_libraryId_and_createdAt", ["libraryId", "createdAt"])
+    // Publish operations newest first, where configuration deployments are found (#357).
+    .index("by_libraryId_and_kind_and_createdAt", ["libraryId", "kind", "createdAt"])
     .index("by_libraryId_and_status_and_updatedAt", [
       "libraryId",
       "status",

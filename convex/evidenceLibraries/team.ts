@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation } from "../lib/functions";
 import { requireEvidenceLibraryAccess, readLibraryRole } from "./access";
 import { createError } from "../lib/errors";
+import { assertLibraryHasRoom } from "./members";
 
 const collaboratorRole = v.union(v.literal("editor"), v.literal("creator"));
 
@@ -18,6 +19,7 @@ export const addOrganizationMember = mutation({
     if (await readLibraryRole(ctx, access.library, args.clerkUserId)) {
       throw createError("CONFLICT", "This person already has access");
     }
+    await assertLibraryHasRoom(ctx, args.libraryId);
     await ctx.db.insert("evidenceLibraryMembers", { ...args, grantedBy: access.clerkUserId, grantedAt: Date.now() });
     return null;
   },

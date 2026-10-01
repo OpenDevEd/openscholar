@@ -193,6 +193,9 @@ export const evidenceLibraryStateValidator = v.union(
 
 export const evidenceLibraryFields = {
   activePublicationConfigDigest: v.optional(v.string()),
+  // Set once every approved OpenAlex query version in the library's revisions is in
+  // evidenceLibraryApprovedQueries; until then a sources save reads the revisions (#357).
+  approvedQueriesRecorded: v.optional(v.literal(true)),
   organizationId: v.id("organizations"),
   name: v.string(),
   slug: v.string(),

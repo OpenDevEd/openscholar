@@ -8,9 +8,11 @@ import { Triggers } from "convex-helpers/server/triggers";
 import type { DataModel } from "../_generated/dataModel";
 import { countPaperChange } from "../extraction/jobCounters";
 import { countPaperErrorChange, countResultChange } from "../extraction/resultCounts";
+import { recordRevisionApprovedQueries } from "../evidenceLibraries/approvedQueries";
 
 export const triggers = new Triggers<DataModel>();
 
 triggers.register("extractionResults", countResultChange);
 triggers.register("extractionPaperErrors", countPaperErrorChange);
 triggers.register("extractionPapers", countPaperChange);
+triggers.register("evidenceLibraryConfigSections", recordRevisionApprovedQueries);

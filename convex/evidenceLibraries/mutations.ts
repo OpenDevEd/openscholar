@@ -9,7 +9,7 @@ import {
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
-import { assertImmutableOpenAlexQueryVersions } from "../../lib/evidence-libraries/configuration/sources";
+import { assertApprovedQueriesUnchanged } from "./approvedQueries";
 import { createInitialEvidenceLibraryShortName } from "../../lib/evidence-libraries/setup/naming";
 import {
   aiProviderIssues,
@@ -62,6 +62,7 @@ import {
   type EvidenceLibrarySetupIdentity,
 } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
+import { MAX_LIBRARIES_PER_ORGANIZATION } from "../lib/queryBounds";
 import {
   configurationSnapshotsEqual,
   loadDraftConfigurationSnapshot,
@@ -143,6 +144,11 @@ export async function createEvidenceLibrarySetup(
       );
     }
     return toSetupDraftResult(setup, identity);
+  }
+
+  const libraries = await ctx.db.query("evidenceLibraries").withIndex("by_organizationId", (q) => q.eq("organizationId", access.organization._id)).take(MAX_LIBRARIES_PER_ORGANIZATION);
+  if (libraries.length >= MAX_LIBRARIES_PER_ORGANIZATION) {
+    throw createError("VALIDATION_ERROR", `An organization can have up to ${MAX_LIBRARIES_PER_ORGANIZATION} libraries. Delete one to make another.`);
   }
 
   const now = Date.now();
@@ -333,19 +339,8 @@ export async function saveEvidenceLibraryDraftSections(
     (section) => section.sectionKey === "sources",
   )?.payload;
   if (nextSources !== undefined) {
-    const historicalSources = (
-      await ctx.db
-        .query("evidenceLibraryConfigSections")
-        .withIndex("by_libraryId_and_kind_and_sectionKey", (query) =>
-          query
-            .eq("libraryId", args.libraryId)
-            .eq("kind", "revision")
-            .eq("sectionKey", "sources"),
-        )
-        .collect()
-    ).map((section) => section.payload);
     try {
-      assertImmutableOpenAlexQueryVersions(historicalSources, nextSources);
+      await assertApprovedQueriesUnchanged(ctx, access.library, nextSources);
     } catch (error) {
       throw createError(
         "VALIDATION_ERROR",

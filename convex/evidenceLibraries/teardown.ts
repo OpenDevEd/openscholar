@@ -21,6 +21,12 @@ import {
 } from "./access";
 
 /**
+ * Running or queued operations a teardown reads: a library runs one at a time, and the
+ * queued ones are setup operations waiting for activation, so this is far more than any has.
+ */
+const ACTIVE_OPERATIONS_READ = 100;
+
+/**
  * Only the attempt that holds the teardown may write about it. Without this
  * a worker that took over after a claim expired could be overwritten by the
  * one it replaced.
@@ -103,12 +109,24 @@ async function requestTeardown(
       "Enter the full library name to confirm deletion",
     );
   }
-  const operations = await ctx.db
+  // The teardown's own operation, and running or retrying work, are found through their
+  // indexes, so a long operation history isn't read (#357).
+  const teardown = await ctx.db
     .query("evidenceLibraryConfigOperations")
-    .withIndex("by_libraryId_and_createdAt", (query) =>
-      query.eq("libraryId", args.libraryId),
+    .withIndex("by_libraryId_and_idempotencyKey", (query) =>
+      query.eq("libraryId", args.libraryId).eq("idempotencyKey", `development-teardown:${args.libraryId}`),
     )
-    .collect();
+    .unique();
+  const [running, queued] = await Promise.all(
+    (["running", "queued"] as const).map((status) =>
+      ctx.db
+        .query("evidenceLibraryConfigOperations")
+        .withIndex("by_libraryId_and_status_and_updatedAt", (query) =>
+          query.eq("libraryId", args.libraryId).eq("status", status),
+        )
+        .take(ACTIVE_OPERATIONS_READ),
+    ),
+  );
   // A domain change that is still running owns router state this teardown
   // would delete underneath it. It finishes or expires first.
   const domains = await readEvidenceLibraryDomains(ctx, args.libraryId);
@@ -124,21 +142,18 @@ async function requestTeardown(
       "A change to one of this library's domains is still running. Wait for it to finish, then delete the library.",
     );
   }
-  const teardown = operations.find(
-    (operation) => operation.kind === "teardown",
-  );
   if (teardown?.status === "queued" || teardown?.status === "running") {
     return { operationId: teardown._id, status: teardown.status };
   }
   // A draft's setup operation is created as "queued" but never starts until
   // the Owner activates it. Only work that is running, or that already ran
   // and is waiting to retry, blocks deletion.
-  const activeOperation = operations.find(
+  const activeOperation = [...running, ...queued].find(
     (operation) =>
       operation.kind !== "teardown" &&
       (operation.status === "running" ||
-        (operation.status === "queued" &&
-          (operation.attemptCount > 0 || operation.startedAt !== undefined))),
+        operation.attemptCount > 0 ||
+        operation.startedAt !== undefined),
   );
   if (activeOperation) {
     throw createError(

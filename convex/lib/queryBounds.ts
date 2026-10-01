@@ -6,6 +6,15 @@ export const MAX_LIBRARY_BROWSE = 10_000;
  * Matches MAX_LIBRARY_BROWSE since a collection is a subset of library. */
 export const MAX_COLLECTION_MEMBERS = 10_000;
 
+/** Most people one Evidence Library grants access to directly, so its team reads in one query (#357). */
+export const MAX_LIBRARY_MEMBERS = 1_000;
+
+/** Most active organization members a team page lists; a larger organization gets an error, not a partial list. */
+export const MAX_ORGANIZATION_MEMBERS_READ = 1_000;
+
+/** Most Evidence Libraries one organization can make, so its library list reads in one query. */
+export const MAX_LIBRARIES_PER_ORGANIZATION = 200;
+
 /** Most collections one user can make, so every list of their collections stays small. */
 export const MAX_COLLECTIONS_PER_USER = 500;
 
