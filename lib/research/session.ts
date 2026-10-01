@@ -99,7 +99,7 @@ export class ResearchSession {
       updateSearchResult: (id, updates) => edit(id, serializeSearchPatch(updates)),
       addQueryToHistory: (id, query, field) => edit(id, { kind: "query", query, field }),
       addQuestionToHistory: (id, question) => edit(id, { kind: "question", question }),
-      removeQueryHistoryEntry: (id, entry) => edit(id, { kind: "removeQueryHistoryEntry", query: entry.query, timestamp: entry.timestamp }),
+      removeQueryHistoryEntry: (id, entry) => edit(id, { kind: "removeQueryHistoryEntry", query: entry.query, ...(entry.field ? { field: entry.field } : {}), timestamp: entry.timestamp }),
       copySearch: (id, from, updates) => {
         const source = current(from);
         if (source) edit(id, { ...serializeSearchPatch(updates), kind: "copySearch", from, fromUpdatedAt: source.updatedAt, summary: { queryHistoryCount: source.queryHistoryCount, questionCount: source.questionCount, ...(source.latestQuestion === undefined ? {} : { latestQuestion: source.latestQuestion }), questionText: source.questionText } });

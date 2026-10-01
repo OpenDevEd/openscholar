@@ -107,10 +107,11 @@ export function useQueryHistory(
   const currentSearchResult = useSearchHistoryStore((state) =>
     searchId ? state.searchHistory.find((item) => item.id === searchId) : null
   );
-  const history = useSearchHistoryEntries(currentSearchResult, "query");
+  const stepsBack = useQueryHistoryIndexStore((s) => s.indices[key] ?? 0);
+  // A position kept from an earlier visit is read with the first page.
+  const history = useSearchHistoryEntries(currentSearchResult, "query", true, stepsBack + HISTORY_READ_AHEAD + 1);
   const queryHistory = history.entries;
 
-  const stepsBack = useQueryHistoryIndexStore((s) => s.indices[key] ?? 0);
   const setStepsBack = useQueryHistoryIndexStore((s) => s.set);
   const loadedIndex = queryHistory.length - 1 - stepsBack;
   const prevTotalRef = useRef(history.total);

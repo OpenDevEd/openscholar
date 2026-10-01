@@ -326,7 +326,8 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
         ? { ...applySearchEdit(previous, edit, now.toISOString()), ...(await copyHistory(ctx, userId, search, edit.from, edit.fromUpdatedAt)) }
         : applySearchEdit(previous, edit, now.toISOString());
       validateSearch(data);
-      if (JSON.stringify({ ...data, updatedAt: previous.updatedAt }) === JSON.stringify(previous)) return;
+      // A copy may change only the history rows, so it always makes a revision.
+      if (edit.kind !== "copySearch" && JSON.stringify({ ...data, updatedAt: previous.updatedAt }) === JSON.stringify(previous)) return;
       if (JSON.stringify(data.screeningResponses) !== JSON.stringify(previous.screeningResponses)) {
         await replaceAnswers(ctx, userId, search._id, data.screeningResponses, answerSource(author), now.getTime());
       }
@@ -335,7 +336,8 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       if (edit.kind === "query") await addHistory(ctx, search, "query", [{ text: edit.query, field: edit.field, timestamp: data.updatedAt }]);
       if (edit.kind === "question") await addHistory(ctx, search, "question", [{ text: edit.question, timestamp: data.updatedAt }]);
       if (edit.kind === "removeQueryHistoryEntry") {
-        const entry = (await ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_timestamp", q => q.eq("searchId", search._id).eq("kind", "query").eq("timestamp", edit.timestamp)).take(10)).find(row => row.text === edit.query);
+        const entry = await ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_timestamp", q => q.eq("searchId", search._id).eq("kind", "query").eq("timestamp", edit.timestamp))
+          .filter(q => q.and(q.eq(q.field("text"), edit.query), q.eq(q.field("field"), edit.field))).first();
         if (!entry) throw new Error("History entry not found.");
         await ctx.db.delete("searchHistory", entry._id);
       }

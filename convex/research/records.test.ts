@@ -112,8 +112,8 @@ describe("account research records", () => {
     const first = await alice.query(api.research.records.searchHistory, { accountId: "alice", id: record.id, kind: "query", paginationOpts: { cursor: null, numItems: 2 } });
     const rest = await alice.query(api.research.records.searchHistory, { accountId: "alice", id: record.id, kind: "query", paginationOpts: { cursor: first.continueCursor, numItems: 2 } });
     expect([...first.page, ...rest.page].map(entry => entry.text)).toEqual(["third", "second", "tutoring"]);
-    await edit(record.id, "remove", { kind: "removeQueryHistoryEntry", query: "tutoring", timestamp: history.queryHistory[0].timestamp });
-    await expect(edit(record.id, "remove-again", { kind: "removeQueryHistoryEntry", query: "tutoring", timestamp: history.queryHistory[0].timestamp })).rejects.toThrow("History entry not found.");
+    await edit(record.id, "remove", { kind: "removeQueryHistoryEntry", ...history.queryHistory[0] });
+    await expect(edit(record.id, "remove-again", { kind: "removeQueryHistoryEntry", ...history.queryHistory[0] })).rejects.toThrow("History entry not found.");
     expect(await entries(record.id, "query")).toEqual(["third", "second"]);
     expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toMatchObject({ queryHistoryCount: 2, questionCount: 2, latestQuestion: "For whom?", questionText: "Does tutoring work?\nFor whom?" });
     // A copy gives the other search this one's parameters and history at once, and the real counts.
@@ -131,6 +131,28 @@ describe("account research records", () => {
     await expect(copy("other", "stale")).rejects.toThrow("That search changed. Choose it again.");
     await expect(edit("other", "patch-count", { kind: "patch", fields: { queryHistoryCount: 999 }, clear: [] })).rejects.toThrow("Validator error");
     expect(await entries("other", "query")).toEqual(["third", "second"]);
+  });
+
+  it("removes exactly the chosen entry of two with the same query and time", async () => {
+    const { alice } = await setup();
+    const timestamp = "2026-08-01T12:00:00Z";
+    const twins = { queryHistory: [{ query: "tutoring", field: "title" as const, timestamp }, { query: "tutoring", field: "abstract" as const, timestamp }], questionHistory: [] };
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [{ search: record, history: twins }] });
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "remove", command: { kind: "editSearch", id: record.id, edit: { kind: "removeQueryHistoryEntry", query: "tutoring", field: "abstract", timestamp } } });
+    const left = (await alice.query(api.research.records.searchHistory, { accountId: "alice", id: record.id, kind: "query", paginationOpts })).page;
+    expect(left).toEqual([{ text: "tutoring", field: "title", timestamp }]);
+  });
+
+  it("records a copy that changes only the history, so an earlier choice of that search is stale", async () => {
+    const { alice } = await setup();
+    const other = { queryHistory: [{ query: "other", field: "title" as const, timestamp: "2026-08-01T12:00:00Z" }], questionHistory: history.questionHistory };
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported(record), { search: { ...record, id: "same-fields" }, history: other }, imported({ ...record, id: "third" })] });
+    const get = async (id: string) => (await alice.query(api.research.records.getSearch, { accountId: "alice", id }))!;
+    const chosen = await get("same-fields");
+    const copy = (id: string, from: string, fromUpdatedAt: string, requestId: string) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command: { kind: "editSearch", id, edit: { kind: "copySearch", from, fromUpdatedAt, fields: {}, clear: [], summary: { queryHistoryCount: 1, questionCount: 1, questionText: "" } } } });
+    await copy("same-fields", record.id, (await get(record.id)).updatedAt, "history-only");
+    expect((await get("same-fields")).updatedAt).not.toBe(chosen.updatedAt);
+    await expect(copy("third", "same-fields", chosen.updatedAt, "stale")).rejects.toThrow("That search changed. Choose it again.");
   });
 
   it("refuses a copy over a history too long to replace, and changes nothing", async () => {

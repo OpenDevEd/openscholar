@@ -2,7 +2,7 @@ import type { ConvexReactClient } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { localKeywordExpansionStore, localRatingsStore, localSearchHistoryStore } from "../store";
 import { importSearchRecord, serializeSearch } from "./records";
-import type { QueryHistoryEntry, QuestionHistoryEntry } from "../types";
+import type { QueryHistoryEntry, QuestionHistoryEntry, SearchResult } from "../types";
 
 const CLAIMS_KEY = "research-import-owners";
 type ImportBatch = { accountId: string; searches: Array<{ search: ReturnType<typeof serializeSearch>; history: { queryHistory: QueryHistoryEntry[]; questionHistory: QuestionHistoryEntry[] } }>; shortcuts: Array<{ shorthand: string; expansion: string; createdAt: number }>; ratings: Array<{ paperId: string; rating: number }> };
@@ -17,6 +17,9 @@ export function localResearchBackup() {
 }
 
 /** Ownership survives an interrupted import and an intervening account switch. */
+/** The history a search held in this browser carries. */
+const historyOf = (search: SearchResult) => ({ queryHistory: search.queryHistory ?? [], questionHistory: search.questionHistory ?? [] });
+
 export async function importLocalResearch(
   accountId: string,
   send: (batch: ImportBatch) => Promise<null>,
@@ -33,11 +36,13 @@ export async function importLocalResearch(
     const data = serializeSearch(search);
     const serialized = JSON.stringify(data);
     // The history this browser kept goes with it, to the search's history rows.
-    const history = { queryHistory: search.queryHistory ?? [], questionHistory: search.questionHistory ?? [] };
+    const history = historyOf(search);
+    // A search whose history changed while it was sent stays, to be sent again.
+    const sentHistory = JSON.stringify(history);
     items.push({
-      key: `search:${search.id}`, bytes: (serialized.length + JSON.stringify(history).length) * 2,
+      key: `search:${search.id}`, bytes: (serialized.length + sentHistory.length) * 2,
       add: batch => batch.searches.push({ search: data, history }),
-      acknowledge: () => localSearchHistoryStore.setState(state => ({ searchHistory: state.searchHistory.filter(current => current.id !== search.id || JSON.stringify(serializeSearch(current)) !== serialized) })),
+      acknowledge: () => localSearchHistoryStore.setState(state => ({ searchHistory: state.searchHistory.filter(current => current.id !== search.id || JSON.stringify(serializeSearch(current)) !== serialized || JSON.stringify(historyOf(current)) !== sentHistory) })),
     });
     } catch (error) { failures.push(error); }
   }

@@ -94,7 +94,7 @@ export const editValidator = v.union(
   v.object({ kind: v.literal("patch"), fields: v.object(partial(editableFields)), clear: strings }),
   v.object({ kind: v.literal("query"), query: v.string(), field: fieldValidator }),
   v.object({ kind: v.literal("question"), question: v.string() }),
-  v.object({ kind: v.literal("removeQueryHistoryEntry"), query: v.string(), timestamp: v.string() }),
+  v.object({ kind: v.literal("removeQueryHistoryEntry"), query: v.string(), field: v.optional(fieldValidator), timestamp: v.string() }),
   // Gives the search another search's parameters (`fields`, `clear`) and history at once, as
   // that search was at `fromUpdatedAt`. `summary` is its history's, for the page to show at once.
   v.object({ kind: v.literal("copySearch"), from: v.string(), fromUpdatedAt: v.string(), fields: v.object(partial(editableFields)), clear: strings, summary: summaryValidator }),
