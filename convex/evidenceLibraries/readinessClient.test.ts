@@ -482,7 +482,34 @@ describe("Evidence Library readiness client", () => {
     );
   });
 
+  it("accepts the admin route sending a signed-out visitor to its own sign-in", async () => {
+    const fetchImpl = adminAnswer(
+      new Response(null, {
+        status: 307,
+        headers: { location: "/api/admin/sign-in?return=%2Fadmin" },
+      }),
+    );
+
+    await expect(requireLibraryRuntimeReady(input(fetchImpl))).resolves.toEqual(
+      { status: "ready" },
+    );
+  });
+
   it.each([
+    {
+      label: "a sign-in route on another site",
+      answer: new Response(null, {
+        status: 307,
+        headers: { location: "https://other.example.test/api/admin/sign-in" },
+      }),
+    },
+    {
+      label: "a sign-in route at another path",
+      answer: new Response(null, {
+        status: 307,
+        headers: { location: "/api/admin/sign-in/elsewhere" },
+      }),
+    },
     {
       label: "a redirect to somewhere else",
       answer: new Response(null, {

@@ -714,6 +714,26 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       await Promise.all(routeLeases.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
+    const oauthClients = await ctx.db
+      .query("evidenceLibraryOAuthClients")
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    if (oauthClients.length > 0) {
+      await Promise.all(oauthClients.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
+    const readerDeletions = await ctx.db
+      .query("evidenceLibraryReaderDeletions")
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    if (readerDeletions.length > 0) {
+      await Promise.all(readerDeletions.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
     const digestJobs = await ctx.db
       .query("evidenceLibraryDigestJobs")
       .withIndex("by_libraryId_and_editionId", (query) =>

@@ -7,7 +7,7 @@ import { internal } from "./_generated/api";
 import { stripeWebhook } from "./billing/stripeWebhook";
 import { autumnWebhook } from "./billing/autumnWebhook";
 import { clerkWebhook } from "./webhooks/clerk";
-import { redeemAdminLoginCode, checkAdminSession } from "./evidenceLibraries/serviceHttp";
+import { redeemAdminLoginCode, checkAdminSession, checkReaderStatus } from "./evidenceLibraries/serviceHttp";
 import { receiveSourceStatus } from "./evidenceLibraries/sourceStatus";
 import { readCollectionItems } from "./evidenceLibraries/collectionSources";
 import { requireAppUrl } from "./lib/env";
@@ -31,6 +31,12 @@ http.route({
   path: "/api/v1/evidence-libraries/admin-session/check",
   method: "POST",
   handler: checkAdminSession,
+});
+
+http.route({
+  path: "/api/v1/evidence-libraries/reader-status",
+  method: "POST",
+  handler: checkReaderStatus,
 });
 
 http.route({

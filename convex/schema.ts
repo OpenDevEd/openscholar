@@ -23,6 +23,9 @@ import {
 import {
   clerkEventLogFields,
   evidenceLibraryAdminLoginCodeFields,
+  evidenceLibraryReaderDeletionFields,
+  evidenceLibraryOAuthClientFields,
+  clerkDeletedUserFields,
   evidenceLibraryConfigDraftFields,
   evidenceLibraryConfigRevisionFields,
   evidenceLibraryConfigSectionValidator,
@@ -257,6 +260,17 @@ export default defineSchema({
     .index("by_libraryId", ["libraryId"])
     // The sweep walks working domains oldest check first, so none starves.
     .index("by_state_and_checkedAt", ["state", "checkedAt"]),
+
+  clerkDeletedUsers: defineTable(clerkDeletedUserFields).index("by_clerkId", ["clerkId"]),
+
+  // One row per library: its Clerk OAuth application.
+  evidenceLibraryOAuthClients: defineTable(evidenceLibraryOAuthClientFields)
+    .index("by_libraryId", ["libraryId"]),
+
+  // Reader data a library still has to drop for a deleted OpenScholar account.
+  evidenceLibraryReaderDeletions: defineTable(evidenceLibraryReaderDeletionFields)
+    .index("by_libraryId", ["libraryId"])
+    .index("by_libraryId_and_clerkUserId", ["libraryId", "clerkUserId"]),
 
   evidenceLibraryDomainRouteLeases: defineTable(
     evidenceLibraryDomainRouteLeaseFields,

@@ -243,7 +243,14 @@ describe("Evidence Library admin login redemption", () => {
     response = await check();
     expect(await response.json()).toEqual({ role: "editor" });
     await owner.mutation(api.evidenceLibraries.team.removeMember, { libraryId, clerkUserId: "external_creator" });
-    expect((await check()).status).toBe(403);
+    response = await check();
+    expect(response.status).toBe(403);
+    // The library's no-access page tells the person which organisation to ask.
+    const organisationName = await t.run(async ctx => {
+      const library = await ctx.db.get("evidenceLibraries", libraryId);
+      return library ? (await ctx.db.get("organizations", library.organizationId))?.name : undefined;
+    });
+    expect(await response.json()).toEqual({ error: "access_revoked", organisationName });
     expect(await t.run(ctx => ctx.db.get("evidenceLibraryMembers", assignmentId))).toBeNull();
   });
 
