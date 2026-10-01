@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useConvex, usePaginatedQuery, useQuery } from "convex/react";
+import { useConvex, useQuery } from "convex/react";
+// Its unfiled view is a convex-helpers stream, whose pages hold their place only with this hook.
+import { usePaginatedQuery } from "convex-helpers/react";
 import { motion } from "motion/react";
 import {
   Folder,

@@ -480,6 +480,23 @@ describe("searchLibrary", () => {
 });
 
 describe("a filtered library view, read page by page", () => {
+  it("keeps each page's place when a paper before it is removed", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const items: Array<Awaited<ReturnType<typeof seedLibraryItem>>> = [];
+    for (let i = 1; i <= 4; i++) items.push(await seedLibraryItem(t, user!._id, { title: `Paper ${i}`, rating: 4, savedAt: 1_000 - i, openalexId: `https://openalex.org/W${i}` }));
+    const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, minRating: 3 };
+    const read = (cursor: string | null, endCursor?: string) => asUser.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { cursor, numItems: 2, ...(endCursor ? { endCursor } : {}) } });
+    const first = await read(null);
+    const second = await read(first.continueCursor);
+
+    await t.run((ctx) => ctx.db.delete("libraryItems", items[0]!._id));
+    // The page hook asks again for each page between the cursors it already has.
+    const again = [...(await read(null, first.continueCursor)).page, ...(await read(first.continueCursor, second.continueCursor)).page];
+    expect(again.map((item) => item.title)).toEqual(["Paper 2", "Paper 3", "Paper 4"]);
+  });
+
   it("returns every match once, in the view's order, as an export reads it", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");

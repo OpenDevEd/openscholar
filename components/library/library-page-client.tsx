@@ -10,6 +10,7 @@ import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
   useProtectedPaginatedQuery,
+  useProtectedStreamPaginatedQuery,
   useProtectedQuery,
 } from "@/lib/auth/use-auth-query";
 import { showConfirmation } from "@/lib/confirmation";
@@ -166,7 +167,7 @@ export function LibraryPageClient() {
     filteredCountQueryArgs,
   );
 
-  const browseItems = useProtectedPaginatedQuery(
+  const browseItems = useProtectedStreamPaginatedQuery(
     api.library.queries.browseLibrary,
     queryText ? "skip" : libraryFilters,
     { initialNumItems: PAGE_SIZE },
@@ -394,10 +395,10 @@ export function LibraryPageClient() {
       : paginatedItems.status === "Exhausted"
         ? filteredItems.length
         : undefined;
-  // A count that stopped before the end: at least this many.
+  // A count that stopped before the end: at least this many, and at least what's loaded.
   const filteredAtLeast =
     filteredTotal === undefined && filteredTotalCount?.capped
-      ? filteredTotalCount.count
+      ? Math.max(filteredTotalCount.count, filteredItems.length)
       : undefined;
   const totalPages =
     filteredTotal === undefined

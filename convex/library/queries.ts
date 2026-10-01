@@ -17,8 +17,13 @@ const FILTERED_PAGE_ROWS = 2_000;
 const LIBRARY_PAGE_MAX = 500;
 /** A filtered count stops at this many matches, shown as "1,000+". */
 const FILTERED_COUNT_CAP = 1_000;
-/** Papers a filtered count reads at most: about 8 MB. */
+/** Papers a filtered count reads at most. */
 const FILTERED_COUNT_ROWS = 4_000;
+/**
+ * Bytes one filtered page or count reads at most, whatever its papers' size: half a
+ * query's 16 MiB, leaving room for a collection's memberships (about 1.5 MB at 10,000).
+ */
+const FILTERED_BYTES = 8 * 1024 * 1024;
 
 const libraryPageValidator = paginationResultValidator(schema.tables.libraryItems.validator.extend({ _id: v.id("libraryItems"), _creationTime: v.number() }));
 
@@ -292,7 +297,7 @@ export const browseLibrary = query({
     }
 
     return await filteredItems(ctx, user._id, args.sortBy, args.sortOrder, args, collectionItemIds)
-      .paginate({ ...paginationOpts, maximumRowsRead: FILTERED_PAGE_ROWS });
+      .paginate({ ...paginationOpts, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: FILTERED_BYTES });
   },
 });
 
@@ -389,7 +394,7 @@ export const getLibraryFilteredCount = query({
     // Read along the index of a filtered field, so single-field filters only read matches.
     const field = (["rating", "publicationYear", "savedAt"] as const).find((name) => filterRange(name, args).some((bound) => bound !== undefined)) ?? "savedAt";
     const counted = await filteredItems(ctx, user._id, field, "asc", args, collectionItemIds)
-      .paginate({ cursor: null, numItems: FILTERED_COUNT_CAP, maximumRowsRead: FILTERED_COUNT_ROWS });
+      .paginate({ cursor: null, numItems: FILTERED_COUNT_CAP, maximumRowsRead: FILTERED_COUNT_ROWS, maximumBytesRead: FILTERED_BYTES });
     return { count: counted.page.length, capped: !counted.isDone };
   },
 });

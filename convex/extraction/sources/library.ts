@@ -39,8 +39,10 @@ const PAGE_MAX = 200;
  * so a mostly filed library gets short pages instead of reading every membership (#353).
  */
 const UNFILED_PAGE_ROWS = 1_000;
-/** Papers "select all unfiled" reads at most: about 8 MB. */
+/** Papers "select all unfiled" reads at most. */
 const UNFILED_SELECT_ROWS = 4_000;
+/** Bytes an unfiled page or "select all" reads at most, whatever its papers' size. */
+const UNFILED_BYTES = 8 * 1024 * 1024;
 
 async function isUnfiled(ctx: QueryCtx, item: Doc<"libraryItems">) {
   const membership = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", item._id)).first();
@@ -101,7 +103,7 @@ export const list = query({
 
     if (args.collectionId === "unfiled") {
       if (!search) {
-        return await unfiledItems(ctx, user._id).paginate({ ...paginationOpts, maximumRowsRead: UNFILED_PAGE_ROWS });
+        return await unfiledItems(ctx, user._id).paginate({ ...paginationOpts, maximumRowsRead: UNFILED_PAGE_ROWS, maximumBytesRead: UNFILED_BYTES });
       }
       const page = await ctx.db
         .query("libraryItems")
@@ -182,12 +184,13 @@ export const listAllIds = query({
           )
           .take(limit + 1);
         const unfiled = await withoutFiled(ctx, found);
-        const truncated = unfiled.length > limit;
-        return { items: truncated ? unfiled.slice(0, limit) : unfiled, truncated };
+        // More search hits than were read may hold more unfiled papers.
+        const truncated = unfiled.length > limit || found.length > limit;
+        return { items: unfiled.slice(0, limit), truncated };
       }
       // Stops after UNFILED_SELECT_ROWS papers: when that many are read before the end,
       // there may be more unfiled papers than were selected.
-      const page = await unfiledItems(ctx, user._id).paginate({ cursor: null, numItems: limit, maximumRowsRead: UNFILED_SELECT_ROWS });
+      const page = await unfiledItems(ctx, user._id).paginate({ cursor: null, numItems: limit, maximumRowsRead: UNFILED_SELECT_ROWS, maximumBytesRead: UNFILED_BYTES });
       return { items: page.page, truncated: !page.isDone };
     }
 

@@ -134,6 +134,7 @@ vi.mock("convex/react", () => ({
 vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: protectedQueryMock,
   useProtectedPaginatedQuery: protectedPaginatedQueryMock,
+  useProtectedStreamPaginatedQuery: protectedPaginatedQueryMock,
 }));
 
 vi.mock("@/lib/hooks/use-debounced-value", () => ({

@@ -98,6 +98,15 @@ describe("at the largest sizes the product allows", () => {
     expect(exported).toHaveLength(MAX_SIZE.libraryItems * 0.8);
   }, 300_000);
 
+  it("a 10,000-paper library of long abstracts counts a filter that matches nothing", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    await seedLibrary(t, userId, { abstractChars: 4_500 });
+    // Rating 4 and up never meets year 1990 in the seed: the count reads past 4,000 large papers.
+    const count = await as.query(api.library.queries.getLibraryFilteredCount, { sortBy: "savedAt", sortOrder: "desc", minRating: 4, yearTo: 1990 });
+    expect(count).toEqual({ count: 0, capped: true });
+  }, 300_000);
+
   it("generates rows at the measured sizes", async () => {
     const t = convexTest(schema);
     const { userId } = await seedAccount(t);
