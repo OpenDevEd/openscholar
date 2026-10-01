@@ -25,6 +25,8 @@ import {
   ReadinessClientError,
   removeLibraryRuntimeRoute,
 } from "./readinessClient";
+import { ClerkApiError } from "./clerkOAuthApplications";
+import { deleteLibraryOAuthClientFor } from "./oauthClientSync";
 
 function requireEnvironment(name: string) {
   const value = process.env[name]?.trim();
@@ -198,6 +200,9 @@ export const runDevelopmentTeardown = internalAction({
         internal.evidenceLibraries.teardown.setDevelopmentTeardownStage,
         { attemptToken, operationId: args.operationId, stage },
       );
+      // The OAuth application's ID lives in the rows deleted next.
+      await holdTeardown(ctx, args.operationId, attemptToken);
+      await deleteLibraryOAuthClientFor(ctx, args.libraryId);
       for (let batch = 0; batch < 12; batch += 1) {
         const result = await ctx.runMutation(
           internal.evidenceLibraries.teardown.deleteDevelopmentTeardownBatch,
@@ -220,6 +225,11 @@ export const runDevelopmentTeardown = internalAction({
         error instanceof DatabaseProvisionerError ||
         error instanceof VolumeDeletionClientError
           ? { code: error.code, message: error.message }
+          : error instanceof ClerkApiError
+            ? {
+                code: "OAUTH_CLIENT_DELETE_FAILED",
+                message: "The library's OpenScholar sign-in could not be removed",
+              }
           : {
               code: "DEVELOPMENT_TEARDOWN_FAILED",
               message: "The development library could not be deleted",
@@ -232,7 +242,10 @@ export const runDevelopmentTeardown = internalAction({
       // releasing its volume, needs time rather than a second state machine.
       // The library keeps its records and waits, and only says so after the
       // last try.
-      if (isRetryableVolumeDeletionError(error)) {
+      if (
+        isRetryableVolumeDeletionError(error) ||
+        (error instanceof ClerkApiError && error.retryable)
+      ) {
         const again = await ctx.runMutation(
           internal.evidenceLibraries.teardown.retryDevelopmentTeardown,
           {

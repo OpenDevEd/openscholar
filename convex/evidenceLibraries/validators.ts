@@ -959,3 +959,43 @@ export function toPublicEvidenceLibraryOperation(
     "_id" | "_creationTime" | (typeof PUBLIC_OPERATION_FIELDS)[number]
   >;
 }
+
+/**
+ * A deleted OpenScholar account is removed from every library, not only the
+ * ones the reader comes back to. One row per library still owed the call; the
+ * row goes away when the library confirms.
+ */
+export const evidenceLibraryReaderDeletionFields = {
+  libraryId: v.id("evidenceLibraries"),
+  clerkUserId: v.string(),
+  attempts: v.number(),
+  state: v.union(v.literal("pending"), v.literal("failed")),
+  lastError: v.optional(v.object({ status: v.optional(v.number()), message: v.string() })),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
+
+/**
+ * The Clerk OAuth application a library signs readers and admins in with.
+ * `intentAt` is written before Clerk is asked to create it, so an attempt
+ * whose answer was lost is adopted on the next try instead of repeated.
+ */
+export const evidenceLibraryOAuthClientFields = {
+  libraryId: v.id("evidenceLibraries"),
+  intentAt: v.number(),
+  applicationId: v.optional(v.string()),
+  clientId: v.optional(v.string()),
+  encryptedClientSecret: v.optional(v.string()),
+  discoveryUrl: v.optional(v.string()),
+  redirectUris: v.array(v.string()),
+  lastError: v.optional(
+    v.object({
+      status: v.optional(v.number()),
+      code: v.optional(v.string()),
+      traceId: v.optional(v.string()),
+      message: v.string(),
+      at: v.number(),
+    }),
+  ),
+  updatedAt: v.number(),
+};

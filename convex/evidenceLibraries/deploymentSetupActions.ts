@@ -18,6 +18,8 @@ import {
   ReadinessClientError,
   requireLibraryRuntimeRouteReady,
 } from "./readinessClient";
+import { ClerkApiError } from "./clerkOAuthApplications";
+import { syncLibraryOAuthClientFor } from "./oauthClientSync";
 
 const invalidCoolifyConfig = (message: string) =>
   new CoolifyClientError("INVALID_COOLIFY_CONFIG", message);
@@ -48,6 +50,13 @@ export const runDeploymentSetup = internalAction({
         internal.evidenceLibraries.deploymentSetup.prepareDeploymentSetup,
         args,
       );
+      // Signing in through OpenScholar has to work from the library's first
+      // answer, so its OAuth application exists before it goes live.
+      await syncLibraryOAuthClientFor(ctx, {
+        libraryId: args.libraryId,
+        origins: [prepared.targetBaseUrl],
+        mode: "include",
+      });
       const maintenanceRoute = {
         applicationUuid: prepared.applicationId,
         customOrigins: [],
@@ -165,6 +174,11 @@ export const runDeploymentSetup = internalAction({
         error instanceof CoolifyClientError ||
         error instanceof ReadinessClientError
           ? { code: error.code, message: error.message }
+          : error instanceof ClerkApiError
+            ? {
+                code: "OAUTH_CLIENT_SYNC_FAILED",
+                message: "OpenScholar sign-in could not be set up for this library",
+              }
           : {
               code: "DEPLOYMENT_SETUP_FAILED",
               message: "Evidence Library deployment could not be checked",

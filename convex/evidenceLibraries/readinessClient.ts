@@ -1026,11 +1026,19 @@ function isLibraryLoginPage(destination: URL, loginPageUrl: string): boolean {
 }
 
 /**
+ * Where software that signs people in through the OpenScholar OAuth
+ * application sends a signed-out visitor of `/admin`: its own route that
+ * starts the sign-in, on the same address.
+ */
+const LIBRARY_SIGN_IN_PATH = "/api/admin/sign-in";
+
+/**
  * A signed-out `/admin` does not render a page: the runtime answers `307` and
- * sends the browser to this library's OpenScholar login page, which signs the
- * person in and hands the session back. Only that exact answer counts as
- * ready. A page of its own, or another kind of redirect, means the library
- * runs software that does not follow this contract.
+ * sends the browser to sign in. Older software sends it to this library's
+ * OpenScholar login page; newer software to its own sign-in route, which
+ * starts the OpenScholar OAuth flow. Only those exact answers count as ready.
+ * A page of its own, or another kind of redirect, means the library runs
+ * software that does not follow this contract.
  */
 async function requireAdminPage(
   fetchImpl: typeof fetch,
@@ -1046,7 +1054,7 @@ async function requireAdminPage(
     url,
     { headers: publicLibraryHeaders("text/html"), method: "GET" },
     async (response) => {
-      // The runtime contract is one exact answer: a 307 to the login page.
+      // The runtime contract is one exact kind of answer: a 307 to sign in.
       if (response.status !== 307) throw notReady;
 
       const location = response.headers.get("location");
@@ -1057,7 +1065,12 @@ async function requireAdminPage(
       } catch {
         throw notReady;
       }
-      if (!isLibraryLoginPage(destination, loginPageUrl)) throw notReady;
+      const startsOwnSignIn =
+        destination.origin === url.origin &&
+        destination.pathname === LIBRARY_SIGN_IN_PATH;
+      if (!startsOwnSignIn && !isLibraryLoginPage(destination, loginPageUrl)) {
+        throw notReady;
+      }
     },
   );
 }

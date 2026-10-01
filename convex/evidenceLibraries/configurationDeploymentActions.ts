@@ -2,8 +2,8 @@
 
 import { createHash } from "node:crypto";
 import { internal } from "../_generated/api";
-import type { Doc } from "../_generated/dataModel";
-import { internalAction } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
+import { internalAction, type ActionCtx } from "../_generated/server";
 import { v } from "convex/values";
 import {
   featuresAiEnabled,
@@ -55,6 +55,32 @@ import {
   StorageSetupError,
 } from "./storageSetupClient";
 import type { RuntimeImageReference } from "./runtimeImageRegistry";
+import { ClerkApiError } from "./clerkOAuthApplications";
+import { syncLibraryOAuthClientFor } from "./oauthClientSync";
+
+/**
+ * Once a deployment has landed, only the addresses it answers on keep a
+ * sign-in callback. A failure leaves extra callbacks, which the next
+ * deployment removes, so it does not undo a deployment that worked.
+ */
+async function narrowLibraryOAuthCallbacks(
+  ctx: ActionCtx,
+  libraryId: Id<"evidenceLibraries">,
+  target: { targetBaseUrl: string; customDomains: string[] },
+) {
+  try {
+    await syncLibraryOAuthClientFor(ctx, {
+      libraryId,
+      origins: [target.targetBaseUrl, ...target.customDomains],
+      mode: "exact",
+    });
+  } catch (error) {
+    console.error("[evidence-library] could not remove old sign-in callbacks", {
+      libraryId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
 
 const invalidConfiguration = (message: string) =>
   new CoolifyClientError("INVALID_CONFIGURATION_DEPLOYMENT_CONFIG", message);
@@ -174,6 +200,13 @@ export const runConfigurationDeployment = internalAction({
           ...pendingTarget.customDomains,
         ]),
       ].filter((origin) => !platformOriginSet.has(origin));
+      // Sign-in has to keep working on the old address and start working on
+      // the new one before any traffic moves, so both get callbacks now.
+      await syncLibraryOAuthClientFor(ctx, {
+        libraryId: args.libraryId,
+        origins: [...platformOrigins, ...customOrigins],
+        mode: "include",
+      });
       // Only a deployment puts traffic behind the guard, so only a deployment
       // puts it back there when it fails. A direct activation never does:
       // no later direct activation would ever take it down again.
@@ -509,6 +542,7 @@ export const runConfigurationDeployment = internalAction({
           { ...args, checkedAt: Date.now() },
         );
         restoreDirectConfiguration = undefined;
+        await narrowLibraryOAuthCallbacks(ctx, args.libraryId, target);
         return result;
       }
 
@@ -725,11 +759,13 @@ export const runConfigurationDeployment = internalAction({
         verifierToken,
       };
       await handOffLibraryRuntime(targetRoute, readinessInput);
-      return await ctx.runMutation(
+      const completed = await ctx.runMutation(
         internal.evidenceLibraries.configurationDeployment
           .completeConfigurationDeployment,
         { ...args, checkedAt: Date.now() },
       );
+      await narrowLibraryOAuthCallbacks(ctx, args.libraryId, target);
+      return completed;
     } catch (error) {
       // Coolify goes quiet for a moment while it redeploys an app or reloads
       // its proxy for a new domain, and storage can drop a request. The run is
@@ -739,6 +775,7 @@ export const runConfigurationDeployment = internalAction({
         isRetryableReadinessError(error) ||
         (error instanceof CoolifyClientError &&
           error.code === "COOLIFY_UNAVAILABLE") ||
+        (error instanceof ClerkApiError && error.retryable) ||
         (error instanceof StorageSetupError &&
           (error.code === "STORAGE_UNAVAILABLE" ||
             (error.status ?? 0) >= 500))
@@ -793,6 +830,11 @@ export const runConfigurationDeployment = internalAction({
         error instanceof StorageSetupError ||
         error instanceof PlatformEmbeddingKeyMissingError
           ? { code: error.code, message: error.message }
+          : error instanceof ClerkApiError
+            ? {
+                code: "OAUTH_CLIENT_SYNC_FAILED",
+                message: "OpenScholar sign-in could not be prepared for this library",
+              }
           : error instanceof ConfigurationAssemblyError
             ? {
                 code: "CONFIGURATION_ASSEMBLY_FAILED",

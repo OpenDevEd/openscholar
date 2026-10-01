@@ -19,6 +19,18 @@ import {
   TEST_RUNTIME_IMAGE,
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
+import { createFakeClerkOAuth } from "../../tests/helpers/fake-clerk-oauth";
+
+// Every deployment keeps the library's OAuth application in step with its
+// addresses, so Clerk answers from memory here.
+let clerk = createFakeClerkOAuth();
+beforeEach(() => {
+  clerk = createFakeClerkOAuth();
+  vi.stubEnv("CLERK_SECRET_KEY", "sk_test_fake");
+});
+function stubFetch(fetchImpl: typeof fetch) {
+  vi.stubGlobal("fetch", clerk.wrap(fetchImpl));
+}
 
 vi.mock("./domainEgressNode", () => ({
   openPinnedDomainClient: async () => globalThis.fetch,
@@ -668,7 +680,7 @@ async function switchCustomDomain(
       return revision?.revisionKey ?? "";
     }),
   });
-  vi.stubGlobal("fetch", network.fetchImpl);
+  stubFetch(network.fetchImpl);
   const off = await fixture.admin.mutation(
     api.evidenceLibraries.versions.setDomainPrimary,
     {
@@ -861,7 +873,7 @@ describe("Evidence Library configuration deployment", () => {
       ctx.db.get(activated.operationId),
     );
     let calls = 0;
-    vi.stubGlobal("fetch", async () => {
+    stubFetch(async () => {
       calls += 1;
       throw new Error("Coolify must not be called");
     });
@@ -945,7 +957,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
 
     await fixture.t.action(
       internal.evidenceLibraries.configurationDeploymentActions
@@ -1003,7 +1015,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: deployment.fixture.created.libraryId,
       operationId: deployment.activated.operationId,
@@ -1105,7 +1117,7 @@ describe("Evidence Library configuration deployment", () => {
       canonicalAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
 
     await expect(
       deployment.fixture.t.action(
@@ -1156,6 +1168,15 @@ describe("Evidence Library configuration deployment", () => {
       role: "primary",
       deploymentPending: false,
     });
+    // Sign-in answers on exactly the addresses the library now serves.
+    const [application] = [...clerk.applications.values()].filter(
+      ({ name }) => name === `evidence-library-${fixture.created.libraryId}`,
+    );
+    expect(application.redirect_uris).toEqual(
+      [customAddress, fixture.created.publicAddress]
+        .map((origin) => `${origin}/api/auth/callback/openscholar`)
+        .sort(),
+    );
   });
 
   it("finishes an address switch that landed before a check failed", async () => {
@@ -1251,7 +1272,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     network.rejectConfiguration();
 
     await expect(
@@ -1280,7 +1301,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: deployment.fixture.created.libraryId,
       operationId: deployment.activated.operationId,
@@ -1357,7 +1378,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const firstActionArgs = {
       libraryId,
       operationId: deployment.activated.operationId,
@@ -1447,7 +1468,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: deployment.fixture.created.libraryId,
       operationId: deployment.activated.operationId,
@@ -1505,7 +1526,7 @@ describe("Evidence Library configuration deployment", () => {
       revisionKey: deployment.activated.revisionKey,
     });
     network.failReadiness();
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: deployment.fixture.created.libraryId,
       operationId: deployment.activated.operationId,
@@ -1601,7 +1622,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: activeRevision!.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: fixture.created.libraryId,
       operationId: started.operationId,
@@ -1695,7 +1716,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: activeRevision!.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: fixture.created.libraryId,
       operationId: started.operationId,
@@ -1750,7 +1771,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId: fixture.created.libraryId,
       operationId: activated.operationId,
@@ -1877,7 +1898,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: "r1",
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     await expect(
       fixture.t.action(
         internal.evidenceLibraries.configurationDeploymentActions
@@ -1969,7 +1990,7 @@ describe("Evidence Library configuration deployment", () => {
       runtimeCommit: NEWER_COMMIT,
       runtimeImage: NEWER_RUNTIME_IMAGE,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
 
     await expect(
       fixture.t.action(
@@ -2027,7 +2048,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: candidate.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
 
     const firstAttempt = await fixture.t.run((ctx) =>
       ctx.db.get(started.operationId),
@@ -2168,7 +2189,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: fixture.created.publicAddress,
       revisionKey: fixture.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
 
     const moved = await fixture.admin.action(
       api.evidenceLibraries.addressActions.moveLibraryAddress,
@@ -2285,7 +2306,7 @@ describe("Evidence Library configuration deployment", () => {
       }
       return await network.fetchImpl(requestInput, init);
     };
-    vi.stubGlobal("fetch", flaky);
+    stubFetch(flaky);
 
     await fixture.admin.action(
       api.evidenceLibraries.addressActions.moveLibraryAddress,
@@ -2340,7 +2361,7 @@ describe("Evidence Library configuration deployment", () => {
       }
       return await network.fetchImpl(requestInput, init);
     };
-    vi.stubGlobal("fetch", failing);
+    stubFetch(failing);
 
     const moved = await fixture.admin.action(
       api.evidenceLibraries.addressActions.moveLibraryAddress,
@@ -2660,7 +2681,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     // The configuration lands, readiness never answers, and the last allowed
     // check puts the previous configuration back.
     network.failReadiness();
@@ -2727,7 +2748,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
 
     await deployment.fixture.admin.mutation(
       api.evidenceLibraries.configurationDeployment
@@ -2841,7 +2862,7 @@ describe("Evidence Library configuration deployment", () => {
       publicAddress: deployment.fixture.created.publicAddress,
       revisionKey: deployment.activated.revisionKey,
     });
-    vi.stubGlobal("fetch", network.fetchImpl);
+    stubFetch(network.fetchImpl);
     const actionArgs = {
       libraryId,
       operationId: deployment.activated.operationId,
@@ -2866,7 +2887,7 @@ describe("Evidence Library configuration deployment", () => {
         });
       });
     };
-    vi.stubGlobal("fetch", (async (
+    stubFetch((async (
       input: RequestInfo | URL,
       init?: RequestInit,
     ) => {

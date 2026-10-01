@@ -10,6 +10,7 @@ import {
   type ClerkEventOutcome,
 } from "../webhooks/eventOrdering";
 import { claimAdminInvite } from "../admins/access";
+import { queueReaderDeletion } from "../evidenceLibraries/readerDeletions";
 
 const clerkEventMetadataFields = {
   eventId: v.string(),
@@ -122,6 +123,7 @@ export async function applyUserDeleteProjection(
     const grants = await ctx.db.query("evidenceLibraryMembers")
       .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.clerkId)).collect();
     for (const grant of grants) await ctx.db.delete("evidenceLibraryMembers", grant._id);
+    await queueReaderDeletion(ctx, args.clerkId);
     if (!user) return;
 
     await ctx.db.patch("users", user._id, {

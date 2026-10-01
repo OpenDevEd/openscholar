@@ -68,6 +68,8 @@ export class RuntimeReadError extends Error {
       | "RUNTIME_READ_INVALID"
       | "RUNTIME_READ_UNAVAILABLE",
     message: string,
+    /** The library's HTTP status, when it answered at all. */
+    readonly status?: number,
   ) {
     super(message);
     this.name = "RuntimeReadError";
@@ -153,7 +155,7 @@ async function runtimeFetch(
   fetchImpl: typeof fetch,
   target: { baseUrl: string; credential: string },
   url: URL,
-  method: "GET" | "POST" = "GET",
+  method: "GET" | "POST" | "DELETE" = "GET",
 ): Promise<Response> {
   let response: Response;
   try {
@@ -175,12 +177,14 @@ async function runtimeFetch(
     throw new RuntimeReadError(
       "RUNTIME_READ_REFUSED",
       "The library refused the machine credential",
+      response.status,
     );
   }
   if (!response.ok) {
     throw new RuntimeReadError(
       "RUNTIME_READ_UNAVAILABLE",
       `The library answered ${response.status}`,
+      response.status,
     );
   }
   return response;
@@ -412,4 +416,26 @@ export async function requestRuntimeSourceRun(
     target.baseUrl,
   );
   await runtimeFetch(fetchImpl, target, url, "POST");
+}
+
+/**
+ * Removes a deleted OpenScholar account's reader data from the library. A 404
+ * means the library has no such reader, or runs software without readers, so
+ * there is nothing left to remove.
+ */
+export async function deleteRuntimeReader(
+  fetchImpl: typeof fetch,
+  target: { baseUrl: string; credential: string },
+  clerkUserId: string,
+): Promise<void> {
+  const url = new URL(
+    `/api/v1/openscholar/readers/${encodeURIComponent(clerkUserId)}`,
+    target.baseUrl,
+  );
+  try {
+    await runtimeFetch(fetchImpl, target, url, "DELETE");
+  } catch (error) {
+    if (error instanceof RuntimeReadError && error.status === 404) return;
+    throw error;
+  }
 }

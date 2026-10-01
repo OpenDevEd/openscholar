@@ -75,6 +75,7 @@ import type * as evidenceLibraries_aiProviderKey from "../evidenceLibraries/aiPr
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
 import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibraries/applicationSetupActions.js";
 import type * as evidenceLibraries_approvedQueries from "../evidenceLibraries/approvedQueries.js";
+import type * as evidenceLibraries_clerkOAuthApplications from "../evidenceLibraries/clerkOAuthApplications.js";
 import type * as evidenceLibraries_collectionSourceValidators from "../evidenceLibraries/collectionSourceValidators.js";
 import type * as evidenceLibraries_collectionSources from "../evidenceLibraries/collectionSources.js";
 import type * as evidenceLibraries_configurationDeployment from "../evidenceLibraries/configurationDeployment.js";
@@ -109,6 +110,8 @@ import type * as evidenceLibraries_invitationActions from "../evidenceLibraries/
 import type * as evidenceLibraries_invitations from "../evidenceLibraries/invitations.js";
 import type * as evidenceLibraries_members from "../evidenceLibraries/members.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
+import type * as evidenceLibraries_oauthClientSync from "../evidenceLibraries/oauthClientSync.js";
+import type * as evidenceLibraries_oauthClients from "../evidenceLibraries/oauthClients.js";
 import type * as evidenceLibraries_openAlexSourceKey from "../evidenceLibraries/openAlexSourceKey.js";
 import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
@@ -119,6 +122,8 @@ import type * as evidenceLibraries_publicationProviderActions from "../evidenceL
 import type * as evidenceLibraries_publicationProviders from "../evidenceLibraries/publicationProviders.js";
 import type * as evidenceLibraries_publicationValidators from "../evidenceLibraries/publicationValidators.js";
 import type * as evidenceLibraries_queries from "../evidenceLibraries/queries.js";
+import type * as evidenceLibraries_readerDeletionActions from "../evidenceLibraries/readerDeletionActions.js";
+import type * as evidenceLibraries_readerDeletions from "../evidenceLibraries/readerDeletions.js";
 import type * as evidenceLibraries_readinessClient from "../evidenceLibraries/readinessClient.js";
 import type * as evidenceLibraries_readinessSetup from "../evidenceLibraries/readinessSetup.js";
 import type * as evidenceLibraries_readinessSetupActions from "../evidenceLibraries/readinessSetupActions.js";
@@ -391,6 +396,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
   "evidenceLibraries/applicationSetupActions": typeof evidenceLibraries_applicationSetupActions;
   "evidenceLibraries/approvedQueries": typeof evidenceLibraries_approvedQueries;
+  "evidenceLibraries/clerkOAuthApplications": typeof evidenceLibraries_clerkOAuthApplications;
   "evidenceLibraries/collectionSourceValidators": typeof evidenceLibraries_collectionSourceValidators;
   "evidenceLibraries/collectionSources": typeof evidenceLibraries_collectionSources;
   "evidenceLibraries/configurationDeployment": typeof evidenceLibraries_configurationDeployment;
@@ -425,6 +431,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/invitations": typeof evidenceLibraries_invitations;
   "evidenceLibraries/members": typeof evidenceLibraries_members;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
+  "evidenceLibraries/oauthClientSync": typeof evidenceLibraries_oauthClientSync;
+  "evidenceLibraries/oauthClients": typeof evidenceLibraries_oauthClients;
   "evidenceLibraries/openAlexSourceKey": typeof evidenceLibraries_openAlexSourceKey;
   "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
@@ -435,6 +443,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/publicationProviders": typeof evidenceLibraries_publicationProviders;
   "evidenceLibraries/publicationValidators": typeof evidenceLibraries_publicationValidators;
   "evidenceLibraries/queries": typeof evidenceLibraries_queries;
+  "evidenceLibraries/readerDeletionActions": typeof evidenceLibraries_readerDeletionActions;
+  "evidenceLibraries/readerDeletions": typeof evidenceLibraries_readerDeletions;
   "evidenceLibraries/readinessClient": typeof evidenceLibraries_readinessClient;
   "evidenceLibraries/readinessSetup": typeof evidenceLibraries_readinessSetup;
   "evidenceLibraries/readinessSetupActions": typeof evidenceLibraries_readinessSetupActions;

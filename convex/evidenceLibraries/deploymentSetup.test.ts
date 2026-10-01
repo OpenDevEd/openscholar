@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
+import { createFakeClerkOAuth } from "../../tests/helpers/fake-clerk-oauth";
 import {
   createActivatedSetupFixture,
   TEST_RUNTIME_IMAGE,
@@ -97,9 +98,11 @@ describe("Evidence Library deployment setup", () => {
     vi.stubEnv("EL_RUNTIME_VERIFIER_URL", "https://verifier.example.test");
     vi.stubEnv("EL_RUNTIME_VERIFIER_TOKEN", "verifier-token");
     const requests: Array<{ body: unknown; url: URL }> = [];
+    vi.stubEnv("CLERK_SECRET_KEY", "sk_test_fake");
+    vi.stubEnv("ENCRYPTION_KEY", "ab".repeat(32));
     vi.stubGlobal(
       "fetch",
-      vi.fn<typeof fetch>(async (request, init) => {
+      createFakeClerkOAuth().wrap(vi.fn<typeof fetch>(async (request, init) => {
         const url = new URL(String(request));
         requests.push({
           body: init?.body ? JSON.parse(String(init.body)) : null,
@@ -117,7 +120,7 @@ describe("Evidence Library deployment setup", () => {
           });
         }
         return Response.json({ message: "unavailable" }, { status: 503 });
-      }),
+      })),
     );
 
     await expect(
