@@ -162,7 +162,7 @@ High-value delegation targets for this plan set:
 - `lib/billing/entitlements.ts`
 - `convex/subscriptions/lib/selectCanonicalSubscription.ts`
 - `convex/_generated/ai/guidelines.md`
-- local skill: https://github.com/get-convex/agent-skills/tree/7a6fcc6882f344577a34365fdadbd0f8f8c467d7/skills/convex-performance-audit/**
+- local skill: `.agents/skills/convex-performance-audit/**`
 - Convex docs:
   - `https://docs.convex.dev/database/advanced/occ`
   - `https://docs.convex.dev/error`

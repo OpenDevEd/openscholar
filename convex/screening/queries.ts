@@ -17,7 +17,7 @@ import { readScreeningProgressCounts } from "./aggregates";
 import { buildScreeningProgressSnapshot } from "./progress";
 
 async function readJobProgressSnapshot(
-  ctx: QueryCtx,
+  ctx: Pick<QueryCtx, "runQuery">,
   job: Pick<Doc<"screeningJobs">, "_id" | "status" | "totalPapers">,
 ) {
   const counts = await readScreeningProgressCounts(ctx, job._id);

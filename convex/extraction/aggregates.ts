@@ -8,10 +8,10 @@
 
 import { DirectAggregate } from "@convex-dev/aggregate";
 import { components } from "../_generated/api";
+import type { GenericMutationCtx } from "convex/server";
 import type { Id } from "../_generated/dataModel";
-import type { MutationCtx } from "../_generated/server";
 
-type RunMutationCtx = MutationCtx;
+type RunMutationCtx = { runMutation: GenericMutationCtx<never>["runMutation"] };
 
 /**
  * Per-job credit totals for the cost badge. One entry per settled charge,
