@@ -164,6 +164,23 @@ describe("at the largest sizes the product allows", () => {
     expect(revisions).toEqual(Array.from({ length: 44 }, (_, i) => 44 - i));
   }, 300_000);
 
+  it("an entry 449 steps back in a history of 450 of the longest OQL queries is read in bounded steps (#354)", async () => {
+    const t = convexTest({ schema, transactionLimits: true });
+    const clerkId = "max_size_user";
+    const { userId, as } = await seedAccount(t, clerkId);
+    const searchId = await t.run((ctx) => ctx.db.insert("searches", { userId, localId: "long", data: { id: "long", query: "q", field: "oql", count: 1, queryHistoryCount: 450, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" }, revision: 1 }));
+    await insertMany(t, "searchHistory", Array.from({ length: 450 }, (_, position) => ({ userId, searchId, kind: "query", text: `${position} ${text(MAX_SIZE.oqlQueryChars - 6, position)}`, field: "oql", timestamp: "2026-09-01T00:00:00.000Z", position })), 25);
+    let reads = 0;
+    let result: { entry: { text: string } | null } | { skipped: number; cursor: string };
+    for (let cursor: string | undefined, left = 449; ; left -= result.skipped, cursor = result.cursor) {
+      reads++;
+      result = await as.query(api.research.records.searchHistoryEntry, { accountId: clerkId, id: "long", kind: "query", stepsBack: left, ...(cursor ? { cursor } : {}) });
+      if ("entry" in result) break;
+    }
+    expect(result.entry?.text.startsWith("0 ")).toBe(true);
+    expect(reads).toBeGreaterThan(1);
+  }, 300_000);
+
   it("an Evidence Library with 1,000 revisions, operations and people checks sources, lists its team and tears down", async () => {
     vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
     vi.stubEnv("EL_COOLIFY_ENVIRONMENT", "development");

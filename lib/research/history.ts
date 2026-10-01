@@ -52,12 +52,12 @@ export function useSearchHistoryEntries<K extends Kind>(search: SearchResult | n
       if (local) return local[local.length - 1 - stepsBack];
       if (!search || !userId) return undefined;
       if (remote.status === "CanLoadMore") remote.loadMore(HISTORY_PAGE_MAX);
-      for (let cursor: string | null = null, skipped = 0; ;) {
-        const page: { page: Row[]; isDone: boolean; continueCursor: string } = await convex.query(api.research.records.searchHistory, { accountId: userId, id: search.id, kind, paginationOpts: { cursor, numItems: HISTORY_PAGE_MAX } });
-        if (stepsBack - skipped < page.page.length) return toEntry(kind, page.page[stepsBack - skipped]);
-        if (page.isDone) return undefined;
-        skipped += page.page.length;
-        cursor = page.continueCursor;
+      // Each read skips as many entries as it can; one far back may take a few.
+      for (let cursor: string | undefined, left = stepsBack; ;) {
+        const result = await convex.query(api.research.records.searchHistoryEntry, { accountId: userId, id: search.id, kind, stepsBack: left, ...(cursor ? { cursor } : {}) });
+        if ("entry" in result) return result.entry ? toEntry(kind, result.entry) : undefined;
+        left -= result.skipped;
+        cursor = result.cursor;
       }
     },
   };

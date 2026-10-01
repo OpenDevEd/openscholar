@@ -112,6 +112,8 @@ describe("account research records", () => {
     const first = await alice.query(api.research.records.searchHistory, { accountId: "alice", id: record.id, kind: "query", paginationOpts: { cursor: null, numItems: 2 } });
     const rest = await alice.query(api.research.records.searchHistory, { accountId: "alice", id: record.id, kind: "query", paginationOpts: { cursor: first.continueCursor, numItems: 2 } });
     expect([...first.page, ...rest.page].map(entry => entry.text)).toEqual(["third", "second", "tutoring"]);
+    const entryAt = async (stepsBack: number) => alice.query(api.research.records.searchHistoryEntry, { accountId: "alice", id: record.id, kind: "query", stepsBack });
+    expect([await entryAt(0), await entryAt(2), await entryAt(3)]).toEqual([{ entry: expect.objectContaining({ text: "third" }) }, { entry: expect.objectContaining({ text: "tutoring" }) }, { entry: null }]);
     await edit(record.id, "remove", { kind: "removeQueryHistoryEntry", ...history.queryHistory[0] });
     await expect(edit(record.id, "remove-again", { kind: "removeQueryHistoryEntry", ...history.queryHistory[0] })).rejects.toThrow("History entry not found.");
     expect(await entries(record.id, "query")).toEqual(["third", "second"]);
