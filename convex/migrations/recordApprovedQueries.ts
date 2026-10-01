@@ -4,13 +4,14 @@ import { components, internal } from "../_generated/api";
 import type { DataModel, Id } from "../_generated/dataModel";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
-import { readSourcesRevisions, recordApprovedQueries } from "../evidenceLibraries/approvedQueries";
+import { recordApprovedQueries } from "../evidenceLibraries/approvedQueries";
 
 /**
- * Records every approved OpenAlex query version in each library's sources revisions and
- * marks the library recorded, so its sources saves stop reading every revision (#357).
- * One library per transaction; a library with conflicting versions fails the run by name.
- * New revisions are recorded by the trigger on evidenceLibraryConfigSections meanwhile.
+ * Records every approved OpenAlex query version in the libraries' sources revisions, then
+ * marks every library recorded, so its sources saves stop reading every revision (#357).
+ * Revisions are recorded a batch at a time, so a library with any number of them fits; one
+ * whose versions conflict fails the run by name. A revision saved meanwhile is recorded by
+ * the trigger on evidenceLibraryConfigSections, so a library is complete when it's marked.
  *
  *   npx convex run migrations/recordApprovedQueries:run '{"dryRun": true}'
  *   npx convex run migrations/recordApprovedQueries:run
@@ -18,17 +19,20 @@ import { readSourcesRevisions, recordApprovedQueries } from "../evidenceLibrarie
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
-export const recordLibraries = migrations.define({
-  table: "evidenceLibraries",
-  batchSize: 1,
-  migrateOne: async (ctx, library) => {
-    if (library.approvedQueriesRecorded) return;
-    for (const payload of await readSourcesRevisions(ctx, library._id)) await recordApprovedQueries(ctx, library._id, payload);
-    return { approvedQueriesRecorded: true as const };
+export const recordRevisions = migrations.define({
+  table: "evidenceLibraryConfigSections",
+  batchSize: 50,
+  migrateOne: async (ctx, section) => {
+    if (section.kind === "revision" && section.sectionKey === "sources") await recordApprovedQueries(ctx, section.libraryId, section.payload);
   },
 });
 
-export const run = migrations.runner(internal.migrations.recordApprovedQueries.recordLibraries);
+export const markLibraries = migrations.define({
+  table: "evidenceLibraries",
+  migrateOne: (_ctx, library) => (library.approvedQueriesRecorded ? undefined : { approvedQueriesRecorded: true as const }),
+});
+
+export const run = migrations.runner([internal.migrations.recordApprovedQueries.recordRevisions, internal.migrations.recordApprovedQueries.markLibraries]);
 
 /** One page of libraries not recorded yet, for `verify`. */
 export const unrecordedPage = internalQuery({

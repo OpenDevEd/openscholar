@@ -292,6 +292,9 @@ export default defineSchema({
     .index("by_libraryId_and_createdAt", ["libraryId", "createdAt"])
     // Publish operations newest first, where configuration deployments are found (#357).
     .index("by_libraryId_and_kind_and_createdAt", ["libraryId", "kind", "createdAt"])
+    // Queued work that already ran, which blocks a teardown (#357).
+    .index("by_libraryId_and_status_and_attemptCount", ["libraryId", "status", "attemptCount"])
+    .index("by_libraryId_and_status_and_startedAt", ["libraryId", "status", "startedAt"])
     .index("by_libraryId_and_status_and_updatedAt", [
       "libraryId",
       "status",

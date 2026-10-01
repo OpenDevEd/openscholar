@@ -20,11 +20,6 @@ import {
   readEvidenceLibraryAccess,
 } from "./access";
 
-/**
- * Running or queued operations a teardown reads: a library runs one at a time, and the
- * queued ones are setup operations waiting for activation, so this is far more than any has.
- */
-const ACTIVE_OPERATIONS_READ = 100;
 
 /**
  * Only the attempt that holds the teardown may write about it. Without this
@@ -117,16 +112,28 @@ async function requestTeardown(
       query.eq("libraryId", args.libraryId).eq("idempotencyKey", `development-teardown:${args.libraryId}`),
     )
     .unique();
-  const [running, queued] = await Promise.all(
-    (["running", "queued"] as const).map((status) =>
-      ctx.db
-        .query("evidenceLibraryConfigOperations")
-        .withIndex("by_libraryId_and_status_and_updatedAt", (query) =>
-          query.eq("libraryId", args.libraryId).eq("status", status),
-        )
-        .take(ACTIVE_OPERATIONS_READ),
-    ),
-  );
+  // Running work, and queued work that already ran and waits to retry: a queued setup that
+  // never started doesn't block. Each is read from an index on its own condition.
+  const [running, retrying, restarted] = await Promise.all([
+    ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_status_and_updatedAt", (query) =>
+        query.eq("libraryId", args.libraryId).eq("status", "running"),
+      )
+      .take(2),
+    ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_status_and_attemptCount", (query) =>
+        query.eq("libraryId", args.libraryId).eq("status", "queued").gt("attemptCount", 0),
+      )
+      .first(),
+    ctx.db
+      .query("evidenceLibraryConfigOperations")
+      .withIndex("by_libraryId_and_status_and_startedAt", (query) =>
+        query.eq("libraryId", args.libraryId).eq("status", "queued").gte("startedAt", 0),
+      )
+      .first(),
+  ]);
   // A domain change that is still running owns router state this teardown
   // would delete underneath it. It finishes or expires first.
   const domains = await readEvidenceLibraryDomains(ctx, args.libraryId);
@@ -148,12 +155,8 @@ async function requestTeardown(
   // A draft's setup operation is created as "queued" but never starts until
   // the Owner activates it. Only work that is running, or that already ran
   // and is waiting to retry, blocks deletion.
-  const activeOperation = [...running, ...queued].find(
-    (operation) =>
-      operation.kind !== "teardown" &&
-      (operation.status === "running" ||
-        operation.attemptCount > 0 ||
-        operation.startedAt !== undefined),
+  const activeOperation = [...running, retrying, restarted].find(
+    (operation) => operation !== null && operation.kind !== "teardown",
   );
   if (activeOperation) {
     throw createError(
@@ -732,6 +735,16 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       .take(BATCH_SIZE);
     if (sourceStatus.length > 0) {
       await Promise.all(sourceStatus.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
+    const approvedQueries = await ctx.db
+      .query("evidenceLibraryApprovedQueries")
+      .withIndex("by_libraryId_and_version", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    if (approvedQueries.length > 0) {
+      await Promise.all(approvedQueries.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
     const adminCodes = await ctx.db

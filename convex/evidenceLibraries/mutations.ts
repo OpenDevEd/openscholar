@@ -153,6 +153,8 @@ export async function createEvidenceLibrarySetup(
 
   const now = Date.now();
   const libraryId = await ctx.db.insert("evidenceLibraries", {
+    // No revisions yet, so every version it publishes is recorded as it's saved.
+    approvedQueriesRecorded: true,
     organizationId: access.organization._id,
     name,
     slug,
