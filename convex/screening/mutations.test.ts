@@ -66,6 +66,7 @@ async function seedScreeningJob(
       status,
       totalPapers: 10,
       questions: [{ key: "q1", question: "Is this relevant?" }],
+      resultCounts: "sharded",
       scoringConfig: {
         rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
         starThresholds: [{ minScore: 0, stars: 1 }],
@@ -596,6 +597,42 @@ describe("Screen all on a saved search", () => {
   });
 });
 
+describe("creating a large Screen all job", () => {
+  it(`creates every result of a ${MAX_SCREENING_PAPERS_PER_JOB}-paper job within Convex's limits, a batch at a time`, async () => {
+    const t = convexTest({ schema, transactionLimits: true });
+    setupScreeningWorkpool(t);
+    const user = await seedUser(t, "clerk_big");
+    await seedCredits(t, user._id, 100_000, 0);
+    const { jobId } = await t.withIdentity({ subject: "clerk_big" }).mutation(api.screening.mutations.createScreeningJob, {
+      papers: makePapers(MAX_SCREENING_PAPERS_PER_JOB), questions: defaultQuestions, scoringConfig: defaultScoringConfig,
+    });
+    // Each later batch is its own scheduled transaction, run here without the papers' screening.
+    for (let batch = 1; batch < MAX_SCREENING_PAPERS_PER_JOB / 250; batch++) {
+      const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
+      const next = scheduled.filter((fn) => fn.name === "screening/mutations:createScreeningResults").at(-1);
+      await t.mutation(internal.screening.mutations.createScreeningResults, next!.args[0] as never);
+    }
+    const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
+    expect(results).toHaveLength(MAX_SCREENING_PAPERS_PER_JOB);
+    expect(new Set(results.map((r) => r.openalexId)).size).toBe(MAX_SCREENING_PAPERS_PER_JOB);
+    expect(results.every((r) => r.workId)).toBe(true);
+  }, 300_000);
+
+  it("creates no more results once the job is cancelled", async () => {
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const user = await seedUser(t, "clerk_cancel_early");
+    await seedCredits(t, user._id, 100_000, 0);
+    const asUser = t.withIdentity({ subject: "clerk_cancel_early" });
+    const { jobId } = await asUser.mutation(api.screening.mutations.createScreeningJob, { papers: makePapers(600), questions: defaultQuestions, scoringConfig: defaultScoringConfig });
+    await asUser.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
+    const pending = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
+    const next = pending.find((fn) => fn.name === "screening/mutations:createScreeningResults");
+    await t.mutation(internal.screening.mutations.createScreeningResults, next!.args[0] as never);
+    expect(await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect())).toHaveLength(250);
+  });
+});
+
 describe("handleScreeningComplete", () => {
   it("keeps qualified completion row-local until scheduled follow-ups run", async () => {
     vi.useFakeTimers();
@@ -678,7 +715,7 @@ describe("handleScreeningComplete", () => {
               .eq("libraryItemId", updatedResult!.libraryItemId!),
           )
           .collect();
-        const counts = await readScreeningProgressCounts(ctx, job._id);
+        const counts = await readScreeningProgressCounts(ctx, job);
         // Then the answer is in the job's screening, with the model's confidence, and not on the row.
         const answerRows = await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", updatedJob!.screeningId!)).collect();
         expect(answerRows.map((row) => ({ paperId: row.paperId, answers: row.answers.map(({ question, answer, setBy, model }) => ({ question, answer, setBy, confidence: model?.confidence })) }))).toEqual([
@@ -741,7 +778,7 @@ describe("handleScreeningComplete", () => {
 
       await t.run(async (ctx) => {
         const updatedJob = await ctx.db.get("screeningJobs", job._id);
-        const counts = await readScreeningProgressCounts(ctx, job._id);
+        const counts = await readScreeningProgressCounts(ctx, job);
 
         expect(updatedJob?.status).toBe("completed");
         expect(counts).toEqual({
@@ -794,7 +831,7 @@ describe("handleScreeningComplete", () => {
               q.eq("userId", user._id).eq("openalexId", `https://openalex.org/W${status}`),
             )
             .collect();
-          const counts = await readScreeningProgressCounts(ctx, job._id);
+          const counts = await readScreeningProgressCounts(ctx, job);
 
           expect(updatedResult?.status).toBe("skipped");
           expect(updatedResult?.savedToLibrary).toBeUndefined();

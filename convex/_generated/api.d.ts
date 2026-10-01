@@ -261,6 +261,7 @@ import type * as migrations_moveScreeningJobAnswers from "../migrations/moveScre
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_recountExtractionJobs from "../migrations/recountExtractionJobs.js";
+import type * as migrations_recountScreeningJobs from "../migrations/recountScreeningJobs.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
 import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
@@ -278,6 +279,7 @@ import type * as screening_lifecycle from "../screening/lifecycle.js";
 import type * as screening_mutations from "../screening/mutations.js";
 import type * as screening_progress from "../screening/progress.js";
 import type * as screening_queries from "../screening/queries.js";
+import type * as screening_resultCounts from "../screening/resultCounts.js";
 import type * as screening_scoring from "../screening/scoring.js";
 import type * as screening_validators from "../screening/validators.js";
 import type * as screening_workpoolActions from "../screening/workpoolActions.js";
@@ -583,6 +585,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/recountExtractionJobs": typeof migrations_recountExtractionJobs;
+  "migrations/recountScreeningJobs": typeof migrations_recountScreeningJobs;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
   "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;
@@ -600,6 +603,7 @@ declare const fullApi: ApiFromModules<{
   "screening/mutations": typeof screening_mutations;
   "screening/progress": typeof screening_progress;
   "screening/queries": typeof screening_queries;
+  "screening/resultCounts": typeof screening_resultCounts;
   "screening/scoring": typeof screening_scoring;
   "screening/validators": typeof screening_validators;
   "screening/workpoolActions": typeof screening_workpoolActions;
@@ -684,6 +688,7 @@ export declare const components: {
   extractionFailedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"extractionFailedCounter">;
   extractionResultCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"extractionResultCounter">;
   creditsAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"creditsAgg">;
+  screeningResultCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"screeningResultCounter">;
   screeningResultStatusAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"screeningResultStatusAgg">;
   screeningQualifiedAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"screeningQualifiedAgg">;
   usageAgg: import("@convex-dev/aggregate/_generated/component.js").ComponentApi<"usageAgg">;

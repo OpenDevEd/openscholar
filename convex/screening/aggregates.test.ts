@@ -76,7 +76,7 @@ describe("screening aggregates", () => {
     const jobId = await seedJob(t);
 
     await expect(
-      t.run(async (ctx) => readScreeningProgressCounts(ctx, jobId)),
+      t.run(async (ctx) => readScreeningProgressCounts(ctx, { _id: jobId })),
     ).resolves.toEqual({
       completedCount: 0,
       skippedCount: 0,
@@ -104,7 +104,7 @@ describe("screening aggregates", () => {
     });
 
     await expect(
-      t.run(async (ctx) => readScreeningProgressCounts(ctx, jobId)),
+      t.run(async (ctx) => readScreeningProgressCounts(ctx, { _id: jobId })),
     ).resolves.toEqual({
       completedCount: 1,
       skippedCount: 1,
@@ -129,7 +129,7 @@ describe("screening aggregates", () => {
     });
 
     await expect(
-      t.run(async (ctx) => readScreeningProgressCounts(ctx, jobId)),
+      t.run(async (ctx) => readScreeningProgressCounts(ctx, { _id: jobId })),
     ).resolves.toEqual({
       completedCount: 1,
       skippedCount: 0,
@@ -154,7 +154,7 @@ describe("screening aggregates", () => {
     });
 
     await expect(
-      t.run(async (ctx) => readScreeningProgressCounts(ctx, jobId)),
+      t.run(async (ctx) => readScreeningProgressCounts(ctx, { _id: jobId })),
     ).resolves.toEqual({
       completedCount: 0,
       skippedCount: 0,
@@ -183,7 +183,7 @@ describe("screening aggregates", () => {
     });
 
     await expect(
-      t.run(async (ctx) => readScreeningProgressCounts(ctx, jobId)),
+      t.run(async (ctx) => readScreeningProgressCounts(ctx, { _id: jobId })),
     ).resolves.toEqual({
       completedCount: 0,
       skippedCount: 0,
@@ -192,7 +192,7 @@ describe("screening aggregates", () => {
     });
 
     await expect(
-      t.run(async (ctx) => readScreeningProgressCounts(ctx, otherJobId)),
+      t.run(async (ctx) => readScreeningProgressCounts(ctx, { _id: otherJobId })),
     ).resolves.toEqual({
       completedCount: 1,
       skippedCount: 0,

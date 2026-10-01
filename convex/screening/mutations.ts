@@ -1,6 +1,6 @@
 import { mutation, internalMutation } from "../lib/functions";
 import { internal } from "../_generated/api";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import {
@@ -31,6 +31,7 @@ import { scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { ensureScreening } from "../research/answers";
 import { drainLater } from "./drain";
+import { triggers } from "../lib/triggers";
 import { estimateScreening } from "./estimate";
 import { applyCommand, moveSearchAnswers } from "../research/records";
 
@@ -129,40 +130,61 @@ export const createScreeningJob = mutation({
       scoringConfig: args.scoringConfig,
       targetCollectionId: args.targetCollectionId,
       screeningId,
+      resultCounts: "sharded",
       ...serverStamp(serverPick),
       createdAt: now,
       updatedAt: now,
     });
 
-    // 6. Insert processing result records and enqueue their work items
-    for (const paper of args.papers) {
-      const resultId = await ctx.db.insert("screeningResults", {
-        jobId,
-        openalexId: paper.openalexId,
-        title: paper.title,
-        abstract: paper.abstract,
-        authors: paper.authors,
-        publicationYear: paper.publicationYear,
-        doi: paper.doi,
-        status: "processing",
-        createdAt: now,
-      });
-
-      const workId = await screeningPool.enqueueAction(
-        ctx,
-        internal.screening.workpoolActions.screenPaperAction,
-        { resultId, jobId },
-        {
-          onComplete: internal.screening.mutations.handleScreeningComplete,
-          context: { resultId, jobId },
-        }
-      );
-
-      await ctx.db.patch("screeningResults", resultId, { workId });
-    }
+    // 6. Insert processing result records and enqueue their work items: the first batch here,
+    // the rest a batch per transaction after.
+    await createResults(ctx, jobId, args.papers, now);
 
     // 7. Return job ID
     return { jobId };
+  },
+});
+
+/** Papers whose results one transaction creates: about six index reads each, well inside 4,096. */
+const CREATE_BATCH = 250;
+type PaperInput = Infer<typeof screeningPaperInputValidator>;
+
+/** Creates a batch of a job's results and enqueues their work, then schedules the next batch. */
+async function createResults(ctx: MutationCtx, jobId: Id<"screeningJobs">, papers: PaperInput[], createdAt: number) {
+  for (const paper of papers.slice(0, CREATE_BATCH)) {
+    const resultId = await ctx.db.insert("screeningResults", {
+      jobId,
+      openalexId: paper.openalexId,
+      title: paper.title,
+      abstract: paper.abstract,
+      authors: paper.authors,
+      publicationYear: paper.publicationYear,
+      doi: paper.doi,
+      status: "processing",
+      createdAt,
+    });
+    const workId = await screeningPool.enqueueAction(
+      ctx,
+      internal.screening.workpoolActions.screenPaperAction,
+      { resultId, jobId },
+      { onComplete: internal.screening.mutations.handleScreeningComplete, context: { resultId, jobId } },
+    );
+    await ctx.db.patch("screeningResults", resultId, { workId });
+  }
+  if (papers.length > CREATE_BATCH) {
+    await ctx.scheduler.runAfter(0, internal.screening.mutations.createScreeningResults, { jobId, papers: papers.slice(CREATE_BATCH), createdAt });
+  }
+}
+
+/** The next batch of a job's results, unless the job was cancelled or ended meanwhile. */
+export const createScreeningResults = internalMutation({
+  args: { jobId: v.id("screeningJobs"), papers: v.array(screeningPaperInputValidator), createdAt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { jobId, papers, createdAt }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    if (job?.status !== "processing") return null;
+    await createResults(ctx, jobId, papers, createdAt);
+    return null;
   },
 });
 
@@ -343,7 +365,7 @@ export const finalizeScreeningJobFromAggregates = internalMutation({
       return null;
     }
 
-    const counts = await readScreeningProgressCounts(ctx, args.jobId);
+    const counts = await readScreeningProgressCounts(ctx, job);
     const progress = buildScreeningProgressSnapshot({
       status: job.status,
       totalPapers: job.totalPapers,
@@ -391,7 +413,10 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
     resultId: v.id("screeningResults"),
     jobId: v.id("screeningJobs"),
   }),
-  handler: async (ctx, { context, result }) => {
+  handler: async (rawCtx, { context, result }) => {
+    // The workpool builds this mutation itself, so it runs the triggers on its own writes: the
+    // result's counts follow it (./resultCounts.ts).
+    const ctx = triggers.wrapDB(rawCtx);
     const job = await ctx.db.get("screeningJobs", context.jobId) as
       | Doc<"screeningJobs">
       | null;
@@ -476,9 +501,12 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
       status: transition.aggregateStatus,
       qualified: transition.aggregateQualified,
     };
-    await recordTerminalResult(ctx, aggregateResult);
-    if (transition.aggregateQualified) {
-      await recordQualifiedResult(ctx, aggregateResult);
+    // A job counted by shards is counted by the trigger; one from before keeps its aggregates.
+    if (job.resultCounts !== "sharded") {
+      await recordTerminalResult(ctx, aggregateResult);
+      if (transition.aggregateQualified) {
+        await recordQualifiedResult(ctx, aggregateResult);
+      }
     }
 
     if (transition.scheduleQualifiedPersistence) {
