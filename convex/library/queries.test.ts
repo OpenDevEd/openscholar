@@ -552,6 +552,48 @@ describe("getLibraryCount", () => {
     expect(count).toBe(3);
   });
 
+  it("returns the live item count when the stored counter is missing", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W2",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+
+    expect(count).toBe(2);
+  });
+
+  it("returns the repaired count after the counter migration runs", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W2",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W3",
+    });
+
+    await t.action(internal.migrations.backfillLibraryCounters.backfillUsers, {});
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+
+    expect(count).toBe(3);
+  });
   it("does NOT count items belonging to other users", async () => {
     const t = convexTest(schema);
     const user1 = await seedUser(t, "clerk_user1", "user1@test.com", {
@@ -678,6 +720,29 @@ describe("getLibraryFilteredCount", () => {
     expect(count).toEqual({ count: 2, capped: false });
   });
 
+  it("returns the live item count when no filters are active and the stored counter is missing", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      title: "Paper 1",
+      openalexId: "https://openalex.org/W1",
+    });
+    await seedLibraryItem(t, user!._id, {
+      title: "Paper 2",
+      openalexId: "https://openalex.org/W2",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryFilteredCount, {
+      sortBy: "savedAt",
+      sortOrder: "desc",
+    });
+
+    expect(count).toEqual({ count: 2, capped: false });
+  });
 });
 
 describe("library counter", () => {
@@ -866,6 +931,75 @@ describe("library counter", () => {
     expect(count).toBe(2);
   });
 
+  it("saveToLibrary repairs a missing counter before incrementing", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W-existing",
+      title: "Existing paper",
+    });
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
+      openalexId: "https://openalex.org/W-new",
+      rating: 4,
+      title: "New paper",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(2);
+  });
+
+  it("removeFromLibrary repairs a missing counter before decrementing", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const itemId = await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W-remove",
+      title: "Remove me",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W-keep",
+      title: "Keep me",
+    });
+
+    await asUser.mutation(api.library.mutations.removeFromLibrary, {
+      itemId: itemId!._id,
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(1);
+  });
+
+  it("removeFromLibraryByOpenalexId repairs a missing counter before decrementing", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com", {
+      libraryItemCount: undefined,
+    });
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W-remove",
+      title: "Remove me",
+    });
+    await seedLibraryItem(t, user!._id, {
+      openalexId: "https://openalex.org/W-keep",
+      title: "Keep me",
+    });
+
+    await asUser.mutation(api.library.mutations.removeFromLibraryByOpenalexId, {
+      openalexId: "https://openalex.org/W-remove",
+    });
+
+    const count = await asUser.query(api.library.queries.getLibraryCount, {});
+    expect(count).toBe(1);
+  });
 });
 
 describe("removeFromLibrary", () => {

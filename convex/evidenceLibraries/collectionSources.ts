@@ -100,7 +100,7 @@ export const connectCollectionSource = mutation({
       userId: access.clerkUserId,
       metadata: { libraryId: args.libraryId, collectionId: args.collectionId },
     });
-    return { collectionId: collection._id, name: collection.name, itemCount: collection.itemCount };
+    return { collectionId: collection._id, name: collection.name, itemCount: collection.itemCount ?? 0 };
   },
 });
 

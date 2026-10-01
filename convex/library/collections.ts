@@ -166,7 +166,7 @@ export const removeFromCollection = mutation({
 
 export const getCollectionsWithCounts = query({
   args: {},
-  returns: v.array(schema.doc("collections")),
+  returns: v.array(v.object({ ...schema.doc("collections").fields, itemCount: v.number() })),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
 
@@ -176,8 +176,14 @@ export const getCollectionsWithCounts = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
+    // Until migrations/backfillLibraryCounters has run everywhere, a collection may have no count yet.
+    const result = collections.map((collection) => ({
+      ...collection,
+      itemCount: collection.itemCount ?? 0,
+    }));
+
     // Sort alphabetically by name (case-insensitive)
-    return collections.sort((a, b) => a.name.localeCompare(b.name));
+    return result.sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 

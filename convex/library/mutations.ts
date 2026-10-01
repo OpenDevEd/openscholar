@@ -2,6 +2,7 @@ import { mutation } from "../lib/functions";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
+import { resolveLibraryCount } from "./counter";
 import { removeCollectionMembership } from "./collectionMembership";
 
 export const saveToLibrary = mutation({
@@ -47,7 +48,11 @@ export const saveToLibrary = mutation({
       return existing._id;
     }
 
-    const currentCount = user.libraryItemCount;
+    const currentCount = await resolveLibraryCount(
+      ctx,
+      user._id,
+      user.libraryItemCount,
+    );
 
     // New save: insert full document
     const id = await ctx.db.insert("libraryItems", {
@@ -80,7 +85,11 @@ export const removeFromLibraryByOpenalexId = mutation({
       .unique();
 
     if (item) {
-      const currentCount = user.libraryItemCount;
+      const currentCount = await resolveLibraryCount(
+        ctx,
+        user._id,
+        user.libraryItemCount,
+      );
 
       // Unbounded: cascade delete of single item's collection memberships (safe: bounded by collections per user, ~50 max)
       const memberships = await ctx.db
@@ -115,7 +124,11 @@ export const removeFromLibrary = mutation({
       throw createError("FORBIDDEN", "Not your library item");
     }
 
-    const currentCount = user.libraryItemCount;
+    const currentCount = await resolveLibraryCount(
+      ctx,
+      user._id,
+      user.libraryItemCount,
+    );
 
     // Unbounded: cascade delete of single item's collection memberships (safe: bounded by collections per user, ~50 max)
     const memberships = await ctx.db

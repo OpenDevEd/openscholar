@@ -938,7 +938,7 @@ export default defineSchema({
     name: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
-    itemCount: v.number(),
+    itemCount: v.optional(v.number()),
     // Goes up on every item added or removed; libraries following the collection compare it.
     membershipRevision: v.optional(v.number()),
   }).index("by_user", ["userId"]),

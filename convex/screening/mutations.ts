@@ -18,6 +18,7 @@ import {
   getCancelableScreeningWorkIds,
   isTerminalScreeningJobStatus,
 } from "./lifecycle";
+import { resolveLibraryCount } from "../library/counter";
 import { addCollectionMembership } from "../library/collectionMembership";
 import {
   readScreeningProgressCounts,
@@ -251,7 +252,9 @@ export const saveQualifiedPaperToLibrary = internalMutation({
     }
 
     const user = await ctx.db.get("users", args.userId);
-    const currentCount = user ? user.libraryItemCount : null;
+    const currentCount = user
+      ? await resolveLibraryCount(ctx, args.userId, user.libraryItemCount)
+      : null;
 
     // New save: insert full document
     const id = await ctx.db.insert("libraryItems", {

@@ -29,6 +29,7 @@ import {
 import { MIN_YEAR } from "@/lib/constants";
 import type { DateRange } from "react-day-picker";
 import { exportLibraryAsCSV, exportLibraryAsJSON, readEveryLibraryPage } from "@/lib/library/export";
+import { LIBRARY_SEARCH_RESULTS_MAX } from "@/lib/library/limits";
 import { libraryItemToPaperResult } from "@/lib/library/library-item-to-paper-result";
 import {
   downloadLibraryItem,
@@ -215,7 +216,7 @@ export function LibraryPageClient() {
       readEveryLibraryPage((cursor) => {
         const paginationOpts = { cursor, numItems: EXPORT_PAGE_SIZE };
         return queryText
-          ? convex.query(api.library.queries.searchLibrary, { ...libraryFilters, searchText: queryText, paginationOpts })
+          ? convex.query(api.library.queries.searchLibrary, { ...libraryFilters, searchText: queryText, paginationOpts: { cursor, numItems: LIBRARY_SEARCH_RESULTS_MAX } })
           : convex.query(api.library.queries.browseLibrary, { ...libraryFilters, paginationOpts });
       }),
     [convex, libraryFilters, queryText],

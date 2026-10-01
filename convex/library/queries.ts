@@ -6,6 +6,8 @@ import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { requireAuth } from "../lib/auth";
 import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
+import { resolveLibraryCount } from "./counter";
+import { LIBRARY_SEARCH_RESULTS_MAX as SEARCH_RESULTS_MAX } from "../../lib/library/limits";
 
 /**
  * Papers one page of a filtered view reads at most. A sparse filter gets a short page
@@ -227,9 +229,6 @@ function filteredItems(
     .filterWith(async (item) => matchesLibraryFilters(item, args, collectionItemIds));
 }
 
-/** The most results a text search returns: the search engine's own limit. */
-const SEARCH_RESULTS_MAX = 1_024;
-
 /** The user's papers matching a text search, most relevant first. */
 async function searchLibraryItems(ctx: QueryCtx, userId: Id<"users">, searchText: string): Promise<LibraryItem[]> {
   return await ctx.db
@@ -345,7 +344,9 @@ export const searchLibrary = query({
         sortBy,
         sortOrder,
       ),
-      { ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, LIBRARY_PAGE_MAX) },
+      // Every match is read anyway, so a caller may take them all in one page: an export
+      // that reads them at once can't skip or repeat one that moves between pages.
+      { ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, SEARCH_RESULTS_MAX) },
     );
   },
 });
@@ -375,11 +376,13 @@ export const getLibraryFilteredCount = query({
     const hasFilters = Boolean(searchText) || hasNonCollectionLibraryFilters(args);
 
     if (!args.collectionId && !hasFilters) {
-      return { count: user.libraryItemCount, capped: false };
+      return { count: await resolveLibraryCount(ctx, user._id, user.libraryItemCount), capped: false };
     }
     if (args.collectionId && !hasFilters) {
       const collection = await ctx.db.get("collections", args.collectionId);
-      return { count: collection?.userId === user._id ? collection.itemCount : 0, capped: false };
+      if (collection?.userId !== user._id) return { count: 0, capped: false };
+      // A collection saved before counts were kept is counted until migrations/backfillLibraryCounters runs.
+      return { count: collection.itemCount ?? (await loadCollectionItemIds(ctx, user._id, args.collectionId))!.size, capped: false };
     }
 
     const collectionItemIds = await loadCollectionItemIds(ctx, user._id, args.collectionId);
@@ -404,6 +407,6 @@ export const getLibraryCount = query({
   returns: v.number(),
   handler: async (ctx) => {
     const user = await requireAuth(ctx);
-    return user.libraryItemCount;
+    return await resolveLibraryCount(ctx, user._id, user.libraryItemCount);
   },
 });
