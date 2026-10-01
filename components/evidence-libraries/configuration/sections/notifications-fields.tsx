@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useAction } from "convex/react";
-import { CalendarDays, Clock3, Repeat2, Globe2, Mail, Send, TimerReset } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, Clock3, Repeat2, Globe2, Mail, Send, TimerReset } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Field } from "../section-card";
 import { FieldGroup, PanelRow, ToggleRow } from "../fields";
 import type { SectionProps } from "../section-shell";
@@ -35,7 +37,7 @@ export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps
   const schedule = notifications.schedule;
   const setSchedule = (value: typeof schedule) => patch(draft => {draft.notifications.schedule = value;return draft;});
   let timezoneError: string | null = null;
-  try {new Intl.DateTimeFormat("en", {timeZone: schedule.timezone});} catch {timezoneError = "Enter a valid timezone, such as Europe/London.";}
+  try {new Intl.DateTimeFormat("en", {timeZone: schedule.timezone});} catch {timezoneError = "Choose a timezone.";}
   return <FieldGroup title={<span className="inline-flex items-center gap-2"><Mail className="size-4 text-primary" />Email updates</span>}>
     <ToggleRow label="Reader subscriptions" hint="Readers can choose new publications, library digests, or both. Empty editions are skipped." checked={notifications.enabled} onChange={enabled => patch(draft => {draft.notifications.enabled = enabled;return draft;})} />
     {notifications.enabled && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -56,7 +58,7 @@ export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps
         {(id, invalid) => <Input id={id} type="time" className="bg-background" value={schedule.time} aria-invalid={invalid || undefined} onChange={event => setSchedule({...schedule, time: event.target.value})} />}
       </Field>
       <Field label={<span className="inline-flex items-center gap-2"><Globe2 className="size-4 text-muted-foreground" />Timezone</span>} error={timezoneError}>
-        {(id, invalid) => <Input id={id} className="bg-background" value={schedule.timezone} placeholder="Europe/London" aria-invalid={invalid || undefined} onChange={event => setSchedule({...schedule, timezone: event.target.value})} />}
+        {(id, invalid) => <TimezonePicker id={id} invalid={invalid} value={schedule.timezone} onChange={timezone => setSchedule({...schedule, timezone})} />}
       </Field>
     </div>}
     {canSend && notifications.enabled && <PanelRow
@@ -69,4 +71,53 @@ export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps
       </Button>}
     />}
   </FieldGroup>;
+}
+
+// Chromium's ICU still lists these by their old names; Firefox and the IANA database use the new ones.
+const currentNames: Record<string, string> = {
+  "Africa/Asmera": "Africa/Asmara", "America/Buenos_Aires": "America/Argentina/Buenos_Aires", "America/Catamarca": "America/Argentina/Catamarca",
+  "America/Coral_Harbour": "America/Atikokan", "America/Cordoba": "America/Argentina/Cordoba", "America/Godthab": "America/Nuuk",
+  "America/Indianapolis": "America/Indiana/Indianapolis", "America/Jujuy": "America/Argentina/Jujuy", "America/Louisville": "America/Kentucky/Louisville",
+  "America/Mendoza": "America/Argentina/Mendoza", "Asia/Calcutta": "Asia/Kolkata", "Asia/Katmandu": "Asia/Kathmandu", "Asia/Rangoon": "Asia/Yangon",
+  "Asia/Saigon": "Asia/Ho_Chi_Minh", "Atlantic/Faeroe": "Atlantic/Faroe", "Europe/Kiev": "Europe/Kyiv", "Pacific/Enderbury": "Pacific/Kanton",
+  "Pacific/Ponape": "Pacific/Pohnpei", "Pacific/Truk": "Pacific/Chuuk",
+};
+
+let timezones: {id: string; name: string; offset: string}[] | undefined;
+function listTimezones() {
+  // Etc/GMT+N zones have inverted signs and only Firefox lists them, so UTC stands in for all of them.
+  timezones ??= ["UTC", ...new Set(Intl.supportedValuesOf("timeZone").filter(id => id !== "UTC" && !id.startsWith("Etc/")).map(id => currentNames[id] ?? id).sort())].map(id => ({
+    id,
+    name: id.replaceAll("_", " "),
+    offset: new Intl.DateTimeFormat("en", {timeZone: id, timeZoneName: "shortOffset"}).formatToParts().find(part => part.type === "timeZoneName")?.value ?? "",
+  }));
+  return timezones;
+}
+
+function TimezonePicker({id, invalid, value, onChange}: {id: string; invalid: boolean; value: string; onChange: (timezone: string) => void}) {
+  const [open, setOpen] = useState(false);
+  const current = currentNames[value] ?? value;
+  return <Popover open={open} onOpenChange={setOpen}>
+    <PopoverTrigger asChild>
+      <Button id={id} type="button" variant="outline" role="combobox" aria-expanded={open} aria-invalid={invalid || undefined} className="h-9 w-full justify-between bg-background px-3 font-normal hover:bg-background hover:text-foreground">
+        <span className="truncate">{current.replaceAll("_", " ")}</span>
+        <ChevronDown className="size-4 shrink-0 opacity-50" />
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-72 p-0">
+      <Command defaultValue={current.replaceAll("_", " ")}>
+        <CommandInput placeholder="Search city or region" />
+        <CommandList>
+          <CommandEmpty>No timezone found.</CommandEmpty>
+          <CommandGroup>
+            {listTimezones().map(timezone => <CommandItem key={timezone.id} value={timezone.name} keywords={[timezone.id]} onSelect={() => {onChange(timezone.id);setOpen(false);}}>
+              <Check className={current === timezone.id ? "size-4" : "size-4 opacity-0"} />
+              <span className="min-w-0 flex-1 truncate">{timezone.name}</span>
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{timezone.offset}</span>
+            </CommandItem>)}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </PopoverContent>
+  </Popover>;
 }
