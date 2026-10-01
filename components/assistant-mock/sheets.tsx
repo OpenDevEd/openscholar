@@ -7,21 +7,22 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useFormatter } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Building2, Check, ChevronLeft, Eye, Link2, Loader2, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus } from "lucide-react";
+import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Eye, Link2, Loader2, Lock, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus } from "lucide-react";
 import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 import { topUpBundles } from "@/lib/billing/catalog";
 import { cn } from "@/lib/utils";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Segmented } from "@/components/settings/parts";
+import { LIST, Segmented, Zone } from "@/components/settings/parts";
+import { Switch } from "@/components/ui/switch";
 import { EASE } from "@/components/settings/model-map";
 import { AnimatedNumber, KindTile, type Ask } from "./run-map";
 import { LogoMark } from "./logo-mark";
-import { KIND, OTHER_SCREENING } from "./data";
+import { JOB_CAPS, KIND, OTHER_SCREENING, RECENT_REPLIES, REPLY_CAPS, type JobCap } from "./data";
 
 const KIND_TINT = { screening: KIND.screening!.tint };
 
-export type SheetKind = "history" | "share" | "topup";
+export type SheetKind = "history" | "share" | "topup" | "spending";
 
 export const SHEET_SPRING = { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.9 };
 
@@ -614,5 +615,185 @@ export function EdgeGlow({ open, working }: { open: boolean; working: boolean })
         </motion.div>
       ) : null}
     </AnimatePresence>
+  );
+}
+
+/** Spending allowed without asking in one chat, for one person; `cap` is the most one job may hold. */
+export type Allowance = { on: boolean; cap: JobCap };
+
+const capLabel = (cap: JobCap, format: ReturnType<typeof useFormatter>) => (cap === null ? "No limit" : format.number(cap));
+/** The reply chart's top: just above the largest reply; a higher cap sits on the top edge. */
+const CHART_MAX = Math.max(...RECENT_REPLIES) * 1.15;
+
+/**
+ * What this chat may spend without stopping to ask, for the person looking. A reply pauses
+ * at its cap; a job either asks every time or runs without asking up to its own cap.
+ */
+export function SpendingSheet({
+  chat,
+  replyCap,
+  onReplyCap,
+  allowance,
+  onAllowance,
+  forNewChats,
+  onForNewChats,
+  jobs,
+  onBack,
+}: {
+  chat: string;
+  replyCap: number;
+  onReplyCap: (cap: number) => void;
+  allowance: Allowance;
+  onAllowance: (allowance: Allowance) => void;
+  forNewChats: boolean;
+  onForNewChats: (on: boolean) => void;
+  /** The jobs this chat runs, with what each holds. */
+  jobs: Ask[];
+  onBack: () => void;
+}) {
+  const format = useFormatter();
+  const paused = RECENT_REPLIES.filter((spent) => spent > replyCap).length;
+  return (
+    <>
+      <SheetHeader title="Spending" detail={chat} onBack={onBack} />
+      <ScrollArea shades className="min-h-0 flex-1">
+        <div className="space-y-6 px-3 py-4">
+          <Zone label="Each reply">
+            <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+              <div className="flex items-baseline gap-2 px-1">
+                <span className="text-3xl font-semibold tracking-tight">
+                  <AnimatedNumber value={replyCap} />
+                </span>
+                <span className="text-sm text-muted-foreground">credits, then it pauses and asks</span>
+              </div>
+              {/* Your last replies against the cap: the ones over the line would have paused. */}
+              <div className="relative mt-4 flex h-20 items-end gap-1 px-1" aria-hidden>
+                {RECENT_REPLIES.map((spent, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      "flex-1 rounded-t-[3px] transition-colors duration-300",
+                      spent > replyCap ? "bg-amber-400" : "bg-foreground/15",
+                    )}
+                    style={{ height: `${(Math.min(spent, CHART_MAX) / CHART_MAX) * 100}%` }}
+                  />
+                ))}
+                <motion.span
+                  className="absolute inset-x-0 border-t border-dashed border-foreground/40"
+                  initial={false}
+                  animate={{ bottom: `${Math.min(1, replyCap / CHART_MAX) * 100}%` }}
+                  transition={{ type: "spring", stiffness: 260, damping: 30 }}
+                />
+              </div>
+              <p className="mt-2 flex h-4 items-center gap-1.5 px-1 text-xs text-muted-foreground">
+                <CirclePause className={cn("size-3.5", paused ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground/60")} />
+                <span className="tabular-nums">
+                  {paused} of your last {RECENT_REPLIES.length} replies would have paused
+                </span>
+              </p>
+              <div className="mt-3">
+                <Segmented
+                  fill
+                  label="Credits a reply may spend"
+                  value={String(replyCap)}
+                  onChange={(v) => onReplyCap(Number(v))}
+                  options={REPLY_CAPS.map((cap) => ({ id: String(cap), label: String(cap) }))}
+                />
+              </div>
+            </div>
+          </Zone>
+
+          <Zone label="Jobs that spend credits">
+            <div className="space-y-2.5">
+              <Segmented
+                fill
+                label="Before a job spends credits"
+                value={allowance.on ? "allow" : "ask"}
+                onChange={(v) => onAllowance({ ...allowance, on: v === "allow" })}
+                options={[
+                  { id: "ask", label: "Ask every time", icon: CircleHelp },
+                  { id: "allow", label: "Allow without asking", icon: CircleCheck },
+                ]}
+              />
+              {/* The limit opens under the switch; the frame grows, its content is laid out at full size. */}
+              <AnimatePresence initial={false}>
+                {allowance.on ? (
+                  <motion.div
+                    key="cap"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: EASE }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex items-center gap-3 pl-1">
+                      <span className="shrink-0 text-xs text-muted-foreground">Up to</span>
+                      <div className="min-w-0 flex-1">
+                        <Segmented
+                          fill
+                          label="Most one job may hold without asking"
+                          value={String(allowance.cap)}
+                          onChange={(v) => onAllowance({ ...allowance, cap: JOB_CAPS.find((cap) => String(cap) === v) ?? null })}
+                          options={JOB_CAPS.map((cap) => ({ id: String(cap), label: capLabel(cap, format) }))}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+              <ul className={LIST}>
+                {jobs.map((job) => {
+                  const runs = allowance.on && (allowance.cap === null || (job.credits ?? 0) <= allowance.cap);
+                  return (
+                    <li key={job.title} className="flex items-center gap-3 px-3 py-2.5">
+                      <KindTile kind={job.kind} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{job.title}</span>
+                        <span className="block text-xs tabular-nums text-muted-foreground">Holds up to {job.credits} credits</span>
+                      </span>
+                      <JobRule runs={runs} />
+                    </li>
+                  );
+                })}
+                <li className="flex items-center gap-3 px-3 py-2.5">
+                  <KindTile kind="publish" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">Publishing a library</span>
+                    <span className="block text-xs text-muted-foreground">Visitors see it at once</span>
+                  </span>
+                  <span className="flex w-20 shrink-0 items-center justify-end gap-1.5 text-xs text-muted-foreground">
+                    <Lock className="size-3.5" /> Asks
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </Zone>
+
+          <div className={LIST}>
+            <label className="flex cursor-pointer items-center gap-3 px-3 py-3">
+              <span className="min-w-0 flex-1 text-sm font-medium">Use these for my new chats</span>
+              <Switch checked={forNewChats} onCheckedChange={onForNewChats} />
+            </label>
+          </div>
+          <p className="px-2 text-xs leading-relaxed text-muted-foreground">
+            These are yours in this chat. People you share it with set their own, and spend their own credits.
+          </p>
+        </div>
+      </ScrollArea>
+    </>
+  );
+}
+
+/** Whether a job runs without asking. Both labels hold one cell, so the row never reflows. */
+function JobRule({ runs }: { runs: boolean }) {
+  return (
+    <span className="grid w-20 shrink-0 text-xs [&>*]:col-start-1 [&>*]:row-start-1 [&>*]:justify-end">
+      <motion.span initial={false} animate={{ opacity: runs ? 1 : 0 }} className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+        <CircleCheck className="size-3.5" /> Runs
+      </motion.span>
+      <motion.span initial={false} animate={{ opacity: runs ? 0 : 1 }} className="flex items-center gap-1.5 text-muted-foreground">
+        <CircleHelp className="size-3.5" /> Asks
+      </motion.span>
+    </span>
   );
 }

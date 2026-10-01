@@ -9,8 +9,8 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { ArrowRight, ArrowUp, Check, ChevronDown, CircleHelp, CirclePause, CircleStop, Coins, Copy, Eye, FileText, Folder, FolderPlus, Globe, LayoutList, ListChecks, Search, SlidersHorizontal, TableProperties, MessagesSquare, Pencil, PictureInPicture2, Play, RotateCcw, Sparkles, Square, SquarePen, UserPlus, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { ArrowRight, ArrowUp, Check, ChevronDown, CircleHelp, CirclePause, CircleStop, Coins, Copy, Eye, FileText, Folder, FolderPlus, Gauge, Globe, LayoutList, ListChecks, Search, SlidersHorizontal, TableProperties, MessagesSquare, Pencil, PictureInPicture2, Play, RotateCcw, Sparkles, Square, SquarePen, UserPlus, X } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -25,12 +25,12 @@ import { StatusIcon } from "@/components/evidence-libraries/configuration/status
 import { EASE, effortOf, usePresetModels, type PickedModel, type PresetPick } from "@/components/settings/model-map";
 import { ApprovalCard, CollectionCard, Facts, JobCard, KindTile, QuestionCard, RunMap, VersionBars, WorkingText, type Ask, type Step } from "./run-map";
 import { LogoMark } from "./logo-mark";
-import { Dim, EdgeGlow, HistorySheet, SHEET_SPRING, Sheet, ShareSheet, TopUpSheet, stackedUnder, type SheetKind } from "./sheets";
+import { Dim, EdgeGlow, HistorySheet, SHEET_SPRING, Sheet, ShareSheet, SpendingSheet, TopUpSheet, stackedUnder, type Allowance, type SheetKind } from "./sheets";
 import { Cite, EXTRACT_CELLS, ExtractionCard } from "./extraction";
 import { MentionComposer, MessageText } from "./mentions";
 import {
   ACCOUNT, BALANCE, COLLECTED, COLLECTION_CHOICES, COLLECTION_NAME, EXTRACT_HOLD, EXTRACT_SPENT, LIBRARY, ORIGINAL_COUNT, OTHER_SCREENING,
-  REPLY_CAP, SCREEN_HOLD, SCREEN_ORDER, SCREEN_SPENT, SEARCH_NAME, SETTLED, TIGHT_COUNT, type Decision,
+  JOB_CAPS, REPLY_CAP, SCREEN_HOLD, SCREEN_ORDER, SCREEN_SPENT, SEARCH_NAME, SETTLED, TIGHT_COUNT, type Decision,
 } from "./data";
 
 type Card =
@@ -42,10 +42,12 @@ type Card =
   | { type: "publish"; stage: number; failed?: boolean };
 type AssistantTurn = { kind: "assistant"; id: number; steps: Step[]; text: string; shown: number; cards: Card[]; stopped?: boolean };
 /** What a message changes, saved when it's sent, so a retry or an edit can start from there again. */
-type Snapshot = { always: boolean; balance: number; home: Home; owner: number | null };
+type Snapshot = { allowance: Allowance; balance: number; home: Home; owner: number | null };
 type UserTurn = { kind: "user"; id: number; text: string; step: number; snap: Snapshot; edited?: boolean };
 type Turn = UserTurn | AssistantTurn;
 type Choice = "once" | "always" | "no";
+/** A new chat asks before every job; allowing credits starts at the smallest limit that covers the job. */
+const NO_ALLOWANCE: Allowance = { on: false, cap: 250 };
 /** Where the included studies went. */
 type Home = { name: string; count: number };
 type Answer = { id: string; typed?: string };
@@ -126,7 +128,10 @@ export function AssistantOverlay() {
   const pathname = usePathname();
   const view = viewOf(pathname);
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [always, setAlwaysState] = useState(false);
+  const [allowance, setAllowanceState] = useState<Allowance>(NO_ALLOWANCE);
+  // What a reply may spend on its own AI use, and whether new chats start with these settings.
+  const [replyCap, setReplyCapState] = useState<number>(REPLY_CAP);
+  const [forNewChats, setForNewChats] = useState(false);
   const [balance, setBalanceState] = useState(BALANCE);
   const [home, setHomeState] = useState<Home>(START_HOME);
   const [busy, setBusy] = useState(false);
@@ -149,7 +154,8 @@ export function AssistantOverlay() {
   const jobs = useRef(new Map<number, Job>());
   const continuations = useRef(new Map<number, { step: number; run: (token: number) => Promise<boolean | void> }>());
   // Read at the gates, so a change mid-step counts.
-  const alwaysRef = useRef(false);
+  const allowanceRef = useRef<Allowance>(NO_ALLOWANCE);
+  const replyCapRef = useRef<number>(REPLY_CAP);
   const balanceRef = useRef(BALANCE);
   // The script reads where the studies went from here, so a rerun sees the restored value.
   const homeRef = useRef<Home>(START_HOME);
@@ -181,9 +187,14 @@ export function AssistantOverlay() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const setAlways = (value: boolean) => {
-    alwaysRef.current = value;
-    setAlwaysState(value);
+  const setAllowance = (value: Allowance) => {
+    allowanceRef.current = value;
+    setAllowanceState(value);
+  };
+  // A new cap applies from the next reply; the running one keeps the cap it started with.
+  const setReplyCap = (value: number) => {
+    replyCapRef.current = value;
+    setReplyCapState(value);
   };
   const setBalance = (value: number) => {
     balanceRef.current = value;
@@ -218,7 +229,7 @@ export function AssistantOverlay() {
       });
       capWait.current = null;
       if (token !== run.current) throw new Stopped();
-      cap += REPLY_CAP;
+      cap += replyCapRef.current;
     }
     setReply({ id, spent: current.spent + credits, cap, paused: false });
     charge(credits);
@@ -280,7 +291,9 @@ export function AssistantOverlay() {
    * user has allowed credits for this chat and the balance covers it; publishing asks every time.
    */
   const approve = async (token: number, id: number, ask: Ask): Promise<{ choice: Choice; asked: boolean }> => {
-    if (ask.always && alwaysRef.current && (ask.credits ?? 0) <= balanceRef.current) return { choice: "always", asked: false };
+    const { on, cap } = allowanceRef.current;
+    const credits = ask.credits ?? 0;
+    if (ask.always && on && (cap === null || credits <= cap) && credits <= balanceRef.current) return { choice: "always", asked: false };
     addCard(id, { type: "approval", ask, status: "pending" });
     const choice = await new Promise<Choice>((resolve) => {
       decide.current = { token, resolve };
@@ -288,7 +301,13 @@ export function AssistantOverlay() {
     decide.current = null;
     if (token !== run.current) throw new Stopped();
     if (choice === "no") patch(id, (t) => ({ cards: t.cards.map((c) => (c.type === "approval" ? { ...c, status: "declined" } : c)) }));
-    if (choice === "always") setAlways(true);
+    // Allowing it always sets the smallest limit that covers this job, and never lowers one
+    // already set; the Spending sheet changes it.
+    if (choice === "always") {
+      const current = allowanceRef.current;
+      const needed = Math.max(ask.credits ?? 0, current.on && current.cap !== null ? current.cap : 0);
+      setAllowance({ on: true, cap: current.on && current.cap === null ? null : (JOB_CAPS.find((c) => c !== null && c >= needed) ?? null) });
+    }
     return { choice, asked: true };
   };
   /** Puts the running job where the approval card was, or adds it when nothing was asked. */
@@ -543,7 +562,7 @@ export function AssistantOverlay() {
     const token = ++run.current;
     const id = ++ids.current;
     setBusy(true);
-    setReply({ id, spent: 0, cap: REPLY_CAP, paused: false });
+    setReply({ id, spent: 0, cap: replyCapRef.current, paused: false });
     setTurns((all) => [...all, { kind: "assistant", id, steps: [], text: "", shown: 0, cards: [] }]);
     try {
       await wait(token, 450);
@@ -556,9 +575,9 @@ export function AssistantOverlay() {
     }
   };
 
-  const snapshot = (): Snapshot => ({ always: alwaysRef.current, balance: balanceRef.current, home: homeRef.current, owner: collectionOwner.current });
+  const snapshot = (): Snapshot => ({ allowance: allowanceRef.current, balance: balanceRef.current, home: homeRef.current, owner: collectionOwner.current });
   const restore = (snap: Snapshot) => {
-    setAlways(snap.always);
+    setAllowance(snap.allowance);
     setBalance(snap.balance);
     setHome(snap.home);
     collectionOwner.current = snap.owner;
@@ -614,7 +633,7 @@ export function AssistantOverlay() {
     if (!rest || busy) return;
     const token = ++run.current;
     setBusy(true);
-    setReply({ id, spent: replyRef.current?.id === id ? replyRef.current.spent : 0, cap: REPLY_CAP, paused: false });
+    setReply({ id, spent: replyRef.current?.id === id ? replyRef.current.spent : 0, cap: replyCapRef.current, paused: false });
     patch(id, (t) => ({ stopped: false, text: "", shown: 0, steps: t.steps.filter((s) => s.status !== "stopped") }));
     void (async () => {
       try {
@@ -653,7 +672,11 @@ export function AssistantOverlay() {
     continuations.current.clear();
     setReply(null);
     setTurns([]);
-    setAlways(false);
+    // A new chat starts from the person's settings for new chats, or the defaults.
+    if (!forNewChats) {
+      setAllowance(NO_ALLOWANCE);
+      setReplyCap(REPLY_CAP);
+    }
     setBalance(BALANCE);
     setHome(START_HOME);
     publishFailed.current = false;
@@ -669,6 +692,8 @@ export function AssistantOverlay() {
 
   const push = (sheet: OpenSheet) => setSheets((all) => [...all, sheet]);
   const pop = () => setSheets((all) => all.slice(0, -1));
+  // Opened from the header, the reply meter and the allowance chip; never twice on top of itself.
+  const openSpending = () => setSheets((all) => (all.at(-1)?.kind === "spending" ? all : [...all, { kind: "spending", chat: chatTitle }]));
   const fold = () => {
     setSheets([]);
     setOpen(false);
@@ -740,6 +765,7 @@ export function AssistantOverlay() {
                   title={chatTitle}
                   onHistory={() => push({ kind: "history", chat: chatTitle })}
                   onShare={() => push({ kind: "share", chat: chatTitle })}
+                  onSpending={openSpending}
                   onRestart={restart}
                   onCollapse={fold}
                 />
@@ -773,8 +799,10 @@ export function AssistantOverlay() {
                   onStop={stop}
                   reply={busy ? reply : null}
                   onAllowMore={allowMore}
-                  always={always}
-                  onStopAlways={() => setAlways(false)}
+                  replyCap={replyCap}
+                  allowance={allowance}
+                  onStopAllowance={() => setAllowance({ ...allowanceRef.current, on: false })}
+                  onSpending={openSpending}
                   view={view}
                 />
               </motion.div>
@@ -787,6 +815,18 @@ export function AssistantOverlay() {
                     <HistorySheet onBack={pop} onShare={(chat) => push({ kind: "share", chat })} />
                   ) : sheet.kind === "share" ? (
                     <ShareSheet chat={sheet.chat} onBack={pop} />
+                  ) : sheet.kind === "spending" ? (
+                    <SpendingSheet
+                      chat={sheet.chat}
+                      replyCap={replyCap}
+                      onReplyCap={setReplyCap}
+                      allowance={allowance}
+                      onAllowance={setAllowance}
+                      forNewChats={forNewChats}
+                      onForNewChats={setForNewChats}
+                      jobs={[SCREEN_ASK, EXTRACT_ASK]}
+                      onBack={pop}
+                    />
                   ) : (
                     <TopUpSheet
                       balance={sheet.balance ?? balance}
@@ -1166,12 +1206,14 @@ function Header({
   title,
   onHistory,
   onShare,
+  onSpending,
   onRestart,
   onCollapse,
 }: {
   title: string;
   onHistory: () => void;
   onShare: () => void;
+  onSpending: () => void;
   onRestart: () => void;
   onCollapse: () => void;
 }) {
@@ -1197,6 +1239,7 @@ function Header({
         <div className="flex items-center">
           <IconButton label="Chats" icon={<MessagesSquare className="size-4" />} onClick={onHistory} />
           <IconButton label="Share this chat" icon={<UserPlus className="size-4" />} onClick={onShare} />
+          <IconButton label="Spending" icon={<Gauge className="size-4" />} onClick={onSpending} />
           <IconButton label="New chat" icon={<SquarePen className="size-4" />} onClick={onRestart} />
           <IconButton label="Fold into a bubble  ⌘J" icon={<PictureInPicture2 className="size-4" />} onClick={onCollapse} />
         </div>
@@ -1279,11 +1322,18 @@ function IconButton({ label, icon, onClick, small }: { label: string; icon: Reac
  * What the running reply has spent on its own AI use, against its per-reply cap. At the
  * cap the reply pauses here until the person allows more.
  */
-function ReplyMeter({ reply, onAllowMore }: { reply: Reply; onAllowMore: () => void }) {
+function ReplyMeter({ reply, replyCap, onAllowMore, onSpending }: { reply: Reply; replyCap: number; onAllowMore: () => void; onSpending: () => void }) {
   // One cell: the meter and the pause cross-fade, so the row never changes size.
   return (
     <div className="grid h-8 items-center text-xs [&>*]:col-start-1 [&>*]:row-start-1">
-      <motion.div initial={false} animate={{ opacity: reply.paused ? 0 : 1 }} inert={reply.paused} className="flex items-center gap-2 pl-1">
+      <motion.button
+        type="button"
+        onClick={onSpending}
+        initial={false}
+        animate={{ opacity: reply.paused ? 0 : 1 }}
+        inert={reply.paused}
+        className="-ml-1 flex h-8 items-center gap-2 justify-self-start rounded-full px-2 hover:bg-muted/60"
+      >
         <Coins className="size-3.5 text-muted-foreground" />
         <span className="text-muted-foreground">This reply</span>
         <span className="h-1 w-16 overflow-hidden rounded-full bg-foreground/10">
@@ -1297,13 +1347,14 @@ function ReplyMeter({ reply, onAllowMore }: { reply: Reply; onAllowMore: () => v
         <span className="tabular-nums text-muted-foreground">
           <span className="font-medium text-foreground">{reply.spent}</span> of {reply.cap} credits
         </span>
-      </motion.div>
+      </motion.button>
       <motion.div initial={false} animate={{ opacity: reply.paused ? 1 : 0 }} inert={!reply.paused} className="flex items-center gap-2 pl-1">
         <CirclePause className="size-3.5 text-amber-600 dark:text-amber-400" />
-        <span className="font-medium text-amber-700 dark:text-amber-400">Paused at this reply's {reply.cap}-credit cap</span>
+        <span className="whitespace-nowrap font-medium text-amber-700 dark:text-amber-400">Paused at {reply.cap} credits</span>
         <Button size="sm" variant="secondary" className="h-7 rounded-full px-3" onClick={onAllowMore}>
-          Allow {REPLY_CAP} more
+          Allow {replyCap} more
         </Button>
+        <IconButton small label="Change the limit" icon={<Gauge className="size-3.5" />} onClick={onSpending} />
       </motion.div>
     </div>
   );
@@ -1323,8 +1374,10 @@ function Footer({
   onStop,
   reply,
   onAllowMore,
-  always,
-  onStopAlways,
+  replyCap,
+  allowance,
+  onStopAllowance,
+  onSpending,
   view,
 }: {
   suggestion: string | null;
@@ -1342,11 +1395,14 @@ function Footer({
   /** The running reply's own spending, shown while it runs. */
   reply: Reply | null;
   onAllowMore: () => void;
-  /** Credits are allowed for this chat; the chip turns that off. */
-  always: boolean;
-  onStopAlways: () => void;
+  replyCap: number;
+  /** Credits allowed for this chat; the chip opens Spending, and its X turns the allowance off. */
+  allowance: Allowance;
+  onStopAllowance: () => void;
+  onSpending: () => void;
   view: string;
 }) {
+  const format = useFormatter();
   // While a reply runs, Send becomes Stop, unless there's a typed answer to send.
   const stopping = busy && !(asking && draft.trim());
   return (
@@ -1362,7 +1418,7 @@ function Footer({
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.25, ease: EASE }}
               >
-                <ReplyMeter reply={reply} onAllowMore={onAllowMore} />
+                <ReplyMeter reply={reply} replyCap={replyCap} onAllowMore={onAllowMore} onSpending={onSpending} />
               </motion.div>
             ) : suggestion ? (
               <motion.button
@@ -1397,7 +1453,7 @@ function Footer({
           </AnimatePresence>
         </div>
         <AnimatePresence initial={false}>
-          {always ? (
+          {allowance.on ? (
             <motion.span
               key="always"
               initial={{ opacity: 0, scale: 0.85 }}
@@ -1406,12 +1462,14 @@ function Footer({
               transition={{ type: "spring", stiffness: 480, damping: 32 }}
               className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 pl-2.5 pr-1 text-xs font-medium text-primary"
             >
-              <Coins className="size-3" /> Credits allowed
+              <button type="button" onClick={onSpending} className="flex items-center gap-1 tabular-nums hover:underline">
+                <Coins className="size-3" /> {allowance.cap === null ? "Credits allowed" : `Up to ${format.number(allowance.cap)} a job`}
+              </button>
               <TooltipHint label="Ask before spending credits again">
                 <button
                   type="button"
                   aria-label="Ask before spending credits again"
-                  onClick={onStopAlways}
+                  onClick={onStopAllowance}
                   className="flex size-5 items-center justify-center rounded-full hover:bg-primary/15"
                 >
                   <X className="size-3" />
