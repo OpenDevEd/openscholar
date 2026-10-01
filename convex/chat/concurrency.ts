@@ -10,8 +10,10 @@
  *
  * Zombie cleanup: if a Convex runtime death wipes out generateResponse
  * between acquire and the finally-release, the lock would never clear.
- * A lock older than STALE_LOCK_MS stops counting against the user's
- * limit, and a 5-minute cron (convex/crons.ts) releases it.
+ * A running generation renews its lock (`generatingStartedAt`) every
+ * LEASE_RENEW_MS, so a lock not renewed within STALE_LOCK_MS belongs to
+ * a generation that died: it stops counting against the user's limit,
+ * and a 5-minute cron (convex/crons.ts) releases it.
  */
 
 import {
@@ -24,6 +26,8 @@ import { createError } from "../lib/errors";
 import { CHAT_CONCURRENCY_LIMIT } from "@/lib/extraction/limits";
 
 const STALE_LOCK_MS = 5 * 60 * 1000;
+/** How often a running generation renews its lock: well inside STALE_LOCK_MS. */
+export const LEASE_RENEW_MS = 60 * 1000;
 
 /**
  * A user's chats generating now, up to `limit`: only chats whose lock is
@@ -92,6 +96,19 @@ export const acquireThreadLock = internalMutation({
       generatingStartedAt: Date.now(),
       updatedAt: Date.now(),
     });
+    return null;
+  },
+});
+
+/** Renews a running generation's lock, while it's still that generation's. */
+export const renewGenerationLease = internalMutation({
+  args: { jobId: v.id("extractionJobs"), generationAttemptId: v.optional(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, { jobId, generationAttemptId }) => {
+    const job = await ctx.db.get(jobId);
+    if (!job?.isGenerating) return null;
+    if (generationAttemptId !== undefined && job.chatGenerationAttemptId !== generationAttemptId) return null;
+    await ctx.db.patch(jobId, { generatingStartedAt: Date.now() });
     return null;
   },
 });

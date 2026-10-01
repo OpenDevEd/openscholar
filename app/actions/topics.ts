@@ -15,6 +15,5 @@ export async function readTopic(id: string) {
 export async function readTopicWorks(id: string, cursor: string) {
   topicIdSchema.parse(id);
   if (!cursor || cursor.length > 8192) throw new Error("Invalid topic cursor");
-  await spendOpenAlexRequests();
-  return readOpenAlexWorks({filter: {...({topics: {id}}), is_paratext: false, is_retracted: false}, cursor, perPage: 10, sortBy: {field: "cited_by_count", order: "desc"}});
+  return (await spendOpenAlexRequests()) ?? readOpenAlexWorks({filter: {...({topics: {id}}), is_paratext: false, is_retracted: false}, cursor, perPage: 10, sortBy: {field: "cited_by_count", order: "desc"}});
 }

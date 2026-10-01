@@ -117,6 +117,23 @@ describe("acquireThreadLock / releaseThreadLock", () => {
     await expect(t.mutation(internal.chat.concurrency.acquireThreadLock, { jobId: jobs[1] })).rejects.toThrow(/concurrent chats/i);
   });
 
+  it("keeps a long generation that renews its lock out of the stale sweep", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedChatJob(t, { isGenerating: true, generatingStartedAt: Date.now() - 10 * 60_000 });
+    await t.run((ctx) => ctx.db.patch(jobId, { chatGenerationAttemptId: "attempt_long" }));
+    await t.mutation(internal.chat.concurrency.renewGenerationLease, { jobId, generationAttemptId: "attempt_long" });
+    expect(await t.mutation(internal.chat.concurrency.cleanupZombieChatLocks, {})).toEqual({ cleared: 0 });
+    expect((await t.run((ctx) => ctx.db.get(jobId)))?.isGenerating).toBe(true);
+  });
+
+  it("stops a generation whose lock went to another attempt", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedChatJob(t, { isGenerating: true });
+    await t.run((ctx) => ctx.db.patch(jobId, { chatGenerationAttemptId: "attempt_new" }));
+    expect(await t.query(internal.chat.messages.shouldAbortInternal, { jobId, generationAttemptId: "attempt_old" })).toBe(true);
+    expect(await t.query(internal.chat.messages.shouldAbortInternal, { jobId, generationAttemptId: "attempt_new" })).toBe(false);
+  });
+
   it("releaseThreadLock is idempotent — clears or no-ops", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedChatJob(t, { isGenerating: true });

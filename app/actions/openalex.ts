@@ -8,7 +8,8 @@ import type { QueryErrorDetail } from "@/lib/search/search-error";
 import { OQL_FIELD, worksOql } from "@/lib/openalex/oql";
 import { fetchOqlWorks } from "@/lib/openalex/oql-works";
 import { worksUrl } from "@/lib/openalex/works-url";
-import { OpenAlexRequestLimitError, spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
+import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
+import { OpenAlexLimitedError } from "@/lib/openalex/limited";
 
 /** OpenAlex's largest page. */
 const SEARCH_PAGE_SIZE = 200;
@@ -51,15 +52,9 @@ async function probeOpenAlexError(
   }
 }
 
-/** Counts one OpenAlex request against the caller, or the limit as a result to show them. */
+/** Counts one OpenAlex request against the caller, or the limit as the 429 the search page shows. */
 async function spendOne(): Promise<{ ok: false; status: number; message: string } | null> {
-  try {
-    await spendOpenAlexRequests();
-    return null;
-  } catch (error) {
-    if (error instanceof OpenAlexRequestLimitError) return { ok: false, status: error.status, message: error.message };
-    throw error;
-  }
+  return (await spendOpenAlexRequests()) ? { ok: false, status: 429, message: new OpenAlexLimitedError().message } : null;
 }
 
 async function callOpenAlexSDK(

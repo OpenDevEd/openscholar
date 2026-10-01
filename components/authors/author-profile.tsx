@@ -18,6 +18,7 @@ import { ProfileAccess } from "./profile-access";
 import { AuthorInvitations } from "./author-invitations";
 import type { AuthorProfile } from "./types";
 import { readConvexErrorData } from "@/convex/lib/errors";
+import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 
 type ProfileRecord = FunctionReturnType<typeof api.authors.profiles.get>;
 type ProfileReferences = FunctionReturnType<typeof api.authors.publications.list>;
@@ -58,12 +59,12 @@ function AuthorProfileBody({profileId, record, references, initialFeatures, conf
   const save = useAction(api.authors.photos.save);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
-  const authors = useSWR(debouncedSearch ? ["author-profile-search", debouncedSearch] : null, ([, value]) => searchProfileAuthors(value));
-  const match = useSWR(record?.openalex ? ["author-profile-match", record.openalex] : null, ([, id]) => readProfileAuthor(id));
+  const authors = useSWR(debouncedSearch ? ["author-profile-search", debouncedSearch] : null, ([, value]) => unlessLimited(searchProfileAuthors(value)));
+  const match = useSWR(record?.openalex ? ["author-profile-match", record.openalex] : null, ([, id]) => unlessLimited(readProfileAuthor(id)));
   const works = useSWRInfinite((page, previous) => {
     if (!record?.openalex || (previous && previous.results.length < 10)) return null;
     return ["author-profile-works", record.openalex, page + 1] as const;
-  }, ([, id, page]) => readProfileAuthorWorks(id, page));
+  }, ([, id, page]) => unlessLimited(readProfileAuthorWorks(id, page)));
   if (((configuration || invitation) && authLoading) || record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title="Loading author profile" /></PageWrapper>;
   if (!record) return <p className="p-6">Author profile not found.</p>;
   if (configuration && !record.role) return <PageWrapper><AuthStatePanel layout="fullscreen" variant="no_access" /></PageWrapper>;
@@ -75,7 +76,7 @@ function AuthorProfileBody({profileId, record, references, initialFeatures, conf
     invitationSection={invitation && !record.role ? <AuthorInvitations profileId={profileId} showEmpty /> : undefined}
     canBrowseAuthors={features?.authors === true} canEdit={Boolean(record.role)} accessSection={configuration && record.role === "owner" ? <ProfileAccess profileId={profileId} /> : null}
     papers={publications.data?.papers ?? []} loadingPublications={publications.isLoading} loadingAuthors={authors.isValidating || search !== debouncedSearch} publicationStatus={publications.error ? "Publications could not be loaded. Try again shortly." : publications.data?.unavailableCount ? "Some publications could not be loaded. Try again shortly." : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
-    openAlexError={authors.error || match.error || works.error ? "OpenAlex is unavailable. Try again." : null}
+    openAlexError={[authors.error, match.error, works.error].find((error) => error instanceof OpenAlexLimitedError)?.message ?? (authors.error || match.error || works.error ? "OpenAlex is unavailable. Try again." : null)}
     onSearchAuthors={value => { setSearch(value); if (value === search) void authors.mutate(); }}
     hasMoreWorks={(works.data?.flatMap(page => page.results).length ?? 0) < (works.data?.[0]?.meta.count ?? 0)}
     workCount={works.data?.[0]?.meta.count ?? 0} loadingWorks={works.isLoading || works.isValidating}

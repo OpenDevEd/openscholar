@@ -64,7 +64,7 @@ import {
 import { resolveLatestAssistantTurn } from "../../lib/chat/latest-assistant-turn";
 import { pickProviderCostUsd } from "../../lib/chat/pick-provider-cost";
 import { errorToLogString } from "../lib/errors";
-import { assertChatConcurrencyAvailable } from "./concurrency";
+import { assertChatConcurrencyAvailable, LEASE_RENEW_MS } from "./concurrency";
 import { reserveCredits, releaseCredits, settleCredits, tokenCounts, tokenDetails } from "../billing/charge";
 import { callOptions } from "../../lib/ai/core/call-options";
 import { aggregateUsage, usageOf } from "../../lib/ai/core/cost";
@@ -326,8 +326,15 @@ export const generateResponse = internalAction({
     // we pass into paperChat.streamText, which cascades through the
     // library's DeltaStreamer → AI SDK streamText → OpenRouter fetch.
     const abortController = new AbortController();
+    // The poller also renews this generation's lock, so a long reply isn't
+    // taken for one that died (convex/chat/concurrency.ts).
+    let leaseRenewedAt = Date.now();
     const stopAbortPoller = startAbortPoller({
       readFlag: async () => {
+        if (Date.now() - leaseRenewedAt >= LEASE_RENEW_MS) {
+          leaseRenewedAt = Date.now();
+          await ctx.runMutation(internal.chat.concurrency.renewGenerationLease, { jobId, generationAttemptId });
+        }
         const flag: boolean = await ctx.runQuery(
           internal.chat.messages.shouldAbortInternal,
           { jobId, generationAttemptId },
@@ -1440,11 +1447,12 @@ export const shouldAbortInternal = internalQuery({
   returns: v.boolean(),
   handler: async (ctx, { jobId, generationAttemptId }) => {
     const job = await ctx.db.get(jobId);
+    // A generation whose lock was released or taken by another attempt stops.
     if (
       generationAttemptId !== undefined &&
       job?.chatGenerationAttemptId !== generationAttemptId
     ) {
-      return false;
+      return true;
     }
     return job?.shouldAbort === true;
   },

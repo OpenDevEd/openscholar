@@ -5,8 +5,10 @@
  * total per day; a signed-in account has more of both.
  */
 export const OPENALEX_REQUEST_LIMITS = {
-  visitor: { perMinute: 60, perDay: 2_000 },
-  account: { perMinute: 120, perDay: 10_000 },
+  // A page of saved searches counts each one, and a library's sources count up to 100
+  // queries at once, so the burst leaves room for a few such pages a minute.
+  visitor: { perMinute: 120, perDay: 2_000 },
+  account: { perMinute: 300, perDay: 20_000 },
 } as const;
 
 export type RequestLimit = { perMinute: number; perDay: number };
