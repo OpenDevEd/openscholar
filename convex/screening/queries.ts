@@ -294,10 +294,11 @@ export const getScreeningResultsForExport = query({
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .take(MAX_SCREENING_PAPERS_PER_JOB);
     // Each paper's answers are in the job's screening, by question; the export keys them by
-    // question key. A result from before #334 that hasn't moved yet still holds its own.
+    // question key. A result whose answers haven't moved yet, waiting or from before #334,
+    // still holds them.
     const keys = new Map(job.questions.map((q) => [q.question, q.key] as const));
     const answersOf = async (result: (typeof results)[number]) => {
-      if (!job.screeningId) return result.answers;
+      if (result.answers || !job.screeningId) return result.answers;
       const screeningId = job.screeningId;
       const row = await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId).eq("paperId", result.openalexId)).unique();
       if (!row) return result.answers;

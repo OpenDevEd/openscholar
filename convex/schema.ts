@@ -911,8 +911,12 @@ export default defineSchema({
       v.literal("failed"),
       v.literal("skipped"),
     ),
-    // Answers saved before #334, keyed by question key; they move to the job's screening.
+    // A finished paper's answers by question key, with the model's confidence in each, waiting
+    // (`pendingAnswers`) to move to the job's screening (convex/screening/drain.ts). Results
+    // saved before #334 hold answers without the mark until migrations/moveScreeningJobAnswers.
     answers: v.optional(v.record(v.string(), v.union(v.boolean(), v.null()))),
+    confidences: v.optional(v.record(v.string(), v.number())),
+    pendingAnswers: v.optional(v.literal(true)),
     score: v.optional(v.number()),
     stars: v.optional(v.number()),
     qualified: v.optional(v.boolean()),
@@ -934,7 +938,8 @@ export default defineSchema({
   })
     .index("by_job", ["jobId"])
     .index("by_job_status", ["jobId", "status"])
-    .index("by_job_openalexId", ["jobId", "openalexId"]),
+    .index("by_job_openalexId", ["jobId", "openalexId"])
+    .index("by_job_and_pendingAnswers", ["jobId", "pendingAnswers"]),
 
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEMS - User's saved paper library

@@ -29,21 +29,11 @@ import { deriveCompletionTransition } from "./completion";
 import { buildScreeningProgressSnapshot } from "./progress";
 import { scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
-import { answerPaper, ensureScreening } from "../research/answers";
+import { ensureScreening } from "../research/answers";
+import { drainLater } from "./drain";
 import { estimateScreening } from "./estimate";
 import { moveSearchAnswers } from "../research/records";
 
-/**
- * The screening a job's answers go to: its search's, or its own. A job created before #334
- * gets its own on its first answer; two answers arriving together both read and write the
- * job, so one retries and finds the screening the other made.
- */
-async function jobScreening(ctx: MutationCtx, job: Doc<"screeningJobs">): Promise<Id<"screenings">> {
-  if (job.screeningId) return job.screeningId;
-  const screeningId = await ctx.db.insert("screenings", { userId: job.userId, version: 0, createdAt: job.createdAt });
-  await ctx.db.patch("screeningJobs", job._id, { screeningId });
-  return screeningId;
-}
 import { availableCredits } from "../billing/accounts";
 
 /**
@@ -406,7 +396,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
     }
 
     let transition;
-    let paperAnswers: Parameters<typeof answerPaper>[3] = [];
+    let pending: { answers: Record<string, boolean | null>; confidences: Record<string, number> } | null = null;
     if (result.kind === "success" && job.status === "processing") {
       const data = result.returnValue as {
         responses: Record<string, boolean | null>;
@@ -421,11 +411,10 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
         const response = decodedResponses[q.question];
         answers[q.key] = response ?? null;
       }
-      paperAnswers = job.questions.map((q) => ({
-        question: q.question,
-        response: decodedResponses[q.question] ?? null,
-        ...(decodedConfidences[q.question] === undefined ? {} : { confidence: decodedConfidences[q.question] }),
-      }));
+      pending = {
+        answers,
+        confidences: Object.fromEntries(job.questions.flatMap((q) => (decodedConfidences[q.question] === undefined ? [] : [[q.key, decodedConfidences[q.question]]]))),
+      };
 
       const { score, stars, qualified } = scorePaper(answers, job.scoringConfig);
       transition = deriveCompletionTransition({
@@ -453,12 +442,14 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
 
     const completedAt = Date.now();
     if (transition.rowPatch.status === "completed") {
+      // The answers wait on this row, which no other paper writes, until the job's one
+      // writer moves them to the screening the search's page reads (./drain.ts).
       await ctx.db.patch("screeningResults", context.resultId, {
         ...transition.rowPatch,
         completedAt,
+        ...(pending ? { ...pending, pendingAnswers: true as const } : {}),
       });
-      // The answers go where the search's page reads them.
-      await answerPaper(ctx, await jobScreening(ctx, job), screeningResult.openalexId, paperAnswers, "model", completedAt);
+      if (pending) await drainLater(ctx, context.jobId);
     } else {
       await ctx.db.patch("screeningResults", context.resultId, {
         ...transition.rowPatch,

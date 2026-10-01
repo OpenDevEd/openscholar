@@ -7,4 +7,5 @@ export function setupScreeningWorkpool<
 >(t: TestConvex<S>): void {
   const ht = t as unknown as TestConvex<SchemaDefinition<GenericSchema, boolean>>;
   registerWorkpool(ht, "screeningWorkpool");
+  registerWorkpool(ht, "screeningAnswersWorkpool");
 }

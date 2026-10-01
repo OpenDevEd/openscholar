@@ -3,6 +3,7 @@ import rag from "@convex-dev/rag/convex.config.js";
 import workpool from "@convex-dev/workpool/convex.config.js";
 import screeningWorkpool from "@convex-dev/workpool/convex.config.js";
 import extractionPaperWorkpool from "@convex-dev/workpool/convex.config.js";
+import screeningAnswersWorkpool from "@convex-dev/workpool/convex.config.js";
 import aggregate from "@convex-dev/aggregate/convex.config.js";
 import agent from "@convex-dev/agent/convex.config.js";
 import shardedCounter from "@convex-dev/sharded-counter/convex.config.js";
@@ -14,6 +15,8 @@ app.use(rag);
 app.use(workpool);
 app.use(screeningWorkpool, { name: "screeningWorkpool" });
 app.use(extractionPaperWorkpool, { name: "extractionPaperWorkpool" });
+// Moves Screen all's answers into screenings one batch at a time (convex/screening/drain.ts).
+app.use(screeningAnswersWorkpool, { name: "screeningAnswersWorkpool" });
 app.use(agent);
 // Tier B (plans/extraction-occ-fixes): per-job processed/failed paper
 // counters live in a sharded counter instead of mutable fields on the

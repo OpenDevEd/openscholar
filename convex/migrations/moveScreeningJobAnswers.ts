@@ -6,7 +6,7 @@ import type { MutationCtx } from "../_generated/server";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
-import { answerPaper } from "../research/answers";
+import { moveResultAnswers } from "../screening/drain";
 
 /**
  * Moves the answers Screen all saved on each result before #334 into the job's screening,
@@ -20,28 +20,6 @@ import { answerPaper } from "../research/answers";
  *   npx convex run migrations/moveScreeningJobAnswers:verify
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
-
-/**
- * Moves one result's saved answers into its job's screening and clears them from the result.
- * A job's first moved result gives it a screening when it has none.
- */
-export async function moveResultAnswers(ctx: MutationCtx, result: Doc<"screeningResults">) {
-  if (!result.answers) return false;
-  const job = (await ctx.db.get("screeningJobs", result.jobId))!;
-  let screeningId = job.screeningId;
-  if (!screeningId) {
-    screeningId = await ctx.db.insert("screenings", { userId: job.userId, version: 0, createdAt: job.createdAt });
-    await ctx.db.patch("screeningJobs", job._id, { screeningId });
-  }
-  const questions = new Map(job.questions.map((q) => [q.key, q.question] as const));
-  const entries = Object.entries(result.answers);
-  const unknown = entries.find(([key]) => !questions.has(key));
-  if (unknown) throw new Error(`Result ${result._id} answers question key ${unknown[0]}, which job ${job._id} doesn't have.`);
-  const responses = entries.map(([key, response]) => ({ question: questions.get(key)!, response }));
-  await answerPaper(ctx, screeningId, result.openalexId, responses, "model", result.completedAt ?? result.createdAt);
-  await ctx.db.patch("screeningResults", result._id, { answers: undefined });
-  return true;
-}
 
 // About five index reads a result, so a batch stays well inside a transaction's 4,096.
 export const moveResults = migrations.define({

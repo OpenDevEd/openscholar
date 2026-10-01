@@ -274,6 +274,7 @@ import type * as research_answers from "../research/answers.js";
 import type * as research_records from "../research/records.js";
 import type * as screening_aggregates from "../screening/aggregates.js";
 import type * as screening_completion from "../screening/completion.js";
+import type * as screening_drain from "../screening/drain.js";
 import type * as screening_estimate from "../screening/estimate.js";
 import type * as screening_lifecycle from "../screening/lifecycle.js";
 import type * as screening_mutations from "../screening/mutations.js";
@@ -597,6 +598,7 @@ declare const fullApi: ApiFromModules<{
   "research/records": typeof research_records;
   "screening/aggregates": typeof screening_aggregates;
   "screening/completion": typeof screening_completion;
+  "screening/drain": typeof screening_drain;
   "screening/estimate": typeof screening_estimate;
   "screening/lifecycle": typeof screening_lifecycle;
   "screening/mutations": typeof screening_mutations;
@@ -680,6 +682,7 @@ export declare const components: {
   workpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"workpool">;
   screeningWorkpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"screeningWorkpool">;
   extractionPaperWorkpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"extractionPaperWorkpool">;
+  screeningAnswersWorkpool: import("@convex-dev/workpool/_generated/component.js").ComponentApi<"screeningAnswersWorkpool">;
   agent: import("@convex-dev/agent/_generated/component.js").ComponentApi<"agent">;
   extractionProcessedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"extractionProcessedCounter">;
   extractionFailedCounter: import("@convex-dev/sharded-counter/_generated/component.js").ComponentApi<"extractionFailedCounter">;

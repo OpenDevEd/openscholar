@@ -47,6 +47,7 @@ export const screenPaperAction = internalAction({
   },
   returns: v.object({
     responses: v.record(v.string(), v.union(v.boolean(), v.null())),
+    confidences: v.record(v.string(), v.number()),
     confidence: v.number(),
   }),
   handler: async (ctx, args): Promise<ScreeningActionResult> => {
