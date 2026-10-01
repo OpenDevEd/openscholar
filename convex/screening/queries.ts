@@ -9,6 +9,9 @@ import {
   screeningResultStatusValidator,
 } from "./validators";
 import { getCurrentUser } from "../lib/auth";
+import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
+import { availableCredits } from "../billing/accounts";
+import { estimateScreening } from "./estimate";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 
 /** Most screening jobs one history request lists; each one also reads its progress. */
@@ -422,3 +425,13 @@ export const getResultInternal = internalQuery({
     };
   },
 });
+
+export const estimateAction = defineUserQuery({
+  path: "screening/queries:estimate",
+  description: "Estimates the credits screening a number of papers holds, against the person's balance, and how many papers that balance covers.",
+  args: { papers: v.number() },
+  returns: v.object({ credits: v.number(), available: v.number(), affordablePapers: v.number() }),
+  run: async (ctx, userId, args) => estimateScreening(args.papers, await availableCredits(ctx, userId)),
+});
+export const estimate = userQuery(estimateAction);
+export const estimateForAssistant = assistantQuery(estimateAction);

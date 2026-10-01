@@ -28,7 +28,7 @@ import { readSearchPage } from "@/app/actions/openalex";
 import { searchRequest } from "@/lib/search-utils";
 import { api } from "@/convex/_generated/api";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "@/convex/lib/queryBounds";
-import { ESTIMATED_CREDITS_PER_PAPER } from "@/convex/lib/constants";
+import { estimateScreening } from "@/convex/screening/estimate";
 import type { ScoringRule, StarThreshold } from "@/convex/screening/scoring";
 import { ScoringRulesEditor } from "@/components/screening/scoring-rules-editor";
 import { StarThresholdEditor } from "@/components/screening/star-threshold-editor";
@@ -209,12 +209,12 @@ export function ScreeningDialog({
   const [paperRange, setPaperRange] = useState<[number, number]>([1, maxPapers]);
   const paperCount = paperRange[1] - paperRange[0] + 1;
 
-  // Credit cost check
-  const estimatedCredits = Math.ceil(paperCount * ESTIMATED_CREDITS_PER_PAPER);
-  const { data: balanceCheck } = useProtectedQuery(
-    api.billing.accounts.checkBalance,
-    open ? { requiredAmount: estimatedCredits } : "skip"
-  );
+  // Credit cost check: the balance is read once, and the estimate the assistant shows too is
+  // worked out from it as the range changes, so it never waits on a query.
+  const { data: account } = useProtectedQuery(api.billing.accounts.mine, open ? {} : "skip");
+  const estimate = account === undefined ? undefined : estimateScreening(paperCount, account?.balance ?? 0);
+  const hasEnough = estimate ? estimate.credits <= estimate.available : false;
+  const affordablePapers = estimate?.affordablePapers;
 
   // Set initial range to the max affordable paper count
   const rangeInitialized = useRef(false);
@@ -223,13 +223,13 @@ export function ScreeningDialog({
       rangeInitialized.current = false;
       return;
     }
-    if (rangeInitialized.current || !balanceCheck || maxPapers < 1) return;
+    if (rangeInitialized.current || affordablePapers === undefined || maxPapers < 1) return;
     rangeInitialized.current = true;
 
-    const affordable = Math.floor(balanceCheck.total / ESTIMATED_CREDITS_PER_PAPER);
+    const affordable = affordablePapers;
     const end = Math.max(1, Math.min(affordable, maxPapers));
     setPaperRange([1, end]);
-  }, [open, balanceCheck, maxPapers]);
+  }, [open, affordablePapers, maxPapers]);
 
   // Also sync when maxPapers changes (new search) while dialog is closed
   useEffect(() => {
@@ -413,22 +413,22 @@ export function ScreeningDialog({
               </div>
 
               {/* Credit summary */}
-              {balanceCheck && (
+              {estimate && (
                 <div className={`flex items-center justify-between rounded-md px-3 py-2 text-xs ${
-                  balanceCheck.hasEnough
+                  hasEnough
                     ? "bg-muted/50"
                     : "bg-destructive/10"
                 }`}>
                   <div className="flex items-center gap-3">
                     <Coins className={`h-3.5 w-3.5 ${
-                      balanceCheck.hasEnough ? "text-muted-foreground" : "text-destructive"
+                      hasEnough ? "text-muted-foreground" : "text-destructive"
                     }`} />
                     <span className="tabular-nums">
-                      <span className="font-semibold">~{estimatedCredits.toLocaleString()}</span>
-                      <span className="text-muted-foreground"> / {balanceCheck.total.toLocaleString()}</span>
+                      <span className="font-semibold">~{estimate.credits.toLocaleString()}</span>
+                      <span className="text-muted-foreground"> / {estimate.available.toLocaleString()}</span>
                     </span>
                   </div>
-                  {!balanceCheck.hasEnough && (
+                  {!hasEnough && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -526,7 +526,7 @@ export function ScreeningDialog({
             disabled={
               isSubmitting ||
               localQuestions.length === 0 ||
-              !balanceCheck?.hasEnough
+              !hasEnough
             }
           >
             {isSubmitting ? (

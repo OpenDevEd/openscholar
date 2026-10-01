@@ -13,7 +13,6 @@ import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { resolveTaskPick, serverStamp } from "../ai/serverModel";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
-import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
 import { screeningPool } from "../workpool";
 import {
   getCancelableScreeningWorkIds,
@@ -31,6 +30,7 @@ import { buildScreeningProgressSnapshot } from "./progress";
 import { scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { answerPaper, ensureScreening } from "../research/answers";
+import { estimateScreening } from "./estimate";
 import { moveSearchAnswers } from "../research/records";
 
 /**
@@ -100,7 +100,7 @@ export const createScreeningJob = mutation({
     // 4. Credit pre-flight check
     const totalAvailable = await availableCredits(ctx, user._id);
 
-    const estimatedCost = Math.ceil(args.papers.length * ESTIMATED_CREDITS_PER_PAPER);
+    const estimatedCost = estimateScreening(args.papers.length, totalAvailable).credits;
     if (totalAvailable < estimatedCost) {
       throw createError(
         "INSUFFICIENT_CREDITS",
