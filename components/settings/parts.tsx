@@ -61,6 +61,7 @@ export function Segmented<T extends string>({
   label,
   size = "sm",
   fill = false,
+  className,
 }: {
   value: T;
   onChange: (v: T) => void;
@@ -70,6 +71,7 @@ export function Segmented<T extends string>({
   size?: "sm" | "md" | "lg";
   /** Stretch across the row, with equal segments. */
   fill?: boolean;
+  className?: string;
 }) {
   const buttons = useRef<Partial<Record<string, HTMLButtonElement | null>>>({});
   // Segments with a line under the label are two-line cards rather than pills.
@@ -97,6 +99,7 @@ export function Segmented<T extends string>({
         stacked ? "rounded-[1.375rem]" : "rounded-full",
         // Equal segments in one row, two by two on narrow screens.
         fill ? "@container/segments grid w-full auto-cols-fr grid-flow-col @max-[34rem]/configuration:grid-flow-row @max-[34rem]/configuration:grid-cols-2 @max-[34rem]/configuration:rounded-3xl" : "inline-flex shrink-0",
+        className,
       )}
     >
       {box ? (

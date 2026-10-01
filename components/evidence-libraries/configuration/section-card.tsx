@@ -165,7 +165,7 @@ export function Field({
   const id = useId();
   const invalid = Boolean(error);
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div className={cn("flex flex-col gap-1.5", className)}>
       <div className="flex min-h-5 items-center justify-between gap-2">
         <Label id={labelId(id)} htmlFor={id} className="font-normal">
           {label}

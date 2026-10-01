@@ -322,7 +322,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
                     />
                   )}
 
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-2">
                     <Label htmlFor="name">
                       {t("jobName")}
                     </Label>

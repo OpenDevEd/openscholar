@@ -40,7 +40,7 @@ export function BookmarkForm({
   if (variant === "overlay") {
     return (
       <div className="absolute inset-0 z-10 flex flex-col overflow-y-auto bg-background/98 p-3">
-        <div className="flex-1 flex flex-col space-y-2.5">
+        <div className="flex-1 flex flex-col gap-2.5">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-amber-600">
@@ -109,7 +109,7 @@ export function BookmarkForm({
 
   // Inline variant
   return (
-    <div className="space-y-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+    <div className="flex flex-col gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
       <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
         <BookmarkPlus className="h-4 w-4" />
         <span className="text-sm font-medium">{tc("saveAsBookmark")}</span>

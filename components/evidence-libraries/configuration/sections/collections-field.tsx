@@ -264,7 +264,7 @@ function CollectionRow({
           </span>
         ) : null}
       </div>
-      <div className="space-y-1.5">
+      <div className="flex flex-col gap-1.5">
         <div className="flex min-h-5 items-center">
           <Label htmlFor={`${id}-title`} className="font-normal">
             {t("titleLabel")}
