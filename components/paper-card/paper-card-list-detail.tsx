@@ -343,8 +343,8 @@ export function PaperCardListDetail({
             <div className="flex items-center justify-between gap-2">
               {!hide?.rating && (
                 <div className="flex items-center gap-2">
-                  <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
-                  <SaveControl paperId={result.id} compact />
+                  <RatingSelector paper={result} variant="compact" />
+                  <SaveControl paper={result} compact />
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -427,8 +427,8 @@ export function PaperCardListDetail({
             <div className="flex items-center gap-3">
               {!hide?.rating && (
                 <>
-                  <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
-                  <SaveControl paperId={result.id} />
+                  <RatingSelector paper={result} variant="compact" />
+                  <SaveControl paper={result} />
                 </>
               )}
             </div>

@@ -56,7 +56,6 @@
       "convex/library/collections.ts:collections:collections#2": "One user's collections: at most MAX_COLLECTIONS_PER_USER (500).",
       "convex/library/collections.ts:memberships:libraryItemCollections": "The collections one saved paper belongs to: at most MAX_COLLECTIONS_PER_USER (500).",
       "convex/library/mutations.ts:memberships:libraryItemCollections": "The collections one saved paper belongs to: at most MAX_COLLECTIONS_PER_USER (500).",
-      "convex/library/mutations.ts:memberships:libraryItemCollections#2": "The collections one saved paper belongs to: at most MAX_COLLECTIONS_PER_USER (500).",
       "convex/maintenance/mutations.ts:apiKeys:apiKeys": "A user's own API keys: a handful.",
       "convex/maintenance/mutations.ts:zoteroConns:zoteroConnections": "A user's Zotero connections: one or two.",
       "convex/organizationFeatures.ts:memberships:organizationMemberships": "One person's active organization memberships: a few.",

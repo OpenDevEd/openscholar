@@ -86,8 +86,8 @@ export function PaperCardListSimple({
           >
             {!hide?.rating && (
               <div className="flex items-center gap-2">
-                <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
-                <SaveControl paperId={result.id} compact />
+                <RatingSelector paper={result} variant="compact" />
+                <SaveControl paper={result} compact />
               </div>
             )}
           </div>

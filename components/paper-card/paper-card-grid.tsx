@@ -203,9 +203,9 @@ export function PaperCardGrid({
                       : "@min-[22.5rem]/card:basis-auto",
                   )}
                 >
-                  <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+                  <RatingSelector paper={result} variant="compact" />
                 </div>
-                <SaveControl paperId={result.id} compact />
+                <SaveControl paper={result} compact />
               </>
             )}
 

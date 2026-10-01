@@ -147,7 +147,7 @@ export function FocusModeHeader({
               </div>
             ))}
             <div className="ml-3 flex items-center gap-1">
-              <SaveControl paperId={currentPaper.id} />
+              <SaveControl paper={currentPaper} />
               <span className="text-xs text-muted-foreground bg-muted px-1 rounded">
                 B
               </span>
@@ -160,8 +160,8 @@ export function FocusModeHeader({
         <div className="flex flex-wrap items-center gap-1 md:flex-nowrap md:justify-end md:mr-8">
           {/* Compact rating selector - only on mobile */}
           <div className="order-1 flex items-center gap-1 md:hidden">
-            <RatingSelector paperId={currentPaper.id} paperResult={currentPaper} variant="compact" />
-            <SaveControl paperId={currentPaper.id} compact />
+            <RatingSelector paper={currentPaper} variant="compact" />
+            <SaveControl paper={currentPaper} compact />
           </div>
 
           <div className="order-4 flex items-center gap-1 md:order-none">
