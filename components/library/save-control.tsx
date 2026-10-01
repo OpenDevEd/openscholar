@@ -114,7 +114,11 @@ export function useSavePaper(paper: WorkInput | undefined) {
             onClick: () => {
               restore({ paper: removed })
                 .then(() => {
-                  if (removed.rating !== undefined) setRating(id, removed.rating);
+                  // A rating given since the removal wins, as it does on the server.
+                  const current = useRatingsStore.getState().ratings[id];
+                  if (removed.rating !== undefined && current === undefined) {
+                    setRating(id, removed.rating);
+                  }
                 })
                 .catch((error) => {
                   console.error("[Library] Failed to restore:", error);

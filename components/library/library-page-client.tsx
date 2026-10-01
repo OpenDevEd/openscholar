@@ -286,13 +286,11 @@ export function LibraryPageClient() {
     [filteredItems],
   );
 
-  // Server-authoritative ratings for FocusMode; unrated papers fall back to the ratings store
+  // Server-authoritative ratings for the cards and FocusMode; null marks a paper saved unrated
   const serverRatingsMap = useMemo(
     () =>
       new Map(
-        (filteredItems ?? []).flatMap((item) =>
-          item.rating === undefined ? [] : [[item.openalexId, item.rating] as const],
-        ),
+        (filteredItems ?? []).map((item) => [item.openalexId, item.rating ?? null]),
       ),
     [filteredItems],
   );
