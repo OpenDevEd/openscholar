@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { api } from "../../_generated/api";
 import type { Doc } from "../../_generated/dataModel";
 import schema from "../../schema";
+import { readEveryResultsPage } from "../../../lib/extraction/export";
 
 const CLERK_OWNER = "clerk_results_page_owner";
 const OWNER_IDENTITY = {
@@ -115,21 +116,6 @@ async function getResultsPage(
     jobId: jobId as never,
     page: overrides?.page ?? 1,
     pageSize: overrides?.pageSize ?? 25,
-    filters: overrides?.filters ?? DEFAULT_FILTERS,
-    sortBy: overrides?.sortBy ?? "default",
-  });
-}
-
-async function getResultsExport(
-  auth: ReturnType<ReturnType<typeof convexTest>["withIdentity"]>,
-  jobId: string,
-  overrides?: Partial<{
-    filters: typeof DEFAULT_FILTERS;
-    sortBy: "default" | "title-asc" | "title-desc" | "confidence-high" | "confidence-low";
-  }>,
-) {
-  return await auth.query(api.extraction.queries.getJobResultsForExport, {
-    jobId: jobId as never,
     filters: overrides?.filters ?? DEFAULT_FILTERS,
     sortBy: overrides?.sortBy ?? "default",
   });
@@ -291,33 +277,42 @@ describe("getJobResultsPage", () => {
     expect(pageThree.items[1]?.results[0]).not.toHaveProperty("reviewState");
   });
 
-  it("returns the full filtered corpus for export with a count equal to totalFiltered", async () => {
+  it("is read page by page by an export, in the view's order and filter", async () => {
     const t = convexTest(schema);
     const { jobId } = await seedJobWithProjectionCorpus(t);
     const auth = t.withIdentity(OWNER_IDENTITY);
-    const filters = {
-      ...DEFAULT_FILTERS,
-      statusFilters: ["has-pdf"],
-    };
+    const view = { filters: { ...DEFAULT_FILTERS, confidenceRange: [50, 100] as [number, number] }, sortBy: "title-asc" as const };
 
-    const pageResult = await getResultsPage(auth, jobId, {
-      filters,
-      pageSize: 1,
-    });
-    const exportResult = await getResultsExport(auth, jobId, {
-      filters,
+    const whole = await getResultsPage(auth, jobId, { ...view, pageSize: 200 });
+    const exported = await readEveryResultsPage((page) => getResultsPage(auth, jobId, { ...view, page, pageSize: 7 }));
+
+    if (whole.status !== "ok") throw new Error("unreachable");
+    expect(whole.totalPages).toBe(1);
+    expect(whole.totalFiltered).toBeGreaterThan(7);
+    expect(exported.map((paper) => paper._id)).toEqual(whole.items.map((paper) => paper._id));
+  });
+
+  it("is read again from the start when a paper moves between pages mid-export", async () => {
+    const t = convexTest(schema);
+    const { jobId } = await seedJobWithProjectionCorpus(t);
+    const auth = t.withIdentity(OWNER_IDENTITY);
+    const view = { filters: DEFAULT_FILTERS, sortBy: "confidence-high" as const, pageSize: 20 };
+    const firstPage = await getResultsPage(auth, jobId, view);
+    if (firstPage.status !== "ok") throw new Error("unreachable");
+
+    let moved = false;
+    const exported = await readEveryResultsPage(async (page) => {
+      if (page === 2 && !moved) {
+        // The last paper of page 1 drops to the bottom, pulling one from page 2 up.
+        moved = true;
+        await t.run((ctx) => ctx.db.patch(firstPage.items.at(-1)!._id, { avgConfidence: 0 }));
+      }
+      return getResultsPage(auth, jobId, { ...view, page });
     });
 
-    expect(pageResult.status).toBe("ok");
-    expect(exportResult.status).toBe("ok");
-    if (pageResult.status !== "ok" || exportResult.status !== "ok") {
-      throw new Error("unreachable");
-    }
-    expect(exportResult.totalFiltered).toBe(pageResult.totalFiltered);
-    expect(exportResult.items).toHaveLength(pageResult.totalFiltered);
-    expect(exportResult.items.map((paper) => paper.title)).toEqual([
-      "Rare Search Match",
-    ]);
-    expect(exportResult.items[0]?.results[0]).not.toHaveProperty("reviewState");
+    const ids = exported.map((paper) => paper._id);
+    expect(moved).toBe(true);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toHaveLength(firstPage.totalFiltered);
   });
 });

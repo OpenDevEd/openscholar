@@ -19,4 +19,4 @@ export {
   getJobSources,
 } from "./queries/jobs";
 
-export { getJobResultsForExport, getJobResultsPage } from "./queries/results";
+export { getJobResultsPage } from "./queries/results";

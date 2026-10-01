@@ -12,8 +12,8 @@ import { seedFullJobGraph, SEED_IDENTITY } from "./tests/seed";
  * DB reads → response shaping correctly. If the barrel split silently sends
  * a caller to the wrong handler, the headline assertion goes red.
  *
- * Covers: getJobShell, getJobDetails, getJobResultsForExport,
- * getJobResultsPage, subscribeToJobProgress.
+ * Covers: getJobShell, getJobDetails, getJobResultsPage,
+ * subscribeToJobProgress.
  */
 
 async function seedAndAuth() {
@@ -71,21 +71,6 @@ describe("SN-3 public queries resolve against a seeded job graph", () => {
       jobId: ids.jobId,
       page: 1,
       pageSize: 200,
-      filters: {
-        searchQuery: "",
-        confidenceRange: [0, 100],
-        statusFilters: [],
-        questionFilters: [],
-      },
-      sortBy: "default",
-    });
-    expect(res.status).toBe("ok");
-  });
-
-  test("getJobResultsForExport reaches handler", async () => {
-    const { auth, ids } = await seedAndAuth();
-    const res = await auth.query(api.extraction.queries.getJobResultsForExport, {
-      jobId: ids.jobId,
       filters: {
         searchQuery: "",
         confidenceRange: [0, 100],
