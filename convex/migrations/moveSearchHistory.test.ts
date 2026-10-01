@@ -26,6 +26,7 @@ describe("moveSearchHistory", () => {
       expect(await t.action(internal.migrations.moveSearchHistory.verify, {})).toHaveLength(2);
       // Before it moves, a search's history reads from its arrays.
       expect(await entries("untouched", "query")).toEqual(["tutoring AND randomized", "tutoring"]);
+      expect(await alice.query(api.research.records.searchHistoryEntry, { accountId: "alice", id: "untouched", kind: "query", stepsBack: 1 })).toEqual({ entry: { text: "tutoring", field: "title", timestamp: "2026-08-01T10:00:00Z" } });
 
       await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "edit", command: { kind: "editSearch", id: "edited", edit: { kind: "query", query: "newest", field: "title" } } });
       await t.mutation(internal.migrations.moveSearchHistory.run, {});

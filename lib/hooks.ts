@@ -131,22 +131,45 @@ export function useQueryHistory(
     [setQuery],
   );
 
-  const canGoPrevious = loadedIndex > 0 || history.hasOlder;
-  const canGoNext = queryHistory.length > 0 && stepsBack > 0;
+  const canGoPrevious = stepsBack < history.total - 1;
+  const canGoNext = stepsBack > 0;
 
-  // A step moves only to a query already read; a position past them, kept from an earlier
-  // visit, reads older queries until it's reached. Older queries are read a few steps
-  // before the arrows reach them.
-  const step = useCallback((delta: -1 | 1) => {
-    const entry = queryHistory[loadedIndex + delta];
-    if (entry) {
-      setStepsBack(key, stepsBack - delta);
-      showEntry(entry);
+  // Older queries are read a few steps before the arrows reach them. A step to one not read
+  // yet, from a place kept from an earlier visit or pressed during a read, reads it first;
+  // a press during that read steps on from where the read will land. The read's result is
+  // dropped if anything else moved meanwhile: a new query, another search, or these arrows
+  // going away.
+  const readToken = useRef(0);
+  const pendingTarget = useRef<number | null>(null);
+  useEffect(() => () => { readToken.current += 1; pendingTarget.current = null; }, [key]);
+  const step = useCallback(async (delta: -1 | 1) => {
+    const from = pendingTarget.current ?? stepsBack;
+    const target = from - delta;
+    if (target < 0 || target >= history.total) return;
+    const loaded = pendingTarget.current === null ? queryHistory[loadedIndex + delta] : undefined;
+    if (loaded) {
+      if (loadedIndex + delta <= HISTORY_READ_AHEAD && history.hasOlder) history.loadOlder();
+      setStepsBack(key, target);
+      showEntry(loaded);
+      return;
     }
-    if (loadedIndex + delta <= HISTORY_READ_AHEAD && history.hasOlder) history.loadOlder();
+    const token = ++readToken.current;
+    pendingTarget.current = target;
+    const positions = useQueryHistoryIndexStore.getState().indices;
+    try {
+      const entry = await history.readAt(target);
+      if (token !== readToken.current || useQueryHistoryIndexStore.getState().indices !== positions) return;
+      if (!entry) return;
+      setStepsBack(key, target);
+      showEntry(entry);
+    } catch (error) {
+      console.error("Couldn't read an earlier query of this search", { searchId: key, stepsBack: target, error });
+    } finally {
+      if (token === readToken.current) pendingTarget.current = null;
+    }
   }, [loadedIndex, stepsBack, queryHistory, showEntry, key, setStepsBack, history]);
-  const goToPrevious = useCallback(() => step(-1), [step]);
-  const goToNext = useCallback(() => { if (canGoNext) step(1); }, [canGoNext, step]);
+  const goToPrevious = useCallback(() => { if (canGoPrevious) void step(-1); }, [canGoPrevious, step]);
+  const goToNext = useCallback(() => { if (canGoNext) void step(1); }, [canGoNext, step]);
 
   return {
     queryHistory,

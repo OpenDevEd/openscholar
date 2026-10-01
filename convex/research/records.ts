@@ -119,6 +119,35 @@ export const searchHistoryAction = defineUserQuery({
 export const searchHistory = accountQuery(searchHistoryAction);
 export const searchHistoryForAssistant = assistantQuery(searchHistoryAction);
 
+export const searchHistoryEntryAction = defineUserQuery({
+  path: "research/records:searchHistoryEntry",
+  description: "Reads one of a saved search's earlier queries, or research questions, a number of steps before the newest.",
+  args: { id: v.string(), kind: historyKind, stepsBack: v.number(), cursor: v.optional(v.string()) },
+  // Either the entry (null when there's none that far back), or where to go on from after
+  // skipping as many entries as one read allows.
+  returns: v.union(v.object({ entry: v.union(historyEntryValidator, v.null()) }), v.object({ skipped: v.number(), cursor: v.string() })),
+  run: async (ctx, userId, args) => {
+    const search = await findSearch(ctx, userId, args.id);
+    if (!search || !Number.isInteger(args.stepsBack) || args.stepsBack < 0) return { entry: null };
+    const legacy = args.kind === "query" ? search.data.queryHistory : search.data.questionHistory;
+    if (legacy) {
+      const entry = legacy[legacy.length - 1 - args.stepsBack];
+      return { entry: entry ? ("query" in entry ? { text: entry.query, ...(entry.field ? { field: entry.field } : {}), timestamp: entry.timestamp } : { text: entry.question, timestamp: entry.timestamp }) : null };
+    }
+    const page = await ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_position", q => q.eq("searchId", search._id).eq("kind", args.kind)).order("desc")
+      .paginate({ cursor: args.cursor ?? null, numItems: args.stepsBack + 1, maximumRowsRead: HISTORY_SKIP_ROWS, maximumBytesRead: HISTORY_SKIP_BYTES });
+    const row = page.page[args.stepsBack];
+    if (row) return { entry: { text: row.text, ...(row.field ? { field: row.field } : {}), timestamp: row.timestamp } };
+    return page.isDone ? { entry: null } : { skipped: page.page.length, cursor: page.continueCursor };
+  },
+});
+export const searchHistoryEntry = accountQuery(searchHistoryEntryAction);
+export const searchHistoryEntryForAssistant = assistantQuery(searchHistoryEntryAction);
+
+/** Most rows and bytes one read skips on the way to an entry far back in a history. */
+const HISTORY_SKIP_ROWS = 10_000;
+const HISTORY_SKIP_BYTES = 8 * 2 ** 20;
+
 /** Most history entries one page returns: about 2 MB of the longest saved OQL queries. */
 const HISTORY_PAGE_MAX = 100;
 
