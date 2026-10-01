@@ -16,6 +16,8 @@ import { QueryText } from "@/components/ui/query-text";
 
 // About four lines at this size; longer queries are cut off.
 const LONG_QUERY_CHARS = 240;
+// Rows after these, read as the timeline scrolls, show without waiting their turn.
+const STAGGERED_ROWS = 8;
 
 interface QueryEvolutionProps {
   /** The queries read so far, oldest first; the newest may be all of them. */
@@ -137,7 +139,7 @@ export function QueryEvolution({
                     key={entry.query}
                     initial={{ opacity: 0, x: -4 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.03 }}
+                    transition={{ delay: Math.min(idx, STAGGERED_ROWS) * 0.03 }}
                     className={cn(
                       "relative flex items-start gap-2",
                       // Dot - centered at -8px from item edge
