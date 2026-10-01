@@ -25,14 +25,24 @@ describe("<ConfigurationWorkspace>", () => {
     ({ saved, activated } = resetWorkspace());
   });
 
-  it("keeps the short name and public address read-only", async () => {
+  it("saves a changed short name and keeps the public address read-only", async () => {
+    const user = userEvent.setup();
     await renderWorkspace();
-    const shortName = identityCard().getByRole("textbox", { name: "identity.shortNameLabel" });
     const address = identityCard().getByRole("textbox", { name: "identity.addressLabel" });
-    expect(shortName).toHaveAttribute("aria-readonly", "true");
-    expect(shortName).toHaveTextContent("saved-library");
     expect(address).toHaveAttribute("aria-readonly", "true");
     expect(address).toHaveTextContent(savedIdentity.baseUrl);
+
+    const shortName = identityCard().getByLabelText("identity.shortNameLabel");
+    await user.clear(shortName);
+    await fillField(user, shortName, "Saved");
+    await user.click(screen.getByRole("button", { name: "save" }));
+
+    await waitFor(() => expect(saved).toHaveLength(1));
+    const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
+    expect(request.sections.find((row) => row.sectionKey === "identity")?.payload).toMatchObject({
+      shortName: "Saved",
+      baseUrl: savedIdentity.baseUrl,
+    });
   });
 
   it("saves unsaved changes first, then activates with the new edit version", async () => {

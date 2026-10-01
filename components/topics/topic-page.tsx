@@ -22,10 +22,12 @@ import { topicHref } from "@/lib/topics/links";
 import { TopicLibraryResults, useTopicLibraryResults } from "./topic-library-results";
 import { ListEmpty, ListLoading, ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { buildShareableUrl } from "@/lib/search-params";
+import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 
 export function TopicPage({ topic, path, related, detail: initialDetail }: { topic: TopicNode; path: TopicNode[]; related: TopicNode[]; detail: Awaited<ReturnType<typeof readTopic>> | null }) {
   const t = useTranslations("topics");
   const tc = useTranslations("common");
+  const tToast = useTranslations("toast");
   const locale = useLocale();
   const [tab, setTab] = useState<"libraries" | "openalex">("libraries");
   const library = useTopicLibraryResults(topic.id);
@@ -35,7 +37,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
   const works = useSWRInfinite((_page, previous) => {
     if (tab !== "openalex" || (previous && !previous.meta.next_cursor)) return null;
     return ["topic-works", topic.id, previous?.meta.next_cursor ?? "*"] as const;
-  }, ([, id, cursor]) => readTopicWorks(id, cursor));
+  }, ([, id, cursor]) => unlessLimited(readTopicWorks(id, cursor)));
   const papers = works.data?.flatMap(page => page.results) ?? [];
   const total = works.data?.[0]?.meta.count ?? 0;
   const isFocusModeOpen = useUIStore(state => state.isFocusModeOpen);
@@ -71,7 +73,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
     <div key={tab} className="fade-enter">
     {tab === "libraries" ? <TopicLibraryResults state={library} /> : <div>
         <FocusMode isOpen={isFocusModeOpen} onClose={() => useUIStore.getState().setIsFocusModeOpen(false)} papers={papers} onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />
-        {works.error && <div role="alert" className="flex items-center gap-3 p-6 text-sm">{t("publicationsFailed")}<Button variant="outline" size="sm" onClick={() => void works.mutate()}>{t("tryAgain")}</Button></div>}
+        {works.error && <div role="alert" className="flex items-center gap-3 p-6 text-sm">{works.error instanceof OpenAlexLimitedError ? tToast("tooManyRequestsDescription") : t("publicationsFailed")}<Button variant="outline" size="sm" onClick={() => void works.mutate()}>{t("tryAgain")}</Button></div>}
         {works.isLoading && <ListLoading label={t("loadingPublications")} />}
         {papers.length > 0 && <div className="space-y-4 p-4 sm:p-6">
           {papers.map((paper, index) => <PaperCard key={paper.id} result={paper} resultIndex={index} viewMode="list-simple" onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />)}

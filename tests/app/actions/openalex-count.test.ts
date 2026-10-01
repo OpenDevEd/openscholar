@@ -4,6 +4,8 @@ const { fetchCountMock } = vi.hoisted(() => ({
   fetchCountMock: vi.fn(),
 }));
 
+// Request limits are tested in tests/openalex-request-limit.test.ts.
+vi.mock("@/lib/openalex/spend-requests", () => ({ spendOpenAlexRequests: async () => {}, OpenAlexRequestLimitError: class extends Error {} }));
 vi.mock("@/lib/openalex/count", () => ({
   fetchOpenAlexCount: fetchCountMock,
   toSearchFilters: vi.fn(),

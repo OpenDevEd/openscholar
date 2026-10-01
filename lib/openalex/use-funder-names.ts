@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { readFunderNames } from "@/app/actions/funders";
 import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
+import { unlessLimited } from "./limited";
 
 /** Funder names this browser has seen, so a funder chip starts with its name instead of its ID. */
 const useFunderNameStore = create<{ names: Record<string, string> }>()(
@@ -30,7 +31,7 @@ export function useFunderNames(ids: readonly string[]): Record<string, string> {
   useSWR(
     missing.length ? ["funder-names", ...missing] : null,
     async () => {
-      const names = await readFunderNames(missing);
+      const names = await unlessLimited(readFunderNames(missing));
       rememberFunderNames(names);
       return names;
     },

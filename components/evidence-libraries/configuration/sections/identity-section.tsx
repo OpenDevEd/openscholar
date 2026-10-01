@@ -63,8 +63,27 @@ export function IdentitySection({ draft, saved, patch, reset }: SectionProps) {
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
-        <Field label={t("shortNameLabel")} hint={t("shortNameHint")}>
-          {(id) => <ReadOnlyValue id={id} value={identity.shortName} />}
+        <Field
+          label={t("shortNameLabel")}
+          hint={t("shortNameHint")}
+          counter={`${identity.shortName.length} / ${LIMITS.shortName}`}
+          error={!identity.shortName.trim() ? t("shortNameError") : null}
+        >
+          {(id, invalid) => (
+            <Input
+              id={id}
+              maxLength={LIMITS.shortName}
+              className="bg-background"
+              value={identity.shortName}
+              aria-invalid={invalid || undefined}
+              onChange={(e) =>
+                patch((d) => {
+                  d.identity.shortName = e.target.value;
+                  return d;
+                })
+              }
+            />
+          )}
         </Field>
         <Field label={t("addressLabel")} hint={t("addressHint")}>
           {(id) => (

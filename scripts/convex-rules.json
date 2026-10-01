@@ -69,9 +69,6 @@
       "convex/zotero/mutations.ts:existing:zoteroOAuthTokens": "A user's pending Zotero sign-in tokens: one or two."
     },
     "pending": {
-      "convex/chat/concurrency.ts:chatJobs:extractionJobs": "#355",
-      "convex/chat/concurrency.ts:cleanupZombieChatLocks:extractionJobs": "#355",
-      "convex/chat/sourceEvents.ts:listForThread:chatSourceEvents": "#355",
       "convex/research/answers.ts:answersAtVersions:screeningAnswerHistory": "#342",
       "convex/research/answers.ts:currentAnswers:?": "#334",
       "convex/research/answers.ts:existing:?": "#334",

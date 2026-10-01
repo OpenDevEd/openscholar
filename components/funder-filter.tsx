@@ -7,6 +7,7 @@ import { searchFunders } from "@/app/actions/funders";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { rememberFunderNames, useFunderNames } from "@/lib/openalex/use-funder-names";
+import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 
 /** Funders from OpenAlex's autocomplete; there are too many to list. */
 export function FunderFilter({
@@ -17,9 +18,10 @@ export function FunderFilter({
   onChange: (ids: string[]) => void;
 }) {
   const tf = useTranslations("searchFilters");
+  const tToast = useTranslations("toast");
   const [search, setSearch] = useState("");
   const query = useDebouncedValue(search.trim());
-  const results = useSWR(query ? ["funder-search", query] : null, () => searchFunders(query), {
+  const results = useSWR(query ? ["funder-search", query] : null, () => unlessLimited(searchFunders(query)), {
     revalidateOnFocus: false,
     keepPreviousData: true,
   });
@@ -40,7 +42,7 @@ export function FunderFilter({
         !query
           ? tf("typeToSearchFunders")
           : results.error
-            ? tf("fundersUnavailable")
+            ? results.error instanceof OpenAlexLimitedError ? tToast("tooManyRequestsDescription") : tf("fundersUnavailable")
             : results.isLoading
               ? tf("searching")
               : tf("nothingFound")

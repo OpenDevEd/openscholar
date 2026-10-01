@@ -11,6 +11,8 @@ import { openAlexUrl } from "../../lib/openalex/request-url";
 
 const provider = z.object({id: z.string(), description: z.string().max(100000), keywords: z.array(z.string().max(1000)).max(1000), works_count: z.number().int().nonnegative()});
 const DAY = 86_400_000;
+/** A stale topic is fetched again at most this often, however many people read it. */
+const REFRESH_EVERY_MS = 60 * 60 * 1000;
 export const read = internalQuery({
   args: {id: v.string()},
   handler: async (ctx, args) => {
@@ -27,6 +29,24 @@ export const save = internalMutation({
     if (current && current.fetchedAt > args.fetchedAt) return null;
     if (current) await ctx.db.replace("topicDetails", current._id, args);
     else await ctx.db.insert("topicDetails", args);
+    return null;
+  },
+});
+/**
+ * Schedules one refresh of a stale topic. Anyone may read a topic, so without this every
+ * reader of a stale one would ask OpenAlex again on the shared key (#355); now OpenAlex
+ * is asked at most once an hour per topic, so a day's topic fetches stay within the
+ * catalog's size.
+ */
+export const requestRefresh = internalMutation({
+  args: {id: v.string()},
+  returns: v.null(),
+  handler: async (ctx, {id}) => {
+    const current = await ctx.db.query("topicDetails").withIndex("by_external_id", q => q.eq("id", id)).unique();
+    const now = Date.now();
+    if (!current || now - current.fetchedAt <= DAY || (current.refreshRequestedAt !== undefined && now - current.refreshRequestedAt < REFRESH_EVERY_MS)) return null;
+    await ctx.db.patch("topicDetails", current._id, {refreshRequestedAt: now});
+    await ctx.scheduler.runAfter(0, internal.topics.details.refresh, {id});
     return null;
   },
 });
@@ -64,8 +84,7 @@ export async function readTopicDetail(ctx: ActionCtx, args: {id: string; library
         throw createError("INVALID_DATA", "Topic description unavailable");
       }
     } else if (Date.now() - detail.fetchedAt > DAY) {
-      // ponytail: every reader of a stale topic schedules a refresh until one lands; save keeps the newest.
-      await ctx.scheduler.runAfter(0, internal.topics.details.refresh, {id: args.id});
+      await ctx.runMutation(internal.topics.details.requestRefresh, {id: args.id});
     }
     return {contractVersion: 1 as const, id: args.id, name: result.node.name, description: detail.description,
       keywords: detail.keywords, path: result.path, worksCount: detail.worksCount, fetchedAt: new Date(detail.fetchedAt).toISOString(), revision: detail.revision,
