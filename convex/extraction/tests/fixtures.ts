@@ -54,6 +54,8 @@ export const createTestJob = internalMutation({
   args: {
     userId: v.optional(v.id("users")),
     name: v.optional(v.string()),
+    // A chat job, for checks of chat locks on a real backend.
+    mode: v.optional(v.union(v.literal("extraction"), v.literal("chat"))),
     status: v.optional(jobStatusValidator),
     bucketItems: v.optional(v.array(bucketItemInputValidator)),
     questions: v.optional(v.array(questionInputValidator)),
@@ -76,7 +78,7 @@ export const createTestJob = internalMutation({
     const now = Date.now();
     const jobId = await ctx.db.insert("extractionJobs", {
       userId,
-      mode: "extraction" as const,
+      mode: args.mode ?? "extraction",
       name: args.name ?? `PDF Test ${now}`,
       sourceType: "history",
       status: args.status ?? "pending",

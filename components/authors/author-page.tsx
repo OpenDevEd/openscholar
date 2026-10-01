@@ -74,6 +74,7 @@ import { toast } from "sonner";
 import { readProfileAuthor } from "@/app/actions/authors";
 import {PublicationListItem, PublicationMetadata} from "@/components/evidence-libraries/publication-list-item";
 import type {AuthorProfile, OpenAlexMatch, AuthorPublication} from "./types";
+import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 
 const safeUrl = (value?: string) => {
   try {
@@ -874,8 +875,8 @@ export default function AuthorPage({
                           className="flex w-full items-center gap-3 p-3 text-left hover:bg-muted/50"
                           onClick={async () => {
                             setCandidate(m);
-                            try { const detail = await readProfileAuthor(m.id); setCandidate(current => current?.id === m.id ? detail : current); }
-                            catch { toast.error("Could not load this author’s publications"); }
+                            try { const detail = await unlessLimited(readProfileAuthor(m.id)); setCandidate(current => current?.id === m.id ? detail : current); }
+                            catch (error) { toast.error(error instanceof OpenAlexLimitedError ? error.message : "Could not load this author’s publications"); }
                           }}
                         >
                           <AuthorAvatar className="size-9" />
