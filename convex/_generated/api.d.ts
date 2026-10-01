@@ -107,7 +107,6 @@ import type * as evidenceLibraries_domains from "../evidenceLibraries/domains.js
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
 import type * as evidenceLibraries_invitationActions from "../evidenceLibraries/invitationActions.js";
 import type * as evidenceLibraries_invitations from "../evidenceLibraries/invitations.js";
-import type * as evidenceLibraries_members from "../evidenceLibraries/members.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
 import type * as evidenceLibraries_openAlexSourceKey from "../evidenceLibraries/openAlexSourceKey.js";
 import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
@@ -422,7 +421,6 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
   "evidenceLibraries/invitationActions": typeof evidenceLibraries_invitationActions;
   "evidenceLibraries/invitations": typeof evidenceLibraries_invitations;
-  "evidenceLibraries/members": typeof evidenceLibraries_members;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
   "evidenceLibraries/openAlexSourceKey": typeof evidenceLibraries_openAlexSourceKey;
   "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;

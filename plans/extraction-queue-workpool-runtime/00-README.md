@@ -75,8 +75,8 @@ Use subagents only when explicitly authorized by the active user/tool contract. 
 ## 9. Grounding Sources
 
 - `convex/_generated/ai/guidelines.md`: Convex validators, function calling, schema, and high-churn data guidance.
-- https://github.com/get-convex/agent-skills/tree/7a6fcc6882f344577a34365fdadbd0f8f8c467d7/skills/convex-performance-audit/SKILL.md plus `references/occ-conflicts.md`, `hot-path-rules.md`, and `function-budget.md`.
-- https://github.com/get-convex/agent-skills/tree/7a6fcc6882f344577a34365fdadbd0f8f8c467d7/skills/convex-migration-helper/SKILL.md, applied with the repo's destructive dev-data override.
+- `.agents/skills/convex-performance-audit/SKILL.md` plus `references/occ-conflicts.md`, `hot-path-rules.md`, and `function-budget.md`.
+- `.agents/skills/convex-migration-helper/SKILL.md`, applied with the repo's destructive dev-data override.
 - `/Users/mcharrad/.agents/skills/tdd/SKILL.md`.
 - `/Users/mcharrad/.agents/skills/typescript-strict-mode/SKILL.md`.
 - Context7 Convex docs: workflow `maxParallelism` limits step execution, not workflow launch count.

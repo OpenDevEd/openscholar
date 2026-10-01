@@ -175,7 +175,7 @@ Repo sources:
 
 Skills and local guidance:
 
-- [convex-performance-audit skill](https://github.com/get-convex/agent-skills/blob/7a6fcc6882f344577a34365fdadbd0f8f8c467d7/skills/convex-performance-audit/SKILL.md)
+- [convex-performance-audit skill](../../.agents/skills/convex-performance-audit/SKILL.md)
 - `references/occ-conflicts.md`
 - `references/subscription-cost.md`
 
