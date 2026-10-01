@@ -8,6 +8,7 @@ import { useUIStore } from "@/lib/store";
 import { useIsTablet } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "@/components/rating-selector";
+import { SaveControl } from "@/components/library/save-control";
 import { Quote, Network, Users, BookOpen } from "lucide-react";
 import { useTranslate, useScreening, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
@@ -178,13 +179,24 @@ export function PaperCardGrid({
           {/* Footer: Rating and citations */}
           <div
             role="group"
-            className="flex items-center justify-between pt-3 mt-auto border-t border-border/50"
+            className="flex flex-wrap items-center gap-2 pt-3 mt-auto border-t border-border/50"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
-            
-            <div className="flex items-center gap-2">
+            {/* Narrow cards give the rating its own row; the breakpoints fit five stars, save and the counts */}
+            <div
+              className={cn(
+                "basis-full",
+                isCompact
+                  ? "@min-[18.5rem]/card:basis-auto"
+                  : "@min-[22.5rem]/card:basis-auto",
+              )}
+            >
+              <RatingSelector paper={result} variant="compact" />
+            </div>
+            <SaveControl paper={result} compact />
+
+            <div className="ml-auto flex items-center gap-2">
               {/* Cited by count */}
               <button
                 onClick={(e) => {

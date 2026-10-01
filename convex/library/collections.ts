@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
+import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
 
 // ═══════════════════════════════════════════════════════════════
 // COLLECTION CRUD (Plan 01 prerequisites)
@@ -136,29 +137,7 @@ export const addToCollection = mutation({
       throw createError("FORBIDDEN", "Not your library item");
     }
 
-    // Check for existing assignment (idempotent)
-    const existing = await ctx.db
-      .query("libraryItemCollections")
-      .withIndex("by_collection_item", (q) =>
-        q
-          .eq("collectionId", args.collectionId)
-          .eq("libraryItemId", args.libraryItemId)
-      )
-      .unique();
-
-    if (existing) return null; // Already assigned, no-op
-
-    await ctx.db.insert("libraryItemCollections", {
-      userId: user._id,
-      collectionId: args.collectionId,
-      libraryItemId: args.libraryItemId,
-      assignedAt: Date.now(),
-    });
-
-    // Increment denormalized collection counter
-    const currentCount = collection.itemCount ?? 0;
-    await ctx.db.patch("collections", args.collectionId, { itemCount: currentCount + 1 });
-
+    await addCollectionMembership(ctx, { userId: user._id, collection, libraryItemId: args.libraryItemId });
     return null;
   },
 });
@@ -188,13 +167,7 @@ export const removeFromCollection = mutation({
       )
       .unique();
 
-    if (existing) {
-      await ctx.db.delete("libraryItemCollections", existing._id);
-
-      // Decrement denormalized collection counter
-      const currentCount = collection.itemCount ?? 0;
-      await ctx.db.patch("collections", args.collectionId, { itemCount: Math.max(0, currentCount - 1) });
-    }
+    if (existing) await removeCollectionMembership(ctx, existing);
     return null;
   },
 });

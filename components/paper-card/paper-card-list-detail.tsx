@@ -9,6 +9,7 @@ import { useIsTablet } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { createCitationSearch } from "@/lib/search";
 import { RatingSelector } from "@/components/rating-selector";
+import { SaveControl } from "@/components/library/save-control";
 import { DownloadMenu } from "@/components/download-menu";
 import { Button } from "@/components/ui/button";
 import {
@@ -332,8 +333,11 @@ export function PaperCardListDetail({
         {isMobile ? (
           /* Mobile Layout */
           <div className="space-y-3 pt-3 border-t border-border/50">
-            <div className="flex items-center justify-between">
-              <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <RatingSelector paper={result} variant="compact" />
+                <SaveControl paper={result} compact />
+              </div>
               <div className="flex items-center gap-2">
                 <DownloadMenu
                   variant="icon"
@@ -346,13 +350,19 @@ export function PaperCardListDetail({
                     onDownloadEssentialItem(result, "csv")
                   }
                 />
+              </div>
+            </div>
+
+            {/* Full-text links get their own row: beside rating and save they don't fit a phone */}
+            {((result.open_access?.is_oa && result.open_access?.oa_url) || result.doi) && (
+              <div className="flex items-center gap-2">
                 <OpenAccessBadge
                   isOA={result.open_access?.is_oa}
                   oaUrl={result.open_access?.oa_url}
                 />
-                <DOIBadge doi={result.doi} compact />
+                <DOIBadge doi={result.doi} className="min-w-0 flex-1" />
               </div>
-            </div>
+            )}
 
             {/* Citation cards */}
             <div className="grid grid-cols-3 gap-2">
@@ -403,7 +413,8 @@ export function PaperCardListDetail({
           /* Desktop Layout */
           <div className="flex items-center justify-between gap-4 flex-wrap pt-3 border-t border-border/50">
             <div className="flex items-center gap-3">
-              <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+              <RatingSelector paper={result} variant="compact" />
+              <SaveControl paper={result} />
             </div>
 
             <div className="flex items-center gap-2">

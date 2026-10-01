@@ -62,4 +62,46 @@ function TooltipContent({
   )
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+/**
+ * The app's hover hint, used instead of the browser's `title`. The wrapper
+ * stays when there is no label, so a hint that comes and goes never remounts
+ * its trigger. A disabled button fires no pointer events: wrap it in a span.
+ * `onlyWhenClipped` opens it only while the trigger or something inside it
+ * is cut off, for hints that repeat text to show it in full.
+ */
+function TooltipHint({
+  label,
+  onlyWhenClipped = false,
+  children,
+}: {
+  label?: React.ReactNode
+  onlyWhenClipped?: boolean
+  children: React.ReactElement
+}) {
+  const [open, setOpen] = React.useState(false)
+  const triggerRef = React.useRef<HTMLButtonElement>(null)
+  return (
+    <Tooltip
+      open={open}
+      onOpenChange={(next) =>
+        setOpen(next && (!onlyWhenClipped || isClipped(triggerRef.current)))
+      }
+    >
+      <TooltipTrigger asChild ref={triggerRef}>
+        {children}
+      </TooltipTrigger>
+      {label ? <TooltipContent>{label}</TooltipContent> : null}
+    </Tooltip>
+  )
+}
+
+function isClipped(element: HTMLElement | null) {
+  if (!element) return false
+  return [element, ...element.querySelectorAll<HTMLElement>("*")].some(
+    (node) =>
+      node.scrollWidth > node.clientWidth ||
+      node.scrollHeight > node.clientHeight
+  )
+}
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, TooltipHint }

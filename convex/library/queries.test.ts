@@ -240,7 +240,7 @@ describe("browseLibrary", () => {
     });
 
     expect(result.page).toHaveLength(2);
-    expect(result.page.every((item: { rating: number; title: string }) => item.rating >= 3)).toBe(true);
+    expect(result.page.every((item: { rating?: number; title: string }) => item.rating! >= 3)).toBe(true);
   });
 
   it("applies maxRating and savedBefore together when they are provided", async () => {
@@ -343,7 +343,7 @@ describe("searchLibrary", () => {
     });
 
     expect(result.page.length).toBeGreaterThanOrEqual(1);
-    expect(result.page.some((item: { rating: number; title: string }) => item.title.includes("Machine"))).toBe(
+    expect(result.page.some((item: { rating?: number; title: string }) => item.title.includes("Machine"))).toBe(
       true
     );
   });
@@ -372,7 +372,7 @@ describe("searchLibrary", () => {
       paginationOpts: { numItems: 10, cursor: null },
     });
 
-    expect(result.page.every((item: { rating: number; title: string }) => item.rating >= 4)).toBe(true);
+    expect(result.page.every((item: { rating?: number; title: string }) => item.rating! >= 4)).toBe(true);
   });
 
   it("returns empty page when search text matches nothing", async () => {
@@ -418,7 +418,7 @@ describe("searchLibrary", () => {
 
     // Should only contain user1's paper
     expect(
-      result.page.every((item: { rating: number; title: string }) => item.title.includes("User1"))
+      result.page.every((item: { rating?: number; title: string }) => item.title.includes("User1"))
     ).toBe(true);
   });
 });
@@ -602,7 +602,7 @@ describe("library counter", () => {
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    const itemId1 = await asUser.mutation(api.library.mutations.saveToLibrary, {
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
       openalexId: "https://openalex.org/W1",
       rating: 3,
       title: "Paper 1",
@@ -614,30 +614,6 @@ describe("library counter", () => {
     });
 
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      itemId: itemId1,
-    });
-
-    const count = await asUser.query(api.library.queries.getLibraryCount, {});
-    expect(count).toBe(1);
-  });
-
-  it("removeFromLibraryByOpenalexId decrements counter", async () => {
-    const t = convexTest(schema);
-    const user = await seedUser(t, "clerk_user1", "user1@test.com");
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W1",
-      rating: 3,
-      title: "Paper 1",
-    });
-    await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W2",
-      rating: 4,
-      title: "Paper 2",
-    });
-
-    await asUser.mutation(api.library.mutations.removeFromLibraryByOpenalexId, {
       openalexId: "https://openalex.org/W1",
     });
 
@@ -645,7 +621,7 @@ describe("library counter", () => {
     expect(count).toBe(1);
   });
 
-  it("removeFromLibraryByOpenalexId with non-existent item does not change counter", async () => {
+  it("removeFromLibrary with non-existent item does not change counter", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
@@ -656,7 +632,7 @@ describe("library counter", () => {
       title: "Paper 1",
     });
 
-    await asUser.mutation(api.library.mutations.removeFromLibraryByOpenalexId, {
+    await asUser.mutation(api.library.mutations.removeFromLibrary, {
       openalexId: "https://openalex.org/W999",
     });
 
@@ -690,20 +666,20 @@ describe("library counter", () => {
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     // Save and remove to get counter to 0
-    const itemId = await asUser.mutation(api.library.mutations.saveToLibrary, {
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
       openalexId: "https://openalex.org/W1",
       rating: 3,
       title: "Paper 1",
     });
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      itemId,
+      openalexId: "https://openalex.org/W1",
     });
 
     const count = await asUser.query(api.library.queries.getLibraryCount, {});
     expect(count).toBe(0);
 
     // Try removing a non-existent item -- counter should stay at 0
-    await asUser.mutation(api.library.mutations.removeFromLibraryByOpenalexId, {
+    await asUser.mutation(api.library.mutations.removeFromLibrary, {
       openalexId: "https://openalex.org/W999",
     });
 
@@ -717,7 +693,7 @@ describe("library counter", () => {
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     // Save A
-    const itemA = await asUser.mutation(api.library.mutations.saveToLibrary, {
+    await asUser.mutation(api.library.mutations.saveToLibrary, {
       openalexId: "https://openalex.org/WA",
       rating: 3,
       title: "Paper A",
@@ -730,7 +706,7 @@ describe("library counter", () => {
     });
     // Remove A
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      itemId: itemA,
+      openalexId: "https://openalex.org/WA",
     });
     // Save C
     await asUser.mutation(api.library.mutations.saveToLibrary, {
@@ -742,53 +718,30 @@ describe("library counter", () => {
     const count = await asUser.query(api.library.queries.getLibraryCount, {});
     expect(count).toBe(2);
   });
+
 });
 
 describe("removeFromLibrary", () => {
-  it("deletes item owned by authenticated user, returns null", async () => {
+  it("removes the person's paper and returns it so Undo can put it back", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     const item = await seedLibraryItem(t, user!._id, {
       openalexId: "https://openalex.org/W1",
+      rating: 4,
     });
 
-    const result = await asUser.mutation(
-      api.library.mutations.removeFromLibrary,
-      { itemId: item!._id }
-    );
-
-    expect(result).toBeNull();
-
-    // Verify item is actually deleted
-    const deleted = await t.run(async (ctx) => {
-      return await ctx.db.get("libraryItems", item!._id);
+    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, {
+      openalexId: "https://openalex.org/W1",
     });
+
+    expect(removed).toMatchObject({ openalexId: "https://openalex.org/W1", rating: 4, savedAt: item!.savedAt, collectionIds: [] });
+    const deleted = await t.run(async (ctx) => await ctx.db.get("libraryItems", item!._id));
     expect(deleted).toBeNull();
   });
 
-  it("throws NOT_FOUND for non-existent item ID", async () => {
-    const t = convexTest(schema);
-    await seedUser(t, "clerk_user1", "user1@test.com");
-    const asUser = t.withIdentity({ subject: "clerk_user1" });
-
-    // Create and delete an item to get a valid-format but non-existent ID
-    const item = await seedLibraryItem(t, (await seedUser(t, "clerk_temp", "temp@test.com"))!._id, {
-      openalexId: "https://openalex.org/Wtemp",
-    });
-    await t.run(async (ctx) => {
-      await ctx.db.delete("libraryItems", item!._id);
-    });
-
-    await expect(
-      asUser.mutation(api.library.mutations.removeFromLibrary, {
-        itemId: item!._id,
-      })
-    ).rejects.toThrow();
-  });
-
-  it("throws FORBIDDEN when trying to delete another user's item", async () => {
+  it("leaves another person's copy of the paper alone", async () => {
     const t = convexTest(schema);
     await seedUser(t, "clerk_user1", "user1@test.com");
     const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
@@ -798,10 +751,125 @@ describe("removeFromLibrary", () => {
       openalexId: "https://openalex.org/W1",
     });
 
+    const removed = await asUser1.mutation(api.library.mutations.removeFromLibrary, {
+      openalexId: "https://openalex.org/W1",
+    });
+
+    expect(removed).toBeNull();
+    const kept = await t.run(async (ctx) => await ctx.db.get("libraryItems", otherItem!._id));
+    expect(kept).not.toBeNull();
+  });
+});
+
+describe("saving without a rating", () => {
+  const paper = { openalexId: "https://openalex.org/W1", title: "Paper 1" };
+
+  it("saves an unrated paper and keeps a saved rating when saved again without one", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const itemId = await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+    expect((await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId)))?.rating).toBeUndefined();
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 4 });
+    await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+
+    expect((await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId)))?.rating).toBe(4);
+    expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);
+  });
+
+  it("clears a rating without removing the paper", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const itemId = await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 2 });
+    await asUser.mutation(api.library.mutations.clearLibraryRating, { openalexId: paper.openalexId });
+
+    const item = await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId));
+    expect(item).not.toBeNull();
+    expect(item?.rating).toBeUndefined();
+    expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);
+  });
+
+  it("leaves unrated papers out of a rating filter", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+    await asUser.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W2", title: "Paper 2", rating: 1 });
+
+    for (const sortBy of ["savedAt", "rating"] as const) {
+      const result = await asUser.query(api.library.queries.browseLibrary, {
+        sortBy,
+        sortOrder: "desc",
+        maxRating: 3,
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+      expect(result.page.map((item) => item.title)).toEqual(["Paper 2"]);
+    }
+  });
+
+  it("puts a removed paper back with its rating, saved date and collections", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collectionId = await asUser.mutation(api.library.collections.createCollection, { name: "Reading" });
+    const itemId = await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 5 });
+    await asUser.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: itemId });
+    const savedAt = (await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId)))!.savedAt;
+
+    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
+    expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(0);
+
+    const restoredId = await asUser.mutation(api.library.mutations.restoreLibraryItem, { paper: removed! });
+
+    const restored = await t.run(async (ctx) => await ctx.db.get("libraryItems", restoredId));
+    expect(restored).toMatchObject({ openalexId: paper.openalexId, rating: 5, savedAt });
+    expect(await asUser.query(api.library.collections.getItemCollections, { libraryItemId: restoredId })).toEqual([collectionId]);
+    const collection = await t.run(async (ctx) => await ctx.db.get("collections", collectionId));
+    expect(collection?.itemCount).toBe(1);
+    expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);
+  });
+
+  it("adds an unsaved paper to a collection by saving it once, and takes it out without unsaving it", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+
+    const collectionId = await asUser.mutation(api.library.collections.createCollection, { name: "Reading" });
+    await asUser.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: true });
+    await asUser.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: true });
+
+    const saved = await asUser.query(api.library.queries.savedPaper, { openalexId: paper.openalexId });
+    expect(saved?.inCollection).toBe(true);
+    expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);
+    expect((await t.run(async (ctx) => await ctx.db.get("collections", collectionId)))?.itemCount).toBe(1);
+
+    await asUser.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: false });
+
+    expect(await asUser.query(api.library.queries.savedPaper, { openalexId: paper.openalexId })).toEqual({
+      libraryItemId: saved!.libraryItemId,
+      inCollection: false,
+    });
+    expect((await t.run(async (ctx) => await ctx.db.get("collections", collectionId)))?.itemCount).toBe(0);
+  });
+
+  it("won't put a paper in another person's collection", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    await seedUser(t, "clerk_user2", "user2@test.com");
+    const asUser1 = t.withIdentity({ subject: "clerk_user1" });
+    const asUser2 = t.withIdentity({ subject: "clerk_user2" });
+
+    const collectionId = await asUser2.mutation(api.library.collections.createCollection, { name: "Theirs" });
+
     await expect(
-      asUser1.mutation(api.library.mutations.removeFromLibrary, {
-        itemId: otherItem!._id,
-      })
+      asUser1.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: true }),
     ).rejects.toThrow();
+    expect(await asUser1.query(api.library.queries.getLibraryCount, {})).toBe(0);
   });
 });

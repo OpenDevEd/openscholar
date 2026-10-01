@@ -9,6 +9,7 @@ import { getEffectiveSearchId } from "@/lib/utils";
 import { useIsTablet } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "@/components/rating-selector";
+import { SaveControl } from "@/components/library/save-control";
 import { Quote } from "lucide-react";
 import { useTranslate, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
@@ -79,7 +80,10 @@ export function PaperCardListSimple({
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+            <div className="flex items-center gap-2">
+              <RatingSelector paper={result} variant="compact" />
+              <SaveControl paper={result} compact />
+            </div>
           </div>
 
           {/* Main content area */}

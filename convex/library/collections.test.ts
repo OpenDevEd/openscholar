@@ -392,7 +392,7 @@ describe("removeFromLibrary cascade", () => {
 
     // Remove the library item
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      itemId: item!._id,
+      openalexId: "https://openalex.org/W1",
     });
 
     // Verify junction rows are deleted
@@ -420,7 +420,7 @@ describe("removeFromLibrary cascade", () => {
 
     // Remove the library item
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      itemId: item!._id,
+      openalexId: "https://openalex.org/W1",
     });
 
     // Collection should still exist
