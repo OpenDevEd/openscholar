@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { encrypt } from "../lib/crypto";
+import { createFakeClerkOAuth } from "../../tests/helpers/fake-clerk-oauth";
 import {
   createActivatedSetupFixture,
   TEST_RUNTIME_IMAGE,
@@ -59,6 +60,7 @@ function stubApplicationActionEnvironment() {
   vi.stubEnv("EL_COOLIFY_PROJECT_UUID", "project-1");
   vi.stubEnv("EL_COOLIFY_ENVIRONMENT", "development");
   vi.stubEnv("EL_COOLIFY_GITHUB_APP_UUID", "github-app-1");
+  vi.stubEnv("CLERK_SECRET_KEY", "sk_test_fake");
 }
 
 describe("Evidence Library application setup", () => {
@@ -236,7 +238,7 @@ describe("Evidence Library application setup", () => {
     const requests: URL[] = [];
     vi.stubGlobal(
       "fetch",
-      vi.fn<typeof fetch>(async (request) => {
+      createFakeClerkOAuth().wrap(vi.fn<typeof fetch>(async (request) => {
         const url = new URL(String(request));
         requests.push(url);
         if (
@@ -262,7 +264,7 @@ describe("Evidence Library application setup", () => {
           });
         }
         return Response.json({ message: "unavailable" }, { status: 503 });
-      }),
+      })),
     );
 
     await expect(
@@ -342,10 +344,10 @@ describe("Evidence Library application setup", () => {
     const hosts: string[] = [];
     vi.stubGlobal(
       "fetch",
-      vi.fn<typeof fetch>(async (request) => {
+      createFakeClerkOAuth().wrap(vi.fn<typeof fetch>(async (request) => {
         hosts.push(new URL(String(request)).hostname);
         return Response.json({ message: "unavailable" }, { status: 503 });
-      }),
+      })),
     );
 
     await fixture.t.action(

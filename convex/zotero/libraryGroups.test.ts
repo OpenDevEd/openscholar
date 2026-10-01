@@ -255,6 +255,14 @@ describe("Evidence Library Zotero groups", () => {
           ENCRYPTION_KEY,
         ),
       },
+      signIn: {
+        oauth: {
+          issuer: "https://clerk.example.test",
+          clientId: "library-client",
+          encryptedClientSecret: encrypt("library-client-secret", ENCRYPTION_KEY),
+        },
+        accountUrl: "https://accounts.example.test/user",
+      },
       search: {
         host: "http://meilisearch:7700",
         encryptedKey: encrypt("search-key", ENCRYPTION_KEY),

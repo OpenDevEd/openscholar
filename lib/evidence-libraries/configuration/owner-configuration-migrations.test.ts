@@ -106,11 +106,24 @@ describe("owner configuration migrations", () => {
         },
       ],
     });
-    expect(result.snapshot.ownerConfigurationVersion).toBe(7);
+    expect(result.snapshot.ownerConfigurationVersion).toBe(8);
     expect(result.snapshot.sections.find((row) => row.sectionKey === "sources")?.payload).toEqual([
       { ...zotero("42"), settings: { downloadPdfs: true } },
       { ...zotero("77"), settings: { downloadPdfs: false } },
     ]);
+  });
+
+  it("turns the old login and personal collections switches into reader accounts", () => {
+    const features = (payload: Record<string, unknown>) =>
+      migrateOwnerConfiguration({
+        ownerConfigurationVersion: 7,
+        sections: [{ sectionKey: "features", payload: { collections: true, ...payload } }],
+      }).snapshot.sections.find((row) => row.sectionKey === "features")?.payload;
+
+    expect(features({ login: false, userCollections: true })).toEqual({ collections: true, readerAccounts: true });
+    expect(features({ login: true, userCollections: false })).toEqual({ collections: true, readerAccounts: true });
+    expect(features({ login: false, userCollections: false })).toEqual({ collections: true });
+    expect(features({})).toEqual({ collections: true });
   });
 
   it("adds an Identity assets container without changing its other values", () => {
@@ -351,6 +364,7 @@ describe("owner configuration migrations", () => {
       [4, 5],
       [5, 6],
       [6, 7],
+      [7, 8],
     ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
@@ -588,6 +602,7 @@ describe("owner configuration migrations", () => {
       [4, 5],
       [5, 6],
       [6, 7],
+      [7, 8],
     ]);
   });
 

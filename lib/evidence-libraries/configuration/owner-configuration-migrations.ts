@@ -9,7 +9,7 @@ import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 7 as const;
+export const CURRENT_OWNER_CONFIGURATION_VERSION = 8 as const;
 export const MAX_CHANGED_POINTERS = 100;
 
 export type OwnerConfigurationSnapshotRow = {
@@ -541,6 +541,27 @@ function migrateVersionSixToSeven(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+/**
+ * Readers sign in with OpenScholar: the library's login and personal
+ * collections become one reader accounts switch, on if either was on.
+ */
+function migrateVersionSevenToEight(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 8;
+  for (const row of next.sections) {
+    if (row.sectionKey !== "features" || !isRecord(row.payload)) continue;
+    const { login, userCollections, ...payload } = row.payload;
+    // Off is the default, so only a library that had either switch on keeps one.
+    row.payload =
+      login === true || userCollections === true
+        ? { ...payload, readerAccounts: true }
+        : payload;
+  }
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 const disabledAiDefaults: OwnerConfigurationDefaultRow[] = [
   {
     sectionKey: "ai",
@@ -595,6 +616,15 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 6,
     to: 7,
     migrate: migrateVersionSixToSeven,
+    defaultRows: [
+      ...disabledAiDefaults,
+      { sectionKey: "topics", payload: () => ({ enabled: false }) },
+    ],
+  },
+  {
+    from: 7,
+    to: 8,
+    migrate: migrateVersionSevenToEight,
     defaultRows: [
       ...disabledAiDefaults,
       { sectionKey: "topics", payload: () => ({ enabled: false }) },

@@ -60,6 +60,7 @@ import {
   isRetryableOAuthClientError,
   OAuthClientBusyError,
   syncLibraryOAuthClientFor,
+  syncLibrarySignIn,
 } from "./oauthClientSync";
 
 /**
@@ -206,7 +207,7 @@ export const runConfigurationDeployment = internalAction({
       ].filter((origin) => !platformOriginSet.has(origin));
       // Sign-in has to keep working on the old address and start working on
       // the new one before any traffic moves, so both get callbacks now.
-      await syncLibraryOAuthClientFor(ctx, {
+      const signIn = await syncLibrarySignIn(ctx, {
         libraryId: args.libraryId,
         origins: [...platformOrigins, ...customOrigins],
         mode: "include",
@@ -341,6 +342,7 @@ export const runConfigurationDeployment = internalAction({
           },
           sections,
           credentials: prepared.credentials,
+          signIn,
           search: prepared.search,
           storage: prepared.storage,
           zoteroTranslationUrl: prepared.zoteroTranslationUrl,

@@ -12,6 +12,7 @@ import {
   createOAuthApplication,
   deleteOAuthApplication,
   findOAuthApplicationsByName,
+  readClerkInstanceUrls,
   readOAuthApplication,
   rotateOAuthApplicationSecret,
   setOAuthApplicationRedirectUris,
@@ -182,6 +183,35 @@ export async function syncLibraryOAuthClientFor(
       await saveApplication(ctx, input.libraryId, token, application);
     }
   });
+}
+
+/** What a library's configuration needs to sign people in through OpenScholar. */
+export type LibrarySignIn = {
+  oauth: { issuer: string; clientId: string; encryptedClientSecret: string };
+  accountUrl: string;
+};
+
+/**
+ * Makes Clerk's OAuth application for this library answer on `origins`, then
+ * returns what the library's configuration needs to use it.
+ */
+export async function syncLibrarySignIn(
+  ctx: ActionCtx,
+  input: { libraryId: Id<"evidenceLibraries">; origins: readonly string[]; mode: OAuthRedirectMode },
+): Promise<LibrarySignIn> {
+  await syncLibraryOAuthClientFor(ctx, input);
+  const secretKey = requireRuntimeEnvironment("CLERK_SECRET_KEY", configurationError);
+  const [row, instance] = await Promise.all([
+    ctx.runQuery(internal.evidenceLibraries.oauthClients.readOAuthClient, { libraryId: input.libraryId }),
+    readClerkInstanceUrls(secretKey),
+  ]);
+  if (!row?.clientId || !row.encryptedClientSecret) {
+    throw new Error("The library has no OpenScholar sign-in application");
+  }
+  return {
+    oauth: { issuer: instance.issuer, clientId: row.clientId, encryptedClientSecret: row.encryptedClientSecret },
+    accountUrl: instance.accountUrl,
+  };
 }
 
 /** Deletes the library's application, including any an unanswered attempt left. */

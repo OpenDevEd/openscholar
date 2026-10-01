@@ -19,7 +19,11 @@ import {
   TEST_RUNTIME_IMAGE,
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
-import { createFakeClerkOAuth } from "../../tests/helpers/fake-clerk-oauth";
+import {
+  createFakeClerkOAuth,
+  FAKE_CLERK_ACCOUNT_URL,
+  FAKE_CLERK_ISSUER,
+} from "../../tests/helpers/fake-clerk-oauth";
 
 // Every deployment keeps the library's OAuth application in step with its
 // addresses, so Clerk answers from memory here.
@@ -1006,6 +1010,53 @@ describe("Evidence Library configuration deployment", () => {
       expect(seen).not.toContain("sk-or-answers");
       expect(seen).not.toContain("openrouter.ai/api/v1/embeddings");
     }
+  });
+
+  it("sends the library its own OpenScholar sign-in and keeps the client secret out of owner views", async () => {
+    const deployment = await activateChangedConfiguration("action-sign-in");
+    const network = createRuntimeNetwork({
+      libraryId: deployment.fixture.created.libraryId,
+      publicAddress: deployment.fixture.created.publicAddress,
+      revisionKey: deployment.activated.revisionKey,
+    });
+    stubFetch(network.fetchImpl);
+    const libraryId = deployment.fixture.created.libraryId;
+
+    await deployment.fixture.t.action(
+      internal.evidenceLibraries.configurationDeploymentActions
+        .runConfigurationDeployment,
+      {
+        libraryId,
+        operationId: deployment.activated.operationId,
+        attemptToken: deployment.attemptToken,
+        attemptCount: deployment.attemptCount,
+      },
+    );
+
+    const [application] = [...clerk.applications.values()];
+    assert(application, "Expected the library's OAuth application");
+    const runtimeConfigWrite = network.requests.find(
+      ({ method, url }) =>
+        method === "PUT" && url.pathname === "/api/openscholar/configuration",
+    );
+    expect(runtimeConfigWrite?.body).toMatchObject({
+      authentication: {
+        openScholar: {
+          libraryUrl: `https://openscholar.example.test/evidence-libraries/${libraryId}`,
+          accountUrl: FAKE_CLERK_ACCOUNT_URL,
+          oauth: {
+            issuer: FAKE_CLERK_ISSUER,
+            clientId: application.client_id,
+            clientSecret: application.client_secret,
+          },
+        },
+      },
+    });
+    const draft = await deployment.fixture.admin.query(
+      api.evidenceLibraries.queries.getDraft,
+      { libraryId },
+    );
+    expect(JSON.stringify(draft)).not.toContain(application.client_secret);
   });
 
   it("activates a configuration without rebuilding or changing traffic", async () => {
