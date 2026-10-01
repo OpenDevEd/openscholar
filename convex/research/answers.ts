@@ -95,6 +95,15 @@ async function paperRow(ctx: Read, screeningId: Id<"screenings">, paperId: strin
   return new Map(row ? [[paperId, row]] : []);
 }
 
+/**
+ * The model's own answer to keep when someone else changes `current`: its `model` part, or
+ * for a model answer saved before that part existed, the answer itself.
+ */
+function modelAnswer(current: PaperAnswers[number] | undefined) {
+  if (current?.model) return current.model;
+  return current?.setBy === "model" ? { answer: current.answer, at: current.updatedAt } : undefined;
+}
+
 /** Answers to set: the model's carry its confidence in each when it reported one. */
 type NewAnswers = Array<Responses[number]["responses"][number] & { confidence?: number }>;
 
@@ -130,7 +139,8 @@ export async function answerPaper(ctx: Write, screeningId: Id<"screenings">, pap
         : { question, answer: response, setBy, updatedAt: at, model };
     } else {
       if (current?.answer === response && current.setBy === setBy) continue;
-      value = { question, answer: response, setBy, updatedAt: at, ...(current?.model ? { model: current.model } : {}) };
+      const model = modelAnswer(current);
+      value = { question, answer: response, setBy, updatedAt: at, ...(model ? { model } : {}) };
     }
     if (index >= 0) answers[index] = value;
     else answers.push(value);
@@ -164,7 +174,7 @@ export async function replaceAnswers(ctx: Write, userId: Id<"users">, searchId: 
       answers: responses.map(({ question, response }) => {
         const kept = previous.find((value) => value.question === question && value.answer === response);
         // A changed answer keeps the model's own answer to the question.
-        const model = previous.find((value) => value.question === question)?.model;
+        const model = modelAnswer(previous.find((value) => value.question === question));
         return kept ?? { question, answer: response, setBy, updatedAt: at, ...(model ? { model } : {}) };
       }),
     });

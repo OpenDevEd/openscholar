@@ -30,7 +30,20 @@ export const moveResults = migrations.define({
   },
 });
 
-export const run = migrations.runner(internal.migrations.moveScreeningJobAnswers.moveResults);
+// A job none of whose results were answered, all failed or skipped, still gets a screening.
+export const giveJobsScreenings = migrations.define({
+  table: "screeningJobs",
+  batchSize: 100,
+  migrateOne: async (ctx, job) => {
+    if (job.screeningId) return;
+    return { screeningId: await ctx.db.insert("screenings", { userId: job.userId, version: 0, createdAt: job.createdAt }) };
+  },
+});
+
+export const run = migrations.runner([
+  internal.migrations.moveScreeningJobAnswers.moveResults,
+  internal.migrations.moveScreeningJobAnswers.giveJobsScreenings,
+]);
 
 /**
  * One job's check for `verify`: no result still holds answers, and every completed result
@@ -43,6 +56,7 @@ export const verifyPage = internalQuery({
     const page = await ctx.db.query("screeningJobs").paginate({ cursor, numItems: 1 });
     const problems: string[] = [];
     for (const job of page.page) {
+      if (!job.screeningId) problems.push(`${job._id}: has no screening`);
       const rows = await ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(MAX_SCREENING_PAPERS_PER_JOB);
       for (const result of rows) {
         if (result.answers) problems.push(`${result._id}: still holds its answers`);

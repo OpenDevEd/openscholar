@@ -110,3 +110,18 @@ describe("Screen all answers next to a person's", () => {
     expect((await row(t, screeningId))[0].model).toEqual({ answer: true, confidence: 0.9, at: 20 });
   });
 });
+
+describe("a model answer saved before the model's own part existed", () => {
+  it("keeps it as the model's when a person changes it", async () => {
+    const t = convexTest(schema);
+    const screeningId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
+      const screeningId = await ctx.db.insert("screenings", { userId, version: 1, createdAt: 1 });
+      await ctx.db.insert("screeningAnswers", { screeningId, paperId: "https://openalex.org/W1", answers: [{ question: "Randomized?", answer: true, setBy: "model", updatedAt: 5 }] });
+      return screeningId;
+    });
+    await t.run((ctx) => answerPaper(ctx, screeningId, "https://openalex.org/W1", [{ question: "Randomized?", response: false }], "person", 9));
+    const row = await t.run((ctx) => ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId)).unique());
+    expect(row?.answers).toEqual([{ question: "Randomized?", answer: false, setBy: "person", updatedAt: 9, model: { answer: true, at: 5 } }]);
+  });
+});

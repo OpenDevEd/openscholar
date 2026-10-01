@@ -28,7 +28,7 @@ describe("moveScreeningJobAnswers", () => {
     try {
       const t = convexTest(schema);
       const userId = await seedUser(t);
-      const { legacy, started } = await t.run(async (ctx) => {
+      const { legacy, started, failed } = await t.run(async (ctx) => {
         const legacy = await insertJob(ctx, userId);
         await ctx.db.insert("screeningResults", result(legacy, "W1", { q0: true, q1: null }));
         await ctx.db.insert("screeningResults", result(legacy, "W2", { q0: false, q1: false }));
@@ -42,10 +42,14 @@ describe("moveScreeningJobAnswers", () => {
         const started = await insertJob(ctx, userId, screeningId);
         await ctx.db.insert("screeningResults", result(started, "W4", { q0: null, q1: true }));
         await ctx.db.insert("screeningResults", { ...result(started, "W5", { q0: true, q1: true }), answers: undefined });
-        return { legacy, started };
+        // A job whose only result failed has nothing to move, and still gets a screening.
+        const failed = await insertJob(ctx, userId);
+        await ctx.db.insert("screeningResults", result(failed, "W6"));
+        return { legacy, started, failed };
       });
-      // Each of the three results not moved yet still holds its answers, and has none in a screening.
-      expect(await t.action(internal.migrations.moveScreeningJobAnswers.verify, {})).toHaveLength(6);
+      // Each of the three results not moved yet still holds its answers and has none in a
+      // screening, and the two jobs without a screening say so.
+      expect(await t.action(internal.migrations.moveScreeningJobAnswers.verify, {})).toHaveLength(8);
 
       await t.mutation(internal.migrations.moveScreeningJobAnswers.run, {});
       await t.finishAllScheduledFunctions(vi.runAllTimers);
@@ -64,6 +68,7 @@ describe("moveScreeningJobAnswers", () => {
         W4: [["Randomized?", null, "model", "none"], ["Primary school?", true, "model", "none"]],
         W5: [["Randomized?", true, "model", 0.9], ["Primary school?", true, "model", 0.8]],
       });
+      expect((await t.run((ctx) => ctx.db.get("screeningJobs", failed)))?.screeningId).toBeDefined();
       const kept = await t.run((ctx) => ctx.db.query("screeningResults").collect());
       expect(kept.filter((row) => row.status === "completed").map((row) => row.aiMetadata?.confidence)).toEqual([0.7, 0.7, 0.7, 0.7]);
     } finally {

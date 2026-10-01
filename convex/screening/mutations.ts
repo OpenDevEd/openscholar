@@ -109,11 +109,13 @@ export const createScreeningJob = mutation({
       if (!search) throw createError("NOT_FOUND", "Search not found");
       // A search still holding answers in chunks moves them before it has a screening.
       await moveSearchAnswers(ctx, search._id, user._id);
-      // The search's page shows answers to its own questions, so it takes on the job's, each
-      // as a person adding it would, with a revision.
+      // The search's page shows answers to its own questions, so it takes on the job's it
+      // lacks, all in one edit with one revision.
       const asked = new Set(search.data.screeningQuestions.map(({ question }) => question));
-      for (const question of new Set(args.questions.map((q) => q.question))) {
-        if (!asked.has(question)) await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "addScreeningQuestion", question } }, "user");
+      const missing = [...new Set(args.questions.map((q) => q.question))].filter((question) => !asked.has(question));
+      if (missing.length) {
+        const screeningQuestions = [...search.data.screeningQuestions, ...missing.map((question) => ({ question }))];
+        await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, "user");
       }
       screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
     } else {
