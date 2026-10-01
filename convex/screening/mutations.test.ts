@@ -561,7 +561,7 @@ describe("Screen all on a saved search", () => {
     await asUser.mutation(api.research.records.importBatch, { accountId: "clerk_test", searches: [{ search, history: { queryHistory: [], questionHistory: [] } }], shortcuts: [], ratings: [] });
 
     const { jobId } = await asUser.mutation(api.screening.mutations.createScreeningJob, {
-      papers: makePapers(1), questions: defaultQuestions, scoringConfig: defaultScoringConfig, searchId: search.id,
+      papers: makePapers(1), questions: [...defaultQuestions, { key: "q2", question: "Adults?" }], scoringConfig: defaultScoringConfig, searchId: search.id,
     });
     const result = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique());
     vi.useFakeTimers();
@@ -575,9 +575,11 @@ describe("Screen all on a saved search", () => {
     vi.useRealTimers();
     const shown = await asUser.query(api.research.records.getSearch, { accountId: "clerk_test", id: search.id });
     expect(shown?.screeningResponses).toEqual([
-      { paperId: "https://openalex.org/W1", responses: [{ question: "Is this relevant?", response: true }] },
+      { paperId: "https://openalex.org/W1", responses: [{ question: "Is this relevant?", response: true }, { question: "Adults?", response: null }] },
       { paperId: "https://openalex.org/W2", responses: [{ question: "Is this relevant?", response: false }] },
     ]);
+    // The search took on the job's question it didn't have, so its page shows that answer too.
+    expect(shown?.screeningQuestions).toEqual([{ question: "Is this relevant?" }, { question: "Adults?" }]);
     const screenings = await t.run((ctx) => ctx.db.query("screenings").collect());
     expect(screenings).toHaveLength(1);
   });

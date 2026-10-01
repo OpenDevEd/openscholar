@@ -117,13 +117,25 @@ export async function answerPaper(ctx: Write, screeningId: Id<"screenings">, pap
   const answers = [...(existing.get(paperId)?.answers ?? [])];
   for (const { question, response, confidence } of responses) {
     const index = answers.findIndex((value) => value.question === question);
-    if (index >= 0 && answers[index].answer === response && answers[index].setBy === setBy) continue;
-    const model = setBy === "model" ? { answer: response, ...(confidence === undefined ? {} : { confidence }), at } : answers[index]?.model;
-    const value = { question, answer: response, setBy, updatedAt: at, ...(model ? { model } : {}) };
+    const current = index >= 0 ? answers[index] : undefined;
+    let value: PaperAnswers[number];
+    if (setBy === "model") {
+      const model = { answer: response, ...(confidence === undefined ? {} : { confidence }), at };
+      if (current?.model?.answer === response && current.model.confidence === confidence) continue;
+      // The model never replaces an answer a person or the assistant gave, even one given
+      // before its own answer arrives; it's kept as the model's. Answers from before who set
+      // them was recorded are mostly the model's, so a new run replaces them.
+      value = current && (current.setBy === "person" || current.setBy === "assistant")
+        ? { ...current, model }
+        : { question, answer: response, setBy, updatedAt: at, model };
+    } else {
+      if (current?.answer === response && current.setBy === setBy) continue;
+      value = { question, answer: response, setBy, updatedAt: at, ...(current?.model ? { model: current.model } : {}) };
+    }
     if (index >= 0) answers[index] = value;
     else answers.push(value);
   }
-  await apply(ctx, screening, [{ paperId, answers }], existing, at);
+  return apply(ctx, screening, [{ paperId, answers }], existing, at);
 }
 
 /** Removes one paper's answers, reading only that paper's row. */

@@ -32,7 +32,7 @@ import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec"
 import { ensureScreening } from "../research/answers";
 import { drainLater } from "./drain";
 import { estimateScreening } from "./estimate";
-import { moveSearchAnswers } from "../research/records";
+import { applyCommand, moveSearchAnswers } from "../research/records";
 
 import { availableCredits } from "../billing/accounts";
 
@@ -109,6 +109,12 @@ export const createScreeningJob = mutation({
       if (!search) throw createError("NOT_FOUND", "Search not found");
       // A search still holding answers in chunks moves them before it has a screening.
       await moveSearchAnswers(ctx, search._id, user._id);
+      // The search's page shows answers to its own questions, so it takes on the job's, each
+      // as a person adding it would, with a revision.
+      const asked = new Set(search.data.screeningQuestions.map(({ question }) => question));
+      for (const question of new Set(args.questions.map((q) => q.question))) {
+        if (!asked.has(question)) await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "addScreeningQuestion", question } }, "user");
+      }
       screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
     } else {
       screeningId = await ctx.db.insert("screenings", { userId: user._id, version: 0, createdAt: now });

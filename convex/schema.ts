@@ -83,7 +83,9 @@ export default defineSchema({
     .index("by_screening_and_paper", ["screeningId", "paperId"]),
   // A paper's answers after each change; an empty list means its answers were removed.
   screeningAnswerHistory: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.number(), at: v.number() })
-    .index("by_screening_and_version", ["screeningId", "version"]),
+    .index("by_screening_and_version", ["screeningId", "version"])
+    // A paper's answers as of a version: what a Screen all job answered, for its export.
+    .index("by_screening_and_paper_and_version", ["screeningId", "paperId", "version"]),
   queryShortcuts: defineTable({ userId: v.id("users"), data: shortcutValidator })
     .index("by_user", ["userId"])
     .index("by_user_and_shorthand", ["userId", "data.shorthand"]),
@@ -917,6 +919,9 @@ export default defineSchema({
     answers: v.optional(v.record(v.string(), v.union(v.boolean(), v.null()))),
     confidences: v.optional(v.record(v.string(), v.number())),
     pendingAnswers: v.optional(v.literal(true)),
+    // The screening's version once this paper's answers moved there; its export reads the
+    // job's answers as of it, whatever has changed since.
+    answersVersion: v.optional(v.number()),
     score: v.optional(v.number()),
     stars: v.optional(v.number()),
     qualified: v.optional(v.boolean()),

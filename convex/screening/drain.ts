@@ -37,8 +37,8 @@ export async function moveResultAnswers(ctx: MutationCtx, result: Doc<"screening
     response,
     ...(result.confidences?.[key] === undefined ? {} : { confidence: result.confidences[key] }),
   }));
-  await answerPaper(ctx, screeningId, result.openalexId, responses, "model", result.completedAt ?? result.createdAt);
-  await ctx.db.patch("screeningResults", result._id, { answers: undefined, confidences: undefined, pendingAnswers: undefined });
+  const answersVersion = await answerPaper(ctx, screeningId, result.openalexId, responses, "model", result.completedAt ?? result.createdAt);
+  await ctx.db.patch("screeningResults", result._id, { answers: undefined, confidences: undefined, pendingAnswers: undefined, answersVersion });
   return true;
 }
 
