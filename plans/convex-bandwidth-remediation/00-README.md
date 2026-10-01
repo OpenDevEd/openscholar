@@ -204,10 +204,10 @@ Repo sources:
 
 Skills and local guidance:
 
-- [convex-performance-audit skill](../../.agents/skills/convex-performance-audit/SKILL.md)
-- [hot-path-rules reference](../../.agents/skills/convex-performance-audit/references/hot-path-rules.md)
-- [subscription-cost reference](../../.agents/skills/convex-performance-audit/references/subscription-cost.md)
-- [function-budget reference](../../.agents/skills/convex-performance-audit/references/function-budget.md)
+- [convex-performance-audit skill](https://github.com/get-convex/agent-skills/blob/7a6fcc6882f344577a34365fdadbd0f8f8c467d7/skills/convex-performance-audit/SKILL.md)
+- [hot-path-rules reference](https://github.com/get-convex/agent-skills/blob/7a6fcc6882f344577a34365fdadbd0f8f8c467d7/skills/convex-performance-audit/references/hot-path-rules.md)
+- [subscription-cost reference](https://github.com/get-convex/agent-skills/blob/7a6fcc6882f344577a34365fdadbd0f8f8c467d7/skills/convex-performance-audit/references/subscription-cost.md)
+- [function-budget reference](https://github.com/get-convex/agent-skills/blob/7a6fcc6882f344577a34365fdadbd0f8f8c467d7/skills/convex-performance-audit/references/function-budget.md)
 - `npx skills find "convex performance"` on 2026-04-22, which returned the already-installed `get-convex/agent-skills@convex-performance-audit` as the top match.
 
 Current external docs consulted on 2026-04-22:
