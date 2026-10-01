@@ -42,12 +42,13 @@ type Card =
   | { type: "publish"; stage: number; failed?: boolean };
 type AssistantTurn = { kind: "assistant"; id: number; steps: Step[]; text: string; shown: number; cards: Card[]; stopped?: boolean };
 /** What a message changes, saved when it's sent, so a retry or an edit can start from there again. */
-type Snapshot = { allowance: Allowance; balance: number; home: Home; owner: number | null };
+// Spending settings are the person's choices, not part of a run, so an edit leaves them as they are.
+type Snapshot = { balance: number; home: Home; owner: number | null };
 type UserTurn = { kind: "user"; id: number; text: string; step: number; snap: Snapshot; edited?: boolean };
 type Turn = UserTurn | AssistantTurn;
 type Choice = "once" | "always" | "no";
 /** A new chat asks before every job; allowing credits starts at the smallest limit that covers the job. */
-const NO_ALLOWANCE: Allowance = { on: false, cap: 250 };
+const NO_ALLOWANCE: Allowance = { on: false, cap: JOB_CAPS[0] };
 /** Where the included studies went. */
 type Home = { name: string; count: number };
 type Answer = { id: string; typed?: string };
@@ -62,6 +63,8 @@ const PROMPTS = [
 ];
 const TITLE = "Structured pedagogy in sub-Saharan Africa";
 const PANEL_W = 440;
+/** How far the chips above the composer hang over the thread: half their height. */
+const CHIP_HANG = 16;
 const SHELL_SPRING = { type: "spring" as const, stiffness: 380, damping: 36, mass: 0.9 };
 const START_HOME: Home = { name: COLLECTION_NAME, count: COLLECTED };
 
@@ -301,12 +304,11 @@ export function AssistantOverlay() {
     decide.current = null;
     if (token !== run.current) throw new Stopped();
     if (choice === "no") patch(id, (t) => ({ cards: t.cards.map((c) => (c.type === "approval" ? { ...c, status: "declined" } : c)) }));
-    // Allowing it always sets the smallest limit that covers this job, and never lowers one
-    // already set; the Spending sheet changes it.
+    // Allowing it always keeps the person's limit, raised to the smallest that covers this job.
     if (choice === "always") {
-      const current = allowanceRef.current;
-      const needed = Math.max(ask.credits ?? 0, current.on && current.cap !== null ? current.cap : 0);
-      setAllowance({ on: true, cap: current.on && current.cap === null ? null : (JOB_CAPS.find((c) => c !== null && c >= needed) ?? null) });
+      const { cap } = allowanceRef.current;
+      const needed = Math.max(ask.credits ?? 0, cap ?? 0);
+      setAllowance({ on: true, cap: cap === null ? null : (JOB_CAPS.find((c) => c !== null && c >= needed) ?? null) });
     }
     return { choice, asked: true };
   };
@@ -575,9 +577,8 @@ export function AssistantOverlay() {
     }
   };
 
-  const snapshot = (): Snapshot => ({ allowance: allowanceRef.current, balance: balanceRef.current, home: homeRef.current, owner: collectionOwner.current });
+  const snapshot = (): Snapshot => ({ balance: balanceRef.current, home: homeRef.current, owner: collectionOwner.current });
   const restore = (snap: Snapshot) => {
-    setAllowance(snap.allowance);
     setBalance(snap.balance);
     setHome(snap.home);
     collectionOwner.current = snap.owner;
@@ -771,6 +772,7 @@ export function AssistantOverlay() {
                 />
                 <Thread
                   turns={turns}
+                  stacked={depth > 0}
                   view={view}
                   balance={balance}
                   busy={busy}
@@ -949,6 +951,7 @@ function Launcher({ working, progress, onOpen }: { working: boolean; progress: n
 
 function Thread({
   turns,
+  stacked,
   view,
   balance,
   busy,
@@ -964,6 +967,8 @@ function Thread({
   onContinue,
 }: {
   turns: Turn[];
+  /** A sheet is open over the panel, which is scaled while it is. */
+  stacked: boolean;
   view: string;
   balance: number;
   busy: boolean;
@@ -980,8 +985,13 @@ function Thread({
   onContinue: (turnId: number) => void;
 }) {
   return (
-    <Conversation className="min-h-0 flex-1" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px)` }}>
-      <ConversationContent className="gap-5 overflow-x-clip px-4 py-4">
+    // Both edges fade. The bottom one is clear under the hanging chips, then fades the usual
+    // distance; the content's bottom padding keeps the last message clear of both.
+    <Conversation
+      className="min-h-0 flex-1"
+      style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${CHIP_HANG + EDGE_FADE}px), transparent calc(100% - ${CHIP_HANG}px))` }}
+    >
+      <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: CHIP_HANG + EDGE_FADE + 8 }}>
         {turns.length === 0 ? <Empty view={view} /> : null}
         {turns.map((t, i) => {
           if (t.kind === "user") return <UserBubble key={t.id} turn={t} editable={t.id === lastUser} onEdit={(text) => onRerun(t.id, text)} />;
@@ -993,7 +1003,8 @@ function Thread({
                 {t.cards.map((c, j) => (
                   <motion.div
                     key={`${j}-${c.type}`}
-                    layout="position"
+                    // Under a sheet the panel is scaled, so a card would read the scale as a move.
+                    layout={stacked ? false : "position"}
                     initial={{ opacity: 0, scale: 0.97, y: 6 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.97 }}
@@ -1407,77 +1418,81 @@ function Footer({
   const stopping = busy && !(asking && draft.trim());
   return (
     <div className="space-y-2 p-3 pt-0">
-      <div className="flex h-8 items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <AnimatePresence mode="wait" initial={false}>
-            {reply ? (
-              <motion.div
-                key="reply"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.25, ease: EASE }}
+      {/* The chips hang from their middle on the thread's bottom edge; their frame is the lower half. */}
+      <div className="relative" style={{ height: CHIP_HANG }}>
+        <div className="absolute inset-x-0 flex h-8 items-center gap-2" style={{ top: -CHIP_HANG }}>
+          <div className="min-w-0 flex-1">
+            <AnimatePresence mode="wait" initial={false}>
+              {reply ? (
+                <motion.div
+                  key="reply"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                >
+                  <ReplyMeter reply={reply} replyCap={replyCap} onAllowMore={onAllowMore} onSpending={onSpending} />
+                </motion.div>
+              ) : suggestion ? (
+                <motion.button
+                  key={suggestion}
+                  type="button"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                  onClick={() => onSuggestion(suggestion)}
+                  className="flex h-8 max-w-full items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 text-xs font-medium text-foreground/80 hover:border-border hover:bg-muted/50"
+                >
+                  <Sparkles className="size-3 shrink-0 text-primary" />
+                  <span className="truncate">
+                    <MessageText text={suggestion} />
+                  </span>
+                </motion.button>
+              ) : done ? (
+                <motion.button
+                  key="again"
+                  type="button"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                  onClick={onRestart}
+                  className="flex h-8 items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 text-xs font-medium text-foreground/80 hover:bg-muted/50"
+                >
+                  <RotateCcw className="size-3" /> Play it again
+                </motion.button>
+              ) : null}
+            </AnimatePresence>
+          </div>
+          <AnimatePresence initial={false}>
+            {/* A paused reply needs the row for its own controls; the chip comes back when it runs on. */}
+            {allowance.on && !reply?.paused ? (
+              <motion.span
+                key="always"
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={{ type: "spring", stiffness: 480, damping: 32 }}
+                className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 pl-2.5 pr-1 text-xs font-medium text-primary"
               >
-                <ReplyMeter reply={reply} replyCap={replyCap} onAllowMore={onAllowMore} onSpending={onSpending} />
-              </motion.div>
-            ) : suggestion ? (
-              <motion.button
-                key={suggestion}
-                type="button"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.25, ease: EASE }}
-                onClick={() => onSuggestion(suggestion)}
-                className="flex h-8 max-w-full items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 text-xs font-medium text-foreground/80 hover:border-border hover:bg-muted/50"
-              >
-                <Sparkles className="size-3 shrink-0 text-primary" />
-                <span className="truncate">
-                  <MessageText text={suggestion} />
-                </span>
-              </motion.button>
-            ) : done ? (
-              <motion.button
-                key="again"
-                type="button"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.25, ease: EASE }}
-                onClick={onRestart}
-                className="flex h-8 items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 text-xs font-medium text-foreground/80 hover:bg-muted/50"
-              >
-                <RotateCcw className="size-3" /> Play it again
-              </motion.button>
+                <button type="button" onClick={onSpending} className="flex items-center gap-1 tabular-nums hover:underline">
+                  <Coins className="size-3" /> {allowance.cap === null ? "Credits allowed" : `Up to ${format.number(allowance.cap)} a job`}
+                </button>
+                <TooltipHint label="Ask before spending credits again">
+                  <button
+                    type="button"
+                    aria-label="Ask before spending credits again"
+                    onClick={onStopAllowance}
+                    className="flex size-5 items-center justify-center rounded-full hover:bg-primary/15"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </TooltipHint>
+              </motion.span>
             ) : null}
           </AnimatePresence>
         </div>
-        <AnimatePresence initial={false}>
-          {allowance.on ? (
-            <motion.span
-              key="always"
-              initial={{ opacity: 0, scale: 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.85 }}
-              transition={{ type: "spring", stiffness: 480, damping: 32 }}
-              className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 pl-2.5 pr-1 text-xs font-medium text-primary"
-            >
-              <button type="button" onClick={onSpending} className="flex items-center gap-1 tabular-nums hover:underline">
-                <Coins className="size-3" /> {allowance.cap === null ? "Credits allowed" : `Up to ${format.number(allowance.cap)} a job`}
-              </button>
-              <TooltipHint label="Ask before spending credits again">
-                <button
-                  type="button"
-                  aria-label="Ask before spending credits again"
-                  onClick={onStopAllowance}
-                  className="flex size-5 items-center justify-center rounded-full hover:bg-primary/15"
-                >
-                  <X className="size-3" />
-                </button>
-              </TooltipHint>
-            </motion.span>
-          ) : null}
-        </AnimatePresence>
       </div>
       <div className="rounded-2xl border border-border/60 bg-background shadow-xs focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
         <MentionComposer

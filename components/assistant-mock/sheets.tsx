@@ -715,32 +715,29 @@ export function SpendingSheet({
                   { id: "allow", label: "Allow without asking", icon: CircleCheck },
                 ]}
               />
-              {/* The limit opens under the switch; the frame grows, its content is laid out at full size. */}
-              <AnimatePresence initial={false}>
-                {allowance.on ? (
-                  <motion.div
-                    key="cap"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: EASE }}
-                    className="overflow-hidden"
-                  >
-                    <div className="flex items-center gap-3 pl-1">
-                      <span className="shrink-0 text-xs text-muted-foreground">Up to</span>
-                      <div className="min-w-0 flex-1">
-                        <Segmented
-                          fill
-                          label="Most one job may hold without asking"
-                          value={String(allowance.cap)}
-                          onChange={(v) => onAllowance({ ...allowance, cap: JOB_CAPS.find((cap) => String(cap) === v) ?? null })}
-                          options={JOB_CAPS.map((cap) => ({ id: String(cap), label: capLabel(cap, format) }))}
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
+              {/* The limit opens under the switch: the frame grows, its content laid out at full size.
+                  It stays in the page, so while it closes it can't be picked and turn allowing back on.
+                  Its gap to the list is inside it, so a closed row adds none. */}
+              <motion.div
+                inert={!allowance.on}
+                initial={false}
+                animate={allowance.on ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: EASE }}
+                className="!my-0 overflow-hidden"
+              >
+                <div className="flex items-center gap-3 pb-2.5 pl-1">
+                  <span className="shrink-0 text-xs text-muted-foreground">Up to</span>
+                  <div className="min-w-0 flex-1">
+                    <Segmented
+                      fill
+                      label="Most one job may hold without asking"
+                      value={String(allowance.cap)}
+                      onChange={(v) => onAllowance({ ...allowance, cap: JOB_CAPS.find((cap) => String(cap) === v) ?? null })}
+                      options={JOB_CAPS.map((cap) => ({ id: String(cap), label: capLabel(cap, format) }))}
+                    />
+                  </div>
+                </div>
+              </motion.div>
               <ul className={LIST}>
                 {jobs.map((job) => {
                   const runs = allowance.on && (allowance.cap === null || (job.credits ?? 0) <= allowance.cap);
@@ -788,10 +785,10 @@ export function SpendingSheet({
 function JobRule({ runs }: { runs: boolean }) {
   return (
     <span className="grid w-20 shrink-0 text-xs [&>*]:col-start-1 [&>*]:row-start-1 [&>*]:justify-end">
-      <motion.span initial={false} animate={{ opacity: runs ? 1 : 0 }} className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+      <motion.span initial={false} animate={{ opacity: runs ? 1 : 0 }} aria-hidden={!runs} className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
         <CircleCheck className="size-3.5" /> Runs
       </motion.span>
-      <motion.span initial={false} animate={{ opacity: runs ? 0 : 1 }} className="flex items-center gap-1.5 text-muted-foreground">
+      <motion.span initial={false} animate={{ opacity: runs ? 0 : 1 }} aria-hidden={runs} className="flex items-center gap-1.5 text-muted-foreground">
         <CircleHelp className="size-3.5" /> Asks
       </motion.span>
     </span>
