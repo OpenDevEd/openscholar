@@ -81,11 +81,16 @@ export const revisionsAction = defineUserQuery({
   run: async (ctx, userId, args) => {
     const search = await findSearch(ctx, userId, args.id);
     if (!search) return { page: [], isDone: true, continueCursor: "" };
-    const page = await ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", search._id)).order("desc").paginate(args.paginationOpts);
+    const page = await ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", search._id)).order("desc")
+      // Revisions saved before #354 hold their search's whole history; a page of them stops at
+      // this many bytes and goes on from its cursor.
+      .paginate({ ...args.paginationOpts, maximumBytesRead: REVISION_PAGE_BYTES });
     const data = await hydrateRevisions(ctx, search._id, page.page);
     return { ...page, page: page.page.map((row, i) => ({ revision: row.revision, author: row.author, data: data[i], deleted: row.deleted, createdAt: row.createdAt })) };
   },
 });
+/** Bytes one page of revisions reads at most, leaving room for their answers. */
+const REVISION_PAGE_BYTES = 8 * 2 ** 20;
 export const revisions = accountQuery(revisionsAction);
 export const revisionsForAssistant = assistantQuery(revisionsAction);
 
@@ -117,11 +122,21 @@ export const searchHistoryForAssistant = assistantQuery(searchHistoryAction);
 /** Most history entries one page returns: about 2 MB of the longest saved OQL queries. */
 const HISTORY_PAGE_MAX = 100;
 
-/** Appends one entry to a search's history. */
-async function addHistory(ctx: MutationCtx, search: Pick<Doc<"searches">, "_id" | "userId">, kind: "query" | "question", entry: { text: string; field?: SavedSearch["field"]; timestamp: string }) {
+/**
+ * Appends entries to a search's history, reading its last position once.
+ *
+ * ponytail: one transaction writes at most 16,000 rows, so a search with more entries than
+ * that can't move or be imported; none on shared dev comes near.
+ */
+async function addHistory(ctx: MutationCtx, search: Pick<Doc<"searches">, "_id" | "userId">, kind: "query" | "question", entries: Array<{ text: string; field?: SavedSearch["field"]; timestamp: string }>) {
+  if (!entries.length) return;
   const last = await ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_position", q => q.eq("searchId", search._id).eq("kind", kind)).order("desc").first();
-  await ctx.db.insert("searchHistory", { userId: search.userId, searchId: search._id, kind, ...entry, position: (last?.position ?? -1) + 1 });
+  let position = last?.position ?? -1;
+  for (const entry of entries) await ctx.db.insert("searchHistory", { userId: search.userId, searchId: search._id, kind, ...entry, position: ++position });
 }
+
+const queryEntry = (entry: { query: string; field?: SavedSearch["field"]; timestamp: string }) => ({ text: entry.query, ...(entry.field ? { field: entry.field } : {}), timestamp: entry.timestamp });
+const questionEntry = (entry: { question: string; timestamp: string }) => ({ text: entry.question, timestamp: entry.timestamp });
 
 /**
  * Moves a search's history arrays into searchHistory rows and keeps only their summary on
@@ -131,35 +146,44 @@ async function addHistory(ctx: MutationCtx, search: Pick<Doc<"searches">, "_id" 
 export async function moveSearchHistory(ctx: MutationCtx, searchId: Id<"searches">) {
   const search = await ctx.db.get("searches", searchId);
   if (!search || (!search.data.queryHistory && !search.data.questionHistory)) return false;
-  for (const entry of search.data.queryHistory ?? []) await addHistory(ctx, search, "query", { text: entry.query, ...(entry.field ? { field: entry.field } : {}), timestamp: entry.timestamp });
-  for (const entry of search.data.questionHistory ?? []) await addHistory(ctx, search, "question", { text: entry.question, timestamp: entry.timestamp });
+  await addHistory(ctx, search, "query", (search.data.queryHistory ?? []).map(queryEntry));
+  await addHistory(ctx, search, "question", (search.data.questionHistory ?? []).map(questionEntry));
   const { queryHistory: _queries, questionHistory: _questions, ...data } = search.data;
   await ctx.db.patch("searches", search._id, { data: { ...data, ...historySummary(search.data.queryHistory ?? [], search.data.questionHistory ?? []) } });
   return true;
 }
 
 /**
- * Most history entries copied from one search to another, per kind: with the longest
- * saved OQL queries, about 6 MB written.
+ * Most history entries a copy replaces or copies, per kind: with the longest saved OQL
+ * queries, about 6 MB read from each search and 6 MB written.
  *
- * ponytail: a search with more fails the copy by name; copy it in batches if one ever does.
+ * ponytail: a copy to or from a search with more fails by name, and changes nothing; copy
+ * in batches if one ever needs to.
  */
 const COPY_HISTORY_MAX = 300;
 
-/** Replaces `search`'s history with the history of the user's search `fromId`; returns its summary. */
-async function copyHistory(ctx: MutationCtx, userId: Id<"users">, search: Doc<"searches">, fromId: string) {
+/**
+ * Replaces `search`'s history with the history of the user's search `fromId`, as it was at
+ * `fromUpdatedAt`; returns its summary.
+ */
+async function copyHistory(ctx: MutationCtx, userId: Id<"users">, search: Doc<"searches">, fromId: string, fromUpdatedAt: string) {
   const found = await findSearch(ctx, userId, fromId);
   if (!found) throw new Error("Search not found.");
   await moveSearchHistory(ctx, found._id);
   const from = (await ctx.db.get("searches", found._id))!;
+  if (from.data.updatedAt !== fromUpdatedAt) throw new Error("That search changed. Choose it again.");
+  const { queryHistoryCount, questionCount, latestQuestion, questionText } = currentSearch(from.data);
+  // A search given its own history keeps it.
+  if (from._id === search._id) return { queryHistoryCount, questionCount, latestQuestion, questionText };
   for (const kind of ["query", "question"] as const) {
     const range = (id: Id<"searches">) => ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_position", q => q.eq("searchId", id).eq("kind", kind));
-    for (const row of await range(search._id).take(COPY_HISTORY_MAX + 1)) await ctx.db.delete("searchHistory", row._id);
+    const replaced = await range(search._id).take(COPY_HISTORY_MAX + 1);
     const rows = await range(from._id).take(COPY_HISTORY_MAX + 1);
+    if (replaced.length > COPY_HISTORY_MAX) throw new Error(`This search has more than ${COPY_HISTORY_MAX} ${kind} history entries to replace.`);
     if (rows.length > COPY_HISTORY_MAX) throw new Error(`Search ${fromId} has more than ${COPY_HISTORY_MAX} ${kind} history entries to copy.`);
+    for (const row of replaced) await ctx.db.delete("searchHistory", row._id);
     for (const { text, field, timestamp, position } of rows) await ctx.db.insert("searchHistory", { userId, searchId: search._id, kind, text, ...(field ? { field } : {}), timestamp, position });
   }
-  const { queryHistoryCount, questionCount, latestQuestion, questionText } = currentSearch(from.data);
   return { queryHistoryCount, questionCount, latestQuestion, questionText };
 }
 
@@ -274,8 +298,8 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       const queries = command.history?.queryHistory.length ? command.history.queryHistory : [{ query: command.search.query, field: command.search.field, timestamp: command.search.createdAt }];
       const questions = command.history?.questionHistory ?? [];
       const id = await ctx.db.insert("searches", { userId, localId: command.search.id, data: { ...command.search, ...historySummary(queries, questions), screeningResponses: [] }, revision: 1 });
-      for (const entry of queries) await addHistory(ctx, { _id: id, userId }, "query", { text: entry.query, ...(entry.field ? { field: entry.field } : {}), timestamp: entry.timestamp });
-      for (const entry of questions) await addHistory(ctx, { _id: id, userId }, "question", { text: entry.question, timestamp: entry.timestamp });
+      await addHistory(ctx, { _id: id, userId }, "query", queries.map(queryEntry));
+      await addHistory(ctx, { _id: id, userId }, "question", questions.map(questionEntry));
       // Answers carried in a new search come from an import or the assistant; neither says who gave them.
       await replaceAnswers(ctx, userId, id, command.search.screeningResponses, author === "assistant" ? "assistant" : "unrecorded", Date.now());
       await revision(ctx, (await ctx.db.get("searches", id))!, author);
@@ -298,8 +322,8 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
         return;
       }
       const previous = await hydrate(ctx, search);
-      const data = edit.kind === "copyHistory"
-        ? { ...previous, ...(await copyHistory(ctx, userId, search, edit.from)), updatedAt: now.toISOString() }
+      const data = edit.kind === "copySearch"
+        ? { ...applySearchEdit(previous, edit, now.toISOString()), ...(await copyHistory(ctx, userId, search, edit.from, edit.fromUpdatedAt)) }
         : applySearchEdit(previous, edit, now.toISOString());
       validateSearch(data);
       if (JSON.stringify({ ...data, updatedAt: previous.updatedAt }) === JSON.stringify(previous)) return;
@@ -308,8 +332,8 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       }
       const next = { ...search, data: { ...data, screeningResponses: [] }, revision: search.revision + 1 };
       await ctx.db.patch("searches", search._id, { data: next.data, revision: next.revision });
-      if (edit.kind === "query") await addHistory(ctx, search, "query", { text: edit.query, field: edit.field, timestamp: data.updatedAt });
-      if (edit.kind === "question") await addHistory(ctx, search, "question", { text: edit.question, timestamp: data.updatedAt });
+      if (edit.kind === "query") await addHistory(ctx, search, "query", [{ text: edit.query, field: edit.field, timestamp: data.updatedAt }]);
+      if (edit.kind === "question") await addHistory(ctx, search, "question", [{ text: edit.question, timestamp: data.updatedAt }]);
       if (edit.kind === "removeQueryHistoryEntry") {
         const entry = (await ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_timestamp", q => q.eq("searchId", search._id).eq("kind", "query").eq("timestamp", edit.timestamp)).take(10)).find(row => row.text === edit.query);
         if (!entry) throw new Error("History entry not found.");

@@ -60,7 +60,8 @@ export interface SearchHistoryState {
   addQueryToHistory: (id: string, query: string, field: SearchField) => void
   removeQueryHistoryEntry: (id: string, entry: QueryHistoryEntry) => void
   /** Gives search `id` the history of search `from`. */
-  copySearchHistory: (id: string, from: string) => void
+  /** Gives a search another search's parameters (`updates`) and history at once. */
+  copySearch: (id: string, from: string, updates: Partial<Omit<SearchResult, 'id' | 'createdAt'>>) => void
   addQuestionToHistory: (id: string, question: string) => void
   addScreeningQuestion: (id: string, question: string) => void
   updateScreeningQuestion: (id: string, questionIndex: number, updates: Partial<ScreeningQuestionEntry>) => void
@@ -190,6 +191,13 @@ interface SearchHistoryPersistedState {
 }
 
 // `unknown` is correct for Zustand persist `migrate` — shape varies by version.
+/** A local history without one `entry`, and its count. */
+function withoutEntry(queryHistory: QueryHistoryEntry[], entry: QueryHistoryEntry) {
+  const index = queryHistory.findIndex((current) => current.timestamp === entry.timestamp && current.query === entry.query && current.field === entry.field);
+  const next = index === -1 ? queryHistory : queryHistory.toSpliced(index, 1);
+  return { queryHistory: next, queryHistoryCount: next.length };
+}
+
 export function migrateSearchHistoryState(persistedState: unknown, version: number): unknown {
   const state = persistedState as SearchHistoryPersistedState;
 
@@ -369,20 +377,19 @@ export const localSearchHistoryStore = create<SearchHistoryState>()(
             item.id === id
               ? {
                   ...item,
-                  queryHistory: (item.queryHistory ?? []).filter((current) => current.timestamp !== entry.timestamp || current.query !== entry.query),
-                  queryHistoryCount: Math.max(0, item.queryHistoryCount - 1),
+                  ...withoutEntry(item.queryHistory ?? [], entry),
                   updatedAt: new Date().toISOString(),
                 }
               : item
           ),
         }));
       },
-      copySearchHistory: (id, from) => {
+      copySearch: (id, from, updates) => {
         set((state) => {
           const source = state.searchHistory.find((item) => item.id === from);
           if (!source) return state;
           const { queryHistory, questionHistory, queryHistoryCount, questionCount, latestQuestion, questionText } = source;
-          return { searchHistory: state.searchHistory.map((item) => item.id === id ? { ...item, queryHistory, questionHistory, queryHistoryCount, questionCount, latestQuestion, questionText, updatedAt: new Date().toISOString() } : item) };
+          return { searchHistory: state.searchHistory.map((item) => item.id === id ? { ...item, ...updates, queryHistory, questionHistory, queryHistoryCount, questionCount, latestQuestion, questionText, updatedAt: new Date().toISOString() } : item) };
         });
       },
       addQuestionToHistory: (id, question) => {

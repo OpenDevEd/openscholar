@@ -116,11 +116,34 @@ describe("account research records", () => {
     await expect(edit(record.id, "remove-again", { kind: "removeQueryHistoryEntry", query: "tutoring", timestamp: history.queryHistory[0].timestamp })).rejects.toThrow("History entry not found.");
     expect(await entries(record.id, "query")).toEqual(["third", "second"]);
     expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toMatchObject({ queryHistoryCount: 2, questionCount: 2, latestQuestion: "For whom?", questionText: "Does tutoring work?\nFor whom?" });
-    // A copy replaces the other search's history with this one's, and its counts with the real ones.
-    await edit("other", "copy", { kind: "copyHistory", from: record.id, summary: { queryHistoryCount: 99, questionCount: 0, questionText: "" } });
+    // A copy gives the other search this one's parameters and history at once, and the real counts.
+    const source = (await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id }))!;
+    const copy = (id: string, requestId: string) => edit(id, requestId, { kind: "copySearch", from: record.id, fromUpdatedAt: source.updatedAt, fields: { query: "copied" }, clear: [], summary: { queryHistoryCount: 99, questionCount: 0, questionText: "" } });
+    await copy("other", "copy");
     expect(await entries("other", "query")).toEqual(["third", "second"]);
     expect(await entries("other", "question")).toEqual(["For whom?", "Does tutoring work?"]);
-    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: "other" })).toMatchObject({ queryHistoryCount: 2, questionCount: 2, latestQuestion: "For whom?" });
+    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: "other" })).toMatchObject({ query: "copied", queryHistoryCount: 2, questionCount: 2, latestQuestion: "For whom?" });
+    // A search given its own history keeps it.
+    await copy(record.id, "copy-to-itself");
+    expect(await entries(record.id, "query")).toEqual(["third", "second"]);
+    // A search changed since it was chosen isn't copied, and counts change only with the history.
+    await edit(record.id, "fourth", { kind: "query", query: "fourth", field: "title" });
+    await expect(copy("other", "stale")).rejects.toThrow("That search changed. Choose it again.");
+    await expect(edit("other", "patch-count", { kind: "patch", fields: { queryHistoryCount: 999 }, clear: [] })).rejects.toThrow("Validator error");
+    expect(await entries("other", "query")).toEqual(["third", "second"]);
+  });
+
+  it("refuses a copy over a history too long to replace, and changes nothing", async () => {
+    const { alice } = await setup();
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported(record), imported({ ...record, id: "long" })] });
+    const edit = (requestId: string, edit: unknown) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command: { kind: "editSearch", id: "long", edit } as never });
+    for (let i = 0; i < 300; i++) await edit(`query-${i}`, { kind: "query", query: `query ${i}`, field: "title" });
+    const before = await alice.query(api.research.records.getSearch, { accountId: "alice", id: "long" });
+    const source = (await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id }))!;
+    await expect(edit("copy", { kind: "copySearch", from: record.id, fromUpdatedAt: source.updatedAt, fields: { query: "copied" }, clear: [], summary: { queryHistoryCount: 1, questionCount: 1, questionText: "" } }))
+      .rejects.toThrow("This search has more than 300 query history entries to replace.");
+    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: "long" })).toEqual(before);
+    expect((await alice.query(api.research.records.searchHistory, { accountId: "alice", id: "long", kind: "query", paginationOpts: { cursor: null, numItems: 1 } })).page[0].text).toBe("query 299");
   });
 
   it("denies anonymous and cross-account access, including an account switch during import", async () => {

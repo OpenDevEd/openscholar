@@ -87,14 +87,17 @@ export const answerSourceValidator = v.union(v.literal("model"), v.literal("pers
 /** One paper's screening answers, each with who set it and when. */
 export const paperAnswersValidator = v.array(v.object({ question: v.string(), answer: v.union(v.boolean(), v.null()), setBy: answerSourceValidator, updatedAt: v.number() }));
 export type SavedSearch = Infer<typeof searchValidator>;
-const { id: _id, createdAt: _createdAt, ...editableFields } = searchFields;
+// A search's history summary changes only with its history, never by a patch.
+const { id: _id, createdAt: _createdAt, queryHistoryCount: _queries, questionCount: _questions, latestQuestion: _latest, questionText: _text, ...editableFields } = searchFields;
+const summaryValidator = v.object({ queryHistoryCount: v.number(), questionCount: v.number(), latestQuestion: v.optional(v.string()), questionText: v.string() });
 export const editValidator = v.union(
   v.object({ kind: v.literal("patch"), fields: v.object(partial(editableFields)), clear: strings }),
   v.object({ kind: v.literal("query"), query: v.string(), field: fieldValidator }),
   v.object({ kind: v.literal("question"), question: v.string() }),
   v.object({ kind: v.literal("removeQueryHistoryEntry"), query: v.string(), timestamp: v.string() }),
-  // Gives the search another search's history. `summary` is that search's, for the page to show at once.
-  v.object({ kind: v.literal("copyHistory"), from: v.string(), summary: v.object({ queryHistoryCount: v.number(), questionCount: v.number(), latestQuestion: v.optional(v.string()), questionText: v.string() }) }),
+  // Gives the search another search's parameters (`fields`, `clear`) and history at once, as
+  // that search was at `fromUpdatedAt`. `summary` is its history's, for the page to show at once.
+  v.object({ kind: v.literal("copySearch"), from: v.string(), fromUpdatedAt: v.string(), fields: v.object(partial(editableFields)), clear: strings, summary: summaryValidator }),
   v.object({ kind: v.literal("addScreeningQuestion"), question: v.string() }),
   v.object({ kind: v.literal("replaceScreeningQuestion"), question: v.string(), replacement: v.union(v.string(), v.null()) }),
   v.object({ kind: v.literal("clearScreeningQuestions") }),
@@ -169,20 +172,25 @@ function withoutQuestion(responses: SavedSearch["screeningResponses"], question:
   return responses.map(row => ({ ...row, responses: row.responses.filter(value => value.question !== question) }));
 }
 
+function patched(search: SavedSearch, fields: Extract<SearchEdit, { kind: "patch" }>["fields"], clear: string[]) {
+  const next = { ...search, ...fields };
+  for (const key of clear) {
+    if (!(key in editableFields) || editableFields[key as keyof typeof editableFields].isOptional !== "optional") {
+      throw new Error(`Cannot clear search field ${key}`);
+    }
+    delete next[key as keyof SavedSearch];
+  }
+  return next;
+}
+
 /** Shared by the transaction and the optimistic browser view. */
 export function applySearchEdit(search: SavedSearch, edit: SearchEdit, now: string): SavedSearch {
   let changes: Partial<SavedSearch>;
   switch (edit.kind) {
-    case "patch": {
-      const next = { ...search, ...edit.fields };
-      for (const key of edit.clear) {
-        if (!(key in editableFields) || editableFields[key as keyof typeof editableFields].isOptional !== "optional") {
-          throw new Error(`Cannot clear search field ${key}`);
-        }
-        delete next[key as keyof SavedSearch];
-      }
-      return { ...next, updatedAt: now };
-    }
+    case "patch":
+      return { ...patched(search, edit.fields, edit.clear), updatedAt: now };
+    case "copySearch":
+      return { ...patched(search, edit.fields, edit.clear), ...edit.summary, latestQuestion: edit.summary.latestQuestion, updatedAt: now };
     case "query":
       changes = { query: edit.query, field: edit.field, queryHistoryCount: search.queryHistoryCount + 1 };
       break;
@@ -192,11 +200,6 @@ export function applySearchEdit(search: SavedSearch, edit: SearchEdit, now: stri
     case "removeQueryHistoryEntry":
       changes = { queryHistoryCount: Math.max(0, search.queryHistoryCount - 1) };
       break;
-    case "copyHistory": {
-      const { latestQuestion, ...summary } = edit.summary;
-      changes = { ...summary, latestQuestion };
-      break;
-    }
     case "addScreeningQuestion":
       changes = { screeningQuestions: [...search.screeningQuestions, { question: edit.question }] };
       break;

@@ -22,8 +22,18 @@ interface QueryEvolutionProps {
   queryHistory: QueryHistoryEntry[];
   /** All of the search's queries, read or not. */
   total: number;
+  /** Reads older queries; called when the end of the timeline scrolls into view. */
+  onLoadOlder?: () => void;
   currentQuery: string;
   className?: string;
+}
+
+/** Calls `onVisible` whenever `node` scrolls into view; the returned cleanup stops watching. */
+function observeEnd(node: HTMLElement | null, onVisible: () => void) {
+  if (!node) return;
+  const observer = new IntersectionObserver(([entry]) => entry.isIntersecting && onVisible());
+  observer.observe(node);
+  return () => observer.disconnect();
 }
 
 /**
@@ -43,6 +53,7 @@ function truncateQuery(query: string, maxLength: number = 20): string {
 export function QueryEvolution({
   queryHistory,
   total,
+  onLoadOlder,
   currentQuery,
   className,
 }: QueryEvolutionProps) {
@@ -159,6 +170,7 @@ export function QueryEvolution({
                 );
               })}
             </div>
+            {onLoadOlder && <div ref={(node) => observeEnd(node, onLoadOlder)} className="h-px" />}
           </motion.div>
         )}
       </AnimatePresence>

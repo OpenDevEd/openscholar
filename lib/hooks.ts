@@ -133,21 +133,19 @@ export function useQueryHistory(
   const canGoPrevious = loadedIndex > 0 || history.hasOlder;
   const canGoNext = queryHistory.length > 0 && stepsBack > 0;
 
-  const goToPrevious = useCallback(() => {
-    if (loadedIndex > 0) {
-      setStepsBack(key, stepsBack + 1);
-      showEntry(queryHistory[loadedIndex - 1]);
+  // A step moves only to a query already read; a position past them, kept from an earlier
+  // visit, reads older queries until it's reached. Older queries are read a few steps
+  // before the arrows reach them.
+  const step = useCallback((delta: -1 | 1) => {
+    const entry = queryHistory[loadedIndex + delta];
+    if (entry) {
+      setStepsBack(key, stepsBack - delta);
+      showEntry(entry);
     }
-    // Older queries are read a few steps before the arrows reach them.
-    if (loadedIndex <= HISTORY_READ_AHEAD && history.hasOlder) history.loadOlder();
+    if (loadedIndex + delta <= HISTORY_READ_AHEAD && history.hasOlder) history.loadOlder();
   }, [loadedIndex, stepsBack, queryHistory, showEntry, key, setStepsBack, history]);
-
-  const goToNext = useCallback(() => {
-    if (canGoNext) {
-      setStepsBack(key, stepsBack - 1);
-      showEntry(queryHistory[loadedIndex + 1]);
-    }
-  }, [canGoNext, stepsBack, loadedIndex, queryHistory, showEntry, key, setStepsBack]);
+  const goToPrevious = useCallback(() => step(-1), [step]);
+  const goToNext = useCallback(() => { if (canGoNext) step(1); }, [canGoNext, step]);
 
   return {
     queryHistory,

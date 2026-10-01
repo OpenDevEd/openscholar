@@ -69,6 +69,7 @@ export function SearchTooltipContent({
         <QueryEvolution
           queryHistory={history.entries}
           total={history.total}
+          onLoadOlder={history.hasOlder ? history.loadOlder : undefined}
           currentQuery={query}
         />
       )}

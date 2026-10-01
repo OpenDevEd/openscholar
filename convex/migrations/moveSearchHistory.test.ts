@@ -41,4 +41,23 @@ describe("moveSearchHistory", () => {
       vi.useRealTimers();
     }
   });
+
+  it("moves a legacy search of 4,200 short entries within one transaction's limits", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest({ schema, transactionLimits: true });
+      const many = Array.from({ length: 4_200 }, (_, i) => ({ query: `q${i}`, timestamp: "2026-08-01T10:00:00Z" }));
+      await t.run(async (ctx) => {
+        const userId = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
+        await ctx.db.insert("searches", { userId, localId: "many", data: { ...legacy("many"), queryHistory: many }, revision: 1 });
+      });
+      await t.mutation(internal.migrations.moveSearchHistory.run, {});
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await t.action(internal.migrations.moveSearchHistory.verify, {})).toEqual([]);
+      const rows = await t.run((ctx) => ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_position").collect());
+      expect(rows.filter((row) => row.kind === "query").map((row) => row.text)).toEqual(many.map((entry) => entry.query));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

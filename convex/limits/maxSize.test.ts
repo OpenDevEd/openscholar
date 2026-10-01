@@ -146,6 +146,24 @@ describe("at the largest sizes the product allows", () => {
     expect(history.page[0].text).toBe(query(1200));
   }, 300_000);
 
+  it("a search saved before #354 with 44 revisions of the longest OQL query lists every revision (#354)", async () => {
+    const t = convexTest({ schema, transactionLimits: true });
+    const clerkId = "max_size_user";
+    const { userId, as } = await seedAccount(t, clerkId);
+    // Each revision then held the whole history: the 44th, 44 copies of the query.
+    const queryHistory = Array.from({ length: 44 }, (_, i) => ({ query: `${i} ${text(MAX_SIZE.oqlQueryChars - 6, i)}`, field: "oql" as const, timestamp: "2026-09-01T00:00:00.000Z" }));
+    const data = (revision: number) => ({ id: "legacy", query: queryHistory[revision - 1].query, field: "oql" as const, count: 1, queryHistory: queryHistory.slice(0, revision), questionHistory: [], screeningQuestions: [], screeningResponses: [], createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" });
+    const searchId = await t.run((ctx) => ctx.db.insert("searches", { userId, localId: "legacy", data: data(44), revision: 44 }));
+    for (let revision = 1; revision <= 44; revision++) await t.run((ctx) => ctx.db.insert("searchRevisions", { userId, searchId, revision, author: "user", data: data(revision), deleted: false, createdAt: revision }));
+    const revisions: number[] = [];
+    for (let cursor: string | null = null, isDone = false; !isDone;) {
+      const page: { page: Array<{ revision: number }>; isDone: boolean; continueCursor: string } = await as.query(api.research.records.revisions, { accountId: clerkId, id: "legacy", paginationOpts: { cursor, numItems: 25 } });
+      revisions.push(...page.page.map((row) => row.revision));
+      ({ isDone, continueCursor: cursor } = page);
+    }
+    expect(revisions).toEqual(Array.from({ length: 44 }, (_, i) => 44 - i));
+  }, 300_000);
+
   it("an Evidence Library with 1,000 revisions, operations and people checks sources, lists its team and tears down", async () => {
     vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
     vi.stubEnv("EL_COOLIFY_ENVIRONMENT", "development");
