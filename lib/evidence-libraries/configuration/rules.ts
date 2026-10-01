@@ -91,6 +91,7 @@ export type SectionState = "complete" | "edited" | "attention";
 
 type SectionProblem =
   | "nameMissing"
+  | "shortNameMissing"
   | "partnerName"
   | "badColour"
   | "institutionName"
@@ -184,6 +185,7 @@ export const CONSENT_POLICY_VERSION_DEFAULT = schemaNode(
 export const SCHEMA_LIMITS = {
   identity: {
     name: schemaNumber("/identity/name", "maxLength"),
+    shortName: schemaNumber("/identity/shortName", "maxLength"),
     tagline: schemaNumber("/identity/tagline", "maxLength"),
     description: schemaNumber("/identity/description", "maxLength"),
     fundingPartners: schemaNumber("/identity/fundingPartners", "maxItems"),
@@ -1702,6 +1704,7 @@ export function sectionProblems(
   switch (sectionKey) {
     case "identity":
       if (!draft.identity.name.trim()) problems.push("nameMissing");
+      if (!draft.identity.shortName.trim()) problems.push("shortNameMissing");
       if (
         draft.identity.fundingPartners.some((partner) => !partner.name.trim())
       ) {

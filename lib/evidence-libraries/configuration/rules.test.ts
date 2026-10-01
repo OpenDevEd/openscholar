@@ -162,12 +162,14 @@ describe("sectionProblems", () => {
     expect(sectionProblems(draft, "institutions")).toEqual([]);
   });
 
-  it("flags a missing name and an unnamed funding partner", () => {
+  it("flags a missing name or short name and an unnamed funding partner", () => {
     const draft = savedDraft();
     draft.identity.name = "  ";
+    draft.identity.shortName = " ";
     draft.identity.fundingPartners.push({ id: "fp_2", name: "" });
     expect(sectionProblems(draft, "identity")).toEqual([
       "nameMissing",
+      "shortNameMissing",
       "partnerName",
     ]);
   });
