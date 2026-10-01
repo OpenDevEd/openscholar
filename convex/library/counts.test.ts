@@ -41,8 +41,13 @@ describe("library counts", () => {
 
       const rows = await t.run((ctx) => ctx.db.query("libraryCounts").collect());
       expect(Object.fromEntries(rows.map((row) => [row.userId, row.count]))).toEqual({ [counted]: 3, [saver]: 3 });
-      // Someone without a count waits for backfillUsers, then a second run.
+      // Someone without a count is left for backfillUsers, then a run from the start.
       expect(await t.action(internal.migrations.moveLibraryCounts.verify, {})).toEqual([expect.stringContaining("no library count row")]);
+      await t.action(internal.migrations.backfillLibraryCounters.backfillUsers, {});
+      await t.mutation(internal.migrations.moveLibraryCounts.run, { reset: true });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await t.action(internal.migrations.moveLibraryCounts.verify, {})).toEqual([]);
+      expect((await t.run((ctx) => ctx.db.query("libraryCounts").collect())).map((row) => row.count).sort()).toEqual([0, 3, 3]);
     } finally {
       vi.useRealTimers();
     }

@@ -16,6 +16,11 @@ import { libraryCountRow } from "../library/counter";
  *   npx convex run migrations/moveLibraryCounts:run '{"dryRun": true}'
  *   npx convex run migrations/moveLibraryCounts:run
  *   npx convex run migrations/moveLibraryCounts:verify
+ *
+ * Someone `verify` still lists had no count when the run reached them: count them with
+ * backfillUsers, then run again from the start, which a finished run only does with `reset`:
+ *
+ *   npx convex run migrations/moveLibraryCounts:run '{"reset": true}'
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
