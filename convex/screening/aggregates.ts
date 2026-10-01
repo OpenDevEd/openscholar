@@ -1,14 +1,11 @@
 import { DirectAggregate } from "@convex-dev/aggregate";
-import type {
-  GenericMutationCtx,
-  GenericQueryCtx,
-} from "convex/server";
 import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { SCREENING_TERMINAL_RESULT_STATUSES } from "./lifecycle";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 
-type RunMutationCtx = { runMutation: GenericMutationCtx<never>["runMutation"] };
-type RunQueryCtx = { runQuery: GenericQueryCtx<never>["runQuery"] };
+type RunMutationCtx = MutationCtx;
+type RunQueryCtx = QueryCtx | MutationCtx;
 
 type TerminalStatus = (typeof SCREENING_TERMINAL_RESULT_STATUSES)[number];
 
