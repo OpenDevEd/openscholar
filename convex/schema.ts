@@ -878,6 +878,9 @@ export default defineSchema({
       minimumScore: v.optional(v.number()),
     }),
     targetCollectionId: v.optional(v.id("collections")),
+    // "sharded" when its progress is counted by convex/screening/resultCounts.ts; a job from
+    // before #383 reads the aggregates until migrations/recountScreeningJobs recounts it.
+    resultCounts: v.optional(v.literal("sharded")),
     // The screening its answers go to. Required once migrations/moveScreeningJobAnswers has
     // run on every deployment.
     screeningId: v.optional(v.id("screenings")),

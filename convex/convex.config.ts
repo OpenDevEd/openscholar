@@ -37,6 +37,8 @@ app.use(aggregate, { name: "creditsAgg" });
 // Screening progress aggregates (plan-02). Both are namespaced by jobId:
 // - screeningResultStatusAgg: counts terminal result states by status
 // - screeningQualifiedAgg: counts completed qualified results
+// Per-job counts of finished screening papers, kept by a trigger (convex/screening/resultCounts.ts).
+app.use(shardedCounter, { name: "screeningResultCounter" });
 app.use(aggregate, { name: "screeningResultStatusAgg" });
 app.use(aggregate, { name: "screeningQualifiedAgg" });
 // usageAgg: each charge counted under its user and its job, newest last, so the

@@ -66,6 +66,7 @@ async function seedScreeningJob(
       status,
       totalPapers: 10,
       questions: [{ key: "q1", question: "Is this relevant?" }],
+      resultCounts: "sharded",
       scoringConfig: {
         rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
         starThresholds: [{ minScore: 0, stars: 1 }],
@@ -678,7 +679,7 @@ describe("handleScreeningComplete", () => {
               .eq("libraryItemId", updatedResult!.libraryItemId!),
           )
           .collect();
-        const counts = await readScreeningProgressCounts(ctx, job._id);
+        const counts = await readScreeningProgressCounts(ctx, job);
         // Then the answer is in the job's screening, with the model's confidence, and not on the row.
         const answerRows = await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", updatedJob!.screeningId!)).collect();
         expect(answerRows.map((row) => ({ paperId: row.paperId, answers: row.answers.map(({ question, answer, setBy, model }) => ({ question, answer, setBy, confidence: model?.confidence })) }))).toEqual([
@@ -741,7 +742,7 @@ describe("handleScreeningComplete", () => {
 
       await t.run(async (ctx) => {
         const updatedJob = await ctx.db.get("screeningJobs", job._id);
-        const counts = await readScreeningProgressCounts(ctx, job._id);
+        const counts = await readScreeningProgressCounts(ctx, job);
 
         expect(updatedJob?.status).toBe("completed");
         expect(counts).toEqual({
@@ -794,7 +795,7 @@ describe("handleScreeningComplete", () => {
               q.eq("userId", user._id).eq("openalexId", `https://openalex.org/W${status}`),
             )
             .collect();
-          const counts = await readScreeningProgressCounts(ctx, job._id);
+          const counts = await readScreeningProgressCounts(ctx, job);
 
           expect(updatedResult?.status).toBe("skipped");
           expect(updatedResult?.savedToLibrary).toBeUndefined();

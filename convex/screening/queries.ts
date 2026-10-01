@@ -21,9 +21,9 @@ import { buildScreeningProgressSnapshot } from "./progress";
 
 async function readJobProgressSnapshot(
   ctx: QueryCtx,
-  job: Pick<Doc<"screeningJobs">, "_id" | "status" | "totalPapers">,
+  job: Pick<Doc<"screeningJobs">, "_id" | "status" | "totalPapers" | "resultCounts">,
 ) {
-  const counts = await readScreeningProgressCounts(ctx, job._id);
+  const counts = await readScreeningProgressCounts(ctx, job);
   return buildScreeningProgressSnapshot({
     status: job.status,
     totalPapers: job.totalPapers,

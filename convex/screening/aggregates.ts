@@ -3,6 +3,7 @@ import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { SCREENING_TERMINAL_RESULT_STATUSES } from "./lifecycle";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { readShardedCounts } from "./resultCounts";
 
 type RunMutationCtx = MutationCtx;
 type RunQueryCtx = QueryCtx | MutationCtx;
@@ -103,10 +104,13 @@ export async function clearScreeningAggregates(
   ]);
 }
 
+/** A job's progress counts: its sharded counters, or for a job not recounted yet, the aggregates. */
 export async function readScreeningProgressCounts(
   ctx: RunQueryCtx,
-  jobId: Id<"screeningJobs">,
+  job: Pick<Doc<"screeningJobs">, "_id" | "resultCounts">,
 ): Promise<ScreeningProgressCounts> {
+  if (job.resultCounts === "sharded") return readShardedCounts(ctx, job._id);
+  const jobId = job._id;
   const [statusCounts, qualifiedCount] = await Promise.all([
     screeningResultStatusAgg.countBatch(ctx, [
       { namespace: jobId, bounds: { eq: "completed" } },

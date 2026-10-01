@@ -31,6 +31,7 @@ import { scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { ensureScreening } from "../research/answers";
 import { drainLater } from "./drain";
+import { triggers } from "../lib/triggers";
 import { estimateScreening } from "./estimate";
 import { applyCommand, moveSearchAnswers } from "../research/records";
 
@@ -129,6 +130,7 @@ export const createScreeningJob = mutation({
       scoringConfig: args.scoringConfig,
       targetCollectionId: args.targetCollectionId,
       screeningId,
+      resultCounts: "sharded",
       ...serverStamp(serverPick),
       createdAt: now,
       updatedAt: now,
@@ -343,7 +345,7 @@ export const finalizeScreeningJobFromAggregates = internalMutation({
       return null;
     }
 
-    const counts = await readScreeningProgressCounts(ctx, args.jobId);
+    const counts = await readScreeningProgressCounts(ctx, job);
     const progress = buildScreeningProgressSnapshot({
       status: job.status,
       totalPapers: job.totalPapers,
@@ -391,7 +393,10 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
     resultId: v.id("screeningResults"),
     jobId: v.id("screeningJobs"),
   }),
-  handler: async (ctx, { context, result }) => {
+  handler: async (rawCtx, { context, result }) => {
+    // The workpool builds this mutation itself, so it runs the triggers on its own writes: the
+    // result's counts follow it (./resultCounts.ts).
+    const ctx = triggers.wrapDB(rawCtx);
     const job = await ctx.db.get("screeningJobs", context.jobId) as
       | Doc<"screeningJobs">
       | null;
@@ -476,9 +481,12 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
       status: transition.aggregateStatus,
       qualified: transition.aggregateQualified,
     };
-    await recordTerminalResult(ctx, aggregateResult);
-    if (transition.aggregateQualified) {
-      await recordQualifiedResult(ctx, aggregateResult);
+    // A job counted by shards is counted by the trigger; one from before keeps its aggregates.
+    if (job.resultCounts !== "sharded") {
+      await recordTerminalResult(ctx, aggregateResult);
+      if (transition.aggregateQualified) {
+        await recordQualifiedResult(ctx, aggregateResult);
+      }
     }
 
     if (transition.scheduleQualifiedPersistence) {
