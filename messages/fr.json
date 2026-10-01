@@ -1563,6 +1563,15 @@
     "reviewed": "Examiné",
     "needsFollowUp": "Nécessite un suivi"
   },
+  "saveToLibrary": {
+    "save": "Enregistrer",
+    "saved": "Enregistré",
+    "saveToLibrary": "Enregistrer dans la bibliothèque",
+    "removeFromLibrary": "Retirer de la bibliothèque",
+    "addToCollection": "Ajouter à une collection",
+    "newCollection": "Nouvelle collection",
+    "createAndAdd": "Créer et ajouter"
+  },
   "rating": {
     "noRating": "Sans note",
     "nStars": "{count} étoiles",

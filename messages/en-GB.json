@@ -1555,6 +1555,15 @@
     "reviewed": "Reviewed",
     "needsFollowUp": "Needs Follow-up"
   },
+  "saveToLibrary": {
+    "save": "Save",
+    "saved": "Saved",
+    "saveToLibrary": "Save to library",
+    "removeFromLibrary": "Remove from library",
+    "addToCollection": "Add to collection",
+    "newCollection": "New collection",
+    "createAndAdd": "Create and add"
+  },
   "rating": {
     "noRating": "No Rating",
     "nStars": "{count} Stars",

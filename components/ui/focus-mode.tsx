@@ -26,6 +26,7 @@ import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { PaperContent } from "@/components/focus-mode/paper-content";
 import type { PaperContentProps } from "@/components/focus-mode/paper-content";
 import { FocusModeHeader } from "@/components/focus-mode/focus-mode-header";
+import { toggleSaved } from "@/components/library/save-control";
 import { FocusModeSettings } from "@/components/focus-mode/focus-mode-settings";
 import type { PaperResult } from "@/lib/types";
 
@@ -350,6 +351,11 @@ export function FocusMode({
         case "5":
           e.preventDefault();
           handleRatingChange(currentPaper.id, e.key);
+          break;
+        case "b":
+        case "B":
+          e.preventDefault();
+          toggleSaved(currentPaper.id, useRatingsStore.getState().ratings[currentPaper.id]);
           break;
         case "s":
         case "S":

@@ -12,6 +12,7 @@ import { useIsTablet } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { createCitationSearch } from "@/lib/search";
 import { RatingSelector } from "@/components/rating-selector";
+import { SaveControl } from "@/components/library/save-control";
 import { DownloadMenu } from "@/components/download-menu";
 import { Button } from "@/components/ui/button";
 import {
@@ -341,7 +342,10 @@ export function PaperCardListDetail({
           <div className="space-y-3 pt-3 border-t border-border/50">
             <div className="flex items-center justify-between">
               {!hide?.rating && (
-                <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+                <div className="flex items-center gap-2">
+                  <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+                  <SaveControl paperId={result.id} compact />
+                </div>
               )}
               <div className="flex items-center gap-2">
                 <CitationControl paper={result} />
@@ -416,7 +420,10 @@ export function PaperCardListDetail({
           <div className="flex items-center justify-between gap-4 flex-wrap pt-3 border-t border-border/50">
             <div className="flex items-center gap-3">
               {!hide?.rating && (
-                <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+                <>
+                  <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+                  <SaveControl paperId={result.id} />
+                </>
               )}
             </div>
 

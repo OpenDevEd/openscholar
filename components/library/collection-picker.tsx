@@ -9,6 +9,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
+import { TooltipHint } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -80,40 +82,64 @@ export function CollectionPicker({
           </DialogDescription>
         </DialogHeader>
 
-        {collections && collections.length > 0 ? (
-          <div className="max-h-[280px] overflow-y-auto space-y-1">
-            {collections.map((collection) => {
-              const isChecked = itemCollectionSet.has(collection._id);
-              return (
-                <label
-                  key={collection._id}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted/50 transition-colors cursor-pointer"
-                >
-                  <Checkbox
-                    checked={isChecked}
-                    onCheckedChange={() =>
-                      handleToggle(collection._id, isChecked)
-                    }
-                  />
-                  <span className="text-sm font-medium truncate flex-1">
-                    {collection.name}
-                  </span>
-                  <Badge
-                    variant="secondary"
-                    className="text-[10px] h-4 px-1 shrink-0"
-                  >
-                    {collection.itemCount}
-                  </Badge>
-                </label>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            {t("noCollections")}
-          </p>
-        )}
+        <CollectionChecklist
+          collections={collections}
+          checkedIds={itemCollectionSet}
+          onToggle={handleToggle}
+        />
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function CollectionChecklist<CollectionId extends string>({
+  collections,
+  checkedIds,
+  onToggle,
+  className,
+}: {
+  collections: Array<{ _id: CollectionId; name: string; itemCount: number }> | undefined;
+  checkedIds: ReadonlySet<CollectionId>;
+  onToggle: (collectionId: CollectionId, isCurrentlyChecked: boolean) => void;
+  className?: string;
+}) {
+  const t = useTranslations("libraryPage");
+
+  if (!collections || collections.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground text-center py-4">
+        {t("noCollections")}
+      </p>
+    );
+  }
+
+  return (
+    <div className={cn("max-h-[280px] overflow-y-auto space-y-1", className)}>
+      {collections.map((collection) => {
+        const isChecked = checkedIds.has(collection._id);
+        return (
+          <label
+            key={collection._id}
+            className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted/50 transition-colors cursor-pointer"
+          >
+            <Checkbox
+              checked={isChecked}
+              onCheckedChange={() => onToggle(collection._id, isChecked)}
+            />
+            <TooltipHint label={collection.name} onlyWhenClipped>
+              <span className="text-sm font-medium truncate flex-1">
+                {collection.name}
+              </span>
+            </TooltipHint>
+            <Badge
+              variant="secondary"
+              className="text-[10px] h-4 px-1 shrink-0"
+            >
+              {collection.itemCount}
+            </Badge>
+          </label>
+        );
+      })}
+    </div>
   );
 }

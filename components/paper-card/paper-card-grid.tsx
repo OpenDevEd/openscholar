@@ -10,6 +10,7 @@ import { useUIStore } from "@/lib/store";
 import { useIsTablet } from "@/lib/hooks";
 import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "@/components/rating-selector";
+import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Quote, Network, Users, BookOpen } from "lucide-react";
 import { useTranslate, useScreening, useCitationHandlers } from "./hooks";
@@ -192,7 +193,10 @@ export function PaperCardGrid({
             onKeyDown={(e) => e.stopPropagation()}
           >
             {!hide?.rating && (
-              <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+              <div className="flex items-center gap-2">
+                <RatingSelector paperId={result.id} paperResult={result} variant="compact" />
+                <SaveControl paperId={result.id} compact />
+              </div>
             )}
             
             <div className="flex items-center gap-2">

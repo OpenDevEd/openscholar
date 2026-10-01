@@ -1563,6 +1563,15 @@
     "reviewed": "समीक्षित",
     "needsFollowUp": "फॉलो-अप आवश्यक"
   },
+  "saveToLibrary": {
+    "save": "सहेजें",
+    "saved": "सहेजा गया",
+    "saveToLibrary": "लाइब्रेरी में सहेजें",
+    "removeFromLibrary": "लाइब्रेरी से हटाएँ",
+    "addToCollection": "संग्रह में जोड़ें",
+    "newCollection": "नया संग्रह",
+    "createAndAdd": "बनाएँ और जोड़ें"
+  },
   "rating": {
     "noRating": "कोई रेटिंग नहीं",
     "nStars": "{count} स्टार",

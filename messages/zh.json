@@ -1563,6 +1563,15 @@
     "reviewed": "已审核",
     "needsFollowUp": "需跟进"
   },
+  "saveToLibrary": {
+    "save": "保存",
+    "saved": "已保存",
+    "saveToLibrary": "保存到文献库",
+    "removeFromLibrary": "从文献库中移除",
+    "addToCollection": "添加到合集",
+    "newCollection": "新建合集",
+    "createAndAdd": "创建并添加"
+  },
   "rating": {
     "noRating": "无评分",
     "nStars": "{count} 星",

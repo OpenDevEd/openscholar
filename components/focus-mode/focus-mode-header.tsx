@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { DownloadMenu } from "@/components/download-menu";
 import { RatingSelector } from "@/components/rating-selector";
+import { SaveControl } from "@/components/library/save-control";
 import { useEffectiveRating } from "@/components/results-contexts";
 import type { PaperResult } from "@/lib/types";
 
@@ -145,14 +146,21 @@ export function FocusModeHeader({
                 </span>
               </div>
             ))}
+            <div className="ml-3 flex items-center gap-1">
+              <SaveControl paperId={currentPaper.id} />
+              <span className="text-xs text-muted-foreground bg-muted px-1 rounded">
+                B
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Second row: Navigation and actions */}
         <div className="flex items-center justify-center md:justify-end gap-1 md:mr-8">
           {/* Compact rating selector - only on mobile */}
-          <div className="md:hidden">
+          <div className="flex items-center gap-1 md:hidden">
             <RatingSelector paperId={currentPaper.id} paperResult={currentPaper} variant="compact" />
+            <SaveControl paperId={currentPaper.id} compact />
           </div>
           <div className="w-px h-4 bg-border mx-1 md:hidden"></div>
 

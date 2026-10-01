@@ -1563,6 +1563,15 @@
     "reviewed": "確認済み",
     "needsFollowUp": "フォローアップ必要"
   },
+  "saveToLibrary": {
+    "save": "保存",
+    "saved": "保存済み",
+    "saveToLibrary": "ライブラリに保存",
+    "removeFromLibrary": "ライブラリから削除",
+    "addToCollection": "コレクションに追加",
+    "newCollection": "新しいコレクション",
+    "createAndAdd": "作成して追加"
+  },
   "rating": {
     "noRating": "評価なし",
     "nStars": "{count} つ星",
