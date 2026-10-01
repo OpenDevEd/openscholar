@@ -9,6 +9,7 @@ import { create } from "zustand";
 import { BookCheck, BookPlus, Folder, FolderCheck, Plus } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import type { FunctionReturnType } from "convex/server";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { trimPaperData, type WorkInput } from "@/lib/library/trim-paper-data";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
@@ -25,36 +26,63 @@ import {
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
+type RemovedPaper = NonNullable<FunctionReturnType<typeof api.library.mutations.removeFromLibrary>>;
+type Pending = { value: boolean; token: number };
+
+let lastToken = 0;
+
 /**
- * Changes on their way to the server, keyed by paper, so every control showing
- * the same paper (its card and focus mode) flips at once. Each entry is cleared
- * when its mutation settles, by which time the server queries have caught up.
+ * Changes on their way to the server, keyed by paper, so every control showing the
+ * same paper (its card and focus mode) flips at once. Each change carries a token and
+ * only the request that made it clears it, so a slower earlier request can't undo a
+ * newer click. `removed` keeps what each removal returned, so saving the paper again
+ * puts it back whole, which is also how keyboard users undo inside focus mode.
  */
 const usePending = create<{
-  saved: Record<string, boolean>;
-  collections: Record<string, Record<string, boolean>>;
-  setSaved: (paperId: string, saved: boolean | undefined) => void;
-  setCollection: (paperId: string, collectionId: string, inCollection: boolean | undefined) => void;
+  saved: Record<string, Pending>;
+  collections: Record<string, Record<string, Pending>>;
+  removed: Record<string, RemovedPaper>;
+  setSaved: (paperId: string, value: boolean) => number;
+  settleSaved: (paperId: string, token: number) => void;
+  setCollection: (paperId: string, collectionId: string, value: boolean) => number;
+  settleCollection: (paperId: string, collectionId: string, token: number) => void;
+  setRemoved: (paperId: string, removed: RemovedPaper | undefined) => void;
 }>((set) => ({
   saved: {},
   collections: {},
-  setSaved: (paperId, saved) =>
+  removed: {},
+  setSaved: (paperId, value) => {
+    const token = ++lastToken;
+    set((state) => ({ saved: { ...state.saved, [paperId]: { value, token } } }));
+    return token;
+  },
+  settleSaved: (paperId, token) =>
     set((state) => {
-      const next = { ...state.saved };
-      if (saved === undefined) delete next[paperId];
-      else next[paperId] = saved;
-      return { saved: next };
+      if (state.saved[paperId]?.token !== token) return state;
+      const { [paperId]: _settled, ...rest } = state.saved;
+      return { saved: rest };
     }),
-  setCollection: (paperId, collectionId, inCollection) =>
+  setCollection: (paperId, collectionId, value) => {
+    const token = ++lastToken;
+    set((state) => ({
+      collections: { ...state.collections, [paperId]: { ...state.collections[paperId], [collectionId]: { value, token } } },
+    }));
+    return token;
+  },
+  settleCollection: (paperId, collectionId, token) =>
     set((state) => {
-      const next = { ...state.collections[paperId] };
-      if (inCollection === undefined) delete next[collectionId];
-      else next[collectionId] = inCollection;
-      return { collections: { ...state.collections, [paperId]: next } };
+      if (state.collections[paperId]?.[collectionId]?.token !== token) return state;
+      const { [collectionId]: _settled, ...rest } = state.collections[paperId];
+      return { collections: { ...state.collections, [paperId]: rest } };
+    }),
+  setRemoved: (paperId, removed) =>
+    set((state) => {
+      const { [paperId]: _previous, ...rest } = state.removed;
+      return { removed: removed ? { ...rest, [paperId]: removed } : rest };
     }),
 }));
 
-const NO_PENDING_COLLECTIONS: Record<string, boolean> = {};
+const NO_PENDING_COLLECTIONS: Record<string, Pending> = {};
 
 /** A paper as the library mutations take it: its metadata plus the full result for rich cards. */
 export function paperArgs(paper: WorkInput) {
@@ -75,12 +103,26 @@ export function useSavePaper(paper: WorkInput | undefined) {
     api.library.queries.savedPaper,
     ready && paper ? { openalexId: paper.id } : "skip",
   );
-  const pendingSaved = usePending((state) => (paper ? state.saved[paper.id] : undefined));
+  const pendingSaved = usePending((state) => (paper ? state.saved[paper.id]?.value : undefined));
   const save = useMutation(api.library.mutations.saveToLibrary);
   const remove = useMutation(api.library.mutations.removeFromLibrary);
   const restore = useMutation(api.library.mutations.restoreLibraryItem);
 
   const isSaved = pendingSaved ?? Boolean(saved);
+
+  /** Puts a removed paper back with its rating, saved date and collections. */
+  const restorePaper = (id: string, removed: RemovedPaper) => {
+    const { setSaved, settleSaved, setRemoved } = usePending.getState();
+    const token = setSaved(id, true);
+    setRemoved(id, undefined);
+    // The server restores the research rating with the paper.
+    restore({ paper: removed })
+      .catch((error) => {
+        console.error("[Library] Failed to restore:", error);
+        toast.error(t("restoreError"));
+      })
+      .finally(() => settleSaved(id, token));
+  };
 
   const toggle = () => {
     if (!isSignedIn) {
@@ -88,32 +130,36 @@ export function useSavePaper(paper: WorkInput | undefined) {
       return;
     }
     if (!ready || !paper) return;
-    const { setSaved } = usePending.getState();
+    const { setSaved, settleSaved, setRemoved } = usePending.getState();
     const id = paper.id;
-    setSaved(id, !isSaved);
     if (!isSaved) {
+      const removed = usePending.getState().removed[id];
+      if (removed) {
+        restorePaper(id, removed);
+        return;
+      }
+      const token = setSaved(id, true);
       save(paperArgs(paper))
         .catch((error) => {
           console.error("[Library] Failed to save:", error);
           toast.error(t("saveError"));
         })
-        .finally(() => setSaved(id, undefined));
+        .finally(() => settleSaved(id, token));
       return;
     }
+    const token = setSaved(id, false);
+    // The server clears the research rating with the paper.
     remove({ openalexId: id })
       .then((removed) => {
-        // The server clears and restores the research rating with the paper.
         if (!removed) return;
+        setRemoved(id, removed);
         toast(t("removed"), {
           description: removed.title,
           duration: 5000,
           action: {
             label: t("undo"),
             onClick: () => {
-              restore({ paper: removed }).catch((error) => {
-                console.error("[Library] Failed to restore:", error);
-                toast.error(t("restoreError"));
-              });
+              if (usePending.getState().removed[id] === removed) restorePaper(id, removed);
             },
           },
         });
@@ -122,7 +168,7 @@ export function useSavePaper(paper: WorkInput | undefined) {
         console.error("[Library] Failed to remove:", error);
         toast.error(t("removeError"));
       })
-      .finally(() => setSaved(id, undefined));
+      .finally(() => settleSaved(id, token));
   };
 
   return { ready, isSignedIn, openSignIn, saved, isSaved, toggle };
@@ -143,7 +189,7 @@ export function SaveControl({
   const pendingCollections =
     usePending((state) => state.collections[paper.id]) ?? NO_PENDING_COLLECTIONS;
   const inCollection =
-    Object.values(pendingCollections).some(Boolean) || Boolean(saved?.inCollection);
+    Object.values(pendingCollections).some((pending) => pending.value) || Boolean(saved?.inCollection);
   const label = isSaved ? t("removeFromLibrary") : t("saveToLibrary");
   const folderButton = (
     <Button
@@ -229,7 +275,7 @@ function CollectionsPanel({
   paper: WorkInput;
   libraryItemId: Id<"libraryItems"> | undefined;
   inCollection: boolean;
-  pending: Record<string, boolean>;
+  pending: Record<string, Pending>;
 }) {
   const t = useTranslations("saveToLibrary");
   const [newName, setNewName] = useState("");
@@ -247,23 +293,25 @@ function CollectionsPanel({
 
   const loadingMembers = inCollection && memberIds === undefined;
   const checkedIds = new Set<string>(memberIds ?? []);
-  for (const [collectionId, checked] of Object.entries(pending)) {
+  for (const [collectionId, { value: checked }] of Object.entries(pending)) {
     if (checked) checkedIds.add(collectionId);
     else checkedIds.delete(collectionId);
   }
 
   const toggle = (collectionId: Id<"collections">, add: boolean) => {
-    const { setCollection, setSaved } = usePending.getState();
-    setCollection(paper.id, collectionId, add);
-    if (add) setSaved(paper.id, true);
+    const { setCollection, settleCollection, setSaved, settleSaved, setRemoved } = usePending.getState();
+    const token = setCollection(paper.id, collectionId, add);
+    const savedToken = add ? setSaved(paper.id, true) : undefined;
+    // A paper added to a collection is saved again on its own terms, not restored.
+    if (add) setRemoved(paper.id, undefined);
     setInCollection({ paper: paperArgs(paper), collectionId, inCollection: add })
       .catch((error) => {
         console.error("[Library] Failed to change collection:", error);
         toast.error(t("collectionError"));
       })
       .finally(() => {
-        setCollection(paper.id, collectionId, undefined);
-        if (add) setSaved(paper.id, undefined);
+        settleCollection(paper.id, collectionId, token);
+        if (savedToken !== undefined) settleSaved(paper.id, savedToken);
       });
   };
 
