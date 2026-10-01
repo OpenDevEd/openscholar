@@ -1,5 +1,6 @@
 "use node";
 
+import { randomUUID } from "node:crypto";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -7,9 +8,11 @@ import { internalAction, type ActionCtx } from "../_generated/server";
 import { encrypt } from "../lib/crypto";
 import {
   ClerkApiError,
+  type ClerkOAuthApplication,
   createOAuthApplication,
   deleteOAuthApplication,
   findOAuthApplicationsByName,
+  readOAuthApplication,
   rotateOAuthApplicationSecret,
   setOAuthApplicationRedirectUris,
 } from "./clerkOAuthApplications";
@@ -17,20 +20,40 @@ import { libraryOAuthApplicationName, libraryOAuthRedirectUris } from "./oauthCl
 import { requireRuntimeEnvironment } from "./runtimeActionConfig";
 
 /**
- * `include` adds the origins' callbacks to the ones already registered, which
- * is what a change of address needs before it switches. `exact` registers
- * only these, once the switch has landed.
+ * `include` adds the origins' callbacks to the ones Clerk has, which is what
+ * a change of address needs before it switches. `exact` keeps only these,
+ * once the switch has landed.
  */
 export type OAuthRedirectMode = "include" | "exact";
 
+/** Another sync of the same library is under way; try again shortly. */
+export class OAuthClientBusyError extends Error {
+  readonly retryable = true;
+  constructor() {
+    super("Another change to this library's OpenScholar sign-in is under way");
+    this.name = "OAuthClientBusyError";
+  }
+}
+
+/** Worth waiting out rather than failing the step that asked. */
+export function isRetryableOAuthClientError(error: unknown) {
+  return error instanceof OAuthClientBusyError || (error instanceof ClerkApiError && error.retryable);
+}
+
 const configurationError = (message: string) => new Error(message);
 
+function sortedUris(uris: readonly string[]) {
+  return [...new Set(uris)].sort();
+}
+
 function sameUris(left: readonly string[], right: readonly string[]) {
-  return left.length === right.length && left.every((uri, index) => uri === right[index]);
+  const a = sortedUris(left);
+  const b = sortedUris(right);
+  return a.length === b.length && a.every((uri, index) => uri === b[index]);
 }
 
 function redirectUrisFor(mode: OAuthRedirectMode, registered: readonly string[], wanted: string[]) {
-  return mode === "include" ? [...new Set([...registered, ...wanted])].sort() : wanted;
+  return mode === "include" ? sortedUris([...registered, ...wanted]) : wanted;
 }
 
 async function recordFailure(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">, error: ClerkApiError) {
@@ -44,42 +67,72 @@ async function recordFailure(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">,
   await ctx.runMutation(internal.evidenceLibraries.oauthClients.recordOAuthClientError, { libraryId, error: failure });
 }
 
+/** Runs `work` holding the library's sync lease, and records what Clerk said if it fails. */
+async function withOAuthClientLease(
+  ctx: ActionCtx,
+  libraryId: Id<"evidenceLibraries">,
+  work: (token: string) => Promise<void>,
+) {
+  const token = randomUUID();
+  const claimed: boolean = await ctx.runMutation(internal.evidenceLibraries.oauthClients.claimOAuthClientLease, {
+    libraryId,
+    token,
+  });
+  if (!claimed) throw new OAuthClientBusyError();
+  try {
+    await work(token);
+  } catch (error) {
+    if (error instanceof ClerkApiError) await recordFailure(ctx, libraryId, error);
+    throw error;
+  } finally {
+    await ctx.runMutation(internal.evidenceLibraries.oauthClients.releaseOAuthClientLease, { libraryId, token });
+  }
+}
+
+async function saveApplication(
+  ctx: ActionCtx,
+  libraryId: Id<"evidenceLibraries">,
+  token: string,
+  application: ClerkOAuthApplication,
+  encryptedClientSecret?: string,
+) {
+  await ctx.runMutation(internal.evidenceLibraries.oauthClients.saveOAuthClient, {
+    libraryId,
+    token,
+    applicationId: application.id,
+    clientId: application.clientId,
+    discoveryUrl: application.discoveryUrl,
+    redirectUris: sortedUris(application.redirectUris),
+    ...(encryptedClientSecret ? { encryptedClientSecret } : {}),
+  });
+}
+
 /**
  * Creates the library's OAuth application, or adopts the one an earlier
- * attempt created when its answer was lost, then registers the callbacks.
+ * attempt created when its answer was lost.
  */
 async function provisionOAuthClient(
   ctx: ActionCtx,
   keys: { secretKey: string; encryptionKey: string },
-  libraryId: Id<"evidenceLibraries">,
-  mode: OAuthRedirectMode,
-  wanted: string[],
+  input: { libraryId: Id<"evidenceLibraries">; token: string; mode: OAuthRedirectMode; wanted: string[] },
 ) {
-  await ctx.runMutation(internal.evidenceLibraries.oauthClients.recordOAuthClientIntent, { libraryId });
-  const name = libraryOAuthApplicationName(libraryId);
+  const name = libraryOAuthApplicationName(input.libraryId);
   const [adopted, ...duplicates] = await findOAuthApplicationsByName(keys.secretKey, name);
   // More than one exists only when several attempts lost their answers. One
   // is enough.
   for (const duplicate of duplicates) await deleteOAuthApplication(keys.secretKey, duplicate.id);
-  let application;
-  let clientSecret;
-  if (adopted) {
-    const redirectUris = redirectUrisFor(mode, adopted.redirectUris, wanted);
-    application = sameUris([...adopted.redirectUris].sort(), redirectUris)
-      ? adopted
-      : await setOAuthApplicationRedirectUris(keys.secretKey, adopted.id, redirectUris);
-    clientSecret = await rotateOAuthApplicationSecret(keys.secretKey, adopted.id);
-  } else {
-    ({ application, clientSecret } = await createOAuthApplication(keys.secretKey, { name, redirectUris: wanted }));
+  if (!adopted) {
+    const created = await createOAuthApplication(keys.secretKey, { name, redirectUris: input.wanted });
+    await saveApplication(ctx, input.libraryId, input.token, created.application, encrypt(created.clientSecret, keys.encryptionKey));
+    return;
   }
-  await ctx.runMutation(internal.evidenceLibraries.oauthClients.saveOAuthClient, {
-    libraryId,
-    applicationId: application.id,
-    clientId: application.clientId,
-    discoveryUrl: application.discoveryUrl,
-    redirectUris: [...application.redirectUris].sort(),
-    encryptedClientSecret: encrypt(clientSecret, keys.encryptionKey),
-  });
+  const redirectUris = redirectUrisFor(input.mode, adopted.redirectUris, input.wanted);
+  const application = sameUris(adopted.redirectUris, redirectUris)
+    ? adopted
+    : await setOAuthApplicationRedirectUris(keys.secretKey, adopted.id, redirectUris);
+  // Clerk shows a secret only once, so an adopted application gets a new one.
+  const clientSecret = await rotateOAuthApplicationSecret(keys.secretKey, adopted.id);
+  await saveApplication(ctx, input.libraryId, input.token, application, encrypt(clientSecret, keys.encryptionKey));
 }
 
 /** Makes Clerk's OAuth application for this library answer on `origins`. */
@@ -92,46 +145,41 @@ export async function syncLibraryOAuthClientFor(
     encryptionKey: requireRuntimeEnvironment("ENCRYPTION_KEY", configurationError),
   };
   const wanted = libraryOAuthRedirectUris(input.origins);
-  try {
+  await withOAuthClientLease(ctx, input.libraryId, async (token) => {
     const row: Doc<"evidenceLibraryOAuthClients"> | null = await ctx.runQuery(
       internal.evidenceLibraries.oauthClients.readOAuthClient,
       { libraryId: input.libraryId },
     );
-    if (!row?.applicationId || !row.clientId || !row.discoveryUrl) {
-      await provisionOAuthClient(ctx, keys, input.libraryId, input.mode, wanted);
+    const provision = { libraryId: input.libraryId, token, mode: input.mode, wanted };
+    if (!row?.applicationId || !row.encryptedClientSecret) {
+      await provisionOAuthClient(ctx, keys, provision);
       return;
     }
-    const redirectUris = redirectUrisFor(input.mode, row.redirectUris, wanted);
-    if (sameUris(row.redirectUris, redirectUris)) return;
-    let application;
-    try {
-      application = await setOAuthApplicationRedirectUris(keys.secretKey, row.applicationId, redirectUris);
-    } catch (error) {
+    // Read Clerk itself: a change whose answer was lost may still have landed.
+    const current = await readOAuthApplication(keys.secretKey, row.applicationId);
+    if (!current) {
       // Removed from Clerk by hand: start again with a new one.
-      if (!(error instanceof ClerkApiError) || error.status !== 404) throw error;
-      await ctx.runMutation(internal.evidenceLibraries.oauthClients.removeOAuthClientRecord, {
+      await ctx.runMutation(internal.evidenceLibraries.oauthClients.forgetOAuthApplication, {
         libraryId: input.libraryId,
+        token,
       });
-      await provisionOAuthClient(ctx, keys, input.libraryId, input.mode, wanted);
+      await provisionOAuthClient(ctx, keys, provision);
       return;
     }
-    await ctx.runMutation(internal.evidenceLibraries.oauthClients.saveOAuthClient, {
-      libraryId: input.libraryId,
-      applicationId: application.id,
-      clientId: application.clientId,
-      discoveryUrl: application.discoveryUrl,
-      redirectUris: [...application.redirectUris].sort(),
-    });
-  } catch (error) {
-    if (error instanceof ClerkApiError) await recordFailure(ctx, input.libraryId, error);
-    throw error;
-  }
+    const redirectUris = redirectUrisFor(input.mode, current.redirectUris, wanted);
+    const application = sameUris(current.redirectUris, redirectUris)
+      ? current
+      : await setOAuthApplicationRedirectUris(keys.secretKey, current.id, redirectUris);
+    if (!sameUris(row.redirectUris, application.redirectUris)) {
+      await saveApplication(ctx, input.libraryId, token, application);
+    }
+  });
 }
 
 /** Deletes the library's application, including any an unanswered attempt left. */
 export async function deleteLibraryOAuthClientFor(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">) {
   const secretKey = requireRuntimeEnvironment("CLERK_SECRET_KEY", configurationError);
-  try {
+  await withOAuthClientLease(ctx, libraryId, async (token) => {
     const row: Doc<"evidenceLibraryOAuthClients"> | null = await ctx.runQuery(
       internal.evidenceLibraries.oauthClients.readOAuthClient,
       { libraryId },
@@ -140,11 +188,8 @@ export async function deleteLibraryOAuthClientFor(ctx: ActionCtx, libraryId: Id<
     for (const application of await findOAuthApplicationsByName(secretKey, libraryOAuthApplicationName(libraryId))) {
       await deleteOAuthApplication(secretKey, application.id);
     }
-    await ctx.runMutation(internal.evidenceLibraries.oauthClients.removeOAuthClientRecord, { libraryId });
-  } catch (error) {
-    if (error instanceof ClerkApiError) await recordFailure(ctx, libraryId, error);
-    throw error;
-  }
+    await ctx.runMutation(internal.evidenceLibraries.oauthClients.removeOAuthClientRecord, { libraryId, token });
+  });
 }
 
 export const syncLibraryOAuthClient = internalAction({

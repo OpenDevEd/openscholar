@@ -26,7 +26,11 @@ import {
   removeLibraryRuntimeRoute,
 } from "./readinessClient";
 import { ClerkApiError } from "./clerkOAuthApplications";
-import { deleteLibraryOAuthClientFor } from "./oauthClientSync";
+import {
+  deleteLibraryOAuthClientFor,
+  isRetryableOAuthClientError,
+  OAuthClientBusyError,
+} from "./oauthClientSync";
 
 function requireEnvironment(name: string) {
   const value = process.env[name]?.trim();
@@ -225,7 +229,7 @@ export const runDevelopmentTeardown = internalAction({
         error instanceof DatabaseProvisionerError ||
         error instanceof VolumeDeletionClientError
           ? { code: error.code, message: error.message }
-          : error instanceof ClerkApiError
+          : error instanceof ClerkApiError || error instanceof OAuthClientBusyError
             ? {
                 code: "OAUTH_CLIENT_DELETE_FAILED",
                 message: "The library's OpenScholar sign-in could not be removed",
@@ -244,7 +248,7 @@ export const runDevelopmentTeardown = internalAction({
       // last try.
       if (
         isRetryableVolumeDeletionError(error) ||
-        (error instanceof ClerkApiError && error.retryable)
+        isRetryableOAuthClientError(error)
       ) {
         const again = await ctx.runMutation(
           internal.evidenceLibraries.teardown.retryDevelopmentTeardown,

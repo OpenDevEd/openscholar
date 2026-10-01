@@ -72,6 +72,14 @@ describe("reader status for a library", () => {
       expect(await response.json()).toEqual({ status: expected });
     }
     expect((await status("active_reader", generateOpaqueToken("els_"))).status).toBe(401);
+
+    // A deletion Clerk delivered before the account's creation still counts.
+    vi.useFakeTimers();
+    vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
+    vi.stubGlobal("fetch", async () => new Response(null, { status: 204 }));
+    await deleteAccount(t, "deleted_before_created");
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await (await status("deleted_before_created")).json()).toEqual({ status: "deleted" });
   });
 });
 
@@ -120,6 +128,30 @@ describe("deleting an OpenScholar account", () => {
     expect(calls.filter((call) => call.url.startsWith(flaky.url))).toHaveLength(2);
     expect(calls.every((call) => call.url.startsWith(up.url) || call.url.startsWith(flaky.url))).toBe(true);
     expect(await t.run((ctx) => ctx.db.query("evidenceLibraryReaderDeletions").collect())).toEqual([]);
+  });
+
+  it("tries again after an attempt that died before it could record anything", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("ENCRYPTION_KEY", encryptionKey);
+    const t = convexTest(schema, modules);
+    const library = await seedLiveLibrary(t, "crash");
+    const deletionId = await t.run((ctx) =>
+      ctx.db.insert("evidenceLibraryReaderDeletions", {
+        libraryId: library.libraryId, clerkUserId: "reader_3", attempts: 0, state: "pending", createdAt: 1, updatedAt: 1,
+      }),
+    );
+    // The attempt started, then its process went away.
+    await t.mutation(internal.evidenceLibraries.readerDeletions.beginReaderDeletionAttempt, { deletionId });
+    let calls = 0;
+    vi.stubGlobal("fetch", async () => {
+      calls += 1;
+      return new Response(null, { status: 204 });
+    });
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(calls).toBe(1);
+    expect(await t.run((ctx) => ctx.db.get("evidenceLibraryReaderDeletions", deletionId))).toBeNull();
   });
 
   it("keeps a record of a library that never confirmed", async () => {

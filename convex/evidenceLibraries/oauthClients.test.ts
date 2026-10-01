@@ -28,7 +28,9 @@ afterEach(() => {
 
 async function setup() {
   const t = convexTest(schema, modules);
-  const libraryId = await t.run(async (ctx) => (await seedTopicLibrary(ctx, "oauth", "digest")).libraryId);
+  const libraryId = await t.run(async (ctx) =>
+    (await seedTopicLibrary(ctx, "oauth", "digest", "https://oauth.example.test")).libraryId,
+  );
   const sync = (origins: string[], mode: "include" | "exact" = "include") =>
     t.action(internal.evidenceLibraries.oauthClientSync.syncLibraryOAuthClient, { libraryId, origins, mode });
   const row = () =>
@@ -64,7 +66,9 @@ describe("a library's OpenScholar OAuth application", () => {
   it("adopts the application an attempt created when its answer was lost", async () => {
     const { t, libraryId, sync, row } = await setup();
     // Clerk created it, but the answer never arrived: only the intent was saved.
-    await t.mutation(internal.evidenceLibraries.oauthClients.recordOAuthClientIntent, { libraryId });
+    await t.run((ctx) =>
+      ctx.db.insert("evidenceLibraryOAuthClients", { libraryId, intentAt: 1, redirectUris: [], updatedAt: 1 }),
+    );
     clerk.applications.set("oa_lost", {
       id: "oa_lost",
       name: `evidence-library-${libraryId}`,
@@ -97,6 +101,51 @@ describe("a library's OpenScholar OAuth application", () => {
 
     await sync(["https://new.example.test"], "exact");
     expect(appsNamedFor(libraryId)[0].redirect_uris).toEqual([callback("https://new.example.test")]);
+  });
+
+  it("waits for a sync of the same library that is still under way", async () => {
+    const { t, libraryId, sync } = await setup();
+    await t.mutation(internal.evidenceLibraries.oauthClients.claimOAuthClientLease, { libraryId, token: "other-sync" });
+
+    await expect(sync(["https://library.example.test"])).rejects.toThrow("under way");
+    // Two overlapping syncs would each have created one.
+    expect(appsNamedFor(libraryId)).toEqual([]);
+
+    await t.mutation(internal.evidenceLibraries.oauthClients.releaseOAuthClientLease, { libraryId, token: "other-sync" });
+    await sync(["https://library.example.test"]);
+    expect(appsNamedFor(libraryId)).toHaveLength(1);
+  });
+
+  it("registers a callback again when Clerk dropped it after an answer was lost", async () => {
+    const { libraryId, sync } = await setup();
+    await sync(["https://a.example.test", "https://b.example.test"]);
+    // Narrowing to b landed in Clerk, but its answer never arrived, so the
+    // saved list still has both.
+    appsNamedFor(libraryId)[0].redirect_uris = [callback("https://b.example.test")];
+
+    await sync(["https://a.example.test"]);
+
+    expect(appsNamedFor(libraryId)[0].redirect_uris).toEqual([
+      callback("https://a.example.test"),
+      callback("https://b.example.test"),
+    ]);
+  });
+
+  it("backfills a library on a custom domain with its platform address too", async () => {
+    const { t, libraryId } = await setup();
+    await t.run(async (ctx) => {
+      const library = await ctx.db.get("evidenceLibraries", libraryId);
+      await ctx.db.patch("evidenceLibraryRuntimeBindings", library!.runtimeBindingId!, {
+        canonicalBaseUrl: "https://custom.example.test",
+      });
+    });
+
+    await t.action(internal.evidenceLibraries.oauthClientSync.backfillLibraryOAuthClients, { cursor: null });
+
+    expect(appsNamedFor(libraryId)[0].redirect_uris).toEqual([
+      callback("https://custom.example.test"),
+      callback("https://oauth.example.test"),
+    ]);
   });
 
   it("is made again when someone deleted it in Clerk", async () => {

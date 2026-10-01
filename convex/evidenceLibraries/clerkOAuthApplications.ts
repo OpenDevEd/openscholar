@@ -154,6 +154,17 @@ export async function rotateOAuthApplicationSecret(secretKey: string, applicatio
   return readSecret(body);
 }
 
+/** The application as Clerk has it now, or null when Clerk no longer has it. */
+export async function readOAuthApplication(secretKey: string, applicationId: string) {
+  try {
+    const { body } = await clerkRequest(secretKey, "GET", `/oauth_applications/${encodeURIComponent(applicationId)}`);
+    return readApplication(body);
+  } catch (error) {
+    if (error instanceof ClerkApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
 export async function setOAuthApplicationRedirectUris(
   secretKey: string,
   applicationId: string,

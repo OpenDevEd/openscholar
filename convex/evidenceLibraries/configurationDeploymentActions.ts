@@ -56,7 +56,11 @@ import {
 } from "./storageSetupClient";
 import type { RuntimeImageReference } from "./runtimeImageRegistry";
 import { ClerkApiError } from "./clerkOAuthApplications";
-import { syncLibraryOAuthClientFor } from "./oauthClientSync";
+import {
+  isRetryableOAuthClientError,
+  OAuthClientBusyError,
+  syncLibraryOAuthClientFor,
+} from "./oauthClientSync";
 
 /**
  * Once a deployment has landed, only the addresses it answers on keep a
@@ -775,7 +779,7 @@ export const runConfigurationDeployment = internalAction({
         isRetryableReadinessError(error) ||
         (error instanceof CoolifyClientError &&
           error.code === "COOLIFY_UNAVAILABLE") ||
-        (error instanceof ClerkApiError && error.retryable) ||
+        isRetryableOAuthClientError(error) ||
         (error instanceof StorageSetupError &&
           (error.code === "STORAGE_UNAVAILABLE" ||
             (error.status ?? 0) >= 500))
@@ -830,7 +834,7 @@ export const runConfigurationDeployment = internalAction({
         error instanceof StorageSetupError ||
         error instanceof PlatformEmbeddingKeyMissingError
           ? { code: error.code, message: error.message }
-          : error instanceof ClerkApiError
+          : error instanceof ClerkApiError || error instanceof OAuthClientBusyError
             ? {
                 code: "OAUTH_CLIENT_SYNC_FAILED",
                 message: "OpenScholar sign-in could not be prepared for this library",

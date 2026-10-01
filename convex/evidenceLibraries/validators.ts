@@ -979,6 +979,8 @@ export const evidenceLibraryReaderDeletionFields = {
  * The Clerk OAuth application a library signs readers and admins in with.
  * `intentAt` is written before Clerk is asked to create it, so an attempt
  * whose answer was lost is adopted on the next try instead of repeated.
+ * `redirectUris` is what Clerk last confirmed; every sync reads Clerk again,
+ * because an answer can be lost after Clerk applied the change.
  */
 export const evidenceLibraryOAuthClientFields = {
   libraryId: v.id("evidenceLibraries"),
@@ -988,6 +990,9 @@ export const evidenceLibraryOAuthClientFields = {
   encryptedClientSecret: v.optional(v.string()),
   discoveryUrl: v.optional(v.string()),
   redirectUris: v.array(v.string()),
+  // One sync at a time per library: two that overlap could each create an
+  // application, or save a secret Clerk has already replaced.
+  lease: v.optional(v.object({ token: v.string(), expiresAt: v.number() })),
   lastError: v.optional(
     v.object({
       status: v.optional(v.number()),
@@ -998,4 +1003,13 @@ export const evidenceLibraryOAuthClientFields = {
     }),
   ),
   updatedAt: v.number(),
+};
+
+/**
+ * Clerk users OpenScholar has seen deleted, kept even when no user row ever
+ * existed, so a deletion delivered before the creation is not forgotten.
+ */
+export const clerkDeletedUserFields = {
+  clerkId: v.string(),
+  deletedAt: v.number(),
 };

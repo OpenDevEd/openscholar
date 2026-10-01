@@ -59,6 +59,7 @@ export function createFakeClerkOAuth() {
     }
     const application = id ? applications.get(id) : undefined;
     if (!application) return notFound();
+    if (method === "GET" && !action) return json(200, publicShape(application));
     if (method === "POST" && action === "rotate_secret") {
       sequence += 1;
       application.client_secret = `secret_${application.id}_${sequence}`;

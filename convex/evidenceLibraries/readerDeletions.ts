@@ -1,13 +1,16 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import { internalQuery, type MutationCtx } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { readLibraryRuntimeTarget } from "./runtimeTarget";
 
 const LIBRARY_PAGE_SIZE = 50;
-/** Minutes to wait before each retry; about a day in all before giving up. */
-const RETRY_DELAY_MINUTES = [1, 5, 30, 120, 360, 720];
-export const READER_DELETION_MAX_ATTEMPTS = RETRY_DELAY_MINUTES.length + 1;
+/**
+ * Minutes from each attempt to the next; about a day in all. The last entry
+ * is the wait before a deletion that never got through is marked failed.
+ */
+const RETRY_DELAY_MINUTES = [1, 5, 30, 120, 360, 720, 60];
+export const READER_DELETION_MAX_ATTEMPTS = RETRY_DELAY_MINUTES.length;
 
 /** Called from the Clerk `user.deleted` projection once it has applied. */
 export async function queueReaderDeletion(ctx: MutationCtx, clerkUserId: string) {
@@ -57,7 +60,12 @@ export const fanOutReaderDeletion = internalMutation({
   },
 });
 
-export const readReaderDeletionTarget = internalQuery({
+/**
+ * Starts one attempt: counts it and schedules the next before the library is
+ * called, so an attempt that dies on the way still has a successor. The call
+ * after the last attempt only marks the deletion failed.
+ */
+export const beginReaderDeletionAttempt = internalMutation({
   args: { deletionId: v.id("evidenceLibraryReaderDeletions") },
   returns: v.union(
     v.null(),
@@ -73,6 +81,22 @@ export const readReaderDeletionTarget = internalQuery({
   handler: async (ctx, args) => {
     const deletion = await ctx.db.get("evidenceLibraryReaderDeletions", args.deletionId);
     if (!deletion || deletion.state !== "pending") return null;
+    if (deletion.attempts >= READER_DELETION_MAX_ATTEMPTS) {
+      await ctx.db.patch("evidenceLibraryReaderDeletions", deletion._id, { state: "failed", updatedAt: Date.now() });
+      console.error("[evidence-library] reader deletion gave up", {
+        libraryId: deletion.libraryId,
+        attempts: deletion.attempts,
+        error: deletion.lastError,
+      });
+      return null;
+    }
+    const attempts = deletion.attempts + 1;
+    await ctx.db.patch("evidenceLibraryReaderDeletions", deletion._id, { attempts, updatedAt: Date.now() });
+    await ctx.scheduler.runAfter(
+      RETRY_DELAY_MINUTES[attempts - 1] * 60_000,
+      internal.evidenceLibraries.readerDeletionActions.deleteReaderFromLibrary,
+      args,
+    );
     const library = await ctx.db.get("evidenceLibraries", deletion.libraryId);
     return {
       clerkUserId: deletion.clerkUserId,
@@ -82,6 +106,7 @@ export const readReaderDeletionTarget = internalQuery({
   },
 });
 
+/** The library confirmed: nothing more to do, and the scheduled successor finds no row. */
 export const finishReaderDeletion = internalMutation({
   args: { deletionId: v.id("evidenceLibraryReaderDeletions") },
   returns: v.null(),
@@ -93,8 +118,7 @@ export const finishReaderDeletion = internalMutation({
   },
 });
 
-/** Records a failed call and schedules the next one, or gives up after the last. */
-export const retryReaderDeletion = internalMutation({
+export const recordReaderDeletionFailure = internalMutation({
   args: {
     deletionId: v.id("evidenceLibraryReaderDeletions"),
     error: v.object({ status: v.optional(v.number()), message: v.string() }),
@@ -102,28 +126,12 @@ export const retryReaderDeletion = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const deletion = await ctx.db.get("evidenceLibraryReaderDeletions", args.deletionId);
-    if (!deletion || deletion.state !== "pending") return null;
-    const attempts = deletion.attempts + 1;
-    const delayMinutes = RETRY_DELAY_MINUTES[attempts - 1];
-    await ctx.db.patch("evidenceLibraryReaderDeletions", deletion._id, {
-      attempts,
-      lastError: args.error,
-      updatedAt: Date.now(),
-      ...(delayMinutes === undefined ? { state: "failed" as const } : {}),
-    });
-    if (delayMinutes === undefined) {
-      console.error("[evidence-library] reader deletion gave up", {
-        libraryId: deletion.libraryId,
-        attempts,
-        error: args.error,
+    if (deletion?.state === "pending") {
+      await ctx.db.patch("evidenceLibraryReaderDeletions", deletion._id, {
+        lastError: args.error,
+        updatedAt: Date.now(),
       });
-      return null;
     }
-    await ctx.scheduler.runAfter(
-      delayMinutes * 60_000,
-      internal.evidenceLibraries.readerDeletionActions.deleteReaderFromLibrary,
-      { deletionId: deletion._id },
-    );
     return null;
   },
 });

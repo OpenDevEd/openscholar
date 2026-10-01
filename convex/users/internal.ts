@@ -123,6 +123,11 @@ export async function applyUserDeleteProjection(
     const grants = await ctx.db.query("evidenceLibraryMembers")
       .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.clerkId)).collect();
     for (const grant of grants) await ctx.db.delete("evidenceLibraryMembers", grant._id);
+    // Kept even without a user row, for a deletion that arrives before the
+    // account's creation: libraries ask whether a reader still exists.
+    const tombstone = await ctx.db.query("clerkDeletedUsers")
+      .withIndex("by_clerkId", q => q.eq("clerkId", args.clerkId)).unique();
+    if (!tombstone) await ctx.db.insert("clerkDeletedUsers", { clerkId: args.clerkId, deletedAt: Date.now() });
     await queueReaderDeletion(ctx, args.clerkId);
     if (!user) return;
 

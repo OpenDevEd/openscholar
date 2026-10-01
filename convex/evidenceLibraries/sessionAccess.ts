@@ -28,6 +28,7 @@ export const readSessionAccess = internalQuery({
 });
 
 /**
+ * `deleted` also covers a deletion that arrived before the account's creation.
  * `unknown` covers an account the Clerk webhook has not delivered yet, so a
  * library never deletes data for a person who may still exist. A suspended
  * account keeps its data.
@@ -40,6 +41,8 @@ export const readReaderStatus = internalQuery({
     if (!libraryId || !await findMatchingLibraryServiceCredential(ctx, { libraryId, credentialDigest: args.credentialDigest })) {
       throw createError("UNAUTHENTICATED", "Invalid library service credential");
     }
+    const deleted = await ctx.db.query("clerkDeletedUsers").withIndex("by_clerkId", q => q.eq("clerkId", args.clerkUserId)).unique();
+    if (deleted) return "deleted";
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkUserId)).unique();
     if (!user) return "unknown";
     return user.state === "deleted" ? "deleted" : "active";

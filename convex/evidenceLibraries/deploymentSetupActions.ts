@@ -19,7 +19,7 @@ import {
   requireLibraryRuntimeRouteReady,
 } from "./readinessClient";
 import { ClerkApiError } from "./clerkOAuthApplications";
-import { syncLibraryOAuthClientFor } from "./oauthClientSync";
+import { OAuthClientBusyError, syncLibraryOAuthClientFor } from "./oauthClientSync";
 
 const invalidCoolifyConfig = (message: string) =>
   new CoolifyClientError("INVALID_COOLIFY_CONFIG", message);
@@ -174,7 +174,7 @@ export const runDeploymentSetup = internalAction({
         error instanceof CoolifyClientError ||
         error instanceof ReadinessClientError
           ? { code: error.code, message: error.message }
-          : error instanceof ClerkApiError
+          : error instanceof ClerkApiError || error instanceof OAuthClientBusyError
             ? {
                 code: "OAUTH_CLIENT_SYNC_FAILED",
                 message: "OpenScholar sign-in could not be set up for this library",

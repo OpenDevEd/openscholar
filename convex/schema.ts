@@ -25,6 +25,7 @@ import {
   evidenceLibraryAdminLoginCodeFields,
   evidenceLibraryReaderDeletionFields,
   evidenceLibraryOAuthClientFields,
+  clerkDeletedUserFields,
   evidenceLibraryConfigDraftFields,
   evidenceLibraryConfigRevisionFields,
   evidenceLibraryConfigSectionValidator,
@@ -259,6 +260,8 @@ export default defineSchema({
     .index("by_libraryId", ["libraryId"])
     // The sweep walks working domains oldest check first, so none starves.
     .index("by_state_and_checkedAt", ["state", "checkedAt"]),
+
+  clerkDeletedUsers: defineTable(clerkDeletedUserFields).index("by_clerkId", ["clerkId"]),
 
   // One row per library: its Clerk OAuth application.
   evidenceLibraryOAuthClients: defineTable(evidenceLibraryOAuthClientFields)
