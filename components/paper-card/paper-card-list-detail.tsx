@@ -367,12 +367,12 @@ export function PaperCardListDetail({
 
             {/* Full-text links get their own row: beside rating and save they don't fit a phone */}
             {((result.open_access?.is_oa && result.open_access?.oa_url) || result.doi) && (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2">
                 <OpenAccessBadge
                   isOA={result.open_access?.is_oa}
                   oaUrl={result.open_access?.oa_url}
                 />
-                <DOIBadge doi={result.doi} />
+                <DOIBadge doi={result.doi} className="min-w-0 flex-1" />
               </div>
             )}
 
