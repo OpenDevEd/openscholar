@@ -574,17 +574,6 @@ export const evidenceLibraryCredentialFields = {
   updatedAt: v.number(),
 };
 
-export const evidenceLibraryAdminLoginCodeFields = {
-  libraryId: v.id("evidenceLibraries"),
-  organizationId: v.id("organizations"),
-  clerkUserId: v.string(),
-  role: evidenceLibraryAdminRoleValidator,
-  codeDigest: v.string(),
-  issuedAt: v.number(),
-  expiresAt: v.number(),
-  consumedAt: v.optional(v.number()),
-};
-
 export const evidenceLibraryRequestableOperationKindValidator = v.union(
   v.literal("validate"),
   v.literal("rollback"),

@@ -585,11 +585,15 @@ export async function readEvidenceLibraryDraft(
         ),
       }
     : null;
+  const runtimeBinding = access.library.runtimeBindingId
+    ? await ctx.db.get("evidenceLibraryRuntimeBindings", access.library.runtimeBindingId)
+    : null;
   return {
     draft: {
       ...draft,
       ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
     },
+    liveAddress: runtimeBinding?.canonicalBaseUrl ?? runtimeBinding?.targetBaseUrl ?? null,
     library: access.library,
     operation,
     hasUnpublishedChanges:
@@ -665,6 +669,8 @@ export const getDraft = query({
       }),
     ),
     hasUnpublishedChanges: v.boolean(),
+    /** Where the library answers now, or null before it first runs. */
+    liveAddress: v.union(v.string(), v.null()),
     sections: v.array(
       v.object({
         sectionKey: sectionKeyValidator,

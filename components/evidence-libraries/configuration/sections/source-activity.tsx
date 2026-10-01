@@ -27,6 +27,7 @@ import type { SourceStatus } from "@/convex/evidenceLibraries/sourceStatusValida
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AdminAreaLink } from "@/components/evidence-libraries/admin-area-link";
 import { cn } from "@/lib/utils";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { Collapsible } from "@/components/ui/collapsible";
 import { DisclosureContent, DisclosureTrigger } from "../disclosure-button";
 import { type StatusTone } from "../status-chip";
@@ -280,7 +281,8 @@ function RunningActivity({ status }: { status: Running }) {
 }
 
 /** A place in a library's admin: the library, and where in it to land. */
-type AdminDestination = { libraryId: string; returnPath: string };
+/** The admin page that lists a source's record issues, on the library's live address. */
+type AdminDestination = { address: string; path: `/admin${string}` } | null;
 
 function SucceededActivity({ status, issuesIn }: { status: SourceStatus; issuesIn: AdminDestination }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources.status");
@@ -306,9 +308,9 @@ function SucceededActivity({ status, issuesIn }: { status: SourceStatus; issuesI
             </p>
           ) : null}
         </div>
-        {issues > 0 ? (
+        {issues > 0 && issuesIn ? (
           <Button asChild variant="outline" size="sm">
-            <AdminAreaLink libraryId={issuesIn.libraryId} returnPath={issuesIn.returnPath}>
+            <AdminAreaLink address={issuesIn.address} path={issuesIn.path}>
               <TriangleAlert className="text-amber-600 dark:text-amber-400" />
               {t("reviewIssues", { count: issues })}
               <ExternalLink className="text-muted-foreground" />
@@ -453,6 +455,8 @@ export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
       : {},
   ).report as FunctionReturnType<typeof api.evidenceLibraries.sourceStatus.listForLibrary> | Error | undefined;
   const report = result instanceof Error ? null : result;
+  // The configuration page already reads this; Convex shares the subscription.
+  const liveAddress = useProtectedQuery(api.evidenceLibraries.queries.getDraft, { libraryId }).data?.liveAddress ?? null;
   const requestRun = useAction(api.zotero.runtimeReadActions.requestSourceRun);
   const [retrying, setRetrying] = useState<ReadonlySet<string>>(new Set());
   const now = useNow({ updateInterval: 30_000 });
@@ -481,7 +485,7 @@ export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
         <SourceActivityBand
           status={status}
           provider={provider}
-          issuesIn={{ libraryId, returnPath: `/admin?source=${encodeURIComponent(sourceKey)}` }}
+          issuesIn={liveAddress ? { address: liveAddress, path: `/admin?source=${encodeURIComponent(sourceKey)}` } : null}
           onRetry={() => retry(sourceKey)}
           retrying={retrying.has(sourceKey)}
         />

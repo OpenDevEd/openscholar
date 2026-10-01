@@ -64,6 +64,7 @@ vi.mock("@/convex/_generated/api", () => ({
       credentialActions: { writeCredential: "writeCredential" },
       openAlexSourceKey: { removeOpenAlexKey: "removeOpenAlexKey" },
       sourceStatus: { listForLibrary: "listForLibrary" },
+      queries: { getDraft: "getDraft" },
       collectionSources: {
         listLibraryCollectionSources: "listLibraryCollectionSources",
         connectCollectionSource: "connectCollectionSource",
@@ -192,7 +193,9 @@ function queries(input: {
           : { connected: false }
         : query === "listCredentialMetadata"
           ? (input.credentials ?? [])
-          : (input.groups ?? []),
+          : query === "getDraft"
+            ? { liveAddress: "https://library.example.test" }
+            : (input.groups ?? []),
     isReady: true,
   }));
 }

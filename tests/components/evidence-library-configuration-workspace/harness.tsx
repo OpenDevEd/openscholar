@@ -298,6 +298,7 @@ export function draftResult(
       },
       operation: overrides.operation ?? null,
       hasUnpublishedChanges: overrides.hasUnpublishedChanges ?? false,
+      liveAddress: "https://saved-library.example.test",
       sections: overrides.sections ?? savedRows,
     },
     isReady: true,

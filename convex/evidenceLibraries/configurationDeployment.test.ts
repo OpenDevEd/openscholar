@@ -428,8 +428,8 @@ function createRuntimeNetwork(input: {
           },
         });
       }
-      // A live library sends a signed-out visitor of its admin area to
-      // OpenScholar, and readiness checks exactly that.
+      // A live library sends a signed-out visitor of its admin area to its
+      // own OpenScholar sign-in, and readiness checks exactly that.
       if (
         url.origin === new URL(canonical ?? publicDomain).origin &&
         method === "GET" &&
@@ -438,7 +438,7 @@ function createRuntimeNetwork(input: {
         return new Response(null, {
           status: 307,
           headers: {
-            location: `https://openscholar.example.test/evidence-libraries/${input.libraryId}/admin?return=%2Fadmin`,
+            location: "/api/admin/sign-in?return=%2Fadmin",
           },
         });
       }
@@ -1149,12 +1149,6 @@ describe("Evidence Library configuration deployment", () => {
       network.environments.find(({ key }) => key === "LIBRARY_CONFIG_JSON")!
         .value,
     ).toBe(JSON.stringify({ revision: "old" }));
-    await expect(
-      deployment.fixture.admin.action(
-        api.evidenceLibraries.adminHandoffActions.issueAdminHandoff,
-        { libraryId: deployment.fixture.created.libraryId },
-      ),
-    ).resolves.toMatchObject({ status: "allowed" });
   });
 
   it("writes a configuration through the canonical custom address", async () => {

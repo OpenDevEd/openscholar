@@ -225,7 +225,7 @@ describe("<SetupProgress>", () => {
     ).toBe(true);
     expect(screen.getByRole("link", { name: "openAdmin" })).toHaveAttribute(
       "href",
-      "/evidence-libraries/lib_1/admin",
+      "https://climate-lib.example.test/admin",
     );
     expect(screen.getByRole("link", { name: "openLibrary" })).toHaveAttribute(
       "href",

@@ -118,7 +118,7 @@ export function SetupProgressView({
           ) : null}
           {active ? (
             <Button asChild size="sm" className={BAR_ACTION}>
-              <AdminAreaLink libraryId={setup.library._id}>
+              <AdminAreaLink address={setup.publicAddress}>
                 <ExternalLink />
                 <span className={BAR_LABEL}>{t("openAdmin")}</span>
               </AdminAreaLink>

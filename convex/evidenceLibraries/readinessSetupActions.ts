@@ -13,7 +13,6 @@ import {
   ReadinessClientError,
   type LibraryRuntimeRouteInput,
 } from "./readinessClient";
-import { buildEvidenceLibraryLoginPageUrl } from "./runtimeConfiguration";
 import {
   requireRuntimeEnvironment,
   requireRuntimeHttpsOrigin,
@@ -111,13 +110,6 @@ export const runReadinessSetup = internalAction({
         runtimeImage: prepared.runtimeImage,
         revisionKey: prepared.revisionKey,
         targetBaseUrl: prepared.targetBaseUrl,
-        loginPageUrl: buildEvidenceLibraryLoginPageUrl({
-          libraryId: args.libraryId,
-          appOrigin: requireRuntimeHttpsOrigin(
-            "EL_OPENSCHOLAR_URL",
-            invalidReadinessConfig,
-          ),
-        }),
         verifierUrl,
         verifierToken,
       };

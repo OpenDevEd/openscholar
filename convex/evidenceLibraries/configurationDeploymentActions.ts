@@ -47,7 +47,6 @@ import {
 } from "./runtimeActionConfig";
 import {
   assembleEvidenceLibraryRuntimePayload,
-  buildEvidenceLibraryLoginPageUrl,
 } from "./runtimeConfiguration";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import {
@@ -543,13 +542,6 @@ export const runConfigurationDeployment = internalAction({
           revisionKey: readiness.revisionKey,
           targetBaseUrl: readiness.targetBaseUrl,
           platformBaseUrl: readiness.platformBaseUrl,
-          loginPageUrl: buildEvidenceLibraryLoginPageUrl({
-            libraryId: args.libraryId,
-            appOrigin: requireRuntimeHttpsOrigin(
-              "EL_OPENSCHOLAR_URL",
-              invalidConfiguration,
-            ),
-          }),
           verifierUrl,
           verifierToken,
         };
@@ -775,13 +767,6 @@ export const runConfigurationDeployment = internalAction({
         revisionKey: readiness.revisionKey,
         targetBaseUrl: readiness.targetBaseUrl,
         platformBaseUrl: readiness.platformBaseUrl,
-        loginPageUrl: buildEvidenceLibraryLoginPageUrl({
-          libraryId: args.libraryId,
-          appOrigin: requireRuntimeHttpsOrigin(
-            "EL_OPENSCHOLAR_URL",
-            invalidConfiguration,
-          ),
-        }),
         verifierUrl,
         verifierToken,
       };
