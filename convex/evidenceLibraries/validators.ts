@@ -574,6 +574,22 @@ export const evidenceLibraryCredentialFields = {
   updatedAt: v.number(),
 };
 
+/**
+ * One-time admin sign-in codes from before libraries signed admins in with
+ * OpenScholar. Nothing writes them any more; the table is dropped once
+ * `legacyAdminLoginCodes:purge` has emptied it on every deployment.
+ */
+export const evidenceLibraryAdminLoginCodeFields = {
+  libraryId: v.id("evidenceLibraries"),
+  organizationId: v.id("organizations"),
+  clerkUserId: v.string(),
+  role: evidenceLibraryAdminRoleValidator,
+  codeDigest: v.string(),
+  issuedAt: v.number(),
+  expiresAt: v.number(),
+  consumedAt: v.optional(v.number()),
+};
+
 export const evidenceLibraryRequestableOperationKindValidator = v.union(
   v.literal("validate"),
   v.literal("rollback"),
