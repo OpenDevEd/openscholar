@@ -290,7 +290,9 @@ function listPaths(type: ts.Type, at: ts.Node, where = "", stack = new Set<ts.Ty
   } else if (name === "VObject") {
     const fields = validatorPart(type, "fields", at);
     const names = fields?.getProperties().map((field) => field.getName()) ?? [];
-    const paged = names.includes("page") && names.includes("isDone") && names.includes("continueCursor");
+    const pageField = fields?.getProperty("page");
+    const pageType = pageField ? checker.getTypeOfSymbolAtLocation(pageField, at) : undefined;
+    const paged = names.includes("isDone") && names.includes("continueCursor") && pageType?.getSymbol()?.getName() === "VArray";
     for (const field of fields?.getProperties() ?? []) {
       const fieldType = checker.getTypeOfSymbolAtLocation(field, at);
       if (paged && field.getName() === "page") {
@@ -303,6 +305,14 @@ function listPaths(type: ts.Type, at: ts.Node, where = "", stack = new Set<ts.Ty
     if (members) for (const member of checker.getTypeArguments(members as ts.TypeReference)) listPaths(member, at, where, stack, out);
   }
   stack.delete(type);
+  return out;
+}
+
+/** Lists in a `returns` value: a validator, or a map of field validators that Convex wraps in an object. */
+function returnedLists(type: ts.Type, at: ts.Node): Set<string> {
+  if (/^V[A-Z]/.test(type.getSymbol()?.getName() ?? "") || type.isUnion()) return listPaths(type, at);
+  const out = new Set<string>();
+  for (const field of type.getProperties()) for (const list of listPaths(checker.getTypeOfSymbolAtLocation(field, at), at, `.${field.getName()}`)) out.add(list);
   return out;
 }
 
@@ -328,13 +338,43 @@ function readsByCursor(loop: ts.Node) {
   return reads;
 }
 
-/** Whether `loop` gathers what it reads: into an array, map or set, or a spread into a new array. */
+/** Names declared inside `scope`: a per-iteration batch declared in a loop doesn't outlive it. */
+function declaredIn(scope: ts.Node) {
+  const names = new Set<string>();
+  const visit = (node: ts.Node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) names.add(node.name.text);
+    ts.forEachChild(node, visit);
+  };
+  visit(scope);
+  return names;
+}
+
+/** The variable at the root of `a.b.c` or `a[i]`. */
+function rootName(expression: ts.Expression): string | undefined {
+  let current = expression;
+  while (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current) || ts.isParenthesizedExpression(current)) current = current.expression;
+  return ts.isIdentifier(current) ? current.text : current.kind === ts.SyntaxKind.ThisKeyword ? "this" : undefined;
+}
+
+/**
+ * Whether `loop` gathers into something that outlives an iteration: an array, map or set
+ * declared outside it, by `.push`, `.concat`, `.set`, `.add`, an indexed write or a spread
+ * reassignment. A batch declared inside the loop and written out each time isn't gathering.
+ */
 function gathers(loop: ts.Node) {
+  const inner = declaredIn(loop);
+  const outer = (expression: ts.Expression) => {
+    const name = rootName(expression);
+    return name !== undefined && !inner.has(name);
+  };
   let found = false;
   const visit = (node: ts.Node) => {
     if (found) return;
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["push", "concat", "set", "add"].includes(node.expression.name.text)) found = true;
-    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isArrayLiteralExpression(node.right) && node.right.elements.some(ts.isSpreadElement)) found = true;
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["push", "concat", "set", "add"].includes(node.expression.name.text) && outer(node.expression.expression)) found = true;
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+      if (ts.isElementAccessExpression(node.left) && outer(node.left.expression)) found = true;
+      if (ts.isArrayLiteralExpression(node.right) && node.right.elements.some(ts.isSpreadElement) && outer(node.left)) found = true;
+    }
     ts.forEachChild(node, visit);
   };
   visit(loop);
@@ -342,26 +382,55 @@ function gathers(loop: ts.Node) {
 }
 
 const isLoop = (node: ts.Node) => ts.isForStatement(node) || ts.isForOfStatement(node) || ts.isForInStatement(node) || ts.isWhileStatement(node) || ts.isDoStatement(node);
+const isEffect = (call: ts.CallExpression) => /(^|\.)use(Layout)?Effect$/.test(call.expression.getText());
 
-/** Where `tree` loads every page: `loadMore` from an effect or a loop, or a cursor loop that gathers pages. */
+/**
+ * Where `tree` loads every page: `loadMore` (by any local name) called from an effect,
+ * including a named callback, or from a loop; or a cursor loop that gathers pages. Repeats
+ * in one function are numbered, so a second one counts as a new entry.
+ */
 function everyPageLoads(tree: ts.SourceFile, file: string): string[] {
-  const found: string[] = [];
-  const visit = (node: ts.Node) => {
-    if (ts.isCallExpression(node)) {
-      const callee = node.expression;
-      const isLoadMore = (ts.isIdentifier(callee) && callee.text === "loadMore") || (ts.isPropertyAccessExpression(callee) && callee.name.text === "loadMore");
-      if (isLoadMore) {
-        for (let current: ts.Node | undefined = node.parent; current && !ts.isSourceFile(current); current = current.parent) {
-          if (isLoop(current)) { found.push(`${file}:${holderName(node)}`); break; }
-          if ((ts.isArrowFunction(current) || ts.isFunctionExpression(current)) && ts.isCallExpression(current.parent) && /^use(Layout)?Effect$/.test(current.parent.expression.getText())) { found.push(`${file}:${holderName(node)}`); break; }
-        }
-      }
-    }
-    // A loop that reads by cursor and gathers what it reads into one array.
-    if (isLoop(node) && readsByCursor(node) && gathers(node)) found.push(`${file}:${holderName(node)}`);
-    ts.forEachChild(node, visit);
+  // Local names for loadMore: `loadMore`, `{ loadMore: more }`, and `list.loadMore`.
+  const loaders = new Set(["loadMore"]);
+  const functionsByName = new Map<string, ts.Node>();
+  const scan = (node: ts.Node) => {
+    if (ts.isBindingElement(node) && node.propertyName && ts.isIdentifier(node.propertyName) && node.propertyName.text === "loadMore" && ts.isIdentifier(node.name)) loaders.add(node.name.text);
+    if (ts.isFunctionDeclaration(node) && node.name) functionsByName.set(node.name.text, node);
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) functionsByName.set(node.name.text, node.initializer);
+    ts.forEachChild(node, scan);
   };
-  visit(tree);
+  scan(tree);
+  const isLoadMore = (call: ts.CallExpression) => {
+    const callee = call.expression;
+    return (ts.isIdentifier(callee) && loaders.has(callee.text)) || (ts.isPropertyAccessExpression(callee) && callee.name.text === "loadMore");
+  };
+  // Effect callbacks, written inline or passed by name.
+  const effectBodies = new Set<ts.Node>();
+  const findEffects = (node: ts.Node) => {
+    if (ts.isCallExpression(node) && isEffect(node) && node.arguments[0]) {
+      const callback = node.arguments[0];
+      const body = ts.isIdentifier(callback) ? functionsByName.get(callback.text) : callback;
+      if (body) effectBodies.add(body);
+    }
+    ts.forEachChild(node, findEffects);
+  };
+  findEffects(tree);
+  const counts = new Map<string, number>();
+  const found: string[] = [];
+  const add = (node: ts.Node) => {
+    const key = `${file}:${holderName(node)}`;
+    const count = (counts.get(key) ?? 0) + 1;
+    counts.set(key, count);
+    found.push(count === 1 ? key : `${key}#${count}`);
+  };
+  const visit = (node: ts.Node, inEffect: boolean, inLoop: boolean) => {
+    const effect = inEffect || effectBodies.has(node);
+    const loop = inLoop || isLoop(node);
+    if (ts.isCallExpression(node) && isLoadMore(node) && (effect || loop)) add(node);
+    if (isLoop(node) && readsByCursor(node) && gathers(node)) add(node);
+    ts.forEachChild(node, (child) => visit(child, effect, loop));
+  };
+  visit(tree, false, false);
   return found;
 }
 
@@ -406,7 +475,9 @@ for (const tree of program.getSourceFiles().filter((file) => sources.includes(re
     if (!file.startsWith("convex/migrations/") && ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && PUBLIC_DEFINITIONS.includes(node.initializer.expression.text)) {
       const definition = node.initializer.arguments[0];
       const returns = definition && ts.isObjectLiteralExpression(definition) ? definition.properties.find((p) => p.name && ts.isIdentifier(p.name) && p.name.text === "returns") : undefined;
-      if (returns && ts.isPropertyAssignment(returns)) for (const list of listPaths(checker.getTypeAtLocation(returns.initializer), returns.initializer)) listReturns.push(`${file}:${node.name.text}:${list}`);
+      // `returns: validator`, `{ returns }` and a field map (`returns: { items: v.array(...) }`).
+      const value = returns && ts.isPropertyAssignment(returns) ? returns.initializer : returns && ts.isShorthandPropertyAssignment(returns) ? returns.name : undefined;
+      if (value) for (const list of returnedLists(checker.getTypeAtLocation(value), value)) listReturns.push(`${file}:${node.name.text}:${list}`);
     }
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && ALL_BUILDERS.includes(node.initializer.expression.text)) {
       const definition = node.initializer.arguments[0];
@@ -470,12 +541,15 @@ checkPending("everyPage", [...new Set(everyPage)], rules.everyPage.pending, "loa
 // Pending lists only shrink: compared with dev where this branch left it.
 const owner = (key: string) => key.split(":").slice(0, 2).join(":");
 const countByOwner = (keys: string[]) => keys.reduce((counts, key) => counts.set(owner(key), (counts.get(owner(key)) ?? 0) + 1), new Map<string, number>());
+// CI passes RULES_BASE: a pull request's base, or the commit a push moved dev from. Locally, origin/dev.
 let base: Rules | undefined;
+const git = (command: string) => execSync(command, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+const given = process.env.RULES_BASE && !/^0+$/.test(process.env.RULES_BASE) ? process.env.RULES_BASE : "origin/dev";
 try {
-  const ref = execSync("git merge-base HEAD origin/dev", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
-  base = JSON.parse(execSync(`git show ${ref}:scripts/convex-rules.json`, { stdio: ["ignore", "pipe", "ignore"] }).toString()) as Rules;
+  base = JSON.parse(git(`git show ${git(`git merge-base HEAD ${given}`)}:scripts/convex-rules.json`)) as Rules;
 } catch {
-  console.warn("Convex rules: no origin/dev to compare pending lists with; skipping the shrink check.");
+  if (process.env.CI) problems.push(`scripts/convex-rules.json: can't read it at ${given} to check the pending lists only shrink; fetch the full history.`);
+  else console.warn(`Convex rules: no ${given} to compare pending lists with; skipping the shrink check.`);
 }
 if (base) {
   for (const section of ["unboundedReads", "listReturns", "everyPage"] as const) {

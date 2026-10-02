@@ -271,6 +271,7 @@
     "pending": {
       "app/actions/topic-publications.ts:rows": "#424",
       "components/library/library-page-client.tsx:LibraryPageClient": "#420",
+      "components/library/library-page-client.tsx:LibraryPageClient#2": "#420",
       "convex/chat/messages.ts:listRecentThreadArtifacts": "#422",
       "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#422",
       "convex/paperSets/openalex.ts:readWorks": "#421",
