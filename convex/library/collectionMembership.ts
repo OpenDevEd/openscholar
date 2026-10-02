@@ -1,5 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
+import { lookupOpenAlexId } from "../../lib/evidence-libraries/source-item-id";
 
 /**
  * Every change to a collection's items goes through here, so its item count
@@ -53,4 +55,30 @@ export async function removeCollectionMembership(
   await ctx.db.delete("libraryItemCollections", membership._id);
   const collection = await ctx.db.get("collections", membership.collectionId);
   if (collection) await touchCollection(ctx, collection, -1);
+}
+
+/**
+ * Moves the revision of every collection holding the item when new stored work data changes
+ * the OpenAlex id a library looks it up by, so that libraries following those collections
+ * read it again. Its membership is unchanged; what the collection hands on is not.
+ */
+export async function touchCollectionsIfLookupChanged(
+  ctx: MutationCtx,
+  item: Doc<"libraryItems">,
+  paperData: string,
+) {
+  if (lookupOpenAlexId(item) === lookupOpenAlexId({ ...item, paperData })) return;
+  // Bounded: one saved paper belongs to at most MAX_COLLECTIONS_PER_USER collections.
+  const memberships = await ctx.db
+    .query("libraryItemCollections")
+    .withIndex("by_item", (q) => q.eq("libraryItemId", item._id))
+    .take(MAX_COLLECTIONS_PER_USER);
+  for (const membership of memberships) {
+    const collection = await ctx.db.get("collections", membership.collectionId);
+    if (collection) {
+      await ctx.db.patch("collections", collection._id, {
+        membershipRevision: (collection.membershipRevision ?? 0) + 1,
+      });
+    }
+  }
 }

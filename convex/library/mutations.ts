@@ -8,7 +8,7 @@ import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { assistantMutation, defineUserMutation, userMutation, type Author } from "../lib/userActions";
 import { applyCommand } from "../research/records";
 import { libraryCountRow, resolveLibraryCount } from "./counter";
-import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
+import { addCollectionMembership, removeCollectionMembership, touchCollectionsIfLookupChanged } from "./collectionMembership";
 
 /** What the library keeps about a paper, apart from its rating. */
 const libraryPaper = v.object({
@@ -84,6 +84,7 @@ export async function upsertLibraryItem(
       searchableText,
       updatedAt: Date.now(),
     });
+    if (paper.paperData !== undefined) await touchCollectionsIfLookupChanged(ctx, existing, paper.paperData);
     return existing._id;
   }
   const now = Date.now();
