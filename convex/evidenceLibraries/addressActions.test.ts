@@ -239,7 +239,7 @@ describe("Evidence Library address reservation", () => {
       const rows = await t.run((ctx) => ctx.db.query("evidenceLibraryServedHostRows").take(10));
       const listing = await t.run((ctx) => ctx.db.query("evidenceLibraryServedHostsListing").unique());
       expect(rows).toHaveLength(2);
-      expect(rows.every((row) => row.fetchedAt === listing?.fetchedAt)).toBe(true);
+      expect(rows.every((row) => row.listing === listing?.listing)).toBe(true);
     } finally {
       vi.useRealTimers();
     }
@@ -383,7 +383,7 @@ describe("Evidence Library address reservation", () => {
       const listing = await ctx.db.query("evidenceLibraryServedHostsListing").unique();
       if (!listing) throw new Error("no served hosts listing was kept");
       await ctx.db.patch("evidenceLibraryServedHostsListing", listing._id, {
-        fetchedAt: Date.now() - 61_000,
+        startedAt: Date.now() - 61_000,
       });
     });
     vi.stubGlobal(

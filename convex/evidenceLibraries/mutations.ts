@@ -896,54 +896,71 @@ export async function retryEvidenceLibrarySetup(
   };
 }
 
+/** The current served hosts listing, if Coolify has been listed. */
+async function currentServedListing(ctx: MutationCtx) {
+  return await ctx.db
+    .query("evidenceLibraryServedHostsListing")
+    .withIndex("by_source", (query) => query.eq("source", "coolify"))
+    .unique();
+}
+
 /**
- * Keeps one batch of the hosts Coolify serves, from the listing at `fetchedAt`.
- * `evidenceLibraries.addressActions` is the only caller; finishServedHosts makes
- * the listing current once every batch is in.
+ * Keeps one batch of the hosts Coolify serves for the refresh `listing`, begun at `startedAt`.
+ * Refused, returning false, once a refresh that began later has become current.
+ * `evidenceLibraries.addressActions` is the only caller; finishServedHosts ends the refresh.
  */
 export const addServedHosts = internalMutation({
-  args: { fetchedAt: v.number(), hosts: v.array(v.string()) },
-  returns: v.null(),
-  handler: async (ctx, { fetchedAt, hosts }) => {
+  args: { listing: v.string(), startedAt: v.number(), hosts: v.array(v.string()) },
+  returns: v.boolean(),
+  handler: async (ctx, { listing, startedAt, hosts }) => {
     // Internal only, and the same for everybody: address recovery writes it with no
     // signed-in owner behind the request.
-    for (const host of hosts.slice(0, SERVED_HOSTS_BATCH)) await ctx.db.insert("evidenceLibraryServedHostRows", { host, fetchedAt });
-    return null;
+    const current = await currentServedListing(ctx);
+    if (current && current.startedAt >= startedAt) return false;
+    for (const host of hosts.slice(0, SERVED_HOSTS_BATCH)) await ctx.db.insert("evidenceLibraryServedHostRows", { listing, host, startedAt });
+    return true;
   },
 });
 
-/** Makes the listing at `fetchedAt` the current one, and prunes older listings' rows. */
+/**
+ * Ends the refresh `listing`. Every batch in, and nothing later current, it becomes the current
+ * listing and every older row goes, including a failed refresh's. Otherwise it's discarded
+ * and its own rows go.
+ */
 export const finishServedHosts = internalMutation({
-  args: { fetchedAt: v.number() },
+  args: { listing: v.string(), startedAt: v.number(), complete: v.boolean() },
   returns: v.null(),
-  handler: async (ctx, { fetchedAt }) => {
-    const listing = await ctx.db
-      .query("evidenceLibraryServedHostsListing")
-      .withIndex("by_source", (query) => query.eq("source", "coolify"))
-      .unique();
-    // A later listing may have finished first; it stays current.
-    if (listing && listing.fetchedAt >= fetchedAt) return null;
-    if (listing) await ctx.db.patch("evidenceLibraryServedHostsListing", listing._id, { fetchedAt });
-    else await ctx.db.insert("evidenceLibraryServedHostsListing", { source: "coolify", fetchedAt });
-    await ctx.scheduler.runAfter(0, internal.evidenceLibraries.mutations.pruneServedHosts, { before: fetchedAt });
+  handler: async (ctx, { listing, startedAt, complete }) => {
+    const current = await currentServedListing(ctx);
+    if (!complete || (current && current.startedAt >= startedAt)) {
+      await ctx.scheduler.runAfter(0, internal.evidenceLibraries.mutations.pruneServedHosts, { listing });
+      return null;
+    }
+    if (current) await ctx.db.patch("evidenceLibraryServedHostsListing", current._id, { listing, startedAt });
+    else await ctx.db.insert("evidenceLibraryServedHostsListing", { source: "coolify", listing, startedAt });
+    await ctx.scheduler.runAfter(0, internal.evidenceLibraries.mutations.pruneServedHosts, { before: startedAt });
     return null;
   },
 });
 
-/** Deletes the rows of listings older than `before`, a batch at a time. */
+/** Deletes, a batch at a time, the rows of one discarded `listing`, or of every listing begun `before`. */
 export const pruneServedHosts = internalMutation({
-  args: { before: v.number() },
+  // One of the two: `listing` for a discarded refresh, `before` for listings older than the current one.
+  args: { listing: v.optional(v.string()), before: v.optional(v.number()) },
   returns: v.null(),
-  handler: async (ctx, { before }) => {
-    const old = await ctx.db
-      .query("evidenceLibraryServedHostRows")
-      .withIndex("by_fetchedAt", (query) => query.lt("fetchedAt", before))
-      .take(SERVED_HOSTS_BATCH);
-    for (const row of old) await ctx.db.delete("evidenceLibraryServedHostRows", row._id);
-    if (old.length === SERVED_HOSTS_BATCH) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.mutations.pruneServedHosts, { before });
+  handler: async (ctx, args) => {
+    const { listing, before } = args;
+    const rows = listing !== undefined
+      ? await ctx.db.query("evidenceLibraryServedHostRows").withIndex("by_listing_and_host", (query) => query.eq("listing", listing)).take(SERVED_HOSTS_BATCH)
+      : before !== undefined
+        ? await ctx.db.query("evidenceLibraryServedHostRows").withIndex("by_startedAt", (query) => query.lt("startedAt", before)).take(SERVED_HOSTS_BATCH)
+        : [];
+    for (const row of rows) await ctx.db.delete("evidenceLibraryServedHostRows", row._id);
+    if (rows.length === SERVED_HOSTS_BATCH) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.mutations.pruneServedHosts, args);
     return null;
   },
 });
+
 
 
 /**

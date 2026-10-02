@@ -394,39 +394,35 @@ export const readAddressCandidates = internalQuery({
   },
 });
 
-/** When Coolify was last asked which hosts it serves. The address action decides whether that is recent enough. */
-export const readServedHostsListing = internalQuery({
-  args: {},
-  returns: v.union(v.null(), v.object({ fetchedAt: v.number() })),
-  handler: async (ctx) => {
-    // Internal only, and the same for everybody: address recovery reads it with no
-    // signed-in owner behind the request.
-    const row = await ctx.db
-      .query("evidenceLibraryServedHostsListing")
-      .withIndex("by_source", (query) => query.eq("source", "coolify"))
-      .unique();
-    return row ? { fetchedAt: row.fetchedAt } : null;
-  },
-});
-
 /** Most hosts one served check asks about: a library's address candidates, or one custom domain. */
 const MAX_SERVED_HOSTS_ASKED = 50;
 
-/** Which of `hosts` the listing at `fetchedAt` holds: one index lookup per host asked about. */
-export const servedHostsAmong = internalQuery({
-  args: { hosts: v.array(v.string()), fetchedAt: v.number() },
-  returns: v.array(v.string()),
-  handler: async (ctx, { hosts, fetchedAt }) => {
+/**
+ * Which of `hosts` the current listing holds, and when that listing began, read together in
+ * one transaction so a refresh can't swap the listing between the two. Null when Coolify has
+ * never been listed. The address action decides whether the listing is recent enough.
+ */
+export const servedHostsCheck = internalQuery({
+  args: { hosts: v.array(v.string()) },
+  returns: v.union(v.null(), v.object({ startedAt: v.number(), served: v.array(v.string()) })),
+  handler: async (ctx, { hosts }) => {
+    // Internal only, and the same for everybody: address recovery reads it with no
+    // signed-in owner behind the request.
+    const current = await ctx.db
+      .query("evidenceLibraryServedHostsListing")
+      .withIndex("by_source", (query) => query.eq("source", "coolify"))
+      .unique();
+    if (!current) return null;
     const asked = hosts.slice(0, MAX_SERVED_HOSTS_ASKED);
     const found = await Promise.all(
       asked.map((host) =>
         ctx.db
           .query("evidenceLibraryServedHostRows")
-          .withIndex("by_host_and_fetchedAt", (query) => query.eq("host", host).eq("fetchedAt", fetchedAt))
+          .withIndex("by_listing_and_host", (query) => query.eq("listing", current.listing).eq("host", host))
           .first(),
       ),
     );
-    return asked.filter((_, i) => found[i] !== null);
+    return { startedAt: current.startedAt, served: asked.filter((_, i) => found[i] !== null) };
   },
 });
 

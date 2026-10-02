@@ -310,12 +310,13 @@ export default defineSchema({
     evidenceLibraryServedHostsFields,
   ).index("by_source", ["source"]),
 
-  // The hosts Coolify served when it was last asked: one row per host, from the listing at
-  // `fetchedAt`, and the time of the latest listing. Older listings' rows are pruned.
-  evidenceLibraryServedHostRows: defineTable({ host: v.string(), fetchedAt: v.number() })
-    .index("by_host_and_fetchedAt", ["host", "fetchedAt"])
-    .index("by_fetchedAt", ["fetchedAt"]),
-  evidenceLibraryServedHostsListing: defineTable({ source: v.literal("coolify"), fetchedAt: v.number() })
+  // The hosts Coolify served when it was last asked: one row per host per listing, and the
+  // current listing. `listing` is a refresh's own ID; `startedAt`, when it began, orders
+  // refreshes and ages the cache. Rows of older or discarded listings are pruned.
+  evidenceLibraryServedHostRows: defineTable({ listing: v.string(), host: v.string(), startedAt: v.number() })
+    .index("by_listing_and_host", ["listing", "host"])
+    .index("by_startedAt", ["startedAt"]),
+  evidenceLibraryServedHostsListing: defineTable({ source: v.literal("coolify"), listing: v.string(), startedAt: v.number() })
     .index("by_source", ["source"]),
 
   evidenceLibraryConfigOperations: defineTable(evidenceLibraryOperationFields)

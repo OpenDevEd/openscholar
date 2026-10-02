@@ -1,5 +1,6 @@
 "use node";
 
+import { randomUUID } from "node:crypto";
 import { v } from "convex/values";
 import { action, type ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
@@ -130,22 +131,30 @@ function requireEnvironment(name: string): string {
  */
 export async function servedAmong(ctx: ActionCtx, hosts: readonly string[]): Promise<Set<string>> {
   const asked = [...new Set(hosts.map((host) => host.toLowerCase()))];
-  const listing = await ctx.runQuery(internal.evidenceLibraries.queries.readServedHostsListing, {});
-  if (listing && Date.now() - listing.fetchedAt < SERVED_HOSTS_MAX_AGE_MS) {
-    return new Set(await ctx.runQuery(internal.evidenceLibraries.queries.servedHostsAmong, { hosts: asked, fetchedAt: listing.fetchedAt }));
+  const cached = await ctx.runQuery(internal.evidenceLibraries.queries.servedHostsCheck, { hosts: asked });
+  if (cached && Date.now() - cached.startedAt < SERVED_HOSTS_MAX_AGE_MS) return new Set(cached.served);
+  // A refresh has its own ID, so two at once never share rows; the later one stays current.
+  const listing = randomUUID();
+  const startedAt = Date.now();
+  let complete = false;
+  try {
+    const served = await createCoolifyClient({
+      origin: requireEnvironment("EL_COOLIFY_URL"),
+      token: requireEnvironment("EL_COOLIFY_TOKEN"),
+    }).listServedHosts();
+    // Kept for the next minute's checks, a batch per mutation. A later refresh may
+    // overtake this one; its answer below still stands.
+    const all = [...served];
+    let kept = true;
+    for (let start = 0; start < all.length && kept; start += SERVED_HOSTS_BATCH) {
+      kept = await ctx.runMutation(internal.evidenceLibraries.mutations.addServedHosts, { listing, startedAt, hosts: all.slice(start, start + SERVED_HOSTS_BATCH) });
+    }
+    // Only a listing with every batch in becomes current; one that fails partway is discarded.
+    complete = kept;
+    return new Set(asked.filter((host) => served.has(host)));
+  } finally {
+    await ctx.runMutation(internal.evidenceLibraries.mutations.finishServedHosts, { listing, startedAt, complete });
   }
-  const served = await createCoolifyClient({
-    origin: requireEnvironment("EL_COOLIFY_URL"),
-    token: requireEnvironment("EL_COOLIFY_TOKEN"),
-  }).listServedHosts();
-  // Kept for the next minute's checks, a batch per mutation.
-  const fetchedAt = Date.now();
-  const all = [...served];
-  for (let start = 0; start < all.length; start += SERVED_HOSTS_BATCH) {
-    await ctx.runMutation(internal.evidenceLibraries.mutations.addServedHosts, { fetchedAt, hosts: all.slice(start, start + SERVED_HOSTS_BATCH) });
-  }
-  await ctx.runMutation(internal.evidenceLibraries.mutations.finishServedHosts, { fetchedAt });
-  return new Set(asked.filter((host) => served.has(host)));
 }
 
 /**
