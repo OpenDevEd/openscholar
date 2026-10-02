@@ -5,7 +5,7 @@ import { api } from "../_generated/api";
 import schema from "../schema";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import { createJob } from "./createJob.test-support";
-import { screeningPool } from "../workpool";
+import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
@@ -305,7 +305,7 @@ describe("cancelScreeningJob", () => {
     });
   });
 
-  it("cancels at once and drops a large job's queued work afterwards, a batch at a time", async () => {
+  it("cancels at once, then skips a large job's waiting papers and drops its started papers' work, a batch at a time", async () => {
     vi.useFakeTimers();
     const t = convexTest(schema);
     setupScreeningWorkpool(t);
@@ -325,7 +325,9 @@ describe("cancelScreeningJob", () => {
     expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("cancelled");
     expect(cancel).not.toHaveBeenCalled();
     await t.finishAllScheduledFunctions(vi.runAllTimers);
-    expect(new Set(cancel.mock.calls.map(([, workId]) => workId)).size).toBe(250);
+    const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
+    expect(new Set(cancel.mock.calls.map(([, workId]) => workId)).size).toBe(SCREENING_POOL_SIZE);
+    expect(results.filter((r) => r.status === "skipped" && r.workId === undefined)).toHaveLength(250 - SCREENING_POOL_SIZE);
     cancel.mockRestore();
     vi.useRealTimers();
   });

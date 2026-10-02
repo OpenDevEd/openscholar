@@ -481,4 +481,32 @@ describe("extraction paper queue", () => {
     expect(leasedRows).toHaveLength(2);
     expect(leasedRows.every((row) => row.workId !== undefined)).toBe(true);
   });
+
+  // #335, copied from Firecrawl's per-team concurrency: a person's papers at once across jobs.
+  it("leases a person's second job only what their first leaves, under their plan's concurrency", async () => {
+    const t = convexTest(schema);
+    const first = await seedEligibleQueueJob(t, 4);
+    const userId = await t.run(async (ctx) => (await ctx.db.get(first.jobId))!.userId);
+    const second = await t.run(async (ctx) => {
+      const jobId = await ctx.db.insert("extractionJobs", { userId, mode: "extraction" as const, sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 2, name: "Second", createdAt: 2, updatedAt: 2 });
+      const paperIds = [
+        await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:second:0", title: "Second 0", status: "pending" as const, processable: true }),
+        await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:second:1", title: "Second 1", status: "pending" as const, processable: true }),
+      ];
+      await ctx.db.insert("billingAccounts", { userId, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, concurrency: 3 });
+      return { jobId, paperIds };
+    });
+    const other = await seedEligibleQueueJob(t, 4);
+    const lease = (jobId: Id<"extractionJobs">) =>
+      t.mutation(internal.extraction.queue.mutations.leaseNextPaperQueueRows, { jobId, expectedEpoch: 0, paperConcurrency: 40, leaseOwner: "test-worker", leaseMs: 60_000 });
+    for (const job of [first, second, other]) {
+      await t.mutation(internal.extraction.queue.mutations.enqueueInitialPapersForJob, { jobId: job.jobId, paperIds: job.paperIds, expectedEpoch: 0, priority: 0 });
+    }
+
+    // The plan allows 3 at once: the first job takes them all, the second waits.
+    expect((await lease(first.jobId)).leased).toHaveLength(3);
+    expect((await lease(second.jobId)).leased).toHaveLength(0);
+    // Another person's job isn't held back by this one's.
+    expect((await lease(other.jobId)).leased).toHaveLength(4);
+  });
 });

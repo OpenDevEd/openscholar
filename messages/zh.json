@@ -1874,7 +1874,6 @@
     "submitting": "正在启动筛选任务...",
     "submitSuccess": "筛选任务已启动",
     "submitError": "启动筛选任务失败",
-    "activeJobWarning": "您已有一个正在进行的筛选任务",
     "noQuestions": "请先添加筛选问题",
     "progressTitle": "筛选进度",
     "progressStatus": "已筛选 {processed}/{total} 篇论文",

@@ -11,6 +11,7 @@ import {
   shouldClearQueueLease,
   type ExtractionQueueStatus,
 } from "./status";
+import { planConcurrency } from "../../billing/accounts";
 
 type QueueKind = Doc<"extractionPaperQueue">["kind"];
 
@@ -334,11 +335,46 @@ export const leaseNextPaperQueueRows = internalMutation({
   },
 });
 
+/** Extraction job statuses whose papers are running. */
+const RUNNING_JOB_STATUSES = ["downloading_pdfs", "indexing", "extracting"] as const;
+/** A person's other running jobs one window counts. */
+const OTHER_JOBS_COUNTED = 10;
+
+/**
+ * A job's window within its person's extraction papers at once (#335): their plan's
+ * `concurrency`, or the whole window when it sets none, less the papers their other
+ * running jobs hold. Firecrawl's per-team limit (`apps/api/src/lib/concurrency-limit.ts`).
+ */
+async function personWindow(ctx: MutationCtx, jobId: Id<"extractionJobs">, window: number) {
+  const job = await ctx.db.get(jobId);
+  if (!job) return 0;
+  const limit = Math.max(1, Math.min(window, (await planConcurrency(ctx, job.userId)) ?? window));
+  let held = 0;
+  for (const status of RUNNING_JOB_STATUSES) {
+    const others = await ctx.db
+      .query("extractionJobs")
+      .withIndex("by_user_status", (q) => q.eq("userId", job.userId).eq("status", status))
+      .take(OTHER_JOBS_COUNTED);
+    for (const other of others) {
+      if (other._id === jobId) continue;
+      for (const rowStatus of ["leased", "running"] as const) {
+        if (held >= limit) return 0;
+        held += (await ctx.db
+          .query("extractionPaperQueue")
+          .withIndex("by_job_and_status", (q) => q.eq("jobId", other._id).eq("status", rowStatus))
+          .take(limit - held)).length;
+      }
+    }
+  }
+  return Math.max(0, limit - held);
+}
+
 async function leaseNextPaperQueueRowsTx(
   ctx: MutationCtx,
-  args: LeaseRowsArgs,
+  { paperConcurrency: window, ...args }: LeaseRowsArgs,
 ): Promise<LeaseRowsResult> {
-  const activeReadLimit = Math.max(0, Math.floor(args.paperConcurrency));
+  const paperConcurrency = await personWindow(ctx, args.jobId, window);
+  const activeReadLimit = Math.max(0, Math.floor(paperConcurrency));
   const [leasedRows, runningRows] = await Promise.all([
     loadQueueRowsByStatus(ctx, {
       jobId: args.jobId,
@@ -356,7 +392,7 @@ async function leaseNextPaperQueueRowsTx(
   const activeCount = leasedRows.length + runningRows.length;
   const capacity = getQueueCapacity({
     activeCount,
-    paperConcurrency: args.paperConcurrency,
+    paperConcurrency,
   });
   const pendingRows = await loadPendingQueueRowsForLease(ctx, {
     jobId: args.jobId,

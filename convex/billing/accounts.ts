@@ -64,6 +64,14 @@ export async function availableCredits(ctx: QueryCtx | MutationCtx, userId: Id<"
   return (await readAccount(ctx, userId))?.balance ?? 0;
 }
 
+/**
+ * Papers the person may have running at once in each paper pool (#335): their plan's
+ * `concurrency` balance in Autumn, or undefined when it sets none.
+ */
+export async function planConcurrency(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
+  return (await readAccount(ctx, userId))?.concurrency;
+}
+
 /** Whether the user's plans grant `featureId`, per the cached snapshot. */
 export async function hasPlanFeature(
   ctx: QueryCtx | MutationCtx,

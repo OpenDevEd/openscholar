@@ -1866,7 +1866,6 @@
     "submitting": "Starting screening job...",
     "submitSuccess": "Screening job started",
     "submitError": "Failed to start screening job",
-    "activeJobWarning": "You already have an active screening job",
     "noQuestions": "Add screening questions first",
     "progressTitle": "Screening Progress",
     "progressStatus": "{processed} of {total} papers screened",
