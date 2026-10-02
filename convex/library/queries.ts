@@ -67,12 +67,11 @@ function matchesLibraryFilters(
     return false;
   }
 
-  if (args.minRating !== undefined && item.rating < args.minRating) {
-    return false;
-  }
-
-  if (args.maxRating !== undefined && item.rating > args.maxRating) {
-    return false;
+  if (args.minRating !== undefined || args.maxRating !== undefined) {
+    // A rating filter only matches rated papers.
+    if (item.rating === undefined) return false;
+    if (args.minRating !== undefined && item.rating < args.minRating) return false;
+    if (args.maxRating !== undefined && item.rating > args.maxRating) return false;
   }
 
   if (args.savedAfter !== undefined && item.savedAt < args.savedAfter) {
@@ -350,5 +349,24 @@ export const getLibraryCount = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .take(MAX_LIBRARY_BROWSE);
     return items.length;
+  },
+});
+
+/** Whether a paper is in the person's library, and whether it's in any of their collections. */
+export const savedPaper = query({
+  args: { openalexId: v.string() },
+  returns: v.union(v.object({ libraryItemId: v.id("libraryItems"), inCollection: v.boolean() }), v.null()),
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
+    const item = await ctx.db
+      .query("libraryItems")
+      .withIndex("by_user_openalexId", (q) => q.eq("userId", user._id).eq("openalexId", args.openalexId))
+      .unique();
+    if (!item) return null;
+    const membership = await ctx.db
+      .query("libraryItemCollections")
+      .withIndex("by_item", (q) => q.eq("libraryItemId", item._id))
+      .first();
+    return { libraryItemId: item._id, inCollection: membership !== null };
   },
 });

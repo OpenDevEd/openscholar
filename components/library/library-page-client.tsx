@@ -3,13 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
-import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@/convex/_generated/api";
-import type { Doc, Id } from "@/convex/_generated/dataModel";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { showConfirmation } from "@/lib/confirmation";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useIsTablet } from "@/lib/hooks";
 import {
@@ -30,7 +28,7 @@ import {
   downloadLibraryItem,
   downloadLibraryEssentialItem,
 } from "@/lib/library/download-handlers";
-import { useRatingsStore, useUIStore } from "@/lib/store";
+import { useUIStore } from "@/lib/store";
 import type { PaperResult } from "@/lib/types/search.types";
 import type { ViewMode } from "@/lib/types";
 import {
@@ -45,11 +43,9 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { Button } from "@/components/ui/button";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { CollectionManager } from "./collection-manager";
-import { CollectionPicker } from "./collection-picker";
 import { LibraryCommandCenter } from "./library-command-center";
 import { LibraryEmptyState } from "./library-empty-state";
 import { LibraryFilterSidebar } from "./library-filter-sidebar";
-import { LibraryItemActions } from "./library-item-shared";
 import { LibraryItemSkeleton } from "./library-item-skeleton";
 
 const PAGE_SIZE = 20;
@@ -96,9 +92,6 @@ export function LibraryPageClient() {
   }, [setParams]);
 
   const [collectionManagerOpen, setCollectionManagerOpen] = useState(false);
-  const [collectionPickerItemId, setCollectionPickerItemId] = useState<
-    string | null
-  >(null);
 
   const { data: collectionsWithCounts } = useProtectedQuery(
     api.library.collections.getCollectionsWithCounts,
@@ -141,8 +134,6 @@ export function LibraryPageClient() {
     },
   );
 
-  const removeItem = useMutation(api.library.mutations.removeFromLibrary);
-  const { setRating } = useRatingsStore();
   const { isFocusModeOpen } = useUIStore();
   const isMobile = useIsTablet();
 
@@ -157,46 +148,13 @@ export function LibraryPageClient() {
     [filteredItems],
   );
 
-  // Lookup map: openalexId -> Doc<"libraryItems"> for library-specific actions
-  const libraryItemMap = useMemo(
-    () =>
-      new Map(
-        (filteredItems ?? []).map((item) => [item.openalexId, item]),
-      ),
-    [filteredItems],
-  );
-
-  // Server-authoritative ratings map for FocusMode
+  // Server-authoritative ratings for the cards and FocusMode; null marks a paper saved unrated
   const serverRatingsMap = useMemo(
     () =>
       new Map(
-        (filteredItems ?? []).map((item) => [item.openalexId, item.rating]),
+        (filteredItems ?? []).map((item) => [item.openalexId, item.rating ?? null]),
       ),
     [filteredItems],
-  );
-
-  const handleRemove = useCallback(
-    (item: Doc<"libraryItems">) => {
-      showConfirmation({
-        title: t("removeConfirmTitle"),
-        message: t("removeConfirmMessage", { title: item.title }),
-        confirmText: t("removeButton"),
-        cancelText: t("cancelButton"),
-        variant: "destructive",
-        onConfirm: () => {
-          removeItem({ itemId: item._id })
-            .then(() => {
-              toast.success(t("removedFromLibrary"));
-            })
-            .catch((error) => {
-              console.error("[Library] Failed to remove item:", error);
-              toast.error(t("removeFromLibraryError"));
-            });
-          setRating(item.openalexId, null);
-        },
-      });
-    },
-    [removeItem, setRating, t],
   );
 
   // Download handlers for PaperCard and FocusMode
@@ -531,32 +489,17 @@ export function LibraryPageClient() {
                       {pageResults.map((paper, index) => {
                         const globalIndex =
                           (effectivePage - 1) * PAGE_SIZE + index;
-                        const libraryItem = libraryItemMap.get(paper.id);
-
                         return (
-                          <div key={paper.id} className="relative group">
-                            <PaperCard
-                              result={paper}
-                              resultIndex={globalIndex}
-                              onDownloadItem={handleDownloadItem}
-                              onDownloadEssentialItem={
-                                handleDownloadEssentialItem
-                              }
-                              viewMode={effectiveViewMode}
-                            />
-                            {/* Library-specific actions overlay */}
-                            {libraryItem && (
-                              <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
-                                <LibraryItemActions
-                                  item={libraryItem}
-                                  onRemove={handleRemove}
-                                  onAddToCollection={(nextItem) =>
-                                    setCollectionPickerItemId(nextItem._id)
-                                  }
-                                />
-                              </div>
-                            )}
-                          </div>
+                          <PaperCard
+                            key={paper.id}
+                            result={paper}
+                            resultIndex={globalIndex}
+                            onDownloadItem={handleDownloadItem}
+                            onDownloadEssentialItem={
+                              handleDownloadEssentialItem
+                            }
+                            viewMode={effectiveViewMode}
+                          />
                         );
                       })}
                     </div>
@@ -618,19 +561,6 @@ export function LibraryPageClient() {
                 onOpenChange={setCollectionManagerOpen}
               />
 
-              {collectionPickerItemId && (
-                <CollectionPicker
-                  open={collectionPickerItemId !== null}
-                  onOpenChange={(open) => {
-                    if (!open) {
-                      setCollectionPickerItemId(null);
-                    }
-                  }}
-                  libraryItemId={
-                    collectionPickerItemId as Id<"libraryItems">
-                  }
-                />
-              )}
             </div>
           </PageWrapper>
         </SidebarLayout>

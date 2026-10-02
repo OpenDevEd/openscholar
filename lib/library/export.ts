@@ -8,7 +8,7 @@ interface LibraryExportItem {
   doi: string;
   publicationYear: number | string;
   journal: string;
-  rating: number;
+  rating: number | "";
   citedByCount: number | string;
   isOpenAccess: boolean | string;
   oaStatus: string;
@@ -25,7 +25,7 @@ function formatForExport(item: Doc<"libraryItems">): LibraryExportItem {
     doi: item.doi ?? "",
     publicationYear: item.publicationYear ?? "",
     journal: item.journal ?? "",
-    rating: item.rating,
+    rating: item.rating ?? "",
     citedByCount: item.citedByCount ?? "",
     isOpenAccess: item.isOpenAccess ?? "",
     oaStatus: item.oaStatus ?? "",
