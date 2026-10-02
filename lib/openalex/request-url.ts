@@ -4,6 +4,11 @@ const OPENALEX_API = "https://api.openalex.org/";
 /** Works paths (`works`, `works/W1`, `works?…`), and the root, where OQL is posted. */
 const WORKS_OR_OQL = /^(?:works(?:[/?].*)?)?$/;
 
+/** Whether works and OQL requests go to OpenAlex: when no OpenScholar API is set. */
+export function worksAskOpenAlex() {
+  return !process.env.OPENSCHOLAR_API_URL;
+}
+
 /**
  * The OpenScholar API, when `OPENSCHOLAR_API_URL` names it and the path asks for works or
  * OQL: our own index of papers, answering in OpenAlex's shapes, with the key

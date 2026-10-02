@@ -6,7 +6,7 @@
 import type { Infer } from "convex/values";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
-import { openAlexUrl } from "../../lib/openalex/request-url";
+import { openAlexUrl, worksAskOpenAlex } from "../../lib/openalex/request-url";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 
 /** OpenAlex's largest page. */
@@ -119,7 +119,8 @@ export async function readSearchWorks<Work>(
   spend: (pages: number) => Promise<boolean>,
 ): Promise<Work[]> {
   // OpenAlex's polite pool needs a contact address; without one the deployment is misconfigured.
-  if (!process.env.OPENALEX_CONTACT_EMAIL) {
+  // The OpenScholar API, when it answers works instead, needs none.
+  if (worksAskOpenAlex() && !process.env.OPENALEX_CONTACT_EMAIL) {
     throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
   }
   const { works, offset } = await readWorks<Work>(request, first, last, select, spend);
