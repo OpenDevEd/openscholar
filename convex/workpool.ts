@@ -1,5 +1,6 @@
 import { Workpool } from "@convex-dev/workpool";
 import { components } from "./_generated/api";
+import { EXTRACTION_PAPER_CONCURRENCY } from "../lib/extraction/limits";
 
 // PDF processing pool — runs OpenAlex search + bibliometric snapshot actions.
 // Sized to keep external-service rate limits comfortable; paper extraction
@@ -39,7 +40,8 @@ export const screeningAnswersPool = new Workpool(components.screeningAnswersWork
 export const extractionPaperPool = new Workpool(
   components.extractionPaperWorkpool,
   {
-    maxParallelism: 5,
+    // As many as one job runs at once (lib/extraction/limits.ts).
+    maxParallelism: EXTRACTION_PAPER_CONCURRENCY,
     retryActionsByDefault: true,
     defaultRetryBehavior: {
       maxAttempts: 3,

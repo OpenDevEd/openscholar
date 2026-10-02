@@ -24,8 +24,12 @@ export const CHAT_PROMPT_MAX_CHARS = 32_000;
 /** Chat replies a user can have generating at once. */
 export const CHAT_CONCURRENCY_LIMIT = 3;
 
-/** Papers one extraction job works on at once. */
-export const EXTRACTION_PAPER_CONCURRENCY = 5;
+/**
+ * Papers one extraction job works on at once. Measured on the e2e backend with 200
+ * papers (#400): 109 s at 5, 38 s at 20, 20 s at 40, once the queue's bookkeeping ran on
+ * its worker. The extraction pool runs as many.
+ */
+export const EXTRACTION_PAPER_CONCURRENCY = 40;
 
 /** Questions answered at once for one paper. */
 export const EXTRACTION_QUESTION_CONCURRENCY = 5;
