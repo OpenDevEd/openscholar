@@ -1,4 +1,4 @@
-import { v, type GenericValidator } from "convex/values";
+import { v, type PropertyValidators } from "convex/values";
 
 export const queryStatusValidator = v.union(
   v.literal("ok"),
@@ -29,21 +29,29 @@ export function notFound() {
   return { status: "not_found" as const };
 }
 
-export function statusResultValidator<Fields extends Record<string, GenericValidator>>(
-  fields: Fields,
-  includeNotFound = false
-) {
-  const base: GenericValidator[] = [
-    v.object({ status: v.literal("ok"), ...fields }) as GenericValidator,
-    v.object({ status: v.literal("unauthenticated") }) as GenericValidator,
-    v.object({ status: v.literal("no_access") }) as GenericValidator,
-  ];
-
-  if (includeNotFound) {
-    base.push(v.object({ status: v.literal("not_found") }) as GenericValidator);
-  }
-
+function threeStates<Fields extends PropertyValidators>(fields: Fields) {
   return v.union(
-    ...(base as [GenericValidator, GenericValidator, ...GenericValidator[]])
+    v.object({ status: v.literal("ok"), ...fields }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") }),
   );
+}
+
+function fourStates<Fields extends PropertyValidators>(fields: Fields) {
+  return v.union(
+    v.object({ status: v.literal("ok"), ...fields }),
+    v.object({ status: v.literal("unauthenticated") }),
+    v.object({ status: v.literal("no_access") }),
+    v.object({ status: v.literal("not_found") }),
+  );
+}
+
+/**
+ * A query's result with its access status. Typed per field, so the returns check sees the
+ * lists the fields hold (scripts/check-convex-rules.ts).
+ */
+export function statusResultValidator<Fields extends PropertyValidators>(fields: Fields): ReturnType<typeof threeStates<Fields>>;
+export function statusResultValidator<Fields extends PropertyValidators>(fields: Fields, includeNotFound: true): ReturnType<typeof fourStates<Fields>>;
+export function statusResultValidator(fields: PropertyValidators, includeNotFound = false) {
+  return includeNotFound ? fourStates(fields) : threeStates(fields);
 }

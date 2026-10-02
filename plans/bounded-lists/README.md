@@ -17,9 +17,15 @@ Convex's limits or the browser's memory.
 - Anything that consumes a paged list pages too. Clients load the next page
   when the person asks for it. Exports stream page by page instead of reading
   every page into one array.
-- A list stored on a record has a cap enforced on write, by a database trigger,
-  from one table of caps (`convex/lib/listCaps.ts`). A list that grows with use
-  becomes its own table.
+- A list stored on a record has a cap enforced on write. Its validator is
+  wrapped in `capped(...)` with a constant from `convex/lib/listCaps.ts`, and
+  every mutation's writes refuse more (`convex/lib/capWrites.ts`). A list that
+  grows with use becomes its own table.
+- 2026-10-02: the cap check moved from a database trigger to the write wrapper.
+  The trigger read each row back after its write, which pushed the largest
+  batches past Convex's 4,096 index ranges, and it rejected any later patch of a
+  row saved over a cap. The wrapper checks only what a write sets and reads
+  nothing.
 - Schemas and queries are optimized: each paged list reads through an index in
   the order it's shown, and counts are kept as rows change, never counted on
   read.
@@ -57,6 +63,14 @@ entries it fixes; the gate fails if a fixed entry stays listed.
 Paging changes no stored data. Caps (#426) audit shared dev first: a record
 over its cap is migrated into a table with `@convex-dev/migrations`, never
 trimmed. New indexes on large tables deploy staged first.
+
+On 2026-10-02 every list on shared dev fit its cap; three sat at it (paper
+authors 100, extraction list answers 8, runtime release changes 250), and
+their writers already cut to those. A write is checked on what it sets, so a
+row saved over a cap still takes patches to other fields. A whole object
+written back unchanged (a search's `data` on every edit) is checked again, so
+any deployment with older data gets the same audit before it takes this
+change.
 
 ## Checks
 

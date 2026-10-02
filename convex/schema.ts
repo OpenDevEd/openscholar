@@ -2,6 +2,11 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
+  MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LEGACY_ENTRIES, MAX_METADATA_FIELDS, MAX_QUESTIONS,
+  MAX_TOPIC_KEYWORDS, capped,
+} from "./lib/listCaps";
+import { screeningAnswersValidator, screeningAuthorsValidator, screeningQuestionsValidator, screeningScoringConfigValidator } from "./screening/validators";
+import {
   errorCodeValidator,
   extractionEvidenceUnitFields,
   extractionJobFields,
@@ -46,13 +51,13 @@ import { evidenceLibrarySourceStatusFields } from "./evidenceLibraries/sourceSta
 
 import { authorContentFields } from "./authors/validators";
 
-import { topicNodeFields, metadataValidator } from "./topics/validators";
+import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
-import { customPicksValidator, effortValidator, modelChoiceValidator } from "./aiModelConfig/validators";
-import { fieldValidator, paperAnswersValidator, searchValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
+import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
+import { fieldValidator, paperAnswersValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
 
 export default defineSchema({
-  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator, responseChunks: v.optional(v.array(v.id("researchResponseChunks"))) })
+  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator, responseChunks: capped(v.optional(v.array(v.id("researchResponseChunks"))), MAX_LEGACY_ENTRIES) })
     .index("by_user", ["userId"])
     .index("by_user_and_createdAt", ["userId", "data.createdAt"])
     .index("by_user_and_localId", ["userId", "localId"]),
@@ -60,7 +65,7 @@ export default defineSchema({
     userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
     author: v.union(v.literal("user"), v.literal("assistant")),
     data: storedSearchValidator, deleted: v.boolean(), createdAt: v.number(),
-    responseChunks: v.optional(v.array(v.id("researchResponseChunks"))),
+    responseChunks: capped(v.optional(v.array(v.id("researchResponseChunks"))), MAX_LEGACY_ENTRIES),
     // The screening version this revision saw; its answers are the history up to it.
     answersVersion: v.optional(v.number()),
   }).index("by_search_and_revision", ["searchId", "revision"]),
@@ -70,7 +75,7 @@ export default defineSchema({
     text: v.string(), field: v.optional(fieldValidator), timestamp: v.string(), position: v.number(),
   }).index("by_search_and_kind_and_position", ["searchId", "kind", "position"])
     .index("by_search_and_kind_and_timestamp", ["searchId", "kind", "timestamp"]),
-  researchResponseChunks: defineTable({ responses: searchValidator.fields.screeningResponses }),
+  researchResponseChunks: defineTable({ responses: storedSearchValidator.fields.screeningResponses }),
   // A screening's answers, one row per paper, and an append-only history of each paper's
   // answers that old revisions are rebuilt from. A saved search has one screening, which its
   // page and its Screen all jobs both answer into; a Screen all job run before #334 has its
@@ -98,11 +103,11 @@ export default defineSchema({
     .searchIndex("search_text", { searchField: "searchText" }),
   topicCatalogState: defineTable({revision: v.string(), complete: v.boolean()}).index("by_revision", ["revision"]),
   // `refreshRequestedAt`: when a reader last asked for this stale topic to be fetched again (#355).
-  topicDetails: defineTable({id: v.string(), description: v.string(), keywords: v.array(v.string()), worksCount: v.number(), fetchedAt: v.number(), revision: v.string(), refreshRequestedAt: v.optional(v.number())}).index("by_external_id", ["id"]),
+  topicDetails: defineTable({id: v.string(), description: v.string(), keywords: capped(v.array(v.string()), MAX_TOPIC_KEYWORDS), worksCount: v.number(), fetchedAt: v.number(), revision: v.string(), refreshRequestedAt: v.optional(v.number())}).index("by_external_id", ["id"]),
   topicLocations: defineTable({
     libraryId: v.id("evidenceLibraries"), itemKey: v.string(), generation: v.number(), publishedRevision: v.number(),
     state: v.union(v.literal("published"), v.literal("unpublished")),
-    topicIds: v.array(v.string()), doi: v.union(v.string(), v.null()), openalexId: v.union(v.string(), v.null()),
+    topicIds: recordTopicIdsValidator, doi: v.union(v.string(), v.null()), openalexId: v.union(v.string(), v.null()),
     metadata: v.union(metadataValidator, v.null()), groupKey: v.string(),
   }).index("by_libraryId_and_itemKey", ["libraryId", "itemKey"])
     .index("by_openalexId_and_doi", ["openalexId", "doi"])
@@ -344,8 +349,8 @@ export default defineSchema({
 
     // ── Architecture ──
     modality: v.optional(v.string()),
-    inputModalities: v.optional(v.array(v.string())),
-    outputModalities: v.optional(v.array(v.string())),
+    inputModalities: modelModalitiesValidator,
+    outputModalities: modelModalitiesValidator,
     tokenizer: v.optional(v.string()),
     instructType: v.optional(v.string()),
 
@@ -366,9 +371,9 @@ export default defineSchema({
     isModerated: v.optional(v.boolean()),
 
     // ── Capabilities ──
-    supportedParameters: v.optional(v.array(v.string())),
+    supportedParameters: modelParametersValidator,
     // Reasoning effort levels the model takes, lowest first; absent when it doesn't reason.
-    reasoningEfforts: v.optional(v.array(effortValidator)),
+    reasoningEfforts: modelEffortsValidator,
     defaultEffort: v.optional(effortValidator),
     /** Reasoning can't be turned off ("none" is refused). */
     reasoningMandatory: v.optional(v.boolean()),
@@ -592,7 +597,7 @@ export default defineSchema({
   auditLogs: defineTable({
     action: v.string(),
     userId: v.optional(v.string()),
-    metadata: v.optional(v.record(v.string(), v.string())),
+    metadata: capped(v.optional(v.record(v.string(), v.string())), MAX_METADATA_FIELDS),
     timestamp: v.number(),
   })
     .index("by_action", ["action"])
@@ -726,7 +731,7 @@ export default defineSchema({
     ),
     sourceRefId: v.string(),
     title: v.string(),
-    authors: v.array(v.string()),
+    authors: capped(v.array(v.string()), MAX_AUTHORS),
     year: v.optional(v.number()),
     doi: v.optional(v.string()),
     openalexId: v.optional(v.string()),
@@ -819,14 +824,14 @@ export default defineSchema({
   // count appends its change, and one worker folds them into the job's counts row.
   extractionCountChanges: defineTable({
     jobId: v.id("extractionJobs"),
-    deltas: v.record(v.string(), v.number()),
+    deltas: capped(v.record(v.string(), v.number()), MAX_COUNT_BUCKETS),
     queuedAt: v.commitTs(),
   })
     .index("by_queuedAt", ["queuedAt"])
     .index("by_job", ["jobId"]),
   extractionJobCounts: defineTable({
     jobId: v.id("extractionJobs"),
-    counts: v.record(v.string(), v.number()),
+    counts: capped(v.record(v.string(), v.number()), MAX_COUNT_BUCKETS),
   }).index("by_job", ["jobId"]),
   extractionPaperErrors: defineTable(extractionPaperErrorFields)
     .index("by_paper", ["paperId"])
@@ -889,24 +894,8 @@ export default defineSchema({
       v.literal("creditsExhausted"),
     ),
     totalPapers: v.number(),
-    questions: v.array(v.object({ key: v.string(), question: v.string() })),
-    scoringConfig: v.object({
-      rules: v.array(
-        v.object({
-          questionKey: v.string(),
-          yesPoints: v.number(),
-          noPoints: v.number(),
-          nullPoints: v.number(),
-        }),
-      ),
-      starThresholds: v.array(
-        v.object({
-          minScore: v.number(),
-          stars: v.number(),
-        }),
-      ),
-      minimumScore: v.optional(v.number()),
-    }),
+    questions: screeningQuestionsValidator,
+    scoringConfig: screeningScoringConfigValidator,
     targetCollectionId: v.optional(v.id("collections")),
     // "sharded" when its progress is counted by convex/screening/resultCounts.ts; a job from
     // before #383 reads the aggregates until migrations/recountScreeningJobs recounts it.
@@ -932,7 +921,7 @@ export default defineSchema({
     openalexId: v.string(),
     title: v.string(),
     abstract: v.optional(v.string()),
-    authors: v.optional(v.array(v.string())),
+    authors: screeningAuthorsValidator,
     publicationYear: v.optional(v.number()),
     doi: v.optional(v.string()),
     status: v.union(
@@ -944,8 +933,8 @@ export default defineSchema({
     // A finished paper's answers by question key, with the model's confidence in each, waiting
     // (`pendingAnswers`) to move to the job's screening (convex/screening/drain.ts). Results
     // saved before #334 hold answers without the mark until migrations/moveScreeningJobAnswers.
-    answers: v.optional(v.record(v.string(), v.union(v.boolean(), v.null()))),
-    confidences: v.optional(v.record(v.string(), v.number())),
+    answers: screeningAnswersValidator,
+    confidences: capped(v.optional(v.record(v.string(), v.number())), MAX_QUESTIONS),
     pendingAnswers: v.optional(v.literal(true)),
     // The screening's version once this paper's answers moved there; its export reads the
     // job's answers as of it, whatever has changed since.

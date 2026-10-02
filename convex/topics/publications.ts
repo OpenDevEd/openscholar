@@ -8,7 +8,7 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
 import { readActiveTopicsEnabled } from "../evidenceLibraries/activeTopics";
 import { topicAssociationRequestSchema, topicIdSchema } from "../../lib/topics/contract";
-import { metadataValidator } from "./validators";
+import { metadataValidator, recordTopicIdsValidator } from "./validators";
 import { normalizeDoi, publicationGroupKey } from "../../lib/topics/identity";
 import { authenticate } from "./auth";
 
@@ -172,7 +172,7 @@ export const list = query({
 export const locations = query({
   args: {groupKey: v.string(), paginationOpts: paginationOptsValidator},
   returns: v.object({
-    locations: v.array(v.object({id: v.id("topicLocations"), itemKey: v.string(), topicIds: v.array(v.string()), metadata: metadataValidator, library: publicLibraryValidator})),
+    locations: v.array(v.object({id: v.id("topicLocations"), itemKey: v.string(), topicIds: recordTopicIdsValidator, metadata: metadataValidator, library: publicLibraryValidator})),
     nextCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {

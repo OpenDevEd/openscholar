@@ -11,7 +11,9 @@
 //   result. Any other array or record in its `returns` validator, top level or nested, is
 //   listed under listReturns.pending with the issue that pages or caps it. Keys are the
 //   function and the list's path, with a page's items written like a list's (`[]`), so
-//   turning a list into a page keeps its items' keys.
+//   turning a list into a page keeps its items' keys. A list capped on write
+//   (`capped(...)` from convex/lib/listCaps.ts) is a record's field and passes; caps are
+//   set only in the schema and its validators files (#426).
 // - Client code and actions never load every page: no `loadMore` from an effect or a loop,
 //   and no loop that reads page after page by cursor into one array. Waiting fixes are
 //   listed under everyPage.pending.
@@ -278,14 +280,18 @@ function listPaths(type: ts.Type, at: ts.Node, where = "", stack = new Set<ts.Ty
   if (stack.has(type)) return out;
   stack.add(type);
   if (type.isUnion()) for (const member of type.types) listPaths(member, at, where, stack, out);
-  const name = type.getSymbol()?.getName() ?? "";
+  // A capped list's type is `VArray<...> & Capped<N>`: check the validator inside the intersection.
+  const base = type.isIntersection() ? type.types.find((member) => /^V[A-Z]/.test(member.getSymbol()?.getName() ?? "")) ?? type : type;
+  const name = base.getSymbol()?.getName() ?? "";
+  // A list the schema caps on write (convex/lib/listCaps.ts) is a record's field, not a list to page.
+  const isCapped = Boolean(type.getProperty("__listCap"));
   if (name === "VArray") {
-    out.add(`${where}[]`);
-    const element = validatorPart(type, "element", at);
+    if (!isCapped) out.add(`${where}[]`);
+    const element = validatorPart(base, "element", at);
     if (element) listPaths(element, at, `${where}[]`, stack, out);
   } else if (name === "VRecord") {
-    out.add(`${where}{}`);
-    const value = validatorPart(type, "value", at);
+    if (!isCapped) out.add(`${where}{}`);
+    const value = validatorPart(base, "value", at);
     if (value) listPaths(value, at, `${where}{}`, stack, out);
   } else if (name === "VObject") {
     const fields = validatorPart(type, "fields", at);
@@ -462,6 +468,33 @@ function everyPageLoads(tree: ts.SourceFile, file: string): string[] {
   return found;
 }
 
+/** Where list caps may be set: the schema and the validators it's built from (#426). */
+const capsAllowed = (file: string) => file === "convex/schema.ts" || file === "convex/lib/listCaps.ts" || file === "lib/research/records.ts" || /[vV]alidators\.ts$/.test(file);
+/** `capped(...)` calls in `tree` outside the files that define stored validators. */
+function capsOutsideValidators(tree: ts.SourceFile, file: string): string[] {
+  if (capsAllowed(file)) return [];
+  // `capped` under any local name: `import { capped as bound }`, or `caps.capped` from `import * as caps`.
+  const names = new Set<string>();
+  const namespaces = new Set<string>();
+  for (const statement of tree.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || !/listCaps$/.test(statement.moduleSpecifier.text)) continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (bindings && ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);
+    if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) if ((element.propertyName ?? element.name).text === "capped") names.add(element.name.text);
+  }
+  const found: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const isCapped = (ts.isIdentifier(callee) && names.has(callee.text)) || (ts.isPropertyAccessExpression(callee) && callee.name.text === "capped" && ts.isIdentifier(callee.expression) && namespaces.has(callee.expression.text));
+      if (isCapped) found.push(`${file}:${holderName(node)}: caps a list outside the validators files; cap a stored field where its validator is defined, and page any other list.`);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  return found;
+}
+
 const listReturns: string[] = [];
 const everyPage: string[] = [];
 const PUBLIC_DEFINITIONS = [...BUILDERS, "defineUserQuery", "defineUserMutation", "defineUserAction"];
@@ -534,10 +567,13 @@ for (const tree of program.getSourceFiles().filter((file) => sources.includes(re
   visit(tree);
   // Migrations walk whole tables by design, a batch at a time.
   if (!file.startsWith("convex/migrations/")) everyPage.push(...everyPageLoads(tree, file));
+  problems.push(...capsOutsideValidators(tree, file));
 }
 for (const file of clientSources) {
   const text = readFileSync(file, "utf8");
-  everyPage.push(...everyPageLoads(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS), file));
+  const clientTree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  everyPage.push(...everyPageLoads(clientTree, file));
+  problems.push(...capsOutsideValidators(clientTree, file));
 }
 
 if (process.argv.includes("--list")) {

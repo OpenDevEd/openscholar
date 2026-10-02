@@ -10,6 +10,7 @@
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
+import { MAX_AUTHORS } from "../lib/listCaps";
 
 export type JobSourceSearchFilters = NonNullable<
   Doc<"extractionJobSources">["searchFilters"]
@@ -64,7 +65,8 @@ export function rowFromBucketItem(
     source: item.source,
     sourceRefId: item.sourceRefId,
     title: item.title,
-    authors: item.authors,
+    // A source stores its first authors; OpenAlex lists stop at 100 anyway (#426).
+    authors: item.authors.slice(0, MAX_AUTHORS),
     year: item.year,
     doi: item.doi,
     openalexId: item.openalexId,

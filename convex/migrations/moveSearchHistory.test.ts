@@ -1,6 +1,7 @@
 // Searches saved before #354 hold their history in arrays; the migration moves every entry
 // into searchHistory rows once, and `verify` says when none is left.
 import { convexTest } from "convex-test";
+import { runUncapped } from "../../tests/convex-test-with-limits";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
@@ -48,7 +49,8 @@ describe("moveSearchHistory", () => {
     try {
       const t = convexTest({ schema, transactionLimits: true });
       const many = Array.from({ length: 4_200 }, (_, i) => ({ query: `q${i}`, timestamp: "2026-08-01T10:00:00Z" }));
-      await t.run(async (ctx) => {
+      // Saved before list caps (#426): a legacy search may hold more than the cap.
+      await runUncapped(t, async (ctx) => {
         const userId = await ctx.db.insert("users", { libraryItemCount: 0, clerkId: "alice", email: "a@test", state: "active", createdAt: 1, updatedAt: 1 });
         await ctx.db.insert("searches", { userId, localId: "many", data: { ...legacy("many"), queryHistory: many }, revision: 1 });
       });

@@ -11,16 +11,13 @@ import { v } from "convex/values";
 import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedPaper } from "../access";
 import { getFlag, requireFeature } from "../../featureFlags/guard";
-import {
-  extractionPaperValidator,
-  extractionResultValidator,
-} from "../validators";
+import { extractionPaperValidator, extractionResultValidator, paperResultsValidator } from "../validators";
 
 export const results = query({
   args: { paperId: v.id("extractionPapers") },
   returns: statusResultValidator({
     paper: extractionPaperValidator,
-    results: v.array(extractionResultValidator),
+    results: paperResultsValidator,
   }),
   handler: async (ctx, args) => {
     const access = await resolveOwnedPaper(ctx, args.paperId);

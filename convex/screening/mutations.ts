@@ -30,6 +30,7 @@ import { estimateScreening } from "./estimate";
 import { applyCommand, moveSearchAnswers } from "../research/records";
 
 import { availableCredits } from "../billing/accounts";
+import { MAX_AUTHORS } from "../lib/listCaps";
 
 /**
  * Create a bulk screening job.
@@ -147,7 +148,7 @@ async function createResults(ctx: MutationCtx, userId: Id<"users">, jobId: Id<"s
       openalexId: paper.openalexId,
       title: paper.title,
       abstract: paper.abstract,
-      authors: paper.authors,
+      authors: paper.authors?.slice(0, MAX_AUTHORS),
       publicationYear: paper.publicationYear,
       doi: paper.doi,
       status: "processing",

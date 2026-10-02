@@ -2,11 +2,15 @@ import { v, type Infer } from "convex/values";
 import { format, parseISO } from "date-fns";
 import { partial } from "convex-helpers/validators";
 import type { SearchResult } from "../types/search.types";
+import { MAX_FILTER_VALUES, MAX_LEGACY_ENTRIES, MAX_LINKED_ACCOUNTS, MAX_QUESTIONS, RANGE_ENDS, capped } from "../../convex/lib/listCaps";
 
 const strings = v.array(v.string());
-const numbers = v.array(v.number());
+// Each stored list gets its own validator: a cap sticks to the one it's set on, and
+// v.optional copies the validator it's given (convex/lib/listCaps.ts).
+const filterValues = () => capped(v.optional(v.array(v.string())), MAX_FILTER_VALUES);
+const range = () => capped(v.optional(v.array(v.number())), RANGE_ENDS);
 const answer = v.union(v.boolean(), v.null());
-const answers = v.array(v.object({ question: v.string(), response: answer }));
+const answers = capped(v.array(v.object({ question: v.string(), response: answer })), MAX_QUESTIONS);
 export const fieldValidator = v.union(...[
   "title_and_abstract", "title", "abstract", "fulltext", "display_name", "oql",
 ].map((field) => v.literal(field as SearchResult["field"])));
@@ -30,34 +34,35 @@ export const searchFields = {
   questionCount: v.number(),
   latestQuestion: v.optional(v.string()),
   questionText: v.string(),
-  screeningQuestions: v.array(v.object({ question: v.string() })),
+  screeningQuestions: capped(v.array(v.object({ question: v.string() })), MAX_QUESTIONS),
+  // Read from the search's screening answers (#334), every one of them: pending under #421.
   screeningResponses: v.array(v.object({ paperId: v.string(), responses: answers })),
   dateRange: v.optional(v.object({ from: v.optional(v.string()), to: v.optional(v.string()) })),
-  yearRange: v.optional(numbers),
+  yearRange: range(),
   filterType: v.optional(v.union(v.literal("date"), v.literal("year"))),
   isYearRangeEnabled: v.optional(v.boolean()),
   sortBy: v.optional(v.string()),
-  selectedRegions: v.optional(strings),
-  selectedCountryFocus: v.optional(strings),
-  ratingRange: v.optional(numbers),
+  selectedRegions: filterValues(),
+  selectedCountryFocus: filterValues(),
+  ratingRange: range(),
   onlyRatedPapers: v.optional(v.boolean()),
   citesItemId: v.optional(v.string()),
   citedByItemId: v.optional(v.string()),
   relatedToItemId: v.optional(v.string()),
   reviewFilter: v.optional(v.boolean()),
-  researchAreas: v.optional(strings),
-  sdgs: v.optional(strings),
+  researchAreas: filterValues(),
+  sdgs: filterValues(),
   openAccessOnly: v.optional(v.boolean()),
-  workTypes: v.optional(strings),
-  workLanguages: v.optional(strings),
-  institutionTypes: v.optional(strings),
-  funders: v.optional(strings),
+  workTypes: filterValues(),
+  workLanguages: filterValues(),
+  institutionTypes: filterValues(),
+  funders: filterValues(),
   minCitations: v.optional(v.number()),
   hasAbstract: v.optional(v.boolean()),
   includeRetracted: v.optional(v.boolean()),
   language: v.optional(v.string()),
   page: v.optional(v.number()),
-  chatJobIdsByAccountId: v.optional(v.record(v.string(), v.string())),
+  chatJobIdsByAccountId: capped(v.optional(v.record(v.string(), v.string())), MAX_LINKED_ACCOUNTS),
   createdAt: v.string(),
   updatedAt: v.string(),
 };
@@ -72,8 +77,10 @@ export const storedSearchValidator = v.object({
   queryHistoryCount: v.optional(v.number()),
   questionCount: v.optional(v.number()),
   questionText: v.optional(v.string()),
-  queryHistory: v.optional(historyArrays.queryHistory),
-  questionHistory: v.optional(historyArrays.questionHistory),
+  // Answers moved to the search's screening (#334); old stored searches may still hold some.
+  screeningResponses: capped(v.array(v.object({ paperId: v.string(), responses: answers })), MAX_LEGACY_ENTRIES),
+  queryHistory: capped(v.optional(v.array(queryHistoryEntryValidator)), MAX_LEGACY_ENTRIES),
+  questionHistory: capped(v.optional(v.array(questionHistoryEntryValidator)), MAX_LEGACY_ENTRIES),
 });
 export type StoredSearch = Infer<typeof storedSearchValidator>;
 
@@ -90,10 +97,10 @@ export const answerSourceValidator = v.union(v.literal("model"), v.literal("pers
  * answer and its confidence in it, kept when a person or the assistant changes the answer;
  * the answer was reviewed when someone else set it after the model.
  */
-export const paperAnswersValidator = v.array(v.object({
+export const paperAnswersValidator = capped(v.array(v.object({
   question: v.string(), answer: v.union(v.boolean(), v.null()), setBy: answerSourceValidator, updatedAt: v.number(),
   model: v.optional(v.object({ answer: v.union(v.boolean(), v.null()), confidence: v.optional(v.number()), at: v.number() })),
-}));
+})), MAX_QUESTIONS);
 export type SavedSearch = Infer<typeof searchValidator>;
 // A search's history summary changes only with its history, never by a patch.
 const { id: _id, createdAt: _createdAt, queryHistoryCount: _queries, questionCount: _questions, latestQuestion: _latest, questionText: _text, ...editableFields } = searchFields;

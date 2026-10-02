@@ -3,10 +3,12 @@ import { v } from "convex/values";
 import { effortValidator } from "../aiModelConfig/validators";
 import type { Doc } from "../_generated/dataModel";
 import {
+  screeningAnswersValidator,
+  screeningAuthorsValidator,
   screeningJobStatusValidator,
-  screeningQuestionValidator,
-  screeningScoringConfigValidator,
+  screeningQuestionsValidator,
   screeningResultStatusValidator,
+  screeningScoringConfigValidator,
 } from "./validators";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
@@ -82,24 +84,8 @@ export const getScreeningJob = query({
       processedPapers: v.number(),
       failedPapers: v.number(),
       qualifiedPapers: v.number(),
-      questions: v.array(v.object({ key: v.string(), question: v.string() })),
-      scoringConfig: v.object({
-        rules: v.array(
-          v.object({
-            questionKey: v.string(),
-            yesPoints: v.number(),
-            noPoints: v.number(),
-            nullPoints: v.number(),
-          })
-        ),
-        starThresholds: v.array(
-          v.object({
-            minScore: v.number(),
-            stars: v.number(),
-          })
-        ),
-        minimumScore: v.optional(v.number()),
-      }),
+      questions: screeningQuestionsValidator,
+      scoringConfig: screeningScoringConfigValidator,
       targetCollectionId: v.optional(v.id("collections")),
       createdAt: v.number(),
       updatedAt: v.number(),
@@ -198,7 +184,7 @@ export const listUserScreeningJobs = query({
       qualifiedPapers: v.number(),
       createdAt: v.number(),
       completedAt: v.optional(v.number()),
-      questions: v.array(screeningQuestionValidator),
+      questions: screeningQuestionsValidator,
       targetCollectionId: v.optional(v.id("collections")),
       targetCollectionName: v.optional(v.string()),
     })
@@ -256,7 +242,7 @@ export const getScreeningResultsForExport = query({
       job: v.object({
         _id: v.id("screeningJobs"),
         status: screeningJobStatusValidator,
-        questions: v.array(screeningQuestionValidator),
+        questions: screeningQuestionsValidator,
         scoringConfig: screeningScoringConfigValidator,
         totalPapers: v.number(),
         qualifiedPapers: v.number(),
@@ -267,13 +253,11 @@ export const getScreeningResultsForExport = query({
         v.object({
           openalexId: v.string(),
           title: v.string(),
-          authors: v.optional(v.array(v.string())),
+          authors: screeningAuthorsValidator,
           publicationYear: v.optional(v.number()),
           doi: v.optional(v.string()),
           status: screeningResultStatusValidator,
-          answers: v.optional(
-            v.record(v.string(), v.union(v.boolean(), v.null()))
-          ),
+          answers: screeningAnswersValidator,
           score: v.optional(v.number()),
           stars: v.optional(v.number()),
           qualified: v.optional(v.boolean()),
@@ -358,7 +342,7 @@ export const paperContext = internalQuery({
         userId: v.id("users"),
         status: screeningJobStatusValidator,
         totalPapers: v.number(),
-        questions: v.array(screeningQuestionValidator),
+        questions: screeningQuestionsValidator,
         serverEffort: v.optional(effortValidator),
       }),
       paper: v.object({ title: v.string(), abstract: v.optional(v.string()), status: screeningResultStatusValidator }),

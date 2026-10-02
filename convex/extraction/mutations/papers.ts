@@ -18,6 +18,7 @@ import { errorCodeValidator, paperSourceTypeValidator } from "../validators";
 import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
 import { isRetryable, type ClassifiedError } from "@/lib/errors/taxonomy";
 import { recomputePaperListProjection } from "../listProjection";
+import { MAX_AUTHORS } from "../../lib/listCaps";
 
 function matchesExpectedEpoch(
   job: { runEpoch?: number } | null | undefined,
@@ -82,7 +83,7 @@ export const createPaperRecords = internalMutation({
         doi: paper.doi,
         publicationYear: paper.publicationYear,
         abstract: paper.abstract,
-        authors: paper.authors,
+        authors: paper.authors?.slice(0, MAX_AUTHORS),
         pdfUrl: sanitizedPdfUrl,
         storageId: sanitizedStorageId,
         isOpenAccess: paper.isOpenAccess,

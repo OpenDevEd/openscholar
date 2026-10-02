@@ -51,6 +51,7 @@ import {
   persistDraftConfigurationSnapshot,
 } from "./configurationSnapshot";
 import { validateSectionPayload } from "./sectionPayload";
+import { changedSectionsValidator } from "./validators";
 
 const MAX_VERSION_ROWS = 100;
 
@@ -700,7 +701,7 @@ export const versionRowValidator = v.object({
   revisionNumber: v.number(),
   createdAt: v.number(),
   by: v.string(),
-  changedSections: v.array(sectionKeyValidator),
+  changedSections: changedSectionsValidator,
   status: versionStatusValidator,
   kind: versionKindValidator,
   runtimeCommit: v.optional(v.string()),

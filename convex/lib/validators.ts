@@ -1,5 +1,6 @@
 import { v, type Infer, type Validator } from "convex/values";
 import type { Doc, TableNames } from "../_generated/dataModel";
+import { MAX_METADATA_FIELDS, capped } from "./listCaps";
 
 /**
  * Compile-time invariant: the runtime row type for `T` is exactly the
@@ -175,7 +176,7 @@ export const creditTransactionFields = {
   paperId: v.optional(v.id("extractionPapers")),
   resultId: v.optional(v.id("extractionResults")),
   billingType: v.optional(billingTypeValidator),
-  metadata: v.optional(v.record(v.string(), v.string())),
+  metadata: capped(v.optional(v.record(v.string(), v.string())), MAX_METADATA_FIELDS),
   stripeInvoiceId: v.optional(v.string()),
   stripePaymentIntentId: v.optional(v.string()),
   stripeChargeId: v.optional(v.string()),
