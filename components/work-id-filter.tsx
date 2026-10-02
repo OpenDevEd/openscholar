@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useUpdateSearchFilter, useCurrentSearchFormState } from "@/lib/hooks";
 import { useAppToast } from "@/lib/toast";
 import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive } from "@/lib/utils";
+import { SHORT_WORK_ID, withoutWorkSite } from "@/lib/openalex/work-id";
 import { Quote, Network, ExternalLink, X, type AppIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 
@@ -97,17 +98,9 @@ export function WorkIdFilter({
       return;
     }
     
-    // Clean and validate the input
-    const cleanId = inputValue.trim();
-    let validatedId = cleanId;
-    
-    // If it's a full URL, extract the ID
-    if (cleanId.startsWith('https://openalex.org/')) {
-      validatedId = cleanId.replace('https://openalex.org/', '');
-    }
-    
-    // Validate the ID format (should start with 'W' for works)
-    if (!validatedId.match(/^W\d+$/)) {
+    // An OpenAlex or OpenScholar API work id, short or in full
+    const validatedId = withoutWorkSite(inputValue.trim());
+    if (!SHORT_WORK_ID.test(validatedId)) {
       toast.validation.failed(t("workIdFormatHint"));
       return;
     }
@@ -209,7 +202,7 @@ export function WorkIdFilter({
                "block w-full px-1 py-0.5 rounded text-xs break-all word-break-all",
                colors.code
              )}>
-               {itemId.startsWith('https://openalex.org/') ? itemId.replace('https://openalex.org/', '') : itemId}
+               {withoutWorkSite(itemId)}
              </code>
            </div>
          </div>

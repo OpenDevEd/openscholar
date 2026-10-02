@@ -59,6 +59,16 @@ describe("createSearchParameters", () => {
     });
   });
 
+  it("passes OpenScholar API ids as they are, since only OpenAlex ids have an openalex.org form", () => {
+    const result = createSearchParameters("test", {
+      ...baseFilters,
+      citesItemId: "OS123",
+      citedByItemId: "https://openscholar.ai/OS456",
+      relatedToItemId: "OS789",
+    });
+    expect([result.filter!.cites, result.filter!.cited_by, result.filter!.related_to]).toEqual(["OS123", "OS456", "OS789"]);
+  });
+
   it("adds cited_by filter with URL prefix", () => {
     const filters: SearchFilters = {
       ...baseFilters,
