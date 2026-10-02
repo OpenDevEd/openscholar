@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { openAlexUrl } from "../../lib/openalex/request-url";
+import { shortWorkId } from "../../lib/openalex/work-id";
 
 const BATCH_SIZE = 25;
 const DELAY_BETWEEN_REQUESTS_MS = 100; // Respect OpenAlex rate limits
@@ -49,13 +50,17 @@ export const backfillPaperData = internalAction({
         }
 
         const work = await response.json();
+        // The OpenScholar API answers an OpenAlex id with its own OS id. The library knows the
+        // paper by the row's id, and its cards read the stored work's id, so that keeps it.
+        const answeredOwnId = shortWorkId(String(work?.id ?? "")) === shortWorkId(item.openalexId);
+        const paperData = answeredOwnId ? work : { ...work, id: item.openalexId };
 
         // Patch the document with the full paperData
         await ctx.runMutation(
           internal.library.backfillMutations.patchPaperData,
           {
             itemId: item._id,
-            paperData: JSON.stringify(work),
+            paperData: JSON.stringify(paperData),
           },
         );
 
