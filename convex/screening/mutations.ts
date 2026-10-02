@@ -24,7 +24,7 @@ import { deriveCompletionTransition } from "./completion";
 import { scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { ensureScreening } from "../research/answers";
-import { bookkeepLater, finishIfDone, saveQualified } from "./bookkeeping";
+import { bookkeepLater, ensureProgress, saveQualified } from "./bookkeeping";
 import { estimateScreening } from "./estimate";
 import { applyCommand, moveSearchAnswers } from "../research/records";
 
@@ -302,7 +302,7 @@ export const finalizeScreeningJobFromAggregates = internalMutation({
   args: { jobId: v.id("screeningJobs") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await finishIfDone(ctx, args.jobId);
+    await ensureProgress(ctx, args.jobId);
     return null;
   },
 });

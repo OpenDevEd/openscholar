@@ -4,6 +4,8 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "./billing.test-support";
+import { insertUsage } from "./ledger";
+import { creditsAgg } from "../extraction/aggregates";
 import { convertUsdToCredits } from "../../lib/pricing";
 
 /** OpenRouter's generation record for a failed chat turn that cost `usd`. */
@@ -332,4 +334,28 @@ describe("holding and charging", () => {
     expect(account).toMatchObject({ balance: 950, card: { brand: "visa", last4: "4242" } });
     expect(account?.refreshQueuedAt).toBeUndefined();
   });
+});
+
+describe("the usage ledger", () => {
+  it("counts hundreds of charges for one extraction job within Convex's limits", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest({ schema, transactionLimits: true });
+      const { userId, jobId } = await seedChat(t, 10_000);
+      for (let i = 0; i < 400; i += 100) {
+        await t.run(async (ctx) => {
+          for (let k = i; k < i + 100; k++) {
+            await insertUsage(ctx, { userId, jobId, chargeId: `extraction:${k}`, credits: 1, kind: "extraction", description: "Extraction", createdAt: k });
+          }
+        });
+      }
+
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+      expect(await t.run((ctx) => creditsAgg.sum(ctx, { namespace: jobId }))).toBe(400);
+      expect(await t.run(async (ctx) => (await ctx.db.query("billingUsage").collect()).filter((row) => row.queuedAt !== undefined).length)).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 300_000);
 });

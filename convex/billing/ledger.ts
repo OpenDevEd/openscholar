@@ -15,10 +15,13 @@ import { recordJobCredits } from "../extraction/aggregates";
 import { requestRefresh } from "./accounts";
 import { usageAgg, usageOps } from "./usageLog";
 
-/** Charges per batch: a few aggregate entries and a job-credit entry each. */
-const BATCH = 200;
+/**
+ * Charges per batch. Each extraction charge adds a job-credit entry, a few dozen index
+ * reads into the aggregate's tree, so a batch stays well inside 4,096.
+ */
+const BATCH = 50;
 
-const { vQueryArgs, vQueryReturns, vMutationArgs } = defineBatchWorkerValidators({
+const { vQueryArgs, vQueryReturns, vMutationArgs, vMutationReturns } = defineBatchWorkerValidators({
   batch: { charges: v.array(v.id("billingUsage")) },
 });
 
@@ -66,6 +69,7 @@ export const nextCharges = internalQuery({
 /** Counts a batch of charges, adds job credits, and queues one refresh per person charged. */
 export const record = internalMutation({
   args: vMutationArgs,
+  returns: vMutationReturns,
   handler: async (ctx, { charges: ids }) => {
     const rows = (await Promise.all(ids.map((id) => ctx.db.get("billingUsage", id)))).filter(
       (row): row is Doc<"billingUsage"> => row !== null && row.queuedAt !== undefined,
@@ -80,5 +84,6 @@ export const record = internalMutation({
     for (const userId of new Set<Id<"users">>(rows.map((row) => row.userId))) await requestRefresh(ctx, userId);
     // Counted: out of the queue.
     for (const row of rows) await ctx.db.patch("billingUsage", row._id, { queuedAt: undefined });
+    return null;
   },
 });

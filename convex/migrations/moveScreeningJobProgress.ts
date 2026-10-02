@@ -4,12 +4,13 @@ import { components, internal } from "../_generated/api";
 import type { DataModel, Doc } from "../_generated/dataModel";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
-import { countBookkept, progressRow } from "../screening/bookkeeping";
+import { countBookkept, ensureProgress, progressRow } from "../screening/bookkeeping";
 
 /**
  * Gives every Screen all job counted before the bookkeeping worker (#399) its progress row,
- * counted from its results. Papers the worker hasn't handled yet are left to it. A job the
- * worker already touched has a row and is skipped. One job per transaction, safe to run again.
+ * counted from its results, and finishes one whose papers all finished before. Papers the
+ * worker hasn't handled yet are left to it. A job the worker already touched has a row. One
+ * job per transaction, safe to run again.
  *
  *   npx convex run migrations/moveScreeningJobProgress:run '{"dryRun": true}'
  *   npx convex run migrations/moveScreeningJobProgress:run
@@ -21,8 +22,7 @@ export const moveProgress = migrations.define({
   table: "screeningJobs",
   batchSize: 1,
   migrateOne: async (ctx, job) => {
-    if (await progressRow(ctx, job._id)) return;
-    await ctx.db.insert("screeningJobProgress", { jobId: job._id, ...(await countBookkept(ctx, job._id)) });
+    await ensureProgress(ctx, job._id);
   },
 });
 

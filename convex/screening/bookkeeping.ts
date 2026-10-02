@@ -18,12 +18,11 @@ import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { upsertLibraryItem } from "../library/mutations";
 import { addCollectionMembership } from "../library/collectionMembership";
 import { moveResultAnswers } from "./drain";
-import { SCREENING_TERMINAL_RESULT_STATUSES } from "./lifecycle";
 
 /** Papers per batch: each moves its answers and may save a library item, a few dozen reads. */
 const BATCH = 50;
 
-const { vQueryArgs, vQueryReturns, vMutationArgs } = defineBatchWorkerValidators({
+const { vQueryArgs, vQueryReturns, vMutationArgs, vMutationReturns } = defineBatchWorkerValidators({
   batch: { results: v.array(v.id("screeningResults")) },
 });
 
@@ -128,6 +127,16 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
   await ctx.db.patch("screeningResults", result._id, { savedToLibrary: true, libraryItemId });
 }
 
+/**
+ * Gives a job its progress row, counted from its bookkept papers, when it has none, and
+ * finishes it if that counts every paper: for jobs whose last papers finished before the
+ * worker, which nothing else would finish.
+ */
+export async function ensureProgress(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
+  if (!(await progressRow(ctx, jobId))) await ctx.db.insert("screeningJobProgress", { jobId, ...(await countBookkept(ctx, jobId)) });
+  await finishIfDone(ctx, jobId);
+}
+
 /** Finishes a processing job once its progress counts every paper. */
 export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
   const job = await ctx.db.get("screeningJobs", jobId);
@@ -153,27 +162,43 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
   }
 }
 
-/** One batch of finished papers: counts, answers, library saves, and finishing their jobs. */
+/**
+ * One batch of finished papers: counts, answers, library saves, and finishing their jobs.
+ * A job without progress yet is counted from all its results, so a batch counts at most one
+ * such job; the others' papers wait for the next batch, and the cursor goes back to them.
+ */
 export const bookkeep = internalMutation({
   args: vMutationArgs,
+  returns: vMutationReturns,
   handler: async (ctx, { results: ids }) => {
     const results = (await Promise.all(ids.map((id) => ctx.db.get("screeningResults", id)))).filter(
-      (result): result is Doc<"screeningResults"> =>
-        result !== null && result.doneAt !== undefined && SCREENING_TERMINAL_RESULT_STATUSES.includes(result.status as never),
+      (result): result is Doc<"screeningResults"> => result !== null && result.doneAt !== undefined,
     );
     const byJob = new Map<Id<"screeningJobs">, Doc<"screeningResults">[]>();
     for (const result of results) byJob.set(result.jobId, [...(byJob.get(result.jobId) ?? []), result]);
+    let recounted = false;
+    const waiting: bigint[] = [];
     for (const [jobId, jobResults] of byJob) {
       const job = await ctx.db.get("screeningJobs", jobId);
-      if (!job) continue;
-      await countFinished(ctx, jobId, jobResults);
-      for (const result of jobResults) {
-        if (result.pendingAnswers) await moveResultAnswers(ctx, result);
-        if (result.status === "completed" && result.qualified === true && !result.libraryItemId) await saveQualified(ctx, job, result);
-        // Bookkept: out of the queue.
-        await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
+      if (job) {
+        if (!(await progressRow(ctx, jobId))) {
+          if (recounted) {
+            waiting.push(...jobResults.map((result) => doneAtOf(result)!));
+            continue;
+          }
+          recounted = true;
+        }
+        await countFinished(ctx, jobId, jobResults);
+        for (const result of jobResults) {
+          if (result.pendingAnswers) await moveResultAnswers(ctx, result);
+          if (result.status === "completed" && result.qualified === true && !result.libraryItemId) await saveQualified(ctx, job, result);
+        }
+        await finishIfDone(ctx, jobId);
       }
-      await finishIfDone(ctx, jobId);
+      // Bookkept, or its job is gone: out of the queue.
+      for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
     }
+    if (waiting.length) return { cursor: waiting.reduce((min, ts) => (ts < min ? ts : min)) };
+    return null;
   },
 });
