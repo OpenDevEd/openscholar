@@ -89,6 +89,8 @@ describe("fetchWorksPage", () => {
       page({ abstract_inverted_index: { word: "0" } }),
       // Fields the paper card loops over or reads into, in a shape it cannot.
       page({ authorships: {} }),
+      page({ authorships: [{ author: null }] }),
+      page({ authorships: [{}] }),
       page({ display_name: { text: "Paper" } }),
       page({ related_works: 3 }),
       page({ open_access: "yes" }),

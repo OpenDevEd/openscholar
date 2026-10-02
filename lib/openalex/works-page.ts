@@ -26,7 +26,8 @@ const workSchema = z.looseObject({
   type: maybe(z.string()),
   publication_year: maybe(z.number()),
   cited_by_count: maybe(z.number()),
-  authorships: maybe(z.array(z.looseObject({ author: maybe(named) }))),
+  // The card reads each author's name without a guard; OpenAlex always sends the author.
+  authorships: maybe(z.array(z.looseObject({ author: z.looseObject({ display_name: z.string() }) }))),
   primary_location: maybe(z.looseObject({ source: maybe(named) })),
   open_access: maybe(z.looseObject({ is_oa: maybe(z.boolean()), oa_url: maybe(z.string()) })),
   primary_topic: maybe(z.looseObject({ field: maybe(named), subfield: maybe(named), domain: maybe(named) })),
