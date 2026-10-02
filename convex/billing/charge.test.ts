@@ -1,10 +1,11 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "./billing.test-support";
 import { insertUsage } from "./ledger";
+import { requestRefresh } from "./accounts";
 import { creditsAgg } from "../extraction/aggregates";
 import { convertUsdToCredits } from "../../lib/pricing";
 
@@ -333,6 +334,20 @@ describe("holding and charging", () => {
     const account = await t.run((ctx) => ctx.db.query("billingAccounts").first());
     expect(account).toMatchObject({ balance: 950, card: { brand: "visa", last4: "4242" } });
     expect(account?.refreshQueuedAt).toBeUndefined();
+  });
+
+  it("shows the signed-in user their account while a re-read from Autumn is queued", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 1_000);
+    const user = await t.run(async (ctx) => {
+      await requestRefresh(ctx, userId);
+      return await ctx.db.get(userId);
+    });
+
+    const account = await t.withIdentity({ subject: user!.clerkId }).query(api.billing.accounts.mine, {});
+
+    expect(account).toMatchObject({ balance: 1_000 });
   });
 });
 

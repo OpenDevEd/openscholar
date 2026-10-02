@@ -10,7 +10,6 @@ import { internalAction, type ActionCtx } from "../_generated/server";
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { PaperData } from "./types";
 import { storedSearchFiltersValidator } from "./validators";
 import {
   buildOpenAlexSearchParams,
@@ -18,6 +17,7 @@ import {
 import {
   mapOpenAlexWorkToPaperData,
   type OpenAlexWork,
+  type PaperDataOut,
 } from "../../lib/openalex/work-mapper";
 import { openAlexUrl } from "../../lib/openalex/request-url";
 import { dedupeExpandedSources, expandJobSources } from "./expandSources";
@@ -199,7 +199,7 @@ function setupRuntime(pdfEnabled: boolean): SetupRuntime {
 
 export async function runFetchPapersFromHistory(
   searchFilters: StoredSearchFilters,
-): Promise<PaperData[]> {
+): Promise<PaperDataOut[]> {
   if (!("openAlexQuery" in searchFilters)) {
     throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
   }
@@ -272,7 +272,7 @@ export const fetchPapersFromHistory = internalAction({
       workType: v.optional(v.string()),
     }),
   ),
-  handler: async (_ctx, args): Promise<PaperData[]> => {
+  handler: async (_ctx, args): Promise<PaperDataOut[]> => {
     return await runFetchPapersFromHistory(args.searchFilters);
   },
 });
