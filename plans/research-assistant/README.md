@@ -115,6 +115,47 @@ everything a user can, calling the same actions as the UI:
   pointing at an exact record. Proof: the assistant mock on branch
   `mock/research-assistant` (commit 9f607773) runs the whole flow without
   attaching, with the @ picker in the composer.
+- **2026-10-02, how the remaining steps are built.** The decisions above stand.
+  What changed is how steps 4b to 14 are built, after the Convex-limits work
+  (OS-18, #350 to #413) measured the system at full size:
+  - Was: jobs, operations and thread events wrote wherever was convenient. Now:
+    each item writes only its own rows, and a batch worker does shared
+    bookkeeping, as Screen all (`convex/screening/bookkeeping.ts`), the usage
+    ledger (`convex/billing/ledger.ts`) and extraction
+    (`convex/extraction/queue/dispatcher.ts`, `convex/extraction/countsWorker.ts`)
+    already do. Reason: on e2e, 40 writers into one screening lost a third of
+    their writes to conflicts. Proof: #383, #390, #405 to #407.
+  - Was: "reserve and settle billing" in general. Now: an approval's maximum
+    spend is an Autumn hold, the per-reply cap is a hold per reply, and bulk
+    work tracks each item's charge against the approval. Reason: #395 moved
+    every charge onto Autumn's lock-confirm flow and per-item tracking, so the
+    assistant uses the same calls rather than a second path. Proof: #395, #405.
+  - New: what reaches the model is exactly what a registry entry's `returns`
+    validator declares. `check:convex-rules` fails on any function that can
+    return a field its validator doesn't declare, so an internal column can't
+    reach the model or another person in a shared chat. Reason: `mine`
+    returned an internal billing column on 2026-10-02 and crashed every page
+    during charges. Proof: #412, #413.
+  - Was: paper sets resolved on the server, with no speed target. Now: the
+    resolver asks OpenAlex only for the fields a job keeps and reads numbered
+    pages in parallel (OpenAlex allows them up to 10,000 results). Screen all's
+    button and the assistant use the same path: the button waits for the
+    resolve, then shows the running job. Reason: for 1,000 papers, today's
+    browser reads take 12.8 s for 22 MB of complete works; the same papers
+    with only the fields Screen all keeps, in five parallel pages, take about
+    2 s. Proof: timed against the OpenAlex API on 2026-10-02. The user chose
+    the waiting button the same day.
+  - Was: "how many screening jobs run at once per plan" (#335). Now: each plan
+    sets how many jobs one person runs at once, further jobs wait in a queue,
+    and every running job draws from the shared pool through its own window,
+    as extraction's dispatcher already refills each job's window. Reason: the
+    pools are shared by everyone (Screen all 20 papers at a time, extraction
+    40), and Screen all enqueues every paper of a job when it's created, so a
+    second person's job waits behind the first one's last paper.
+  - Was: the plan treated shared dev as disposable development data. Now:
+    shared dev is the live deployment. Migrations run there, and its data is
+    user data, so #325 moves existing chat threads into assistant threads
+    instead of deleting them.
 
 ## Tools considered (2026-09-30)
 
@@ -136,14 +177,34 @@ BlockNote was set aside because its AI packages are GPL-3.0 or paid.
 
 ## Current code to reuse
 
-- OpenAlex search and paging on the server: `lib/openalex/*`, and
-  `app/actions/openalex.ts` (`getSearchResults`, `readSearchPage`), which use
-  OpenScholar's key.
+- OpenAlex search and paging on the server: `lib/openalex/*` (the shared
+  query builder in `works-query.ts`, one page in `read-works.ts`), with
+  OpenScholar's key. `readSearchPage` in `app/actions/openalex.ts` is what the
+  screening dialog calls from the browser today; the paper-set resolver (#341)
+  replaces that path. History searches already resolve on the server in
+  `convex/extraction/expandSources.ts`.
+- The action registry, built in #347: `convex/lib/userActions.ts`
+  (`defineUserQuery`, `defineUserMutation`), `convex/lib/userActionRegistry.ts`,
+  the tool builder `convex/lib/assistantTools.ts`, and the gate
+  `scripts/check-user-actions.ts` with `scripts/user-actions-exempt.json`.
+- Research records and screening answers: `convex/research/records.ts`
+  (`applyCommand`), and the screening record from #385, whose answers a single
+  writer moves in `convex/screening/drain.ts`.
+- Batch-worker bookkeeping on `@convex-dev/batch-worker`:
+  `convex/screening/bookkeeping.ts`, `convex/billing/ledger.ts`,
+  `convex/extraction/queue/dispatcher.ts` and `convex/extraction/countsWorker.ts`.
+  Live job progress reads `screeningJobProgress` and `extractionJobCounts`.
 - The history entry's shape: `SearchResult` in `lib/types/search.types.ts`,
   and `migrateSearchHistoryState` and `importSearchHistory` in `lib/store.ts`.
-- Credit estimates: `lib/extraction/cost-estimate.ts`, and the screening
-  estimate shown in the screening dialog.
-- Reserve and settle billing: `convex/billing/charge.ts`.
+- Credit estimates: `lib/extraction/cost-estimate.ts`, and `estimateScreening`,
+  which the screening dialog and `createScreeningJob` both use.
+- Billing on Autumn (#395): holds settled with one lock confirm and recorded in
+  `billingHolds`, per-item tracking for bulk work, and one throttled account
+  refresh per user (`convex/billing/charge.ts`, `convex/billing/accounts.ts`).
+- CI rules that every new function meets: `scripts/check-convex-rules.ts`
+  (bounded reads, `returns` validators that declare exactly what's returned,
+  clock-free queries, triggers on every write), and Convex tests that run
+  under Convex's transaction limits.
 - Paper search index: `@convex-dev/rag`, as used in
   `convex/extraction/workpoolActions.ts`.
 - Chat streaming, stop and billing: `convex/chat/messages.ts`,
@@ -220,8 +281,12 @@ Everything else arrives through tools:
 - Deferred tools are found with `toolSearch()`, and the current page's tools
   are pre-loaded with `activeTools`.
 - Results are paged and filterable, and go to the model as a summary plus IDs
-  (`toModelOutput`).
+  (`toModelOutput`), built only from the registry entry's validated result.
 - Past chats are searched through a tool, never pre-loaded.
+- OpenAlex requests count against the sender's own allowance (300 a minute,
+  20,000 a day per account, `lib/openalex/request-limiter.ts`). Each turn has
+  an OpenAlex request budget, and a count check asks for one result, not a
+  page.
 
 ### View context (#327)
 
@@ -232,8 +297,15 @@ other's context.
 ### Jobs (#328)
 
 Start through the registry after approval. The tool returns the job ID at
-once. A live card renders from the job's own queries. Completion adds a
-thread event, and the assistant writes a readout. A queued job checks
+once. A live card renders from the job's progress rows (`screeningJobProgress`,
+`extractionJobCounts`), which the batch workers keep. Completion adds a thread
+event as its own row, written by the step that finishes the job (`finishIfDone`
+in Screen all's bookkeeping, the counts worker in extraction), never by each
+paper. The assistant writes a readout. Each plan sets how many jobs a person
+runs at once; further jobs wait in a queue (#335). Every running job draws
+from the shared pool through its own window, the way extraction's dispatcher
+refills each job's window, so one person's 1,000 papers don't hold the pool
+for everyone else. A queued job checks
 credits, access and limits again when it starts, and a periodic sweep starts
 queued jobs nothing woke. Extraction results are analysed on the server with
 filter, group and count, so a comparison covers every row rather than the
@@ -245,12 +317,20 @@ decisions; every other answer, from any model, carries its quote (#339).
 
 Every tool call and UI action that changes something runs as an operation
 with a stored ID, receipt and result, shared by the UI and the assistant.
+Operations, receipts and thread events are rows of their own; nothing patches
+a shared thread or job record per step.
 Retry resumes the unfinished operation; it never replays finished work or
 rewinds charges. Editing a message starts a new request and keeps the history
 of what the old one did. A finished job resumes the chat exactly once, as the
 original sender, with their access and allowance checked again. The reply
 lock is released while a job runs. `@convex-dev/workflow` coordinates this on
 top of the existing job queues.
+
+Credits use the flow from #395. An approval's maximum spend is an Autumn hold,
+recorded in `billingHolds`, and settled with one lock confirm when the work
+ends. A reply holds its per-reply cap the same way. Bulk work under one
+approval tracks each item's charge, as Screen all does, and stops when the
+approval's maximum is reached.
 
 ### Paper sets (#341)
 
@@ -261,8 +341,13 @@ server turns it into papers. A saved search maps its fields to the parameters
 `buildOpenAlexWorksQuery` takes, the builder the results page and extraction
 already share, and applies the rating filters ("only rated papers" and the
 rating range) from the account's `paperRatings`, as the results page does in
-the browser. So it returns the same papers as its results page. The set is
-resolved into a fixed list before approval, recording the source's revision,
+the browser. So it returns the same papers as its results page. The resolver
+asks OpenAlex only for the fields the job keeps (`select`) and reads numbered
+pages in parallel, which OpenAlex allows up to 10,000 results; 1,000 papers
+take about 2 s that way, against 12.8 s for the browser's cursor pages today.
+Screen all's button calls the same resolver as the assistant, waits for it,
+and then shows the running job. The set is resolved into a fixed list before
+approval, recording the source's revision,
 the papers in order, duplicates removed and anything left out; the job runs on
 that list, so papers added while it waits don't change what was approved.
 "All results", "this page" and "selected papers" are separate choices. A set
@@ -331,8 +416,8 @@ its place in the order.
 |---|---|---|
 | 1 | #321 AI SDK 7 and agent 0.7 (done, PR #331) | none |
 | 2 | #322 Searches, shortcuts and ratings in Convex (done, PR #332) | none |
-| 3 | #323 Action registry and CI gate | none |
-| 4a | #334 Screening record: storage and migration | #322 |
+| 3 | #323 Action registry and CI gate (registry, tools and gate done, PR #347; each issue below registers the actions it covers) | none |
+| 4a | #334 Screening record: storage and migration (done, PR #385, migrated on shared dev) | #322 |
 | 4b | #334 Screening record: jobs on paper sets | #341 |
 | 5 | #341 Paper sets by ID, with the duplicate check | #323 |
 | 6 | #342 Undo for every reversible change | #323; screening undo needs #334 |
@@ -345,7 +430,11 @@ its place in the order.
 | 13 | #329 Evidence Library drafts, homepage and publishing | #327, new-el#465 |
 | 14 | #346 The assistant panel on every page | #324, #327 |
 
-Steps 3 and 4a can start at once. These can run in parallel with the steps
+Next are steps 5 and 4b together: the resolver, and Screen all and extraction
+taking a paper set, which also removes Screen all's wait at the start. On
+2026-10-02, 207 public functions were still pending registration in
+`scripts/user-actions-exempt.json`: 62 under #329, 48 under #323, 48 under
+#328, 32 under #327 and 15 under #325. These can run in parallel with the steps
 above: #336 (query count check), #337 with #339 (extraction calls and
 quotes), #343 (Sub-Saharan Africa), #344 (fields added to a job) and
 new-el#465. #338 (agreement with people) follows #334. #51 stays with OARS
@@ -365,9 +454,13 @@ Later, without issues yet:
 - Browser search history, shortcuts and ratings are user data. They're
   imported on sign-in, never wiped. The import is idempotent by local ID, and
   the local copy stays until the server confirms.
-- Production (`main`) has no chat. Shared dev's chat jobs (6 on 2026-09-30),
-  `chatPapers`, `chatSourceEvents` and chat-mode fields are development data.
-  They're deleted with #325, not migrated.
+- Shared dev is the live deployment, so its data is user data. Its chat jobs
+  (6 on 2026-09-30), with their `chatPapers` and `chatSourceEvents`, move into
+  assistant threads with #325, which then removes the chat-mode fields from
+  extraction. Decided on 2026-10-02, see "Decision changes".
+- Each migration runs on shared dev, and on e2e when its tests need it, and is
+  verified there before a schema is narrowed. #384 and #403 narrow after
+  theirs.
 - Screening answers are user data. #334 moves them in stages that can resume:
   answers on current searches, the answers old search revisions point to,
   Screen-all results, and browser stores that haven't imported yet. It
@@ -390,7 +483,16 @@ Later, without issues yet:
 - Prompt injection: scripted abstracts and messages that try to trigger writes,
   approvals or disclosure fail.
 - #341: saved searches with filters, OQL and sorting resolve to the same
-  papers, in the same order, as their results pages.
+  papers, in the same order, as their results pages, and 1,000 papers resolve
+  in a few seconds on shared dev, timed from the button.
+- Anything that spends credits or changes what a query returns: before merge,
+  a browser check on e2e with the branch deployed, a signed-in page open and a
+  real Autumn charge, watching that the page stays up and the balance moves.
+  The 2026-10-02 crash was invisible to unit tests and scripted load runs.
+- Bulk work: the 1,000-paper tests run under Convex's transaction limits, and
+  a load run on e2e with real models lands every item exactly once.
+- `npm run check:convex-rules` and `npm run check:user-actions` pass on every
+  PR; neither gets an exception without a stated reason.
 - #327 and #328: an eval set of scripted tasks checks tool choice, arguments,
   credits spent and outcome. For example: search for primary-school RCTs,
   save 50 to a new collection, screen them.
@@ -415,6 +517,10 @@ Later, without issues yet:
   offer undo, and only the person's own click grants approval.
 - **Tool choice across models.** Tool calling varies by model. The assistant
   is offered only on models that pass the eval set.
+- **Shared limits.** OpenAlex allowances are per account and the job pools are
+  shared by everyone. A tool loop can spend a person's OpenAlex allowance, and
+  one large job can hold a pool. Turns have an OpenAlex budget, and jobs run
+  through per-job windows behind per-plan queues (#335).
 - **Cost of long agent loops.** Each turn has a step and credit cap, and the
   running cost is shown.
 - **Registry coverage.** The exempt list must shrink over time. A permanent
