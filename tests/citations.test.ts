@@ -36,6 +36,9 @@ describe("paper citations", () => {
     const result = await loadPaperCitations(["paper-citations", data, "en-GB"]);
     expect(result.citations.apa.text).toContain("Schools in Kenya.");
   });
+  it("cites an OpenAlex paper whose id is written with http", () => {
+    expect(paperToCitationData({ ...paper, id: "http://openalex.org/W12345" })?.id).toBe("W12345");
+  });
   it("cites a paper from the OpenScholar API by its OS id", async () => {
     const data = paperToCitationData({ ...paper, id: "https://openscholar.ai/OS150911088" })!;
     expect([data.id, data["citation-key"]]).toEqual(["OS150911088", "os_OS150911088"]);

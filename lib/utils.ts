@@ -10,7 +10,7 @@ import { buildSearchSubfilter } from './search/search-field'
 import { researchAreaFilter, sdgFilterValue } from './openalex/vocabulary'
 import { authorFilterValue, isAuthorId } from './openalex/author-filter'
 import { parseImportFile } from './import'
-import { withoutWorkSite } from './openalex/work-id'
+import { shortWorkId } from './openalex/work-id'
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -299,8 +299,9 @@ export async function downloadWithMetadata(
  * and an OpenScholar API id (OS…) as it is, since only OpenAlex ids have an openalex.org form.
  */
 function relationFilterId(id: string): string {
-  const short = withoutWorkSite(id);
-  return short.startsWith("OS") ? short : `https://openalex.org/${short}`;
+  const short = shortWorkId(id);
+  if (short?.startsWith("OS")) return short;
+  return id.startsWith("https://openalex.org/") ? id : `https://openalex.org/${short ?? id}`;
 }
 
 /**

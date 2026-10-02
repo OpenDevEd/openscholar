@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useUpdateSearchFilter, useCurrentSearchFormState } from "@/lib/hooks";
 import { useAppToast } from "@/lib/toast";
 import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive } from "@/lib/utils";
-import { openAlexWorkPage, SHORT_WORK_ID, withoutWorkSite } from "@/lib/openalex/work-id";
+import { openAlexWorkPage, shortWorkId } from "@/lib/openalex/work-id";
 import { Quote, Network, ExternalLink, X, type AppIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 
@@ -100,8 +100,8 @@ export function WorkIdFilter({
     }
     
     // An OpenAlex or OpenScholar API work id, short or in full
-    const validatedId = withoutWorkSite(inputValue.trim());
-    if (!SHORT_WORK_ID.test(validatedId)) {
+    const validatedId = shortWorkId(inputValue);
+    if (!validatedId) {
       toast.validation.failed(t("workIdFormatHint"));
       return;
     }
@@ -205,7 +205,7 @@ export function WorkIdFilter({
                "block w-full px-1 py-0.5 rounded text-xs break-all word-break-all",
                colors.code
              )}>
-               {withoutWorkSite(itemId)}
+               {shortWorkId(itemId) ?? itemId}
              </code>
            </div>
          </div>

@@ -11,7 +11,7 @@
 import { reconstructAbstract } from "./reconstruct-abstract";
 import { trimPaperData } from "../library/trim-paper-data";
 import { sourceMetadata, type PaperSourceMetadata } from "../library/paper-metadata";
-import { withoutWorkSite } from "./work-id";
+import { shortWorkId } from "./work-id";
 
 export type OpenAlexWork = {
   id?: string;
@@ -49,7 +49,7 @@ export function mapOpenAlexWorkToPaperData(work: OpenAlexWork): PaperDataOut {
   const paper = trimPaperData({ ...work, id: work.id ?? "", abstract });
   return {
     ...sourceMetadata(paper),
-    openalexId: work.id ? withoutWorkSite(work.id) : "",
+    openalexId: work.id ? (shortWorkId(work.id) ?? work.id) : "",
     title: work.display_name || "Untitled",
     doi: work.doi || undefined,
     publicationYear: work.publication_year || undefined,
