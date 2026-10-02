@@ -16,3 +16,7 @@ it("returns a provider failure instead of an empty completed page", async () => 
   vi.stubGlobal("fetch", vi.fn(async () => new Response(null, {status: 503})));
   await expect(readOpenAlexWorks({cursor: "*"})).rejects.toThrow("503");
 });
+it("refuses a page with a work in a shape the cards cannot read", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({meta: {count: 1, next_cursor: null}, results: [{id: "https://openalex.org/W1", authorships: [{author: null}]}]})));
+  await expect(readOpenAlexWorks({cursor: "*"})).rejects.toThrow();
+});
