@@ -65,6 +65,10 @@
 					"arrival",
 					"check",
 					"publication",
+					"search",
+					"sync",
+					"duplicates",
+					"fulltext",
 					"text"
 				]
 			},

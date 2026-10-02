@@ -898,6 +898,14 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     expect(result.issues).toContainEqual(expect.objectContaining({ pointer: "/home/curation/steps/1/title" }));
   });
 
+  test("refuses a figure on a step that counts its own, as the runtime would", () => {
+    const result = validateOwnerSection("home", {
+      curation: { steps: [{ type: "search", figure: { value: "2", label: "terms" } }, { type: "text", title: "Screened", figure: { value: "2", label: "terms" } }] },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.issues.map((issue) => issue.pointer)).toEqual(["/home/curation/steps/0/figure"]);
+  });
+
   test("adds the platform mail service under the owner's recipients", () => {
     const configuration = assembleEvidenceLibraryConfiguration({
       sections: {

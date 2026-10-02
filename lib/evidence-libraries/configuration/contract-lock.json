@@ -2,7 +2,7 @@
   "formatVersion": 3,
   "source": {
     "repository": "https://github.com/OpenDevEd/new-el",
-    "commit": "4667502f5498d70b9d3ea51fd71b78fee350bd79"
+    "commit": "27a58f5812eb71eb69e05a59aee0d01313782893"
   },
   "contract": {
     "schemaVersion": 1,
@@ -12,28 +12,28 @@
   "artifacts": {
     "schema": {
       "path": "generated/library-config.schema.json",
-      "bytes": 195729,
-      "sha256": "143e03c995e63e4c3256100dcda82ad6b1d4c07f49298c3a223e546533841b2b"
+      "bytes": 196356,
+      "sha256": "fac0b4ed33d0b3c8de35286f99f075033f5b563959e12f72ebe20be7f68b7afd"
     },
     "catalogs": {
       "path": "generated/library-config.catalogs.json",
-      "bytes": 142931,
-      "sha256": "cb9b896265c5d6664f725019cfb4dbfed06256a45dbe3b2edea412a5f79a515e"
+      "bytes": 142995,
+      "sha256": "5e0c94cc4dac3a2ea7ce6a048f4682587af5a4f8c1e500eb0ad76b0ef988f801"
     },
     "validator": {
       "path": "generated/library-config.validator.cjs",
-      "bytes": 4161391,
-      "sha256": "defbcb8347bba4468606b1ffdc5f4facd7be0c3a4f35ae855340c9ba30a467b4"
+      "bytes": 4172074,
+      "sha256": "c316aa01997dd0e8393d913f5fda107c64fc0349fe3b6a597d209de71ed2d48a"
     },
     "clientSchema": {
       "path": "generated/library-config.client.schema.json",
-      "bytes": 32907,
-      "sha256": "684b12773de478cfc6e15198d1501076649bddc1dbbf447c8ff61f06dd22f899"
+      "bytes": 33204,
+      "sha256": "850abd9fc2e871556b84f365bef562c89261bc14a006f1d54219a1d33f2dac46"
     },
     "clientCatalogs": {
       "path": "generated/library-config.client.catalogs.json",
-      "bytes": 6869,
-      "sha256": "85517f9a7081ff3f3f643530b438775a28434a63ae5b9b03a384e57bf8b9bbf9"
+      "bytes": 6909,
+      "sha256": "e1feb84586a69e0094c7cb8d08d1ec9b579f271aafbfc0513022161ea7bd702e"
     },
     "icons": {
       "path": "public/library-icons",
