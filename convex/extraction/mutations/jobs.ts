@@ -42,6 +42,7 @@ import {
   type ExtractionCostEstimate,
 } from "../../../lib/extraction/cost-estimate";
 import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
+import { refillPerson } from "../queue/dispatcher";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -386,6 +387,8 @@ export const cancelExtraction = mutation({
       updatedAt: Date.now(),
     });
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
+    // Its papers no longer count against the person's limit; their other jobs start in it.
+    await refillPerson(ctx, job.userId);
 
     // Any in-flight paper action sees the cancelled job on its next
     // status check and returns without persisting.
@@ -405,6 +408,9 @@ export const deleteExtraction = mutation({
     }
 
     await ctx.db.delete(args.jobId);
+    // Its papers stop holding the person's capacity now, not when the cascade reaches them.
+    await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
+    await refillPerson(ctx, user._id);
 
     // Schedule the cascade delete as an independent mutation to avoid
     // transaction limits on a large job's child tables. Cascade is

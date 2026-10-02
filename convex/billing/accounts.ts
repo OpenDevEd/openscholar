@@ -39,6 +39,7 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
     nextPlan: scheduled?.plan_id,
     features: Object.keys(customer.flags ?? {}),
     balance: customer.balances.credits?.remaining ?? 0,
+    concurrency: customer.balances.concurrency?.remaining,
     purchased: (customer.balances.credits?.breakdown ?? [])
       .filter((balance) => balance.plan_id === TOPUP_PLAN)
       .reduce((sum, balance) => sum + balance.remaining, 0),
@@ -61,6 +62,14 @@ export async function readAccount(ctx: QueryCtx | MutationCtx, userId: Id<"users
 /** The cached balance, for preflight checks. Locks enforce the real limit. */
 export async function availableCredits(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
   return (await readAccount(ctx, userId))?.balance ?? 0;
+}
+
+/**
+ * Papers the person may have running at once in each paper pool (#335): their plan's
+ * `concurrency` balance in Autumn, or undefined when it sets none.
+ */
+export async function planConcurrency(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
+  return (await readAccount(ctx, userId))?.concurrency;
 }
 
 /** Whether the user's plans grant `featureId`, per the cached snapshot. */

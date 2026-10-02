@@ -1874,7 +1874,6 @@
     "submitting": "Lancement du criblage...",
     "submitSuccess": "Criblage lancé",
     "submitError": "Échec du lancement du criblage",
-    "activeJobWarning": "Vous avez déjà un criblage en cours",
     "noQuestions": "Ajoutez d'abord des questions de criblage",
     "progressTitle": "Progression du criblage",
     "progressStatus": "{processed} articles criblés sur {total}",

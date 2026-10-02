@@ -10,7 +10,7 @@ import { defineBatchWorkerValidators } from "@convex-dev/batch-worker";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { internalMutation, internalQuery } from "../../lib/functions";
+import { internalMutation, internalQuery, type MutationCtx } from "../../lib/functions";
 import { getFlag } from "../../featureFlags/guard";
 import {
   EXTRACTION_PAPER_CONCURRENCY,
@@ -70,7 +70,63 @@ export const nextReleased = internalQuery({
   },
 });
 
-/** Refills each released row's job window once, and finishes jobs with nothing left to run. */
+/** Extraction job statuses whose papers are running. */
+const RUNNING_JOB_STATUSES = ["downloading_pdfs", "indexing", "extracting"] as const;
+/** A person's running jobs, of each status, one refill wakes. */
+const JOBS_WOKEN = 20;
+
+type PdfFlag = Awaited<ReturnType<typeof getFlag>>;
+
+/** Starts papers in one job's window, as far as the person's limit allows. */
+async function refillJob(ctx: MutationCtx, job: Doc<"extractionJobs">, pdfFlag: PdfFlag) {
+  const epoch = job.runEpoch ?? 0;
+  return await dispatchPaperQueueWindowTx(ctx, {
+    jobId: job._id,
+    expectedEpoch: epoch,
+    paperConcurrency: EXTRACTION_PAPER_CONCURRENCY,
+    leaseOwner: `refill:${job._id}:${epoch}`,
+    leaseMs: EXTRACTION_QUEUE_LEASE_MS,
+    questionConcurrency: EXTRACTION_QUESTION_CONCURRENCY,
+    // As getJobAndFlagsInternal decides it: on unless the flag says off, and the job opted in.
+    pdfEnabled: (pdfFlag?.enabled ?? true) && (job.usePdfs ?? false),
+  });
+}
+
+/**
+ * Starts the person's running jobs' papers in their free capacity, oldest job first, as
+ * Firecrawl's `concurrentJobDone` promotes a team's queued work: a job held back by the
+ * person's limit has no papers of its own finishing to wake it. Returns what each job got.
+ */
+export async function refillPerson(ctx: MutationCtx, userId: Id<"users">) {
+  const pdfFlag = await getFlag(ctx, "extraction.pdf");
+  const jobs = (
+    await Promise.all(
+      RUNNING_JOB_STATUSES.map((status) =>
+        ctx.db.query("extractionJobs").withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", status)).take(JOBS_WOKEN),
+      ),
+    )
+  ).flat().sort((a, b) => a._creationTime - b._creationTime);
+  const dispatched = new Map<Id<"extractionJobs">, number>();
+  for (const job of jobs) {
+    if (job.mode !== "extraction") continue;
+    const window = await refillJob(ctx, job, pdfFlag);
+    dispatched.set(job._id, window.dispatched);
+    if (window.capacity === 0 && window.dispatched === 0) break;
+  }
+  return dispatched;
+}
+
+/** Wakes the person's held-back jobs after papers stopped holding capacity without a release. */
+export const wakePerson = internalMutation({
+  args: { userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    await refillPerson(ctx, userId);
+    return null;
+  },
+});
+
+/** Refills the released rows' people, oldest job first, and finishes jobs with nothing left to run. */
 export const refill = internalMutation({
   args: vMutationArgs,
   returns: vMutationReturns,
@@ -80,24 +136,21 @@ export const refill = internalMutation({
     );
     const runs = new Map<string, { jobId: Id<"extractionJobs">; epoch: number }>();
     for (const row of rows) runs.set(`${row.jobId}:${row.runEpoch}`, { jobId: row.jobId, epoch: row.runEpoch });
-    const pdfFlag = await getFlag(ctx, "extraction.pdf");
-    for (const { jobId, epoch } of runs.values()) {
-      const job = await ctx.db.get(jobId);
-      if (!job || (job.runEpoch ?? 0) !== epoch) continue;
-      const window = await dispatchPaperQueueWindowTx(ctx, {
-        jobId,
-        expectedEpoch: epoch,
-        paperConcurrency: EXTRACTION_PAPER_CONCURRENCY,
-        leaseOwner: `refill:${jobId}:${epoch}`,
-        leaseMs: EXTRACTION_QUEUE_LEASE_MS,
-        questionConcurrency: EXTRACTION_QUESTION_CONCURRENCY,
-        // As getJobAndFlagsInternal decides it: on unless the flag says off, and the job opted in.
-        pdfEnabled: (pdfFlag?.enabled ?? true) && (job.usePdfs ?? false),
-      });
-      // Nothing left to start: whether the job is done is its counters' call, so a row whose
-      // run stopped without releasing it can't hold the job open.
-      if (window.dispatched === 0) {
-        await ctx.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId, expectedEpoch: epoch });
+    const people = new Map<Id<"users">, Array<{ jobId: Id<"extractionJobs">; epoch: number }>>();
+    for (const run of runs.values()) {
+      const job = await ctx.db.get(run.jobId);
+      if (!job || (job.runEpoch ?? 0) !== run.epoch) continue;
+      people.set(job.userId, [...(people.get(job.userId) ?? []), run]);
+    }
+    for (const [userId, released] of people) {
+      // Freed capacity goes to the person's oldest job first, not back to the job that freed it.
+      const dispatched = await refillPerson(ctx, userId);
+      for (const { jobId, epoch } of released) {
+        // Nothing left to start: whether the job is done is its counters' call, so a row whose
+        // run stopped without releasing it can't hold the job open.
+        if (!dispatched.get(jobId)) {
+          await ctx.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId, expectedEpoch: epoch });
+        }
       }
     }
     // Handled: out of the queue.

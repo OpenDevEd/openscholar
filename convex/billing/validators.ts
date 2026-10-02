@@ -19,6 +19,11 @@ export const billingAccountSnapshotValidator = v.object({
    */
   features: v.optional(v.array(v.string())),
   balance: v.number(),
+  /**
+   * Papers the person may have running at once (#335), from the plan's `concurrency`
+   * balance in Autumn, as Firecrawl reads its `CONCURRENCY`. Absent when the plan sets none.
+   */
+  concurrency: v.optional(v.number()),
   /** Top-up credits, which never expire; included in `balance`. */
   purchased: v.number(),
   card: v.optional(v.object({ brand: v.string(), last4: v.string() })),

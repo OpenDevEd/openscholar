@@ -1874,7 +1874,6 @@
     "submitting": "スクリーニングを開始中...",
     "submitSuccess": "スクリーニングを開始しました",
     "submitError": "スクリーニングの開始に失敗しました",
-    "activeJobWarning": "実行中のスクリーニングジョブがあります",
     "noQuestions": "先にスクリーニング質問を追加してください",
     "progressTitle": "スクリーニングの進捗",
     "progressStatus": "{total} 件中 {processed} 件スクリーニング済み",

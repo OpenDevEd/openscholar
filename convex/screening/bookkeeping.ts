@@ -5,7 +5,8 @@
  * The worker then, a batch at a time:
  * - counts the job's finished papers into its progress row, and finishes the job;
  * - moves the papers' answers into the job's screening;
- * - saves the qualified papers to the person's library.
+ * - saves the qualified papers to the person's library;
+ * - starts the person's next waiting papers in the slots the finished ones freed (./slots.ts).
  * Papers finishing together never write the same document; only the worker writes these.
  */
 import { defineBatchWorkerValidators, ping } from "@convex-dev/batch-worker";
@@ -18,6 +19,7 @@ import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { upsertLibraryItem } from "../library/mutations";
 import { addCollectionMembership } from "../library/collectionMembership";
 import { moveResultAnswers } from "./drain";
+import { startWaitingPapers } from "./slots";
 
 /** Papers per batch: each moves its answers and may save a library item, a few dozen reads. */
 const BATCH = 50;
@@ -178,6 +180,8 @@ export const bookkeep = internalMutation({
     for (const result of results) byJob.set(result.jobId, [...(byJob.get(result.jobId) ?? []), result]);
     let recounted = false;
     const waiting: bigint[] = [];
+    // Papers of each person's that stopped running; a paper skipped before it started held no slot.
+    const freed = new Map<Id<"users">, number>();
     for (const [jobId, jobResults] of byJob) {
       const job = await ctx.db.get("screeningJobs", jobId);
       if (job) {
@@ -194,10 +198,13 @@ export const bookkeep = internalMutation({
           if (result.status === "completed" && result.qualified === true && !result.libraryItemId) await saveQualified(ctx, job, result);
         }
         await finishIfDone(ctx, jobId);
+        const started = jobResults.filter((result) => result.workId !== undefined).length;
+        if (started) freed.set(job.userId, (freed.get(job.userId) ?? 0) + started);
       }
       // Bookkept, or its job is gone: out of the queue.
       for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
     }
+    for (const [userId, finished] of freed) await startWaitingPapers(ctx, userId, finished);
     if (waiting.length) return { cursor: waiting.reduce((min, ts) => (ts < min ? ts : min)) };
     return null;
   },

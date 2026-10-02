@@ -25,6 +25,7 @@ import { scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { ensureScreening } from "../research/answers";
 import { bookkeepLater, ensureProgress, saveQualified } from "./bookkeeping";
+import { startWaitingPapers } from "./slots";
 import { estimateScreening } from "./estimate";
 import { applyCommand, moveSearchAnswers } from "../research/records";
 
@@ -73,22 +74,8 @@ export const createScreeningJobForUser = internalMutation({
       );
     }
 
-    // 3. Check for active jobs
-    const activeJob = await ctx.db
-      .query("screeningJobs")
-      .withIndex("by_user_status", (q) =>
-        q.eq("userId", user._id).eq("status", "processing")
-      )
-      .first();
-
-    if (activeJob) {
-      throw createError(
-        "SCREENING_JOB_ALREADY_ACTIVE",
-        "You already have an active screening job"
-      );
-    }
-
-    // 4. Credit pre-flight check
+    // 3. Credit pre-flight check. A person may run any number of jobs: their papers take
+    // turns under their plan's limit (./slots.ts).
     const totalAvailable = await availableCredits(ctx, user._id);
 
     const estimatedCost = estimateScreening(args.papers.length, totalAvailable).credits;
@@ -138,7 +125,7 @@ export const createScreeningJobForUser = internalMutation({
 
     // 6. Insert processing result records and enqueue their work items: the first batch here,
     // the rest a batch per transaction after.
-    await createResults(ctx, jobId, args.papers, now);
+    await createResults(ctx, user._id, jobId, args.papers, now);
 
     // 7. Return job ID
     return { jobId };
@@ -149,10 +136,13 @@ export const createScreeningJobForUser = internalMutation({
 const CREATE_BATCH = 250;
 type PaperInput = Infer<typeof screeningPaperInputValidator>;
 
-/** Creates a batch of a job's results and enqueues their work, then schedules the next batch. */
-async function createResults(ctx: MutationCtx, jobId: Id<"screeningJobs">, papers: PaperInput[], createdAt: number) {
+/**
+ * Creates a batch of a job's results, waiting for their person's paper slots, starts as many
+ * as the person has free, then schedules the next batch.
+ */
+async function createResults(ctx: MutationCtx, userId: Id<"users">, jobId: Id<"screeningJobs">, papers: PaperInput[], createdAt: number) {
   for (const paper of papers.slice(0, CREATE_BATCH)) {
-    const resultId = await ctx.db.insert("screeningResults", {
+    await ctx.db.insert("screeningResults", {
       jobId,
       openalexId: paper.openalexId,
       title: paper.title,
@@ -161,16 +151,12 @@ async function createResults(ctx: MutationCtx, jobId: Id<"screeningJobs">, paper
       publicationYear: paper.publicationYear,
       doi: paper.doi,
       status: "processing",
+      waitingUser: userId,
+      waitingSince: createdAt,
       createdAt,
     });
-    const workId = await screeningPool.enqueueAction(
-      ctx,
-      internal.screening.workpoolActions.screenPaperAction,
-      { resultId, jobId },
-      { onComplete: internal.screening.mutations.handleScreeningComplete, context: { resultId, jobId } },
-    );
-    await ctx.db.patch("screeningResults", resultId, { workId });
   }
+  await startWaitingPapers(ctx, userId);
   if (papers.length > CREATE_BATCH) {
     await ctx.scheduler.runAfter(0, internal.screening.mutations.createScreeningResults, { jobId, papers: papers.slice(CREATE_BATCH), createdAt });
   }
@@ -183,7 +169,7 @@ export const createScreeningResults = internalMutation({
   handler: async (ctx, { jobId, papers, createdAt }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
     if (job?.status !== "processing") return null;
-    await createResults(ctx, jobId, papers, createdAt);
+    await createResults(ctx, job.userId, jobId, papers, createdAt);
     return null;
   },
 });
@@ -220,31 +206,43 @@ export const cancelScreeningJob = mutation({
       status: "cancelled",
       updatedAt: Date.now(),
     });
-    // Their queued work is dropped in batches afterwards, as Firecrawl drops a cancelled
+    // Its papers' queued work is dropped in batches afterwards, as Firecrawl drops a cancelled
     // crawl's queue, so the pool's slots free up sooner.
-    await ctx.scheduler.runAfter(0, internal.screening.mutations.cancelScreeningWork, { jobId: args.jobId, cursor: null });
+    await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId: args.jobId, cursor: null });
 
     return null;
   },
 });
 
-/** Results whose queued work one batch cancels. */
-const CANCEL_BATCH = 100;
+/** Results one batch of an ended job's sweep handles. */
+const END_BATCH = 100;
 
-/** Cancels a cancelled job's queued paper work, a batch at a time. */
-export const cancelScreeningWork = internalMutation({
+/**
+ * Ends a job's remaining papers once it was cancelled or ran out of credits, a batch at a
+ * time: those still waiting for a slot are skipped, and those started have their queued
+ * work cancelled.
+ */
+export const endScreeningWork = internalMutation({
   args: { jobId: v.id("screeningJobs"), cursor: v.union(v.string(), v.null()) },
   returns: v.null(),
   handler: async (ctx, { jobId, cursor }) => {
     const page = await ctx.db
       .query("screeningResults")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .paginate({ cursor, numItems: CANCEL_BATCH });
+      .paginate({ cursor, numItems: END_BATCH });
+    let skipped = 0;
+    for (const result of page.page) {
+      if (result.waitingSince === undefined) continue;
+      // Never started: counted as skipped by the bookkeeping worker.
+      await ctx.db.patch("screeningResults", result._id, { status: "skipped", waitingUser: undefined, waitingSince: undefined, completedAt: Date.now(), doneAt: ctx.db.vars.commitTs });
+      skipped++;
+    }
+    if (skipped) await bookkeepLater(ctx);
     for (const workId of getCancelableScreeningWorkIds(page.page)) {
       await screeningPool.cancel(ctx, workId);
     }
     if (!page.isDone) {
-      await ctx.scheduler.runAfter(0, internal.screening.mutations.cancelScreeningWork, { jobId, cursor: page.continueCursor });
+      await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId, cursor: page.continueCursor });
     }
     return null;
   },
@@ -272,6 +270,7 @@ export const markScreeningJobCreditsExhausted = internalMutation({
       status: "creditsExhausted",
       updatedAt: Date.now(),
     });
+    await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId: args.jobId, cursor: null });
     return null;
   },
 });

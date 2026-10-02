@@ -279,21 +279,7 @@ export function ScreeningDialog({
         questionCount: keyedQuestions.length,
       });
     } catch (error: unknown) {
-      // Check for active job error
-      const msg = getErrorMessage(error, t("submitError"));
-      if (
-        typeof error === "object" &&
-        error !== null &&
-        "data" in error &&
-        typeof (error as { data?: unknown }).data === "string" &&
-        ((error as { data: string }).data).includes(
-          "SCREENING_JOB_ALREADY_ACTIVE"
-        )
-      ) {
-        showStyledToast("error", t("activeJobWarning"));
-      } else {
-        showStyledToast("error", msg);
-      }
+      showStyledToast("error", getErrorMessage(error, t("submitError")));
     } finally {
       setIsSubmitting(false);
     }

@@ -12,6 +12,7 @@ import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import { createJob } from "./createJob.test-support";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
+import { SCREENING_POOL_SIZE } from "../workpool";
 
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 
@@ -219,23 +220,6 @@ describe("createScreeningJob", () => {
         scoringConfig: defaultScoringConfig,
       })
     ).rejects.toThrow("INSUFFICIENT_CREDITS");
-  });
-
-  it("rejects when user has a processing screening job", async () => {
-    const t = convexTest(schema);
-    setupScreeningWorkpool(t);
-    const user = await seedUser(t, "clerk_test");
-    await seedCredits(t, user._id, 100, 0);
-    await seedScreeningJob(t, user._id, "processing");
-    const asUser = t.withIdentity({ subject: "clerk_test" });
-
-    await expect(
-      createJob(asUser, {
-        papers: makePapers(5),
-        questions: defaultQuestions,
-        scoringConfig: defaultScoringConfig,
-      })
-    ).rejects.toThrow("SCREENING_JOB_ALREADY_ACTIVE");
   });
 
   it("succeeds when user has a completed job (not blocking)", async () => {
@@ -549,7 +533,9 @@ describe("creating a large Screen all job", () => {
     const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
     expect(results).toHaveLength(MAX_SCREENING_PAPERS_PER_JOB);
     expect(new Set(results.map((r) => r.openalexId)).size).toBe(MAX_SCREENING_PAPERS_PER_JOB);
-    expect(results.every((r) => r.workId)).toBe(true);
+    // The person's slots' worth start; the rest wait their turn (./slots.ts).
+    expect(results.filter((r) => r.workId)).toHaveLength(SCREENING_POOL_SIZE);
+    expect(results.filter((r) => r.waitingSince !== undefined)).toHaveLength(MAX_SCREENING_PAPERS_PER_JOB - SCREENING_POOL_SIZE);
   }, 300_000);
 
   it("creates no more results once the job is cancelled", async () => {

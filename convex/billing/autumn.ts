@@ -30,7 +30,7 @@ export type AutumnCustomer = {
   stripe_id: string | null;
   subscriptions: AutumnSubscription[];
   purchases?: Array<{ plan_id: string }>;
-  balances: { credits?: AutumnBalance };
+  balances: { credits?: AutumnBalance; concurrency?: AutumnBalance };
   /** Boolean features the customer has, keyed by feature id. */
   flags?: Record<string, unknown>;
   payment_method?: { card?: { brand: string; last4: string } | null } | null;

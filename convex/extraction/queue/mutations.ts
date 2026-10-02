@@ -11,6 +11,7 @@ import {
   shouldClearQueueLease,
   type ExtractionQueueStatus,
 } from "./status";
+import { planConcurrency } from "../../billing/accounts";
 
 type QueueKind = Doc<"extractionPaperQueue">["kind"];
 
@@ -334,10 +335,30 @@ export const leaseNextPaperQueueRows = internalMutation({
   },
 });
 
+/**
+ * How many more papers the person may start across their extraction jobs (#335): their
+ * plan's `concurrency`, or the whole window when it sets none, less the papers they hold
+ * leased or running in any job. Firecrawl's per-team limit (`apps/api/src/lib/concurrency-limit.ts`).
+ */
+async function personCapacity(ctx: MutationCtx, userId: Id<"users">, window: number) {
+  const limit = Math.max(1, Math.min(window, (await planConcurrency(ctx, userId)) ?? window));
+  let held = 0;
+  for (const status of ["leased", "running"] as const) {
+    if (held >= limit) break;
+    held += (await ctx.db
+      .query("extractionPaperQueue")
+      .withIndex("by_user_and_status", (q) => q.eq("userId", userId).eq("status", status))
+      .take(limit - held)).length;
+  }
+  return Math.max(0, limit - held);
+}
+
 async function leaseNextPaperQueueRowsTx(
   ctx: MutationCtx,
   args: LeaseRowsArgs,
 ): Promise<LeaseRowsResult> {
+  const job = await ctx.db.get(args.jobId);
+  const personFree = job ? await personCapacity(ctx, job.userId, args.paperConcurrency) : 0;
   const activeReadLimit = Math.max(0, Math.floor(args.paperConcurrency));
   const [leasedRows, runningRows] = await Promise.all([
     loadQueueRowsByStatus(ctx, {
@@ -354,10 +375,10 @@ async function leaseNextPaperQueueRowsTx(
     }),
   ]);
   const activeCount = leasedRows.length + runningRows.length;
-  const capacity = getQueueCapacity({
-    activeCount,
-    paperConcurrency: args.paperConcurrency,
-  });
+  const capacity = Math.min(
+    getQueueCapacity({ activeCount, paperConcurrency: args.paperConcurrency }),
+    personFree,
+  );
   const pendingRows = await loadPendingQueueRowsForLease(ctx, {
     jobId: args.jobId,
     runEpoch: args.expectedEpoch,
@@ -522,6 +543,11 @@ export const updatePaperQueueStatus = internalMutation({
     }
 
     const clearLease = shouldClearQueueLease(args.status);
+    // A row that held its person's capacity and stops without a release (a stale run parking)
+    // frees it; their held-back jobs have no other event to start them.
+    if ((row.status === "leased" || row.status === "running") && args.status !== "leased" && args.status !== "running") {
+      await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { userId: row.userId });
+    }
     await ctx.db.patch(args.queueId, {
       status: args.status,
       updatedAt: Date.now(),

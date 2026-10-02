@@ -45,7 +45,6 @@ export type ErrorCode =
   | "BILLING_UNAVAILABLE"
   | "BILLING_PLAN_INVALID"
   // Screening
-  | "SCREENING_JOB_ALREADY_ACTIVE"
   | "SCREENING_JOB_NOT_FOUND"
   | "SCREENING_JOB_NOT_CANCELLABLE"
   // Batch AI actions (interactive batch lock)
