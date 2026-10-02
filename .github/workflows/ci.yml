@@ -176,7 +176,7 @@ jobs:
       - name: Check every user action is registered for the assistant
         run: npm run check:user-actions
 
-      - name: Check the Convex rules (bounded reads, returns validators, no clock in queries)
+      - name: Check the Convex rules (every list paged, returns validators, no clock in queries)
         run: npm run check:convex-rules
 
       # The browser job builds Next.js on the same guest at the same time. Fifteen jsdom workers on a shared CPU share pushed single tests
