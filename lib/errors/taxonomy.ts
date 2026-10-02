@@ -286,7 +286,8 @@ function extractData(err: unknown): Record<string, unknown> | undefined {
   return undefined;
 }
 
-const CONTEXT_BYTE_CAP = 4096;
+/** An error context's most JSON characters; longer ones keep a preview (convex/lib/listCaps.ts). */
+export const CONTEXT_BYTE_CAP = 4096;
 const ALREADY_EXTRACTED_FIELDS = new Set([
   "code",
   "message",

@@ -8,8 +8,8 @@
  * Wrap the outermost validator: `capped(v.optional(v.array(x)), N)`, since `v.optional`
  * copies the validator it's given.
  */
-import type { GenericValidator, VArray, VObject, VRecord, VUnion } from "convex/values";
-import { ERROR_CODES } from "../../lib/errors/taxonomy";
+import type { GenericValidator, VAny, VArray, VObject, VRecord, VUnion } from "convex/values";
+import { CONTEXT_BYTE_CAP, ERROR_CODES } from "../../lib/errors/taxonomy";
 
 /** The longest list a record may hold. Longer ones are tables, read a page at a time. */
 export const MAX_LIST_CAP = 1_000;
@@ -24,13 +24,26 @@ export function capped<V extends VArray<any, any, any> | VRecord<any, any, any, 
   return validator as V & Capped<N>;
 }
 
+/** The type a size-bounded untyped field carries, so `npm run check:convex-rules` can see the bound. */
+export type Sized<N extends number> = { readonly __jsonBytes: N };
+
+/**
+ * Marks an untyped field (`v.any()`) as at most `bytes` long as JSON: a value whose own
+ * contract checks its shape, such as an Evidence Library section, kept within a size the
+ * writes enforce like a list cap.
+ */
+export function sized<V extends VAny<any, any, any>, N extends number>(validator: V, bytes: N): V & Sized<N> {
+  Object.defineProperty(validator, "__jsonBytes", { value: bytes, enumerable: false });
+  return validator as V & Sized<N>;
+}
+
 /** The cap on an array or record validator, if it has one. */
 export function capOf(validator: GenericValidator): number | undefined {
   return (validator as Partial<Capped<number>>).__listCap;
 }
 
-/** Each list in a validator, by path, with its cap (undefined when uncapped). */
-export type ListAt = { path: string[]; cap: number | undefined; kind: "array" | "record" };
+/** Each list in a validator, by path, with its cap (undefined when uncapped); `json` caps bytes. */
+export type ListAt = { path: string[]; cap: number | undefined; kind: "array" | "record" | "json" };
 
 /** Every array and record a validator holds, walking objects, unions and elements. */
 export function listsIn(validator: GenericValidator, path: string[] = [], out: ListAt[] = []): ListAt[] {
@@ -51,6 +64,9 @@ export function listsIn(validator: GenericValidator, path: string[] = [], out: L
     case "union":
       for (const member of (validator as VUnion<any, any, any, any>).members) listsIn(member as GenericValidator, path, out);
       break;
+    case "any":
+      out.push({ path, cap: (validator as Partial<Sized<number>>).__jsonBytes, kind: "json" });
+      break;
   }
   return out;
 }
@@ -65,12 +81,15 @@ function valuesAt(value: unknown, path: string[]): unknown[] {
 }
 
 /** The first capped list in `doc` holding more than its cap, if any. */
-export function overCap(doc: unknown, lists: ListAt[]): { path: string; size: number; cap: number } | undefined {
+export function overCap(doc: unknown, lists: ListAt[]): { path: string; size: number; cap: number; unit: "entries" | "bytes" } | undefined {
   for (const list of lists) {
     if (list.cap === undefined) continue;
     for (const found of valuesAt(doc, list.path)) {
-      const size = Array.isArray(found) ? found.length : found && typeof found === "object" ? Object.keys(found).length : 0;
-      if (size > list.cap) return { path: list.path.join("."), size, cap: list.cap };
+      if (found === undefined) continue;
+      const size = list.kind === "json"
+        ? JSON.stringify(found).length
+        : Array.isArray(found) ? found.length : found && typeof found === "object" ? Object.keys(found).length : 0;
+      if (size > list.cap) return { path: list.path.join("."), size, cap: list.cap, unit: list.kind === "json" ? "bytes" : "entries" };
     }
   }
   return undefined;
@@ -148,3 +167,7 @@ export const MAX_AI_TASKS = 50;
 export const MAX_DNS_RECORDS = 64;
 /** Sections of an Evidence Library configuration. */
 export const MAX_CONFIG_SECTIONS = 50;
+/** An Evidence Library section's payload as JSON (convex/evidenceLibraries/sectionPayload.ts refuses more). */
+export const MAX_SECTION_PAYLOAD_BYTES = 512 * 1024;
+/** An extraction error's context as JSON (lib/errors/taxonomy.ts cuts it to this). */
+export const MAX_ERROR_CONTEXT_BYTES = CONTEXT_BYTE_CAP;

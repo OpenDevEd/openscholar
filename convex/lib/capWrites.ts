@@ -21,7 +21,7 @@ const capsByTable = new Map<string, ListAt[]>(
 function check(table: string, value: unknown) {
   const lists = capsByTable.get(table);
   const over = lists && value ? overCap(value, lists) : undefined;
-  if (over) throw createError("INVALID_DATA", `${table}.${over.path} holds ${over.size} entries; it holds at most ${over.cap}.`, { table, path: over.path, size: over.size, cap: over.cap });
+  if (over) throw createError("INVALID_DATA", `${table}.${over.path} holds ${over.size} ${over.unit}; it holds at most ${over.cap}.`, { table, path: over.path, size: over.size, cap: over.cap });
 }
 
 /** A database writer that refuses a write putting more in a list than its cap. */

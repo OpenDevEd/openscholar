@@ -5,7 +5,7 @@ import {
   SECTION_REGISTRY,
   type SectionKey,
 } from "../../lib/evidence-libraries/configuration/section-registry";
-import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SERVED_HOSTS, capped } from "../lib/listCaps";
+import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, MAX_SERVED_HOSTS, capped, sized } from "../lib/listCaps";
 
 export type { SectionKey };
 
@@ -143,11 +143,14 @@ export const sectionKeyValidator = v.union(
   ]),
 );
 
+/** A section's settings: its contract checks the shape, and its JSON stays within MAX_SECTION_PAYLOAD_BYTES. */
+export const sectionPayloadValidator = sized(v.any(), MAX_SECTION_PAYLOAD_BYTES);
+
 // One owner-edited section as it travels to and from the client. The payload
 // is checked in the mutation against the generated validator for its section.
 export const sectionRowValidator = v.object({
   sectionKey: sectionKeyValidator,
-  payload: v.any(),
+  payload: sectionPayloadValidator,
 });
 
 // One problem the full validator found while assembling a configuration.
@@ -383,7 +386,7 @@ export const evidenceLibraryConfigSectionValidator = v.union(
     libraryId: v.id("evidenceLibraries"),
     draftId: v.id("evidenceLibraryConfigDrafts"),
     sectionKey: sectionKeyValidator,
-    payload: v.any(),
+    payload: sectionPayloadValidator,
     payloadByteLength: v.number(),
     contractProvenance: configProvenanceValidator,
     updatedByClerkUserId: v.string(),
@@ -394,7 +397,7 @@ export const evidenceLibraryConfigSectionValidator = v.union(
     libraryId: v.id("evidenceLibraries"),
     revisionId: v.id("evidenceLibraryConfigRevisions"),
     sectionKey: sectionKeyValidator,
-    payload: v.any(),
+    payload: sectionPayloadValidator,
     payloadByteLength: v.number(),
     contractProvenance: configProvenanceValidator,
     createdByClerkUserId: v.string(),

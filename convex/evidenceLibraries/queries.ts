@@ -15,7 +15,10 @@ import {
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
 import { MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ } from "../lib/queryBounds";
-import { evidenceLibraryTeardownStepValidator } from "./validators";
+import {
+  evidenceLibraryTeardownStepValidator,
+  sectionPayloadValidator,
+} from "./validators";
 import {
   readLibraryRole,
   libraryRoleFrom,
@@ -685,7 +688,7 @@ export const getDraft = query({
     sections: v.array(
       v.object({
         sectionKey: sectionKeyValidator,
-        payload: v.any(),
+        payload: sectionPayloadValidator,
         payloadByteLength: v.number(),
         contractProvenance: configProvenanceValidator,
         updatedAt: v.number(),
@@ -726,7 +729,7 @@ export const getRevision = query({
     sections: v.array(
       v.object({
         sectionKey: sectionKeyValidator,
-        payload: v.any(),
+        payload: sectionPayloadValidator,
         payloadByteLength: v.number(),
         contractProvenance: configProvenanceValidator,
         createdAt: v.number(),

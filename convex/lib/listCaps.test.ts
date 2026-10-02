@@ -3,7 +3,7 @@ import { runUncapped } from "../../tests/convex-test-with-limits";
 import { describe, expect, it } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
-import { MAX_TOPIC_KEYWORDS, listsIn } from "./listCaps";
+import { MAX_ERROR_CONTEXT_BYTES, MAX_TOPIC_KEYWORDS, listsIn, overCap } from "./listCaps";
 
 /** A topic details row whose keywords list holds `count` entries. */
 const topic = (count: number) => ({
@@ -56,5 +56,12 @@ describe("list caps (#426)", () => {
     const t = convexTest(schema);
     await t.mutation(internal.topics.details.save, topic(MAX_TOPIC_KEYWORDS));
     await expect(t.mutation(internal.topics.details.save, topic(MAX_TOPIC_KEYWORDS + 1))).rejects.toThrow(/topicDetails\.keywords/);
+  });
+
+  it("refuses an untyped field whose JSON is longer than its size", () => {
+    const lists = listsIn(schema.tables.extractionPaperErrors.validator);
+    const error = (characters: number) => ({ context: { detail: "x".repeat(characters) } });
+    expect(overCap(error(MAX_ERROR_CONTEXT_BYTES - 50), lists)).toBeUndefined();
+    expect(overCap(error(MAX_ERROR_CONTEXT_BYTES), lists)).toMatchObject({ path: "context", unit: "bytes", cap: MAX_ERROR_CONTEXT_BYTES });
   });
 });
