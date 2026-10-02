@@ -213,17 +213,66 @@ describe("holding and charging", () => {
     expect((await usageFor(t, "c:landed"))?.credits).toBe(130);
   });
 
-  it("charges bulk work without a hold in one track, and zeroes the cached balance when it runs out", async () => {
+  it("charges bulk work without a hold, down to zero, and zeroes the cached balance when it runs out", async () => {
     vi.stubGlobal("fetch", fakeAutumnFetch());
     const t = convexTest(schema);
     const { userId } = await seedChat(t, 10);
 
     await t.action(internal.billing.charge.retrySettle, { userId, chargeId: "c:bulk", credits: 30, usage, attempt: 0 });
 
-    expect(calls("balances.track")).toHaveLength(1);
     expect(calls("balances.check")).toHaveLength(0);
+    expect(fakeAutumn.balance(userId)).toBe(0);
     expect((await usageFor(t, "c:bulk"))?.credits).toBe(10);
     // Before the queued refresh runs, so parallel papers stop at once.
+    expect(await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())?.balance)).toBe(0);
+  });
+
+  it("charges the rest of a cost above the hold and the balance once, though the first try failed after confirming", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    vi.useFakeTimers();
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 250);
+    await hold(t, userId, "c:over", 200);
+    fakeAutumn.failNext = "balances.track";
+
+    await t.action(internal.billing.charge.retrySettle, { userId, chargeId: "c:over", credits: 300, usage, attempt: 0 });
+    // The hold is confirmed; the rest failed and is retried.
+    expect(fakeAutumn.balance(userId)).toBe(50);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(fakeAutumn.balance(userId)).toBe(0);
+    expect((await usageFor(t, "c:over"))?.credits).toBe(250);
+  });
+
+  it("frees and charges a lock reserved before holds were recorded", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 100);
+    // The lock alone, as the old reservation took it.
+    await fetch("https://autumn.test/v1/balances.check", {
+      method: "POST",
+      body: JSON.stringify({ customer_id: userId, feature_id: "credits", required_balance: 80, lock: { enabled: true, lock_id: "c:legacy", expires_at: Date.now() + 60_000 } }),
+    });
+
+    await t.action(internal.billing.charge.retrySettle, { userId, chargeId: "c:legacy", credits: 60, usage, attempt: 0 });
+
+    expect(fakeAutumn.locks.size).toBe(0);
+    expect(fakeAutumn.balance(userId)).toBe(40);
+    expect((await usageFor(t, "c:legacy"))?.credits).toBe(60);
+  });
+
+  it("keeps a balance a charge emptied over a refresh that read Autumn before it", async () => {
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 10);
+    const fetchedAt = Date.now();
+    await t.mutation(internal.billing.accounts.zeroBalance, { userId });
+    const snapshot = await t.run(async (ctx) => {
+      const { _id, _creationTime, userId: _user, refreshedAt, refreshQueuedAt, ...rest } = (await ctx.db.query("billingAccounts").first())!;
+      return { ...rest, balance: 10 };
+    });
+
+    await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot, withCard: false, fetchedAt: fetchedAt - 1 });
+
     expect(await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())?.balance)).toBe(0);
   });
 

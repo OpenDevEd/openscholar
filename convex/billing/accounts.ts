@@ -71,16 +71,48 @@ export async function hasPlanFeature(
   return (await readAccount(ctx, userId))?.features?.includes(featureId) ?? false;
 }
 
+/**
+ * Stores a snapshot read from Autumn at `fetchedAt`. `withCard` says its card
+ * was fetched; without it the cached card stays. A balance the cache learned
+ * after `fetchedAt` (a charge that emptied it) stays too.
+ */
 export const writeSnapshot = internalMutation({
-  // `withCard` says the snapshot's card was fetched; without it the cached card stays.
-  args: { userId: v.id("users"), snapshot: billingAccountSnapshotValidator, withCard: v.boolean() },
+  args: { userId: v.id("users"), snapshot: billingAccountSnapshotValidator, withCard: v.boolean(), fetchedAt: v.number() },
   returns: v.null(),
-  handler: async (ctx, { userId, snapshot, withCard }) => {
+  handler: async (ctx, { userId, snapshot, withCard, fetchedAt }) => {
     const existing = await readAccount(ctx, userId);
-    const card = withCard ? snapshot.card : existing?.card;
-    const row = { ...snapshot, card, userId, refreshedAt: Date.now() };
+    const newer = existing !== null && existing.refreshedAt > fetchedAt;
+    const row = {
+      ...snapshot,
+      card: withCard ? snapshot.card : existing?.card,
+      ...(newer && { balance: existing.balance, purchased: existing.purchased }),
+      userId,
+      refreshedAt: newer ? existing.refreshedAt : fetchedAt,
+    };
     if (existing) await ctx.db.replace(existing._id, row);
     else await ctx.db.insert("billingAccounts", row);
+    return null;
+  },
+});
+
+/**
+ * Zeroes the cached balance now, so work that only checks the cache stops: a
+ * charge reported the balance empty, or couldn't reach Autumn. The queued
+ * refresh restores the real balance.
+ */
+export async function zeroCachedBalance(ctx: MutationCtx, userId: Id<"users">) {
+  const account = await readAccount(ctx, userId);
+  if (account && account.balance > 0) {
+    await ctx.db.patch("billingAccounts", account._id, { balance: 0, refreshedAt: Date.now() });
+  }
+  await requestRefresh(ctx, userId);
+}
+
+export const zeroBalance = internalMutation({
+  args: { userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    await zeroCachedBalance(ctx, userId);
     return null;
   },
 });
@@ -94,8 +126,9 @@ export async function refreshAccount(
   userId: Id<"users">,
   options: { email?: string; name?: string; card?: boolean } = {},
 ): Promise<BillingAccountSnapshot> {
+  const fetchedAt = Date.now();
   const snapshot = snapshotFromCustomer(await autumn.customer(userId, options));
-  await ctx.runMutation(internal.billing.accounts.writeSnapshot, { userId, snapshot, withCard: options.card ?? false });
+  await ctx.runMutation(internal.billing.accounts.writeSnapshot, { userId, snapshot, withCard: options.card ?? false, fetchedAt });
   return snapshot;
 }
 

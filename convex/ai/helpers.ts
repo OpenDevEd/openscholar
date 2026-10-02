@@ -207,7 +207,7 @@ export async function withCredits<T>(
     throw error;
   }
   const credits = creditsForUsage(outcome.usage, pricing);
-  await settleCredits(ctx, {
+  const settled = await settleCredits(ctx, {
     userId: target.userId,
     chargeId: target.chargeId,
     credits,
@@ -219,6 +219,8 @@ export async function withCredits<T>(
       ...tokenDetails(outcome.usage),
     },
   });
+  // Unheld work runs on the cached balance; while its charges can't reach Autumn, it stops.
+  if (!settled && target.hold === false) await ctx.runMutation(internal.billing.accounts.zeroBalance, { userId: target.userId });
   return { result: outcome.result, credits, usage: outcome.usage };
 }
 

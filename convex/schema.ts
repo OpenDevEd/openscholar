@@ -493,6 +493,9 @@ export default defineSchema({
     chargeId: v.string(),
     credits: v.number(),
     release: v.id("_scheduled_functions"),
+    // Set before a settle confirms the hold as it stands and charges the rest
+    // separately, so a retry finishes that path instead of confirming again.
+    rest: v.optional(v.literal(true)),
   }).index("by_charge", ["chargeId"]),
 
   // Retired billing tables: credits, creditTransactions, subscriptions,
