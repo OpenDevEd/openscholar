@@ -194,6 +194,19 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(results.map((result) => result.openalexId)).toEqual(["https://openalex.org/W2"]);
   });
 
+  it("reads from the OpenScholar API when it is set, with its own key, and needs no OpenAlex contact email", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "http://127.0.0.1:8801");
+    vi.stubEnv("OPENSCHOLAR_API_KEY", "osk_test");
+    vi.stubEnv("OPENALEX_CONTACT_EMAIL", "");
+    const { alice } = await setup();
+
+    await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } });
+
+    expect(requests.map(({ url }) => [url.origin, url.searchParams.get("api_key"), url.searchParams.get("mailto")])).toEqual([
+      ["http://127.0.0.1:8801", "osk_test", null],
+    ]);
+  });
+
   it("asks OpenAlex nothing once the account's allowance is spent", async () => {
     const { alice } = await setup();
     await alice.mutation(api.openalex.limits.spend, { count: 300 });
