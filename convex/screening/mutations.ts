@@ -151,6 +151,7 @@ async function createResults(ctx: MutationCtx, userId: Id<"users">, jobId: Id<"s
       publicationYear: paper.publicationYear,
       doi: paper.doi,
       status: "processing",
+      waitingUser: userId,
       waitingSince: createdAt,
       createdAt,
     });
@@ -233,7 +234,7 @@ export const endScreeningWork = internalMutation({
     for (const result of page.page) {
       if (result.waitingSince === undefined) continue;
       // Never started: counted as skipped by the bookkeeping worker.
-      await ctx.db.patch("screeningResults", result._id, { status: "skipped", waitingSince: undefined, completedAt: Date.now(), doneAt: ctx.db.vars.commitTs });
+      await ctx.db.patch("screeningResults", result._id, { status: "skipped", waitingUser: undefined, waitingSince: undefined, completedAt: Date.now(), doneAt: ctx.db.vars.commitTs });
       skipped++;
     }
     if (skipped) await bookkeepLater(ctx);

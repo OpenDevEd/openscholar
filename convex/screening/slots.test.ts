@@ -119,4 +119,15 @@ describe("each person's paper slots", () => {
     await finishAndBookkeep(t, (await papersOf(t, ended.jobId)).started.slice(0, 5).map((row) => row._id));
     expect((await papersOf(t, next.jobId)).started).toHaveLength(5);
   });
+
+  it("starts a later job's waiting papers in free slots however many jobs the person has", async () => {
+    const { t, person } = await setup();
+    const ada = await person("ada");
+    for (let j = 0; j < 10; j++) await createJob(ada.as, { papers: papers(1, `j${j}-`), questions, scoringConfig });
+
+    const eleventh = await createJob(ada.as, { papers: papers(5, "k"), questions, scoringConfig });
+
+    expect((await papersOf(t, eleventh.jobId)).started).toHaveLength(5);
+    expect(await running(t, ada.userId)).toBe(15);
+  });
 });

@@ -291,6 +291,7 @@ import type * as screening_progress from "../screening/progress.js";
 import type * as screening_queries from "../screening/queries.js";
 import type * as screening_resultCounts from "../screening/resultCounts.js";
 import type * as screening_scoring from "../screening/scoring.js";
+import type * as screening_slots from "../screening/slots.js";
 import type * as screening_start from "../screening/start.js";
 import type * as screening_validators from "../screening/validators.js";
 import type * as screening_workpoolActions from "../screening/workpoolActions.js";
@@ -626,6 +627,7 @@ declare const fullApi: ApiFromModules<{
   "screening/queries": typeof screening_queries;
   "screening/resultCounts": typeof screening_resultCounts;
   "screening/scoring": typeof screening_scoring;
+  "screening/slots": typeof screening_slots;
   "screening/start": typeof screening_start;
   "screening/validators": typeof screening_validators;
   "screening/workpoolActions": typeof screening_workpoolActions;

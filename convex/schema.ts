@@ -965,8 +965,9 @@ export default defineSchema({
     savedToLibrary: v.optional(v.boolean()),
     libraryItemId: v.optional(v.id("libraryItems")),
     workId: v.optional(v.string()),
-    // Set while the paper waits for one of its person's paper slots (#335); cleared when it
-    // starts and gets its `workId`.
+    // Set while the paper waits for one of its person's paper slots (#335), whose papers
+    // start oldest first across their jobs; cleared when it starts and gets its `workId`.
+    waitingUser: v.optional(v.id("users")),
     waitingSince: v.optional(v.number()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
@@ -979,7 +980,7 @@ export default defineSchema({
     .index("by_job_status", ["jobId", "status"])
     .index("by_job_openalexId", ["jobId", "openalexId"])
     .index("by_job_and_pendingAnswers", ["jobId", "pendingAnswers"])
-    .index("by_job_and_waitingSince", ["jobId", "waitingSince"])
+    .index("by_waitingUser_and_waitingSince", ["waitingUser", "waitingSince"])
     .index("by_doneAt", ["doneAt"]),
   // How many of a person's Screen all papers are running (#335). Written by job creation and
   // the bookkeeping worker, which start a person's waiting papers while this is under their
