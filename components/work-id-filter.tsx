@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useUpdateSearchFilter, useCurrentSearchFormState } from "@/lib/hooks";
 import { useAppToast } from "@/lib/toast";
 import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive } from "@/lib/utils";
-import { SHORT_WORK_ID, withoutWorkSite } from "@/lib/openalex/work-id";
+import { openAlexWorkPage, SHORT_WORK_ID, withoutWorkSite } from "@/lib/openalex/work-id";
 import { Quote, Network, ExternalLink, X, type AppIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 
@@ -76,6 +76,7 @@ export function WorkIdFilter({
   
   // Get the appropriate store values and methods based on type
   const itemId: string = typeConfig.itemId;
+  const openAlexPage = itemId ? openAlexWorkPage(itemId) : null;
   const isActive = typeConfig.isActive;
   
   const setItemId = (id: string) => {
@@ -188,14 +189,16 @@ export function WorkIdFilter({
            <div className="flex items-center gap-2">
              <Icon className={cn("h-3 w-3 flex-shrink-0", colors.icon)} />
              <span className="flex-shrink-0">{currentConfig.statusText}</span>
-             <a
-               href={itemId.startsWith('https://') ? itemId : `https://openalex.org/${itemId}`}
-               target="_blank"
-               rel="noopener noreferrer"
-               className={cn("ml-auto flex-shrink-0 hover:opacity-80", colors.link)}
-             >
-               <ExternalLink className="h-3 w-3" />
-             </a>
+             {openAlexPage && (
+               <a
+                 href={openAlexPage}
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className={cn("ml-auto flex-shrink-0 hover:opacity-80", colors.link)}
+               >
+                 <ExternalLink className="h-3 w-3" />
+               </a>
+             )}
            </div>
            <div className="w-full">
              <code className={cn(

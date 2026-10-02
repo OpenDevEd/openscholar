@@ -147,6 +147,12 @@ describe("<SourceRow>", () => {
     expect(screen.queryByRole("link", { name: /OpenAlex/i })).toBeNull();
   });
 
+  it("omits the OpenAlex link for a paper from the OpenScholar API, which OpenAlex has no page for", () => {
+    renderRow({ row: row({ openalexId: "OS150911088" }) });
+    expect(screen.queryByRole("link", { name: /OpenAlex/i })).toBeNull();
+    expect(screen.getByRole("link", { name: /DOI/i }).getAttribute("href")).toBe("https://doi.org/10.1234/abc.2024");
+  });
+
   it("exposes aria-posinset and aria-setsize for screen readers across virtualization", () => {
     renderRow({ row: row(), posInSet: 7, setSize: 100 });
     const option = screen.getByRole("option");
