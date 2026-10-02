@@ -59,21 +59,20 @@ export function JobView({
     <div className="space-y-8">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <ProgressRing value={job.done} max={total} status={job.status} />
-        <div className="min-w-0 flex-1 space-y-2">
+        <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-center gap-2.5">
             <h2 className="truncate text-xl font-semibold tracking-tight">{job.name}</h2>
             <StatusChip tone={status.tone} icon={job.status === "waiting" ? Hourglass : "tone"}>{status.label}</StatusChip>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Chip icon={SourceIcon}>{job.source.label}</Chip>
-            <Chip icon={Layers}><span><AnimatedNumber value={job.done} /> of {total} papers</span></Chip>
-            <Chip icon={Clock}>{job.startedAt}</Chip>
-          </div>
-          {job.source.kind === "search" ? (
-            <div className="min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
-              <FilterChips filters={job.source.filters} size="compact" singleLine />
+          {/* One line of facts and, for a search, its filters: it scrolls sideways under a fading edge. */}
+          <div className="min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
+            <div className="flex w-max items-center gap-1.5">
+              <Chip icon={SourceIcon}>{job.source.label}</Chip>
+              <Chip icon={Layers}><span><AnimatedNumber value={job.done} /> of {total} papers</span></Chip>
+              <Chip icon={Clock}>{job.startedAt}</Chip>
+              {job.source.kind === "search" ? <FilterChips filters={job.source.filters} size="compact" singleLine /> : null}
             </div>
-          ) : null}
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {job.status === "running" || job.status === "waiting" ? (
@@ -263,7 +262,7 @@ function Results({ job, counts, max, onAnswer }: { job: Job; counts: Record<Outc
                       return <AnswerMark key={q.key} answer={a.answer} changed={a.changed} label={`Question ${i + 1}`} />;
                     })}
                   </div>
-                  <Stars count={starsOf(score, max)} />
+                  <Stars count={starsOf(score, job.stars)} />
                   <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-200", expanded && "rotate-180")} />
                 </button>
                 <AnimatePresence initial={false}>

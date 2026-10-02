@@ -15,7 +15,7 @@ import { EASE, NodeCard } from "@/components/settings/model-map";
 import { FilterChips } from "@/components/ui/filter-display";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { cn } from "@/lib/utils";
-import { BALANCE, CREDITS_PER_PAPER, GENERATED, SLOTS, SOURCES, maxScore, starsOf, type Job, type Question, type Source } from "./data";
+import { BALANCE, CREDITS_PER_PAPER, GENERATED, SLOTS, SOURCES, defaultStars, maxScore, type Job, type Question, type Source } from "./data";
 import { ANSWER, AnimatedNumber, Chip, Meter } from "./parts";
 import { SOURCE_ICON } from "./job-view";
 
@@ -39,7 +39,7 @@ const PAGE = 20;
 
 type SearchSource = Extract<Source, { kind: "search" }>;
 
-export type Setup = { source: Source; first: number; last: number; questions: Question[]; minScore: number; model: string; saveTo?: string; prune?: string };
+export type Setup = { source: Source; first: number; last: number; questions: Question[]; minScore: number; stars: number[]; model: string; saveTo?: string; prune?: string };
 
 export function SetupView({
   busy,
@@ -68,6 +68,8 @@ export function SetupView({
   const [draft, setDraft] = useState("");
   const [generating, setGenerating] = useState(false);
   const [minScore, setMinScore] = useState(2);
+  // The scores where 1 to 5 stars begin; untouched, they spread across the highest score.
+  const [starsSet, setStars] = useState<number[] | null>(null);
   const [dest, setDest] = useState<"none" | "new" | string>("new");
   const [newName, setNewName] = useState<string | null>(null);
   const [prune, setPrune] = useState(false);
@@ -92,6 +94,12 @@ export function SetupView({
   const max = maxScore(questions);
   // Removing questions can drop the highest score under the threshold; it reads as the top score then.
   const threshold = Math.min(minScore, max);
+  const stars = (starsSet ?? defaultStars(max)).map((t) => Math.min(t, max));
+  /** Sets where `index + 1` stars begin, pushing the other thresholds so they stay in order. */
+  const setStar = (index: number, value: number) => {
+    const v = Math.min(max, Math.max(0, Math.round(value) || 0));
+    setStars(stars.map((t, i) => (i === index ? v : i > index ? Math.max(t, v) : Math.min(t, v))));
+  };
   // An earlier screening's questions to reuse. A search needs none: its questions load with it.
   const from = source.kind === "screening" ? screenings.find((j) => j.id === source.id) : undefined;
   const fresh = from?.questions.filter((q) => !questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase())) ?? [];
@@ -308,7 +316,7 @@ export function SetupView({
             </span>
           </div>
           {/* One track from 0 to the highest score, however many questions there are: grey
-              below the threshold, green from it. Under it, where each star rating starts. */}
+              below the threshold, green from it. */}
           <div className="space-y-2 pt-1">
             <Slider
               min={0}
@@ -319,33 +327,53 @@ export function SetupView({
               aria-label="Lowest score that's included"
               className="[&_[data-slot=slider-range]]:bg-muted [&_[data-slot=slider-thumb]]:border-emerald-500 [&_[data-slot=slider-track]]:h-2 [&_[data-slot=slider-track]]:bg-emerald-500/70"
             />
-            <div className="relative h-6" aria-hidden>
-              {starBands(max).map((band) => {
-                const included = band.to >= threshold;
-                return (
-                  <span
-                    key={band.stars}
-                    className={cn(
-                      "absolute inset-y-0 flex items-center justify-center gap-1 overflow-hidden rounded-md bg-foreground/[0.05] text-[11px] tabular-nums transition-opacity duration-300",
-                      !included && "opacity-40",
-                    )}
-                    style={{ left: `calc(${band.left * 100}% + 1px)`, width: `calc(${band.width * 100}% - 2px)` }}
-                  >
-                    {/* A band too narrow for its label stays a plain block. */}
-                    {band.width >= 0.04 ? (
-                      <>
-                        <Star className={cn("size-3 shrink-0", band.stars ? "fill-primary text-primary" : "text-muted-foreground")} />
-                        <span className="text-muted-foreground">{band.stars}</span>
-                      </>
-                    ) : null}
-                  </span>
-                );
-              })}
-            </div>
-            <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
-              <span>0</span>
-              <span>{max} points</span>
-            </div>
+          </div>
+        </div>
+      </Zone>
+
+      <Zone label="Stars">
+        <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/40 p-4">
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+              <Star className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Rating</span>
+              <span className="block text-xs text-muted-foreground">The stars a saved paper gets for its score</span>
+            </span>
+            <span className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">of {max} points</span>
+          </div>
+          {/* Five handles on one track, one where each rating begins: always five, at any number of points. */}
+          <Slider
+            min={0}
+            max={Math.max(1, max)}
+            step={1}
+            minStepsBetweenThumbs={0}
+            value={stars}
+            onValueChange={(v) => setStars(v)}
+            aria-label="Scores where each star rating begins"
+            className="[&_[data-slot=slider-range]]:bg-primary/60 [&_[data-slot=slider-track]]:h-2"
+          />
+          <div className="grid grid-cols-5 gap-2">
+            {stars.map((t, i) => (
+              <label key={i} className="flex items-center gap-2 rounded-xl bg-foreground/[0.04] py-1.5 pl-2.5 pr-1.5">
+                <span className="flex flex-1 items-center gap-0.5" aria-hidden>
+                  {Array.from({ length: i + 1 }, (_, j) => (
+                    <Star key={j} className="size-2.5 fill-primary text-primary" />
+                  ))}
+                </span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={max}
+                  value={t}
+                  onChange={(e) => setStar(i, Number(e.target.value))}
+                  onFocus={(e) => e.target.select()}
+                  aria-label={`Points for ${i + 1} ${i === 0 ? "star" : "stars"}`}
+                  className="h-7 w-12 px-1 text-center text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                />
+              </label>
+            ))}
           </div>
         </div>
       </Zone>
@@ -431,7 +459,7 @@ export function SetupView({
             </Chip>
           ) : null}
         </div>
-        <Button disabled={busy || questions.length === 0 || !enough} onClick={() => onStart({ source, first, last, questions, minScore: threshold, model: modelId, saveTo, prune: kind === "collection" && prune ? source.label : undefined })}>
+        <Button disabled={busy || questions.length === 0 || !enough} onClick={() => onStart({ source, first, last, questions, minScore: threshold, stars, model: modelId, saveTo, prune: kind === "collection" && prune ? source.label : undefined })}>
           {busy
             ? "Reading papers…"
             : skipped === papers
@@ -472,27 +500,4 @@ function PickMark({ on }: { on: boolean }) {
       </AnimatePresence>
     </span>
   );
-}
-
-/**
- * Where each star rating sits on a 0 to `max` track: one band per rating, spanning its
- * scores from half a point before the first to half a point after the last, so the
- * bands line up under the slider at any number of points.
- */
-function starBands(max: number) {
-  const top = Math.max(1, max);
-  const bands: Array<{ stars: number; from: number; to: number; left: number; width: number }> = [];
-  for (let score = 0; score <= max; score++) {
-    const stars = starsOf(score, max);
-    const last = bands.at(-1);
-    if (last?.stars === stars) last.to = score;
-    else bands.push({ stars, from: score, to: score, left: 0, width: 0 });
-  }
-  for (const band of bands) {
-    const start = Math.max(0, (band.from - 0.5) / top);
-    const end = Math.min(1, (band.to + 0.5) / top);
-    band.left = start;
-    band.width = end - start;
-  }
-  return bands;
 }

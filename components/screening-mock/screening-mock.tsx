@@ -68,6 +68,7 @@ export function ScreeningMock() {
           source: setup.source,
           questions: setup.questions,
           minScore: setup.minScore,
+          stars: setup.stars,
           paperIds: paperIds(Math.min(count, 1_000)),
           done: 0,
           status: all.some((j) => j.status === "running") ? "waiting" : "running",

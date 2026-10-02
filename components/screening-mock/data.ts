@@ -33,6 +33,8 @@ export type Job = {
   source: Source;
   questions: Question[];
   minScore: number;
+  /** The scores at which a paper gets 1 to 5 stars. */
+  stars: number[];
   paperIds: string[];
   /** Papers finished so far, in the order they finished. */
   done: number;
@@ -139,8 +141,10 @@ export function outcomeOf(job: Job, paperId: string): Outcome {
   return best >= job.minScore ? "unclear" : "excluded";
 }
 
-/** Stars from a score, worked out from the highest score so they never contradict the points. */
-export const starsOf = (score: number, max: number) => (score <= 0 ? 0 : Math.max(1, Math.round((score / max) * 5)));
+/** Stars from a score: one for each star threshold it reaches, as the scoring config's star thresholds give them. */
+export const starsOf = (score: number, thresholds: number[]) => thresholds.filter((t) => score >= t).length;
+/** Starting star thresholds: where 1 to 5 stars begin, spread across the highest score. */
+export const defaultStars = (max: number) => [1, 2, 3, 4, 5].map((k) => Math.max(1, Math.ceil((k / 5) * max)));
 
 const ids = (from: number, count: number) => PAPERS.slice(from, from + count).map((p) => p.id);
 
@@ -151,6 +155,7 @@ export const START_JOBS: Job[] = [
     source: SOURCES.search[0]!,
     questions: QUESTIONS,
     minScore: 3,
+    stars: [1, 2, 3, 4, 4],
     paperIds: ids(0, 60),
     done: 34,
     status: "running",
@@ -166,6 +171,7 @@ export const START_JOBS: Job[] = [
     source: SOURCES.search[1]!,
     questions: QUESTIONS.slice(0, 2),
     minScore: 2,
+    stars: [1, 1, 2, 2, 3],
     paperIds: ids(20, 40),
     done: 0,
     status: "waiting",
@@ -180,6 +186,7 @@ export const START_JOBS: Job[] = [
     source: SOURCES.collection[0]!,
     questions: QUESTIONS,
     minScore: 3,
+    stars: [1, 2, 3, 4, 4],
     paperIds: ids(10, 50),
     done: 50,
     status: "completed",
@@ -195,6 +202,7 @@ export const START_JOBS: Job[] = [
     source: SOURCES.search[2]!,
     questions: QUESTIONS.slice(1),
     minScore: 2,
+    stars: [1, 1, 2, 2, 3],
     paperIds: ids(30, 30),
     done: 12,
     status: "cancelled",
