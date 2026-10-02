@@ -63,7 +63,9 @@ function Shell({ children }: { children: ReactNode }) {
   const plan = subscription.resolvedPlan;
   const showUpgrade = subscription.onDefaultPlan !== false && !subscription.account?.hasPaid;
   const hideBilling = !subscriptionsEnabled && !creditsEnabled && showUpgrade && !subscription.isSettling;
-  const planLabel = (plan && subscription.catalog && findPlan(subscription.catalog, plan)?.name) || plan || "";
+  // With subscriptions off, a Free account has no plan worth naming.
+  const showPlan = subscriptionsEnabled || subscription.onDefaultPlan === false;
+  const planLabel = showPlan ? (plan && subscription.catalog && findPlan(subscription.catalog, plan)?.name) || plan || "" : "";
   const env = deployment();
 
   if (phase === "initializing") {
