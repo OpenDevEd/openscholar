@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/app/actions/openalex", () => ({ getSearchResults: vi.fn() }));
 
 import { getSearchResults } from "@/app/actions/openalex";
-import { getSearchResultsWithFilters } from "@/lib/search-utils";
+import { getSearchResultsWithFilters } from "@/lib/search/search-results";
 import type { SearchFilters } from "@/lib/types";
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
 

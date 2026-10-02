@@ -9,7 +9,7 @@ import {
   screeningScoringConfigValidator,
   screeningJobStatusValidator,
 } from "./validators";
-import { requireAuth } from "../lib/auth";
+import { requireActiveUser, requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { resolveTaskPick, serverStamp } from "../ai/serverModel";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
@@ -38,8 +38,13 @@ import { availableCredits } from "../billing/accounts";
  * processing result records for each paper, and enqueues each paper directly
  * into the screening workpool.
  */
-export const createScreeningJob = mutation({
+/**
+ * Creates a Screen all job for `userId` from papers the server has already resolved
+ * (`screening/start:screenSearch`); the browser never sends papers.
+ */
+export const createScreeningJobForUser = internalMutation({
   args: {
+    userId: v.id("users"),
     papers: v.array(screeningPaperInputValidator),
     questions: v.array(screeningQuestionValidator),
     scoringConfig: screeningScoringConfigValidator,
@@ -48,9 +53,9 @@ export const createScreeningJob = mutation({
     searchId: v.optional(v.string()),
   },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, args) => {
-    // 1. Authentication
-    const user = await requireAuth(ctx);
+  handler: async (ctx, { userId, ...args }) => {
+    // 1. The acting user, who may have been suspended since the action began
+    const user = await requireActiveUser(ctx, userId);
 
     // 2. Validate paper count
     if (args.papers.length === 0) {

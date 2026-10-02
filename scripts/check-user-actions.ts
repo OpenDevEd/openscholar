@@ -51,7 +51,7 @@ const listed = new Set(USER_ACTIONS.map((entry) => entry.path));
 for (const [id, entryPath] of registered) if (!listed.has(entryPath)) problems.push(`${id}: add its entry (${entryPath}) to USER_ACTIONS in convex/lib/userActionRegistry.ts.`);
 for (const entry of USER_ACTIONS) {
   if (!registered.has(entry.path)) problems.push(`${entry.path}: in USER_ACTIONS, but no public function is exported at that path from its entry.`);
-  if (twins.get(entry.path) !== assistantPath(entry.path)) problems.push(`${entry.path}: export ${assistantPath(entry.path).split(":")[1]} (assistantQuery or assistantMutation of the same entry) for the assistant's tool.`);
+  if (twins.get(entry.path) !== assistantPath(entry.path)) problems.push(`${entry.path}: export ${assistantPath(entry.path).split(":")[1]} (assistantQuery, assistantMutation or assistantAction of the same entry) for the assistant's tool.`);
 }
 
 // Next.js server actions, from source.

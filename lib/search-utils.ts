@@ -1,7 +1,4 @@
-import { getSearchResults } from '@/app/actions/openalex';
-import { SearchError } from './search/search-error';
 import { OQL_FIELD, joinOql } from './openalex/oql';
-import type { Works } from '@sickrin/openalex-sdk/dist/src/types/work';
 import { isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive } from './utils';
 import { getCountryCodesForRegions, COUNTRIES, COUNTRY_NAME_CHANGES } from './constants';
 import { validateAndExpandKeywords } from './keyword-validation';
@@ -17,19 +14,6 @@ export interface GetSearchResultsWithFiltersOptions {
   onWarning?: (message: string) => void;
 }
 
-export interface EnhancedSearchResult {
-  originalQuery: string;
-  enhancedQuery: string;
-  countryNames: string[];
-  validation: {
-    isValid: boolean;
-    expandedQuery: string;
-    warnings: string[];
-  };
-  results: Works;
-  paramsKey?: string;
-}
-
 /**
  * Clean country names for use in OpenAlex API queries
  * Replace commas with spaces and handle other problematic characters
@@ -42,7 +26,7 @@ function cleanCountryNameForAPI(countryName: string): string {
 }
 
 export interface PreparedOpenAlexSearch {
-  validation: EnhancedSearchResult["validation"];
+  validation: { isValid: boolean; expandedQuery: string; warnings: string[] };
   countryNames: string[];
   /** The query OpenAlex is asked, after keyword expansion, country focus and the review filter. Null when the query is invalid. */
   finalApiQuery: string | null;
@@ -146,7 +130,7 @@ export function prepareOpenAlexSearch(
   };
 }
 
-function requestFilters(
+export function requestFilters(
   filters: SearchFilters,
   citesItemId: string | undefined,
   relatedToItemId: string | undefined,
@@ -172,53 +156,3 @@ export function searchRequest(
     filters: requestFilters(prepared.effectiveFilters, prepared.effectiveCitesItemId, prepared.effectiveRelatedToItemId),
   };
 }
-
-/**
- * Enhanced wrapper for getSearchResults that handles all state management,
- * query enhancement, and country filtering logic.
- */
-export async function getSearchResultsWithFilters(
-  params: SearchWithFiltersParams,
-  options?: GetSearchResultsWithFiltersOptions
-): Promise<EnhancedSearchResult> {
-  const { query } = params;
-  const {
-    validation,
-    countryNames,
-    finalApiQuery,
-    effectiveFilters,
-    effectiveCitesItemId,
-    effectiveRelatedToItemId,
-  } = prepareOpenAlexSearch(params, options);
-  if (finalApiQuery === null) {
-    // Return early with error state instead of throwing
-    return {
-      originalQuery: query,
-      enhancedQuery: query,
-      countryNames,
-      validation,
-      results: { results: [], meta: { count: 0, db_response_time_ms: 0, page: 1, per_page: 0, groups_count: null, next_cursor: "" } }
-    };
-  }
-
-  // Get results with the final enhanced query for API, but keep original query for UI
-  const result = await getSearchResults(
-    finalApiQuery,
-    requestFilters(effectiveFilters, effectiveCitesItemId, effectiveRelatedToItemId),
-  );
-
-  if (!result.ok) {
-    // Throw client-side so the real status + OpenAlex message reach the toast
-    // intact. A server-action-thrown message is stripped by Next in production;
-    // this SearchError is constructed here, in the browser, so it survives.
-    throw new SearchError(result.message, result.status, result.detail ?? null);
-  }
-
-  return {
-    originalQuery: query,
-    enhancedQuery: query, // Keep the original query for UI display
-    countryNames,
-    validation,
-    results: result.data
-  };
-} 

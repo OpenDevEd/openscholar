@@ -1,6 +1,6 @@
 import { internalMutation, internalQuery, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
-import { requireAuth } from "../lib/auth";
+import { requireActiveUser, requireAuth } from "../lib/auth";
 import { userValidator } from "../lib/validators";
 import { createUserWithDefaults, ensureBillingAccount } from "../lib/userCreation";
 import { clerkEventOutcomeValidator } from "../evidenceLibraries/validators";
@@ -26,6 +26,13 @@ export const getCurrentUser = internalQuery({
   handler: async (ctx) => {
     return await requireAuth(ctx);
   },
+});
+
+/** The user an internal call acts for; refuses a missing, suspended or deleted account. */
+export const getActiveUser = internalQuery({
+  args: { userId: v.id("users") },
+  returns: userValidator,
+  handler: async (ctx, { userId }) => requireActiveUser(ctx, userId),
 });
 
 export const getUserById = internalQuery({

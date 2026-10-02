@@ -4,10 +4,12 @@
  * come from that one entry. `scripts/check-user-actions.ts` fails CI when a public
  * function is neither registered in `userActionRegistry.ts` nor exempt with a reason.
  * The assistant's tools are built from the same entries in `assistantTools.ts`, which
- * only actions import, so queries and mutations never bundle the AI SDK.
+ * only actions import, so queries and mutations never bundle the AI SDK. Actions that
+ * call outside services (OpenAlex, AI providers, Autumn) are entries too.
  */
 import { v, type GenericValidator, type Infer, type ObjectType, type PropertyValidators } from "convex/values";
-import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "./functions";
+import { action, internalAction, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./functions";
+import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { requireActiveUser, requireAuth } from "./auth";
 
@@ -28,21 +30,32 @@ export type UserQuery<Args extends PropertyValidators, Returns extends GenericVa
   run: (ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>) => Promise<Infer<Returns>>;
 };
 
-export type UserMutation<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> & {
-  kind: "mutation";
-  /** Decision 12: three separate labels. Credits and outside effects ask first; undoable writes offer undo. */
+/** Decision 12: three separate labels. Credits and outside effects ask first; undoable writes offer undo. */
+type Labels<Key extends string = string> = {
   spendsCredits: boolean;
   outsideEffect: boolean;
   undoable: boolean;
   /** The argument the tool fills with its tool call's ID, so a retried call applies once. */
-  retryKey?: keyof Args & string;
-  run: (ctx: MutationCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
+  retryKey?: Key;
 };
+
+export type UserMutation<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
+  Labels<keyof Args & string> & {
+    kind: "mutation";
+    run: (ctx: MutationCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
+  };
+
+/** A user action that calls an outside service (OpenAlex, an AI provider, Autumn), reading and writing through queries and mutations. */
+export type UserActionEntry<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
+  Labels<keyof Args & string> & {
+    kind: "action";
+    run: (ctx: ActionCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
+  };
 
 /** What the registry list and the assistant's tools read from an entry. */
 export type UserAction =
   | { kind: "query"; path: string; description: string; args: PropertyValidators }
-  | { kind: "mutation"; path: string; description: string; args: PropertyValidators; spendsCredits: boolean; outsideEffect: boolean; undoable: boolean; retryKey?: string };
+  | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators } & Labels);
 
 /** Entries are written with these so their argument and result types are inferred. */
 export const defineUserQuery = <Args extends PropertyValidators, Returns extends GenericValidator>(
@@ -51,6 +64,9 @@ export const defineUserQuery = <Args extends PropertyValidators, Returns extends
 export const defineUserMutation = <Args extends PropertyValidators, Returns extends GenericValidator>(
   entry: Omit<UserMutation<Args, Returns>, "kind">,
 ): UserMutation<Args, Returns> => ({ kind: "mutation", ...entry });
+export const defineUserAction = <Args extends PropertyValidators, Returns extends GenericValidator>(
+  entry: Omit<UserActionEntry<Args, Returns>, "kind">,
+): UserActionEntry<Args, Returns> => ({ kind: "action", ...entry });
 
 /** The internal twin of a public function, which the assistant's tools call with the sender's user ID. */
 export const assistantPath = (path: string) => `${path}ForAssistant`;
@@ -170,3 +186,34 @@ export function assistantMutation<Args extends PropertyValidators, Returns exten
   );
 }
 
+/** The public action the UI calls, for the signed-in user. */
+export function userAction<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserActionEntry<Args, Returns>) {
+  return tagged(
+    action<Args, Returns, Promise<Infer<Returns>>>({
+      args: entry.args,
+      returns: entry.returns,
+      handler: async (ctx, args) => {
+        const user = await ctx.runQuery(internal.users.internal.getCurrentUser, {});
+        return entry.run(ctx, user._id, args as ObjectType<Args>, "user");
+      },
+    }),
+    entry.path,
+  );
+}
+
+/** The same action for the assistant: it runs as the sender and records the assistant as the author. */
+export function assistantAction<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserActionEntry<Args, Returns>) {
+  return tagged(
+    internalAction<Args & typeof userArg, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...userArg },
+      returns: entry.returns,
+      handler: async (ctx, args) => {
+        const { userId, rest } = asUser<Args>(args);
+        // The sender may have been suspended or deleted since the turn began.
+        const user = await ctx.runQuery(internal.users.internal.getActiveUser, { userId });
+        return entry.run(ctx, user._id, rest, "assistant");
+      },
+    }),
+    entry.path,
+  );
+}
