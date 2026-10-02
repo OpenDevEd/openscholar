@@ -3,6 +3,7 @@
 import type { ActionCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { components, internal } from "../_generated/api";
+import { captureGenerationLater } from "../ai/helpers";
 import { RAG } from "@convex-dev/rag";
 import { openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
@@ -1166,7 +1167,7 @@ export async function captureCompletedQuestionTracking(ctx: ActionCtx, {
       ) {
         return;
       }
-      await ctx.scheduler.runAfter(0, internal.lib.analytics.captureAIGeneration, { params: {
+      await captureGenerationLater(ctx, {
         distinctId,
         provider: "openrouter" as AIProvider,
         modelId: modelSlug,
@@ -1177,7 +1178,7 @@ export async function captureCompletedQuestionTracking(ctx: ActionCtx, {
         output: outcome.trackingEntry.output,
         temperature: outcome.trackingEntry.temperature,
         creditsDeducted: outcome.creditsUsed,
-      } });
+      });
     }),
   );
 }

@@ -28,6 +28,13 @@ const DEFAULT_HOLD_MS = 30 * 60_000;
 /** When to try a failed settle or release again; Autumn may be briefly down. */
 const RETRY_DELAYS_MS = [10_000, 60_000, 5 * 60_000, 30 * 60_000, 2 * 60 * 60_000];
 
+/**
+ * When a settle that cancelled its hold's release runs again regardless, in
+ * case its action ended before finishing or scheduling a retry. It does
+ * nothing once the charge is recorded.
+ */
+const SETTLE_BACKSTOP_MS = 5 * 60_000;
+
 function isLockNotFound(error: unknown): boolean {
   return (
     error instanceof AutumnError &&
@@ -210,18 +217,22 @@ export async function settleCredits(ctx: ActionCtx, args: SettleArgs): Promise<b
  * and confirms again, so "Lock not found" then means it already landed.
  */
 export const beginSettle = internalMutation({
-  args: { chargeId: v.string() },
+  args: settleValidator.fields,
   returns: v.union(
     v.object({ kind: v.literal("settled") }),
     v.object({ kind: v.literal("held"), credits: v.number(), rest: v.boolean() }),
     v.object({ kind: v.literal("unheld") }),
   ),
-  handler: async (ctx, { chargeId }) => {
-    if (await usageFor(ctx, chargeId)) return { kind: "settled" as const };
-    const row = await holdFor(ctx, chargeId);
+  handler: async (ctx, args) => {
+    if (await usageFor(ctx, args.chargeId)) return { kind: "settled" as const };
+    const row = await holdFor(ctx, args.chargeId);
     if (!row) return { kind: "unheld" as const };
     const release = (await ctx.db.system.get(row.release))?.state.kind;
-    if (release === "pending") await ctx.scheduler.cancel(row.release);
+    if (release === "pending") {
+      // The release was the hold's only scheduled way out; the backstop replaces it.
+      await ctx.scheduler.cancel(row.release);
+      await ctx.scheduler.runAfter(SETTLE_BACKSTOP_MS, internal.billing.charge.retrySettle, { ...args, attempt: 1 });
+    }
     if (release === "pending" || release === "canceled") {
       return { kind: "held" as const, credits: row.credits, rest: row.rest === true };
     }
@@ -300,11 +311,12 @@ async function trackUnheld(args: SettleArgs) {
 }
 
 async function settleOnce(ctx: ActionCtx, args: SettleArgs): Promise<void> {
-  const state = await ctx.runMutation(internal.billing.charge.beginSettle, { chargeId: args.chargeId });
+  const state = await ctx.runMutation(internal.billing.charge.beginSettle, args);
   if (state.kind === "settled") return;
   const credits = Math.max(0, args.credits);
   if (credits === 0) {
-    if (state.kind === "held") await releaseCredits(ctx, args);
+    // Nothing to charge; give back the hold, or a lock reserved before holds were recorded.
+    await releaseCredits(ctx, args);
     return;
   }
   const charge = { ...args, credits };

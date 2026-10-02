@@ -201,7 +201,7 @@ describe("holding and charging", () => {
     const { userId } = await seedChat(t, 1_000);
     await hold(t, userId, "c:landed", 200);
     // The first attempt began, confirmed, and failed before recording the charge.
-    await t.mutation(internal.billing.charge.beginSettle, { chargeId: "c:landed" });
+    await t.mutation(internal.billing.charge.beginSettle, { userId, chargeId: "c:landed", credits: 130, usage });
     await fetch("https://autumn.test/v1/balances.finalize", {
       method: "POST",
       body: JSON.stringify({ lock_id: "c:landed", action: "confirm", override_value: 130 }),
@@ -261,11 +261,16 @@ describe("holding and charging", () => {
     expect((await usageFor(t, "c:legacy"))?.credits).toBe(60);
   });
 
-  it("keeps a balance a charge emptied over a refresh that read Autumn before it", async () => {
+  it("keeps a balance a charge emptied, top-ups included, over a refresh that read Autumn before it", async () => {
     const t = convexTest(schema);
     const { userId } = await seedChat(t, 10);
+    await t.run(async (ctx) => {
+      const account = await ctx.db.query("billingAccounts").first();
+      await ctx.db.patch("billingAccounts", account!._id, { purchased: 5 });
+    });
     const fetchedAt = Date.now();
     await t.mutation(internal.billing.accounts.zeroBalance, { userId });
+    expect(await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())?.purchased)).toBe(0);
     const snapshot = await t.run(async (ctx) => {
       const { _id, _creationTime, userId: _user, refreshedAt, refreshQueuedAt, ...rest } = (await ctx.db.query("billingAccounts").first())!;
       return { ...rest, balance: 10 };
@@ -274,6 +279,37 @@ describe("holding and charging", () => {
     await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot, withCard: false, fetchedAt: fetchedAt - 1 });
 
     expect(await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())?.balance)).toBe(0);
+  });
+
+  it("settles a held charge whose action ended right after it cancelled the release", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    vi.useFakeTimers();
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 1_000);
+    await hold(t, userId, "c:died", 200);
+    // The settle began, cancelling the release, and its action went no further.
+    await t.mutation(internal.billing.charge.beginSettle, { userId, chargeId: "c:died", credits: 130, usage });
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(fakeAutumn.locks.size).toBe(0);
+    expect(fakeAutumn.balance(userId)).toBe(870);
+    expect((await usageFor(t, "c:died"))?.credits).toBe(130);
+  });
+
+  it("gives back a lock reserved before holds were recorded when the work costs nothing", async () => {
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    const t = convexTest(schema);
+    const { userId } = await seedChat(t, 100);
+    await fetch("https://autumn.test/v1/balances.check", {
+      method: "POST",
+      body: JSON.stringify({ customer_id: userId, feature_id: "credits", required_balance: 80, lock: { enabled: true, lock_id: "c:free", expires_at: Date.now() + 60_000 } }),
+    });
+
+    await t.action(internal.billing.charge.retrySettle, { userId, chargeId: "c:free", credits: 0, usage, attempt: 0 });
+
+    expect(fakeAutumn.locks.size).toBe(0);
+    expect(fakeAutumn.balance(userId)).toBe(100);
   });
 
   it("re-reads the account from Autumn once for a burst of charges, without asking Stripe for the card", async () => {

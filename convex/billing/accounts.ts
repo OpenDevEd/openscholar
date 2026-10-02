@@ -103,7 +103,7 @@ export const writeSnapshot = internalMutation({
 export async function zeroCachedBalance(ctx: MutationCtx, userId: Id<"users">) {
   const account = await readAccount(ctx, userId);
   if (account && account.balance > 0) {
-    await ctx.db.patch("billingAccounts", account._id, { balance: 0, refreshedAt: Date.now() });
+    await ctx.db.patch("billingAccounts", account._id, { balance: 0, purchased: 0, refreshedAt: Date.now() });
   }
   await requestRefresh(ctx, userId);
 }

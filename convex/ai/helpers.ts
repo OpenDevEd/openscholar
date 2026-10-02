@@ -20,6 +20,7 @@ import { SERVER_AI_CONFIG } from "./config";
 import { getProviderModel } from "../../lib/ai/server/providers";
 import { resolveOpenRouterModel } from "../chat/provider";
 import type { AIProvider } from "../../lib/types/ai.types";
+import type { ServerAIGenerationParams } from "../../lib/posthog-server";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType, type GenericValidator } from "convex/values";
 import {
@@ -160,6 +161,22 @@ export async function resolveUserServerModel(
   return { ...(await resolveOpenRouterModel(ctx, pick?.modelId ?? null)), effort: pick?.effort };
 }
 
+/** Schedules a `$ai_generation` capture. Analytics never fails the paid work it describes. */
+export async function captureGenerationLater(ctx: ActionCtx, params: ServerAIGenerationParams) {
+  await ctx.scheduler
+    .runAfter(0, internal.lib.analytics.captureAIGeneration, { params })
+    .catch((error) => console.error("[analytics] scheduling $ai_generation failed", error));
+}
+
+async function captureGenerationsLater(
+  ctx: ActionCtx,
+  args: { distinctId: string; provider: string; modelId: string; entries: AITrackingEntry[] },
+) {
+  await ctx.scheduler
+    .runAfter(0, internal.lib.analytics.captureAIGenerationBatch, args)
+    .catch((error) => console.error("[analytics] scheduling $ai_generation failed", error));
+}
+
 export type CreditTarget = {
   userId: Id<"users">;
   /** Unique per attempt. */
@@ -275,14 +292,14 @@ export async function withAuthAndCreditsBatch<T>(
       },
     );
     if (trackingEntries && trackingEntries.length > 0) {
-      await ctx.scheduler.runAfter(0, internal.lib.analytics.captureAIGenerationBatch, {
+      await captureGenerationsLater(ctx, {
         distinctId: user.clerkId,
         provider: "openrouter",
         modelId: modelSlug,
         entries: trackingEntries.map((entry) => ({ ...entry, creditsDeducted: credits })),
         });
     } else {
-      await ctx.scheduler.runAfter(0, internal.lib.analytics.captureAIGeneration, { params: {
+      await captureGenerationLater(ctx, {
         distinctId: user.clerkId,
         provider: "openrouter" as AIProvider,
         modelId: modelSlug,
@@ -292,7 +309,7 @@ export async function withAuthAndCreditsBatch<T>(
         input: `Batch: ${operation.description}`,
         output: "Completed (aggregated)",
         creditsDeducted: credits,
-      } });
+      });
     }
     return result;
   } catch (error) {
@@ -324,7 +341,7 @@ export async function withUserCredits<T>(
       return { result: outcome.result, usage: outcome.totalUsage };
     });
     if (trackingEntries && trackingEntries.length > 0) {
-      await ctx.scheduler.runAfter(0, internal.lib.analytics.captureAIGenerationBatch, {
+      await captureGenerationsLater(ctx, {
         distinctId: user.clerkId,
         provider: "openrouter",
         modelId: target.model ?? SERVER_AI_CONFIG.model,
@@ -383,7 +400,7 @@ export function createAIAction<
               return { result: output, usage };
             },
           );
-          await ctx.scheduler.runAfter(0, internal.lib.analytics.captureAIGeneration, { params: {
+          await captureGenerationLater(ctx, {
             distinctId: user.clerkId,
             provider: "openrouter" as AIProvider,
             modelId: modelSlug,
@@ -394,10 +411,10 @@ export function createAIAction<
             output: truncateForTracking(JSON.stringify(result)),
             temperature: config.temperature,
             creditsDeducted: credits,
-          } });
+          });
           return formatOutput(result, args);
         } catch (error) {
-          await ctx.scheduler.runAfter(0, internal.lib.analytics.captureAIGeneration, { params: {
+          await captureGenerationLater(ctx, {
             distinctId: user.clerkId,
             provider: "openrouter" as AIProvider,
             modelId: modelSlug,
@@ -411,7 +428,7 @@ export function createAIAction<
             httpStatus: extractHttpStatus(error),
             errorCode: extractErrorCode(error),
             temperature: config.temperature,
-          } });
+          });
           throw error;
         }
       } catch (error) {
