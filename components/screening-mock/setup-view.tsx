@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
-import { Check, ChevronDown, Coins, FolderOpen, Hourglass, Plus, Sparkles, Trash2, Zap } from "lucide-react";
+import { Ban, Check, ChevronDown, Coins, Folder, FolderMinus, FolderPlus, Hourglass, Plus, Sparkles, Trash2, Zap, type LucideIcon } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ModelPicker } from "@/components/models/model-picker";
 import { getModelIcon } from "@/components/icons/provider-icons";
@@ -27,7 +28,7 @@ const KINDS: Array<{ id: Source["kind"]; label: string }> = [
 const JOB_LIMIT = 1_000;
 const PAGE = 25;
 
-export type Setup = { source: Source; first: number; last: number; questions: Question[]; minScore: number; model: string; saveTo?: string };
+export type Setup = { source: Source; first: number; last: number; questions: Question[]; minScore: number; model: string; saveTo?: string; prune?: string };
 
 export function SetupView({ busy, onStart }: { busy: boolean; onStart: (setup: Setup) => void }) {
   const [kind, setKind] = useState<Source["kind"]>("search");
@@ -38,7 +39,9 @@ export function SetupView({ busy, onStart }: { busy: boolean; onStart: (setup: S
   const [questions, setQuestions] = useState<Question[]>(QUESTIONS.slice(0, 2));
   const [draft, setDraft] = useState("");
   const [minScore, setMinScore] = useState(2);
-  const [saveTo, setSaveTo] = useState<string | undefined>("Early grade reading trials");
+  const [dest, setDest] = useState<"none" | "new" | string>("new");
+  const [newName, setNewName] = useState<string | null>(null);
+  const [prune, setPrune] = useState(false);
   const [modelId, setModelId] = useState("typesafe/jev-1.13");
 
   const top = Math.min(source.count, JOB_LIMIT);
@@ -49,6 +52,10 @@ export function SetupView({ busy, onStart }: { busy: boolean; onStart: (setup: S
   const credits = Math.ceil(papers * CREDITS_PER_PAPER);
   const enough = credits <= BALANCE;
   const max = maxScore(questions);
+  const defaultName = `Included in ${source.label}`;
+  // A collection can't be its own destination; picking it as the source moves the pick to a new one.
+  const target = kind === "collection" && dest === source.id ? "new" : dest;
+  const saveTo = target === "none" ? undefined : target === "new" ? (newName ?? defaultName).trim() || defaultName : SOURCES.collection.find((c) => c.id === target)?.label;
 
   const catalog = useQuery(api.models.queries.listCatalogOptions, {});
   const model = catalog?.find((row) => row.modelId === modelId);
@@ -168,11 +175,6 @@ export function SetupView({ busy, onStart }: { busy: boolean; onStart: (setup: S
               <span className="whitespace-nowrap text-sm text-muted-foreground">of {max} points</span>
             </div>
             <Meter value={minScore} max={max} />
-            <button type="button" onClick={() => setSaveTo(saveTo ? undefined : "Early grade reading trials")} className="flex w-full items-center gap-3 rounded-xl border border-border/60 px-3 py-2 text-left text-sm hover:bg-muted/40">
-              <FolderOpen className="size-4 text-muted-foreground" />
-              <span className="flex-1 truncate">{saveTo ? `Save included papers to ${saveTo}` : "Don't save included papers"}</span>
-              <ChevronDown className="size-4 text-muted-foreground" />
-            </button>
           </div>
         </Zone>
 
@@ -196,6 +198,39 @@ export function SetupView({ busy, onStart }: { busy: boolean; onStart: (setup: S
         </Zone>
       </div>
 
+      <Zone label="Collections">
+        {kind === "collection" ? (
+          <label className="mb-3 flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border border-border/60 px-4 py-2.5">
+            <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/60", prune ? "text-primary" : "text-muted-foreground")}>
+              <FolderMinus className="size-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">Remove papers that aren't included from {source.label}</span>
+              <span className="block text-xs text-muted-foreground">Excluded and failed papers leave it. Unclear ones stay for you to check.</span>
+            </span>
+            <Switch checked={prune} onCheckedChange={setPrune} aria-label={`Remove papers that aren't included from ${source.label}`} />
+          </label>
+        ) : null}
+        <div className={LIST} role="radiogroup" aria-label="Save included papers to">
+          <DestinationRow on={target === "none"} onPick={() => setDest("none")} icon={Ban} name="Don't save included papers" />
+          <DestinationRow on={target === "new"} onPick={() => setDest("new")} icon={FolderPlus} facts={<Chip>New</Chip>}>
+            <Input
+              value={newName ?? defaultName}
+              onChange={(e) => setNewName(e.target.value)}
+              onFocus={() => setDest("new")}
+              aria-label="Name of the new collection"
+              placeholder="Name a new collection"
+              className="h-8 flex-1"
+            />
+          </DestinationRow>
+          {SOURCES.collection
+            .filter((c) => kind !== "collection" || c.id !== source.id)
+            .map((c) => (
+              <DestinationRow key={c.id} on={target === c.id} onPick={() => setDest(c.id)} icon={Folder} name={`Add to ${c.label}`} facts={<Chip>{c.count.toLocaleString()} papers</Chip>} />
+            ))}
+        </div>
+      </Zone>
+
       <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border/60 bg-background/95 p-4 shadow-lg backdrop-blur">
         <div className="min-w-48 flex-1 space-y-1.5">
           <p className="flex items-center justify-between text-xs">
@@ -209,10 +244,28 @@ export function SetupView({ busy, onStart }: { busy: boolean; onStart: (setup: S
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Hourglass className="size-3.5" />Runs {SLOTS} at a time once your running screening frees slots
         </p>
-        <Button disabled={busy || questions.length === 0 || !enough} onClick={() => onStart({ source, first, last, questions, minScore, model: modelId, saveTo })}>
+        <Button disabled={busy || questions.length === 0 || !enough} onClick={() => onStart({ source, first, last, questions, minScore, model: modelId, saveTo, prune: kind === "collection" && prune ? source.label : undefined })}>
           {busy ? "Reading papers…" : `Screen ${papers.toLocaleString()} papers`}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function Chip({ children }: { children: ReactNode }) {
+  return <span className="flex h-5 shrink-0 items-center whitespace-nowrap rounded-md bg-foreground/[0.06] px-1.5 text-[11px] tabular-nums text-muted-foreground">{children}</span>;
+}
+
+/** One place the included papers can go, as the chat offers them: none, a new collection, or one you have. */
+function DestinationRow({ on, onPick, icon: Icon, name, facts, children }: { on: boolean; onPick: () => void; icon: LucideIcon; name?: string; facts?: ReactNode; children?: ReactNode }) {
+  return (
+    <div role="radio" aria-checked={on} tabIndex={0} onClick={onPick} onKeyDown={(e) => (e.key === " " || e.key === "Enter") && e.target === e.currentTarget && onPick()} className={cn("flex min-h-14 w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors", on ? "bg-primary/5" : "hover:bg-muted/40")}>
+      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/60", on ? "text-primary" : "text-muted-foreground")}>
+        <Icon className="size-4" />
+      </span>
+      {name ? <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span> : <span className="flex min-w-0 flex-1">{children}</span>}
+      {facts}
+      <Check className={cn("size-4 shrink-0 text-primary", !on && "invisible")} />
     </div>
   );
 }

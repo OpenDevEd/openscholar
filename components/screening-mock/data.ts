@@ -30,6 +30,8 @@ export type Job = {
   /** Answers someone changed by hand, by paper and question. */
   overrides: Record<string, Record<string, Answer>>;
   saveTo?: string;
+  /** The source collection its papers that aren't included leave. */
+  prune?: string;
 };
 
 export const PAPERS: Paper[] = papers;
@@ -152,7 +154,7 @@ export const START_JOBS: Job[] = [
     startedAt: "Yesterday, 16:05",
     hold: Math.ceil(50 * CREDITS_PER_PAPER),
     overrides: { [PAPERS[12]!.id]: { q1: "yes" } },
-    saveTo: "Early grade reading trials",
+    prune: "Early grade reading trials",
   },
   {
     id: "j4",

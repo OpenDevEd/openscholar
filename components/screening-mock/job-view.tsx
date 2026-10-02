@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  BookMarked, ChevronDown, Coins, Copy, Download, FolderOpen, Hourglass, Layers, ListChecks, Search, Square, Undo2,
+  BookMarked, ChevronDown, Coins, Copy, Download, FolderMinus, FolderOpen, Hourglass, Layers, ListChecks, Search, Square, Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,7 @@ export function JobView({
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2 py-0.5"><SourceIcon className="size-3" />{job.source.label}</span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2 py-0.5"><Layers className="size-3" />{total} papers</span>
             {job.saveTo ? <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2 py-0.5"><FolderOpen className="size-3" />Saves to {job.saveTo}</span> : null}
+            {job.prune ? <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2 py-0.5"><FolderMinus className="size-3" />Removes excluded papers from {job.prune}</span> : null}
             <span className="px-1">{job.startedAt}</span>
           </div>
         </div>

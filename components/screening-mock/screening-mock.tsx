@@ -67,6 +67,7 @@ export function ScreeningMock() {
           hold: Math.ceil(Math.min(count, 1_000) * CREDITS_PER_PAPER),
           overrides: {},
           saveTo: setup.saveTo,
+          prune: setup.prune,
         },
         ...all,
       ]);
