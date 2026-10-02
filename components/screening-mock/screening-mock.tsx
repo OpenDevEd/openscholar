@@ -3,6 +3,8 @@
 // A mock of a full Screen all page in the settings shell: scripted data, no backend
 // beyond the model catalog. See ./data.ts.
 import { useEffect, useState } from "react";
+import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
+import { EASE } from "@/components/settings/model-map";
 import { CircleCheck, Hourglass, ListChecks, LoaderCircle, Plus, Square } from "lucide-react";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Button } from "@/components/ui/button";
@@ -88,6 +90,7 @@ export function ScreeningMock() {
   const past = jobs.filter((j) => j.status === "completed" || j.status === "cancelled");
 
   return (
+    <MotionConfig reducedMotion="user">
     <PageWrapper>
       <ConfigurationLayout
         header={
@@ -104,26 +107,40 @@ export function ScreeningMock() {
                 <span className="flex-1 truncate">New screening</span>
               </RailLink>
             </RailGroup>
-            {active.length ? (
-              <RailGroup label="Running">
-                {active.map((j) => (
-                  <JobLink key={j.id} job={j} active={selected === j.id} onClick={() => setSelected(j.id)} />
+            {/* One layout group, so a screening that finishes glides from Running to Done. */}
+            <LayoutGroup>
+              {active.length ? (
+                <RailGroup label="Running">
+                  {active.map((j) => (
+                    <RailItem key={j.id} id={j.id}>
+                      <JobLink job={j} active={selected === j.id} onClick={() => setSelected(j.id)} />
+                    </RailItem>
+                  ))}
+                </RailGroup>
+              ) : null}
+              <RailGroup label="Done">
+                {past.map((j) => (
+                  <RailItem key={j.id} id={j.id}>
+                    <JobLink job={j} active={selected === j.id} onClick={() => setSelected(j.id)} />
+                  </RailItem>
                 ))}
               </RailGroup>
-            ) : null}
-            <RailGroup label="Done">
-              {past.map((j) => (
-                <JobLink key={j.id} job={j} active={selected === j.id} onClick={() => setSelected(j.id)} />
-              ))}
-            </RailGroup>
+            </LayoutGroup>
           </ConfigurationNavigation>
         }
       >
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.div
+            key={selected === "new" || !job ? "new" : job.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, transition: { duration: 0.12 } }}
+            transition={{ duration: 0.3, ease: EASE }}
+          >
         {selected === "new" || !job ? (
-          <SetupView busy={starting} screenings={jobs} onStart={start} />
+          <SetupView busy={starting} screenings={jobs} waitingFor={blocker?.name} onStart={start} />
         ) : (
           <JobView
-            key={job.id}
             job={job}
             blocker={job.status === "waiting" ? blocker : undefined}
             onCancel={() => update(job.id, (j) => ({ ...j, status: "cancelled" }))}
@@ -131,8 +148,11 @@ export function ScreeningMock() {
             onAnswer={answer}
           />
         )}
+          </motion.div>
+        </AnimatePresence>
       </ConfigurationLayout>
     </PageWrapper>
+    </MotionConfig>
   );
 }
 
@@ -157,5 +177,14 @@ function JobLink({ job, active, onClick }: { job: Job; active: boolean; onClick:
         </span>
       </span>
     </RailLink>
+  );
+}
+
+/** A rail row that slides into place when its screening moves group, and fades in when new. */
+function RailItem({ id, children }: { id: string; children: React.ReactNode }) {
+  return (
+    <motion.div layout="position" layoutId={`rail-${id}`} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: EASE }}>
+      {children}
+    </motion.div>
   );
 }

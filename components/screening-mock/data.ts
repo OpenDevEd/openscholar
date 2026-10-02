@@ -1,5 +1,6 @@
 // Scripted data for the screening page mock: real papers from OpenAlex (searched for
 // "structured pedagogy early grade reading Africa", 2026-10-02), answers made up per paper.
+import type { FilterParams } from "@/lib/filters/filter-types";
 import papers from "./papers.json";
 
 export type Paper = (typeof papers)[number];
@@ -9,7 +10,7 @@ export type Outcome = "included" | "unclear" | "excluded" | "failed";
 
 export type Source =
   /** A search keeps the screening questions set on its own panel. */
-  | { kind: "search"; id: string; label: string; count: number; questions: Question[] }
+  | { kind: "search"; id: string; label: string; count: number; questions: Question[]; filters: FilterParams }
   | { kind: "collection"; id: string; label: string; count: number }
   | { kind: "saved"; id: string; label: string; count: number }
   | { kind: "screening"; id: string; label: string; count: number };
@@ -64,18 +65,19 @@ export const GENERATED: Question[] = [
 
 export const SOURCES: Record<Source["kind"], Source[]> = {
   search: [
-    { kind: "search", id: "s1", label: "structured pedagogy early grade reading Africa", count: 61_634, questions: QUESTIONS },
+    { kind: "search", id: "s1", label: "structured pedagogy early grade reading Africa", count: 61_634, questions: QUESTIONS, filters: { yearRange: [2010, 2025], isYearRangeEnabled: true, filterType: "year", selectedCountryFocus: ["KE", "GH", "UG"], workTypes: ["article"], hasAbstract: true } },
     {
       kind: "search",
       id: "s2",
       label: "teacher coaching cost-effectiveness",
       count: 4_238,
+      filters: { openAccessOnly: true, minCitations: 10 },
       questions: [
         { key: "c1", text: "Does it report the programme's cost per pupil?", yes: 2, no: 0, unclear: 1 },
         { key: "c2", text: "Do trained coaches visit the teachers?", yes: 1, no: 0, unclear: 0 },
       ],
     },
-    { kind: "search", id: "s3", label: "mother tongue instruction literacy", count: 12_907, questions: [] },
+    { kind: "search", id: "s3", label: "mother tongue instruction literacy", count: 12_907, questions: [], filters: { yearRange: [2015, 2025], isYearRangeEnabled: true, filterType: "year", workLanguages: ["en", "fr"] } },
   ],
   collection: [
     { kind: "collection", id: "c1", label: "Early grade reading trials", count: 143 },

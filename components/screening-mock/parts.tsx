@@ -1,7 +1,8 @@
 "use client";
 
 // Small pieces the screening mock's views share.
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { Check, CircleHelp, Star, TriangleAlert, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Answer, Outcome } from "./data";
@@ -81,7 +82,13 @@ export function ProgressRing({ value, max, status }: { value: number; max: numbe
         />
       </svg>
       <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold tabular-nums">
-        {status === "completed" ? <Check className="size-5 text-emerald-500" /> : `${Math.round(f * 100)}%`}
+        {status === "completed" ? (
+          <motion.span initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 420, damping: 22 }}>
+            <Check className="size-5 text-emerald-500" />
+          </motion.span>
+        ) : (
+          <span><AnimatedNumber value={Math.round(f * 100)} />%</span>
+        )}
       </span>
     </span>
   );
@@ -114,4 +121,20 @@ export function Meter({ value, max, className, fill = "bg-primary" }: { value: n
       <div className={cn("h-full rounded-full transition-[width] duration-500 ease-out motion-reduce:transition-none", fill)} style={{ width: `${Math.min(100, (value / Math.max(1, max)) * 100)}%` }} />
     </div>
   );
+}
+
+/**
+ * A number that rolls to each new value, the way iOS counts a balance up, as the
+ * assistant's numbers do. It jumps straight there when motion is reduced.
+ */
+export function AnimatedNumber({ value }: { value: number }) {
+  const reduceMotion = useReducedMotion();
+  const spring = useSpring(value, { stiffness: 120, damping: 22 });
+  const text = useTransform(spring, (n) => Math.round(n).toLocaleString());
+  // The spring is an animation system outside React: point it at each new value.
+  useEffect(() => {
+    if (reduceMotion) spring.jump(value);
+    else spring.set(value);
+  }, [spring, value, reduceMotion]);
+  return <motion.span className="tabular-nums">{text}</motion.span>;
 }

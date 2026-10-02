@@ -2,7 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
-import { Ban, Check, CircleCheck, Coins, Folder, FolderMinus, FolderPlus, Hourglass, ListChecks, Loader2, Minus, Plus, Sparkles, Trash2, Zap, type LucideIcon } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Loader2, Minus, Plus, Sparkles, Trash2, TriangleAlert, X, Zap, type LucideIcon } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,11 +11,13 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ModelPicker } from "@/components/models/model-picker";
-import { NODE_H, NodeCard } from "@/components/settings/model-map";
+import { EASE, NODE_H, NodeCard } from "@/components/settings/model-map";
+import { FilterChips } from "@/components/ui/filter-display";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { cn } from "@/lib/utils";
 import { BALANCE, CREDITS_PER_PAPER, GENERATED, QUESTIONS, SLOTS, SOURCES, maxScore, type Job, type Question, type Source } from "./data";
-import { ANSWER, Chip, Meter } from "./parts";
+import { ANSWER, AnimatedNumber, Chip, Meter } from "./parts";
+import { SOURCE_ICON } from "./job-view";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
 const TINT = {
@@ -22,7 +25,6 @@ const TINT = {
   no: { icon: "text-muted-foreground", input: "bg-foreground/[0.05]" },
   unclear: { icon: "text-amber-500", input: "bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
 } as const;
-import { SOURCE_ICON } from "./job-view";
 
 const KINDS: Array<{ id: Source["kind"]; label: string }> = [
   { id: "search", label: "Search" },
@@ -36,7 +38,7 @@ const PAGE = 25;
 
 export type Setup = { source: Source; first: number; last: number; questions: Question[]; minScore: number; model: string; saveTo?: string; prune?: string };
 
-export function SetupView({ busy, screenings, onStart }: { busy: boolean; screenings: Job[]; onStart: (setup: Setup) => void }) {
+export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boolean; screenings: Job[]; waitingFor?: string; onStart: (setup: Setup) => void }) {
   const [kind, setKind] = useState<Source["kind"]>("search");
   const [sourceId, setSourceId] = useState(SOURCES.search[0]!.id);
   const source = SOURCES[kind].find((s) => s.id === sourceId) ?? SOURCES[kind][0]!;
@@ -122,11 +124,24 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
                   <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/60", on ? "text-primary" : "text-muted-foreground")}>
                     <Icon className="size-4" />
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{s.label}</span>
+                  <span className="min-w-0 flex-1 space-y-1.5">
+                    <span className="block truncate text-sm font-medium">{s.label}</span>
+                    {/* As on a search's history card: one row that scrolls sideways under a fading edge. */}
+                    {s.kind === "search" ? <span className="block min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]"><FilterChips filters={s.filters} size="compact" singleLine /></span> : null}
+                  </span>
                   <Chip>{s.count.toLocaleString()} papers</Chip>
-                  <Check className={cn("size-4 shrink-0 text-primary", !on && "invisible")} />
+                  <PickMark on={on} />
                 </button>
+                <AnimatePresence initial={false}>
                 {on && s.kind === "search" ? (
+                  <motion.div
+                    key="scope"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.35, ease: EASE }}
+                    className="overflow-hidden"
+                  >
                   <div className="space-y-4 pb-4 pl-15 pr-4">
                     <Segmented
                       label="Which of its papers"
@@ -143,19 +158,25 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
                         <Slider min={1} max={top} step={1} value={range} onValueChange={(v) => setRange([v[0]!, v[1]!])} aria-label="Papers to screen" />
                         <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
                           <span>Papers <span className="font-semibold text-foreground">{first.toLocaleString()}</span> to <span className="font-semibold text-foreground">{last.toLocaleString()}</span></span>
-                          <span>In results page order, up to {JOB_LIMIT.toLocaleString()} a job</span>
+                          <span>Up to {JOB_LIMIT.toLocaleString()} a job</span>
                         </div>
                       </div>
                     ) : scope === "all" ? (
-                      <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Zap className="size-3.5 text-primary" />
-                        {source.count.toLocaleString()} papers run as {jobs.toLocaleString()} jobs of up to {JOB_LIMIT.toLocaleString()}, one after another, under this approval.
-                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Chip icon={Zap} className="text-foreground"><span className="font-semibold">{jobs.toLocaleString()}</span> jobs, one after another</Chip>
+                        <Chip>Up to {JOB_LIMIT.toLocaleString()} papers each</Chip>
+                        <Chip icon={Check}>One approval</Chip>
+                      </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground">The {PAGE} papers the results page shows first.</p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Chip className="text-foreground"><span className="font-semibold">{PAGE}</span> papers</Chip>
+                        <Chip>The first page of results</Chip>
+                      </div>
                     )}
                   </div>
+                  </motion.div>
                 ) : null}
+                </AnimatePresence>
               </div>
             );
           })}
@@ -192,8 +213,17 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
             })}
             <span />
           </div>
+          <AnimatePresence initial={false}>
           {questions.map((q, i) => (
-            <div key={q.key} className="grid grid-cols-[1.5rem_1fr_repeat(3,4rem)_2rem] items-center gap-3 px-4 py-2.5">
+            <motion.div
+              key={q.key}
+              layout="position"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto", transition: { duration: 0.35, ease: EASE, delay: i * 0.04 } }}
+              exit={{ opacity: 0, height: 0, transition: { duration: 0.25, ease: EASE } }}
+              className="overflow-hidden"
+            >
+            <div className="grid grid-cols-[1.5rem_1fr_repeat(3,4rem)_2rem] items-center gap-3 px-4 py-2.5">
               <span className="flex size-6 items-center justify-center rounded-md bg-muted text-xs font-medium tabular-nums">{i + 1}</span>
               <p className="min-w-0 text-sm">{q.text}</p>
               {(["yes", "no", "unclear"] as const).map((a) => (
@@ -203,7 +233,9 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
                 <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label="Remove question" onClick={() => setQuestions((qs) => qs.filter((x) => x.key !== q.key))}><Trash2 /></Button>
               </TooltipHint>
             </div>
+            </motion.div>
           ))}
+          </AnimatePresence>
           <div className="flex items-center gap-2 px-4 py-2.5">
             <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQuestion()} placeholder="Add a question with a yes or no answer" className="h-9 flex-1" />
             <Button variant="outline" size="sm" className="h-9" onClick={addQuestion} disabled={!draft.trim()}><Plus />Add</Button>
@@ -279,7 +311,11 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">Remove papers that aren't included from {source.label}</span>
-              <span className="block text-xs text-muted-foreground">Excluded and failed papers leave it. Unclear ones stay for you to check.</span>
+              <span className="mt-1.5 flex flex-wrap gap-1">
+                <Chip icon={X}>Excluded leave</Chip>
+                <Chip icon={TriangleAlert}>Failed leave</Chip>
+                <Chip icon={CircleHelp}>Unclear stay</Chip>
+              </span>
             </span>
             <Switch checked={prune} onCheckedChange={setPrune} aria-label={`Remove papers that aren't included from ${source.label}`} />
           </label>
@@ -307,16 +343,23 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
       <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border/60 bg-background p-4 shadow-lg">
         <div className="min-w-48 flex-1 space-y-1.5">
           <p className="flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1.5 font-medium"><Coins className="size-3.5 text-primary" />Up to {credits.toLocaleString()} credits</span>
-            <span className={cn("tabular-nums", enough ? "text-muted-foreground" : "text-destructive")}>
-              {BALANCE.toLocaleString()} → {Math.max(0, BALANCE - credits).toLocaleString()} left
+            <span className="flex items-center gap-1.5 font-medium"><Coins className="size-3.5 text-primary" /><span>Up to <AnimatedNumber value={credits} /> credits</span></span>
+            <span className={cn("tabular-nums transition-colors", enough ? "text-muted-foreground" : "text-destructive")}>
+              {BALANCE.toLocaleString()} → <AnimatedNumber value={Math.max(0, BALANCE - credits)} /> left
             </span>
           </p>
           <Meter value={Math.min(credits, BALANCE)} max={BALANCE} fill={enough ? "bg-primary" : "bg-destructive"} />
         </div>
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Hourglass className="size-3.5" />Runs {SLOTS} at a time once your running screening frees slots
-        </p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Chip icon={Gauge}>{SLOTS} at a time</Chip>
+          {waitingFor ? (
+            <Chip icon={Hourglass} className="max-w-56">
+              <TooltipHint label={`After ${waitingFor}`} onlyWhenClipped>
+                <span className="truncate">After {waitingFor}</span>
+              </TooltipHint>
+            </Chip>
+          ) : null}
+        </div>
         <Button disabled={busy || questions.length === 0 || !enough} onClick={() => onStart({ source, first, last, questions, minScore, model: modelId, saveTo, prune: kind === "collection" && prune ? source.label : undefined })}>
           {busy ? "Reading papers…" : `Screen ${papers.toLocaleString()} papers`}
         </Button>
@@ -334,7 +377,22 @@ function DestinationRow({ on, onPick, icon: Icon, name, facts, children }: { on:
       </span>
       {name ? <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span> : <span className="flex min-w-0 flex-1">{children}</span>}
       {facts}
-      <Check className={cn("size-4 shrink-0 text-primary", !on && "invisible")} />
+      <PickMark on={on} />
     </div>
+  );
+}
+
+/** The picked row's check, springing in as the chat's answer checks do. */
+function PickMark({ on }: { on: boolean }) {
+  return (
+    <span className="flex size-4 shrink-0 items-center justify-center">
+      <AnimatePresence initial={false}>
+        {on ? (
+          <motion.span key="on" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.4, opacity: 0, transition: { duration: 0.12 } }} transition={{ type: "spring", stiffness: 500, damping: 28 }}>
+            <Check className="size-4 text-primary" />
+          </motion.span>
+        ) : null}
+      </AnimatePresence>
+    </span>
   );
 }

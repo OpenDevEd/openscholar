@@ -1,6 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE } from "@/components/settings/model-map";
+import { FilterChips } from "@/components/ui/filter-display";
 import {
   Ban, BookMarked, ChevronDown, Clock, Coins, Copy, Download, FolderMinus, FolderOpen, FolderPlus, Gauge, Hourglass, Layers, ListChecks, Quote, Search, Square, Undo2,
 } from "lucide-react";
@@ -14,7 +17,7 @@ import {
   CREDITS_PER_PAPER, SLOTS, answerOf, maxScore, outcomeOf, paperById, scoreOf, starsOf,
   type Answer, type Job, type Outcome, type Source,
 } from "./data";
-import { ANSWER, AnswerMark, Chip, Meter, OUTCOME, OutcomeBar, ProgressRing, Stars } from "./parts";
+import { ANSWER, AnimatedNumber, AnswerMark, Chip, Meter, OUTCOME, OutcomeBar, ProgressRing, Stars } from "./parts";
 
 export const SOURCE_ICON: Record<Source["kind"], typeof Search> = { search: Search, collection: FolderOpen, saved: BookMarked, screening: ListChecks };
 const STATUS: Record<Job["status"], { label: string; tone: "running" | "warning" | "success" | "neutral" }> = {
@@ -63,9 +66,14 @@ export function JobView({
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             <Chip icon={SourceIcon}>{job.source.label}</Chip>
-            <Chip icon={Layers}>{job.done} of {total} papers</Chip>
+            <Chip icon={Layers}><span><AnimatedNumber value={job.done} /> of {total} papers</span></Chip>
             <Chip icon={Clock}>{job.startedAt}</Chip>
           </div>
+          {job.source.kind === "search" ? (
+            <div className="min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
+              <FilterChips filters={job.source.filters} size="compact" singleLine />
+            </div>
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {job.status === "running" || job.status === "waiting" ? (
@@ -86,7 +94,7 @@ export function JobView({
               return (
                 <span key={o} className="inline-flex items-center gap-1.5">
                   <Icon className={cn("size-3.5", text)} />
-                  <span className="font-semibold tabular-nums">{counts[o]}</span>
+                  <span className="font-semibold tabular-nums"><AnimatedNumber value={counts[o]} /></span>
                   <span className="text-muted-foreground">{label}</span>
                 </span>
               );
@@ -94,7 +102,7 @@ export function JobView({
             {job.status === "running" ? (
               <span className="ml-auto inline-flex items-center gap-1.5 text-muted-foreground">
                 <span className="size-2.5 rounded-sm" style={{ backgroundImage: "repeating-linear-gradient(-45deg, var(--primary) 0 2px, color-mix(in oklab, var(--primary) 30%, transparent) 2px 4px)" }} />
-                <span className="font-semibold tabular-nums text-foreground">{running}</span> being read
+                <span className="font-semibold tabular-nums text-foreground"><AnimatedNumber value={running} /></span> being read
               </span>
             ) : null}
           </div>
@@ -130,7 +138,7 @@ export function JobView({
               <p className="flex items-center justify-between text-xs font-medium">
                 <span className="flex items-center gap-1.5"><Coins className="size-3.5 text-primary" />Credits</span>
                 <span className="tabular-nums text-muted-foreground">
-                  {job.status === "completed" || job.status === "cancelled" ? job.hold > spent ? `${spent} spent, ${job.hold - spent} returned` : `${spent} spent` : `${spent} of up to ${job.hold}`}
+                  {job.status === "completed" || job.status === "cancelled" ? job.hold > spent ? `${spent} spent, ${job.hold - spent} returned` : `${spent} spent` : <span><AnimatedNumber value={spent} /> of up to {job.hold}</span>}
                 </span>
               </p>
               <Meter value={spent} max={job.hold} />
@@ -213,20 +221,29 @@ function Results({ job, counts, max, onAnswer }: { job: Job; counts: Record<Outc
           id: o,
           label: OUTCOME[o].label,
           icon: OUTCOME[o].icon,
-          detail: <span className="tabular-nums text-muted-foreground">{counts[o]}</span>,
+          detail: <span className="tabular-nums text-muted-foreground"><AnimatedNumber value={counts[o]} /></span>,
         }))}
       />
-      <div className={cn(LIST, "mt-3")}>
+      <motion.div key={tab} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: EASE }} className={cn(LIST, "mt-3")}>
         {rows.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">
             {job.done === 0 ? "Papers show here as they're screened." : needle ? "No paper here matches." : `No ${OUTCOME[tab].label.toLowerCase()} papers.`}
           </p>
         ) : (
-          rows.map((paper) => {
+          <AnimatePresence initial={false}>
+          {rows.map((paper) => {
             const score = scoreOf(job, paper.id);
             const expanded = open === paper.id;
             return (
-              <div key={paper.id}>
+              <motion.div
+                key={paper.id}
+                layout="position"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.35, ease: EASE }}
+                className="overflow-hidden"
+              >
                 <button
                   type="button"
                   aria-expanded={expanded}
@@ -249,12 +266,19 @@ function Results({ job, counts, max, onAnswer }: { job: Job; counts: Record<Outc
                   <Stars count={starsOf(score, max)} />
                   <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-200", expanded && "rotate-180")} />
                 </button>
-                {expanded ? <PaperDetail job={job} paperId={paper.id} onAnswer={onAnswer} /> : null}
-              </div>
+                <AnimatePresence initial={false}>
+                  {expanded ? (
+                    <motion.div key="detail" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }} className="overflow-hidden">
+                      <PaperDetail job={job} paperId={paper.id} onAnswer={onAnswer} />
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+              </motion.div>
             );
-          })
+          })}
+          </AnimatePresence>
         )}
-      </div>
+      </motion.div>
     </Zone>
   );
 }
