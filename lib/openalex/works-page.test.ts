@@ -71,7 +71,12 @@ describe("fetchWorksPage", () => {
       publication_year: 2020, cited_by_count: 3, abstract_inverted_index: null,
       authorships: [{ author: { id: null, display_name: "Ada Lovelace" }, institutions: [] }],
       primary_location: null, open_access: { is_oa: false, oa_url: null },
-      primary_topic: { id: "https://openalex.org/T1", field: { display_name: "Ecology" }, subfield: null, domain: { display_name: "Life Sciences" } },
+      primary_topic: {
+        id: "https://openalex.org/T10032", display_name: "Kelp forests",
+        subfield: { id: "https://openalex.org/subfields/2303", display_name: "Ecology" },
+        field: { id: "https://openalex.org/fields/23", display_name: "Environmental Science" },
+        domain: { id: "https://openalex.org/domains/3", display_name: "Physical Sciences" },
+      },
       related_works: [], referenced_works: ["https://openscholar.ai/OS2"], sustainable_development_goals: [], biblio: { volume: null },
     };
     answering({ status: 200, body: { meta: { count: 2 }, results: [work, { id: "https://openalex.org/W2" }] } });
