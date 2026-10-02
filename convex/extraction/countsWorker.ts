@@ -7,9 +7,10 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, internalQuery } from "../lib/functions";
-import { addInto, countsRow, startingCounts } from "./counts";
+import { addInto, countsRow } from "./counts";
+import { legacyCounts } from "./legacyCounts";
 
-/** Changes per batch; a batch recounts at most one job without a counts row. */
+/** Changes per batch; a batch starts at most one job's counts row. */
 const BATCH = 200;
 
 const { vQueryArgs, vQueryReturns, vMutationArgs, vMutationReturns } = defineBatchWorkerValidators({
@@ -44,26 +45,28 @@ export const fold = internalMutation({
     const changes = (await Promise.all(ids.map((id) => ctx.db.get(id)))).filter((change): change is Doc<"extractionCountChanges"> => change !== null);
     const byJob = new Map<Id<"extractionJobs">, Doc<"extractionCountChanges">[]>();
     for (const change of changes) byJob.set(change.jobId, [...(byJob.get(change.jobId) ?? []), change]);
-    let recounted = false;
+    let started = false;
     const waiting: bigint[] = [];
     for (const [jobId, jobChanges] of byJob) {
       const job = await ctx.db.get(jobId);
       if (job) {
         let row = await countsRow(ctx, jobId);
         if (!row) {
-          // A job's first row is a recount; one per batch keeps the batch within limits.
-          if (recounted) {
+          // A job saved before its counts row starts from the old counters, which stopped at
+          // the deploy; every change since is in the log. Reading them touches every shard, so
+          // a batch starts one job's row and the others' changes wait for the next batch.
+          if (started) {
             waiting.push(...jobChanges.map(queuedAtOf));
             continue;
           }
-          recounted = true;
-          const id = await ctx.db.insert("extractionJobCounts", { jobId, counts: await startingCounts(ctx, jobId) });
+          started = true;
+          const id = await ctx.db.insert("extractionJobCounts", { jobId, counts: await legacyCounts(ctx, jobId) });
           row = (await ctx.db.get(id))!;
         }
         const counts = { ...row.counts };
         for (const change of jobChanges) addInto(counts, change.deltas);
         await ctx.db.patch(row._id, { counts });
-        // Out of the queue before the finish check, which reads the row and the waiting changes.
+        // Out of the queue before the finish check, which waits until a job has none.
         for (const change of jobChanges) await ctx.db.delete(change._id);
         if ((counts.processed ?? 0) + (counts.failed ?? 0) >= (job.totalPapers ?? 0)) {
           await ctx.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });

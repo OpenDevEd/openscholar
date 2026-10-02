@@ -21,6 +21,7 @@ import {
   seedCreditsForTest,
 } from "../../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
+import { foldCounts } from "../counts.test-support";
 
 const CLERK = "clerk_retry_mutation_owner";
 const OWNER_IDENTITY = {
@@ -376,7 +377,8 @@ describe("retry reset — state changes", () => {
     expect(await status()).toBe("extracting");
 
     await t.run((ctx) => markPaperTerminalTx(ctx, second, "completed"));
-    await finalize();
+    // Folding the last paper's change finishes the job.
+    await foldCounts(t);
     expect(await status()).toBe("completed");
   });
 });

@@ -8,6 +8,8 @@ import schema from "../schema";
 import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { readJobCounters } from "./jobCounters";
 import { readResultCounts } from "./resultCounts";
+import { ShardedCounter } from "@convex-dev/sharded-counter";
+import { components } from "../_generated/api";
 
 // The worker schedules its runs on whichever timers are active when counts change.
 beforeEach(() => vi.useFakeTimers());
@@ -85,4 +87,39 @@ describe("extraction counts", () => {
     expect(await counts(t, jobId)).toEqual({ papers: { processed: PAPER_LIMIT, failed: 0 }, results: { total: 3 * PAPER_LIMIT, completed: 3 * PAPER_LIMIT, retryable: 0, permanent: {} } });
     expect(await t.action(internal.migrations.moveExtractionCounts.verify, {})).toEqual({ wrong: 0, sample: [] });
   }, 600_000);
+
+  it("start a job saved before them from the old counters, without recounting its rows", async () => {
+    const t = convexTest(schema);
+    const jobId = await seedJob(t, 5);
+    await t.run(async (ctx) => {
+      // As a job saved before: no counts row or changes, and its counts in the old counters.
+      for (const row of await ctx.db.query("extractionJobCounts").collect()) await ctx.db.delete("extractionJobCounts", row._id);
+      const processed = new ShardedCounter<Id<"extractionJobs">>(components.extractionProcessedCounter, { defaultShards: 64 });
+      await processed.add(ctx, jobId, 3);
+    });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:new", title: "new", status: "completed", processable: true });
+    });
+
+    expect((await counts(t, jobId)).papers).toEqual({ processed: 4, failed: 0 });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await counts(t, jobId)).papers).toEqual({ processed: 4, failed: 0 });
+  });
+
+  it("don't let a job finish while changes wait to be folded, such as a retry putting a paper back", async () => {
+    const t = convexTest(schema);
+    const jobId = await seedJob(t, 1);
+    const paperId = await t.run((ctx) => ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:1", title: "1", status: "completed", processable: true }));
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    await t.run((ctx) => ctx.db.patch(jobId, { status: "extracting", retryReset: undefined }));
+    // A retry puts the paper back; the change waits for the worker.
+    await t.run((ctx) => ctx.db.patch(paperId, { status: "extracting" }));
+    await t.run((ctx) => ctx.db.patch(jobId, { status: "extracting" }));
+
+    await t.mutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });
+    expect((await t.run((ctx) => ctx.db.get(jobId)))?.status).toBe("extracting");
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect((await t.run((ctx) => ctx.db.get(jobId)))?.status).toBe("extracting");
+    expect((await counts(t, jobId)).papers).toEqual({ processed: 0, failed: 0 });
+  });
 });

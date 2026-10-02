@@ -6,6 +6,7 @@ import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
 import { readJobCounters } from "./jobCounters";
+import { foldCounts } from "./counts.test-support";
 
 async function seedJob(
   t: ReturnType<typeof convexTest>,
@@ -105,6 +106,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
       });
     });
 
+    await foldCounts(t);
     await t.mutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });
 
     const after = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));

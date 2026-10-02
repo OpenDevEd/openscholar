@@ -8,6 +8,7 @@ import schema from "../../schema";
 import { EXTRACTION_PAPER_CONCURRENCY } from "../../../lib/extraction/limits";
 import { setupExtractionPaperWorkpool } from "./workpool.test-support";
 import { markPaperTerminalTx } from "../paperLifecycle";
+import { foldCounts } from "../counts.test-support";
 
 // The worker schedules its runs on whichever timers are active when rows are released.
 beforeEach(() => vi.useFakeTimers());
@@ -107,7 +108,7 @@ describe("a run that stops after finishing its paper", () => {
 });
 
 describe("a refill batch", () => {
-  it("finishes 50 jobs released in one batch within Convex's limits", async () => {
+  it("refills 50 jobs released in one batch, and their counts finish them, within Convex's limits", async () => {
     const t = convexTest({ schema, transactionLimits: true });
     setupExtractionPaperWorkpool(t);
     const released: Id<"extractionPaperQueue">[] = [];
@@ -121,6 +122,8 @@ describe("a refill batch", () => {
     }
 
     await t.mutation(internal.extraction.queue.dispatcher.refill, { rows: released });
+    // The counts worker finishes them as it folds their papers' changes.
+    await foldCounts(t);
 
     const jobs = await t.run((ctx) => ctx.db.query("extractionJobs").collect());
     expect(jobs.filter((job) => job.status === "completed")).toHaveLength(50);
