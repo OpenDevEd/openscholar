@@ -63,5 +63,9 @@ describe("list caps (#426)", () => {
     const error = (characters: number) => ({ context: { detail: "x".repeat(characters) } });
     expect(overCap(error(MAX_ERROR_CONTEXT_BYTES - 50), lists)).toBeUndefined();
     expect(overCap(error(MAX_ERROR_CONTEXT_BYTES), lists)).toMatchObject({ path: "context", unit: "bytes", cap: MAX_ERROR_CONTEXT_BYTES });
+    // Bytes, not characters: 2,000 three-byte characters are about 6,000 bytes.
+    expect(overCap({ context: { detail: "研".repeat(2_000) } }, lists)).toMatchObject({ unit: "bytes" });
+    // A binary value counts in full, not as `{}`.
+    expect(overCap({ context: { blob: new Uint8Array(MAX_ERROR_CONTEXT_BYTES).buffer } }, lists)).toMatchObject({ unit: "bytes" });
   });
 });

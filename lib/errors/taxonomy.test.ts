@@ -291,6 +291,13 @@ describe("classifyUnknownError — context bounds", () => {
     expect(JSON.stringify(result.context).length).toBeLessThanOrEqual(4096);
   });
 
+  it("R16: a context of characters that take several bytes is cut to its byte size", () => {
+    const err = Object.assign(new Error("wide context"), { payload: { detail: "研".repeat(3000) } });
+    const result = classifyUnknownError(err);
+    expect(result.context).toMatchObject({ _truncated: true });
+    expect(new TextEncoder().encode(JSON.stringify(result.context)).length).toBeLessThanOrEqual(4096);
+  });
+
   it("R16: small structured context is preserved as-is", () => {
     const err = Object.assign(new Error("small ctx"), {
       payload: { paperId: "abc-123", attempt: 2 },

@@ -8,7 +8,7 @@
  * Wrap the outermost validator: `capped(v.optional(v.array(x)), N)`, since `v.optional`
  * copies the validator it's given.
  */
-import type { GenericValidator, VAny, VArray, VObject, VRecord, VUnion } from "convex/values";
+import { convexToJson, type GenericValidator, type Value, type VAny, type VArray, type VObject, type VRecord, type VUnion } from "convex/values";
 import { CONTEXT_BYTE_CAP, ERROR_CODES } from "../../lib/errors/taxonomy";
 
 /** The longest list a record may hold. Longer ones are tables, read a page at a time. */
@@ -80,6 +80,11 @@ function valuesAt(value: unknown, path: string[]): unknown[] {
   return value && typeof value === "object" && step! in value ? valuesAt((value as Record<string, unknown>)[step!], rest) : [];
 }
 
+/** A value's size as Convex stores it: UTF-8 bytes of its JSON form, binary values included. */
+export function jsonBytes(value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(convexToJson(value as Value))).length;
+}
+
 /** The first capped list in `doc` holding more than its cap, if any. */
 export function overCap(doc: unknown, lists: ListAt[]): { path: string; size: number; cap: number; unit: "entries" | "bytes" } | undefined {
   for (const list of lists) {
@@ -87,7 +92,7 @@ export function overCap(doc: unknown, lists: ListAt[]): { path: string; size: nu
     for (const found of valuesAt(doc, list.path)) {
       if (found === undefined) continue;
       const size = list.kind === "json"
-        ? JSON.stringify(found).length
+        ? jsonBytes(found)
         : Array.isArray(found) ? found.length : found && typeof found === "object" ? Object.keys(found).length : 0;
       if (size > list.cap) return { path: list.path.join("."), size, cap: list.cap, unit: list.kind === "json" ? "bytes" : "entries" };
     }
