@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import { shortWorkId } from "../../lib/openalex/work-id";
+import { lookupOpenAlexId } from "../../lib/evidence-libraries/source-item-id";
 import {
   httpAction,
   internalQuery,
@@ -113,34 +113,6 @@ const collectionItemValidator = v.object({
   openalexId: v.union(v.string(), v.null()),
   doi: v.union(v.string(), v.null()),
 });
-
-/** "https://openalex.org/W123" or "W123" as "W123"; anything else is not an OpenAlex work. */
-function openAlexWorkId(value: string) {
-  return /(?:^|\/)(W\d+)$/u.exec(value.trim())?.[1] ?? null;
-}
-
-/**
- * The OpenAlex id a stored work names in its `ids`, as the OpenScholar API gives one for its OS
- * works: a W id, bare or on openalex.org only, since one on another site could name another paper.
- */
-function storedOpenAlexId(paperData: string | undefined): string | null {
-  try {
-    const ids = (JSON.parse(paperData ?? "null") as { ids?: { openalex?: unknown } } | null)?.ids;
-    const short = typeof ids?.openalex === "string" ? shortWorkId(ids.openalex) : null;
-    return short?.startsWith("W") ? short : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * The OpenAlex id the library can look a saved paper up by: its own, or for a paper from the
- * OpenScholar API, whose id is OS…, the OpenAlex id its stored work names. The library asks
- * OpenAlex, so an OS id is never handed on; a paper with neither goes by its DOI.
- */
-function lookupOpenAlexId(item: Doc<"libraryItems">) {
-  return openAlexWorkId(item.openalexId) ?? storedOpenAlexId(item.paperData);
-}
 
 /** Why the library may not read the collection now, or null when it may. */
 async function refusal(
