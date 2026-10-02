@@ -3274,7 +3274,7 @@
       "intelligent": "Intelligent",
       "custom": "Custom"
     },
-    "needsKey": "Needs your {provider} key",
+    "needsKey": "No key",
     "presetsGroup": "Presets",
     "allModels": "All models",
     "effort": "Reasoning effort",
