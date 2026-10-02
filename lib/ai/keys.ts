@@ -15,12 +15,6 @@ export function keyFor(modelSlug: string, keys: Partial<Record<string, string>>)
   return keys.openrouter ? 'openrouter' : null
 }
 
-/** The key to ask for when none can run the model. */
-export function keyToAdd(modelSlug: string): KeyProvider {
-  const vendor = vendorOf(modelSlug)
-  return !isVariant(modelSlug) && KEY_PROVIDERS.includes(vendor) ? vendor : 'openrouter'
-}
-
 /** How a model is called on a key: OpenRouter takes the slug, a provider's own API its native id. */
 export function keyModelId(modelSlug: string, provider: KeyProvider): string {
   return provider === 'openrouter' ? modelSlug : toNativeModelId(modelSlug, provider as Exclude<KeyProvider, 'openrouter'>)

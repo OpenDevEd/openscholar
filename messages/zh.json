@@ -3284,7 +3284,7 @@
       "intelligent": "智能",
       "custom": "自定义"
     },
-    "needsKey": "需要你的 {provider} 密钥",
+    "needsKey": "无密钥",
     "presetsGroup": "预设",
     "allModels": "全部模型",
     "effort": "推理强度",
