@@ -15,8 +15,8 @@ import { EASE, NodeCard } from "@/components/settings/model-map";
 import { FilterChips } from "@/components/ui/filter-display";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { cn } from "@/lib/utils";
-import { BALANCE, CREDITS_PER_PAPER, GENERATED, QUESTIONS, SLOTS, SOURCES, maxScore, type Job, type Question, type Source } from "./data";
-import { ANSWER, AnimatedNumber, Chip, Meter } from "./parts";
+import { BALANCE, CREDITS_PER_PAPER, GENERATED, SLOTS, SOURCES, maxScore, starsOf, type Job, type Question, type Source } from "./data";
+import { ANSWER, AnimatedNumber, Chip, Meter, Stars } from "./parts";
 import { SOURCE_ICON } from "./job-view";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
@@ -34,17 +34,37 @@ const KINDS: Array<{ id: Source["kind"]; label: string }> = [
 ];
 /** Most papers one job screens; a bigger set runs as several jobs under one approval. */
 const JOB_LIMIT = 1_000;
-const PAGE = 25;
+/** Papers on one results page (ITEMS_PER_PAGE). */
+const PAGE = 20;
+
+type SearchSource = Extract<Source, { kind: "search" }>;
 
 export type Setup = { source: Source; first: number; last: number; questions: Question[]; minScore: number; model: string; saveTo?: string; prune?: string };
 
-export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boolean; screenings: Job[]; waitingFor?: string; onStart: (setup: Setup) => void }) {
+export function SetupView({
+  busy,
+  screenings,
+  waitingFor,
+  fromResults,
+  onStart,
+}: {
+  busy: boolean;
+  screenings: Job[];
+  waitingFor?: string;
+  /** The search whose Screen all opened this form, read from its history entry. */
+  fromResults?: SearchSource;
+  onStart: (setup: Setup) => void;
+}) {
+  const mockSearches = SOURCES.search.filter((s): s is SearchSource => s.kind === "search");
+  const searches = fromResults ? [fromResults, ...mockSearches.filter((s) => s.id !== fromResults.id)] : mockSearches;
+  const sources = { ...SOURCES, search: searches };
   const [kind, setKind] = useState<Source["kind"]>("search");
-  const [sourceId, setSourceId] = useState(SOURCES.search[0]!.id);
-  const source = SOURCES[kind].find((s) => s.id === sourceId) ?? SOURCES[kind][0]!;
-  const [scope, setScope] = useState<"all" | "page" | "range">("range");
+  const [sourceId, setSourceId] = useState(sources.search[0]!.id);
+  const source = sources[kind].find((s) => s.id === sourceId) ?? sources[kind][0]!;
+  // Opened from a results page, it starts on the page the person was reading.
+  const [scope, setScope] = useState<"all" | "page" | "range">(fromResults ? "page" : "range");
   const [range, setRange] = useState<[number, number]>([1, 300]);
-  const [questions, setQuestions] = useState<Question[]>(QUESTIONS.slice(0, 2));
+  const [questions, setQuestions] = useState<Question[]>(searches[0]!.questions);
   const [draft, setDraft] = useState("");
   const [generating, setGenerating] = useState(false);
   const [minScore, setMinScore] = useState(2);
@@ -55,21 +75,25 @@ export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boo
 
   const top = Math.min(source.count, JOB_LIMIT);
   const [first, last] =
-    scope === "all" ? [1, source.count] : scope === "page" ? [1, Math.min(PAGE, source.count)] : [Math.min(range[0], top), Math.min(range[1], top)];
+    scope === "all"
+      ? [1, source.count]
+      : scope === "page" && source.kind === "search"
+        ? [(source.page - 1) * PAGE + 1, Math.min(source.page * PAGE, source.count)]
+        : [Math.min(range[0], top), Math.min(range[1], top)];
   const papers = last - first + 1;
   const jobs = Math.ceil(papers / JOB_LIMIT);
-  const credits = Math.ceil(papers * CREDITS_PER_PAPER);
+  // One screening per search: papers its results page already answered, with these same
+  // questions, keep their answers and aren't charged again. New questions start a new version.
+  const sameQuestions =
+    source.kind === "search" && source.questions.length === questions.length && source.questions.every((q, i) => q.text === questions[i]?.text);
+  const skipped = sameQuestions && source.kind === "search" ? Math.max(0, Math.min(last, source.screened) - first + 1) : 0;
+  const credits = Math.ceil((papers - skipped) * CREDITS_PER_PAPER);
   const enough = credits <= BALANCE;
   const max = maxScore(questions);
   // Removing questions can drop the highest score under the threshold; it reads as the top score then.
   const threshold = Math.min(minScore, max);
-  // Questions the source already has: a search's own screening questions, or an earlier screening's.
-  const from =
-    source.kind === "search"
-      ? source.questions.length ? { name: "this search", questions: source.questions } : undefined
-      : source.kind === "screening"
-        ? screenings.find((j) => j.id === source.id)
-        : undefined;
+  // An earlier screening's questions to reuse. A search needs none: its questions load with it.
+  const from = source.kind === "screening" ? screenings.find((j) => j.id === source.id) : undefined;
   const fresh = from?.questions.filter((q) => !questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase())) ?? [];
   const defaultName = source.kind === "screening" ? source.label : `Included in ${source.label}`;
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
@@ -79,9 +103,14 @@ export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boo
   const catalog = useQuery(api.models.queries.listCatalogOptions, {});
   const model = catalog?.find((row) => row.modelId === modelId);
 
+  /** Picks a source; a search brings its own screening questions. */
+  const choose = (next: Source) => {
+    setSourceId(next.id);
+    if (next.kind === "search") setQuestions(next.questions);
+  };
   const pick = (k: Source["kind"]) => {
     setKind(k);
-    setSourceId(SOURCES[k][0]!.id);
+    choose(sources[k][0]!);
     setScope(k === "search" ? "range" : "all");
   };
   const addQuestion = () => {
@@ -117,12 +146,12 @@ export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boo
       <Zone label="Papers">
         <Segmented label="Where the papers come from" value={kind} onChange={pick} fill options={KINDS.map((k) => ({ ...k, icon: SOURCE_ICON[k.id] }))} />
         <div className={cn(LIST, "mt-3")} role="radiogroup" aria-label="Papers to screen">
-          {SOURCES[kind].map((s) => {
+          {sources[kind].map((s) => {
             const on = s.id === source.id;
             const Icon = SOURCE_ICON[s.kind];
             return (
               <div key={s.id} className={cn("transition-colors", on && "bg-primary/5")}>
-                <button type="button" role="radio" aria-checked={on} onClick={() => setSourceId(s.id)} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors", !on && "hover:bg-muted/40")}>
+                <button type="button" role="radio" aria-checked={on} onClick={() => choose(s)} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors", !on && "hover:bg-muted/40")}>
                   <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/60", on ? "text-primary" : "text-muted-foreground")}>
                     <Icon className="size-4" />
                   </span>
@@ -165,16 +194,21 @@ export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boo
                       </div>
                     ) : scope === "all" ? (
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <Chip icon={Zap} className="text-foreground"><span className="font-semibold">{jobs.toLocaleString()}</span> jobs, one after another</Chip>
+                        <Chip icon={Zap} className="text-foreground"><span><span className="font-semibold">{jobs.toLocaleString()}</span> jobs, one after another</span></Chip>
                         <Chip>Up to {JOB_LIMIT.toLocaleString()} papers each</Chip>
                         <Chip icon={Check}>One approval</Chip>
                       </div>
                     ) : (
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <Chip className="text-foreground"><span className="font-semibold">{PAGE}</span> papers</Chip>
-                        <Chip>The first page of results</Chip>
+                        <Chip className="text-foreground"><span><span className="font-semibold">{papers}</span> papers</span></Chip>
+                        <Chip>Results page {s.kind === "search" ? s.page : 1}</Chip>
                       </div>
                     )}
+                    {skipped ? (
+                      <Chip icon={Check} className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                        <span><span className="font-semibold">{skipped}</span> already screened on the results page, kept and not charged</span>
+                      </Chip>
+                    ) : null}
                   </div>
                   </motion.div>
                 ) : null}
@@ -188,9 +222,11 @@ export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boo
       <Zone
         label="Questions"
         aside={
-          // What the papers come from decides the shortcuts: a search has a research question to
-          // write questions from, and a search or an earlier screening has questions to reuse.
+          // What the papers come from decides the shortcuts: a search's questions are its own (one
+          // screening per search) and it can write more from its research question; an earlier
+          // screening has questions to reuse.
           <span className="flex items-center gap-1">
+            {source.kind === "search" ? <Chip icon={ListChecks}>Shared with this search's results page</Chip> : null}
             {from ? (
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => adopt(fresh)} disabled={!fresh.length}>
                 <ListChecks className="text-primary" />
@@ -253,7 +289,7 @@ export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boo
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">Included from</span>
-              <span className="block text-xs text-muted-foreground">Points add up across the questions</span>
+              <span className="block text-xs text-muted-foreground">Points add up across the questions, and set the stars a saved paper gets</span>
             </span>
             <span className="flex shrink-0 items-center gap-1">
               <Button variant="ghost" size="icon" className="size-8" aria-label="One point fewer" disabled={threshold <= 0} onClick={() => setMinScore(threshold - 1)}><Minus /></Button>
@@ -284,13 +320,17 @@ export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boo
                   aria-label={`Include from ${score} points`}
                   onClick={() => setMinScore(score)}
                   className={cn(
-                    "flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg text-xs font-medium tabular-nums transition-colors duration-300",
+                    "flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg text-xs font-medium tabular-nums transition-colors duration-300",
                     included ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-foreground/[0.05] text-muted-foreground hover:bg-foreground/10",
                     score === threshold && "ring-1 ring-emerald-500/60",
                   )}
                 >
-                  {included ? <Check className="size-3.5 shrink-0" /> : <X className="size-3.5 shrink-0" />}
-                  <span className="truncate">{score} {score === 1 ? "point" : "points"}</span>
+                  <span className="flex min-w-0 items-center gap-1">
+                    {included ? <Check className="size-3.5 shrink-0" /> : <X className="size-3.5 shrink-0" />}
+                    <span className="truncate">{score} {score === 1 ? "point" : "points"}</span>
+                  </span>
+                  {/* The rating a paper with this score is saved with. */}
+                  <Stars count={starsOf(score, max)} />
                 </button>
               );
             })}
@@ -380,7 +420,13 @@ export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boo
           ) : null}
         </div>
         <Button disabled={busy || questions.length === 0 || !enough} onClick={() => onStart({ source, first, last, questions, minScore: threshold, model: modelId, saveTo, prune: kind === "collection" && prune ? source.label : undefined })}>
-          {busy ? "Reading papers…" : `Screen ${papers.toLocaleString()} papers`}
+          {busy
+            ? "Reading papers…"
+            : skipped === papers
+              ? `Use the ${papers.toLocaleString()} screened papers`
+              : skipped
+                ? `Screen ${(papers - skipped).toLocaleString()} new papers`
+                : `Screen ${papers.toLocaleString()} papers`}
         </Button>
       </div>
     </div>

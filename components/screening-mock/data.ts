@@ -10,7 +10,19 @@ export type Outcome = "included" | "unclear" | "excluded" | "failed";
 
 export type Source =
   /** A search keeps the screening questions set on its own panel. */
-  | { kind: "search"; id: string; label: string; count: number; questions: Question[]; filters: FilterParams }
+  | {
+      kind: "search";
+      id: string;
+      label: string;
+      count: number;
+      /** The search's own screening questions: the ones its results page screens with. */
+      questions: Question[];
+      filters: FilterParams;
+      /** Leading papers the results page already screened with those questions, so a job skips them. */
+      screened: number;
+      /** The results page the person last looked at. */
+      page: number;
+    }
   | { kind: "collection"; id: string; label: string; count: number }
   | { kind: "saved"; id: string; label: string; count: number }
   | { kind: "screening"; id: string; label: string; count: number };
@@ -65,19 +77,21 @@ export const GENERATED: Question[] = [
 
 export const SOURCES: Record<Source["kind"], Source[]> = {
   search: [
-    { kind: "search", id: "s1", label: "structured pedagogy early grade reading Africa", count: 61_634, questions: QUESTIONS, filters: { yearRange: [2010, 2025], isYearRangeEnabled: true, filterType: "year", selectedCountryFocus: ["KE", "GH", "UG"], workTypes: ["article"], hasAbstract: true } },
+    { kind: "search", id: "s1", label: "structured pedagogy early grade reading Africa", count: 61_634, questions: QUESTIONS, screened: 40, page: 2, filters: { yearRange: [2010, 2025], isYearRangeEnabled: true, filterType: "year", selectedCountryFocus: ["KE", "GH", "UG"], workTypes: ["article"], hasAbstract: true } },
     {
       kind: "search",
       id: "s2",
       label: "teacher coaching cost-effectiveness",
       count: 4_238,
+      screened: 20,
+      page: 1,
       filters: { openAccessOnly: true, minCitations: 10 },
       questions: [
         { key: "c1", text: "Does it report the programme's cost per pupil?", yes: 2, no: 0, unclear: 1 },
         { key: "c2", text: "Do trained coaches visit the teachers?", yes: 1, no: 0, unclear: 0 },
       ],
     },
-    { kind: "search", id: "s3", label: "mother tongue instruction literacy", count: 12_907, questions: [], filters: { yearRange: [2015, 2025], isYearRangeEnabled: true, filterType: "year", workLanguages: ["en", "fr"] } },
+    { kind: "search", id: "s3", label: "mother tongue instruction literacy", count: 12_907, questions: [], screened: 0, page: 1, filters: { yearRange: [2015, 2025], isYearRangeEnabled: true, filterType: "year", workLanguages: ["en", "fr"] } },
   ],
   collection: [
     { kind: "collection", id: "c1", label: "Early grade reading trials", count: 143 },
@@ -125,7 +139,7 @@ export function outcomeOf(job: Job, paperId: string): Outcome {
   return best >= job.minScore ? "unclear" : "excluded";
 }
 
-/** Stars from a score, as the scoring rules' thresholds give them. */
+/** Stars from a score, worked out from the highest score so they never contradict the points. */
 export const starsOf = (score: number, max: number) => (score <= 0 ? 0 : Math.max(1, Math.round((score / max) * 5)));
 
 const ids = (from: number, count: number) => PAPERS.slice(from, from + count).map((p) => p.id);

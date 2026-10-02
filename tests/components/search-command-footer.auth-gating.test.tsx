@@ -224,11 +224,6 @@ vi.mock("@/lib/keyword-validation", () => ({
   }),
 }));
 
-vi.mock("@/components/screening/screening-dialog", () => ({
-  ScreeningDialog: ({ open }: { open: boolean }) =>
-    open ? <div role="dialog" /> : null,
-}));
-
 vi.mock("@/components/ui/tooltip", () => {
   const Passthrough = ({ children }: { children?: React.ReactNode }) => (
     <>{children}</>

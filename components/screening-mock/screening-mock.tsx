@@ -4,6 +4,9 @@
 // beyond the model catalog. See ./data.ts.
 import { useEffect, useState } from "react";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
+import { useQueryState } from "nuqs";
+import { useSearchHistoryStore } from "@/lib/store";
+import type { SearchResult } from "@/lib/types/search.types";
 import { EASE } from "@/components/settings/model-map";
 import { CircleCheck, Hourglass, ListChecks, LoaderCircle, Plus, Square } from "lucide-react";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -12,7 +15,7 @@ import { ConfigurationLayout, ConfigurationNavigation } from "@/components/evide
 import { RailGroup, RailLink } from "@/components/evidence-libraries/configuration/navigation-rail";
 import { BAR_ACTION, BAR_LABEL, PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
 import { cn } from "@/lib/utils";
-import { CREDITS_PER_PAPER, START_JOBS, paperIds, type Answer, type Job } from "./data";
+import { CREDITS_PER_PAPER, START_JOBS, paperIds, type Answer, type Job, type Source } from "./data";
 import { JobView, countsOf } from "./job-view";
 import { SetupView, type Setup } from "./setup-view";
 
@@ -21,7 +24,11 @@ const TICK_MS = 700;
 
 export function ScreeningMock() {
   const [jobs, setJobs] = useState<Job[]>(START_JOBS);
-  const [selected, setSelected] = useState<string>("j1");
+  // Screen all on a results page opens this form with that search: /screening?search=<id>.
+  const [searchId] = useQueryState("search");
+  const entry = useSearchHistoryStore((state) => (searchId ? state.searchHistory.find((item) => item.id === searchId) : undefined));
+  const fromResults = entry ? sourceOf(entry) : undefined;
+  const [selected, setSelected] = useState<string>(searchId ? "new" : "j1");
   const [starting, setStarting] = useState(false);
 
   // The scripted backend: running screenings move on; when one ends, the person's oldest
@@ -138,7 +145,7 @@ export function ScreeningMock() {
             transition={{ duration: 0.3, ease: EASE }}
           >
         {selected === "new" || !job ? (
-          <SetupView busy={starting} screenings={jobs} waitingFor={blocker?.name} onStart={start} />
+          <SetupView key={fromResults?.id ?? "mock"} busy={starting} screenings={jobs} waitingFor={blocker?.name} fromResults={fromResults} onStart={start} />
         ) : (
           <JobView
             job={job}
@@ -187,4 +194,12 @@ function RailItem({ id, children }: { id: string; children: React.ReactNode }) {
       {children}
     </motion.div>
   );
+}
+
+/** A saved search as a place papers come from, with its own screening questions and answers. */
+function sourceOf(entry: SearchResult): Extract<Source, { kind: "search" }> {
+  const questions = entry.screeningQuestions.map((q, i) => ({ key: `h${i}`, text: q.question, yes: 1, no: 0, unclear: 0 }));
+  // Papers the results page answered every current question for.
+  const screened = Object.values(entry.screeningResponses).filter((answers) => questions.length > 0 && questions.every((q) => q.text in answers)).length;
+  return { kind: "search", id: entry.id, label: entry.query, count: entry.count, questions, screened, page: entry.page ?? 1, filters: { ...entry, field: undefined, sortBy: undefined } };
 }
