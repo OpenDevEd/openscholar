@@ -7,7 +7,7 @@
 //   or a named cap with `.take(CAP)` that the writes enforce. A read waiting on a fix is
 //   listed in scripts/convex-rules.json under unboundedReads.pending with its issue.
 // - A public function (`query`, `mutation`, `action`, `defineUserQuery`,
-//   `defineUserMutation`) returns a list or record only as the `page` of a pagination
+//   `defineUserMutation`, `defineUserAction`) returns a list or record only as the `page` of a pagination
 //   result. Any other array or record in its `returns` validator, top level or nested, is
 //   listed under listReturns.pending with the issue that pages or caps it. Keys are the
 //   function and the list's path, with a page's items written like a list's (`[]`), so
@@ -15,8 +15,8 @@
 // - Client code and actions never load every page: no `loadMore` from an effect or a loop,
 //   and no loop that reads page after page by cursor into one array. Waiting fixes are
 //   listed under everyPage.pending.
-// - Pending lists only shrink: a function not pending on `dev`, or with more pending
-//   entries than on `dev`, fails. Fix it instead of listing it.
+// - Pending lists only shrink: an entry that isn't pending on `dev` fails, so a fixed
+//   list can't be swapped for a new one. Fix it instead of listing it.
 // - Every public function (`query`, `mutation`, `action`) is defined with an object that
 //   has a `returns` validator, unless listed under missingReturns.pending with its issue.
 // - No handler reads as many rows as its caller asks: a `.take(n)` whose `n` comes from the
@@ -325,13 +325,25 @@ function holderName(node: ts.Node): string {
   return "(module)";
 }
 
-/** Whether `loop` reads page after page: a call given `cursor` or `paginationOpts`, or a page's continuation read. */
+/**
+ * Whether `loop` reads page after page: a call given a cursor or an offset (`cursor`,
+ * `paginationOpts`, `start`, `offset`, `skip`), or a page's continuation read.
+ */
 function readsByCursor(loop: ts.Node) {
   let reads = false;
+  let awaits = false;
+  const scanAwaits = (node: ts.Node) => {
+    if (ts.isAwaitExpression(node)) awaits = true;
+    if (!awaits) ts.forEachChild(node, scanAwaits);
+  };
+  scanAwaits(loop);
+  // Offsets are a read only in a loop that waits on something: `ranges.push({ start })` isn't one.
+  const keys = awaits ? ["cursor", "paginationOpts", "start", "offset", "skip"] : ["cursor", "paginationOpts"];
   const visit = (node: ts.Node) => {
     if (reads) return;
     if (ts.isPropertyAccessExpression(node) && ["continueCursor", "nextCursor", "hasMore"].includes(node.name.text)) reads = true;
-    if (ts.isCallExpression(node) && node.arguments.some((arg) => ts.isObjectLiteralExpression(arg) && arg.properties.some((p) => p.name && ts.isIdentifier(p.name) && ["cursor", "paginationOpts"].includes(p.name.text)))) reads = true;
+    const gathering = ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["push", "concat", "set", "add"].includes(node.expression.name.text);
+    if (ts.isCallExpression(node) && !gathering && node.arguments.some((arg) => ts.isObjectLiteralExpression(arg) && arg.properties.some((p) => p.name && ts.isIdentifier(p.name) && keys.includes(p.name.text)))) reads = true;
     ts.forEachChild(node, visit);
   };
   visit(loop);
@@ -381,12 +393,25 @@ function gathers(loop: ts.Node) {
   return found;
 }
 
+/** Whether `fn` calls `name`, its own name. */
+function callsItself(fn: ts.Node, name: string) {
+  let found = false;
+  const visit = (node: ts.Node) => {
+    if (found) return;
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === name) found = true;
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(fn, visit);
+  return found;
+}
+
 const isLoop = (node: ts.Node) => ts.isForStatement(node) || ts.isForOfStatement(node) || ts.isForInStatement(node) || ts.isWhileStatement(node) || ts.isDoStatement(node);
 const isEffect = (call: ts.CallExpression) => /(^|\.)use(Layout)?Effect$/.test(call.expression.getText());
 
 /**
  * Where `tree` loads every page: `loadMore` (by any local name) called from an effect,
- * including a named callback, or from a loop; or a cursor loop that gathers pages. Repeats
+ * including a named callback, or from a loop; a cursor or offset loop that gathers pages;
+ * or a function that calls itself with the next cursor and keeps every page. Repeats
  * in one function are numbered, so a second one counts as a new entry.
  */
 function everyPageLoads(tree: ts.SourceFile, file: string): string[] {
@@ -428,6 +453,9 @@ function everyPageLoads(tree: ts.SourceFile, file: string): string[] {
     const loop = inLoop || isLoop(node);
     if (ts.isCallExpression(node) && isLoadMore(node) && (effect || loop)) add(node);
     if (isLoop(node) && readsByCursor(node) && gathers(node)) add(node);
+    // A function that calls itself with the next cursor and keeps every page it reads.
+    const name = ts.isFunctionDeclaration(node) && node.name ? node.name.text : (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) && ts.isVariableDeclaration(node.parent) && ts.isIdentifier(node.parent.name) ? node.parent.name.text : undefined;
+    if (name && callsItself(node, name) && readsByCursor(node) && gathers(node)) add(node);
     ts.forEachChild(node, (child) => visit(child, effect, loop));
   };
   visit(tree, false, false);
@@ -436,7 +464,7 @@ function everyPageLoads(tree: ts.SourceFile, file: string): string[] {
 
 const listReturns: string[] = [];
 const everyPage: string[] = [];
-const PUBLIC_DEFINITIONS = [...BUILDERS, "defineUserQuery", "defineUserMutation"];
+const PUBLIC_DEFINITIONS = [...BUILDERS, "defineUserQuery", "defineUserMutation", "defineUserAction"];
 const reads: string[] = [];
 const missingReturns: string[] = [];
 const problems: string[] = [];
@@ -509,7 +537,6 @@ for (const tree of program.getSourceFiles().filter((file) => sources.includes(re
 }
 for (const file of clientSources) {
   const text = readFileSync(file, "utf8");
-  if (!/loadMore|cursor/.test(text)) continue;
   everyPage.push(...everyPageLoads(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS), file));
 }
 
@@ -539,8 +566,6 @@ checkPending("listReturns", [...new Set(listReturns)], rules.listReturns.pending
 checkPending("everyPage", [...new Set(everyPage)], rules.everyPage.pending, "loads every page; load the next page when the person asks for it, and stream exports page by page.");
 
 // Pending lists only shrink: compared with dev where this branch left it.
-const owner = (key: string) => key.split(":").slice(0, 2).join(":");
-const countByOwner = (keys: string[]) => keys.reduce((counts, key) => counts.set(owner(key), (counts.get(owner(key)) ?? 0) + 1), new Map<string, number>());
 // CI passes RULES_BASE: a pull request's base, or the commit a push moved dev from. Locally, origin/dev.
 let base: Rules | undefined;
 const git = (command: string) => execSync(command, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
@@ -555,11 +580,8 @@ if (base) {
   for (const section of ["unboundedReads", "listReturns", "everyPage"] as const) {
     const before = base[section] as (Pending & { bounded?: Record<string, string> }) | undefined;
     if (!before) continue;
-    const was = countByOwner([...Object.keys(before.pending), ...Object.keys(before.bounded ?? {})]);
-    for (const [fn, count] of countByOwner(Object.keys(rules[section].pending))) {
-      if (!was.has(fn)) problems.push(`${fn}: not pending under ${section} on dev; fix it instead of listing it.`);
-      else if (count > was.get(fn)!) problems.push(`${fn}: has ${count} entries pending under ${section}, more than dev's ${was.get(fn)}; fix the new ones instead of listing them.`);
-    }
+    const was = new Set([...Object.keys(before.pending), ...Object.keys(before.bounded ?? {})]);
+    for (const key of Object.keys(rules[section].pending)) if (!was.has(key)) problems.push(`${key}: not pending under ${section} on dev; fix it instead of listing it.`);
   }
 }
 
