@@ -65,12 +65,34 @@ describe("fetchWorksPage", () => {
     expect(slow).toHaveBeenCalledTimes(3);
   });
 
+  it("passes a work as OpenAlex and the OpenScholar API give it, its fields missing or null where they may be", async () => {
+    const work = {
+      id: "https://openscholar.ai/OS1", display_name: "Paper", title: "Paper", doi: null, type: "article", language: null,
+      publication_year: 2020, cited_by_count: 3, abstract_inverted_index: null,
+      authorships: [{ author: { id: null, display_name: "Ada Lovelace" }, institutions: [] }],
+      primary_location: null, open_access: { is_oa: false, oa_url: null },
+      primary_topic: { id: "https://openalex.org/T1", field: { display_name: "Ecology" }, subfield: null, domain: { display_name: "Life Sciences" } },
+      related_works: [], referenced_works: ["https://openscholar.ai/OS2"], sustainable_development_goals: [], biblio: { volume: null },
+    };
+    answering({ status: 200, body: { meta: { count: 2 }, results: [work, { id: "https://openalex.org/W2" }] } });
+    // The page shows an abstract as text, so its index goes, as the SDK dropped it.
+    const { abstract_inverted_index: _index, ...shown } = work;
+    expect(await fetchWorksPage({ perPage: 2 })).toEqual({ ok: true, data: { meta: { count: 2 }, results: [shown, { id: "https://openalex.org/W2" }] } });
+  });
+
   it("says the search failed when an answer is not a page of works, rather than throw or pass it on", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
+    const page = (work: Record<string, unknown>) => ({ meta: { count: 1 }, results: [{ id: "W1", ...work }] });
     const bodies = [
       { meta: { count: 1 } },
       { results: [] },
-      { meta: { count: 1 }, results: [{ id: "W1", abstract_inverted_index: { word: "0" } }] },
+      page({ abstract_inverted_index: { word: "0" } }),
+      // Fields the paper card loops over or reads into, in a shape it cannot.
+      page({ authorships: {} }),
+      page({ display_name: { text: "Paper" } }),
+      page({ related_works: 3 }),
+      page({ open_access: "yes" }),
+      page({ primary_topic: { field: "Ecology" } }),
       "not json",
     ];
     for (const body of bodies) {
