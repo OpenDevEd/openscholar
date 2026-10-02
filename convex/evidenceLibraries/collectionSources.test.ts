@@ -65,14 +65,16 @@ it("names a paper from the OpenScholar API by the OpenAlex id its stored work ho
     t.run((ctx) => ctx.db.insert("libraryItems", { userId: ownerId, openalexId, rating: 0, title: openalexId, searchableText: openalexId, savedAt: 1, updatedAt: 1, ...extra }));
   const joined = await saved("https://openscholar.ai/OS7", { paperData: JSON.stringify({ id: "https://openscholar.ai/OS7", ids: { openalex: "https://openalex.org/W7" } }) });
   const alone = await saved("https://openscholar.ai/OS8", { doi: "10.1/eight", paperData: JSON.stringify({ id: "https://openscholar.ai/OS8", ids: {} }) });
+  // A W id on another site is no OpenAlex id, and could name another paper.
+  const misnamed = await saved("https://openscholar.ai/OS9", { paperData: JSON.stringify({ id: "https://openscholar.ai/OS9", ids: { openalex: "https://openscholar.ai/W999" } }) });
   await owner.mutation(api.evidenceLibraries.collectionSources.connectCollectionSource, { libraryId, collectionId });
-  for (const libraryItemId of [joined, alone]) {
+  for (const libraryItemId of [joined, alone, misnamed]) {
     await owner.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId });
   }
 
   const items = (await read()).body.items as { openalexId: string | null; doi: string | null }[];
 
-  expect(items.map(({ openalexId, doi }) => `${openalexId} ${doi}`).sort()).toEqual(["W7 null", "null 10.1/eight"]);
+  expect(items.map(({ openalexId, doi }) => `${openalexId} ${doi}`).sort()).toEqual(["W7 null", "null 10.1/eight", "null null"]);
 });
 
 it("lets only the collection's owner connect it, and stops serving it once they leave the organization", async () => {
