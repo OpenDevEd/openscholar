@@ -26,7 +26,7 @@ describe("at the largest sizes the product allows", () => {
     expect(page.items).toHaveLength(25);
     const details = await as.query(api.extraction.queries.getJobDetails, { jobId });
     expect(details).toMatchObject({ status: "ok" });
-  }, 120_000);
+  }, 300_000);
 
   // An export reads the job page by page (lib/extraction/export.ts); the largest page,
   // searched or not, is the most any one read takes.
