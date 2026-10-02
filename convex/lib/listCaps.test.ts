@@ -3,7 +3,7 @@ import { runUncapped } from "../../tests/convex-test-with-limits";
 import { describe, expect, it } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
-import { MAX_SERVED_HOSTS, MAX_TOPIC_KEYWORDS, listsIn } from "./listCaps";
+import { MAX_TOPIC_KEYWORDS, listsIn } from "./listCaps";
 
 /** A topic details row whose keywords list holds `count` entries. */
 const topic = (count: number) => ({
@@ -54,8 +54,7 @@ describe("list caps (#426)", () => {
 
   it("applies the caps in the app's mutations, not only in tests", async () => {
     const t = convexTest(schema);
-    const hosts = (count: number) => Array.from({ length: count }, (_, i) => `library-${i}.example.org`);
-    await t.mutation(internal.evidenceLibraries.mutations.writeServedHostsCache, { hosts: hosts(MAX_SERVED_HOSTS) });
-    await expect(t.mutation(internal.evidenceLibraries.mutations.writeServedHostsCache, { hosts: hosts(MAX_SERVED_HOSTS + 1) })).rejects.toThrow(/evidenceLibraryServedHosts\.hosts/);
+    await t.mutation(internal.topics.details.save, topic(MAX_TOPIC_KEYWORDS));
+    await expect(t.mutation(internal.topics.details.save, topic(MAX_TOPIC_KEYWORDS + 1))).rejects.toThrow(/topicDetails\.keywords/);
   });
 });

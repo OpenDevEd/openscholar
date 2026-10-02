@@ -304,9 +304,19 @@ export default defineSchema({
   evidenceLibraryCollectionSources: defineTable(evidenceLibraryCollectionSourceFields)
     .index("by_libraryId_and_collectionId", ["libraryId", "collectionId"]),
 
+  // Replaced by the two tables below (#426); its one cache row goes with
+  // migrations/dropServedHostsList, then this table goes.
   evidenceLibraryServedHosts: defineTable(
     evidenceLibraryServedHostsFields,
   ).index("by_source", ["source"]),
+
+  // The hosts Coolify served when it was last asked: one row per host, from the listing at
+  // `fetchedAt`, and the time of the latest listing. Older listings' rows are pruned.
+  evidenceLibraryServedHostRows: defineTable({ host: v.string(), fetchedAt: v.number() })
+    .index("by_host_and_fetchedAt", ["host", "fetchedAt"])
+    .index("by_fetchedAt", ["fetchedAt"]),
+  evidenceLibraryServedHostsListing: defineTable({ source: v.literal("coolify"), fetchedAt: v.number() })
+    .index("by_source", ["source"]),
 
   evidenceLibraryConfigOperations: defineTable(evidenceLibraryOperationFields)
     .index("by_libraryId_and_idempotencyKey", ["libraryId", "idempotencyKey"])

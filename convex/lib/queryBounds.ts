@@ -45,3 +45,6 @@ export const MAX_SCREENING_PAPERS_PER_JOB = 1000;
 /** Maximum screening jobs listed per user.
  * Matches extraction job limit for consistency. */
 export const MAX_SCREENING_JOBS_PER_USER = 500;
+
+/** Served hosts one mutation writes or prunes; a Coolify listing takes as many batches as it needs. */
+export const SERVED_HOSTS_BATCH = 500;

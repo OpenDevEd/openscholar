@@ -205,6 +205,46 @@ describe("Evidence Library address reservation", () => {
     });
   });
 
+  it("finds a served host past the first batch of a long Coolify listing", async () => {
+    // 600 other hosts first: the listing is kept in two batches (#426).
+    const others = Array.from({ length: 600 }, (_, i) => `library-${i}.${PLATFORM_DOMAIN}`);
+    const { t, owner, organizationId } = await createWorld({
+      coolifyHosts: [...others, CLIMATE_HOST],
+      servedHosts: [],
+    });
+
+    await expect(
+      owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
+        name: "Climate Evidence",
+      }),
+    ).resolves.toMatchObject({ status: "available", publicAddress: SECOND_CLIMATE_ADDRESS });
+    // The next check reads the kept listing, not Coolify.
+    await expect(
+      owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId: organizationId,
+        name: "Climate Evidence",
+      }),
+    ).resolves.toMatchObject({ status: "available", publicAddress: SECOND_CLIMATE_ADDRESS });
+    expect(await t.run((ctx) => ctx.db.query("evidenceLibraryServedHostRows").take(1_000))).toHaveLength(601);
+  });
+
+  it("drops the previous listing's hosts once a new listing is kept", async () => {
+    vi.useFakeTimers();
+    try {
+      const { t, owner, organizationId } = await createWorld({ coolifyHosts: [CLIMATE_HOST, `other.${PLATFORM_DOMAIN}`], servedHosts: [] });
+      const check = () => owner.action(api.evidenceLibraries.addressActions.checkAddress, { organizationId, name: "Climate Evidence" });
+      await check();
+      vi.setSystemTime(Date.now() + 61_000);
+      await check();
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      const rows = await t.run((ctx) => ctx.db.query("evidenceLibraryServedHostRows").take(10));
+      const listing = await t.run((ctx) => ctx.db.query("evidenceLibraryServedHostsListing").unique());
+      expect(rows).toHaveLength(2);
+      expect(rows.every((row) => row.fetchedAt === listing?.fetchedAt)).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("numbers the address when something answers on the host", async () => {
     const { owner, organizationId } = await createWorld({
       coolifyHosts: [],
@@ -340,9 +380,9 @@ describe("Evidence Library address reservation", () => {
       name: "Climate Evidence",
     });
     await t.run(async (ctx) => {
-      const row = await ctx.db.query("evidenceLibraryServedHosts").unique();
-      if (!row) throw new Error("no served hosts were kept");
-      await ctx.db.patch("evidenceLibraryServedHosts", row._id, {
+      const listing = await ctx.db.query("evidenceLibraryServedHostsListing").unique();
+      if (!listing) throw new Error("no served hosts listing was kept");
+      await ctx.db.patch("evidenceLibraryServedHostsListing", listing._id, {
         fetchedAt: Date.now() - 61_000,
       });
     });

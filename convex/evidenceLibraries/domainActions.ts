@@ -13,7 +13,7 @@ import { getDomain } from "tldts";
 import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { readServedHosts } from "./addressActions";
+import { servedAmong } from "./addressActions";
 import { CoolifyClientError, createCoolifyClient } from "./coolifyClient";
 import {
   caaScanNames,
@@ -244,7 +244,7 @@ export const addDomain = action({
     }
     let served: Set<string>;
     try {
-      served = await readServedHosts(ctx);
+      served = await servedAmong(ctx, [host]);
     } catch {
       return { status: "refused" as const, reason: "check-failed" as const };
     }

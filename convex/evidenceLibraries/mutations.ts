@@ -6,6 +6,8 @@ import {
   mutation,
   type MutationCtx,
 } from "../lib/functions";
+import { internal } from "../_generated/api";
+import { SERVED_HOSTS_BATCH } from "../lib/queryBounds";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
@@ -895,32 +897,54 @@ export async function retryEvidenceLibrarySetup(
 }
 
 /**
- * Keeps the hosts Coolify serves for the next check.
- * `evidenceLibraries.addressActions` is the only caller.
+ * Keeps one batch of the hosts Coolify serves, from the listing at `fetchedAt`.
+ * `evidenceLibraries.addressActions` is the only caller; finishServedHosts makes
+ * the listing current once every batch is in.
  */
-export const writeServedHostsCache = internalMutation({
-  args: { hosts: v.array(v.string()) },
+export const addServedHosts = internalMutation({
+  args: { fetchedAt: v.number(), hosts: v.array(v.string()) },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    // Internal only, and the same for everybody: address recovery writes it
-    // with no signed-in owner behind the request.
-    const fields = {
-      source: "coolify" as const,
-      hosts: args.hosts,
-      fetchedAt: Date.now(),
-    };
-    const existing = await ctx.db
-      .query("evidenceLibraryServedHosts")
-      .withIndex("by_source", (query) => query.eq("source", "coolify"))
-      .unique();
-    if (existing) {
-      await ctx.db.replace("evidenceLibraryServedHosts", existing._id, fields);
-    } else {
-      await ctx.db.insert("evidenceLibraryServedHosts", fields);
-    }
+  handler: async (ctx, { fetchedAt, hosts }) => {
+    // Internal only, and the same for everybody: address recovery writes it with no
+    // signed-in owner behind the request.
+    for (const host of hosts.slice(0, SERVED_HOSTS_BATCH)) await ctx.db.insert("evidenceLibraryServedHostRows", { host, fetchedAt });
     return null;
   },
 });
+
+/** Makes the listing at `fetchedAt` the current one, and prunes older listings' rows. */
+export const finishServedHosts = internalMutation({
+  args: { fetchedAt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { fetchedAt }) => {
+    const listing = await ctx.db
+      .query("evidenceLibraryServedHostsListing")
+      .withIndex("by_source", (query) => query.eq("source", "coolify"))
+      .unique();
+    // A later listing may have finished first; it stays current.
+    if (listing && listing.fetchedAt >= fetchedAt) return null;
+    if (listing) await ctx.db.patch("evidenceLibraryServedHostsListing", listing._id, { fetchedAt });
+    else await ctx.db.insert("evidenceLibraryServedHostsListing", { source: "coolify", fetchedAt });
+    await ctx.scheduler.runAfter(0, internal.evidenceLibraries.mutations.pruneServedHosts, { before: fetchedAt });
+    return null;
+  },
+});
+
+/** Deletes the rows of listings older than `before`, a batch at a time. */
+export const pruneServedHosts = internalMutation({
+  args: { before: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { before }) => {
+    const old = await ctx.db
+      .query("evidenceLibraryServedHostRows")
+      .withIndex("by_fetchedAt", (query) => query.lt("fetchedAt", before))
+      .take(SERVED_HOSTS_BATCH);
+    for (const row of old) await ctx.db.delete("evidenceLibraryServedHostRows", row._id);
+    if (old.length === SERVED_HOSTS_BATCH) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.mutations.pruneServedHosts, { before });
+    return null;
+  },
+});
+
 
 /**
  * Takes the address the check found free. The same checks run again inside

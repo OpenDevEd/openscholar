@@ -5,6 +5,7 @@ import { action, type ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createCoolifyClient } from "./coolifyClient";
+import { SERVED_HOSTS_BATCH } from "../lib/queryBounds";
 import { evidenceLibrarySetupIdentityFields } from "./validators";
 
 const PROBE_TIMEOUT_MS = 8_000;
@@ -123,27 +124,28 @@ function requireEnvironment(name: string): string {
 }
 
 /**
- * The hosts Coolify serves, kept for a minute so a burst of checks and the
- * reservation that follows cost one pair of Coolify reads. A list older than
- * that is refused unless Coolify answers again.
+ * Which of `hosts` Coolify serves. The listing is kept for a minute, a row per host, so a
+ * burst of checks and the reservation that follows cost one pair of Coolify reads. A
+ * listing older than that is refused unless Coolify answers again.
  */
-export async function readServedHosts(ctx: ActionCtx): Promise<Set<string>> {
-  const cached = await ctx.runQuery(
-    internal.evidenceLibraries.queries.readServedHostsCache,
-    {},
-  );
-  if (cached && Date.now() - cached.fetchedAt < SERVED_HOSTS_MAX_AGE_MS) {
-    return new Set(cached.hosts);
+export async function servedAmong(ctx: ActionCtx, hosts: readonly string[]): Promise<Set<string>> {
+  const asked = [...new Set(hosts.map((host) => host.toLowerCase()))];
+  const listing = await ctx.runQuery(internal.evidenceLibraries.queries.readServedHostsListing, {});
+  if (listing && Date.now() - listing.fetchedAt < SERVED_HOSTS_MAX_AGE_MS) {
+    return new Set(await ctx.runQuery(internal.evidenceLibraries.queries.servedHostsAmong, { hosts: asked, fetchedAt: listing.fetchedAt }));
   }
-  const hosts = await createCoolifyClient({
+  const served = await createCoolifyClient({
     origin: requireEnvironment("EL_COOLIFY_URL"),
     token: requireEnvironment("EL_COOLIFY_TOKEN"),
   }).listServedHosts();
-  await ctx.runMutation(
-    internal.evidenceLibraries.mutations.writeServedHostsCache,
-    { hosts: [...hosts] },
-  );
-  return hosts;
+  // Kept for the next minute's checks, a batch per mutation.
+  const fetchedAt = Date.now();
+  const all = [...served];
+  for (let start = 0; start < all.length; start += SERVED_HOSTS_BATCH) {
+    await ctx.runMutation(internal.evidenceLibraries.mutations.addServedHosts, { fetchedAt, hosts: all.slice(start, start + SERVED_HOSTS_BATCH) });
+  }
+  await ctx.runMutation(internal.evidenceLibraries.mutations.finishServedHosts, { fetchedAt });
+  return new Set(asked.filter((host) => served.has(host)));
 }
 
 /**
@@ -156,10 +158,10 @@ export async function findFreeEvidenceLibraryAddress(
   ctx: ActionCtx,
   candidates: readonly { publicAddress: string; slug: string }[],
 ): Promise<{ publicAddress: string; slug: string } | null> {
-  const servedHosts = await readServedHosts(ctx);
+  const hostOf = (candidate: { publicAddress: string }) => new URL(candidate.publicAddress).hostname.toLowerCase();
+  const servedHosts = await servedAmong(ctx, candidates.map(hostOf));
   for (const candidate of candidates) {
-    const host = new URL(candidate.publicAddress).hostname.toLowerCase();
-    if (servedHosts.has(host)) continue;
+    if (servedHosts.has(hostOf(candidate))) continue;
     if ((await probeAddress(candidate.publicAddress)) === "free") {
       return candidate;
     }
