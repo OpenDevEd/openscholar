@@ -29,3 +29,6 @@ export const EXTRACTION_PAPER_CONCURRENCY = 5;
 
 /** Questions answered at once for one paper. */
 export const EXTRACTION_QUESTION_CONCURRENCY = 5;
+
+/** How long a leased extraction queue row stays its worker's before recovery takes it back. */
+export const EXTRACTION_QUEUE_LEASE_MS = 60_000;

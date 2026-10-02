@@ -456,6 +456,10 @@ export const extractionPaperQueueFields = {
   workId: v.optional(v.string()),
   questionKeys: v.optional(v.array(v.string())),
   lastError: v.optional(structuredErrorValidator),
+  // Set when the paper's run releases the row, in commit order, while it waits for the
+  // extraction worker to refill the job's window (convex/extraction/queue/dispatcher.ts),
+  // which clears it.
+  releasedAt: v.optional(v.commitTs()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };

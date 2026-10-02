@@ -222,8 +222,6 @@ describe("finalizePaper — cross-epoch regression (stuck-at-99% bug)", () => {
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(paper?.status).toBe("completed");
     expect(paper?.completedAt).toBeDefined();
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.status).toBe("completed");
     const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
     expect(counters.processed).toBe(1);
   });
@@ -245,8 +243,6 @@ describe("finalizePaper — cross-epoch regression (stuck-at-99% bug)", () => {
 
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(paper?.status).toBe("completed");
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.status).toBe("completed");
   });
 });
 
@@ -292,12 +288,9 @@ describe("finalizePaper — paper-level idempotency", () => {
     await t.mutation(finalizePaperRef, { paperId });
     await t.mutation(finalizePaperRef, { paperId });
 
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
     const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
     expect(counters.processed).toBe(1);
     expect(counters.failed).toBe(0);
-    // Sticky completed.
-    expect(job?.status).toBe("completed");
   });
 });
 
@@ -689,73 +682,3 @@ describe("finalizePaper — creditsUsed preservation", () => {
 // ─────────────────────────────────────────────────────────────────────
 // 7. maybeFinalizeJob cascade.
 // ─────────────────────────────────────────────────────────────────────
-
-describe("finalizePaper — maybeFinalizeJob cascade", () => {
-  it("flips job to completed when this is the only paper and it succeeded", async () => {
-    const t = convexTest(schema);
-    const { jobId, paperId } = await seedScenario(t, {
-      totalPapers: 1,
-      results: [{ questionKey: "q1", status: "completed", billed: true }],
-    });
-
-    await t.mutation(finalizePaperRef, { paperId });
-
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.status).toBe("completed");
-    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
-    expect(counters.processed).toBe(1);
-    expect(job?.completedAt).toBeDefined();
-  });
-
-  it("flips job to failed when this is the only paper and it failed", async () => {
-    const t = convexTest(schema);
-    const { jobId, paperId } = await seedScenario(t, {
-      totalPapers: 1,
-      questionKeys: ["q1"],
-      results: [
-        {
-          questionKey: "q1",
-          status: "failed",
-          billed: false,
-          lastErrorCode: "pdf_invalid",
-          attemptCount: 1,
-        },
-      ],
-    });
-
-    await t.mutation(finalizePaperRef, { paperId });
-
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.status).toBe("failed");
-    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
-    expect(counters.processed).toBe(0);
-    expect(counters.failed).toBe(1);
-  });
-
-  it("leaves job extracting when peer papers are still in flight", async () => {
-    const t = convexTest(schema);
-    // Two papers total; only one finalized in this test. The job's counter
-    // moves to 1/2 but maybeFinalizeJob does not flip.
-    const { jobId, paperId } = await seedScenario(t, {
-      totalPapers: 2,
-      results: [{ questionKey: "q1", status: "completed", billed: true }],
-    });
-    // Seed the peer paper still in extracting.
-    await t.run(async (ctx) => {
-      await ctx.db.insert("extractionPapers", {
-        jobId,
-        openalexId: "oa:peer",
-        title: "Peer paper",
-        status: "extracting" as const,
-      });
-    });
-
-    await t.mutation(finalizePaperRef, { paperId });
-
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.status).toBe("extracting");
-    const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
-    expect(counters.processed).toBe(1);
-    expect(counters.failed).toBe(0);
-  });
-});

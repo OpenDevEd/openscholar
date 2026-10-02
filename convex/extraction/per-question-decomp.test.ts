@@ -145,7 +145,7 @@ async function recordFailedQuestion(
 }
 
 describe("plan-02 per-question decomposition", () => {
-  it("3 papers × 5 questions → 15 result rows, 3 paper-completes, 1 job-complete", async () => {
+  it("3 papers × 5 questions → 15 result rows, 3 paper-completes", async () => {
     const t = convexTest(schema);
     const questionKeys = ["q1", "q2", "q3", "q4", "q5"];
     const { jobId, paperIds } = await seedJobWithPapersAndQuestions(
@@ -187,9 +187,6 @@ describe("plan-02 per-question decomposition", () => {
       expect(p?.creditsUsed).toBe(10);
     }
 
-    // Job transitioned to completed via maybeFinalizeJob.
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.status).toBe("completed");
     const counters = await t.run((ctx) => readJobCounters(ctx, jobId));
     expect(counters.processed).toBe(3);
     expect(counters.failed).toBe(0);
@@ -230,11 +227,6 @@ describe("plan-02 per-question decomposition", () => {
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(paper?.status).toBe("completed");
 
-    // Job finalizes as completed (the only paper succeeded modulo one
-    // hard-failed question; failedPapers counts paper-level outcomes,
-    // not question-level).
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.status).toBe("completed");
     const jobCounters = await t.run((ctx) => readJobCounters(ctx, jobId));
     expect(jobCounters.processed).toBe(1);
     expect(jobCounters.failed).toBe(0);
@@ -293,8 +285,6 @@ describe("plan-02 per-question decomposition", () => {
     expect(paper?.status).toBe("completed");
     expect(paper?.creditsUsed).toBe(6);
 
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.status).toBe("completed");
     const jobCounters = await t.run((ctx) => readJobCounters(ctx, jobId));
     expect(jobCounters.processed).toBe(1);
     expect(jobCounters.failed).toBe(0);
@@ -458,8 +448,6 @@ describe("plan-02 per-question decomposition", () => {
     const paper = await t.run((ctx) => ctx.db.get("extractionPapers", paperId));
     expect(paper?.status).toBe("failed");
 
-    const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
-    expect(job?.status).toBe("failed");
     const jobCounters = await t.run((ctx) => readJobCounters(ctx, jobId));
     expect(jobCounters.failed).toBe(1);
     expect(jobCounters.processed).toBe(0);

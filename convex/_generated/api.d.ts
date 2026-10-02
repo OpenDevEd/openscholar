@@ -197,6 +197,7 @@ import type * as extraction_queries_nowProcessing from "../extraction/queries/no
 import type * as extraction_queries_papers from "../extraction/queries/papers.js";
 import type * as extraction_queries_results from "../extraction/queries/results.js";
 import type * as extraction_queries_retry from "../extraction/queries/retry.js";
+import type * as extraction_queue_dispatcher from "../extraction/queue/dispatcher.js";
 import type * as extraction_queue_helpers from "../extraction/queue/helpers.js";
 import type * as extraction_queue_mutations from "../extraction/queue/mutations.js";
 import type * as extraction_queue_queries from "../extraction/queue/queries.js";
@@ -523,6 +524,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/queries/papers": typeof extraction_queries_papers;
   "extraction/queries/results": typeof extraction_queries_results;
   "extraction/queries/retry": typeof extraction_queries_retry;
+  "extraction/queue/dispatcher": typeof extraction_queue_dispatcher;
   "extraction/queue/helpers": typeof extraction_queue_helpers;
   "extraction/queue/mutations": typeof extraction_queue_mutations;
   "extraction/queue/queries": typeof extraction_queue_queries;
