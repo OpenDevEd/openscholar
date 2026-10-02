@@ -159,11 +159,20 @@ Every page, export and count works at the largest sizes the product allows
 - `convex-test` runs one transaction at a time, so it never shows a write
   conflict. Counters and anything else written in parallel are proven on a real
   backend as well.
+- Every list pages by cursor, infinite scroll included (#428). A function
+  reads a page (`.paginate()`) or a named cap (`.take(CAP)`) that its writes
+  enforce, and returns a list only as the `page` of a pagination result. A list
+  stored on a record has a cap enforced on write (#426). Clients and actions
+  load the next page when the person asks for it, and exports stream page by
+  page; nothing loads every page into one array.
 - `npm run check:convex-rules` runs in CI. It fails on a `.collect()` or
-  `for await` over a query that isn't listed in `scripts/convex-rules.json`
-  (bounded, with why its rows stay few, or pending, with its issue), on a public
-  function without a `returns` validator, and on a public query that reads the
-  clock.
+  `for await` over a query, on a public function whose `returns` holds a list
+  or record outside a pagination page, on `loadMore` from an effect or a loop,
+  and on a cursor loop that gathers pages, unless the case is listed as pending
+  in `scripts/convex-rules.json` with its issue. Pending lists only shrink: CI
+  fails on a function that isn't pending on `dev`, or has more pending entries
+  than on `dev`. It also fails on a public function without a `returns`
+  validator and on a public query that reads the clock.
 
 ## References
 
