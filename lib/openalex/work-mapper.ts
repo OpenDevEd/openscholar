@@ -9,7 +9,7 @@
  */
 
 import { reconstructAbstract } from "./reconstruct-abstract";
-import { withoutWorkSite } from "./work-id";
+import { shortWorkId } from "./work-id";
 
 export type OpenAlexWork = {
   id?: string;
@@ -53,7 +53,7 @@ export function mapOpenAlexWorkToPaperData(work: OpenAlexWork): PaperDataOut {
     typeof work.cited_by_count === "number" ? work.cited_by_count : undefined;
 
   return {
-    openalexId: work.id ? withoutWorkSite(work.id) : "",
+    openalexId: work.id ? (shortWorkId(work.id) ?? work.id) : "",
     title: work.display_name || "Untitled",
     doi: work.doi || undefined,
     publicationYear: work.publication_year || undefined,

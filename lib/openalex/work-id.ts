@@ -7,17 +7,17 @@
 /** A work's short id, of either kind. */
 export const SHORT_WORK_ID = /^(?:W|OS)\d+$/;
 
-/** What a work's full id starts with: OpenAlex's site, or the OpenScholar API's. */
-const WORK_SITES = ["https://openalex.org/", "https://openscholar.ai/"];
+/** Either kind of id, short or in full on its own site only, in http or https. */
+const WORK_ID = /^(?:(?:https?:\/\/openalex\.org\/)?(W\d+)|(?:https?:\/\/openscholar\.ai\/)?(OS\d+))$/;
 
-/** A work's id without its site: "https://openscholar.ai/OS1" as "OS1"; any other text as it is. */
-export function withoutWorkSite(id: string): string {
-  const site = WORK_SITES.find((prefix) => id.startsWith(prefix));
-  return site ? id.slice(site.length) : id;
+/** The short id in a work's id ("https://openscholar.ai/OS1" as "OS1"); null when it is neither kind. */
+export function shortWorkId(id: string): string | null {
+  const match = WORK_ID.exec(id.trim());
+  return match ? (match[1] ?? match[2] ?? null) : null;
 }
 
 /** The work's page on OpenAlex; null for any other work, such as an OS one, which it has no page for. */
 export function openAlexWorkPage(id: string): string | null {
-  const short = withoutWorkSite(id);
-  return /^W\d+$/.test(short) ? `https://openalex.org/${short}` : null;
+  const short = shortWorkId(id);
+  return short?.startsWith("W") ? `https://openalex.org/${short}` : null;
 }

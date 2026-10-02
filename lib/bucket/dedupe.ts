@@ -1,4 +1,4 @@
-import { withoutWorkSite } from "@/lib/openalex/work-id";
+import { shortWorkId } from "@/lib/openalex/work-id";
 
 const DOI_PREFIX = "https://doi.org/";
 
@@ -6,7 +6,7 @@ function normalizeOpenalexId(openalexId?: string): string | null {
   if (!openalexId) return null;
   const trimmed = openalexId.trim();
   if (!trimmed) return null;
-  return withoutWorkSite(trimmed) || null;
+  return shortWorkId(trimmed) ?? trimmed;
 }
 
 function normalizeDoi(doi?: string): string | null {

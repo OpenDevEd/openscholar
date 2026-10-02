@@ -1,6 +1,6 @@
 import type { PaperResult } from "@/lib/types/search.types";
 import type { CitationData } from "./formats";
-import { SHORT_WORK_ID, withoutWorkSite } from "@/lib/openalex/work-id";
+import { shortWorkId } from "@/lib/openalex/work-id";
 
 const types: Record<string, string> = {
   "journal-article": "article-journal", "posted-content": "article", "proceedings-article": "paper-conference",
@@ -16,8 +16,7 @@ export function normalizeCitationType(type: string) {
 
 export function paperToCitationData(paper: PaperResult): CitationData | null {
   const title = (paper.title || paper.display_name)?.trim();
-  const short = withoutWorkSite(paper.id);
-  const id = SHORT_WORK_ID.test(short) ? short : undefined;
+  const id = shortWorkId(paper.id);
   if (!title || !id) return null;
   const source = paper.primary_location?.source;
   const data: CitationData = {
