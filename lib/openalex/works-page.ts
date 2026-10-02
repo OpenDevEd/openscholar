@@ -17,6 +17,28 @@ const pageSchema = z.object({
   })),
 });
 
+/** Answers the SDK asked again after, as this does: a rate limit or a passing server failure. */
+const RETRIED_STATUSES = new Set([429, 500, 502, 503, 504]);
+/** The SDK's tries, and the wait between them. */
+const ATTEMPTS = 5;
+const RETRY_DELAY_MS = 1_000;
+
+/** The answer to `url`, asked again after a passing failure as the SDK asked; null when unreachable. */
+async function askWithRetries(url: URL): Promise<Response | null> {
+  for (let attempt = 1; ; attempt++) {
+    let response: Response;
+    try {
+      response = await fetch(url);
+    } catch (error) {
+      console.error("Works request failed:", error);
+      return null;
+    }
+    if (!RETRIED_STATUSES.has(response.status) || attempt === ATTEMPTS) return response;
+    await response.body?.cancel().catch(() => {});
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+  }
+}
+
 /** A refusal's own reason: its `message`, else its `error`, else its status. */
 function reasonOf(body: unknown, status: number) {
   const reason = typeof body === "object" && body !== null ? (body as { message?: unknown; error?: unknown }) : {};
@@ -28,17 +50,13 @@ function reasonOf(body: unknown, status: number) {
 /**
  * The first page of a works search, with each abstract as text, as the SDK answered it.
  * Asked with fetch rather than the SDK, which keeps one key for every host it is given and
- * drops the body of a failure, the message the search page shows. Server side only: it
- * reads the key.
+ * drops the body of a failure, the message the search page shows. Like the SDK, it asks
+ * again after a rate limit or a passing server failure, and those tries are not counted
+ * against the caller's allowance, as the SDK's were not. Server side only: it reads the key.
  */
 export async function fetchWorksPage(parameters: SearchParameters & { perPage: number }): Promise<WorksPageResult> {
-  let response: Response;
-  try {
-    response = await fetch(worksUrl(parameters, { per_page: String(parameters.perPage), cursor: "*" }));
-  } catch (error) {
-    console.error("Works request failed:", error);
-    return { ok: false, status: null, message: "Search request failed" };
-  }
+  const response = await askWithRetries(worksUrl(parameters, { per_page: String(parameters.perPage), cursor: "*" }));
+  if (!response) return { ok: false, status: null, message: "Search request failed" };
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) return { ok: false, status: response.status, message: reasonOf(body, response.status) };
   const page = pageSchema.safeParse(body);
