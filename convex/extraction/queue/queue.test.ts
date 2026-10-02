@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
@@ -548,5 +548,41 @@ describe("extraction paper queue", () => {
     const after = await held();
     expect(after).toHaveLength(3);
     expect(after.every((row) => row.jobId !== first.jobId)).toBe(true);
+  });
+
+  it("gives freed capacity to the person's oldest job, and frees it when a job's run parks or the job is deleted", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    const older = await seedEligibleQueueJob(t, 2);
+    const userId = await t.run(async (ctx) => (await ctx.db.get(older.jobId))!.userId);
+    const newer = await t.run(async (ctx) => {
+      await ctx.db.insert("billingAccounts", { userId, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, concurrency: 2 });
+      const jobId = await ctx.db.insert("extractionJobs", { userId, mode: "extraction" as const, sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 4, name: "Newer", createdAt: 9, updatedAt: 9 });
+      const paperIds: Array<Id<"extractionPapers">> = [];
+      for (let i = 0; i < 4; i++) paperIds.push(await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:newer:${i}`, title: `Newer ${i}`, status: "pending" as const, processable: true }));
+      return { jobId, paperIds };
+    });
+    for (const job of [older, newer]) {
+      await t.mutation(internal.extraction.queue.mutations.enqueueInitialPapersForJob, { jobId: job.jobId, paperIds: job.paperIds, expectedEpoch: 0, priority: 0 });
+    }
+    const leased = (jobId: Id<"extractionJobs">) =>
+      t.run((ctx) => ctx.db.query("extractionPaperQueue").withIndex("by_job_and_status", (q) => q.eq("jobId", jobId).eq("status", "leased")).collect());
+    // The newer job got the person's two slots first.
+    await t.mutation(internal.extraction.queue.mutations.dispatchPaperQueueWindow, { jobId: newer.jobId, expectedEpoch: 0, paperConcurrency: 40, leaseOwner: "test", leaseMs: 60_000, questionConcurrency: 1, pdfEnabled: false });
+
+    // One of the newer job's runs parks without a release: the older job gets that slot.
+    const [parked, finishing] = await leased(newer.jobId);
+    await t.mutation(internal.extraction.queue.mutations.updatePaperQueueStatus, { queueId: parked!._id, expectedEpoch: 0, status: "parked" });
+    await t.finishInProgressScheduledFunctions();
+    await vi.runOnlyPendingTimersAsync();
+    expect(await leased(older.jobId)).toHaveLength(1);
+
+    // Its other paper finishes: the freed slot goes to the older job, not back to the newer one.
+    await t.mutation(internal.extraction.queue.dispatcher.releasePaperQueueItem, { queueId: finishing!._id, expectedEpoch: 0, status: "completed" });
+    await t.mutation(internal.extraction.queue.dispatcher.refill, { rows: [finishing!._id] });
+    expect(await leased(older.jobId)).toHaveLength(2);
+    expect(await leased(newer.jobId)).toHaveLength(0);
+    vi.useRealTimers();
   });
 });

@@ -408,6 +408,9 @@ export const deleteExtraction = mutation({
     }
 
     await ctx.db.delete(args.jobId);
+    // Its papers stop holding the person's capacity now, not when the cascade reaches them.
+    await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
+    await refillPerson(ctx, user._id);
 
     // Schedule the cascade delete as an independent mutation to avoid
     // transaction limits on a large job's child tables. Cascade is

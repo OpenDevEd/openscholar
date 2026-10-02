@@ -93,11 +93,11 @@ async function refillJob(ctx: MutationCtx, job: Doc<"extractionJobs">, pdfFlag: 
 }
 
 /**
- * Starts the person's other running jobs' papers in capacity just freed, oldest job first,
- * as Firecrawl's `concurrentJobDone` promotes a team's queued work: a job held back by the
- * person's limit has no papers of its own finishing to wake it.
+ * Starts the person's running jobs' papers in their free capacity, oldest job first, as
+ * Firecrawl's `concurrentJobDone` promotes a team's queued work: a job held back by the
+ * person's limit has no papers of its own finishing to wake it. Returns what each job got.
  */
-export async function refillPerson(ctx: MutationCtx, userId: Id<"users">, skip: ReadonlySet<Id<"extractionJobs">> = new Set()) {
+export async function refillPerson(ctx: MutationCtx, userId: Id<"users">) {
   const pdfFlag = await getFlag(ctx, "extraction.pdf");
   const jobs = (
     await Promise.all(
@@ -106,14 +106,27 @@ export async function refillPerson(ctx: MutationCtx, userId: Id<"users">, skip: 
       ),
     )
   ).flat().sort((a, b) => a._creationTime - b._creationTime);
+  const dispatched = new Map<Id<"extractionJobs">, number>();
   for (const job of jobs) {
-    if (skip.has(job._id) || job.mode !== "extraction") continue;
+    if (job.mode !== "extraction") continue;
     const window = await refillJob(ctx, job, pdfFlag);
+    dispatched.set(job._id, window.dispatched);
     if (window.capacity === 0 && window.dispatched === 0) break;
   }
+  return dispatched;
 }
 
-/** Refills each released row's job window once, then the person's other jobs, and finishes jobs with nothing left to run. */
+/** Wakes the person's held-back jobs after papers stopped holding capacity without a release. */
+export const wakePerson = internalMutation({
+  args: { userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    await refillPerson(ctx, userId);
+    return null;
+  },
+});
+
+/** Refills the released rows' people, oldest job first, and finishes jobs with nothing left to run. */
 export const refill = internalMutation({
   args: vMutationArgs,
   returns: vMutationReturns,
@@ -123,20 +136,23 @@ export const refill = internalMutation({
     );
     const runs = new Map<string, { jobId: Id<"extractionJobs">; epoch: number }>();
     for (const row of rows) runs.set(`${row.jobId}:${row.runEpoch}`, { jobId: row.jobId, epoch: row.runEpoch });
-    const pdfFlag = await getFlag(ctx, "extraction.pdf");
-    const people = new Map<Id<"users">, Set<Id<"extractionJobs">>>();
-    for (const { jobId, epoch } of runs.values()) {
-      const job = await ctx.db.get(jobId);
-      if (!job || (job.runEpoch ?? 0) !== epoch) continue;
-      const window = await refillJob(ctx, job, pdfFlag);
-      people.set(job.userId, (people.get(job.userId) ?? new Set()).add(jobId));
-      // Nothing left to start: whether the job is done is its counters' call, so a row whose
-      // run stopped without releasing it can't hold the job open.
-      if (window.dispatched === 0) {
-        await ctx.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId, expectedEpoch: epoch });
+    const people = new Map<Id<"users">, Array<{ jobId: Id<"extractionJobs">; epoch: number }>>();
+    for (const run of runs.values()) {
+      const job = await ctx.db.get(run.jobId);
+      if (!job || (job.runEpoch ?? 0) !== run.epoch) continue;
+      people.set(job.userId, [...(people.get(job.userId) ?? []), run]);
+    }
+    for (const [userId, released] of people) {
+      // Freed capacity goes to the person's oldest job first, not back to the job that freed it.
+      const dispatched = await refillPerson(ctx, userId);
+      for (const { jobId, epoch } of released) {
+        // Nothing left to start: whether the job is done is its counters' call, so a row whose
+        // run stopped without releasing it can't hold the job open.
+        if (!dispatched.get(jobId)) {
+          await ctx.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId, expectedEpoch: epoch });
+        }
       }
     }
-    for (const [userId, refilled] of people) await refillPerson(ctx, userId, refilled);
     // Handled: out of the queue.
     for (const row of rows) await ctx.db.patch(row._id, { releasedAt: undefined });
     return null;

@@ -543,6 +543,11 @@ export const updatePaperQueueStatus = internalMutation({
     }
 
     const clearLease = shouldClearQueueLease(args.status);
+    // A row that held its person's capacity and stops without a release (a stale run parking)
+    // frees it; their held-back jobs have no other event to start them.
+    if ((row.status === "leased" || row.status === "running") && args.status !== "leased" && args.status !== "running") {
+      await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { userId: row.userId });
+    }
     await ctx.db.patch(args.queueId, {
       status: args.status,
       updatedAt: Date.now(),
