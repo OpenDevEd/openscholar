@@ -5,8 +5,6 @@ import { useQuery } from "convex/react";
 import { Ban, Check, ChevronDown, Coins, Folder, FolderMinus, FolderPlus, Hourglass, ListChecks, Loader2, Plus, Sparkles, Trash2, Zap, type LucideIcon } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -55,7 +53,9 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
   const credits = Math.ceil(papers * CREDITS_PER_PAPER);
   const enough = credits <= BALANCE;
   const max = maxScore(questions);
-  const defaultName = `Included in ${source.label}`;
+  const from = kind === "screening" ? screenings.find((j) => j.id === source.id) : undefined;
+  const imported = !!from && from.questions.every((q) => questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase()));
+  const defaultName = source.kind === "screening" ? source.label : `Included in ${source.label}`;
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
   const target = kind === "collection" && dest === source.id ? "new" : dest;
   const saveTo = target === "none" ? undefined : target === "new" ? (newName ?? defaultName).trim() || defaultName : SOURCES.collection.find((c) => c.id === target)?.label;
@@ -149,6 +149,20 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
 
       <Zone
         label="Questions"
+        aside={
+          // What the papers come from decides the shortcut: a search has a research question
+          // to write questions from; an earlier screening has questions to reuse.
+          kind === "search" ? (
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={generate} disabled={generating}>
+              {generating ? <Loader2 className="animate-spin text-primary" /> : <Sparkles className="text-primary" />}Generate from the search's research question
+            </Button>
+          ) : from ? (
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => adopt(from.questions)} disabled={imported}>
+              <ListChecks className="text-primary" />
+              {imported ? `Imported from ${from.name}` : `Import the ${from.questions.length} questions from ${from.name}`}
+            </Button>
+          ) : null
+        }
       >
         <div className={LIST}>
           <div className="grid grid-cols-[1.5rem_1fr_repeat(3,3.25rem)_2rem] items-center gap-3 px-4 py-2 text-xs text-muted-foreground">
@@ -172,30 +186,8 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
             </div>
           ))}
           <div className="flex items-center gap-2 px-4 py-2.5">
-            {/* As on a search's own screening panel: questions written from the search's research question. */}
-            {kind === "search" ? (
-              <Button variant="ai" size="sm" className="h-9 gap-1.5" onClick={generate} disabled={generating}>
-                {generating ? <Loader2 className="animate-spin" /> : <Sparkles />}Generate
-              </Button>
-            ) : null}
             <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQuestion()} placeholder="Add a question with a yes or no answer" className="h-9 flex-1" />
-            <ButtonGroup>
-              <Button variant="outline" size="sm" className="h-9" onClick={addQuestion} disabled={!draft.trim()}><Plus />Add</Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9"><ListChecks />Import<ChevronDown className="text-muted-foreground" /></Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[26rem]">
-                  {screenings.map((j) => (
-                    <DropdownMenuItem key={j.id} onSelect={() => adopt(j.questions)} className="gap-3 py-2">
-                      <ListChecks className="text-muted-foreground" />
-                      <span className="min-w-0 flex-1 truncate">{j.name}</span>
-                      <Chip>{j.questions.length} questions</Chip>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </ButtonGroup>
+            <Button variant="outline" size="sm" className="h-9" onClick={addQuestion} disabled={!draft.trim()}><Plus />Add</Button>
           </div>
         </div>
       </Zone>
@@ -265,7 +257,7 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
         </div>
       </Zone>
 
-      <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border/60 bg-background/95 p-4 shadow-lg backdrop-blur">
+      <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border/60 bg-background p-4 shadow-lg">
         <div className="min-w-48 flex-1 space-y-1.5">
           <p className="flex items-center justify-between text-xs">
             <span className="flex items-center gap-1.5 font-medium"><Coins className="size-3.5 text-primary" />Up to {credits.toLocaleString()} credits</span>
