@@ -10,6 +10,7 @@
 
 import { query, type QueryCtx } from "../../_generated/server";
 import { v } from "convex/values";
+import schema from "../../schema";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { getCurrentUser } from "../../lib/auth";
 import { ok, statusResultValidator } from "../../lib/query_states";
@@ -21,7 +22,6 @@ import {
   extractionJobValidator,
   extractionQuestionValidator,
   jobStatusValidator,
-  storedSearchFiltersValidator,
 } from "../validators";
 
 async function resolveReadableJob(
@@ -154,39 +154,7 @@ export const getJobSources = query({
     v.object({ status: v.literal("no_access") }),
     v.object({
       status: v.literal("ok"),
-      sources: v.array(
-        v.object({
-          _id: v.id("extractionJobSources"),
-          _creationTime: v.number(),
-          jobId: v.id("extractionJobs"),
-          position: v.number(),
-          bucketKey: v.string(),
-          source: v.union(
-            v.literal("history"),
-            v.literal("library"),
-            v.literal("collection"),
-            v.literal("zotero"),
-            v.literal("upload"),
-          ),
-          sourceRefId: v.string(),
-          title: v.string(),
-          authors: v.array(v.string()),
-          year: v.optional(v.number()),
-          doi: v.optional(v.string()),
-          openalexId: v.optional(v.string()),
-          abstract: v.optional(v.string()),
-          pdfUrl: v.optional(v.string()),
-          storageId: v.optional(v.id("_storage")),
-          searchFilters: v.optional(storedSearchFiltersValidator),
-          libraryType: v.optional(
-            v.union(v.literal("user"), v.literal("group")),
-          ),
-          groupId: v.optional(v.string()),
-          zoteroUserId: v.optional(v.string()),
-          collectionKey: v.optional(v.string()),
-          includeDescendants: v.optional(v.boolean()),
-        }),
-      ),
+      sources: v.array(schema.doc("extractionJobSources")),
     }),
   ),
   handler: async (ctx, args) => {

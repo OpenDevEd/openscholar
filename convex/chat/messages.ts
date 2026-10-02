@@ -28,7 +28,7 @@ import {
   query,
 } from "../lib/functions";
 import { v } from "convex/values";
-import { paginationOptsValidator, type PaginationOptions } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import {
   listMessages,
   syncStreams,
@@ -1217,9 +1217,7 @@ export const listThreadMessages = query({
     streamArgs: vStreamArgs,
   },
   returns: v.object({
-    page: v.array(v.any()),
-    isDone: v.boolean(),
-    continueCursor: v.union(v.string(), v.null()),
+    ...paginationResultValidator(v.any()).fields,
     streams: v.optional(v.any()),
   }),
   handler: async (ctx, args) => {

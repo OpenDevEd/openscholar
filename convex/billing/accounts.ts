@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { pick } from "convex-helpers";
 import {
   action,
   internalAction,
@@ -216,6 +217,7 @@ export const forUser = internalQuery({
 
 const { stripeCustomerId: _stripeCustomerId, ...myAccountFields } =
   billingAccountSnapshotValidator.fields;
+const myAccountKeys = Object.keys(myAccountFields) as (keyof typeof myAccountFields)[];
 
 export const mine = query({
   args: {},
@@ -225,8 +227,8 @@ export const mine = query({
     if (!user) return null;
     const row = await readAccount(ctx, user._id);
     if (!row) return null;
-    const { _id, _creationTime, userId, refreshedAt, stripeCustomerId, ...snapshot } = row;
-    return snapshot;
+    // Copy only the fields the validator declares, so internal columns stay private.
+    return pick(row, myAccountKeys);
   },
 });
 

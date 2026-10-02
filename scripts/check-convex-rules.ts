@@ -12,6 +12,10 @@
 // - No public query reads the clock, in its handler or any function it calls:
 //   `Date.now()` or `new Date()` in a query breaks its caching and reactivity. Schedule
 //   the change instead, or pass the time in.
+// - Every handler returns only fields its `returns` validator declares. TypeScript accepts
+//   extra fields on any value that isn't a fresh object literal, such as a row with some
+//   fields destructured away; the validator rejects them at runtime, so a new column on the
+//   row breaks the function only when that column is set.
 // - Mutations run through the database triggers (#351): `mutation` and `internalMutation`
 //   come from convex/lib/functions.ts, never from `_generated/server`, and every
 //   `new Migrations(...)` is given that `internalMutation`.
@@ -149,6 +153,92 @@ function takesSizedByArguments(handler: ts.Node): ts.CallExpression[] {
   if ("body" in handler && handler.body) visit(handler.body);
   return found;
 }
+const skipped = ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.Never | ts.TypeFlags.TypeParameter;
+const nullish = ts.TypeFlags.Undefined | ts.TypeFlags.Null | ts.TypeFlags.Void;
+const members = (type: ts.Type) => (type.isUnion() ? type.types : [type]);
+const parts = (type: ts.Type) => members(type).filter((t) => !(t.flags & nullish));
+const isArrayLike = (type: ts.Type) => checker.isArrayType(type) || checker.isTupleType(type);
+/** An object compared by its fields: not an id, array, function or buffer. */
+const isRecordLike = (type: ts.Type): boolean =>
+  type.isIntersection()
+    ? type.types.every(isRecordLike)
+    : !!(type.flags & ts.TypeFlags.Object) && !isArrayLike(type) && type.getCallSignatures().length === 0 && type.getSymbol()?.getName() !== "ArrayBuffer";
+const stringIndex = (type: ts.Type) => checker.getIndexInfoOfType(type, ts.IndexKind.String)?.type;
+/** The declared branches `part` fits, such as the one with its `status`; all of them if it fits none. */
+const fitting = (part: ts.Type, candidates: ts.Type[]) => {
+  const fits = candidates.filter((candidate) => checker.isTypeAssignableTo(part, candidate));
+  return fits.length ? fits : candidates;
+};
+const fewest = (found: string[][]) => (found.length ? found.reduce((best, next) => (next.length < best.length ? next : best)) : []);
+
+/** Paths of fields `actual` can hold that `declared` doesn't allow. */
+function undeclaredFields(actual: ts.Type, declared: ts.Type, at: ts.Node, path: string, open = new Set<string>()): string[] {
+  if (actual.flags & skipped || declared.flags & skipped) return [];
+  // A pair already being compared further up this path is a recursive type: its fields are checked there.
+  const pair = `${(actual as { id?: number }).id}:${(declared as { id?: number }).id}`;
+  if (open.has(pair)) return [];
+  open.add(pair);
+  const found = parts(actual).flatMap((part) => {
+    if (part.flags & skipped) return [];
+    if (isArrayLike(part)) {
+      // Every element of a tuple, against the element type of each array branch it fits.
+      const elements = checker.getTypeArguments(part as ts.TypeReference);
+      return fewest(fitting(part, parts(declared).filter(isArrayLike)).map((candidate) => {
+        const target = checker.getTypeArguments(candidate as ts.TypeReference)[0];
+        return elements.flatMap((element) => undeclaredFields(element, target, at, `${path}[]`, open));
+      }));
+    }
+    if (!isRecordLike(part)) return [];
+    const dynamic = stringIndex(part);
+    return fewest(fitting(part, parts(declared).filter(isRecordLike)).map((candidate) => {
+      const index = stringIndex(candidate);
+      const named = checker.getPropertiesOfType(part).filter((p) => !p.name.startsWith("__@")).flatMap((p) => {
+        const type = checker.getTypeOfSymbolAtLocation(p, at);
+        // Convex drops fields whose value is undefined; a null stays and must be declared.
+        if (members(type).every((t) => t.flags & ts.TypeFlags.Undefined)) return [];
+        const field = candidate.getProperty(p.name);
+        const target = field ? checker.getTypeOfSymbolAtLocation(field, at) : index;
+        return target ? undeclaredFields(type, target, at, `${path}.${p.name}`, open) : [`${path}.${p.name}`];
+      });
+      const keyed = !dynamic ? [] : index ? undeclaredFields(dynamic, index, at, `${path}[key]`, open) : [`${path}[key]`];
+      return [...named, ...keyed];
+    }));
+  });
+  open.delete(pair);
+  return found;
+}
+
+/** The types a function can return: each `return` in its own body, and its declared return type. */
+function returnedTypes(fn: ts.Node): ts.Type[] {
+  const found: ts.Type[] = [];
+  const signature = checker.getTypeAtLocation(fn).getCallSignatures()[0];
+  if (signature) found.push(signature.getReturnType());
+  if (ts.isArrowFunction(fn) && !ts.isBlock(fn.body)) found.push(checker.getTypeAtLocation(fn.body));
+  else if (ts.isFunctionLike(fn) && "body" in fn && fn.body) {
+    const visit = (node: ts.Node) => {
+      if (ts.isReturnStatement(node) && node.expression) found.push(checker.getTypeAtLocation(node.expression));
+      // A nested function's returns are its own.
+      if (!ts.isFunctionLike(node)) ts.forEachChild(node, visit);
+    };
+    ts.forEachChild(fn.body, visit);
+  }
+  return found.map((type) => checker.getAwaitedType(type) ?? type);
+}
+
+/** Fields a function definition's handler returns that its `returns` validator doesn't declare. */
+function undeclaredReturns(definition: ts.ObjectLiteralExpression): string[] {
+  const property = (key: string) => definition.properties.find((p) => p.name && ts.isIdentifier(p.name) && p.name.text === key);
+  const returns = property("returns");
+  // Registry entries (defineUserQuery, defineUserMutation) name their handler `run`.
+  const handler = property("handler") ?? property("run");
+  if (!returns || !ts.isPropertyAssignment(returns) || !handler) return [];
+  const declared = checker.getTypeAtLocation(returns.initializer).getProperty("type");
+  if (!declared) return [];
+  const target = checker.getTypeOfSymbolAtLocation(declared, returns);
+  const fn = ts.isPropertyAssignment(handler) ? (ts.isIdentifier(handler.initializer) ? declarationOf(handler.initializer) ?? handler.initializer : handler.initializer) : handler;
+  return [...new Set(returnedTypes(fn).flatMap((type) => undeclaredFields(type, target, returns, "result")))];
+}
+
 const reads: string[] = [];
 const missingReturns: string[] = [];
 const problems: string[] = [];
@@ -178,6 +268,11 @@ for (const tree of program.getSourceFiles().filter((file) => sources.includes(re
     }
     if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "Migrations" && !/\binternalMutation\b/.test(node.arguments?.[1]?.getText() ?? "")) {
       problems.push(`${file}: pass { internalMutation } from convex/lib/functions.ts to new Migrations(...), so migrations run the database triggers.`);
+    }
+    // Any builder, including custom ones such as defineUserQuery: a definition with `returns` and `handler`.
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && node.initializer.arguments[0] && ts.isObjectLiteralExpression(node.initializer.arguments[0])) {
+      const undeclared = undeclaredReturns(node.initializer.arguments[0]);
+      if (undeclared.length) problems.push(`${file}:${node.name.text}: returns ${undeclared.join(", ")}, which its \`returns\` validator doesn't declare; Convex rejects them at runtime. Return only declared fields, or declare them.`);
     }
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && ALL_BUILDERS.includes(node.initializer.expression.text)) {
       const definition = node.initializer.arguments[0];
