@@ -8,10 +8,9 @@
  *
  * Also the single injection point for the P7 CountChip's chosen N:
  * when the source is `"history"`, `paperCount` lands on
- * `searchFilters.limit` so `fetchPapersFromHistory` →
- * `buildOpenAlexSearchParams` can use it as `per-page` on the OpenAlex
- * request. Without this, the action falls back to its hardcoded 200
- * and the user's choice is cosmetic.
+ * `searchFilters.limit`, which `fetchPapersFromHistory` reads that many
+ * papers of. Without it, the server pulls the cap and the user's choice is
+ * cosmetic.
  */
 import type { BucketItem } from "./bucketItem";
 

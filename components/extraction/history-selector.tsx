@@ -31,22 +31,32 @@ function historyBucketKey(entry: SearchResult): string {
 function HistoryRowChip({
   entry,
   cap,
+  limit,
   defaultCount,
 }: {
   entry: SearchResult;
   cap: number;
+  limit: number;
   defaultCount: number;
 }) {
   const bucketKey = historyBucketKey(entry);
   const paperCount = useBucketStore(
     (s) => s.items[bucketKey]?.paperCount ?? 0,
   );
+  // The rest of the bucket, counted as the bucket indicator counts it: a row can only take
+  // what's left of the job's limit.
+  const others = useBucketStore((s) =>
+    s.order.reduce((n, k) => {
+      const item = s.items[k];
+      return k !== bucketKey && item?.status === "ready" ? n + (item.paperCount ?? 1) : n;
+    }, 0),
+  );
   return (
     <CountChip
       entry={entry}
       bucketKey={bucketKey}
       paperCount={paperCount}
-      cap={cap}
+      cap={Math.max(0, Math.min(cap, limit - others))}
       defaultCount={defaultCount}
     />
   );
@@ -89,10 +99,8 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
     [bucketKeys, searchHistory],
   );
 
-  // Clamp the cold-start paperCount down to `pullCap` at selection
-  // time so an entry.count of 3000 doesn't immediately blow past the
-  // per-row cap before the CountChip has a chance to mount. The chip
-  // then refines downward (if fresh count < cap) via its own effect.
+  // A picked search starts at `pullDefault` papers (fewer if it has fewer), which the
+  // CountChip can raise to `pullCap`; the chip refines downward if the fresh count is lower.
   // Null for a saved search whose query is no longer valid; the toast says why.
   const toBucketItem = useCallback(
     (entry: SearchResult) => {
@@ -112,12 +120,12 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
         searchFilters,
       });
       const initial = Math.min(
-        pullCap,
+        pullDefault,
         Math.max(0, seeded.paperCount ?? pullDefault),
       );
       return { ...seeded, paperCount: initial };
     },
-    [pullCap, pullDefault, tv, toast],
+    [pullDefault, tv, toast],
   );
 
   if (searchHistory.length === 0) {
@@ -198,6 +206,7 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
                 <HistoryRowChip
                   entry={entry}
                   cap={pullCap}
+                  limit={limit}
                   defaultCount={pullDefault}
                 />
               </div>

@@ -7,12 +7,12 @@
 export const PAPER_LIMIT = 1000;
 
 /**
- * Most papers one search in the bucket can pull from OpenAlex: its
- * single-page ceiling without cursor pagination.
+ * Most papers one search in the bucket can pull from OpenAlex: a whole job's worth, read
+ * page by page on the server (convex/paperSets/openalex.ts).
  */
-export const PAPER_PULL_CAP = 200;
+export const PAPER_PULL_CAP = PAPER_LIMIT;
 
-/** Papers a search pulls when it's first picked; never above the cap. */
+/** Papers a search pulls when it's first picked; the count can be raised to the cap. */
 export const PAPER_PULL_DEFAULT = 200;
 
 /** Most papers one results page shows; an export reads pages of this size. */

@@ -47,16 +47,18 @@ function classifyChatPrepError(error: unknown) {
 async function resolvePreparedSources(
   ctx: ActionCtx,
   jobId: Id<"extractionJobs">,
+  userId: Id<"users">,
 ): Promise<BucketItemInput[]> {
   const bucketItems = await ctx.runQuery(
     internal.extraction.queries.internal.getJobSourcesInternal,
     { jobId },
   );
-  return await resolvePreparedSourcesFromItems(ctx, bucketItems);
+  return await resolvePreparedSourcesFromItems(ctx, userId, bucketItems);
 }
 
 async function resolvePreparedSourcesFromItems(
   ctx: ActionCtx,
+  userId: Id<"users">,
   bucketItems: BucketItemInput[],
 ): Promise<BucketItemInput[]> {
   let cachedZoteroUserId: string | undefined;
@@ -65,7 +67,7 @@ async function resolvePreparedSourcesFromItems(
     fetchPapersFromHistory: async (searchFilters) => {
       const result = await ctx.runAction(
         internal.extraction.actions.fetchPapersFromHistory,
-        { searchFilters },
+        { userId, searchFilters },
       );
       return result as PaperData[];
     },
@@ -144,7 +146,7 @@ export const ensureThreadForJob = internalAction({
     }
 
     try {
-      const preparedSources = await resolvePreparedSources(ctx, jobId);
+      const preparedSources = await resolvePreparedSources(ctx, jobId, job.userId);
       assertBucketWithinLimits(
         preparedSources.map((item) => ({
           source: item.source,
@@ -334,6 +336,7 @@ export const continueChatWithSourceRefresh = action({
 
     const preparedSources = await resolvePreparedSourcesFromItems(
       ctx,
+      job.userId,
       bucketItems,
     );
     const nextOpenAlexIds = orderedOpenAlexIds(preparedSources);

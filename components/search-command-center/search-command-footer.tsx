@@ -48,7 +48,7 @@ import { paramsToBucketSearchFilters } from "@/lib/chat/params-to-bucket-filters
 import { deriveStartChatButtonState } from "@/lib/chat/start-chat-button-state";
 import { buildChatSourceFingerprint } from "@/lib/chat/source-request";
 import { api } from "@/convex/_generated/api";
-import { PAPER_PULL_CAP, PAPER_PULL_DEFAULT } from "@/lib/extraction/limits";
+import { PAPER_PULL_DEFAULT } from "@/lib/extraction/limits";
 
 interface SearchCommandFooterProps {
   totalCount: number;
@@ -101,7 +101,6 @@ export function SearchCommandFooter({
   const continueChatWithSourceRefresh = useAction(
     api.chat.threads.continueChatWithSourceRefresh,
   );
-  const pullCap = PAPER_PULL_CAP;
   const pullDefault = PAPER_PULL_DEFAULT;
   const chatFlag = useFeatureFlag("extraction.chat");
   const { data: features } = useOrganizationFeatures();
@@ -271,7 +270,7 @@ Return a more targeted version of this query.`;
     }
 
     const initialCount = Math.min(
-      pullCap,
+      pullDefault,
       Math.max(0, totalCount ?? pullDefault),
     );
     const params = search.params;
