@@ -28,8 +28,8 @@ function refill(bucket: Bucket, capacity: number, period: number, now: number) {
 
 /**
  * A minute's token bucket and a day's fixed count per key, held in this server's memory.
- * Only visitors are counted here; accounts are counted in Convex (`convex/lib/rateLimit.ts`),
- * which Convex actions spend from too.
+ * Visitors are counted here. Accounts are counted in Convex (`convex/lib/rateLimit.ts`),
+ * which Convex actions spend from too, and here only when Convex can't answer in time.
  *
  * ponytail: per process. dev.openscholar.ai runs as one container, so this is every
  * visitor request; with several instances each would allow the full limit, and visitors
