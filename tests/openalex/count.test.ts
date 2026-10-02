@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 
-const { worksMock } = vi.hoisted(() => ({ worksMock: vi.fn() }));
-
+// A count never goes through the SDK, which keeps one key for every host; were it to, this
+// keeps the test off the network.
 vi.mock("@/lib/openalex", () => ({
-  default: { works: worksMock },
+  default: { works: () => Promise.reject(new Error("the SDK was asked")) },
 }));
 
 import { fetchOpenAlexCount } from "@/lib/openalex/count";
@@ -36,13 +36,25 @@ function filters(overrides: Partial<SearchFilters> = {}): SearchFilters {
   };
 }
 
-beforeEach(() => {
-  worksMock.mockReset();
-});
+/** Answers every request with `body` and `status`, and keeps the URLs asked. */
+function answering(status: number, body: unknown) {
+  const fetchMock = vi.fn(async (_url: URL | string) => new Response(JSON.stringify(body), { status }));
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+function askedUrl(fetchMock: ReturnType<typeof answering>) {
+  return new URL(String(fetchMock.mock.calls[0]![0]));
+}
 
 describe("fetchOpenAlexCount", () => {
-  it("returns { count } from SDK response meta", async () => {
-    worksMock.mockResolvedValueOnce({
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("returns { count } from the response's meta", async () => {
+    answering(200, {
       meta: {
         count: 4217,
         db_response_time_ms: 12,
@@ -53,47 +65,47 @@ describe("fetchOpenAlexCount", () => {
       },
       results: [{ id: "W1" }],
     });
+
     const result = await fetchOpenAlexCount(
       "cancer",
       filters({ yearRange: [2020, 2024] }),
     );
+
     expect(result).toEqual({ count: 4217 });
   });
 
-  it("calls client.works with perPage: 1 (not the default 200)", async () => {
-    worksMock.mockResolvedValueOnce({
-      meta: { count: 0 },
-      results: [],
-    });
+  it("asks for one work (not the search page's 200)", async () => {
+    const fetchMock = answering(200, { meta: { count: 0 }, results: [] });
+
     await fetchOpenAlexCount("x", filters());
-    expect(worksMock).toHaveBeenCalledTimes(1);
-    const params = worksMock.mock.calls[0][0];
-    expect(params.perPage).toBe(1);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(askedUrl(fetchMock).searchParams.get("per_page")).toBe("1");
   });
 
   it("passes the filter shape through (spot check: yearRange → from/to_publication_date)", async () => {
-    worksMock.mockResolvedValueOnce({
-      meta: { count: 5 },
-      results: [],
-    });
+    const fetchMock = answering(200, { meta: { count: 5 }, results: [] });
+
     await fetchOpenAlexCount(
       "neural networks",
       filters({ yearRange: [2020, 2024] }),
     );
-    const params = worksMock.mock.calls[0][0];
-    expect(params.filter?.from_publication_date).toBe("2020-01-01");
-    expect(params.filter?.to_publication_date).toBe("2024-12-31");
+
+    const filter = askedUrl(fetchMock).searchParams.get("filter");
+    expect(filter).toContain("from_publication_date:2020-01-01");
+    expect(filter).toContain("to_publication_date:2024-12-31");
   });
 
-  it("wraps SDK errors with an 'OpenAlex API error' prefix", async () => {
-    worksMock.mockRejectedValueOnce(new Error("boom"));
+  it("wraps a refusal with an 'OpenAlex API error' prefix and the API's reason", async () => {
+    answering(400, { message: "boom" });
     await expect(fetchOpenAlexCount("x", filters())).rejects.toThrow(
       /OpenAlex API error.*boom/,
     );
   });
 
-  it("wraps non-Error throws with an 'OpenAlex API error' prefix", async () => {
-    worksMock.mockRejectedValueOnce("network down");
+  it("wraps an unreachable API with an 'OpenAlex API error' prefix", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
     await expect(fetchOpenAlexCount("x", filters())).rejects.toThrow(
       /OpenAlex API error/,
     );
