@@ -89,10 +89,8 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
     [bucketKeys, searchHistory],
   );
 
-  // Clamp the cold-start paperCount down to `pullCap` at selection
-  // time so an entry.count of 3000 doesn't immediately blow past the
-  // per-row cap before the CountChip has a chance to mount. The chip
-  // then refines downward (if fresh count < cap) via its own effect.
+  // A picked search starts at `pullDefault` papers (fewer if it has fewer), which the
+  // CountChip can raise to `pullCap`; the chip refines downward if the fresh count is lower.
   // Null for a saved search whose query is no longer valid; the toast says why.
   const toBucketItem = useCallback(
     (entry: SearchResult) => {
@@ -112,12 +110,12 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
         searchFilters,
       });
       const initial = Math.min(
-        pullCap,
+        pullDefault,
         Math.max(0, seeded.paperCount ?? pullDefault),
       );
       return { ...seeded, paperCount: initial };
     },
-    [pullCap, pullDefault, tv, toast],
+    [pullDefault, tv, toast],
   );
 
   if (searchHistory.length === 0) {

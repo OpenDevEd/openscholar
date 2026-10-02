@@ -1,8 +1,7 @@
 /**
- * A saved search's papers, read on the server (#341). The request is the one its results
- * page makes (`paramsToBucketSearchFilters`): the same keyword expansion, filters and sort.
- * Only the fields a job keeps are asked for, and the pages are read in parallel, which
- * OpenAlex allows up to 10,000 results; the rating filter is the results page's too.
+ * A saved search's papers for Screen all, read on the server (#341). The request is the one
+ * its results page makes (`paramsToBucketSearchFilters`): the same keyword expansion,
+ * filters and sort, read through ./openalex.ts; the rating filter is the results page's too.
  */
 import { v, type Infer } from "convex/values";
 import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
@@ -18,44 +17,25 @@ import { DEFAULT_SEARCH_PARAMS } from "../../lib/search-params/parsers";
 import { searchResultToParams } from "../../lib/search-params/converters";
 import { paramsToBucketSearchFilters } from "../../lib/chat/params-to-bucket-filters";
 import { isRatingFilterActive } from "../../lib/utils";
-import { openAlexUrl } from "../../lib/openalex/request-url";
 import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
-import { OpenAlexLimitedError } from "../../lib/openalex/limited";
+import { readSearchWorks, searchRequestValidator } from "./openalex";
 
-/** OpenAlex's largest page. */
-const PAGE_SIZE = 200;
-/** How long one page may take before the request fails, as the results page's reads do. */
-const PAGE_TIMEOUT_MS = 12_000;
-/**
- * The sort under which numbered pages list works in the results page's (cursor) order.
- * Measured on 2026-10-02 for "climate adaptation": the first 1,000 works matched in every
- * position by relevance, but only 655 by citations and 724 by date, because OpenAlex breaks
- * ties differently on the two paths and can't sort by `id`. Other sorts read cursor pages.
- */
-const PAGE_ORDERED_SORT = "relevance_score:desc";
 /** The fields a screening paper keeps. */
 const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships";
 
 export type SearchPaper = Infer<typeof screeningPaperInputValidator>;
 
-const requestValidator = v.object({
-  search: v.optional(v.string()),
-  filter: v.optional(v.string()),
-  oql: v.optional(v.string()),
-  sort: v.string(),
-});
-
-const searchRequestValidator = v.object({
+const savedSearchValidator = v.object({
   clerkId: v.string(),
-  request: v.union(requestValidator, v.null()),
+  request: v.union(searchRequestValidator, v.null()),
   ratingRange: v.union(v.array(v.number()), v.null()),
 });
-type SearchRequest = Infer<typeof searchRequestValidator>;
+type SavedSearchRequest = Infer<typeof savedSearchValidator>;
 
 /** The request a saved search's results page makes, and its rating filter. */
 export const readSearch = internalQuery({
   args: { userId: v.id("users"), searchId: v.string() },
-  returns: searchRequestValidator,
+  returns: savedSearchValidator,
   handler: async (ctx, { userId, searchId }) => {
     const user = await ctx.db.get("users", userId);
     if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
@@ -118,59 +98,6 @@ function toPaper(work: Work): SearchPaper {
   };
 }
 
-type Page = { page: number } | { cursor: string };
-
-/** One page of the search, by number or cursor. An OQL search goes in a POST body: it outgrows the URL limit. */
-async function readPage(request: Infer<typeof requestValidator>, at: Page): Promise<{ works: Work[]; nextCursor: string | null }> {
-  const parameters = {
-    "per-page": String(PAGE_SIZE),
-    ...("page" in at ? { page: String(at.page) } : { cursor: at.cursor }),
-    sort: request.sort,
-    select: SCREENING_FIELDS,
-  };
-  const url = request.oql
-    ? openAlexUrl("", parameters)
-    : openAlexUrl("works", { ...parameters, search: request.search, filter: request.filter });
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      signal: AbortSignal.timeout(PAGE_TIMEOUT_MS),
-      ...(request.oql ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oql: request.oql }) } : {}),
-    });
-  } catch (error) {
-    console.error(`[paperSets] OpenAlex page ${JSON.stringify(at)} didn't answer`, error);
-    throw createError("VALIDATION_ERROR", "OpenAlex didn't return these papers in time. Try again in a moment.");
-  }
-  if (!response.ok) {
-    const detail = (await response.text().catch(() => "")).slice(0, 500);
-    console.error(`[paperSets] OpenAlex page ${JSON.stringify(at)} failed: ${response.status} ${detail}`);
-    throw createError("VALIDATION_ERROR", `OpenAlex couldn't return these papers (${response.status}). Try again in a moment.`);
-  }
-  const body = (await response.json()) as { results?: Work[]; meta?: { next_cursor?: string | null } };
-  return { works: body.results ?? [], nextCursor: body.meta?.next_cursor || null };
-}
-
-/**
- * Works up to the `last` (counting from 1), from page `firstPage` on. Numbered pages in
- * parallel when they keep the results page's order; otherwise the cursor pages it reads,
- * one after another from the start.
- */
-async function readWorks(request: Infer<typeof requestValidator>, firstPage: number, last: number): Promise<{ works: Work[]; offset: number }> {
-  if (request.sort === PAGE_ORDERED_SORT) {
-    const pages = Array.from({ length: Math.ceil(last / PAGE_SIZE) - firstPage + 1 }, (_, i) => firstPage + i);
-    const read = await Promise.all(pages.map((page) => readPage(request, { page })));
-    return { works: read.flatMap((page) => page.works), offset: (firstPage - 1) * PAGE_SIZE };
-  }
-  const works: Work[] = [];
-  let cursor: string | null = "*";
-  while (cursor && works.length < last) {
-    const page: { works: Work[]; nextCursor: string | null } = await readPage(request, { cursor });
-    works.push(...page.works);
-    cursor = page.nextCursor;
-  }
-  return { works, offset: 0 };
-}
-
 /**
  * Papers `first` to `last` (counting from 1) of the person's saved search, in its results
  * page's order, kept to its rating filter. Spends one OpenAlex request per page read.
@@ -187,18 +114,14 @@ export async function searchPapers(
     throw createError("VALIDATION_ERROR", `Cannot screen more than ${MAX_SCREENING_PAPERS_PER_JOB} papers per job`);
   }
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  const found: SearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId });
+  const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId });
   const { clerkId, request, ratingRange } = found;
   if (!request) throw createError("VALIDATION_ERROR", "This search's query isn't valid. Fix it on the results page first.");
 
-  // Cursor pages are read from the start; numbered pages from the range's first page.
-  const firstPage = request.sort === PAGE_ORDERED_SORT ? Math.floor((first - 1) / PAGE_SIZE) + 1 : 1;
-  const allowed: boolean = await ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId, count: Math.ceil(last / PAGE_SIZE) - firstPage + 1 });
-  if (!allowed) {
-    throw createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
-  }
-  const { works, offset } = await readWorks(request, firstPage, last);
-  const papers = works.slice(first - 1 - offset, last - offset).map(toPaper);
+  const works = await readSearchWorks<Work>(request, { first, last, select: SCREENING_FIELDS }, (count) =>
+    ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId, count }),
+  );
+  const papers = works.map(toPaper);
   if (!ratingRange) return papers;
 
   const rated: Array<{ paperId: string; rating: number }> = await ctx.runQuery(internal.paperSets.search.ratingsOf, { userId, paperIds: papers.map((paper) => paper.openalexId) });
