@@ -2,13 +2,15 @@ import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
-import { expandJobSources, type LibraryPaper } from "./expandSources";
+import { expandJobSources, readLibraryInBatches, type LibraryPaper } from "./expandSources";
 import type { BucketItemInput } from "./jobSources";
 
 const fromBrowser = (sourceRefId: string, source: "library" | "collection"): BucketItemInput => ({
   bucketKey: `key:${sourceRefId}`,
   source,
   sourceRefId,
+  pdfUrl: "https://example.test/someone-elses.pdf",
+  storageId: "kg2someoneelsesfile" as never,
   title: "Edited in the browser",
   authors: ["Someone Else"],
   abstract: "Not what the library holds",
@@ -29,6 +31,9 @@ describe("a job's library and collection sources", () => {
     expect(expanded).toHaveLength(1);
     expect(expanded[0]!.paper).toMatchObject({ title: "Tutoring at scale", authors: ["Ada Lovelace", "Grace Hopper"], abstract: "What the library holds", publicationYear: 2021, venueName: "Journal of Tutoring", openalexId: "https://openalex.org/W1" });
     expect(expanded[0]!.bucketItem).toMatchObject({ source: "collection", title: "Tutoring at scale" });
+    // A file the browser named isn't the library paper's.
+    expect(expanded[0]!.paper.pdfUrl).toBeUndefined();
+    expect(expanded[0]!.paper.storageId).toBeUndefined();
   });
 
   it("reads only the person's own papers", async () => {
@@ -46,5 +51,15 @@ describe("a job's library and collection sources", () => {
 
     expect(rows.map((row) => row._id)).toEqual([adaPaper]);
     expect(grace).toBeDefined();
+  });
+
+  it("reads a job's library papers a bounded batch at a time", async () => {
+    const batches: number[] = [];
+    const ids = Array.from({ length: 250 }, (_, i) => `lib${i}`);
+    await readLibraryInBatches(ids, 100, async (batch) => {
+      batches.push(batch.length);
+      return [];
+    });
+    expect(batches).toEqual([100, 100, 50]);
   });
 });

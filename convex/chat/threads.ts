@@ -19,7 +19,8 @@ import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { assertCallerOwnsJob, authorizeThreadAccess } from "./auth";
 import { paperChat } from "./agent";
-import { dedupeExpandedSources, expandJobSources } from "../extraction/expandSources";
+import { dedupeExpandedSources, expandJobSources, readLibraryInBatches } from "../extraction/expandSources";
+import { LIBRARY_READ_BATCH } from "../extraction/queries/internal";
 import { assertBucketWithinLimits } from "../extraction/bucket/limits";
 import { replaceJobSources, type BucketItemInput } from "../extraction/jobSources";
 import type { PaperData } from "../extraction/types";
@@ -71,7 +72,8 @@ async function resolvePreparedSourcesFromItems(
       );
       return result as PaperData[];
     },
-    readLibraryItems: (ids) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { userId, ids }),
+    readLibraryItems: (ids) =>
+      readLibraryInBatches(ids, LIBRARY_READ_BATCH, (batch) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { userId, ids: batch })),
     resolveZoteroUserId: async () => {
       if (cachedZoteroUserId !== undefined) {
         return cachedZoteroUserId;

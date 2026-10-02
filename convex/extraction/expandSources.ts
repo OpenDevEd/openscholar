@@ -35,10 +35,15 @@ type ExpandSourceDeps = {
   readLibraryItems: (ids: string[]) => Promise<LibraryPaper[]>;
 };
 
-/** A library or collection source with the paper as the person's library holds it, not the browser's copy. */
+/**
+ * A library or collection source with the paper as the person's library holds it, not the
+ * browser's copy. File references the browser sent are dropped: a library paper has none.
+ */
 function fromLibrary(item: BucketItemInput, row: LibraryPaper): BucketItemInput {
   return {
     ...item,
+    pdfUrl: undefined,
+    storageId: undefined,
     title: row.title,
     authors: splitLibraryAuthors(row.authors),
     year: row.publicationYear,
@@ -247,4 +252,11 @@ export function dedupeExpandedSources(
   }
 
   return Array.from(deduped.values());
+}
+
+/** Reads the person's library papers through `read`, a batch of `batch` ids at a time. */
+export async function readLibraryInBatches(ids: string[], batch: number, read: (ids: string[]) => Promise<LibraryPaper[]>) {
+  const rows: LibraryPaper[] = [];
+  for (let i = 0; i < ids.length; i += batch) rows.push(...(await read(ids.slice(i, i + batch))));
+  return rows;
 }

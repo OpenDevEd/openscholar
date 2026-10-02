@@ -310,6 +310,9 @@ export const getPapersDebug = internalQuery({
   },
 });
 
+/** Library papers one `ownedLibraryItems` read takes. */
+export const LIBRARY_READ_BATCH = 100;
+
 /** A library paper's fields a job's library and collection sources read. */
 const libraryPaperValidator = v.object({
   _id: v.id("libraryItems"),
@@ -333,7 +336,9 @@ export const ownedLibraryItems = internalQuery({
   args: { userId: v.id("users"), ids: v.array(v.string()) },
   returns: v.array(libraryPaperValidator),
   handler: async (ctx, { userId, ids }) => {
-    if (ids.length > PAPER_LIMIT) throw new Error(`A job reads at most ${PAPER_LIMIT} library papers`);
+    // A library row holds its paper's full JSON, so a read is bounded by count, well under
+    // Convex's 16 MiB a transaction: callers read a job's papers in batches of this size.
+    if (ids.length > LIBRARY_READ_BATCH) throw new Error(`Read at most ${LIBRARY_READ_BATCH} library papers at a time`);
     const rows = await Promise.all(
       ids.map((id) => {
         const itemId = ctx.db.normalizeId("libraryItems", id);

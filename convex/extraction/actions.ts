@@ -17,7 +17,8 @@ import {
   type PaperDataOut,
 } from "../../lib/openalex/work-mapper";
 import { readSearchWorks } from "../paperSets/openalex";
-import { dedupeExpandedSources, expandJobSources } from "./expandSources";
+import { dedupeExpandedSources, expandJobSources, readLibraryInBatches } from "./expandSources";
+import { LIBRARY_READ_BATCH } from "./queries/internal";
 import { OLD_SEARCH_MESSAGE } from "./jobSources";
 import { createError } from "../lib/errors";
 import {
@@ -264,7 +265,8 @@ export async function runFetchAndPersistPapers(
   let cachedZoteroUserId: string | undefined;
   const expandedSources = await expandJobSources(bucketItems, {
     fetchPapersFromHistory: (searchFilters) => runFetchPapersFromHistory(ctx, job.userId, searchFilters),
-    readLibraryItems: (ids) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { userId: job.userId, ids }),
+    readLibraryItems: (ids) =>
+      readLibraryInBatches(ids, LIBRARY_READ_BATCH, (batch) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { userId: job.userId, ids: batch })),
     resolveZoteroUserId: async () => {
       if (cachedZoteroUserId !== undefined) return cachedZoteroUserId;
       try {
