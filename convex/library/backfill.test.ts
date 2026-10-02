@@ -45,6 +45,11 @@ it("keeps the row's id in the work it stores when the API answers it by another 
   expect(await backfilled("https://openalex.org/W7", work)).toEqual({ ...work, id: "https://openalex.org/W7" });
 });
 
+it("keeps the row's id when neither id is a work id it can read", async () => {
+  const work = { id: "https://openscholar.ai/W7", display_name: "Paper" };
+  expect(await backfilled("https://example.org/W7", work)).toEqual({ ...work, id: "https://example.org/W7" });
+});
+
 it("stores OpenAlex's work as it is when it answers by the row's own id", async () => {
   const work = { id: "https://openalex.org/W8", display_name: "Paper" };
   expect(await backfilled("W8", work)).toEqual(work);

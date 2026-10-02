@@ -52,7 +52,8 @@ export const backfillPaperData = internalAction({
         const work = await response.json();
         // The OpenScholar API answers an OpenAlex id with its own OS id. The library knows the
         // paper by the row's id, and its cards read the stored work's id, so that keeps it.
-        const answeredOwnId = shortWorkId(String(work?.id ?? "")) === shortWorkId(item.openalexId);
+        const rowId = shortWorkId(item.openalexId);
+        const answeredOwnId = rowId !== null && shortWorkId(String(work?.id ?? "")) === rowId;
         const paperData = answeredOwnId ? work : { ...work, id: item.openalexId };
 
         // Patch the document with the full paperData
