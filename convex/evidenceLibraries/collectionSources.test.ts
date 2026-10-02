@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { convexTest } from "convex-test";
 import { expect, it } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 
 const modules = import.meta.glob("/convex/**/*.ts");
@@ -75,6 +75,27 @@ it("names a paper from the OpenScholar API by the OpenAlex id its stored work ho
   const items = (await read()).body.items as { openalexId: string | null; doi: string | null }[];
 
   expect(items.map(({ openalexId, doi }) => `${openalexId} ${doi}`).sort()).toEqual(["W7 null", "null 10.1/eight", "null null"]);
+});
+
+it("moves its version when a saved paper comes to be known by another OpenAlex id, and only then", async () => {
+  const { t, owner, collectionId, libraryId, ownerId, read } = await setup();
+  // Screening saves a paper without its stored work.
+  const screened = await t.run((ctx) => ctx.db.insert("libraryItems", { userId: ownerId, openalexId: "https://openscholar.ai/OS7", rating: 0, title: "OS7", searchableText: "OS7", savedAt: 1, updatedAt: 1 }));
+  await owner.mutation(api.evidenceLibraries.collectionSources.connectCollectionSource, { libraryId, collectionId });
+  await owner.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: screened });
+  const first = await read();
+  expect(first.body.items).toEqual([{ itemId: screened, openalexId: null, doi: null }]);
+  const stored = (openalex: string) => JSON.stringify({ id: "https://openscholar.ai/OS7", ids: { openalex } });
+
+  await t.mutation(internal.library.backfillMutations.patchPaperData, { itemId: screened, paperData: stored("https://openalex.org/W7") });
+  const backfilled = await read({ knownVersion: first.body.version });
+  expect(backfilled.body).toMatchObject({ unchanged: false, items: [{ itemId: screened, openalexId: "W7", doi: null }] });
+
+  await owner.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openscholar.ai/OS7", title: "OS7", paperData: stored("https://openalex.org/W7") });
+  expect((await read({ knownVersion: backfilled.body.version })).body).toMatchObject({ unchanged: true });
+
+  await owner.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openscholar.ai/OS7", title: "OS7", paperData: stored("https://openalex.org/W70") });
+  expect((await read({ knownVersion: backfilled.body.version })).body).toMatchObject({ unchanged: false, items: [{ itemId: screened, openalexId: "W70", doi: null }] });
 });
 
 it("lets only the collection's owner connect it, and stops serving it once they leave the organization", async () => {

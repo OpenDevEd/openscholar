@@ -2,6 +2,7 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
+import { touchCollectionsIfLookupChanged } from "./collectionMembership";
 
 /**
  * One page of library items, and which of them have no paperData yet. The backfill walks
@@ -33,9 +34,11 @@ export const patchPaperData = internalMutation({
     paperData: v.string(),
   },
   handler: async (ctx, args) => {
+    const item = await ctx.db.get("libraryItems", args.itemId);
     await ctx.db.patch("libraryItems", args.itemId, {
       paperData: args.paperData,
       updatedAt: Date.now(),
     });
+    if (item) await touchCollectionsIfLookupChanged(ctx, item, args.paperData);
   },
 });

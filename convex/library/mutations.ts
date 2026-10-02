@@ -11,7 +11,7 @@ import { applyCommand } from "../research/records";
 import { undoCommandValidator } from "../../lib/research/records";
 import { workUrl } from "../../lib/openalex/work-id";
 import { libraryCountRow, resolveLibraryCount } from "./counter";
-import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
+import { addCollectionMembership, removeCollectionMembership, touchCollectionsIfLookupChanged } from "./collectionMembership";
 import { followed, inFollowedCollection } from "./followed";
 import { authorDisplay, mergePaperMetadata } from "../../lib/library/paper-metadata";
 import { MAX_AUTHORS } from "../lib/listCaps";
@@ -129,6 +129,7 @@ export async function upsertLibraryItem(
       searchableText,
       updatedAt: Date.now(),
     });
+    if (paper.paperData !== undefined) await touchCollectionsIfLookupChanged(ctx, existing, paper.paperData);
     return existing._id;
   }
   const now = Date.now();
