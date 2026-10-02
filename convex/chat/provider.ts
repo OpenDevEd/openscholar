@@ -89,7 +89,12 @@ export async function resolveOpenRouterModel(
     pricing = p ?? { input: 0, output: 0 };
   }
 
-  const model = await getProviderModel("openrouter", undefined, modelSlug, {
+  return { model: await openRouterModel(modelSlug, options), modelSlug, pricing };
+}
+
+/** A catalog model the caller already read, wired through OpenRouter with the server's provider preferences. */
+export async function openRouterModel(modelSlug: string, options?: { generationIdSink?: GenerationIdSink }) {
+  return await getProviderModel("openrouter", undefined, modelSlug, {
     openrouterProviderOrder: SERVER_AI_CONFIG.openrouterProviderOrder,
     openrouterAllowFallbacks: SERVER_AI_CONFIG.openrouterAllowFallbacks,
     // Bills against providerMetadata.openrouter.usage.cost when
@@ -99,6 +104,4 @@ export async function resolveOpenRouterModel(
       ? { fetch: withGenerationIdCapture(options.generationIdSink) }
       : {}),
   });
-
-  return { model, modelSlug, pricing };
 }

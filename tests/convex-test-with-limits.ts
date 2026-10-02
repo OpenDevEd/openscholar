@@ -43,6 +43,7 @@ export function convexTest(schemaOrOptions?: Schema | Options, modules?: Modules
     } else registerShardedCounter(t as never, name);
   }
   if (/app\.use\(migrations\)/.test(config)) registerMigrations(t as never);
+  if (/app\.use\(batchWorker\)/.test(config)) registerBatchWorker(t as never, "batchWorker");
   return withTriggersInRun(t);
 }
 

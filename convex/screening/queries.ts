@@ -345,91 +345,43 @@ export const getScreeningResultsForExport = query({
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Load a screening job by ID from background context (no auth).
- *
- * Used by workpool actions and onComplete handlers where
- * there is no user identity available.
+ * Everything a Screen all paper's action needs, in one read: its job, the paper, the
+ * person (for analytics), their cached balance (bulk work runs while it has credits), and
+ * the job's model with its pricing.
  */
-export const getJobInternal = internalQuery({
-  args: { jobId: v.id("screeningJobs") },
+export const paperContext = internalQuery({
+  args: { jobId: v.id("screeningJobs"), resultId: v.id("screeningResults") },
   returns: v.union(
     v.null(),
     v.object({
-      _id: v.id("screeningJobs"),
-      userId: v.id("users"),
-      status: screeningJobStatusValidator,
-      totalPapers: v.number(),
-      processedPapers: v.number(),
-      failedPapers: v.number(),
-      qualifiedPapers: v.number(),
-      questions: v.array(screeningQuestionValidator),
-      scoringConfig: screeningScoringConfigValidator,
-      targetCollectionId: v.optional(v.id("collections")),
-      serverModelId: v.optional(v.id("models")),
-      serverEffort: v.optional(effortValidator),
-      createdAt: v.number(),
-      updatedAt: v.number(),
-    })
+      job: v.object({
+        userId: v.id("users"),
+        status: screeningJobStatusValidator,
+        totalPapers: v.number(),
+        questions: v.array(screeningQuestionValidator),
+        serverEffort: v.optional(effortValidator),
+      }),
+      paper: v.object({ title: v.string(), abstract: v.optional(v.string()), status: screeningResultStatusValidator }),
+      clerkId: v.string(),
+      balance: v.number(),
+      model: v.union(v.null(), v.object({ slug: v.string(), input: v.number(), output: v.number() })),
+    }),
   ),
-  handler: async (ctx, args) => {
-    const job = await ctx.db.get("screeningJobs", args.jobId);
-    if (!job) return null;
-    const progress = await readJobProgressSnapshot(ctx, job);
-
+  handler: async (ctx, { jobId, resultId }) => {
+    const [job, paper] = await Promise.all([ctx.db.get("screeningJobs", jobId), ctx.db.get("screeningResults", resultId)]);
+    if (!job || !paper) return null;
+    const [user, balance, model] = await Promise.all([
+      ctx.db.get("users", job.userId),
+      availableCredits(ctx, job.userId),
+      job.serverModelId ? ctx.db.get("models", job.serverModelId) : null,
+    ]);
+    if (!user) return null;
     return {
-      _id: job._id,
-      userId: job.userId,
-      status: job.status,
-      totalPapers: job.totalPapers,
-      processedPapers: progress.processedPapers,
-      failedPapers: progress.failedPapers,
-      qualifiedPapers: progress.qualifiedPapers,
-      questions: job.questions,
-      scoringConfig: job.scoringConfig,
-      targetCollectionId: job.targetCollectionId,
-      serverModelId: job.serverModelId,
-      serverEffort: job.serverEffort,
-      createdAt: job.createdAt,
-      updatedAt: job.updatedAt,
-    };
-  },
-});
-
-/**
- * Load a single screening result by ID from background context (no auth).
- *
- * Used by the workpool action to get paper details for AI screening.
- */
-export const getResultInternal = internalQuery({
-  args: { resultId: v.id("screeningResults") },
-  returns: v.union(
-    v.null(),
-    v.object({
-      _id: v.id("screeningResults"),
-      jobId: v.id("screeningJobs"),
-      openalexId: v.string(),
-      title: v.string(),
-      abstract: v.optional(v.string()),
-      authors: v.optional(v.array(v.string())),
-      publicationYear: v.optional(v.number()),
-      doi: v.optional(v.string()),
-      status: screeningResultStatusValidator,
-    })
-  ),
-  handler: async (ctx, args) => {
-    const result = await ctx.db.get("screeningResults", args.resultId);
-    if (!result) return null;
-
-    return {
-      _id: result._id,
-      jobId: result.jobId,
-      openalexId: result.openalexId,
-      title: result.title,
-      abstract: result.abstract,
-      authors: result.authors,
-      publicationYear: result.publicationYear,
-      doi: result.doi,
-      status: result.status,
+      job: { userId: job.userId, status: job.status, totalPapers: job.totalPapers, questions: job.questions, serverEffort: job.serverEffort },
+      paper: { title: paper.title, abstract: paper.abstract, status: paper.status },
+      clerkId: user.clerkId,
+      balance,
+      model: model ? { slug: model.modelId, input: model.inputPricePerMillion, output: model.outputPricePerMillion } : null,
     };
   },
 });

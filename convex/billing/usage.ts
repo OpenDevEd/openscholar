@@ -3,7 +3,8 @@ import { internalMutation, query } from "../lib/functions";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { usageKindValidator } from "./validators";
-import { insertUsage, jobSpace, spendSpace, usageAgg, userSpace } from "./usageLog";
+import { jobSpace, spendSpace, usageAgg, userSpace } from "./usageLog";
+import { insertUsage } from "./ledger";
 
 /**
  * Claims a Stripe charge's refunded total for reversal, one caller at a time.

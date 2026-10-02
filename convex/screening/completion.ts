@@ -20,18 +20,11 @@ type CompletionTransitionInput = {
   completedRowDetails?: CompletedScreeningRowDetails;
 };
 
-type CompletionTransitionBase = {
-  aggregateStatus: Extract<ScreeningResultStatus, "completed" | "failed" | "skipped">;
-  aggregateQualified: boolean;
-  scheduleQualifiedPersistence: boolean;
-  scheduleJobFinalization: boolean;
-};
-
 export type CompletionTransition =
   | {
       kind: "noop";
     }
-  | ({
+  | {
       kind: "patch";
       rowPatch:
         | ({
@@ -40,7 +33,7 @@ export type CompletionTransition =
         | {
             status: "failed" | "skipped";
           };
-    } & CompletionTransitionBase);
+    };
 
 export function deriveCompletionTransition(
   input: CompletionTransitionInput,
@@ -53,10 +46,6 @@ export function deriveCompletionTransition(
     return {
       kind: "patch",
       rowPatch: { status: "failed" },
-      aggregateStatus: "failed",
-      aggregateQualified: false,
-      scheduleQualifiedPersistence: false,
-      scheduleJobFinalization: true,
     };
   }
 
@@ -64,10 +53,6 @@ export function deriveCompletionTransition(
     return {
       kind: "patch",
       rowPatch: { status: "skipped" },
-      aggregateStatus: "skipped",
-      aggregateQualified: false,
-      scheduleQualifiedPersistence: false,
-      scheduleJobFinalization: true,
     };
   }
 
@@ -83,9 +68,5 @@ export function deriveCompletionTransition(
       status: "completed",
       ...input.completedRowDetails,
     },
-    aggregateStatus: "completed",
-    aggregateQualified: input.completedRowDetails.qualified,
-    scheduleQualifiedPersistence: input.completedRowDetails.qualified,
-    scheduleJobFinalization: true,
   };
 }

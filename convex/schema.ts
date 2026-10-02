@@ -483,8 +483,14 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_stripe_customer", ["stripeCustomerId"]),
   billingCatalog: defineTable({ ...billingCatalogValidator.fields, syncedAt: v.number() }),
-  billingUsage: defineTable(billingUsageFields)
+  billingUsage: defineTable({
+    ...billingUsageFields,
+    // Set when the charge is recorded, in commit order, while it waits for the ledger
+    // worker (convex/billing/ledger.ts), which clears it once it's counted.
+    queuedAt: v.optional(v.commitTs()),
+  })
     .index("by_charge", ["chargeId"])
+    .index("by_queuedAt", ["queuedAt"])
     .index("by_user_and_createdAt", ["userId", "createdAt"])
     .index("by_job", ["jobId"])
     .index("by_stripe_charge", ["stripeChargeId"]),
@@ -947,12 +953,24 @@ export default defineSchema({
     workId: v.optional(v.string()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
+    // Set when the paper finishes, in commit order, while it waits for the bookkeeping
+    // worker (convex/screening/bookkeeping.ts), which clears it.
+    doneAt: v.optional(v.commitTs()),
     errorMessage: v.optional(v.string()),
   })
     .index("by_job", ["jobId"])
     .index("by_job_status", ["jobId", "status"])
     .index("by_job_openalexId", ["jobId", "openalexId"])
-    .index("by_job_and_pendingAnswers", ["jobId", "pendingAnswers"]),
+    .index("by_job_and_pendingAnswers", ["jobId", "pendingAnswers"])
+    .index("by_doneAt", ["doneAt"]),
+  // A Screen all job's finished papers, counted by the bookkeeping worker alone.
+  screeningJobProgress: defineTable({
+    jobId: v.id("screeningJobs"),
+    completed: v.number(),
+    skipped: v.number(),
+    failed: v.number(),
+    qualified: v.number(),
+  }).index("by_job", ["jobId"]),
 
   // How many papers a person has saved. It has its own row, not a field on `users`, because
   // every mutation of the person's reads their user row: a bulk save rewriting it would make

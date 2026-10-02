@@ -1,0 +1,179 @@
+/**
+ * Screen all's bookkeeping, done in batches by one worker (`@convex-dev/batch-worker`), the
+ * way Firecrawl queues its billing operations and commits them from one batch process. A
+ * finished paper writes only its own result row, stamped with `doneAt`, and pings the queue.
+ * The worker then, a batch at a time:
+ * - counts the job's finished papers into its progress row, and finishes the job;
+ * - moves the papers' answers into the job's screening;
+ * - saves the qualified papers to the person's library.
+ * Papers finishing together never write the same document; only the worker writes these.
+ */
+import { defineBatchWorkerValidators, ping } from "@convex-dev/batch-worker";
+import { v } from "convex/values";
+import { components, internal } from "../_generated/api";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { internalMutation, internalQuery } from "../lib/functions";
+import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
+import { upsertLibraryItem } from "../library/mutations";
+import { addCollectionMembership } from "../library/collectionMembership";
+import { moveResultAnswers } from "./drain";
+import { SCREENING_TERMINAL_RESULT_STATUSES } from "./lifecycle";
+
+/** Papers per batch: each moves its answers and may save a library item, a few dozen reads. */
+const BATCH = 50;
+
+const { vQueryArgs, vQueryReturns, vMutationArgs } = defineBatchWorkerValidators({
+  batch: { results: v.array(v.id("screeningResults")) },
+});
+
+/** When a waiting paper finished; a read value is always the resolved timestamp. */
+const doneAtOf = (result: Doc<"screeningResults">) => result.doneAt as bigint | undefined;
+
+/** Wakes the worker for papers just stamped `doneAt`. Costs a read while it's already running. */
+export async function bookkeepLater(ctx: MutationCtx) {
+  await ping(ctx, components.batchWorker, {
+    name: "screening",
+    workQuery: internal.screening.bookkeeping.nextFinished,
+    workerMutation: internal.screening.bookkeeping.bookkeep,
+    // A burst of papers finishing together goes into one batch.
+    config: { debounceMs: 200 },
+  });
+}
+
+/**
+ * The next papers waiting to be bookkept, in commit order. The worker clears a paper's
+ * `doneAt` once it's handled, so the queue's index holds only waiting papers, and a scan
+ * from the last commit picks up papers that finished in it but didn't fit the batch.
+ */
+export const nextFinished = internalQuery({
+  args: vQueryArgs,
+  returns: vQueryReturns,
+  handler: async (ctx, { cursor }) => {
+    const rows = await ctx.db
+      .query("screeningResults")
+      .withIndex("by_doneAt", (q) => q.gte("doneAt", cursor ?? 0n))
+      .take(BATCH);
+    const last = rows.length ? doneAtOf(rows.at(-1)!) : undefined;
+    if (last === undefined) return { kind: "idle" as const };
+    return { kind: "work" as const, batch: { results: rows.map((row) => row._id) }, cursor: last };
+  },
+});
+
+type Counts = Pick<Doc<"screeningJobProgress">, "completed" | "skipped" | "failed" | "qualified">;
+const ZERO: Counts = { completed: 0, skipped: 0, failed: 0, qualified: 0 };
+
+function tally(results: Doc<"screeningResults">[]): Counts {
+  const counts = { ...ZERO };
+  for (const result of results) {
+    if (result.status === "completed" || result.status === "skipped" || result.status === "failed") counts[result.status]++;
+    if (result.status === "completed" && result.qualified === true) counts.qualified++;
+  }
+  return counts;
+}
+
+export async function progressRow(ctx: QueryCtx | MutationCtx, jobId: Id<"screeningJobs">) {
+  return await ctx.db
+    .query("screeningJobProgress")
+    .withIndex("by_job", (q) => q.eq("jobId", jobId))
+    .unique();
+}
+
+/**
+ * Counts a job's papers that are already bookkept, or finished before the worker kept its
+ * progress (both have no `doneAt`), and the papers in `batch`. Papers still waiting are
+ * counted when their batch comes.
+ */
+export async function countBookkept(ctx: QueryCtx | MutationCtx, jobId: Id<"screeningJobs">, batch: ReadonlySet<Id<"screeningResults">> = new Set()) {
+  const results = await ctx.db
+    .query("screeningResults")
+    .withIndex("by_job", (q) => q.eq("jobId", jobId))
+    .take(MAX_SCREENING_PAPERS_PER_JOB);
+  return tally(results.filter((result) => result.doneAt === undefined || batch.has(result._id)));
+}
+
+/** Adds a batch's papers to their job's progress; a job without progress yet is counted from its results. */
+async function countFinished(ctx: MutationCtx, jobId: Id<"screeningJobs">, results: Doc<"screeningResults">[]) {
+  const row = await progressRow(ctx, jobId);
+  if (!row) {
+    await ctx.db.insert("screeningJobProgress", { jobId, ...(await countBookkept(ctx, jobId, new Set(results.map((result) => result._id)))) });
+    return;
+  }
+  const add = tally(results);
+  await ctx.db.patch("screeningJobProgress", row._id, {
+    completed: row.completed + add.completed,
+    skipped: row.skipped + add.skipped,
+    failed: row.failed + add.failed,
+    qualified: row.qualified + add.qualified,
+  });
+}
+
+/** Saves a qualified paper to the person's library and the job's collection. */
+export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
+  const libraryItemId = await upsertLibraryItem(
+    ctx,
+    job.userId,
+    {
+      openalexId: result.openalexId,
+      title: result.title,
+      authors: result.authors?.join(", "),
+      doi: result.doi,
+      abstract: result.abstract,
+      publicationYear: result.publicationYear,
+    },
+    result.stars ?? 0,
+  );
+  const collection = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
+  if (collection) await addCollectionMembership(ctx, { userId: job.userId, collection, libraryItemId });
+  await ctx.db.patch("screeningResults", result._id, { savedToLibrary: true, libraryItemId });
+}
+
+/** Finishes a processing job once its progress counts every paper. */
+export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
+  const job = await ctx.db.get("screeningJobs", jobId);
+  const progress = await progressRow(ctx, jobId);
+  if (!job || job.status !== "processing" || !progress) return;
+  if (progress.completed + progress.skipped + progress.failed < job.totalPapers) return;
+  const now = Date.now();
+  await ctx.db.patch("screeningJobs", jobId, { status: "completed", completedAt: now, updatedAt: now });
+  const user = await ctx.db.get("users", job.userId);
+  if (user?.clerkId) {
+    await ctx.scheduler.runAfter(0, internal.lib.analytics.captureEvent, {
+      distinctId: user.clerkId,
+      event: "screening_job_completed",
+      properties: {
+        total_papers: job.totalPapers,
+        processed_papers: progress.completed + progress.skipped,
+        failed_papers: progress.failed,
+        qualified_papers: progress.qualified,
+        question_count: job.questions.length,
+        duration_ms: job.createdAt ? now - job.createdAt : 0,
+      },
+    });
+  }
+}
+
+/** One batch of finished papers: counts, answers, library saves, and finishing their jobs. */
+export const bookkeep = internalMutation({
+  args: vMutationArgs,
+  handler: async (ctx, { results: ids }) => {
+    const results = (await Promise.all(ids.map((id) => ctx.db.get("screeningResults", id)))).filter(
+      (result): result is Doc<"screeningResults"> =>
+        result !== null && result.doneAt !== undefined && SCREENING_TERMINAL_RESULT_STATUSES.includes(result.status as never),
+    );
+    const byJob = new Map<Id<"screeningJobs">, Doc<"screeningResults">[]>();
+    for (const result of results) byJob.set(result.jobId, [...(byJob.get(result.jobId) ?? []), result]);
+    for (const [jobId, jobResults] of byJob) {
+      const job = await ctx.db.get("screeningJobs", jobId);
+      if (!job) continue;
+      await countFinished(ctx, jobId, jobResults);
+      for (const result of jobResults) {
+        if (result.pendingAnswers) await moveResultAnswers(ctx, result);
+        if (result.status === "completed" && result.qualified === true && !result.libraryItemId) await saveQualified(ctx, job, result);
+        // Bookkept: out of the queue.
+        await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
+      }
+      await finishIfDone(ctx, jobId);
+    }
+  },
+});
