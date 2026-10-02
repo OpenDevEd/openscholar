@@ -2,9 +2,11 @@
 
 import { useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
-import { Ban, Check, ChevronDown, Coins, Folder, FolderMinus, FolderPlus, Hourglass, Plus, Sparkles, Trash2, Zap, type LucideIcon } from "lucide-react";
+import { Ban, Check, ChevronDown, Coins, Folder, FolderMinus, FolderPlus, Hourglass, ListChecks, Loader2, Plus, Sparkles, Trash2, Zap, type LucideIcon } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -14,7 +16,7 @@ import { getModelIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/chat/model-display";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { cn } from "@/lib/utils";
-import { BALANCE, CREDITS_PER_PAPER, QUESTIONS, SLOTS, SOURCES, maxScore, type Question, type Source } from "./data";
+import { BALANCE, CREDITS_PER_PAPER, GENERATED, QUESTIONS, SLOTS, SOURCES, maxScore, type Job, type Question, type Source } from "./data";
 import { Meter } from "./parts";
 import { SOURCE_ICON } from "./job-view";
 
@@ -30,7 +32,7 @@ const PAGE = 25;
 
 export type Setup = { source: Source; first: number; last: number; questions: Question[]; minScore: number; model: string; saveTo?: string; prune?: string };
 
-export function SetupView({ busy, onStart }: { busy: boolean; onStart: (setup: Setup) => void }) {
+export function SetupView({ busy, screenings, onStart }: { busy: boolean; screenings: Job[]; onStart: (setup: Setup) => void }) {
   const [kind, setKind] = useState<Source["kind"]>("search");
   const [sourceId, setSourceId] = useState(SOURCES.search[0]!.id);
   const source = SOURCES[kind].find((s) => s.id === sourceId) ?? SOURCES[kind][0]!;
@@ -38,6 +40,7 @@ export function SetupView({ busy, onStart }: { busy: boolean; onStart: (setup: S
   const [range, setRange] = useState<[number, number]>([1, 300]);
   const [questions, setQuestions] = useState<Question[]>(QUESTIONS.slice(0, 2));
   const [draft, setDraft] = useState("");
+  const [generating, setGenerating] = useState(false);
   const [minScore, setMinScore] = useState(2);
   const [dest, setDest] = useState<"none" | "new" | string>("new");
   const [newName, setNewName] = useState<string | null>(null);
@@ -71,6 +74,20 @@ export function SetupView({ busy, onStart }: { busy: boolean; onStart: (setup: S
     if (!text) return;
     setQuestions((qs) => [...qs, { key: `q${Date.now()}`, text, yes: 1, no: 0, unclear: 0 }]);
     setDraft("");
+  };
+  /** Adds questions not already asked, keeping their points. */
+  const adopt = (incoming: Question[]) =>
+    setQuestions((qs) => {
+      const asked = new Set(qs.map((q) => q.text.toLowerCase()));
+      return [...qs, ...incoming.filter((q) => !asked.has(q.text.toLowerCase())).map((q, i) => ({ ...q, key: `q${Date.now()}-${i}` }))];
+    });
+  const generate = () => {
+    setGenerating(true);
+    // Scripted: the real button calls the screening-question generator with the search's research question.
+    window.setTimeout(() => {
+      adopt(GENERATED);
+      setGenerating(false);
+    }, 1_500);
   };
   const points = (key: string, answer: "yes" | "no" | "unclear", value: number) =>
     setQuestions((qs) => qs.map((q) => (q.key === key ? { ...q, [answer]: value } : q)));
@@ -132,11 +149,6 @@ export function SetupView({ busy, onStart }: { busy: boolean; onStart: (setup: S
 
       <Zone
         label="Questions"
-        aside={
-          <Button variant="ghost" size="sm" className="h-7 text-xs">
-            <Sparkles className="text-primary" />Write from my research question
-          </Button>
-        }
       >
         <div className={LIST}>
           <div className="grid grid-cols-[1.5rem_1fr_repeat(3,3.25rem)_2rem] items-center gap-3 px-4 py-2 text-xs text-muted-foreground">
@@ -160,8 +172,30 @@ export function SetupView({ busy, onStart }: { busy: boolean; onStart: (setup: S
             </div>
           ))}
           <div className="flex items-center gap-2 px-4 py-2.5">
+            {/* As on a search's own screening panel: questions written from the search's research question. */}
+            {kind === "search" ? (
+              <Button variant="ai" size="sm" className="h-9 gap-1.5" onClick={generate} disabled={generating}>
+                {generating ? <Loader2 className="animate-spin" /> : <Sparkles />}Generate
+              </Button>
+            ) : null}
             <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQuestion()} placeholder="Add a question with a yes or no answer" className="h-9 flex-1" />
-            <Button variant="outline" size="sm" className="h-9" onClick={addQuestion} disabled={!draft.trim()}><Plus />Add</Button>
+            <ButtonGroup>
+              <Button variant="outline" size="sm" className="h-9" onClick={addQuestion} disabled={!draft.trim()}><Plus />Add</Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9"><ListChecks />Import<ChevronDown className="text-muted-foreground" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[26rem]">
+                  {screenings.map((j) => (
+                    <DropdownMenuItem key={j.id} onSelect={() => adopt(j.questions)} className="gap-3 py-2">
+                      <ListChecks className="text-muted-foreground" />
+                      <span className="min-w-0 flex-1 truncate">{j.name}</span>
+                      <Chip>{j.questions.length} questions</Chip>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </ButtonGroup>
           </div>
         </div>
       </Zone>

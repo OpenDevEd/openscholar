@@ -120,7 +120,7 @@ export function ScreeningMock() {
         }
       >
         {selected === "new" || !job ? (
-          <SetupView busy={starting} onStart={start} />
+          <SetupView busy={starting} screenings={jobs} onStart={start} />
         ) : (
           <JobView
             key={job.id}

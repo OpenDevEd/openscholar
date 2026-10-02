@@ -54,6 +54,13 @@ export const QUESTIONS: Question[] = [
   { key: "q3", text: "Does it report reading outcomes?", yes: 1, no: 0, unclear: 0 },
 ];
 
+/** What Generate writes for the mock's searches. */
+export const GENERATED: Question[] = [
+  { key: "g1", text: "Does it measure reading with a standardized assessment such as EGRA?", yes: 1, no: 0, unclear: 0 },
+  { key: "g2", text: "Is it set in sub-Saharan Africa?", yes: 1, no: 0, unclear: 0 },
+  { key: "g3", text: "Does the programme give teachers guides or coaching?", yes: 1, no: 0, unclear: 0 },
+];
+
 export const SOURCES: Record<Source["kind"], Source[]> = {
   search: [
     { kind: "search", id: "s1", label: "structured pedagogy early grade reading Africa", count: 61_634 },
