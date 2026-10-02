@@ -7,7 +7,7 @@ Milestone OS-18. Workflow rules live in the root `AGENTS.md` and
 
 On 2026-10-02, 73 public functions returned a list outside a pagination page
 (189 list paths counting nested ones), 71 database reads used `.collect()`, and
-7 places loaded every page into one array. Each grows with use until it hits
+12 places loaded every page into one array. Each grows with use until it hits
 Convex's limits or the browser's memory.
 
 ## Decisions (2026-10-02, the user)
