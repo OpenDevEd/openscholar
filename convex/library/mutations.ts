@@ -174,7 +174,7 @@ export const removeFromLibraryAction = defineUserMutation({
     const memberships = await ctx.db
       .query("libraryItemCollections")
       .withIndex("by_item", (q) => q.eq("libraryItemId", item._id))
-      .collect();
+      .take(MAX_COLLECTIONS_PER_USER);
     for (const membership of memberships) await removeCollectionMembership(ctx, membership);
     await countedWrite(ctx, userId, -1, () => ctx.db.delete("libraryItems", item._id));
     await setResearchRating(ctx, userId, item.openalexId, null, author);
