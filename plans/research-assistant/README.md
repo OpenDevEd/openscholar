@@ -132,8 +132,11 @@ everything a user can, calling the same actions as the UI:
     hold per reply, settled the same way. Screen all started from the page
     keeps its per-item `track` with no hold. Reason: #395 moved every charge
     onto Autumn's lock-confirm flow; combining a parent hold with per-item
-    tracks would deduct the same usage twice. Proof: #395, #405, and the
-    review of PR #414.
+    tracks would deduct the same usage twice. Proof: #395, #405, the review
+    of PR #414, and Firecrawl, which does both the same way: a monitor check
+    locks its estimate for an hour and confirms the lock once with the pages'
+    actual total (`apps/api/src/services/monitoring/runner.ts`), while a
+    crawl bills each page through batch billing with no lock.
   - New: what reaches the model is exactly what a registry entry's `returns`
     validator declares. `check:convex-rules` fails on any function that can
     return a field its validator doesn't declare, so an internal column can't
@@ -149,14 +152,21 @@ everything a user can, calling the same actions as the UI:
     with only the fields Screen all keeps, in five parallel pages, take about
     2 s. Proof: timed against the OpenAlex API on 2026-10-02. The user chose
     the waiting button the same day.
-  - Was: "how many screening jobs run at once per plan" (#335). Now: each plan
-    sets how many jobs one person runs at once, further jobs wait in a queue,
-    and one dispatcher per pool shares its slots across the running jobs, each
-    job's window being its share of the pool. Reason: the pools are shared by
-    everyone (Screen all 20 papers at a time, extraction 40). Screen all
+  - Was: "how many screening jobs run at once per plan" (#335). Now, copied
+    from Firecrawl: there's no limit on jobs. Each person has a limit on
+    papers running at once, set by their plan's `concurrency` balance in
+    Autumn. A job's papers beyond it wait in that person's queue, oldest
+    first, and each paper that finishes starts the next one. A job may also
+    set a lower cap of its own. The shared pools stay as the backend's total
+    capacity, with every person's limit below it. Reason: the pools are shared
+    by everyone (Screen all 20 papers at a time, extraction 40). Screen all
     enqueues every paper of a job when it's created, and extraction's
-    dispatcher gives a single job a window as large as the whole pool, so in
-    both a second person's job waits behind the first one's papers.
+    dispatcher gives one job a window as large as the whole pool, so in both a
+    second person's job waits behind the first one's papers. Proof:
+    Firecrawl's per-team semaphore and queue (`apps/api/src/lib/concurrency-limit.ts`:
+    `getEffectiveConcurrencyLimit` reads Autumn's `CONCURRENCY` balance,
+    `concurrentJobDone` promotes queued work while the team is under it, and
+    `maxConcurrency` caps a single crawl).
   - Was: the plan treated shared dev as disposable development data. Now:
     shared dev is the live deployment. Migrations run there, and its data is
     user data, so #325 moves existing chat threads into assistant threads
@@ -294,7 +304,8 @@ Everything else arrives through tools:
   Clerk session, so a Convex action such as the #341 resolver would bypass
   it. The limit moves into Convex, keyed by the acting user, on
   `@convex-dev/rate-limiter`, and the Next.js actions and Convex actions both
-  spend from it. Each turn has an OpenAlex request budget on top, and a count
+  spend from it. Firecrawl does the same with `rate-limiter-flexible` on
+  Redis, keyed by team (`apps/api/src/services/rate-limiter.ts`). Each turn has an OpenAlex request budget on top, and a count
   check asks for one result, not a page.
 
 ### View context (#327)
@@ -310,14 +321,15 @@ once. A live card renders from the job's progress rows (`screeningJobProgress`,
 `extractionJobCounts`), which the batch workers keep. Completion adds a thread
 event as its own row, written by the step that finishes the job (`finishIfDone`
 in Screen all's bookkeeping, the counts worker in extraction), never by each
-paper. The assistant writes a readout. Each plan sets how many jobs a person
-runs at once; further jobs wait in a queue (#335). One dispatcher per pool
-shares its slots across the running jobs, so each job's window is its share
-of the pool and one person's 1,000 papers don't hold it for everyone else.
-Extraction's dispatcher (`convex/extraction/queue/dispatcher.ts`) already
-refills per-job windows from a batch worker, but sizes each window as the whole
-pool (`EXTRACTION_PAPER_CONCURRENCY`); it changes to the share, and Screen all
-moves onto the same dispatcher instead of enqueuing every paper at creation. A queued job checks
+paper. The assistant writes a readout. Jobs are never refused for being too
+many (#335). Each person can have a limited number of papers running at once,
+set by their plan's `concurrency` balance in Autumn. A job's papers wait in that
+person's queue, and the batch worker that does a job's bookkeeping starts the
+next queued papers whenever that person is under their limit, as Firecrawl's
+`concurrentJobDone` does. Extraction's dispatcher
+(`convex/extraction/queue/dispatcher.ts`) already refills from a batch worker,
+per job; it changes to refill per person. Screen all moves onto the same
+dispatcher instead of enqueuing every paper at creation. A queued job checks
 credits, access and limits again when it starts, and a periodic sweep starts
 queued jobs nothing woke. Extraction results are analysed on the server with
 filter, group and count, so a comparison covers every row rather than the
@@ -441,7 +453,7 @@ its place in the order.
 | 8 | #325 Extraction only, chat from a search | #322, #324 |
 | 9 | #326 Context budget | #324 |
 | 10 | #327 Tools for searches, shortcuts, collections, saved papers, ratings, view, account search and the @ picker | #322, #323, #326, #342 |
-| 11 | #335 Screening limits per plan, with a queue | #334 |
+| 11 | #335 Papers at once per plan, with a queue | #334 |
 | 12 | #328 Screening and extraction with approval and job cards | #327, #334, #335, #341 |
 | 13 | #329 Evidence Library drafts, homepage and publishing | #327, new-el#465 |
 | 14 | #346 The assistant panel on every page | #324, #327 |
@@ -538,8 +550,9 @@ Later, without issues yet:
   is offered only on models that pass the eval set.
 - **Shared limits.** OpenAlex allowances are per account and the job pools are
   shared by everyone. A tool loop can spend a person's OpenAlex allowance, and
-  one large job can hold a pool. Turns have an OpenAlex budget, and each pool's
-  dispatcher splits its slots across running jobs behind per-plan queues (#335).
+  one large job can hold a pool. Turns have an OpenAlex budget, and every
+  person's papers run under their plan's concurrency limit, below the pool's
+  size (#335).
 - **Cost of long agent loops.** Each turn has a step and credit cap, and the
   running cost is shown.
 - **Registry coverage.** The exempt list must shrink over time. A permanent
