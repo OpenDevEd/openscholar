@@ -68,7 +68,7 @@ export function NavbarIconPicker({
   id: string;
   value: NavIcon | "";
   onChange: (icon: NavIcon | "") => void;
-  /** What the trigger says while no icon is chosen. */
+  /** What the trigger and the clearing row say while no icon is chosen. */
   placeholder?: string;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.links");
@@ -119,7 +119,7 @@ export function NavbarIconPicker({
       emptyLabel={t("iconPicker.empty")}
       noMatchLabel={t("iconPicker.noMatch")}
       notSetUpLabel={t("iconPicker.empty")}
-      noneLabel={t("noIcon")}
+      noneLabel={placeholder ?? t("noIcon")}
     />
   );
 }

@@ -492,7 +492,7 @@ function TimelinePreview({ steps, team }: { steps: HomeStepDraft[]; team: TeamPe
                 ) : null}
                 {step.type === "publication" ? <span className="underline underline-offset-2">DOI</span> : null}
                 {STEP_TYPES[step.type].example ?? null}
-                {step.type === "text" && step.figureValue ? (
+                {step.type === "text" && step.figureValue.trim() && step.figureLabel.trim() ? (
                   <span className="block">
                     <span className="block text-base font-semibold text-foreground">{step.figureValue}</span>
                     {step.figureLabel}

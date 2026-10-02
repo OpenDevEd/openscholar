@@ -136,8 +136,9 @@ function ownerRuleIssues(
       }
     });
   }
-  // The runtime's one rule the schema cannot state: a text-only step is only
-  // its name and words, so it needs a name.
+  // The runtime's rules the schema cannot state: a text-only step is only its
+  // name and words, so it needs a name; and only a text step carries a figure
+  // its owner writes, since the others count their own.
   const steps =
     sectionKey === "home" ? objectValue(record?.curation)?.steps : undefined;
   if (Array.isArray(steps)) {
@@ -152,6 +153,14 @@ function ownerRuleIssues(
           section: "home",
           keyword: "required",
           message: "A text-only step needs a name.",
+        });
+      }
+      if (step?.type !== "text" && step?.figure !== undefined) {
+        issues.push({
+          pointer: `/home/curation/steps/${index}/figure`,
+          section: "home",
+          keyword: "not",
+          message: "Only a text step carries its own figure.",
         });
       }
     });
