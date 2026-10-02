@@ -174,6 +174,7 @@ import type * as extraction_expandSources from "../extraction/expandSources.js";
 import type * as extraction_index from "../extraction/index.js";
 import type * as extraction_jobCounters from "../extraction/jobCounters.js";
 import type * as extraction_jobSources from "../extraction/jobSources.js";
+import type * as extraction_legacyCounts from "../extraction/legacyCounts.js";
 import type * as extraction_listProjection from "../extraction/listProjection.js";
 import type * as extraction_mutations from "../extraction/mutations.js";
 import type * as extraction_mutations_evidence from "../extraction/mutations/evidence.js";
@@ -504,6 +505,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/index": typeof extraction_index;
   "extraction/jobCounters": typeof extraction_jobCounters;
   "extraction/jobSources": typeof extraction_jobSources;
+  "extraction/legacyCounts": typeof extraction_legacyCounts;
   "extraction/listProjection": typeof extraction_listProjection;
   "extraction/mutations": typeof extraction_mutations;
   "extraction/mutations/evidence": typeof extraction_mutations_evidence;
