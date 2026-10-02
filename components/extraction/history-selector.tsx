@@ -31,22 +31,32 @@ function historyBucketKey(entry: SearchResult): string {
 function HistoryRowChip({
   entry,
   cap,
+  limit,
   defaultCount,
 }: {
   entry: SearchResult;
   cap: number;
+  limit: number;
   defaultCount: number;
 }) {
   const bucketKey = historyBucketKey(entry);
   const paperCount = useBucketStore(
     (s) => s.items[bucketKey]?.paperCount ?? 0,
   );
+  // The rest of the bucket, counted as the bucket indicator counts it: a row can only take
+  // what's left of the job's limit.
+  const others = useBucketStore((s) =>
+    s.order.reduce((n, k) => {
+      const item = s.items[k];
+      return k !== bucketKey && item?.status === "ready" ? n + (item.paperCount ?? 1) : n;
+    }, 0),
+  );
   return (
     <CountChip
       entry={entry}
       bucketKey={bucketKey}
       paperCount={paperCount}
-      cap={cap}
+      cap={Math.max(0, Math.min(cap, limit - others))}
       defaultCount={defaultCount}
     />
   );
@@ -196,6 +206,7 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
                 <HistoryRowChip
                   entry={entry}
                   cap={pullCap}
+                  limit={limit}
                   defaultCount={pullDefault}
                 />
               </div>

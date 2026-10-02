@@ -54,3 +54,21 @@ it("reads the chosen number of papers across pages with OpenScholar's key, spend
   const day = await t.run(async (ctx) => (await ctx.db.query("rateLimits").collect()).find((row) => row.name === "openalex-day"));
   expect(day?.value).toBe(20_000 - 3);
 });
+
+it("spends one request per cursor page actually read, so a search that runs out early isn't charged its whole limit", async () => {
+  const { t, userId } = await setup();
+  vi.stubGlobal("fetch", vi.fn(async (input: string | URL) => {
+    requests.push(new URL(String(input)));
+    return Response.json({ meta: { count: 50, next_cursor: null }, results: Array.from({ length: 50 }, (_, i) => ({ id: `https://openalex.org/W${i + 1}`, display_name: `Paper ${i + 1}` })) });
+  }));
+
+  const papers = await t.action(internal.extraction.actions.fetchPapersFromHistory, {
+    userId,
+    searchFilters: { query: "tutor", openAlexQuery: { filter: "title_and_abstract.search:tutor", sort: "cited_by_count:desc" }, limit: 1000 },
+  });
+
+  expect(papers).toHaveLength(50);
+  expect(requests).toHaveLength(1);
+  const day = await t.run(async (ctx) => (await ctx.db.query("rateLimits").collect()).find((row) => row.name === "openalex-day"));
+  expect(day?.value).toBe(20_000 - 1);
+});

@@ -64,18 +64,28 @@ async function readPage<Work>(request: SearchRequest, at: Page, select: string):
 
 /**
  * Works up to the `last` (counting from 1), from page `firstPage` on. Numbered pages in
- * parallel when they keep the results page's order; otherwise the cursor pages it reads,
- * one after another from the start.
+ * parallel when they keep the results page's order, spent for together first; otherwise the
+ * cursor pages it reads, one after another from the start, each spent for just before it's
+ * asked, so a search that runs out early spends only the pages it had.
  */
-async function readWorks<Work>(request: SearchRequest, firstPage: number, last: number, select: string): Promise<{ works: Work[]; offset: number }> {
+async function readWorks<Work>(
+  request: SearchRequest,
+  firstPage: number,
+  last: number,
+  select: string,
+  spend: (pages: number) => Promise<boolean>,
+): Promise<{ works: Work[]; offset: number }> {
+  const limited = () => createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
   if (request.sort === PAGE_ORDERED_SORT) {
     const pages = Array.from({ length: Math.ceil(last / PAGE_SIZE) - firstPage + 1 }, (_, i) => firstPage + i);
+    if (!(await spend(pages.length))) throw limited();
     const read = await Promise.all(pages.map((page) => readPage<Work>(request, { page }, select)));
     return { works: read.flatMap((page) => page.works), offset: (firstPage - 1) * PAGE_SIZE };
   }
   const works: Work[] = [];
   let cursor: string | null = "*";
   while (cursor && works.length < last) {
+    if (!(await spend(1))) throw limited();
     const page: { works: Work[]; nextCursor: string | null } = await readPage<Work>(request, { cursor }, select);
     works.push(...page.works);
     cursor = page.nextCursor;
@@ -85,8 +95,8 @@ async function readWorks<Work>(request: SearchRequest, firstPage: number, last: 
 
 /**
  * Works `first` to `last` (counting from 1) of the search, in its results page's order, with
- * only the `select`ed fields. `spend` counts the pages against the acting person's OpenAlex
- * allowance first, and nothing is asked when it says no.
+ * only the `select`ed fields. `spend` counts pages against the acting person's OpenAlex
+ * allowance before they're asked, and nothing more is asked when it says no.
  */
 export async function readSearchWorks<Work>(
   request: SearchRequest,
@@ -95,9 +105,6 @@ export async function readSearchWorks<Work>(
 ): Promise<Work[]> {
   // Cursor pages are read from the start; numbered pages from the range's first page.
   const firstPage = request.sort === PAGE_ORDERED_SORT ? Math.floor((first - 1) / PAGE_SIZE) + 1 : 1;
-  if (!(await spend(Math.ceil(last / PAGE_SIZE) - firstPage + 1))) {
-    throw createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
-  }
-  const { works, offset } = await readWorks<Work>(request, firstPage, last, select);
+  const { works, offset } = await readWorks<Work>(request, firstPage, last, select, spend);
   return works.slice(first - 1 - offset, last - offset);
 }
