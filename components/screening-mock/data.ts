@@ -8,7 +8,8 @@ export type Question = { key: string; text: string; yes: number; no: number; unc
 export type Outcome = "included" | "unclear" | "excluded" | "failed";
 
 export type Source =
-  | { kind: "search"; id: string; label: string; count: number }
+  /** A search keeps the screening questions set on its own panel. */
+  | { kind: "search"; id: string; label: string; count: number; questions: Question[] }
   | { kind: "collection"; id: string; label: string; count: number }
   | { kind: "saved"; id: string; label: string; count: number }
   | { kind: "screening"; id: string; label: string; count: number };
@@ -63,9 +64,18 @@ export const GENERATED: Question[] = [
 
 export const SOURCES: Record<Source["kind"], Source[]> = {
   search: [
-    { kind: "search", id: "s1", label: "structured pedagogy early grade reading Africa", count: 61_634 },
-    { kind: "search", id: "s2", label: "teacher coaching cost-effectiveness", count: 4_238 },
-    { kind: "search", id: "s3", label: "mother tongue instruction literacy", count: 12_907 },
+    { kind: "search", id: "s1", label: "structured pedagogy early grade reading Africa", count: 61_634, questions: QUESTIONS },
+    {
+      kind: "search",
+      id: "s2",
+      label: "teacher coaching cost-effectiveness",
+      count: 4_238,
+      questions: [
+        { key: "c1", text: "Does it report the programme's cost per pupil?", yes: 2, no: 0, unclear: 1 },
+        { key: "c2", text: "Do trained coaches visit the teachers?", yes: 1, no: 0, unclear: 0 },
+      ],
+    },
+    { kind: "search", id: "s3", label: "mother tongue instruction literacy", count: 12_907, questions: [] },
   ],
   collection: [
     { kind: "collection", id: "c1", label: "Early grade reading trials", count: 143 },

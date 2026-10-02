@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
-import { Ban, Check, ChevronDown, Coins, Folder, FolderMinus, FolderPlus, Hourglass, ListChecks, Loader2, Plus, Sparkles, Trash2, Zap, type LucideIcon } from "lucide-react";
+import { Ban, Check, CircleCheck, Coins, Folder, FolderMinus, FolderPlus, Hourglass, ListChecks, Loader2, Minus, Plus, Sparkles, Trash2, Zap, type LucideIcon } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ModelPicker } from "@/components/models/model-picker";
-import { getModelIcon } from "@/components/icons/provider-icons";
-import { stripProviderPrefix } from "@/lib/chat/model-display";
+import { NODE_H, NodeCard } from "@/components/settings/model-map";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { cn } from "@/lib/utils";
 import { BALANCE, CREDITS_PER_PAPER, GENERATED, QUESTIONS, SLOTS, SOURCES, maxScore, type Job, type Question, type Source } from "./data";
@@ -53,8 +52,14 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
   const credits = Math.ceil(papers * CREDITS_PER_PAPER);
   const enough = credits <= BALANCE;
   const max = maxScore(questions);
-  const from = kind === "screening" ? screenings.find((j) => j.id === source.id) : undefined;
-  const imported = !!from && from.questions.every((q) => questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase()));
+  // Questions the source already has: a search's own screening questions, or an earlier screening's.
+  const from =
+    source.kind === "search"
+      ? source.questions.length ? { name: "this search", questions: source.questions } : undefined
+      : source.kind === "screening"
+        ? screenings.find((j) => j.id === source.id)
+        : undefined;
+  const fresh = from?.questions.filter((q) => !questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase())) ?? [];
   const defaultName = source.kind === "screening" ? source.label : `Included in ${source.label}`;
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
   const target = kind === "collection" && dest === source.id ? "new" : dest;
@@ -62,7 +67,6 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
 
   const catalog = useQuery(api.models.queries.listCatalogOptions, {});
   const model = catalog?.find((row) => row.modelId === modelId);
-  const Brand = getModelIcon(modelId);
 
   const pick = (k: Source["kind"]) => {
     setKind(k);
@@ -150,18 +154,21 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
       <Zone
         label="Questions"
         aside={
-          // What the papers come from decides the shortcut: a search has a research question
-          // to write questions from; an earlier screening has questions to reuse.
-          kind === "search" ? (
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={generate} disabled={generating}>
-              {generating ? <Loader2 className="animate-spin text-primary" /> : <Sparkles className="text-primary" />}Generate from the search's research question
-            </Button>
-          ) : from ? (
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => adopt(from.questions)} disabled={imported}>
-              <ListChecks className="text-primary" />
-              {imported ? `Imported from ${from.name}` : `Import the ${from.questions.length} questions from ${from.name}`}
-            </Button>
-          ) : null
+          // What the papers come from decides the shortcuts: a search has a research question to
+          // write questions from, and a search or an earlier screening has questions to reuse.
+          <span className="flex items-center gap-1">
+            {from ? (
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => adopt(fresh)} disabled={!fresh.length}>
+                <ListChecks className="text-primary" />
+                {fresh.length ? `Import ${fresh.length} ${fresh.length === 1 ? "question" : "questions"} from ${from.name}` : `Imported from ${from.name}`}
+              </Button>
+            ) : null}
+            {kind === "search" ? (
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={generate} disabled={generating}>
+                {generating ? <Loader2 className="animate-spin text-primary" /> : <Sparkles className="text-primary" />}Generate from its research question
+              </Button>
+            ) : null}
+          </span>
         }
       >
         <div className={LIST}>
@@ -194,33 +201,50 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
 
       <div className="grid gap-8 md:grid-cols-2">
         <Zone label="Keep">
-          <div className="space-y-4 rounded-2xl border border-border/60 p-4">
-            <div className="flex items-center gap-3">
-              <span className="flex-1 text-sm">Included at</span>
-              <Input type="number" min={0} max={max} value={minScore} onChange={(e) => setMinScore(Number(e.target.value))} aria-label="Points to be included" className="h-8 w-16 text-center tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
-              <span className="whitespace-nowrap text-sm text-muted-foreground">of {max} points</span>
-            </div>
-            <Meter value={minScore} max={max} />
+          <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-3" style={{ height: NODE_H }}>
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+              <CircleCheck className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1 space-y-1.5">
+              <span className="block truncate text-sm font-semibold">
+                Included at <span className="tabular-nums">{minScore}</span> <span className="font-normal text-muted-foreground">of {max} points</span>
+              </span>
+              {/* One step per point; the lit ones are the scores that get a paper in. */}
+              <span className="flex gap-1" aria-hidden>
+                {Array.from({ length: max }, (_, i) => (
+                  <span key={i} className={cn("h-1.5 flex-1 rounded-full transition-colors", i + 1 >= minScore ? "bg-primary" : "bg-foreground/10")} />
+                ))}
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1">
+              <Button variant="ghost" size="icon" className="size-8" aria-label="One point fewer" disabled={minScore <= 1} onClick={() => setMinScore(minScore - 1)}><Minus /></Button>
+              <Button variant="ghost" size="icon" className="size-8" aria-label="One point more" disabled={minScore >= max} onClick={() => setMinScore(minScore + 1)}><Plus /></Button>
+            </span>
           </div>
         </Zone>
 
         <Zone label="Model">
-          <div className="space-y-3 rounded-2xl border border-border/60 p-4">
-            <ModelPicker
-              align="start"
-              tasks={["screenAll"]}
-              current={model && { id: model.modelId, reasoningEfforts: model.reasoningEfforts, defaultEffort: model.defaultEffort }}
-              onChange={(m) => setModelId(m.id)}
-              trigger={
-                <Button variant="outline" className="h-11 w-full justify-start gap-3 rounded-xl px-3">
-                  <Brand className="size-4" />
-                  <span className="flex-1 truncate text-left font-medium">{model ? stripProviderPrefix(model.name) : "Jev 1.13"}</span>
-                  <ChevronDown className="size-4 text-muted-foreground" />
-                </Button>
-              }
-            />
-            <p className="text-xs text-muted-foreground">Your Screen all pick in AI settings. Jev answers each paper in one call.</p>
-          </div>
+          <ModelPicker
+            align="start"
+            tasks={["screenAll"]}
+            current={model && { id: model.modelId, reasoningEfforts: model.reasoningEfforts, defaultEffort: model.defaultEffort }}
+            onChange={(m) => setModelId(m.id)}
+            trigger={
+              <NodeCard
+                interactive
+                paidBy="credits"
+                model={{
+                  id: modelId,
+                  name: model?.name ?? "Jev 1.13",
+                  inputPricePerMillion: model?.inputPricePerMillion ?? 0,
+                  outputPricePerMillion: model?.outputPricePerMillion ?? 0,
+                  unpriced: !model,
+                  reasoningEfforts: model?.reasoningEfforts,
+                  effort: model?.defaultEffort,
+                }}
+              />
+            }
+          />
         </Zone>
       </div>
 
