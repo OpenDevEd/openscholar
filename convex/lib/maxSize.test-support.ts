@@ -8,6 +8,7 @@ import type { Id, TableNames } from "../_generated/dataModel";
 import { PAPER_LIMIT } from "../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { foldCounts } from "../extraction/counts.test-support";
 
 type Test = ReturnType<typeof convexTest>;
 
@@ -72,6 +73,8 @@ export async function seedExtractionJob(t: Test, userId: Id<"users">, { papers =
     citations: [], citationStatus: "best_effort", attemptCount: 1, creditsUsed: 1, processedAt: 1,
     ...(failed ? { status: "failed", billed: false, lastError: { code: "rate_limit", message: "429", at: 1 } } : { status: "completed", billed: true }),
   }))), 500);
+  // As the counts worker leaves a job: its count changes folded into its counts row.
+  await foldCounts(t);
   return { jobId, paperIds, questionKeys: keys };
 }
 
