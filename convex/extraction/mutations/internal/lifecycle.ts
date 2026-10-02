@@ -25,6 +25,7 @@ import {
   sourceTypeValidator,
 } from "../../validators";
 import { readJobCounters } from "../../jobCounters";
+import { hasWaitingChanges } from "../../counts";
 
 export const maybeFinalizeJob = internalMutation({
   args: {
@@ -75,6 +76,9 @@ export const maybeFinalizeJob = internalMutation({
       return null;
     }
 
+    // The counts worker hasn't folded every change yet; it checks again once it has, when
+    // the counts row alone is exact (../../counts.ts).
+    if (await hasWaitingChanges(ctx, args.jobId)) return null;
     const { processed, failed } = await readJobCounters(ctx, args.jobId);
 
     // Tier B: when the job is still mid-flight, do not patch the row.
