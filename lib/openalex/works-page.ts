@@ -1,5 +1,6 @@
 import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
 import type { SearchParameters, Works } from "@sickrin/openalex-sdk/dist/src/types/work";
+import { withinTimeLimit } from "./time-limit";
 import { worksPageSchema } from "./work-schema";
 import { worksUrl } from "./works-url";
 
@@ -13,11 +14,6 @@ const RETRIED_STATUSES = new Set([429, 500, 502, 503, 504]);
 /** The SDK's tries, and the wait between them. */
 const ATTEMPTS = 5;
 const RETRY_DELAY_MS = 1_000;
-/**
- * How long a page may take in all, its tries, waits and reading included: well past the
- * OpenScholar API's own 30 s for a request, where the SDK had no limit.
- */
-const TOTAL_BUDGET_MS = 60_000;
 
 const FAILED = { ok: false, status: null, message: "Search request failed" } as const;
 const TIMED_OUT = { ok: false, status: null, message: "Search request timed out" } as const;
@@ -71,16 +67,10 @@ function reasonOf(body: unknown, status: number) {
  * drops the body of a failure, the message the search page shows. Like the SDK, it asks
  * again after a rate limit or a passing server failure, and those tries are not counted
  * against the caller's allowance, as the SDK's were not; unlike it, it gives up after
- * TOTAL_BUDGET_MS in all. Server side only: it reads the key.
+ * WORKS_TIME_LIMIT_MS in all. Server side only: it reads the key.
  */
 export async function fetchWorksPage(parameters: SearchParameters & { perPage: number }): Promise<WorksPageResult> {
-  const deadline = new AbortController();
-  const timer = setTimeout(() => deadline.abort(), TOTAL_BUDGET_MS);
-  try {
-    return await readPage(worksUrl(parameters, { per_page: String(parameters.perPage), cursor: "*" }), deadline.signal);
-  } finally {
-    clearTimeout(timer);
-  }
+  return withinTimeLimit((signal) => readPage(worksUrl(parameters, { per_page: String(parameters.perPage), cursor: "*" }), signal));
 }
 
 /** The page at `url`, or why there is none, read before `signal` aborts. */
