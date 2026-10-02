@@ -283,6 +283,14 @@ describe("classifyUnknownError — context bounds", () => {
     }
   });
 
+  it("R16: a truncated context full of characters JSON escapes still fits", () => {
+    // The preview is serialized JSON, so storing it escapes every quote and backslash again.
+    const err = Object.assign(new Error("quoted context"), { payload: { detail: '"\\'.repeat(3000) } });
+    const result = classifyUnknownError(err);
+    expect(result.context).toMatchObject({ _truncated: true });
+    expect(JSON.stringify(result.context).length).toBeLessThanOrEqual(4096);
+  });
+
   it("R16: small structured context is preserved as-is", () => {
     const err = Object.assign(new Error("small ctx"), {
       payload: { paperId: "abc-123", attempt: 2 },

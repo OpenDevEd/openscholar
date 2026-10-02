@@ -319,11 +319,15 @@ function captureContext(source: Record<string, unknown> | undefined): unknown {
   }
   if (serialized === "{}" || serialized === "null") return undefined;
   if (serialized.length <= CONTEXT_BYTE_CAP) return ownProps;
-  return {
-    _truncated: true,
-    preview: serialized.slice(0, CONTEXT_BYTE_CAP - 200),
-    originalLength: serialized.length,
-  };
+  // The preview is itself JSON, so storing it escapes its quotes and backslashes again:
+  // shorten it until the whole truncated context fits once serialized.
+  let length = CONTEXT_BYTE_CAP - 200;
+  for (;;) {
+    const truncated = { _truncated: true, preview: serialized.slice(0, length), originalLength: serialized.length };
+    const over = JSON.stringify(truncated).length - CONTEXT_BYTE_CAP;
+    if (over <= 0) return truncated;
+    length = Math.max(0, length - over);
+  }
 }
 
 function extractClassifiableMessage(
