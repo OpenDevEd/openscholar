@@ -1,4 +1,5 @@
 import { v, type Infer } from "convex/values";
+import { format, parseISO } from "date-fns";
 import { partial } from "convex-helpers/validators";
 import type { SearchResult } from "../types/search.types";
 
@@ -133,12 +134,31 @@ export function importSearchRecord(row: Record<string, unknown>, id = crypto.ran
   } as SearchResult;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * A picked calendar day as `YYYY-MM-DD`, the same day wherever the search is read. A date
+ * from the picker is the browser's local midnight, so its local day. A day saved before
+ * 2026-10-02 as that midnight's instant is the nearest UTC midnight's day, which recovers
+ * the picked day in every timezone from UTC-11 to UTC+11.
+ */
+export function calendarDay(value: Date | string): string {
+  if (value instanceof Date) return format(value, "yyyy-MM-dd");
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  return new Date(Math.round(Date.parse(value) / DAY_MS) * DAY_MS).toISOString().slice(0, 10);
+}
+
+/** A date range's days as calendar days. */
+function dateRangeDays(range: { from?: Date | string; to?: Date | string } | undefined) {
+  return range && { ...(range.from ? { from: calendarDay(range.from) } : {}), ...(range.to ? { to: calendarDay(range.to) } : {}) };
+}
+
 export function serializeSearch(search: SearchResult): SavedSearch {
   // Dates in older localStorage exports are already strings. A search held in this browser
   // carries its whole history, which its summary is taken from.
   const summary = search.queryHistory ? historySummary(search.queryHistory, search.questionHistory ?? []) : {};
   const known = Object.fromEntries(Object.entries({ ...search, ...summary }).filter(([key]) => key in searchFields));
-  return JSON.parse(JSON.stringify({ ...known, screeningResponses: Object.entries(search.screeningResponses ?? {}).map(([paperId, responses]) => ({ paperId, responses: serializeResponses(responses) })) })) as SavedSearch;
+  return JSON.parse(JSON.stringify({ ...known, ...(search.dateRange ? { dateRange: dateRangeDays(search.dateRange) } : {}), screeningResponses: Object.entries(search.screeningResponses ?? {}).map(([paperId, responses]) => ({ paperId, responses: serializeResponses(responses) })) })) as SavedSearch;
 }
 
 export function serializeResponses(responses: Record<string, boolean | null>) {
@@ -146,15 +166,16 @@ export function serializeResponses(responses: Record<string, boolean | null>) {
 }
 
 export function serializeSearchPatch(updates: Partial<Omit<SearchResult, "id" | "createdAt">>): Extract<SearchEdit, { kind: "patch" }> {
-  const fields = JSON.parse(JSON.stringify(updates)) as Extract<SearchEdit, { kind: "patch" }>["fields"];
+  const fields = JSON.parse(JSON.stringify({ ...updates, ...(updates.dateRange ? { dateRange: dateRangeDays(updates.dateRange) } : {}) })) as Extract<SearchEdit, { kind: "patch" }>["fields"];
   if (updates.screeningResponses !== undefined) fields.screeningResponses = Object.entries(updates.screeningResponses).map(([paperId, responses]) => ({ paperId, responses: serializeResponses(responses) }));
   return { kind: "patch", fields, clear: Object.keys(updates).filter(key => updates[key as keyof typeof updates] === undefined) };
 }
 
 export function restoreSearch(search: SavedSearch): SearchResult {
+  // A calendar day reads as that day's local midnight, wherever it's read.
   const dateRange = search.dateRange && {
-    from: search.dateRange.from ? new Date(search.dateRange.from) : undefined,
-    to: search.dateRange.to ? new Date(search.dateRange.to) : undefined,
+    from: search.dateRange.from ? parseISO(calendarDay(search.dateRange.from)) : undefined,
+    to: search.dateRange.to ? parseISO(calendarDay(search.dateRange.to)) : undefined,
   };
   return {
     ...search, dateRange,

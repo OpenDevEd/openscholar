@@ -28,10 +28,10 @@ export const screenSearchAction = defineUserAction({
   outsideEffect: false,
   undoable: false,
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  run: async (ctx, userId, { searchId, first, last, ...job }): Promise<{ jobId: Id<"screeningJobs"> }> => {
+  run: async (ctx, userId, { searchId, first, last, ...job }, author): Promise<{ jobId: Id<"screeningJobs"> }> => {
     const papers = await searchPapers(ctx, userId, { searchId, first, last });
     if (papers.length === 0) throw createError("VALIDATION_ERROR", "None of these papers match the search's rating filter");
-    return await ctx.runMutation(internal.screening.mutations.createScreeningJobForUser, { userId, papers, searchId, ...job });
+    return await ctx.runMutation(internal.screening.mutations.createScreeningJobForUser, { userId, author, papers, searchId, ...job });
   },
 });
 

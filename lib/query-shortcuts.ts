@@ -18,8 +18,9 @@ export type ShortcutWarning = { key: string; params?: Record<string, string> };
 export function expandShortcuts(query: string, expansions: ShortcutExpansions): { expandedQuery: string; warnings: ShortcutWarning[] } {
   const warnings: ShortcutWarning[] = [];
   const expandedQuery = query.replace(SHORTCUT, (match, keyword: string) => {
-    const expansion = expansions[keyword];
-    if (expansion) return expansion;
+    // Only a shortcut the person saved: not `constructor` and the like from the object's prototype.
+    const expansion = Object.prototype.hasOwnProperty.call(expansions, keyword) ? expansions[keyword] : undefined;
+    if (typeof expansion === "string" && expansion) return expansion;
     warnings.push({ key: "bookmarkNotFound", params: { keyword } });
     return match;
   });

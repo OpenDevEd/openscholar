@@ -45,6 +45,8 @@ import { availableCredits } from "../billing/accounts";
 export const createScreeningJobForUser = internalMutation({
   args: {
     userId: v.id("users"),
+    /** Who started it: the search revision that takes on its questions records them. */
+    author: v.union(v.literal("user"), v.literal("assistant")),
     papers: v.array(screeningPaperInputValidator),
     questions: v.array(screeningQuestionValidator),
     scoringConfig: screeningScoringConfigValidator,
@@ -53,7 +55,7 @@ export const createScreeningJobForUser = internalMutation({
     searchId: v.optional(v.string()),
   },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, { userId, ...args }) => {
+  handler: async (ctx, { userId, author, ...args }) => {
     // 1. The acting user, who may have been suspended since the action began
     const user = await requireActiveUser(ctx, userId);
 
@@ -114,7 +116,7 @@ export const createScreeningJobForUser = internalMutation({
       const missing = [...new Set(args.questions.map((q) => q.question))].filter((question) => !asked.has(question));
       if (missing.length) {
         const screeningQuestions = [...search.data.screeningQuestions, ...missing.map((question) => ({ question }))];
-        await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, "user");
+        await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
       }
       screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
     } else {

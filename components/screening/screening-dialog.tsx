@@ -18,6 +18,8 @@ import { Loader2, AlertCircle, Import, Coins } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Slider } from "@/components/ui/slider";
 import { useSearchOptional } from "@/lib/search";
+import { useResearchStatus } from "@/lib/research/provider";
+import { isRatingFilterActive } from "@/lib/utils";
 import { useSearchHistoryStore } from "@/lib/store";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { toast } from "sonner";
@@ -210,7 +212,12 @@ export function ScreeningDialog({
   // worked out from it as the range changes, so it never waits on a query.
   const { data: account } = useProtectedQuery(api.billing.accounts.mine, open ? {} : "skip");
   const estimate = account === undefined ? undefined : estimateScreening(paperCount, account?.balance ?? 0);
-  const hasEnough = estimate ? estimate.credits <= estimate.available : false;
+  // A rating filter keeps only some of the range's papers, which the server works out; it
+  // checks the credits for the papers that are left.
+  const ratingFiltered = search ? isRatingFilterActive([search.params.rmin, search.params.rmax], search.params.rated) : false;
+  const hasEnough = estimate ? ratingFiltered || estimate.credits <= estimate.available : false;
+  // The server reads the saved search, so edits still being saved would be screened without.
+  const { pending: savingEdits } = useResearchStatus();
   const affordablePapers = estimate?.affordablePapers;
 
   // Set initial range to the max affordable paper count
@@ -485,6 +492,7 @@ export function ScreeningDialog({
             onClick={handleSubmit}
             disabled={
               isSubmitting ||
+              savingEdits > 0 ||
               localQuestions.length === 0 ||
               !hasEnough
             }
