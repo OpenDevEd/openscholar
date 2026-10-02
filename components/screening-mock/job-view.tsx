@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  BookMarked, ChevronDown, Coins, Copy, Download, FolderMinus, FolderOpen, Hourglass, Layers, ListChecks, Search, Square, Undo2,
+  Ban, BookMarked, ChevronDown, Clock, Coins, Copy, Download, FolderMinus, FolderOpen, FolderPlus, Gauge, Hourglass, Layers, ListChecks, Quote, Search, Square, Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import {
   CREDITS_PER_PAPER, SLOTS, answerOf, maxScore, outcomeOf, paperById, scoreOf, starsOf,
   type Answer, type Job, type Outcome, type Source,
 } from "./data";
-import { ANSWER, AnswerMark, Meter, OUTCOME, OutcomeBar, Stars } from "./parts";
+import { ANSWER, AnswerMark, Chip, Meter, OUTCOME, OutcomeBar, ProgressRing, Stars } from "./parts";
 
 export const SOURCE_ICON: Record<Source["kind"], typeof Search> = { search: Search, collection: FolderOpen, saved: BookMarked, screening: ListChecks };
 const STATUS: Record<Job["status"], { label: string; tone: "running" | "warning" | "success" | "neutral" }> = {
@@ -54,18 +54,17 @@ export function JobView({
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <ProgressRing value={job.done} max={total} status={job.status} />
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-center gap-2.5">
             <h2 className="truncate text-xl font-semibold tracking-tight">{job.name}</h2>
             <StatusChip tone={status.tone} icon={job.status === "waiting" ? Hourglass : "tone"}>{status.label}</StatusChip>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2 py-0.5"><SourceIcon className="size-3" />{job.source.label}</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2 py-0.5"><Layers className="size-3" />{total} papers</span>
-            {job.saveTo ? <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2 py-0.5"><FolderOpen className="size-3" />Saves to {job.saveTo}</span> : null}
-            {job.prune ? <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2 py-0.5"><FolderMinus className="size-3" />Removes excluded papers from {job.prune}</span> : null}
-            <span className="px-1">{job.startedAt}</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Chip icon={SourceIcon}>{job.source.label}</Chip>
+            <Chip icon={Layers}>{job.done} of {total} papers</Chip>
+            <Chip icon={Clock}>{job.startedAt}</Chip>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -78,52 +77,71 @@ export function JobView({
         </div>
       </div>
 
-      <Zone label="Progress" aside={<span className="text-xs tabular-nums text-muted-foreground">{job.done} of {total} papers</span>}>
-        <div className="space-y-4 rounded-2xl border border-border/60 p-4">
-          <OutcomeBar counts={counts} total={total} className="h-3" />
-          <div className="flex flex-wrap gap-2">
+      <Zone label="Progress">
+        <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/40 p-4">
+          <OutcomeBar counts={counts} total={total} flight={job.status === "running" ? running : 0} className="h-3" />
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
             {(Object.keys(OUTCOME) as Outcome[]).map((o) => {
               const { label, icon: Icon, text } = OUTCOME[o];
               return (
-                <span key={o} className="inline-flex items-center gap-1.5 rounded-full border border-border/60 px-2.5 py-1 text-xs">
+                <span key={o} className="inline-flex items-center gap-1.5">
                   <Icon className={cn("size-3.5", text)} />
-                  <span className="font-medium tabular-nums">{counts[o]}</span>
+                  <span className="font-semibold tabular-nums">{counts[o]}</span>
                   <span className="text-muted-foreground">{label}</span>
                 </span>
               );
             })}
+            {job.status === "running" ? (
+              <span className="ml-auto inline-flex items-center gap-1.5 text-muted-foreground">
+                <span className="size-2.5 rounded-sm" style={{ backgroundImage: "repeating-linear-gradient(-45deg, var(--primary) 0 2px, color-mix(in oklab, var(--primary) 30%, transparent) 2px 4px)" }} />
+                <span className="font-semibold tabular-nums text-foreground">{running}</span> being read
+              </span>
+            ) : null}
           </div>
           <div className="grid gap-4 border-t border-border/40 pt-4 sm:grid-cols-2">
             {job.status === "waiting" && blocker ? (
               <div className="space-y-2">
-                <p className="flex items-center gap-1.5 text-xs font-medium"><Hourglass className="size-3.5 text-amber-600" />Starts when a slot frees up</p>
-                <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                  <span className="truncate">{blocker.name}</span>
-                  <span className="shrink-0 tabular-nums">{blocker.done} of {blocker.paperIds.length}</span>
-                </div>
-                <Meter value={blocker.done} max={blocker.paperIds.length} />
+                <p className="flex items-center justify-between gap-3 text-xs font-medium">
+                  <span className="flex min-w-0 items-center gap-1.5"><Hourglass className="size-3.5 shrink-0 text-amber-500" /><span className="truncate">Starts after {blocker.name}</span></span>
+                  <span className="shrink-0 tabular-nums text-muted-foreground">{blocker.done} of {blocker.paperIds.length}</span>
+                </p>
+                <Meter value={blocker.done} max={blocker.paperIds.length} fill="bg-amber-400" />
               </div>
-            ) : (
+            ) : job.status === "running" ? (
               <div className="space-y-2">
                 <p className="flex items-center justify-between text-xs font-medium">
-                  <span>Your paper slots</span>
-                  <span className="tabular-nums text-muted-foreground">{job.status === "running" ? running : 0} of {SLOTS}</span>
+                  <span className="flex items-center gap-1.5"><Gauge className="size-3.5 text-primary" />Your paper slots</span>
+                  <span className="tabular-nums text-muted-foreground">{running} of {SLOTS}</span>
                 </p>
-                <div className="flex gap-0.5" role="img" aria-label={`${job.status === "running" ? running : 0} of ${SLOTS} slots in use`}>
+                <div className="flex gap-0.5" role="img" aria-label={`${running} of ${SLOTS} slots in use`}>
                   {Array.from({ length: SLOTS }, (_, i) => (
-                    <span key={i} className={cn("h-2 flex-1 rounded-sm", job.status === "running" && i < running ? "bg-primary" : "bg-muted")} />
+                    <span key={i} className={cn("h-1.5 flex-1 rounded-full transition-colors duration-300", i < running ? "bg-primary" : "bg-foreground/10")} />
                   ))}
                 </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-1.5 self-center">
+                {job.saveTo ? <Chip icon={FolderPlus} className="text-foreground"><span className="font-semibold">{counts.included}</span> saved to {job.saveTo}</Chip> : null}
+                {job.prune ? <Chip icon={FolderMinus} className="text-foreground"><span className="font-semibold">{counts.excluded + counts.failed}</span> removed from {job.prune}</Chip> : null}
+                {!job.saveTo && !job.prune ? <Chip icon={Ban}>No collection changed</Chip> : null}
               </div>
             )}
             <div className="space-y-2">
               <p className="flex items-center justify-between text-xs font-medium">
                 <span className="flex items-center gap-1.5"><Coins className="size-3.5 text-primary" />Credits</span>
-                <span className="tabular-nums text-muted-foreground">{spent} of up to {job.hold}</span>
+                <span className="tabular-nums text-muted-foreground">
+                  {job.status === "completed" || job.status === "cancelled" ? job.hold > spent ? `${spent} spent, ${job.hold - spent} returned` : `${spent} spent` : `${spent} of up to ${job.hold}`}
+                </span>
               </p>
               <Meter value={spent} max={job.hold} />
             </div>
           </div>
+          {(job.status === "running" || job.status === "waiting") && (job.saveTo || job.prune) ? (
+            <div className="flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-4">
+              {job.saveTo ? <Chip icon={FolderPlus}>Saves included papers to {job.saveTo}</Chip> : null}
+              {job.prune ? <Chip icon={FolderMinus}>Removes excluded papers from {job.prune}</Chip> : null}
+            </div>
+          ) : null}
         </div>
       </Zone>
 
@@ -136,13 +154,23 @@ export function JobView({
               <div key={q.key} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
                 <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-medium tabular-nums">{i + 1}</span>
                 <p className="min-w-0 flex-1 text-sm">{q.text}</p>
-                <div className="flex w-full items-center gap-3 sm:w-64">
-                  <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                <div className="flex w-full items-center gap-3 sm:w-72">
+                  <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10">
                     {(["yes", "unclear", "no"] as const).map((a) => (
                       <span key={a} className={cn("h-full transition-[width] duration-500 motion-reduce:transition-none", a === "yes" ? "bg-emerald-500" : a === "unclear" ? "bg-amber-400" : "bg-muted-foreground/35")} style={{ width: `${job.done ? (tally[a] / job.done) * 100 : 0}%` }} />
                     ))}
                   </div>
-                  <span className="w-24 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{tally.yes} yes</span>
+                  <span className="flex w-28 shrink-0 items-center justify-end gap-2.5 text-xs tabular-nums">
+                    {(["yes", "unclear", "no"] as const).map((a) => {
+                      const { icon: Icon, label } = ANSWER[a];
+                      return (
+                        <span key={a} className="inline-flex items-center gap-0.5" aria-label={`${tally[a]} ${label}`}>
+                          <Icon aria-hidden className={cn("size-3", a === "yes" ? "text-emerald-500" : a === "unclear" ? "text-amber-500" : "text-muted-foreground")} />
+                          {tally[a]}
+                        </span>
+                      );
+                    })}
+                  </span>
                 </div>
               </div>
             );
@@ -211,6 +239,7 @@ function Results({ job, counts, max, onAnswer }: { job: Job; counts: Record<Outc
                       {[paper.authors.slice(0, 2).join(", ") + (paper.authors.length > 2 ? " and others" : ""), paper.year].filter(Boolean).join(", ")}
                     </p>
                   </div>
+                  {paper.cited ? <Chip icon={Quote} className="hidden md:inline-flex">{paper.cited.toLocaleString()} cited</Chip> : null}
                   <div className="flex shrink-0 items-center gap-1">
                     {job.questions.map((q, i) => {
                       const a = answerOf(job, paper.id, q);

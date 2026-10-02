@@ -1,7 +1,8 @@
 "use client";
 
 // Small pieces the screening mock's views share.
-import { Check, CircleHelp, Star, TriangleAlert, X } from "lucide-react";
+import type { ReactNode } from "react";
+import { Check, CircleHelp, Star, TriangleAlert, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Answer, Outcome } from "./data";
 
@@ -32,16 +33,67 @@ export function AnswerMark({ answer, changed, label }: { answer: Answer; changed
   );
 }
 
-/** Counts as one bar split by outcome, with what's still to come at the end. */
-export function OutcomeBar({ counts, total, className }: { counts: Record<Outcome, number>; total: number; className?: string }) {
+/**
+ * Counts as one bar split by outcome, then the papers being screened right now as a
+ * striped part, then what's still to come.
+ */
+export function OutcomeBar({ counts, total, flight = 0, className }: { counts: Record<Outcome, number>; total: number; flight?: number; className?: string }) {
+  const settled = Object.values(counts).reduce((a, b) => a + b, 0);
+  const rest = Math.max(0, total - settled - flight);
+  const part = "h-full basis-0 rounded-full transition-[flex-grow] duration-500 ease-out motion-reduce:transition-none";
   return (
-    <div className={cn("flex h-2.5 w-full overflow-hidden rounded-full bg-muted", className)}>
+    <div className={cn("flex h-2.5 w-full gap-0.5", className)}>
       {(Object.keys(OUTCOME) as Outcome[]).map((o) =>
-        counts[o] ? (
-          <span key={o} className={cn("h-full transition-[width] duration-500 ease-out motion-reduce:transition-none", OUTCOME[o].bar)} style={{ width: `${(counts[o] / total) * 100}%` }} />
-        ) : null,
+        counts[o] ? <span key={o} className={cn(part, OUTCOME[o].bar)} style={{ flexGrow: counts[o] }} /> : null,
       )}
+      {flight ? (
+        <span
+          className={cn(part, "animate-pulse motion-reduce:animate-none")}
+          style={{ flexGrow: flight, backgroundImage: "repeating-linear-gradient(-45deg, var(--primary) 0 3px, color-mix(in oklab, var(--primary) 30%, transparent) 3px 7px)" }}
+        />
+      ) : null}
+      {rest ? <span className={cn(part, "bg-muted")} style={{ flexGrow: rest }} /> : null}
     </div>
+  );
+}
+
+/** How far a screening has got, as a ring; a check once it's done. */
+export function ProgressRing({ value, max, status }: { value: number; max: number; status: "running" | "waiting" | "completed" | "cancelled" }) {
+  const size = 56;
+  const r = (size - 6) / 2;
+  const c = 2 * Math.PI * r;
+  const f = max ? value / max : 0;
+  const stroke = status === "completed" ? "stroke-emerald-500" : status === "cancelled" ? "stroke-muted-foreground/50" : status === "waiting" ? "stroke-amber-400" : "stroke-primary";
+  return (
+    <span className="relative inline-flex size-14 shrink-0" role="img" aria-label={`${value} of ${max} papers screened`}>
+      <svg viewBox={`0 0 ${size} ${size}`} className="size-full -rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={5} className="stroke-foreground/[0.08]" />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          strokeWidth={5}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - f)}
+          className={cn("transition-[stroke-dashoffset] duration-500 ease-out motion-reduce:transition-none", stroke)}
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold tabular-nums">
+        {status === "completed" ? <Check className="size-5 text-emerald-500" /> : `${Math.round(f * 100)}%`}
+      </span>
+    </span>
+  );
+}
+
+/** A small fact chip: an icon, then a short label. */
+export function Chip({ icon: Icon, children, className }: { icon?: LucideIcon; children: ReactNode; className?: string }) {
+  return (
+    <span className={cn("inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md bg-foreground/[0.06] px-2 text-xs tabular-nums text-muted-foreground", className)}>
+      {Icon ? <Icon className="size-3.5" /> : null}
+      {children}
+    </span>
   );
 }
 

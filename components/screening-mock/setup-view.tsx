@@ -14,7 +14,14 @@ import { NODE_H, NodeCard } from "@/components/settings/model-map";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { cn } from "@/lib/utils";
 import { BALANCE, CREDITS_PER_PAPER, GENERATED, QUESTIONS, SLOTS, SOURCES, maxScore, type Job, type Question, type Source } from "./data";
-import { Meter } from "./parts";
+import { ANSWER, Chip, Meter } from "./parts";
+
+/** Points boxes take their answer's colour, so a row reads at a glance. */
+const TINT = {
+  yes: { icon: "text-emerald-500", input: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  no: { icon: "text-muted-foreground", input: "bg-foreground/[0.05]" },
+  unclear: { icon: "text-amber-500", input: "bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
+} as const;
 import { SOURCE_ICON } from "./job-view";
 
 const KINDS: Array<{ id: Source["kind"]; label: string }> = [
@@ -110,45 +117,49 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
             const on = s.id === source.id;
             const Icon = SOURCE_ICON[s.kind];
             return (
-              <button key={s.id} type="button" role="radio" aria-checked={on} onClick={() => setSourceId(s.id)} className={cn("flex w-full items-center gap-3 px-4 py-3 text-left transition-colors", on ? "bg-primary/5" : "hover:bg-muted/40")}>
-                <Icon className={cn("size-4 shrink-0", on ? "text-primary" : "text-muted-foreground")} />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{s.label}</span>
-                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{s.count.toLocaleString()} papers</span>
-                <Check className={cn("size-4 shrink-0 text-primary", !on && "invisible")} />
-              </button>
+              <div key={s.id} className={cn("transition-colors", on && "bg-primary/5")}>
+                <button type="button" role="radio" aria-checked={on} onClick={() => setSourceId(s.id)} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors", !on && "hover:bg-muted/40")}>
+                  <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/60", on ? "text-primary" : "text-muted-foreground")}>
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{s.label}</span>
+                  <Chip>{s.count.toLocaleString()} papers</Chip>
+                  <Check className={cn("size-4 shrink-0 text-primary", !on && "invisible")} />
+                </button>
+                {on && s.kind === "search" ? (
+                  <div className="space-y-4 pb-4 pl-15 pr-4">
+                    <Segmented
+                      label="Which of its papers"
+                      value={scope}
+                      onChange={setScope}
+                      options={[
+                        { id: "range", label: "A range" },
+                        { id: "page", label: "This page" },
+                        { id: "all", label: "All results" },
+                      ]}
+                    />
+                    {scope === "range" ? (
+                      <div className="space-y-3">
+                        <Slider min={1} max={top} step={1} value={range} onValueChange={(v) => setRange([v[0]!, v[1]!])} aria-label="Papers to screen" />
+                        <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
+                          <span>Papers <span className="font-semibold text-foreground">{first.toLocaleString()}</span> to <span className="font-semibold text-foreground">{last.toLocaleString()}</span></span>
+                          <span>In results page order, up to {JOB_LIMIT.toLocaleString()} a job</span>
+                        </div>
+                      </div>
+                    ) : scope === "all" ? (
+                      <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Zap className="size-3.5 text-primary" />
+                        {source.count.toLocaleString()} papers run as {jobs.toLocaleString()} jobs of up to {JOB_LIMIT.toLocaleString()}, one after another, under this approval.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">The {PAGE} papers the results page shows first.</p>
+                    )}
+                  </div>
+                ) : null}
+              </div>
             );
           })}
         </div>
-        {kind === "search" ? (
-          <div className="mt-3 space-y-4 rounded-2xl border border-border/60 p-4">
-            <Segmented
-              label="Which of its papers"
-              value={scope}
-              onChange={setScope}
-              options={[
-                { id: "range", label: "A range" },
-                { id: "page", label: "This page" },
-                { id: "all", label: "All results" },
-              ]}
-            />
-            {scope === "range" ? (
-              <div className="space-y-3">
-                <Slider min={1} max={top} step={1} value={range} onValueChange={(v) => setRange([v[0]!, v[1]!])} aria-label="Papers to screen" />
-                <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
-                  <span>Papers {first.toLocaleString()} to {last.toLocaleString()}</span>
-                  <span>Results page order, up to {JOB_LIMIT.toLocaleString()} a job</span>
-                </div>
-              </div>
-            ) : scope === "all" ? (
-              <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Zap className="size-3.5 text-primary" />
-                {source.count.toLocaleString()} papers run as {jobs.toLocaleString()} jobs of up to {JOB_LIMIT.toLocaleString()}, one after another, under this approval.
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">The {PAGE} papers the results page shows first.</p>
-            )}
-          </div>
-        ) : null}
       </Zone>
 
       <Zone
@@ -172,20 +183,21 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
         }
       >
         <div className={LIST}>
-          <div className="grid grid-cols-[1.5rem_1fr_repeat(3,3.25rem)_2rem] items-center gap-3 px-4 py-2 text-xs text-muted-foreground">
+          <div className="grid grid-cols-[1.5rem_1fr_repeat(3,4rem)_2rem] items-center gap-3 px-4 py-2 text-xs text-muted-foreground">
             <span />
             <span>Question</span>
-            <span className="text-center">Yes</span>
-            <span className="text-center">No</span>
-            <span className="text-center">Unclear</span>
+            {(["yes", "no", "unclear"] as const).map((a) => {
+              const { icon: Icon, label } = ANSWER[a];
+              return <span key={a} className="flex items-center justify-center gap-1"><Icon className={cn("size-3", TINT[a].icon)} />{label}</span>;
+            })}
             <span />
           </div>
           {questions.map((q, i) => (
-            <div key={q.key} className="grid grid-cols-[1.5rem_1fr_repeat(3,3.25rem)_2rem] items-center gap-3 px-4 py-2.5">
+            <div key={q.key} className="grid grid-cols-[1.5rem_1fr_repeat(3,4rem)_2rem] items-center gap-3 px-4 py-2.5">
               <span className="flex size-6 items-center justify-center rounded-md bg-muted text-xs font-medium tabular-nums">{i + 1}</span>
               <p className="min-w-0 text-sm">{q.text}</p>
               {(["yes", "no", "unclear"] as const).map((a) => (
-                <Input key={a} type="number" value={q[a]} onChange={(e) => points(q.key, a, Number(e.target.value))} aria-label={`Points for ${a}, question ${i + 1}`} className="h-8 px-1 text-center text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                <Input key={a} type="number" value={q[a]} onChange={(e) => points(q.key, a, Number(e.target.value))} aria-label={`Points for ${a}, question ${i + 1}`} className={cn("h-8 border-transparent px-1 text-center text-sm font-medium tabular-nums shadow-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none", TINT[a].input)} />
               ))}
               <TooltipHint label="Remove question">
                 <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label="Remove question" onClick={() => setQuestions((qs) => qs.filter((x) => x.key !== q.key))}><Trash2 /></Button>
@@ -311,10 +323,6 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
       </div>
     </div>
   );
-}
-
-function Chip({ children }: { children: ReactNode }) {
-  return <span className="flex h-5 shrink-0 items-center whitespace-nowrap rounded-md bg-foreground/[0.06] px-1.5 text-[11px] tabular-nums text-muted-foreground">{children}</span>;
 }
 
 /** One place the included papers can go, as the chat offers them: none, a new collection, or one you have. */
