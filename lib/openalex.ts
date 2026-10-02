@@ -2,8 +2,10 @@ import OpenAlexClient from "@sickrin/openalex-sdk";
 import { withEncodedValues } from "./openalex/works-url";
 
 /**
- * OpenAlex SDK singleton. Used by every `"use server"` action that wraps
- * an SDK call (searchOpenAlex, searchOpenAlexCount).
+ * OpenAlex SDK singleton, for the author page's actions. Searches and counts
+ * fetch their page through `worksUrl` instead (`./openalex/works-page`): the
+ * SDK keeps one key for all its clients, whatever their host, and drops the
+ * body of a failure.
  *
  * `OPENALEX_API_KEY` raises OpenAlex's daily allowance from 1,000 credits,
  * shared by everything on the server's address, to 2,000,000, and makes a
