@@ -815,6 +815,19 @@ export default defineSchema({
   // diagnose flaky upstream behavior without bloating extractionPapers.
   // Plan-01 § "Persistence hooks".
   // ═══════════════════════════════════════════════════════════════
+  // An extraction job's counts (convex/extraction/counts.ts): every write that changes a
+  // count appends its change, and one worker folds them into the job's counts row.
+  extractionCountChanges: defineTable({
+    jobId: v.id("extractionJobs"),
+    deltas: v.record(v.string(), v.number()),
+    queuedAt: v.commitTs(),
+  })
+    .index("by_queuedAt", ["queuedAt"])
+    .index("by_job", ["jobId"]),
+  extractionJobCounts: defineTable({
+    jobId: v.id("extractionJobs"),
+    counts: v.record(v.string(), v.number()),
+  }).index("by_job", ["jobId"]),
   extractionPaperErrors: defineTable(extractionPaperErrorFields)
     .index("by_paper", ["paperId"])
     .index("by_job", ["jobId"]),

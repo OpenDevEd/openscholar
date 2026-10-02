@@ -1,16 +1,20 @@
-// A job's counters stay equal to a recount of its rows through every kind of write (#351),
-// and the recount migration repairs counters that were saved before they were kept.
+// A job's counts stay equal to a recount of its rows through every kind of write, folded by
+// the counts worker (./counts.ts), and the migration gives jobs saved before it their row.
 import { convexTest } from "convex-test";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { seedAccount } from "../lib/maxSize.test-support";
-import { setJobCounters } from "./jobCounters";
-import { setPaperErrorCounts, setResultCounts } from "./resultCounts";
 
 type Test = ReturnType<typeof convexTest>;
-const verify = async (t: Test) => ({ mismatches: await t.action(internal.migrations.recountExtractionJobs.verify, {}) });
+const verify = async (t: Test) => ({ mismatches: (await t.action(internal.migrations.moveExtractionCounts.verify, {})).sample });
+/** The counts worker folds the changes a moment after they're written. */
+const folded = (t: Test) => t.finishAllScheduledFunctions(vi.runAllTimers);
+
+// The worker schedules its runs on whichever timers are active when counts change.
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 const failed = (code: string) => ({ status: "failed" as const, answer: null, citationStatus: "extraction_error" as const, lastError: { code: code as never, message: code, at: 1 } });
 const completed = { status: "completed" as const, answer: "ok", citationStatus: "grounded" as const };
 
@@ -42,6 +46,7 @@ describe("extraction job counters", () => {
     const { userId, as } = await seedAccount(t);
     const { jobId, papers, results } = await seedJob(t, userId);
     expect(await verify(t)).toMatchObject({ mismatches: [] });
+    await folded(t);
     expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toEqual({ retryableCount: 2, permanentCount: 2, permanentBreakdown: { moderation: 1, pdf_invalid: 1 } });
     expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ total: 2, answeredTotal: 1, totalQuestions: 5 });
 
@@ -53,28 +58,27 @@ describe("extraction job counters", () => {
       await ctx.db.patch("extractionPapers", papers[0], { status: "extracting" });
     });
     expect(await verify(t)).toMatchObject({ mismatches: [] });
+    await folded(t);
     expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toEqual({ retryableCount: 0, permanentCount: 2, permanentBreakdown: { auth: 1, pdf_invalid: 1 } });
     expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ answeredTotal: 2, totalQuestions: 4 });
   });
 
-  it("are set right by the recount migration for jobs saved before counting", async () => {
-    vi.useFakeTimers();
-    try {
-      const t = convexTest(schema);
-      const { userId } = await seedAccount(t);
-      const { jobId } = await seedJob(t, userId);
-      // As a job saved before the counters: nothing counted, or counted wrong.
-      await t.run(async (ctx) => {
-        await setJobCounters(ctx, jobId, { processed: 7, failed: 0 });
-        await setResultCounts(ctx, jobId, new Map());
-        await setPaperErrorCounts(ctx, jobId, new Map([["network", 3]]));
-      });
-      expect((await verify(t)).mismatches).toHaveLength(1);
-      await t.mutation(internal.migrations.recountExtractionJobs.run, {});
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-      expect(await verify(t)).toMatchObject({ mismatches: [] });
-    } finally {
-      vi.useRealTimers();
-    }
+  it("are given to jobs saved before the counts row by the migration, with writes waiting for the worker counted once", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    const { jobId, papers } = await seedJob(t, userId);
+    // As a job saved before: no counts row and no changes, then one write after the deploy.
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("extractionJobCounts").collect()) await ctx.db.delete("extractionJobCounts", row._id);
+      for (const change of await ctx.db.query("extractionCountChanges").collect()) await ctx.db.delete("extractionCountChanges", change._id);
+      await ctx.db.patch("extractionPapers", papers[2], { status: "completed" });
+    });
+    expect((await verify(t)).mismatches).toHaveLength(1);
+
+    await t.mutation(internal.migrations.moveExtractionCounts.run, {});
+    await folded(t);
+
+    expect(await verify(t)).toMatchObject({ mismatches: [] });
+    expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ total: 2, totalQuestions: 5 });
   });
 });

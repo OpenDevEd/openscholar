@@ -3,7 +3,7 @@ import {
   summarizeRetryable,
   type RetryableResultInput,
 } from "@/lib/extraction/retry-summary";
-import { bucketsOf } from "../../convex/extraction/resultCounts";
+import { resultBuckets as bucketsOf } from "../../convex/extraction/counts";
 
 /** Buckets each row the way the result counters do, then summarizes the counts. */
 function summarize(results: ReadonlyArray<RetryableResultInput>) {
