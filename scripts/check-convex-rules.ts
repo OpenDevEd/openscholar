@@ -1,9 +1,22 @@
 // Convex rules from the Convex reviewer (get-convex/agent-skills), checked in CI (#350):
 //
-// - Every read of a whole query result, `.collect()` or `for await` over a database query,
-//   is bounded or known. A bounded read is listed in scripts/convex-rules.json under
-//   unboundedReads.bounded with why its rows stay few; one that can grow past Convex's
-//   limits is listed under unboundedReads.pending with the issue that bounds it.
+// Every list pages by cursor (#428). Nothing reads, returns or loads a whole list, since
+// any list a person or a service can add to grows without limit; infinite scroll pages too.
+//
+// - No `.collect()` or `for await` over a database query. Read a page with `.paginate()`,
+//   or a named cap with `.take(CAP)` that the writes enforce. A read waiting on a fix is
+//   listed in scripts/convex-rules.json under unboundedReads.pending with its issue.
+// - A public function (`query`, `mutation`, `action`, `defineUserQuery`,
+//   `defineUserMutation`) returns a list or record only as the `page` of a pagination
+//   result. Any other array or record in its `returns` validator, top level or nested, is
+//   listed under listReturns.pending with the issue that pages or caps it. Keys are the
+//   function and the list's path, with a page's items written like a list's (`[]`), so
+//   turning a list into a page keeps its items' keys.
+// - Client code and actions never load every page: no `loadMore` from an effect or a loop,
+//   and no loop that reads page after page by cursor into one array. Waiting fixes are
+//   listed under everyPage.pending.
+// - Pending lists only shrink: a function not pending on `dev`, or with more pending
+//   entries than on `dev`, fails. Fix it instead of listing it.
 // - Every public function (`query`, `mutation`, `action`) is defined with an object that
 //   has a `returns` validator, unless listed under missingReturns.pending with its issue.
 // - No handler reads as many rows as its caller asks: a `.take(n)` whose `n` comes from the
@@ -23,8 +36,9 @@
 // It reads the code with TypeScript's type checker, so a loop over a helper that returns
 // a query, a named handler and a helper in another file are all followed.
 // Reads are keyed by file, enclosing function and table, so edits elsewhere don't move them.
-// Run with `npm run check:convex-rules`; `-- --list` prints every read's key, `-- --list --verbose` its query too.
+// Run with `npm run check:convex-rules`; `-- --list` prints every key by rule, `-- --list --verbose` each read's query too.
 
+import { execSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
@@ -38,6 +52,16 @@ function files(dir: string): string[] {
 }
 
 const sources = files("convex");
+// Client code that calls Convex, for the every-page rule.
+const clientSources = ["app", "components", "lib", "hooks"].flatMap((dir) => {
+  const walk = (folder: string): string[] =>
+    readdirSync(folder, { withFileTypes: true }).flatMap((entry) => {
+      const file = path.join(folder, entry.name);
+      if (entry.isDirectory()) return entry.name === "node_modules" ? [] : walk(file);
+      return /\.tsx?$/.test(file) && !/\.test\.|\.d\.ts$/.test(file) ? [file] : [];
+    });
+  try { return walk(dir); } catch { return []; }
+});
 const config = ts.getParsedCommandLineOfConfigFile("tsconfig.json", {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} });
 const program = ts.createProgram(sources, { ...config?.options, noEmit: true });
 const checker = program.getTypeChecker();
@@ -239,6 +263,111 @@ function undeclaredReturns(definition: ts.ObjectLiteralExpression): string[] {
   return [...new Set(returnedTypes(fn).flatMap((type) => undeclaredFields(type, target, returns, "result")))];
 }
 
+/** A validator type's property, such as a VObject's `fields` or a VArray's `element`. */
+function validatorPart(type: ts.Type, name: string, at: ts.Node) {
+  const part = type.getProperty(name);
+  return part ? checker.getTypeOfSymbolAtLocation(part, at) : undefined;
+}
+
+/**
+ * Every list (`[]`) and record (`{}`) a validator type holds outside a pagination page,
+ * by path. A page's items are written like a list's, so a list that becomes a page keeps
+ * its items' keys. Recursive validators stop where they repeat.
+ */
+function listPaths(type: ts.Type, at: ts.Node, where = "", stack = new Set<ts.Type>(), out = new Set<string>()): Set<string> {
+  if (stack.has(type)) return out;
+  stack.add(type);
+  if (type.isUnion()) for (const member of type.types) listPaths(member, at, where, stack, out);
+  const name = type.getSymbol()?.getName() ?? "";
+  if (name === "VArray") {
+    out.add(`${where}[]`);
+    const element = validatorPart(type, "element", at);
+    if (element) listPaths(element, at, `${where}[]`, stack, out);
+  } else if (name === "VRecord") {
+    out.add(`${where}{}`);
+    const value = validatorPart(type, "value", at);
+    if (value) listPaths(value, at, `${where}{}`, stack, out);
+  } else if (name === "VObject") {
+    const fields = validatorPart(type, "fields", at);
+    const names = fields?.getProperties().map((field) => field.getName()) ?? [];
+    const paged = names.includes("page") && names.includes("isDone") && names.includes("continueCursor");
+    for (const field of fields?.getProperties() ?? []) {
+      const fieldType = checker.getTypeOfSymbolAtLocation(field, at);
+      if (paged && field.getName() === "page") {
+        const element = validatorPart(fieldType, "element", at);
+        if (element) listPaths(element, at, `${where}[]`, stack, out);
+      } else listPaths(fieldType, at, `${where}.${field.getName()}`, stack, out);
+    }
+  } else if (name === "VUnion") {
+    const members = validatorPart(type, "members", at);
+    if (members) for (const member of checker.getTypeArguments(members as ts.TypeReference)) listPaths(member, at, where, stack, out);
+  }
+  stack.delete(type);
+  return out;
+}
+
+/** The function holding `node`, named by its variable, declaration or property. */
+function holderName(node: ts.Node): string {
+  for (let current: ts.Node | undefined = node.parent; current; current = current.parent) {
+    if ((ts.isFunctionDeclaration(current) || ts.isMethodDeclaration(current)) && current.name) return current.name.getText();
+    if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)) return current.name.text;
+  }
+  return "(module)";
+}
+
+/** Whether `loop` reads page after page: a call given `cursor` or `paginationOpts`, or a page's continuation read. */
+function readsByCursor(loop: ts.Node) {
+  let reads = false;
+  const visit = (node: ts.Node) => {
+    if (reads) return;
+    if (ts.isPropertyAccessExpression(node) && ["continueCursor", "nextCursor", "hasMore"].includes(node.name.text)) reads = true;
+    if (ts.isCallExpression(node) && node.arguments.some((arg) => ts.isObjectLiteralExpression(arg) && arg.properties.some((p) => p.name && ts.isIdentifier(p.name) && ["cursor", "paginationOpts"].includes(p.name.text)))) reads = true;
+    ts.forEachChild(node, visit);
+  };
+  visit(loop);
+  return reads;
+}
+
+/** Whether `loop` gathers what it reads: into an array, map or set, or a spread into a new array. */
+function gathers(loop: ts.Node) {
+  let found = false;
+  const visit = (node: ts.Node) => {
+    if (found) return;
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["push", "concat", "set", "add"].includes(node.expression.name.text)) found = true;
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isArrayLiteralExpression(node.right) && node.right.elements.some(ts.isSpreadElement)) found = true;
+    ts.forEachChild(node, visit);
+  };
+  visit(loop);
+  return found;
+}
+
+const isLoop = (node: ts.Node) => ts.isForStatement(node) || ts.isForOfStatement(node) || ts.isForInStatement(node) || ts.isWhileStatement(node) || ts.isDoStatement(node);
+
+/** Where `tree` loads every page: `loadMore` from an effect or a loop, or a cursor loop that gathers pages. */
+function everyPageLoads(tree: ts.SourceFile, file: string): string[] {
+  const found: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const isLoadMore = (ts.isIdentifier(callee) && callee.text === "loadMore") || (ts.isPropertyAccessExpression(callee) && callee.name.text === "loadMore");
+      if (isLoadMore) {
+        for (let current: ts.Node | undefined = node.parent; current && !ts.isSourceFile(current); current = current.parent) {
+          if (isLoop(current)) { found.push(`${file}:${holderName(node)}`); break; }
+          if ((ts.isArrowFunction(current) || ts.isFunctionExpression(current)) && ts.isCallExpression(current.parent) && /^use(Layout)?Effect$/.test(current.parent.expression.getText())) { found.push(`${file}:${holderName(node)}`); break; }
+        }
+      }
+    }
+    // A loop that reads by cursor and gathers what it reads into one array.
+    if (isLoop(node) && readsByCursor(node) && gathers(node)) found.push(`${file}:${holderName(node)}`);
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  return found;
+}
+
+const listReturns: string[] = [];
+const everyPage: string[] = [];
+const PUBLIC_DEFINITIONS = [...BUILDERS, "defineUserQuery", "defineUserMutation"];
 const reads: string[] = [];
 const missingReturns: string[] = [];
 const problems: string[] = [];
@@ -274,6 +403,11 @@ for (const tree of program.getSourceFiles().filter((file) => sources.includes(re
       const undeclared = undeclaredReturns(node.initializer.arguments[0]);
       if (undeclared.length) problems.push(`${file}:${node.name.text}: returns ${undeclared.join(", ")}, which its \`returns\` validator doesn't declare; Convex rejects them at runtime. Return only declared fields, or declare them.`);
     }
+    if (!file.startsWith("convex/migrations/") && ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && PUBLIC_DEFINITIONS.includes(node.initializer.expression.text)) {
+      const definition = node.initializer.arguments[0];
+      const returns = definition && ts.isObjectLiteralExpression(definition) ? definition.properties.find((p) => p.name && ts.isIdentifier(p.name) && p.name.text === "returns") : undefined;
+      if (returns && ts.isPropertyAssignment(returns)) for (const list of listPaths(checker.getTypeAtLocation(returns.initializer), returns.initializer)) listReturns.push(`${file}:${node.name.text}:${list}`);
+    }
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && ALL_BUILDERS.includes(node.initializer.expression.text)) {
       const definition = node.initializer.arguments[0];
       const handler = definition && ts.isObjectLiteralExpression(definition) ? definition.properties.find((p) => p.name && ts.isIdentifier(p.name) && p.name.text === "handler") : undefined;
@@ -299,29 +433,60 @@ for (const tree of program.getSourceFiles().filter((file) => sources.includes(re
     ts.forEachChild(node, visit);
   };
   visit(tree);
+  // Migrations walk whole tables by design, a batch at a time.
+  if (!file.startsWith("convex/migrations/")) everyPage.push(...everyPageLoads(tree, file));
+}
+for (const file of clientSources) {
+  const text = readFileSync(file, "utf8");
+  if (!/loadMore|cursor/.test(text)) continue;
+  everyPage.push(...everyPageLoads(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS), file));
 }
 
 if (process.argv.includes("--list")) {
-  console.log(reads.join("\n"));
+  console.log([...reads.map((key) => `unboundedReads ${key}`), ...listReturns.map((key) => `listReturns ${key}`), ...everyPage.map((key) => `everyPage ${key}`)].join("\n"));
   process.exit(0);
 }
 
-type Listed = { bounded: Record<string, string>; pending: Record<string, string> };
-const rules = JSON.parse(readFileSync("scripts/convex-rules.json", "utf8")) as { unboundedReads: Listed; missingReturns: { pending: Record<string, string> }; argumentSizedTakes: { bounded: Record<string, string> } };
-const issue = /^#\d+$/;
+type Pending = { pending: Record<string, string> };
+type Rules = { unboundedReads: Pending & { bounded?: Record<string, string> }; listReturns: Pending; everyPage: Pending; missingReturns: Pending; argumentSizedTakes: { bounded: Record<string, string> } };
+const rules = JSON.parse(readFileSync("scripts/convex-rules.json", "utf8")) as Rules;
+// An issue, optionally followed by a note for whoever fixes it: "#427" or "#427: a user's keys".
+const issue = /^#\d+(: .+)?$/;
 
-const found = new Set(reads);
-const { bounded, pending } = rules.unboundedReads;
-for (const read of reads) {
-  if (!(read in bounded) && !(read in pending)) problems.push(`${read}: bound it with .take(n) or .paginate(), or list it in scripts/convex-rules.json with why its rows stay few.`);
+/** Checks found keys against a pending list: each found one is listed, each listed one is found. */
+function checkPending(section: string, found: string[], pending: Record<string, string>, fix: string) {
+  const present = new Set(found);
+  for (const key of found) if (!(key in pending)) problems.push(`${key}: ${fix}`);
+  for (const [key, ref] of Object.entries(pending)) {
+    if (!present.has(key)) problems.push(`${key}: listed under ${section}.pending but fixed now; remove it.`);
+    if (!issue.test(ref)) problems.push(`${key}: ${section}.pending needs the issue that fixes it, such as "#427".`);
+  }
 }
-for (const [read, reason] of Object.entries(bounded)) {
-  if (!found.has(read)) problems.push(`${read}: listed as bounded but no longer read this way; remove it.`);
-  if (reason.trim().length < 15) problems.push(`${read}: say why its rows stay few.`);
+if (rules.unboundedReads.bounded) problems.push("unboundedReads.bounded: a reason isn't a bound; page or cap these reads, or list them as pending with their issue.");
+checkPending("unboundedReads", [...new Set(reads)], rules.unboundedReads.pending, "a whole-result read; read a page with .paginate() or a named cap with .take(CAP).");
+checkPending("listReturns", [...new Set(listReturns)], rules.listReturns.pending, "returns a list outside a pagination page; return one page by cursor (paginationResultValidator), or cap the field where it's written.");
+checkPending("everyPage", [...new Set(everyPage)], rules.everyPage.pending, "loads every page; load the next page when the person asks for it, and stream exports page by page.");
+
+// Pending lists only shrink: compared with dev where this branch left it.
+const owner = (key: string) => key.split(":").slice(0, 2).join(":");
+const countByOwner = (keys: string[]) => keys.reduce((counts, key) => counts.set(owner(key), (counts.get(owner(key)) ?? 0) + 1), new Map<string, number>());
+let base: Rules | undefined;
+try {
+  const ref = execSync("git merge-base HEAD origin/dev", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+  base = JSON.parse(execSync(`git show ${ref}:scripts/convex-rules.json`, { stdio: ["ignore", "pipe", "ignore"] }).toString()) as Rules;
+} catch {
+  console.warn("Convex rules: no origin/dev to compare pending lists with; skipping the shrink check.");
 }
-for (const [read, ref] of Object.entries(pending)) {
-  if (!found.has(read)) problems.push(`${read}: listed as pending but no longer read this way; remove it.`);
-  if (!issue.test(ref)) problems.push(`${read}: pending needs the issue that bounds it, such as "#351".`);
+if (base) {
+  for (const section of ["unboundedReads", "listReturns", "everyPage"] as const) {
+    const before = base[section] as (Pending & { bounded?: Record<string, string> }) | undefined;
+    if (!before) continue;
+    const was = countByOwner([...Object.keys(before.pending), ...Object.keys(before.bounded ?? {})]);
+    for (const [fn, count] of countByOwner(Object.keys(rules[section].pending))) {
+      if (!was.has(fn)) problems.push(`${fn}: not pending under ${section} on dev; fix it instead of listing it.`);
+      else if (count > was.get(fn)!) problems.push(`${fn}: has ${count} entries pending under ${section}, more than dev's ${was.get(fn)}; fix the new ones instead of listing them.`);
+    }
+  }
 }
 
 const withoutReturns = new Set(missingReturns);
@@ -342,4 +507,4 @@ if (problems.length) {
   console.error(`Convex rules: ${problems.length} problem${problems.length === 1 ? "" : "s"}.\n\n${problems.join("\n")}`);
   process.exit(1);
 }
-console.log(`Convex rules: ${Object.keys(bounded).length} whole-result reads bounded with a reason, ${Object.keys(pending).length} pending; ${Object.keys(rules.missingReturns.pending).length} functions waiting on a returns validator.`);
+console.log(`Convex rules: pending ${Object.keys(rules.unboundedReads.pending).length} whole-result reads, ${Object.keys(rules.listReturns.pending).length} returned lists and ${Object.keys(rules.everyPage.pending).length} every-page loads; ${Object.keys(rules.missingReturns.pending).length} functions waiting on a returns validator.`);
