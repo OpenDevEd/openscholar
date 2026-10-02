@@ -22,6 +22,7 @@ import {
 import { applyInclusionPatchToSnapshot } from "@/lib/chat/chat-papers-selection";
 import type { ResolvablePaper } from "@/lib/chat/resolve-paper";
 import { cn } from "@/lib/utils";
+import { openAlexWorkPage } from "@/lib/openalex/work-id";
 import {
   DeprecatedPaperCitationsProvider,
   useDeprecatedPaperCitations,
@@ -83,14 +84,14 @@ const PILL_CLASS_BY_STATE: Record<CitationState, string> = {
 
 /**
  * Resolve every external link the citation card may surface. OpenAlex
- * is always shown when we have an openalexId (the user asked for it
- * as the guaranteed baseline). DOI and PDF are additive — shown when
- * present, hidden when not, matching the paper-card button pattern.
+ * is always shown for an OpenAlex work (the user asked for it as the
+ * guaranteed baseline); it has no page for a work from the OpenScholar
+ * API, whose id is OS…. DOI and PDF are additive — shown when present,
+ * hidden when not, matching the paper-card button pattern.
  */
 function resolvePaperLinks(paper: ResolvablePaper): PaperLinks {
-  const openalexUrl = paper.openalexId
-    ? `https://openalex.org/${paper.openalexId}`
-    : undefined;
+  const openalexUrl =
+    (paper.openalexId && openAlexWorkPage(paper.openalexId)) || undefined;
 
   const rawDoi = paper.doi?.trim();
   const doiUrl = rawDoi

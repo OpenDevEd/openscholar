@@ -111,6 +111,14 @@ describe("chat citation rendering end-to-end (Streamdown + CitationAwareParagrap
     expect(link).toHaveTextContent("1");
   });
 
+  it("links a citation of an OpenScholar API paper to its DOI, since OpenAlex has no page for it", () => {
+    renderAssistantMarkdown(
+      "This claim is well established [P1].",
+      [mkPaper({ position: 1, openalexId: "OS150911088", doi: "10.1234/abc" })],
+    );
+    expect(screen.getByRole("link").getAttribute("href")).toBe("https://doi.org/10.1234/abc");
+  });
+
   it("renders the combined-bracket form [P1, P2, P3] as three clickable links", () => {
     renderAssistantMarkdown(
       "Multiple sources agree [P1, P2, P3] on this point.",

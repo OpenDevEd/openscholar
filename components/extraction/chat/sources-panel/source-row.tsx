@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";
 import { cn } from "@/lib/utils";
+import { openAlexWorkPage } from "@/lib/openalex/work-id";
 import { extractMatchSnippet } from "@/lib/chat/search/match-snippet";
 import type { SearchMatch } from "@/lib/chat/search/source-scorer";
 import {
@@ -70,6 +71,7 @@ function SourceRowImpl({
       : null;
 
   const authorLine = formatAuthorMeta(row);
+  const openAlexPage = row.openalexId ? openAlexWorkPage(row.openalexId) : null;
   const SourceIcon = CHAT_SOURCE_ICON[row.sourceType];
   const sourceColorVar = CHAT_SOURCE_COLOR_VAR[row.sourceType];
   const selected = row.included;
@@ -150,7 +152,7 @@ function SourceRowImpl({
             {authorLine}
           </p>
           <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-            {row.openalexId && (
+            {openAlexPage && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -160,7 +162,7 @@ function SourceRowImpl({
                 asChild
                 >
                   <a
-                    href={openAlexUrl(row.openalexId)}
+                    href={openAlexPage}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
@@ -285,9 +287,4 @@ function formatAuthorMeta(row: ChatSourceRow): string {
       : firstAuthor
     : "Unknown author";
   return row.year !== null ? `${authorLabel} \u00B7 ${row.year}` : authorLabel;
-}
-
-function openAlexUrl(id: string): string {
-  if (id.startsWith("http")) return id;
-  return `https://openalex.org/${id}`;
 }
