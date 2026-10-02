@@ -1,5 +1,5 @@
 import { paramsToFilters } from "@/lib/search-params";
-import type { SearchParams } from "@/lib/search";
+import type { SearchParams } from "@/lib/search/types";
 import { prepareOpenAlexSearch, type GetSearchResultsWithFiltersOptions } from "@/lib/search-utils";
 import { createSearchParameters } from "@/lib/utils";
 import type { OpenAlexWorksQuery } from "./search-params";
@@ -13,7 +13,7 @@ import { filterPaths, OQL_FIELD, worksOql } from "./oql";
  */
 export function buildOpenAlexWorksQuery(
   params: SearchParams,
-  options?: GetSearchResultsWithFiltersOptions,
+  options: GetSearchResultsWithFiltersOptions,
 ): OpenAlexWorksQuery | null {
   const prepared = prepareOpenAlexSearch({ query: params.q, filters: paramsToFilters(params) }, options);
   if (prepared.finalApiQuery === null) return null;

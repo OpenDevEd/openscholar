@@ -8,6 +8,7 @@ import {
   type GetSearchResultsWithFiltersOptions,
   type SearchWithFiltersParams,
 } from '../search-utils';
+import { browserExpand } from '../keyword-validation-browser';
 
 export interface EnhancedSearchResult {
   originalQuery: string;
@@ -24,7 +25,7 @@ export interface EnhancedSearchResult {
  */
 export async function getSearchResultsWithFilters(
   params: SearchWithFiltersParams,
-  options?: GetSearchResultsWithFiltersOptions
+  options?: Omit<GetSearchResultsWithFiltersOptions, "expand">
 ): Promise<EnhancedSearchResult> {
   const { query } = params;
   const {
@@ -34,7 +35,7 @@ export async function getSearchResultsWithFilters(
     effectiveFilters,
     effectiveCitesItemId,
     effectiveRelatedToItemId,
-  } = prepareOpenAlexSearch(params, options);
+  } = prepareOpenAlexSearch(params, { ...options, expand: browserExpand });
   if (finalApiQuery === null) {
     // Return early with error state instead of throwing
     return {

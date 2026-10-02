@@ -10,6 +10,7 @@ import {
 } from "./aggregates";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { createJob } from "./createJob.test-support";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
@@ -164,7 +165,7 @@ describe("createScreeningJob", () => {
     const t = convexTest(schema);
     setupScreeningWorkpool(t);
     await expect(
-      t.mutation(api.screening.mutations.createScreeningJob, {
+      createJob(t, {
         papers: makePapers(5),
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
@@ -180,7 +181,7 @@ describe("createScreeningJob", () => {
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
     await expect(
-      asUser.mutation(api.screening.mutations.createScreeningJob, {
+      createJob(asUser, {
         papers: [],
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
@@ -196,7 +197,7 @@ describe("createScreeningJob", () => {
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
     await expect(
-      asUser.mutation(api.screening.mutations.createScreeningJob, {
+      createJob(asUser, {
         papers: makePapers(MAX_SCREENING_PAPERS_PER_JOB + 1),
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
@@ -212,7 +213,7 @@ describe("createScreeningJob", () => {
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
     await expect(
-      asUser.mutation(api.screening.mutations.createScreeningJob, {
+      createJob(asUser, {
         papers: makePapers(50),
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
@@ -229,7 +230,7 @@ describe("createScreeningJob", () => {
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
     await expect(
-      asUser.mutation(api.screening.mutations.createScreeningJob, {
+      createJob(asUser, {
         papers: makePapers(5),
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
@@ -245,9 +246,7 @@ describe("createScreeningJob", () => {
     await seedScreeningJob(t, user._id, "completed");
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
-    const result = await asUser.mutation(
-      api.screening.mutations.createScreeningJob,
-      {
+    const result = await createJob(asUser, {
         papers: makePapers(5),
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
@@ -264,9 +263,7 @@ describe("createScreeningJob", () => {
     await seedScreeningJob(t, user._id, "cancelled");
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
-    const result = await asUser.mutation(
-      api.screening.mutations.createScreeningJob,
-      {
+    const result = await createJob(asUser, {
         papers: makePapers(5),
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
@@ -283,9 +280,7 @@ describe("createScreeningJob", () => {
     await seedScreeningJob(t, user._id, "failed");
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
-    const result = await asUser.mutation(
-      api.screening.mutations.createScreeningJob,
-      {
+    const result = await createJob(asUser, {
         papers: makePapers(5),
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
@@ -317,9 +312,7 @@ describe("createScreeningJob", () => {
       minimumScore: 1,
     };
 
-    const result = await asUser.mutation(
-      api.screening.mutations.createScreeningJob,
-      {
+    const result = await createJob(asUser, {
         papers: makePapers(10),
         questions,
         scoringConfig,
@@ -349,9 +342,7 @@ describe("createScreeningJob", () => {
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
     const papers = makePapers(5);
-    const result = await asUser.mutation(
-      api.screening.mutations.createScreeningJob,
-      {
+    const result = await createJob(asUser, {
         papers,
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
@@ -387,9 +378,7 @@ describe("createScreeningJob", () => {
     await seedCredits(t, user._id, 100, 0);
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
-    const result = await asUser.mutation(
-      api.screening.mutations.createScreeningJob,
-      {
+    const result = await createJob(asUser, {
         papers: makePapers(3),
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
@@ -409,9 +398,7 @@ describe("createScreeningJob", () => {
     await seedCredits(t, user._id, 900, 0);
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
-    const result = await asUser.mutation(
-      api.screening.mutations.createScreeningJob,
-      {
+    const result = await createJob(asUser, {
         papers: makePapers(200),
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
@@ -428,9 +415,7 @@ describe("createScreeningJob", () => {
     await seedCredits(t, user._id, 125, 100); // 225 total
     const asUser = t.withIdentity({ subject: "clerk_test" });
 
-    const result = await asUser.mutation(
-      api.screening.mutations.createScreeningJob,
-      {
+    const result = await createJob(asUser, {
         papers: makePapers(50),
         questions: defaultQuestions,
         scoringConfig: defaultScoringConfig,
@@ -510,7 +495,7 @@ describe("Screen all on a saved search", () => {
     };
     await asUser.mutation(api.research.records.importBatch, { accountId: "clerk_test", searches: [{ search, history: { queryHistory: [], questionHistory: [] } }], shortcuts: [], ratings: [] });
 
-    const { jobId } = await asUser.mutation(api.screening.mutations.createScreeningJob, {
+    const { jobId } = await createJob(asUser, {
       papers: makePapers(1), questions: [...defaultQuestions, { key: "q2", question: "Adults?" }], scoringConfig: defaultScoringConfig, searchId: search.id,
     });
     const result = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique());
@@ -540,7 +525,7 @@ describe("Screen all on a saved search", () => {
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 100, 0);
     const asUser = t.withIdentity({ subject: "clerk_test" });
-    await expect(asUser.mutation(api.screening.mutations.createScreeningJob, {
+    await expect(createJob(asUser, {
       papers: makePapers(1), questions: defaultQuestions, scoringConfig: defaultScoringConfig, searchId: "someone-elses",
     })).rejects.toThrow("Search not found");
   });
@@ -552,7 +537,7 @@ describe("creating a large Screen all job", () => {
     setupScreeningWorkpool(t);
     const user = await seedUser(t, "clerk_big");
     await seedCredits(t, user._id, 100_000, 0);
-    const { jobId } = await t.withIdentity({ subject: "clerk_big" }).mutation(api.screening.mutations.createScreeningJob, {
+    const { jobId } = await createJob(t.withIdentity({ subject: "clerk_big" }), {
       papers: makePapers(MAX_SCREENING_PAPERS_PER_JOB), questions: defaultQuestions, scoringConfig: defaultScoringConfig,
     });
     // Each later batch is its own scheduled transaction, run here without the papers' screening.
@@ -573,7 +558,7 @@ describe("creating a large Screen all job", () => {
     const user = await seedUser(t, "clerk_cancel_early");
     await seedCredits(t, user._id, 100_000, 0);
     const asUser = t.withIdentity({ subject: "clerk_cancel_early" });
-    const { jobId } = await asUser.mutation(api.screening.mutations.createScreeningJob, { papers: makePapers(600), questions: defaultQuestions, scoringConfig: defaultScoringConfig });
+    const { jobId } = await createJob(asUser, { papers: makePapers(600), questions: defaultQuestions, scoringConfig: defaultScoringConfig });
     await asUser.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
     const pending = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
     const next = pending.find((fn) => fn.name === "screening/mutations:createScreeningResults");

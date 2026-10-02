@@ -19,7 +19,8 @@ import { searchResultToParams } from "../../lib/search-params/converters";
 import { paramsToBucketSearchFilters } from "../../lib/chat/params-to-bucket-filters";
 import { isRatingFilterActive } from "../../lib/utils";
 import { openAlexUrl } from "../../lib/openalex/request-url";
-import { OPENALEX_LIMITED } from "../../lib/openalex/limited";
+import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
+import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 
 /** OpenAlex's largest page. */
 const PAGE_SIZE = 200;
@@ -35,14 +36,17 @@ const requestValidator = v.object({
   sort: v.string(),
 });
 
+const searchRequestValidator = v.object({
+  clerkId: v.string(),
+  request: v.union(requestValidator, v.null()),
+  ratingRange: v.union(v.array(v.number()), v.null()),
+});
+type SearchRequest = Infer<typeof searchRequestValidator>;
+
 /** The request a saved search's results page makes, and its rating filter. */
 export const readSearch = internalQuery({
   args: { userId: v.id("users"), searchId: v.string() },
-  returns: v.object({
-    clerkId: v.string(),
-    request: v.union(requestValidator, v.null()),
-    ratingRange: v.union(v.array(v.number()), v.null()),
-  }),
+  returns: searchRequestValidator,
   handler: async (ctx, { userId, searchId }) => {
     const user = await ctx.db.get("users", userId);
     if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
@@ -50,7 +54,14 @@ export const readSearch = internalQuery({
     if (!row) throw createError("NOT_FOUND", "Search not found");
     const saved = currentSearch(row.data);
     const params = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(restoreSearch({ ...saved, screeningResponses: [] })), q: saved.query };
-    const request = paramsToBucketSearchFilters(params)?.openAlexQuery ?? null;
+    // The account's shortcuts this query uses, as the results page expands them.
+    const shortcuts = await Promise.all(
+      shortcutNames(saved.query).map((name) =>
+        ctx.db.query("queryShortcuts").withIndex("by_user_and_shorthand", (q) => q.eq("userId", userId).eq("data.shorthand", name)).first(),
+      ),
+    );
+    const expansions = Object.fromEntries(shortcuts.flatMap((row) => (row ? [[row.data.shorthand, row.data.expansion]] : [])));
+    const request = paramsToBucketSearchFilters(params, { expand: (query) => expandShortcuts(query, expansions) })?.openAlexQuery ?? null;
     const ratingRange: [number, number] = [params.rmin, params.rmax];
     return { clerkId: user.clerkId, request, ratingRange: isRatingFilterActive(ratingRange, params.rated) ? ratingRange : null };
   },
@@ -131,23 +142,24 @@ export async function searchPapers(
   if (last - first + 1 > MAX_SCREENING_PAPERS_PER_JOB) {
     throw createError("VALIDATION_ERROR", `Cannot screen more than ${MAX_SCREENING_PAPERS_PER_JOB} papers per job`);
   }
-  const { clerkId, request, ratingRange } = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId });
+  // Typed here: the generated API's types depend on this module, so inference would loop.
+  const found: SearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId });
+  const { clerkId, request, ratingRange } = found;
   if (!request) throw createError("VALIDATION_ERROR", "This search's query isn't valid. Fix it on the results page first.");
 
   const firstPage = Math.floor((first - 1) / PAGE_SIZE) + 1;
   const pages = Array.from({ length: Math.ceil(last / PAGE_SIZE) - firstPage + 1 }, (_, i) => firstPage + i);
-  if (!(await ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId, count: pages.length }))) {
-    throw createError("VALIDATION_ERROR", OPENALEX_LIMITED.message);
+  const allowed: boolean = await ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId, count: pages.length });
+  if (!allowed) {
+    throw createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
   }
   const read = await Promise.all(pages.map((page) => readPage(request, page)));
   const offset = (firstPage - 1) * PAGE_SIZE;
   const papers = read.flat().slice(first - 1 - offset, last - offset).map(toPaper);
   if (!ratingRange) return papers;
 
-  const ratings = new Map(
-    (await ctx.runQuery(internal.paperSets.search.ratingsOf, { userId, paperIds: papers.map((paper) => paper.openalexId) }))
-      .map(({ paperId, rating }) => [paperId, rating]),
-  );
+  const rated: Array<{ paperId: string; rating: number }> = await ctx.runQuery(internal.paperSets.search.ratingsOf, { userId, paperIds: papers.map((paper) => paper.openalexId) });
+  const ratings = new Map(rated.map(({ paperId, rating }) => [paperId, rating]));
   return papers.filter((paper) => {
     const rating = ratings.get(paper.openalexId);
     return rating !== undefined && rating >= ratingRange[0] && rating <= ratingRange[1];

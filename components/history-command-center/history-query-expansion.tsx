@@ -21,7 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
 import { useAppToast } from "@/lib/toast";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { subtleSpring } from "@/lib/animation-config";
 import type { QueryHistoryEntry } from "@/lib/types";
 

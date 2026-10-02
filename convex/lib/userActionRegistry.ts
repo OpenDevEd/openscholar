@@ -7,6 +7,7 @@ import { changeAction, getSearchAction, ratingsAction, revisionsAction, searches
 import { clearLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAction, saveToLibraryAction, setPaperInCollectionAction } from "../library/mutations";
 import { savedPaperAction } from "../library/queries";
 import { estimateAction as screeningEstimateAction } from "../screening/queries";
+import { screenSearchAction } from "../screening/start";
 import type { UserAction } from "./userActions";
 
 export const USER_ACTIONS: readonly UserAction[] = [
@@ -20,6 +21,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   changeAction,
   savedPaperAction,
   screeningEstimateAction,
+  screenSearchAction,
   saveToLibraryAction,
   clearLibraryRatingAction,
   removeFromLibraryAction,

@@ -3,6 +3,7 @@ import { serializeSearchParams } from "@/lib/search-params/parsers";
 import type { SearchParams } from "@/lib/search";
 import { buildOpenAlexWorksQuery } from "@/lib/openalex/works-query";
 import type { OpenAlexQuery, OpenAlexSourceEntry } from "./configuration/sources";
+import { browserExpand } from "@/lib/keyword-validation-browser";
 
 /** Pagination and display settings do not change which records a source imports. */
 export function sameOpenAlexSourceSearch(left: SearchParams, right: SearchParams): boolean {
@@ -35,9 +36,9 @@ function narrowsOql(oql: string | undefined): boolean {
 export function buildOpenAlexSourceQuery(params: SearchParams): OpenAlexQuery | null {
   // Leaving out retracted works is on by default and narrows nothing on its own,
   // so a search must still have its own query or filter to be imported.
-  const narrowing = buildOpenAlexWorksQuery({ ...params, retracted: true });
+  const narrowing = buildOpenAlexWorksQuery({ ...params, retracted: true }, { expand: browserExpand });
   if (!narrowing?.search && !narrowing?.filter && !narrowsOql(narrowing?.oql)) return null;
-  return buildOpenAlexWorksQuery(params);
+  return buildOpenAlexWorksQuery(params, { expand: browserExpand });
 }
 
 /**

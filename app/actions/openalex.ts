@@ -1,8 +1,7 @@
 "use server";
 import { createSearchParameters } from "@/lib/utils";
 import client from "@/lib/openalex";
-import type { Work, Works } from "@sickrin/openalex-sdk/dist/src/types/work";
-import { readOpenAlexWorks } from "@/lib/openalex/read-works";
+import type { Works } from "@sickrin/openalex-sdk/dist/src/types/work";
 import type { SearchFilters } from "@/lib/types";
 import type { QueryErrorDetail } from "@/lib/search/search-error";
 import { OQL_FIELD, worksOql } from "@/lib/openalex/oql";
@@ -10,9 +9,6 @@ import { fetchOqlWorks } from "@/lib/openalex/oql-works";
 import { worksUrl } from "@/lib/openalex/works-url";
 import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
 import { OpenAlexLimitedError } from "@/lib/openalex/limited";
-
-/** OpenAlex's largest page. */
-const SEARCH_PAGE_SIZE = 200;
 
 /**
  * Result of a search action. We return a structured error instead of throwing:
@@ -88,40 +84,4 @@ export async function getSearchResults(
   filters: SearchFilters,
 ): Promise<SearchActionResult> {
   return callOpenAlexSDK(query, filters);
-}
-
-export type SearchPageResult =
-  | { ok: true; works: Work[]; nextCursor: string | null }
-  | { ok: false; status: number | null; message: string };
-
-/**
- * One page of a search's works, read on the server with OpenScholar's key.
- * Screen All pages through a search with the returned cursor; from the
- * browser it would have no key and share 1,000 daily credits.
- */
-export async function readSearchPage(
-  query: string,
-  filters: SearchFilters,
-  cursor: string,
-): Promise<SearchPageResult> {
-  const limited = await spendOne();
-  if (limited) return limited;
-  const params = createSearchParameters(query, filters, { perPageOverride: SEARCH_PAGE_SIZE });
-  if (filters.searchField === OQL_FIELD) {
-    const result = await fetchOqlWorks(worksOql(query, params.filter ?? {}), {
-      perPage: SEARCH_PAGE_SIZE,
-      sort: filters.sortBy,
-      cursor,
-    });
-    return result.ok
-      ? { ok: true, works: result.data.results, nextCursor: result.data.meta.next_cursor || null }
-      : { ok: false, status: result.status, message: result.message };
-  }
-  try {
-    const page = await readOpenAlexWorks({ ...params, cursor });
-    return { ok: true, works: page.results, nextCursor: page.meta.next_cursor };
-  } catch (error) {
-    console.error("OpenAlex search page failed:", error);
-    return { ok: false, status: null, message: error instanceof Error ? error.message : "Search request failed" };
-  }
 }

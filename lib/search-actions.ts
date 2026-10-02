@@ -3,7 +3,7 @@ import { DateRange } from 'react-day-picker';
 import posthog from 'posthog-js';
 import { useUIStore, useRatingsStore, useSearchHistoryStore } from './store';
 import { createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
-import { validateAndExpandKeywordsSilently } from './keyword-validation';
+import { validateAndExpandKeywordsSilently } from './keyword-validation-browser';
 import type { SearchField, SearchFilters, ScreeningResponses, PaperResult } from './types';
 
 export type DownloadSearchState = {

@@ -10,7 +10,7 @@
 import { v, type GenericValidator, type Infer, type ObjectType, type PropertyValidators } from "convex/values";
 import { action, internalAction, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./functions";
 import { internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { requireActiveUser, requireAuth } from "./auth";
 
 /** Who made a change: the person themselves, or the assistant acting for them. */
@@ -193,7 +193,8 @@ export function userAction<Args extends PropertyValidators, Returns extends Gene
       args: entry.args,
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const user = await ctx.runQuery(internal.users.internal.getCurrentUser, {});
+        // Typed here: the generated API's types depend on every module built with this, so inference would loop.
+        const user: Doc<"users"> = await ctx.runQuery(internal.users.internal.getCurrentUser, {});
         return entry.run(ctx, user._id, args as ObjectType<Args>, "user");
       },
     }),
@@ -210,7 +211,7 @@ export function assistantAction<Args extends PropertyValidators, Returns extends
       handler: async (ctx, args) => {
         const { userId, rest } = asUser<Args>(args);
         // The sender may have been suspended or deleted since the turn began.
-        const user = await ctx.runQuery(internal.users.internal.getActiveUser, { userId });
+        const user: Doc<"users"> = await ctx.runQuery(internal.users.internal.getActiveUser, { userId });
         return entry.run(ctx, user._id, rest, "assistant");
       },
     }),

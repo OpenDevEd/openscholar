@@ -18,7 +18,7 @@ import {
 } from "@/lib/utils";
 import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { SearchResult, HistorySortBy } from "@/lib/types";
 import {

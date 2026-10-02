@@ -212,21 +212,38 @@ export const cancelScreeningJob = mutation({
       return null;
     }
 
-    // Update job status to cancelled
+    // One write: papers check the job before they run and skip a cancelled one, so
+    // cancelling never waits on, or conflicts with, the papers finishing meanwhile.
     await ctx.db.patch("screeningJobs", args.jobId, {
       status: "cancelled",
       updatedAt: Date.now(),
     });
+    // Their queued work is dropped in batches afterwards, as Firecrawl drops a cancelled
+    // crawl's queue, so the pool's slots free up sooner.
+    await ctx.scheduler.runAfter(0, internal.screening.mutations.cancelScreeningWork, { jobId: args.jobId, cursor: null });
 
-    const results = await ctx.db
+    return null;
+  },
+});
+
+/** Results whose queued work one batch cancels. */
+const CANCEL_BATCH = 100;
+
+/** Cancels a cancelled job's queued paper work, a batch at a time. */
+export const cancelScreeningWork = internalMutation({
+  args: { jobId: v.id("screeningJobs"), cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { jobId, cursor }) => {
+    const page = await ctx.db
       .query("screeningResults")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_SCREENING_PAPERS_PER_JOB);
-
-    for (const workId of getCancelableScreeningWorkIds(results)) {
+      .withIndex("by_job", (q) => q.eq("jobId", jobId))
+      .paginate({ cursor, numItems: CANCEL_BATCH });
+    for (const workId of getCancelableScreeningWorkIds(page.page)) {
       await screeningPool.cancel(ctx, workId);
     }
-
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.screening.mutations.cancelScreeningWork, { jobId, cursor: page.continueCursor });
+    }
     return null;
   },
 });

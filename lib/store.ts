@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { expandShortcuts, type ShortcutExpansions } from './query-shortcuts'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { SIDEBAR_STORAGE_KEY, SIDEBAR_WIDTH_COLLAPSED, SIDEBAR_WIDTH_EXPANDED } from './sidebar-width'
 import type {
@@ -746,20 +747,7 @@ export const localKeywordExpansionStore = create<KeywordExpansionState>()(
         return { keywords: rest };
       }),
       clearKeywords: () => set({ keywords: {} }),
-      expandQuery: (query) => {
-        const { keywords } = get();
-        const warnings: Array<{ key: string; params?: Record<string, string> }> = [];
-        const expandedQuery = query.replace(/(\w[\w-]*)\.\.\./g, (match, keyword) => {
-          const bookmarkData = keywords[keyword];
-          if (bookmarkData?.expansion) {
-            return bookmarkData.expansion;
-          } else {
-            warnings.push({ key: 'bookmarkNotFound', params: { keyword } });
-            return match;
-          }
-        });
-        return { expandedQuery, warnings };
-      },
+      expandQuery: (query) => expandShortcuts(query, shortcutExpansions(get().keywords)),
       importKeywords: (data) => {
         let importedCount = 0;
         const validItems: Record<string, BookmarkData> = {};
@@ -1281,3 +1269,8 @@ export const useTransientScreeningStore = create<{
 export const useSearchHistoryStore = Object.assign(bindResearchStore(localSearchHistoryStore, 'history'), { persist: localSearchHistoryStore.persist });
 export const useKeywordExpansionStore = Object.assign(bindResearchStore(localKeywordExpansionStore, 'shortcuts'), { persist: localKeywordExpansionStore.persist });
 export const useRatingsStore = Object.assign(bindResearchStore(localRatingsStore, 'ratings'), { persist: localRatingsStore.persist });
+
+/** The Bookmarks page's shortcuts as expansions by name. */
+export function shortcutExpansions(keywords: Record<string, { expansion: string }>): ShortcutExpansions {
+  return Object.fromEntries(Object.entries(keywords).map(([name, { expansion }]) => [name, expansion]))
+}
