@@ -126,10 +126,14 @@ everything a user can, calling the same actions as the UI:
     already do. Reason: on e2e, 40 writers into one screening lost a third of
     their writes to conflicts. Proof: #383, #390, #405 to #407.
   - Was: "reserve and settle billing" in general. Now: an approval's maximum
-    spend is an Autumn hold, the per-reply cap is a hold per reply, and bulk
-    work tracks each item's charge against the approval. Reason: #395 moved
-    every charge onto Autumn's lock-confirm flow and per-item tracking, so the
-    assistant uses the same calls rather than a second path. Proof: #395, #405.
+    spend is an Autumn hold, and under it the hold is the only Autumn charge.
+    Each item records its cost in the usage ledger only, and the hold is
+    confirmed once with their sum when the work ends. The per-reply cap is a
+    hold per reply, settled the same way. Screen all started from the page
+    keeps its per-item `track` with no hold. Reason: #395 moved every charge
+    onto Autumn's lock-confirm flow; combining a parent hold with per-item
+    tracks would deduct the same usage twice. Proof: #395, #405, and the
+    review of PR #414.
   - New: what reaches the model is exactly what a registry entry's `returns`
     validator declares. `check:convex-rules` fails on any function that can
     return a field its validator doesn't declare, so an internal column can't
@@ -147,11 +151,12 @@ everything a user can, calling the same actions as the UI:
     the waiting button the same day.
   - Was: "how many screening jobs run at once per plan" (#335). Now: each plan
     sets how many jobs one person runs at once, further jobs wait in a queue,
-    and every running job draws from the shared pool through its own window,
-    as extraction's dispatcher already refills each job's window. Reason: the
-    pools are shared by everyone (Screen all 20 papers at a time, extraction
-    40), and Screen all enqueues every paper of a job when it's created, so a
-    second person's job waits behind the first one's last paper.
+    and one dispatcher per pool shares its slots across the running jobs, each
+    job's window being its share of the pool. Reason: the pools are shared by
+    everyone (Screen all 20 papers at a time, extraction 40). Screen all
+    enqueues every paper of a job when it's created, and extraction's
+    dispatcher gives a single job a window as large as the whole pool, so in
+    both a second person's job waits behind the first one's papers.
   - Was: the plan treated shared dev as disposable development data. Now:
     shared dev is the live deployment. Migrations run there, and its data is
     user data, so #325 moves existing chat threads into assistant threads
@@ -284,9 +289,13 @@ Everything else arrives through tools:
   (`toModelOutput`), built only from the registry entry's validated result.
 - Past chats are searched through a tool, never pre-loaded.
 - OpenAlex requests count against the sender's own allowance (300 a minute,
-  20,000 a day per account, `lib/openalex/request-limiter.ts`). Each turn has
-  an OpenAlex request budget, and a count check asks for one result, not a
-  page.
+  20,000 a day per account). Today that limit lives in the Next.js process
+  (`lib/openalex/spend-requests.ts` over `request-limiter.ts`), keyed by the
+  Clerk session, so a Convex action such as the #341 resolver would bypass
+  it. The limit moves into Convex, keyed by the acting user, on
+  `@convex-dev/rate-limiter`, and the Next.js actions and Convex actions both
+  spend from it. Each turn has an OpenAlex request budget on top, and a count
+  check asks for one result, not a page.
 
 ### View context (#327)
 
@@ -302,10 +311,13 @@ once. A live card renders from the job's progress rows (`screeningJobProgress`,
 event as its own row, written by the step that finishes the job (`finishIfDone`
 in Screen all's bookkeeping, the counts worker in extraction), never by each
 paper. The assistant writes a readout. Each plan sets how many jobs a person
-runs at once; further jobs wait in a queue (#335). Every running job draws
-from the shared pool through its own window, the way extraction's dispatcher
-refills each job's window, so one person's 1,000 papers don't hold the pool
-for everyone else. A queued job checks
+runs at once; further jobs wait in a queue (#335). One dispatcher per pool
+shares its slots across the running jobs, so each job's window is its share
+of the pool and one person's 1,000 papers don't hold it for everyone else.
+Extraction's dispatcher (`convex/extraction/queue/dispatcher.ts`) already
+refills per-job windows from a batch worker, but sizes each window as the whole
+pool (`EXTRACTION_PAPER_CONCURRENCY`); it changes to the share, and Screen all
+moves onto the same dispatcher instead of enqueuing every paper at creation. A queued job checks
 credits, access and limits again when it starts, and a periodic sweep starts
 queued jobs nothing woke. Extraction results are analysed on the server with
 filter, group and count, so a comparison covers every row rather than the
@@ -327,10 +339,14 @@ lock is released while a job runs. `@convex-dev/workflow` coordinates this on
 top of the existing job queues.
 
 Credits use the flow from #395. An approval's maximum spend is an Autumn hold,
-recorded in `billingHolds`, and settled with one lock confirm when the work
-ends. A reply holds its per-reply cap the same way. Bulk work under one
-approval tracks each item's charge, as Screen all does, and stops when the
-approval's maximum is reached.
+recorded in `billingHolds`. Under it the hold is the only Autumn charge: each
+item writes its cost to the usage ledger without calling Autumn, the work
+stops when the ledger reaches the approved maximum, and the hold is confirmed
+once with the sum when the work ends. A reply holds its per-reply cap the same
+way. Screen all started from the page has no approval and keeps its per-item
+`track` (`hold: false`); a job never uses both paths. The hold's expiry covers
+the job's expected length, and the `billingHolds` backstop releases it if the
+work never ends.
 
 ### Paper sets (#341)
 
@@ -416,10 +432,10 @@ its place in the order.
 |---|---|---|
 | 1 | #321 AI SDK 7 and agent 0.7 (done, PR #331) | none |
 | 2 | #322 Searches, shortcuts and ratings in Convex (done, PR #332) | none |
-| 3 | #323 Action registry and CI gate (registry, tools and gate done, PR #347; each issue below registers the actions it covers) | none |
+| 3 | #323 Action registry and CI gate. Done in PR #347 for queries and mutations; still to build: action entries (external calls such as OpenAlex), their assistant twins through `runAction`, and registered Next.js server actions in `check-user-actions.ts`. #341 needs them first | none |
 | 4a | #334 Screening record: storage and migration (done, PR #385, migrated on shared dev) | #322 |
 | 4b | #334 Screening record: jobs on paper sets | #341 |
-| 5 | #341 Paper sets by ID, with the duplicate check | #323 |
+| 5 | #341 Paper sets by ID, with the duplicate check | #323's action entries |
 | 6 | #342 Undo for every reversible change | #323; screening undo needs #334 |
 | 7 | #324 Assistant threads and sharing | #321, #323 |
 | 8 | #325 Extraction only, chat from a search | #322, #324 |
@@ -430,11 +446,14 @@ its place in the order.
 | 13 | #329 Evidence Library drafts, homepage and publishing | #327, new-el#465 |
 | 14 | #346 The assistant panel on every page | #324, #327 |
 
-Next are steps 5 and 4b together: the resolver, and Screen all and extraction
-taking a paper set, which also removes Screen all's wait at the start. On
-2026-10-02, 207 public functions were still pending registration in
+Next are #323's action entries, then steps 5 and 4b together: the resolver,
+and Screen all and extraction taking a paper set, which cuts Screen all's wait
+at the start from about 13 s to about 2 s for 1,000 papers. On 2026-10-02, 207
+public functions were still pending registration in
 `scripts/user-actions-exempt.json`: 62 under #329, 48 under #323, 48 under
-#328, 32 under #327 and 15 under #325. These can run in parallel with the steps
+#328, 32 under #327, 15 under #325, and one each under #336
+(`ai/actions:enhanceSearchQuery`) and #334
+(`ai/actions:generateBatchScreeningResponses`). These can run in parallel with the steps
 above: #336 (query count check), #337 with #339 (extraction calls and
 quotes), #343 (Sub-Saharan Africa), #344 (fields added to a job) and
 new-el#465. #338 (agreement with people) follows #334. #51 stays with OARS
@@ -519,8 +538,8 @@ Later, without issues yet:
   is offered only on models that pass the eval set.
 - **Shared limits.** OpenAlex allowances are per account and the job pools are
   shared by everyone. A tool loop can spend a person's OpenAlex allowance, and
-  one large job can hold a pool. Turns have an OpenAlex budget, and jobs run
-  through per-job windows behind per-plan queues (#335).
+  one large job can hold a pool. Turns have an OpenAlex budget, and each pool's
+  dispatcher splits its slots across running jobs behind per-plan queues (#335).
 - **Cost of long agent loops.** Each turn has a step and credit cap, and the
   running cost is shown.
 - **Registry coverage.** The exempt list must shrink over time. A permanent
