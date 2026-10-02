@@ -94,7 +94,7 @@ export const handleEvent = internalAction({
     if (refundedChargeId) {
       await reverseRefundedTopUp(ctx, stripe, userId, refundedChargeId);
     }
-    await refreshAccount(ctx, userId);
+    await refreshAccount(ctx, userId, { card: true });
     return null;
   },
 });

@@ -288,7 +288,7 @@ async function runQuestionBatch(
 
   const persisted = new Set(writeResult.completed);
   if (context.user && completed.length > 0) {
-    await captureCompletedQuestionTracking({
+    await captureCompletedQuestionTracking(ctx, {
       distinctId: context.user.clerkId,
       outcomes: completed,
       persistedQuestionKeys: persisted,

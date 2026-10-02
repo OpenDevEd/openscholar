@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { SchemaDefinition } from "convex/server";
 import { register as registerAggregate } from "@convex-dev/aggregate/test";
+import { register as registerBatchWorker } from "@convex-dev/batch-worker/test";
 import { register as registerShardedCounter } from "@convex-dev/sharded-counter/test";
 import { register as registerMigrations } from "@convex-dev/migrations/test";
 import { convexTest as baseConvexTest } from "convex-test/dist/index.js";
@@ -34,7 +35,13 @@ const components = [...config.matchAll(/app\.use\((aggregate|shardedCounter), \{
 export function convexTest(schemaOrOptions?: Schema | Options, modules?: Modules) {
   const options: Options = isOptions(schemaOrOptions) ? schemaOrOptions : { schema: schemaOrOptions, modules };
   const t = baseConvexTest({ ...options, transactionLimits: options.transactionLimits ?? true } as never) as ReturnType<typeof baseConvexTest>;
-  for (const { kind, name } of components) (kind === "aggregate" ? registerAggregate : registerShardedCounter)(t as never, name);
+  for (const { kind, name } of components) {
+    if (kind === "aggregate") {
+      registerAggregate(t as never, name);
+      // The aggregate applies queued writes (`{ async: true }`) with its own batch worker.
+      registerBatchWorker(t as never, `${name}/batchWorker`);
+    } else registerShardedCounter(t as never, name);
+  }
   if (/app\.use\(migrations\)/.test(config)) registerMigrations(t as never);
   return withTriggersInRun(t);
 }

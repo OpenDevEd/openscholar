@@ -23,11 +23,11 @@ export const fakeAutumn = {
   locks: new Map<string, { customerId: string; credits: number }>(),
   idempotencyKeys: new Set<string>(),
   calls: [] as Array<{ path: string; body: Record<string, unknown> }>,
-  /** Makes the next balances.track fail, as if Autumn were down. */
-  failNextTrack: false,
+  /** Makes the next call to this endpoint fail, as if Autumn were down. */
+  failNext: null as string | null,
 
   reset() {
-    this.failNextTrack = false;
+    this.failNext = null;
     this.customers.clear();
     this.locks.clear();
     this.idempotencyKeys.clear();
@@ -96,6 +96,10 @@ function respond(status: number, body: unknown) {
 
 function handle(path: string, body: Record<string, unknown>, idempotencyKey: string | null) {
   fakeAutumn.calls.push({ path, body });
+  if (fakeAutumn.failNext === path) {
+    fakeAutumn.failNext = null;
+    return respond(503, { message: "Autumn is down" });
+  }
   if (idempotencyKey) {
     if (fakeAutumn.idempotencyKeys.has(idempotencyKey)) {
       return respond(409, { code: "duplicate_idempotency_key" });
@@ -140,11 +144,6 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
       return respond(200, { success: true });
     }
     case "balances.track": {
-      if (fakeAutumn.failNextTrack) {
-        fakeAutumn.failNextTrack = false;
-        fakeAutumn.idempotencyKeys.delete(idempotencyKey ?? "");
-        return respond(503, { message: "Autumn is down" });
-      }
       const value = deduct(fakeAutumn.customer(customerId!), body.value as number);
       return respond(200, {
         balance: customerBody(customerId!).balances.credits,

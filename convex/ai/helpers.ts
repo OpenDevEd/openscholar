@@ -20,9 +20,9 @@ import { SERVER_AI_CONFIG } from "./config";
 import { getProviderModel } from "../../lib/ai/server/providers";
 import { resolveOpenRouterModel } from "../chat/provider";
 import type { AIProvider } from "../../lib/types/ai.types";
+import type { ServerAIGenerationParams } from "../../lib/posthog-server";
 import type { OperationConfig } from "../../lib/ai/core/configs";
 import { type PropertyValidators, type ObjectType, type GenericValidator } from "convex/values";
-import { captureAIGenerationServer, captureAIGenerationBatchServer } from "../../lib/posthog-server";
 import {
   type AITrackingEntry,
   truncateForTracking,
@@ -161,6 +161,22 @@ export async function resolveUserServerModel(
   return { ...(await resolveOpenRouterModel(ctx, pick?.modelId ?? null)), effort: pick?.effort };
 }
 
+/** Schedules a `$ai_generation` capture. Analytics never fails the paid work it describes. */
+export async function captureGenerationLater(ctx: ActionCtx, params: ServerAIGenerationParams) {
+  await ctx.scheduler
+    .runAfter(0, internal.lib.analytics.captureAIGeneration, { params })
+    .catch((error) => console.error("[analytics] scheduling $ai_generation failed", error));
+}
+
+async function captureGenerationsLater(
+  ctx: ActionCtx,
+  args: { distinctId: string; provider: string; modelId: string; entries: AITrackingEntry[] },
+) {
+  await ctx.scheduler
+    .runAfter(0, internal.lib.analytics.captureAIGenerationBatch, args)
+    .catch((error) => console.error("[analytics] scheduling $ai_generation failed", error));
+}
+
 export type CreditTarget = {
   userId: Id<"users">;
   /** Unique per attempt. */
@@ -171,11 +187,17 @@ export type CreditTarget = {
   description: string;
   jobId?: Id<"extractionJobs">;
   model?: string;
+  /**
+   * False for bulk work of small, bounded items (a Screen all paper): nothing
+   * is held; the work runs while the cached balance has credits, and its
+   * cost is charged after with one `track`, as Firecrawl bills each page of a crawl.
+   */
+  hold?: boolean;
 };
 
 /**
- * Runs AI work that costs credits. Reserves `estimate` first and refuses the
- * work when the balance can't cover it. Afterwards it charges what the tokens
+ * Runs AI work that costs credits. Reserves `estimate` first (unless `hold`
+ * is false) and refuses the work when the balance can't cover it. Afterwards it charges what the tokens
  * actually cost; releases the reservation if the work throws.
  */
 export async function withCredits<T>(
@@ -184,12 +206,11 @@ export async function withCredits<T>(
   pricing: Pricing,
   work: () => Promise<{ result: T; usage: Usage }>,
 ): Promise<{ result: T; credits: number; usage: Usage }> {
-  const reserved = await reserveCredits(ctx, {
-    userId: target.userId,
-    chargeId: target.chargeId,
-    credits: target.estimate,
-  });
-  if (!reserved) {
+  const allowed =
+    target.hold === false
+      ? ((await ctx.runQuery(internal.billing.accounts.forUser, { userId: target.userId }))?.balance ?? 0) > 0
+      : await reserveCredits(ctx, { userId: target.userId, chargeId: target.chargeId, credits: target.estimate });
+  if (!allowed) {
     throw createError(
       "AI_INSUFFICIENT_CREDITS",
       `Insufficient credits: this needs about ${target.estimate} credits`,
@@ -199,11 +220,11 @@ export async function withCredits<T>(
   try {
     outcome = await work();
   } catch (error) {
-    await releaseCredits(ctx, target);
+    if (target.hold !== false) await releaseCredits(ctx, target);
     throw error;
   }
   const credits = creditsForUsage(outcome.usage, pricing);
-  await settleCredits(ctx, {
+  const settled = await settleCredits(ctx, {
     userId: target.userId,
     chargeId: target.chargeId,
     credits,
@@ -215,6 +236,8 @@ export async function withCredits<T>(
       ...tokenDetails(outcome.usage),
     },
   });
+  // Unheld work runs on the cached balance; while its charges can't reach Autumn, it stops.
+  if (!settled && target.hold === false) await ctx.runMutation(internal.billing.accounts.zeroBalance, { userId: target.userId });
   return { result: outcome.result, credits, usage: outcome.usage };
 }
 
@@ -269,14 +292,14 @@ export async function withAuthAndCreditsBatch<T>(
       },
     );
     if (trackingEntries && trackingEntries.length > 0) {
-      await captureAIGenerationBatchServer(
-        user.clerkId,
-        "openrouter" as AIProvider,
-        modelSlug,
-        trackingEntries.map((entry) => ({ ...entry, creditsDeducted: credits })),
-      );
+      await captureGenerationsLater(ctx, {
+        distinctId: user.clerkId,
+        provider: "openrouter",
+        modelId: modelSlug,
+        entries: trackingEntries.map((entry) => ({ ...entry, creditsDeducted: credits })),
+        });
     } else {
-      await captureAIGenerationServer({
+      await captureGenerationLater(ctx, {
         distinctId: user.clerkId,
         provider: "openrouter" as AIProvider,
         modelId: modelSlug,
@@ -318,12 +341,12 @@ export async function withUserCredits<T>(
       return { result: outcome.result, usage: outcome.totalUsage };
     });
     if (trackingEntries && trackingEntries.length > 0) {
-      await captureAIGenerationBatchServer(
-        user.clerkId,
-        "openrouter" as AIProvider,
-        target.model ?? SERVER_AI_CONFIG.model,
-        trackingEntries.map((entry) => ({ ...entry, creditsDeducted: credits })),
-      );
+      await captureGenerationsLater(ctx, {
+        distinctId: user.clerkId,
+        provider: "openrouter",
+        modelId: target.model ?? SERVER_AI_CONFIG.model,
+        entries: trackingEntries.map((entry) => ({ ...entry, creditsDeducted: credits })),
+        });
     }
     return result;
   } catch (error) {
@@ -377,7 +400,7 @@ export function createAIAction<
               return { result: output, usage };
             },
           );
-          await captureAIGenerationServer({
+          await captureGenerationLater(ctx, {
             distinctId: user.clerkId,
             provider: "openrouter" as AIProvider,
             modelId: modelSlug,
@@ -391,7 +414,7 @@ export function createAIAction<
           });
           return formatOutput(result, args);
         } catch (error) {
-          await captureAIGenerationServer({
+          await captureGenerationLater(ctx, {
             distinctId: user.clerkId,
             provider: "openrouter" as AIProvider,
             modelId: modelSlug,

@@ -202,7 +202,7 @@ async function importAccount(
     );
     return false;
   }
-  if (!dryRun) await refreshAccount(ctx, account.userId);
+  if (!dryRun) await refreshAccount(ctx, account.userId, { card: true });
   console.log(
     `[migrate] ${dryRun ? "checked" : "imported"} ${account.userId}: ${account.subscription?.plan ?? "free"}, free ${account.free}, paid ${account.paid}`,
   );

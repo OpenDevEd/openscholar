@@ -115,6 +115,7 @@
     "@axe-core/playwright": "^4.11.2",
     "@clerk/backend": "^2.32.1",
     "@clerk/testing": "^1.14.1",
+    "@convex-dev/batch-worker": "0.3.3",
     "@edge-runtime/vm": "^5.0.0",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
