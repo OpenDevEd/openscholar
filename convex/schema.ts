@@ -835,7 +835,8 @@ export default defineSchema({
     ])
     .index("by_paper_and_epoch_and_kind", ["paperId", "runEpoch", "kind"])
     .index("by_status_and_priority", ["status", "priority"])
-    .index("by_work", ["workId"]),
+    .index("by_work", ["workId"])
+    .index("by_releasedAt", ["releasedAt"]),
 
   // ═══════════════════════════════════════════════════════════════
   // EXTRACTION EVIDENCE UNITS - Anchored sentence evidence (V3)

@@ -6,8 +6,9 @@
  *   - recordQuestionBatch upserts all completed/failed question rows for
  *     one paper batch in a single mutation.
  *   - finalizePaper aggregates those rows through aggregatePaperStatus,
- *     flips the paper terminal, settles one paper-level credit debit, and
- *     fires maybeFinalizeJob. Re-running after terminal is a no-op.
+ *     flips the paper terminal and settles one paper-level credit debit; the
+ *     extraction worker finishes the job (../queue/dispatcher.ts). Re-running
+ *     after terminal is a no-op.
  */
 
 import { internalMutation, type MutationCtx } from "../../lib/functions";
@@ -520,10 +521,9 @@ export const finalizePaper = internalMutation({
       pdfContentUsed: anyPdfUsed ? true : undefined,
     });
 
-    await ctx.runMutation(
-      internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob,
-      { jobId: paper.jobId },
-    );
+    // The job finishes from the extraction worker once its window is empty
+    // (../queue/dispatcher.ts), not here: every paper reading the job's counters as it
+    // finished conflicted with every other paper finishing.
 
     console.log(
       `[finalizePaper] ${args.paperId} → ${terminalStatus} (completed=${rollup.completedQuestions} failed=${rollup.failedQuestions})`,

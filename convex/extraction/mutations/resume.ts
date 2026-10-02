@@ -160,7 +160,10 @@ export const resumeExtraction = mutation({
         internal.extraction.actions.setupExtractionQueueJob,
         { jobId, expectedEpoch: nextEpoch },
       );
-    } else if (nonTerminalPaperIds.length > 0) {
+    } else if (nonTerminalPaperIds.length === 0) {
+      // Every paper finished before the pause took effect; nothing will run to finish the job.
+      await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId, expectedEpoch: nextEpoch });
+    } else {
       // A paper queued for a retry before the pause is queued for the same questions
       // again; a full run would redo its answered and permanently failed questions.
       const initialPaperIds: typeof nonTerminalPaperIds = [];

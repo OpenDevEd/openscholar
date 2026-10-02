@@ -470,7 +470,7 @@ describe("extraction paper queue worker", () => {
     expect(results[0].answer).toBe("Already answered");
   });
 
-  it("dispatches the next pending paper when a worker opens capacity", async () => {
+  it("releases its row to the extraction worker, which dispatches the next pending paper", async () => {
     const t = convexTest(schema);
     setupExtractionPaperWorkpool(t);
     const {
@@ -501,9 +501,17 @@ describe("extraction paper queue worker", () => {
 
     expect(paper?.status).toBe("completed");
     expect(completedQueue?.status).toBe("completed");
+    // Released to the worker, which hasn't run: the window is as it was.
+    expect(completedQueue?.releasedAt).toBeDefined();
     expect(activeQueue?.status).toBe("running");
-    expect(pendingQueue?.status).toBe("leased");
-    expect(pendingQueue?.workId).toBeDefined();
-    expect(pendingQueue?.leaseOwner).toContain("worker:");
+    expect(pendingQueue?.status).toBe("pending");
+
+    // The worker's batch: one refill for the job.
+    await t.mutation(internal.extraction.queue.dispatcher.refill, { rows: [completedQueueId] });
+    const [released, refilled] = await t.run((ctx) => Promise.all([ctx.db.get(completedQueueId), ctx.db.get(pendingQueueId)]));
+    expect(released?.releasedAt).toBeUndefined();
+    expect(refilled?.status).toBe("leased");
+    expect(refilled?.workId).toBeDefined();
+    expect(refilled?.leaseOwner).toContain("refill:");
   });
 });

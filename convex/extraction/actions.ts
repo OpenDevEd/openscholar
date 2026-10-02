@@ -26,6 +26,7 @@ import { createError } from "../lib/errors";
 import {
   EXTRACTION_PAPER_CONCURRENCY,
   EXTRACTION_QUESTION_CONCURRENCY,
+  EXTRACTION_QUEUE_LEASE_MS,
   PAPER_LIMIT,
 } from "../../lib/extraction/limits";
 import {
@@ -39,7 +40,6 @@ import {
 // (title + abstract dominate), so 100 papers stays comfortably under the
 // 1 MiB single-document limit even on the upper-end of abstract size.
 const CREATE_PAPER_CHUNK_SIZE = 100;
-const QUEUE_LEASE_MS = 60_000;
 
 type StoredSearchFilters = Infer<typeof storedSearchFiltersValidator>;
 
@@ -460,7 +460,7 @@ export async function runSetupExtractionQueueJob(
         expectedEpoch,
         paperConcurrency: runtime.paperConcurrency,
         leaseOwner: `setup:${jobId}:${expectedEpoch}`,
-        leaseMs: QUEUE_LEASE_MS,
+        leaseMs: EXTRACTION_QUEUE_LEASE_MS,
         questionConcurrency: runtime.questionConcurrency,
         pdfEnabled: runtime.pdfEnabled,
       },

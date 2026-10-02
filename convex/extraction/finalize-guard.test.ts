@@ -365,9 +365,6 @@ describe("recordQuestionBatch + finalizePaper terminal-state guard", () => {
         .collect();
       expect(results).toHaveLength(1);
 
-      // Job should also be finalized to completed since the only paper is done
-      const job = await ctx.db.get("extractionJobs", jobId);
-      expect(job?.status).toBe("completed");
       const counters = await readJobCounters(ctx, jobId);
       expect(counters.processed).toBe(1);
     });
