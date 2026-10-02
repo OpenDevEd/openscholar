@@ -18,11 +18,7 @@ import { resolveOwnedJob, type OwnedJobResolution } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
 import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import { readJobCounters } from "../jobCounters";
-import {
-  extractionJobValidator,
-  extractionQuestionValidator,
-  jobStatusValidator,
-} from "../validators";
+import { extractionJobValidator, extractionQuestionValidator, jobQuestionsValidator, jobStatusValidator } from "../validators";
 
 async function resolveReadableJob(
   ctx: QueryCtx,
@@ -79,7 +75,7 @@ export const getJobDetails = query({
   args: { jobId: v.id("extractionJobs") },
   returns: statusResultValidator({
     job: extractionJobValidator,
-    questions: v.array(extractionQuestionValidator),
+    questions: jobQuestionsValidator,
   }),
   handler: async (ctx, args) => {
     const access = await resolveReadableJob(ctx, args.jobId);

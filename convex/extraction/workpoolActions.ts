@@ -43,6 +43,7 @@ import {
 } from "./evidence_units";
 import { extractPdfJsTextPages } from "./pdfjs_extract";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
+import { MAX_CITATIONS } from "../lib/listCaps";
 import {
   isGenericArrayEntity,
   normalizeArrayEntity,
@@ -239,8 +240,9 @@ async function runDenseSearch(
   }
 }
 
+/** The answer's citations, the first MAX_CITATIONS of them (a result holds at most that many, #426). */
 function buildCitations(validated: RetrievalCandidate[]): Citation[] {
-  return validated.map((item) => ({
+  return validated.slice(0, MAX_CITATIONS).map((item) => ({
     evidenceId: item.unit.evidenceId,
     page: item.unit.page,
     charRange: item.unit.charRange,

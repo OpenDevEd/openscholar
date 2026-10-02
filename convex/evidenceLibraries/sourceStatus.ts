@@ -12,9 +12,9 @@ import {
   sourceStatusSnapshotValidator,
   sourceStatusValidator,
 } from "./sourceStatusValidators";
+import { MAX_LIBRARY_SOURCES as MAX_SOURCES } from "../lib/listCaps";
 
 // A library lists its sources in its configuration; far fewer than this.
-const MAX_SOURCES = 200;
 // Newest wins, so a clock far ahead would freeze a library's status.
 const MAX_CLOCK_AHEAD_MS = 5 * 60_000;
 

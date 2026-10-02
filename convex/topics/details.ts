@@ -8,6 +8,7 @@ import { topicIdSchema, type TopicNode } from "../../lib/topics/contract";
 import { CATALOG_REVISION } from "../../lib/topics/catalog";
 import type { Doc } from "../_generated/dataModel";
 import { openAlexUrl } from "../../lib/openalex/request-url";
+import { MAX_TOPIC_KEYWORDS } from "../lib/listCaps";
 
 const provider = z.object({id: z.string(), description: z.string().max(100000), keywords: z.array(z.string().max(1000)).max(1000), works_count: z.number().int().nonnegative()});
 const DAY = 86_400_000;
@@ -55,7 +56,7 @@ async function fetchTopicDetail(id: string) {
   if (!response.ok) throw new Error(`OpenAlex topic returned ${response.status}`);
   const topic = provider.parse(await response.json());
   if (topic.id.replace("https://openalex.org/", "") !== id) throw new Error("OpenAlex returned a different topic");
-  return {id, description: topic.description, keywords: topic.keywords, worksCount: topic.works_count, fetchedAt: Date.now(), revision: CATALOG_REVISION};
+  return {id, description: topic.description, keywords: topic.keywords.slice(0, MAX_TOPIC_KEYWORDS), worksCount: topic.works_count, fetchedAt: Date.now(), revision: CATALOG_REVISION};
 }
 /** Keeps a saved topic's publication count current without making a reader wait. */
 export const refresh = internalAction({

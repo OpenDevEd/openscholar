@@ -1,4 +1,5 @@
 import { v, type Infer } from "convex/values";
+import { MAX_BILLING_FEATURES, MAX_BILLING_PLANS, MAX_PLAN_DETAILS, capped } from "../lib/listCaps";
 
 export const billingAccountSnapshotValidator = v.object({
   /** The customer's main plan id in Autumn; absent if they have none. */
@@ -17,7 +18,7 @@ export const billingAccountSnapshotValidator = v.object({
    * Absent on snapshots cached before plan features existed; every refresh
    * writes it.
    */
-  features: v.optional(v.array(v.string())),
+  features: capped(v.optional(v.array(v.string())), MAX_BILLING_FEATURES),
   balance: v.number(),
   /**
    * Papers the person may have running at once (#335), from the plan's `concurrency`
@@ -100,13 +101,13 @@ export const catalogPlanValidator = v.object({
     }),
   ),
   /** Boolean features the plan grants, such as "extraction". */
-  features: v.array(v.string()),
+  features: capped(v.array(v.string()), MAX_PLAN_DETAILS),
   /** Metadata `popular: true` marks the plan as the one to recommend. */
   popular: v.boolean(),
   /** Metadata `highlights`: extra lines for the pricing card. */
-  highlights: v.optional(v.array(v.string())),
+  highlights: capped(v.optional(v.array(v.string())), MAX_PLAN_DETAILS),
   /** Metadata `bundles` on the top-up plan: the credit amounts offered. */
-  bundles: v.optional(v.array(v.number())),
+  bundles: capped(v.optional(v.array(v.number())), MAX_PLAN_DETAILS),
 });
 export type CatalogPlan = Infer<typeof catalogPlanValidator>;
 
@@ -118,7 +119,7 @@ export const catalogFeatureValidator = v.object({
 export type CatalogFeature = Infer<typeof catalogFeatureValidator>;
 
 export const billingCatalogValidator = v.object({
-  plans: v.array(catalogPlanValidator),
-  features: v.array(catalogFeatureValidator),
+  plans: capped(v.array(catalogPlanValidator), MAX_BILLING_PLANS),
+  features: capped(v.array(catalogFeatureValidator), MAX_BILLING_FEATURES),
 });
 export type BillingCatalog = Infer<typeof billingCatalogValidator>;

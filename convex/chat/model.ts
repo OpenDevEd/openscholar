@@ -4,7 +4,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { activeModels, MAX_CATALOG_MODELS, pickable } from "../models/catalog";
 import { usableFor } from "../../lib/ai/tasks";
-import { effortValidator } from "../aiModelConfig/validators";
+import { effortValidator, modelEffortsValidator, modelParametersValidator } from "../aiModelConfig/validators";
 
 export const listChatModels = query({
   args: {},
@@ -16,8 +16,8 @@ export const listChatModels = query({
       provider: v.string(),
       sortOrder: v.number(),
       contextLength: v.optional(v.number()),
-      supportedParameters: v.optional(v.array(v.string())),
-      reasoningEfforts: v.optional(v.array(effortValidator)),
+      supportedParameters: modelParametersValidator,
+      reasoningEfforts: modelEffortsValidator,
       defaultEffort: v.optional(effortValidator),
     }),
   ),

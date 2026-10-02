@@ -16,6 +16,7 @@ import {
   evidenceLibraryOperationReceiptValidator,
   evidenceLibraryRequestableOperationKindValidator,
 } from "./validators";
+import { MAX_CONFIGURATION_ISSUES } from "../lib/listCaps";
 
 /** Newest publish operations read to find the newest configuration deployment. */
 const NEWEST_PUBLISHES_READ = 50;
@@ -357,7 +358,6 @@ export function validateOperationReceipt(
   return normalized;
 }
 
-const MAX_CONFIGURATION_ISSUES = 200;
 
 export type ConfigurationIssue = { pointer: string; message: string };
 

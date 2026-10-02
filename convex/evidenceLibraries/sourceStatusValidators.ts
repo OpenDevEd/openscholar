@@ -1,4 +1,5 @@
 import { v, type Infer } from "convex/values";
+import { MAX_ISSUE_KINDS, MAX_LIBRARY_SOURCES, capped } from "../lib/listCaps";
 
 /**
  * A library's source status as its runtime reports it: version 1 of the
@@ -32,7 +33,7 @@ const base = {
   searchFailed: v.number(),
   changed: v.union(v.number(), v.null()),
   lastSuccessAt: v.union(v.string(), v.null()),
-  issues: v.record(v.string(), v.number()),
+  issues: capped(v.record(v.string(), v.number()), MAX_ISSUE_KINDS),
   /**
    * PDFs added to the records and those that could not be downloaded. Null
    * for a source without PDFs, and missing from runtimes older than the PDF
@@ -69,12 +70,12 @@ export const sourceStatusSnapshotValidator = v.object({
   version: v.literal(1),
   libraryId: v.string(),
   observedAt: v.string(),
-  sources: v.array(sourceStatusValidator),
+  sources: capped(v.array(sourceStatusValidator), MAX_LIBRARY_SOURCES),
 });
 
 export const evidenceLibrarySourceStatusFields = {
   libraryId: v.id("evidenceLibraries"),
   observedAt: v.number(),
-  sources: v.array(sourceStatusValidator),
+  sources: capped(v.array(sourceStatusValidator), MAX_LIBRARY_SOURCES),
 };
 

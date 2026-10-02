@@ -29,9 +29,11 @@ import {
   evidenceLibraryDomainFailureValidator,
   evidenceLibraryDomainStateValidator,
 } from "./validators";
+import { MAX_LIBRARY_DOMAINS } from "../lib/listCaps";
+import { dnsRecordsValidator } from "./validators";
 
 /** One library may hold a small, fixed number of custom domains. */
-export const MAX_EVIDENCE_LIBRARY_DOMAINS = 5;
+export const MAX_EVIDENCE_LIBRARY_DOMAINS = MAX_LIBRARY_DOMAINS;
 
 const VERIFICATION_TOKEN_BYTES = 16;
 
@@ -58,14 +60,7 @@ const domainRowValidator = v.object({
   main: v.boolean(),
   /** Removed by the owner; goes once the next activation is live. */
   removeOnActivate: v.boolean(),
-  records: v.array(
-    v.object({
-      type: v.union(v.literal("A"), v.literal("CNAME"), v.literal("TXT")),
-      label: v.string(),
-      name: v.string(),
-      value: v.string(),
-    }),
-  ),
+  records: dnsRecordsValidator,
 });
 
 const domainContextRowValidator = v.object({
