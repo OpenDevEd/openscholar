@@ -22,20 +22,47 @@ const RETRIED_STATUSES = new Set([429, 500, 502, 503, 504]);
 /** The SDK's tries, and the wait between them. */
 const ATTEMPTS = 5;
 const RETRY_DELAY_MS = 1_000;
+/**
+ * How long a page may take in all, its tries, waits and reading included: well past the
+ * OpenScholar API's own 30 s for a request, where the SDK had no limit.
+ */
+const TOTAL_BUDGET_MS = 60_000;
 
-/** The answer to `url`, asked again after a passing failure as the SDK asked; null when unreachable. */
-async function askWithRetries(url: URL): Promise<Response | null> {
+const FAILED = { ok: false, status: null, message: "Search request failed" } as const;
+const TIMED_OUT = { ok: false, status: null, message: "Search request timed out" } as const;
+
+/** Waits `ms`, unless `signal` aborts first; whether the whole wait passed. */
+function waitFor(ms: number, signal: AbortSignal): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (signal.aborted) {
+      resolve(false);
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve(true);
+    }, ms);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+/** The answer to `url`, asked again after a passing failure as the SDK asked; null when unreachable or out of time. */
+async function askWithRetries(url: URL, signal: AbortSignal): Promise<Response | null> {
   for (let attempt = 1; ; attempt++) {
     let response: Response;
     try {
-      response = await fetch(url);
+      response = await fetch(url, { signal });
     } catch (error) {
-      console.error("Works request failed:", error);
+      if (!signal.aborted) console.error("Works request failed:", error);
       return null;
     }
     if (!RETRIED_STATUSES.has(response.status) || attempt === ATTEMPTS) return response;
     await response.body?.cancel().catch(() => {});
-    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    if (!(await waitFor(RETRY_DELAY_MS, signal))) return null;
   }
 }
 
@@ -52,17 +79,30 @@ function reasonOf(body: unknown, status: number) {
  * Asked with fetch rather than the SDK, which keeps one key for every host it is given and
  * drops the body of a failure, the message the search page shows. Like the SDK, it asks
  * again after a rate limit or a passing server failure, and those tries are not counted
- * against the caller's allowance, as the SDK's were not. Server side only: it reads the key.
+ * against the caller's allowance, as the SDK's were not; unlike it, it gives up after
+ * TOTAL_BUDGET_MS in all. Server side only: it reads the key.
  */
 export async function fetchWorksPage(parameters: SearchParameters & { perPage: number }): Promise<WorksPageResult> {
-  const response = await askWithRetries(worksUrl(parameters, { per_page: String(parameters.perPage), cursor: "*" }));
-  if (!response) return { ok: false, status: null, message: "Search request failed" };
+  const deadline = new AbortController();
+  const timer = setTimeout(() => deadline.abort(), TOTAL_BUDGET_MS);
+  try {
+    return await readPage(worksUrl(parameters, { per_page: String(parameters.perPage), cursor: "*" }), deadline.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** The page at `url`, or why there is none, read before `signal` aborts. */
+async function readPage(url: URL, signal: AbortSignal): Promise<WorksPageResult> {
+  const response = await askWithRetries(url, signal);
+  if (!response) return signal.aborted ? TIMED_OUT : FAILED;
   const body: unknown = await response.json().catch(() => null);
+  if (body === null && signal.aborted) return TIMED_OUT;
   if (!response.ok) return { ok: false, status: response.status, message: reasonOf(body, response.status) };
   const page = pageSchema.safeParse(body);
   if (!page.success) {
     console.error("A works answer is not a page of works:", page.error.issues.slice(0, 3));
-    return { ok: false, status: null, message: "Search request failed" };
+    return FAILED;
   }
   return {
     ok: true,

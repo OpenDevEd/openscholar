@@ -39,6 +39,32 @@ describe("fetchWorksPage", () => {
     expect(refused).toHaveBeenCalledTimes(1);
   });
 
+  it("gives up after a minute in all, its tries and waits included", async () => {
+    vi.useFakeTimers();
+    const hanging = vi.fn((_url: URL, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => init?.signal?.addEventListener("abort", () => reject(init.signal?.reason))));
+    vi.stubGlobal("fetch", hanging);
+    const page = fetchWorksPage({ perPage: 1 });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(await page).toEqual({ ok: false, status: null, message: "Search request timed out" });
+    expect(hanging).toHaveBeenCalledTimes(1);
+
+    // Each try answers a 503 after 25 s, as fetch does, unless the deadline aborts it first.
+    const slow = vi.fn((_url: URL, init?: RequestInit) =>
+      new Promise<Response>((resolve, reject) => {
+        const timer = setTimeout(() => resolve(new Response("{}", { status: 503 })), 25_000);
+        init?.signal?.addEventListener("abort", () => {
+          clearTimeout(timer);
+          reject(init.signal?.reason);
+        });
+      }));
+    vi.stubGlobal("fetch", slow);
+    const retried = fetchWorksPage({ perPage: 1 });
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(await retried).toEqual({ ok: false, status: null, message: "Search request timed out" });
+    expect(slow).toHaveBeenCalledTimes(3);
+  });
+
   it("says the search failed when an answer is not a page of works, rather than throw or pass it on", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const bodies = [
