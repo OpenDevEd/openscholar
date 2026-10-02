@@ -9,7 +9,7 @@
 
 import { seedOrganizationFeatures } from "../../organizationFeatures.test-support";
 import { convexTest } from "convex-test";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { api } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
@@ -387,5 +387,30 @@ describe("resumeExtraction — auth + mode guards", () => {
     await expect(
       auth.mutation(api.extraction.mutations.resume.resumeExtraction, { jobId }),
     ).rejects.toThrow(/extraction/i);
+  });
+});
+
+describe("resumeExtraction — nothing left to run", () => {
+  it("finishes a job whose papers all finished before the pause took effect", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      setupExtractionPaperWorkpool(t);
+      const userId = await seedUserAndCredits(t);
+      const jobId = await seedJob(t, userId, { jobStatus: "paused", pausedFromStatus: "extracting" });
+      await t.run(async (ctx) => {
+        await ctx.db.patch(jobId, { totalPapers: 2 });
+        for (const [i, status] of (["completed", "failed"] as const).entries()) {
+          await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:done${i}`, title: `Done ${i}`, status, processable: true });
+        }
+      });
+
+      await t.withIdentity(OWNER_IDENTITY).mutation(api.extraction.mutations.resume.resumeExtraction, { jobId });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+      expect((await t.run((ctx) => ctx.db.get(jobId)))?.status).toBe("completed");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

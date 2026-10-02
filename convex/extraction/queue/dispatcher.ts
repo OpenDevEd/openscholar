@@ -3,14 +3,14 @@
  * (`@convex-dev/batch-worker`), as Screen all's is (convex/screening/bookkeeping.ts). A
  * paper's run releases its own queue row, stamped `releasedAt`, and pings the queue. The
  * worker then, once per job in each batch, refills the job's window of running papers, and
- * when nothing is running or waiting checks whether the job is done. Papers finishing
+ * when nothing is left to start checks whether the job is done. Papers finishing
  * together no longer each read and write their job's whole window, or its counters.
  */
-import { defineBatchWorkerValidators, ping } from "@convex-dev/batch-worker";
+import { defineBatchWorkerValidators } from "@convex-dev/batch-worker";
 import { v } from "convex/values";
-import { components, internal } from "../../_generated/api";
+import { internal } from "../../_generated/api";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { internalMutation, internalQuery, type MutationCtx } from "../../lib/functions";
+import { internalMutation, internalQuery } from "../../lib/functions";
 import { getFlag } from "../../featureFlags/guard";
 import {
   EXTRACTION_PAPER_CONCURRENCY,
@@ -19,6 +19,7 @@ import {
 } from "../../../lib/extraction/limits";
 import { extractionQueueStatusValidator } from "../validators";
 import { dispatchPaperQueueWindowTx } from "./mutations";
+import { release } from "./release";
 
 /** Released rows per batch; each job in a batch is refilled once. */
 const BATCH = 50;
@@ -28,17 +29,6 @@ const { vQueryArgs, vQueryReturns, vMutationArgs, vMutationReturns } = defineBat
 });
 
 const releasedAtOf = (row: Doc<"extractionPaperQueue">) => row.releasedAt as bigint | undefined;
-
-/** Wakes the worker for rows just released. Costs a read while it's already running. */
-async function refillLater(ctx: MutationCtx) {
-  await ping(ctx, components.batchWorker, {
-    name: "extraction",
-    workQuery: internal.extraction.queue.dispatcher.nextReleased,
-    workerMutation: internal.extraction.queue.dispatcher.refill,
-    // Each released row is an idle slot; refill promptly.
-    config: { debounceMs: 50 },
-  });
-}
 
 /**
  * A paper's run is done with its row: sets its status and releases it to the worker,
@@ -54,15 +44,9 @@ export const releasePaperQueueItem = internalMutation({
   handler: async (ctx, { queueId, expectedEpoch, status }) => {
     const row = await ctx.db.get(queueId);
     if (!row || row.runEpoch !== expectedEpoch) return { applied: false };
-    await ctx.db.patch(queueId, {
-      status,
-      leaseOwner: undefined,
-      leasedAt: undefined,
-      leaseExpiresAt: undefined,
-      releasedAt: ctx.db.vars.commitTs,
-      updatedAt: Date.now(),
-    });
-    await refillLater(ctx);
+    // Marking its paper finished released it already (./release.ts).
+    if (row.status === "completed" || row.status === "failed") return { applied: true };
+    await release(ctx, row, status);
     return { applied: true };
   },
 });
@@ -110,7 +94,9 @@ export const refill = internalMutation({
         // As getJobAndFlagsInternal decides it: on unless the flag says off, and the job opted in.
         pdfEnabled: (pdfFlag?.enabled ?? true) && (job.usePdfs ?? false),
       });
-      if (window.activeCount === 0 && window.dispatched === 0) {
+      // Nothing left to start: whether the job is done is its counters' call, so a row whose
+      // run stopped without releasing it can't hold the job open.
+      if (window.dispatched === 0) {
         await ctx.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId, expectedEpoch: epoch });
       }
     }

@@ -12,6 +12,7 @@ import {
   type PaperStatus,
 } from "./stateMachine";
 import { recomputePaperListProjection } from "./listProjection";
+import { releaseRowsForPaperTx } from "./queue/release";
 
 /**
  * Terminal paper statuses. Any transition into one of these is
@@ -115,6 +116,8 @@ export async function markPaperTerminalTx(
   await recomputePaperListProjection(ctx, paperId);
 
   // The job's processed/failed counts follow this status change through the
-  // trigger on extractionPapers (./jobCounters.ts).
+  // trigger on extractionPapers (./jobCounters.ts), and its queue row goes back to the
+  // extraction worker with it (./queue/release.ts).
+  await releaseRowsForPaperTx(ctx, paperId);
   return { applied: true, paper };
 }

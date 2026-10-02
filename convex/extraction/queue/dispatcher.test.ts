@@ -79,3 +79,28 @@ describe("extraction worker", () => {
     expect((await t.run((ctx) => ctx.db.get(jobId)))?.status).toBe("extracting");
   });
 });
+
+describe("a run that stops after finishing its paper", () => {
+  it("still hands back its slot and finishes the job: the paper's row is released as the paper finishes", async () => {
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    const { jobId, queueIds } = await seedJob(t, [
+      { paper: "completed", queue: "completed" },
+      { paper: "extracting", queue: "running" },
+    ]);
+    const paperId = (await t.run((ctx) => ctx.db.get(queueIds[1]!)))!.paperId;
+    await t.run(async (ctx) => {
+      await ctx.db.insert("extractionQuestions", { jobId, key: "q1", question: "What was studied?", type: "string", order: 0, createdAt: 1 });
+      await ctx.db.insert("extractionResults", {
+        jobId, paperId, questionKey: "q1", answer: "Tutoring", citations: [], citationStatus: "grounded", status: "completed", billed: true, attemptCount: 1, creditsUsed: 1, processedAt: 1,
+      });
+    });
+
+    // The run finishes its paper and stops before releasing its row.
+    await t.mutation(internal.extraction.mutations.results.finalizePaper, { paperId });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect((await t.run((ctx) => ctx.db.get(queueIds[1]!)))?.status).toBe("completed");
+    expect((await t.run((ctx) => ctx.db.get(jobId)))?.status).toBe("completed");
+  });
+});
