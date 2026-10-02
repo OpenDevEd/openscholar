@@ -11,7 +11,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ModelPicker } from "@/components/models/model-picker";
-import { EASE, NODE_H, NodeCard } from "@/components/settings/model-map";
+import { EASE, NodeCard } from "@/components/settings/model-map";
 import { FilterChips } from "@/components/ui/filter-display";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { cn } from "@/lib/utils";
@@ -61,6 +61,8 @@ export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boo
   const credits = Math.ceil(papers * CREDITS_PER_PAPER);
   const enough = credits <= BALANCE;
   const max = maxScore(questions);
+  // Removing questions can drop the highest score under the threshold; it reads as the top score then.
+  const threshold = Math.min(minScore, max);
   // Questions the source already has: a search's own screening questions, or an earlier screening's.
   const from =
     source.kind === "search"
@@ -243,65 +245,82 @@ export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boo
         </div>
       </Zone>
 
-      <div className="grid gap-8 md:grid-cols-2">
-        <Zone label="Keep">
-          <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-3" style={{ height: NODE_H }}>
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+      <Zone label="Keep">
+        <div className="space-y-3 rounded-2xl border border-border/60 bg-muted/40 p-4">
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
               <CircleCheck className="size-5" />
             </span>
-            <span className="min-w-0 flex-1 space-y-1.5">
-              <span className="block truncate text-sm font-semibold">
-                Included at
-              </span>
-              {/* One step per point; the lit ones are the scores that get a paper in. */}
-              <span className="flex gap-1" aria-hidden>
-                {Array.from({ length: max }, (_, i) => (
-                  <span key={i} className={cn("h-1.5 flex-1 rounded-full transition-colors", i + 1 >= minScore ? "bg-primary" : "bg-foreground/10")} />
-                ))}
-              </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Included from</span>
+              <span className="block text-xs text-muted-foreground">Points add up across the questions</span>
             </span>
             <span className="flex shrink-0 items-center gap-1">
-              <Button variant="ghost" size="icon" className="size-8" aria-label="One point fewer" disabled={minScore <= 1} onClick={() => setMinScore(minScore - 1)}><Minus /></Button>
+              <Button variant="ghost" size="icon" className="size-8" aria-label="One point fewer" disabled={threshold <= 0} onClick={() => setMinScore(threshold - 1)}><Minus /></Button>
               <Input
                 type="number"
-                min={1}
+                min={0}
                 max={max}
-                value={minScore}
-                onChange={(e) => setMinScore(Math.min(max, Math.max(1, Math.round(Number(e.target.value)) || 1)))}
+                value={threshold}
+                onChange={(e) => setMinScore(Math.min(max, Math.max(0, Math.round(Number(e.target.value)) || 0)))}
                 onFocus={(e) => e.target.select()}
                 aria-label="Points to be included"
                 className="h-8 w-12 px-1 text-center text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
               />
-              <Button variant="ghost" size="icon" className="size-8" aria-label="One point more" disabled={minScore >= max} onClick={() => setMinScore(minScore + 1)}><Plus /></Button>
+              <Button variant="ghost" size="icon" className="size-8" aria-label="One point more" disabled={threshold >= max} onClick={() => setMinScore(threshold + 1)}><Plus /></Button>
               <span className="w-16 whitespace-nowrap text-sm tabular-nums text-muted-foreground">of {max} points</span>
             </span>
           </div>
-        </Zone>
+          {/* Every score a paper can get: the ones at or over the threshold are in. Tapping one sets it. */}
+          <div className="flex gap-1" role="radiogroup" aria-label="Lowest score that's included">
+            {Array.from({ length: max + 1 }, (_, score) => {
+              const included = score >= threshold;
+              return (
+                <button
+                  key={score}
+                  type="button"
+                  role="radio"
+                  aria-checked={score === threshold}
+                  aria-label={`Include from ${score} points`}
+                  onClick={() => setMinScore(score)}
+                  className={cn(
+                    "flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg text-xs font-medium tabular-nums transition-colors duration-300",
+                    included ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-foreground/[0.05] text-muted-foreground hover:bg-foreground/10",
+                    score === threshold && "ring-1 ring-emerald-500/60",
+                  )}
+                >
+                  {included ? <Check className="size-3.5 shrink-0" /> : <X className="size-3.5 shrink-0" />}
+                  <span className="truncate">{score} {score === 1 ? "point" : "points"}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </Zone>
 
-        <Zone label="Model">
-          <ModelPicker
-            align="start"
-            tasks={["screenAll"]}
-            current={model && { id: model.modelId, reasoningEfforts: model.reasoningEfforts, defaultEffort: model.defaultEffort }}
-            onChange={(m) => setModelId(m.id)}
-            trigger={
-              <NodeCard
-                interactive
-                paidBy="credits"
-                model={{
-                  id: modelId,
-                  name: model?.name ?? "Jev 1.13",
-                  inputPricePerMillion: model?.inputPricePerMillion ?? 0,
-                  outputPricePerMillion: model?.outputPricePerMillion ?? 0,
-                  unpriced: !model,
-                  reasoningEfforts: model?.reasoningEfforts,
-                  effort: model?.defaultEffort,
-                }}
-              />
-            }
-          />
-        </Zone>
-      </div>
+      <Zone label="Model">
+        <ModelPicker
+          align="start"
+          tasks={["screenAll"]}
+          current={model && { id: model.modelId, reasoningEfforts: model.reasoningEfforts, defaultEffort: model.defaultEffort }}
+          onChange={(m) => setModelId(m.id)}
+          trigger={
+            <NodeCard
+              interactive
+              paidBy="credits"
+              model={{
+                id: modelId,
+                name: model?.name ?? "Jev 1.13",
+                inputPricePerMillion: model?.inputPricePerMillion ?? 0,
+                outputPricePerMillion: model?.outputPricePerMillion ?? 0,
+                unpriced: !model,
+                reasoningEfforts: model?.reasoningEfforts,
+                effort: model?.defaultEffort,
+              }}
+            />
+          }
+        />
+      </Zone>
 
       <Zone label="Collections">
         {kind === "collection" ? (
@@ -360,7 +379,7 @@ export function SetupView({ busy, screenings, waitingFor, onStart }: { busy: boo
             </Chip>
           ) : null}
         </div>
-        <Button disabled={busy || questions.length === 0 || !enough} onClick={() => onStart({ source, first, last, questions, minScore, model: modelId, saveTo, prune: kind === "collection" && prune ? source.label : undefined })}>
+        <Button disabled={busy || questions.length === 0 || !enough} onClick={() => onStart({ source, first, last, questions, minScore: threshold, model: modelId, saveTo, prune: kind === "collection" && prune ? source.label : undefined })}>
           {busy ? "Reading papers…" : `Screen ${papers.toLocaleString()} papers`}
         </Button>
       </div>
