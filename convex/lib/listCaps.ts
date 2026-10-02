@@ -132,8 +132,6 @@ export const MAX_RELEASE_NOTES = 40;
 export const MAX_LIBRARY_SOURCES = 200;
 /** Kinds of issue one source reports. */
 export const MAX_ISSUE_KINDS = 50;
-/** Hosts the runtime serves, read from Coolify (coolifyClient.ts stops at this many). */
-export const MAX_SERVED_HOSTS = 1_000;
 /** Issues one configuration operation reports (operations.ts cuts to these). */
 export const MAX_CONFIGURATION_ISSUES = 200;
 /** Custom domains one Evidence Library has. */

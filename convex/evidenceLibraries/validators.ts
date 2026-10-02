@@ -5,7 +5,7 @@ import {
   SECTION_REGISTRY,
   type SectionKey,
 } from "../../lib/evidence-libraries/configuration/section-registry";
-import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, MAX_SERVED_HOSTS, capped, sized } from "../lib/listCaps";
+import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
 
 export type { SectionKey };
 
@@ -218,14 +218,6 @@ export const evidenceLibraryFields = {
   updatedByClerkUserId: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),
-};
-
-// One row: the hosts Coolify served when it was last asked. Read while an
-// owner reserves an address, so a burst of checks costs one pair of reads.
-export const evidenceLibraryServedHostsFields = {
-  source: v.literal("coolify"),
-  hosts: capped(v.array(v.string()), MAX_SERVED_HOSTS),
-  fetchedAt: v.number(),
 };
 
 // One custom domain of one library. `host` is unique across the platform.

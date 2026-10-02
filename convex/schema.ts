@@ -41,7 +41,6 @@ import {
   evidenceLibraryOperationFields,
   evidenceLibraryRuntimeBindingValidator,
   evidenceLibraryRuntimeReleaseFields,
-  evidenceLibraryServedHostsFields,
   organizationFields,
   organizationMembershipFields,
 } from "./evidenceLibraries/validators";
@@ -303,12 +302,6 @@ export default defineSchema({
 
   evidenceLibraryCollectionSources: defineTable(evidenceLibraryCollectionSourceFields)
     .index("by_libraryId_and_collectionId", ["libraryId", "collectionId"]),
-
-  // Replaced by the two tables below (#426); its one cache row goes with
-  // migrations/dropServedHostsList, then this table goes.
-  evidenceLibraryServedHosts: defineTable(
-    evidenceLibraryServedHostsFields,
-  ).index("by_source", ["source"]),
 
   // The hosts Coolify served when it was last asked: one row per host per listing, and the
   // current listing. `listing` is a refresh's own ID; `startedAt`, when it began, orders
