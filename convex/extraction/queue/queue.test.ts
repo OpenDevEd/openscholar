@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
@@ -550,8 +550,7 @@ describe("extraction paper queue", () => {
     expect(after.every((row) => row.jobId !== first.jobId)).toBe(true);
   });
 
-  it("gives freed capacity to the person's oldest job, and frees it when a job's run parks or the job is deleted", async () => {
-    vi.useFakeTimers();
+  it("gives freed capacity to the person's oldest job, and frees it when a job's run parks", async () => {
     const t = convexTest(schema);
     setupExtractionPaperWorkpool(t);
     const older = await seedEligibleQueueJob(t, 2);
@@ -574,8 +573,10 @@ describe("extraction paper queue", () => {
     // One of the newer job's runs parks without a release: the older job gets that slot.
     const [parked, finishing] = await leased(newer.jobId);
     await t.mutation(internal.extraction.queue.mutations.updatePaperQueueStatus, { queueId: parked!._id, expectedEpoch: 0, status: "parked" });
-    await t.finishInProgressScheduledFunctions();
-    await vi.runOnlyPendingTimersAsync();
+    const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
+    const wake = scheduled.find((fn) => fn.name === "extraction/queue/dispatcher:wakePerson");
+    expect(wake?.args[0]).toEqual({ userId });
+    await t.mutation(internal.extraction.queue.dispatcher.wakePerson, { userId });
     expect(await leased(older.jobId)).toHaveLength(1);
 
     // Its other paper finishes: the freed slot goes to the older job, not back to the newer one.
@@ -583,6 +584,5 @@ describe("extraction paper queue", () => {
     await t.mutation(internal.extraction.queue.dispatcher.refill, { rows: [finishing!._id] });
     expect(await leased(older.jobId)).toHaveLength(2);
     expect(await leased(newer.jobId)).toHaveLength(0);
-    vi.useRealTimers();
   });
 });

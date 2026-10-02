@@ -309,3 +309,49 @@ export const getPapersDebug = internalQuery({
     };
   },
 });
+
+/** Library papers one `ownedLibraryItems` read takes. */
+export const LIBRARY_READ_BATCH = 100;
+
+/** A library paper's fields a job's library and collection sources read. */
+const libraryPaperValidator = v.object({
+  _id: v.id("libraryItems"),
+  title: v.string(),
+  authors: v.optional(v.string()),
+  doi: v.optional(v.string()),
+  openalexId: v.string(),
+  abstract: v.optional(v.string()),
+  publicationYear: v.optional(v.number()),
+  journal: v.optional(v.string()),
+  citedByCount: v.optional(v.number()),
+  workType: v.optional(v.string()),
+});
+
+/**
+ * The person's own library papers among these ids (#341): a job reads its library and
+ * collection sources from here, not from the copy the browser sent. Papers that are gone
+ * or someone else's are left out.
+ */
+export const ownedLibraryItems = internalQuery({
+  args: { userId: v.id("users"), ids: v.array(v.string()) },
+  returns: v.array(libraryPaperValidator),
+  handler: async (ctx, { userId, ids }) => {
+    // A library row holds its paper's full JSON, so a read is bounded by count, well under
+    // Convex's 16 MiB a transaction: callers read a job's papers in batches of this size.
+    if (ids.length > LIBRARY_READ_BATCH) throw new Error(`Read at most ${LIBRARY_READ_BATCH} library papers at a time`);
+    const rows = await Promise.all(
+      ids.map((id) => {
+        const itemId = ctx.db.normalizeId("libraryItems", id);
+        return itemId ? ctx.db.get("libraryItems", itemId) : null;
+      }),
+    );
+    return rows.flatMap((row) =>
+      row && row.userId === userId
+        ? [{
+            _id: row._id, title: row.title, authors: row.authors, doi: row.doi, openalexId: row.openalexId, abstract: row.abstract,
+            publicationYear: row.publicationYear, journal: row.journal, citedByCount: row.citedByCount, workType: row.workType,
+          }]
+        : [],
+    );
+  },
+});

@@ -120,7 +120,8 @@ export function fromSavedSearchQuery(
   };
 }
 
-function splitLibraryAuthors(raw?: string): string[] {
+/** A library item's flattened authors ("John Doe, Jane Smith") as a list. */
+export function splitLibraryAuthors(raw?: string): string[] {
   if (!raw) return [];
   return raw
     .split(",")
