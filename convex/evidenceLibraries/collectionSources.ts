@@ -118,6 +118,25 @@ function openAlexWorkId(value: string) {
   return /(?:^|\/)(W\d+)$/u.exec(value.trim())?.[1] ?? null;
 }
 
+/** The OpenAlex id a stored work names in its `ids`, as the OpenScholar API gives one for its OS works. */
+function storedOpenAlexId(paperData: string | undefined): string | null {
+  try {
+    const ids = (JSON.parse(paperData ?? "null") as { ids?: { openalex?: unknown } } | null)?.ids;
+    return typeof ids?.openalex === "string" ? openAlexWorkId(ids.openalex) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The OpenAlex id the library can look a saved paper up by: its own, or for a paper from the
+ * OpenScholar API, whose id is OS…, the OpenAlex id its stored work names. The library asks
+ * OpenAlex, so an OS id is never handed on; a paper with neither goes by its DOI.
+ */
+function lookupOpenAlexId(item: Doc<"libraryItems">) {
+  return openAlexWorkId(item.openalexId) ?? storedOpenAlexId(item.paperData);
+}
+
 /** Why the library may not read the collection now, or null when it may. */
 async function refusal(
   ctx: ReadCtx,
@@ -179,7 +198,7 @@ export const readForLibrary = internalQuery({
       page.page.map(async (membership) => {
         const libraryItem = await ctx.db.get("libraryItems", membership.libraryItemId);
         return libraryItem
-          ? [{ itemId: libraryItem._id, openalexId: openAlexWorkId(libraryItem.openalexId), doi: libraryItem.doi ?? null }]
+          ? [{ itemId: libraryItem._id, openalexId: lookupOpenAlexId(libraryItem), doi: libraryItem.doi ?? null }]
           : [];
       }),
     );
