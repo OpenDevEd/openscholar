@@ -114,7 +114,8 @@ export default defineSchema({
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_email", ["email"])
-    .index("by_state", ["state"]),
+    .index("by_state", ["state"])
+    .index("by_state_updatedAt", ["state", "updatedAt"]),
 
   // ═══════════════════════════════════════════════════════════════
   // CREDITS - per-user credit balance
