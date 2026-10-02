@@ -2611,8 +2611,8 @@
       "featuredInstitutionError": "Name the pinned institution.",
       "years": "Year range filter",
       "yearsHint": "Let people narrow results to a range of years.",
-      "collectionsExpanded": "Open the collections filter by default",
-      "collectionsExpandedHint": "When off, people click to open the list of collections."
+      "collectionsExpanded": "Open collection and topic sections by default",
+      "collectionsExpandedHint": "When off, people click a section to see its collections or topics."
     },
     "team": {
       "description": "Who can manage and edit this library.",
