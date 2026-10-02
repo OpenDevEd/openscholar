@@ -36,22 +36,18 @@ let lastToken = 0;
  * Changes on their way to the server, keyed by paper, so every control showing the
  * same paper (its card and focus mode) flips at once. Each change carries a token and
  * only the request that made it clears it, so a slower earlier request can't undo a
- * newer click. `removed` keeps what each removal returned, so saving the paper again
- * puts it back whole, which is also how keyboard users undo inside focus mode.
+ * newer click.
  */
 const usePending = create<{
   saved: Record<string, Pending>;
   collections: Record<string, Record<string, Pending>>;
-  removed: Record<string, RemovedPaper>;
   setSaved: (paperId: string, value: boolean) => number;
   settleSaved: (paperId: string, token: number) => void;
   setCollection: (paperId: string, collectionId: string, value: boolean) => number;
   settleCollection: (paperId: string, collectionId: string, token: number) => void;
-  setRemoved: (paperId: string, removed: RemovedPaper | undefined) => void;
 }>((set) => ({
   saved: {},
   collections: {},
-  removed: {},
   setSaved: (paperId, value) => {
     const token = ++lastToken;
     set((state) => ({ saved: { ...state.saved, [paperId]: { value, token } } }));
@@ -76,12 +72,20 @@ const usePending = create<{
       const { [collectionId]: _settled, ...rest } = state.collections[paperId];
       return { collections: { ...state.collections, [paperId]: rest } };
     }),
-  setRemoved: (paperId, removed) =>
-    set((state) => {
-      const { [paperId]: _previous, ...rest } = state.removed;
-      return { removed: removed ? { ...rest, [paperId]: removed } : rest };
-    }),
 }));
+
+/**
+ * Each paper's latest removal, keyed by account and paper, as the request itself.
+ * Saving the paper again waits for it and puts back what it took (rating, saved date,
+ * collections), so a quick second press works and keyboard users, whose focus the
+ * focus mode sheet keeps from the toast, can undo with `B`.
+ */
+const removals = new Map<string, Promise<RemovedPaper | null>>();
+
+/** Forgets the removals a collection change makes stale: the paper is saved on its own terms. */
+function forgetRemoval(userId: string | null | undefined, paperId: string) {
+  removals.delete(`${userId}:${paperId}`);
+}
 
 const NO_PENDING_COLLECTIONS: Record<string, Pending> = {};
 
@@ -115,7 +119,7 @@ async function watchingRating<T>(paperId: string, request: Promise<T>) {
 export function useSavePaper(paper: WorkInput | undefined) {
   const t = useTranslations("saveToLibrary");
   const { phase } = useAuthReadiness();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, userId } = useAuth();
   const { openSignIn } = useClerk();
   const ready = phase === "authenticated";
   const { data: saved } = useProtectedQuery(
@@ -129,24 +133,35 @@ export function useSavePaper(paper: WorkInput | undefined) {
 
   const isSaved = pendingSaved ?? Boolean(saved);
 
-  /** Puts a removed paper back with its rating, saved date and collections. */
-  const restorePaper = (id: string, removed: RemovedPaper) => {
-    const { setSaved, settleSaved, setRemoved } = usePending.getState();
-    const token = setSaved(id, true);
-    setRemoved(id, undefined);
-    watchingRating(id, restore({ paper: removed }))
-      .then(({ changed }) => {
+  /** Saves the paper, putting it back whole when `removal` took it away. */
+  const saveBack = (paper: WorkInput, removal: Promise<RemovedPaper | null> | undefined) => {
+    const { setSaved, settleSaved } = usePending.getState();
+    const key = `${userId}:${paper.id}`;
+    const token = setSaved(paper.id, true);
+    removals.delete(key);
+    (async () => {
+      const removed = removal ? await removal : null;
+      if (!removed) {
+        await save(paperArgs(paper)).catch((error) => {
+          console.error("[Library] Failed to save:", error);
+          toast.error(t("saveError"));
+        });
+        return;
+      }
+      try {
+        const { changed } = await watchingRating(paper.id, restore({ paper: removed }));
         // A rating given since the removal wins, as it does on the server.
-        const current = useRatingsStore.getState().ratings[id];
+        const current = useRatingsStore.getState().ratings[paper.id];
         if (!changed && current === undefined && removed.rating !== undefined) {
-          useRatingsStore.getState().setRating(id, removed.rating);
+          useRatingsStore.getState().setRating(paper.id, removed.rating);
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("[Library] Failed to restore:", error);
         toast.error(t("restoreError"));
-      })
-      .finally(() => settleSaved(id, token));
+        // Keep what was removed so the next Save can try again.
+        if (!removals.has(key)) removals.set(key, Promise.resolve(removed));
+      }
+    })().finally(() => settleSaved(paper.id, token));
   };
 
   const toggle = () => {
@@ -155,37 +170,29 @@ export function useSavePaper(paper: WorkInput | undefined) {
       return;
     }
     if (!ready || !paper) return;
-    const { setSaved, settleSaved, setRemoved } = usePending.getState();
-    const id = paper.id;
+    const key = `${userId}:${paper.id}`;
     if (!isSaved) {
-      const removed = usePending.getState().removed[id];
-      if (removed) {
-        restorePaper(id, removed);
-        return;
-      }
-      const token = setSaved(id, true);
-      save(paperArgs(paper))
-        .catch((error) => {
-          console.error("[Library] Failed to save:", error);
-          toast.error(t("saveError"));
-        })
-        .finally(() => settleSaved(id, token));
+      saveBack(paper, removals.get(key));
       return;
     }
-    const token = setSaved(id, false);
-    watchingRating(id, remove({ openalexId: id }))
+    const { setSaved, settleSaved } = usePending.getState();
+    const token = setSaved(paper.id, false);
+    const watched = watchingRating(paper.id, remove({ openalexId: paper.id }));
+    const removal = watched.then(({ result }) => result).catch(() => null);
+    removals.set(key, removal);
+    watched
       .then(({ result: removed, changed }) => {
-        // A rating chosen while the removal was on its way stays.
-        if (!changed) useRatingsStore.getState().setRating(id, null);
+        // Ratings live in this browser: clear the paper's, unless one was chosen meanwhile.
+        if (!changed) useRatingsStore.getState().setRating(paper.id, null);
         if (!removed) return;
-        setRemoved(id, removed);
         toast(t("removed"), {
           description: removed.title,
           duration: 5000,
           action: {
             label: t("undo"),
+            // Only while this removal is still the latest and nothing saved the paper since.
             onClick: () => {
-              if (usePending.getState().removed[id] === removed) restorePaper(id, removed);
+              if (removals.get(key) === removal) saveBack(paper, removal);
             },
           },
         });
@@ -194,7 +201,7 @@ export function useSavePaper(paper: WorkInput | undefined) {
         console.error("[Library] Failed to remove:", error);
         toast.error(t("removeError"));
       })
-      .finally(() => settleSaved(id, token));
+      .finally(() => settleSaved(paper.id, token));
   };
 
   return { ready, isSignedIn, openSignIn, saved, isSaved, toggle };
@@ -304,6 +311,7 @@ function CollectionsPanel({
   pending: Record<string, Pending>;
 }) {
   const t = useTranslations("saveToLibrary");
+  const { userId } = useAuth();
   const [newName, setNewName] = useState("");
   const { data: collections } = useProtectedQuery(
     api.library.collections.getCollectionsWithCounts,
@@ -325,11 +333,11 @@ function CollectionsPanel({
   }
 
   const toggle = (collectionId: Id<"collections">, add: boolean) => {
-    const { setCollection, settleCollection, setSaved, settleSaved, setRemoved } = usePending.getState();
+    const { setCollection, settleCollection, setSaved, settleSaved } = usePending.getState();
     const token = setCollection(paper.id, collectionId, add);
     const savedToken = add ? setSaved(paper.id, true) : undefined;
     // A paper added to a collection is saved again on its own terms, not restored.
-    if (add) setRemoved(paper.id, undefined);
+    if (add) forgetRemoval(userId, paper.id);
     setInCollection({ paper: paperArgs(paper), collectionId, inCollection: add })
       .catch((error) => {
         console.error("[Library] Failed to change collection:", error);
