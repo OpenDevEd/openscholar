@@ -1,15 +1,14 @@
 import { z } from "zod";
 import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
-import type { SearchParameters, Work } from "@sickrin/openalex-sdk/dist/src/types/work";
+import type { SearchParameters } from "@sickrin/openalex-sdk/dist/src/types/work";
+import type { PaperResult } from "@/lib/types/search.types";
+import { workSchema } from "./work-schema";
 import { worksUrl } from "./works-url";
 
-const goals = z.array(z.object({id: z.string(), display_name: z.string(), score: z.number()})).optional();
+/** A cursor page of works, each checked as the search checks its own, SDG scores included. */
 const responseSchema = z.object({
   meta: z.object({count: z.number().int().nonnegative(), next_cursor: z.string().nullable()}),
-  results: z.array(z.looseObject({
-    id: z.string(),
-    abstract_inverted_index: z.record(z.string(), z.array(z.number().int().nonnegative())).nullable().optional(),
-  })),
+  results: z.array(workSchema),
 });
 
 /**
@@ -23,9 +22,7 @@ export async function readOpenAlexWorks(parameters: SearchParameters & {cursor: 
   const parsed = responseSchema.parse(await response.json());
   return {
     meta: parsed.meta,
-    results: parsed.results.map(({abstract_inverted_index, sustainable_development_goals, ...fields}) => {
-      const work: Work = {...fields, ...(abstract_inverted_index ? {abstract: convertAbstractArrayToString(abstract_inverted_index)} : {})};
-      return {...work, sustainable_development_goals: goals.parse(sustainable_development_goals)};
-    }),
+    results: parsed.results.map(({abstract_inverted_index, ...fields}) =>
+      ({...fields, ...(abstract_inverted_index ? {abstract: convertAbstractArrayToString(abstract_inverted_index)} : {})}) as unknown as PaperResult),
   };
 }
