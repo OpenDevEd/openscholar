@@ -7,6 +7,7 @@ import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
 import { EXTRACTION_PAPER_CONCURRENCY } from "../../../lib/extraction/limits";
 import { setupExtractionPaperWorkpool } from "./workpool.test-support";
+import { markPaperTerminalTx } from "../paperLifecycle";
 
 // The worker schedules its runs on whichever timers are active when rows are released.
 beforeEach(() => vi.useFakeTimers());
@@ -102,5 +103,46 @@ describe("a run that stops after finishing its paper", () => {
 
     expect((await t.run((ctx) => ctx.db.get(queueIds[1]!)))?.status).toBe("completed");
     expect((await t.run((ctx) => ctx.db.get(jobId)))?.status).toBe("completed");
+  });
+});
+
+describe("a refill batch", () => {
+  it("finishes 50 jobs released in one batch within Convex's limits", async () => {
+    const t = convexTest({ schema, transactionLimits: true });
+    setupExtractionPaperWorkpool(t);
+    const released: Id<"extractionPaperQueue">[] = [];
+    for (let j = 0; j < 50; j++) {
+      const { queueIds } = await seedJob(t, [
+        { paper: "completed", queue: "running" },
+        { paper: "failed", queue: "completed" },
+      ]);
+      await t.mutation(internal.extraction.queue.dispatcher.releasePaperQueueItem, { queueId: queueIds[0]!, expectedEpoch: 0, status: "completed" });
+      released.push(queueIds[0]!);
+    }
+
+    await t.mutation(internal.extraction.queue.dispatcher.refill, { rows: released });
+
+    const jobs = await t.run((ctx) => ctx.db.query("extractionJobs").collect());
+    expect(jobs.filter((job) => job.status === "completed")).toHaveLength(50);
+  }, 300_000);
+});
+
+describe("a paper with many queue rows from earlier runs", () => {
+  it("has its current row released as it finishes", async () => {
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    const { jobId, queueIds } = await seedJob(t, [{ paper: "extracting", queue: "running" }]);
+    const current = (await t.run((ctx) => ctx.db.get(queueIds[0]!)))!;
+    await t.run(async (ctx) => {
+      await ctx.db.patch(queueIds[0]!, { runEpoch: 30 });
+      await ctx.db.patch(jobId, { runEpoch: 30 });
+      for (let epoch = 0; epoch < 25; epoch++) {
+        await ctx.db.insert("extractionPaperQueue", { ...current, _id: undefined, _creationTime: undefined, runEpoch: epoch, status: "completed" } as never);
+      }
+    });
+
+    await t.run((ctx) => markPaperTerminalTx(ctx, current.paperId, "completed"));
+
+    expect((await t.run((ctx) => ctx.db.get(queueIds[0]!)))?.status).toBe("completed");
   });
 });

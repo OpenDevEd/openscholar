@@ -39,6 +39,8 @@ export async function releaseRowsForPaperTx(ctx: MutationCtx, paperId: Id<"extra
   const rows = await ctx.db
     .query("extractionPaperQueue")
     .withIndex("by_paper_and_epoch_and_kind", (q) => q.eq("paperId", paperId))
+    // Newest epoch first: the row running now comes before older runs' rows.
+    .order("desc")
     .take(20);
   for (const row of rows) if (row.status === "leased" || row.status === "running") await release(ctx, row, "completed");
 }
