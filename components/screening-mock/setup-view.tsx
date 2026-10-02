@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
-import { Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Loader2, Minus, Plus, Sparkles, Trash2, TriangleAlert, X, Zap, type LucideIcon } from "lucide-react";
+import { Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Loader2, Minus, Plus, Sparkles, Star, Trash2, TriangleAlert, X, Zap, type LucideIcon } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import { FilterChips } from "@/components/ui/filter-display";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { cn } from "@/lib/utils";
 import { BALANCE, CREDITS_PER_PAPER, GENERATED, SLOTS, SOURCES, maxScore, starsOf, type Job, type Question, type Source } from "./data";
-import { ANSWER, AnimatedNumber, Chip, Meter, Stars } from "./parts";
+import { ANSWER, AnimatedNumber, Chip, Meter } from "./parts";
 import { SOURCE_ICON } from "./job-view";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
@@ -289,7 +289,7 @@ export function SetupView({
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">Included from</span>
-              <span className="block text-xs text-muted-foreground">Points add up across the questions, and set the stars a saved paper gets</span>
+              <span className="block text-xs text-muted-foreground">Points add up across the questions</span>
             </span>
             <span className="flex shrink-0 items-center gap-1">
               <Button variant="ghost" size="icon" className="size-8" aria-label="One point fewer" disabled={threshold <= 0} onClick={() => setMinScore(threshold - 1)}><Minus /></Button>
@@ -307,33 +307,45 @@ export function SetupView({
               <span className="w-16 whitespace-nowrap text-sm tabular-nums text-muted-foreground">of {max} points</span>
             </span>
           </div>
-          {/* Every score a paper can get: the ones at or over the threshold are in. Tapping one sets it. */}
-          <div className="flex gap-1" role="radiogroup" aria-label="Lowest score that's included">
-            {Array.from({ length: max + 1 }, (_, score) => {
-              const included = score >= threshold;
-              return (
-                <button
-                  key={score}
-                  type="button"
-                  role="radio"
-                  aria-checked={score === threshold}
-                  aria-label={`Include from ${score} points`}
-                  onClick={() => setMinScore(score)}
-                  className={cn(
-                    "flex h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg text-xs font-medium tabular-nums transition-colors duration-300",
-                    included ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-foreground/[0.05] text-muted-foreground hover:bg-foreground/10",
-                    score === threshold && "ring-1 ring-emerald-500/60",
-                  )}
-                >
-                  <span className="flex min-w-0 items-center gap-1">
-                    {included ? <Check className="size-3.5 shrink-0" /> : <X className="size-3.5 shrink-0" />}
-                    <span className="truncate">{score} {score === 1 ? "point" : "points"}</span>
+          {/* One track from 0 to the highest score, however many questions there are: grey
+              below the threshold, green from it. Under it, where each star rating starts. */}
+          <div className="space-y-2 pt-1">
+            <Slider
+              min={0}
+              max={Math.max(1, max)}
+              step={1}
+              value={[threshold]}
+              onValueChange={(v) => setMinScore(v[0]!)}
+              aria-label="Lowest score that's included"
+              className="[&_[data-slot=slider-range]]:bg-muted [&_[data-slot=slider-thumb]]:border-emerald-500 [&_[data-slot=slider-track]]:h-2 [&_[data-slot=slider-track]]:bg-emerald-500/70"
+            />
+            <div className="relative h-6" aria-hidden>
+              {starBands(max).map((band) => {
+                const included = band.to >= threshold;
+                return (
+                  <span
+                    key={band.stars}
+                    className={cn(
+                      "absolute inset-y-0 flex items-center justify-center gap-1 overflow-hidden rounded-md bg-foreground/[0.05] text-[11px] tabular-nums transition-opacity duration-300",
+                      !included && "opacity-40",
+                    )}
+                    style={{ left: `calc(${band.left * 100}% + 1px)`, width: `calc(${band.width * 100}% - 2px)` }}
+                  >
+                    {/* A band too narrow for its label stays a plain block. */}
+                    {band.width >= 0.04 ? (
+                      <>
+                        <Star className={cn("size-3 shrink-0", band.stars ? "fill-primary text-primary" : "text-muted-foreground")} />
+                        <span className="text-muted-foreground">{band.stars}</span>
+                      </>
+                    ) : null}
                   </span>
-                  {/* The rating a paper with this score is saved with. */}
-                  <Stars count={starsOf(score, max)} />
-                </button>
-              );
-            })}
+                );
+              })}
+            </div>
+            <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
+              <span>0</span>
+              <span>{max} points</span>
+            </div>
           </div>
         </div>
       </Zone>
@@ -460,4 +472,27 @@ function PickMark({ on }: { on: boolean }) {
       </AnimatePresence>
     </span>
   );
+}
+
+/**
+ * Where each star rating sits on a 0 to `max` track: one band per rating, spanning its
+ * scores from half a point before the first to half a point after the last, so the
+ * bands line up under the slider at any number of points.
+ */
+function starBands(max: number) {
+  const top = Math.max(1, max);
+  const bands: Array<{ stars: number; from: number; to: number; left: number; width: number }> = [];
+  for (let score = 0; score <= max; score++) {
+    const stars = starsOf(score, max);
+    const last = bands.at(-1);
+    if (last?.stars === stars) last.to = score;
+    else bands.push({ stars, from: score, to: score, left: 0, width: 0 });
+  }
+  for (const band of bands) {
+    const start = Math.max(0, (band.from - 0.5) / top);
+    const end = Math.min(1, (band.to + 0.5) / top);
+    band.left = start;
+    band.width = end - start;
+  }
+  return bands;
 }
