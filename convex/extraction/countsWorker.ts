@@ -63,11 +63,14 @@ export const fold = internalMutation({
         const counts = { ...row.counts };
         for (const change of jobChanges) addInto(counts, change.deltas);
         await ctx.db.patch(row._id, { counts });
+        // Out of the queue before the finish check, which reads the row and the waiting changes.
+        for (const change of jobChanges) await ctx.db.delete(change._id);
         if ((counts.processed ?? 0) + (counts.failed ?? 0) >= (job.totalPapers ?? 0)) {
           await ctx.runMutation(internal.extraction.mutations.internal.lifecycle.maybeFinalizeJob, { jobId });
         }
+        continue;
       }
-      // Folded, or its job is gone: out of the queue.
+      // Its job is gone: out of the queue.
       for (const change of jobChanges) await ctx.db.delete(change._id);
     }
     if (waiting.length) return { cursor: waiting.reduce((min, ts) => (ts < min ? ts : min)) };
