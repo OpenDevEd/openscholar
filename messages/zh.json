@@ -1678,7 +1678,7 @@
     "successCitedBy": "显示被作品 {id} 引用的论文",
     "successRelated": "显示与作品 {id} 相关的论文",
     "pleaseEnterWorkId": "请输入作品 ID。",
-    "workIdFormatHint": "作品 ID 应以 \"W\" 开头，后跟数字（例如 W2741809807）。",
+    "workIdFormatHint": "作品 ID 应以 \"W\" 或 \"OS\" 开头，后跟数字（例如 W2741809807 或 OS150911088）。",
     "workIdFilter": "作品 ID 筛选"
   },
   "footer": {

@@ -1678,7 +1678,7 @@
     "successCitedBy": "Affichage des articles cités par l'œuvre {id}",
     "successRelated": "Affichage des articles liés à l'œuvre {id}",
     "pleaseEnterWorkId": "Veuillez entrer un ID de travail.",
-    "workIdFormatHint": "Les ID de travail doivent commencer par \"W\" suivi de chiffres (ex. W2741809807).",
+    "workIdFormatHint": "Les ID de travail doivent commencer par \"W\" ou \"OS\" suivi de chiffres (ex. W2741809807 ou OS150911088).",
     "workIdFilter": "Filtre d'ID de travail"
   },
   "footer": {

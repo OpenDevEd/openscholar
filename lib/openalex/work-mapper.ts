@@ -9,6 +9,7 @@
  */
 
 import { reconstructAbstract } from "./reconstruct-abstract";
+import { withoutWorkSite } from "./work-id";
 
 export type OpenAlexWork = {
   id?: string;
@@ -37,8 +38,6 @@ export type PaperDataOut = {
   workType?: string;
 };
 
-const OPENALEX_ID_PREFIX = "https://openalex.org/";
-
 export function mapOpenAlexWorkToPaperData(work: OpenAlexWork): PaperDataOut {
   const authors =
     work.authorships
@@ -54,7 +53,7 @@ export function mapOpenAlexWorkToPaperData(work: OpenAlexWork): PaperDataOut {
     typeof work.cited_by_count === "number" ? work.cited_by_count : undefined;
 
   return {
-    openalexId: work.id?.replace(OPENALEX_ID_PREFIX, "") || "",
+    openalexId: work.id ? withoutWorkSite(work.id) : "",
     title: work.display_name || "Untitled",
     doi: work.doi || undefined,
     publicationYear: work.publication_year || undefined,

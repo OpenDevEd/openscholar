@@ -15,6 +15,11 @@ describe("mapOpenAlexWorkToPaperData — id + title", () => {
     expect(paper.openalexId).toBe("W1234");
   });
 
+  it("strips the https://openscholar.ai/ prefix from an OpenScholar API id", () => {
+    const paper = mapOpenAlexWorkToPaperData({ id: "https://openscholar.ai/OS150911088" });
+    expect(paper.openalexId).toBe("OS150911088");
+  });
+
   it("falls back to empty string when id is missing", () => {
     const paper = mapOpenAlexWorkToPaperData({ display_name: "Title" });
     expect(paper.openalexId).toBe("");

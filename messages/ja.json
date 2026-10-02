@@ -1678,7 +1678,7 @@
     "successCitedBy": "work {id} に引用されている論文を表示",
     "successRelated": "work {id} に関連する論文を表示",
     "pleaseEnterWorkId": "Work IDを入力してください。",
-    "workIdFormatHint": "Work IDは「W」で始まり数字が続きます（例：W2741809807）。",
+    "workIdFormatHint": "Work IDは「W」または「OS」で始まり数字が続きます（例：W2741809807、OS150911088）。",
     "workIdFilter": "Work IDフィルター"
   },
   "footer": {

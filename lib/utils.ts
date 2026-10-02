@@ -8,6 +8,7 @@ import type { SearchResult, SearchField, SearchFilters } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
 import { buildSearchSubfilter } from './search/search-field'
 import { researchAreaFilter, sdgFilterValue } from './openalex/vocabulary'
+import { withoutWorkSite } from './openalex/work-id'
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -272,6 +273,15 @@ export async function downloadWithMetadata(
 }
 
 /**
+ * A work id as the cites, cited_by and related_to filters take it: an OpenAlex id in full,
+ * and an OpenScholar API id (OS…) as it is, since only OpenAlex ids have an openalex.org form.
+ */
+function relationFilterId(id: string): string {
+  const short = withoutWorkSite(id);
+  return short.startsWith("OS") ? short : `https://openalex.org/${short}`;
+}
+
+/**
  * Creates search parameters object for OpenAlex API calls
  * Used by both the OpenAlex action and search metadata creation.
  *
@@ -325,26 +335,10 @@ export function createSearchParameters(
     }
   }
 
-  // Add cites filtering
-  if (filters.citesItemId) {
-    // Clean the item ID to ensure it's in the correct format
-    const cleanItemId = filters.citesItemId.startsWith('https://openalex.org/') ? filters.citesItemId : `https://openalex.org/${filters.citesItemId}`;
-    apiFilters.cites = cleanItemId;
-  }
-
-  // Add cited_by filtering
-  if (filters.citedByItemId) {
-    // Clean the item ID to ensure it's in the correct format
-    const cleanItemId = filters.citedByItemId.startsWith('https://openalex.org/') ? filters.citedByItemId : `https://openalex.org/${filters.citedByItemId}`;
-    apiFilters.cited_by = cleanItemId;
-  }
-
-  // Add related_to filtering
-  if (filters.relatedToItemId) {
-    // Clean the item ID to ensure it's in the correct format
-    const cleanItemId = filters.relatedToItemId.startsWith('https://openalex.org/') ? filters.relatedToItemId : `https://openalex.org/${filters.relatedToItemId}`;
-    apiFilters.related_to = cleanItemId;
-  }
+  // Add cites, cited_by and related_to filtering
+  if (filters.citesItemId) apiFilters.cites = relationFilterId(filters.citesItemId);
+  if (filters.citedByItemId) apiFilters.cited_by = relationFilterId(filters.citedByItemId);
+  if (filters.relatedToItemId) apiFilters.related_to = relationFilterId(filters.relatedToItemId);
 
   // Helper function to convert date to ISO string format
   const toISODateString = (date: Date | string): string => {

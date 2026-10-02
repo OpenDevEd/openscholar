@@ -47,6 +47,13 @@ describe("lib/bucket/dedupe", () => {
     ).toBe("doi:10.1/x");
   });
 
+  test("normalises an OpenScholar API id as it does an OpenAlex one", () => {
+    expect([
+      buildDedupeKey({ openalexId: "https://openscholar.ai/OS1" }),
+      buildDedupeKey({ openalexId: "OS1" }),
+    ]).toEqual(["openalex:OS1", "openalex:OS1"]);
+  });
+
   test("accepts a bare W-id for openalexId", () => {
     expect(buildDedupeKey({ openalexId: "W42" })).toBe("openalex:W42");
   });

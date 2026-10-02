@@ -1,15 +1,12 @@
+import { withoutWorkSite } from "@/lib/openalex/work-id";
+
 const DOI_PREFIX = "https://doi.org/";
-const OPENALEX_PREFIX = "https://openalex.org/";
 
 function normalizeOpenalexId(openalexId?: string): string | null {
   if (!openalexId) return null;
   const trimmed = openalexId.trim();
   if (!trimmed) return null;
-  if (trimmed.startsWith(OPENALEX_PREFIX)) {
-    const rest = trimmed.slice(OPENALEX_PREFIX.length);
-    return rest || null;
-  }
-  return trimmed;
+  return withoutWorkSite(trimmed) || null;
 }
 
 function normalizeDoi(doi?: string): string | null {

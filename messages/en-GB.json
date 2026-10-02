@@ -1670,7 +1670,7 @@
     "successCitedBy": "Showing papers cited by work {id}",
     "successRelated": "Showing papers related to work {id}",
     "pleaseEnterWorkId": "Please enter a work ID.",
-    "workIdFormatHint": "Work IDs should start with \"W\" followed by numbers (e.g., W2741809807).",
+    "workIdFormatHint": "Work IDs should start with \"W\" or \"OS\" followed by numbers (e.g., W2741809807 or OS150911088).",
     "workIdFilter": "Work ID filter"
   },
   "footer": {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { CitationData } from "./formats";
 import { normalizeCitationType } from "./paper-data";
+import { SHORT_WORK_ID } from "@/lib/openalex/work-id";
 
 const text = z.string().trim().min(1).max(10000);
 const identifiers = z.union([text, z.array(text).min(1)]).transform((value) => Array.isArray(value) ? value.join(", ") : value);
@@ -14,7 +15,7 @@ const metadataSchema = z.object({
   "container-title": text.optional(), publisher: text.optional(), "publisher-place": text.optional(),
   volume: text.optional(), issue: text.optional(), page: text.optional(), edition: text.optional(), language: text.optional(),
 });
-const inputSchema = metadataSchema.extend({ id: z.string().regex(/^W\d+$/), "citation-key": z.string().regex(/^os_W\d+$/) });
+const inputSchema = metadataSchema.extend({ id: z.string().regex(SHORT_WORK_ID), "citation-key": z.string().regex(/^os_(?:W|OS)\d+$/) });
 
 export async function getPaperCitationMetadata(input: unknown) {
   const data: CitationData = inputSchema.parse(input);
