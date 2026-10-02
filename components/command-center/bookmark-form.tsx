@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { BookmarkPlus, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 
 interface BookmarkFormProps {
   variant: "inline" | "overlay";

@@ -30,7 +30,7 @@ import { BookmarkForm } from "@/components/command-center";
 import { QueryText } from "@/components/ui/query-text";
 import { FilterChips } from "@/components/ui/filter-display";
 import { languageOptions } from "@/components/language-selector";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { HistoryQueryExpansion } from "./history-query-expansion";
 import { subtleSpring } from "@/lib/animation-config";
 import type { SearchResult } from "@/lib/types";

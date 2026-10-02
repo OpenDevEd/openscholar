@@ -15,6 +15,7 @@ import { useAppToast } from "@/lib/toast";
 import { bucketAdded } from "@/lib/toast/bucket";
 import type { SearchResult } from "@/lib/types";
 import { PAPER_LIMIT, PAPER_PULL_CAP, PAPER_PULL_DEFAULT } from "@/lib/extraction/limits";
+import { browserExpand } from "@/lib/keyword-validation-browser";
 
 const HISTORY_BUCKET_KEY_PREFIX = "history:";
 
@@ -98,6 +99,7 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
       const searchFilters = paramsToBucketSearchFilters(
         { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(entry) },
         {
+          expand: browserExpand,
           getMessage: (key, values) => tv(key as "singleCharSearch", values),
           onWarning: (message) => toast.validation.failed(message),
         },

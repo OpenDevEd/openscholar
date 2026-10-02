@@ -31,7 +31,7 @@ import { useSearchOptional } from "@/lib/search";
 import { useCurrentQuestionStore, useSearchHistoryStore } from "@/lib/store";
 import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { browserExpand, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { cn } from "@/lib/utils";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 import { subtleSpring } from "@/lib/animation-config";
@@ -276,6 +276,7 @@ Return a more targeted version of this query.`;
     );
     const params = search.params;
     const searchFilters = paramsToBucketSearchFilters(params, {
+      expand: browserExpand,
       getMessage: (key, values) => tv(key as "singleCharSearch", values),
       onWarning: (message) => toast.validation.failed(message),
     });

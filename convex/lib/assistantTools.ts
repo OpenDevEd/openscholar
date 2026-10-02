@@ -45,7 +45,7 @@ function fieldsWithStringIds(fields: PropertyValidators): PropertyValidators {
 export function assistantTools(ctx: ActionCtx, userId: Id<"users">, entries: readonly UserAction[]): Record<string, Tool> {
   return Object.fromEntries(
     entries.map((entry) => {
-      const retryKey = entry.kind === "mutation" ? entry.retryKey : undefined;
+      const retryKey = entry.kind === "query" ? undefined : entry.retryKey;
       const fields = Object.fromEntries(Object.entries(entry.args as PropertyValidators).filter(([name]) => name !== retryKey));
       const ref = assistantPath(entry.path);
       return [
@@ -53,10 +53,12 @@ export function assistantTools(ctx: ActionCtx, userId: Id<"users">, entries: rea
         tool({
           description: entry.description,
           inputSchema: z.object(convexToZodFields(fieldsWithStringIds(fields))),
-          execute: async (input: Record<string, unknown>, { toolCallId }) =>
-            entry.kind === "query"
-              ? ctx.runQuery(makeFunctionReference<"query">(ref), { ...input, userId })
-              : ctx.runMutation(makeFunctionReference<"mutation">(ref), { ...input, ...(retryKey ? { [retryKey]: toolCallId } : {}), userId }),
+          execute: async (input: Record<string, unknown>, { toolCallId }) => {
+            const args = { ...input, ...(retryKey ? { [retryKey]: toolCallId } : {}), userId };
+            if (entry.kind === "query") return ctx.runQuery(makeFunctionReference<"query">(ref), args);
+            if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), args);
+            return ctx.runAction(makeFunctionReference<"action">(ref), args);
+          },
         }),
       ];
     }),

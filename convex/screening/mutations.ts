@@ -9,7 +9,7 @@ import {
   screeningScoringConfigValidator,
   screeningJobStatusValidator,
 } from "./validators";
-import { requireAuth } from "../lib/auth";
+import { requireActiveUser, requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { resolveTaskPick, serverStamp } from "../ai/serverModel";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
@@ -38,8 +38,15 @@ import { availableCredits } from "../billing/accounts";
  * processing result records for each paper, and enqueues each paper directly
  * into the screening workpool.
  */
-export const createScreeningJob = mutation({
+/**
+ * Creates a Screen all job for `userId` from papers the server has already resolved
+ * (`screening/start:screenSearch`); the browser never sends papers.
+ */
+export const createScreeningJobForUser = internalMutation({
   args: {
+    userId: v.id("users"),
+    /** Who started it: the search revision that takes on its questions records them. */
+    author: v.union(v.literal("user"), v.literal("assistant")),
     papers: v.array(screeningPaperInputValidator),
     questions: v.array(screeningQuestionValidator),
     scoringConfig: screeningScoringConfigValidator,
@@ -48,9 +55,9 @@ export const createScreeningJob = mutation({
     searchId: v.optional(v.string()),
   },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, args) => {
-    // 1. Authentication
-    const user = await requireAuth(ctx);
+  handler: async (ctx, { userId, author, ...args }) => {
+    // 1. The acting user, who may have been suspended since the action began
+    const user = await requireActiveUser(ctx, userId);
 
     // 2. Validate paper count
     if (args.papers.length === 0) {
@@ -109,7 +116,7 @@ export const createScreeningJob = mutation({
       const missing = [...new Set(args.questions.map((q) => q.question))].filter((question) => !asked.has(question));
       if (missing.length) {
         const screeningQuestions = [...search.data.screeningQuestions, ...missing.map((question) => ({ question }))];
-        await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, "user");
+        await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
       }
       screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
     } else {
@@ -207,21 +214,38 @@ export const cancelScreeningJob = mutation({
       return null;
     }
 
-    // Update job status to cancelled
+    // One write: papers check the job before they run and skip a cancelled one, so
+    // cancelling never waits on, or conflicts with, the papers finishing meanwhile.
     await ctx.db.patch("screeningJobs", args.jobId, {
       status: "cancelled",
       updatedAt: Date.now(),
     });
+    // Their queued work is dropped in batches afterwards, as Firecrawl drops a cancelled
+    // crawl's queue, so the pool's slots free up sooner.
+    await ctx.scheduler.runAfter(0, internal.screening.mutations.cancelScreeningWork, { jobId: args.jobId, cursor: null });
 
-    const results = await ctx.db
+    return null;
+  },
+});
+
+/** Results whose queued work one batch cancels. */
+const CANCEL_BATCH = 100;
+
+/** Cancels a cancelled job's queued paper work, a batch at a time. */
+export const cancelScreeningWork = internalMutation({
+  args: { jobId: v.id("screeningJobs"), cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { jobId, cursor }) => {
+    const page = await ctx.db
       .query("screeningResults")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_SCREENING_PAPERS_PER_JOB);
-
-    for (const workId of getCancelableScreeningWorkIds(results)) {
+      .withIndex("by_job", (q) => q.eq("jobId", jobId))
+      .paginate({ cursor, numItems: CANCEL_BATCH });
+    for (const workId of getCancelableScreeningWorkIds(page.page)) {
       await screeningPool.cancel(ctx, workId);
     }
-
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.screening.mutations.cancelScreeningWork, { jobId, cursor: page.continueCursor });
+    }
     return null;
   },
 });

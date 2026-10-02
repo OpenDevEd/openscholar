@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import posthog from "posthog-js";
 import {
   Dialog,
@@ -18,14 +18,13 @@ import { Loader2, AlertCircle, Import, Coins } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Slider } from "@/components/ui/slider";
 import { useSearchOptional } from "@/lib/search";
-import { effectiveSort } from "@/lib/search-params";
+import { useResearchStatus } from "@/lib/research/provider";
+import { isRatingFilterActive } from "@/lib/utils";
 import { useSearchHistoryStore } from "@/lib/store";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/toast";
 import { showStyledToast } from "@/components/ui/sonner";
-import { readSearchPage } from "@/app/actions/openalex";
-import { searchRequest } from "@/lib/search-utils";
 import { api } from "@/convex/_generated/api";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "@/convex/lib/queryBounds";
 import { estimateScreening } from "@/convex/screening/estimate";
@@ -213,7 +212,12 @@ export function ScreeningDialog({
   // worked out from it as the range changes, so it never waits on a query.
   const { data: account } = useProtectedQuery(api.billing.accounts.mine, open ? {} : "skip");
   const estimate = account === undefined ? undefined : estimateScreening(paperCount, account?.balance ?? 0);
-  const hasEnough = estimate ? estimate.credits <= estimate.available : false;
+  // A rating filter keeps only some of the range's papers, which the server works out; it
+  // checks the credits for the papers that are left.
+  const ratingFiltered = search ? isRatingFilterActive([search.params.rmin, search.params.rmax], search.params.rated) : false;
+  const hasEnough = estimate ? ratingFiltered || estimate.credits <= estimate.available : false;
+  // The server reads the saved search, so edits still being saved would be screened without.
+  const { pending: savingEdits } = useResearchStatus();
   const affordablePapers = estimate?.affordablePapers;
 
   // Set initial range to the max affordable paper count
@@ -236,10 +240,8 @@ export function ScreeningDialog({
     if (!open) setPaperRange([1, maxPapers]);
   }, [maxPapers, open]);
 
-  // Convex mutation
-  const createScreeningJob = useMutation(
-    api.screening.mutations.createScreeningJob
-  );
+  // The server reads the search's papers and starts the job.
+  const screenSearch = useAction(api.screening.start.screenSearch);
 
   // Track dialog open
   useEffect(() => {
@@ -256,46 +258,11 @@ export function ScreeningDialog({
     if (!search) return;
     setIsSubmitting(true);
     try {
-      // 1. Read the search's works on the server, where OpenScholar's OpenAlex
-      //    key applies, following the cursor until the range is covered.
-      const [rangeStart, rangeEnd] = paperRange;
-      const request = searchRequest({
-        query: search.params.q,
-        filters: { ...search.toSearchFilters(), sortBy: effectiveSort(search.params) },
-      });
-      if (!request) throw new Error(t("submitError"));
-      const collected: Array<Record<string, unknown>> = [];
-      let cursor: string | null = "*";
-      while (cursor && collected.length < rangeEnd) {
-        const page = await readSearchPage(request.query, request.filters, cursor);
-        if (!page.ok) throw new Error(page.message);
-        collected.push(...(page.works as unknown as Array<Record<string, unknown>>));
-        cursor = page.nextCursor;
-      }
-      const works: Array<Record<string, unknown>> = collected.slice(rangeStart - 1, rangeEnd);
-
-      // 2. Map to screening paper input shape
-      const papers = works.map((w) => {
-        return {
-          openalexId: String(w.id ?? ""),
-          title: String(w.title ?? w.display_name ?? ""),
-          abstract: typeof w.abstract === "string" ? w.abstract : undefined,
-          authors: Array.isArray(w.authorships)
-            ? (w.authorships as Array<{ author?: { display_name?: string } }>)
-                .map((a) => a.author?.display_name)
-                .filter((name): name is string => !!name)
-            : undefined,
-          publicationYear:
-            typeof w.publication_year === "number"
-              ? w.publication_year
-              : undefined,
-          doi: typeof w.doi === "string" ? w.doi : undefined,
-        };
-      });
-
-      // 3. Call createScreeningJob mutation
-      await createScreeningJob({
-        papers,
+      const [first, last] = paperRange;
+      await screenSearch({
+        searchId,
+        first,
+        last,
         questions: keyedQuestions,
         scoringConfig: {
           rules: scoringRules,
@@ -303,14 +270,12 @@ export function ScreeningDialog({
           minimumScore,
         },
         targetCollectionId: selectedCollectionId,
-        // Its answers show on this search's page.
-        searchId,
       });
 
       toast.success(t("submitSuccess"), { duration: 3000 });
       onOpenChange(false);
       posthog.capture("screening_job_submitted", {
-        paperCount: papers.length,
+        paperCount,
         questionCount: keyedQuestions.length,
       });
     } catch (error: unknown) {
@@ -340,7 +305,9 @@ export function ScreeningDialog({
     starThresholds,
     minimumScore,
     selectedCollectionId,
-    createScreeningJob,
+    paperRange,
+    paperCount,
+    screenSearch,
     onOpenChange,
     t,
   ]);
@@ -525,6 +492,7 @@ export function ScreeningDialog({
             onClick={handleSubmit}
             disabled={
               isSubmitting ||
+              savingEdits > 0 ||
               localQuestions.length === 0 ||
               !hasEnough
             }

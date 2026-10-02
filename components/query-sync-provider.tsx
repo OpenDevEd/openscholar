@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react'
 import { useKeywordExpansionDialogStore, useCurrentQueryStore } from '@/lib/store'
-import { validateAndExpandKeywordsSilently } from '@/lib/keyword-validation'
+import { validateAndExpandKeywordsSilently } from '@/lib/keyword-validation-browser'
 import { useSearchOptional } from '@/lib/search'
 
 interface QuerySyncProviderProps {

@@ -22,14 +22,15 @@ import { useAppToast } from '@/lib/toast';
 import { searchParamsParsers, DEFAULT_SEARCH_PARAMS } from '../search-params/parsers';
 import { buildShareableUrl, effectiveSort } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
-import { getSearchResultsWithFilters, type SearchWithFiltersParams } from '../search-utils';
+import type { SearchWithFiltersParams } from '../search-utils';
+import { getSearchResultsWithFilters } from './search-results';
 import { SearchError, rejectedQuery } from './search-error';
 import { OQL_FIELD } from '../openalex/oql';
 import { buildOpenAlexWorksQuery } from '../openalex/works-query';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
 import { ResearchContext } from '../research/binding';
 import { searchResultToParams } from '../search-params/converters';
-import { validateAndExpandKeywordsSilently } from '../keyword-validation';
+import { browserExpand, validateAndExpandKeywordsSilently } from '../keyword-validation-browser';
 import type { SearchFilters, SearchField, PaperResult } from '../types';
 import type { SearchContextValue, SearchParams, SearchResultData, SetQueryOptions } from './types';
 import {
@@ -770,7 +771,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   
   const rejected = rejectedQuery(error) !== null;
   const oql = useMemo(
-    () => (currentParams.field === OQL_FIELD ? buildOpenAlexWorksQuery(currentParams)?.oql ?? null : null),
+    () => (currentParams.field === OQL_FIELD ? buildOpenAlexWorksQuery(currentParams, { expand: browserExpand })?.oql ?? null : null),
     [currentParams],
   );
 

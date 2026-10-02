@@ -22,7 +22,7 @@ import {
 import { useEffectiveSearchId, useQueryHistory } from "@/lib/hooks";
 import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { cn } from "@/lib/utils";
 import { AISetupGate } from "@/components/ai/ai-setup-gate";
 import posthog from "posthog-js";

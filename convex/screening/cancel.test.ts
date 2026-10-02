@@ -1,9 +1,11 @@
 import { convexTest } from "convex-test";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { Id } from "../_generated/dataModel";
 import { api } from "../_generated/api";
 import schema from "../schema";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { createJob } from "./createJob.test-support";
+import { screeningPool } from "../workpool";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
@@ -251,9 +253,7 @@ describe("cancelScreeningJob", () => {
     const userATest = t.withIdentity({ subject: "clerk_cancel11a" });
     const userBTest = t.withIdentity({ subject: "clerk_cancel11b" });
 
-    const targetJob = await userATest.mutation(
-      api.screening.mutations.createScreeningJob,
-      {
+    const targetJob = await createJob(userATest, {
         papers: [
           {
             openalexId: "oa:target",
@@ -267,9 +267,7 @@ describe("cancelScreeningJob", () => {
         },
       }
     );
-    const otherJob = await userBTest.mutation(
-      api.screening.mutations.createScreeningJob,
-      {
+    const otherJob = await createJob(userBTest, {
         papers: [
           {
             openalexId: "oa:other",
@@ -305,5 +303,30 @@ describe("cancelScreeningJob", () => {
       expect(typeof targetResult?.workId).toBe("string");
       expect(typeof otherResult?.workId).toBe("string");
     });
+  });
+
+  it("cancels at once and drops a large job's queued work afterwards, a batch at a time", async () => {
+    vi.useFakeTimers();
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const user = await seedUser(t, "clerk_cancel_big", "cancel_big@test.com");
+    await seedCredits(t, user._id, 100_000, 0);
+    const asUser = t.withIdentity({ subject: "clerk_cancel_big" });
+    const { jobId } = await createJob(asUser, {
+      papers: Array.from({ length: 250 }, (_, i) => ({ openalexId: `oa:${i}`, title: `Paper ${i}` })),
+      questions: [{ key: "q1", question: "Is this relevant?" }],
+      scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] },
+    });
+    const cancel = vi.spyOn(screeningPool, "cancel");
+
+    await asUser.mutation(api.screening.mutations.cancelScreeningJob, { jobId });
+
+    // The request itself only marks the job; papers check it and skip.
+    expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("cancelled");
+    expect(cancel).not.toHaveBeenCalled();
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(new Set(cancel.mock.calls.map(([, workId]) => workId)).size).toBe(250);
+    cancel.mockRestore();
+    vi.useRealTimers();
   });
 });

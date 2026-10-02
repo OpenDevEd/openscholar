@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { CompactQuestionList } from "./components/compact-question-list";
 import { useSearchHistoryStore, useTransientScreeningStore } from "@/lib/store";
 import { useGenerateScreeningQuestions } from "@/lib/ai/client/router";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation";
+import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { commandCenterSpring } from "@/lib/animation-config";
 import { useCooldown } from "@/lib/hooks/use-cooldown";
 import { useAppToast } from "@/lib/toast";
