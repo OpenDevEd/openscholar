@@ -15,73 +15,85 @@ export const cleanupDeletedUsers = internalMutation({
     const cutoff = Date.now() - DELETED_USER_RETENTION_MS;
     const BATCH_SIZE = 50;
 
-    // Find deleted users past retention period
+    // Find only deleted users past retention period. Querying deleted users
+    // without the cutoff can self-schedule forever when the first batch is new.
     const deletedUsers = await ctx.db
       .query("users")
-      .withIndex("by_state", (q) => q.eq("state", "deleted"))
+      .withIndex("by_state_updatedAt", (q) =>
+        q.eq("state", "deleted").lt("updatedAt", cutoff)
+      )
       .take(BATCH_SIZE);
 
     let cleanedCount = 0;
+    let blockedOnExtractionJobs = 0;
 
     for (const user of deletedUsers) {
-      if (user.updatedAt < cutoff) {
-        // Clean up user's API keys
-        const apiKeys = await ctx.db
-          .query("apiKeys")
-          .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .collect();
+      // Clean up user's API keys
+      const apiKeys = await ctx.db
+        .query("apiKeys")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .collect();
 
-        for (const key of apiKeys) {
-          await ctx.db.delete("apiKeys", key._id);
-        }
-
-        // Delete extraction jobs (cascade to papers, results, evidence units, etc.)
-        // Uses existing deleteExtractionInternal which handles all 9 child tables
-        const extractionJobs = await ctx.db
-          .query("extractionJobs")
-          .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .take(BATCH_SIZE);
-        for (const job of extractionJobs) {
-          await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, {
-            jobId: job._id,
-          });
-        }
-
-        // If we found a full batch of extraction jobs, there may be more.
-        // Don't delete the user yet -- re-schedule to handle remaining jobs.
-        if (extractionJobs.length === BATCH_SIZE) {
-          continue; // Skip user delete, process on next run
-        }
-
-        // Delete Zotero connections (personal data, no audit value)
-        const zoteroConns = await ctx.db
-          .query("zoteroConnections")
-          .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .collect();
-        for (const conn of zoteroConns) {
-          await ctx.db.delete("zoteroConnections", conn._id);
-        }
-
-        // NOTE: Deliberately preserving these tables for financial audit:
-        // - creditTransactions (financial records)
-        // - credits (balance records)
-        // - subscriptions (billing history)
-
-        // Hard delete the user to prevent re-processing
-        await ctx.db.delete("users", user._id);
-
-        cleanedCount++;
+      for (const key of apiKeys) {
+        await ctx.db.delete("apiKeys", key._id);
       }
+
+      // Delete extraction jobs (cascade to papers, results, evidence units, etc.)
+      // Uses existing deleteExtractionInternal which handles all 9 child tables
+      const extractionJobs = await ctx.db
+        .query("extractionJobs")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .take(BATCH_SIZE);
+      for (const job of extractionJobs) {
+        await ctx.scheduler.runAfter(0, internal.extraction.mutations.deleteExtractionInternal, {
+          jobId: job._id,
+        });
+      }
+
+      // If we found a full batch of extraction jobs, there may be more.
+      // Don't delete the user yet. The next daily cron will finish once the
+      // scheduled cascades have drained, avoiding duplicate immediate loops.
+      if (extractionJobs.length === BATCH_SIZE) {
+        blockedOnExtractionJobs++;
+        continue;
+      }
+
+      // Delete Zotero connections (personal data, no audit value)
+      const zoteroConns = await ctx.db
+        .query("zoteroConnections")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .collect();
+      for (const conn of zoteroConns) {
+        await ctx.db.delete("zoteroConnections", conn._id);
+      }
+
+      // NOTE: Deliberately preserving these tables for financial audit:
+      // - creditTransactions (financial records)
+      // - credits (balance records)
+      // - subscriptions (billing history)
+
+      // Hard delete the user to prevent re-processing
+      await ctx.db.delete("users", user._id);
+
+      cleanedCount++;
     }
 
-    // If we fetched a full batch, there might be more to process
-    if (deletedUsers.length === BATCH_SIZE) {
+    // Continue only when this invocation made hard-delete progress for the
+    // whole batch. If cascade deletion is still draining, wait for the next
+    // cron tick instead of immediately reprocessing the same users.
+    if (
+      deletedUsers.length === BATCH_SIZE &&
+      cleanedCount === BATCH_SIZE &&
+      blockedOnExtractionJobs === 0
+    ) {
       await ctx.scheduler.runAfter(0, internal.maintenance.mutations.cleanupDeletedUsers, {});
     }
 
     if (cleanedCount > 0) {
       console.log(`Cleaned up ${cleanedCount} deleted users`);
     }
+
+    return null;
   },
 });
 
