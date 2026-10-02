@@ -172,16 +172,20 @@ const fitting = (part: ts.Type, candidates: ts.Type[]) => {
 const fewest = (found: string[][]) => (found.length ? found.reduce((best, next) => (next.length < best.length ? next : best)) : []);
 
 /** Paths of fields `actual` can hold that `declared` doesn't allow. */
-function undeclaredFields(actual: ts.Type, declared: ts.Type, at: ts.Node, path: string, depth = 0): string[] {
-  if (depth > 8 || actual.flags & skipped || declared.flags & skipped) return [];
-  return parts(actual).flatMap((part) => {
+function undeclaredFields(actual: ts.Type, declared: ts.Type, at: ts.Node, path: string, open = new Set<string>()): string[] {
+  if (actual.flags & skipped || declared.flags & skipped) return [];
+  // A pair already being compared further up this path is a recursive type: its fields are checked there.
+  const pair = `${(actual as { id?: number }).id}:${(declared as { id?: number }).id}`;
+  if (open.has(pair)) return [];
+  open.add(pair);
+  const found = parts(actual).flatMap((part) => {
     if (part.flags & skipped) return [];
     if (isArrayLike(part)) {
       // Every element of a tuple, against the element type of each array branch it fits.
       const elements = checker.getTypeArguments(part as ts.TypeReference);
       return fewest(fitting(part, parts(declared).filter(isArrayLike)).map((candidate) => {
         const target = checker.getTypeArguments(candidate as ts.TypeReference)[0];
-        return elements.flatMap((element) => undeclaredFields(element, target, at, `${path}[]`, depth + 1));
+        return elements.flatMap((element) => undeclaredFields(element, target, at, `${path}[]`, open));
       }));
     }
     if (!isRecordLike(part)) return [];
@@ -194,12 +198,14 @@ function undeclaredFields(actual: ts.Type, declared: ts.Type, at: ts.Node, path:
         if (members(type).every((t) => t.flags & ts.TypeFlags.Undefined)) return [];
         const field = candidate.getProperty(p.name);
         const target = field ? checker.getTypeOfSymbolAtLocation(field, at) : index;
-        return target ? undeclaredFields(type, target, at, `${path}.${p.name}`, depth + 1) : [`${path}.${p.name}`];
+        return target ? undeclaredFields(type, target, at, `${path}.${p.name}`, open) : [`${path}.${p.name}`];
       });
-      const keyed = !dynamic ? [] : index ? undeclaredFields(dynamic, index, at, `${path}[key]`, depth + 1) : [`${path}[key]`];
+      const keyed = !dynamic ? [] : index ? undeclaredFields(dynamic, index, at, `${path}[key]`, open) : [`${path}[key]`];
       return [...named, ...keyed];
     }));
   });
+  open.delete(pair);
+  return found;
 }
 
 /** The types a function can return: each `return` in its own body, and its declared return type. */
