@@ -1,6 +1,7 @@
 import type { BucketItemInput, JobSourceSearchFilters } from "./jobSources";
 import type { PaperData } from "./types";
 import { buildDedupeKey } from "./dedupe";
+import { splitLibraryAuthors } from "../../lib/bucket/bucketItem";
 
 type SourceType = "history" | "zotero" | "manual";
 
@@ -11,12 +12,44 @@ export type ExpandedSourcePaper = {
   sourceId: string;
 };
 
+/** A paper in the person's library, as `ownedLibraryItems` reads it. */
+export type LibraryPaper = {
+  _id: string;
+  title: string;
+  authors?: string;
+  doi?: string;
+  openalexId: string;
+  abstract?: string;
+  publicationYear?: number;
+  journal?: string;
+  citedByCount?: number;
+  workType?: string;
+};
+
 type ExpandSourceDeps = {
   fetchPapersFromHistory: (
     searchFilters: JobSourceSearchFilters,
   ) => Promise<PaperData[]>;
   resolveZoteroUserId: () => Promise<string | undefined>;
+  /** The person's own library papers among these ids; others' and deleted ones are left out. */
+  readLibraryItems: (ids: string[]) => Promise<LibraryPaper[]>;
 };
+
+/** A library or collection source with the paper as the person's library holds it, not the browser's copy. */
+function fromLibrary(item: BucketItemInput, row: LibraryPaper): BucketItemInput {
+  return {
+    ...item,
+    title: row.title,
+    authors: splitLibraryAuthors(row.authors),
+    year: row.publicationYear,
+    doi: row.doi,
+    openalexId: row.openalexId || undefined,
+    abstract: row.abstract,
+    citedByCount: row.citedByCount,
+    venueName: row.journal,
+    workType: row.workType,
+  };
+}
 
 function paperSourceFromBucket(source: BucketItemInput["source"]): SourceType {
   if (source === "history") return "history";
@@ -167,8 +200,19 @@ export async function expandJobSources(
   deps: ExpandSourceDeps,
 ): Promise<ExpandedSourcePaper[]> {
   const expanded: ExpandedSourcePaper[] = [];
+  const fromLibraryIds = items.filter((item) => item.source === "library" || item.source === "collection").map((item) => item.sourceRefId);
+  const library = new Map(
+    (fromLibraryIds.length ? await deps.readLibraryItems(fromLibraryIds) : []).map((row) => [row._id, row]),
+  );
 
   for (const item of items) {
+    if (item.source === "library" || item.source === "collection") {
+      const row = library.get(item.sourceRefId);
+      if (row) expanded.push(expandDirectSource(fromLibrary(item, row)));
+      else console.warn(`[expandJobSources] library paper ${item.sourceRefId} is gone or not the person's; left out`);
+      continue;
+    }
+
     if (item.source === "history") {
       expanded.push(...(await expandHistorySource(item, deps)));
       continue;

@@ -71,6 +71,7 @@ async function resolvePreparedSourcesFromItems(
       );
       return result as PaperData[];
     },
+    readLibraryItems: (ids) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { userId, ids }),
     resolveZoteroUserId: async () => {
       if (cachedZoteroUserId !== undefined) {
         return cachedZoteroUserId;

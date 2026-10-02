@@ -264,6 +264,7 @@ export async function runFetchAndPersistPapers(
   let cachedZoteroUserId: string | undefined;
   const expandedSources = await expandJobSources(bucketItems, {
     fetchPapersFromHistory: (searchFilters) => runFetchPapersFromHistory(ctx, job.userId, searchFilters),
+    readLibraryItems: (ids) => ctx.runQuery(internal.extraction.queries.internal.ownedLibraryItems, { userId: job.userId, ids }),
     resolveZoteroUserId: async () => {
       if (cachedZoteroUserId !== undefined) return cachedZoteroUserId;
       try {
