@@ -207,7 +207,7 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
             </span>
             <span className="min-w-0 flex-1 space-y-1.5">
               <span className="block truncate text-sm font-semibold">
-                Included at <span className="tabular-nums">{minScore}</span> <span className="font-normal text-muted-foreground">of {max} points</span>
+                Included at
               </span>
               {/* One step per point; the lit ones are the scores that get a paper in. */}
               <span className="flex gap-1" aria-hidden>
@@ -218,7 +218,18 @@ export function SetupView({ busy, screenings, onStart }: { busy: boolean; screen
             </span>
             <span className="flex shrink-0 items-center gap-1">
               <Button variant="ghost" size="icon" className="size-8" aria-label="One point fewer" disabled={minScore <= 1} onClick={() => setMinScore(minScore - 1)}><Minus /></Button>
+              <Input
+                type="number"
+                min={1}
+                max={max}
+                value={minScore}
+                onChange={(e) => setMinScore(Math.min(max, Math.max(1, Math.round(Number(e.target.value)) || 1)))}
+                onFocus={(e) => e.target.select()}
+                aria-label="Points to be included"
+                className="h-8 w-12 px-1 text-center text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+              />
               <Button variant="ghost" size="icon" className="size-8" aria-label="One point more" disabled={minScore >= max} onClick={() => setMinScore(minScore + 1)}><Plus /></Button>
+              <span className="w-16 whitespace-nowrap text-sm tabular-nums text-muted-foreground">of {max} points</span>
             </span>
           </div>
         </Zone>
