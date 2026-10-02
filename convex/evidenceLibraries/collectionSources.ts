@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
+import { shortWorkId } from "../../lib/openalex/work-id";
 import {
   httpAction,
   internalQuery,
@@ -118,11 +119,15 @@ function openAlexWorkId(value: string) {
   return /(?:^|\/)(W\d+)$/u.exec(value.trim())?.[1] ?? null;
 }
 
-/** The OpenAlex id a stored work names in its `ids`, as the OpenScholar API gives one for its OS works. */
+/**
+ * The OpenAlex id a stored work names in its `ids`, as the OpenScholar API gives one for its OS
+ * works: a W id, bare or on openalex.org only, since one on another site could name another paper.
+ */
 function storedOpenAlexId(paperData: string | undefined): string | null {
   try {
     const ids = (JSON.parse(paperData ?? "null") as { ids?: { openalex?: unknown } } | null)?.ids;
-    return typeof ids?.openalex === "string" ? openAlexWorkId(ids.openalex) : null;
+    const short = typeof ids?.openalex === "string" ? shortWorkId(ids.openalex) : null;
+    return short?.startsWith("W") ? short : null;
   } catch {
     return null;
   }
