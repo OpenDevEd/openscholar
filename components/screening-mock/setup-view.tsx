@@ -75,7 +75,8 @@ export function SetupView({
   const [prune, setPrune] = useState(false);
   const [modelId, setModelId] = useState("typesafe/jev-1.13");
 
-  const top = Math.min(source.count, JOB_LIMIT);
+  // A range can reach the last result: past a job's limit it runs as several jobs, as All results does.
+  const top = source.count;
   const [first, last] =
     scope === "all"
       ? [1, source.count]
@@ -194,10 +195,42 @@ export function SetupView({
                     />
                     {scope === "range" ? (
                       <div className="space-y-3">
-                        <Slider min={1} max={top} step={1} value={range} onValueChange={(v) => setRange([v[0]!, v[1]!])} aria-label="Papers to screen" />
-                        <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
-                          <span>Papers <span className="font-semibold text-foreground">{first.toLocaleString()}</span> to <span className="font-semibold text-foreground">{last.toLocaleString()}</span></span>
-                          <span>Up to {JOB_LIMIT.toLocaleString()} a job</span>
+                        <Slider min={1} max={top} step={1} value={[first, last]} onValueChange={(v) => setRange([v[0]!, v[1]!])} aria-label="Papers to screen" />
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          {/* Typeable ends: over thousands of results a drag can't land on one paper. */}
+                          <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                            Papers
+                            <Input
+                              type="number"
+                              min={1}
+                              max={last}
+                              value={first}
+                              onChange={(e) => setRange([Math.min(last, Math.max(1, Math.round(Number(e.target.value)) || 1)), last])}
+                              onFocus={(e) => e.target.select()}
+                              aria-label="First paper"
+                              className="h-7 w-20 px-1 text-center text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            to
+                            <Input
+                              type="number"
+                              min={first}
+                              max={top}
+                              value={last}
+                              onChange={(e) => setRange([first, Math.min(top, Math.max(first, Math.round(Number(e.target.value)) || first))])}
+                              onFocus={(e) => e.target.select()}
+                              aria-label="Last paper"
+                              className="h-7 w-20 px-1 text-center text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            of {top.toLocaleString()}
+                          </span>
+                          {jobs > 1 ? (
+                            <span className="flex flex-wrap items-center gap-1.5">
+                              <Chip icon={Zap} className="text-foreground"><span><span className="font-semibold">{jobs.toLocaleString()}</span> jobs, one after another</span></Chip>
+                              <Chip icon={Check}>One approval</Chip>
+                            </span>
+                          ) : (
+                            <Chip>Up to {JOB_LIMIT.toLocaleString()} papers a job</Chip>
+                          )}
                         </div>
                       </div>
                     ) : scope === "all" ? (
