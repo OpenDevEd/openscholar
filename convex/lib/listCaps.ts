@@ -9,6 +9,7 @@
  * copies the validator it's given.
  */
 import type { GenericValidator, VArray, VObject, VRecord, VUnion } from "convex/values";
+import { ERROR_CODES } from "../../lib/errors/taxonomy";
 
 /** The longest list a record may hold. Longer ones are tables, read a page at a time. */
 export const MAX_LIST_CAP = 1_000;
@@ -130,8 +131,11 @@ export const MAX_PLAN_DETAILS = 50;
 export const MAX_METADATA_FIELDS = 50;
 /** Papers one chat reads from (lib/extraction/limits.ts PAPER_LIMIT). */
 export const MAX_CHAT_PAPERS = 1_000;
-/** Buckets an extraction job counts in. */
-export const MAX_COUNT_BUCKETS = 20;
+/**
+ * Buckets an extraction job counts in (convex/extraction/counts.ts): five by status, and a
+ * `permanent:` and an `error:` bucket for each error code.
+ */
+export const MAX_COUNT_BUCKETS = 5 + 2 * ERROR_CODES.length;
 /** Words in one evidence unit: a unit is at most 360 characters. */
 export const MAX_UNIT_TOKENS = 400;
 /** Items in one list answer (lib/extraction/evidence-policy.ts ARRAY_ANSWER_MAX_ITEMS). */

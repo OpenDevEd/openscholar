@@ -67,16 +67,13 @@ type Runner = {
 };
 
 /**
- * Runs `t.run` callbacks, including under `withIdentity`, with the app's writes: list caps
- * (convex/lib/capWrites.ts), then the database triggers. `t.runUncapped` skips the caps.
+ * Runs `t.run` callbacks, including under `withIdentity`, with the app's writes: the database
+ * triggers over the list caps (convex/lib/capWrites.ts). `t.runUncapped` skips the caps.
  */
 function withTriggersInRun<T extends Runner>(target: T): T {
   const run = target.run.bind(target);
   const withIdentity = target.withIdentity.bind(target);
-  target.run = (fn) => run((ctx) => {
-    const withTriggers = triggers.wrapDB(ctx);
-    return fn({ ...withTriggers, db: capWrites(withTriggers.db) });
-  });
+  target.run = (fn) => run((ctx) => fn(triggers.wrapDB({ ...ctx, db: capWrites(ctx.db) })));
   target.runUncapped = (fn) => run((ctx) => fn(triggers.wrapDB(ctx)));
   target.withIdentity = (identity) => withTriggersInRun(withIdentity(identity));
   return target;

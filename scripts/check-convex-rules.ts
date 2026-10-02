@@ -280,16 +280,18 @@ function listPaths(type: ts.Type, at: ts.Node, where = "", stack = new Set<ts.Ty
   if (stack.has(type)) return out;
   stack.add(type);
   if (type.isUnion()) for (const member of type.types) listPaths(member, at, where, stack, out);
-  const name = type.getSymbol()?.getName() ?? "";
+  // A capped list's type is `VArray<...> & Capped<N>`: check the validator inside the intersection.
+  const base = type.isIntersection() ? type.types.find((member) => /^V[A-Z]/.test(member.getSymbol()?.getName() ?? "")) ?? type : type;
+  const name = base.getSymbol()?.getName() ?? "";
   // A list the schema caps on write (convex/lib/listCaps.ts) is a record's field, not a list to page.
   const isCapped = Boolean(type.getProperty("__listCap"));
   if (name === "VArray") {
     if (!isCapped) out.add(`${where}[]`);
-    const element = validatorPart(type, "element", at);
+    const element = validatorPart(base, "element", at);
     if (element) listPaths(element, at, `${where}[]`, stack, out);
   } else if (name === "VRecord") {
     if (!isCapped) out.add(`${where}{}`);
-    const value = validatorPart(type, "value", at);
+    const value = validatorPart(base, "value", at);
     if (value) listPaths(value, at, `${where}{}`, stack, out);
   } else if (name === "VObject") {
     const fields = validatorPart(type, "fields", at);
@@ -471,9 +473,22 @@ const capsAllowed = (file: string) => file === "convex/schema.ts" || file === "c
 /** `capped(...)` calls in `tree` outside the files that define stored validators. */
 function capsOutsideValidators(tree: ts.SourceFile, file: string): string[] {
   if (capsAllowed(file)) return [];
+  // `capped` under any local name: `import { capped as bound }`, or `caps.capped` from `import * as caps`.
+  const names = new Set<string>();
+  const namespaces = new Set<string>();
+  for (const statement of tree.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || !/listCaps$/.test(statement.moduleSpecifier.text)) continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (bindings && ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);
+    if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) if ((element.propertyName ?? element.name).text === "capped") names.add(element.name.text);
+  }
   const found: string[] = [];
   const visit = (node: ts.Node) => {
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "capped") found.push(`${file}:${holderName(node)}: caps a list outside the validators files; cap a stored field where its validator is defined, and page any other list.`);
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const isCapped = (ts.isIdentifier(callee) && names.has(callee.text)) || (ts.isPropertyAccessExpression(callee) && callee.name.text === "capped" && ts.isIdentifier(callee.expression) && namespaces.has(callee.expression.text));
+      if (isCapped) found.push(`${file}:${holderName(node)}: caps a list outside the validators files; cap a stored field where its validator is defined, and page any other list.`);
+    }
     ts.forEachChild(node, visit);
   };
   visit(tree);

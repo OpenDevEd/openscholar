@@ -41,6 +41,8 @@ describe("list caps (#426)", () => {
     const t = convexTest(schema);
     const id = await t.run((ctx) => ctx.db.insert("topicDetails", topic(1)));
     await expect(t.run((ctx) => ctx.db.patch(id, { keywords: topic(MAX_TOPIC_KEYWORDS + 1).keywords }))).rejects.toThrow(/topicDetails\.keywords/);
+    // A forwarded, unset third argument still means `(id, value)`, as Convex reads it.
+    await expect(t.run((ctx) => (ctx.db.patch as (...args: unknown[]) => Promise<void>)(id, { keywords: topic(MAX_TOPIC_KEYWORDS + 1).keywords }, undefined))).rejects.toThrow(/topicDetails\.keywords/);
   });
 
   it("lets a row saved before its cap be patched on other fields", async () => {

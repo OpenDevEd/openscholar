@@ -64,6 +64,14 @@ Paging changes no stored data. Caps (#426) audit shared dev first: a record
 over its cap is migrated into a table with `@convex-dev/migrations`, never
 trimmed. New indexes on large tables deploy staged first.
 
+On 2026-10-02 every list on shared dev fit its cap; three sat at it (paper
+authors 100, extraction list answers 8, runtime release changes 250), and
+their writers already cut to those. A write is checked on what it sets, so a
+row saved over a cap still takes patches to other fields. A whole object
+written back unchanged (a search's `data` on every edit) is checked again, so
+any deployment with older data gets the same audit before it takes this
+change.
+
 ## Checks
 
 - Each PR: `npm run check:convex-rules`, the affected Vitest files, a

@@ -31,7 +31,8 @@ export function capWrites<DB extends GenericDatabaseWriter<DataModel>>(db: DB): 
   const wrapped = Object.create(db) as DB;
   const write = (method: "patch" | "replace") =>
     ((...args: unknown[]) => {
-      const [table, value] = args.length === 3 ? [args[0] as string, args[2]] : [tableOf(args[0] as GenericId<TableNames>), args[1]];
+      // As Convex dispatches: a third argument means `(table, id, value)`.
+      const [table, value] = args[2] !== undefined ? [args[0] as string, args[2]] : [tableOf(args[0] as GenericId<TableNames>), args[1]];
       if (table) check(table, value);
       return (db[method] as (...rest: unknown[]) => unknown)(...args);
     }) as DB[typeof method];

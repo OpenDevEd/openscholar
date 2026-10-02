@@ -54,7 +54,7 @@ import { authorContentFields } from "./authors/validators";
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
-import { fieldValidator, paperAnswersValidator, searchValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
+import { fieldValidator, paperAnswersValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
 
 export default defineSchema({
   searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator, responseChunks: capped(v.optional(v.array(v.id("researchResponseChunks"))), MAX_LEGACY_ENTRIES) })
@@ -75,7 +75,7 @@ export default defineSchema({
     text: v.string(), field: v.optional(fieldValidator), timestamp: v.string(), position: v.number(),
   }).index("by_search_and_kind_and_position", ["searchId", "kind", "position"])
     .index("by_search_and_kind_and_timestamp", ["searchId", "kind", "timestamp"]),
-  researchResponseChunks: defineTable({ responses: searchValidator.fields.screeningResponses }),
+  researchResponseChunks: defineTable({ responses: storedSearchValidator.fields.screeningResponses }),
   // A screening's answers, one row per paper, and an append-only history of each paper's
   // answers that old revisions are rebuilt from. A saved search has one screening, which its
   // page and its Screen all jobs both answer into; a Screen all job run before #334 has its

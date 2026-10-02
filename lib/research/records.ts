@@ -35,8 +35,8 @@ export const searchFields = {
   latestQuestion: v.optional(v.string()),
   questionText: v.string(),
   screeningQuestions: capped(v.array(v.object({ question: v.string() })), MAX_QUESTIONS),
-  // Answers moved to the search's screening (#334); old searches may still hold some.
-  screeningResponses: capped(v.array(v.object({ paperId: v.string(), responses: answers })), MAX_LEGACY_ENTRIES),
+  // Read from the search's screening answers (#334), every one of them: pending under #421.
+  screeningResponses: v.array(v.object({ paperId: v.string(), responses: answers })),
   dateRange: v.optional(v.object({ from: v.optional(v.string()), to: v.optional(v.string()) })),
   yearRange: range(),
   filterType: v.optional(v.union(v.literal("date"), v.literal("year"))),
@@ -77,6 +77,8 @@ export const storedSearchValidator = v.object({
   queryHistoryCount: v.optional(v.number()),
   questionCount: v.optional(v.number()),
   questionText: v.optional(v.string()),
+  // Answers moved to the search's screening (#334); old stored searches may still hold some.
+  screeningResponses: capped(v.array(v.object({ paperId: v.string(), responses: answers })), MAX_LEGACY_ENTRIES),
   queryHistory: capped(v.optional(v.array(queryHistoryEntryValidator)), MAX_LEGACY_ENTRIES),
   questionHistory: capped(v.optional(v.array(questionHistoryEntryValidator)), MAX_LEGACY_ENTRIES),
 });

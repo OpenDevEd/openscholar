@@ -12,8 +12,9 @@ import { triggers } from "./triggers";
 
 export * from "../_generated/server";
 
-/** The writes a mutation makes: capped (#426), then through the triggers. */
-const writes = customCtx((ctx: MutationCtx) => ({ db: capWrites(triggers.wrapDB(ctx).db) }));
+/** The writes a mutation makes: through the triggers, then capped (#426). */
+// The caps sit under the triggers, so a trigger's own writes are capped too.
+const writes = customCtx((ctx: MutationCtx) => ({ db: triggers.wrapDB({ ...ctx, db: capWrites(ctx.db) }).db }));
 
 export const mutation = customMutation(rawMutation, writes);
 export const internalMutation = customMutation(rawInternalMutation, writes);
