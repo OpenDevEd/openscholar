@@ -3284,7 +3284,7 @@
       "intelligent": "Intelligent",
       "custom": "Personnalisé"
     },
-    "needsKey": "Nécessite votre clé {provider}",
+    "needsKey": "Pas de clé",
     "presetsGroup": "Préréglages",
     "allModels": "Tous les modèles",
     "effort": "Effort de raisonnement",

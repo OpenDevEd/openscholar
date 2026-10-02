@@ -24,7 +24,7 @@ import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { useAppToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { AI_TASKS, BROWSER_TASKS, PRESET_KEYS, effectiveChoice, fallbackPreset, type AiTask, type ModelChoice } from "@/lib/ai/tasks";
-import { keyFor, keyToAdd, type KeyProvider } from "@/lib/ai/keys";
+import { keyFor, type KeyProvider } from "@/lib/ai/keys";
 import type { Effort } from "@/lib/ai/core/call-options";
 import type { AIKeyMode, AIProvider } from "@/lib/types/ai.types";
 import { Enter, Segmented, type Ico } from "@/components/settings/parts";
@@ -144,7 +144,7 @@ export default function AISettingsPage() {
     if (n.paidBy === "key") {
       return keyFor(n.model.id, keys) ? null : (
         <span className="flex items-center gap-1 text-destructive">
-          <KeyRound className="size-3" /> {t("needsKey", { provider: getProviderConfig(keyToAdd(n.model.id)).name })}
+          <KeyRound className="size-3" /> {t("needsKey")}
         </span>
       );
     }

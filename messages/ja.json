@@ -3284,7 +3284,7 @@
       "intelligent": "高性能",
       "custom": "カスタム"
     },
-    "needsKey": "{provider} のキーが必要",
+    "needsKey": "キーなし",
     "presetsGroup": "プリセット",
     "allModels": "すべてのモデル",
     "effort": "推論の強さ",
