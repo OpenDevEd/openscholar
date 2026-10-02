@@ -274,6 +274,7 @@ import type * as models_catalog from "../models/catalog.js";
 import type * as models_mutations from "../models/mutations.js";
 import type * as models_queries from "../models/queries.js";
 import type * as models_sync from "../models/sync.js";
+import type * as openalex_limits from "../openalex/limits.js";
 import type * as organizationFeatures from "../organizationFeatures.js";
 import type * as research_answers from "../research/answers.js";
 import type * as research_records from "../research/records.js";
@@ -605,6 +606,7 @@ declare const fullApi: ApiFromModules<{
   "models/mutations": typeof models_mutations;
   "models/queries": typeof models_queries;
   "models/sync": typeof models_sync;
+  "openalex/limits": typeof openalex_limits;
   organizationFeatures: typeof organizationFeatures;
   "research/answers": typeof research_answers;
   "research/records": typeof research_records;

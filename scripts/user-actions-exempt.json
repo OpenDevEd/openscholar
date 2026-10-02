@@ -8,6 +8,7 @@
     "evidenceLibraries/uploads:generateUploadUrl": "A storage URL for a file the person picks in their browser.",
     "extraction/uploads:generateUploadUrl": "A storage URL for a file the person picks in their browser.",
     "featureFlags/queries:getAll": "Feature flags the pages check before showing a feature.",
+    "openalex/limits:spend": "Counts a signed-in account's OpenAlex requests for the server actions that make them.",
     "organizationFeatures:get": "Which features the person's organization has, for the pages to check.",
     "research/records:importBatch": "Imports the browser's local history once, at sign-in.",
     "topics/catalog:initialize": "Seeds the topic catalog the first time a page needs it.",
