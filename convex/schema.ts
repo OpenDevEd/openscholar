@@ -965,6 +965,9 @@ export default defineSchema({
     savedToLibrary: v.optional(v.boolean()),
     libraryItemId: v.optional(v.id("libraryItems")),
     workId: v.optional(v.string()),
+    // Set while the paper waits for one of its person's paper slots (#335); cleared when it
+    // starts and gets its `workId`.
+    waitingSince: v.optional(v.number()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
     // Set when the paper finishes, in commit order, while it waits for the bookkeeping
@@ -976,7 +979,12 @@ export default defineSchema({
     .index("by_job_status", ["jobId", "status"])
     .index("by_job_openalexId", ["jobId", "openalexId"])
     .index("by_job_and_pendingAnswers", ["jobId", "pendingAnswers"])
+    .index("by_job_and_waitingSince", ["jobId", "waitingSince"])
     .index("by_doneAt", ["doneAt"]),
+  // How many of a person's Screen all papers are running (#335). Written by job creation and
+  // the bookkeeping worker, which start a person's waiting papers while this is under their
+  // plan's limit, as Firecrawl's per-team semaphore does.
+  screeningSlots: defineTable({ userId: v.id("users"), running: v.number() }).index("by_user", ["userId"]),
   // A Screen all job's finished papers, counted by the bookkeeping worker alone.
   screeningJobProgress: defineTable({
     jobId: v.id("screeningJobs"),

@@ -39,6 +39,7 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
     nextPlan: scheduled?.plan_id,
     features: Object.keys(customer.flags ?? {}),
     balance: customer.balances.credits?.remaining ?? 0,
+    concurrency: customer.balances.concurrency?.remaining,
     purchased: (customer.balances.credits?.breakdown ?? [])
       .filter((balance) => balance.plan_id === TOPUP_PLAN)
       .reduce((sum, balance) => sum + balance.remaining, 0),
