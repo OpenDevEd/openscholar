@@ -8,7 +8,7 @@ import { internal } from "../_generated/api";
 
 export async function foldCounts(t: ReturnType<typeof convexTest>) {
   for (;;) {
-    const changes = await t.run(async (ctx) => (await ctx.db.query("extractionCountChanges").take(200)).map((change) => change._id));
+    const changes = await t.run(async (ctx) => (await ctx.db.query("extractionCountChanges").take(1_000)).map((change) => change._id));
     if (!changes.length) return;
     await t.mutation(internal.extraction.countsWorker.fold, { changes });
   }
