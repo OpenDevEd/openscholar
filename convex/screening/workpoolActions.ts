@@ -16,6 +16,8 @@ import { processScreeningBatch } from "../../lib/ai/core/batch";
 import { withUserCredits } from "../ai/helpers";
 import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
 import { openRouterModel, resolveOpenRouterModel } from "../chat/provider";
+import { MODEL_UNAVAILABLE_MESSAGE } from "../models/catalog";
+import { createError } from "../lib/errors";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import type { ScreeningResultData } from "../../lib/ai/core/batch-types";
 import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
@@ -88,6 +90,7 @@ export const screenPaperAction = internalAction({
 
     // The job's model, read with the paper; pricing comes from the same row so the
     // charge matches the model that ran. A job stamped with no model runs the default.
+    if (context.model && !context.model.available) throw createError("VALIDATION_ERROR", MODEL_UNAVAILABLE_MESSAGE);
     const { model, pricing: serverPricing, modelSlug: serverModelSlug } = context.model
       ? {
           model: await openRouterModel(context.model.slug),

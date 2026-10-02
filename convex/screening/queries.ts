@@ -364,7 +364,8 @@ export const paperContext = internalQuery({
       paper: v.object({ title: v.string(), abstract: v.optional(v.string()), status: screeningResultStatusValidator }),
       clerkId: v.string(),
       balance: v.number(),
-      model: v.union(v.null(), v.object({ slug: v.string(), input: v.number(), output: v.number() })),
+      // Null when the job runs the default; `available: false` when its model was hidden or retired since.
+      model: v.union(v.null(), v.object({ slug: v.string(), input: v.number(), output: v.number(), available: v.boolean() })),
     }),
   ),
   handler: async (ctx, { jobId, resultId }) => {
@@ -381,7 +382,14 @@ export const paperContext = internalQuery({
       paper: { title: paper.title, abstract: paper.abstract, status: paper.status },
       clerkId: user.clerkId,
       balance,
-      model: model ? { slug: model.modelId, input: model.inputPricePerMillion, output: model.outputPricePerMillion } : null,
+      model: model
+        ? {
+            slug: model.modelId,
+            input: model.inputPricePerMillion,
+            output: model.outputPricePerMillion,
+            available: model.retiredAt === undefined && !model.hidden,
+          }
+        : null,
     };
   },
 });
