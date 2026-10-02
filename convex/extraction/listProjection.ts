@@ -1,5 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { MAX_QUESTIONS_PER_JOB } from "./validators";
 
 const SEARCH_TEXT_MAX_CHARS = 6000;
 const SEARCH_TEXT_DEFAULT_PART_MAX = 240;
@@ -178,7 +179,7 @@ export async function recomputePaperListProjection(
   const results = await ctx.db
     .query("extractionResults")
     .withIndex("by_paper", (q) => q.eq("paperId", paperId))
-    .collect();
+    .take(MAX_QUESTIONS_PER_JOB);
 
   const questionStates = results.flatMap((result) => {
     const state = toQuestionState(result.questionKey, result.answer);

@@ -11,6 +11,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { MAX_AUTHORS } from "../lib/listCaps";
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 
 export type JobSourceSearchFilters = NonNullable<
   Doc<"extractionJobSources">["searchFilters"]
@@ -144,7 +145,7 @@ export async function replaceJobSources(
   const existing = await ctx.db
     .query("extractionJobSources")
     .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-    .collect();
+    .take(PAPER_LIMIT);
 
   for (const row of existing) {
     await ctx.db.delete(row._id);

@@ -52,7 +52,7 @@ export async function loadResultsByPaperIds(
       await ctx.db
         .query("extractionResults")
         .withIndex("by_paper", (q) => q.eq("paperId", paperId))
-        .collect(),
+        .take(MAX_QUESTIONS_PER_JOB),
     ] as const),
   );
 

@@ -36,6 +36,7 @@ import {
   hasSameOrderedOpenAlexIds,
   orderedOpenAlexIds,
 } from "./sourceRefreshModel";
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 
 function classifyChatPrepError(error: unknown) {
   const result = classifyUnknownError(error);
@@ -376,12 +377,12 @@ async function replaceChatSourcesForJob(
   const existingPapers = await ctx.db
     .query("chatPapers")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .collect();
+    .take(PAPER_LIMIT);
   const existingSources = opts.preserveInclusion
     ? await ctx.db
         .query("extractionJobSources")
         .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-        .collect()
+        .take(PAPER_LIMIT)
     : [];
 
   const sourceById = new Map(
@@ -406,7 +407,7 @@ async function replaceChatSourcesForJob(
   const newSources = await ctx.db
     .query("extractionJobSources")
     .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-    .collect();
+    .take(PAPER_LIMIT);
   for (const source of newSources) {
     const openalexId = source.openalexId?.trim();
     await ctx.db.insert("chatPapers", {
@@ -448,7 +449,7 @@ export const applyChatSourceRefresh = internalMutation({
     const currentSources = await ctx.db
       .query("extractionJobSources")
       .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-      .collect();
+      .take(PAPER_LIMIT);
     const currentOpenAlexIds = orderedOpenAlexIds(currentSources);
     const nextOpenAlexIds = orderedOpenAlexIds(items);
     try {

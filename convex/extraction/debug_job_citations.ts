@@ -5,6 +5,8 @@ import {
   isGenericArrayEntity,
   splitArrayFragments,
 } from "../../lib/extraction/analysis";
+import { MAX_QUESTIONS_PER_JOB } from "./validators";
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 
 const EFFECTIVE_CONFIDENCE_MULTIPLIER: Record<string, number> = {
   grounded: 1,
@@ -58,14 +60,14 @@ export const debugJobCitations = internalQuery({
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(MAX_QUESTIONS_PER_JOB);
     const questionByKey = new Map(questions.map((question) => [question.key, question.question]));
     const questionTypeByKey = new Map(questions.map((question) => [question.key, question.type]));
 
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(PAPER_LIMIT);
 
     const completed = papers.filter(
       (paper) => paper.processable !== false && paper.status === "completed"
@@ -115,7 +117,7 @@ export const debugJobCitations = internalQuery({
       const paperResults = await ctx.db
         .query("extractionResults")
         .withIndex("by_paper", (q) => q.eq("paperId", paper._id))
-        .collect();
+        .take(MAX_QUESTIONS_PER_JOB);
 
       for (const result of paperResults) {
         totalAnswers++;
