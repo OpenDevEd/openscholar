@@ -16,6 +16,7 @@ const openAlex = vi.fn(async (input: string | URL) => {
 beforeEach(() => {
   requests = [];
   vi.stubEnv("OPENALEX_API_KEY", "platform-key");
+  vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
   vi.stubGlobal("fetch", openAlex);
 });
 afterEach(() => {

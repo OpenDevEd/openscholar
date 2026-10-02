@@ -103,6 +103,10 @@ export async function readSearchWorks<Work>(
   { first, last, select }: { first: number; last: number; select: string },
   spend: (pages: number) => Promise<boolean>,
 ): Promise<Work[]> {
+  // OpenAlex's polite pool needs a contact address; without one the deployment is misconfigured.
+  if (!process.env.OPENALEX_CONTACT_EMAIL) {
+    throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
+  }
   // Cursor pages are read from the start; numbered pages from the range's first page.
   const firstPage = request.sort === PAGE_ORDERED_SORT ? Math.floor((first - 1) / PAGE_SIZE) + 1 : 1;
   const { works, offset } = await readWorks<Work>(request, firstPage, last, select, spend);
