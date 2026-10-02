@@ -2556,6 +2556,10 @@
 											"arrival",
 											"check",
 											"publication",
+											"search",
+											"sync",
+											"duplicates",
+											"fulltext",
 											"text"
 										]
 									},
@@ -2573,6 +2577,29 @@
 										"type": "string",
 										"minLength": 1,
 										"maxLength": 64
+									},
+									"icon": {
+										"$ref": "#/$defs/PlatformNavbarIconId"
+									},
+									"figure": {
+										"type": "object",
+										"properties": {
+											"value": {
+												"type": "string",
+												"minLength": 1,
+												"maxLength": 16
+											},
+											"label": {
+												"type": "string",
+												"minLength": 1,
+												"maxLength": 60
+											}
+										},
+										"required": [
+											"value",
+											"label"
+										],
+										"additionalProperties": false
 									}
 								},
 								"required": [

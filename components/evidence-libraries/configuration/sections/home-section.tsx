@@ -2,20 +2,15 @@
 
 import { useAction } from "convex/react";
 import {
-  BookCheck,
   Camera,
   ChevronsUpDown,
   FileText,
   House,
-  Inbox,
   Loader2,
-  type LucideIcon,
   Pencil,
   Plus,
   RefreshCw,
   Sparkles,
-  Text,
-  UserRoundCheck,
   X,
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
@@ -44,6 +39,7 @@ import { HAND_ENTERED_PREFIX, isHandEntered, publicName, publicPhoto } from "@/l
 import { Field } from "../section-card";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { localPickerSource, type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
+import { IconPreview, NavbarIconPicker } from "./navbar-icon-picker";
 import { PHOTO_ACCEPT, toPersonPhoto } from "../photo-upload";
 import { useDropzone } from "react-dropzone";
 import { useFileUploads } from "../use-file-uploads";
@@ -51,15 +47,22 @@ import { useFileUploads } from "../use-file-uploads";
 const LIMITS = SCHEMA_LIMITS.home;
 
 /**
- * What a step shows. A step with a type is drawn from what really happened to the followed publication at that
- * point; a text step is just its name and words.
+ * What a step shows. Arrival, editor check and publication are drawn from what really happened to the followed
+ * publication; search terms, latest update, duplicates and full text are counted from the library's own searches and
+ * records; a text step is its name, words and an optional figure. `icon` is the Hugeicon the page puts on a typed
+ * step's node when its owner picks none (a text step shows none). `example` stands in for the page's count.
  */
-const STEP_TYPES: Record<HomeStepType, { icon: LucideIcon; label: string; hint: string; fallback: string }> = {
-  arrival: { icon: Inbox, label: "Arrival", hint: "Shows the date it arrived for review", fallback: "Submitted" },
-  check: { icon: UserRoundCheck, label: "Editor check", hint: "Shows an editor with their photo, and the date", fallback: "Checked by an editor" },
-  publication: { icon: BookCheck, label: "Publication", hint: "Shows its DOI and the date it went live", fallback: "Published" },
-  text: { icon: Text, label: "Text only", hint: "Shows the name and the words below, nothing else", fallback: "Another step" },
+const STEP_TYPES: Record<HomeStepType, { icon: string; label: string; hint: string; fallback: string; dated?: boolean; example?: string }> = {
+  arrival: { icon: "InboxDownloadIcon", label: "Arrival", hint: "Shows the date it arrived for review", fallback: "Submitted", dated: true },
+  check: { icon: "UserCheck01Icon", label: "Editor check", hint: "Shows an editor with their photo, and the date", fallback: "Checked by an editor", dated: true },
+  publication: { icon: "BookOpen01Icon", label: "Publication", hint: "Shows its DOI and the date it went live", fallback: "Published", dated: true },
+  search: { icon: "Search01Icon", label: "Search terms", hint: "Counts the words, phrases and topics the library's OpenAlex searches look for", fallback: "Found by search", example: "Search terms" },
+  sync: { icon: "RefreshIcon", label: "Latest update", hint: "Counts the records added in the last 30 days", fallback: "Kept up to date", example: "New in the last 30 days" },
+  duplicates: { icon: "GitMergeIcon", label: "Duplicates", hint: "Counts the repeated records merged into one", fallback: "Duplicates merged", example: "Repeated records merged" },
+  fulltext: { icon: "Pdf01Icon", label: "Full text", hint: "Counts the records with full text", fallback: "Full text added", example: "Records with full text" },
+  text: { icon: "TextIcon", label: "Text only", hint: "Shows the name, the words below and a figure you write", fallback: "Another step" },
 };
+
 
 /** Radix Select cannot hold an empty value, so "whoever approved it" (an empty editor) is this inside the Select. */
 const APPROVER = "approver";
@@ -134,12 +137,12 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
 
           <FieldGroup
             title="How publications get in"
-            hint="Steps with a type are filled in from the publication followed."
+            hint="Steps with a type are filled in from the publication followed, or counted from the library's searches and records."
             action={
               <AddButton
                 disabled={home.steps.length >= LIMITS.steps}
                 onClick={() =>
-                  setHome((h) => ({ steps: [...h.steps, { id: newId("st"), type: "text", title: "", text: "", editor: "" }] }))
+                  setHome((h) => ({ steps: [...h.steps, { id: newId("st"), type: "text", title: "", text: "", editor: "", icon: "", figureValue: "", figureLabel: "" }] }))
                 }
               >
                 Add step
@@ -196,11 +199,10 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
                               </SelectTrigger>
                               <SelectContent>
                                 {HOME_STEP_TYPES.map((type) => {
-                                  const Icon = STEP_TYPES[type].icon;
                                   return (
                                     <SelectItem key={type} value={type} textValue={STEP_TYPES[type].label}>
                                       <span className="flex h-5 items-center self-start" aria-hidden>
-                                        <Icon className="text-muted-foreground" />
+                                        <IconPreview iconId={STEP_TYPES[type].icon} className="size-4 text-muted-foreground" />
                                       </span>
                                       <span className="flex flex-col">
                                         <span>{STEP_TYPES[type].label}</span>
@@ -251,6 +253,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
                           )}
                         </Field>
                       ) : null}
+                      <StepLook step={step} onChange={(change) => updateStep(step.id, change)} />
                       <Field label="What happens" suffix="Optional" counter={`${step.text.length} / ${LIMITS.stepText}`}>
                         {(id) => (
                           <Textarea
@@ -402,6 +405,63 @@ function HeadingField({
   );
 }
 
+/** A step's icon and, on a text step, the figure its owner writes. */
+function StepLook({ step, onChange }: { step: HomeStepDraft; onChange: (change: Partial<HomeStepDraft>) => void }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
+      <Field label="Icon" suffix="Optional">
+        {(id) => (
+          <NavbarIconPicker
+            id={id}
+            value={step.icon}
+            onChange={(icon) => onChange({ icon })}
+            placeholder={step.type === "text" ? "No icon" : "The type's own icon"}
+          />
+        )}
+      </Field>
+      {step.type === "text" ? (
+        <div className="grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
+          <Field label="Figure" suffix="Optional" counter={`${step.figureValue.length} / ${LIMITS.figureValue}`}>
+            {(id) => (
+              <Input
+                id={id}
+                className="bg-background"
+                maxLength={LIMITS.figureValue}
+                placeholder="25,000"
+                value={step.figureValue}
+                onChange={(event) => onChange({ figureValue: event.target.value })}
+              />
+            )}
+          </Field>
+          <Field label="What it counts" counter={`${step.figureLabel.length} / ${LIMITS.figureLabel}`}>
+            {(id) => (
+              <Input
+                id={id}
+                className="bg-background"
+                maxLength={LIMITS.figureLabel}
+                placeholder="AI screening judgements"
+                value={step.figureLabel}
+                onChange={(event) => onChange({ figureLabel: event.target.value })}
+              />
+            )}
+          </Field>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** A step's node in the preview: its icon in a disc, as on the page, or a plain ring. */
+function PreviewNode({ step }: { step: HomeStepDraft }) {
+  const icon = step.icon || (step.type === "text" ? "" : STEP_TYPES[step.type].icon);
+  if (!icon) return <span className="size-2.5 shrink-0 rounded-full border-2 border-primary bg-background" />;
+  return (
+    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+      <IconPreview iconId={icon} className="size-3.5" />
+    </span>
+  );
+}
+
 /**
  * The steps as the page draws them: dates above one line with a node per step, then each step's name and what its
  * type fills in. The dates are examples; with "whoever approved it", the example editor is the first person on the team.
@@ -416,9 +476,9 @@ function TimelinePreview({ steps, team }: { steps: HomeStepDraft[]; team: TeamPe
           const day = exampleDate.format(new Date(EXAMPLE_LAST_DAY - (steps.length - 1 - index) * 86_400_000));
           return (
             <li key={step.id} className="min-w-0">
-              <p className="h-4 text-xs font-semibold">{step.type === "text" ? null : day}</p>
+              <p className="h-4 text-xs font-semibold">{STEP_TYPES[step.type].dated ? day : null}</p>
               <div className="my-2 flex items-center" aria-hidden>
-                <span className="size-2.5 shrink-0 rounded-full border-2 border-primary bg-background" />
+                <PreviewNode step={step} />
                 <span className="h-px flex-1 bg-primary/40" />
               </div>
               <p className="truncate text-sm font-semibold">{step.title || STEP_TYPES[step.type].fallback}</p>
@@ -431,6 +491,13 @@ function TimelinePreview({ steps, team }: { steps: HomeStepDraft[]; team: TeamPe
                   </span>
                 ) : null}
                 {step.type === "publication" ? <span className="underline underline-offset-2">DOI</span> : null}
+                {STEP_TYPES[step.type].example ?? null}
+                {step.type === "text" && step.figureValue ? (
+                  <span className="block">
+                    <span className="block text-base font-semibold text-foreground">{step.figureValue}</span>
+                    {step.figureLabel}
+                  </span>
+                ) : null}
                 {step.type === "text" ? <span className="line-clamp-2">{step.text}</span> : null}
               </div>
             </li>
