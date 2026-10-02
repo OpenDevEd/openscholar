@@ -496,57 +496,6 @@ describe("persistQualifiedScreeningResult", () => {
   });
 });
 
-describe("finalizeScreeningJobFromAggregates", () => {
-  it("finalizes from aggregate counts only", async () => {
-    const t = convexTest(schema);
-    setupScreeningWorkpool(t);
-    const user = await seedUser(t, "clerk_finalize");
-    const job = await seedScreeningJob(t, user._id, "processing");
-
-    const completedQualified = await seedScreeningResult(t, job._id, {
-      status: "completed",
-      qualified: true,
-      openalexId: "https://openalex.org/W1",
-    });
-    const completed = await seedScreeningResult(t, job._id, {
-      status: "completed",
-      qualified: false,
-      openalexId: "https://openalex.org/W2",
-    });
-    const failed = await seedScreeningResult(t, job._id, {
-      status: "failed",
-      openalexId: "https://openalex.org/W3",
-    });
-
-    await t.run(async (ctx) => {
-      await ctx.db.patch("screeningJobs", job._id, { totalPapers: 3 });
-      await recordTerminalResult(ctx, completedQualified);
-      await recordQualifiedResult(ctx, completedQualified);
-      await recordTerminalResult(ctx, completed);
-      await recordTerminalResult(ctx, failed);
-    });
-
-    await t.mutation(
-      internal.screening.mutations.finalizeScreeningJobFromAggregates,
-      { jobId: job._id },
-    );
-
-    await t.run(async (ctx) => {
-      const finalized = await ctx.db.get("screeningJobs", job._id);
-      const scheduledFunctions = await ctx.db.system
-        .query("_scheduled_functions")
-        .collect();
-
-      expect(finalized).not.toBeNull();
-      expect(finalized!.status).toBe("completed");
-      expect(finalized!.completedAt).toBeGreaterThan(0);
-      expect(
-        scheduledFunctions.some((sf) => sf.name.includes("captureEvent")),
-      ).toBe(true);
-    });
-  });
-});
-
 describe("Screen all on a saved search", () => {
   it("answers into the search's screening, so its page shows them next to its own answers (#334)", async () => {
     const t = convexTest(schema);
@@ -690,10 +639,9 @@ describe("handleScreeningComplete", () => {
         expect(updatedResult?.savedToLibrary).toBeUndefined();
         expect(updatedJob?.status).toBe("processing");
         expect(libraryItems).toHaveLength(0);
-        expect(scheduledFunctions.map((fn) => fn.name).filter((name) => name.startsWith("screening/mutations"))).toEqual([
-          "screening/mutations:persistQualifiedScreeningResult",
-          "screening/mutations:finalizeScreeningJobFromAggregates",
-        ]);
+        // The paper wrote only its row and joined the bookkeeping queue.
+        expect(updatedResult?.doneAt).toBeDefined();
+        expect(scheduledFunctions.map((fn) => fn.name).filter((name) => name.startsWith("screening/"))).toEqual([]);
       });
 
       await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));

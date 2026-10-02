@@ -1,8 +1,8 @@
 import { convexTest } from "convex-test";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { insertUsage } from "./usageLog";
+import { insertUsage } from "./ledger";
 
 async function setup() {
   const t = convexTest(schema);
@@ -14,13 +14,13 @@ async function setup() {
   return { t, userId, jobId, me: t.withIdentity({ subject: "clerk_pages" }) };
 }
 
-/** Charges are counted by the aggregate's batch worker, a moment after they're recorded. */
+/** Charges are counted by the ledger worker, a moment after they're recorded. */
 async function counted(t: ReturnType<typeof convexTest>) {
-  vi.useFakeTimers();
   await t.finishAllScheduledFunctions(vi.runAllTimers);
-  vi.useRealTimers();
 }
 
+// The workers schedule their runs on whichever timers are active when charges are recorded.
+beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
 describe("charge pages", () => {

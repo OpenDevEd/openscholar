@@ -15,11 +15,12 @@ import type { Id } from "../_generated/dataModel";
 import { processScreeningBatch } from "../../lib/ai/core/batch";
 import { withUserCredits } from "../ai/helpers";
 import { ESTIMATED_CREDITS_PER_PAPER } from "../lib/constants";
-import { resolveOpenRouterModel } from "../chat/provider";
+import { openRouterModel, resolveOpenRouterModel } from "../chat/provider";
+import { MODEL_UNAVAILABLE_MESSAGE } from "../models/catalog";
+import { createError } from "../lib/errors";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import type { ScreeningResultData } from "../../lib/ai/core/batch-types";
 import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
-import { captureServerEvent } from "../../lib/posthog-server";
 
 type ScreeningActionResult = {
   responses: Record<string, boolean | null>;
@@ -57,15 +58,13 @@ export const screenPaperAction = internalAction({
       confidence: 0,
     };
 
-    // 1. Load job
-    const job = await ctx.runQuery(
-      internal.screening.queries.getJobInternal,
-      { jobId: args.jobId }
-    );
-    if (!job) {
-      console.warn(`[screenPaperAction] Job ${args.jobId} not found, skipping`);
+    // 1. Everything the paper needs, in one read.
+    const context = await ctx.runQuery(internal.screening.queries.paperContext, args);
+    if (!context) {
+      console.warn(`[screenPaperAction] Job ${args.jobId} or result ${args.resultId} not found, skipping`);
       return emptyResult;
     }
+    const { job, paper: result } = context;
 
     // 2. Credit guard: skip terminal jobs
     const terminalStatuses = ["cancelled", "creditsExhausted", "completed", "failed"];
@@ -76,19 +75,7 @@ export const screenPaperAction = internalAction({
       return emptyResult;
     }
 
-    // 3. Load screening result
-    const result = await ctx.runQuery(
-      internal.screening.queries.getResultInternal,
-      { resultId: args.resultId }
-    );
-    if (!result) {
-      console.warn(
-        `[screenPaperAction] Result ${args.resultId} not found, skipping`
-      );
-      return emptyResult;
-    }
-
-    // 4. Idempotency guard: skip if already completed (prevents double-billing on retry)
+    // 3. Idempotency guard: skip if already completed (prevents double-billing on retry)
     if (result.status === "completed") {
       console.log(
         `[screenPaperAction] Result ${args.resultId} already completed, skipping (workpool retry)`
@@ -101,12 +88,16 @@ export const screenPaperAction = internalAction({
       (q: { key: string; question: string }) => q.question
     );
 
-    // Resolve the per-user server model for this job; pricing comes from the same
-    // row and is passed to the wrapper so the deduction matches the model that ran.
-    const { model, pricing: serverPricing, modelSlug: serverModelSlug } = await resolveOpenRouterModel(
-      ctx,
-      job.serverModelId ?? null,
-    );
+    // The job's model, read with the paper; pricing comes from the same row so the
+    // charge matches the model that ran. A job stamped with no model runs the default.
+    if (context.model && !context.model.available) throw createError("VALIDATION_ERROR", MODEL_UNAVAILABLE_MESSAGE);
+    const { model, pricing: serverPricing, modelSlug: serverModelSlug } = context.model
+      ? {
+          model: await openRouterModel(context.model.slug),
+          pricing: { input: context.model.input, output: context.model.output },
+          modelSlug: context.model.slug,
+        }
+      : await resolveOpenRouterModel(ctx, null);
 
     // 5. Call AI screening with credit billing
     try {
@@ -117,6 +108,8 @@ export const screenPaperAction = internalAction({
           chargeId: `screening:${args.resultId}:${crypto.randomUUID()}`,
           estimate: Math.ceil(ESTIMATED_CREDITS_PER_PAPER),
           hold: false,
+          balance: context.balance,
+          clerkId: context.clerkId,
           kind: "screening",
           description: "Bulk screening",
           model: serverModelSlug,
@@ -128,7 +121,7 @@ export const screenPaperAction = internalAction({
             model,
             effort: job.serverEffort,
             decisionsKey: process.env.OPENROUTER_API_KEY,
-            sessionId: String(job._id),
+            sessionId: String(args.jobId),
             papers: [
               {
                 id: paperId,
@@ -210,14 +203,11 @@ export const screenPaperAction = internalAction({
         );
 
         // Track credits exhaustion for screening job
-        const user = await ctx.runQuery(internal.users.internal.getUserById, { userId: job.userId as Id<"users"> });
-        if (user?.clerkId) {
-          await captureServerEvent(user.clerkId, "screening_job_failed", {
-            reason: "credits_exhausted",
-            job_id: args.jobId,
-            total_papers: job.totalPapers,
-          });
-        }
+        await ctx.scheduler.runAfter(0, internal.lib.analytics.captureEvent, {
+          distinctId: context.clerkId,
+          event: "screening_job_failed",
+          properties: { reason: "credits_exhausted", job_id: args.jobId, total_papers: job.totalPapers },
+        });
       }
 
       throw error;

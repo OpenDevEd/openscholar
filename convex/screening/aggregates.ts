@@ -4,6 +4,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { SCREENING_TERMINAL_RESULT_STATUSES } from "./lifecycle";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { readShardedCounts } from "./resultCounts";
+import { progressRow } from "./bookkeeping";
 
 type RunMutationCtx = MutationCtx;
 type RunQueryCtx = QueryCtx | MutationCtx;
@@ -104,11 +105,20 @@ export async function clearScreeningAggregates(
   ]);
 }
 
-/** A job's progress counts: its sharded counters, or for a job not recounted yet, the aggregates. */
+/**
+ * A job's progress counts: its progress row, which the bookkeeping worker keeps
+ * (./bookkeeping.ts). A job the worker hasn't touched and the migration hasn't reached
+ * still reads its sharded counters or, before those, its aggregates; remove those reads
+ * once every deployment has run migrations/moveScreeningJobProgress.
+ */
 export async function readScreeningProgressCounts(
   ctx: RunQueryCtx,
   job: Pick<Doc<"screeningJobs">, "_id" | "resultCounts">,
 ): Promise<ScreeningProgressCounts> {
+  const progress = await progressRow(ctx, job._id);
+  if (progress) {
+    return { completedCount: progress.completed, skippedCount: progress.skipped, failedCount: progress.failed, qualifiedCount: progress.qualified };
+  }
   if (job.resultCounts === "sharded") return readShardedCounts(ctx, job._id);
   const jobId = job._id;
   const [statusCounts, qualifiedCount] = await Promise.all([

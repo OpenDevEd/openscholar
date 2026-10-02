@@ -56,22 +56,29 @@ const jobCost = (t: ReturnType<typeof convexTest>, jobId: Id<"extractionJobs">) 
 
 describe("job credit totals", () => {
   it("adds every settled charge against the job, counting a repeated charge once", async () => {
+    vi.useFakeTimers();
     const t = convexTest(schema);
     const { userId, jobId } = await seedJob(t);
 
     expect(await charge(t, { userId, jobId, chargeId: "extraction:a", credits: 7 })).toBe(true);
     expect(await charge(t, { userId, jobId, chargeId: "extraction:b", credits: 5 })).toBe(true);
     expect(await charge(t, { userId, jobId, chargeId: "extraction:a", credits: 7 })).toBe(false);
+    // The ledger worker adds them, a moment after.
+    await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+    vi.useRealTimers();
 
     expect((await jobCost(t, jobId)).total).toBe(12);
   });
 
-  it("clears the total when the job is deleted", async () => {
+  it("clears the total when the job is deleted, and keeps it clear of charges counted after", async () => {
+    vi.useFakeTimers();
     const t = convexTest(schema);
     const { userId, jobId } = await seedJob(t);
     await charge(t, { userId, jobId, chargeId: "extraction:a", credits: 7 });
+    await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
+    // A charge the worker hasn't counted when the job goes.
+    await charge(t, { userId, jobId, chargeId: "extraction:b", credits: 5 });
 
-    vi.useFakeTimers();
     await t.mutation(internal.extraction.mutations.internal.admin.deleteExtractionInternal, {
       jobId,
     });

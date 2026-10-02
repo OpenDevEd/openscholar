@@ -29,10 +29,6 @@ describe("deriveCompletionTransition", () => {
         qualified: true,
         aiMetadata: { confidence: 0.87 },
       },
-      aggregateStatus: "completed",
-      aggregateQualified: true,
-      scheduleQualifiedPersistence: true,
-      scheduleJobFinalization: true,
     });
   });
 
@@ -46,10 +42,6 @@ describe("deriveCompletionTransition", () => {
     ).toEqual({
       kind: "patch",
       rowPatch: { status: "skipped" },
-      aggregateStatus: "skipped",
-      aggregateQualified: false,
-      scheduleQualifiedPersistence: false,
-      scheduleJobFinalization: true,
     });
   });
 
@@ -63,10 +55,6 @@ describe("deriveCompletionTransition", () => {
     ).toEqual({
       kind: "patch",
       rowPatch: { status: "failed" },
-      aggregateStatus: "failed",
-      aggregateQualified: false,
-      scheduleQualifiedPersistence: false,
-      scheduleJobFinalization: true,
     });
   });
 
@@ -87,8 +75,6 @@ describe("deriveCompletionTransition", () => {
         status: "completed",
         qualified: false,
       },
-      scheduleQualifiedPersistence: false,
-      scheduleJobFinalization: true,
     });
   });
 

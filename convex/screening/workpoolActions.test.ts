@@ -58,4 +58,21 @@ describe("charging a Screen all paper", () => {
     await expect(t.action(internal.screening.workpoolActions.screenPaperAction, { jobId, resultId: second })).rejects.toThrow(/INSUFFICIENT_CREDITS/);
     expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("creditsExhausted");
   });
+
+  it("fails the paper when the job's model was retired since, as before", async () => {
+    fakeAutumn.reset();
+    vi.stubGlobal("fetch", fakeAutumnFetch());
+    const t = convexTest(schema);
+    const { jobId, first } = await seed(t);
+    await t.run(async (ctx) => {
+      const modelId = await ctx.db.insert("models", {
+        modelId: "openai/retired", name: "Retired", provider: "openai", isServed: true,
+        inputPricePerMillion: 1, outputPricePerMillion: 1, costMarkup: 1.3, sortOrder: 0, syncedAt: 1, retiredAt: 1, createdAt: 1, updatedAt: 1,
+      });
+      await ctx.db.patch("screeningJobs", jobId, { serverModelId: modelId });
+    });
+
+    await expect(t.action(internal.screening.workpoolActions.screenPaperAction, { jobId, resultId: first })).rejects.toThrow(/VALIDATION_ERROR/);
+    expect(fakeAutumn.calls).toHaveLength(0);
+  });
 });

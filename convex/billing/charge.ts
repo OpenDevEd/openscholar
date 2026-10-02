@@ -18,8 +18,7 @@ import type { Id } from "../_generated/dataModel";
 import { autumn, AutumnError } from "./autumn";
 import { requestRefresh, zeroCachedBalance } from "./accounts";
 import { billingUsageFields, usageKindValidator } from "./validators";
-import { recordJobCredits } from "../extraction/aggregates";
-import { insertUsage } from "./usageLog";
+import { insertUsage } from "./ledger";
 import type { Usage } from "../../lib/ai/core/types";
 
 /** Long enough for any single chat turn, paper, or batch we run. */
@@ -371,18 +370,11 @@ export const recordUsage = internalMutation({
   returns: v.boolean(),
   handler: async (ctx, { remaining, ...args }) => {
     if (await usageFor(ctx, args.chargeId)) return false;
+    // Counting it, its job's credits, and re-reading the account are the ledger worker's.
     await insertUsage(ctx, args);
-    if (args.jobId) {
-      await recordJobCredits(ctx, {
-        jobId: args.jobId,
-        chargeId: args.chargeId,
-        credits: args.credits,
-      });
-    }
     const row = await holdFor(ctx, args.chargeId);
     if (row) await ctx.db.delete("billingHolds", row._id);
     if (remaining !== undefined && remaining <= 0) await zeroCachedBalance(ctx, args.userId);
-    else await requestRefresh(ctx, args.userId);
     return true;
   },
 });

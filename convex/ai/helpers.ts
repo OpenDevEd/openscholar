@@ -193,6 +193,9 @@ export type CreditTarget = {
    * cost is charged after with one `track`, as Firecrawl bills each page of a crawl.
    */
   hold?: boolean;
+  /** The cached balance and the person's Clerk id, when the caller read them already. */
+  balance?: number;
+  clerkId?: string;
 };
 
 /**
@@ -208,7 +211,7 @@ export async function withCredits<T>(
 ): Promise<{ result: T; credits: number; usage: Usage }> {
   const allowed =
     target.hold === false
-      ? ((await ctx.runQuery(internal.billing.accounts.forUser, { userId: target.userId }))?.balance ?? 0) > 0
+      ? (target.balance ?? (await ctx.runQuery(internal.billing.accounts.forUser, { userId: target.userId }))?.balance ?? 0) > 0
       : await reserveCredits(ctx, { userId: target.userId, chargeId: target.chargeId, credits: target.estimate });
   if (!allowed) {
     throw createError(
@@ -328,9 +331,9 @@ export async function withUserCredits<T>(
   handler: () => Promise<{ result: T; totalUsage: Usage; trackingEntries?: AITrackingEntry[] }>,
 ): Promise<T> {
   try {
-    const user = await ctx.runQuery(internal.users.internal.getUserById, {
-      userId: target.userId,
-    });
+    const user = target.clerkId
+      ? { clerkId: target.clerkId }
+      : await ctx.runQuery(internal.users.internal.getUserById, { userId: target.userId });
     if (!user) {
       throw createError("AI_UNAUTHENTICATED", "Authentication required to use AI features");
     }
