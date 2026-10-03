@@ -45,7 +45,7 @@ export async function addCollectionMembership(
   return true;
 }
 
-/** Removes one membership row and counts it off its collection, if the collection still exists; says whether it does. */
+/** Removes one membership row and counts it off its collection, if the collection still exists. */
 export async function removeCollectionMembership(
   ctx: MutationCtx,
   membership: Doc<"libraryItemCollections">,
@@ -53,5 +53,4 @@ export async function removeCollectionMembership(
   await ctx.db.delete("libraryItemCollections", membership._id);
   const collection = await ctx.db.get("collections", membership.collectionId);
   if (collection) await touchCollection(ctx, collection, -1);
-  return collection !== null;
 }

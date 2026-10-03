@@ -1,5 +1,6 @@
 "use client";
 
+import { ConvexError } from "convex/values";
 import { cloneElement, useState, type UIEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth, useClerk } from "@clerk/nextjs";
@@ -124,15 +125,19 @@ export function useSavePaper(paper: WorkInput | undefined) {
     removals.delete(key);
     (async () => {
       const removed = removal ? await removal : null;
-      if (!removed) {
-        await save(paperArgs(paper)).catch((error) => {
+      const saveAfresh = () =>
+        save(paperArgs(paper)).catch((error) => {
           console.error("[Library] Failed to save:", error);
           toast.error(t("saveError"));
         });
+      if (!removed) {
+        await saveAfresh();
         return;
       }
       // The server restores the research rating with the paper.
-      await restore({ removalId: removed }).catch((error) => {
+      await restore({ removalId: removed }).catch(async (error) => {
+        // The removal is past its day, or was already used: the paper is saved afresh.
+        if (error instanceof ConvexError && (error.data as { code?: string } | undefined)?.code === "NOT_FOUND") return await saveAfresh();
         console.error("[Library] Failed to restore:", error);
         toast.error(t("restoreError"));
         // Keep the removal so the next Save can try again.

@@ -1083,13 +1083,43 @@ describe("saving without a rating", () => {
       await seedUser(t, "clerk_user2", "user2@test.com");
       await expect(t.withIdentity({ subject: "clerk_user2" }).mutation(api.library.mutations.restoreLibraryItem, { removalId: removed! })).rejects.toThrow(/no longer be undone/);
 
-      vi.advanceTimersByTime(24 * 60 * 60_000 + 1);
+      // Past its day, it can't be undone, whether or not the cleanup has run yet.
+      vi.setSystemTime(Date.now() + 24 * 60 * 60_000 + 1);
+      await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, { removalId: removed! })).rejects.toThrow(/no longer be undone/);
       await t.finishAllScheduledFunctions(vi.runAllTimers);
       await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, { removalId: removed! })).rejects.toThrow(/no longer be undone/);
       expect(await t.run((ctx) => ctx.db.query("libraryRemovals").take(1))).toEqual([]);
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("puts a paper back in every collection it was in, even when rows of a deleted collection came first", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const itemId = await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+    // 600 rows a deleted collection left behind, older than the live ones.
+    const gone = await asUser.mutation(api.library.collections.createCollection, { name: "Gone" });
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 600; i++) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: gone, libraryItemId: itemId, assignedAt: i });
+      await ctx.db.delete("collections", gone);
+    });
+    const live = [];
+    for (const name of ["One", "Two", "Three"]) {
+      const collectionId = await asUser.mutation(api.library.collections.createCollection, { name });
+      await asUser.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: itemId });
+      live.push(collectionId);
+    }
+
+    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
+    const restoredId = await asUser.mutation(api.library.mutations.restoreLibraryItem, { removalId: removed! });
+    await t.finishAllScheduledFunctions(() => {});
+
+    const memberships = await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", restoredId)).take(10));
+    expect(memberships.map((membership) => membership.collectionId).sort()).toEqual([...live].sort());
+    // The removed paper's own rows are all gone.
+    expect(await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", itemId)).take(1))).toEqual([]);
   });
 
   it("deletes every membership of a deleted collection, however many, so none is left behind", async () => {
