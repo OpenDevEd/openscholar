@@ -94,6 +94,8 @@ async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizat
  * is active, so they stop counting against the organizations a person can belong to.
  */
 async function revokeMembershipsPage(ctx: MutationCtx, organizationId: Id<"organizations">) {
+  // A later batch stops if a newer organization event has since made it active again.
+  if ((await ctx.db.get("organizations", organizationId))?.state !== "deleted") return;
   const active = await ctx.db.query("organizationMemberships")
     .withIndex("by_organizationId_and_state", q => q.eq("organizationId", organizationId).eq("state", "active"))
     .take(MEMBERSHIP_REVOKE_BATCH);

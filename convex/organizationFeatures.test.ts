@@ -200,6 +200,23 @@ test("refuses to read a person in more organizations than one read takes, not a 
   await expect(joiner.query(api.organizationFeatures.get, {})).rejects.toThrow(/more than 200 organizations/);
 });
 
+test("a sweep of a deleted organization's memberships stops once the organization is active again (#427)", async () => {
+  const t = convexTest(schema, modules);
+  const organization = await t.run(async (ctx) =>
+    (await ctx.db.get("organizations", await seedOrganizationFeatures(ctx, Array.from({ length: MEMBERSHIP_REVOKE_BATCH + 1 }, (_, i) => `member_${i}`), { authors: true })))!);
+  const event = { instanceId: "ins_test", payloadSha256: "a".repeat(64), entityId: organization.clerkOrganizationId };
+  const { _id, clerkOrganizationId, name, slug, evidenceLibrariesEnabled, clerkCreatedAt, clerkUpdatedAt } = organization;
+  const snapshot = { clerkOrganizationId, name, slug, evidenceLibrariesEnabled, authorsEnabled: true, extractionEnabled: false, clerkCreatedAt, clerkUpdatedAt: clerkUpdatedAt + 1 };
+  vi.useFakeTimers();
+  await t.mutation(internal.webhooks.projections.applyOrganizationEvent, { ...event, eventId: "msg_gone", eventType: "organization.deleted", occurredAt: 100, action: "delete" });
+  // A newer organization event arrives before the second batch runs.
+  await t.mutation(internal.webhooks.projections.applyOrganizationEvent, { ...event, eventId: "msg_back", eventType: "organization.updated", occurredAt: 200, action: "upsert", organization: snapshot });
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  vi.useRealTimers();
+  const left = await t.run((ctx) => ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", _id).eq("state", "active")).take(2));
+  expect(left).toHaveLength(1);
+});
+
 test("a deleted organization's memberships are revoked, however many it has (#427)", async () => {
   const t = convexTest(schema, modules);
   const members = ["joiner", ...Array.from({ length: MEMBERSHIP_REVOKE_BATCH }, (_, i) => `member_${i}`)];
