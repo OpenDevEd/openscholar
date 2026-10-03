@@ -16,6 +16,7 @@ import { AuthorAvatar } from "./author-avatar";
 import { AuthorInvitations } from "./author-invitations";
 import { Field, FieldError } from "@/components/evidence-libraries/configuration/section-card";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from "@/components/ui/dialog";
+import { AuthorsIcon } from "@/components/section-icons";
 
 /**
  * `pending` renders the page before access is confirmed: the frame and
@@ -33,7 +34,7 @@ export function AuthorList({pending = false}: {pending?: boolean}) {
   const {results, status, loadMore} = usePaginatedQuery(api.authors.profiles.list, pending ? "skip" : {search}, {initialNumItems: 20});
   // The page renders before sign-in finishes, so only a confirmed sign-out asks to sign in.
   const createLabel = <><Plus /><span className={BAR_LABEL}>Create author</span></>;
-  return <LibraryPageShell icon={Users} title="Authors" actions={isSignedIn === false
+  return <LibraryPageShell icon={AuthorsIcon} title="Authors" actions={isSignedIn === false
     ? <SignInButton mode="modal"><Button size="sm" className={BAR_ACTION}>{createLabel}</Button></SignInButton>
     : <Button size="sm" className={BAR_ACTION} onClick={() => {setError(""); setOpen(true);}}>{createLabel}</Button>}
     filters={<ListSearch aria-label="Find authors" placeholder="Find an author…" className="w-56" value={search} onChange={event => setSearch(event.target.value)} />}>

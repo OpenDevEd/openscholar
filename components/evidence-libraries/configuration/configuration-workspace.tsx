@@ -6,30 +6,8 @@ import type { FunctionReturnType } from "convex/server";
 import {
   AlertCircle,
   ArrowUp,
-  BarChart3,
-  Building2,
-  Database,
   ExternalLink,
-  FolderTree,
-  Globe,
-  History,
-  House,
-  Languages,
-  Layers,
-  Link2,
-  type LucideIcon,
-  Mail,
-  Menu,
-  Palette,
-  PanelBottom,
-  Quote,
   Save,
-  Send,
-  Search,
-  Sparkles,
-  ToggleRight,
-  Trash2,
-  Users,
   PencilLine,
   CircleAlert,
 } from "lucide-react";
@@ -126,6 +104,7 @@ import { FileUploadsProvider } from "./use-file-uploads";
 import { useScrollSpy } from "./use-scroll-spy";
 import { ActivationControl } from "./activation-control";
 import { OPERATION_STAGE_ICONS } from "./operation-stage-icons";
+import { HomeIcon, HistoryIcon, SourcesIcon, TeamIcon, EvidenceLibrariesIcon, SparklesIcon, SwitchesIcon, GlobeIcon, PaletteIcon, BuildingsIcon, MenuIcon, FooterIcon, MailIcon, CollectionsIcon, SearchIcon, QuoteIcon, LanguagesIcon, AnalyticsIcon, LinkIcon, PublishIcon, TrashIcon, type AppIcon } from "@/components/section-icons";
 
 type DraftResult = NonNullable<
   FunctionReturnType<typeof api.evidenceLibraries.queries.getDraft>
@@ -155,27 +134,27 @@ const RAIL_GROUPS: {
   { key: "danger", sections: ["danger"] },
 ];
 
-const SECTION_ICONS: Record<RailKey, LucideIcon> = {
-  identity: Globe,
-  theme: Palette,
-  institutions: Building2,
-  home: House,
-  navigation: Menu,
-  footer: PanelBottom,
-  contact: Mail,
-  collections: FolderTree,
-  search: Search,
-  sources: Database,
-  citations: Quote,
-  features: ToggleRight,
-  ai: Sparkles,
-  languages: Languages,
-  analytics: BarChart3,
-  domain: Link2,
-  publication: Send,
-  versions: History,
-  team: Users,
-  danger: Trash2,
+const SECTION_ICONS: Record<RailKey, AppIcon> = {
+  identity: GlobeIcon,
+  theme: PaletteIcon,
+  institutions: BuildingsIcon,
+  home: HomeIcon,
+  navigation: MenuIcon,
+  footer: FooterIcon,
+  contact: MailIcon,
+  collections: CollectionsIcon,
+  search: SearchIcon,
+  sources: SourcesIcon,
+  citations: QuoteIcon,
+  features: SwitchesIcon,
+  ai: SparklesIcon,
+  languages: LanguagesIcon,
+  analytics: AnalyticsIcon,
+  domain: LinkIcon,
+  publication: PublishIcon,
+  versions: HistoryIcon,
+  team: TeamIcon,
+  danger: TrashIcon,
 };
 
 const SECTION_COMPONENTS: Record<
@@ -462,7 +441,7 @@ function Workspace({
       <ConfigurationLayout
         header={<>
             <PanelHeader
-              icon={Layers}
+              icon={EvidenceLibrariesIcon}
               image={draft.identity.assets.favicon || null}
               title={draft.identity.name || t("untitled")}
               backHref={LIBRARIES_HREF}

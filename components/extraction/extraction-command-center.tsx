@@ -21,6 +21,7 @@ import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { JobListItem } from "./job-list-item";
 import type { ViewMode } from "@/lib/types";
+import { ExtractionIcon } from "@/components/section-icons";
 
 function createExtractionJobListItem(viewMode: ViewMode) {
   return function ExtractionJobListItem({
@@ -118,7 +119,7 @@ export function ExtractionCommandCenter({ jobs }: ExtractionCommandCenterProps) 
 
   return (
     <LibraryPageShell
-      icon={Database}
+      icon={ExtractionIcon}
       title={tc("extraction")}
       tabs={<ViewModeSwitch value={extractionViewMode} onChange={setExtractionViewMode} />}
       filters={<CommandCenterFilters

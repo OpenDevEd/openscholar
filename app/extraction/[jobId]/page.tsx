@@ -83,6 +83,7 @@ import {
   type Question,
 } from "@/lib/extraction/filtering";
 import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
+import { DocumentIcon } from "@/components/section-icons";
 
 export default function JobDetailPage() {
   const toast = useAppToast();
@@ -565,7 +566,7 @@ export default function JobDetailPage() {
         rightColumn={
           <PageWrapper>
             <LibraryPageShell
-              icon={FileText}
+              icon={DocumentIcon}
               title={job.name}
               backHref="/extraction"
               backLabel={tError("backToJobs")}

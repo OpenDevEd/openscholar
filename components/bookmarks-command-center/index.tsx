@@ -63,6 +63,7 @@ import { NewBookmarkDialog } from "./new-bookmark-dialog";
 import { BookmarksGuide } from "./bookmarks-guide";
 import posthog from "posthog-js";
 import type { BookmarkEntry } from "./types";
+import { BookmarksIcon } from "@/components/section-icons";
 
 export type { BookmarkEntry } from "./types";
 
@@ -306,7 +307,7 @@ export function BookmarksCommandCenter() {
 /** The bookmarks page's frame, shared with its loading state so nothing moves when it loads. */
 export function BookmarksPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
   const tc = useTranslations("common");
-  return <LibraryPageShell icon={BookOpen} title={tc("bookmarks")} {...controls}>{children}</LibraryPageShell>;
+  return <LibraryPageShell icon={BookmarksIcon} title={tc("bookmarks")} {...controls}>{children}</LibraryPageShell>;
 }
 
 export function BookmarksLoading() {

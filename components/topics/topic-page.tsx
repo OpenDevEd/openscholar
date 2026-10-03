@@ -23,6 +23,7 @@ import { TopicLibraryResults, useTopicLibraryResults } from "./topic-library-res
 import { ListEmpty, ListLoading, ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { buildShareableUrl } from "@/lib/search-params";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
+import { TopicsIcon } from "@/components/section-icons";
 
 export function TopicPage({ topic, path, related, detail: initialDetail }: { topic: TopicNode; path: TopicNode[]; related: TopicNode[]; detail: Awaited<ReturnType<typeof readTopic>> | null }) {
   const t = useTranslations("topics");
@@ -42,7 +43,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
   const total = works.data?.[0]?.meta.count ?? 0;
   const isFocusModeOpen = useUIStore(state => state.isFocusModeOpen);
 
-  return <LibraryPageShell icon={Network} title={topic.name} backHref="/topics" backLabel={t("back")} actions={<>
+  return <LibraryPageShell icon={TopicsIcon} title={topic.name} backHref="/topics" backLabel={t("back")} actions={<>
     <Button variant="outline" size="sm" className={BAR_ACTION} onClick={async () => {
       try { await navigator.clipboard.writeText(location.href); toast.success(t("linkCopied")); }
       catch { toast.error(t("copyFailed")); }

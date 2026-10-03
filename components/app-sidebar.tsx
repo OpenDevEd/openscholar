@@ -40,19 +40,10 @@ import { SearchHistoryTab } from "./search-history-tab";
 import { KeywordExpansionPreview } from "./keyword-expansion-preview";
 import { AuthButton } from "./auth-button";
 import {
-  Home,
-  Network,
-  BookOpen,
-  Library,
   ListChecks,
-  Clock,
-  Database,
-  Layers,
-  Users,
   PanelLeft,
   ChevronLeft,
   ChevronRight,
-  Settings,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
@@ -61,6 +52,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
+import { HomeIcon, LibraryIcon, BookmarksIcon, HistoryIcon, ExtractionIcon, TopicsIcon, AuthorsIcon, EvidenceLibrariesIcon } from "@/components/section-icons";
 
 const sidebarSpring = {
   type: "spring" as const,
@@ -133,7 +125,7 @@ function NavItem({
             "h-5 w-5 flex-shrink-0 transition-colors duration-200",
             isActive
               ? "text-sidebar-primary drop-shadow-sm"
-              : "text-muted-foreground group-hover:text-sidebar-foreground",
+              : "text-sidebar-primary/65 group-hover:text-sidebar-primary",
           )}
         />
         {/* Badge overlay when collapsed */}
@@ -442,7 +434,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         >
           <NavItem
             href="/"
-            icon={Home}
+            icon={HomeIcon}
             label={tc("home")}
             isActive={currentPageValue === "home"}
             isCollapsed={isCollapsed && !isMobile}
@@ -452,7 +444,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
           <NavItem
             href="/library"
-            icon={Library}
+            icon={LibraryIcon}
             label={tc("library")}
             isActive={currentPageValue === "library"}
             isCollapsed={isCollapsed && !isMobile}
@@ -462,7 +454,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
           <NavItem
             href="/bookmarks"
-            icon={BookOpen}
+            icon={BookmarksIcon}
             label={tc("bookmarks")}
             isActive={currentPageValue === "bookmarks"}
             isCollapsed={isCollapsed && !isMobile}
@@ -478,7 +470,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
           <NavItem
             href="/history"
-            icon={Clock}
+            icon={HistoryIcon}
             label={tc("history")}
             isActive={currentPageValue === "history"}
             isCollapsed={isCollapsed && !isMobile}
@@ -489,7 +481,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           {hasExtractionAccess && (
             <NavItem
               href="/extraction"
-              icon={Database}
+              icon={ExtractionIcon}
               label={tc("extraction")}
               isActive={currentPageValue === "extraction"}
               isCollapsed={isCollapsed && !isMobile}
@@ -498,11 +490,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             />
           )}
 
-          <NavItem href="/topics" icon={Network} label="Topics" isActive={currentPageValue === "topics"} isCollapsed={isCollapsed && !isMobile} onClick={handleNavClick} index={5} />
+          <NavItem href="/topics" icon={TopicsIcon} label="Topics" isActive={currentPageValue === "topics"} isCollapsed={isCollapsed && !isMobile} onClick={handleNavClick} index={5} />
 
           {organizationFeatures?.authors && <NavItem
             href="/authors"
-            icon={Users}
+            icon={AuthorsIcon}
             label="Authors"
             isActive={currentPageValue === "authors"}
             isCollapsed={isCollapsed && !isMobile}
@@ -513,7 +505,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           {hasEvidenceLibrariesAccess && (
             <NavItem
               href="/evidence-libraries"
-              icon={Layers}
+              icon={EvidenceLibrariesIcon}
               label={tc("evidenceLibraries")}
               isActive={currentPageValue === "evidence-libraries"}
               isCollapsed={isCollapsed && !isMobile}

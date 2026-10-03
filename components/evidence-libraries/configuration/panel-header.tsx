@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronLeft, type LucideIcon } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { LibraryImage } from "../library-image";
+import { type AppIcon } from "@/components/section-icons";
 
 /** On a narrow page a bar action keeps its icon; wrap its label in BAR_LABEL so screen readers still read it. */
 export const BAR_ACTION = "@max-3xl:w-8 @max-3xl:px-0";
@@ -28,7 +29,7 @@ export function PanelHeader({
   children,
 }: {
   /** Null while the page is still loading and its kind is not known yet. */
-  icon: LucideIcon | null;
+  icon: AppIcon | null;
   /** A library page: its favicon, or null for the OpenScholar one. Leave undefined for the icon. */
   image?: string | null;
   title: string;
@@ -44,7 +45,7 @@ export function PanelHeader({
   /** Actions. */
   children?: ReactNode;
 }) {
-  const icon = Icon ? <Icon aria-hidden className="size-4.5 shrink-0 text-primary" /> : null;
+  const icon = Icon ? <Icon className="size-4.5 shrink-0 text-primary" /> : null;
   return (
     <div className="flex h-16 items-center gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-2 @3xl:flex-initial">

@@ -7,7 +7,8 @@ import { useUser } from "@clerk/nextjs";
 import { useAction, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import {
-  Bot, Boxes, CreditCard, ExternalLink, Plug, Settings, ShieldCheck, Sparkles, ToggleRight, UserRound, Users,
+  ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -28,6 +29,7 @@ import { SubscriptionStateProvider, useSharedSubscriptionState } from "@/lib/aut
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { findPlan } from "@/lib/billing/catalog";
 import { useAppToast } from "@/lib/toast";
+import { SettingsIcon, PersonIcon, SecurityIcon, BillingIcon, BotIcon, ConnectionsIcon, SwitchesIcon, ModelsIcon, AdminsIcon } from "@/components/section-icons";
 
 type Item = { href: string; title: string; icon: Ico; aside?: string; external?: string };
 
@@ -81,27 +83,27 @@ function Shell({ children }: { children: ReactNode }) {
       label: t("groups.account"),
       items: signedIn
         ? [
-            { href: "/settings", title: t("items.profile"), icon: UserRound },
-            { href: "/settings/security", title: t("items.security"), icon: ShieldCheck },
-            ...(hideBilling ? [] : [{ href: "/settings/billing", title: tc("billing"), icon: CreditCard, aside: planLabel }]),
+            { href: "/settings", title: t("items.profile"), icon: PersonIcon },
+            { href: "/settings/security", title: t("items.security"), icon: SecurityIcon },
+            ...(hideBilling ? [] : [{ href: "/settings/billing", title: tc("billing"), icon: BillingIcon, aside: planLabel }]),
           ]
         : [],
     },
     {
       label: t("groups.research"),
       items: [
-        { href: "/settings/ai", title: tc("ai"), icon: Bot },
-        ...(signedIn ? [{ href: "/settings/connections", title: tc("connections"), icon: Plug }] : []),
+        { href: "/settings/ai", title: tc("ai"), icon: BotIcon },
+        ...(signedIn ? [{ href: "/settings/connections", title: tc("connections"), icon: ConnectionsIcon }] : []),
       ],
     },
     {
       label: t("groups.admin"),
       items: isAdmin
         ? [
-            { href: "/settings/admin", title: t("items.switches"), icon: ToggleRight },
-            { href: "/settings/admin/ai", title: t("items.aiModels"), icon: Bot },
-            { href: "/settings/admin/models", title: t("items.modelList"), icon: Boxes },
-            { href: "/settings/admin/admins", title: t("items.admins"), icon: Users },
+            { href: "/settings/admin", title: t("items.switches"), icon: SwitchesIcon },
+            { href: "/settings/admin/ai", title: t("items.aiModels"), icon: BotIcon },
+            { href: "/settings/admin/models", title: t("items.modelList"), icon: ModelsIcon },
+            { href: "/settings/admin/admins", title: t("items.admins"), icon: AdminsIcon },
             ...(links?.autumn ? [{ href: links.autumn, title: t("items.plans"), icon: AutumnIcon, external: "Autumn" }] : []),
             { href: "https://dashboard.clerk.com", title: t("items.users"), icon: ClerkIcon, external: "Clerk" },
           ]
@@ -114,7 +116,7 @@ function Shell({ children }: { children: ReactNode }) {
       <ConfigurationLayout
         header={
           <PanelHeader
-            icon={Settings}
+            icon={SettingsIcon}
             image={user?.imageUrl}
             title={user?.fullName || user?.primaryEmailAddress?.emailAddress || tc("settings")}
             titleAside={

@@ -17,7 +17,6 @@ import {
   Layers,
   FileText,
   Zap,
-  Database,
   CircleCheck,
   ChevronRight,
 } from "lucide-react";
@@ -42,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { useIsMobile } from "@/lib/hooks";
 import { readyBucketPaperCount } from "@/lib/bucket/paper-count";
+import { ExtractionIcon } from "@/components/section-icons";
 
 const stepVariants = {
   enter: (direction: number) => ({
@@ -241,7 +241,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
 
   return (
     <LibraryPageShell
-      icon={Database}
+      icon={ExtractionIcon}
       title={t("newJobTitle")}
       backHref="/extraction"
       backLabel={tc("cancel")}

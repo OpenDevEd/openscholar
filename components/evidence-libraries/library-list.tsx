@@ -60,6 +60,7 @@ import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
 import { LIST_FILTER, LIST_TILE, ListEmpty, ListLoading, ListSearch, ListViewTabs } from "./list-controls";
 import { LibraryStatusChip, type LibraryOperation } from "./library-status-chip";
 import { LibraryImage } from "./library-image";
+import { EvidenceLibrariesIcon } from "@/components/section-icons";
 
 type Role = "Owner" | "Editor" | "Creator";
 type Library = {
@@ -83,7 +84,7 @@ const roleIcons = { Owner: Crown, Editor: ShieldCheck, Creator: PenLine };
 function LibraryTile() {
   return (
     <div className={LIST_TILE}>
-      <Layers className="size-5" />
+      <EvidenceLibrariesIcon className="size-5" />
     </div>
   );
 }

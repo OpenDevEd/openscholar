@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  MessageSquareIcon,
   MoreHorizontalIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -23,6 +22,7 @@ import {
 import { ClearConversationDialog } from "./clear-conversation";
 import { SourcesPanelSheet } from "./sources-panel";
 import type { Doc } from "@/convex/_generated/dataModel";
+import { ChatIcon } from "@/components/section-icons";
 
 interface ChatHeaderProps {
   job: Doc<"extractionJobs">;
@@ -42,7 +42,7 @@ export function ChatHeader({ job, threadId }: ChatHeaderProps) {
         data-chat-header="true"
       >
         <PanelHeader
-          icon={MessageSquareIcon}
+          icon={ChatIcon}
           title={job.name}
           backHref="/extraction"
           backLabel={t("chatBack")}

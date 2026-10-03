@@ -11,7 +11,6 @@ import { LibraryPageShell } from "@/components/evidence-libraries/library-page-s
 import { ListEmpty, ListLoading, ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { ConfigurationLayout } from "@/components/evidence-libraries/configuration/configuration-layout";
-
 import { AuthorAvatar } from "./author-avatar";
 import { useRef, useState, type ReactNode } from "react";
 import {
@@ -75,6 +74,7 @@ import { readProfileAuthor } from "@/app/actions/authors";
 import {PublicationListItem, PublicationMetadata} from "@/components/evidence-libraries/publication-list-item";
 import type {AuthorProfile, OpenAlexMatch, AuthorPublication} from "./types";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
+import { PersonIcon } from "@/components/section-icons";
 
 const safeUrl = (value?: string) => {
   try {
@@ -169,7 +169,7 @@ export default function AuthorPage({
         <ConfigurationLayout
           header={
             <PanelHeader
-              icon={UserRound}
+              icon={PersonIcon}
               title={profile.name}
               backHref={profileHref}
               backLabel="Back to author profile"
@@ -549,7 +549,7 @@ export default function AuthorPage({
       )}
       {!draft && (
         <LibraryPageShell
-          icon={UserRound}
+          icon={PersonIcon}
           title={profile.name}
           backHref={canBrowseAuthors ? "/authors" : undefined}
           backLabel="Back to authors"

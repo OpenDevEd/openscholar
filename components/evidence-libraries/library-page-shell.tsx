@@ -1,12 +1,12 @@
 "use client";
 
-import { Layers, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { cn } from "@/lib/utils";
 import { PanelHeader } from "./configuration/panel-header";
 import { ListLoading } from "./list-controls";
+import { EvidenceLibrariesIcon, type AppIcon } from "@/components/section-icons";
 
 /**
  * The page frame shared by the library, topic, author, history and bookmark
@@ -17,7 +17,7 @@ import { ListLoading } from "./list-controls";
  * card's toolbar instead: filters first, then tabs.
  */
 export function LibraryPageShell({
-  icon = Layers,
+  icon = EvidenceLibrariesIcon,
   image,
   title,
   backHref,
@@ -31,7 +31,7 @@ export function LibraryPageShell({
   allowOverflow = false,
   children,
 }: {
-  icon?: LucideIcon | null;
+  icon?: AppIcon | null;
   image?: string | null;
   title: string;
   backHref?: string;

@@ -37,6 +37,7 @@ import { useResearchStatus } from "@/lib/research/provider";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 import posthog from "posthog-js";
+import { HistoryIcon } from "@/components/section-icons";
 
 interface HistoryCommandCenterProps {
   /**
@@ -303,7 +304,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
 /** The history page's frame, shared with its loading state so nothing moves when it loads. */
 export function HistoryPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
   const tc = useTranslations("common");
-  return <LibraryPageShell icon={Clock} title={tc("searchHistory")} {...controls}>{children}</LibraryPageShell>;
+  return <LibraryPageShell icon={HistoryIcon} title={tc("searchHistory")} {...controls}>{children}</LibraryPageShell>;
 }
 
 export function HistoryLoading() {
