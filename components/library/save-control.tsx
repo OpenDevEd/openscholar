@@ -27,7 +27,8 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useCollectionPicker } from "./use-collection-picker";
 
-type RemovedPaper = NonNullable<FunctionReturnType<typeof api.library.mutations.removeFromLibrary>>;
+/** A removal's ID: the server keeps what was removed for a day, for Undo. */
+type Removal = NonNullable<FunctionReturnType<typeof api.library.mutations.removeFromLibrary>>;
 type Pending = { value: boolean; token: number };
 
 let lastToken = 0;
@@ -80,7 +81,7 @@ const usePending = create<{
  * collections), so a quick second press works and keyboard users, whose focus the
  * focus mode sheet keeps from the toast, can undo with `B`.
  */
-const removals = new Map<string, Promise<RemovedPaper | null>>();
+const removals = new Map<string, Promise<Removal | null>>();
 
 /** Forgets the removals a collection change makes stale: the paper is saved on its own terms. */
 function forgetRemoval(userId: string | null | undefined, paperId: string) {
@@ -116,7 +117,7 @@ export function useSavePaper(paper: WorkInput | undefined) {
   const isSaved = pendingSaved ?? Boolean(saved);
 
   /** Saves the paper, putting it back whole when `removal` took it away. */
-  const saveBack = (paper: WorkInput, removal: Promise<RemovedPaper | null> | undefined) => {
+  const saveBack = (paper: WorkInput, removal: Promise<Removal | null> | undefined) => {
     const { setSaved, settleSaved } = usePending.getState();
     const key = `${userId}:${paper.id}`;
     const token = setSaved(paper.id, true);
@@ -131,10 +132,10 @@ export function useSavePaper(paper: WorkInput | undefined) {
         return;
       }
       // The server restores the research rating with the paper.
-      await restore({ paper: removed }).catch((error) => {
+      await restore({ removalId: removed }).catch((error) => {
         console.error("[Library] Failed to restore:", error);
         toast.error(t("restoreError"));
-        // Keep what was removed so the next Save can try again.
+        // Keep the removal so the next Save can try again.
         if (!removals.has(key)) removals.set(key, Promise.resolve(removed));
       });
     })().finally(() => settleSaved(paper.id, token));
@@ -161,7 +162,7 @@ export function useSavePaper(paper: WorkInput | undefined) {
       .then((removed) => {
         if (!removed) return;
         toast(t("removed"), {
-          description: removed.title,
+          description: paper.title,
           duration: 5000,
           action: {
             label: t("undo"),

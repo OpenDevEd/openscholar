@@ -1,5 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
+import { libraryItemFields, removedItemValidator } from "./library/validators";
+import { MAX_COLLECTIONS_PER_USER } from "./lib/queryBounds";
 import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
@@ -1009,25 +1011,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEMS - User's saved paper library
   // ═══════════════════════════════════════════════════════════════
-  libraryItems: defineTable({
-    userId: v.id("users"),
-    openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
-    rating: v.optional(v.number()), // 0-5; unset when the paper was saved without rating it
-    title: v.string(),
-    authors: v.optional(v.string()), // Flattened: "John Doe, Jane Smith"
-    doi: v.optional(v.string()),
-    abstract: v.optional(v.string()),
-    publicationYear: v.optional(v.number()),
-    journal: v.optional(v.string()), // primary_location.source.display_name
-    citedByCount: v.optional(v.number()),
-    workType: v.optional(v.string()), // OpenAlex `type` — "article" | "review" | "book-chapter" | ...
-    isOpenAccess: v.optional(v.boolean()),
-    oaStatus: v.optional(v.string()), // "gold" | "green" | "bronze" | "hybrid" | "closed"
-    paperData: v.optional(v.string()), // Full PaperResult JSON for rich card rendering
-    searchableText: v.string(), // title + abstract + authors (for Phase 23 search index)
-    savedAt: v.number(),
-    updatedAt: v.number(),
-  })
+  libraryItems: defineTable(libraryItemFields)
     .index("by_user", ["userId"])
     .index("by_user_openalexId", ["userId", "openalexId"])
     .index("by_user_rating", ["userId", "rating"])
@@ -1039,6 +1023,15 @@ export default defineSchema({
       searchField: "searchableText",
       filterFields: ["userId", "rating"],
     }),
+
+  // A paper removed from a library, with the collections it was in, kept a day so Undo
+  // (the page's or the assistant's) can put it back by this record's ID.
+  libraryRemovals: defineTable({
+    userId: v.id("users"),
+    item: removedItemValidator,
+    collectionIds: capped(v.array(v.id("collections")), MAX_COLLECTIONS_PER_USER),
+    expiresAt: v.number(),
+  }),
 
   // ═══════════════════════════════════════════════════════════════
   // COLLECTIONS - Named groups for organizing library items
