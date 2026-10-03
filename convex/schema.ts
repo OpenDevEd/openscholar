@@ -62,9 +62,11 @@ export default defineSchema({
     .index("by_user_and_createdAt", ["userId", "data.createdAt"])
     .index("by_user_and_count", ["userId", "data.count"])
     .index("by_user_and_localId", ["userId", "localId"]),
-  // How many saved searches a person has, kept by the trigger on `searches`, for page totals.
-  // While their first count is being taken, `countedTo` is the creation time it has reached.
-  searchCounts: defineTable({ userId: v.id("users"), count: v.number(), countedTo: v.optional(v.number()) }).index("by_user", ["userId"]),
+  // How many saved searches and shortcuts a person has, kept by the triggers on those tables
+  // (research/recordCounts.ts), for page totals. While a first count is being taken,
+  // `countedTo` is the creation time it has reached.
+  recordCounts: defineTable({ userId: v.id("users"), table: v.union(v.literal("searches"), v.literal("queryShortcuts")), count: v.number(), countedTo: v.optional(v.number()) })
+    .index("by_user_and_table", ["userId", "table"]),
   searchRevisions: defineTable({
     userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
     author: v.union(v.literal("user"), v.literal("assistant")),
@@ -94,7 +96,10 @@ export default defineSchema({
     .index("by_screening_and_version", ["screeningId", "version"])
     // A paper's answers as of a version: what a Screen all job answered, for its export.
     .index("by_screening_and_paper_and_version", ["screeningId", "paperId", "version"]),
-  queryShortcuts: defineTable({ userId: v.id("users"), data: shortcutValidator })
+  // `sortName` is the name as the Bookmarks page orders it (lower case); optional until migrations/pagedRecords has run.
+  queryShortcuts: defineTable({ userId: v.id("users"), data: shortcutValidator, sortName: v.optional(v.string()) })
+    .index("by_user_and_createdAt", ["userId", "data.createdAt"])
+    .index("by_user_and_sortName", ["userId", "sortName"])
     .index("by_user", ["userId"])
     .index("by_user_and_shorthand", ["userId", "data.shorthand"]),
   paperRatings: defineTable({ userId: v.id("users"), data: ratingValidator })

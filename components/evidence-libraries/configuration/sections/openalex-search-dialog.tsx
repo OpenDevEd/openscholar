@@ -19,7 +19,8 @@ import { useIsTablet } from "@/lib/hooks";
 import { DEFAULT_SEARCH_PARAMS, SearchProvider, useSearch, type SearchParams } from "@/lib/search";
 import { paramsToSearchResult, searchResultToParams } from "@/lib/search-params";
 import { useSearchHistoryStore } from "@/lib/store";
-import { useWatchedSearch } from "@/lib/research/provider";
+import { useWatchedSearch } from "@/lib/research/reads";
+import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 import { sidebarSpring } from "@/lib/ui/sidebar-motion";
 import { isCitedByFilterActive, isCitesFilterActive, isRelatedToFilterActive } from "@/lib/utils";
 
@@ -274,7 +275,8 @@ export function OpenAlexSearchDialog({
   const queryUnchanged = Boolean(initial) && sameOpenAlexSourceSearch(params, startingParams);
   const changed = name !== startingName || !queryUnchanged || downloadPdfs !== (initial?.settings.downloadPdfs ?? false);
 
-  function save() {
+  async function save() {
+    await ensureQueryShortcuts(params.q);
     const canonical = queryUnchanged ? initial!.settings.approvedQuery.query : buildOpenAlexSourceQuery(params);
     if (!canonical) return;
     onApprove({

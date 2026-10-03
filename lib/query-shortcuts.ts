@@ -26,3 +26,8 @@ export function expandShortcuts(query: string, expansions: ShortcutExpansions): 
   });
   return { expandedQuery, warnings };
 }
+
+/** How shortcuts sort on the Bookmarks page: by name, whatever its case. */
+export function shortcutSortName(name: string) {
+  return name.toLowerCase();
+}

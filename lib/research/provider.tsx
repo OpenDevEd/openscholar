@@ -9,10 +9,8 @@ import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { showStyledToast } from "@/components/ui/sonner";
 import { usePersistedStoreReady } from "../use-persisted-store-ready";
 import { localKeywordExpansionStore, localRatingsStore, localSearchHistoryStore } from "../store";
-import { activateResearch, ResearchContext } from "./binding";
-import { ResearchSession, type WatchedStatus } from "./session";
-import { serializeSearch } from "./records";
-import type { SearchResult } from "../types";
+import { activateResearch, ResearchContext, SessionContext } from "./binding";
+import { ResearchSession } from "./session";
 import { ResearchImportError, localResearchBackup } from "./migrate";
 import { downloadAsFile } from "../utils";
 
@@ -20,8 +18,6 @@ const localSnapshot = { ready: true, error: null, pending: 0 };
 const localSubscribe = () => activateResearch(null);
 const getLocalSnapshot = () => localSnapshot;
 const StatusContext = createContext({ ...localSnapshot, error: null as Error | null, retry: () => {} });
-/** The signed-in account's session, which reads searches by ID; null signed out. */
-const SessionContext = createContext<ResearchSession | null>(null);
 const sessions = new WeakMap<ConvexReactClient, Map<string, ResearchSession>>();
 function accountSession(client: ConvexReactClient, accountId: string) {
   let accounts = sessions.get(client);
@@ -44,71 +40,9 @@ export function ResearchStateProvider({ children }: { children: ReactNode }) {
   const session = userId ? accountSession(client, userId) : null;
   const subscribe = useCallback((listener: () => void) => session ? session.subscribe(listener, phase === "authenticated", report) : localSubscribe(), [session, phase, report]);
   const status = useSyncExternalStore(subscribe, session?.getSnapshot ?? getLocalSnapshot, session?.getServerSnapshot ?? getLocalSnapshot);
+  const reading = useMemo(() => ({ session, phase }), [session, phase]);
   const value = useMemo(() => ({ ...status, ready: status.ready && (phase === "anonymous" || phase === "authenticated"), error: phase === "sync_error" ? new Error("Your account could not finish loading.") : status.error, retry: phase === "sync_error" ? retryUserSync : session?.retry ?? (() => {}) }), [status, session, phase, retryUserSync]);
-  return <ResearchContext.Provider value={session?.stores ?? null}><SessionContext.Provider value={session}><StatusContext.Provider value={value}>{children}</StatusContext.Provider></SessionContext.Provider></ResearchContext.Provider>;
-}
-
-/** The signed-in account's research session, or null signed out. */
-export function useResearchSession() {
-  return useContext(SessionContext);
-}
-
-const found = (): WatchedStatus => "found";
-
-/** Says whether search `id` is saved: in this browser signed out, in the account signed in. */
-export function useHasSearch() {
-  const session = useContext(SessionContext);
-  return useCallback(
-    async (id: string) => (session ? await session.hasSearch(id) : localSearchHistoryStore.getState().getSearchResult(id) !== undefined),
-    [session],
-  );
-}
-
-/** How long a search read ahead of its page is held, for that page to take the read over. */
-const PRELOAD_MS = 10_000;
-
-/**
- * Hands the account's session a search a list shows, as its link is followed, and starts
- * reading it, so its page opens at once; its screening answers follow with the read.
- */
-export function usePreloadSearch() {
-  const session = useContext(SessionContext);
-  return useCallback((search: SearchResult) => {
-    if (session) setTimeout(session.watchSearch(search.id, () => {}, serializeSearch(search)), PRELOAD_MS);
-  }, [session]);
-}
-
-/**
- * Has the signed-in session read the person's ratings of these papers while this component
- * shows, so the ratings store has them. Returns the papers whose ratings are read, from the
- * first, and whether more are on their way: a page shows a paper once its rating is known,
- * so its rating control never changes size after it appears. Signed out, every rating is in
- * this browser's store.
- */
-export function useRatedPapers<Paper extends { id: string }>(papers: Paper[]): { papers: Paper[]; loading: boolean } {
-  const session = useContext(SessionContext);
-  const { phase } = useAuthReadiness();
-  // The account reads once it's ready; until then its papers wait, and if it can't load they show unrated.
-  const reads = session !== null && phase === "authenticated";
-  const waits = session !== null && phase === "initializing";
-  const key = papers.map((paper) => paper.id).join("\n");
-  const subscribe = useCallback((listener: () => void) => (session && reads && key ? session.watchRatings(key.split("\n"), listener) : noReaders()), [session, reads, key]);
-  const read = useCallback(() => (session && reads && key ? session.ratingsRead(key.split("\n")) : waits ? 0 : papers.length), [session, reads, waits, key, papers.length]);
-  const known = useSyncExternalStore(subscribe, read, read);
-  return known >= papers.length ? { papers, loading: false } : { papers: papers.slice(0, known), loading: true };
-}
-const noReaders = () => () => {};
-
-/**
- * Has the signed-in session read search `id` while this component shows, so the search
- * stores' `getSearchResult(id)` has it. Says whether it's still loading, there, or not
- * saved. Signed out, every search is in this browser's store already.
- */
-export function useWatchedSearch(id: string | undefined): WatchedStatus {
-  const session = useContext(SessionContext);
-  const subscribe = useCallback((listener: () => void) => (session && id ? session.watchSearch(id, listener) : noReaders()), [session, id]);
-  const status = useCallback(() => (session && id ? session.watchedStatus(id) : found()), [session, id]);
-  return useSyncExternalStore(subscribe, status, status);
+  return <ResearchContext.Provider value={session?.stores ?? null}><SessionContext.Provider value={reading}><StatusContext.Provider value={value}>{children}</StatusContext.Provider></SessionContext.Provider></ResearchContext.Provider>;
 }
 
 export function useResearchStatus() {

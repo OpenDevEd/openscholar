@@ -1,5 +1,1 @@
-export interface BookmarkEntry {
-  name: string;
-  expansion: string;
-  createdAt: number;
-}
+export type { ListedShortcut as BookmarkEntry } from "@/lib/research/shortcut-list";

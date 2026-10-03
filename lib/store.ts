@@ -140,14 +140,19 @@ interface FocusModeSettingsState {
 export interface KeywordExpansionState {
   keywords: Record<string, BookmarkData>
   addKeyword: (shorthand: string, expansion: string) => void
-  updateKeyword: (shorthand: string, expansion: string) => void
+  /** Changes a shortcut's expansion; `createdAt` is the shortcut's own, which the list shows it by. */
+  updateKeyword: (shorthand: string, expansion: string, createdAt: number) => void
   removeKeyword: (shorthand: string) => void
   clearKeywords: () => void
+  /** Expands the shortcuts this store holds: every one in this browser, and for an account those read by name. */
   expandQuery: (query: string) => {
     expandedQuery: string;
     warnings: Array<{ key: string; params?: Record<string, string> }>;
   }
-  importKeywords: (data: Record<string, unknown>[]) => number
+  /** Reads the shortcuts with these names, so `keywords` and `expandQuery` have them for what follows. */
+  ensureShortcuts: (names: string[]) => Promise<void>
+  /** Adds the shortcuts in an uploaded file whose names aren't taken; says how many. */
+  importKeywords: (data: Record<string, unknown>[]) => Promise<number>
 }
 
 interface AIConfigState {
@@ -752,7 +757,9 @@ export const localKeywordExpansionStore = create<KeywordExpansionState>()(
       }),
       clearKeywords: () => set({ keywords: {} }),
       expandQuery: (query) => expandShortcuts(query, shortcutExpansions(get().keywords)),
-      importKeywords: (data) => {
+      // Every shortcut is in this browser already.
+      ensureShortcuts: async () => {},
+      importKeywords: async (data) => {
         let importedCount = 0;
         const validItems: Record<string, BookmarkData> = {};
         

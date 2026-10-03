@@ -32,7 +32,7 @@ import {
   useKeywordExpansionStore,
 } from "@/lib/store";
 import { useSearchList } from "@/lib/research/search-list";
-import { usePreloadSearch } from "@/lib/research/provider";
+import { usePreloadSearch, useQueryShortcuts } from "@/lib/research/reads";
 import { useEffectiveSearchId } from "@/lib/hooks";
 import { restoreFromHistory } from "@/lib/search";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
@@ -368,6 +368,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   // Determine active query - now uses store for real-time updates on all pages
   // Fallback to URL params if store is empty (shouldn't happen but safety first)
   const activeQuery = currentQuery || searchParams.get("q") || "";
+  useQueryShortcuts(activeQuery);
 
   // Calculate expandable keywords count
   const getExpandableCount = (query: string) => {

@@ -34,7 +34,8 @@ import { HistoryItem } from "./history-item";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
-import { usePreloadSearch, useResearchSession, useResearchStatus } from "@/lib/research/provider";
+import { useResearchStatus } from "@/lib/research/provider";
+import { usePreloadSearch, useResearchSession } from "@/lib/research/reads";
 import { useSearchList } from "@/lib/research/search-list";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 

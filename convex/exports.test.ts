@@ -105,3 +105,23 @@ describe("search history export", () => {
     ]);
   });
 });
+
+describe("shortcut export", () => {
+  it("writes the person's shortcuts as the list the Bookmarks page's upload takes back", async () => {
+    const t = convexTest(schema);
+    await t.run(async (ctx) => {
+      for (const clerkId of ["owner", "someone_else"]) {
+        const userId = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 });
+        await ctx.db.insert("queryShortcuts", { userId, data: { shorthand: "rct", expansion: `randomized, "controlled" trial by ${clerkId}`, createdAt: 1_700_000_000_000 }, sortName: "rct" });
+      }
+    });
+    const as = t.withIdentity({ subject: "owner" });
+
+    const json = await exportParts(t, as, { kind: "shortcuts" });
+    expect(json.response.headers.get("Content-Disposition")).toBe('attachment; filename="bookmarks.json"');
+    expect(JSON.parse(json.text)).toEqual([{ name: "rct", expansion: 'randomized, "controlled" trial by owner', createdAt: 1_700_000_000_000 }]);
+
+    const csv = await exportParts(t, as, { kind: "shortcuts" }, "csv");
+    expect(csv.text.trimEnd().split("\n")).toEqual(["\ufeffcreatedAt,expansion,name", '2023-11-14T22:13:20.000Z,"randomized, ""controlled"" trial by owner",rct']);
+  });
+});

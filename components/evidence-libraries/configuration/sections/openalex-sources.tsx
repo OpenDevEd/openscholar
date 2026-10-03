@@ -33,7 +33,7 @@ import {
 } from "@/lib/evidence-libraries/configuration/sources";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSearchHistoryStore } from "@/lib/store";
-import { useHasSearch } from "@/lib/research/provider";
+import { useHasSearch } from "@/lib/research/reads";
 import { paramsToSearchResult } from "@/lib/search-params";
 import { readOpenAlexSourceSearch, sourceSearchHistoryId } from "@/lib/evidence-libraries/openalex-source-query";
 import { Field } from "../section-card";

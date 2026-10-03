@@ -18,7 +18,7 @@ import { useAppToast } from "@/lib/toast";
 import { bucketAdded } from "@/lib/toast/bucket";
 import type { SearchResult } from "@/lib/types";
 import { PAPER_LIMIT, PAPER_PULL_CAP, PAPER_PULL_DEFAULT } from "@/lib/extraction/limits";
-import { browserExpand } from "@/lib/keyword-validation-browser";
+import { browserExpand, ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 
 const HISTORY_BUCKET_KEY_PREFIX = "history:";
 /** Saved searches the picker shows at once. */
@@ -162,19 +162,21 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
           ? `${format.number(selectedPaperCount)} papers from ${selectedEntryCount} search${selectedEntryCount === 1 ? "" : "es"}`
           : `${savedCount} saved search${savedCount === 1 ? "" : "es"}`
       }
-      onToggle={(entry, next) => {
+      onToggle={async (entry, next) => {
         if (!next) {
           removeMany([historyBucketKey(entry)]);
           return;
         }
+        await ensureQueryShortcuts(entry.query);
         const bucketItem = toBucketItem(entry);
         if (bucketItem) bucketAdded(addMany([bucketItem], limit), { silent: true });
       }}
-      onToggleRange={(entries, next) => {
+      onToggleRange={async (entries, next) => {
         if (!next) {
           removeMany(entries.map(historyBucketKey));
           return;
         }
+        await ensureQueryShortcuts(...entries.map((entry) => entry.query));
         bucketAdded(addMany(entries.flatMap((e) => toBucketItem(e) ?? []), limit));
       }}
       renderRow={(entry) => (

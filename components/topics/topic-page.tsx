@@ -1,6 +1,6 @@
 "use client";
 
-import { useRatedPapers } from "@/lib/research/provider";
+import { useRatedPapers } from "@/lib/research/reads";
 import Link from "next/link";
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";

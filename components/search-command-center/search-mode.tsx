@@ -22,7 +22,8 @@ import {
 import { useEffectiveSearchId, useQueryHistory } from "@/lib/hooks";
 import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
+import { ensureQueryShortcuts, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
+import { useQueryShortcuts } from "@/lib/research/reads";
 import { cn } from "@/lib/utils";
 import { AISetupGate } from "@/components/ai/ai-setup-gate";
 import posthog from "posthog-js";
@@ -53,6 +54,8 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
   const { setCurrentQuery } = useCurrentQueryStore();
   const urlQuery = search?.params?.q ?? "";
   const [localInputValue, setLocalInputValue] = useState(urlQuery);
+  // The shortcuts the box names are read as they're typed, for the suggestion and the actions below.
+  useQueryShortcuts(localInputValue);
   const [isTranslating, setIsTranslating] = useState(false);
 
   // Sync local input + global store when URL query changes (e.g. history nav, AI enhance, translation)
@@ -172,8 +175,9 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
         return;
       }
       setIsTranslating(true);
-      const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
       try {
+        await ensureQueryShortcuts(localInputValue);
+        const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
         const result = await translateQueryFn({
           query: expandedQuery,
           targetLanguage,

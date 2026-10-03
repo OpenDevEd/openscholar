@@ -275,6 +275,10 @@ export function applySearchEdit(search: SavedSearch, edit: SearchEdit, now: stri
 }
 
 export const shortcutValidator = v.object({ shorthand: v.string(), expansion: v.string(), createdAt: v.number() });
+/** How the Bookmarks page orders shortcuts: newest or oldest first, or by name. */
+export const shortcutSortValidator = v.union(v.literal("recent"), v.literal("oldest"), v.literal("alpha"), v.literal("alpha-desc"));
+/** Shortcut names one read takes: a shortcut is at most 1 MiB, so a read stays within a transaction's 16 MiB. */
+export const SHORTCUT_NAMES_MAX = 15;
 export const ratingValidator = v.object({ paperId: v.string(), rating: v.number() });
 /** Papers one read of ratings takes: as many as a results page shows. */
 export const RATED_PAPERS_MAX = 200;
@@ -285,5 +289,9 @@ export const commandValidator = v.union(
   v.object({ kind: v.literal("deleteSearch"), id: v.string() }),
   v.object({ kind: v.literal("shortcut"), shorthand: v.string(), value: v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null()) }),
   v.object({ kind: v.literal("rating"), paperId: v.string(), rating: v.union(v.number(), v.null()) }),
+  // Every saved search, or every shortcut, the person has when it's applied: in order with
+  // the saves around it, so one made before goes and one made after stays.
+  v.object({ kind: v.literal("clearSearches") }),
+  v.object({ kind: v.literal("clearShortcuts") }),
 );
 export type ResearchCommand = Infer<typeof commandValidator>;

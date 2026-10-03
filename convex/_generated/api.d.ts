@@ -274,7 +274,7 @@ import type * as migrations_moveScreeningJobAnswers from "../migrations/moveScre
 import type * as migrations_moveScreeningJobProgress from "../migrations/moveScreeningJobProgress.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
 import type * as migrations_pagedCollections from "../migrations/pagedCollections.js";
-import type * as migrations_pagedSearches from "../migrations/pagedSearches.js";
+import type * as migrations_pagedRecords from "../migrations/pagedRecords.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
 import type * as models_admin from "../models/admin.js";
@@ -287,8 +287,8 @@ import type * as organizationFeatures from "../organizationFeatures.js";
 import type * as paperSets_openalex from "../paperSets/openalex.js";
 import type * as paperSets_search from "../paperSets/search.js";
 import type * as research_answers from "../research/answers.js";
+import type * as research_recordCounts from "../research/recordCounts.js";
 import type * as research_records from "../research/records.js";
-import type * as research_searchCounts from "../research/searchCounts.js";
 import type * as screening_aggregates from "../screening/aggregates.js";
 import type * as screening_bookkeeping from "../screening/bookkeeping.js";
 import type * as screening_completion from "../screening/completion.js";
@@ -619,7 +619,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/moveScreeningJobProgress": typeof migrations_moveScreeningJobProgress;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
   "migrations/pagedCollections": typeof migrations_pagedCollections;
-  "migrations/pagedSearches": typeof migrations_pagedSearches;
+  "migrations/pagedRecords": typeof migrations_pagedRecords;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
   "models/admin": typeof models_admin;
@@ -632,8 +632,8 @@ declare const fullApi: ApiFromModules<{
   "paperSets/openalex": typeof paperSets_openalex;
   "paperSets/search": typeof paperSets_search;
   "research/answers": typeof research_answers;
+  "research/recordCounts": typeof research_recordCounts;
   "research/records": typeof research_records;
-  "research/searchCounts": typeof research_searchCounts;
   "screening/aggregates": typeof screening_aggregates;
   "screening/bookkeeping": typeof screening_bookkeeping;
   "screening/completion": typeof screening_completion;

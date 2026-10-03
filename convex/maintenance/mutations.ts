@@ -2,7 +2,7 @@ import { internalMutation } from "../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { collectionCountRow } from "../library/collections";
-import { searchCountRow } from "../research/searchCounts";
+import { countRow } from "../research/recordCounts";
 import { libraryCountRow } from "../library/counter";
 
 // Retention period for deleted users (30 days)
@@ -76,8 +76,10 @@ export const cleanupDeletedUsers = internalMutation({
         if (libraryCount) await ctx.db.delete("libraryCounts", libraryCount._id);
         const collectionCount = await collectionCountRow(ctx, user._id);
         if (collectionCount) await ctx.db.delete("collectionCounts", collectionCount._id);
-        const searchCount = await searchCountRow(ctx, user._id);
-        if (searchCount) await ctx.db.delete("searchCounts", searchCount._id);
+        for (const table of ["searches", "queryShortcuts"] as const) {
+          const counted = await countRow(ctx, table, user._id);
+          if (counted) await ctx.db.delete("recordCounts", counted._id);
+        }
 
         // Hard delete the user to prevent re-processing
         await ctx.db.delete("users", user._id);

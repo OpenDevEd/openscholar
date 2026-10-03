@@ -217,7 +217,7 @@ describe("at the largest sizes the product allows", () => {
     expect(parts.flatMap(({ text }) => JSON.parse(text) as unknown[])).toHaveLength(100);
 
     vi.useFakeTimers();
-    await as.mutation(api.research.records.clearSearches, { accountId: clerkId });
+    await as.mutation(api.research.records.change, { accountId: clerkId, requestId: "clear", command: { kind: "clearSearches" } });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     vi.useRealTimers();
     expect(await as.query(api.research.records.countSearches, { accountId: clerkId })).toBe(0);

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
+import { shortcutNames } from "@/lib/query-shortcuts";
 import { useAppToast } from "@/lib/toast";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { subtleSpring } from "@/lib/animation-config";
@@ -61,7 +62,7 @@ export function HistoryQueryExpansion({
   const [bookmarkName, setBookmarkName] = useState("");
 
   const { removeQueryHistoryEntry } = useSearchHistoryStore();
-  const { addKeyword, keywords } = useKeywordExpansionStore();
+  const addKeyword = useKeywordExpansionStore((state) => state.addKeyword);
 
   if (!queryHistory || queryHistory.length <= 1) {
     return null;
@@ -80,7 +81,7 @@ export function HistoryQueryExpansion({
     if (entry) removeQueryHistoryEntry(searchId, entry);
   };
 
-  const handleBookmarkSubmit = (query: string) => {
+  const handleBookmarkSubmit = async (query: string) => {
     if (!bookmarkName.trim()) {
       toast.validation.failed(tv("bookmarkNameRequired"));
       return;
@@ -89,7 +90,13 @@ export function HistoryQueryExpansion({
       toast.validation.failed(tv("bookmarkNameFormat"));
       return;
     }
-    if (keywords[bookmarkName]) {
+    // An account looks up the name, to say whether it's taken, and the shortcuts the query names.
+    try {
+      await useKeywordExpansionStore.getState().ensureShortcuts([bookmarkName.trim(), ...shortcutNames(query)]);
+    } catch {
+      return;
+    }
+    if (useKeywordExpansionStore.getState().keywords[bookmarkName.trim()]) {
       toast.validation.failed(tv("bookmarkNameExists", { name: bookmarkName }));
       return;
     }
@@ -101,7 +108,7 @@ export function HistoryQueryExpansion({
   };
 
   const handleBookmarkKeyDown = (e: React.KeyboardEvent, query: string) => {
-    if (e.key === "Enter") handleBookmarkSubmit(query);
+    if (e.key === "Enter") void handleBookmarkSubmit(query);
     if (e.key === "Escape") {
       setBookmarkingIndex(null);
       setBookmarkName("");
