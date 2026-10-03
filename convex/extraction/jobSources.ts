@@ -125,6 +125,11 @@ export async function writeJobSources(
   ) {
     throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
   }
+  // Every source brings at least one paper, and a job holds PAPER_LIMIT papers, so it holds
+  // no more sources than that; its source rows then read in one query.
+  if (items.length > PAPER_LIMIT) {
+    throw createError("VALIDATION_ERROR", `A job can have up to ${PAPER_LIMIT.toLocaleString("en")} sources.`);
+  }
   const inserted: Id<"extractionJobSources">[] = [];
   let position = 0;
   for (const item of items) {
@@ -145,7 +150,7 @@ export async function replaceJobSources(
   const existing = await ctx.db
     .query("extractionJobSources")
     .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-    .collect();
+    .take(PAPER_LIMIT);
 
   for (const row of existing) {
     await ctx.db.delete(row._id);

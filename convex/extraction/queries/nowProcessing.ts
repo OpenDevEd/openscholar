@@ -21,6 +21,7 @@
  * the client through the query channel.
  */
 
+import { PAPER_LIMIT } from "../../../lib/extraction/limits";
 import { query } from "../../_generated/server";
 import { v } from "convex/values";
 import { resolveOwnedJob } from "../access";
@@ -51,7 +52,8 @@ export const getNowProcessing = query({
       .withIndex("by_job_status", (q) =>
         q.eq("jobId", jobId).eq("status", "extracting"),
       )
-      .collect();
+      // A retry can mark every paper of the job extracting at once: up to PAPER_LIMIT.
+      .take(PAPER_LIMIT);
     if (inFlight.length === 0) return null;
 
     // Pick the earliest-started paper so parallel workpool dispatch
