@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { applyCommand } from "./records";
+import { answerPaper } from "./answers";
 import { ANSWERED_PAPERS_MAX, restoreResponses, restoreSearch, serializeSearch, type ResearchCommand, type SavedSearch } from "../../lib/research/records";
 import { convexToJson } from "convex/values";
 import { asSchema } from "ai";
@@ -239,32 +240,59 @@ describe("account research records", () => {
     expect(await answersOf(alice, "alice", record.id, ["W1", "W2"])).toEqual({ W1: { "Adults?": true }, W2: { "Adults?": true } });
   });
 
-  it("takes answers from every paper a step at a time, leaving any given since, and its revision shows what it left (#421)", async () => {
+  it("takes answers from every paper at once for every reader, cleans the rows a page at a time, and keeps any answer given since (#421)", async () => {
     vi.useFakeTimers();
     try {
-      const { alice, t } = await setup();
-      // More papers than one step reads.
+      const { alice, t, ids } = await setup();
+      // More papers than one page of a sweep reads.
       const papers = Array.from({ length: 450 }, (_, i) => `W${i}`);
       const large = { ...record, screeningQuestions: [{ question: "Randomized?" }, { question: "Adults?" }], screeningResponses: papers.map(paperId => ({ paperId, responses: [{ question: "Randomized?", response: true }, { question: "Adults?", response: false }] })) };
       await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported(large)] });
       const edit = (requestId: string, value: unknown) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command: { kind: "editSearch", id: record.id, edit: value } as never });
+      const rows = () => t.run(async ctx => (await ctx.db.query("screeningAnswers").take(500)).length);
 
+      const adults = { kind: "responses", paperId: "W99", responses: [{ question: "Adults?", response: false }], by: "person" };
+      await edit("first", adults);
       await edit("drop", { kind: "removeQuestionResponses", question: "Adults?" });
-      // The first papers went with the edit; W99 is the last a later step reaches, and is answered meanwhile.
-      await edit("since", { kind: "responses", paperId: "W99", responses: [{ question: "Adults?", response: true }], by: "person" });
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-      expect(await answersOf(alice, "alice", record.id, papers)).toEqual(Object.fromEntries(papers.map(paperId => [paperId, paperId === "W99" ? { "Randomized?": true, "Adults?": true } : { "Randomized?": true }])));
+      // W99 is the last paper a later page reaches. Its answer is gone for every reader already.
+      expect(await answersOf(alice, "alice", record.id, ["W0", "W99"])).toEqual({ W0: { "Randomized?": true }, W99: { "Randomized?": true } });
       const [made] = (await alice.query(api.research.records.revisions, { accountId: "alice", id: record.id, paginationOpts })).page;
-      expect(await answersOf(alice, "alice", record.id, ["W0", "W98"], made.answersVersion)).toEqual({ W0: { "Randomized?": true }, W98: { "Randomized?": true } });
+      expect(await answersOf(alice, "alice", record.id, ["W99"], made.answersVersion)).toEqual({ W99: { "Randomized?": true } });
+      // Given again before the sweep reaches it, even the same answer as before, it stays.
+      await edit("again", adults);
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await answersOf(alice, "alice", record.id, papers)).toEqual(Object.fromEntries(papers.map(paperId => [paperId, paperId === "W99" ? { "Randomized?": true, "Adults?": false } : { "Randomized?": true }])));
+      // The revision still reads as the edit left it, and the one before it as it was.
+      const revisions = (await alice.query(api.research.records.revisions, { accountId: "alice", id: record.id, paginationOpts })).page;
+      expect(await answersOf(alice, "alice", record.id, ["W98", "W99"], revisions[0].answersVersion)).toEqual({ W98: { "Randomized?": true }, W99: { "Randomized?": true } });
+      expect(await answersOf(alice, "alice", record.id, ["W98"], revisions[1].answersVersion)).toEqual({ W98: { "Randomized?": true, "Adults?": false } });
+      // Every row has taken the removal, so the screening forgets it.
+      expect(await t.run(async ctx => (await ctx.db.query("screenings").first())?.removals ?? [])).toEqual([]);
 
       await edit("clear", { kind: "clearResponses" });
-      await edit("after", { kind: "responses", paperId: "W99", responses: [{ question: "Randomized?", response: false }], by: "person" });
+      // The model's answer arrives late for a paper a person had answered: the person's answer went with the clear.
+      const screening = (await t.run(ctx => ctx.db.query("screenings").first()))!;
+      await t.run(ctx => answerPaper(ctx, screening._id, "W99", [{ question: "Randomized?", response: false }], "model", 1));
+      expect(await rows()).toBeGreaterThan(1);
       await t.finishAllScheduledFunctions(vi.runAllTimers);
       expect(await answersOf(alice, "alice", record.id, papers)).toEqual({ W99: { "Randomized?": false } });
-      expect(await t.run(async ctx => (await ctx.db.query("screeningAnswers").take(5)).length)).toBe(1);
+      expect(await rows()).toBe(1);
+      expect(ids.alice).toBeDefined();
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("makes no revision for a removal that finds nothing to take, and saves a paper listed twice once (#421)", async () => {
+    const { alice, t } = await setup();
+    const twice = { ...record, screeningResponses: [{ paperId: "W1", responses: [{ question: "Randomized?", response: true }] }, { paperId: "W1", responses: [{ question: "Randomized?", response: false }] }] };
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported(twice)] });
+    expect(await answersOf(alice, "alice", record.id, ["W1"])).toEqual({ W1: { "Randomized?": false } });
+    const revisions = () => t.run(async ctx => (await ctx.db.query("searchRevisions").take(10)).length);
+    const before = await revisions();
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "nothing", command: { kind: "editSearch", id: record.id, edit: { kind: "removeQuestionResponses", question: "Never asked?" } } });
+    expect(await revisions()).toBe(before);
+    expect(await answersOf(alice, "alice", record.id, ["W1"])).toEqual({ W1: { "Randomized?": false } });
   });
 
   it("keeps deletion final when an old local import is retried", async () => {

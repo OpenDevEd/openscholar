@@ -2,7 +2,7 @@ import { v, type Infer } from "convex/values";
 import { format, parseISO } from "date-fns";
 import { partial } from "convex-helpers/validators";
 import type { SearchResult } from "../types/search.types";
-import { MAX_FILTER_VALUES, MAX_LEGACY_ENTRIES, MAX_LINKED_ACCOUNTS, MAX_QUESTIONS, RANGE_ENDS, capped } from "../../convex/lib/listCaps";
+import { MAX_FILTER_VALUES, MAX_LEGACY_ENTRIES, MAX_LINKED_ACCOUNTS, MAX_PENDING_REMOVALS, MAX_QUESTIONS, RANGE_ENDS, capped } from "../../convex/lib/listCaps";
 
 const strings = v.array(v.string());
 // Each stored list gets its own validator: a cap sticks to the one it's set on, and
@@ -108,6 +108,13 @@ export const paperAnswersValidator = capped(v.array(v.object({
   question: v.string(), answer: v.union(v.boolean(), v.null()), setBy: answerSourceValidator, updatedAt: v.number(),
   model: v.optional(v.object({ answer: v.union(v.boolean(), v.null()), confidence: v.optional(v.number()), at: v.number() })),
 })), MAX_QUESTIONS);
+/**
+ * Removals a screening's rows haven't all taken yet: answers to `question`, or every answer,
+ * gone at `version`. One is added by an edit that takes answers from every paper and
+ * forgotten when its sweep ends (convex/research/answers.ts), so few wait at once; an edit
+ * past the cap is refused until one does.
+ */
+export const removalsValidator = capped(v.optional(v.array(v.object({ question: v.optional(v.string()), version: v.number(), at: v.number() }))), MAX_PENDING_REMOVALS);
 export type SavedSearch = Infer<typeof searchValidator>;
 // A search's history summary changes only with its history, and its answers only through the
 // answer edits, never by a patch.

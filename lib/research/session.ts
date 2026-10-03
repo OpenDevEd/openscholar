@@ -86,8 +86,10 @@ export class ResearchSession {
         const reads = Array.from({ length: Math.ceil(ids.length / ANSWERED_PAPERS_MAX) }, (_, i) => ids.slice(i * ANSWERED_PAPERS_MAX, (i + 1) * ANSWERED_PAPERS_MAX));
         const pages = await Promise.all(reads.map(chunk => this.client.query(api.research.records.answersOf, { accountId: this.accountId, id, paperIds: chunk })));
         let responses = pages.flatMap(page => page.page);
-        // Answers still being saved count as the person left them.
+        // Answers still being saved count as the person left them: those a search still being
+        // created came with, then each edit since.
         for (const { command } of this.pending) {
+          if (command.kind === "createSearch" && command.search.id === id) responses = command.search.screeningResponses.filter(row => ids.includes(row.paperId));
           if (command.kind === "editSearch" && command.id === id) responses = editedResponses(responses, command.edit);
         }
         return restoreResponses(responses);
@@ -235,6 +237,11 @@ export class ResearchSession {
     this.holdIds(this.answersOf(searchId), paperIds, ANSWERED_PAPERS_MAX, chunk => this.client.watchQuery(api.research.records.answersOf, { accountId: this.accountId, id: searchId, paperIds: chunk }), reader);
   /** How many of these papers, from the first, have their answers read, or a read that failed. */
   answersRead = (searchId: string, paperIds: string[]) => this.idsRead(this.answersOf(searchId), paperIds);
+  /** Whether a read of any of these papers' answers failed: what they hold isn't known. */
+  answersFailed = (searchId: string, paperIds: string[]) => {
+    const { reads, by } = this.answersOf(searchId);
+    return paperIds.some(id => reads.get(by.get(id) ?? "")?.failed === true);
+  };
   /**
    * Reads the person's ratings of these papers while `reader` wants them, so the ratings
    * store has them; returns the unsubscribe.

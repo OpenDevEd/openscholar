@@ -206,8 +206,9 @@ describe('Screening Export', () => {
     });
 
     it('is the whole export printed at once, and valid with no results', () => {
-      const parsed = JSON.parse(generateScreeningJSON(mockData));
-      expect(generateScreeningJSON(mockData)).toBe(JSON.stringify(parsed, null, 2));
+      // One export, read twice: a second export would carry a later time.
+      const whole = generateScreeningJSON(mockData);
+      expect(whole).toBe(JSON.stringify(JSON.parse(whole), null, 2));
       const empty = generateScreeningJSON({ ...mockData, results: [] });
       expect(empty).toBe(JSON.stringify(JSON.parse(empty), null, 2));
       expect(JSON.parse(empty).results).toEqual([]);

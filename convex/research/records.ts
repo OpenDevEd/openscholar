@@ -5,7 +5,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Author } from "../lib/userActions";
-import { answersAmong, clearPaperAnswers, removeAnswersStep, screeningFor, seedAnswers, setPaperAnswers, type AnswerSource } from "./answers";
+import { answersAmong, clearPaperAnswers, removeAnswers, screeningFor, seedAnswers, setPaperAnswers, sweepAnswers, type AnswerSource } from "./answers";
 import {
   ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator,
   type ResearchCommand, type SavedSearch, type StoredSearch,
@@ -204,7 +204,7 @@ export const answersOfAction = defineUserQuery({
     if (paperIds.length > ANSWERED_PAPERS_MAX) throw new Error(`Answers are read ${ANSWERED_PAPERS_MAX} papers at a time.`);
     const search = await findSearch(ctx, userId, id);
     const screening = search && (await screeningFor(ctx, search._id));
-    return { page: screening ? await answersAmong(ctx, screening._id, paperIds, version) : [], isDone: true, continueCursor: "" };
+    return { page: screening ? await answersAmong(ctx, screening, paperIds, version) : [], isDone: true, continueCursor: "" };
   },
 });
 export const answersOf = accountQuery(answersOfAction);
@@ -420,13 +420,9 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       let answersChanged = false;
       if (removes && screening) {
         // The first papers go with the edit; a screening with more is swept on in the background.
-        const cursor = await removeAnswersStep(ctx, screening._id, "question" in removes ? removes.question : undefined, screening.version, null, now.getTime());
-        answersChanged = cursor !== null || (await ctx.db.get("screenings", screening._id))!.version !== screening.version;
-        if (cursor !== null) {
-          await ctx.scheduler.runAfter(0, internal.research.records.removeAnswersBatch, {
-            screeningId: screening._id, ...("question" in removes ? { question: removes.question } : {}), version: screening.version, cursor, at: now.getTime(), searchId: search._id, revision: next.revision,
-          });
-        }
+        const removed = await removeAnswers(ctx, screening, "question" in removes ? removes.question : undefined, now.getTime());
+        answersChanged = removed.changed;
+        if (removed.cursor !== null) await ctx.scheduler.runAfter(0, internal.research.records.sweepAnswersBatch, { screeningId: screening._id, through: removed.through, cursor: removed.cursor });
       }
       // A copy may change only the history rows, so it always makes a revision.
       if (edit.kind !== "copySearch" && !answersChanged && JSON.stringify({ ...data, updatedAt: previous.updatedAt }) === JSON.stringify(previous)) return;
@@ -532,25 +528,15 @@ async function clearBatch(ctx: MutationCtx, userId: Id<"users">, author: Author,
   if (!batch.isDone || deleted.length < batch.page.length) await ctx.scheduler.runAfter(0, internal.research.records.clearSearchesBatch, { userId, author, before });
 }
 
-/**
- * Carries on an edit that takes answers from every paper of a screening, a step at a time
- * (./answers.ts). When the last paper is done, the revision the edit made points at the
- * screening's version then, so it shows the answers as the edit left them.
- * ponytail: a revision made by another edit while a sweep runs points at a version part way
- * through it, so it shows answers the sweep hadn't reached; a sweep that locks later edits out would fix that.
- */
-export const removeAnswersBatch = internalMutation({
-  args: { screeningId: v.id("screenings"), question: v.optional(v.string()), version: v.number(), cursor: v.string(), at: v.number(), searchId: v.id("searches"), revision: v.number() },
+/** Carries on a sweep of a screening's rows for the removals they owe, a page at a time (./answers.ts). */
+export const sweepAnswersBatch = internalMutation({
+  args: { screeningId: v.id("screenings"), through: v.number(), cursor: v.string() },
   returns: v.null(),
-  handler: async (ctx, { screeningId, question, version, cursor, at, searchId, revision }) => {
-    if (!(await ctx.db.get("screenings", screeningId))) return null;
-    const next = await removeAnswersStep(ctx, screeningId, question, version, cursor, at);
-    if (next !== null) {
-      await ctx.scheduler.runAfter(0, internal.research.records.removeAnswersBatch, { screeningId, ...(question === undefined ? {} : { question }), version, cursor: next, at, searchId, revision });
-      return null;
-    }
-    const made = await ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", searchId).eq("revision", revision)).unique();
-    if (made) await ctx.db.patch("searchRevisions", made._id, { answersVersion: (await ctx.db.get("screenings", screeningId))!.version });
+  handler: async (ctx, { screeningId, through, cursor }) => {
+    const screening = await ctx.db.get("screenings", screeningId);
+    if (!screening) return null;
+    const next = await sweepAnswers(ctx, screening, through, cursor);
+    if (next.cursor !== null) await ctx.scheduler.runAfter(0, internal.research.records.sweepAnswersBatch, { screeningId, through, cursor: next.cursor });
     return null;
   },
 });

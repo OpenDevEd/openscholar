@@ -439,7 +439,8 @@ export function ResultsList({
     papers: papersForBatchScreening,
     missingResponses,
     questionSetKey,
-    canStart: !preview && canStartScreening && !!searchId && isScreeningPanelOpen,
+    // Not while the saved answers couldn't be read: every paper would look unanswered.
+    canStart: !preview && canStartScreening && !!searchId && isScreeningPanelOpen && !answered.failed,
     onResults: handleBatchResults,
   });
 

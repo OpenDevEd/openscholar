@@ -56,7 +56,7 @@ import { authorContentFields } from "./authors/validators";
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
-import { fieldValidator, paperAnswersValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
+import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
 
 export default defineSchema({
   searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator })
@@ -87,9 +87,10 @@ export default defineSchema({
   // page and its Screen all jobs both answer into; a Screen all job run before #334 has its
   // own, with no search. `version` counts the writes to its answers, so a revision finds its
   // answers exactly.
-  screenings: defineTable({ userId: v.id("users"), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number() })
+  screenings: defineTable({ userId: v.id("users"), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number(), removals: removalsValidator })
     .index("by_search", ["searchId"]),
-  screeningAnswers: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator })
+  // `version`: the screening's when the row was last written; a row from before this was kept owes every removal.
+  screeningAnswers: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.optional(v.number()) })
     .index("by_screening_and_paper", ["screeningId", "paperId"]),
   // A paper's answers after each change; an empty list means its answers were removed.
   screeningAnswerHistory: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.number(), at: v.number() })

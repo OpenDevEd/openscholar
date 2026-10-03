@@ -128,14 +128,18 @@ removes it. The assistant's tools already read these records by page or ID.
    now or at a screening version), as it reads ratings. A result waits for its
    answers, so a paper already answered isn't screened again.
 3. An edit that takes answers from every paper (a question removed or renamed,
-   all answers cleared) removes the first 200 papers' with the edit and the rest
-   in scheduled steps. A step takes the answers that stood at the screening's
-   version when the edit was made, told apart by each paper's history, and
-   leaves any given since. The revision the edit made points at the version
-   the last step leaves.
+   all answers cleared) is recorded on the screening as a removal at its next
+   version. Every read and write treats those answers as gone from then on: a
+   row last written before a removal owes it, and a writer takes what a paper
+   owes before it merges a new answer, so an answer given after a removal
+   stays, even the same one as before. The rows are cleaned 200 at a time,
+   the first page with the edit and the rest in scheduled steps, each
+   recording the removal in its paper's history at the removal's version. The
+   removal is forgotten once every row has taken it.
 4. Revisions list without answers and name the screening version theirs stood
-   at. The code that read answers from the old chunks is deleted: only the dev
-   deployments ever had chunks, and both verified as moved.
+   at. The code that read answers from the old chunks is deleted, with the
+   chunk field and table: only the dev deployments ever had chunks, and both
+   verified as moved and were then cleared.
 5. Not built: a screening's papers by outcome with kept counts. The outcomes
    are the screening page mock's (#341), which isn't agreed yet.
 

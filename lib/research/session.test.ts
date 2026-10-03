@@ -177,6 +177,53 @@ describe("research save recovery", () => {
     stop();
   });
 
+  it("says when a search's answers couldn't be read, and that they're known once a Retry reads them (#421)", async () => {
+    let failing = true;
+    const updates = new Set<() => void>();
+    const client = {
+      watchQuery(query: Parameters<typeof getFunctionName>[0]) {
+        return {
+          localQueryResult: () => {
+            if (getFunctionName(query).endsWith(":answersOf") && failing) throw new Error("Server Error");
+            return { page: [], isDone: true, continueCursor: "" };
+          },
+          onUpdate: (update: () => void) => { updates.add(update); return () => { updates.delete(update); }; },
+        };
+      },
+      mutation: vi.fn(async () => null),
+    } as unknown as ConvexReactClient;
+    const session = new ResearchSession(client, "alice");
+    const stop = session.subscribe(() => {});
+    const unwatch = session.watchAnswers("search", ["W1", "W2"], () => {});
+    // The papers can show, but what they're answered isn't known, so nothing should screen them.
+    expect(session.answersRead("search", ["W1", "W2"])).toBe(2);
+    expect(session.answersFailed("search", ["W1", "W2"])).toBe(true);
+
+    failing = false;
+    session.retry();
+    expect(session.answersFailed("search", ["W1", "W2"])).toBe(false);
+    unwatch();
+    stop();
+  });
+
+  it("reads a download's answers from a search still being saved (#421)", async () => {
+    const client = {
+      watchQuery: () => ({ localQueryResult: () => ({ page: [], isDone: true, continueCursor: "" }), onUpdate: () => () => {} }),
+      // The search isn't on the account yet.
+      query: vi.fn(async () => ({ page: [], isDone: true, continueCursor: "" })),
+      mutation: vi.fn(() => new Promise(() => {})),
+    } as unknown as ConvexReactClient;
+    const session = new ResearchSession(client, "alice");
+    const stop = session.subscribe(() => {});
+    await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
+    const history = session.stores.history.getState();
+    history.importSearchHistory([{ id: "imported", query: "tutoring", field: "title", count: 1, screeningQuestions: [{ question: "Randomized?" }], screeningResponses: { W1: { "Randomized?": true }, W2: { "Randomized?": false } }, createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" }]);
+    history.setScreeningResponse("imported", "W2", "Randomized?", true);
+
+    expect(await session.stores.history.getState().readScreeningResponses("imported", ["W2", "W3"])).toEqual({ W2: { "Randomized?": true } });
+    stop();
+  });
+
   it("keeps the ratings a list already read when the list grows, and reads only the papers it gained", async () => {
     const asked: string[][] = [];
     const stopped = vi.fn();
