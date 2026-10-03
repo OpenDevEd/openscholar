@@ -9,7 +9,7 @@ import { savedPaperAction } from "../library/queries";
 import { estimateAction as screeningEstimateAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
 import { slotsAction as screeningSlotsAction } from "../screening/queries";
-import { screenAction, screenSearchAction } from "../screening/start";
+import { screenAction } from "../screening/start";
 import type { UserAction } from "./userActions";
 
 export const USER_ACTIONS: readonly UserAction[] = [
@@ -29,7 +29,6 @@ export const USER_ACTIONS: readonly UserAction[] = [
   savedPaperAction,
   screeningEstimateAction,
   screenAction,
-  screenSearchAction,
   screeningSlotsAction,
   screeningPaperAction,
   screeningPapersAction,

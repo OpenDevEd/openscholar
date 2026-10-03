@@ -95,27 +95,6 @@ export const screen = userAction(screenAction);
 export const screenForAssistant = assistantAction(screenAction);
 
 /**
- * Screen all from the results page's dialog, on a saved search: included papers are saved to
- * the library, and to `targetCollectionId` when given. The screening page starts jobs
- * through `screen`; this goes with the dialog.
- */
-export const screenSearchAction = defineUserAction({
-  path: "screening/start:screenSearch",
-  description:
-    "Screens papers `first` to `last` (from 1) of one of the person's saved searches, in its results page's order and rating filter, " +
-    "answering the questions for each paper and scoring them by the rules. Answers show on that search's page. Spends credits.",
-  args: { searchId: v.string(), first: v.number(), last: v.number(), ...jobArgs, targetCollectionId: v.optional(v.id("collections")) },
-  returns: v.object({ jobId: v.id("screeningJobs") }),
-  spendsCredits: true,
-  outsideEffect: false,
-  undoable: false,
-  run: (ctx, userId, { searchId, targetCollectionId, ...job }, author): Promise<{ jobId: Id<"screeningJobs"> }> =>
-    start(ctx, userId, author, { set: { kind: "search", searchId }, ...job, ...(targetCollectionId ? { saveTo: { kind: "collection" as const, collectionId: targetCollectionId } } : {}) }),
-});
-export const screenSearch = userAction(screenSearchAction);
-export const screenSearchForAssistant = assistantAction(screenSearchAction);
-
-/**
  * Starts the job for a request's next papers, from `first`, once the job before it
  * completed: the same questions, rules and destination. A stretch of a search with no papers
  * (its rating filter left none) is passed over; a set with no more papers ends the request.

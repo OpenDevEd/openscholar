@@ -69,7 +69,7 @@ describe("Screen all on a saved search, read on the server", () => {
   it("reads the range from the results page's request, one parallel page each, with the key and only the fields it keeps", async () => {
     const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
 
-    const { jobId } = await alice.action(api.screening.start.screenSearch, { searchId: search.id, first: 150, last: 450, ...job });
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 150, last: 450, ...job, saveTo: { kind: "none" } });
 
     expect(requests.map(({ url }) => Number(url.searchParams.get("page"))).sort()).toEqual([1, 2, 3]);
     for (const { url } of requests) {
@@ -96,7 +96,7 @@ describe("Screen all on a saved search, read on the server", () => {
   it("reads an explicit sort's cursor pages in order from the start, as the results page lists them", async () => {
     const { t, alice } = await setup();
 
-    const { jobId } = await alice.action(api.screening.start.screenSearch, { searchId: search.id, first: 250, last: 260, ...job });
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 250, last: 260, ...job, saveTo: { kind: "none" } });
 
     expect(requests.map(({ url }) => url.searchParams.get("cursor"))).toEqual(["*", "2"]);
     expect(requests.every(({ url }) => url.searchParams.get("sort") === "cited_by_count:desc" && url.searchParams.get("page") === null)).toBe(true);
@@ -107,7 +107,7 @@ describe("Screen all on a saved search, read on the server", () => {
   it("keeps exactly the range asked for when it runs across cursor pages", async () => {
     const { t, alice } = await setup();
 
-    const { jobId } = await alice.action(api.screening.start.screenSearch, { searchId: search.id, first: 190, last: 410, ...job });
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 190, last: 410, ...job, saveTo: { kind: "none" } });
 
     expect(requests.map(({ url }) => url.searchParams.get("cursor"))).toEqual(["*", "2", "3"]);
     const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(300));
@@ -117,7 +117,7 @@ describe("Screen all on a saved search, read on the server", () => {
   it("filters by the days picked, whatever the server's timezone", async () => {
     const { alice } = await setup({ ...search, sortBy: "relevance_score:desc", filterType: "date", isYearRangeEnabled: false, yearRange: undefined, dateRange: { from: "2024-12-31T23:00:00.000Z", to: "2025-01-30T23:00:00.000Z" } });
 
-    await alice.action(api.screening.start.screenSearch, { searchId: search.id, first: 1, last: 5, ...job });
+    await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 5, ...job, saveTo: { kind: "none" } });
 
     expect(requests[0]!.url.searchParams.get("filter")).toContain("from_publication_date:2025-01-01,to_publication_date:2025-01-31");
   });
@@ -129,7 +129,7 @@ describe("Screen all on a saved search, read on the server", () => {
       { paperId: "https://openalex.org/W5", rating: 1 },
     ]);
 
-    const { jobId } = await alice.action(api.screening.start.screenSearch, { searchId: oql.id, first: 1, last: 10, ...job });
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: oql.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } });
 
     expect(requests).toHaveLength(1);
     expect(requests[0]!.url.pathname).toBe("/");
@@ -143,7 +143,7 @@ describe("Screen all on a saved search, read on the server", () => {
     const { alice } = await setup();
     await alice.mutation(api.openalex.limits.spend, { count: 300 });
 
-    await expect(alice.action(api.screening.start.screenSearch, { searchId: search.id, first: 1, last: 10, ...job })).rejects.toThrow();
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toThrow();
     expect(requests).toHaveLength(0);
   });
 
@@ -185,7 +185,7 @@ describe("Screen all on a saved search, read on the server", () => {
     const { t } = await setup();
     await t.run((ctx) => ctx.db.insert("users", { libraryItemCount: 0, clerkId: "bob", email: "bob@example.com", state: "active", createdAt: 1, updatedAt: 1 }));
 
-    await expect(t.withIdentity({ subject: "bob" }).action(api.screening.start.screenSearch, { searchId: search.id, first: 1, last: 10, ...job })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+    await expect(t.withIdentity({ subject: "bob" }).action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 10, ...job, saveTo: { kind: "none" } })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
     expect(requests).toHaveLength(0);
   });
 });
