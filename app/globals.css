@@ -318,16 +318,19 @@
      icon as a whole, never to one shape. Each shape is painted in a solid
      colour, and a see-through text colour (text-x/NN, set here or inherited)
      fades the finished icon by its alpha through the mask. */
-  .solar, .lucide {
-    mask-image: linear-gradient(currentColor, currentColor);
-  }
-  .solar *, .lucide * {
-    color: oklch(from currentColor l c h / 1);
-  }
-  /* The lighter tone of a two-tone icon, as a solid colour. */
-  .solar {
-    --solar-secondary-opacity: 1;
-    --solar-secondary-color: color-mix(in oklab, oklch(from currentColor l c h / 1) var(--icon-tone), var(--icon-surface, var(--card)));
+  @supports (color: oklch(from currentColor l c h / 1)) {
+    .solar, .lucide {
+      mask-image: linear-gradient(currentColor, currentColor);
+      mask-clip: no-clip; /* a drop shadow may reach past the icon's box */
+    }
+    .solar *, .lucide * {
+      color: oklch(from currentColor l c h / 1);
+    }
+    /* The lighter tone of a two-tone icon, as a solid colour. */
+    .solar {
+      --solar-secondary-opacity: 1;
+      --solar-secondary-color: color-mix(in oklab, oklch(from currentColor l c h / 1) var(--icon-tone), var(--icon-surface, var(--card)));
+    }
   }
   /* Each surface names itself, so the icons on it mix into the right colour. */
   .bg-background { --icon-surface: var(--background); }
@@ -344,7 +347,8 @@
   [class*="[selected=true]:bg-accent"][data-selected="true"] { --icon-surface: var(--accent); }
   .bg-sidebar-accent, .hover\:bg-sidebar-accent:hover { --icon-surface: var(--sidebar-accent); }
   .bg-segment { --icon-surface: var(--segment); }
-  .bg-segment-active { --icon-surface: var(--segment-active); }
+  .bg-segment-active,
+  [class*="[state=active]:bg-segment-active"][data-state="active"] { --icon-surface: var(--segment-active); }
   .bg-primary, .hover\:bg-primary:hover,
   [class*="[state=checked]:bg-primary"][data-state="checked"],
   [class*="[state=active]:bg-primary"][data-state="active"] { --icon-surface: var(--primary); }
