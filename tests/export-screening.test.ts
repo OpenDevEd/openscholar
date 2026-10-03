@@ -199,6 +199,12 @@ describe('Screening Export', () => {
       expect(failedResult.authors).toEqual([]);
     });
 
+    it('writes answer keys in one order, however the answers were read', () => {
+      const answers = Object.fromEntries(['q2', 'q10', 'q0', 'q1'].map((key) => [key, true]));
+      const parsed = JSON.parse(generateScreeningJSON({ ...mockData, results: [{ ...mockData.results[0], answers }] }));
+      expect(Object.keys(parsed.results[0].answers)).toEqual(['q0', 'q1', 'q10', 'q2']);
+    });
+
     it('is the whole export printed at once, and valid with no results', () => {
       const parsed = JSON.parse(generateScreeningJSON(mockData));
       expect(generateScreeningJSON(mockData)).toBe(JSON.stringify(parsed, null, 2));

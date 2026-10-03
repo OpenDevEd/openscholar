@@ -121,7 +121,8 @@ export const screeningItems = (questions: Questions) => ({
       publicationYear: result.publicationYear ?? null,
       doi: result.doi ?? null,
       status: result.status,
-      answers: result.answers ?? null,
+      // Keys in one order whichever way the answers were read, as the export has always had them.
+      answers: result.answers ? Object.fromEntries(Object.entries(result.answers).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : null,
       score: result.score ?? null,
       stars: result.stars ?? null,
       qualified: result.qualified ?? null,

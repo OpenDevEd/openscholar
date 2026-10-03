@@ -69,8 +69,8 @@ function statusDot(status: ScreeningStatus) {
 }
 
 interface ScreeningJobHistoryProps {
-  /** How many jobs the person has, read before the history opens; undefined until it's known. */
-  total: number | undefined;
+  /** How many jobs the person has, read before the history opens. */
+  total: number;
   onClose?: () => void;
 }
 
@@ -98,8 +98,7 @@ export function ScreeningJobHistory({ total, onClose }: ScreeningJobHistoryProps
   }
 
   // Until the jobs arrive the count sizes the list, so the dialog opens at its final size.
-  if (jobs.isLoading && total === undefined) return null;
-  const hasPages = jobs.isLoading ? (total ?? 0) > PAGE_SIZE : jobs.hasPages;
+  const hasPages = jobs.isLoading ? total > PAGE_SIZE : jobs.hasPages;
   if (jobs.isLoading ? total === 0 : jobs.items.length === 0 && !jobs.hasPages) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -118,7 +117,7 @@ export function ScreeningJobHistory({ total, onClose }: ScreeningJobHistoryProps
     <div className="min-h-0 flex-1 overflow-y-auto -mx-6 px-6">
     <div
       className={cn("space-y-1.5 pb-2", jobs.isStale && "pointer-events-none opacity-60")}
-      style={{ minHeight: listPx(hasPages ? PAGE_SIZE : jobs.isLoading ? (total ?? 0) : jobs.items.length) }}
+      style={{ minHeight: listPx(hasPages ? PAGE_SIZE : jobs.isLoading ? total : jobs.items.length) }}
     >
       {jobs.items.map((job) => {
         const isActive = job.status === "processing";
@@ -271,7 +270,7 @@ export function ScreeningJobHistory({ total, onClose }: ScreeningJobHistoryProps
         <PageStepper
           className="shrink-0 pt-3"
           page={jobs.page}
-          pageCount={total === undefined ? undefined : Math.ceil(total / PAGE_SIZE)}
+          pageCount={Math.ceil(total / PAGE_SIZE)}
           canPrevious={jobs.canPrevious}
           canNext={jobs.canNext}
           onPrevious={jobs.previous}

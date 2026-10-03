@@ -23,11 +23,12 @@ export function ScreeningJobsDialog({
   onOpenChange,
 }: ScreeningJobsDialogProps) {
   const t = useTranslations("screeningDialog");
-  // Read while the dialog is closed, so it opens at the size its first page takes.
+  // Read while the dialog is closed, and waited for when it's opened first, so the dialog
+  // opens at the size its first page takes.
   const { data: total } = useProtectedQuery(api.screening.queries.countUserScreeningJobs, {});
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open && total !== undefined} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl max-h-[80vh] flex flex-col gap-0 overflow-hidden">
         <DialogHeader className="shrink-0 pb-4">
           <DialogTitle className="flex items-center gap-2 text-base">
@@ -39,7 +40,7 @@ export function ScreeningJobsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScreeningJobHistory total={total} onClose={() => onOpenChange(false)} />
+        {total !== undefined && <ScreeningJobHistory total={total} onClose={() => onOpenChange(false)} />}
       </DialogContent>
     </Dialog>
   );
