@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { PanelRow } from "../fields";
 import { SectionCard } from "../section-card";
+import { TrashIcon } from "@/components/section-icons";
 
 /** Delete the development library. Not a draft section: no state chip or reset. */
 export function DangerSection({ onDelete }: { onDelete: () => void }) {
@@ -12,7 +13,7 @@ export function DangerSection({ onDelete }: { onDelete: () => void }) {
   return (
     <SectionCard
       id="sec-danger"
-      icon={Trash2}
+      icon={TrashIcon}
       tone="danger"
       title={t("sections.danger")}
       description={t("danger.description")}

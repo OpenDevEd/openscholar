@@ -74,7 +74,7 @@ import { readProfileAuthor } from "@/app/actions/authors";
 import {PublicationListItem, PublicationMetadata} from "@/components/evidence-libraries/publication-list-item";
 import type {AuthorProfile, OpenAlexMatch, AuthorPublication} from "./types";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
-import { PersonIcon } from "@/components/section-icons";
+import { PersonIcon, LinkIcon, BookIcon } from "@/components/section-icons";
 
 const safeUrl = (value?: string) => {
   try {
@@ -250,7 +250,7 @@ export default function AuthorPage({
                 </FieldError>
               ) : formError ? <FieldError>{formError}</FieldError> : null}
               <SectionCard
-                icon={UserRound}
+                icon={PersonIcon}
                 title="Profile details"
                 id="sec-profile-details"
               >
@@ -372,7 +372,7 @@ export default function AuthorPage({
               </SectionCard>
               <SectionCard
                 id="sec-profile-links"
-                icon={Link2}
+                icon={LinkIcon}
                 title="Links & identifiers"
               >
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -416,7 +416,7 @@ export default function AuthorPage({
               <SectionCard
                 id="sec-profile-publications"
                 title="Selected publications"
-                icon={BookOpen}
+                icon={BookIcon}
                 description="Choose the published works to feature on this profile."
               >
                 <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">

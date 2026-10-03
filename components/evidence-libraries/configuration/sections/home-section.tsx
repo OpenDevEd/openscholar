@@ -5,7 +5,6 @@ import {
   Camera,
   ChevronsUpDown,
   FileText,
-  House,
   Loader2,
   Pencil,
   Plus,
@@ -43,6 +42,7 @@ import { IconPreview, NavbarIconPicker } from "./navbar-icon-picker";
 import { PHOTO_ACCEPT, toPersonPhoto } from "../photo-upload";
 import { useDropzone } from "react-dropzone";
 import { useFileUploads } from "../use-file-uploads";
+import { HomeIcon } from "@/components/section-icons";
 
 const LIMITS = SCHEMA_LIMITS.home;
 
@@ -101,7 +101,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
   return (
     <SectionShell
       sectionKey="home"
-      icon={House}
+      icon={HomeIcon}
       description="The page visitors land on at the library's address."
       draft={draft}
       saved={saved}

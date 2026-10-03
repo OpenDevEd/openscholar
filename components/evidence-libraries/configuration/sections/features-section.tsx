@@ -1,6 +1,5 @@
 "use client";
 
-import { ToggleRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   FEATURE_GROUPS,
@@ -11,6 +10,7 @@ import {
 } from "@/lib/evidence-libraries/configuration/rules";
 import { FieldGroup, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
+import { SwitchesIcon } from "@/components/section-icons";
 
 export function FeaturesSection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.features");
@@ -43,7 +43,7 @@ export function FeaturesSection({ draft, saved, patch, reset }: SectionProps) {
   return (
     <SectionShell
       sectionKey="features"
-      icon={ToggleRight}
+      icon={SwitchesIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

@@ -3,7 +3,7 @@
 import { ConvexError } from "convex/values";
 import { useAction, useMutation } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
-import { History, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { Suspense, use, useDeferredValue, useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -30,6 +30,7 @@ import { FieldGroup, Panel } from "../fields";
 import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip } from "../status-chip";
 import { ReleaseNotes, VersionHistory } from "./versions-views";
+import { HistoryIcon } from "@/components/section-icons";
 
 type RuntimeState = FunctionReturnType<typeof api.evidenceLibraries.updates.check>;
 type VersionRow = FunctionReturnType<
@@ -244,7 +245,7 @@ export function VersionsSection({
   return (
     <SectionCard
       id="sec-versions"
-      icon={History}
+      icon={HistoryIcon}
       title={t("sections.versions")}
       description={t("versions.description")}
     >

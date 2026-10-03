@@ -1,7 +1,7 @@
 "use client";
 
 import { useAction, useMutation, useQuery } from "convex/react";
-import { ChevronDown, Plus, Sparkles } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -32,6 +32,7 @@ import {
 } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { ModelPicker } from "@/components/models/model-picker";
+import { SparklesIcon } from "@/components/section-icons";
 
 const KEY_INSTANCE = "openrouter";
 
@@ -70,7 +71,7 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
   return (
     <SectionShell
       sectionKey="ai"
-      icon={Sparkles}
+      icon={SparklesIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

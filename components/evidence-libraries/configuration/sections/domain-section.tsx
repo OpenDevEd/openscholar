@@ -10,7 +10,7 @@ import {
   Undo02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Link2 } from "lucide-react";
+
 import { useTranslations } from "next-intl";
 import { memo, useId, useState } from "react";
 import { toast } from "sonner";
@@ -29,6 +29,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { LibraryAddressLink } from "../../library-address-link";
 import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip, type StatusTone } from "../status-chip";
+import { LinkIcon } from "@/components/section-icons";
 
 type DomainFailure =
   | "no-name"
@@ -196,7 +197,7 @@ export const DomainSection = memo(function DomainSection({
   return (
     <SectionCard
       id="sec-domain"
-      icon={Link2}
+      icon={LinkIcon}
       title={ts("domain")}
       description={t("description")}
       data-domain-state={domains[0]?.state ?? "empty"}

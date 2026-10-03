@@ -7,7 +7,7 @@
 import type { ComponentType } from "react";
 
 /** Any icon component the app can place: a section icon from here, or a Lucide one. */
-export type AppIcon = ComponentType<{ className?: string }>;
+export type AppIcon = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 
 export { Home2Icon as HomeIcon } from "@solar-icons/react/bold-duotone/home-2";
 export { LibraryIcon } from "@solar-icons/react/bold-duotone/library";

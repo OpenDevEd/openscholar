@@ -45,7 +45,7 @@ export function PanelHeader({
   /** Actions. */
   children?: ReactNode;
 }) {
-  const icon = Icon ? <Icon className="size-4.5 shrink-0 text-primary" /> : null;
+  const icon = Icon ? <Icon aria-hidden className="size-4.5 shrink-0 text-primary" /> : null;
   return (
     <div className="flex h-16 items-center gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-2 @3xl:flex-initial">

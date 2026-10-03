@@ -1,6 +1,5 @@
 "use client";
 
-import { Palette } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +24,7 @@ import { Field } from "../section-card";
 import { ChoiceCards, ColourField, FieldGroup, UploadField } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { Disclosure } from "../disclosure-button";
+import { PaletteIcon } from "@/components/section-icons";
 
 const ADVANCED_COLOURS = [
   "backgroundDark",
@@ -68,7 +68,7 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
   return (
     <SectionShell
       sectionKey="theme"
-      icon={Palette}
+      icon={PaletteIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

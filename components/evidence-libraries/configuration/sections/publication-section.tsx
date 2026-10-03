@@ -5,7 +5,7 @@ import { useTranslations, useFormatter } from "next-intl";
 import { useAction } from "convex/react";
 import { ConvexError } from "convex/values";
 import type { FunctionReturnType } from "convex/server";
-import { FlaskConical, KeyRound, Send, ShieldCheck } from "lucide-react";
+import { FlaskConical, KeyRound, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -28,6 +28,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Field, FieldError, SectionCard } from "../section-card";
 import { FieldGroup, PanelRow } from "../fields";
+import { PublishIcon } from "@/components/section-icons";
 
 type Saved = FunctionReturnType<
   typeof api.evidenceLibraries.publicationProviders.get
@@ -89,7 +90,7 @@ export function PublicationSection({
   return (
     <SectionCard
       id="sec-publication"
-      icon={Send}
+      icon={PublishIcon}
       title={t("title")}
       description={t("description")}
     >

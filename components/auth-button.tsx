@@ -11,7 +11,6 @@ import {
   Coins,
   Settings,
   Loader2,
-  Bot,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
@@ -38,6 +37,7 @@ import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { findPlan, isUpgrade, mainPlans } from "@/lib/billing/catalog";
 import { useTranslations } from "next-intl";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { SettingsIcon, BotIcon } from "@/components/section-icons";
 
 interface AuthButtonProps {
   isCollapsed?: boolean;
@@ -155,7 +155,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
             }}
             className="cursor-pointer flex items-start gap-3 py-2.5"
           >
-            <Bot className="h-4 w-4 shrink-0 mt-0.5" />
+            <BotIcon className="h-4 w-4 shrink-0 mt-0.5" />
             <div className="flex flex-col items-start gap-0.5 min-w-0 text-left">
               <span className="font-medium">{tai("aiConfiguration")}</span>
               <span className="text-xs text-muted-foreground leading-snug">
@@ -339,7 +339,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
           }}
           className="cursor-pointer"
         >
-          <Settings className="h-4 w-4 mr-2" />
+          <SettingsIcon className="h-4 w-4 mr-2" />
           {tc("settings")}
         </DropdownMenuItem>
 

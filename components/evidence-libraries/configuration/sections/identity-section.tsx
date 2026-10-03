@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Globe } from "lucide-react";
+import { Copy } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
   UploadField,
 } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
+import { GlobeIcon } from "@/components/section-icons";
 
 const LIMITS = SCHEMA_LIMITS.identity;
 
@@ -34,7 +35,7 @@ export function IdentitySection({ draft, saved, patch, reset }: SectionProps) {
   return (
     <SectionShell
       sectionKey="identity"
-      icon={Globe}
+      icon={GlobeIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

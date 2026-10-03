@@ -1,6 +1,6 @@
 "use client";
 
-import { Github, Linkedin, PanelBottom, Youtube } from "lucide-react";
+import { Github, Linkedin, Youtube } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +29,7 @@ import {
 import { SectionShell, type SectionProps } from "../section-shell";
 import { BlueskyIcon, XIcon } from "../social-icons";
 import { LinkEditor } from "./link-editor";
+import { FooterIcon } from "@/components/section-icons";
 
 const LIMITS = SCHEMA_LIMITS.footer;
 
@@ -66,7 +67,7 @@ export function FooterSection({ draft, saved, patch, reset }: SectionProps) {
   return (
     <SectionShell
       sectionKey="footer"
-      icon={PanelBottom}
+      icon={FooterIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

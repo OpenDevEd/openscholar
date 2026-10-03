@@ -1,6 +1,5 @@
 "use client";
 
-import { BarChart3 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { HTTPS_URL } from "@/lib/evidence-libraries/configuration/links";
@@ -13,6 +12,7 @@ import {
 import { Field } from "../section-card";
 import { FieldGroup, Panel, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
+import { AnalyticsIcon } from "@/components/section-icons";
 
 /** PostHog and Google Analytics are independent; both may be on at once. */
 export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
@@ -35,7 +35,7 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
   return (
     <SectionShell
       sectionKey="analytics"
-      icon={BarChart3}
+      icon={AnalyticsIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

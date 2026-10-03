@@ -1,6 +1,5 @@
 "use client";
 
-import { Languages } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,6 +13,7 @@ import { type Locale, LOCALES, settleFeatures } from "@/lib/evidence-libraries/c
 import { Field, FieldError } from "../section-card";
 import { ChoiceChips, EmptyList, FieldGroup, ListRow, move, SortableList, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
+import { LanguagesIcon } from "@/components/section-icons";
 
 export function LanguagesSection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.languages");
@@ -37,7 +37,7 @@ export function LanguagesSection({ draft, saved, patch, reset }: SectionProps) {
   return (
     <SectionShell
       sectionKey="languages"
-      icon={Languages}
+      icon={LanguagesIcon}
       description={t("description")}
       draft={draft}
       saved={saved}
