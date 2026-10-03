@@ -29,7 +29,8 @@ const MAX_READS_PER_PAGE = 5;
  * the first page when `args` change. The last page shown stays up until the next arrives.
  *
  * A live Convex page keeps the range it first read, so rows added inside it grow it past
- * what was asked; a grown page is read again from its start, under a new query id.
+ * what was asked; a grown page is read again from its start, under a new query id. A page
+ * can come back empty yet not be the end, when its reads found nothing; `canNext` says so.
  */
 export function useCursorPage<Query extends PageQuery>(query: Query, args: PageArgs<Query> | "skip", pageSize: number) {
   const { canRunProtectedQueries } = useAuthReadiness();
@@ -60,8 +61,10 @@ export function useCursorPage<Query extends PageQuery>(query: Query, args: PageA
     const from = read as Result<Query>[];
     const last = from[from.length - 1];
     const count = from.reduce((sum, result) => sum + result.page.length, 0);
-    if (from.some((result, i) => result.page.length > reads[i].numItems)) {
-      setState({ ...current, id: id + 1 });
+    if (count > pageSize || from.some((result, i) => result.page.length > reads[i].numItems)) {
+      // Live rows grew a read, or rows added to an earlier read pushed the page past its size:
+      // read it again from its start, so no row falls between it and the next page.
+      setState({ ...current, reads: [{ cursor: starts.at(-1) ?? null, numItems: pageSize }], id: id + 1 });
     } else if (count < pageSize && !last.isDone && reads.length < MAX_READS_PER_PAGE) {
       setState({ ...current, reads: [...reads, { cursor: last.continueCursor, numItems: pageSize - count }] });
     } else if (shown?.key === key && shown.number === starts.length + 1 && shown.from.length === from.length && shown.from.every((result, i) => result === from[i])) {

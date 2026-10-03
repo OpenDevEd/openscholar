@@ -119,7 +119,10 @@ vi.mock("next-intl", () => ({
 }));
 
 vi.mock("convex/react", () => ({
-  useMutation: () => startExportMock,
+  useConvex: () => ({
+    mutation: startExportMock,
+    watchQuery: () => ({ onUpdate: () => () => {}, localQueryResult: () => undefined }),
+  }),
   useQueries: (requests: Record<string, { query: unknown; args: { paginationOpts: { cursor: string | null; numItems: number } } }>) =>
     Object.fromEntries(Object.entries(requests).map(([name, { query, args }]) => [name, readPage(query, args)])),
 }));
@@ -483,18 +486,19 @@ describe("LibraryPageClient", () => {
     );
   });
 
-  it("starts an export of the view with a token's digest and downloads it in a hidden frame", async () => {
+  it("starts an export of the view with a token's digest and downloads its first part in a hidden frame", async () => {
     queryStateStore.value.rmin = 2;
     render(<LibraryPageClient />);
 
     fireEvent.click(screen.getByRole("button", { name: "export csv" }));
 
     await waitFor(() => expect(startExportMock).toHaveBeenCalledTimes(1));
-    const [{ digest, format, view }] = startExportMock.mock.calls[0];
+    const [mutation, { digest, format, view }] = startExportMock.mock.calls[0];
+    expect(mutation).toBe(api.library.exports.start);
     expect(format).toBe("csv");
     expect(digest).toMatch(/^[0-9a-f]{64}$/);
     expect(view).toEqual(expect.objectContaining({ sortBy: "savedAt", sortOrder: "desc", minRating: 2 }));
-    await waitFor(() => expect(document.querySelector("iframe")?.getAttribute("src")).toMatch(/\/library\/export\?token=[\w-]{43}$/));
+    await waitFor(() => expect(document.querySelector("iframe")?.getAttribute("src")).toMatch(/\/library\/export\?token=[\w-]{43}&part=1$/));
   });
 
   it("shows a count that stopped before the end as at least that many", () => {

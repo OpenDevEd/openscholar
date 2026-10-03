@@ -97,4 +97,18 @@ describe("useCursorPage", () => {
     rerender();
     expect(new Set(server.requests).size).toBe(1);
   });
+
+  it("reads a filled page again when rows added to an earlier read push it past its size", () => {
+    server.pages.set("|null", page(["a"], "s1"));
+    server.pages.set("|s1", page(["b"], "c1"));
+    const { result, rerender } = renderHook(() => useCursorPage(query, {}, 2));
+    expect(result.current.items).toEqual(["a", "b"]);
+    // A match appears in the first read's range: three rows, and a fresh read of the page.
+    server.pages.set("|null", page(["a", "a2"], "s1b"));
+    server.pages.set("|null|1", page(["a", "a2"], "c0"));
+    rerender();
+    expect(result.current.items).toEqual(["a", "a2"]);
+    act(() => result.current.next());
+    expect(server.reads.at(-1)?.paginationOpts.cursor).toBe("c0");
+  });
 });

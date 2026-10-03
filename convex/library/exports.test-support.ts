@@ -7,16 +7,25 @@ import type { LibraryView } from "./validators";
 type Test = TestConvex<typeof schema>;
 type Signed = ReturnType<Test["withIdentity"]>;
 
-/** Starts an export of `view` as the signed-in person and downloads it through `/library/export`. */
+/**
+ * Starts an export of `view` as the signed-in person and downloads every part through
+ * `/library/export`, as the browser does: the next part once the last is done.
+ */
 export async function exportLibrary(t: Test, as: Signed, view: LibraryView, format: "csv" | "json" = "json") {
   const token = `test-${crypto.randomUUID()}`;
-  await as.mutation(api.library.exports.start, { digest: await digestOpaqueToken(token), format, view });
-  const response = await t.fetch(`/library/export?token=${token}`);
-  return { token, response, text: await response.text() };
+  const digest = await digestOpaqueToken(token);
+  await as.mutation(api.library.exports.start, { digest, format, view });
+  const parts: Array<{ response: Response; text: string }> = [];
+  for (let part: number | null = 1; part !== null; part = await as.query(api.library.exports.progress, { digest })) {
+    const response = await t.fetch(`/library/export?token=${token}&part=${part}`);
+    parts.push({ response, text: await response.text() });
+    if (response.status !== 200) break;
+  }
+  return { token, parts, response: parts[0].response, text: parts[0].text };
 }
 
-/** The titles a JSON export holds, in its order. */
+/** The titles a JSON export holds across its parts, in order. */
 export async function exportedTitles(t: Test, as: Signed, view: LibraryView) {
-  const { text } = await exportLibrary(t, as, view);
-  return (JSON.parse(text) as { items: Array<{ title: string }> }).items.map((item) => item.title);
+  const { parts } = await exportLibrary(t, as, view);
+  return parts.flatMap(({ text }) => (JSON.parse(text) as { items: Array<{ title: string }> }).items.map((item) => item.title));
 }

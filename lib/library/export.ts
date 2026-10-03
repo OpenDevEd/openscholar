@@ -1,5 +1,7 @@
 import type { Doc } from "@/convex/_generated/dataModel";
 import type { LibraryView } from "@/convex/library/validators";
+import type { ConvexReactClient } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { digestOpaqueToken } from "@/convex/lib/opaqueTokenDigest";
 
 export type LibraryExportFormat = "csv" | "json";
@@ -50,30 +52,39 @@ export const libraryExportFile = {
   },
 };
 
-export function libraryExportFilename(format: LibraryExportFormat, at: Date) {
-  return `library-export-${at.toISOString().slice(0, 10)}.${format}`;
+/** The first part keeps the plain name; a later one says which part it is. */
+export function libraryExportFilename(format: LibraryExportFormat, at: Date, part = 1) {
+  return `library-export-${at.toISOString().slice(0, 10)}${part > 1 ? `-part-${part}` : ""}.${format}`;
 }
 
-/** How long a started export's link works; the browser opens it at once. */
+/** How long an export's link waits for its next part to be fetched; the browser fetches it at once. */
 export const LIBRARY_EXPORT_LINK_MS = 2 * 60_000;
 
 /**
- * Downloads a library view as a file the server writes a page at a time, so no export is
- * held whole in memory, here or there. The browser makes a one-time token and registers
- * only its digest; the download link carries the token.
+ * Downloads a library view as files the server writes a page at a time, so no export is
+ * held whole in memory, here or there. A file stops short of Convex's 20 MiB response
+ * limit, and the next part follows once it's done. The browser makes a one-time token and
+ * registers only its digest; each part's link carries the token.
  */
-export async function downloadLibraryExport(
-  start: (args: { digest: string; format: LibraryExportFormat; view: LibraryView }) => Promise<null>,
-  view: LibraryView,
-  format: LibraryExportFormat,
-) {
+export async function downloadLibraryExport(convex: ConvexReactClient, view: LibraryView, format: LibraryExportFormat) {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  await start({ digest: await digestOpaqueToken(token), format, view });
-  // A hidden frame takes the download, so the page doesn't navigate or ask to leave.
-  const frame = document.createElement("iframe");
-  frame.hidden = true;
-  frame.src = `${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/library/export?token=${token}`;
-  document.body.appendChild(frame);
-  setTimeout(() => frame.remove(), LIBRARY_EXPORT_LINK_MS);
+  const digest = await digestOpaqueToken(token);
+  await convex.mutation(api.library.exports.start, { digest, format, view });
+  // A hidden frame takes each download, so the page doesn't navigate or ask to leave.
+  const open = (part: number) => {
+    const frame = document.createElement("iframe");
+    frame.hidden = true;
+    frame.src = `${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/library/export?token=${token}&part=${part}`;
+    document.body.appendChild(frame);
+    setTimeout(() => frame.remove(), LIBRARY_EXPORT_LINK_MS);
+  };
+  open(1);
+  let opened = 1;
+  const watch = convex.watchQuery(api.library.exports.progress, { digest });
+  const stop = watch.onUpdate(() => {
+    const part = watch.localQueryResult();
+    if (part === null) stop();
+    else if (part !== undefined && part > opened) open((opened = part));
+  });
 }

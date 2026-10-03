@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
-import { useMutation } from "convex/react";
+import { useConvex } from "convex/react";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { api } from "@/convex/_generated/api";
@@ -164,14 +164,14 @@ export function LibraryPageClient() {
   const paged = queryText ? searchItems : browseItems;
 
   const [isExporting, setIsExporting] = useState(false);
-  const startExport = useMutation(api.library.exports.start);
+  const convex = useConvex();
 
   const handleExport = useCallback(
     async (format: "csv" | "json") => {
       if (isExporting) return;
       setIsExporting(true);
       try {
-        await downloadLibraryExport(startExport, { ...libraryFilters, searchText: queryText || undefined }, format);
+        await downloadLibraryExport(convex, { ...libraryFilters, searchText: queryText || undefined }, format);
       } catch (error) {
         console.error(`[Library] Failed to start the ${format} export:`, error);
         toast.error(t("exportError"));
@@ -179,7 +179,7 @@ export function LibraryPageClient() {
         setIsExporting(false);
       }
     },
-    [isExporting, libraryFilters, queryText, startExport, t],
+    [convex, isExporting, libraryFilters, queryText, t],
   );
 
   const pageItems = paged.items;
@@ -403,7 +403,7 @@ export function LibraryPageClient() {
     !hasNarrowingCriteria &&
     totalCount === 0;
   const isNoResults =
-    !isLoading && pageItems.length === 0 && hasNarrowingCriteria;
+    !isLoading && pageItems.length === 0 && hasNarrowingCriteria && !paged.hasPages;
 
   return (
     <TranslationContext.Provider value={{}}>
@@ -507,7 +507,8 @@ export function LibraryPageClient() {
                   />
                 )}
 
-                {!isLoading && pageResults.length > 0 && (
+                {/* A sparse filter can leave a page empty with more after it: the pager stays to reach them. */}
+                {!isLoading && (pageResults.length > 0 || paged.hasPages) && (
                   <>
                     {/* The page shown stays, dimmed and still, until the one it steps to arrives. */}
                     <div className={cn(GRID_CLASSES[effectiveViewMode], paged.isStale && "pointer-events-none opacity-60")}>
@@ -531,13 +532,16 @@ export function LibraryPageClient() {
                     <CommandCenterContainer>
                       <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-sm text-muted-foreground">
-                          {t("showingRange", {
-                            start: rangeStart,
-                            end: rangeEnd,
-                            total:
-                              filteredTotal ??
-                              `${format.number(filteredAtLeast ?? pageStart + pageItems.length)}+`,
-                          })}
+                          {/* An empty page between others has no range; the line keeps its height. */}
+                          {pageResults.length === 0
+                            ? "\u00a0"
+                            : t("showingRange", {
+                                start: rangeStart,
+                                end: rangeEnd,
+                                total:
+                                  filteredTotal ??
+                                  `${format.number(filteredAtLeast ?? pageStart + pageItems.length)}+`,
+                              })}
                         </p>
 
                         {paged.hasPages && (

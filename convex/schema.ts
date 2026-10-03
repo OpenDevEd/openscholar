@@ -1046,12 +1046,16 @@ export default defineSchema({
     .index("by_user_sortName", ["userId", "sortName"])
     .searchIndex("search_name", { searchField: "name", filterFields: ["userId"] }),
 
-  // A one-time library export link: its token's SHA-256 digest, the view, and when it expires.
+  // A library export a browser is downloading in parts: its token's SHA-256 digest, the view,
+  // the next part to serve and where it starts, and when the link expires.
   libraryExports: defineTable({
     userId: v.id("users"),
     digest: v.string(),
     format: libraryExportFormatValidator,
     view: libraryViewValidator,
+    part: v.number(),
+    cursor: v.union(v.string(), v.null()),
+    serving: v.boolean(),
     expiresAt: v.number(),
   }).index("by_digest", ["digest"]),
 
