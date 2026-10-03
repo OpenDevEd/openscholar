@@ -129,8 +129,6 @@
   "everyPage": {
     "pending": {
       "app/actions/topic-publications.ts:rows": "#424",
-      "components/library/library-page-client.tsx:LibraryPageClient": "#420",
-      "components/library/library-page-client.tsx:LibraryPageClient#2": "#420",
       "convex/chat/messages.ts:listRecentThreadArtifacts": "#422",
       "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#422",
       "convex/evidenceLibraries/uploadsClient.ts:listObjectNames": "#425",
@@ -138,7 +136,6 @@
       "convex/zotero/actions.ts:fetchAllCollectionsForParent": "#425",
       "convex/zotero/actions.ts:fetchAllTopItemsForCollection": "#425",
       "convex/zotero/libraryGroupActions.ts:listAllUserGroups": "#425",
-      "lib/library/export.ts:readEveryLibraryPage": "#420",
       "lib/research/session.ts:watchPages": "#420"
     }
   },

@@ -1,74 +1,79 @@
-import { downloadAsFile, jsonToCSV } from "@/lib/utils";
 import type { Doc } from "@/convex/_generated/dataModel";
+import type { LibraryView } from "@/convex/library/validators";
+import { digestOpaqueToken } from "@/convex/lib/opaqueTokenDigest";
 
-/**
- * Every item of a paged library view, one page per query, so an export of any size fits
- * (#352). Pages continue from index cursors, so a removed paper shifts nothing, and a
- * paper whose sort value changes mid-export is kept once.
- *
- * ponytail: a paper whose sort value moves it into pages already read is missed; a
- * snapshot export would need the view frozen while it's read.
- */
-export async function readEveryLibraryPage<Item extends { _id: string }>(
-  readPage: (cursor: string | null) => Promise<{ page: Item[]; isDone: boolean; continueCursor: string }>,
-): Promise<Item[]> {
-  const items = new Map<string, Item>();
-  for (let cursor: string | null = null; ;) {
-    const result = await readPage(cursor);
-    for (const item of result.page) if (!items.has(item._id)) items.set(item._id, item);
-    if (result.isDone) return [...items.values()];
-    cursor = result.continueCursor;
-  }
-}
+export type LibraryExportFormat = "csv" | "json";
 
-interface LibraryExportItem {
-  [key: string]: string | number | boolean;
-  title: string;
-  authors: string;
-  doi: string;
-  publicationYear: number | string;
-  journal: string;
-  rating: number | "";
-  citedByCount: number | string;
-  isOpenAccess: boolean | string;
-  oaStatus: string;
-  openalexId: string;
-  savedAt: string;
-  updatedAt: string;
-  abstract: string;
-}
-
-function formatForExport(item: Doc<"libraryItems">): LibraryExportItem {
+/** One exported paper. The server writes these (convex/library/exports.ts); the browser only downloads. */
+function formatForExport(item: Doc<"libraryItems">) {
   return {
-    title: item.title,
+    abstract: item.abstract ?? "",
     authors: item.authors ?? "",
-    doi: item.doi ?? "",
-    publicationYear: item.publicationYear ?? "",
-    journal: item.journal ?? "",
-    rating: item.rating ?? "",
     citedByCount: item.citedByCount ?? "",
+    doi: item.doi ?? "",
     isOpenAccess: item.isOpenAccess ?? "",
+    journal: item.journal ?? "",
     oaStatus: item.oaStatus ?? "",
     openalexId: item.openalexId,
+    publicationYear: item.publicationYear ?? "",
+    rating: item.rating ?? "",
     savedAt: new Date(item.savedAt).toISOString(),
+    title: item.title,
     updatedAt: new Date(item.updatedAt).toISOString(),
-    abstract: item.abstract ?? "",
   };
 }
 
-export function exportLibraryAsCSV(items: Doc<"libraryItems">[]) {
-  const rows = items.map(formatForExport);
-  const csv = jsonToCSV(rows);
-  const filename = `library-export-${new Date().toISOString().slice(0, 10)}.csv`;
-  downloadAsFile(csv, filename, "csv");
+/** The CSV's columns, in the order the fields above are listed (alphabetical, as before). */
+const CSV_COLUMNS = Object.keys(formatForExport({ savedAt: 0, updatedAt: 0 } as Doc<"libraryItems">)) as Array<keyof ReturnType<typeof formatForExport>>;
+
+function csvValue(value: string | number | boolean) {
+  const text = String(value);
+  return /[",\n\r]/.test(text) || text === "" ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-export function exportLibraryAsJSON(items: Doc<"libraryItems">[]) {
-  const data = {
-    exportedAt: new Date().toISOString(),
-    totalItems: items.length,
-    items: items.map(formatForExport),
-  };
-  const filename = `library-export-${new Date().toISOString().slice(0, 10)}.json`;
-  downloadAsFile(JSON.stringify(data, null, 2), filename, "json");
+/** The export as it streams: a start, each paper, and an end that can say how many there were. */
+export const libraryExportFile = {
+  csv: {
+    contentType: "text/csv; charset=utf-8",
+    start: () => CSV_COLUMNS.join(","),
+    item: (item: Doc<"libraryItems">) => {
+      const row = formatForExport(item);
+      return `\n${CSV_COLUMNS.map((column) => csvValue(row[column])).join(",")}`;
+    },
+    end: () => "\n",
+  },
+  json: {
+    contentType: "application/json; charset=utf-8",
+    start: (exportedAt: Date) => `{\n  "exportedAt": ${JSON.stringify(exportedAt.toISOString())},\n  "items": [`,
+    item: (item: Doc<"libraryItems">, index: number) => `${index === 0 ? "" : ","}\n    ${JSON.stringify(formatForExport(item))}`,
+    end: (count: number) => `\n  ],\n  "totalItems": ${count}\n}\n`,
+  },
+};
+
+export function libraryExportFilename(format: LibraryExportFormat, at: Date) {
+  return `library-export-${at.toISOString().slice(0, 10)}.${format}`;
+}
+
+/** How long a started export's link works; the browser opens it at once. */
+export const LIBRARY_EXPORT_LINK_MS = 2 * 60_000;
+
+/**
+ * Downloads a library view as a file the server writes a page at a time, so no export is
+ * held whole in memory, here or there. The browser makes a one-time token and registers
+ * only its digest; the download link carries the token.
+ */
+export async function downloadLibraryExport(
+  start: (args: { digest: string; format: LibraryExportFormat; view: LibraryView }) => Promise<null>,
+  view: LibraryView,
+  format: LibraryExportFormat,
+) {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  await start({ digest: await digestOpaqueToken(token), format, view });
+  // A hidden frame takes the download, so the page doesn't navigate or ask to leave.
+  const frame = document.createElement("iframe");
+  frame.hidden = true;
+  frame.src = `${process.env.NEXT_PUBLIC_CONVEX_SITE_URL}/library/export?token=${token}`;
+  document.body.appendChild(frame);
+  setTimeout(() => frame.remove(), LIBRARY_EXPORT_LINK_MS);
 }

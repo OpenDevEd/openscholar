@@ -55,7 +55,8 @@ export function parseLibrarySort(combined: LibrarySortCombined): {
  * - yf/yt: year from/to
  * - view: view mode
  * - col: collection ID
- * - p: page number
+ *
+ * The page isn't in the URL: pages step by cursor, which a link can't replay.
  */
 export const librarySearchParams = {
   q: parseAsString.withDefault(""),
@@ -68,7 +69,6 @@ export const librarySearchParams = {
   yt: parseAsInteger,
   view: parseAsStringLiteral(libraryViewModes).withDefault("list-detail"),
   col: parseAsString, // Collection ID filter (null = all collections)
-  p: parseAsInteger.withDefault(1), // Page number for pagination
 };
 
 /**

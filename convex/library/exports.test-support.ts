@@ -1,0 +1,22 @@
+import type { TestConvex } from "convex-test";
+import { api } from "../_generated/api";
+import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
+import type schema from "../schema";
+import type { LibraryView } from "./validators";
+
+type Test = TestConvex<typeof schema>;
+type Signed = ReturnType<Test["withIdentity"]>;
+
+/** Starts an export of `view` as the signed-in person and downloads it through `/library/export`. */
+export async function exportLibrary(t: Test, as: Signed, view: LibraryView, format: "csv" | "json" = "json") {
+  const token = `test-${crypto.randomUUID()}`;
+  await as.mutation(api.library.exports.start, { digest: await digestOpaqueToken(token), format, view });
+  const response = await t.fetch(`/library/export?token=${token}`);
+  return { token, response, text: await response.text() };
+}
+
+/** The titles a JSON export holds, in its order. */
+export async function exportedTitles(t: Test, as: Signed, view: LibraryView) {
+  const { text } = await exportLibrary(t, as, view);
+  return (JSON.parse(text) as { items: Array<{ title: string }> }).items.map((item) => item.title);
+}

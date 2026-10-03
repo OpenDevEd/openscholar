@@ -3,7 +3,6 @@ import { describe, it, expect } from "vitest";
 import { ConvexError } from "convex/values";
 import { api } from "../_generated/api";
 import schema from "../schema";
-import { readEveryLibraryPage } from "../../lib/library/export";
 import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { collectionSortName } from "./collections";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -777,16 +776,12 @@ describe("browseLibrary with collectionId filter", () => {
     await seedJunctionRow(t, user!._id, collection!._id, first!._id);
     await seedJunctionRow(t, user!._id, collection!._id, second!._id);
 
-    const walked = await readEveryLibraryPage((cursor) =>
-      asUser.query(api.library.queries.browseLibrary, {
-        sortBy: "savedAt",
-        sortOrder: "desc",
-        collectionId: collection!._id,
-        paginationOpts: { numItems: 1, cursor },
-      }),
-    );
+    const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, collectionId: collection!._id };
+    const pageOne = await asUser.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { numItems: 1, cursor: null } });
+    const pageTwo = await asUser.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { numItems: 1, cursor: pageOne.continueCursor } });
+    const walked = [...pageOne.page, ...pageTwo.page].map((item) => item.title);
 
-    expect(walked.map((item) => item.title)).toEqual([
+    expect(walked).toEqual([
       "First in collection",
       "Second in collection",
     ]);

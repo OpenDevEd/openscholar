@@ -5,7 +5,7 @@ import { getDocumentSize } from "convex/values";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { readEveryLibraryPage } from "../../lib/library/export";
+import { exportedTitles } from "../library/exports.test-support";
 import { RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
 import { collectionSortName } from "../library/collections";
 import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
@@ -136,7 +136,7 @@ describe("at the largest sizes the product allows", () => {
     }
     expect(await as.query(api.library.queries.getLibraryFilteredCount, { ...sorted, collectionId })).toEqual({ count: MAX_SIZE.libraryItems, capped: false });
     expect(await as.query(api.library.queries.getLibraryFilteredCount, { ...sorted, minRating: 5, yearTo: 1990 })).toEqual({ count: 0, capped: false });
-    const exported = await readEveryLibraryPage((cursor) => as.query(api.library.queries.browseLibrary, { ...sorted, minRating: 2, paginationOpts: { cursor, numItems: 500 } }));
+    const exported = await exportedTitles(t, as, { ...sorted, minRating: 2 });
     expect(exported).toHaveLength(MAX_SIZE.libraryItems * 0.8);
   }, 300_000);
 
