@@ -26,6 +26,8 @@ import { SetupView } from "./setup-view";
 
 /** Screenings one page of the rail lists. */
 const RAIL_PAGE = 12;
+/** Screenings in progress read to tell the running from the waiting: far more than a person has at once. */
+const ACTIVE_MAX = 50;
 
 const ICON: Record<Exclude<Phase, "processing">, typeof Square> = {
   running: LoaderCircle, waiting: Hourglass, completed: CircleCheck, cancelled: Square, failed: CircleX, creditsExhausted: CircleX,
@@ -50,7 +52,8 @@ export function ScreeningPage() {
   const [shown, setShown] = useState<Job | null>(null);
   if (read && read !== shown) setShown(read);
   const job = !jobId || read === null ? null : (read ?? shown);
-  const setJobId = (id: Id<"screeningJobs"> | null) => setPicked(id ?? "new");
+  // Shown while the one picked is read: it stays dimmed and inert until then.
+  const stale = Boolean(job && jobId && job._id !== jobId);
   const showsForm = !job && !waiting && !(jobId && read === undefined);
   // The newest screening shows only until the rail turns its page: from then on it's the one picked.
   const turn = (step: () => void) => () => {
@@ -58,8 +61,17 @@ export function ScreeningPage() {
     step();
   };
 
-  const active = jobs.items.filter((row) => row.status === "processing");
+  // Every screening in progress, whatever page of the rail shows: which of them is being read decides who waits for whom.
+  const { data: processing } = useProtectedQuery(api.screening.queries.listUserScreeningJobs, { status: "processing", paginationOpts: { cursor: null, numItems: ACTIVE_MAX } });
+  const active = processing?.page ?? [];
+  const running = jobs.items.filter((row) => row.status === "processing");
   const past = jobs.items.filter((row) => row.status !== "processing");
+  // A screening to run again, which the form starts from.
+  const [again, setAgain] = useState<Job | null>(null);
+  const openForm = (from: Job | null) => {
+    setAgain(from);
+    setPicked("new");
+  };
   // The person's oldest job with papers being read: the one a new or waiting job starts after.
   const reading = (but?: Id<"screeningJobs">) => active.findLast((row) => row.running > 0 && row._id !== but);
   const blockerOf = (row: JobRow | undefined) => row && { name: jobName(t, row, date), done: doneOf(row), total: row.totalPapers };
@@ -70,7 +82,7 @@ export function ScreeningPage() {
         <ConfigurationLayout
           header={
             <PanelHeader icon={ListChecks} title={t("title")}>
-              <Button size="sm" className={BAR_ACTION} onClick={() => setJobId(null)}>
+              <Button size="sm" className={BAR_ACTION} onClick={() => openForm(null)}>
                 <Plus /><span className={BAR_LABEL}>{t("newScreening")}</span>
               </Button>
             </PanelHeader>
@@ -78,7 +90,7 @@ export function ScreeningPage() {
           navigation={
             <ConfigurationNavigation label={t("screenings")}>
               <RailGroup label={t("start")}>
-                <RailLink href="/screening?job=new" icon={Plus} active={showsForm} onClick={() => setJobId(null)}>
+                <RailLink href="/screening?job=new" icon={Plus} active={showsForm} onClick={() => openForm(null)}>
                   <span className="flex-1 truncate">{t("newScreening")}</span>
                 </RailLink>
               </RailGroup>
@@ -87,11 +99,11 @@ export function ScreeningPage() {
                 <div className={cn("space-y-5", jobs.isStale && "pointer-events-none opacity-60")}>
                   {/* One layout group, so a screening that finishes glides from Running to Done. */}
                   <LayoutGroup>
-                    {active.length ? (
+                    {running.length ? (
                       <RailGroup label={t("running")}>
-                        {active.map((row) => (
+                        {running.map((row) => (
                           <RailItem key={row._id} id={row._id}>
-                            <JobLink row={row} phase={phaseOf(row, active)} name={jobName(t, row, date)} active={job?._id === row._id} onClick={() => setJobId(row._id)} />
+                            <JobLink row={row} phase={phaseOf(row, active)} name={jobName(t, row, date)} active={job?._id === row._id} onClick={() => setPicked(row._id)} />
                           </RailItem>
                         ))}
                       </RailGroup>
@@ -100,7 +112,7 @@ export function ScreeningPage() {
                       <RailGroup label={t("done")}>
                         {past.map((row) => (
                           <RailItem key={row._id} id={row._id}>
-                            <JobLink row={row} phase={phaseOf(row, active)} name={jobName(t, row, date)} active={job?._id === row._id} onClick={() => setJobId(row._id)} />
+                            <JobLink row={row} phase={phaseOf(row, active)} name={jobName(t, row, date)} active={job?._id === row._id} onClick={() => setPicked(row._id)} />
                           </RailItem>
                         ))}
                       </RailGroup>
@@ -123,16 +135,22 @@ export function ScreeningPage() {
           }
         >
           <AnimatePresence mode="popLayout" initial={false}>
-            <motion.div key={job?._id ?? "new"} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }}>
+            <motion.div key={job?._id ?? "new"} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }} className={cn(stale && "pointer-events-none opacity-60")} aria-busy={stale}>
               {job ? (
                 <JobView
                   job={job}
                   phase={phaseOf(job, active)}
                   blocker={blockerOf(reading(job._id))}
-                  onRunAgain={() => setJobId(null)}
+                  onRunAgain={() => openForm(job)}
                 />
               ) : !showsForm ? null : (
-                <SetupView key={searchId ?? "new"} fromSearchId={searchId ?? undefined} waitingFor={blockerOf(reading())?.name} onStarted={(id) => setJobId(id)} />
+                <SetupView
+                  key={again?._id ?? searchId ?? "new"}
+                  fromSearchId={again ? (again.set?.kind === "search" ? again.set.searchId : undefined) : (searchId ?? undefined)}
+                  again={again ?? undefined}
+                  waitingFor={blockerOf(reading())?.name}
+                  onStarted={(id) => setPicked(id)}
+                />
               )}
             </motion.div>
           </AnimatePresence>

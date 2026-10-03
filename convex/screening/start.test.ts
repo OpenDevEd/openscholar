@@ -108,7 +108,7 @@ describe("where a job's papers go", () => {
     await answerAll(jobId, [4, 1], 3);
 
     const made = await t.run((ctx) => ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId).eq("sortName", "included trials")).unique());
-    expect(await read(jobId)).toMatchObject({ status: "completed", targetCollectionName: "Included trials", prune: true, outcomes: { included: 2, excluded: 2 }, credits: { spent: 12, estimate: 18 } });
+    expect(await read(jobId)).toMatchObject({ status: "completed", targetCollectionName: "Included trials", prune: true, outcomes: { included: 2, excluded: 2 }, credits: { spent: 12, estimate: 18 }, saved: 2, removed: 2 });
     expect(await inCollectionNow(made!._id)).toEqual([W(1), W(4)]);
     expect(await inCollectionNow(collectionId)).toEqual([W(1), W(4)]);
 
@@ -116,9 +116,12 @@ describe("where a job's papers go", () => {
     await alice.mutation(api.screening.papers.answer, { jobId, paperId: W(2), questionKey: "q1", answer: true });
     expect(await inCollectionNow(collectionId)).toEqual([W(1), W(2), W(4)]);
     expect(await inCollectionNow(made!._id)).toEqual([W(1), W(2), W(4)]);
-    // And one that excludes a paper takes it out.
+    expect(await read(jobId)).toMatchObject({ saved: 3, removed: 1 });
+    // And one that excludes a paper takes it out of the collection the job read. It stays where it was saved, so the count of saved papers stays.
     await alice.mutation(api.screening.papers.answer, { jobId, paperId: W(4), questionKey: "q1", answer: false });
     expect(await inCollectionNow(collectionId)).toEqual([W(1), W(2)]);
+    expect(await inCollectionNow(made!._id)).toEqual([W(1), W(2), W(4)]);
+    expect(await read(jobId)).toMatchObject({ outcomes: { included: 2 }, saved: 3, removed: 2 });
   });
 
   it("leaves papers it never screened in the collection when a pruning job is cancelled, and keeps what a late paper cost", async () => {

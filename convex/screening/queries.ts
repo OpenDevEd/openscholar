@@ -203,6 +203,9 @@ export const getScreeningJob = query({
       targetCollectionName: v.optional(v.string()),
       unsaved: v.optional(v.literal(true)),
       prune: v.optional(v.literal(true)),
+      // Papers it saved, and papers it took from the collection it read. Missing for a job from before these were kept.
+      saved: v.optional(v.number()),
+      removed: v.optional(v.number()),
       // Credits its counted papers cost, of the most they were expected to when it started.
       // No `spent` for a job from before jobs kept what they cost.
       credits: v.object({ spent: v.optional(v.number()), estimate: v.number() }),
@@ -225,6 +228,7 @@ export const getScreeningJob = query({
       ...(target ? { targetCollectionName: target.name } : {}),
       unsaved: job.unsaved,
       prune: job.prune,
+      ...(job.set ? { saved: kept?.saved ?? 0, removed: kept?.removed ?? 0 } : {}),
       credits: { spent: kept?.credits ?? (job.set ? 0 : undefined), estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0).credits },
       outcomes: { included: counts.qualifiedCount, unclear, excluded: Math.max(0, counts.completedCount - counts.qualifiedCount - unclear), failed: counts.failedCount },
       tallies: kept?.tallies,

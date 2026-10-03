@@ -28,7 +28,8 @@ export function scoringOf(questions: Question[], minimumScore: number, stars: nu
     questions: questions.map((q, i) => ({ key: `q${i}`, question: q.text })),
     scoringConfig: {
       rules: questions.map((q, i) => ({ questionKey: `q${i}`, yesPoints: q.yes, noPoints: q.no, nullPoints: q.unclear })),
-      starThresholds: stars.map((minScore, i) => ({ minScore, stars: i + 1 })),
+      // Highest rating first: thresholds at the same score give the paper the most stars among them.
+      starThresholds: stars.map((minScore, i) => ({ minScore, stars: i + 1 })).reverse(),
       minimumScore,
     },
   };

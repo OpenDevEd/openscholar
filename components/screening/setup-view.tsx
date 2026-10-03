@@ -28,7 +28,7 @@ import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { useResearchStatus } from "@/lib/research/provider";
 import { useWatchedSearch } from "@/lib/research/reads";
 import { useSearchList } from "@/lib/research/search-list";
-import { ANSWERS, defaultStars, maxScore, questionsOf, scoringOf, type JobRow, type PaperSet, type Question } from "@/lib/screening/setup";
+import { ANSWERS, defaultStars, maxScore, questionsOf, scoringOf, type Job, type JobRow, type PaperSet, type Question } from "@/lib/screening/setup";
 import { useSearchHistoryStore } from "@/lib/store";
 import { getErrorMessage, useAppToast } from "@/lib/toast";
 import type { SearchResult } from "@/lib/types";
@@ -69,11 +69,14 @@ const searchSource = (search: SearchResult): Source => ({ kind: "search", id: se
 
 export function SetupView({
   fromSearchId,
+  again,
   waitingFor,
   onStarted,
 }: {
-  /** The search whose Screen all opened this form. */
+  /** The search whose Screen all opened this form, or the one a job to run again read. */
   fromSearchId?: string;
+  /** A screening to run again: the form starts on its papers, questions, scoring and destination. */
+  again?: Job;
   /** The person's job a new one would start after. */
   waitingFor?: string;
   onStarted: (jobId: Id<"screeningJobs">) => void;
@@ -84,7 +87,7 @@ export function SetupView({
   const toast = useAppToast();
 
   // The sets of each kind, a page at a time. Every kind is read up front, so switching between them moves nothing.
-  useWatchedSearch(fromSearchId);
+  const watched = useWatchedSearch(fromSearchId);
   const from = useSearchHistoryStore((state) => (fromSearchId ? state.searchHistory.find((item) => item.id === fromSearchId) : undefined));
   const searches = useSearchList({ sort: "recent", pageSize: from ? SOURCE_PAGE - 1 : SOURCE_PAGE, excludeId: fromSearchId });
   const collections = useCursorPage(api.library.collections.listCollections, {}, SOURCE_PAGE);
@@ -103,25 +106,31 @@ export function SetupView({
     screening: { rows: screenings.items.map((job: JobRow) => ({ kind: "screening", id: job._id, label: jobName(t, job, date), count: job.qualifiedPapers })), pager: screenings },
   };
 
-  const [kind, setKind] = useState<Kind>("search");
-  const [sourceId, setSourceId] = useState<string | null>(null);
-  const source = lists[kind].rows.find((row) => row.id === sourceId) ?? lists[kind].rows[0];
-  // Opened from a results page, it starts on the page the person was reading.
-  const [scope, setScope] = useState<"all" | "page" | "range">(fromSearchId ? "page" : "range");
-  const [range, setRange] = useState<[number, number]>([1, 300]);
+  const [kind, setKind] = useState<Kind>(again?.set?.kind ?? "search");
+  // The set picked stays picked whatever page its list shows; until one is, a job run again starts on its own set, and otherwise the first listed.
+  const [picked, setPicked] = useState<Source | null>(null);
+  const againId = again?.set && (again.set.kind === "search" ? again.set.searchId : again.set.kind === "collection" ? again.set.collectionId : again.set.kind === "screening" ? again.set.jobId : "saved");
+  const source = picked?.kind === kind ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : (lists[kind].rows.find((row) => row.id === againId) ?? lists[kind].rows[0]);
+  // Opened from a results page, it starts on the page the person was reading; run again, on the job's own papers.
+  const [scope, setScope] = useState<"all" | "page" | "range">(again?.first ? "range" : fromSearchId && !again ? "page" : again?.set && again.set.kind !== "search" ? "all" : "range");
+  const [range, setRange] = useState<[number, number]>(again?.first && again.last ? [again.first, again.through ?? again.last] : [1, 300]);
   // Untouched, the questions are the selected search's own: the ones its results page screens with.
-  const [edited, setEdited] = useState<Question[] | null>(null);
+  const [edited, setEdited] = useState<Question[] | null>(again ? questionsOf(again) : null);
   const own: Question[] = source?.kind === "search" ? source.search.screeningQuestions.map((q, i) => ({ key: `own${i}`, text: q.question, yes: 1, no: 0, unclear: 0 })) : [];
   const questions = edited ?? own;
-  const setQuestions = (change: (questions: Question[]) => Question[]) => setEdited(change(questions));
+  // From the questions as they stand when the change lands: one that waits on the model mustn't undo edits made meanwhile.
+  const setQuestions = (change: (questions: Question[]) => Question[]) => setEdited((current) => change(current ?? own));
   const [draft, setDraft] = useState("");
   const [generating, setGenerating] = useState(false);
-  const [minScore, setMinScore] = useState(2);
+  // Counts the sets picked, so questions written for one don't land on another.
+  const picks = useRef(0);
+  const [minScore, setMinScore] = useState(again?.scoringConfig.minimumScore ?? 2);
   // The scores where 1 to 5 stars begin; untouched, they spread across the highest score.
-  const [starsSet, setStars] = useState<number[] | null>(null);
-  const [dest, setDest] = useState<"none" | "new" | Id<"collections">>("new");
+  const [starsSet, setStars] = useState<number[] | null>(again?.scoringConfig.starThresholds.length === 5 ? [...again.scoringConfig.starThresholds].sort((a, b) => a.stars - b.stars).map((threshold) => threshold.minScore) : null);
+  // A job run again keeps its destination while that collection exists.
+  const [dest, setDest] = useState<"none" | "new" | Id<"collections">>(again?.unsaved ? "none" : again?.targetCollectionId && again.targetCollectionName ? again.targetCollectionId : "new");
   const [newName, setNewName] = useState<string | null>(null);
-  const [prune, setPrune] = useState(false);
+  const [prune, setPrune] = useState(again?.prune ?? false);
   const [busy, setBusy] = useState(false);
 
   // A range can reach the last paper: past a job's limit it runs as several jobs, as all of them does.
@@ -153,8 +162,8 @@ export function SetupView({
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
   const target = source?.kind === "collection" && dest === source.id ? "new" : dest;
 
-  const picks = useModelPicks();
-  const model = picks.modelOf("screenAll");
+  const models = useModelPicks();
+  const model = models.modelOf("screenAll");
   const { data: account } = useProtectedQuery(api.billing.accounts.mine, {});
   const { data: slots } = useProtectedQuery(api.screening.queries.slots, {});
   const balance = account?.balance ?? 0;
@@ -167,7 +176,8 @@ export function SetupView({
 
   /** Picks a set; a search brings its own screening questions, and each set starts on its own first papers. */
   const choose = (next: Source) => {
-    setSourceId(next.id);
+    picks.current++;
+    setPicked(next);
     setRange([1, Math.min(300, next.count)]);
     setEdited(next.kind === "search" ? null : questions);
   };
@@ -176,6 +186,11 @@ export function SetupView({
     const firstOf = lists[next].rows[0];
     if (firstOf) choose(firstOf);
     setScope(next === "search" ? "range" : "all");
+  };
+  /** Turns the list's page with the set in use held on to, so another page's first set doesn't take its place. */
+  const turn = (step: () => void) => () => {
+    if (source && picked?.id !== source.id) setPicked(source);
+    step();
   };
   const addQuestion = () => {
     const text = draft.trim();
@@ -191,6 +206,7 @@ export function SetupView({
     });
   const generate = async () => {
     if (source?.kind !== "search") return;
+    const asked = picks.current;
     setGenerating(true);
     try {
       const result = await generateQuestions({
@@ -198,7 +214,7 @@ export function SetupView({
         existingQuestions: questions.map((q) => q.text),
         responseLanguage: localeToLanguageCode(locale),
       });
-      adopt(result.questions.map((text) => ({ key: "", text: text.trim(), yes: 1, no: 0, unclear: 0 })).filter((q) => q.text));
+      if (picks.current === asked) adopt(result.questions.map((text) => ({ key: "", text: text.trim(), yes: 1, no: 0, unclear: 0 })).filter((q) => q.text));
     } catch (error) {
       toast.error(t("generateFailed"), getErrorMessage(error, t("generateFailed")));
     } finally {
@@ -228,7 +244,7 @@ export function SetupView({
 
   const list = lists[kind];
   // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows.
-  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && account !== undefined && slots !== undefined && (!fromSearchId || from !== undefined);
+  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && account !== undefined && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
 
   return (
     <Enter ready={ready}>
@@ -350,7 +366,7 @@ export function SetupView({
             )}
           </div>
           {list.pager?.hasPages ? (
-            <PageStepper className="pt-3" page={list.pager.page} pageCount={list.pager.pageCount} canPrevious={list.pager.canPrevious} canNext={list.pager.canNext} onPrevious={list.pager.previous} onNext={list.pager.next} />
+            <PageStepper className="pt-3" page={list.pager.page} pageCount={list.pager.pageCount} canPrevious={list.pager.canPrevious} canNext={list.pager.canNext} onPrevious={turn(list.pager.previous)} onNext={turn(list.pager.next)} />
           ) : null}
         </Zone>
 
@@ -515,7 +531,7 @@ export function SetupView({
 
         {model ? (
           <Zone label={t("model")}>
-            <ModelPicker align="start" tasks={["screenAll"]} current={model} onChange={(m, effort) => picks.pickAll(["screenAll"], m, effort)} trigger={<NodeCard interactive paidBy="credits" model={model} />} />
+            <ModelPicker align="start" tasks={["screenAll"]} current={model} onChange={(m, effort) => models.pickAll(["screenAll"], m, effort)} trigger={<NodeCard interactive paidBy="credits" model={model} />} />
           </Zone>
         ) : null}
 
@@ -589,7 +605,8 @@ export function SetupView({
               </Chip>
             ) : null}
           </div>
-          <Button disabled={busy || unscored || !enough || papers < 1 || Boolean(savingEdits)} onClick={start}>
+          {/* A search's papers can cost less than the estimate: its page's answers are reused and its rating filter drops papers. The server checks what's left. */}
+          <Button disabled={busy || unscored || (!enough && source?.kind !== "search") || papers < 1 || Boolean(savingEdits)} onClick={start}>
             {busy ? t("readingPapers") : t("screenPapers", { count: papers })}
           </Button>
         </div>

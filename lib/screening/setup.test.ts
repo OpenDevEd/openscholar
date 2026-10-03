@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { computeStarRating } from "@/convex/screening/scoring";
 import { defaultStars, maxScore, phaseOf, questionsOf, scoringOf, type Question } from "./setup";
 
 const questions: Question[] = [
@@ -10,7 +11,9 @@ describe("a screening's setup", () => {
   it("makes a job's questions and scoring config, which read back as the same questions and points", () => {
     const job = scoringOf(questions, 2, [1, 2, 2, 3, 3]);
     expect(job.questions).toEqual([{ key: "q0", question: "Randomized?" }, { key: "q1", question: "Primary schools?" }]);
-    expect(job.scoringConfig).toMatchObject({ minimumScore: 2, starThresholds: [{ minScore: 1, stars: 1 }, { minScore: 2, stars: 2 }, { minScore: 2, stars: 3 }, { minScore: 3, stars: 4 }, { minScore: 3, stars: 5 }] });
+    expect(job.scoringConfig.minimumScore).toBe(2);
+    // Thresholds that share a score give the most stars among them: 3 points is 5 stars, 2 is 3.
+    expect([0, 1, 2, 3].map((score) => computeStarRating(score, job.scoringConfig.starThresholds))).toEqual([0, 1, 3, 5]);
     expect(questionsOf(job).map(({ text, yes, no, unclear }) => ({ text, yes, no, unclear }))).toEqual(questions.map(({ text, yes, no, unclear }) => ({ text, yes, no, unclear })));
   });
 

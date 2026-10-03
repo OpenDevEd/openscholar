@@ -1011,6 +1011,8 @@ export default defineSchema({
     ),
     creditsUsed: v.optional(v.number()),
     savedToLibrary: v.optional(v.boolean()),
+    // Taken from the collection its pruning job read, and not put back since.
+    pruned: v.optional(v.literal(true)),
     libraryItemId: v.optional(v.id("libraryItems")),
     workId: v.optional(v.string()),
     // Set while the paper waits for one of its person's paper slots (#335), whose papers
@@ -1050,6 +1052,10 @@ export default defineSchema({
     tallies: screeningTalliesValidator,
     // Credits its counted papers cost.
     credits: v.optional(v.number()),
+    // Papers it saved for the first time, and papers it took from the collection it read
+    // that are still out of it.
+    saved: v.optional(v.number()),
+    removed: v.optional(v.number()),
   }).index("by_job", ["jobId"]),
 
   // How many papers a person has saved. It has its own row, not a field on `users`, because

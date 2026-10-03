@@ -201,8 +201,9 @@ export function JobView({
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-1.5 self-center">
-                {savedTo ? <Chip icon={FolderPlus} className="text-foreground">{t.rich("savedTo", { count: counts.included, name: savedTo, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</Chip> : null}
-                {pruned ? <Chip icon={FolderMinus} className="text-foreground">{t.rich("removedFrom", { count: counts.excluded + counts.failed, name: pruned, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</Chip> : null}
+                {/* A job from before these were kept counts them from its outcomes. */}
+                {savedTo ? <Chip icon={FolderPlus} className="text-foreground">{t.rich("savedTo", { count: job.saved ?? counts.included, name: savedTo, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</Chip> : null}
+                {pruned ? <Chip icon={FolderMinus} className="text-foreground">{t.rich("removedFrom", { count: job.removed ?? counts.excluded + counts.failed, name: pruned, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</Chip> : null}
                 {!savedTo && !pruned ? <Chip icon={Ban}>{t("noCollectionChanged")}</Chip> : null}
               </div>
             )}
@@ -286,7 +287,8 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
   const heldPaper = held ? (current ?? held.paper) : undefined;
   const rows =
     held && heldPaper && !list.items.some((paper) => paper.openalexId === heldPaper.openalexId)
-      ? [...list.items.slice(0, held.index), heldPaper, ...list.items.slice(held.index)].slice(0, PAGE_SIZE)
+      ? // Added to the page's own papers, so the one that took its place isn't hidden and the next page starts after it.
+        [...list.items.slice(0, held.index), heldPaper, ...list.items.slice(held.index)]
       : list.items.map((paper) => (heldPaper && paper.openalexId === heldPaper.openalexId ? heldPaper : paper));
   // A search's matches aren't counted on the server, so its pager shows the page alone.
   const count = job.outcomes[tab];

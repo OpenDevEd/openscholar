@@ -13,7 +13,7 @@ import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery,
 import { answerPaper, paperAnswers, restoreModelAnswer } from "../research/answers";
 import schema from "../schema";
 import { account, answersNow, jobAnswers, shown, stood, withDeltas } from "./accounting";
-import { progressOf, shelve } from "./bookkeeping";
+import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { moveResultAnswers } from "./drain";
 import { screeningJobPaperValidator, screeningOutcomeValidator } from "./validators";
 
@@ -133,9 +133,9 @@ export const answerAction = defineUserMutation({
     }
     const progress = await progressOf(ctx, jobId);
     await ctx.db.patch("screeningResults", result._id, { ...scored, counted });
-    await ctx.db.patch("screeningJobProgress", progress._id, withDeltas(progress, job, [delta]));
     // Saved again even if it was saved before: the person may have removed it since.
-    await shelve(ctx, job, { ...result, ...scored }, move);
+    const moved = await shelve(ctx, job, { ...result, ...scored }, move);
+    await ctx.db.patch("screeningJobProgress", progress._id, { ...withDeltas(progress, job, [delta]), ...withMoved(progress, moved) });
     return { outcome };
   },
 });
