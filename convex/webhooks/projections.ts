@@ -68,27 +68,29 @@ async function upsertOrganizationSnapshot(
 
 /**
  * Removes one page of a person's library grants in an organization they've left, and
- * schedules the next until every grant has been looked at: no grant outlives the
- * membership, however many the person holds.
+ * schedules the next until every grant they held at `before`, when they left, has been
+ * looked at: no grant outlives the membership, however many the person holds.
  */
-async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizationId: Id<"organizations">, cursor: string | null) {
+async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizationId: Id<"organizations">, cursor: string | null, before: number) {
   const page = await ctx.db.query("evidenceLibraryMembers")
     .withIndex("by_clerkUserId", q => q.eq("clerkUserId", clerkUserId))
     .paginate({ cursor, numItems: MAX_LIBRARY_GRANTS_PER_PERSON });
   for (const assignment of page.page) {
+    // A grant made since they left, by a later invitation, is theirs to keep.
+    if (assignment._creationTime > before) continue;
     const library = await ctx.db.get("evidenceLibraries", assignment.libraryId);
     if (library?.organizationId === organizationId) {
       await ctx.db.delete("evidenceLibraryMembers", assignment._id);
     }
   }
-  if (!page.isDone) await ctx.scheduler.runAfter(0, internal.webhooks.projections.revokeGrants, { clerkUserId, organizationId, cursor: page.continueCursor });
+  if (!page.isDone) await ctx.scheduler.runAfter(0, internal.webhooks.projections.revokeGrants, { clerkUserId, organizationId, cursor: page.continueCursor, before });
 }
 
 export const revokeGrants = internalMutation({
-  args: { clerkUserId: v.string(), organizationId: v.id("organizations"), cursor: v.string() },
+  args: { clerkUserId: v.string(), organizationId: v.id("organizations"), cursor: v.string(), before: v.number() },
   returns: v.null(),
-  handler: async (ctx, { clerkUserId, organizationId, cursor }) => {
-    await revokeGrantsPage(ctx, clerkUserId, organizationId, cursor);
+  handler: async (ctx, { clerkUserId, organizationId, cursor, before }) => {
+    await revokeGrantsPage(ctx, clerkUserId, organizationId, cursor, before);
     return null;
   },
 });
@@ -195,7 +197,7 @@ export async function applyMembershipProjection(
         }
       }
       if (args.membership.state === "revoked") {
-        await revokeGrantsPage(ctx, args.membership.clerkUserId, organizationId, null);
+        await revokeGrantsPage(ctx, args.membership.clerkUserId, organizationId, null, Date.now());
         const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.membership.clerkUserId)).unique();
         if (user) {
           const invitations = await ctx.db.query("evidenceLibraryInvitations")

@@ -27,6 +27,8 @@ export const cleanupDeletedUsers = internalMutation({
       .take(BATCH_SIZE);
 
     let cleanedCount = 0;
+    // An account whose rows didn't all fit this run stays, and the run after it finishes the job.
+    let deferred = false;
 
     for (const user of deletedUsers) {
       if (user.updatedAt < cutoff) {
@@ -55,6 +57,7 @@ export const cleanupDeletedUsers = internalMutation({
         // If we found a full batch of extraction jobs, there may be more.
         // Don't delete the user yet -- re-schedule to handle remaining jobs.
         if (extractionJobs.length === BATCH_SIZE) {
+          deferred = true;
           continue; // Skip user delete, process on next run
         }
 
@@ -67,6 +70,7 @@ export const cleanupDeletedUsers = internalMutation({
           await ctx.db.delete("zoteroConnections", conn._id);
         }
         if (zoteroConns.length === SINGLE_ROW_CLEANUP) {
+          deferred = true;
           continue; // Skip user delete, process on next run
         }
 
@@ -93,9 +97,10 @@ export const cleanupDeletedUsers = internalMutation({
       }
     }
 
-    // If we fetched a full batch, there might be more to process
-    if (deletedUsers.length === BATCH_SIZE) {
-      await ctx.scheduler.runAfter(0, internal.maintenance.mutations.cleanupDeletedUsers, {});
+    // If we fetched a full batch, there might be more to process; a deferred account waits
+    // a minute for the deletions this run scheduled.
+    if (deletedUsers.length === BATCH_SIZE || deferred) {
+      await ctx.scheduler.runAfter(deferred ? 60_000 : 0, internal.maintenance.mutations.cleanupDeletedUsers, {});
     }
 
     if (cleanedCount > 0) {

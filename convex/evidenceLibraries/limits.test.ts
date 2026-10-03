@@ -57,6 +57,7 @@ describe("Evidence Library limits", () => {
     const grantsHere = () => fixture.t.run(async (ctx) => (await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", (q) => q.eq("libraryId", libraryId).eq("clerkUserId", "user_leaving")).take(2)).length);
     expect(await grantsHere()).toBe(1);
 
+    vi.useFakeTimers();
     await fixture.t.mutation(internal.webhooks.projections.applyOrganizationMembershipEvent, {
       eventId: "msg_leaving", eventType: "organizationMembership.deleted", instanceId: "ins_test", occurredAt: Date.now(), payloadSha256: "a".repeat(64),
       action: "delete",
@@ -65,8 +66,12 @@ describe("Evidence Library limits", () => {
         organization: { clerkOrganizationId: organization.clerkOrganizationId, name: organization.name, slug: organization.slug, evidenceLibrariesEnabled: organization.evidenceLibrariesEnabled, authorsEnabled: organization.authorsEnabled ?? false, extractionEnabled: organization.extractionEnabled ?? false, clerkCreatedAt: organization.clerkCreatedAt, clerkUpdatedAt: organization.clerkUpdatedAt },
       },
     });
-    await fixture.t.finishAllScheduledFunctions(() => {});
-    expect(await grantsHere()).toBe(0);
+    // A grant made after they left, by a later invitation, isn't the sweep's to take.
+    vi.setSystemTime(Date.now() + 1_000);
+    await fixture.t.run((ctx) => ctx.db.insert("evidenceLibraryMembers", { libraryId, clerkUserId: "user_leaving", role: "creator", grantedBy: "owner", grantedAt: Date.now() }));
+    await fixture.t.finishAllScheduledFunctions(vi.runAllTimers);
+    vi.useRealTimers();
+    expect(await fixture.t.run(async (ctx) => (await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", (q) => q.eq("libraryId", libraryId).eq("clerkUserId", "user_leaving")).take(2)).map((grant) => grant.role))).toEqual(["creator"]);
   });
 
   it("refuses another invitation once a library, or an address, has the most waiting (#427)", async () => {
