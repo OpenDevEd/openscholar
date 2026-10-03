@@ -16,6 +16,7 @@ import {
 } from "./validators";
 import { progressRow } from "./bookkeeping";
 import { paperLimit } from "./slots";
+import { searchSnapshotValidator } from "../paperSets/openalex";
 import { answeredFully, screeningFor } from "../research/answers";
 import { SCREENING_POOL_SIZE } from "../workpool";
 import { jobAnswers } from "./accounting";
@@ -115,6 +116,7 @@ export const requestJob = internalQuery({
       through: v.number(),
       label: v.optional(v.string()),
       resume: v.optional(v.string()),
+      snapshot: v.optional(searchSnapshotValidator),
       questions: screeningQuestionsValidator,
       scoringConfig: screeningScoringConfigValidator,
       saveTo: v.optional(saveToValidator),
@@ -129,6 +131,7 @@ export const requestJob = internalQuery({
       userId: job.userId, set: job.set, through: job.through, questions: job.questions, scoringConfig: job.scoringConfig,
       ...(job.label ? { label: job.label } : {}),
       ...(job.resume ? { resume: job.resume } : {}),
+      ...(job.snapshot ? { snapshot: job.snapshot } : {}),
       ...(saveTo ? { saveTo } : {}),
       ...(job.prune ? { prune: true } : {}),
     };

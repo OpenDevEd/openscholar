@@ -234,7 +234,9 @@ export const bookkeep = internalMutation({
         for (const result of jobResults) {
           if (result.status === "failed") {
             await ctx.db.patch("screeningResults", result._id, FAILED);
-            await shelve(ctx, current, result, { becameIncluded: false, left: true });
+            // A paper that failed because its job had ended, as the one that finds the credits
+            // spent does, was never screened: it stays where it is.
+            if (current.status === "processing") await shelve(ctx, current, result, { becameIncluded: false, left: true });
           }
           if (result.status !== "completed") continue;
           const settled = (await ctx.db.get("screeningResults", result._id))!;

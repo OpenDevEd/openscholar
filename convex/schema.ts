@@ -9,6 +9,7 @@ import {
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
 import { screeningAnswersValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
+import { searchSnapshotValidator } from "./paperSets/openalex";
 import {
   errorCodeValidator,
   extractionEvidenceUnitFields,
@@ -928,6 +929,8 @@ export default defineSchema({
     through: v.optional(v.number()),
     // Where a collection, the saved papers or a job's papers go on after this job's (./paperSets/held.ts).
     resume: v.optional(v.string()),
+    // The search as it was when the request began, which its later jobs read their papers from.
+    snapshot: v.optional(searchSnapshotValidator),
     // Its included papers aren't saved anywhere.
     unsaved: v.optional(v.literal(true)),
     // Papers that end excluded or failed leave the collection it read (`set`).
