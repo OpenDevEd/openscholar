@@ -695,16 +695,16 @@ export const SidebarContent = React.memo(function SidebarContent({
       {isCitedByActive && <CitedByFilterPanel />}
       {isRelatedToActive && <RelatedToFilterPanel />}
 
-      <OnlyShowFilterPanel />
-
       {/* Date Filter */}
       <DateFilterPanel />
+
+      {/* Institution location and country focus */}
+      <CountryFilterPanel />
 
       {/* Rating Filter */}
       {!hidePanels.includes("rating") && <RatingFilterPanel />}
 
-      {/* Institution location and country focus */}
-      <CountryFilterPanel />
+      <OnlyShowFilterPanel />
 
       {/* Search Field - Dropdown */}
       <SearchFieldPanel />
