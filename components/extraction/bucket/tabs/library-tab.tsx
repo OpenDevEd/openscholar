@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useConvex, useQuery } from "convex/react";
+import { useConvex } from "convex/react";
 // Its unfiled view is a convex-helpers stream, whose pages hold their place only with this hook.
 import { usePaginatedQuery } from "convex-helpers/react";
 import { motion } from "motion/react";
@@ -24,6 +24,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { PageStepper } from "@/components/shared/page-stepper";
 import { SelectableList } from "../selectable-list";
 import { useBucketStore } from "@/lib/store/bucket";
 import {
@@ -44,14 +47,14 @@ import { PAPER_LIMIT } from "@/lib/extraction/limits";
 type LibItem = Doc<"libraryItems">;
 type ViewId = "all" | "unfiled" | Id<"collections">;
 
-type CollectionRow = Doc<"collections"> & { itemCount: number };
+/** Collections the sidebar lists at a time. */
+const SIDEBAR_PAGE_SIZE = 20;
+/** A row and the gap under it, measured: a paged list keeps a full page's height, so the pager stays put. */
+const SIDEBAR_ROW_PX = 34;
 
 export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
-  const collections = useQuery(
-    api.library.collections.getCollectionsWithCounts,
-    {},
-  );
   const [view, setView] = useState<ViewId>("all");
+  const [viewName, setViewName] = useState<string | undefined>(undefined);
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState<string | undefined>(undefined);
 
@@ -140,10 +143,10 @@ export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
   return (
     <div className="flex gap-4">
       <SourceSidebar
-        collections={collections}
         view={view}
-        onChange={(next) => {
+        onChange={(next, name) => {
           setView(next);
+          setViewName(name);
           setSearchInput("");
           setQuery(undefined);
         }}
@@ -159,7 +162,7 @@ export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder={searchPlaceholder(view, collections)}
+              placeholder={searchPlaceholder(view, viewName)}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-9"
@@ -224,13 +227,9 @@ export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
   );
 }
 
-function searchPlaceholder(
-  view: ViewId,
-  collections: CollectionRow[] | undefined,
-): string {
+function searchPlaceholder(view: ViewId, name: string | undefined): string {
   if (view === "all") return "Search your library";
   if (view === "unfiled") return "Search unfiled papers";
-  const name = collections?.find((c) => c._id === view)?.name;
   return name ? `Search in ${name}` : "Search this collection";
 }
 
@@ -244,12 +243,13 @@ function emptyMessage(view: ViewId, query: string | undefined): string {
 }
 
 type SourceSidebarProps = {
-  collections: CollectionRow[] | undefined;
   view: ViewId;
-  onChange: (v: ViewId) => void;
+  onChange: (v: ViewId, name?: string) => void;
 };
 
-function SourceSidebar({ collections, view, onChange }: SourceSidebarProps) {
+function SourceSidebar({ view, onChange }: SourceSidebarProps) {
+  const collections = useCursorPage(api.library.collections.listCollections, {}, SIDEBAR_PAGE_SIZE);
+  const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, {});
   const isCollapsed = useExtractionSourceSidebarStore((s) => s.isCollapsed);
   const hasHydrated = useExtractionSourceSidebarStore((s) => s._hasHydrated);
   const toggle = useExtractionSourceSidebarStore((s) => s.toggle);
@@ -257,7 +257,7 @@ function SourceSidebar({ collections, view, onChange }: SourceSidebarProps) {
   const width = hasHydrated ? dims.currentWidth : dims.expandedWidth;
   const collapsed = hasHydrated && isCollapsed;
 
-  const hasCollections = (collections?.length ?? 0) > 0;
+  const hasCollections = collections.items.length > 0;
 
   return (
     <motion.aside
@@ -337,8 +337,13 @@ function SourceSidebar({ collections, view, onChange }: SourceSidebarProps) {
               </span>
             </div>
           )}
-          <nav className="flex flex-col gap-0.5 px-2 py-2" aria-label="Collections">
-            {collections!.map((c) => (
+          <nav
+            className={cn("flex flex-col gap-0.5 px-2 py-2", collections.isStale && "pointer-events-none opacity-60")}
+            // The padding's 16px plus a full page of rows.
+            style={collections.hasPages ? { minHeight: SIDEBAR_PAGE_SIZE * SIDEBAR_ROW_PX - 2 + 16 } : undefined}
+            aria-label="Collections"
+          >
+            {collections.items.map((c) => (
               <SidebarEntry
                 key={c._id}
                 label={c.name}
@@ -346,7 +351,7 @@ function SourceSidebar({ collections, view, onChange }: SourceSidebarProps) {
                 count={c.itemCount}
                 active={view === c._id}
                 collapsed={collapsed}
-                onClick={() => onChange(c._id)}
+                onClick={() => onChange(c._id, c.name)}
                 kind="collection"
                 viewId={c._id}
               />
@@ -355,7 +360,19 @@ function SourceSidebar({ collections, view, onChange }: SourceSidebarProps) {
         </>
       )}
 
-      {collections === undefined && (
+      {!collapsed && collections.hasPages && (
+        <PageStepper
+          className="px-3 pb-2"
+          page={collections.page}
+          pageCount={totalCollections === undefined ? undefined : Math.ceil(totalCollections / SIDEBAR_PAGE_SIZE)}
+          canPrevious={collections.canPrevious}
+          canNext={collections.canNext}
+          onPrevious={collections.previous}
+          onNext={collections.next}
+        />
+      )}
+
+      {collections.isLoading && (
         <div className="flex items-center gap-2 p-4 text-xs text-muted-foreground">
           <Spinner aria-label="Loading collections" className="h-3 w-3" />
         </div>

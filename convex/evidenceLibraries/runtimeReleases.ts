@@ -10,16 +10,14 @@ import {
   RuntimeImageRegistryError,
   type RuntimeImageReference,
 } from "./runtimeImageRegistry";
+import { MAX_RELEASES, MAX_RELEASE_CHANGES as MAX_CHANGES, MAX_RELEASE_NOTES as MAX_NOTES } from "../lib/listCaps";
 
 const GITHUB_ORIGIN = "https://api.github.com";
 const RUNTIME_REPOSITORY = "OpenDevEd/new-el";
 const RUNTIME_RELEASE_TAG = /^runtime-([a-f0-9]{40})$/u;
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
-const MAX_CHANGES = 250;
 const MAX_MESSAGE_LENGTH = 200;
-const MAX_RELEASES = 100;
-const MAX_NOTES = 40;
 const MAX_NOTE_LENGTH = 300;
 const COMMIT = /^[a-f0-9]{40}$/u;
 

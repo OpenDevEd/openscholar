@@ -1,7 +1,7 @@
 import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { activeModels, MAX_CATALOG_MODELS, pickable } from "./catalog";
-import { effortValidator } from "../aiModelConfig/validators";
+import { effortValidator, modelEffortsValidator, modelParametersValidator } from "../aiModelConfig/validators";
 import type { Doc } from "../_generated/dataModel";
 import schema from "../schema";
 import { isVariant, toNativeModelId } from "../../lib/ai/native-model-id";
@@ -19,10 +19,10 @@ const catalogOptionValidator = v.object({
   modality: v.optional(v.string()),
   tokenizer: v.optional(v.string()),
   intelligenceIndex: v.optional(v.number()),
-  reasoningEfforts: v.optional(v.array(effortValidator)),
+  reasoningEfforts: modelEffortsValidator,
   defaultEffort: v.optional(effortValidator),
   createdOnOpenRouter: v.optional(v.number()),
-  supportedParameters: v.optional(v.array(v.string())),
+  supportedParameters: modelParametersValidator,
 });
 
 function catalogOption(model: Doc<"models">) {

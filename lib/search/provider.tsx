@@ -31,6 +31,7 @@ import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
 import { ResearchContext } from '../research/binding';
 import { searchResultToParams } from '../search-params/converters';
 import { browserExpand, validateAndExpandKeywordsSilently } from '../keyword-validation-browser';
+import { useQueryShortcuts } from '../research/reads';
 import type { SearchFilters, SearchField, PaperResult } from '../types';
 import type { SearchContextValue, SearchParams, SearchResultData, SetQueryOptions } from './types';
 import {
@@ -163,6 +164,8 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   
   // Get expandQuery function for keyword expansion in shareable links
   const expandQuery = useKeywordExpansionStore((state) => state.expandQuery);
+  // An account's shortcuts are read by name: the ones this search's query names, while it's open.
+  const shortcutsRead = useQueryShortcuts(routeUrlParams.q, local?.params.q, storedQuery);
   
   // Helper to sync filter changes to store for history persistence
   // This ensures that when users change filters, the changes persist when navigating
@@ -772,7 +775,9 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   const rejected = rejectedQuery(error) !== null;
   const oql = useMemo(
     () => (currentParams.field === OQL_FIELD ? buildOpenAlexWorksQuery(currentParams, { expand: browserExpand })?.oql ?? null : null),
-    [currentParams],
+    // Built again once the query's shortcuts are read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentParams, shortcutsRead],
   );
 
   // Build context value

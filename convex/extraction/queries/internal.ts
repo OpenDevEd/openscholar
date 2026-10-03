@@ -30,6 +30,7 @@ import {
   jobStatusValidator,
   paperStatusValidator,
 } from "../validators";
+import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 export const getJobInternal = internalQuery({
   args: { jobId: v.id("extractionJobs") },
@@ -46,7 +47,7 @@ export const getQuestionCount = internalQuery({
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(MAX_QUESTIONS_PER_JOB);
     return questions.length;
   },
 });
@@ -138,11 +139,11 @@ export const getPaperExtractionContext = internalQuery({
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
         .order("asc")
-        .collect(),
+        .take(MAX_QUESTIONS_PER_JOB),
       ctx.db
         .query("extractionResults")
         .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-        .collect(),
+        .take(MAX_QUESTIONS_PER_JOB),
       ctx.db
         .query("extractionEvidenceUnits")
         .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))

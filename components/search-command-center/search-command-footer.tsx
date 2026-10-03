@@ -31,7 +31,7 @@ import { useSearchOptional } from "@/lib/search";
 import { useCurrentQuestionStore, useSearchHistoryStore } from "@/lib/store";
 import { useAppToast, getErrorMessage } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
-import { browserExpand, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
+import { browserExpand, ensureQueryShortcuts, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { cn } from "@/lib/utils";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 import { subtleSpring } from "@/lib/animation-config";
@@ -153,6 +153,7 @@ export function SearchCommandFooter({
       return;
     }
 
+    await ensureQueryShortcuts(effectiveQuery);
     const { expandedQuery } = validateAndExpandKeywordsSilently(effectiveQuery);
 
     setIsBroadening(true);
@@ -207,6 +208,7 @@ Return a more inclusive version of this query.`;
       return;
     }
 
+    await ensureQueryShortcuts(effectiveQuery);
     const { expandedQuery } = validateAndExpandKeywordsSilently(effectiveQuery);
 
     setIsNarrowing(true);
@@ -272,6 +274,7 @@ Return a more targeted version of this query.`;
       Math.max(0, totalCount ?? pullDefault),
     );
     const params = search.params;
+    await ensureQueryShortcuts(params.q);
     const searchFilters = paramsToBucketSearchFilters(params, {
       expand: browserExpand,
       getMessage: (key, values) => tv(key as "singleCharSearch", values),

@@ -287,7 +287,7 @@ export const duplicateJob = mutation({
       const oldChatPapers = await ctx.db
         .query("chatPapers")
         .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-        .collect();
+        .take(PAPER_LIMIT);
       const newChatPaperRows = cloneChatPapersForDuplicate(
         newJobId,
         oldChatPapers.map((r) => ({
@@ -314,7 +314,7 @@ export const duplicateJob = mutation({
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .order("asc")
-      .collect();
+      .take(MAX_QUESTIONS_PER_JOB);
 
     const dupStamp = await extractionStamp(ctx, user._id);
     const newJobId = await ctx.db.insert("extractionJobs", {

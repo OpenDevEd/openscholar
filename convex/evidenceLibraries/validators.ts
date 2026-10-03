@@ -5,6 +5,7 @@ import {
   SECTION_REGISTRY,
   type SectionKey,
 } from "../../lib/evidence-libraries/configuration/section-registry";
+import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
 
 export type { SectionKey };
 
@@ -142,11 +143,14 @@ export const sectionKeyValidator = v.union(
   ]),
 );
 
+/** A section's settings: its contract checks the shape, and its JSON stays within MAX_SECTION_PAYLOAD_BYTES. */
+export const sectionPayloadValidator = sized(v.any(), MAX_SECTION_PAYLOAD_BYTES);
+
 // One owner-edited section as it travels to and from the client. The payload
 // is checked in the mutation against the generated validator for its section.
 export const sectionRowValidator = v.object({
   sectionKey: sectionKeyValidator,
-  payload: v.any(),
+  payload: sectionPayloadValidator,
 });
 
 // One problem the full validator found while assembling a configuration.
@@ -214,14 +218,6 @@ export const evidenceLibraryFields = {
   updatedByClerkUserId: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),
-};
-
-// One row: the hosts Coolify served when it was last asked. Read while an
-// owner reserves an address, so a burst of checks costs one pair of reads.
-export const evidenceLibraryServedHostsFields = {
-  source: v.literal("coolify"),
-  hosts: v.array(v.string()),
-  fetchedAt: v.number(),
 };
 
 // One custom domain of one library. `host` is unique across the platform.
@@ -382,7 +378,7 @@ export const evidenceLibraryConfigSectionValidator = v.union(
     libraryId: v.id("evidenceLibraries"),
     draftId: v.id("evidenceLibraryConfigDrafts"),
     sectionKey: sectionKeyValidator,
-    payload: v.any(),
+    payload: sectionPayloadValidator,
     payloadByteLength: v.number(),
     contractProvenance: configProvenanceValidator,
     updatedByClerkUserId: v.string(),
@@ -393,7 +389,7 @@ export const evidenceLibraryConfigSectionValidator = v.union(
     libraryId: v.id("evidenceLibraries"),
     revisionId: v.id("evidenceLibraryConfigRevisions"),
     sectionKey: sectionKeyValidator,
-    payload: v.any(),
+    payload: sectionPayloadValidator,
     payloadByteLength: v.number(),
     contractProvenance: configProvenanceValidator,
     createdByClerkUserId: v.string(),
@@ -411,7 +407,7 @@ export const evidenceLibraryOperationErrorInputValidator = v.object({
 export const evidenceLibraryOperationFailureValidator = v.object({
   code: v.string(),
   message: v.string(),
-  issues: v.optional(v.array(configurationIssueValidator)),
+  issues: capped(v.optional(v.array(configurationIssueValidator)), MAX_CONFIGURATION_ISSUES),
 });
 
 // Who answers the public address, from the last check. "not-ours" means
@@ -508,7 +504,7 @@ export const runtimeReleaseChangeValidator = v.object({
 export const runtimeReleaseNotesValidator = v.object({
   commit: v.string(),
   summary: v.string(),
-  notes: v.array(v.string()),
+  notes: capped(v.array(v.string()), MAX_RELEASE_NOTES),
 });
 
 // The newest Evidence Library software commit, checked against GitHub and
@@ -545,10 +541,10 @@ export const evidenceLibraryRuntimeReleaseFields = {
   running: v.string(),
   latest: v.string(),
   latestImage: v.string(),
-  changes: v.array(runtimeReleaseChangeValidator),
+  changes: capped(v.array(runtimeReleaseChangeValidator), MAX_RELEASE_CHANGES),
   // Rows written before release notes existed have no list; the check treats
   // them as stale and asks GitHub again.
-  releases: v.optional(v.array(runtimeReleaseNotesValidator)),
+  releases: capped(v.optional(v.array(runtimeReleaseNotesValidator)), MAX_RELEASES),
   checkedAt: v.number(),
   contractSupport: v.optional(runtimeContractSupportValidator),
 };
@@ -746,7 +742,7 @@ export const evidenceLibraryConfigurationDeploymentTargetValidator = v.object({
   targetBaseUrl: v.string(),
   // The custom domains the proxy serves beside the platform address, taken
   // from our own records when the deployment was planned.
-  customDomains: v.array(v.string()),
+  customDomains: capped(v.array(v.string()), MAX_LIBRARY_DOMAINS),
   revisionKey: v.string(),
   defaultLocale: v.string(),
   runtimeCommit: v.string(),
@@ -881,7 +877,7 @@ export const evidenceLibraryOperationFields = {
       stage: v.string(),
     }),
   ),
-  issues: v.optional(v.array(configurationIssueValidator)),
+  issues: capped(v.optional(v.array(configurationIssueValidator)), MAX_CONFIGURATION_ISSUES),
   requestedByClerkUserId: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -980,7 +976,7 @@ export const evidenceLibraryOAuthClientFields = {
   clientId: v.optional(v.string()),
   encryptedClientSecret: v.optional(v.string()),
   discoveryUrl: v.optional(v.string()),
-  redirectUris: v.array(v.string()),
+  redirectUris: capped(v.array(v.string()), MAX_REDIRECT_URIS),
   // One sync at a time per library: two that overlap could each create an
   // application, or save a secret Clerk has already replaced.
   lease: v.optional(v.object({ token: v.string(), expiresAt: v.number() })),
@@ -1004,3 +1000,19 @@ export const clerkDeletedUserFields = {
   clerkId: v.string(),
   deletedAt: v.number(),
 };
+
+/** The DNS records one custom domain needs. */
+export const dnsRecordsValidator = capped(
+  v.array(
+    v.object({
+      type: v.union(v.literal("A"), v.literal("CNAME"), v.literal("TXT")),
+      label: v.string(),
+      name: v.string(),
+      value: v.string(),
+    }),
+  ),
+  MAX_DNS_RECORDS,
+);
+
+/** The sections one configuration version changed. */
+export const changedSectionsValidator = capped(v.array(sectionKeyValidator), MAX_CONFIG_SECTIONS);

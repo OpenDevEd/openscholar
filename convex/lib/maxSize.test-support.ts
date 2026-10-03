@@ -88,7 +88,7 @@ export async function seedLibrary(t: Test, userId: Id<"users">, { items = MAX_SI
     journal: text(40, i), citedByCount: i % 500, paperData: text(1_700, i), searchableText: text(160, i), savedAt: 1_700_000_000_000 + i, updatedAt: 1,
     ...(abstractChars ? { abstract: text(abstractChars, i) } : {}),
   })));
-  const [collectionId] = await insertMany(t, "collections", [{ userId, name: "Everything", itemCount: items, createdAt: 1, updatedAt: 1 }]);
+  const [collectionId] = await insertMany(t, "collections", [{ userId, name: "Everything", sortName: "everything", itemCount: items, createdAt: 1, updatedAt: 1 }]);
   await insertMany(t, "libraryItemCollections", itemIds.map((libraryItemId) => ({ userId, collectionId, libraryItemId, assignedAt: 1 })), 3_000);
   await t.run((ctx) => ctx.db.patch(userId, { libraryItemCount: items }));
   return { itemIds, collectionId };

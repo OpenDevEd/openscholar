@@ -1,5 +1,6 @@
 "use client";
 
+import { useRatedPapers } from "@/lib/research/reads";
 import Link from "next/link";
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
@@ -38,7 +39,10 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
     if (tab !== "openalex" || (previous && !previous.meta.next_cursor)) return null;
     return ["topic-works", topic.id, previous?.meta.next_cursor ?? "*"] as const;
   }, ([, id, cursor]) => unlessLimited(readTopicWorks(id, cursor)));
-  const papers = works.data?.flatMap(page => page.results) ?? [];
+  // A paper is shown once its rating is read, so its card opens at its final size.
+  const rated = useRatedPapers(works.data?.flatMap(page => page.results) ?? []);
+  const papers = rated.papers;
+  const loadingPapers = works.isLoading || rated.loading;
   const total = works.data?.[0]?.meta.count ?? 0;
   const isFocusModeOpen = useUIStore(state => state.isFocusModeOpen);
 
@@ -74,11 +78,11 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
     {tab === "libraries" ? <TopicLibraryResults state={library} /> : <div>
         <FocusMode isOpen={isFocusModeOpen} onClose={() => useUIStore.getState().setIsFocusModeOpen(false)} papers={papers} onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />
         {works.error && <div role="alert" className="flex items-center gap-3 p-6 text-sm">{works.error instanceof OpenAlexLimitedError ? tToast("tooManyRequestsDescription") : t("publicationsFailed")}<Button variant="outline" size="sm" onClick={() => void works.mutate()}>{t("tryAgain")}</Button></div>}
-        {works.isLoading && <ListLoading label={t("loadingPublications")} />}
+        {loadingPapers && !papers.length && <ListLoading label={t("loadingPublications")} />}
         {papers.length > 0 && <div className="space-y-4 p-4 sm:p-6">
           {papers.map((paper, index) => <PaperCard key={paper.id} result={paper} resultIndex={index} viewMode="list-simple" onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />)}
         </div>}
-        {!works.isLoading && !works.error && !papers.length && <ListEmpty icon={OpenAlexIcon}>{t("noOpenAlex")}</ListEmpty>}
+        {!loadingPapers && !works.error && !papers.length && <ListEmpty icon={OpenAlexIcon}>{t("noOpenAlex")}</ListEmpty>}
         {works.data?.at(-1)?.meta.next_cursor && <div className="flex items-center justify-between gap-3 border-t border-border/50 px-6 py-3">
           <span className="text-sm text-muted-foreground">{t("progress", { loaded: papers.length, total })}</span>
           <Button variant="ghost" size="sm" disabled={works.isValidating} onClick={() => void works.setSize(works.size + 1)}>{works.isValidating && <Spinner />}{t("showMore")}</Button>

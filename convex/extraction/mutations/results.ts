@@ -30,6 +30,7 @@ import {
 } from "../validators";
 import { aggregatePaperStatus } from "@/lib/extraction/paper-status";
 import type { ErrorCode } from "@/lib/errors/taxonomy";
+import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 export const updateJobStatus = internalMutation({
   args: {
@@ -473,11 +474,11 @@ export const finalizePaper = internalMutation({
       ctx.db
         .query("extractionResults")
         .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-        .collect(),
+        .take(MAX_QUESTIONS_PER_JOB),
       ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", paper.jobId))
-        .collect(),
+        .take(MAX_QUESTIONS_PER_JOB),
     ]);
 
     const byKey = new Map(resultsForPaper.map((r) => [r.questionKey, r]));

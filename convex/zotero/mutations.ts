@@ -1,6 +1,7 @@
 /**
  * Zotero mutations - OAuth flow and connection management
  */
+import { SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
 import { mutation, internalMutation } from "../lib/functions";
 import { v } from "convex/values";
 import { getCurrentUser, requireAuth } from "../lib/auth";
@@ -17,11 +18,11 @@ export const storeRequestToken = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, { token, tokenSecret, userId, returnTo }) => {
-    // Cardinality: 1 OAuth token per user
+    // One pending sign-in per user: each new one replaces those before it.
     const existing = await ctx.db
       .query("zoteroOAuthTokens")
       .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+      .take(SINGLE_ROW_CLEANUP);
 
     await Promise.all(existing.map((t) => ctx.db.delete("zoteroOAuthTokens", t._id)));
 

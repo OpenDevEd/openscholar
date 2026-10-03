@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getProcessableFlags } from "./content";
 import { getFlag } from "../featureFlags/guard";
 import { assertNonProd } from "../lib/assertNonProd";
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 
 /**
  * Internal query to inspect raw content extracted from papers in a job.
@@ -20,7 +21,7 @@ export const debugJobContent = internalQuery({
     const papers = await ctx.db
       .query("extractionPapers")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .collect();
+      .take(PAPER_LIMIT);
 
     const counts = {
       total: papers.length,

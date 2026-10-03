@@ -3,7 +3,7 @@ import { DateRange } from 'react-day-picker';
 import posthog from 'posthog-js';
 import { useUIStore, useRatingsStore, useSearchHistoryStore } from './store';
 import { createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
-import { validateAndExpandKeywordsSilently } from './keyword-validation-browser';
+import { ensureQueryShortcuts, validateAndExpandKeywordsSilently } from './keyword-validation-browser';
 import type { SearchField, SearchFilters, ScreeningResponses, PaperResult } from './types';
 
 export type DownloadSearchState = {
@@ -18,16 +18,13 @@ export type DownloadSearchState = {
 
 type ItemScreeningResults = Record<string, boolean | null>;
 
-function getScreeningResponsesForSearch(searchState?: DownloadSearchState): ScreeningResponses {
+/** The search's answers for the papers a download holds; a page keeps only those of the papers it shows. */
+async function getScreeningResponsesForSearch(searchState: DownloadSearchState | undefined, paperIds: string[]): Promise<ScreeningResponses> {
   if (!searchState?.searchId) {
     return {};
   }
 
-  const searchResult = useSearchHistoryStore
-    .getState()
-    .getSearchResult(searchState.searchId);
-
-  return searchResult?.screeningResponses || {};
+  return await useSearchHistoryStore.getState().readScreeningResponses(searchState.searchId, paperIds);
 }
 
 function getItemScreeningResults(
@@ -160,8 +157,8 @@ export const downloadItem = async (
 ) => {
   const formatLabel = labels?.item ?? 'item';
   try {
-    const { ratings } = useRatingsStore.getState();
-    const screeningResponses = getScreeningResponsesForSearch(searchState);
+    const ratings = await useRatingsStore.getState().readRatings([item.id]);
+    const screeningResponses = await getScreeningResponsesForSearch(searchState, [item.id]);
     
     if (!searchState) {
       toast.io.downloadFailed(formatLabel);
@@ -169,6 +166,7 @@ export const downloadItem = async (
     }
     
     // Expand keywords for export
+    await ensureQueryShortcuts(searchState.query);
     const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
     
     const filename = generateFilename(item.title || '', '', format);
@@ -198,8 +196,8 @@ export const downloadEssentialItem = async (
 ) => {
   const formatLabel = labels?.essentialItem ?? 'essential item';
   try {
-    const { ratings } = useRatingsStore.getState();
-    const screeningResponses = getScreeningResponsesForSearch(searchState);
+    const ratings = await useRatingsStore.getState().readRatings([item.id]);
+    const screeningResponses = await getScreeningResponsesForSearch(searchState, [item.id]);
 
     if (!searchState) {
       toast.io.downloadFailed(formatLabel);
@@ -207,6 +205,7 @@ export const downloadEssentialItem = async (
     }
     
     // Expand keywords for export
+    await ensureQueryShortcuts(searchState.query);
     const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
     
     const essentialInfo = getEssentialInfo(item, ratings, screeningResponses, format);
@@ -229,8 +228,8 @@ export const downloadAll = async (
 ) => {
   const formatLabel = labels?.results ?? 'results';
   try {
-    const { ratings } = useRatingsStore.getState();
-    const screeningResponses = getScreeningResponsesForSearch(searchState);
+    const ratings = await useRatingsStore.getState().readRatings((results ?? []).map((result) => result.id));
+    const screeningResponses = await getScreeningResponsesForSearch(searchState, (results ?? []).map((result) => result.id));
     
     if (!searchState || !results) {
       toast.io.downloadFailed(formatLabel);
@@ -238,6 +237,7 @@ export const downloadAll = async (
     }
 
     // Expand keywords for export
+    await ensureQueryShortcuts(searchState.query);
     const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
     
     const filename = generateFilename('search_results', onlyEssential ? 'essential' : '', format);

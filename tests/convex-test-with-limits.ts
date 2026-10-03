@@ -17,6 +17,7 @@ import { register as registerBatchWorker } from "@convex-dev/batch-worker/test";
 import { register as registerShardedCounter } from "@convex-dev/sharded-counter/test";
 import { register as registerMigrations } from "@convex-dev/migrations/test";
 import { convexTest as baseConvexTest } from "convex-test/dist/index.js";
+import { capWrites } from "../convex/lib/capWrites";
 import { triggers } from "../convex/lib/triggers";
 
 export * from "convex-test/dist/index.js";
@@ -47,13 +48,33 @@ export function convexTest(schemaOrOptions?: Schema | Options, modules?: Modules
   return withTriggersInRun(t);
 }
 
-type Runner = { run: (fn: (ctx: any) => Promise<any>) => Promise<any>; withIdentity: (identity: any) => Runner };
+/**
+ * Runs `fn` like `t.run`, without the list caps (convex/lib/capWrites.ts): for seeding rows
+ * saved before their cap existed, such as a legacy search's history arrays.
+ */
+export function runUncapped<T extends { run: (fn: (ctx: any) => Promise<any>) => Promise<any> }, R>(
+  t: T,
+  fn: (ctx: Parameters<Parameters<T["run"]>[0]>[0]) => Promise<R>,
+): Promise<R> {
+  return (t as unknown as Runner).runUncapped!(fn) as Promise<R>;
+}
 
-/** Runs `t.run` callbacks, including under `withIdentity`, with the database triggers applied. */
+type Runner = {
+  run: (fn: (ctx: any) => Promise<any>) => Promise<any>;
+  withIdentity: (identity: any) => Runner;
+  /** Like `run`, without the list caps: for seeding rows saved before their cap existed. */
+  runUncapped?: (fn: (ctx: any) => Promise<any>) => Promise<any>;
+};
+
+/**
+ * Runs `t.run` callbacks, including under `withIdentity`, with the app's writes: the database
+ * triggers over the list caps (convex/lib/capWrites.ts). `t.runUncapped` skips the caps.
+ */
 function withTriggersInRun<T extends Runner>(target: T): T {
   const run = target.run.bind(target);
   const withIdentity = target.withIdentity.bind(target);
-  target.run = (fn) => run((ctx) => fn(triggers.wrapDB(ctx)));
+  target.run = (fn) => run((ctx) => fn(triggers.wrapDB({ ...ctx, db: capWrites(ctx.db) })));
+  target.runUncapped = (fn) => run((ctx) => fn(triggers.wrapDB(ctx)));
   target.withIdentity = (identity) => withTriggersInRun(withIdentity(identity));
   return target;
 }

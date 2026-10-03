@@ -8,7 +8,7 @@ import {
   type GetSearchResultsWithFiltersOptions,
   type SearchWithFiltersParams,
 } from '../search-utils';
-import { browserExpand } from '../keyword-validation-browser';
+import { browserExpand, ensureQueryShortcuts } from '../keyword-validation-browser';
 
 export interface EnhancedSearchResult {
   originalQuery: string;
@@ -28,6 +28,8 @@ export async function getSearchResultsWithFilters(
   options?: Omit<GetSearchResultsWithFiltersOptions, "expand">
 ): Promise<EnhancedSearchResult> {
   const { query } = params;
+  // An account reads the shortcuts the query names before expanding it.
+  await ensureQueryShortcuts(query);
   const {
     validation,
     countryNames,

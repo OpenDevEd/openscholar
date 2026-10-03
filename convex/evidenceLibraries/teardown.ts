@@ -821,6 +821,27 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       await Promise.all(bindings.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
+    // Its grants and invitations go with it, so they don't count against the people who held them.
+    const members = await ctx.db
+      .query("evidenceLibraryMembers")
+      .withIndex("by_libraryId_and_clerkUserId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    if (members.length > 0) {
+      await Promise.all(members.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
+    const invitations = await ctx.db
+      .query("evidenceLibraryInvitations")
+      .withIndex("by_libraryId_and_state", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    if (invitations.length > 0) {
+      await Promise.all(invitations.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
     await ctx.db.delete(operation._id);
     await ctx.db.delete(args.libraryId);
     return { complete: true };

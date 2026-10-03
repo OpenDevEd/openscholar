@@ -70,7 +70,7 @@ vi.mock("@/convex/_generated/api", () => ({
         connectCollectionSource: "connectCollectionSource",
       },
     },
-    library: { collections: { getCollectionsWithCounts: "getCollectionsWithCounts" } },
+    library: { collections: { listCollections: "listCollections" } },
     zotero: {
       actions: { startOAuth: "startOAuth" },
       mutations: { disconnect: "disconnect" },
@@ -399,10 +399,14 @@ describe("<SourcesField>", () => {
 
   it("adds the owner's collections only once each is connected, with the library's OpenAlex access", async () => {
     queries({ connected: false });
-    mocks.myCollections.mockResolvedValue([
-      { _id: "c1", name: "Early grade reading", itemCount: 3 },
-      { _id: "c2", name: "Refused", itemCount: 2 },
-    ]);
+    mocks.myCollections.mockResolvedValue({
+      page: [
+        { _id: "c1", name: "Early grade reading", itemCount: 3, containsItem: false },
+        { _id: "c2", name: "Refused", itemCount: 2, containsItem: false },
+      ],
+      isDone: true,
+      continueCursor: "",
+    });
     mocks.connectCollection.mockImplementation(async ({ collectionId }: { collectionId: string }) => {
       if (collectionId === "c2") throw new Error("Only the collection's owner can add it to a library");
       return { collectionId, name: "Early grade reading", itemCount: 3 };

@@ -5,8 +5,11 @@ import { getDocumentSize } from "convex/values";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { readEveryLibraryPage } from "../../lib/library/export";
-import { RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
+import { exportLibrary, exportParts, exportedTitles } from "../exports.test-support";
+import { PAPER_LIMIT, RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
+import { replaceJobSources, writeJobSources } from "../extraction/jobSources";
+import { collectionSortName } from "../library/collections";
+import { MAX_COLLECTIONS_PER_USER, MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { MAX_SIZE, insertMany, seedAccount, seedExtractionJob, seedLibrary, text } from "../lib/maxSize.test-support";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 import { assertApprovedQueriesUnchanged } from "../evidenceLibraries/approvedQueries";
@@ -91,6 +94,26 @@ describe("at the largest sizes the product allows", () => {
     expect(await as.query(api.library.queries.getLibraryCount, {})).toBe(MAX_SIZE.libraryItems);
   }, 120_000);
 
+  it("a person's 500 collections page by name, each checked for a saved paper", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    // seedLibrary makes the first collection, which holds its paper.
+    await seedLibrary(t, userId, { items: 1 });
+    await insertMany(t, "collections", Array.from({ length: MAX_COLLECTIONS_PER_USER - 1 }, (_, i) => {
+      const name = `Reading list ${i}: ${text(200, i)}`;
+      return { userId, name, sortName: collectionSortName(name), itemCount: 0, createdAt: 1, updatedAt: 1 };
+    }));
+    await t.run((ctx) => ctx.db.insert("collectionCounts", { userId, count: MAX_COLLECTIONS_PER_USER }));
+    expect(await as.query(api.library.collections.countCollections, {})).toBe(MAX_COLLECTIONS_PER_USER);
+    // Asking for more than the largest page gets the largest page.
+    const page = await as.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: MAX_COLLECTIONS_PER_USER }, openalexId: "https://openalex.org/W0" });
+    expect(page.page).toHaveLength(50);
+    expect(page.isDone).toBe(false);
+    expect(page.page.filter((collection) => collection.containsItem).map((collection) => collection.name)).toEqual(["Everything"]);
+    const searched = await as.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: 50 }, search: "tutoring" });
+    expect(searched.page).toHaveLength(50);
+  }, 120_000);
+
   it("a 10,000-paper library shows, counts and exports every filter", async () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
@@ -114,9 +137,26 @@ describe("at the largest sizes the product allows", () => {
     }
     expect(await as.query(api.library.queries.getLibraryFilteredCount, { ...sorted, collectionId })).toEqual({ count: MAX_SIZE.libraryItems, capped: false });
     expect(await as.query(api.library.queries.getLibraryFilteredCount, { ...sorted, minRating: 5, yearTo: 1990 })).toEqual({ count: 0, capped: false });
-    const exported = await readEveryLibraryPage((cursor) => as.query(api.library.queries.browseLibrary, { ...sorted, minRating: 2, paginationOpts: { cursor, numItems: 500 } }));
+    const exported = await exportedTitles(t, as, { ...sorted, minRating: 2 });
     expect(exported).toHaveLength(MAX_SIZE.libraryItems * 0.8);
   }, 300_000);
+
+  it("a 10,000-paper library of long abstracts exports in parts under Convex's 20 MiB response limit", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    await seedLibrary(t, userId, { abstractChars: 4_500 });
+    const { parts } = await exportLibrary(t, as, { sortBy: "savedAt", sortOrder: "desc" }, "csv");
+    expect(parts.length).toBeGreaterThan(1);
+    for (const { response, text } of parts) {
+      expect(response.status).toBe(200);
+      expect(new TextEncoder().encode(text).byteLength).toBeLessThan(20 * 1024 * 1024);
+    }
+    // Each part is a whole CSV: a header, then its rows; together they hold every paper once.
+    const rows = parts.flatMap(({ text }) => text.trimEnd().split("\n").slice(1));
+    expect(rows).toHaveLength(MAX_SIZE.libraryItems);
+    expect(parts.every(({ text }) => text.startsWith("\ufeffabstract,"))).toBe(true);
+    expect(new Set(rows.map((row) => row.match(/https:\/\/openalex\.org\/W\d+/)?.[0])).size).toBe(MAX_SIZE.libraryItems);
+  }, 600_000);
 
   it("a 10,000-paper library of long abstracts counts a filter that matches nothing", async () => {
     const t = convexTest(schema);
@@ -137,13 +177,69 @@ describe("at the largest sizes the product allows", () => {
     for (let i = 0; i < 25; i++) await change(`create-${i}`, { kind: "createSearch", search: search(`search-${i}`, i) });
     for (let i = 1; i <= 200; i++) await change(`edit-${i}`, { kind: "editSearch", id: "search-0", edit: { kind: "query", query: query(1000 + i), field: "oql" } });
     const paginationOpts = { cursor: null, numItems: 25 };
-    const page = await as.query(api.research.records.searches, { accountId: clerkId, paginationOpts });
+    const page = await as.query(api.research.records.listedSearches, { accountId: clerkId, sort: "recent", paginationOpts });
     expect(page.page).toHaveLength(25);
     expect(page.page.find((row) => row.id === "search-0")?.queryHistoryCount).toBe(201);
     expect((await as.query(api.research.records.revisions, { accountId: clerkId, id: "search-0", paginationOpts })).page).toHaveLength(25);
     const history = await as.query(api.research.records.searchHistory, { accountId: clerkId, id: "search-0", kind: "query", paginationOpts: { cursor: null, numItems: 100 } });
     expect(history.page).toHaveLength(100);
     expect(history.page[0].text).toBe(query(1200));
+  }, 300_000);
+
+  it("a history of 100 searches, each query 180,000 characters, lists, filters, exports and clears (#420)", async () => {
+    const t = convexTest({ schema, transactionLimits: true });
+    const clerkId = "max_size_user";
+    const { as } = await seedAccount(t, clerkId);
+    const search = (i: number) => ({ id: `search-${i}`, query: `${i === 99 ? "needle" : "hay"} ${text(180_000 - 7, i)}`, field: "oql" as const, count: i, queryHistoryCount: 0, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: new Date(Date.UTC(2026, 8, 1, 0, 0, i)).toISOString(), updatedAt: "2026-09-01T00:00:00.000Z" });
+    for (let i = 0; i < 100; i++) await as.mutation(api.research.records.change, { accountId: clerkId, requestId: `create-${i}`, command: { kind: "createSearch", search: search(i) } });
+    await t.finishAllScheduledFunctions(() => {});
+    expect(await as.query(api.research.records.countSearches, { accountId: clerkId })).toBe(100);
+    // More than one transaction can read: each read stops at its byte budget, and the next carries on.
+    const listed: string[] = [];
+    for (let cursor: string | null = null; ;) {
+      const page: { page: Array<{ id: string }>; isDone: boolean; continueCursor: string } = await as.query(api.research.records.listedSearches, { accountId: clerkId, sort: "recent", paginationOpts: { cursor, numItems: 50 } });
+      listed.push(...page.page.map((row) => row.id));
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    expect(listed).toHaveLength(100);
+
+    // The one match is the last search the oldest-first read reaches.
+    const found: string[] = [];
+    for (let cursor: string | null = null; ;) {
+      const page: { page: Array<{ id: string }>; isDone: boolean; continueCursor: string } = await as.query(api.research.records.listedSearches, { accountId: clerkId, sort: "oldest", text: "NEEDLE", paginationOpts: { cursor, numItems: 12 } });
+      found.push(...page.page.map((row) => row.id));
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    expect(found).toEqual(["search-99"]);
+
+    const { parts } = await exportParts(t, as, { kind: "history" });
+    expect(parts.flatMap(({ text }) => JSON.parse(text) as unknown[])).toHaveLength(100);
+
+    vi.useFakeTimers();
+    await as.mutation(api.research.records.change, { accountId: clerkId, requestId: "clear", command: { kind: "clearSearches" } });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    vi.useRealTimers();
+    expect(await as.query(api.research.records.countSearches, { accountId: clerkId })).toBe(0);
+  }, 300_000);
+
+  it("a job takes as many sources as it can hold papers, replaces them, and refuses one more (#427)", async () => {
+    const t = convexTest({ schema, transactionLimits: true });
+    const { userId } = await seedAccount(t, "max_size_user");
+    const jobId = await t.run((ctx) => ctx.db.insert("extractionJobs", { userId, mode: "extraction", sourceType: "history", status: "pending", totalPapers: 0, name: "Sources", createdAt: 1, updatedAt: 1 }));
+    const source = (i: number) => ({ bucketKey: `library:${i}`, source: "library" as const, sourceRefId: `W${i}`, title: `Paper ${i}`, authors: ["A. Author"] });
+    const sources = (count: number) => Array.from({ length: count }, (_, i) => source(i));
+    const rows = () => t.run(async (ctx) => (await ctx.db.query("extractionJobSources").withIndex("by_job_and_position", (q) => q.eq("jobId", jobId)).take(PAPER_LIMIT + 1)).length);
+
+    await t.run((ctx) => writeJobSources(ctx as never, jobId, sources(PAPER_LIMIT)));
+    expect(await rows()).toBe(PAPER_LIMIT);
+    // Replacing them deletes every one, which is what bounds the read: even the extra rows
+    // of a job seeded before sources were capped.
+    await insertMany(t, "extractionJobSources", Array.from({ length: 500 }, (_, i) => ({ jobId, position: PAPER_LIMIT + i, ...source(PAPER_LIMIT + i) })));
+    await t.run((ctx) => replaceJobSources(ctx as never, jobId, sources(3)));
+    expect(await rows()).toBe(3);
+    await expect(t.run((ctx) => writeJobSources(ctx as never, jobId, sources(PAPER_LIMIT + 1)))).rejects.toThrow(/up to 1,000 sources/);
   }, 300_000);
 
   it("a search saved before #354 with 44 revisions of the longest OQL query lists every revision (#354)", async () => {
@@ -237,4 +333,70 @@ describe("at the largest sizes the product allows", () => {
     expect(await average("extractionResults")).toBeGreaterThan(800);
     expect(await average("libraryItems")).toBeGreaterThan(2_000);
   });
+
+  it("a 1,000-paper, 50-question screening job exports every result, and reads its largest page", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    const questions = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => ({ key: `q${i}`, question: `${text(180, i)}?` }));
+    const jobId = await t.run((ctx) => ctx.db.insert("screeningJobs", {
+      userId, status: "completed", totalPapers: MAX_SCREENING_PAPERS_PER_JOB, questions,
+      scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }] },
+      createdAt: 1, updatedAt: 1,
+    }));
+    await insertMany(t, "screeningResults", Array.from({ length: MAX_SCREENING_PAPERS_PER_JOB }, (_, i) => ({
+      jobId, openalexId: `https://openalex.org/W${i}`, title: text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), publicationYear: 2020, doi: `10.1234/${i}`,
+      status: "completed", answers: Object.fromEntries(questions.map(({ key }, q) => [key, (i + q) % 3 === 0 ? null : (i + q) % 2 === 0])), score: 25, stars: 5, qualified: true, createdAt: 1,
+    })), 250);
+
+    const csv = await exportParts(t, as, { kind: "screening", jobId }, "csv");
+    expect(csv.parts).toHaveLength(1);
+    expect(csv.text.split("\n")).toHaveLength(MAX_SCREENING_PAPERS_PER_JOB + 1);
+    const json = await exportParts(t, as, { kind: "screening", jobId });
+    expect(json.parts).toHaveLength(1);
+    expect(JSON.parse(json.text).results).toHaveLength(MAX_SCREENING_PAPERS_PER_JOB);
+    // The workbook reads the largest page a read allows.
+    const page = await as.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: null, numItems: 1_000 } });
+    expect(page.page).toHaveLength(200);
+  }, 300_000);
+
+  it("a search's answers read 200 papers at a time, and a question's answers leave every paper, at 50 questions a paper", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      const clerkId = "max_answers_user";
+      const { userId, as } = await seedAccount(t, clerkId);
+      const questions = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => `${text(180, i)}?`);
+      const papers = Array.from({ length: 450 }, (_, i) => `https://openalex.org/W${i}`);
+      const at = new Date(Date.UTC(2026, 8, 1)).toISOString();
+      const search = { id: "answered", query: "tutoring", field: "title" as const, count: 450, queryHistoryCount: 0, questionCount: 0, questionText: "", screeningQuestions: questions.map((question) => ({ question })), screeningResponses: [], createdAt: at, updatedAt: at };
+      await as.mutation(api.research.records.change, { accountId: clerkId, requestId: "create", command: { kind: "createSearch", search } });
+      // Seeded as rows: one import of this many answers wouldn't fit a transaction.
+      const screeningId = await t.run(async (ctx) => {
+        const search = (await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", "answered")).unique())!;
+        return ctx.db.insert("screenings", { userId, searchId: search._id, version: 1, createdAt: 1 });
+      });
+      const answers = questions.map((question, q) => ({ question, answer: q % 2 === 0, setBy: "model" as const, updatedAt: 1, model: { answer: q % 2 === 0, confidence: 0.9, at: 1 } }));
+      await insertMany(t, "screeningAnswers", papers.map((paperId) => ({ screeningId, paperId, answers })), 100);
+      await insertMany(t, "screeningAnswerHistory", papers.map((paperId) => ({ screeningId, paperId, answers, version: 1, at: 1 })), 100);
+
+      const page = await as.query(api.research.records.answersOf, { accountId: clerkId, id: "answered", paperIds: papers.slice(0, 200) });
+      expect(page.page).toHaveLength(200);
+      expect(page.page[0].responses).toHaveLength(MAX_SIZE.questionsPerJob);
+
+      await as.mutation(api.research.records.change, { accountId: clerkId, requestId: "drop", command: { kind: "editSearch", id: "answered", edit: { kind: "replaceScreeningQuestion", question: questions[0], replacement: null } } });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      const left = { rows: 0, withQuestion: 0 };
+      for (let cursor: string | null = null; ;) {
+        const read: { page: Array<{ answers: Array<{ question: string }> }>; isDone: boolean; continueCursor: string } = await t.run((ctx) =>
+          ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId)).paginate({ cursor, numItems: 100 }));
+        left.rows += read.page.length;
+        left.withQuestion += read.page.filter((row) => row.answers.some((answer) => answer.question === questions[0])).length;
+        if (read.isDone) break;
+        cursor = read.continueCursor;
+      }
+      expect(left).toEqual({ rows: 450, withQuestion: 0 });
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 300_000);
 });

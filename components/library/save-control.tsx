@@ -1,12 +1,13 @@
 "use client";
 
-import { cloneElement, useState } from "react";
+import { ConvexError } from "convex/values";
+import { cloneElement, useState, type UIEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { create } from "zustand";
-import { BookCheck, BookPlus, Folder, FolderCheck, Plus } from "lucide-react";
+import { BookCheck, BookPlus, Folder, FolderCheck, Plus, Search } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
@@ -25,8 +26,10 @@ import {
 } from "@/components/ui/popover";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useCollectionPicker } from "./use-collection-picker";
 
-type RemovedPaper = NonNullable<FunctionReturnType<typeof api.library.mutations.removeFromLibrary>>;
+/** A removal's ID: the server keeps what was removed for a day, for Undo. */
+type Removal = NonNullable<FunctionReturnType<typeof api.library.mutations.removeFromLibrary>>;
 type Pending = { value: boolean; token: number };
 
 let lastToken = 0;
@@ -79,7 +82,7 @@ const usePending = create<{
  * collections), so a quick second press works and keyboard users, whose focus the
  * focus mode sheet keeps from the toast, can undo with `B`.
  */
-const removals = new Map<string, Promise<RemovedPaper | null>>();
+const removals = new Map<string, Promise<Removal | null>>();
 
 /** Forgets the removals a collection change makes stale: the paper is saved on its own terms. */
 function forgetRemoval(userId: string | null | undefined, paperId: string) {
@@ -115,25 +118,29 @@ export function useSavePaper(paper: WorkInput | undefined) {
   const isSaved = pendingSaved ?? Boolean(saved);
 
   /** Saves the paper, putting it back whole when `removal` took it away. */
-  const saveBack = (paper: WorkInput, removal: Promise<RemovedPaper | null> | undefined) => {
+  const saveBack = (paper: WorkInput, removal: Promise<Removal | null> | undefined) => {
     const { setSaved, settleSaved } = usePending.getState();
     const key = `${userId}:${paper.id}`;
     const token = setSaved(paper.id, true);
     removals.delete(key);
     (async () => {
       const removed = removal ? await removal : null;
-      if (!removed) {
-        await save(paperArgs(paper)).catch((error) => {
+      const saveAfresh = () =>
+        save(paperArgs(paper)).catch((error) => {
           console.error("[Library] Failed to save:", error);
           toast.error(t("saveError"));
         });
+      if (!removed) {
+        await saveAfresh();
         return;
       }
       // The server restores the research rating with the paper.
-      await restore({ paper: removed }).catch((error) => {
+      await restore({ removalId: removed }).catch(async (error) => {
+        // The removal is past its day, or was already used: the paper is saved afresh.
+        if (error instanceof ConvexError && (error.data as { code?: string } | undefined)?.code === "NOT_FOUND") return await saveAfresh();
         console.error("[Library] Failed to restore:", error);
         toast.error(t("restoreError"));
-        // Keep what was removed so the next Save can try again.
+        // Keep the removal so the next Save can try again.
         if (!removals.has(key)) removals.set(key, Promise.resolve(removed));
       });
     })().finally(() => settleSaved(paper.id, token));
@@ -160,7 +167,7 @@ export function useSavePaper(paper: WorkInput | undefined) {
       .then((removed) => {
         if (!removed) return;
         toast(t("removed"), {
-          description: removed.title,
+          description: paper.title,
           duration: 5000,
           action: {
             label: t("undo"),
@@ -256,8 +263,6 @@ export function SaveControl({
           <PopoverContent align="start" className="w-72 p-2">
             <CollectionsPanel
               paper={paper}
-              libraryItemId={saved?.libraryItemId}
-              inCollection={Boolean(saved?.inCollection)}
               pending={pendingCollections}
             />
           </PopoverContent>
@@ -275,32 +280,21 @@ export function SaveControl({
 /** The popover's checklist of collections, with a field to make a new one. */
 function CollectionsPanel({
   paper,
-  libraryItemId,
-  inCollection,
   pending,
 }: {
   paper: WorkInput;
-  libraryItemId: Id<"libraryItems"> | undefined;
-  inCollection: boolean;
   pending: Record<string, Pending>;
 }) {
   const t = useTranslations("saveToLibrary");
+  const tl = useTranslations("libraryPage");
   const { userId } = useAuth();
   const [newName, setNewName] = useState("");
-  const { data: collections } = useProtectedQuery(
-    api.library.collections.getCollectionsWithCounts,
-    {},
-  );
-  // Only a paper that's in a collection needs its memberships read.
-  const { data: memberIds } = useProtectedQuery(
-    api.library.collections.getItemCollections,
-    libraryItemId && inCollection ? { libraryItemId } : "skip",
-  );
+  const picker = useCollectionPicker({ openalexId: paper.id });
   const setInCollection = useMutation(api.library.mutations.setPaperInCollection);
   const createCollection = useMutation(api.library.collections.createCollection);
 
-  const loadingMembers = inCollection && memberIds === undefined;
-  const checkedIds = new Set<string>(memberIds ?? []);
+  const loadingMembers = picker.isLoading;
+  const checkedIds = new Set<string>(picker.collections.filter((collection) => collection.containsItem).map((collection) => collection._id));
   for (const [collectionId, { value: checked }] of Object.entries(pending)) {
     if (checked) checkedIds.add(collectionId);
     else checkedIds.delete(collectionId);
@@ -338,8 +332,20 @@ function CollectionsPanel({
   return (
     <>
       <p className="px-3 pt-1 pb-2 text-sm font-medium">{t("addToCollection")}</p>
+      <div className="relative mb-1">
+        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={picker.query}
+          onChange={(event) => picker.setQuery(event.target.value)}
+          placeholder={tl("searchCollections")}
+          aria-label={tl("searchCollections")}
+          className="h-8 pl-8 text-sm"
+        />
+      </div>
       <CollectionChecklist
-        collections={collections}
+        collections={picker.isLoading ? undefined : picker.collections}
+        searching={picker.search.length > 0}
+        onScroll={picker.onScroll}
         checkedIds={checkedIds}
         onToggle={(collectionId, checked) => toggle(collectionId, !checked)}
         // Kept still until the paper's collections arrive, so a tick can't land on stale state.
@@ -379,27 +385,32 @@ function CollectionsPanel({
 
 function CollectionChecklist({
   collections,
+  searching,
   checkedIds,
   onToggle,
+  onScroll,
   className,
 }: {
   collections: Array<{ _id: Id<"collections">; name: string; itemCount: number }> | undefined;
+  searching: boolean;
   checkedIds: ReadonlySet<string>;
   onToggle: (collectionId: Id<"collections">, isCurrentlyChecked: boolean) => void;
+  onScroll: (event: UIEvent<HTMLElement>) => void;
   className?: string;
 }) {
   const t = useTranslations("libraryPage");
 
   if (!collections || collections.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-4">
-        {t("noCollections")}
+      // Held at its size, unseen, until the first page arrives.
+      <p className={cn("text-sm text-muted-foreground text-center py-4", !collections && "invisible")}>
+        {collections && searching ? t("noCollectionsMatchSearch") : t("noCollections")}
       </p>
     );
   }
 
   return (
-    <div className={cn("max-h-[280px] overflow-y-auto space-y-1", className)}>
+    <div className={cn("max-h-[280px] overflow-y-auto space-y-1", className)} onScroll={onScroll}>
       {collections.map((collection) => {
         const isChecked = checkedIds.has(collection._id);
         return (

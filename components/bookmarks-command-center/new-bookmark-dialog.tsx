@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { useKeywordExpansionDialogStore, useKeywordExpansionStore } from "@/lib/store";
+import { useShortcutCount } from "@/lib/research/shortcut-list";
 import { useAppToast } from "@/lib/toast";
 
 /**
@@ -23,7 +24,8 @@ export function NewBookmarkDialog() {
   const tb = useTranslations("bookmarksPage");
   const tv = useTranslations("validation");
   const tc = useTranslations("common");
-  const { keywords, addKeyword } = useKeywordExpansionStore();
+  const addKeyword = useKeywordExpansionStore((state) => state.addKeyword);
+  const count = useShortcutCount();
   const { suggestedQuery } = useKeywordExpansionDialogStore();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -38,14 +40,20 @@ export function NewBookmarkDialog() {
   const nameError = (value: string) => {
     if (!value) return tb("nameCannotBeEmpty");
     if (!/^[a-zA-Z0-9-]+$/.test(value)) return tb("nameOnlyLettersNumbersDashes");
-    if (keywords[value]) return tv("bookmarkNameExists", { name: value });
+    if (useKeywordExpansionStore.getState().keywords[value]) return tv("bookmarkNameExists", { name: value });
     return null;
   };
 
-  const add = (event: React.FormEvent) => {
+  const add = async (event: React.FormEvent) => {
     event.preventDefault();
     const trimmedName = name.trim();
     const trimmedExpansion = expansion.trim();
+    // An account looks the name up, to say whether it's taken.
+    try {
+      if (trimmedName) await useKeywordExpansionStore.getState().ensureShortcuts([trimmedName]);
+    } catch {
+      return;
+    }
     const error = nameError(trimmedName) ?? (trimmedExpansion ? null : tv("expansionTextEmpty"));
     if (error) {
       toast.validation.failed(error);
@@ -56,7 +64,7 @@ export function NewBookmarkDialog() {
       bookmark_name: trimmedName,
       expansion_length: trimmedExpansion.length,
       has_boolean_operators: /\b(AND|OR|NOT)\b/.test(trimmedExpansion),
-      total_bookmarks: Object.keys(keywords).length + 1,
+      total_bookmarks: (count ?? 0) + 1,
     });
     setOpen(false);
   };

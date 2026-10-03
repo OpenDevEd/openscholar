@@ -14,8 +14,11 @@ import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
-import { MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ } from "../lib/queryBounds";
-import { evidenceLibraryTeardownStepValidator } from "./validators";
+import { MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
+import {
+  evidenceLibraryTeardownStepValidator,
+  sectionPayloadValidator,
+} from "./validators";
 import {
   readLibraryRole,
   libraryRoleFrom,
@@ -120,9 +123,10 @@ export async function readEvidenceLibraries(ctx: QueryCtx) {
   if (!identity) return [];
   const [memberships, assignments] = await Promise.all([
     readMemberOrganizations(ctx),
+    // A person has at most MAX_LIBRARY_GRANTS_PER_PERSON grants (./members.ts).
     ctx.db.query("evidenceLibraryMembers")
       .withIndex("by_clerkUserId", q => q.eq("clerkUserId", identity.subject))
-      .collect(),
+      .take(MAX_LIBRARY_GRANTS_PER_PERSON),
   ]);
   const owned = await Promise.all(memberships.filter(({membership}) => membership.role === "org:admin").map(({membership}) =>
     // An organization makes at most MAX_LIBRARIES_PER_ORGANIZATION libraries (mutations.ts).
@@ -394,24 +398,35 @@ export const readAddressCandidates = internalQuery({
   },
 });
 
+/** Most hosts one served check asks about: a library's address candidates, or one custom domain. */
+const MAX_SERVED_HOSTS_ASKED = 50;
+
 /**
- * The hosts Coolify served when it was last asked, with the time it was
- * asked. The address action decides whether that is recent enough.
+ * Which of `hosts` the current listing holds, and when that listing began, read together in
+ * one transaction so a refresh can't swap the listing between the two. Null when Coolify has
+ * never been listed. The address action decides whether the listing is recent enough.
  */
-export const readServedHostsCache = internalQuery({
-  args: {},
-  returns: v.union(
-    v.null(),
-    v.object({ hosts: v.array(v.string()), fetchedAt: v.number() }),
-  ),
-  handler: async (ctx) => {
-    // Internal only, and the same for everybody: the hosts Coolify serves.
-    // Address recovery reads it with no signed-in owner behind the request.
-    const row = await ctx.db
-      .query("evidenceLibraryServedHosts")
+export const servedHostsCheck = internalQuery({
+  args: { hosts: v.array(v.string()) },
+  returns: v.union(v.null(), v.object({ startedAt: v.number(), served: v.array(v.string()) })),
+  handler: async (ctx, { hosts }) => {
+    // Internal only, and the same for everybody: address recovery reads it with no
+    // signed-in owner behind the request.
+    const current = await ctx.db
+      .query("evidenceLibraryServedHostsListing")
       .withIndex("by_source", (query) => query.eq("source", "coolify"))
       .unique();
-    return row ? { hosts: row.hosts, fetchedAt: row.fetchedAt } : null;
+    if (!current) return null;
+    const asked = hosts.slice(0, MAX_SERVED_HOSTS_ASKED);
+    const found = await Promise.all(
+      asked.map((host) =>
+        ctx.db
+          .query("evidenceLibraryServedHostRows")
+          .withIndex("by_listing_and_host", (query) => query.eq("listing", current.listing).eq("host", host))
+          .first(),
+      ),
+    );
+    return { startedAt: current.startedAt, served: asked.filter((_, i) => found[i] !== null) };
   },
 });
 
@@ -674,7 +689,7 @@ export const getDraft = query({
     sections: v.array(
       v.object({
         sectionKey: sectionKeyValidator,
-        payload: v.any(),
+        payload: sectionPayloadValidator,
         payloadByteLength: v.number(),
         contractProvenance: configProvenanceValidator,
         updatedAt: v.number(),
@@ -715,7 +730,7 @@ export const getRevision = query({
     sections: v.array(
       v.object({
         sectionKey: sectionKeyValidator,
-        payload: v.any(),
+        payload: sectionPayloadValidator,
         payloadByteLength: v.number(),
         contractProvenance: configProvenanceValidator,
         createdAt: v.number(),
@@ -779,7 +794,7 @@ export const listTeam = query({
     const people = await readLibraryPeople(ctx, access.library);
     people.sort((a, b) => (a.person.name || a.person.email).localeCompare(b.person.name || b.person.email));
     return {
-      invitations: (await ctx.db.query("evidenceLibraryInvitations").withIndex("by_libraryId_and_state", q => q.eq("libraryId", args.libraryId).eq("state", "pending")).collect())
+      invitations: (await ctx.db.query("evidenceLibraryInvitations").withIndex("by_libraryId_and_state", q => q.eq("libraryId", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY))
         .map(i => ({ invitationId: i._id, email: i.email, role: i.role, delivery: i.delivery })),
       organizationName: access.organization.name,
       owners: people.filter(p => p.role === "owner").map(p => p.person),

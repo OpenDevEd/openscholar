@@ -62,7 +62,7 @@ describe("Screen all answers next to a person's", () => {
   const row = (t: TestConvex<typeof schema>, screeningId: Id<"screenings">) =>
     t.run(async (ctx) => (await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId).eq("paperId", "https://openalex.org/W1")).unique())!.answers);
   const exported = async (t: TestConvex<typeof schema>, jobId: Id<"screeningJobs">) =>
-    (await t.withIdentity({ subject: "alice" }).query(api.screening.queries.getScreeningResultsForExport, { jobId }))!.results[0].answers;
+    (await t.withIdentity({ subject: "alice" }).query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: null, numItems: 10 } })).page[0].answers;
 
   it("keeps a person's answer given before the model's arrives, and records the model's beside it", async () => {
     vi.useFakeTimers();

@@ -1,10 +1,12 @@
 "use node";
 
+import { randomUUID } from "node:crypto";
 import { v } from "convex/values";
 import { action, type ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createCoolifyClient } from "./coolifyClient";
+import { SERVED_HOSTS_BATCH } from "../lib/queryBounds";
 import { evidenceLibrarySetupIdentityFields } from "./validators";
 
 const PROBE_TIMEOUT_MS = 8_000;
@@ -123,27 +125,36 @@ function requireEnvironment(name: string): string {
 }
 
 /**
- * The hosts Coolify serves, kept for a minute so a burst of checks and the
- * reservation that follows cost one pair of Coolify reads. A list older than
- * that is refused unless Coolify answers again.
+ * Which of `hosts` Coolify serves. The listing is kept for a minute, a row per host, so a
+ * burst of checks and the reservation that follows cost one pair of Coolify reads. A
+ * listing older than that is refused unless Coolify answers again.
  */
-export async function readServedHosts(ctx: ActionCtx): Promise<Set<string>> {
-  const cached = await ctx.runQuery(
-    internal.evidenceLibraries.queries.readServedHostsCache,
-    {},
-  );
-  if (cached && Date.now() - cached.fetchedAt < SERVED_HOSTS_MAX_AGE_MS) {
-    return new Set(cached.hosts);
+export async function servedAmong(ctx: ActionCtx, hosts: readonly string[]): Promise<Set<string>> {
+  const asked = [...new Set(hosts.map((host) => host.toLowerCase()))];
+  const cached = await ctx.runQuery(internal.evidenceLibraries.queries.servedHostsCheck, { hosts: asked });
+  if (cached && Date.now() - cached.startedAt < SERVED_HOSTS_MAX_AGE_MS) return new Set(cached.served);
+  // A refresh has its own ID, so two at once never share rows; the later one stays current.
+  const listing = randomUUID();
+  const startedAt = Date.now();
+  let complete = false;
+  try {
+    const served = await createCoolifyClient({
+      origin: requireEnvironment("EL_COOLIFY_URL"),
+      token: requireEnvironment("EL_COOLIFY_TOKEN"),
+    }).listServedHosts();
+    // Kept for the next minute's checks, a batch per mutation. A later refresh may
+    // overtake this one; its answer below still stands.
+    const all = [...served];
+    let kept = true;
+    for (let start = 0; start < all.length && kept; start += SERVED_HOSTS_BATCH) {
+      kept = await ctx.runMutation(internal.evidenceLibraries.mutations.addServedHosts, { listing, startedAt, hosts: all.slice(start, start + SERVED_HOSTS_BATCH) });
+    }
+    // Only a listing with every batch in becomes current; one that fails partway is discarded.
+    complete = kept;
+    return new Set(asked.filter((host) => served.has(host)));
+  } finally {
+    await ctx.runMutation(internal.evidenceLibraries.mutations.finishServedHosts, { listing, startedAt, complete });
   }
-  const hosts = await createCoolifyClient({
-    origin: requireEnvironment("EL_COOLIFY_URL"),
-    token: requireEnvironment("EL_COOLIFY_TOKEN"),
-  }).listServedHosts();
-  await ctx.runMutation(
-    internal.evidenceLibraries.mutations.writeServedHostsCache,
-    { hosts: [...hosts] },
-  );
-  return hosts;
 }
 
 /**
@@ -156,10 +167,10 @@ export async function findFreeEvidenceLibraryAddress(
   ctx: ActionCtx,
   candidates: readonly { publicAddress: string; slug: string }[],
 ): Promise<{ publicAddress: string; slug: string } | null> {
-  const servedHosts = await readServedHosts(ctx);
+  const hostOf = (candidate: { publicAddress: string }) => new URL(candidate.publicAddress).hostname.toLowerCase();
+  const servedHosts = await servedAmong(ctx, candidates.map(hostOf));
   for (const candidate of candidates) {
-    const host = new URL(candidate.publicAddress).hostname.toLowerCase();
-    if (servedHosts.has(host)) continue;
+    if (servedHosts.has(hostOf(candidate))) continue;
     if ((await probeAddress(candidate.publicAddress)) === "free") {
       return candidate;
     }

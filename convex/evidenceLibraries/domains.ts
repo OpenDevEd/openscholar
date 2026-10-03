@@ -24,14 +24,16 @@ import { rateLimit } from "../lib/rateLimit";
 import { internal } from "../_generated/api";
 import { customDomainDnsRecords } from "./domainConfig";
 import { readDomainActivationPlan } from "./domainPlan";
-import { isConfigurationDeploymentOperation } from "./operations";
+import { isConfigurationDeploymentOperation, readActiveOperations } from "./operations";
 import {
   evidenceLibraryDomainFailureValidator,
   evidenceLibraryDomainStateValidator,
 } from "./validators";
+import { MAX_LIBRARY_DOMAINS } from "../lib/listCaps";
+import { dnsRecordsValidator } from "./validators";
 
 /** One library may hold a small, fixed number of custom domains. */
-export const MAX_EVIDENCE_LIBRARY_DOMAINS = 5;
+export const MAX_EVIDENCE_LIBRARY_DOMAINS = MAX_LIBRARY_DOMAINS;
 
 const VERIFICATION_TOKEN_BYTES = 16;
 
@@ -58,14 +60,7 @@ const domainRowValidator = v.object({
   main: v.boolean(),
   /** Removed by the owner; goes once the next activation is live. */
   removeOnActivate: v.boolean(),
-  records: v.array(
-    v.object({
-      type: v.union(v.literal("A"), v.literal("CNAME"), v.literal("TXT")),
-      label: v.string(),
-      name: v.string(),
-      value: v.string(),
-    }),
-  ),
+  records: dnsRecordsValidator,
 });
 
 const domainContextRowValidator = v.object({
@@ -91,7 +86,7 @@ export async function readEvidenceLibraryDomains(
   return await ctx.db
     .query("evidenceLibraryDomains")
     .withIndex("by_libraryId", (index) => index.eq("libraryId", libraryId))
-    .collect();
+    .take(MAX_EVIDENCE_LIBRARY_DOMAINS);
 }
 
 /**
@@ -1265,12 +1260,7 @@ export const claimDomainRoutes = internalMutation({
       throw createError("CONFLICT", "This library is not running yet");
     }
     for (const status of ["queued", "running"] as const) {
-      const operations = ctx.db
-        .query("evidenceLibraryConfigOperations")
-        .withIndex("by_libraryId_and_status_and_updatedAt", (index) =>
-          index.eq("libraryId", args.libraryId).eq("status", status),
-        );
-      for await (const operation of operations) {
+      for (const operation of await readActiveOperations(ctx, args.libraryId, status, "publish")) {
         if (isConfigurationDeploymentOperation(operation)) {
           return { status: "busy" as const };
         }

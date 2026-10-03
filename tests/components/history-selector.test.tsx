@@ -3,11 +3,11 @@
  *
  * Integration test for the history-selector ↔ CountChip ↔ bucket store
  * wiring added in P7 T8. Uses the real bucket store; mocks Convex, the
- * search-history store, the fresh-count SWR hook, and next-intl.
+ * saved search list, the fresh-count SWR hook, and next-intl.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const { historyEntriesRef, bucketAddedMock, useHistoryCountMock } = vi.hoisted(
   () => ({
@@ -56,11 +56,22 @@ vi.mock("@/convex/_generated/api", () => ({
   },
 }));
 
+vi.mock("@/lib/research/search-list", () => ({
+  useSearchList: () => ({
+    items: historyEntriesRef.current,
+    count: historyEntriesRef.current.length,
+    isLoading: false,
+    hasPages: false,
+  }),
+}));
+
+vi.mock("@/lib/research/provider", () => ({
+  useResearchStatus: () => ({ ready: true }),
+}));
+
 vi.mock("@/lib/store", () => ({
-  useSearchHistoryStore: <T,>(selector: (s: unknown) => T) =>
-    selector({ searchHistory: historyEntriesRef.current }),
   useKeywordExpansionStore: {
-    getState: () => ({ expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }),
+    getState: () => ({ ensureShortcuts: async () => {}, expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }),
   },
 }));
 
@@ -242,13 +253,15 @@ describe("<HistorySelector> ↔ <CountChip> integration", () => {
     expect(useBucketStore.getState().items["history:sr_1"]).toBeDefined();
   });
 
-  it("clamps the staged paperCount to the per-row pull cap at selection time", () => {
+  it("clamps the staged paperCount to the per-row pull cap at selection time", async () => {
     const entry = makeHistoryEntry("sr_1", { count: 3000 });
     historyEntriesRef.current = [entry];
     render(<HistorySelector />);
     const row = document.querySelector("[data-selectable-row]");
     expect(row).not.toBeNull();
     fireEvent.click(row!);
+    // Picking a search reads the shortcuts its query names first.
+    await waitFor(() => expect(useBucketStore.getState().items["history:sr_1"]).toBeDefined());
     const staged = useBucketStore.getState().items["history:sr_1"];
     expect(staged).toBeDefined();
     // Cold-start seed from entry.count=3000 must be clamped to the

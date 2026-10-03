@@ -1,9 +1,26 @@
 // Convex rules from the Convex reviewer (get-convex/agent-skills), checked in CI (#350):
 //
-// - Every read of a whole query result, `.collect()` or `for await` over a database query,
-//   is bounded or known. A bounded read is listed in scripts/convex-rules.json under
-//   unboundedReads.bounded with why its rows stay few; one that can grow past Convex's
-//   limits is listed under unboundedReads.pending with the issue that bounds it.
+// Every list pages by cursor (#428). Nothing reads, returns or loads a whole list, since
+// any list a person or a service can add to grows without limit; infinite scroll pages too.
+//
+// - No `.collect()` or `for await` over a database query. Read a page with `.paginate()`,
+//   or a named cap with `.take(CAP)` that the writes enforce. A read waiting on a fix is
+//   listed in scripts/convex-rules.json under unboundedReads.pending with its issue.
+// - A public function (`query`, `mutation`, `action`, `defineUserQuery`,
+//   `defineUserMutation`, `defineUserAction`) returns a list or record only as the `page` of a pagination
+//   result. Any other array or record in its `returns` validator, top level or nested, is
+//   listed under listReturns.pending with the issue that pages or caps it. Keys are the
+//   function and the list's path, with a page's items written like a list's (`[]`), so
+//   turning a list into a page keeps its items' keys. An untyped value (`v.any()`) in a
+//   public function's `returns` can hold any list, so it's listed under
+//   untypedReturns.pending with the issue that types it. A list capped on write
+//   (`capped(...)` from convex/lib/listCaps.ts) is a record's field and passes; caps are
+//   set only in the schema and its validators files (#426).
+// - Client code and actions never load every page: no `loadMore` from an effect or a loop,
+//   and no loop that reads page after page by cursor into one array. Waiting fixes are
+//   listed under everyPage.pending.
+// - Pending lists only shrink: an entry that isn't pending on `dev` fails, so a fixed
+//   list can't be swapped for a new one. Fix it instead of listing it.
 // - Every public function (`query`, `mutation`, `action`) is defined with an object that
 //   has a `returns` validator, unless listed under missingReturns.pending with its issue.
 // - No handler reads as many rows as its caller asks: a `.take(n)` whose `n` comes from the
@@ -23,8 +40,9 @@
 // It reads the code with TypeScript's type checker, so a loop over a helper that returns
 // a query, a named handler and a helper in another file are all followed.
 // Reads are keyed by file, enclosing function and table, so edits elsewhere don't move them.
-// Run with `npm run check:convex-rules`; `-- --list` prints every read's key, `-- --list --verbose` its query too.
+// Run with `npm run check:convex-rules`; `-- --list` prints every key by rule, `-- --list --verbose` each read's query too.
 
+import { execSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
@@ -38,6 +56,16 @@ function files(dir: string): string[] {
 }
 
 const sources = files("convex");
+// Client code that calls Convex, for the every-page rule.
+const clientSources = ["app", "components", "lib", "hooks"].flatMap((dir) => {
+  const walk = (folder: string): string[] =>
+    readdirSync(folder, { withFileTypes: true }).flatMap((entry) => {
+      const file = path.join(folder, entry.name);
+      if (entry.isDirectory()) return entry.name === "node_modules" ? [] : walk(file);
+      return /\.tsx?$/.test(file) && !/\.test\.|\.d\.ts$/.test(file) ? [file] : [];
+    });
+  try { return walk(dir); } catch { return []; }
+});
 const config = ts.getParsedCommandLineOfConfigFile("tsconfig.json", {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} });
 const program = ts.createProgram(sources, { ...config?.options, noEmit: true });
 const checker = program.getTypeChecker();
@@ -239,6 +267,243 @@ function undeclaredReturns(definition: ts.ObjectLiteralExpression): string[] {
   return [...new Set(returnedTypes(fn).flatMap((type) => undeclaredFields(type, target, returns, "result")))];
 }
 
+/** A validator type's property, such as a VObject's `fields` or a VArray's `element`. */
+function validatorPart(type: ts.Type, name: string, at: ts.Node) {
+  const part = type.getProperty(name);
+  return part ? checker.getTypeOfSymbolAtLocation(part, at) : undefined;
+}
+
+/**
+ * Every list (`[]`) and record (`{}`) a validator type holds outside a pagination page,
+ * by path. A page's items are written like a list's, so a list that becomes a page keeps
+ * its items' keys. Recursive validators stop where they repeat.
+ */
+function listPaths(type: ts.Type, at: ts.Node, where = "", stack = new Set<ts.Type>(), out = new Set<string>()): Set<string> {
+  if (stack.has(type)) return out;
+  stack.add(type);
+  if (type.isUnion()) for (const member of type.types) listPaths(member, at, where, stack, out);
+  // A capped list's type is `VArray<...> & Capped<N>`: check the validator inside the intersection.
+  const base = type.isIntersection() ? type.types.find((member) => /^V[A-Z]/.test(member.getSymbol()?.getName() ?? "")) ?? type : type;
+  const name = base.getSymbol()?.getName() ?? "";
+  // A list the schema caps on write (convex/lib/listCaps.ts) is a record's field, not a list to page.
+  const isCapped = Boolean(type.getProperty("__listCap"));
+  if (name === "VArray") {
+    if (!isCapped) out.add(`${where}[]`);
+    const element = validatorPart(base, "element", at);
+    if (element) listPaths(element, at, `${where}[]`, stack, out);
+  } else if (name === "VRecord") {
+    if (!isCapped) out.add(`${where}{}`);
+    const value = validatorPart(base, "value", at);
+    if (value) listPaths(value, at, `${where}{}`, stack, out);
+  } else if (name === "VObject") {
+    const fields = validatorPart(type, "fields", at);
+    const names = fields?.getProperties().map((field) => field.getName()) ?? [];
+    const pageField = fields?.getProperty("page");
+    const pageType = pageField ? checker.getTypeOfSymbolAtLocation(pageField, at) : undefined;
+    const paged = names.includes("isDone") && names.includes("continueCursor") && pageType?.getSymbol()?.getName() === "VArray";
+    for (const field of fields?.getProperties() ?? []) {
+      const fieldType = checker.getTypeOfSymbolAtLocation(field, at);
+      if (paged && field.getName() === "page") {
+        const element = validatorPart(fieldType, "element", at);
+        if (element) listPaths(element, at, `${where}[]`, stack, out);
+      } else listPaths(fieldType, at, `${where}.${field.getName()}`, stack, out);
+    }
+  } else if (name === "VAny") {
+    // An untyped value can hold any list; `*` marks it for the untyped-returns rule, unless
+    // its JSON size is bounded on write (`sized(...)` from convex/lib/listCaps.ts).
+    if (!type.getProperty("__jsonBytes")) out.add(`${where}*`);
+  } else if (name === "VUnion") {
+    const members = validatorPart(type, "members", at);
+    if (members) for (const member of checker.getTypeArguments(members as ts.TypeReference)) listPaths(member, at, where, stack, out);
+  }
+  stack.delete(type);
+  return out;
+}
+
+/** Lists in a `returns` value: a validator, or a map of field validators that Convex wraps in an object. */
+function returnedLists(type: ts.Type, at: ts.Node): Set<string> {
+  if (/^V[A-Z]/.test(type.getSymbol()?.getName() ?? "") || type.isUnion()) return listPaths(type, at);
+  const out = new Set<string>();
+  for (const field of type.getProperties()) for (const list of listPaths(checker.getTypeOfSymbolAtLocation(field, at), at, `.${field.getName()}`)) out.add(list);
+  return out;
+}
+
+/** The function holding `node`, named by its variable, declaration or property. */
+function holderName(node: ts.Node): string {
+  for (let current: ts.Node | undefined = node.parent; current; current = current.parent) {
+    if ((ts.isFunctionDeclaration(current) || ts.isMethodDeclaration(current)) && current.name) return current.name.getText();
+    if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)) return current.name.text;
+  }
+  return "(module)";
+}
+
+/**
+ * Whether `loop` reads page after page: a call given a cursor or an offset (`cursor`,
+ * `paginationOpts`, `start`, `offset`, `skip`), or a page's continuation read.
+ */
+function readsByCursor(loop: ts.Node) {
+  let reads = false;
+  let awaits = false;
+  const scanAwaits = (node: ts.Node) => {
+    if (ts.isAwaitExpression(node)) awaits = true;
+    if (!awaits) ts.forEachChild(node, scanAwaits);
+  };
+  scanAwaits(loop);
+  // Offsets are a read only in a loop that waits on something: `ranges.push({ start })` isn't one.
+  const keys = awaits ? ["cursor", "paginationOpts", "start", "offset", "skip"] : ["cursor", "paginationOpts"];
+  const visit = (node: ts.Node) => {
+    if (reads) return;
+    if (ts.isPropertyAccessExpression(node) && ["continueCursor", "nextCursor", "hasMore"].includes(node.name.text)) reads = true;
+    const gathering = ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["push", "concat", "set", "add"].includes(node.expression.name.text);
+    if (ts.isCallExpression(node) && !gathering && node.arguments.some((arg) => ts.isObjectLiteralExpression(arg) && arg.properties.some((p) => p.name && ts.isIdentifier(p.name) && keys.includes(p.name.text)))) reads = true;
+    ts.forEachChild(node, visit);
+  };
+  visit(loop);
+  return reads;
+}
+
+/** Names declared inside `scope`: a per-iteration batch declared in a loop doesn't outlive it. */
+function declaredIn(scope: ts.Node) {
+  const names = new Set<string>();
+  const visit = (node: ts.Node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) names.add(node.name.text);
+    ts.forEachChild(node, visit);
+  };
+  visit(scope);
+  return names;
+}
+
+/** The variable at the root of `a.b.c` or `a[i]`. */
+function rootName(expression: ts.Expression): string | undefined {
+  let current = expression;
+  while (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current) || ts.isParenthesizedExpression(current)) current = current.expression;
+  return ts.isIdentifier(current) ? current.text : current.kind === ts.SyntaxKind.ThisKeyword ? "this" : undefined;
+}
+
+/**
+ * Whether `loop` gathers into something that outlives an iteration: an array, map or set
+ * declared outside it, by `.push`, `.concat`, `.set`, `.add`, an indexed write or a spread
+ * reassignment. A batch declared inside the loop and written out each time isn't gathering.
+ */
+function gathers(loop: ts.Node) {
+  const inner = declaredIn(loop);
+  const outer = (expression: ts.Expression) => {
+    const name = rootName(expression);
+    return name !== undefined && !inner.has(name);
+  };
+  let found = false;
+  const visit = (node: ts.Node) => {
+    if (found) return;
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ["push", "concat", "set", "add"].includes(node.expression.name.text) && outer(node.expression.expression)) found = true;
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+      if (ts.isElementAccessExpression(node.left) && outer(node.left.expression)) found = true;
+      if (ts.isArrayLiteralExpression(node.right) && node.right.elements.some(ts.isSpreadElement) && outer(node.left)) found = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(loop);
+  return found;
+}
+
+/** Whether `fn` calls `name`, its own name. */
+function callsItself(fn: ts.Node, name: string) {
+  let found = false;
+  const visit = (node: ts.Node) => {
+    if (found) return;
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === name) found = true;
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(fn, visit);
+  return found;
+}
+
+const isLoop = (node: ts.Node) => ts.isForStatement(node) || ts.isForOfStatement(node) || ts.isForInStatement(node) || ts.isWhileStatement(node) || ts.isDoStatement(node);
+const isEffect = (call: ts.CallExpression) => /(^|\.)use(Layout)?Effect$/.test(call.expression.getText());
+
+/**
+ * Where `tree` loads every page: `loadMore` (by any local name) called from an effect,
+ * including a named callback, or from a loop; a cursor or offset loop that gathers pages;
+ * or a function that calls itself with the next cursor and keeps every page. Repeats
+ * in one function are numbered, so a second one counts as a new entry.
+ */
+function everyPageLoads(tree: ts.SourceFile, file: string): string[] {
+  // Local names for loadMore: `loadMore`, `{ loadMore: more }`, and `list.loadMore`.
+  const loaders = new Set(["loadMore"]);
+  const functionsByName = new Map<string, ts.Node>();
+  const scan = (node: ts.Node) => {
+    if (ts.isBindingElement(node) && node.propertyName && ts.isIdentifier(node.propertyName) && node.propertyName.text === "loadMore" && ts.isIdentifier(node.name)) loaders.add(node.name.text);
+    if (ts.isFunctionDeclaration(node) && node.name) functionsByName.set(node.name.text, node);
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && (ts.isArrowFunction(node.initializer) || ts.isFunctionExpression(node.initializer))) functionsByName.set(node.name.text, node.initializer);
+    ts.forEachChild(node, scan);
+  };
+  scan(tree);
+  const isLoadMore = (call: ts.CallExpression) => {
+    const callee = call.expression;
+    return (ts.isIdentifier(callee) && loaders.has(callee.text)) || (ts.isPropertyAccessExpression(callee) && callee.name.text === "loadMore");
+  };
+  // Effect callbacks, written inline or passed by name.
+  const effectBodies = new Set<ts.Node>();
+  const findEffects = (node: ts.Node) => {
+    if (ts.isCallExpression(node) && isEffect(node) && node.arguments[0]) {
+      const callback = node.arguments[0];
+      const body = ts.isIdentifier(callback) ? functionsByName.get(callback.text) : callback;
+      if (body) effectBodies.add(body);
+    }
+    ts.forEachChild(node, findEffects);
+  };
+  findEffects(tree);
+  const counts = new Map<string, number>();
+  const found: string[] = [];
+  const add = (node: ts.Node) => {
+    const key = `${file}:${holderName(node)}`;
+    const count = (counts.get(key) ?? 0) + 1;
+    counts.set(key, count);
+    found.push(count === 1 ? key : `${key}#${count}`);
+  };
+  const visit = (node: ts.Node, inEffect: boolean, inLoop: boolean) => {
+    const effect = inEffect || effectBodies.has(node);
+    const loop = inLoop || isLoop(node);
+    if (ts.isCallExpression(node) && isLoadMore(node) && (effect || loop)) add(node);
+    if (isLoop(node) && readsByCursor(node) && gathers(node)) add(node);
+    // A function that calls itself with the next cursor and keeps every page it reads.
+    const name = ts.isFunctionDeclaration(node) && node.name ? node.name.text : (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) && ts.isVariableDeclaration(node.parent) && ts.isIdentifier(node.parent.name) ? node.parent.name.text : undefined;
+    if (name && callsItself(node, name) && readsByCursor(node) && gathers(node)) add(node);
+    ts.forEachChild(node, (child) => visit(child, effect, loop));
+  };
+  visit(tree, false, false);
+  return found;
+}
+
+/** Where list caps may be set: the schema and the validators it's built from (#426). */
+const capsAllowed = (file: string) => file === "convex/schema.ts" || file === "convex/lib/listCaps.ts" || file === "lib/research/records.ts" || /[vV]alidators\.ts$/.test(file);
+/** `capped(...)` calls in `tree` outside the files that define stored validators. */
+function capsOutsideValidators(tree: ts.SourceFile, file: string): string[] {
+  if (capsAllowed(file)) return [];
+  // `capped` under any local name: `import { capped as bound }`, or `caps.capped` from `import * as caps`.
+  const names = new Set<string>();
+  const namespaces = new Set<string>();
+  for (const statement of tree.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || !/listCaps$/.test(statement.moduleSpecifier.text)) continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (bindings && ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);
+    if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) if (["capped", "sized"].includes((element.propertyName ?? element.name).text)) names.add(element.name.text);
+  }
+  const found: string[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      const isCapped = (ts.isIdentifier(callee) && names.has(callee.text)) || (ts.isPropertyAccessExpression(callee) && ["capped", "sized"].includes(callee.name.text) && ts.isIdentifier(callee.expression) && namespaces.has(callee.expression.text));
+      if (isCapped) found.push(`${file}:${holderName(node)}: caps a list outside the validators files; cap a stored field where its validator is defined, and page any other list.`);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(tree);
+  return found;
+}
+
+const listReturns: string[] = [];
+const everyPage: string[] = [];
+const PUBLIC_DEFINITIONS = [...BUILDERS, "defineUserQuery", "defineUserMutation", "defineUserAction"];
 const reads: string[] = [];
 const missingReturns: string[] = [];
 const problems: string[] = [];
@@ -274,6 +539,13 @@ for (const tree of program.getSourceFiles().filter((file) => sources.includes(re
       const undeclared = undeclaredReturns(node.initializer.arguments[0]);
       if (undeclared.length) problems.push(`${file}:${node.name.text}: returns ${undeclared.join(", ")}, which its \`returns\` validator doesn't declare; Convex rejects them at runtime. Return only declared fields, or declare them.`);
     }
+    if (!file.startsWith("convex/migrations/") && ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && PUBLIC_DEFINITIONS.includes(node.initializer.expression.text)) {
+      const definition = node.initializer.arguments[0];
+      const returns = definition && ts.isObjectLiteralExpression(definition) ? definition.properties.find((p) => p.name && ts.isIdentifier(p.name) && p.name.text === "returns") : undefined;
+      // `returns: validator`, `{ returns }` and a field map (`returns: { items: v.array(...) }`).
+      const value = returns && ts.isPropertyAssignment(returns) ? returns.initializer : returns && ts.isShorthandPropertyAssignment(returns) ? returns.name : undefined;
+      if (value) for (const list of returnedLists(checker.getTypeAtLocation(value), value)) listReturns.push(`${file}:${node.name.text}:${list}`);
+    }
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer) && ts.isIdentifier(node.initializer.expression) && ALL_BUILDERS.includes(node.initializer.expression.text)) {
       const definition = node.initializer.arguments[0];
       const handler = definition && ts.isObjectLiteralExpression(definition) ? definition.properties.find((p) => p.name && ts.isIdentifier(p.name) && p.name.text === "handler") : undefined;
@@ -299,29 +571,62 @@ for (const tree of program.getSourceFiles().filter((file) => sources.includes(re
     ts.forEachChild(node, visit);
   };
   visit(tree);
+  // Migrations walk whole tables by design, a batch at a time.
+  if (!file.startsWith("convex/migrations/")) everyPage.push(...everyPageLoads(tree, file));
+  problems.push(...capsOutsideValidators(tree, file));
+}
+for (const file of clientSources) {
+  const text = readFileSync(file, "utf8");
+  const clientTree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  everyPage.push(...everyPageLoads(clientTree, file));
+  problems.push(...capsOutsideValidators(clientTree, file));
 }
 
 if (process.argv.includes("--list")) {
-  console.log(reads.join("\n"));
+  console.log([...reads.map((key) => `unboundedReads ${key}`), ...listReturns.map((key) => `${key.endsWith("*") ? "untypedReturns" : "listReturns"} ${key}`), ...everyPage.map((key) => `everyPage ${key}`)].join("\n"));
   process.exit(0);
 }
 
-type Listed = { bounded: Record<string, string>; pending: Record<string, string> };
-const rules = JSON.parse(readFileSync("scripts/convex-rules.json", "utf8")) as { unboundedReads: Listed; missingReturns: { pending: Record<string, string> }; argumentSizedTakes: { bounded: Record<string, string> } };
-const issue = /^#\d+$/;
+type Pending = { pending: Record<string, string> };
+type Rules = { unboundedReads: Pending & { bounded?: Record<string, string> }; listReturns: Pending; untypedReturns?: Pending; everyPage: Pending; missingReturns: Pending; argumentSizedTakes: { bounded: Record<string, string> } };
+const rules = JSON.parse(readFileSync("scripts/convex-rules.json", "utf8")) as Rules;
+// An issue, optionally followed by a note for whoever fixes it: "#427" or "#427: a user's keys".
+const issue = /^#\d+(: .+)?$/;
 
-const found = new Set(reads);
-const { bounded, pending } = rules.unboundedReads;
-for (const read of reads) {
-  if (!(read in bounded) && !(read in pending)) problems.push(`${read}: bound it with .take(n) or .paginate(), or list it in scripts/convex-rules.json with why its rows stay few.`);
+/** Checks found keys against a pending list: each found one is listed, each listed one is found. */
+function checkPending(section: string, found: string[], pending: Record<string, string>, fix: string) {
+  const present = new Set(found);
+  for (const key of found) if (!(key in pending)) problems.push(`${key}: ${fix}`);
+  for (const [key, ref] of Object.entries(pending)) {
+    if (!present.has(key)) problems.push(`${key}: listed under ${section}.pending but fixed now; remove it.`);
+    if (!issue.test(ref)) problems.push(`${key}: ${section}.pending needs the issue that fixes it, such as "#427".`);
+  }
 }
-for (const [read, reason] of Object.entries(bounded)) {
-  if (!found.has(read)) problems.push(`${read}: listed as bounded but no longer read this way; remove it.`);
-  if (reason.trim().length < 15) problems.push(`${read}: say why its rows stay few.`);
+if (rules.unboundedReads.bounded) problems.push("unboundedReads.bounded: a reason isn't a bound; page or cap these reads, or list them as pending with their issue.");
+checkPending("unboundedReads", [...new Set(reads)], rules.unboundedReads.pending, "a whole-result read; read a page with .paginate() or a named cap with .take(CAP).");
+const untyped = (key: string) => key.endsWith("*");
+checkPending("listReturns", [...new Set(listReturns.filter((key) => !untyped(key)))], rules.listReturns.pending, "returns a list outside a pagination page; return one page by cursor (paginationResultValidator), or cap the field where it's written.");
+checkPending("untypedReturns", [...new Set(listReturns.filter(untyped))], rules.untypedReturns?.pending ?? {}, "returns an untyped value (v.any()), which can hold a list nothing checks; give it a validator.");
+checkPending("everyPage", [...new Set(everyPage)], rules.everyPage.pending, "loads every page; load the next page when the person asks for it, and stream exports page by page.");
+
+// Pending lists only shrink: compared with dev where this branch left it.
+// CI passes RULES_BASE: a pull request's base, or the commit a push moved dev from. Locally, origin/dev.
+let base: Rules | undefined;
+const git = (command: string) => execSync(command, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+const given = process.env.RULES_BASE && !/^0+$/.test(process.env.RULES_BASE) ? process.env.RULES_BASE : "origin/dev";
+try {
+  base = JSON.parse(git(`git show ${git(`git merge-base HEAD ${given}`)}:scripts/convex-rules.json`)) as Rules;
+} catch {
+  if (process.env.CI) problems.push(`scripts/convex-rules.json: can't read it at ${given} to check the pending lists only shrink; fetch the full history.`);
+  else console.warn(`Convex rules: no ${given} to compare pending lists with; skipping the shrink check.`);
 }
-for (const [read, ref] of Object.entries(pending)) {
-  if (!found.has(read)) problems.push(`${read}: listed as pending but no longer read this way; remove it.`);
-  if (!issue.test(ref)) problems.push(`${read}: pending needs the issue that bounds it, such as "#351".`);
+if (base) {
+  for (const section of ["unboundedReads", "listReturns", "untypedReturns", "everyPage"] as const) {
+    const before = base[section] as (Pending & { bounded?: Record<string, string> }) | undefined;
+    if (!before) continue;
+    const was = new Set([...Object.keys(before.pending), ...Object.keys(before.bounded ?? {})]);
+    for (const key of Object.keys(rules[section]?.pending ?? {})) if (!was.has(key)) problems.push(`${key}: not pending under ${section} on dev; fix it instead of listing it.`);
+  }
 }
 
 const withoutReturns = new Set(missingReturns);
@@ -342,4 +647,4 @@ if (problems.length) {
   console.error(`Convex rules: ${problems.length} problem${problems.length === 1 ? "" : "s"}.\n\n${problems.join("\n")}`);
   process.exit(1);
 }
-console.log(`Convex rules: ${Object.keys(bounded).length} whole-result reads bounded with a reason, ${Object.keys(pending).length} pending; ${Object.keys(rules.missingReturns.pending).length} functions waiting on a returns validator.`);
+console.log(`Convex rules: pending ${Object.keys(rules.unboundedReads.pending).length} whole-result reads, ${Object.keys(rules.listReturns.pending).length} returned lists, ${Object.keys(rules.untypedReturns?.pending ?? {}).length} untyped returns and ${Object.keys(rules.everyPage.pending).length} every-page loads; ${Object.keys(rules.missingReturns.pending).length} functions waiting on a returns validator.`);

@@ -15,6 +15,7 @@ import { internal } from "../_generated/api";
 import { autumn, type AutumnFeature, type AutumnPlan } from "./autumn";
 import { billingCatalogValidator, type BillingCatalog, type CatalogPlan } from "./validators";
 import { CREDITS_FEATURE } from "../../lib/billing/plans";
+import { MAX_BILLING_FEATURES, MAX_BILLING_PLANS, MAX_PLAN_DETAILS } from "../lib/listCaps";
 
 function metadataList(value: unknown): string[] | undefined {
   const list = Array.isArray(value)
@@ -60,10 +61,11 @@ export function catalogPlan(plan: AutumnPlan, booleanFeatures: Set<string>): Cat
       : {}),
     features: plan.items
       .map((item) => item.feature_id)
-      .filter((featureId) => booleanFeatures.has(featureId)),
+      .filter((featureId) => booleanFeatures.has(featureId))
+      .slice(0, MAX_PLAN_DETAILS),
     popular: metadata.popular === true || metadata.popular === "true",
-    ...(metadataList(metadata.highlights) ? { highlights: metadataList(metadata.highlights) } : {}),
-    ...(bundles && bundles.length > 0 ? { bundles } : {}),
+    ...(metadataList(metadata.highlights) ? { highlights: metadataList(metadata.highlights)!.slice(0, MAX_PLAN_DETAILS) } : {}),
+    ...(bundles && bundles.length > 0 ? { bundles: bundles.slice(0, MAX_PLAN_DETAILS) } : {}),
   };
 }
 
@@ -72,8 +74,9 @@ export function catalogFrom(plans: AutumnPlan[], features: AutumnFeature[]): Bil
   const live = features.filter((feature) => !feature.archived);
   const booleanFeatures = new Set(live.filter((f) => f.type === "boolean").map((f) => f.id));
   return {
-    plans: plans.filter((plan) => !plan.archived).map((plan) => catalogPlan(plan, booleanFeatures)),
-    features: live.map(({ id, name, type }) => ({ id, name, type })),
+    // Autumn's catalog, cut to the caps the catalog row holds (#426).
+    plans: plans.filter((plan) => !plan.archived).slice(0, MAX_BILLING_PLANS).map((plan) => catalogPlan(plan, booleanFeatures)),
+    features: live.slice(0, MAX_BILLING_FEATURES).map(({ id, name, type }) => ({ id, name, type })),
   };
 }
 

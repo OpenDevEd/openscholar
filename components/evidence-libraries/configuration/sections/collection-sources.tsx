@@ -14,13 +14,15 @@ import {
   type OpenScholarCollectionSourceEntry,
 } from "@/lib/evidence-libraries/configuration/sources";
 import {
-  localPickerSource,
   type PickerHandle,
   type PickerSource,
   RemotePickerDialog,
 } from "./remote-picker-dialog";
 import { SourceRow, SourceSwitch } from "./source-row";
 import type { SourceLive } from "./source-activity";
+
+/** Collections the picker reads at a time. */
+const COLLECTION_PICKER_PAGE_SIZE = 50;
 
 /** OpenScholar's own icon, as the logo shows it. */
 export function CollectionSourceIcon() {
@@ -58,12 +60,15 @@ export function useCollectionSources({
   );
   const byId = new Map((connected.data ?? []).map((row) => [row.collectionId as string, row]));
 
-  // Read once per open; a person keeps a few dozen collections at most.
-  const readMine: PickerSource = async (input) => {
-    const mine = await convex.query(api.library.collections.getCollectionsWithCounts, {});
-    return localPickerSource(
-      mine.map((collection) => ({ id: collection._id, title: collection.name, count: collection.itemCount })),
-    )(input);
+  const readMine: PickerSource = async ({ query, cursor }) => {
+    const page = await convex.query(api.library.collections.listCollections, {
+      search: query || undefined,
+      paginationOpts: { cursor, numItems: COLLECTION_PICKER_PAGE_SIZE },
+    });
+    return {
+      items: page.page.map((collection) => ({ id: collection._id, title: collection.name, count: collection.itemCount })),
+      nextCursor: page.isDone ? null : page.continueCursor,
+    };
   };
 
   /** Connects each collection; returns the ids that could not be added. */

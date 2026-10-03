@@ -6,7 +6,8 @@ import { requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvita
 import { getCurrentUser } from "../lib/auth";
 import { rateLimit } from "../lib/rateLimit";
 import { createError } from "../lib/errors";
-import { assertLibraryHasRoom } from "./members";
+import { assertLibraryHasRoom, assertPersonHasRoom } from "./members";
+import { MAX_ACCOUNTS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_EMAIL,MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
 
 const roleValidator = v.union(v.literal("editor"), v.literal("creator"));
 const invitationArgs = { libraryId: v.id("evidenceLibraries"), email: v.string(), role: roleValidator };
@@ -19,12 +20,23 @@ export const prepare = internalMutation({
     await rateLimit(ctx, { name: "library-invitation", key: args.libraryId, throws: true });
     const email = args.email.trim().toLowerCase();
     if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw createError("VALIDATION_ERROR", "Enter a valid email address");
-    const users = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", email)).collect();
+    // A deleted account keeps its address, so one address can name several accounts.
+    const users = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", email)).take(MAX_ACCOUNTS_PER_EMAIL + 1);
+    if (users.length > MAX_ACCOUNTS_PER_EMAIL) throw createError("VALIDATION_ERROR", "Too many accounts have used this address to check which of them already has access. Invite a different address.");
     for (const user of users) {
       if (await readLibraryRole(ctx, access.library, user.clerkId)) throw createError("CONFLICT", "This person already has library access");
     }
     const pending = await ctx.db.query("evidenceLibraryInvitations")
       .withIndex("by_libraryId_and_email_and_state", q => q.eq("libraryId", args.libraryId).eq("email", email).eq("state", "pending")).first();
+    if (!pending) {
+      // Both lists of waiting invitations stay small enough to read in one query.
+      const waiting = await ctx.db.query("evidenceLibraryInvitations")
+        .withIndex("by_libraryId_and_state", q => q.eq("libraryId", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY);
+      if (waiting.length >= MAX_PENDING_INVITATIONS_PER_LIBRARY) throw createError("VALIDATION_ERROR", `This library has ${MAX_PENDING_INVITATIONS_PER_LIBRARY} invitations waiting. Cancel one to send another.`);
+      const theirs = await ctx.db.query("evidenceLibraryInvitations")
+        .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_EMAIL);
+      if (theirs.length >= MAX_PENDING_INVITATIONS_PER_EMAIL) throw createError("VALIDATION_ERROR", "This person has too many invitations waiting. Ask them to answer some first.");
+    }
     const expiresAt = Date.now() + 7 * 86400000;
     const invitationId = pending?._id ?? await ctx.db.insert("evidenceLibraryInvitations", { ...args, email, invitedBy: access.clerkUserId, expiresAt, state: "pending", delivery: "queued" });
     if (pending) await ctx.db.patch("evidenceLibraryInvitations", pending._id, { role: args.role, invitedBy: access.clerkUserId, expiresAt, delivery: "queued" });
@@ -126,6 +138,7 @@ export const respondVerified = internalMutation({
       const member = await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", invitation.libraryId).eq("clerkUserId", identity.subject)).unique();
       // An outstanding invitation cannot overwrite a role granted since it was sent.
       if (!member) await assertLibraryHasRoom(ctx, invitation.libraryId);
+      if (!member) await assertPersonHasRoom(ctx, identity.subject);
       if (!member) await ctx.db.insert("evidenceLibraryMembers", { libraryId: invitation.libraryId, clerkUserId: identity.subject, role: invitation.role, grantedBy: invitation.invitedBy, grantedAt: Date.now() });
     }
     await ctx.db.patch("evidenceLibraryInvitations", invitation._id, { state: args.accept ? "accepted" : "declined" });

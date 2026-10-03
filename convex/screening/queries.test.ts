@@ -145,31 +145,46 @@ async function seedAggregateProgress(
   }
 }
 
-describe("getScreeningResultsForExport", () => {
-  it("returns null for unauthenticated calls", async () => {
+describe("listScreeningResults", () => {
+  it("returns an empty page for unauthenticated calls", async () => {
     const t = createScreeningTest();
     const user = await seedUser(t, "clerk_exp1", "exp1@test.com");
     const jobId = await seedScreeningJob(t, user._id, { status: "completed" });
     await seedScreeningResult(t, jobId);
 
     // No identity
-    const result = await t.query(api.screening.queries.getScreeningResultsForExport, { jobId });
-    expect(result).toBeNull();
+    const result = await t.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: null, numItems: 10 } });
+    expect(result).toMatchObject({ page: [], isDone: true });
   });
 
-  it("returns null for non-owner", async () => {
+  it("returns an empty page for non-owner", async () => {
     const t = createScreeningTest();
     const user1 = await seedUser(t, "clerk_exp2", "exp2@test.com");
-    const user2 = await seedUser(t, "clerk_exp3", "exp3@test.com");
+    await seedUser(t, "clerk_exp3", "exp3@test.com");
     const jobId = await seedScreeningJob(t, user1._id, { status: "completed" });
     await seedScreeningResult(t, jobId);
 
     const asUser2 = t.withIdentity({ subject: "clerk_exp3" });
-    const result = await asUser2.query(api.screening.queries.getScreeningResultsForExport, { jobId });
-    expect(result).toBeNull();
+    const result = await asUser2.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: null, numItems: 10 } });
+    expect(result).toMatchObject({ page: [], isDone: true });
   });
 
-  it("returns job metadata and results for authenticated owner", async () => {
+  it("reads a job's results a page at a time, in the order they were made", async () => {
+    const t = createScreeningTest();
+    const user = await seedUser(t, "clerk_exp_pages", "exp-pages@test.com");
+    const jobId = await seedScreeningJob(t, user._id, { status: "completed" });
+    for (const title of ["First", "Second", "Third"]) await seedScreeningResult(t, jobId, { title, openalexId: `https://openalex.org/${title}` });
+
+    const asUser = t.withIdentity({ subject: "clerk_exp_pages" });
+    const first = await asUser.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: null, numItems: 2 } });
+    expect(first.page.map((r) => r.title)).toEqual(["First", "Second"]);
+    expect(first.isDone).toBe(false);
+    const second = await asUser.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: first.continueCursor, numItems: 2 } });
+    expect(second.page.map((r) => r.title)).toEqual(["Third"]);
+    expect(second.isDone).toBe(true);
+  });
+
+  it("returns each result's paper, answers and scoring to the owner", async () => {
     const t = createScreeningTest();
     const user = await seedUser(t, "clerk_exp4", "exp4@test.com");
     const jobId = await seedScreeningJob(t, user._id, { status: "completed" });
@@ -198,17 +213,7 @@ describe("getScreeningResultsForExport", () => {
     });
 
     const asUser = t.withIdentity({ subject: "clerk_exp4" });
-    const result = await asUser.query(api.screening.queries.getScreeningResultsForExport, { jobId });
-
-    expect(result).not.toBeNull();
-    // Job metadata
-    expect(result!.job._id).toBe(jobId);
-    expect(result!.job.status).toBe("completed");
-    expect(result!.job.questions).toHaveLength(1);
-    expect(result!.job.scoringConfig).toBeDefined();
-    expect(result!.job.totalPapers).toBeDefined();
-    expect(result!.job.qualifiedPapers).toBe(1);
-    expect(result!.job.createdAt).toBeDefined();
+    const result = { results: (await asUser.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: null, numItems: 10 } })).page };
 
     // Results
     expect(result!.results).toHaveLength(2);
@@ -242,9 +247,8 @@ describe("getScreeningResultsForExport", () => {
     });
 
     const asUser = t.withIdentity({ subject: "clerk_exp5" });
-    const result = await asUser.query(api.screening.queries.getScreeningResultsForExport, { jobId });
+    const result = { results: (await asUser.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: null, numItems: 10 } })).page };
 
-    expect(result).not.toBeNull();
     expect(result!.results).toHaveLength(1);
     const failedResult = result!.results[0];
     expect(failedResult.status).toBe("failed");
@@ -431,13 +435,13 @@ describe("getScreeningJob", () => {
 });
 
 describe("listUserScreeningJobs", () => {
-  it("returns empty array when no jobs exist for user", async () => {
+  it("returns an empty page when no jobs exist for user", async () => {
     const t = createScreeningTest();
     await seedUser(t, "clerk_list1", "list1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_list1" });
 
-    const result = await asUser.query(api.screening.queries.listUserScreeningJobs, {});
-    expect(result).toEqual([]);
+    const result = await asUser.query(api.screening.queries.listUserScreeningJobs, { paginationOpts: { cursor: null, numItems: 10 } });
+    expect(result).toMatchObject({ page: [], isDone: true });
   });
 
   it("returns jobs ordered by creation time descending (newest first)", async () => {
@@ -450,7 +454,7 @@ describe("listUserScreeningJobs", () => {
     const job3 = await seedScreeningJob(t, user._id, { status: "cancelled" });
 
     const asUser = t.withIdentity({ subject: "clerk_list2" });
-    const result = await asUser.query(api.screening.queries.listUserScreeningJobs, {});
+    const result = (await asUser.query(api.screening.queries.listUserScreeningJobs, { paginationOpts: { cursor: null, numItems: 10 } })).page;
 
     expect(result).toHaveLength(3);
     // Newest first (desc order by _creationTime)
@@ -474,26 +478,33 @@ describe("listUserScreeningJobs", () => {
     });
 
     const asUser = t.withIdentity({ subject: "clerk_list_counts" });
-    const result = await asUser.query(api.screening.queries.listUserScreeningJobs, {});
+    const result = (await asUser.query(api.screening.queries.listUserScreeningJobs, { paginationOpts: { cursor: null, numItems: 10 } })).page;
 
     expect(result).toHaveLength(1);
     expect(result[0].processedPapers).toBe(3);
     expect(result[0].qualifiedPapers).toBe(1);
   });
 
-  it("respects limit parameter (default 20)", async () => {
+  it("pages by cursor, newest first, and keeps the count its pages total from", async () => {
     const t = createScreeningTest();
     const user = await seedUser(t, "clerk_list3", "list3@test.com");
-
-    // Create 3 jobs, request limit of 2
-    await seedScreeningJob(t, user._id, { status: "completed" });
-    await seedScreeningJob(t, user._id, { status: "processing" });
-    await seedScreeningJob(t, user._id, { status: "cancelled" });
+    const job1 = await seedScreeningJob(t, user._id, { status: "completed" });
+    const job2 = await seedScreeningJob(t, user._id, { status: "processing" });
+    const job3 = await seedScreeningJob(t, user._id, { status: "cancelled" });
+    // The first count runs in the background; later jobs add to it as they're made.
+    await t.finishAllScheduledFunctions(() => {});
 
     const asUser = t.withIdentity({ subject: "clerk_list3" });
-    const result = await asUser.query(api.screening.queries.listUserScreeningJobs, { limit: 2 });
+    const first = await asUser.query(api.screening.queries.listUserScreeningJobs, { paginationOpts: { cursor: null, numItems: 2 } });
+    expect(first.page.map((job) => job._id)).toEqual([job3, job2]);
+    expect(first.isDone).toBe(false);
+    const second = await asUser.query(api.screening.queries.listUserScreeningJobs, { paginationOpts: { cursor: first.continueCursor, numItems: 2 } });
+    expect(second.page.map((job) => job._id)).toEqual([job1]);
+    expect(second.isDone).toBe(true);
 
-    expect(result).toHaveLength(2);
+    expect(await asUser.query(api.screening.queries.countUserScreeningJobs, {})).toBe(3);
+    await seedScreeningJob(t, user._id, { status: "completed" });
+    expect(await asUser.query(api.screening.queries.countUserScreeningJobs, {})).toBe(4);
   });
 
   it("returns only jobs belonging to authenticated user (user isolation)", async () => {
@@ -507,22 +518,22 @@ describe("listUserScreeningJobs", () => {
     await seedScreeningJob(t, user2._id, { status: "cancelled" });
 
     const asUser1 = t.withIdentity({ subject: "clerk_list4" });
-    const result1 = await asUser1.query(api.screening.queries.listUserScreeningJobs, {});
+    const result1 = (await asUser1.query(api.screening.queries.listUserScreeningJobs, { paginationOpts: { cursor: null, numItems: 10 } })).page;
     expect(result1).toHaveLength(2);
 
     const asUser2 = t.withIdentity({ subject: "clerk_list5" });
-    const result2 = await asUser2.query(api.screening.queries.listUserScreeningJobs, {});
+    const result2 = (await asUser2.query(api.screening.queries.listUserScreeningJobs, { paginationOpts: { cursor: null, numItems: 10 } })).page;
     expect(result2).toHaveLength(1);
   });
 
-  it("returns empty array for unauthenticated users", async () => {
+  it("returns an empty page for unauthenticated users", async () => {
     const t = createScreeningTest();
     const user = await seedUser(t, "clerk_list6", "list6@test.com");
     await seedScreeningJob(t, user._id);
 
     // No identity
-    const result = await t.query(api.screening.queries.listUserScreeningJobs, {});
-    expect(result).toEqual([]);
+    const result = await t.query(api.screening.queries.listUserScreeningJobs, { paginationOpts: { cursor: null, numItems: 10 } });
+    expect(result).toMatchObject({ page: [], isDone: true });
   });
 });
 

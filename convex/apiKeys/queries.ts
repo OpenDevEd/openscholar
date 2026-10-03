@@ -1,7 +1,7 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser } from "../lib/auth";
-import { apiKeyProviderValidator } from "../lib/validators";
+import { apiKeyProviderValidator, MAX_API_KEYS_PER_USER } from "../lib/validators";
 
 /**
  * Get user's saved API keys (metadata only, not the actual keys)
@@ -22,11 +22,10 @@ export const getMy = query({
     const user = await getCurrentUser(ctx);
     if (!user) return [];
 
-    // Cardinality: ~1-3 API keys per user
     const keys = await ctx.db
       .query("apiKeys")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .take(MAX_API_KEYS_PER_USER);
 
     // Never return encrypted key to client, only metadata
     return keys.map((k) => ({

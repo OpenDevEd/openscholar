@@ -24,6 +24,7 @@ import {
   chatSourcesSnapshotValidator,
   readChatSourcesSnapshot,
 } from "./sourceReadModel";
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 
 export type { ChatSourceRow } from "./sourceReadModel";
 
@@ -72,7 +73,7 @@ export const bulkSetChatPapers = mutation({
     const allForJob = await ctx.db
       .query("chatPapers")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
-      .collect();
+      .take(PAPER_LIMIT);
 
     const rows =
       sourceIds === undefined
