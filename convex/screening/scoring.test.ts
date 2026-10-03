@@ -296,6 +296,12 @@ describe("outcomeOf", () => {
   it("includes every paper when there's no minimum", () => {
     expect(outcomeOf({ q1: false, q2: false }, { ...config, minimumScore: undefined })).toBe("included");
   });
+  it("settles a question with several rules one way for all of them", () => {
+    // Yes gives 10 and no gives 10, never both: an unclear answer can't reach 20.
+    const rules = [{ questionKey: "q1", yesPoints: 10, noPoints: 0, nullPoints: 0 }, { questionKey: "q1", yesPoints: 0, noPoints: 10, nullPoints: 0 }];
+    expect(outcomeOf({ q1: null }, { rules, starThresholds: [], minimumScore: 20 })).toBe("excluded");
+    expect(outcomeOf({ q1: null }, { rules, starThresholds: [], minimumScore: 10 })).toBe("unclear");
+  });
 });
 
 describe("tallied", () => {

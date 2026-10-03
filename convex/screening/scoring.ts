@@ -132,9 +132,11 @@ export type ScoredOutcome = "included" | "unclear" | "excluded";
  */
 export function outcomeOf(answers: Record<string, boolean | null>, config: ScoringConfig): ScoredOutcome {
   if (isQualified(computeScore(answers, config.rules), config.minimumScore)) return "included";
-  const best = config.rules.reduce((sum, rule) => {
-    const answer = answers[rule.questionKey];
-    return sum + (answer === true ? rule.yesPoints : answer === false ? rule.noPoints : Math.max(rule.yesPoints, rule.noPoints, rule.nullPoints));
+  // A question with several rules settles one way for all of them.
+  const best = [...new Set(config.rules.map((rule) => rule.questionKey))].reduce((sum, key) => {
+    const points = (field: "yesPoints" | "noPoints" | "nullPoints") => config.rules.reduce((total, rule) => total + (rule.questionKey === key ? rule[field] : 0), 0);
+    const answer = answers[key];
+    return sum + (answer === true ? points("yesPoints") : answer === false ? points("noPoints") : Math.max(points("yesPoints"), points("noPoints"), points("nullPoints")));
   }, 0);
   return isQualified(best, config.minimumScore) ? "unclear" : "excluded";
 }

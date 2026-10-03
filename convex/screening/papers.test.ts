@@ -170,6 +170,30 @@ describe("a screening job's papers", () => {
     expect(await job()).toMatchObject(COUNTED);
   });
 
+  it("keeps a paper's answers, score and outcome together when its search's page changes or clears the answers they share", async () => {
+    const { t, jobId, job, list, answer } = await screened();
+    const W3 = "https://openalex.org/W3";
+    const screeningId = (await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))!.screeningId!;
+    const row = () => t.run((ctx) => ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId).eq("paperId", W3)).unique());
+    const asScored = [{ key: "q1", answer: false, changed: false }, { key: "q2", answer: true, changed: false }];
+
+    // As the search's page would: a person answers in the screening the job shares.
+    await t.run((ctx) => answerPaper(ctx, screeningId, W3, [{ question: "Randomized?", response: true }], "person", 5));
+    expect((await list("excluded"))[0]).toMatchObject({ openalexId: W3, score: 1, answers: asScored });
+    expect(await job()).toMatchObject(COUNTED);
+
+    // The page clears the paper's answers. The job still has its own, takes a change, and
+    // puts back the answer its own run of the model gave.
+    await t.run(async (ctx) => ctx.db.delete("screeningAnswers", (await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId).eq("paperId", W3)).unique())!._id));
+    expect(await answer("W3", "q1", true)).toEqual({ outcome: "included" });
+    expect(await job()).toMatchObject(W3_INCLUDED);
+    expect(await answer("W3", "q1", "model")).toEqual({ outcome: "excluded" });
+    expect(await job()).toMatchObject(COUNTED);
+    expect((await list("excluded"))[0].answers).toMatchObject(asScored);
+    // The change was written through: the shared answer is the model's again.
+    expect((await row())?.answers.find((value) => value.question === "Randomized?")).toMatchObject({ answer: false, setBy: "model" });
+  });
+
   it("gives a job from before outcomes were kept its papers' outcomes and its counts, each paper once", async () => {
     const { t, job, list, answer } = await screened();
     // As a job screened before: its papers have no outcome and haven't recorded what they count as; its progress has no unclear count or tallies.

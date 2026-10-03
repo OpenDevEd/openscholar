@@ -985,7 +985,15 @@ export default defineSchema({
     // What the paper has added to its job's kept counts (./screening/accounting.ts), so a
     // later change adds only the difference. Missing while it waits for the bookkeeping
     // worker, and on a paper counted before outcomes were kept.
-    counted: v.optional(v.object({ qualified: v.boolean(), outcome: screeningOutcomeValidator, answers: screeningAnswersValidator })),
+    counted: v.optional(
+      v.object({
+        qualified: v.boolean(),
+        outcome: screeningOutcomeValidator,
+        // The answers it was scored on, by question key, and the keys of those a person or the assistant set.
+        answers: screeningAnswersValidator,
+        changed: capped(v.optional(v.array(v.string())), MAX_QUESTIONS),
+      }),
+    ),
     venue: v.optional(v.string()),
     citedByCount: v.optional(v.number()),
     aiMetadata: v.optional(
