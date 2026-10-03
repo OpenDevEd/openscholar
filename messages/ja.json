@@ -1266,7 +1266,9 @@
     "cookiePolicyTitle": "Cookieポリシー | OpenScholar",
     "cookiePolicyDescription": "OpenScholar.aiが分析のためにCookieをどのように使用し、Cookieの設定を管理するかについて説明します。",
     "libraryTitle": "ライブラリ - OpenScholar",
-    "libraryDescription": "保存した学術論文を閲覧・管理する"
+    "libraryDescription": "保存した学術論文を閲覧・管理する",
+    "creditsTitle": "クレジット | OpenScholar",
+    "creditsDescription": "OpenScholar が利用しているプロジェクト、データ、ライセンス。"
   },
   "validation": {
     "bookmarkNameRequired": "ブックマーク名は必須です",
@@ -1688,7 +1690,8 @@
     "suffix": "",
     "privacyPolicy": "プライバシーポリシー",
     "cookiePolicy": "Cookieポリシー",
-    "cookiePreferences": "Cookie設定"
+    "cookiePreferences": "Cookie設定",
+    "credits": "クレジット"
   },
   "focusMode": {
     "settingsTitle": "フォーカスモード設定",

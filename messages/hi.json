@@ -1266,7 +1266,9 @@
     "cookiePolicyTitle": "कुकी नीति | OpenScholar",
     "cookiePolicyDescription": "जानें कि OpenScholar.ai विश्लेषण के लिए कुकी का उपयोग कैसे करता है और अपनी कुकी प्राथमिकताओं को कैसे प्रबंधित करें।",
     "libraryTitle": "लाइब्रेरी - OpenScholar",
-    "libraryDescription": "अपने सहेजे गए शैक्षणिक शोधपत्रों को ब्राउज़ करें और प्रबंधित करें"
+    "libraryDescription": "अपने सहेजे गए शैक्षणिक शोधपत्रों को ब्राउज़ करें और प्रबंधित करें",
+    "creditsTitle": "क्रेडिट | OpenScholar",
+    "creditsDescription": "वे परियोजनाएँ, डेटा और लाइसेंस जिन पर OpenScholar आधारित है।"
   },
   "validation": {
     "bookmarkNameRequired": "बुकमार्क नाम आवश्यक है",
@@ -1688,7 +1690,8 @@
     "suffix": "",
     "privacyPolicy": "गोपनीयता नीति",
     "cookiePolicy": "कुकी नीति",
-    "cookiePreferences": "कुकी प्राथमिकताएं"
+    "cookiePreferences": "कुकी प्राथमिकताएं",
+    "credits": "क्रेडिट"
   },
   "focusMode": {
     "settingsTitle": "फोकस मोड सेटिंग्स",

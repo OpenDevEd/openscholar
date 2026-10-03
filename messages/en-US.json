@@ -1256,7 +1256,9 @@
     "cookiePolicyTitle": "Cookie Policy | OpenScholar",
     "cookiePolicyDescription": "Learn how OpenScholar.ai uses cookies for analytics and how to manage your cookie preferences.",
     "libraryTitle": "Library - OpenScholar",
-    "libraryDescription": "Browse and manage your saved academic papers"
+    "libraryDescription": "Browse and manage your saved academic papers",
+    "creditsTitle": "Credits | OpenScholar",
+    "creditsDescription": "The projects, data and licenses OpenScholar builds on."
   },
   "validation": {
     "bookmarkNameRequired": "Bookmark name is required",
@@ -1678,7 +1680,8 @@
     "suffix": "",
     "privacyPolicy": "Privacy policy",
     "cookiePolicy": "Cookie policy",
-    "cookiePreferences": "Cookie preferences"
+    "cookiePreferences": "Cookie preferences",
+    "credits": "Credits"
   },
   "focusMode": {
     "settingsTitle": "Focus Mode Settings",

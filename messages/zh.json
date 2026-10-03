@@ -1266,7 +1266,9 @@
     "cookiePolicyTitle": "Cookie 政策 | OpenScholar",
     "cookiePolicyDescription": "了解 OpenScholar.ai 如何使用 Cookie 进行分析以及如何管理您的 Cookie 偏好设置。",
     "libraryTitle": "文献库 - OpenScholar",
-    "libraryDescription": "浏览和管理您保存的学术论文"
+    "libraryDescription": "浏览和管理您保存的学术论文",
+    "creditsTitle": "致谢 | OpenScholar",
+    "creditsDescription": "OpenScholar 所使用的项目、数据与许可。"
   },
   "validation": {
     "bookmarkNameRequired": "书签名称是必需的",
@@ -1688,7 +1690,8 @@
     "suffix": "联合打造",
     "privacyPolicy": "隐私政策",
     "cookiePolicy": "Cookie 政策",
-    "cookiePreferences": "Cookie 偏好设置"
+    "cookiePreferences": "Cookie 偏好设置",
+    "credits": "致谢"
   },
   "focusMode": {
     "settingsTitle": "专注模式设置",
