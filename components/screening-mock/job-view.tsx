@@ -12,12 +12,17 @@ import { Input } from "@/components/ui/input";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
+import { PageStepper } from "@/components/shared/page-stepper";
 import { cn } from "@/lib/utils";
 import {
   CREDITS_PER_PAPER, SLOTS, answerOf, maxScore, outcomeOf, paperById, scoreOf, starsOf,
   type Answer, type Job, type Outcome, type Source,
 } from "./data";
 import { ANSWER, AnimatedNumber, AnswerMark, Chip, Meter, OUTCOME, OutcomeBar, ProgressRing, Stars } from "./parts";
+
+/** Papers a page of an outcome lists, and a full page's height: 61px a row with the line under it, less the last row's line, plus the list's border. */
+const PAGE_SIZE = 10;
+const FULL_PAGE_PX = PAGE_SIZE * 61 + 1;
 
 export const SOURCE_ICON: Record<Source["kind"], typeof Search> = { search: Search, collection: FolderOpen, saved: BookMarked, screening: ListChecks };
 const STATUS: Record<Job["status"], { label: string; tone: "running" | "warning" | "success" | "neutral" }> = {
@@ -195,11 +200,17 @@ function Results({ job, counts, max, onAnswer }: { job: Job; counts: Record<Outc
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const needle = query.trim().toLowerCase();
-  const rows = job.paperIds
+  const matches = job.paperIds
     .slice(0, job.done)
     .filter((id) => outcomeOf(job, id) === tab)
     .map((id) => paperById.get(id)!)
     .filter((p) => !needle || p.title.toLowerCase().includes(needle) || p.authors.join(" ").toLowerCase().includes(needle));
+  // One page of the outcome at a time, as the real page reads it; a new outcome or search starts at the first.
+  const list = `${tab}\n${needle}`;
+  const [at, setAt] = useState({ list, page: 1 });
+  const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
+  const page = Math.min(at.list === list ? at.page : 1, pageCount);
+  const rows = matches.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <Zone
@@ -223,7 +234,9 @@ function Results({ job, counts, max, onAnswer }: { job: Job; counts: Record<Outc
           detail: <span className="tabular-nums text-muted-foreground"><AnimatedNumber value={counts[o]} /></span>,
         }))}
       />
-      <motion.div key={tab} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: EASE }} className={cn(LIST, "mt-3")}>
+      {/* While the outcome has pages the list keeps a full page's height, so the pager stays put on a short last page. */}
+      <div style={pageCount > 1 ? { minHeight: FULL_PAGE_PX } : undefined}>
+      <motion.div key={`${list}\n${page}`} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, ease: EASE }} className={cn(LIST, "mt-3")}>
         {rows.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">
             {job.done === 0 ? "Papers show here as they're screened." : needle ? "No paper here matches." : `No ${OUTCOME[tab].label.toLowerCase()} papers.`}
@@ -278,57 +291,99 @@ function Results({ job, counts, max, onAnswer }: { job: Job; counts: Record<Outc
           </AnimatePresence>
         )}
       </motion.div>
+      </div>
+      {pageCount > 1 ? (
+        <PageStepper
+          className="pt-3"
+          page={page}
+          // A search's matches aren't counted on the server, so its pager shows the page alone.
+          pageCount={needle ? undefined : pageCount}
+          canPrevious={page > 1}
+          canNext={page < pageCount}
+          onPrevious={() => setAt({ list, page: page - 1 })}
+          onNext={() => setAt({ list, page: page + 1 })}
+        />
+      ) : null}
     </Zone>
   );
 }
 
+/**
+ * Why a paper landed where it did, then the text to check it against: its score against
+ * the score that includes it, each question's answer on one line with what it added, and
+ * the abstract underneath.
+ */
 function PaperDetail({ job, paperId, onAnswer }: { job: Job; paperId: string; onAnswer: (paperId: string, questionKey: string, answer: Answer | null) => void }) {
   const paper = paperById.get(paperId)!;
+  const score = scoreOf(job, paperId);
+  const max = maxScore(job.questions);
+  const outcome = outcomeOf(job, paperId);
+  const { label, icon: OutcomeIcon, text, bar } = OUTCOME[outcome];
   return (
-    <div className="grid gap-5 bg-muted/20 px-4 pb-5 pt-1 lg:grid-cols-[1fr_20rem]">
-      <div className="space-y-2">
-        {paper.venue ? <p className="text-xs text-muted-foreground">{paper.venue}</p> : null}
-        <p className="text-sm leading-relaxed text-foreground/85">{paper.abstract}</p>
+    <div className="space-y-4 bg-muted/20 px-4 pb-5 pt-2">
+      <div className="flex items-center gap-3">
+        <span className={cn("inline-flex shrink-0 items-center gap-1.5 text-sm font-medium", text)}><OutcomeIcon className="size-4" />{label}</span>
+        {/* The score as a track, with a mark where a paper starts to be included. */}
+        <div className="relative h-2 min-w-0 flex-1 rounded-full bg-muted" role="img" aria-label={`${score} of ${max} points; included from ${job.minScore}`}>
+          <div className={cn("h-full rounded-full transition-[width] duration-500 ease-out motion-reduce:transition-none", bar)} style={{ width: `${max ? (score / max) * 100 : 0}%` }} />
+          <span aria-hidden className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded-full bg-foreground/70" style={{ left: `${max ? (job.minScore / max) * 100 : 0}%` }} />
+        </div>
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground"><span className="text-sm font-semibold text-foreground">{score}</span> of {max} points, included from {job.minScore}</span>
       </div>
-      <div className="space-y-3">
+
+      <ul>
         {job.questions.map((q, i) => {
           const a = answerOf(job, paperId, q);
+          const points = q[a.answer];
+          const earned = points === 0 ? "text-muted-foreground/60" : a.answer === "yes" ? OUTCOME.included.text : a.answer === "unclear" ? OUTCOME.unclear.text : "text-foreground";
           return (
-            <div key={q.key} className="space-y-1.5 rounded-xl border border-border/60 bg-background p-3">
-              <p className="text-xs"><span className="mr-1.5 font-medium tabular-nums">{i + 1}</span>{q.text}</p>
-              <div className="flex items-center gap-2">
-                <div role="radiogroup" aria-label={`Answer to question ${i + 1}`} className="flex gap-1">
-                  {(Object.keys(ANSWER) as Answer[]).map((answer) => {
-                    const { label, icon: Icon, className } = ANSWER[answer];
-                    const on = a.answer === answer;
-                    return (
-                      <button
-                        key={answer}
-                        type="button"
-                        role="radio"
-                        aria-checked={on}
-                        onClick={() => onAnswer(paperId, q.key, answer)}
-                        className={cn("inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-colors", on ? className : "text-muted-foreground hover:bg-muted")}
-                      >
-                        <Icon className="size-3.5" />{label}
-                      </button>
-                    );
-                  })}
-                </div>
+            <li key={q.key} className="grid grid-cols-[1.25rem_minmax(0,1fr)_2rem] items-center gap-x-3 gap-y-1 py-1.5 md:grid-cols-[1.25rem_minmax(0,1fr)_auto_5.5rem_2rem]">
+              <span className="text-xs font-medium tabular-nums text-muted-foreground">{i + 1}</span>
+              <p className="text-sm">{q.text}</p>
+              {/* Under the question on a narrow screen; in the row's own columns on a wide one. */}
+              <div className="col-span-2 col-start-2 row-start-2 flex items-center justify-between gap-2 md:contents">
+              <div role="radiogroup" aria-label={`Answer to question ${i + 1}`} className="flex gap-1">
+                {(Object.keys(ANSWER) as Answer[]).map((answer) => {
+                  const { label: name, icon: Icon, className } = ANSWER[answer];
+                  const on = a.answer === answer;
+                  return (
+                    <button
+                      key={answer}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => onAnswer(paperId, q.key, answer)}
+                      className={cn("inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-colors", on ? className : "text-muted-foreground hover:bg-muted")}
+                    >
+                      <Icon className="size-3.5" />{name}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex justify-end">
                 {a.changed ? (
                   <TooltipHint label="Put back the model's answer">
-                    <Button variant="ghost" size="icon" className="ml-auto size-7" aria-label="Put back the model's answer" onClick={() => onAnswer(paperId, q.key, null)}><Undo2 /></Button>
+                    <Button variant="ghost" size="icon" className="size-7" aria-label="Put back the model's answer" onClick={() => onAnswer(paperId, q.key, null)}><Undo2 /></Button>
                   </TooltipHint>
                 ) : (
-                  <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground" aria-label={`Model confidence ${Math.round(a.confidence * 100)}%`}>
-                    <Meter value={a.confidence} max={1} className="w-12" fill={a.answer === "unclear" ? "bg-amber-400" : "bg-primary"} />
+                  <span className="flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground" aria-label={`Model confidence ${Math.round(a.confidence * 100)}%`}>
+                    <Meter value={a.confidence} max={1} className="w-10" fill={a.answer === "unclear" ? "bg-amber-400" : "bg-primary"} />
                     {Math.round(a.confidence * 100)}%
                   </span>
                 )}
               </div>
-            </div>
+              </div>
+              <span className={cn("col-start-3 row-start-1 text-right text-xs font-semibold tabular-nums md:col-start-auto md:row-start-auto", earned)} aria-label={`${points} points`}>
+                +{points}
+              </span>
+            </li>
           );
         })}
+      </ul>
+
+      <div className="space-y-1.5">
+        {paper.venue ? <p className="text-xs text-muted-foreground">{paper.venue}</p> : null}
+        <p className="text-sm leading-relaxed text-foreground/80 lg:columns-2 lg:gap-8">{paper.abstract}</p>
       </div>
     </div>
   );
