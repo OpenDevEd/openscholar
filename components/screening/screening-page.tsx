@@ -11,6 +11,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { ConfigurationLayout, ConfigurationNavigation } from "@/components/evidence-libraries/configuration/configuration-layout";
 import { RailGroup, RailLink } from "@/components/evidence-libraries/configuration/navigation-rail";
 import { BAR_ACTION, BAR_LABEL, PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
@@ -160,20 +161,30 @@ export function ScreeningPage() {
   );
 }
 
+/** What a screening's bar in the rail is filled with: how far it has got while it runs, how much of it was included once it's done. */
+const FILL: Record<Exclude<Phase, "processing">, string> = {
+  running: "bg-primary", waiting: "bg-amber-400", completed: "bg-emerald-500", cancelled: "bg-muted-foreground/40", failed: "bg-destructive", creditsExhausted: "bg-destructive",
+};
+
+/**
+ * A screening in the rail, the same two lines whatever its name or state: the name on one
+ * line, then one bar with its number beside it.
+ */
 function JobLink({ row, phase, name, active, onClick }: { row: JobRow; phase: Exclude<Phase, "processing">; name: string; active: boolean; onClick: () => void }) {
   const t = useTranslations("screeningPage");
   const done = doneOf(row);
+  const filled = phase === "completed" ? row.qualifiedPapers : done;
   return (
-    <RailLink href={`/screening?job=${row._id}`} icon={ICON[phase]} active={active} onClick={onClick} className="h-auto items-start whitespace-normal py-2 [&>svg]:mt-0.5">
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="line-clamp-2">{name}</span>
+    <RailLink href={`/screening?job=${row._id}`} icon={ICON[phase]} active={active} onClick={onClick} className="h-auto items-start py-2 [&>svg]:mt-0.5">
+      <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <TooltipHint label={name} onlyWhenClipped>
+          <span className="truncate">{name}</span>
+        </TooltipHint>
         <span className="flex items-center gap-2">
-          {phase === "running" || phase === "waiting" ? (
-            <span className="block h-1 flex-1 overflow-hidden rounded-full bg-muted">
-              <span className={cn("block h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none", phase === "running" ? "bg-primary" : "bg-amber-400")} style={{ width: `${row.totalPapers ? (done / row.totalPapers) * 100 : 0}%` }} />
-            </span>
-          ) : null}
-          <span className="ml-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
+          <span className="block h-1 flex-1 overflow-hidden rounded-full bg-foreground/10">
+            <span className={cn("block h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none", FILL[phase])} style={{ width: `${row.totalPapers ? (filled / row.totalPapers) * 100 : 0}%` }} />
+          </span>
+          <span className="shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
             {phase === "completed" ? t("includedCount", { count: row.qualifiedPapers }) : `${done}/${row.totalPapers}`}
           </span>
         </span>
