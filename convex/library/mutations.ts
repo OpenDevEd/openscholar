@@ -1,7 +1,8 @@
 import { v, type Infer } from "convex/values";
-import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
+import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
 import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { assistantMutation, defineUserMutation, userMutation, type Author } from "../lib/userActions";
@@ -24,11 +25,6 @@ const libraryPaper = v.object({
   oaStatus: v.optional(v.string()),
   paperData: v.optional(v.string()),
 });
-
-/** A removed paper as it was, with its collections, so Undo can put it back. */
-const removedPaper = schema.tables.libraryItems.validator
-  .omit("userId")
-  .extend({ collectionIds: v.array(v.id("collections")) });
 
 const ratingArg = v.number();
 
@@ -158,48 +154,106 @@ export const clearLibraryRatingAction = defineUserMutation({
 export const clearLibraryRating = userMutation(clearLibraryRatingAction);
 export const clearLibraryRatingForAssistant = assistantMutation(clearLibraryRatingAction);
 
+/** How long a removed paper is kept for Undo. */
+const REMOVAL_KEPT_MS = 24 * 60 * 60_000;
+
+/**
+ * Takes a paper out of every collection it's in, looked up collection by collection (the
+ * person has at most MAX_COLLECTIONS_PER_USER), and says which those were. Undo needs all
+ * of them, so they're found here, in the removal's own transaction.
+ */
+async function removeFromCollections(ctx: MutationCtx, userId: Id<"users">, libraryItemId: Id<"libraryItems">) {
+  const collections = await ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId)).take(MAX_COLLECTIONS_PER_USER);
+  const memberships = await Promise.all(
+    collections.map((collection) =>
+      ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collection._id).eq("libraryItemId", libraryItemId)).first(),
+    ),
+  );
+  const collectionIds: Id<"collections">[] = [];
+  for (const membership of memberships) {
+    if (!membership) continue;
+    await removeCollectionMembership(ctx, membership);
+    collectionIds.push(membership.collectionId);
+  }
+  return collectionIds;
+}
+
+/**
+ * Deletes a batch of the membership rows a removed paper still has: rows a deleted
+ * collection left behind, since its live ones are gone. Says whether more are left.
+ */
+async function removeLeftoverMemberships(ctx: MutationCtx, libraryItemId: Id<"libraryItems">) {
+  const leftover = await ctx.db
+    .query("libraryItemCollections")
+    .withIndex("by_item", (q) => q.eq("libraryItemId", libraryItemId))
+    .take(MAX_COLLECTIONS_PER_USER);
+  for (const membership of leftover) await ctx.db.delete("libraryItemCollections", membership._id);
+  return leftover.length === MAX_COLLECTIONS_PER_USER;
+}
+
 export const removeFromLibraryAction = defineUserMutation({
   path: "library/mutations:removeFromLibrary",
   description:
-    "Removes a paper from the person's library, with its rating and its place in every collection. Returns the removed paper so restoreLibraryItem can put it back.",
+    "Removes a paper from the person's library, with its rating and its place in every collection. Returns the ID of the removal, which restoreLibraryItem takes to put the paper back within a day.",
   args: { openalexId: v.string() },
-  returns: v.union(removedPaper, v.null()),
+  returns: v.union(v.id("libraryRemovals"), v.null()),
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
   run: async (ctx, userId, args, author) => {
     const item = await findItem(ctx, userId, args.openalexId);
     if (!item) return null;
-    // Bounded: one saved paper belongs to at most MAX_COLLECTIONS_PER_USER collections.
-    const memberships = await ctx.db
-      .query("libraryItemCollections")
-      .withIndex("by_item", (q) => q.eq("libraryItemId", item._id))
-      .collect();
-    for (const membership of memberships) await removeCollectionMembership(ctx, membership);
+    const collectionIds = await removeFromCollections(ctx, userId, item._id);
+    const more = await removeLeftoverMemberships(ctx, item._id);
     await countedWrite(ctx, userId, -1, () => ctx.db.delete("libraryItems", item._id));
     await setResearchRating(ctx, userId, item.openalexId, null, author);
     const { _id, _creationTime, userId: _owner, ...kept } = item;
-    return { ...kept, collectionIds: memberships.map((membership) => membership.collectionId) };
+    const expiresAt = Date.now() + REMOVAL_KEPT_MS;
+    const removalId = await ctx.db.insert("libraryRemovals", { userId, item: kept, collectionIds, expiresAt });
+    await ctx.scheduler.runAt(expiresAt, internal.library.mutations.forgetRemoval, { removalId });
+    if (more) await ctx.scheduler.runAfter(0, internal.library.mutations.removeMemberships, { libraryItemId: item._id });
+    return removalId;
   },
 });
 export const removeFromLibrary = userMutation(removeFromLibraryAction);
 export const removeFromLibraryForAssistant = assistantMutation(removeFromLibraryAction);
 
+/** Deletes the next batch of the membership rows a removed paper left, until none are left. */
+export const removeMemberships = internalMutation({
+  args: { libraryItemId: v.id("libraryItems") },
+  returns: v.null(),
+  handler: async (ctx, { libraryItemId }) => {
+    if (await removeLeftoverMemberships(ctx, libraryItemId)) {
+      await ctx.scheduler.runAfter(0, internal.library.mutations.removeMemberships, { libraryItemId });
+    }
+    return null;
+  },
+});
+
+/** Deletes a removal once its day for Undo is over. */
+export const forgetRemoval = internalMutation({
+  args: { removalId: v.id("libraryRemovals") },
+  returns: v.null(),
+  handler: async (ctx, { removalId }) => {
+    if (await ctx.db.get("libraryRemovals", removalId)) await ctx.db.delete("libraryRemovals", removalId);
+    return null;
+  },
+});
+
 export const restoreLibraryItemAction = defineUserMutation({
   path: "library/mutations:restoreLibraryItem",
   description:
-    "Puts back a paper that removeFromLibrary removed, with its rating, its saved date and the collections that still exist.",
-  args: { paper: removedPaper },
+    "Puts back a paper that removeFromLibrary removed, given that removal's ID, with its rating, its saved date and the collections that still exist. Works once, within a day of the removal.",
+  args: { removalId: v.id("libraryRemovals") },
   returns: v.id("libraryItems"),
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, userId, { paper }, author) => {
-    const { collectionIds, ...item } = paper;
-    if (collectionIds.length > MAX_COLLECTIONS_PER_USER) {
-      throw createError("VALIDATION_ERROR", "Too many collections.");
-    }
-    if (item.rating !== undefined) requireRating(item.rating);
+  run: async (ctx, userId, { removalId }, author) => {
+    const removal = await ctx.db.get("libraryRemovals", removalId);
+    // Its day is over even if the cleanup hasn't reached it yet.
+    if (!removal || removal.userId !== userId || removal.expiresAt <= Date.now()) throw createError("NOT_FOUND", "This removal can no longer be undone.");
+    const { item, collectionIds } = removal;
     const existing = await findItem(ctx, userId, item.openalexId);
     let libraryItemId: Id<"libraryItems">;
     if (existing) {
@@ -222,6 +276,7 @@ export const restoreLibraryItemAction = defineUserMutation({
         await addCollectionMembership(ctx, { userId, collection, libraryItemId });
       }
     }
+    await ctx.db.delete("libraryRemovals", removalId);
     return libraryItemId;
   },
 });

@@ -24,7 +24,7 @@ import { rateLimit } from "../lib/rateLimit";
 import { internal } from "../_generated/api";
 import { customDomainDnsRecords } from "./domainConfig";
 import { readDomainActivationPlan } from "./domainPlan";
-import { isConfigurationDeploymentOperation } from "./operations";
+import { isConfigurationDeploymentOperation, readActiveOperations } from "./operations";
 import {
   evidenceLibraryDomainFailureValidator,
   evidenceLibraryDomainStateValidator,
@@ -1260,12 +1260,7 @@ export const claimDomainRoutes = internalMutation({
       throw createError("CONFLICT", "This library is not running yet");
     }
     for (const status of ["queued", "running"] as const) {
-      const operations = ctx.db
-        .query("evidenceLibraryConfigOperations")
-        .withIndex("by_libraryId_and_status_and_updatedAt", (index) =>
-          index.eq("libraryId", args.libraryId).eq("status", status),
-        );
-      for await (const operation of operations) {
+      for (const operation of await readActiveOperations(ctx, args.libraryId, status, "publish")) {
         if (isConfigurationDeploymentOperation(operation)) {
           return { status: "busy" as const };
         }

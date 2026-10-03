@@ -76,6 +76,8 @@ export interface SearchHistoryState {
   /** The model's answers for one paper; `confidences` is its confidence in each, by question. */
   setScreeningResponses: (searchId: string, paperId: string, responses: Record<string, boolean | null>, confidences?: Record<string, number>) => void
   getScreeningResponse: (searchId: string, paperId: string, question: string) => boolean | null | undefined
+  /** A search's answers for these papers, read from the account when signed in: a page holds only the answers of the papers it shows. */
+  readScreeningResponses: (searchId: string, paperIds: string[]) => Promise<ScreeningResponses>
   clearScreeningResponses: (searchId: string, paperId?: string) => void
   removeScreeningQuestionFromAllPapers: (searchId: string, question: string) => void
   getSearchResult: (id: string) => SearchResult | undefined
@@ -527,6 +529,11 @@ export const localSearchHistoryStore = create<SearchHistoryState>()(
       getScreeningResponse: (searchId, paperId, question) => {
         const searchResult = get().searchHistory.find(item => item.id === searchId);
         return searchResult?.screeningResponses?.[paperId]?.[question];
+      },
+      // This browser holds every answer of its own searches.
+      readScreeningResponses: async (searchId, paperIds) => {
+        const responses = get().searchHistory.find(item => item.id === searchId)?.screeningResponses ?? {};
+        return Object.fromEntries(paperIds.flatMap(paperId => (responses[paperId] ? [[paperId, responses[paperId]]] : [])));
       },
       clearScreeningResponses: (searchId, paperId) => {
         set((state) => ({

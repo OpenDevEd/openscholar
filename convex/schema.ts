@@ -1,9 +1,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
+import { libraryItemFields, removedItemValidator } from "./library/validators";
+import { MAX_COLLECTIONS_PER_USER } from "./lib/queryBounds";
 import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
-  MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LEGACY_ENTRIES, MAX_METADATA_FIELDS, MAX_QUESTIONS,
+  MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_METADATA_FIELDS, MAX_QUESTIONS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
 import { screeningAnswersValidator, screeningAuthorsValidator, screeningQuestionsValidator, screeningScoringConfigValidator } from "./screening/validators";
@@ -54,24 +56,23 @@ import { authorContentFields } from "./authors/validators";
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
-import { fieldValidator, paperAnswersValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
+import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
 
 export default defineSchema({
-  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator, responseChunks: capped(v.optional(v.array(v.id("researchResponseChunks"))), MAX_LEGACY_ENTRIES) })
+  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator })
     .index("by_user", ["userId"])
     .index("by_user_and_createdAt", ["userId", "data.createdAt"])
     .index("by_user_and_count", ["userId", "data.count"])
     .index("by_user_and_localId", ["userId", "localId"]),
-  // How many saved searches and shortcuts a person has, kept by the triggers on those tables
+  // How many saved searches, shortcuts and screening jobs a person has, kept by the triggers on those tables
   // (research/recordCounts.ts), for page totals. While a first count is being taken,
   // `countedTo` is the creation time it has reached.
-  recordCounts: defineTable({ userId: v.id("users"), table: v.union(v.literal("searches"), v.literal("queryShortcuts")), count: v.number(), countedTo: v.optional(v.number()) })
+  recordCounts: defineTable({ userId: v.id("users"), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs")), count: v.number(), countedTo: v.optional(v.number()) })
     .index("by_user_and_table", ["userId", "table"]),
   searchRevisions: defineTable({
     userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
     author: v.union(v.literal("user"), v.literal("assistant")),
     data: storedSearchValidator, deleted: v.boolean(), createdAt: v.number(),
-    responseChunks: capped(v.optional(v.array(v.id("researchResponseChunks"))), MAX_LEGACY_ENTRIES),
     // The screening version this revision saw; its answers are the history up to it.
     answersVersion: v.optional(v.number()),
   }).index("by_search_and_revision", ["searchId", "revision"]),
@@ -81,15 +82,15 @@ export default defineSchema({
     text: v.string(), field: v.optional(fieldValidator), timestamp: v.string(), position: v.number(),
   }).index("by_search_and_kind_and_position", ["searchId", "kind", "position"])
     .index("by_search_and_kind_and_timestamp", ["searchId", "kind", "timestamp"]),
-  researchResponseChunks: defineTable({ responses: storedSearchValidator.fields.screeningResponses }),
   // A screening's answers, one row per paper, and an append-only history of each paper's
   // answers that old revisions are rebuilt from. A saved search has one screening, which its
   // page and its Screen all jobs both answer into; a Screen all job run before #334 has its
   // own, with no search. `version` counts the writes to its answers, so a revision finds its
   // answers exactly.
-  screenings: defineTable({ userId: v.id("users"), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number() })
+  screenings: defineTable({ userId: v.id("users"), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number(), removals: removalsValidator })
     .index("by_search", ["searchId"]),
-  screeningAnswers: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator })
+  // `version`: the screening's when the row was last written; a row from before this was kept owes every removal.
+  screeningAnswers: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.optional(v.number()) })
     .index("by_screening_and_paper", ["screeningId", "paperId"]),
   // A paper's answers after each change; an empty list means its answers were removed.
   screeningAnswerHistory: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.number(), at: v.number() })
@@ -339,6 +340,8 @@ export default defineSchema({
       "status",
       "updatedAt",
     ])
+    // The queued or running operations of one kind, which the guards ask about (#427).
+    .index("by_libraryId_and_status_and_kind", ["libraryId", "status", "kind"])
     .index("by_libraryId_and_failed_runtime", [
       "libraryId",
       "status",
@@ -817,6 +820,8 @@ export default defineSchema({
     .index("by_job", ["jobId"])
     .index("by_job_processable", ["jobId", "processable"])
     .index("by_job_status", ["jobId", "status"])
+    // A job's papers of one status from the earliest started; `by_job_status` reads them as they were added.
+    .index("by_job_status_and_startedAt", ["jobId", "status", "startedAt"])
     .index("by_openalex", ["openalexId"])
     .index("by_work", ["workId"])
     .index("by_status_completedAt", ["status", "completedAt"])
@@ -1007,25 +1012,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEMS - User's saved paper library
   // ═══════════════════════════════════════════════════════════════
-  libraryItems: defineTable({
-    userId: v.id("users"),
-    openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
-    rating: v.optional(v.number()), // 0-5; unset when the paper was saved without rating it
-    title: v.string(),
-    authors: v.optional(v.string()), // Flattened: "John Doe, Jane Smith"
-    doi: v.optional(v.string()),
-    abstract: v.optional(v.string()),
-    publicationYear: v.optional(v.number()),
-    journal: v.optional(v.string()), // primary_location.source.display_name
-    citedByCount: v.optional(v.number()),
-    workType: v.optional(v.string()), // OpenAlex `type` — "article" | "review" | "book-chapter" | ...
-    isOpenAccess: v.optional(v.boolean()),
-    oaStatus: v.optional(v.string()), // "gold" | "green" | "bronze" | "hybrid" | "closed"
-    paperData: v.optional(v.string()), // Full PaperResult JSON for rich card rendering
-    searchableText: v.string(), // title + abstract + authors (for Phase 23 search index)
-    savedAt: v.number(),
-    updatedAt: v.number(),
-  })
+  libraryItems: defineTable(libraryItemFields)
     .index("by_user", ["userId"])
     .index("by_user_openalexId", ["userId", "openalexId"])
     .index("by_user_rating", ["userId", "rating"])
@@ -1037,6 +1024,15 @@ export default defineSchema({
       searchField: "searchableText",
       filterFields: ["userId", "rating"],
     }),
+
+  // A paper removed from a library, with the collections it was in, kept a day so Undo
+  // (the page's or the assistant's) can put it back by this record's ID.
+  libraryRemovals: defineTable({
+    userId: v.id("users"),
+    item: removedItemValidator,
+    collectionIds: capped(v.array(v.id("collections")), MAX_COLLECTIONS_PER_USER),
+    expiresAt: v.number(),
+  }),
 
   // ═══════════════════════════════════════════════════════════════
   // COLLECTIONS - Named groups for organizing library items

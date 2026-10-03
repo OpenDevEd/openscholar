@@ -20,7 +20,6 @@ describe("search-actions screening export contract", () => {
 
     expect(source).toMatch(/getEssentialInfo\(item, ratings, screeningResponses, format\)/);
     expect(source).toMatch(/withScreeningResults\(\s*\{\s*\.\.\.item,\s*rating:/);
-    expect(source).toMatch(/getScreeningResponsesForSearch\(searchState\)/);
     expect(source).toMatch(/\.\.\.\(item\.doi \? \{ doi: item\.doi \} : \{\}\)/);
     expect(source).toMatch(/\.\.\.\(item\.open_access\?\.oa_url \? \{ pdf_url: item\.open_access\.oa_url \} : \{\}\)/);
   });

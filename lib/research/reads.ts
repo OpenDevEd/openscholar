@@ -12,7 +12,7 @@ import { shortcutNames } from "../query-shortcuts";
 import type { SearchResult } from "../types";
 import { SessionContext } from "./binding";
 import { serializeSearch } from "./records";
-import type { WatchedStatus } from "./session";
+import type { ResearchSession, WatchedStatus } from "./session";
 
 /** The signed-in account's research session, or null signed out. */
 export function useResearchSession() {
@@ -58,6 +58,35 @@ export function useWatchedSearch(id: string | undefined): WatchedStatus {
 }
 
 /**
+ * Holds a read of something about these papers, by paper ID, while this component shows.
+ * Returns the papers it's read for, from the first, whether more are on their way, and
+ * whether a read failed. `watch`, `read` and `failed` are the session's for that read;
+ * `watch` is null when nothing is to be read.
+ */
+function useReadPapers<Paper extends { id: string }>(
+  papers: Paper[],
+  watch: ((session: ResearchSession, paperIds: string[], listener: () => void) => () => void) | null,
+  read: (session: ResearchSession, paperIds: string[]) => number,
+  failed: (session: ResearchSession, paperIds: string[]) => boolean = () => false,
+  scope = "",
+): { papers: Paper[]; loading: boolean; failed: boolean } {
+  const { session, phase } = useContext(SessionContext);
+  // The account reads once it's ready; until then its papers wait, and if it can't load they show as they are.
+  const reads = session !== null && watch !== null && phase === "authenticated";
+  const waits = session !== null && watch !== null && phase === "initializing";
+  const key = papers.map((paper) => paper.id).join("\n");
+  // `scope` stands for what `watch`, `read` and `failed` close over: they're new functions on every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const subscribe = useCallback((listener: () => void) => (session && reads && key ? watch!(session, key.split("\n"), listener) : noReaders()), [session, reads, key, scope]);
+  // One number says both: how many papers are read, and half more when a read failed.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const state = useCallback(() => (session && reads && key ? read(session, key.split("\n")) + (failed(session, key.split("\n")) ? 0.5 : 0) : waits ? 0 : papers.length), [session, reads, waits, key, papers.length, scope]);
+  const known = useSyncExternalStore(subscribe, state, state);
+  const count = Math.floor(known);
+  return { ...(count >= papers.length ? { papers, loading: false } : { papers: papers.slice(0, count), loading: true }), failed: known !== count };
+}
+
+/**
  * Has the signed-in session read the person's ratings of these papers while this component
  * shows, so the ratings store has them. Returns the papers whose ratings are read, from the
  * first, and whether more are on their way: a page shows a paper once its rating is known,
@@ -65,15 +94,25 @@ export function useWatchedSearch(id: string | undefined): WatchedStatus {
  * this browser's store.
  */
 export function useRatedPapers<Paper extends { id: string }>(papers: Paper[]): { papers: Paper[]; loading: boolean } {
-  const { session, phase } = useContext(SessionContext);
-  // The account reads once it's ready; until then its papers wait, and if it can't load they show unrated.
-  const reads = session !== null && phase === "authenticated";
-  const waits = session !== null && phase === "initializing";
-  const key = papers.map((paper) => paper.id).join("\n");
-  const subscribe = useCallback((listener: () => void) => (session && reads && key ? session.watchRatings(key.split("\n"), listener) : noReaders()), [session, reads, key]);
-  const read = useCallback(() => (session && reads && key ? session.ratingsRead(key.split("\n")) : waits ? 0 : papers.length), [session, reads, waits, key, papers.length]);
-  const known = useSyncExternalStore(subscribe, read, read);
-  return known >= papers.length ? { papers, loading: false } : { papers: papers.slice(0, known), loading: true };
+  return useReadPapers(papers, (session, paperIds, listener) => session.watchRatings(paperIds, listener), (session, paperIds) => session.ratingsRead(paperIds));
+}
+
+/**
+ * Has the signed-in session read search `searchId`'s screening answers for these papers while
+ * this component shows, so the search in the store has them. Returns the papers whose answers
+ * are read, from the first, and whether more are on their way: a page screens a paper only
+ * once it knows what's already answered. `failed` says a read failed: the papers show, but
+ * what they're answered isn't known, so nothing should screen them. Signed out, or with no
+ * saved search, nothing is read.
+ */
+export function useAnsweredPapers<Paper extends { id: string }>(searchId: string | undefined, papers: Paper[]): { papers: Paper[]; loading: boolean; failed: boolean } {
+  return useReadPapers(
+    papers,
+    searchId ? (session, paperIds, listener) => session.watchAnswers(searchId, paperIds, listener) : null,
+    (session, paperIds) => (searchId ? session.answersRead(searchId, paperIds) : paperIds.length),
+    (session, paperIds) => searchId !== undefined && session.answersFailed(searchId, paperIds),
+    searchId,
+  );
 }
 
 /**

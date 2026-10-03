@@ -68,7 +68,8 @@ function jsonList<Item>(row: (item: Item) => Row) {
 /**
  * Each export as the server writes it (convex/exports.ts): a start, each item, and an end
  * that can say how many there were. The browser only downloads. Columns run in the order the
- * rows above list their fields (alphabetical, as before).
+ * rows above list their fields (alphabetical, as before). A screening job's files depend on
+ * its questions, so they're made per job (lib/screening/export.ts).
  */
 export const exportFiles = {
   library: {
@@ -95,8 +96,8 @@ export const exportFiles = {
 };
 
 /** The first part keeps the plain name; a later one says which part it is. */
-export function exportFilename(kind: ExportSource["kind"], format: ExportFormat, at: Date, part = 1) {
-  return `${exportFiles[kind].name(at)}${part > 1 ? `-part-${part}` : ""}.${format}`;
+export function exportFilename(name: string, format: ExportFormat, part = 1) {
+  return `${name}${part > 1 ? `-part-${part}` : ""}.${format}`;
 }
 
 /** How long an export's link waits for its next part to be fetched; the browser fetches it at once. */
@@ -105,7 +106,7 @@ export const EXPORT_LINK_MS = 2 * 60_000;
 const PART_START_MS = 30_000;
 
 /**
- * Downloads a library view, the search history or the query shortcuts as files the server writes a page at a
+ * Downloads a library view, the search history, the query shortcuts or a screening job's results as files the server writes a page at a
  * time, so no export is held whole in memory, here or there. A file stops short of Convex's
  * 20 MiB response limit, and the next part follows once it's done. The browser makes a
  * one-time token and registers only its digest; each part's link carries the token. Settles

@@ -71,6 +71,7 @@ import {
   isCurrentConfigurationTargetBaseUrl,
   isCurrentConfigurationDeploymentTarget,
   isRetryableConfigurationDeployment,
+  readActiveOperations,
 } from "./operations";
 
 export { isConfigurationDeploymentOperation } from "./operations";
@@ -302,12 +303,7 @@ export async function requireNoActiveConfigurationDeployment(
   exceptOperationId?: Id<"evidenceLibraryConfigOperations">,
 ) {
   for (const status of ["queued", "running"] as const) {
-    const operations = ctx.db
-      .query("evidenceLibraryConfigOperations")
-      .withIndex("by_libraryId_and_status_and_updatedAt", (query) =>
-        query.eq("libraryId", libraryId).eq("status", status),
-      );
-    for await (const operation of operations) {
+    for (const operation of await readActiveOperations(ctx, libraryId, status, "publish")) {
       if (
         operation._id !== exceptOperationId &&
         isConfigurationDeploymentOperation(operation)

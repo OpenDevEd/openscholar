@@ -1,3 +1,4 @@
+import { SECTION_REGISTRY } from "../../lib/evidence-libraries/configuration/section-registry";
 import {
   internalMutation,
   mutation,
@@ -389,6 +390,15 @@ async function queueCandidateOperation(
 // Publishes the active revision again at the newest Evidence Library
 // software. The owner checks for updates first; the fresh release row is
 // the only source of the target commit.
+/**
+ * Section rows a restore deletes from a draft. The schema allows only the registry's
+ * sections, one row each, so a draft has no more than there are sections; twice that leaves
+ * room for a doubled row of each, which a restore clears too.
+ */
+const DRAFT_ROWS_REPLACED = SECTION_REGISTRY.length * 2;
+/** Publishes read that moved a library onto its current software; past it the restore is refused, not guessed. */
+export const RUNTIME_ARRIVALS_READ = 100;
+
 export async function startEvidenceLibraryRuntimeUpdate(
   ctx: MutationCtx,
   args: { libraryId: Id<"evidenceLibraries"> },
@@ -602,7 +612,11 @@ export async function restoreEvidenceLibraryRevision(
     .withIndex("by_draftId_and_sectionKey", (query) =>
       query.eq("draftId", draft._id),
     )
-    .collect();
+    .take(DRAFT_ROWS_REPLACED + 1);
+  // Every prior row must go, or the restored draft would carry a stale section.
+  if (draftRows.length > DRAFT_ROWS_REPLACED) {
+    throw new Error(`The draft has more than ${DRAFT_ROWS_REPLACED} section rows; it can't be restored over until the extra rows are removed.`);
+  }
   for (const row of draftRows) await ctx.db.delete(row._id);
   for (const section of sourceSnapshot.migration.snapshot.sections) {
     await ctx.db.insert("evidenceLibraryConfigSections", {
@@ -863,12 +877,19 @@ export const startRuntimeRollback = internalMutation({
           .eq("runtimeUpdate.to", binding.runtimeCommit)
           .eq("runtimeUpdate.toImage", binding.runtimeImage),
       )
-      .collect();
-    const arrival = arrivals.find(
+      .take(RUNTIME_ARRIVALS_READ + 1);
+    const arrival = arrivals.slice(0, RUNTIME_ARRIVALS_READ).find(
       (operation) =>
         operation.activationEditVersion !== undefined &&
         operation.runtimeUpdate?.from === previous.commit,
     );
+    // Calling the settings readable on a partial read could put software back under settings it can't read.
+    if (!arrival && arrivals.length > RUNTIME_ARRIVALS_READ) {
+      throw createError(
+        "CONFLICT",
+        `This library has moved onto its current software more than ${RUNTIME_ARRIVALS_READ} times, too many to check its settings against the earlier software`,
+      );
+    }
     const arrivalRevision = arrival?.revisionId
       ? await ctx.db.get(arrival.revisionId)
       : null;

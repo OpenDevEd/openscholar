@@ -70,6 +70,8 @@ export const apiKeyProviderValidator = v.union(
   v.literal("google"),
   v.literal("openrouter")
 );
+/** Most API keys one person stores: saving a provider's key replaces the one before. */
+export const MAX_API_KEYS_PER_USER = apiKeyProviderValidator.members.length;
 
 export const userFields = {
   clerkId: v.string(),

@@ -119,6 +119,8 @@ export const MAX_LINKED_ACCOUNTS = 100;
  * #354 (dropped by #373) and the answer chunks moved out by #334. Shared dev holds 40 at most.
  */
 export const MAX_LEGACY_ENTRIES = MAX_LIST_CAP;
+/** Removals of answers a screening is still sweeping its rows for; each ends with its sweep. */
+export const MAX_PENDING_REMOVALS = 100;
 /** The topic tree is four levels deep (the topic contract's path). */
 export const MAX_TOPIC_DEPTH = 4;
 /** An OpenAlex topic's keywords: OpenAlex gives ten or so. */

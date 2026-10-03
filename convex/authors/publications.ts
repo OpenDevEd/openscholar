@@ -1,3 +1,4 @@
+import { MAX_AUTHORS_PER_PUBLICATION } from "../lib/queryBounds";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { internalMutation, query } from "../lib/functions";
@@ -15,7 +16,7 @@ export const replaceFromLibrary = internalMutation({
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
     if (!libraryId) throw createError("VALIDATION_ERROR", "Invalid library ID");
     await authenticateLibraryServiceCredential(ctx, {libraryId, credentialDigest: args.credentialDigest});
-    if (!/^[A-Z0-9]{8}$/.test(args.itemKey) || !Number.isSafeInteger(args.revision) || args.revision < 1 || args.profileIds.length > 1000) {
+    if (!/^[A-Z0-9]{8}$/.test(args.itemKey) || !Number.isSafeInteger(args.revision) || args.revision < 1 || args.profileIds.length > MAX_AUTHORS_PER_PUBLICATION) {
       throw createError("VALIDATION_ERROR", "Invalid publication associations");
     }
     const library = await ctx.db.get("evidenceLibraries", libraryId);
@@ -33,7 +34,7 @@ export const replaceFromLibrary = internalMutation({
       profileIds.add(id);
     }
     const previous = await ctx.db.query("authorPublications")
-      .withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", libraryId).eq("itemKey", args.itemKey)).collect();
+      .withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", libraryId).eq("itemKey", args.itemKey)).take(MAX_AUTHORS_PER_PUBLICATION);
     for (const association of previous) {
       if (profileIds.delete(association.profileId)) continue;
       await ctx.db.delete("authorPublications", association._id);
