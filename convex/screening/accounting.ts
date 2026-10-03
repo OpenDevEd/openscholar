@@ -4,8 +4,12 @@
  * for papers from before outcomes were kept. A paper records what it has added (`counted`),
  * so a later change adds only the difference.
  *
- * A paper is scored on its answers as they stand: the model's, except where a person or the
- * assistant answered, whose answer the page shows and the model never replaces.
+ * A paper is scored on its answers as they stand when it's counted: the model's, except
+ * where a person or the assistant answered, whose answer the model never replaces. From
+ * then on the job keeps the answers it scored the paper on (`counted.answers`) and shows
+ * those. A job on a search shares the search's answers: a change made from the job is
+ * written through to them, but one made on the search's page, or by another job on the same
+ * search, leaves this job's record as it was.
  */
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
@@ -34,13 +38,51 @@ export async function answersNow(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJ
   });
 }
 
-export const byKey = (answers: PaperAnswer[]): Answers => Object.fromEntries(answers.map((value) => [value.key, value.answer]));
+/** Answers by question key, and the keys of those a person or the assistant set. */
+export const stood = (answers: PaperAnswer[]) => ({
+  answers: Object.fromEntries(answers.map((value) => [value.key, value.answer])) as Answers,
+  changed: answers.flatMap((value) => (value.changed ? [value.key] : [])),
+});
 
-/** A paper's answers as they stand, by question key; none for a paper from before its job kept answers. */
-export async function standing(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">): Promise<Answers | undefined> {
+/** A paper's answers as they stand; none for a paper from before its job kept answers. */
+export async function standing(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
   if (!result.answers && result.answersVersion === undefined) return undefined;
-  return byKey(await answersNow(ctx, job, result));
+  return stood(await answersNow(ctx, job, result));
 }
+
+/**
+ * A paper's answers as its job shows them: the ones it was scored on once it's counted, so
+ * its answers, score and outcome always agree; as they stand while it waits to be counted.
+ */
+export async function shown(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">): Promise<PaperAnswer[]> {
+  const now = await answersNow(ctx, job, result);
+  const counted = result.counted?.answers;
+  if (!counted) return now;
+  const changed = new Set(result.counted?.changed);
+  return now.map(({ key, confidence }) => ({ key, answer: counted[key] ?? null, changed: changed.has(key), ...(confidence === undefined ? {} : { confidence }) }));
+}
+
+/**
+ * What the job answered for a paper, by question key: a result whose answers haven't moved
+ * yet, waiting or from before #334, still holds them; a moved one reads the model's answers
+ * from its screening's history as of the move, whatever a person or a later run changed since.
+ */
+export async function jobAnswers(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
+  const screeningId = job.screeningId;
+  if (result.answers || !screeningId || result.answersVersion === undefined) return result.answers;
+  const version = result.answersVersion;
+  const row = await ctx.db
+    .query("screeningAnswerHistory")
+    .withIndex("by_screening_and_paper_and_version", (q) => q.eq("screeningId", screeningId).eq("paperId", result.openalexId).lte("version", version))
+    .order("desc")
+    .first();
+  if (!row) return undefined;
+  return Object.fromEntries(job.questions.map((q) => {
+    const entry = row.answers.find((value) => value.question === q.question);
+    return [q.key, entry?.model ? entry.model.answer : (entry?.answer ?? null)];
+  }));
+}
+
 
 /**
  * What a paper already has in its job's counts: what it recorded; nothing if it has yet to
@@ -56,21 +98,21 @@ function recorded(result: Doc<"screeningResults">): Partial<Counted> | null {
 export type Delta = { qualified: number; unclear: number; before?: Answers; after?: Answers };
 
 /**
- * Scores a completed paper on `answers` and says what its row becomes and what changes in
- * its job's counts. `answers` undefined (`standing`): the paper keeps its score, and is
- * included or excluded as it qualified.
+ * Scores a completed paper on `answers`, of which a person or the assistant set `changed`,
+ * and says what its row becomes and what changes in its job's counts. No answers
+ * (`standing`): the paper keeps its score, and is included or excluded as it qualified.
  */
-export function account(job: Doc<"screeningJobs">, result: Doc<"screeningResults">, answers: Answers | undefined) {
+export function account(job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { answers, changed }: { answers?: Answers; changed?: string[] } = {}) {
   const was = recorded(result);
   const scored = answers ? { ...scorePaper(answers, job.scoringConfig), outcome: outcomeOf(answers, job.scoringConfig) } : { qualified: result.qualified === true, outcome: result.qualified === true ? ("included" as const) : ("excluded" as const) };
-  const counted: Counted = { qualified: scored.qualified, outcome: scored.outcome, ...(answers ? { answers } : {}) };
+  const counted: Counted = { qualified: scored.qualified, outcome: scored.outcome, ...(answers ? { answers } : {}), ...(changed?.length ? { changed } : {}) };
   const delta: Delta = {
     qualified: Number(counted.qualified) - Number(was?.qualified === true),
     unclear: Number(counted.outcome === "unclear") - Number(was?.outcome === "unclear"),
     ...(was?.answers ? { before: was.answers } : {}),
     ...(answers ? { after: answers } : {}),
   };
-  return { patch: { ...scored, counted }, delta, becameIncluded: counted.qualified && was?.qualified !== true };
+  return { patch: { ...scored, counted }, delta, move: { becameIncluded: counted.qualified && was?.qualified !== true } };
 }
 
 /** What a paper the model couldn't read records; it adds to no count but the failed papers'. */

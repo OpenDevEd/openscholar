@@ -210,10 +210,10 @@ export const bookkeep = internalMutation({
           if (result.status === "failed") await ctx.db.patch("screeningResults", result._id, FAILED);
           if (result.status !== "completed") continue;
           const settled = (await ctx.db.get("screeningResults", result._id))!;
-          const { patch, delta, becameIncluded } = account(current, settled, await standing(ctx, current, settled));
+          const { patch, delta, move } = account(current, settled, await standing(ctx, current, settled));
           await ctx.db.patch("screeningResults", result._id, patch);
           deltas.push(delta);
-          if (becameIncluded) await saveQualified(ctx, current, { ...settled, ...patch });
+          if (move.becameIncluded) await saveQualified(ctx, current, { ...settled, ...patch });
         }
         await countFinished(ctx, current, jobResults, deltas);
         await finishIfDone(ctx, jobId);

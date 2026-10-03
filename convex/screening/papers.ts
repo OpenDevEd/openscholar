@@ -8,9 +8,9 @@ import { stream } from "convex-helpers/server/stream";
 import { createError } from "../lib/errors";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
-import { answerPaper, restoreModelAnswer } from "../research/answers";
+import { answerPaper, paperAnswers, restoreModelAnswer } from "../research/answers";
 import schema from "../schema";
-import { account, answersNow, byKey, withDeltas } from "./accounting";
+import { account, answersNow, jobAnswers, shown, stood, withDeltas } from "./accounting";
 import { progressOf, saveQualified } from "./bookkeeping";
 import { moveResultAnswers } from "./drain";
 import { screeningJobPaperValidator, screeningOutcomeValidator } from "./validators";
@@ -24,7 +24,7 @@ export const listAction = defineUserQuery({
   path: "screening/papers:list",
   description:
     "Lists the papers of one of the person's screening jobs that landed in one outcome (included, unclear, excluded or failed), a page at a time in the order the job took them, " +
-    "each with its score, stars and its answer to every question as it stands now. Given `text`, only papers whose title or authors contain it.",
+    "each with its score, stars and the answer to every question it was scored on. Given `text`, only papers whose title or authors contain it.",
   args: { jobId: v.id("screeningJobs"), outcome: screeningOutcomeValidator, text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(screeningJobPaperValidator),
   run: async (ctx, userId, { jobId, outcome, text, paginationOpts }) => {
@@ -38,7 +38,7 @@ export const listAction = defineUserQuery({
           // A job holds at most this many papers, so a search looks through all of them.
           .paginate({ ...opts, maximumRowsRead: MAX_SCREENING_PAPERS_PER_JOB })
       : ctx.db.query("screeningResults").withIndex("by_job_and_outcome", (q) => q.eq("jobId", jobId).eq("outcome", outcome)).paginate(opts));
-    const answers = await Promise.all(page.page.map((result) => answersNow(ctx, job, result)));
+    const answers = await Promise.all(page.page.map((result) => shown(ctx, job, result)));
     return {
       ...page,
       page: page.page.map((result, i) => ({
@@ -84,24 +84,40 @@ export const answerAction = defineUserMutation({
       await moveResultAnswers(ctx, result);
       [job, result] = [(await ctx.db.get("screeningJobs", jobId))!, (await ctx.db.get("screeningResults", result._id))!];
     }
-    if (!job.screeningId) throw createError("VALIDATION_ERROR", "This screening kept no answers to change");
+    const screeningId = job.screeningId;
+    if (!screeningId) throw createError("VALIDATION_ERROR", "This screening kept no answers to change");
 
+    // The change goes to the job's screening, which a job on a search shares with the search's page.
     const now = Date.now();
-    if (answer === "model") await restoreModelAnswer(ctx, job.screeningId, paperId, question.question, now);
-    else await answerPaper(ctx, job.screeningId, paperId, [{ question: question.question, response: answer }], author === "assistant" ? "assistant" : "person", now);
+    // The model's own answer is the one this job got, even if the screening has lost it since.
+    const original = answer === "model" ? ((await jobAnswers(ctx, job, result))?.[questionKey] ?? null) : null;
+    if (answer === "model") {
+      const kept = (await paperAnswers(ctx, (await ctx.db.get("screenings", screeningId))!, paperId)).find((value) => value.question === question.question);
+      // Cleared from the screening since: the model's answer goes back in before it's restored.
+      if (!kept?.model && kept?.setBy !== "model") await answerPaper(ctx, screeningId, paperId, [{ question: question.question, response: original }], "model", now);
+      await restoreModelAnswer(ctx, screeningId, paperId, question.question, now);
+    } else {
+      await answerPaper(ctx, screeningId, paperId, [{ question: question.question, response: answer }], author === "assistant" ? "assistant" : "person", now);
+    }
 
-    const { patch: { counted, ...shown }, delta, becameIncluded } = account(job, result, byKey(await answersNow(ctx, job, result)));
-    const outcome = shown.outcome;
+    // A counted paper keeps the answers it was scored on, with this one changed; one not
+    // counted yet, or counted before papers kept theirs, is scored on its answers as they stand.
+    const was = result.counted?.answers;
+    const scoredOn = was
+      ? { answers: { ...was, [questionKey]: answer === "model" ? original : answer }, changed: [...(result.counted?.changed ?? []).filter((key) => key !== questionKey), ...(answer === "model" ? [] : [questionKey])] }
+      : stood(await answersNow(ctx, job, result));
+    const { patch: { counted, ...scored }, delta, move } = account(job, result, scoredOn);
+    const outcome = scored.outcome;
     // A paper the bookkeeping worker hasn't reached is counted there, on its answers as they stand then.
     if (result.doneAt !== undefined) {
-      await ctx.db.patch("screeningResults", result._id, shown);
+      await ctx.db.patch("screeningResults", result._id, scored);
       return { outcome };
     }
     const progress = await progressOf(ctx, jobId);
-    await ctx.db.patch("screeningResults", result._id, { ...shown, counted });
+    await ctx.db.patch("screeningResults", result._id, { ...scored, counted });
     await ctx.db.patch("screeningJobProgress", progress._id, withDeltas(progress, job, [delta]));
     // Saved again even if it was saved before: the person may have removed it since.
-    if (becameIncluded) await saveQualified(ctx, job, { ...result, ...shown });
+    if (move.becameIncluded) await saveQualified(ctx, job, { ...result, ...scored });
     return { outcome };
   },
 });

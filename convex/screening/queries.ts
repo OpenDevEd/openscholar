@@ -13,6 +13,7 @@ import {
   screeningTalliesValidator,
 } from "./validators";
 import { progressRow } from "./bookkeeping";
+import { jobAnswers } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { availableCredits } from "../billing/accounts";
@@ -256,27 +257,6 @@ const screeningResultRowValidator = v.object({
   stars: v.optional(v.number()),
   qualified: v.optional(v.boolean()),
 });
-
-/**
- * What the job answered for a paper, by question key: a result whose answers haven't moved
- * yet, waiting or from before #334, still holds them; a moved one reads the model's answers
- * from its screening's history as of the move, whatever a person or a later run changed since.
- */
-export async function jobAnswers(ctx: QueryCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
-  const screeningId = job.screeningId;
-  if (result.answers || !screeningId || result.answersVersion === undefined) return result.answers;
-  const version = result.answersVersion;
-  const row = await ctx.db
-    .query("screeningAnswerHistory")
-    .withIndex("by_screening_and_paper_and_version", (q) => q.eq("screeningId", screeningId).eq("paperId", result.openalexId).lte("version", version))
-    .order("desc")
-    .first();
-  if (!row) return undefined;
-  return Object.fromEntries(job.questions.map((q) => {
-    const entry = row.answers.find((value) => value.question === q.question);
-    return [q.key, entry?.model ? entry.model.answer : (entry?.answer ?? null)];
-  }));
-}
 
 /** Most results one page of a job holds; each also reads its answers. */
 const RESULTS_PAGE_MAX = 200;
