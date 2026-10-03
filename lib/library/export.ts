@@ -37,7 +37,8 @@ function csvValue(value: string | number | boolean) {
 export const libraryExportFile = {
   csv: {
     contentType: "text/csv; charset=utf-8",
-    start: () => CSV_COLUMNS.join(","),
+    // A byte order mark first, so Excel reads the file as UTF-8.
+    start: () => `\ufeff${CSV_COLUMNS.join(",")}`,
     item: (item: Doc<"libraryItems">) => {
       const row = formatForExport(item);
       return `\n${CSV_COLUMNS.map((column) => csvValue(row[column])).join(",")}`;
@@ -59,12 +60,15 @@ export function libraryExportFilename(format: LibraryExportFormat, at: Date, par
 
 /** How long an export's link waits for its next part to be fetched; the browser fetches it at once. */
 export const LIBRARY_EXPORT_LINK_MS = 2 * 60_000;
+/** How long the page waits for a part it opened to start before it calls the export failed. */
+const PART_START_MS = 30_000;
 
 /**
  * Downloads a library view as files the server writes a page at a time, so no export is
  * held whole in memory, here or there. A file stops short of Convex's 20 MiB response
  * limit, and the next part follows once it's done. The browser makes a one-time token and
- * registers only its digest; each part's link carries the token.
+ * registers only its digest; each part's link carries the token. Settles once the last part
+ * is done, and fails when a part fails or doesn't start, which the hidden frame can't show.
  */
 export async function downloadLibraryExport(convex: ConvexReactClient, view: LibraryView, format: LibraryExportFormat) {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -79,12 +83,29 @@ export async function downloadLibraryExport(convex: ConvexReactClient, view: Lib
     document.body.appendChild(frame);
     setTimeout(() => frame.remove(), LIBRARY_EXPORT_LINK_MS);
   };
-  open(1);
-  let opened = 1;
-  const watch = convex.watchQuery(api.library.exports.progress, { digest });
-  const stop = watch.onUpdate(() => {
-    const part = watch.localQueryResult();
-    if (part === null) stop();
-    else if (part !== undefined && part > opened) open((opened = part));
+  await new Promise<void>((resolve, reject) => {
+    let opened = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const watch = convex.watchQuery(api.library.exports.progress, { digest });
+    const settle = (error?: Error) => {
+      clearTimeout(timer);
+      stop();
+      if (error) reject(error);
+      else resolve();
+    };
+    const update = () => {
+      const progress = watch.localQueryResult();
+      if (progress === undefined) return;
+      if (progress === null) return settle();
+      if (progress.failed) return settle(new Error(`Part ${progress.part} of the export failed`));
+      if (progress.serving) return clearTimeout(timer);
+      if (progress.part > opened) {
+        open((opened = progress.part));
+        clearTimeout(timer);
+        timer = setTimeout(() => settle(new Error(`Part ${opened} of the export didn't start`)), PART_START_MS);
+      }
+    };
+    const stop = watch.onUpdate(update);
+    update();
   });
 }

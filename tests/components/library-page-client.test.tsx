@@ -121,7 +121,7 @@ vi.mock("next-intl", () => ({
 vi.mock("convex/react", () => ({
   useConvex: () => ({
     mutation: startExportMock,
-    watchQuery: () => ({ onUpdate: () => () => {}, localQueryResult: () => undefined }),
+    watchQuery: () => ({ onUpdate: () => () => {}, localQueryResult: () => ({ part: 1, serving: false, failed: false }) }),
   }),
   useQueries: (requests: Record<string, { query: unknown; args: { paginationOpts: { cursor: string | null; numItems: number } } }>) =>
     Object.fromEntries(Object.entries(requests).map(([name, { query, args }]) => [name, readPage(query, args)])),

@@ -28,20 +28,23 @@ export const start = mutation({
     const user = await requireAuth(ctx);
     if (!/^[0-9a-f]{64}$/.test(args.digest)) throw createError("VALIDATION_ERROR", "An export needs a SHA-256 digest.");
     const expiresAt = Date.now() + LIBRARY_EXPORT_LINK_MS;
-    const id = await ctx.db.insert("libraryExports", { ...args, userId: user._id, part: 1, cursor: null, serving: false, expiresAt });
+    const id = await ctx.db.insert("libraryExports", { ...args, userId: user._id, part: 1, cursor: null, serving: false, failed: false, expiresAt });
     await ctx.scheduler.runAfter(LIBRARY_EXPORT_LINK_MS, internal.library.exports.expire, { id });
     return null;
   },
 });
 
-/** The part an export the person started has ready, or null once it's finished or expired. */
+/**
+ * Where an export the person started stands: the part it's on, whether that part is being
+ * served, and whether one failed; null once it's finished or expired.
+ */
 export const progress = query({
   args: { digest: v.string() },
-  returns: v.union(v.number(), v.null()),
+  returns: v.union(v.object({ part: v.number(), serving: v.boolean(), failed: v.boolean() }), v.null()),
   handler: async (ctx, { digest }) => {
     const user = await requireAuth(ctx);
     const row = await ctx.db.query("libraryExports").withIndex("by_digest", (q) => q.eq("digest", digest)).unique();
-    return row && row.userId === user._id ? row.part : null;
+    return row && row.userId === user._id ? { part: row.part, serving: row.serving, failed: row.failed } : null;
   },
 });
 
@@ -65,7 +68,7 @@ export const claim = internalMutation({
   ),
   handler: async (ctx, { digest, part }) => {
     const row = await ctx.db.query("libraryExports").withIndex("by_digest", (q) => q.eq("digest", digest)).unique();
-    if (!row || row.serving || row.part !== part || row.expiresAt < Date.now()) return null;
+    if (!row || row.serving || row.failed || row.part !== part || row.expiresAt < Date.now()) return null;
     const expiresAt = Date.now() + PART_SERVE_MS;
     await ctx.db.patch("libraryExports", row._id, { serving: true, expiresAt });
     await ctx.scheduler.runAfter(PART_SERVE_MS, internal.library.exports.expire, { id: row._id });
@@ -86,6 +89,18 @@ export const finishPart = internalMutation({
     }
     const expiresAt = Date.now() + LIBRARY_EXPORT_LINK_MS;
     await ctx.db.patch("libraryExports", id, { part: row.part + 1, cursor, serving: false, expiresAt });
+    await ctx.scheduler.runAfter(LIBRARY_EXPORT_LINK_MS, internal.library.exports.expire, { id });
+    return null;
+  },
+});
+
+/** Marks an export failed, so the page that started it can say so; the link then lapses. */
+export const failPart = internalMutation({
+  args: { id: v.id("libraryExports") },
+  returns: v.null(),
+  handler: async (ctx, { id }) => {
+    if (!(await ctx.db.get("libraryExports", id))) return null;
+    await ctx.db.patch("libraryExports", id, { serving: false, failed: true, expiresAt: Date.now() + LIBRARY_EXPORT_LINK_MS });
     await ctx.scheduler.runAfter(LIBRARY_EXPORT_LINK_MS, internal.library.exports.expire, { id });
     return null;
   },
@@ -143,6 +158,7 @@ export const download = httpAction(async (ctx, request) => {
         }
       } catch (error) {
         console.error("[library export] Stopped part way", { userId, format, view, part, written: count, bytes, error });
+        await ctx.runMutation(internal.library.exports.failPart, { id }).catch((cause) => console.error("[library export] Couldn't mark the export failed", { id, cause }));
         controller.error(error);
       }
     },

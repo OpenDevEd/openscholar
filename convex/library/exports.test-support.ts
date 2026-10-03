@@ -16,9 +16,10 @@ export async function exportLibrary(t: Test, as: Signed, view: LibraryView, form
   const digest = await digestOpaqueToken(token);
   await as.mutation(api.library.exports.start, { digest, format, view });
   const parts: Array<{ response: Response; text: string }> = [];
-  for (let part: number | null = 1; part !== null; part = await as.query(api.library.exports.progress, { digest })) {
+  for (let part: number | null = 1; part !== null; part = (await as.query(api.library.exports.progress, { digest }))?.part ?? null) {
     const response = await t.fetch(`/library/export?token=${token}&part=${part}`);
-    parts.push({ response, text: await response.text() });
+    // Decoded as the file's bytes are, keeping a CSV's byte order mark, which `text()` drops.
+    parts.push({ response, text: new TextDecoder("utf-8", { ignoreBOM: true }).decode(await response.arrayBuffer()) });
     if (response.status !== 200) break;
   }
   return { token, parts, response: parts[0].response, text: parts[0].text };

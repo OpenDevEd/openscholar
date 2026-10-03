@@ -1047,7 +1047,7 @@ export default defineSchema({
     .searchIndex("search_name", { searchField: "name", filterFields: ["userId"] }),
 
   // A library export a browser is downloading in parts: its token's SHA-256 digest, the view,
-  // the next part to serve and where it starts, and when the link expires.
+  // the next part to serve and where it starts, whether a part failed, and when the link expires.
   libraryExports: defineTable({
     userId: v.id("users"),
     digest: v.string(),
@@ -1056,6 +1056,7 @@ export default defineSchema({
     part: v.number(),
     cursor: v.union(v.string(), v.null()),
     serving: v.boolean(),
+    failed: v.boolean(),
     expiresAt: v.number(),
   }).index("by_digest", ["digest"]),
 

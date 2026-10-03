@@ -252,7 +252,7 @@ export function LibraryPageClient() {
   }, [setParams]);
 
   const pageResults = paperResults;
-  const pageStart = (paged.page - 1) * PAGE_SIZE;
+  const pageStart = paged.offset;
   const rangeStart = pageResults.length > 0 ? pageStart + 1 : 0;
   const rangeEnd = rangeStart + pageResults.length - 1;
   const filteredTotal =

@@ -153,6 +153,7 @@ describe("at the largest sizes the product allows", () => {
     // Each part is a whole CSV: a header, then its rows; together they hold every paper once.
     const rows = parts.flatMap(({ text }) => text.trimEnd().split("\n").slice(1));
     expect(rows).toHaveLength(MAX_SIZE.libraryItems);
+    expect(parts.every(({ text }) => text.startsWith("\ufeffabstract,"))).toBe(true);
     expect(new Set(rows.map((row) => row.match(/https:\/\/openalex\.org\/W\d+/)?.[0])).size).toBe(MAX_SIZE.libraryItems);
   }, 600_000);
 

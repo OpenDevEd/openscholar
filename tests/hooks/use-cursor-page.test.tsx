@@ -111,4 +111,15 @@ describe("useCursorPage", () => {
     act(() => result.current.next());
     expect(server.reads.at(-1)?.paginationOpts.cursor).toBe("c0");
   });
+
+  it("counts the rows before a page from what earlier pages held, not their number", () => {
+    // Five reads find one match, so page 1 stops short; page 2 starts after that one row.
+    server.pages.set("|null", page(["a"], "e1"));
+    for (let i = 1; i < 5; i++) server.pages.set(`|e${i}`, page([], `e${i + 1}`));
+    server.pages.set("|e5", page(["b", "c"], "c9", true));
+    const { result } = renderHook(() => useCursorPage(query, {}, 20));
+    expect(result.current).toMatchObject({ items: ["a"], offset: 0, canNext: true });
+    act(() => result.current.next());
+    expect(result.current).toMatchObject({ items: ["b", "c"], page: 2, offset: 1 });
+  });
 });
