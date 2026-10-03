@@ -93,7 +93,6 @@
       "convex/chat/messages.ts:listRecentThreadArtifacts": "#422",
       "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#422",
       "convex/evidenceLibraries/uploadsClient.ts:listObjectNames": "#425",
-      "convex/paperSets/openalex.ts:readWorks": "#421",
       "convex/zotero/actions.ts:fetchAllCollectionsForParent": "#425",
       "convex/zotero/actions.ts:fetchAllTopItemsForCollection": "#425",
       "convex/zotero/libraryGroupActions.ts:listAllUserGroups": "#425"
