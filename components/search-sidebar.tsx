@@ -11,7 +11,6 @@ import {
   Quote,
   Network,
   FileText,
-  Focus,
   Shapes,
   Globe2,
   Library,
@@ -162,59 +161,43 @@ const RatingFilterPanel = React.memo(function RatingFilterPanel() {
   );
 });
 
-// Institution Location Filter Component
-const InstitutionLocationFilterPanel = React.memo(
-  function InstitutionLocationFilterPanel() {
-    const tf = useTranslations("searchFilters");
-    const { selectedRegions } = useCurrentSearchFormState();
-    const updateFilter = useUpdateSearchFilter();
-    const isCountryActive = isCountryFilterActive(selectedRegions);
+// Both country filters in one card: where the authors' institutions are, and
+// which countries the work is about.
+const CountryFilterPanel = React.memo(function CountryFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const { selectedRegions, selectedCountryFocus } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const isActive =
+    isCountryFilterActive(selectedRegions) ||
+    Boolean(selectedCountryFocus && selectedCountryFocus.length > 0);
 
-    const handleClearFilter = React.useCallback(() => {
-      updateFilter({ selectedRegions: DEFAULT_FILTERS.selectedRegions });
-    }, [updateFilter]);
+  const handleClearFilter = React.useCallback(() => {
+    updateFilter({
+      selectedRegions: DEFAULT_FILTERS.selectedRegions,
+      selectedCountryFocus: DEFAULT_FILTERS.selectedCountryFocus,
+    });
+  }, [updateFilter]);
 
-    return (
-      <FilterSection
-        title={tf("institutionLocation")}
-        icon={Globe}
-        isActive={isCountryActive}
-        onClear={isCountryActive ? handleClearFilter : undefined}
-      >
-        <CountryRegionPicker />
-      </FilterSection>
-    );
-  },
-);
-
-// Country Focus Filter Component
-const CountryFocusFilterPanel = React.memo(
-  function CountryFocusFilterPanel() {
-    const tf = useTranslations("searchFilters");
-    const { selectedCountryFocus } = useCurrentSearchFormState();
-    const updateFilter = useUpdateSearchFilter();
-
-    const isCountryFocusFilterActive =
-      selectedCountryFocus && selectedCountryFocus.length > 0;
-
-    const handleClearFilter = React.useCallback(() => {
-      updateFilter({
-        selectedCountryFocus: DEFAULT_FILTERS.selectedCountryFocus,
-      });
-    }, [updateFilter]);
-
-    return (
-      <FilterSection
-        title={tf("countryFocus")}
-        icon={Focus}
-        isActive={isCountryFocusFilterActive}
-        onClear={isCountryFocusFilterActive ? handleClearFilter : undefined}
-      >
-        <CountryFocusPicker />
-      </FilterSection>
-    );
-  },
-);
+  return (
+    <FilterSection
+      title={tf("countries")}
+      icon={Globe}
+      isActive={isActive}
+      onClear={isActive ? handleClearFilter : undefined}
+    >
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">{tf("institutionLocation")}</Label>
+          <CountryRegionPicker />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">{tf("countryFocus")}</Label>
+          <CountryFocusPicker />
+        </div>
+      </div>
+    </FilterSection>
+  );
+});
 
 // Search Field Component - now a dropdown select
 const SearchFieldPanel = React.memo(function SearchFieldPanel() {
@@ -736,11 +719,8 @@ export const SidebarContent = React.memo(function SidebarContent({
       {/* Rating Filter */}
       {!hidePanels.includes("rating") && <RatingFilterPanel />}
 
-      {/* Institution Location Filter */}
-      <InstitutionLocationFilterPanel />
-
-      {/* Country focus Filter */}
-      <CountryFocusFilterPanel />
+      {/* Institution location and country focus */}
+      <CountryFilterPanel />
 
       {/* Search Field - Dropdown */}
       <SearchFieldPanel />
