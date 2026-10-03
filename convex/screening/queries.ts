@@ -200,7 +200,8 @@ export const getScreeningJob = query({
       unsaved: v.optional(v.literal(true)),
       prune: v.optional(v.literal(true)),
       // Credits its counted papers cost, of the most they were expected to when it started.
-      credits: v.object({ spent: v.number(), estimate: v.number() }),
+      // No `spent` for a job from before jobs kept what they cost.
+      credits: v.object({ spent: v.optional(v.number()), estimate: v.number() }),
     })
   ),
   handler: async (ctx, args) => {
@@ -220,7 +221,7 @@ export const getScreeningJob = query({
       ...(target ? { targetCollectionName: target.name } : {}),
       unsaved: job.unsaved,
       prune: job.prune,
-      credits: { spent: kept?.credits ?? 0, estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0).credits },
+      credits: { spent: kept?.credits ?? (job.set ? 0 : undefined), estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0).credits },
       outcomes: { included: counts.qualifiedCount, unclear, excluded: Math.max(0, counts.completedCount - counts.qualifiedCount - unclear), failed: counts.failedCount },
       tallies: kept?.tallies,
       _id: job._id,
@@ -287,9 +288,9 @@ export const getActiveScreeningJobProgress = query({
   },
 });
 
-/** The person's screening jobs, newest first, a page at a time. */
+/** The person's screening jobs, newest first, a page at a time; with `status`, only the jobs in it. */
 export const listUserScreeningJobs = query({
-  args: { paginationOpts: paginationOptsValidator },
+  args: { paginationOpts: paginationOptsValidator, status: v.optional(screeningJobStatusValidator) },
   returns: paginationResultValidator(
     v.object({
       _id: v.id("screeningJobs"),
@@ -310,9 +311,11 @@ export const listUserScreeningJobs = query({
     const user = await getCurrentUser(ctx);
     if (!user) return { page: [], isDone: true, continueCursor: "" };
 
-    const jobs = await ctx.db
-      .query("screeningJobs")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+    const { status } = args;
+    const jobs = await (status
+      ? ctx.db.query("screeningJobs").withIndex("by_user_status", (q) => q.eq("userId", user._id).eq("status", status))
+      : ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", user._id))
+    )
       .order("desc")
       .paginate({ ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, MAX_LISTED_SCREENING_JOBS) });
 
