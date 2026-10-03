@@ -1,5 +1,5 @@
 import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { extendTailwindMerge } from "tailwind-merge"
 import { Work } from "@sickrin/openalex-sdk/dist/src/types/work";
 import type { SortByWork } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { format } from "date-fns";
@@ -171,6 +171,21 @@ export const isRelatedToFilterActive = (relatedToItemId?: string) => {
 export const isReviewFilterActive = (reviewFilter?: boolean) => {
   return !isFilterAtDefault.reviewFilter(reviewFilter);
 };
+
+// `ink-*` sets the text colour and `tint-*` sets fill, border and text (see
+// globals.css), so a later one replaces the classes it overrides.
+const anyValue = () => true
+const twMerge = extendTailwindMerge<"tint">({
+  extend: {
+    classGroups: {
+      "text-color": [{ ink: [anyValue] }],
+      tint: [{ tint: [anyValue] }],
+    },
+    conflictingClassGroups: {
+      tint: ["bg-color", "border-color", "text-color"],
+    },
+  },
+})
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

@@ -4,6 +4,7 @@ import posthog from "posthog-js"
 import { Check, Palette } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useTranslations } from "next-intl"
+import { RadioGroup as RadioGroupPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -18,19 +19,21 @@ export function ThemeTiles({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme()
 
   return (
-    <div role="radiogroup" aria-label={t("label")} className={cn("grid grid-cols-2 gap-2", className)}>
+    <RadioGroupPrimitive.Root
+      aria-label={t("label")}
+      value={resolvedTheme}
+      onValueChange={(name) => {
+        setTheme(name)
+        posthog.capture("theme_toggled", { theme: name, previous_theme: resolvedTheme })
+      }}
+      className={cn("grid grid-cols-2 gap-2", className)}
+    >
       {THEMES.map((name) => {
         const selected = resolvedTheme === name
         return (
-          <button
+          <RadioGroupPrimitive.Item
             key={name}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            onClick={() => {
-              setTheme(name)
-              posthog.capture("theme_toggled", { theme: name, previous_theme: resolvedTheme })
-            }}
+            value={name}
             className={cn(
               "overflow-hidden rounded-lg border outline-none transition-[border-color,box-shadow] focus-visible:ring-2 focus-visible:ring-ring",
               selected ? "border-primary ring-1 ring-primary" : "hover:border-foreground/40",
@@ -42,10 +45,10 @@ export function ThemeTiles({ className }: { className?: string }) {
               {t(name)}
               {selected && <Check className="absolute right-1.5 top-1.5 size-3.5" aria-hidden />}
             </span>
-          </button>
+          </RadioGroupPrimitive.Item>
         )
       })}
-    </div>
+    </RadioGroupPrimitive.Root>
   )
 }
 

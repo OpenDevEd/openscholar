@@ -81,7 +81,9 @@
 
   /* Status. One colour each: fills and icons use it directly, and `ink-*` and
      `tint-*` derive readable text and soft surfaces from it in every theme.
-     Info is cyan so it stays apart from the brand blue. */
+     Info is cyan so it stays apart from the brand blue. --ink-mix is how much
+     of the colour that text keeps; the rest is the text colour. */
+  --ink-mix: 55%;
   --success: var(--color-emerald-500);
   --success-foreground: oklch(1 0 0);
   --warning: var(--color-amber-500);
@@ -138,6 +140,9 @@
   --foreground: #eff6ff;
   --lift: #3b82f6;
   --lift-step: 13%;
+  --muted-mix: 72%;
+  --destructive: #fca5a5;
+  --destructive-foreground: #7f1d1d;
 
   --primary: #60a5fa;
   --primary-bright: #93c5fd;
@@ -157,6 +162,8 @@
   --foreground: #ededed;
   --lift: #ffffff;
   --lift-step: 6%;
+  --muted-mix: 72%;
+  --destructive: oklch(0.65 0.2 25);
 
   --primary: #fafafa;
   --primary-bright: #ffffff;
@@ -169,17 +176,23 @@
   --logo-c: #fafafa;
 }
 
-/* Blue: brand blue page with deeper panels, white as the brand colour. */
+/* Blue: a blue page with deeper panels, white as the brand colour. The page is
+   blue 700, one step deeper than the brand blue, and coloured text sits closer
+   to white, so muted, status and error text all pass 4.5:1 on it. */
 .blue {
-  --background: #2563eb;
+  --background: #1d4ed8;
   --foreground: #ffffff;
   --lift: #172554;
   --lift-step: 20%;
+  --muted-mix: 82%;
+  --ink-mix: 35%;
+  --destructive: #fecaca;
+  --destructive-foreground: #7f1d1d;
 
   --primary: #ffffff;
   --primary-bright: #ffffff;
   --primary-deep: #dbeafe;
-  --primary-foreground: #1d4ed8;
+  --primary-foreground: #1e40af;
 
   --brand-ink: #ffffff;
   --logo-a: #ffffff;
@@ -203,14 +216,12 @@
   --secondary: color-mix(in srgb, var(--card), var(--foreground) 9%);
   --secondary-foreground: var(--foreground);
   --muted: color-mix(in srgb, var(--card), var(--foreground) 7%);
-  --muted-foreground: color-mix(in srgb, var(--foreground) 72%, var(--background));
+  --muted-foreground: color-mix(in srgb, var(--foreground) var(--muted-mix), var(--background));
   --accent: color-mix(in srgb, var(--card), var(--foreground) 13%);
   --accent-foreground: var(--foreground);
 
   --border: color-mix(in srgb, var(--background), var(--foreground) 17%);
   --input: color-mix(in srgb, var(--background), var(--foreground) 20%);
-
-  --destructive: oklch(0.65 0.2 25);
 
   --sidebar: var(--background);
   --sidebar-foreground: color-mix(in oklab, var(--foreground) 88%, var(--background));
@@ -435,14 +446,14 @@
 /* Text in a status or category colour, pulled toward the foreground so it
    reads on a plain or tinted background in both themes. */
 @utility ink-* {
-  color: color-mix(in oklab, --value(--color-*) 55%, var(--foreground));
+  color: color-mix(in oklab, --value(--color-*) var(--ink-mix), var(--foreground));
 }
 
 /* A soft chip in any colour: tinted fill, faint border, readable text. */
 @utility tint-* {
   background-color: color-mix(in oklab, --value(--color-*) 10%, transparent);
   border-color: color-mix(in oklab, --value(--color-*) 22%, transparent);
-  color: color-mix(in oklab, --value(--color-*) 55%, var(--foreground));
+  color: color-mix(in oklab, --value(--color-*) var(--ink-mix), var(--foreground));
 }
 
 /* Active nav item with gradient border */
