@@ -115,12 +115,13 @@ describe("research save recovery", () => {
     const client = {
       watchQuery(query: Parameters<typeof getFunctionName>[0]) {
         return {
-          localQueryResult: () => (getFunctionName(query).endsWith(":getSearch") ? read : { page: [], isDone: true, continueCursor: "" }),
+          localQueryResult: () => (getFunctionName(query).endsWith(":getSearch") ? read : getFunctionName(query).endsWith(":answersOf") ? answers : { page: [], isDone: true, continueCursor: "" }),
           onUpdate: (update: () => void) => { updates.add(update); return () => { updates.delete(update); }; },
         };
       },
       mutation: vi.fn(async () => null),
     } as unknown as ConvexReactClient;
+    let answers: unknown;
     const session = new ResearchSession(client, "alice");
     const stop = session.subscribe(() => {});
     const listed = { id: "listed", query: "tutoring", field: "title" as const, count: 3, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [{ question: "Randomized?" }], screeningResponses: [], createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" };
@@ -129,9 +130,15 @@ describe("research save recovery", () => {
     expect(session.watchedStatus("listed")).toBe("found");
     expect(session.stores.history.getState().getSearchResult("listed")).toMatchObject({ query: "tutoring", screeningResponses: {} });
 
-    read = { ...listed, screeningResponses: [{ paperId: "W1", responses: [{ question: "Randomized?", response: true }] }] };
+    // Its answers are read apart, for the papers its page shows.
+    read = { ...listed, count: 4 };
+    const unanswer = session.watchAnswers("listed", ["W1", "W2"], () => {});
+    expect(session.answersRead("listed", ["W1", "W2"])).toBe(0);
+    answers = { page: [{ paperId: "W1", responses: [{ question: "Randomized?", response: true }] }], isDone: true, continueCursor: "" };
     for (const update of updates) update();
-    expect(session.stores.history.getState().getSearchResult("listed")?.screeningResponses).toEqual({ W1: { "Randomized?": true } });
+    expect(session.answersRead("listed", ["W1", "W2"])).toBe(2);
+    expect(session.stores.history.getState().getSearchResult("listed")).toMatchObject({ count: 4, screeningResponses: { W1: { "Randomized?": true } } });
+    unanswer();
     unwatch();
     stop();
   });

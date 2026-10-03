@@ -492,8 +492,9 @@ describe("Screen all on a saved search", () => {
 
     await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
     vi.useRealTimers();
+    const answered = await asUser.query(api.research.records.answersOf, { accountId: "clerk_test", id: search.id, paperIds: ["https://openalex.org/W1", "https://openalex.org/W2"] });
     const shown = await asUser.query(api.research.records.getSearch, { accountId: "clerk_test", id: search.id });
-    expect(shown?.screeningResponses).toEqual([
+    expect(answered.page).toEqual([
       { paperId: "https://openalex.org/W1", responses: [{ question: "Is this relevant?", response: true }, { question: "Adults?", response: null }] },
       { paperId: "https://openalex.org/W2", responses: [{ question: "Is this relevant?", response: false }] },
     ]);
