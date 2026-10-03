@@ -4,7 +4,7 @@ import type { FunctionReference } from "convex/server";
 import { api } from "../../convex/_generated/api";
 import type { SearchHistoryState, KeywordExpansionState, RatingsState } from "../store";
 import type { SearchResult, BookmarkData } from "../types";
-import { applySearchEdit, historySummary, importSearchRecord, restoreSearch, serializeResponses, serializeSearch, serializeSearchPatch, type ResearchCommand, type SavedSearch, type SearchEdit } from "./records";
+import { applySearchEdit, historySummary, importSearchRecord, RATED_PAPERS_MAX, restoreSearch, serializeResponses, serializeSearch, serializeSearchPatch, type ResearchCommand, type SavedSearch, type SearchEdit } from "./records";
 import { activateResearch, type ResearchStores } from "./binding";
 import { migrateLocalResearch, ResearchImportError } from "./migrate";
 
@@ -12,9 +12,10 @@ type Page<T> = { page: T[]; isDone: boolean; continueCursor: string };
 type PageQuery<T> = FunctionReference<"query", "public", { accountId: string; paginationOpts: { cursor: string | null; numItems: number } }, Page<T>>;
 type Shortcut = { shorthand: string; expansion: string; createdAt: number };
 type Rating = { paperId: string; rating: number };
-type Data = { shortcuts: Shortcut[]; ratings: Rating[] };
-/** A search a page reads by ID: who wants it, what Convex has of it (undefined while loading), and whether its read failed. */
-type Watched = { readers: Set<() => void>; stop: () => void; value: SavedSearch | null | undefined; failed: boolean };
+type Data = { shortcuts: Shortcut[] };
+type Subscription<T> = { localQueryResult: () => T | undefined; onUpdate: (callback: () => void) => () => void };
+/** A read a page holds open: who wants it, how it's opened, what Convex has (undefined while loading), and whether it failed. */
+type Watch<T> = { readers: Set<() => void>; open: () => Subscription<T>; stop: () => void; value: T | undefined; failed: boolean };
 export type WatchedStatus = "loading" | "found" | "missing" | "failed";
 
 /** Each live query is bounded. A changed cursor replaces only the following pages. */
@@ -76,10 +77,14 @@ function expand(query: string, keywords: Record<string, BookmarkData>) {
 
 export class ResearchSession {
   readonly stores: ResearchStores;
-  private data: Data = { shortcuts: [], ratings: [] };
+  private data: Data = { shortcuts: [] };
   private loaded = new Set<keyof Data>();
   // Only the searches pages read by ID; lists page through `listedSearches` themselves (#420).
-  private watched = new Map<string, Watched>();
+  private watched = new Map<string, Watch<SavedSearch | null>>();
+  // Only the ratings of the papers pages show, read by paper ID, up to RATED_PAPERS_MAX a read;
+  // `ratedBy` says which read has each paper.
+  private rated = new Map<string, Watch<Page<Rating>>>();
+  private ratedBy = new Map<string, string>();
   private pending: Array<{ requestId: string; command: ResearchCommand }> = [];
   private listeners = new Set<() => void>();
   private stops: Array<() => void> = [];
@@ -153,7 +158,18 @@ export class ResearchSession {
     const ratings = createStore<RatingsState>(() => ({
       ratings: {},
       setRating: (paperId, rating) => this.dispatch({ kind: "rating", paperId, rating }),
-      clearRatings: () => { for (const paperId of Object.keys(ratings.getState().ratings)) this.dispatch({ kind: "rating", paperId, rating: null }); },
+      readRatings: async paperIds => {
+        const ids = [...new Set(paperIds)];
+        const reads = Array.from({ length: Math.ceil(ids.length / RATED_PAPERS_MAX) }, (_, i) => ids.slice(i * RATED_PAPERS_MAX, (i + 1) * RATED_PAPERS_MAX));
+        const pages = await Promise.all(reads.map(chunk => this.client.query(api.research.records.ratingsOf, { accountId: this.accountId, paperIds: chunk })));
+        const read = Object.fromEntries(pages.flatMap(page => page.page).map(row => [row.paperId, row.rating]));
+        // A rating still being saved counts as the person left it.
+        for (const { command } of this.pending) {
+          if (command.kind !== "rating" || !ids.includes(command.paperId)) continue;
+          if (command.rating === null) delete read[command.paperId]; else read[command.paperId] = command.rating;
+        }
+        return read;
+      },
     }));
     this.stores = { history, shortcuts, ratings };
   }
@@ -185,18 +201,19 @@ export class ResearchSession {
   };
   private beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
   private releaseSettled() { for (const resolve of this.settledListeners) resolve(); this.settledListeners.clear(); }
-  /** Whether a read is still on its way: a following page, or a search a page just asked for. */
-  private reading() { return this.unsettled.size > 0 || [...this.watched.values()].some(({ value, failed }) => value === undefined && !failed); }
+  private watches(): Array<Watch<unknown>> { return [...this.watched.values(), ...this.rated.values()]; }
+  /** Whether a read is still on its way: a following page, or a search or ratings a page just asked for. */
+  private reading() { return this.unsettled.size > 0 || this.watches().some(({ value, failed }) => value === undefined && !failed); }
   private settle() { if (!this.reading()) this.releaseSettled(); }
   retry = () => {
     this.snapshot = { ...this.snapshot, error: null };
     this.notify();
-    for (const [id, entry] of this.watched) {
+    for (const entry of this.watches()) {
       if (!entry.failed) continue;
       entry.stop();
       entry.failed = false;
       for (const notify of entry.readers) notify();
-      this.read(id, entry);
+      this.read(entry);
     }
     if (this.enabled) { void this.import(this.epoch); void this.pump(); }
   };
@@ -212,26 +229,66 @@ export class ResearchSession {
    * is one a list already shows (`known`, without its screening answers) until it's read.
    */
   watchSearch = (id: string, reader: () => void, known?: SavedSearch) => {
-    let watched = this.watched.get(id);
-    if (!watched) {
-      this.watched.set(id, (watched = { readers: new Set(), stop: () => {}, value: known, failed: false }));
-      this.read(id, watched);
-      if (known && watched.value === known) this.render();
-    }
-    const entry = watched;
-    entry.readers.add(reader);
-    return () => {
-      entry.readers.delete(reader);
-      if (entry.readers.size) return;
-      entry.stop();
-      this.watched.delete(id);
-      this.render();
-      this.settle();
-    };
+    const open = () => this.client.watchQuery(api.research.records.getSearch, { accountId: this.accountId, id });
+    return this.hold(this.watched, id, open, reader, known);
   };
-  /** Subscribes `entry` to search `id`. A read that fails stops being waited for, and Retry reads it again. */
-  private read(id: string, entry: Watched) {
-    const subscription = this.client.watchQuery(api.research.records.getSearch, { accountId: this.accountId, id });
+  /**
+   * Reads the person's ratings of these papers while `reader` wants them, so the ratings
+   * store has them; returns the unsubscribe. A paper another read already has stays with that
+   * read, and the rest are read up to RATED_PAPERS_MAX at a time, so a list that grows reads
+   * only the papers it gained.
+   */
+  watchRatings = (paperIds: string[], reader: () => void) => {
+    const ids = [...new Set(paperIds)];
+    const fresh = ids.filter(id => !this.ratedBy.has(id));
+    const stops = [...new Set(ids.flatMap(id => this.ratedBy.get(id) ?? []))].map(key => this.hold(this.rated, key, this.rated.get(key)!.open, reader));
+    for (let start = 0; start < fresh.length; start += RATED_PAPERS_MAX) {
+      const chunk = fresh.slice(start, start + RATED_PAPERS_MAX);
+      const key = chunk.join("\n");
+      for (const id of chunk) this.ratedBy.set(id, key);
+      const open = () => this.client.watchQuery(api.research.records.ratingsOf, { accountId: this.accountId, paperIds: chunk });
+      stops.push(this.hold(this.rated, key, open, reader, undefined, () => { for (const id of chunk) this.ratedBy.delete(id); }));
+    }
+    return () => { for (const stop of stops) stop(); };
+  };
+  /** How many of these papers, from the first, have their ratings read, or a read that failed. */
+  ratingsRead = (paperIds: string[]) => {
+    const read = paperIds.findIndex(id => {
+      const entry = this.rated.get(this.ratedBy.get(id) ?? "");
+      return !entry || (entry.value === undefined && !entry.failed);
+    });
+    return read === -1 ? paperIds.length : read;
+  };
+  /**
+   * Opens the read under `key` if no one holds it yet, and holds it for `reader`; returns the
+   * release. A read no one holds is closed a moment later, not at once, so a list that changes
+   * what it reads can take over the reads it keeps.
+   */
+  private hold<T>(reads: Map<string, Watch<T>>, key: string, open: () => Subscription<T>, reader: () => void, known?: T, closed: () => void = () => {}) {
+    let entry = reads.get(key);
+    if (!entry) {
+      const opened: Watch<T> = { readers: new Set(), open, stop: () => {}, value: known, failed: false };
+      reads.set(key, (entry = opened));
+      this.read(opened);
+      if (known !== undefined && opened.value === known) this.render();
+    }
+    const held = entry;
+    held.readers.add(reader);
+    return () => {
+      held.readers.delete(reader);
+      queueMicrotask(() => {
+        if (held.readers.size || reads.get(key) !== held) return;
+        held.stop();
+        reads.delete(key);
+        closed();
+        this.render();
+        this.settle();
+      });
+    };
+  }
+  /** Subscribes `entry` to its read. A read that fails stops being waited for, and Retry reads it again. */
+  private read<T>(entry: Watch<T>) {
+    const subscription = entry.open();
     const update = () => {
       try {
         const value = subscription.localQueryResult();
@@ -267,7 +324,6 @@ export class ResearchSession {
     };
     this.stops.push(
       watchPages(this.client, api.research.records.shortcuts, this.accountId, receive("shortcuts"), this.fail, () => this.unsettled.add("shortcuts")),
-      watchPages(this.client, api.research.records.ratings, this.accountId, receive("ratings"), this.fail, () => this.unsettled.add("ratings")),
     );
     void this.import(epoch);
   }
@@ -316,7 +372,7 @@ export class ResearchSession {
   private render() {
     let searches = [...this.watched.values()].flatMap(({ value }) => (value ? [value] : []));
     const keywords = Object.fromEntries(this.data.shortcuts.map(({ shorthand, ...value }) => [shorthand, value]));
-    const ratings = Object.fromEntries(this.data.ratings.map(row => [row.paperId, row.rating]));
+    const ratings = Object.fromEntries([...this.rated.values()].flatMap(({ value }) => value?.page ?? []).map(row => [row.paperId, row.rating]));
     for (const { command } of this.pending) {
       switch (command.kind) {
         case "createSearch": if (!searches.some(row => row.id === command.search.id)) searches = [command.search, ...searches]; break;

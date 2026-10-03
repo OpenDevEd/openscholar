@@ -160,7 +160,7 @@ export const downloadItem = async (
 ) => {
   const formatLabel = labels?.item ?? 'item';
   try {
-    const { ratings } = useRatingsStore.getState();
+    const ratings = await useRatingsStore.getState().readRatings([item.id]);
     const screeningResponses = getScreeningResponsesForSearch(searchState);
     
     if (!searchState) {
@@ -198,7 +198,7 @@ export const downloadEssentialItem = async (
 ) => {
   const formatLabel = labels?.essentialItem ?? 'essential item';
   try {
-    const { ratings } = useRatingsStore.getState();
+    const ratings = await useRatingsStore.getState().readRatings([item.id]);
     const screeningResponses = getScreeningResponsesForSearch(searchState);
 
     if (!searchState) {
@@ -229,7 +229,7 @@ export const downloadAll = async (
 ) => {
   const formatLabel = labels?.results ?? 'results';
   try {
-    const { ratings } = useRatingsStore.getState();
+    const ratings = await useRatingsStore.getState().readRatings((results ?? []).map((result) => result.id));
     const screeningResponses = getScreeningResponsesForSearch(searchState);
     
     if (!searchState || !results) {

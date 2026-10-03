@@ -18,7 +18,7 @@ import { searchResultToParams } from "../../lib/search-params/converters";
 import { paramsToBucketSearchFilters } from "../../lib/chat/params-to-bucket-filters";
 import { isRatingFilterActive } from "../../lib/utils";
 import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
-import { shortcutExpansions } from "../research/records";
+import { ratingsAmong, shortcutExpansions } from "../research/records";
 import { readSearchWorks, searchRequestValidator } from "./openalex";
 
 /** The fields a screening paper keeps. */
@@ -58,10 +58,7 @@ export const ratingsOf = internalQuery({
   returns: v.array(v.object({ paperId: v.string(), rating: v.number() })),
   handler: async (ctx, { userId, paperIds }) => {
     if (paperIds.length > MAX_SCREENING_PAPERS_PER_JOB) throw new Error(`Rated papers are read ${MAX_SCREENING_PAPERS_PER_JOB} at a time`);
-    const rows = await Promise.all(
-      paperIds.map((paperId) => ctx.db.query("paperRatings").withIndex("by_user_and_paperId", (q) => q.eq("userId", userId).eq("data.paperId", paperId)).first()),
-    );
-    return rows.flatMap((row) => (row ? [row.data] : []));
+    return await ratingsAmong(ctx, userId, paperIds);
   },
 });
 
