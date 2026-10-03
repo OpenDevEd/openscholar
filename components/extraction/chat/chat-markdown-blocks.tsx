@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { CopyIcon, DownloadIcon, Maximize2Icon } from "lucide-react";
+import { CopyIcon, DownloadIcon, Maximize2Icon } from "@/components/icons";
 import type { BundledLanguage } from "shiki";
 import {
   extractTableDataFromElement,

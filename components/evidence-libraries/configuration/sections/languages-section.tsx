@@ -13,7 +13,7 @@ import { type Locale, LOCALES, settleFeatures } from "@/lib/evidence-libraries/c
 import { Field, FieldError } from "../section-card";
 import { ChoiceChips, EmptyList, FieldGroup, ListRow, move, SortableList, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
-import { LanguagesIcon } from "@/components/section-icons";
+import { LanguagesIcon } from "@/components/icons";
 
 export function LanguagesSection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.languages");

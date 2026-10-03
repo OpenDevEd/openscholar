@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Library, SearchX } from "lucide-react";
+import { Library, SearchX } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";

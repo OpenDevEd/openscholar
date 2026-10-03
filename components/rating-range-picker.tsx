@@ -3,7 +3,7 @@
 import React from "react";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Star } from "lucide-react";
+import { Star } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 

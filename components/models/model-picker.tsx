@@ -9,7 +9,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { Command as CommandPrimitive } from "cmdk";
-import { ArrowLeft, ArrowUpRight, Check, Search } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, Search } from "@/components/icons";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";

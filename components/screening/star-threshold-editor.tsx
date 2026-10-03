@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ArrowRight, Plus, Star, X } from "lucide-react";
+import { ArrowRight, Plus, Star, X } from "@/components/icons";
 import type {
   ScoringRule,
   StarThreshold,

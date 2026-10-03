@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { CollectionsField } from "./collections-field";
-import { CollectionsIcon } from "@/components/section-icons";
+import { CollectionsIcon } from "@/components/icons";
 
 export function CollectionsSection({ libraryId, draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.collections");

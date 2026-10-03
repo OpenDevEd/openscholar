@@ -13,7 +13,7 @@ import {
 } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { InstitutionNamePicker } from "./institution-pickers";
-import { BuildingsIcon } from "@/components/section-icons";
+import { BuildingsIcon } from "@/components/icons";
 
 const LIMITS = SCHEMA_LIMITS.institutions;
 

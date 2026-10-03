@@ -11,8 +11,8 @@ import {
   Search,
   TriangleAlert,
   X,
-  type LucideIcon,
-} from "lucide-react";
+  type AppIcon,
+} from "@/components/icons";
 import { useAction, useQueries } from "convex/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
@@ -71,7 +71,7 @@ function Phase({
   compact = false,
 }: {
   label: string;
-  icon: LucideIcon;
+  icon: AppIcon;
   state: PhaseState;
   compact?: boolean;
 }) {

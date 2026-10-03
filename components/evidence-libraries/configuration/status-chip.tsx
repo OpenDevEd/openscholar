@@ -1,7 +1,7 @@
 "use client";
 
 import type { HTMLAttributes } from "react";
-import { CircleCheck, CircleDashed, CircleX, LoaderCircle, TriangleAlert, type LucideIcon } from "lucide-react";
+import { CircleCheck, CircleDashed, CircleX, LoaderCircle, TriangleAlert, type AppIcon } from "@/components/icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +20,7 @@ const STATUS_TONE = {
 
 export type StatusTone = keyof typeof STATUS_TONE;
 
-const STATUS_ICON: Record<StatusTone, { icon: LucideIcon; className: string }> = {
+const STATUS_ICON: Record<StatusTone, { icon: AppIcon; className: string }> = {
   neutral: { icon: CircleDashed, className: "text-muted-foreground" },
   running: { icon: LoaderCircle, className: "animate-spin text-primary motion-reduce:animate-none" },
   success: { icon: CircleCheck, className: "ink-success" },
@@ -36,7 +36,7 @@ const STATUS_ICON: Record<StatusTone, { icon: LucideIcon; className: string }> =
 export function StatusIcon({ tone, label, icon, className, ...rest }: HTMLAttributes<HTMLSpanElement> & {
   tone: StatusTone;
   label: string;
-  icon?: LucideIcon;
+  icon?: AppIcon;
 }) {
   const { icon: toneIcon, className: toneClass } = STATUS_ICON[tone];
   const Icon = icon ?? toneIcon;
@@ -61,7 +61,7 @@ export function StatusChip({
 }: React.HTMLAttributes<HTMLSpanElement> & {
   tone: StatusTone;
   /** A sign before the words: the tone's own (a check, a spinner, a cross), or a state's own icon. */
-  icon?: LucideIcon | "tone";
+  icon?: AppIcon | "tone";
 }) {
   const Icon = icon === "tone" ? STATUS_ICON[tone].icon : icon;
   const spins = icon === "tone" && tone === "running";

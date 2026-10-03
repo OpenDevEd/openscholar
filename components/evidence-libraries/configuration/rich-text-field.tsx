@@ -4,7 +4,7 @@ import { Markdown } from "@tiptap/markdown";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import { Bold, Italic, Link2, List, Unlink } from "lucide-react";
+import { Bold, Italic, Link2, List, Unlink } from "@/components/icons";
 import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

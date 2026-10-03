@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Filter, History, Pencil, RotateCcw, Save, X } from "lucide-react";
+import { ArrowLeft, Filter, History, Pencil, RotateCcw, Save, X } from "@/components/icons";
 import { HistoryCommandCenter } from "@/components/history-command-center";
 import { ResultsList } from "@/components/results-list";
 import { SidebarContent } from "@/components/search-sidebar";

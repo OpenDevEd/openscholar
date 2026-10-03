@@ -1,7 +1,7 @@
 "use client";
 
 import { useAction } from "convex/react";
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Suspense, useId, useState } from "react";
 import { Button } from "@/components/ui/button";

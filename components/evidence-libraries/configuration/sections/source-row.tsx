@@ -1,7 +1,7 @@
 "use client";
 
 import type { HTMLAttributes, ReactNode } from "react";
-import { Pause, Pencil, Play, Trash2 } from "lucide-react";
+import { Pause, Pencil, Play, Trash2 } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";

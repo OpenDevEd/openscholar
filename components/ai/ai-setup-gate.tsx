@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { LogoMark } from "@/components/logo";
-import { X, ArrowRight, Settings } from "lucide-react";
+import { X, ArrowRight, Settings } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";

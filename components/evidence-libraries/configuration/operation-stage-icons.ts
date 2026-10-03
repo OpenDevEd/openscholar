@@ -1,5 +1,5 @@
-import type { LucideIcon } from "lucide-react";
 import {
+  type AppIcon,
   Boxes,
   CheckCircle2,
   Clock3,
@@ -11,7 +11,7 @@ import {
   PackageOpen,
   RadioTower,
   Trash2,
-} from "lucide-react";
+} from "@/components/icons";
 
 export const OPERATION_STAGE_ICONS = {
   queued: Clock3,
@@ -27,4 +27,4 @@ export const OPERATION_STAGE_ICONS = {
   coolify: Trash2,
   convex: Clock3,
   completed: CheckCircle2,
-} satisfies Record<string, LucideIcon>;
+} satisfies Record<string, AppIcon>;

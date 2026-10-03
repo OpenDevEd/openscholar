@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 export interface SelectableListProps<T> {

@@ -12,7 +12,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Search,
-} from "lucide-react";
+} from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { Spinner } from "@/components/ui/spinner";

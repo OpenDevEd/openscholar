@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Building2, KeyRound } from "lucide-react";
+import { Building2, KeyRound } from "@/components/icons";
 import { useAction, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";

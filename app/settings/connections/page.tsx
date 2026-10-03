@@ -5,7 +5,7 @@ import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import posthog from "posthog-js";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { AppWindow, Globe, KeyRound, Plug, Trash2 } from "lucide-react";
+import { AppWindow, Globe, KeyRound, Plug, Trash2 } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";

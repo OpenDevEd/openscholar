@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, CopyIcon } from "@/components/icons";
 import type { ComponentProps, CSSProperties, HTMLAttributes } from "react";
 import {
   createContext,

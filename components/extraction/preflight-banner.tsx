@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Coins } from "lucide-react";
+import { Coins } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import type { ExtractionCostEstimate } from "@/lib/extraction/cost-estimate";
 

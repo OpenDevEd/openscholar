@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
-import { SearchX, ArrowRight, Loader2, CircleAlert, BookOpen } from "lucide-react";
+import { SearchX, ArrowRight, Loader2, CircleAlert, BookOpen } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import type { QueryErrorDetail } from "@/lib/search/search-error";
 import { OQL_REFERENCE_URL } from "@/lib/openalex/oql";

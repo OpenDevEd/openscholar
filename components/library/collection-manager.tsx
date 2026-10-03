@@ -12,7 +12,7 @@ import {
   Pencil,
   Search,
   Trash2,
-} from "lucide-react";
+} from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";

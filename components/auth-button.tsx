@@ -11,7 +11,9 @@ import {
   Coins,
   Settings,
   Loader2,
-} from "lucide-react";
+  SettingsIcon,
+  BotIcon,
+} from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { cn } from "@/lib/utils";
@@ -37,7 +39,6 @@ import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { findPlan, isUpgrade, mainPlans } from "@/lib/billing/catalog";
 import { useTranslations } from "next-intl";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
-import { SettingsIcon, BotIcon } from "@/components/section-icons";
 
 interface AuthButtonProps {
   isCollapsed?: boolean;

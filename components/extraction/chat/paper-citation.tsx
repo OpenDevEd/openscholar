@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, FileText, RotateCcw } from "lucide-react";
+import { ExternalLink, FileText, RotateCcw } from "@/components/icons";
 
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { useTranslations } from "next-intl";

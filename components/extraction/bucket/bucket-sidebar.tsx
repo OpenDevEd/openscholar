@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { Package, PanelRightClose } from "lucide-react";
+import { Package, PanelRightClose } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,

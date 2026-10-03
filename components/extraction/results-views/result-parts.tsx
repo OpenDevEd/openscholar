@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ExternalLink, PanelLeftOpen, Quote } from "lucide-react";
+import { ExternalLink, PanelLeftOpen, Quote } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { StatusChip, type StatusTone } from "@/components/evidence-libraries/configuration/status-chip";

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import { Focus } from "lucide-react";
+import { Focus } from "@/components/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { isCountryFocusActive } from "@/lib/utils";
 import { COUNTRIES, getCountryCodesForRegions } from "@/lib/constants";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Trash2, Download, Upload, ArrowUpDown } from "lucide-react";
+import { Trash2, Download, Upload, ArrowUpDown } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { LIST_FILTER, ListSearch } from "@/components/evidence-libraries/list-controls";
 import {

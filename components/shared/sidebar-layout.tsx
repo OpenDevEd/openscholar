@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/lib/hooks";
 import { motion, AnimatePresence } from "motion/react";
 import { subtleSpring } from "@/lib/animation-config";
-import { FileText, ListFilter } from "lucide-react";
+import { FileText, ListFilter } from "@/components/icons";
 import { useTranslations } from "next-intl";
 
 type Direction = 1 | -1;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
-import { Plus, Check, ChevronDown, FolderPlus, X } from "lucide-react";
+import { Plus, Check, ChevronDown, FolderPlus, X } from "@/components/icons";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";

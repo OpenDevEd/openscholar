@@ -20,7 +20,7 @@
  *   data-paper-id         — stable id hook for deep-links
  */
 
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
-import { ArrowUpRight, BookOpen, ChevronRight, Copy, Network } from "lucide-react";
+import { ArrowUpRight, BookOpen, ChevronRight, Copy, Network, TopicsIcon } from "@/components/icons";
 import { toast } from "sonner";
 import { readTopic, readTopicWorks } from "@/app/actions/topics";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -23,7 +23,6 @@ import { TopicLibraryResults, useTopicLibraryResults } from "./topic-library-res
 import { ListEmpty, ListLoading, ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { buildShareableUrl } from "@/lib/search-params";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
-import { TopicsIcon } from "@/components/section-icons";
 
 export function TopicPage({ topic, path, related, detail: initialDetail }: { topic: TopicNode; path: TopicNode[]; related: TopicNode[]; detail: Awaited<ReturnType<typeof readTopic>> | null }) {
   const t = useTranslations("topics");

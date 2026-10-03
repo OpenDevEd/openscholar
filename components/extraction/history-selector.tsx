@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { motion } from "motion/react";
 import { useSearchHistoryStore } from "@/lib/store";
-import { Search, Calendar, FileText } from "lucide-react";
+import { Search, Calendar, FileText } from "@/components/icons";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { SelectableList } from "./bucket/selectable-list";
 import { CountChip } from "./bucket/count-chip";

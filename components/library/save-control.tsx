@@ -6,7 +6,7 @@ import { useAuth, useClerk } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { create } from "zustand";
-import { BookCheck, BookPlus, Folder, FolderCheck, Plus, Search } from "lucide-react";
+import { BookCheck, BookPlus, Folder, FolderCheck, Plus, Search } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";

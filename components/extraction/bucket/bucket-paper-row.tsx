@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { authorsPreview, type AuthorsPreviewInput } from "@/lib/bucket/authors-preview";
 import type { BucketItemStatus, BucketSource } from "@/lib/bucket/bucketItem";

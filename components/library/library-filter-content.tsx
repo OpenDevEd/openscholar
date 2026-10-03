@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { subMonths, subWeeks, subYears } from "date-fns";
-import { Check, Clock, FolderOpen, LibraryBig, Search, Settings, SlidersHorizontal, Star } from "lucide-react";
+import { Check, Clock, FolderOpen, LibraryBig, Search, Settings, SlidersHorizontal, Star } from "@/components/icons";
 import type { DateRange } from "react-day-picker";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Ref } from "react";
-import { Package } from "lucide-react";
+import { Package } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useBucketStore } from "@/lib/store/bucket";

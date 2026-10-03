@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { Boxes, Search } from "lucide-react";
+import { Boxes, Search } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";

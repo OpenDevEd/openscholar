@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
-import { Check, ChevronsUpDown, Coins, ExternalLink, KeyRound, Monitor, Save, Sparkles } from "lucide-react";
+import { Check, ChevronsUpDown, Coins, ExternalLink, KeyRound, Monitor, Save, Sparkles } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";

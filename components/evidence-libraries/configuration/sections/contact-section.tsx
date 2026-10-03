@@ -20,7 +20,7 @@ import {
 import { Field } from "../section-card";
 import { FieldGroup, Panel, TextUploadField, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
-import { MailIcon } from "@/components/section-icons";
+import { MailIcon } from "@/components/icons";
 
 type LegalKind = LegalSource["kind"];
 const LEGAL_KINDS: LegalKind[] = ["none", "text", "url"];

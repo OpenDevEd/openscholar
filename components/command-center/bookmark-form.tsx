@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { BookmarkPlus, Check, X } from "lucide-react";
+import { BookmarkPlus, Check, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";

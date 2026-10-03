@@ -4,7 +4,7 @@ import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Check, ChevronDown, Search } from "@/components/icons";
 import {
   Popover,
   PopoverContent,

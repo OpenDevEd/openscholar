@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon } from "@/components/icons";
 import type { DateRange } from "react-day-picker";
 import { useFormatter, useTranslations } from "next-intl";
 import { Calendar } from "@/components/ui/calendar";

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, Globe } from "lucide-react";
+import { Check, Globe } from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 
 import { Button } from "@/components/ui/button";

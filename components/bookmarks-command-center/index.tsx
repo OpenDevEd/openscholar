@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { parseAsInteger, useQueryState } from "nuqs";
-import { BookOpen } from "lucide-react";
+import { BookOpen, BookmarksIcon } from "@/components/icons";
 import {
   useKeywordExpansionStore,
   useUIStore,
@@ -63,7 +63,6 @@ import { NewBookmarkDialog } from "./new-bookmark-dialog";
 import { BookmarksGuide } from "./bookmarks-guide";
 import posthog from "posthog-js";
 import type { BookmarkEntry } from "./types";
-import { BookmarksIcon } from "@/components/section-icons";
 
 export type { BookmarkEntry } from "./types";
 

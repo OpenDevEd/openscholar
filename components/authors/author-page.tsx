@@ -34,7 +34,10 @@ import {
   RefreshCw,
   Search,
   SearchX,
-} from "lucide-react";
+  PersonIcon,
+  LinkIcon,
+  BookIcon,
+} from "@/components/icons";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
 import { useUIStore } from "@/lib/store";
@@ -74,7 +77,6 @@ import { readProfileAuthor } from "@/app/actions/authors";
 import {PublicationListItem, PublicationMetadata} from "@/components/evidence-libraries/publication-list-item";
 import type {AuthorProfile, OpenAlexMatch, AuthorPublication} from "./types";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
-import { PersonIcon, LinkIcon, BookIcon } from "@/components/section-icons";
 
 const safeUrl = (value?: string) => {
   try {

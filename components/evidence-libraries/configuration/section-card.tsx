@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, AlertTriangle, Info, type LucideIcon } from "lucide-react";
+import { AlertCircle, AlertTriangle, Info, type AppIcon } from "@/components/icons";
 import { type ReactNode, useId } from "react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -22,7 +22,7 @@ export function SectionCard({
   ...rest
 }: Omit<React.HTMLAttributes<HTMLElement>, "title"> & {
   id?: string;
-  icon?: LucideIcon | React.ComponentType<{ className?: string }>;
+  icon?: AppIcon | React.ComponentType<{ className?: string }>;
   title: ReactNode;
   description?: ReactNode;
   /** Right-hand slot in the header strip, such as a status chip. */

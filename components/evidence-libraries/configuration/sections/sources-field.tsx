@@ -9,7 +9,7 @@ import {
   Plus,
   RefreshCw,
   Settings2,
-} from "lucide-react";
+} from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useRef, useState } from "react";
 import { toast } from "sonner";

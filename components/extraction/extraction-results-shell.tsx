@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { FileText, PanelLeftOpen } from "lucide-react";
+import { FileText, PanelLeftOpen } from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 import { ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { useIsMobile } from "@/lib/hooks";

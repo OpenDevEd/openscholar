@@ -20,7 +20,7 @@
  */
 
 import React from "react";
-import { ChevronDown, Minus, Plus } from "lucide-react";
+import { ChevronDown, Minus, Plus } from "@/components/icons";
 import { useTranslations } from "next-intl";
 
 import {

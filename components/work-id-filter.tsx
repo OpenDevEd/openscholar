@@ -7,12 +7,12 @@ import { Label } from "@/components/ui/label";
 import { useUpdateSearchFilter, useCurrentSearchFormState } from "@/lib/hooks";
 import { useAppToast } from "@/lib/toast";
 import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive } from "@/lib/utils";
-import { Quote, Network, ExternalLink, X, type LucideIcon } from "lucide-react";
+import { Quote, Network, ExternalLink, X, type AppIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 
 interface WorkIdFilterProps {
   type: 'cites' | 'cited_by' | 'related';
-  icon?: LucideIcon;
+  icon?: AppIcon;
 }
 
 const RELATION_COLORS = {

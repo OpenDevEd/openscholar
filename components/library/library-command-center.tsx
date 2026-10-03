@@ -2,7 +2,7 @@
 
 import {
   Download,
-} from "lucide-react";
+} from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { AnimatedCount } from "@/components/search-command-center/components/animated-count";

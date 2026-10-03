@@ -29,7 +29,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { LibraryAddressLink } from "../../library-address-link";
 import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip, type StatusTone } from "../status-chip";
-import { LinkIcon } from "@/components/section-icons";
+import { LinkIcon } from "@/components/icons";
 
 type DomainFailure =
   | "no-name"

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { ChevronRight } from "@/components/icons";
 import type { ComponentProps, ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";

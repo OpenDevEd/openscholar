@@ -2,7 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { Toaster as Sonner, ToasterProps, toast } from "sonner";
-import { AlertCircle, ArrowRight, Settings, X } from "lucide-react";
+import { AlertCircle, ArrowRight, Settings, X } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 type ToastAction = {

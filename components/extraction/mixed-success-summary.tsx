@@ -26,7 +26,7 @@
 
 import { useId } from "react";
 import { useTranslations } from "next-intl";
-import { CircleCheck, CircleX } from "lucide-react";
+import { CircleCheck, CircleX } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";

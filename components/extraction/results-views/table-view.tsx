@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Info } from "lucide-react";
+import { Info } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";

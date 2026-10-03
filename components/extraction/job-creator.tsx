@@ -19,7 +19,8 @@ import {
   Zap,
   CircleCheck,
   ChevronRight,
-} from "lucide-react";
+  ExtractionIcon,
+} from "@/components/icons";
 import { useExtractionStore, type JobMode } from "@/lib/store/extraction";
 import { useBucketStore } from "@/lib/store/bucket";
 import { bucketItemToServerInput } from "@/lib/bucket/to-server-input";
@@ -41,7 +42,6 @@ import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { useIsMobile } from "@/lib/hooks";
 import { readyBucketPaperCount } from "@/lib/bucket/paper-count";
-import { ExtractionIcon } from "@/components/section-icons";
 
 const stepVariants = {
   enter: (direction: number) => ({

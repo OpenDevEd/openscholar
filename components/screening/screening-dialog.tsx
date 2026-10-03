@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, AlertCircle, Import, Coins } from "lucide-react";
+import { Loader2, AlertCircle, Import, Coins } from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { Slider } from "@/components/ui/slider";
 import { useSearchOptional } from "@/lib/search";

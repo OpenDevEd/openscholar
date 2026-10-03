@@ -5,7 +5,7 @@ import { useTranslations, useFormatter } from "next-intl";
 import { useAction } from "convex/react";
 import { ConvexError } from "convex/values";
 import type { FunctionReturnType } from "convex/server";
-import { FlaskConical, KeyRound, ShieldCheck } from "lucide-react";
+import { FlaskConical, KeyRound, ShieldCheck, PublishIcon } from "@/components/icons";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -28,7 +28,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Field, FieldError, SectionCard } from "../section-card";
 import { FieldGroup, PanelRow } from "../fields";
-import { PublishIcon } from "@/components/section-icons";
 
 type Saved = FunctionReturnType<
   typeof api.evidenceLibraries.publicationProviders.get

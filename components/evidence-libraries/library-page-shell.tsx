@@ -6,7 +6,7 @@ import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { cn } from "@/lib/utils";
 import { PanelHeader } from "./configuration/panel-header";
 import { ListLoading } from "./list-controls";
-import { EvidenceLibrariesIcon, type AppIcon } from "@/components/section-icons";
+import { EvidenceLibrariesIcon, type AppIcon } from "@/components/icons";
 
 /**
  * The page frame shared by the library, topic, author, history and bookmark

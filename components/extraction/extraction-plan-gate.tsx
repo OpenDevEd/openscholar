@@ -11,7 +11,7 @@ import {
   FileSearch,
   Sparkles,
   Users,
-} from "lucide-react";
+} from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useFeatureFlag, useFlagPlanFeature } from "@/lib/feature-flags/hook";

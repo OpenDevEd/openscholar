@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { ZoomIn, ZoomOut, MoreHorizontal } from "lucide-react";
+import { ZoomIn, ZoomOut, MoreHorizontal } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

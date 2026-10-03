@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Share2, Check, Download } from "lucide-react";
+import { Share2, Check, Download } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,

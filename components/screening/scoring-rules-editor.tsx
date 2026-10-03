@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Asterisk, Check, MoreVertical, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Asterisk, Check, MoreVertical, Pencil, Plus, Trash2, X } from "@/components/icons";
 import type { ScoringRule } from "@/convex/screening/scoring";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Layers } from "lucide-react";
+import { ArrowLeft, Layers } from "@/components/icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";

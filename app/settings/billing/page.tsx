@@ -10,8 +10,8 @@ import { useFormatter, useNow, useTranslations } from "next-intl";
 import { toast as sonnerToast } from "sonner";
 import {
   AlertCircle, ArrowRight, CalendarClock, CheckCircle2, Coins, CreditCard, FileSearch, KeyRound, Languages,
-  ListFilter, Loader2, MessageSquare, Repeat, Search, Undo2, X, type LucideIcon,
-} from "lucide-react";
+  ListFilter, Loader2, MessageSquare, Repeat, Search, Undo2, X, type AppIcon,
+} from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,7 @@ import { defaultPlanId, findPlan, planCreditCap, topUpBundles } from "@/lib/bill
 import { Enter, LIST, Paged, pagerOf, Tile, Zone } from "@/components/settings/parts";
 
 type Kind = "chat" | "extraction" | "screening" | "search" | "translation" | "wallet_api" | "refund";
-const KINDS: Record<Kind, { icon: LucideIcon; tint: string }> = {
+const KINDS: Record<Kind, { icon: AppIcon; tint: string }> = {
   chat: { icon: MessageSquare, tint: "#a78bfa" },
   extraction: { icon: FileSearch, tint: "#60a5fa" },
   screening: { icon: ListFilter, tint: "#34d399" },

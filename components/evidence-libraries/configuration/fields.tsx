@@ -28,13 +28,13 @@ import {
   GripVertical,
   ImageIcon,
   Lock,
-  type LucideIcon,
+  type AppIcon,
   Plus,
   RotateCcw,
   Trash2,
   Upload,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Children, type ReactNode, useId, useState } from "react";
 import { type DropzoneState, useDropzone } from "react-dropzone";
@@ -1092,7 +1092,7 @@ export function FieldGroup({
   );
 }
 
-export type MetaItem = { key: string; label?: ReactNode; value: ReactNode; icon?: LucideIcon };
+export type MetaItem = { key: string; label?: ReactNode; value: ReactNode; icon?: AppIcon };
 
 /**
  * Small facts under a title: "Address example.org   Last activated 26 Aug".

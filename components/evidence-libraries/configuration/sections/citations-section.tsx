@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { EXPORT_FORMATS, settleFeatures } from "@/lib/evidence-libraries/configuration/rules";
 import { FieldGroup, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
-import { QuoteIcon } from "@/components/section-icons";
+import { QuoteIcon } from "@/components/icons";
 
 export function CitationsSection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.citations");

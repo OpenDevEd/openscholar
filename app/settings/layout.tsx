@@ -9,7 +9,16 @@ import { useTranslations } from "next-intl";
 import {
   ExternalLink,
   Sparkles,
-} from "lucide-react";
+  SettingsIcon,
+  PersonIcon,
+  SecurityIcon,
+  BillingIcon,
+  BotIcon,
+  ConnectionsIcon,
+  SwitchesIcon,
+  ModelsIcon,
+  AdminsIcon,
+} from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Button } from "@/components/ui/button";
@@ -29,7 +38,6 @@ import { SubscriptionStateProvider, useSharedSubscriptionState } from "@/lib/aut
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { findPlan } from "@/lib/billing/catalog";
 import { useAppToast } from "@/lib/toast";
-import { SettingsIcon, PersonIcon, SecurityIcon, BillingIcon, BotIcon, ConnectionsIcon, SwitchesIcon, ModelsIcon, AdminsIcon } from "@/components/section-icons";
 
 type Item = { href: string; title: string; icon: Ico; aside?: string; external?: string };
 

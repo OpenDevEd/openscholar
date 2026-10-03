@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { ExternalLink, Settings , CircleDashed } from "lucide-react";
+import { ExternalLink, Settings , CircleDashed } from "@/components/icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";

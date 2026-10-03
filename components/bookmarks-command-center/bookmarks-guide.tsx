@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "motion/react";
-import { HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { HelpCircle, ChevronDown, ChevronUp } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
 

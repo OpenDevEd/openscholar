@@ -6,7 +6,7 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import { useTranslations, useFormatter, useNow } from "next-intl";
 import { cn } from "@/lib/utils";
 import { JobStatusIcon } from "./job-status-icon";
-import { Database, FileText, Clock, MessageSquare } from "lucide-react";
+import { Database, FileText, Clock, MessageSquare } from "@/components/icons";
 import Link from "next/link";
 import type { ViewMode } from "@/lib/types";
 import { subtleSpring } from "@/lib/animation-config";

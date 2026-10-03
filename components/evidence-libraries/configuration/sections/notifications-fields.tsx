@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useAction } from "convex/react";
-import { CalendarDays, Check, ChevronDown, Clock3, Repeat2, Globe2, Mail, Send, TimerReset } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, Clock3, Repeat2, Globe2, Mail, Send, TimerReset } from "@/components/icons";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";

@@ -1,7 +1,6 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-import { Rocket } from "lucide-react";
+import { type AppIcon, Rocket } from "@/components/icons";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ export function ActivationControl({
 }: {
   busy: {
     accessibleLabel: string;
-    icon: LucideIcon;
+    icon: AppIcon;
     label: string;
   } | null;
   disabled: boolean;

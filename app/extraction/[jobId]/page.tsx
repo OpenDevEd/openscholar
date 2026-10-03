@@ -28,7 +28,8 @@ import {
   MoreHorizontal,
   ListChecks,
   SearchX,
-} from "lucide-react";
+  DocumentIcon,
+} from "@/components/icons";
 import posthog from "posthog-js";
 import { PageWrapper } from "@/components/PageWrapper";
 import { ListEmpty, ListLoading } from "@/components/evidence-libraries/list-controls";
@@ -83,7 +84,6 @@ import {
   type Question,
 } from "@/lib/extraction/filtering";
 import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
-import { DocumentIcon } from "@/components/section-icons";
 
 export default function JobDetailPage() {
   const toast = useAppToast();

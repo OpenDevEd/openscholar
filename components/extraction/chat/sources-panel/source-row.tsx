@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { CheckIcon, ExternalLink, Quote } from "lucide-react";
+import { CheckIcon, ExternalLink, Quote } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import type { ChatSourceRow } from "@/convex/chat/chatPapers";

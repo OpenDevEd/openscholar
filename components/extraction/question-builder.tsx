@@ -27,7 +27,7 @@ import {
   ClipboardList,
   ChevronDown,
   MessageSquarePlus,
-} from "lucide-react";
+} from "@/components/icons";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { useBucketStore } from "@/lib/store/bucket";
 import { useGenerateExtractionQuestions } from "@/lib/ai/client/router";

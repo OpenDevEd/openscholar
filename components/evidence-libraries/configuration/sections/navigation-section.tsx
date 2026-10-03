@@ -15,7 +15,7 @@ import {
 } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { LinkEditor } from "./link-editor";
-import { MenuIcon } from "@/components/section-icons";
+import { MenuIcon } from "@/components/icons";
 
 const LIMITS = SCHEMA_LIMITS.navigation;
 

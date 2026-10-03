@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentProps, ComponentType, ReactNode } from "react";
-import { Search } from "lucide-react";
+import { Search } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";

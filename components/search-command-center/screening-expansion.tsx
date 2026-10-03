@@ -11,7 +11,7 @@ import {
   Plus,
   Sparkles,
   Trash2,
-} from "lucide-react";
+} from "@/components/icons";
 import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";

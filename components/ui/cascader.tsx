@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { ChevronDown, ChevronRight, X } from "lucide-react"
+import { ChevronDown, ChevronRight, X } from "@/components/icons"
 
 import { cn } from "@/lib/utils"
 import {

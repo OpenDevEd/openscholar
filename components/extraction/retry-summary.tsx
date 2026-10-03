@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { RotateCw } from "lucide-react";
+import { RotateCw } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useMutation } from "convex/react";

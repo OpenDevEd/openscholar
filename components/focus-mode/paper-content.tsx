@@ -1,6 +1,6 @@
 import { TopicLink } from "@/components/topics/topic-link";
 import React from "react";
-import { BookOpen, Award, ExternalLink, FileText } from "lucide-react";
+import { BookOpen, Award, ExternalLink, FileText } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { workToCoins } from "@/lib/utils";
 import { ScreeningResponses } from "@/components/paper-card";

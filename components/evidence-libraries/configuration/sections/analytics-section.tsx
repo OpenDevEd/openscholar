@@ -12,7 +12,7 @@ import {
 import { Field } from "../section-card";
 import { FieldGroup, Panel, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
-import { AnalyticsIcon } from "@/components/section-icons";
+import { AnalyticsIcon } from "@/components/icons";
 
 /** PostHog and Google Analytics are independent; both may be on at once. */
 export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {

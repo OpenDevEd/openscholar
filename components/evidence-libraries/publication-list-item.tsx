@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, FileText, Library } from "lucide-react";
+import { ArrowUpRight, FileText, Library } from "@/components/icons";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { AuthorPublication } from "@/components/authors/types";

@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, UserRound } from "lucide-react";
+import { Building2, UserRound } from "@/components/icons";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function IdentityAvatar({

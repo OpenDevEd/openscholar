@@ -1,7 +1,7 @@
 "use client";
 
 import { useAction, useMutation, useQuery } from "convex/react";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus, SparklesIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -32,7 +32,6 @@ import {
 } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { ModelPicker } from "@/components/models/model-picker";
-import { SparklesIcon } from "@/components/section-icons";
 
 const KEY_INSTANCE = "openrouter";
 

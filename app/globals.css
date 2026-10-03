@@ -110,7 +110,7 @@
   /* Radius */
   --radius: 0.75rem;
 
-  /* Section icons (components/section-icons.ts) are two-tone. This is how strong
+  /* Icons (components/icons.ts) are two-tone. This is how strong
      the lighter tone is. */
   --solar-secondary-opacity: 0.45;
 

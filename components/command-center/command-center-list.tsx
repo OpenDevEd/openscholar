@@ -2,13 +2,12 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { SearchX } from "lucide-react";
+import { SearchX, type AppIcon } from "@/components/icons";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { GRID_CLASSES } from "@/lib/constants/view-modes";
 import type { ViewMode } from "@/lib/types";
-import type { LucideIcon } from "lucide-react";
 
 interface CommandCenterListProps<T> {
   items: T[];
@@ -18,7 +17,7 @@ interface CommandCenterListProps<T> {
   ItemComponent?: React.ComponentType<{ item: T; index: number }>;
   keyExtractor: (item: T) => string;
   // Empty state
-  emptyIcon: LucideIcon;
+  emptyIcon: AppIcon;
   emptyTitle: string;
   emptyDescription: string;
   emptyAction?: React.ReactNode;

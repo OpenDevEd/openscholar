@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { CircleAlert, X } from "lucide-react";
+import { CircleAlert, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 
 // Known body keys; must stay in lockstep with the `extraction.retry

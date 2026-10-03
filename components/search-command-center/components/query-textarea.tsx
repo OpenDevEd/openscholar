@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

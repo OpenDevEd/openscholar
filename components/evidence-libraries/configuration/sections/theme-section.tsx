@@ -24,7 +24,7 @@ import { Field } from "../section-card";
 import { ChoiceCards, ColourField, FieldGroup, UploadField } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { Disclosure } from "../disclosure-button";
-import { PaletteIcon } from "@/components/section-icons";
+import { PaletteIcon } from "@/components/icons";
 
 const ADVANCED_COLOURS = [
   "backgroundDark",

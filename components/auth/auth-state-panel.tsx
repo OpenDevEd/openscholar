@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion, type Variants } from "motion/react";
-import { LogIn, RefreshCw, ShieldAlert } from "lucide-react";
+import { LogIn, RefreshCw, ShieldAlert } from "@/components/icons";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

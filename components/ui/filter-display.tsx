@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { Star } from "lucide-react";
+import { Star } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { getAllFilterItems, type FilterItem, type FilterParams, type FilterT } from "@/lib/filters";

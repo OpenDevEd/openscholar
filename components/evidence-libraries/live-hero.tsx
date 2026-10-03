@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, ExternalLink, RefreshCw, X , CircleDashed } from "lucide-react";
+import { Check, Copy, ExternalLink, RefreshCw, X , CircleDashed } from "@/components/icons";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { toast } from "sonner";

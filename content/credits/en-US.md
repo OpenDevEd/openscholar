@@ -12,7 +12,7 @@ OpenScholar converts the files from XML to JSON. When it lists references, it re
 
 ## Icons
 
-The two-tone icons for the app's sections are from [Solar](https://www.figma.com/community/file/1166831539721848736) by 480 Design, licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/). OpenScholar recolors them to its own palette.
+The app's icons are from [Solar](https://www.figma.com/community/file/1166831539721848736) by 480 Design, licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/). OpenScholar recolors them to its own palette.
 
 ## Research data
 
@@ -22,5 +22,5 @@ The research records you search come from [OpenAlex](https://openalex.org).
 
 - Citations are formatted by [citeproc-ts](https://codeberg.org/fiduswriter/citeproc-ts) by Johannes Wilm, based on [citeproc-js](https://github.com/Juris-M/citeproc-js) by Frank Bennett. Both are available under CPAL 1.0 or AGPL 3.0.
 - The typeface is [Ubuntu](https://design.ubuntu.com/font), © Canonical Ltd, under the Ubuntu Font Licence 1.0.
-- Other icons are from [Lucide](https://lucide.dev) (ISC license) and [Hugeicons](https://hugeicons.com) (MIT license).
+- A few icons that Solar lacks are from [Lucide](https://lucide.dev) (ISC license), and the icon picker for library menus uses [Hugeicons](https://hugeicons.com) (MIT license).
 - Country flags are served by [Flagpedia](https://flagpedia.net) and are in the public domain.

@@ -1,6 +1,6 @@
 "use client";
 
-import { Github, Linkedin, Youtube } from "lucide-react";
+import { Github, Linkedin, Youtube, FooterIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,7 +29,6 @@ import {
 import { SectionShell, type SectionProps } from "../section-shell";
 import { BlueskyIcon, XIcon } from "../social-icons";
 import { LinkEditor } from "./link-editor";
-import { FooterIcon } from "@/components/section-icons";
 
 const LIMITS = SCHEMA_LIMITS.footer;
 

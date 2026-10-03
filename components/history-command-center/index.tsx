@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
-import { Clock, Search, ArrowRight } from "lucide-react";
+import { Clock, Search, ArrowRight, HistoryIcon } from "@/components/icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,6 @@ import { useResearchStatus } from "@/lib/research/provider";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 import posthog from "posthog-js";
-import { HistoryIcon } from "@/components/section-icons";
 
 interface HistoryCommandCenterProps {
   /**

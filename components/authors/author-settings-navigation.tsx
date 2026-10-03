@@ -6,7 +6,7 @@ import {
   RailLink,
 } from "@/components/evidence-libraries/configuration/navigation-rail";
 import { useScrollSpy } from "@/components/evidence-libraries/configuration/use-scroll-spy";
-import { TeamIcon, PersonIcon, LinkIcon, BookIcon } from "@/components/section-icons";
+import { TeamIcon, PersonIcon, LinkIcon, BookIcon } from "@/components/icons";
 const sections = [
   ["profile-details", "Profile", PersonIcon],
   ["profile-links", "Links & identifiers", LinkIcon],

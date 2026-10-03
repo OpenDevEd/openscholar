@@ -1,6 +1,6 @@
 "use client";
 
-import { FileSearch } from "lucide-react";
+import { FileSearch } from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";

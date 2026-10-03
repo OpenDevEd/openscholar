@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Languages } from "lucide-react";
+import { Languages } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { languageOptions } from "@/lib/ai/core/languages";
 import { useTranslations } from "next-intl";

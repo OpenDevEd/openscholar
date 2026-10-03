@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import posthog from "posthog-js"
-import { Moon, Sun } from "lucide-react"
+import { Moon, Sun } from "@/components/icons"
 import { useTheme } from "next-themes"
 import { useTranslations } from "next-intl"
 

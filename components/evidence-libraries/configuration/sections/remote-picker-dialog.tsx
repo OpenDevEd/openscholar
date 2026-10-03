@@ -6,7 +6,7 @@
  * typed text to the server, and never downloads a whole catalogue.
  */
 
-import { ArrowDown, ArrowUp, ArrowUpDown, Check, Plus, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Plus, Search, X } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { type ReactNode, type Ref, useImperativeHandle, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";

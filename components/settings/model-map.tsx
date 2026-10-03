@@ -10,7 +10,7 @@ import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
   ArrowUpDown, Brain, Check, ChevronsUpDown, Cloud, Filter, Languages, ListChecks, MessageSquare, PiggyBank, SlidersHorizontal,
   Search, TableProperties, Wand2, Scale, Zap,
-} from "lucide-react";
+} from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";

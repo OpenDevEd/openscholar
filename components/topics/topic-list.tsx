@@ -3,14 +3,13 @@ import Link from "next/link";
 import {useTranslations} from "next-intl";
 import {parseAsString, useQueryState} from "nuqs";
 import {useState} from "react";
-import { ArrowUpRight, SearchX } from "lucide-react";
+import { ArrowUpRight, SearchX, TopicsIcon } from "@/components/icons";
 import {LibraryPageShell} from "@/components/evidence-libraries/library-page-shell";
 import {LIST_FILTER, LIST_TILE, ListEmpty, ListSearch} from "@/components/evidence-libraries/list-controls";
 import {catalogChildren, catalogNode, searchCatalogTopics} from "@/lib/topics/search";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/button";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
-import { TopicsIcon } from "@/components/section-icons";
 const PAGE = 30;
 /** Browses the catalog that ships with the app, so choosing and searching never wait on the server. */
 export function TopicList() {

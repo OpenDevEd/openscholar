@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRight, Zap, CreditCard } from "lucide-react";
+import { Loader2, ArrowRight, Zap, CreditCard } from "@/components/icons";
 import { useTranslations, useFormatter } from "next-intl";
 
 export type UpgradePreview = {

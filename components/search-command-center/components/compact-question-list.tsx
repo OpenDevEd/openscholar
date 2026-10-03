@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, Pencil, Play, Trash2, X } from "lucide-react";
+import { Check, Pencil, Play, Trash2, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";

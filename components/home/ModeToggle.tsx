@@ -2,7 +2,7 @@
 
 import { motion, LayoutGroup, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
-import { Search, Wand2 } from "lucide-react";
+import { Search, Wand2 } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { modeToggleSpring } from "@/lib/animation-config";
 

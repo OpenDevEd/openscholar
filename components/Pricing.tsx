@@ -24,7 +24,7 @@ import {
   CreditCard,
   BookOpen,
   Sparkles,
-} from "lucide-react";
+} from "@/components/icons";
 import { useAppToast } from "@/lib/toast";
 import { toast as sonnerToast } from "sonner";
 import {

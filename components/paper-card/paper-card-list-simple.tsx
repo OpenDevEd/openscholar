@@ -13,7 +13,7 @@ import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { Quote } from "lucide-react";
+import { Quote } from "@/components/icons";
 import { useTranslate, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {

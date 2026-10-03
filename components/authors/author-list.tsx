@@ -4,7 +4,7 @@ import { useMutation, usePaginatedQuery } from "convex/react";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Users, Plus, ArrowUpRight, SearchX } from "lucide-react";
+import { Users, Plus, ArrowUpRight, SearchX, AuthorsIcon } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
@@ -16,7 +16,6 @@ import { AuthorAvatar } from "./author-avatar";
 import { AuthorInvitations } from "./author-invitations";
 import { Field, FieldError } from "@/components/evidence-libraries/configuration/section-card";
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from "@/components/ui/dialog";
-import { AuthorsIcon } from "@/components/section-icons";
 
 /**
  * `pending` renders the page before access is confirmed: the frame and

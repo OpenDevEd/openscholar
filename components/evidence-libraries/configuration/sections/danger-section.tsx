@@ -1,11 +1,10 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Trash2, TrashIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { PanelRow } from "../fields";
 import { SectionCard } from "../section-card";
-import { TrashIcon } from "@/components/section-icons";
 
 /** Delete the development library. Not a draft section: no state chip or reset. */
 export function DangerSection({ onDelete }: { onDelete: () => void }) {

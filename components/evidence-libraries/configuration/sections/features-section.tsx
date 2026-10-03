@@ -10,7 +10,7 @@ import {
 } from "@/lib/evidence-libraries/configuration/rules";
 import { FieldGroup, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
-import { SwitchesIcon } from "@/components/section-icons";
+import { SwitchesIcon } from "@/components/icons";
 
 export function FeaturesSection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.features");

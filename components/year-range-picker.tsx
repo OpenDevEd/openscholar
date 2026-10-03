@@ -8,7 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, RotateCcw } from "lucide-react";
+import { CalendarIcon, RotateCcw } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { MIN_YEAR, getYearRangePresets } from "@/lib/constants";
 import { Slider } from "@/components/ui/slider";

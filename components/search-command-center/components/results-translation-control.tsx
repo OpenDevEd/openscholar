@@ -2,7 +2,7 @@
 
 import React, { useCallback, useContext, useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, Globe2, Loader2, Sparkles } from "lucide-react";
+import { Check, Globe2, Loader2, Sparkles } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";

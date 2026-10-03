@@ -11,7 +11,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Globe, ChevronRight, Check, X, Search } from "lucide-react";
+import { Globe, ChevronRight, Check, X, Search } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { COUNTRY_HIERARCHY, COUNTRIES, COUNTRY_NAME_CHANGES, getCountryCodesForRegions } from "@/lib/constants";
 import { CountryFlag } from "@/components/ui/country-flag";

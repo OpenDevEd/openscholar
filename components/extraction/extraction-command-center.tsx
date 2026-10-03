@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { parseAsInteger, useQueryState } from "nuqs";
-import { Database, Plus } from "lucide-react";
+import { Database, Plus, ExtractionIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/lib/store";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
@@ -21,7 +21,6 @@ import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { JobListItem } from "./job-list-item";
 import type { ViewMode } from "@/lib/types";
-import { ExtractionIcon } from "@/components/section-icons";
 
 function createExtractionJobListItem(viewMode: ViewMode) {
   return function ExtractionJobListItem({

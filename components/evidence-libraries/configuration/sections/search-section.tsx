@@ -23,7 +23,7 @@ import { Field, FieldError } from "../section-card";
 import { ChoiceChips, FieldGroup, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { FeaturedInstitutionPicker } from "./institution-pickers";
-import { SearchIcon } from "@/components/section-icons";
+import { SearchIcon } from "@/components/icons";
 
 export function SearchSection({
   libraryId,

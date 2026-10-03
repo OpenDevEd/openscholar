@@ -5,7 +5,7 @@ import { useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";

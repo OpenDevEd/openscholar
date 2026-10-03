@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import {
   MoreHorizontalIcon,
   Trash2Icon,
-} from "lucide-react";
+  ChatIcon,
+} from "@/components/icons";
 import { PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,6 @@ import {
 import { ClearConversationDialog } from "./clear-conversation";
 import { SourcesPanelSheet } from "./sources-panel";
 import type { Doc } from "@/convex/_generated/dataModel";
-import { ChatIcon } from "@/components/section-icons";
 
 interface ChatHeaderProps {
   job: Doc<"extractionJobs">;

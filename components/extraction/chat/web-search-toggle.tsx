@@ -1,6 +1,6 @@
 "use client";
 
-import { Coins, Globe, Zap } from "lucide-react";
+import { Coins, Globe, Zap } from "@/components/icons";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { PromptInputButton } from "@/components/ai-elements/prompt-input";

@@ -2,7 +2,7 @@
 
 import { LibraryOrganizationPicker, useLibraryOrganizationChoice } from "./organization-picker";
 import { useAction } from "convex/react";
-import { Building2, Check, Lock, RotateCw } from "lucide-react";
+import { Building2, Check, Lock, RotateCw } from "@/components/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";

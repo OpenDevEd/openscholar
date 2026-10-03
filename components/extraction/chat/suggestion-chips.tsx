@@ -3,7 +3,7 @@
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { FileText } from "lucide-react";
+import { FileText } from "@/components/icons";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { api } from "@/convex/_generated/api";
 import { optimisticallySendMessage } from "@convex-dev/agent/react";

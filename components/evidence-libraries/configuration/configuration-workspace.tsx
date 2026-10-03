@@ -10,7 +10,29 @@ import {
   Save,
   PencilLine,
   CircleAlert,
-} from "lucide-react";
+  HomeIcon,
+  HistoryIcon,
+  SourcesIcon,
+  TeamIcon,
+  EvidenceLibrariesIcon,
+  SparklesIcon,
+  SwitchesIcon,
+  GlobeIcon,
+  PaletteIcon,
+  BuildingsIcon,
+  MenuIcon,
+  FooterIcon,
+  MailIcon,
+  CollectionsIcon,
+  SearchIcon,
+  QuoteIcon,
+  LanguagesIcon,
+  AnalyticsIcon,
+  LinkIcon,
+  PublishIcon,
+  TrashIcon,
+  type AppIcon,
+} from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
@@ -104,7 +126,6 @@ import { FileUploadsProvider } from "./use-file-uploads";
 import { useScrollSpy } from "./use-scroll-spy";
 import { ActivationControl } from "./activation-control";
 import { OPERATION_STAGE_ICONS } from "./operation-stage-icons";
-import { HomeIcon, HistoryIcon, SourcesIcon, TeamIcon, EvidenceLibrariesIcon, SparklesIcon, SwitchesIcon, GlobeIcon, PaletteIcon, BuildingsIcon, MenuIcon, FooterIcon, MailIcon, CollectionsIcon, SearchIcon, QuoteIcon, LanguagesIcon, AnalyticsIcon, LinkIcon, PublishIcon, TrashIcon, type AppIcon } from "@/components/section-icons";
 
 type DraftResult = NonNullable<
   FunctionReturnType<typeof api.evidenceLibraries.queries.getDraft>

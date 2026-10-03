@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import { FilterCountControl } from "./filter-count-control";
 import { motion, AnimatePresence } from "motion/react";
-import { Filter, X } from "lucide-react";
+import { Filter, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,

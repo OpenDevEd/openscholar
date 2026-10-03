@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { X } from "lucide-react";
+import { X } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";

@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
-import { Loader2, Wand2 } from "lucide-react";
+import { Loader2, Wand2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "./components/floating-input";
 import { QueryHistoryNav } from "./components/query-history-nav";

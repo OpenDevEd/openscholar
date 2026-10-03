@@ -9,7 +9,7 @@
 import React from "react";
 import type { SearchResult } from "@/lib/types/search.types";
 import { cn } from "@/lib/utils";
-import { Clock } from "lucide-react";
+import { Clock } from "@/components/icons";
 import { FilterChips } from "@/components/ui/filter-display";
 import type { FilterParams } from "@/lib/filters";
 import { QueryEvolution } from "@/components/ui/query-evolution";

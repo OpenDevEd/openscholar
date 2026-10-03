@@ -16,7 +16,7 @@ import {
   Clock3,
   ChevronsUpDown,
   Check,
-} from "lucide-react";
+} from "@/components/icons";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

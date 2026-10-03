@@ -2,7 +2,7 @@
 
 import React from "react";
 import { motion } from "motion/react";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import type { CommandCenterMode } from "../types";
 import { useTranslations } from "next-intl";

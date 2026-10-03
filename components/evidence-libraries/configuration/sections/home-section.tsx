@@ -11,7 +11,8 @@ import {
   RefreshCw,
   Sparkles,
   X,
-} from "lucide-react";
+  HomeIcon,
+} from "@/components/icons";
 import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -42,7 +43,6 @@ import { IconPreview, NavbarIconPicker } from "./navbar-icon-picker";
 import { PHOTO_ACCEPT, toPersonPhoto } from "../photo-upload";
 import { useDropzone } from "react-dropzone";
 import { useFileUploads } from "../use-file-uploads";
-import { HomeIcon } from "@/components/section-icons";
 
 const LIMITS = SCHEMA_LIMITS.home;
 

@@ -25,8 +25,8 @@ import {
   Award,
   AlignLeft,
   FileX,
-  LucideIcon,
-} from "lucide-react";
+  AppIcon,
+} from "@/components/icons";
 import { FilterSectionType, FilterType } from "./filter-types";
 
 export const SECTION_TITLES: Record<FilterSectionType, string> = {
@@ -38,7 +38,7 @@ export const SECTION_TITLES: Record<FilterSectionType, string> = {
   citations: "Citations",
 };
 
-export const FILTER_ICONS: Record<FilterType, LucideIcon> = {
+export const FILTER_ICONS: Record<FilterType, AppIcon> = {
   field: FileText,
   sort: ArrowUpDown,
   year: Calendar,

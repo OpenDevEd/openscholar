@@ -8,7 +8,7 @@ import { useAppToast } from "@/lib/toast";
 import { useQueryChangeHandler, useCreateSearchFilters } from "@/lib/hooks";
 import { submitNewSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2 } from "@/components/icons";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { AmbientBackground } from "@/components/home/AmbientBackground";

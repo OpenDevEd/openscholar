@@ -10,7 +10,7 @@ import { api } from "@/convex/_generated/api";
 import { collectAllPages } from "@/lib/zotero/collect-all-pages";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle, Database, Library, Loader2, Paperclip } from "lucide-react";
+import { AlertCircle, Database, Library, Loader2, Paperclip } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Cascader, type CascaderOption } from "@/components/ui/cascader";
 import { useAppToast } from "@/lib/toast";

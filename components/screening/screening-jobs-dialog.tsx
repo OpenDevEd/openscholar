@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ListChecks } from "lucide-react";
+import { ListChecks } from "@/components/icons";
 import { ScreeningJobHistory } from "@/components/screening/screening-job-history";
 
 interface ScreeningJobsDialogProps {

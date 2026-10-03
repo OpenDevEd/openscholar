@@ -2,7 +2,7 @@
 
 import { useState, memo } from "react";
 import { useTranslations } from "next-intl";
-import { Quote, FileText } from "lucide-react";
+import { Quote, FileText } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import type { PaperWithResults, Question } from "@/lib/extraction/filtering";

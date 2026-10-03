@@ -2,7 +2,7 @@
 "use no memo"; // Sync effect setCurrentQuery(urlQuery) for store; try/finally in handlers
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Search, Wand2, Loader2 } from "lucide-react";
+import { Search, Wand2, Loader2 } from "@/components/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { Button } from "@/components/ui/button";

@@ -7,7 +7,7 @@ import { isReverificationCancelledError } from "@clerk/nextjs/errors";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { BadgeCheck, Camera, Check, Loader2, LogOut, Monitor, Pencil, Smartphone, Tablet, X } from "lucide-react";
+import { BadgeCheck, Camera, Check, Loader2, LogOut, Monitor, Pencil, Smartphone, Tablet, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Enter, Paged, pagerOf } from "@/components/settings/parts";

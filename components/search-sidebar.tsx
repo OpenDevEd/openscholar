@@ -20,7 +20,7 @@ import {
   Building2,
   HandCoins,
   Award,
-} from "lucide-react";
+} from "@/components/icons";
 import {
   cn,
   isDateFilterActive,

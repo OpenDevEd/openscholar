@@ -13,7 +13,7 @@ import {
   ExternalLink,
   Settings,
   Loader2,
-} from "lucide-react";
+} from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { DownloadMenu } from "@/components/download-menu";
 import { RatingSelector } from "@/components/rating-selector";

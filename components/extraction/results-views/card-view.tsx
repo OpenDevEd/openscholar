@@ -8,7 +8,7 @@ import type { PaperWithResults, Question } from "@/lib/extraction/filtering";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";
 import { PaperDetails, ResultCell } from "./result-parts";
-import { CircleDashed, CircleX } from "lucide-react";
+import { CircleDashed, CircleX } from "@/components/icons";
 import { getCitationStatus } from "@/lib/extraction/citations";
 
 interface CardViewProps {

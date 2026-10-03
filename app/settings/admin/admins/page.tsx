@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAction, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { Check, ChevronsUpDown, Loader2, Mail, Plus, RotateCcw, Search, Trash2, UserRound } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Mail, Plus, RotateCcw, Search, Trash2, UserRound } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";

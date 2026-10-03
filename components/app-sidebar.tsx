@@ -44,7 +44,15 @@ import {
   PanelLeft,
   ChevronLeft,
   ChevronRight,
-} from "lucide-react";
+  HomeIcon,
+  LibraryIcon,
+  BookmarksIcon,
+  HistoryIcon,
+  ExtractionIcon,
+  TopicsIcon,
+  AuthorsIcon,
+  EvidenceLibrariesIcon,
+} from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
 import { ScreeningJobsDialog } from "@/components/screening/screening-jobs-dialog";
@@ -52,7 +60,6 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
-import { HomeIcon, LibraryIcon, BookmarksIcon, HistoryIcon, ExtractionIcon, TopicsIcon, AuthorsIcon, EvidenceLibrariesIcon } from "@/components/section-icons";
 
 const sidebarSpring = {
   type: "spring" as const,

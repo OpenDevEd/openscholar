@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { ExternalLink, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { ExternalLink, ChevronDown, ChevronUp, Loader2 } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

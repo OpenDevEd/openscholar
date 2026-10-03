@@ -8,7 +8,7 @@
 
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronRight, ChevronDown } from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 import { useTranslations, useLocale, useFormatter, useNow } from "next-intl";
 import type { QueryHistoryEntry } from "@/lib/types/search.types";

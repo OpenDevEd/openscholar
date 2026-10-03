@@ -29,7 +29,7 @@ import {
   Quote,
   Network,
   BookOpen,
-} from "lucide-react";
+} from "@/components/icons";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useTranslate } from "./hooks";
 import { cn } from "@/lib/utils";

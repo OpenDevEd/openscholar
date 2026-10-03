@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { PanelRightOpen } from "lucide-react";
+import { PanelRightOpen } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,

@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Trash2, Pencil, Check, X, Calendar, Copy, Search } from "lucide-react";
+import { Trash2, Pencil, Check, X, Calendar, Copy, Search } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";

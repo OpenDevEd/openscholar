@@ -1,6 +1,6 @@
 "use client";
 
-import { Coins } from "lucide-react";
+import { Coins } from "@/components/icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { Id } from "@/convex/_generated/dataModel";

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from "motion/react";
-import { Search, Loader2, Wand2 } from "lucide-react";
+import { Search, Loader2, Wand2 } from "@/components/icons";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
