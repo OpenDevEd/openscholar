@@ -10,7 +10,6 @@ import {
   Globe,
   Quote,
   Network,
-  FileText,
   Shapes,
   Globe2,
   Library,
@@ -48,7 +47,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ReviewFilter } from "./review-filter";
 import { ResearchAreaFilter } from "./research-area-filter";
 import { FunderFilter } from "./funder-filter";
 import { useLocale, useTranslations } from "next-intl";
@@ -377,29 +375,6 @@ const RelatedToFilterPanel = React.memo(function RelatedToFilterPanel() {
   );
 });
 
-// Review Filter Component
-const ReviewFilterPanel = React.memo(function ReviewFilterPanel() {
-  const tf = useTranslations("searchFilters");
-  const { reviewFilter } = useCurrentSearchFormState();
-  const updateFilter = useUpdateSearchFilter();
-  const isReviewActive = isReviewFilterActive(reviewFilter);
-
-  const handleClearReviewFilter = React.useCallback(() => {
-    updateFilter({ reviewFilter: DEFAULT_FILTERS.reviewFilter });
-  }, [updateFilter]);
-
-  return (
-    <FilterSection
-      title={tf("reviewFilter")}
-      icon={FileText}
-      isActive={isReviewActive}
-      onClear={isReviewActive ? handleClearReviewFilter : undefined}
-    >
-      <ReviewFilter />
-    </FilterSection>
-  );
-});
-
 const toggled = (list: readonly string[], id: string) =>
   list.includes(id) ? list.filter((one) => one !== id) : [...list, id];
 
@@ -508,9 +483,9 @@ function SwitchRow({
 
 const OnlyShowFilterPanel = React.memo(function OnlyShowFilterPanel() {
   const tf = useTranslations("searchFilters");
-  const { openAccessOnly, hasAbstract, includeRetracted } = useCurrentSearchFormState();
+  const { openAccessOnly, hasAbstract, includeRetracted, reviewFilter } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
-  const isActive = openAccessOnly || hasAbstract || includeRetracted;
+  const isActive = openAccessOnly || hasAbstract || includeRetracted || isReviewFilterActive(reviewFilter);
   return (
     <FilterSection
       title={tf("onlyShow")}
@@ -518,7 +493,7 @@ const OnlyShowFilterPanel = React.memo(function OnlyShowFilterPanel() {
       isActive={isActive}
       onClear={
         isActive
-          ? () => updateFilter({ openAccessOnly: false, hasAbstract: false, includeRetracted: false })
+          ? () => updateFilter({ openAccessOnly: false, hasAbstract: false, includeRetracted: false, reviewFilter: DEFAULT_FILTERS.reviewFilter })
           : undefined
       }
     >
@@ -536,6 +511,13 @@ const OnlyShowFilterPanel = React.memo(function OnlyShowFilterPanel() {
           hint={tf("worksWithAbstractHint")}
           checked={hasAbstract}
           onCheckedChange={(checked) => updateFilter({ hasAbstract: checked })}
+        />
+        <SwitchRow
+          id="review-filter"
+          label={tf("reviews")}
+          hint={tf("reviewFilterDescription")}
+          checked={reviewFilter}
+          onCheckedChange={(checked) => updateFilter({ reviewFilter: checked })}
         />
         <SwitchRow
           id="retracted-filter"
@@ -713,6 +695,8 @@ export const SidebarContent = React.memo(function SidebarContent({
       {isCitedByActive && <CitedByFilterPanel />}
       {isRelatedToActive && <RelatedToFilterPanel />}
 
+      <OnlyShowFilterPanel />
+
       {/* Date Filter */}
       <DateFilterPanel />
 
@@ -728,9 +712,6 @@ export const SidebarContent = React.memo(function SidebarContent({
       {/* Sort Options - Dropdown */}
       {!hidePanels.includes("sort") && <SortOptionsPanel />}
 
-      {/* Review Filter */}
-      <ReviewFilterPanel />
-
       <WorkTypeFilterPanel />
       <WorkLanguageFilterPanel />
       <ResearchAreaFilterPanel />
@@ -738,7 +719,6 @@ export const SidebarContent = React.memo(function SidebarContent({
       <InstitutionTypeFilterPanel />
       <FunderFilterPanel />
       <MinCitationsFilterPanel />
-      <OnlyShowFilterPanel />
 
       {/* Cites Filter (when not active) */}
       {!isCitesActive && <CitesFilterPanel />}
