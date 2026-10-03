@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { CompactQuestionList } from "./components/compact-question-list";
 import { useSearchHistoryStore, useTransientScreeningStore } from "@/lib/store";
 import { useGenerateScreeningQuestions } from "@/lib/ai/client/router";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
+import { ensureQueryShortcuts, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { useQueryShortcuts } from "@/lib/research/reads";
 import { commandCenterSpring } from "@/lib/animation-config";
 import { useCooldown } from "@/lib/hooks/use-cooldown";
@@ -172,8 +172,10 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
 
     setIsGenerating(true);
     try {
+      // The question is the query with its shortcuts expanded, so they're read first.
+      await ensureQueryShortcuts(searchQuery);
       const result = await generateQuestions({
-        researchQuestion,
+        researchQuestion: lastQuestionFromHistory || validateAndExpandKeywordsSilently(searchQuery).expandedQuery,
         existingQuestions: screeningQuestions.map((q) => q.question),
         responseLanguage: localeToLanguageCode(locale),
       });

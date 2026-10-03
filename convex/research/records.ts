@@ -511,6 +511,8 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       else await ctx.db.insert("queryShortcuts", { userId, data, sortName: shortcutSortName(command.shorthand) });
       return;
     }
+    case "clearSearches": return await clearBatch(ctx, userId, author, Date.now());
+    case "clearShortcuts": return await clearShortcutBatch(ctx, userId, Date.now());
     case "rating": {
       if (!command.paperId || (command.rating !== null && (!Number.isInteger(command.rating) || command.rating < 0 || command.rating > 5))) throw new Error("Rating must be an integer from 0 to 5.");
       const row = await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique();
@@ -529,7 +531,7 @@ async function received(ctx: MutationCtx, userId: Id<"users">, key: string) {
 export const changeAction = defineUserMutation({
   path: "research/records:change",
   description:
-    "Changes the person's research records: create, edit or delete a saved search, set or remove a query shortcut, or rate a paper. Edits to a search show live on the person's open page and are kept as revisions.",
+    "Changes the person's research records: create, edit or delete a saved search, set or remove a query shortcut, rate a paper, or clear every saved search or every shortcut they have (a batch at a time; searches keep their revisions). Edits to a search show live on the person's open page and are kept as revisions.",
   args: { requestId: v.string(), command: commandValidator },
   returns: v.null(),
   spendsCredits: false,
@@ -571,22 +573,6 @@ async function clearBatch(ctx: MutationCtx, userId: Id<"users">, author: Author,
   if (!batch.isDone || deleted.length < batch.page.length) await ctx.scheduler.runAfter(0, internal.research.records.clearSearchesBatch, { userId, author, before });
 }
 
-export const clearSearchesAction = defineUserMutation({
-  path: "research/records:clearSearches",
-  description: "Deletes every saved search the person has now, a batch at a time; each keeps its revisions.",
-  args: {},
-  returns: v.null(),
-  spendsCredits: false,
-  outsideEffect: false,
-  undoable: false,
-  run: async (ctx, userId, _args, author: Author) => {
-    await clearBatch(ctx, userId, author, Date.now());
-    return null;
-  },
-});
-export const clearSearches = accountMutation(clearSearchesAction);
-export const clearSearchesForAssistant = assistantMutation(clearSearchesAction);
-
 /** Shortcuts one clearing transaction deletes, and the bytes of them it reads. */
 const CLEAR_SHORTCUTS = 100;
 
@@ -597,22 +583,6 @@ async function clearShortcutBatch(ctx: MutationCtx, userId: Id<"users">, before:
   for (const shortcut of batch.page) await ctx.db.delete("queryShortcuts", shortcut._id);
   if (!batch.isDone) await ctx.scheduler.runAfter(0, internal.research.records.clearShortcutsBatch, { userId, before });
 }
-
-export const clearShortcutsAction = defineUserMutation({
-  path: "research/records:clearShortcuts",
-  description: "Deletes every query shortcut the person has now, a batch at a time.",
-  args: {},
-  returns: v.null(),
-  spendsCredits: false,
-  outsideEffect: false,
-  undoable: false,
-  run: async (ctx, userId) => {
-    await clearShortcutBatch(ctx, userId, Date.now());
-    return null;
-  },
-});
-export const clearShortcuts = accountMutation(clearShortcutsAction);
-export const clearShortcutsForAssistant = assistantMutation(clearShortcutsAction);
 
 export const clearShortcutsBatch = internalMutation({
   args: { userId: v.id("users"), before: v.number() },

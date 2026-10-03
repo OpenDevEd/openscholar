@@ -241,4 +241,62 @@ describe("research save recovery", () => {
     expect(commands).toEqual([{ kind: "shortcut", shorthand: "ml", value: { expansion: "machine learning", createdAt: 5 } }]);
     stop();
   });
+
+  it("refuses to go on when a shortcut couldn't be looked up, keeps a slow lookup waiting, and clears in turn with the saves around it", async () => {
+    vi.useFakeTimers();
+    try {
+      let answer: "slow" | "fail" | "ready" = "slow";
+      const updates = new Set<() => void>();
+      const stopped = vi.fn();
+      const commands: ResearchCommand[] = [];
+      const client = {
+        watchQuery(_query: unknown, args: { names?: string[] }) {
+          return {
+            localQueryResult: () => {
+              if (!args.names || answer === "ready") return { page: [], isDone: true, continueCursor: "" };
+              if (answer === "fail") throw new Error("Server Error");
+              return undefined;
+            },
+            onUpdate: (update: () => void) => { updates.add(update); return () => { updates.delete(update); if (args.names) stopped(); }; },
+          };
+        },
+        mutation: vi.fn(async (_query: unknown, args: { command: ResearchCommand }) => { commands.push(args.command); return null; }),
+      } as unknown as ConvexReactClient;
+      const session = new ResearchSession(client, "alice");
+      const stop = session.subscribe(() => {});
+      await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
+      const shortcuts = session.stores.shortcuts.getState();
+
+      // A lookup that takes longer than its keep-alive still holds its read and still answers.
+      const slow = shortcuts.ensureShortcuts(["rct"]);
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(stopped).not.toHaveBeenCalled();
+      answer = "ready";
+      for (const update of updates) update();
+      await expect(slow).resolves.toBeUndefined();
+
+      // Two holders of one read: whichever lets go last, the name can be looked up again.
+      const first = session.watchShortcuts(["ml"], () => {});
+      const second = session.watchShortcuts(["ml"], () => {});
+      first();
+      second();
+      await vi.advanceTimersByTimeAsync(0);
+      session.watchShortcuts(["ml"], () => {})();
+
+      // A lookup that failed doesn't pass for "no such shortcut".
+      answer = "fail";
+      await expect(shortcuts.ensureShortcuts(["taken"])).rejects.toThrow("couldn't be read");
+      await expect(shortcuts.importKeywords([{ name: "taken", expansion: "would overwrite" }])).rejects.toThrow("couldn't be read");
+
+      shortcuts.addKeyword("one", "first");
+      shortcuts.addKeyword("two", "second");
+      shortcuts.clearKeywords();
+      expect(session.stores.shortcuts.getState().keywords).toEqual({});
+      await vi.waitFor(() => expect(session.getSnapshot().pending).toBe(0));
+      expect(commands.map(command => command.kind === "shortcut" ? command.shorthand : command.kind)).toEqual(["one", "two", "clearShortcuts"]);
+      stop();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

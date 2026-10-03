@@ -17,7 +17,7 @@ type ReadsById<T> = { reads: Map<string, Watch<Page<T>>>; by: Map<string, string
 const ENSURE_MS = 10_000;
 type Subscription<T> = { localQueryResult: () => T | undefined; onUpdate: (callback: () => void) => () => void };
 /** A read a page holds open: who wants it, how it's opened, what Convex has (undefined while loading), and whether it failed. */
-type Watch<T> = { readers: Set<() => void>; open: () => Subscription<T>; stop: () => void; value: T | undefined; failed: boolean };
+type Watch<T> = { readers: Set<() => void>; open: () => Subscription<T>; stop: () => void; closed: () => void; value: T | undefined; failed: boolean };
 export type WatchedStatus = "loading" | "found" | "missing" | "failed";
 
 function newSearch(input: Parameters<SearchHistoryState["addSearchResult"]>[0]): SearchResult {
@@ -83,7 +83,7 @@ export class ResearchSession {
       getSearchResult: current,
       removeSearchResult: id => this.dispatch({ kind: "deleteSearch", id }),
       // On the server, a batch at a time: the browser holds only the searches it shows.
-      clearSearchHistory: () => { void this.client.mutation(api.research.records.clearSearches, { accountId: this.accountId }).catch(this.fail); },
+      clearSearchHistory: () => this.dispatch({ kind: "clearSearches" }),
       migrateSearchResult: search => search.id,
       importSearchHistory: rows => {
         for (const row of rows) {
@@ -98,12 +98,22 @@ export class ResearchSession {
       updateKeyword: (shorthand, expansion, createdAt) => this.dispatch({ kind: "shortcut", shorthand, value: { expansion, createdAt } }),
       removeKeyword: shorthand => this.dispatch({ kind: "shortcut", shorthand, value: null }),
       // On the server, a batch at a time: the browser holds only the shortcuts in use.
-      clearKeywords: () => { void this.client.mutation(api.research.records.clearShortcuts, { accountId: this.accountId }).catch(this.fail); },
+      clearKeywords: () => this.dispatch({ kind: "clearShortcuts" }),
       expandQuery: query => expandShortcuts(query, shortcutExpansions(shortcuts.getState().keywords)),
-      ensureShortcuts: names => new Promise<void>(resolve => {
+      ensureShortcuts: names => new Promise<void>((resolve, reject) => {
         const unique = [...new Set(names)];
-        const settle = () => { if (this.idsRead(this.named, unique) === unique.length) resolve(); };
-        setTimeout(this.watchShortcuts(unique, settle), ENSURE_MS);
+        let release = () => {};
+        let settled = false;
+        const settle = () => {
+          if (settled || this.idsRead(this.named, unique) !== unique.length) return;
+          settled = true;
+          // Held a while longer, for the code after the action's wait to expand with.
+          setTimeout(() => release(), ENSURE_MS);
+          // A name that couldn't be looked up isn't known to be free, or to expand to nothing.
+          if (unique.some(name => this.named.reads.get(this.named.by.get(name) ?? "")?.failed)) reject(new Error("Your bookmarks couldn't be read."));
+          else resolve();
+        };
+        release = this.watchShortcuts(unique, settle);
         settle();
       }),
       importKeywords: async rows => {
@@ -244,7 +254,7 @@ export class ResearchSession {
   private hold<T>(reads: Map<string, Watch<T>>, key: string, open: () => Subscription<T>, reader: () => void, known?: T, closed: () => void = () => {}) {
     let entry = reads.get(key);
     if (!entry) {
-      const opened: Watch<T> = { readers: new Set(), open, stop: () => {}, value: known, failed: false };
+      const opened: Watch<T> = { readers: new Set(), open, stop: () => {}, closed, value: known, failed: false };
       reads.set(key, (entry = opened));
       this.read(opened);
       if (known !== undefined && opened.value === known) this.render();
@@ -257,7 +267,8 @@ export class ResearchSession {
         if (held.readers.size || reads.get(key) !== held) return;
         held.stop();
         reads.delete(key);
-        closed();
+        // The read's own tidying, whichever holder let go last.
+        held.closed();
         this.render();
         this.settle();
       });
@@ -351,6 +362,8 @@ export class ResearchSession {
           return applySearchEdit(row, edit, row.updatedAt);
         }); break;
         case "shortcut": if (command.value) keywords[command.shorthand] = command.value; else delete keywords[command.shorthand]; break;
+        case "clearSearches": searches = []; break;
+        case "clearShortcuts": for (const shorthand of Object.keys(keywords)) delete keywords[shorthand]; break;
         case "rating": if (command.rating === null) delete ratings[command.paperId]; else ratings[command.paperId] = command.rating;
       }
     }

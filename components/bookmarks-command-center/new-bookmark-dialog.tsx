@@ -49,7 +49,11 @@ export function NewBookmarkDialog() {
     const trimmedName = name.trim();
     const trimmedExpansion = expansion.trim();
     // An account looks the name up, to say whether it's taken.
-    if (trimmedName) await useKeywordExpansionStore.getState().ensureShortcuts([trimmedName]);
+    try {
+      if (trimmedName) await useKeywordExpansionStore.getState().ensureShortcuts([trimmedName]);
+    } catch {
+      return;
+    }
     const error = nameError(trimmedName) ?? (trimmedExpansion ? null : tv("expansionTextEmpty"));
     if (error) {
       toast.validation.failed(error);

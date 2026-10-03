@@ -293,7 +293,7 @@ describe("account research records", () => {
     await t.finishAllScheduledFunctions(() => {});
     expect(await count(alice, "alice")).toBe(59);
 
-    await alice.mutation(api.research.records.clearSearches, { accountId: "alice" });
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "clear", command: { kind: "clearSearches" } });
     await t.finishAllScheduledFunctions(() => {});
     expect(await count(alice, "alice")).toBe(0);
     expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts })).page).toEqual([]);
@@ -338,9 +338,9 @@ describe("account research records", () => {
       { shorthand: "rct", expansion: "randomized controlled trial", createdAt: 3 },
       { shorthand: "ml", expansion: "machine learning", createdAt: 2 },
     ]);
-    await expect(alice.query(api.research.records.shortcutsOf, { accountId: "alice", names: Array.from({ length: 201 }, (_, i) => `n${i}`) })).rejects.toThrow("200 names at a time");
+    await expect(alice.query(api.research.records.shortcutsOf, { accountId: "alice", names: Array.from({ length: 16 }, (_, i) => `n${i}`) })).rejects.toThrow("15 names at a time");
 
-    await alice.mutation(api.research.records.clearShortcuts, { accountId: "alice" });
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "clear", command: { kind: "clearShortcuts" } });
     await t.finishAllScheduledFunctions(() => {});
     expect(await listed({ sort: "recent" })).toEqual([]);
     expect(await alice.query(api.research.records.countShortcuts, { accountId: "alice" })).toBe(0);
@@ -354,7 +354,7 @@ describe("account research records", () => {
       for (const start of [0, 13]) await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: Array.from({ length: 13 }, (_, i) => ({ search: { ...record, id: `old-${start + i}` } })), shortcuts: [], ratings: [] });
       vi.setSystemTime(Date.now() + 1_000);
       // The first batch is gone; the second waits for its turn.
-      await alice.mutation(api.research.records.clearSearches, { accountId: "alice" });
+      await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "clear", command: { kind: "clearSearches" } });
       vi.setSystemTime(Date.now() + 1_000);
       await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "new", command: { kind: "createSearch", search: { ...record, id: "new" } } });
       await t.finishAllScheduledFunctions(vi.runAllTimers);

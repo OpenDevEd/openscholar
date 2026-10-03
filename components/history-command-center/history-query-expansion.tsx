@@ -91,7 +91,11 @@ export function HistoryQueryExpansion({
       return;
     }
     // An account looks up the name, to say whether it's taken, and the shortcuts the query names.
-    await useKeywordExpansionStore.getState().ensureShortcuts([bookmarkName.trim(), ...shortcutNames(query)]);
+    try {
+      await useKeywordExpansionStore.getState().ensureShortcuts([bookmarkName.trim(), ...shortcutNames(query)]);
+    } catch {
+      return;
+    }
     if (useKeywordExpansionStore.getState().keywords[bookmarkName.trim()]) {
       toast.validation.failed(tv("bookmarkNameExists", { name: bookmarkName }));
       return;

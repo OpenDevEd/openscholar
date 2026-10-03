@@ -175,9 +175,9 @@ export function SearchMode({ isLoading, isValidating, allowEmpty = false }: Sear
         return;
       }
       setIsTranslating(true);
-      await ensureQueryShortcuts(localInputValue);
-      const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
       try {
+        await ensureQueryShortcuts(localInputValue);
+        const { expandedQuery } = validateAndExpandKeywordsSilently(localInputValue);
         const result = await translateQueryFn({
           query: expandedQuery,
           targetLanguage,

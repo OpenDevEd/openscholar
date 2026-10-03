@@ -23,9 +23,11 @@ import { shortcutSortName } from "../../lib/query-shortcuts";
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
+// Batches small enough for the largest records: a search or shortcut can be up to 1 MiB,
+// and each is read again by the count it starts.
 export const prepareSearches = migrations.define({
   table: "searches",
-  batchSize: 50,
+  batchSize: 5,
   migrateOne: async (ctx, search) => {
     await startCount(ctx, "searches", search.userId);
   },
@@ -33,7 +35,7 @@ export const prepareSearches = migrations.define({
 
 export const prepareShortcuts = migrations.define({
   table: "queryShortcuts",
-  batchSize: 50,
+  batchSize: 5,
   migrateOne: async (ctx, shortcut) => {
     await startCount(ctx, "queryShortcuts", shortcut.userId);
     const sortName = shortcutSortName(shortcut.data.shorthand);
@@ -48,9 +50,8 @@ export const verifyPage = internalQuery({
   args: { table: v.union(v.literal("searches"), v.literal("queryShortcuts")), cursor: v.union(v.string(), v.null()) },
   returns: v.object({ wrong: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, { table, cursor }) => {
-    const page = table === "searches"
-      ? await ctx.db.query("searches").paginate({ cursor, numItems: 20 })
-      : await ctx.db.query("queryShortcuts").paginate({ cursor, numItems: 100 });
+    const read = { cursor, numItems: 50, maximumBytesRead: 4 * 1024 * 1024 };
+    const page = table === "searches" ? await ctx.db.query("searches").paginate(read) : await ctx.db.query("queryShortcuts").paginate(read);
     let wrong = page.page.filter((row) => !("localId" in row) && row.sortName !== shortcutSortName(row.data.shorthand)).length;
     for (const userId of new Set(page.page.map((row) => row.userId))) {
       const row = await countRow(ctx, table, userId);
