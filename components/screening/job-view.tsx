@@ -424,7 +424,7 @@ function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Pape
       <div className="flex items-center gap-3">
         <span className={cn("inline-flex shrink-0 items-center gap-1.5 text-sm font-medium", text)}><OutcomeIcon className="size-4" />{t(`outcome.${paper.outcome}`)}</span>
         {/* The score as a track, with a mark where a paper starts to be included. */}
-        <div className="relative h-2 min-w-0 flex-1 rounded-full bg-muted" role="img" aria-label={t("scoreOf", { score, max, minimum })}>
+        <div className="relative h-2 min-w-0 flex-1 rounded-full bg-muted" role="img" aria-label={t("scoreLabel", { score, max, minimum })}>
           <div className={cn("h-full rounded-full transition-[width] duration-500 ease-out motion-reduce:transition-none", bar)} style={{ width: `${max ? (score / max) * 100 : 0}%` }} />
           <span aria-hidden className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded-full bg-foreground/70" style={{ left: `${max ? (minimum / max) * 100 : 0}%` }} />
         </div>

@@ -1,5 +1,5 @@
-import { ScreeningMock } from "@/components/screening-mock/screening-mock";
+import { ScreeningPage } from "@/components/screening/screening-page";
 
-export default function ScreeningPage() {
-  return <ScreeningMock />;
+export default function Page() {
+  return <ScreeningPage />;
 }
