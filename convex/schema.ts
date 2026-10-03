@@ -926,6 +926,8 @@ export default defineSchema({
     // The last paper of the whole request when one job can't hold it: the job for the next
     // papers starts when this one completes.
     through: v.optional(v.number()),
+    // Where a collection, the saved papers or a job's papers go on after this job's (./paperSets/held.ts).
+    resume: v.optional(v.string()),
     // Its included papers aren't saved anywhere.
     unsaved: v.optional(v.literal(true)),
     // Papers that end excluded or failed leave the collection it read (`set`).

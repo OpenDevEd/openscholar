@@ -16,6 +16,7 @@ import {
 } from "./validators";
 import { progressRow } from "./bookkeeping";
 import { paperLimit } from "./slots";
+import { answeredFully, screeningFor } from "../research/answers";
 import { SCREENING_POOL_SIZE } from "../workpool";
 import { jobAnswers } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
@@ -85,6 +86,21 @@ export const slotsAction = defineUserQuery({
 export const slots = userQuery(slotsAction);
 export const slotsForAssistant = assistantQuery(slotsAction);
 
+/** Papers one read checks for answers: each is an indexed read of a row of up to 50 answers. */
+const ANSWERED_PAPERS_MAX = 250;
+
+/** How many of these papers the person's search already answers every one of `questions` for, on its page. */
+export const answeredCount = internalQuery({
+  args: { userId: v.id("users"), searchId: v.string(), questions: v.array(v.string()), paperIds: v.array(v.string()) },
+  returns: v.number(),
+  handler: async (ctx, { userId, searchId, questions, paperIds }) => {
+    if (paperIds.length > ANSWERED_PAPERS_MAX) throw new Error(`Answered papers are counted ${ANSWERED_PAPERS_MAX} at a time`);
+    const search = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", searchId)).unique();
+    const screening = search && (await screeningFor(ctx, search._id));
+    return screening ? (await answeredFully(ctx, screening, questions, paperIds)).size : 0;
+  },
+});
+
 /**
  * A completed job of a request that goes on past it, as the request's next job takes it
  * over: its papers' set, where the request ends, and the questions, rules and destination.
@@ -98,6 +114,7 @@ export const requestJob = internalQuery({
       set: paperSetValidator,
       through: v.number(),
       label: v.optional(v.string()),
+      resume: v.optional(v.string()),
       questions: screeningQuestionsValidator,
       scoringConfig: screeningScoringConfigValidator,
       saveTo: v.optional(saveToValidator),
@@ -111,6 +128,7 @@ export const requestJob = internalQuery({
     return {
       userId: job.userId, set: job.set, through: job.through, questions: job.questions, scoringConfig: job.scoringConfig,
       ...(job.label ? { label: job.label } : {}),
+      ...(job.resume ? { resume: job.resume } : {}),
       ...(saveTo ? { saveTo } : {}),
       ...(job.prune ? { prune: true } : {}),
     };

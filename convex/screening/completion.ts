@@ -18,7 +18,8 @@ export type CompletedScreeningRowDetails = {
 type CompletionTransitionInput = {
   currentRowStatus: ScreeningResultStatus;
   jobStatus: ScreeningJobStatus;
-  resultKind: "success" | "failure";
+  // "canceled": its queued work was dropped because its job ended, so it was never screened.
+  resultKind: "success" | "failure" | "canceled";
   completedRowDetails?: CompletedScreeningRowDetails;
 };
 
@@ -43,14 +44,14 @@ export function deriveCompletionTransition(
     return { kind: "noop" };
   }
 
-  if (input.resultKind !== "success") {
+  if (input.resultKind === "failure") {
     return {
       kind: "patch",
       rowPatch: { status: "failed", outcome: "failed" },
     };
   }
 
-  if (input.jobStatus !== "processing") {
+  if (input.resultKind === "canceled" || input.jobStatus !== "processing") {
     return {
       kind: "patch",
       rowPatch: { status: "skipped" },

@@ -96,6 +96,7 @@ describe("Screen all on papers the account holds", () => {
     await expect(bob.action(api.screening.start.screen, { set: { kind: "screening", jobId }, first: 1, last: 2, ...job, saveTo: { kind: "none" } })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
     await expect(alice.action(api.screening.start.screen, { set: { kind: "collection", collectionId }, first: 9, last: 12, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/no papers in that range/);
     await expect(alice.action(api.screening.start.screen, { set: { kind: "saved" }, first: 1, last: 2, ...job, saveTo: { kind: "none" }, prune: true })).rejects.toThrow(/Only a collection/);
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "saved" }, first: 1, last: Infinity, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/first before the last/);
   });
 });
 
@@ -118,6 +119,25 @@ describe("where a job's papers go", () => {
     // And one that excludes a paper takes it out.
     await alice.mutation(api.screening.papers.answer, { jobId, paperId: W(4), questionKey: "q1", answer: false });
     expect(await inCollectionNow(collectionId)).toEqual([W(1), W(2)]);
+  });
+
+  it("leaves papers it never screened in the collection when a pruning job is cancelled, and keeps what a late paper cost", async () => {
+    const { t, alice, collectionId, results, inCollectionNow, read } = await setup();
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "collection", collectionId }, first: 1, last: 4, ...job, saveTo: { kind: "none" }, prune: true });
+    const [late] = await results(jobId);
+
+    // Cancelled while its papers are queued; one paper's answer and its charge arrive after.
+    await t.run((ctx) => ctx.db.patch("screeningJobs", jobId, { status: "cancelled" }));
+    await t.mutation(internal.screening.mutations.handleScreeningComplete, {
+      workId: late.workId!, context: { jobId, resultId: late._id },
+      result: { kind: "success", returnValue: { responses: encodeQuestionResponseMap({ "Randomized?": false }), confidences: {}, confidence: 0.8, credits: 3 } },
+    });
+    await t.mutation(internal.screening.mutations.endScreeningWork, { jobId, cursor: null });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect((await results(jobId)).map((paper) => paper.status)).toEqual(["skipped", "skipped", "skipped", "skipped"]);
+    expect(await inCollectionNow(collectionId)).toEqual([1, 2, 3, 4].map(W));
+    expect(await read(jobId)).toMatchObject({ status: "cancelled", credits: { spent: 3 } });
   });
 
   it("saves nothing, and leaves the collection it read alone, when told to", async () => {
@@ -156,6 +176,22 @@ describe("a request bigger than one job", () => {
     expect(await jobs()).toHaveLength(2);
   });
 
+  it("reads on from where the last job stopped, so a collection it prunes keeps its unread papers in place", async () => {
+    const { t, userId, collectionId, results, answerAll, inCollectionNow } = await setup();
+    // The first job as `screen` makes it for a request through paper 4: papers 1 to 2, and where the collection goes on.
+    const head = await t.query(internal.paperSets.held.page, { userId, set: { kind: "collection", collectionId }, cursor: null, numItems: 2 });
+    const first = await t.mutation(internal.screening.mutations.createScreeningJobForUser, {
+      userId, author: "user", papers: head.page, set: { kind: "collection", collectionId }, first: 1, last: 2, through: 4, resume: head.continueCursor, ...job, saveTo: { kind: "none" }, prune: true,
+    });
+
+    // Both excluded (W4 and W3, the newest saved): they leave the collection, which now holds only the two papers still to come.
+    await answerAll(first.jobId, []);
+    const [, second] = await t.run((ctx) => ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", userId)).order("asc").take(10));
+    expect((await results(second._id)).map((paper) => paper.openalexId)).toEqual([W(2), W(1)]);
+    expect(second).toMatchObject({ first: 3, last: 4, prune: true });
+    expect(await inCollectionNow(collectionId)).toEqual(expect.not.arrayContaining([W(3), W(4)]));
+  });
+
   it("ends with a job that's cancelled", async () => {
     const { t, alice, userId } = await setup();
     const papers = [6, 5].map((i) => ({ openalexId: W(i), title: `Paper ${i}` }));
@@ -187,7 +223,8 @@ describe("a job on a search whose page already answered some papers", () => {
   };
 
   it("keeps those papers' answers without asking the model, and counts them", async () => {
-    const { t, alice, userId, results, answerAll, read } = await setup();
+    // Credits for the one new paper only: the two already answered cost nothing.
+    const { t, alice, userId, results, answerAll, read } = await setup({ credits: 5 });
     await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: [{ search }], shortcuts: [], ratings: [] });
     const papers = [1, 2, 3].map((i) => ({ openalexId: W(i), title: `Paper ${i}` }));
     // The search's page answered W1 (by a person) and W2 (by the model); W3 is new.
@@ -198,7 +235,9 @@ describe("a job on a search whose page already answered some papers", () => {
       await answerPaper(ctx, screeningId, W(2), [{ question: "Randomized?", response: false }], "model", 1);
     });
 
-    const { jobId } = await t.mutation(internal.screening.mutations.createScreeningJobForUser, { userId, author: "user", papers, set: { kind: "search", searchId: search.id }, first: 1, last: 3, ...job, saveTo: { kind: "none" } });
+    // What `screen` counts before it makes the job, so the credit check leaves these papers out.
+    expect(await t.query(internal.screening.queries.answeredCount, { userId, searchId: search.id, questions: ["Randomized?"], paperIds: papers.map((paper) => paper.openalexId) })).toBe(2);
+    const { jobId } = await t.mutation(internal.screening.mutations.createScreeningJobForUser, { userId, author: "user", papers, set: { kind: "search", searchId: search.id }, first: 1, last: 3, answered: 2, ...job, saveTo: { kind: "none" } });
 
     // Only the new paper took a slot; the estimate covers it alone.
     expect((await results(jobId)).map((paper) => [paper.status, paper.workId === undefined])).toEqual([["completed", true], ["completed", true], ["processing", false]]);

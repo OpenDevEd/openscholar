@@ -60,6 +60,10 @@ describe("deriveCompletionTransition", () => {
     });
   });
 
+  it("skips a paper whose queued work was dropped, since it was never screened", () => {
+    expect(deriveCompletionTransition({ currentRowStatus: "processing", jobStatus: "cancelled", resultKind: "canceled" })).toEqual({ kind: "patch", rowPatch: { status: "skipped" } });
+  });
+
   it("does not schedule library persistence for completed but non-qualified rows", () => {
     expect(
       deriveCompletionTransition({
