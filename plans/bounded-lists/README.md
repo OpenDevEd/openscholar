@@ -65,6 +65,28 @@ Convex's limits or the browser's memory.
 Each issue is one PR, or a few when an area is large. A PR removes the pending
 entries it fixes; the gate fails if a fixed entry stays listed.
 
+## The research session (#420, last part)
+
+`lib/research/session.ts` keeps every saved search, query shortcut and rating in
+client stores (`watchPages` reads every page), and about 27 files read those
+stores whole. Signed out, the same stores live in the browser, so they stay;
+signed in, each consumer reads only what it shows, through hooks that read the
+local store or Convex by mode:
+
+1. Searches. Lists (history page, sidebar recents, extraction and Evidence
+   Library pickers) page through search summaries with no screening answers.
+   The search a page works on is read by ID (`research/records:getSearch`).
+   Edits keep their instant feel through Convex optimistic updates on those
+   queries, replacing the session's pending-command overlay. Clearing history
+   deletes in batches on the server.
+2. Ratings. A results page reads the ratings of the papers it shows, at most a
+   results page's 200, by paper ID.
+3. Shortcuts. The Bookmarks page pages them; a query's expansion reads only the
+   shortcut names it uses.
+
+Each stage is one PR and removes `watchPages` for its records; the last
+removes it. The assistant's tools already read these records by page or ID.
+
 ## Data
 
 Paging changes no stored data. Caps (#426) audit shared dev first: a record
