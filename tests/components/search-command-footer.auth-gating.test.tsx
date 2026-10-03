@@ -180,6 +180,7 @@ vi.mock("@/lib/search", () => ({
 }));
 
 vi.mock("@/lib/store", () => ({
+  useKeywordExpansionStore: { getState: () => ({ ensureShortcuts: async () => {}, expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }) },
   useCurrentQuestionStore: () => ({ currentQuestion: "" }),
   useSearchHistoryStore: <T,>(selector: (state: unknown) => T) =>
     selector({

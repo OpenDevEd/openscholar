@@ -18,6 +18,7 @@ import { searchResultToParams } from "../../lib/search-params/converters";
 import { paramsToBucketSearchFilters } from "../../lib/chat/params-to-bucket-filters";
 import { isRatingFilterActive } from "../../lib/utils";
 import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
+import { ratingsAmong, shortcutExpansions } from "../research/records";
 import { readSearchWorks, searchRequestValidator } from "./openalex";
 
 /** The fields a screening paper keeps. */
@@ -44,12 +45,7 @@ export const readSearch = internalQuery({
     const saved = currentSearch(row.data);
     const params = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(restoreSearch({ ...saved, screeningResponses: [] })), q: saved.query };
     // The account's shortcuts this query uses, as the results page expands them.
-    const shortcuts = await Promise.all(
-      shortcutNames(saved.query).map((name) =>
-        ctx.db.query("queryShortcuts").withIndex("by_user_and_shorthand", (q) => q.eq("userId", userId).eq("data.shorthand", name)).first(),
-      ),
-    );
-    const expansions = Object.fromEntries(shortcuts.flatMap((row) => (row ? [[row.data.shorthand, row.data.expansion]] : [])));
+    const expansions = await shortcutExpansions(ctx, userId, shortcutNames(saved.query));
     const request = paramsToBucketSearchFilters(params, { expand: (query) => expandShortcuts(query, expansions) })?.openAlexQuery ?? null;
     const ratingRange: [number, number] = [params.rmin, params.rmax];
     return { clerkId: user.clerkId, request, ratingRange: isRatingFilterActive(ratingRange, params.rated) ? ratingRange : null };
@@ -62,10 +58,7 @@ export const ratingsOf = internalQuery({
   returns: v.array(v.object({ paperId: v.string(), rating: v.number() })),
   handler: async (ctx, { userId, paperIds }) => {
     if (paperIds.length > MAX_SCREENING_PAPERS_PER_JOB) throw new Error(`Rated papers are read ${MAX_SCREENING_PAPERS_PER_JOB} at a time`);
-    const rows = await Promise.all(
-      paperIds.map((paperId) => ctx.db.query("paperRatings").withIndex("by_user_and_paperId", (q) => q.eq("userId", userId).eq("data.paperId", paperId)).first()),
-    );
-    return rows.flatMap((row) => (row ? [row.data] : []));
+    return await ratingsAmong(ctx, userId, paperIds);
   },
 });
 

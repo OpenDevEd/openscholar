@@ -1,9 +1,9 @@
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
-import { api } from "../_generated/api";
+import { describe, expect, it, vi } from "vitest";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { applyCommand, moveSearchAnswers, verifyMovedAnswers } from "./records";
-import { restoreSearch, serializeSearch, type SavedSearch } from "../../lib/research/records";
+import { restoreSearch, serializeSearch, type ResearchCommand, type SavedSearch } from "../../lib/research/records";
 import { convexToJson } from "convex/values";
 import { asSchema } from "ai";
 import type { ActionCtx } from "../_generated/server";
@@ -67,7 +67,7 @@ describe("account research records", () => {
     const { alice } = await setup();
     const rows = [3, 1, 2].map(day => ({ ...record, id: `day-${day}`, createdAt: `2026-09-0${day}T00:00:00.000Z` }));
     await alice.mutation(api.research.records.importBatch, { ...batch, searches: rows.map(imported) });
-    expect((await alice.query(api.research.records.searches, { accountId: "alice", paginationOpts })).page.map(row => row.id)).toEqual(["day-3", "day-2", "day-1"]);
+    expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts })).page.map(row => row.id)).toEqual(["day-3", "day-2", "day-1"]);
   });
   it("preserves Unicode, dollar-prefixed, and long screening questions through Convex serialization", async () => {
     const { alice } = await setup();
@@ -85,7 +85,7 @@ describe("account research records", () => {
     await alice.mutation(api.research.records.importBatch, batch);
     await alice.mutation(api.research.records.importBatch, batch);
     expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toEqual(record);
-    expect((await alice.query(api.research.records.shortcuts, { accountId: "alice", paginationOpts })).page).toEqual(batch.shortcuts);
+    expect((await alice.query(api.research.records.listedShortcuts, { accountId: "alice", sort: "recent", paginationOpts })).page).toEqual(batch.shortcuts);
     expect((await alice.query(api.research.records.ratings, { accountId: "alice", paginationOpts })).page).toEqual(batch.ratings);
     await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "edit-query", command: { kind: "editSearch", id: record.id, edit: { kind: "query", query: "updated", field: "abstract" } } });
     await alice.mutation(api.research.records.importBatch, batch);
@@ -176,9 +176,9 @@ describe("account research records", () => {
     await expect(t.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).rejects.toThrow();
     await expect(bob.mutation(api.research.records.importBatch, batch)).rejects.toThrow("Account changed");
     expect(await bob.query(api.research.records.getSearch, { accountId: "bob", id: record.id })).toBeNull();
-    for (const query of [api.research.records.searches, api.research.records.shortcuts, api.research.records.ratings]) {
-      expect((await bob.query(query, { accountId: "bob", paginationOpts })).page).toEqual([]);
-    }
+    expect((await bob.query(api.research.records.listedSearches, { accountId: "bob", sort: "recent", paginationOpts })).page).toEqual([]);
+    expect((await bob.query(api.research.records.listedShortcuts, { accountId: "bob", sort: "recent", paginationOpts })).page).toEqual([]);
+    expect((await bob.query(api.research.records.ratings, { accountId: "bob", paginationOpts })).page).toEqual([]);
     await expect(bob.mutation(api.research.records.change, { accountId: "bob", requestId: "steal", command: { kind: "editSearch", id: record.id, edit: { kind: "query", query: "stolen", field: "title" } } })).rejects.toThrow("Search not found");
     expect((await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id }))?.query).toBe(record.query);
   });
@@ -253,11 +253,144 @@ describe("account research records", () => {
   it("paginates beyond the first batch without losing records", async () => {
     const { alice } = await setup();
     for (let start = 0; start < 30; start += 10) await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: Array.from({ length: 10 }, (_, i) => imported({ ...record, id: `local-${start + i}` })), shortcuts: [], ratings: [] });
-    const first = await alice.query(api.research.records.searches, { accountId: "alice", paginationOpts });
-    const second = await alice.query(api.research.records.searches, { accountId: "alice", paginationOpts: { numItems: 25, cursor: first.continueCursor } });
+    const first = await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts });
+    const second = await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts: { numItems: 25, cursor: first.continueCursor } });
     expect(first.isDone).toBe(false);
     expect(second.isDone).toBe(true);
     expect(new Set([...first.page, ...second.page].map(row => row.id)).size).toBe(30);
+  });
+
+  it("lists searches by date or result count without their answers, and finds them by their query or questions", async () => {
+    const { alice } = await setup();
+    const rows = [
+      { ...record, id: "few", count: 5, query: "phonics instruction", createdAt: "2026-09-01T00:00:00.000Z" },
+      { ...record, id: "many", count: 900, query: "tutoring", createdAt: "2026-09-02T00:00:00.000Z" },
+      { ...record, id: "some", count: 50, query: "class size", createdAt: "2026-09-03T00:00:00.000Z" },
+    ];
+    await alice.mutation(api.research.records.importBatch, { ...batch, searches: rows.map(search => ({ search })) });
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "ask", command: { kind: "editSearch", id: "some", edit: { kind: "question", question: "Do smaller classes help?" } } });
+    const listed = async (args: { sort: "recent" | "oldest" | "most" | "least"; text?: string }) => (await alice.query(api.research.records.listedSearches, { accountId: "alice", paginationOpts, ...args })).page;
+
+    expect((await listed({ sort: "oldest" })).map(row => row.id)).toEqual(["few", "many", "some"]);
+    expect((await listed({ sort: "most" })).map(row => row.id)).toEqual(["many", "some", "few"]);
+    expect((await listed({ sort: "least" })).map(row => row.id)).toEqual(["few", "some", "many"]);
+    // Any part of the text matches, whatever its case, and the matches keep the sort.
+    expect((await listed({ sort: "recent", text: "PHON" })).map(row => row.id)).toEqual(["few"]);
+    expect((await listed({ sort: "recent", text: "smaller classes" })).map(row => row.id)).toEqual(["some"]);
+    expect((await listed({ sort: "most", text: "in" })).map(row => row.id)).toEqual(["many", "few"]);
+    expect((await listed({ sort: "recent" }))[0]).not.toHaveProperty("screeningResponses");
+    // A search left out doesn't take a place on the page.
+    expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "oldest", exclude: "few", paginationOpts: { cursor: null, numItems: 2 } })).page.map(row => row.id)).toEqual(["many", "some"]);
+  });
+
+  it("counts a person's searches as they're made and deleted, and clears them all a batch at a time", async () => {
+    const { alice, bob, t } = await setup();
+    const count = (as: typeof alice, accountId: string) => as.query(api.research.records.countSearches, { accountId });
+    expect(await count(alice, "alice")).toBe(0);
+    for (let start = 0; start < 60; start += 20) await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: Array.from({ length: 20 }, (_, i) => ({ search: { ...record, id: `search-${start + i}` } })), shortcuts: [], ratings: [] });
+    await bob.mutation(api.research.records.importBatch, { accountId: "bob", searches: [{ search: { ...record, id: "bobs" } }], shortcuts: [], ratings: [] });
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "delete-one", command: { kind: "deleteSearch", id: "search-0" } });
+    await t.finishAllScheduledFunctions(() => {});
+    expect(await count(alice, "alice")).toBe(59);
+
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "clear", command: { kind: "clearSearches" } });
+    await t.finishAllScheduledFunctions(() => {});
+    expect(await count(alice, "alice")).toBe(0);
+    expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts })).page).toEqual([]);
+    // Each cleared search leaves a revision that says it was deleted, and no one else's go.
+    expect(await t.run(async ctx => (await ctx.db.query("searchRevisions").collect()).filter(row => row.deleted).length)).toBe(60);
+    expect(await count(bob, "bob")).toBe(1);
+  });
+
+  it("reads the person's ratings of the papers asked for, and no one else's", async () => {
+    const { alice, bob } = await setup();
+    const rate = (as: typeof alice, accountId: string, paperId: string, rating: number) => as.mutation(api.research.records.change, { accountId, requestId: `${accountId}-${paperId}`, command: { kind: "rating", paperId, rating } });
+    await rate(alice, "alice", "W1", 4);
+    await rate(alice, "alice", "W2", 0);
+    await rate(alice, "alice", "W3", 5);
+    await rate(bob, "bob", "W1", 1);
+
+    expect((await alice.query(api.research.records.ratingsOf, { accountId: "alice", paperIds: ["W2", "W9", "W1"] })).page).toEqual([{ paperId: "W2", rating: 0 }, { paperId: "W1", rating: 4 }]);
+    expect((await bob.query(api.research.records.ratingsOf, { accountId: "bob", paperIds: ["W1", "W3"] })).page).toEqual([{ paperId: "W1", rating: 1 }]);
+    await expect(alice.query(api.research.records.ratingsOf, { accountId: "alice", paperIds: Array.from({ length: 201 }, (_, i) => `W${i}`) })).rejects.toThrow("200 papers at a time");
+  });
+
+  it("lists, finds, counts, reads by name and clears the person's shortcuts, and no one else's", async () => {
+    const { alice, bob, t } = await setup();
+    const save = (as: typeof alice, accountId: string, shorthand: string, expansion: string, createdAt: number) => as.mutation(api.research.records.change, { accountId, requestId: `${accountId}-${shorthand}`, command: { kind: "shortcut", shorthand, value: { expansion, createdAt } } });
+    await save(alice, "alice", "rct", "randomized controlled trial", 3);
+    await save(alice, "alice", "Africa", "Kenya OR Ghana", 1);
+    await save(alice, "alice", "ml", "machine learning", 2);
+    await save(bob, "bob", "rct", "bob's own", 9);
+    await t.finishAllScheduledFunctions(() => {});
+    const listed = async (args: { sort: "recent" | "oldest" | "alpha" | "alpha-desc"; text?: string }) => (await alice.query(api.research.records.listedShortcuts, { accountId: "alice", paginationOpts, ...args })).page.map(row => row.shorthand);
+
+    expect(await listed({ sort: "recent" })).toEqual(["rct", "ml", "Africa"]);
+    expect(await listed({ sort: "oldest" })).toEqual(["Africa", "ml", "rct"]);
+    // By name, whatever its case.
+    expect(await listed({ sort: "alpha" })).toEqual(["Africa", "ml", "rct"]);
+    expect(await listed({ sort: "alpha-desc" })).toEqual(["rct", "ml", "Africa"]);
+    expect(await listed({ sort: "alpha", text: "LEARN" })).toEqual(["ml"]);
+    expect(await listed({ sort: "alpha", text: "r" })).toEqual(["Africa", "ml", "rct"]);
+    expect(await alice.query(api.research.records.countShortcuts, { accountId: "alice" })).toBe(3);
+
+    expect((await alice.query(api.research.records.shortcutsOf, { accountId: "alice", names: ["rct", "nope", "ml"] })).page).toEqual([
+      { shorthand: "rct", expansion: "randomized controlled trial", createdAt: 3 },
+      { shorthand: "ml", expansion: "machine learning", createdAt: 2 },
+    ]);
+    await expect(alice.query(api.research.records.shortcutsOf, { accountId: "alice", names: Array.from({ length: 16 }, (_, i) => `n${i}`) })).rejects.toThrow("15 names at a time");
+
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "clear", command: { kind: "clearShortcuts" } });
+    await t.finishAllScheduledFunctions(() => {});
+    expect(await listed({ sort: "recent" })).toEqual([]);
+    expect(await alice.query(api.research.records.countShortcuts, { accountId: "alice" })).toBe(0);
+    expect((await bob.query(api.research.records.shortcutsOf, { accountId: "bob", names: ["rct"] })).page).toEqual([{ shorthand: "rct", expansion: "bob's own", createdAt: 9 }]);
+  });
+
+  it("leaves a search saved while the history is still being cleared", async () => {
+    vi.useFakeTimers();
+    try {
+      const { alice, t } = await setup();
+      for (const start of [0, 13]) await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: Array.from({ length: 13 }, (_, i) => ({ search: { ...record, id: `old-${start + i}` } })), shortcuts: [], ratings: [] });
+      vi.setSystemTime(Date.now() + 1_000);
+      // The first batch is gone; the second waits for its turn.
+      await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "clear", command: { kind: "clearSearches" } });
+      vi.setSystemTime(Date.now() + 1_000);
+      await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "new", command: { kind: "createSearch", search: { ...record, id: "new" } } });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts })).page.map(row => row.id)).toEqual(["new"]);
+      expect(await alice.query(api.research.records.countSearches, { accountId: "alice" })).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("takes a first count a page at a time, right through searches saved and deleted meanwhile", async () => {
+    const { alice, ids, t } = await setup();
+    // 1,200 searches from before counts were kept, so none is counted yet.
+    const stored = (i: number) => ({ userId: ids.alice, localId: `old-${i}`, revision: 1, data: { ...record, id: `old-${i}`, screeningResponses: [] } });
+    for (let start = 0; start < 1_200; start += 300) await t.run(async ctx => { for (let i = start; i < start + 300; i++) await ctx.db.insert("searches", stored(i)); });
+    const change = (requestId: string, command: ResearchCommand) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command });
+    const row = () => t.run(ctx => ctx.db.query("recordCounts").withIndex("by_user_and_table", q => q.eq("userId", ids.alice).eq("table", "searches")).unique());
+
+    vi.useFakeTimers();
+    try {
+      // The first save starts the count; one step reaches the first 500.
+      await change("first", { kind: "createSearch", search: { ...record, id: "first" } });
+      await t.mutation(internal.research.records.countRecordsPage, { table: "searches", userId: ids.alice });
+      expect(await row()).toMatchObject({ count: 500 });
+      await change("counted", { kind: "deleteSearch", id: "old-0" });
+      await change("not-reached", { kind: "deleteSearch", id: "old-1100" });
+      await change("second", { kind: "createSearch", search: { ...record, id: "second" } });
+      expect(await row()).toMatchObject({ count: 499 });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(await row()).toEqual(expect.objectContaining({ count: 1_200 }));
+    expect((await row())?.countedTo).toBeUndefined();
+    await change("after", { kind: "deleteSearch", id: "second" });
+    expect(await alice.query(api.research.records.countSearches, { accountId: "alice" })).toBe(1_199);
   });
 
   it("moves answers out of chunks with every revision's answers intact, once", async () => {

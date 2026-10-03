@@ -15,7 +15,7 @@ import { useSearch } from "@/lib/search";
 import { useQueryHistory } from "@/lib/hooks";
 import { useAppToast } from "@/lib/toast";
 import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
-import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
+import { ensureQueryShortcuts, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { languageOptions } from "@/lib/ai/core/languages";
 import { AISetupGate } from "@/components/ai/ai-setup-gate";
 
@@ -80,6 +80,7 @@ export function AdjustMode({ searchId, isLoading, isValidating, allowEmpty = fal
     setIsEnhancing(true);
 
     try {
+      await ensureQueryShortcuts(urlQuery);
       const { expandedQuery } = validateAndExpandKeywordsSilently(urlQuery);
       const languageName = languageOptions.find((o) => o.code === urlLanguage)?.name;
 

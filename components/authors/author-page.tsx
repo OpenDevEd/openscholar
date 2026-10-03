@@ -1,4 +1,5 @@
 "use client";
+import { useRatedPapers } from "@/lib/research/reads";
 import {
   LinkedInIcon,
   OrcidIcon,
@@ -89,8 +90,8 @@ const safeUrl = (value?: string) => {
 
 export default function AuthorPage({
   profile, configuration, canEdit, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
-  openAlexAuthors, openAlexPapers, onSearchAuthors, openAlexError,
-  hasMoreWorks, workCount, loadingWorks, onLoadMoreWorks, invitationSection,
+  openAlexAuthors, openAlexPapers: works, onSearchAuthors, openAlexError,
+  hasMoreWorks, workCount, loadingWorks: fetchingWorks, onLoadMoreWorks, invitationSection,
 }: {
   profile: AuthorProfile;
   configuration: boolean;
@@ -110,6 +111,10 @@ export default function AuthorPage({
   hasMoreWorks: boolean; workCount: number; loadingWorks: boolean; onLoadMoreWorks: () => void;
 }) {
   const profileId = profile.id;
+  // A paper is shown once its rating is read, so its card opens at its final size.
+  const rated = useRatedPapers(works);
+  const openAlexPapers = rated.papers;
+  const loadingWorks = fetchingWorks || rated.loading;
   const profileHref = `/authors/${profileId}`;
   const configurationHref = `/authors/${profileId}/configuration`;
   const photoInput = useRef<HTMLInputElement>(null);

@@ -7,9 +7,15 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Author } from "../lib/userActions";
 import { answersAtVersions, clearPaperAnswers, currentAnswers, replaceAnswers, screeningFor, setPaperAnswers, type AnswerSource } from "./answers";
 import {
-  applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, ratingValidator, searchValidator, shortcutValidator,
+  applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, RATED_PAPERS_MAX, ratingValidator, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator,
   type ResearchCommand, type SavedSearch, type StoredSearch,
 } from "../../lib/research/records";
+import { stream } from "convex-helpers/server/stream";
+import { internal } from "../_generated/api";
+import { internalMutation } from "../lib/functions";
+import schema from "../schema";
+import { countRecordPage, countRow } from "./recordCounts";
+import { shortcutSortName } from "../../lib/query-shortcuts";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
@@ -21,31 +27,123 @@ async function account(ctx: Parameters<typeof requireAuth>[0], expected: string)
 
 // Each action is defined once; the page's function and the assistant's are made from it.
 
-export const searchesAction = defineUserQuery({
-  path: "research/records:searches",
-  description: "Lists the person's saved searches, newest first, a page at a time. Each has an ID the other search tools take.",
-  args: pageArgs,
-  returns: paginationResultValidator(searchValidator),
-  run: async (ctx, userId, args) => {
-    const page = await ctx.db.query("searches").withIndex("by_user_and_createdAt", q => q.eq("userId", userId)).order("desc").paginate(args.paginationOpts);
-    return { ...page, page: await Promise.all(page.page.map(row => hydrate(ctx, row))) };
+/** Most searches one listed page holds. */
+const LISTED_PAGE_MAX = 50;
+/**
+ * Searches a text-filtered read looks through, and bytes any listed read takes, at most. A
+ * page that stops there comes back short with a cursor, and the list reads on from it.
+ */
+const FILTER_ROWS = 1_000;
+const LISTED_BYTES = 8 * 1024 * 1024;
+
+export const listedSearchesAction = defineUserQuery({
+  path: "research/records:listedSearches",
+  description:
+    "Lists the person's saved searches without their screening answers, a page at a time: newest, oldest, most or fewest results first. Given `text`, only those whose query or questions contain it; given `exclude`, all but the search with that ID. A page can come back short without being the last.",
+  args: { ...pageArgs, sort: listedSortValidator, text: v.optional(v.string()), exclude: v.optional(v.string()) },
+  returns: paginationResultValidator(listedSearchValidator),
+  run: async (ctx, userId, { paginationOpts, sort, text, exclude }) => {
+    const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LISTED_PAGE_MAX) };
+    const index = sort === "most" || sort === "least" ? "by_user_and_count" : "by_user_and_createdAt";
+    const order = sort === "oldest" || sort === "least" ? "asc" : "desc";
+    const needle = text?.trim().toLowerCase();
+    const page = await (needle || exclude !== undefined
+      ? stream(ctx.db, schema).query("searches").withIndex(index, q => q.eq("userId", userId)).order(order)
+          .filterWith(async row => {
+            if (row.localId === exclude) return false;
+            if (!needle) return true;
+            const search = currentSearch(row.data);
+            return search.query.toLowerCase().includes(needle) || search.questionText.toLowerCase().includes(needle);
+          })
+          .paginate({ ...opts, maximumRowsRead: FILTER_ROWS, maximumBytesRead: LISTED_BYTES })
+      : ctx.db.query("searches").withIndex(index, q => q.eq("userId", userId)).order(order).paginate({ ...opts, maximumBytesRead: LISTED_BYTES }));
+    return { ...page, page: page.page.map(row => { const { screeningResponses: _answers, ...listed } = currentSearch(row.data); return listed; }) };
   },
 });
-export const searches = accountQuery(searchesAction);
-export const searchesForAssistant = assistantQuery(searchesAction);
+export const listedSearches = accountQuery(listedSearchesAction);
+export const listedSearchesForAssistant = assistantQuery(listedSearchesAction);
 
-export const shortcutsAction = defineUserQuery({
-  path: "research/records:shortcuts",
-  description: "Lists the person's query shortcuts (the Bookmarks page): a short name that expands to a longer query.",
-  args: pageArgs,
+export const countSearchesAction = defineUserQuery({
+  path: "research/records:countSearches",
+  description: "Says how many saved searches the person has.",
+  args: {},
+  returns: v.number(),
+  // Someone who has saved nothing has no count; one from before counts were kept gets theirs from migrations/pagedRecords.
+  run: async (ctx, userId) => (await countRow(ctx, "searches", userId))?.count ?? 0,
+});
+export const countSearches = accountQuery(countSearchesAction);
+export const countSearchesForAssistant = assistantQuery(countSearchesAction);
+
+/** One step of a person's first count of their searches or shortcuts (./recordCounts.ts). */
+export const countRecordsPage = internalMutation({
+  args: { table: v.union(v.literal("searches"), v.literal("queryShortcuts")), userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { table, userId }) => {
+    await countRecordPage(ctx, table, userId);
+    return null;
+  },
+});
+
+/** Most shortcuts one listed page holds. */
+const SHORTCUT_PAGE_MAX = 50;
+
+export const listedShortcutsAction = defineUserQuery({
+  path: "research/records:listedShortcuts",
+  description:
+    "Lists the person's query shortcuts (the Bookmarks page), each a short name that expands to a longer query, a page at a time: newest or oldest first, or by name. Given `text`, only those whose name or expansion contain it. A page can come back short without being the last.",
+  args: { ...pageArgs, sort: shortcutSortValidator, text: v.optional(v.string()) },
   returns: paginationResultValidator(shortcutValidator),
-  run: async (ctx, userId, args) => {
-    const page = await ctx.db.query("queryShortcuts").withIndex("by_user", q => q.eq("userId", userId)).paginate(args.paginationOpts);
+  run: async (ctx, userId, { paginationOpts, sort, text }) => {
+    const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHORTCUT_PAGE_MAX), maximumBytesRead: LISTED_BYTES };
+    const index = sort === "alpha" || sort === "alpha-desc" ? "by_user_and_sortName" : "by_user_and_createdAt";
+    const order = sort === "oldest" || sort === "alpha" ? "asc" : "desc";
+    const needle = text?.trim().toLowerCase();
+    const page = await (needle
+      ? stream(ctx.db, schema).query("queryShortcuts").withIndex(index, q => q.eq("userId", userId)).order(order)
+          .filterWith(async row => row.data.shorthand.toLowerCase().includes(needle) || row.data.expansion.toLowerCase().includes(needle))
+          .paginate({ ...opts, maximumRowsRead: FILTER_ROWS })
+      : ctx.db.query("queryShortcuts").withIndex(index, q => q.eq("userId", userId)).order(order).paginate(opts));
     return { ...page, page: page.page.map(row => row.data) };
   },
 });
-export const shortcuts = accountQuery(shortcutsAction);
-export const shortcutsForAssistant = assistantQuery(shortcutsAction);
+export const listedShortcuts = accountQuery(listedShortcutsAction);
+export const listedShortcutsForAssistant = assistantQuery(listedShortcutsAction);
+
+export const countShortcutsAction = defineUserQuery({
+  path: "research/records:countShortcuts",
+  description: "Says how many query shortcuts the person has.",
+  args: {},
+  returns: v.number(),
+  run: async (ctx, userId) => (await countRow(ctx, "queryShortcuts", userId))?.count ?? 0,
+});
+export const countShortcuts = accountQuery(countShortcutsAction);
+export const countShortcutsForAssistant = assistantQuery(countShortcutsAction);
+
+/** The person's shortcuts among `names`. */
+async function shortcutsAmong(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, names: string[]) {
+  const rows = await Promise.all(
+    names.map(name => ctx.db.query("queryShortcuts").withIndex("by_user_and_shorthand", q => q.eq("userId", userId).eq("data.shorthand", name)).first()),
+  );
+  return rows.flatMap(row => (row ? [row.data] : []));
+}
+
+/** The expansions of the person's shortcuts among `names`, by name, for `expandShortcuts`. */
+export async function shortcutExpansions(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, names: string[]) {
+  return Object.fromEntries((await shortcutsAmong(ctx, userId, names)).map(shortcut => [shortcut.shorthand, shortcut.expansion]));
+}
+
+export const shortcutsOfAction = defineUserQuery({
+  path: "research/records:shortcutsOf",
+  description: `Reads the person's shortcuts with these names, at most ${SHORTCUT_NAMES_MAX} of them, as one page; a name they haven't saved is left out.`,
+  args: { names: v.array(v.string()) },
+  returns: paginationResultValidator(shortcutValidator),
+  run: async (ctx, userId, { names }) => {
+    if (names.length > SHORTCUT_NAMES_MAX) throw new Error(`Shortcuts are read ${SHORTCUT_NAMES_MAX} names at a time.`);
+    return { page: await shortcutsAmong(ctx, userId, names), isDone: true, continueCursor: "" };
+  },
+});
+export const shortcutsOf = accountQuery(shortcutsOfAction);
+export const shortcutsOfForAssistant = assistantQuery(shortcutsOfAction);
 
 export const ratingsAction = defineUserQuery({
   path: "research/records:ratings",
@@ -59,6 +157,27 @@ export const ratingsAction = defineUserQuery({
 });
 export const ratings = accountQuery(ratingsAction);
 export const ratingsForAssistant = assistantQuery(ratingsAction);
+
+/** The person's ratings among `paperIds`. */
+export async function ratingsAmong(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperIds: string[]) {
+  const rows = await Promise.all(
+    paperIds.map(paperId => ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", paperId)).first()),
+  );
+  return rows.flatMap(row => (row ? [row.data] : []));
+}
+
+export const ratingsOfAction = defineUserQuery({
+  path: "research/records:ratingsOf",
+  description: `Reads the person's ratings of the papers with these IDs, at most ${RATED_PAPERS_MAX} of them, as one page; a paper they haven't rated is left out.`,
+  args: { paperIds: v.array(v.string()) },
+  returns: paginationResultValidator(ratingValidator),
+  run: async (ctx, userId, { paperIds }) => {
+    if (paperIds.length > RATED_PAPERS_MAX) throw new Error(`Ratings are read ${RATED_PAPERS_MAX} papers at a time.`);
+    return { page: await ratingsAmong(ctx, userId, paperIds), isDone: true, continueCursor: "" };
+  },
+});
+export const ratingsOf = accountQuery(ratingsOfAction);
+export const ratingsOfForAssistant = assistantQuery(ratingsOfAction);
 
 export const getSearchAction = defineUserQuery({
   path: "research/records:getSearch",
@@ -389,9 +508,11 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       if (command.value === null) { if (row) await ctx.db.delete("queryShortcuts", row._id); return; }
       const data = { shorthand: command.shorthand, ...command.value };
       if (row) await ctx.db.patch("queryShortcuts", row._id, { data });
-      else await ctx.db.insert("queryShortcuts", { userId, data });
+      else await ctx.db.insert("queryShortcuts", { userId, data, sortName: shortcutSortName(command.shorthand) });
       return;
     }
+    case "clearSearches": return await clearBatch(ctx, userId, author, Date.now());
+    case "clearShortcuts": return await clearShortcutBatch(ctx, userId, Date.now());
     case "rating": {
       if (!command.paperId || (command.rating !== null && (!Number.isInteger(command.rating) || command.rating < 0 || command.rating > 5))) throw new Error("Rating must be an integer from 0 to 5.");
       const row = await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique();
@@ -410,7 +531,7 @@ async function received(ctx: MutationCtx, userId: Id<"users">, key: string) {
 export const changeAction = defineUserMutation({
   path: "research/records:change",
   description:
-    "Changes the person's research records: create, edit or delete a saved search, set or remove a query shortcut, or rate a paper. Edits to a search show live on the person's open page and are kept as revisions.",
+    "Changes the person's research records: create, edit or delete a saved search, set or remove a query shortcut, rate a paper, or clear every saved search or every shortcut they have (a batch at a time; searches keep their revisions). Edits to a search show live on the person's open page and are kept as revisions.",
   args: { requestId: v.string(), command: commandValidator },
   returns: v.null(),
   spendsCredits: false,
@@ -429,6 +550,57 @@ export const changeAction = defineUserMutation({
 });
 export const change = accountMutation(changeAction);
 export const changeForAssistant = assistantMutation(changeAction);
+
+/**
+ * Searches one clearing transaction deletes, each leaving a revision, and the bytes of them
+ * it reads: deleting a search reads it a few times over and writes it once more.
+ */
+const CLEAR_BATCH = 25;
+const CLEAR_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Deletes a batch of the searches the person had at `before`, when they asked, and schedules
+ * the next until none are left; one saved since stays. A search from before answers and
+ * history had their own rows moves them as it goes, which can take a transaction by itself,
+ * so it's deleted alone.
+ */
+async function clearBatch(ctx: MutationCtx, userId: Id<"users">, author: Author, before: number) {
+  const batch = await ctx.db.query("searches").withIndex("by_user", q => q.eq("userId", userId).lte("_creationTime", before))
+    .paginate({ cursor: null, numItems: CLEAR_BATCH, maximumBytesRead: CLEAR_BYTES });
+  const old = batch.page.findIndex(search => search.responseChunks !== undefined || search.data.queryHistory || search.data.questionHistory);
+  const deleted = old === -1 ? batch.page : batch.page.slice(0, Math.max(1, old));
+  for (const search of deleted) await applyCommand(ctx, userId, { kind: "deleteSearch", id: search.localId }, author);
+  if (!batch.isDone || deleted.length < batch.page.length) await ctx.scheduler.runAfter(0, internal.research.records.clearSearchesBatch, { userId, author, before });
+}
+
+/** Shortcuts one clearing transaction deletes, and the bytes of them it reads. */
+const CLEAR_SHORTCUTS = 100;
+
+/** Deletes a batch of the shortcuts the person had at `before`, when they asked, and schedules the next until none are left. */
+async function clearShortcutBatch(ctx: MutationCtx, userId: Id<"users">, before: number) {
+  const batch = await ctx.db.query("queryShortcuts").withIndex("by_user", q => q.eq("userId", userId).lte("_creationTime", before))
+    .paginate({ cursor: null, numItems: CLEAR_SHORTCUTS, maximumBytesRead: CLEAR_BYTES });
+  for (const shortcut of batch.page) await ctx.db.delete("queryShortcuts", shortcut._id);
+  if (!batch.isDone) await ctx.scheduler.runAfter(0, internal.research.records.clearShortcutsBatch, { userId, before });
+}
+
+export const clearShortcutsBatch = internalMutation({
+  args: { userId: v.id("users"), before: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { userId, before }) => {
+    await clearShortcutBatch(ctx, userId, before);
+    return null;
+  },
+});
+
+export const clearSearchesBatch = internalMutation({
+  args: { userId: v.id("users"), author: v.union(v.literal("user"), v.literal("assistant")), before: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { userId, author, before }) => {
+    await clearBatch(ctx, userId, author, before);
+    return null;
+  },
+});
 
 export const importBatch = mutation({
   // Each search comes with the history this browser kept of it.

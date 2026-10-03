@@ -9,7 +9,7 @@ import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { showStyledToast } from "@/components/ui/sonner";
 import { usePersistedStoreReady } from "../use-persisted-store-ready";
 import { localKeywordExpansionStore, localRatingsStore, localSearchHistoryStore } from "../store";
-import { activateResearch, ResearchContext } from "./binding";
+import { activateResearch, ResearchContext, SessionContext } from "./binding";
 import { ResearchSession } from "./session";
 import { ResearchImportError, localResearchBackup } from "./migrate";
 import { downloadAsFile } from "../utils";
@@ -40,8 +40,9 @@ export function ResearchStateProvider({ children }: { children: ReactNode }) {
   const session = userId ? accountSession(client, userId) : null;
   const subscribe = useCallback((listener: () => void) => session ? session.subscribe(listener, phase === "authenticated", report) : localSubscribe(), [session, phase, report]);
   const status = useSyncExternalStore(subscribe, session?.getSnapshot ?? getLocalSnapshot, session?.getServerSnapshot ?? getLocalSnapshot);
+  const reading = useMemo(() => ({ session, phase }), [session, phase]);
   const value = useMemo(() => ({ ...status, ready: status.ready && (phase === "anonymous" || phase === "authenticated"), error: phase === "sync_error" ? new Error("Your account could not finish loading.") : status.error, retry: phase === "sync_error" ? retryUserSync : session?.retry ?? (() => {}) }), [status, session, phase, retryUserSync]);
-  return <ResearchContext.Provider value={session?.stores ?? null}><StatusContext.Provider value={value}>{children}</StatusContext.Provider></ResearchContext.Provider>;
+  return <ResearchContext.Provider value={session?.stores ?? null}><SessionContext.Provider value={reading}><StatusContext.Provider value={value}>{children}</StatusContext.Provider></SessionContext.Provider></ResearchContext.Provider>;
 }
 
 export function useResearchStatus() {

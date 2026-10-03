@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getIdColor } from "@/lib/format";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
+import { shortcutNames } from "@/lib/query-shortcuts";
 import type { ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
@@ -76,8 +77,8 @@ export function HistoryItem({
   const [bookmarkName, setBookmarkName] = useState("");
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false);
 
-  const { removeSearchResult, searchHistory } = useSearchHistoryStore();
-  const { addKeyword, keywords } = useKeywordExpansionStore();
+  const removeSearchResult = useSearchHistoryStore((state) => state.removeSearchResult);
+  const addKeyword = useKeywordExpansionStore((state) => state.addKeyword);
 
   const idColor = getIdColor(item.id);
   const queryHistoryCount = item.queryHistoryCount;
@@ -96,9 +97,6 @@ export function HistoryItem({
   const showHistory = isQueryHistoryOpen && queryHistoryCount > 1 && !history.isLoading;
   const historyProps = { queryHistory: history.entries, total: history.total, onLoadOlder: history.hasOlder ? history.loadOlder : undefined };
 
-  // Find the actual index in the full history for deletion
-  const actualIndex = searchHistory.findIndex((h) => h.id === item.id);
-
   // Handlers
   const handleCopy = async () => {
     try {
@@ -115,12 +113,12 @@ export function HistoryItem({
       confirmText: tc("delete"),
       cancelText: tc("cancel"),
       onConfirm: () => {
-        removeSearchResult(actualIndex);
+        removeSearchResult(item.id);
       },
     });
   };
 
-  const handleBookmarkSubmit = () => {
+  const handleBookmarkSubmit = async () => {
     if (!bookmarkName.trim()) {
       toast.validation.failed(tv("bookmarkNameRequired"));
       return;
@@ -129,7 +127,13 @@ export function HistoryItem({
       toast.validation.failed(tv("bookmarkNameFormat"));
       return;
     }
-    if (keywords[bookmarkName]) {
+    // An account looks up the name, to say whether it's taken, and the shortcuts the query names.
+    try {
+      await useKeywordExpansionStore.getState().ensureShortcuts([bookmarkName.trim(), ...shortcutNames(item.query)]);
+    } catch {
+      return;
+    }
+    if (useKeywordExpansionStore.getState().keywords[bookmarkName.trim()]) {
       toast.validation.failed(tv("bookmarkNameExists", { name: bookmarkName }));
       return;
     }

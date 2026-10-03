@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { useTranslations } from "next-intl";
-import { parseAsInteger, useQueryState } from "nuqs";
+import { useConvex } from "convex/react";
 import { BookOpen, BookmarksIcon } from "@/components/icons";
 import {
+  localKeywordExpansionStore,
   useKeywordExpansionStore,
   useUIStore,
 } from "@/lib/store";
+import { downloadExport } from "@/lib/export";
 import {
   jsonToCSV,
   downloadAsFile,
@@ -22,6 +24,8 @@ import { LibraryPageShell } from "@/components/evidence-libraries/library-page-s
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
 import { useResearchStatus } from "@/lib/research/provider";
+import { useResearchSession } from "@/lib/research/reads";
+import { useShortcutList } from "@/lib/research/shortcut-list";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { CommandCenterFileActions, CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { ViewModeSwitch } from "@/components/view-mode-toggle";
@@ -81,127 +85,63 @@ export function BookmarksCommandCenter() {
   ];
   const [searchFilter, setSearchFilter] = useState("");
   const [editingBookmark, setEditingBookmark] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useQueryState(
-    "page",
-    parseAsInteger.withDefault(1).withOptions({ scroll: true }),
-  );
+  const convex = useConvex();
+  const account = useResearchSession();
 
-  const {
-    keywords,
-    updateKeyword,
-    removeKeyword,
-    clearKeywords,
-    importKeywords,
-  } = useKeywordExpansionStore();
+  const updateKeyword = useKeywordExpansionStore((state) => state.updateKeyword);
+  const removeKeyword = useKeywordExpansionStore((state) => state.removeKeyword);
+  const clearKeywords = useKeywordExpansionStore((state) => state.clearKeywords);
+  const importKeywords = useKeywordExpansionStore((state) => state.importKeywords);
   // Bookmarks and view settings are saved in the browser; wait for them rather than flash an empty list.
   const { ready: listReady, error, retry } = useResearchStatus();
   const settingsReady = usePersistedStoreReady(useUIStore);
-  const ready = listReady && settingsReady;
   const {
     bookmarkViewMode,
     setBookmarkViewMode,
     bookmarkSortBy,
     setBookmarkSortBy,
   } = useUIStore();
-
-  // Convert keywords object to array
-  const bookmarksArray: BookmarkEntry[] = useMemo(() => {
-    return Object.entries(keywords).map(([name, data]) => ({
-      name,
-      expansion: data.expansion,
-      createdAt: data.createdAt,
-    }));
-  }, [keywords]);
-
-  // Filter bookmarks
-  const filteredBookmarks = useMemo(() => {
-    if (!searchFilter.trim()) return bookmarksArray;
-    const query = searchFilter.toLowerCase();
-    return bookmarksArray.filter((bookmark) => {
-      const matchesName = bookmark.name.toLowerCase().includes(query);
-      const matchesExpansion = bookmark.expansion.toLowerCase().includes(query);
-      return matchesName || matchesExpansion;
-    });
-  }, [bookmarksArray, searchFilter]);
-
-  // Sort bookmarks
-  const sortedBookmarks = useMemo(() => {
-    const sorted = [...filteredBookmarks];
-    switch (bookmarkSortBy) {
-      case "oldest":
-        return sorted.sort((a, b) => a.createdAt - b.createdAt);
-      case "alpha":
-        return sorted.sort((a, b) => a.name.localeCompare(b.name));
-      case "alpha-desc":
-        return sorted.sort((a, b) => b.name.localeCompare(a.name));
-      case "recent":
-      default:
-        return sorted.sort((a, b) => b.createdAt - a.createdAt);
-    }
-  }, [filteredBookmarks, bookmarkSortBy]);
-
-  // Pagination
-  const totalPages = Math.ceil(
-    sortedBookmarks.length / COMMAND_CENTER_ITEMS_PER_PAGE,
-  );
-  const paginatedBookmarks = useMemo(() => {
-    const start = (currentPage - 1) * COMMAND_CENTER_ITEMS_PER_PAGE;
-    return sortedBookmarks.slice(start, start + COMMAND_CENTER_ITEMS_PER_PAGE);
-  }, [sortedBookmarks, currentPage]);
-
-  // Reset to page 1 when filter changes
-  React.useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
-    }
-  }, [currentPage, totalPages, setCurrentPage]);
+  // Read a page at a time: the page number can't be jumped to, so it stays out of the URL.
+  const bookmarks = useShortcutList({ sort: bookmarkSortBy, text: searchFilter, pageSize: COMMAND_CENTER_ITEMS_PER_PAGE });
+  const ready = listReady && settingsReady && !bookmarks.isLoading;
+  const step = (to: () => void) => () => {
+    to();
+    window.scrollTo({ top: 0 });
+  };
 
   // Handlers
   const handleEdit = (name: string) => setEditingBookmark(name);
   const handleSaveEdit = (name: string, newExpansion: string) => {
-    updateKeyword(name, newExpansion);
+    const bookmark = bookmarks.items.find((item) => item.name === name);
+    if (bookmark) updateKeyword(name, newExpansion, bookmark.createdAt);
     setEditingBookmark(null);
   };
   const handleCancelEdit = () => setEditingBookmark(null);
   const handleDelete = (name: string) => {
-    const deletedBookmark = keywords[name];
-
     // Track bookmark deletion event
     posthog.capture("bookmark_deleted", {
       bookmark_name: name,
-      expansion_length: deletedBookmark?.expansion?.length || 0,
-      remaining_bookmarks: Object.keys(keywords).length - 1,
+      expansion_length: bookmarks.items.find((item) => item.name === name)?.expansion.length || 0,
+      remaining_bookmarks: (bookmarks.count ?? 1) - 1,
     });
 
     removeKeyword(name);
     if (editingBookmark === name) setEditingBookmark(null);
   };
 
-  // Download handlers
-  const handleDownloadJSON = () => {
+  // An account's bookmarks are written by the server, a page at a time; this browser's are all here.
+  const download = async (format: "json" | "csv") => {
     try {
-      const data = Object.entries(keywords).map(([name, bookmark]) => ({
+      if (account) return await downloadExport(convex, { kind: "shortcuts" }, format);
+      const data = Object.entries(localKeywordExpansionStore.getState().keywords).map(([name, bookmark]) => ({
         name,
         expansion: bookmark.expansion,
-        createdAt: bookmark.createdAt,
+        createdAt: format === "json" ? bookmark.createdAt : new Date(bookmark.createdAt).toISOString(),
       }));
-      downloadAsFile(JSON.stringify(data, null, 2), "bookmarks.json", "json");
-    } catch {
-      toast.io.downloadFailed(tToast("entityJson"));
-    }
-  };
-
-  const handleDownloadCSV = async () => {
-    try {
-      const data = Object.entries(keywords).map(([name, bookmark]) => ({
-        name,
-        expansion: bookmark.expansion,
-        createdAt: new Date(bookmark.createdAt).toISOString(),
-      }));
-      const csv = await jsonToCSV(data);
-      downloadAsFile(csv, "bookmarks.csv", "csv");
-    } catch {
-      toast.io.downloadFailed(tToast("entityCsv"));
+      downloadAsFile(format === "json" ? JSON.stringify(data, null, 2) : jsonToCSV(data), `bookmarks.${format}`, format);
+    } catch (error) {
+      console.error(`[Bookmarks] Failed to export as ${format}:`, error);
+      toast.io.downloadFailed(tToast(format === "json" ? "entityJson" : "entityCsv"));
     }
   };
 
@@ -209,7 +149,7 @@ export function BookmarksCommandCenter() {
     try {
       const file = await triggerFileUpload(".json");
       const data = await uploadFile(file);
-      importKeywords(data);
+      await importKeywords(data);
     } catch (error) {
       toast.io.uploadFailed(tToast("entityJson"), error);
     }
@@ -219,7 +159,7 @@ export function BookmarksCommandCenter() {
     try {
       const file = await triggerFileUpload(".csv");
       const data = await uploadFile(file);
-      importKeywords(data);
+      await importKeywords(data);
     } catch (error) {
       toast.io.uploadFailed(tToast("entityCsv"), error);
     }
@@ -228,7 +168,7 @@ export function BookmarksCommandCenter() {
   const handleClearAll = () => {
     showConfirmation({
       title: tb("clearAllBookmarksTitle"),
-      message: tb("clearAllBookmarksConfirm", { count: bookmarksArray.length }),
+      message: tb("clearAllBookmarksConfirm", { count: bookmarks.count ?? 0 }),
       confirmText: tc("clearAll"),
       cancelText: tc("cancel"),
       onConfirm: () => {
@@ -251,13 +191,13 @@ export function BookmarksCommandCenter() {
       actions={<>
         <NewBookmarkDialog />
         <CommandCenterFileActions
-        onDownloadJSON={handleDownloadJSON}
-        onDownloadCSV={handleDownloadCSV}
+        onDownloadJSON={() => void download("json")}
+        onDownloadCSV={() => download("csv")}
         onUploadJSON={handleUploadJSON}
         onUploadCSV={handleUploadCSV}
         onClearAll={handleClearAll}
         clearTooltip={tb("clearAllBookmarks")}
-        totalCount={bookmarksArray.length}
+        totalCount={bookmarks.count}
       />
       </>}
     >
@@ -266,7 +206,7 @@ export function BookmarksCommandCenter() {
       {/* List */}
       <div className="p-4 md:p-6">
         {!ready ? error ? <AuthStatePanel variant="sync_error_retry" onRetry={retry} /> : <ListLoading label={tc("loading")} /> : <CommandCenterList
-          items={paginatedBookmarks}
+          items={bookmarks.items}
           viewMode={bookmarkViewMode}
           keyExtractor={(bookmark) => bookmark.name}
           emptyIcon={BookOpen}
@@ -285,14 +225,20 @@ export function BookmarksCommandCenter() {
         />}
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {ready && bookmarks.hasPages && (
           <CommandCenterPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={sortedBookmarks.length}
-            itemsPerPage={COMMAND_CENTER_ITEMS_PER_PAGE}
+            currentPage={bookmarks.page}
             itemLabel={tcc("bookmarksLabel")}
+            steps={{
+              canPrevious: bookmarks.canPrevious,
+              canNext: bookmarks.canNext,
+              onPrevious: step(bookmarks.previous),
+              onNext: step(bookmarks.next),
+              offset: bookmarks.offset,
+              shown: bookmarks.items.length,
+              total: bookmarks.total,
+              pageCount: bookmarks.pageCount,
+            }}
           />
         )}
 

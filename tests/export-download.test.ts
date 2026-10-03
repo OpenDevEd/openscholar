@@ -7,8 +7,9 @@ const { mockDownloadWithMetadata } = vi.hoisted(() => ({
 
 // Mock stores
 vi.mock("../lib/store", () => ({
+  useKeywordExpansionStore: { getState: () => ({ ensureShortcuts: async () => {}, expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }) },
   useRatingsStore: {
-    getState: vi.fn(() => ({ ratings: {} })),
+    getState: vi.fn(() => ({ readRatings: async () => ({}) })),
   },
   useSearchHistoryStore: {
     getState: vi.fn(() => ({

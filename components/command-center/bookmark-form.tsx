@@ -6,6 +6,7 @@ import { BookmarkPlus, Check, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
+import { useQueryShortcuts } from "@/lib/research/reads";
 
 interface BookmarkFormProps {
   variant: "inline" | "overlay";
@@ -30,6 +31,7 @@ export function BookmarkForm({
 }: BookmarkFormProps) {
   const tb = useTranslations("bookmarksPage");
   const tc = useTranslations("common");
+  useQueryShortcuts(query);
   const { expandedQuery } = validateAndExpandKeywordsSilently(query);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

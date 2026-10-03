@@ -27,5 +27,3 @@ export const libraryViewValidator = v.object({
   searchText: v.optional(v.string()),
 });
 export type LibraryView = Infer<typeof libraryViewValidator>;
-
-export const libraryExportFormatValidator = v.union(v.literal("csv"), v.literal("json"));

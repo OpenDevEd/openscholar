@@ -1,5 +1,6 @@
 "use client";
 
+import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Share2, Check, Download } from "@/components/icons";
@@ -63,6 +64,8 @@ export function SearchCommandHeader({
 
   const handleCopyShareLink = async () => {
     try {
+      // The link carries the query with its shortcuts expanded, so they're read first.
+      await ensureQueryShortcuts(search?.params.q);
       const shareableUrl = getShareableUrl();
       await navigator.clipboard.writeText(shareableUrl);
       setIsCopied(true);

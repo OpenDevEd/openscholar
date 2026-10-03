@@ -24,7 +24,7 @@ import {
 } from "@/lib/library/search-params";
 import { MIN_YEAR } from "@/lib/constants";
 import type { DateRange } from "react-day-picker";
-import { downloadLibraryExport } from "@/lib/library/export";
+import { downloadExport } from "@/lib/export";
 import { libraryItemToPaperResult } from "@/lib/library/library-item-to-paper-result";
 import {
   downloadLibraryItem,
@@ -171,7 +171,7 @@ export function LibraryPageClient() {
       if (isExporting) return;
       setIsExporting(true);
       try {
-        await downloadLibraryExport(convex, { ...libraryFilters, searchText: queryText || undefined }, format);
+        await downloadExport(convex, { kind: "library", view: { ...libraryFilters, searchText: queryText || undefined } }, format);
       } catch (error) {
         console.error(`[Library] Failed to start the ${format} export:`, error);
         toast.error(t("exportError"));
