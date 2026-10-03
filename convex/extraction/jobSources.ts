@@ -145,7 +145,7 @@ export async function replaceJobSources(
   const existing = await ctx.db
     .query("extractionJobSources")
     .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-    .take(PAPER_LIMIT);
+    .collect();
 
   for (const row of existing) {
     await ctx.db.delete(row._id);

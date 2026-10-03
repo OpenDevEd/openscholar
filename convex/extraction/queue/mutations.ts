@@ -495,7 +495,7 @@ export async function cancelPaperQueueRowsForJobTx(
           .withIndex("by_job_and_status", (q) =>
             q.eq("jobId", args.jobId).eq("status", status),
           )
-          .take(PAPER_LIMIT),
+          .collect(),
       ),
     )
   ).flat();

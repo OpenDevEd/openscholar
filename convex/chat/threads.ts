@@ -382,7 +382,7 @@ async function replaceChatSourcesForJob(
     ? await ctx.db
         .query("extractionJobSources")
         .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-        .take(PAPER_LIMIT)
+        .collect()
     : [];
 
   const sourceById = new Map(
@@ -407,7 +407,7 @@ async function replaceChatSourcesForJob(
   const newSources = await ctx.db
     .query("extractionJobSources")
     .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-    .take(PAPER_LIMIT);
+    .collect();
   for (const source of newSources) {
     const openalexId = source.openalexId?.trim();
     await ctx.db.insert("chatPapers", {
@@ -449,7 +449,7 @@ export const applyChatSourceRefresh = internalMutation({
     const currentSources = await ctx.db
       .query("extractionJobSources")
       .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-      .take(PAPER_LIMIT);
+      .collect();
     const currentOpenAlexIds = orderedOpenAlexIds(currentSources);
     const nextOpenAlexIds = orderedOpenAlexIds(items);
     try {
