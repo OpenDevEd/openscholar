@@ -234,7 +234,9 @@ describe("at the largest sizes the product allows", () => {
 
     await t.run((ctx) => writeJobSources(ctx as never, jobId, sources(PAPER_LIMIT)));
     expect(await rows()).toBe(PAPER_LIMIT);
-    // Replacing them deletes every one, which is what bounds the read.
+    // Replacing them deletes every one, which is what bounds the read: even the extra rows
+    // of a job seeded before sources were capped.
+    await insertMany(t, "extractionJobSources", Array.from({ length: 500 }, (_, i) => ({ jobId, position: PAPER_LIMIT + i, ...source(PAPER_LIMIT + i) })));
     await t.run((ctx) => replaceJobSources(ctx as never, jobId, sources(3)));
     expect(await rows()).toBe(3);
     await expect(t.run((ctx) => writeJobSources(ctx as never, jobId, sources(PAPER_LIMIT + 1)))).rejects.toThrow(/up to 1,000 sources/);
