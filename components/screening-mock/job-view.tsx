@@ -20,6 +20,15 @@ import {
 } from "./data";
 import { ANSWER, AnimatedNumber, AnswerMark, Chip, Meter, OUTCOME, OutcomeBar, ProgressRing, Stars } from "./parts";
 
+const OUTCOMES = Object.keys(OUTCOME) as Outcome[];
+/** The chip on a paper about to move to another outcome, in that outcome's colour. */
+const MOVING: Record<Outcome, string> = {
+  included: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400",
+  unclear: "bg-amber-500/12 text-amber-700 dark:text-amber-400",
+  excluded: "bg-foreground/10 text-foreground/80",
+  failed: "bg-destructive/10 text-destructive",
+};
+
 /** Papers a page of an outcome lists, and a full page's height: 61px a row with the line under it, less the last row's line, plus the list's border. */
 const PAGE_SIZE = 10;
 const FULL_PAGE_PX = PAGE_SIZE * 61 + 1;
@@ -199,10 +208,19 @@ function Results({ job, counts, max, onAnswer }: { job: Job; counts: Record<Outc
   const [tab, setTab] = useState<Outcome>("included");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string | null>(null);
+  // The paper whose answers were just changed stays in the list, even once its outcome is
+  // another's, until something else is touched: another paper, an outcome, a page, the search.
+  const [held, setHeld] = useState<string | null>(null);
+  // Another screening is something else touched too.
+  const [heldIn, setHeldIn] = useState(job.id);
+  if (heldIn !== job.id) {
+    setHeldIn(job.id);
+    setHeld(null);
+  }
   const needle = query.trim().toLowerCase();
   const matches = job.paperIds
     .slice(0, job.done)
-    .filter((id) => outcomeOf(job, id) === tab)
+    .filter((id) => outcomeOf(job, id) === tab || id === held)
     .map((id) => paperById.get(id)!)
     .filter((p) => !needle || p.title.toLowerCase().includes(needle) || p.authors.join(" ").toLowerCase().includes(needle));
   // One page of the outcome at a time, as the real page reads it; a new outcome or search starts at the first.
@@ -218,14 +236,14 @@ function Results({ job, counts, max, onAnswer }: { job: Job; counts: Record<Outc
       aside={
         <div className="relative w-56">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a paper" aria-label="Find a paper" className="h-8 rounded-full pl-8 text-sm" />
+          <Input value={query} onChange={(e) => { setHeld(null); setQuery(e.target.value); }} placeholder="Find a paper" aria-label="Find a paper" className="h-8 rounded-full pl-8 text-sm" />
         </div>
       }
     >
       <Segmented
         label="Outcome"
         value={tab}
-        onChange={setTab}
+        onChange={(next) => { setHeld(null); setTab(next); }}
         fill
         options={(Object.keys(OUTCOME) as Outcome[]).map((o) => ({
           id: o,
@@ -246,29 +264,37 @@ function Results({ job, counts, max, onAnswer }: { job: Job; counts: Record<Outc
           {rows.map((paper) => {
             const score = scoreOf(job, paper.id);
             const expanded = open === paper.id;
+            // Held here after a change that gave it another outcome: it leaves towards that outcome's tab.
+            const outcome = outcomeOf(job, paper.id);
+            const leaving = outcome !== tab;
+            const towards = OUTCOMES.indexOf(outcome) > OUTCOMES.indexOf(tab) ? 1 : -1;
             return (
               <motion.div
                 key={paper.id}
                 layout="position"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
+                exit={leaving ? { opacity: 0, height: 0, x: towards * 48 } : { opacity: 0, height: 0 }}
                 transition={{ duration: 0.35, ease: EASE }}
                 className="overflow-hidden"
               >
                 <button
                   type="button"
                   aria-expanded={expanded}
-                  onClick={() => setOpen(expanded ? null : paper.id)}
+                  onClick={() => { if (paper.id !== held) setHeld(null); setOpen(expanded ? null : paper.id); }}
                   className="flex w-full items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-muted/40"
                 >
-                  <div className="min-w-0 flex-1">
+                  <div className={cn("min-w-0 flex-1 transition-opacity duration-300", leaving && "opacity-50")}>
                     <p className="truncate text-sm font-medium">{paper.title}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {[paper.authors.slice(0, 2).join(", ") + (paper.authors.length > 2 ? " and others" : ""), paper.year].filter(Boolean).join(", ")}
                     </p>
                   </div>
-                  {paper.cited ? <Chip icon={Quote} className="hidden md:inline-flex">{paper.cited.toLocaleString()} cited</Chip> : null}
+                  {leaving ? (
+                    <motion.span initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.25, ease: EASE }} className="shrink-0">
+                      <Chip icon={OUTCOME[outcome].icon} className={cn("animate-pulse motion-reduce:animate-none", MOVING[outcome])}>Moves to {OUTCOME[outcome].label}</Chip>
+                    </motion.span>
+                  ) : paper.cited ? <Chip icon={Quote} className="hidden md:inline-flex">{paper.cited.toLocaleString()} cited</Chip> : null}
                   <div className="flex shrink-0 items-center gap-1">
                     {job.questions.map((q, i) => {
                       const a = answerOf(job, paper.id, q);
@@ -281,7 +307,7 @@ function Results({ job, counts, max, onAnswer }: { job: Job; counts: Record<Outc
                 <AnimatePresence initial={false}>
                   {expanded ? (
                     <motion.div key="detail" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }} className="overflow-hidden">
-                      <PaperDetail job={job} paperId={paper.id} onAnswer={onAnswer} />
+                      <PaperDetail job={job} paperId={paper.id} onAnswer={(paperId, key, answer) => { setHeld(paperId); onAnswer(paperId, key, answer); }} />
                     </motion.div>
                   ) : null}
                 </AnimatePresence>
@@ -300,8 +326,8 @@ function Results({ job, counts, max, onAnswer }: { job: Job; counts: Record<Outc
           pageCount={needle ? undefined : pageCount}
           canPrevious={page > 1}
           canNext={page < pageCount}
-          onPrevious={() => setAt({ list, page: page - 1 })}
-          onNext={() => setAt({ list, page: page + 1 })}
+          onPrevious={() => { setHeld(null); setAt({ list, page: page - 1 }); }}
+          onNext={() => { setHeld(null); setAt({ list, page: page + 1 }); }}
         />
       ) : null}
     </Zone>
