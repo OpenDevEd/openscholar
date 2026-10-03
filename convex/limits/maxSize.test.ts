@@ -358,4 +358,45 @@ describe("at the largest sizes the product allows", () => {
     const page = await as.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: null, numItems: 1_000 } });
     expect(page.page).toHaveLength(200);
   }, 300_000);
+
+  it("a search's answers read 200 papers at a time, and a question's answers leave every paper, at 50 questions a paper", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      const clerkId = "max_answers_user";
+      const { userId, as } = await seedAccount(t, clerkId);
+      const questions = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => `${text(180, i)}?`);
+      const papers = Array.from({ length: 450 }, (_, i) => `https://openalex.org/W${i}`);
+      const at = new Date(Date.UTC(2026, 8, 1)).toISOString();
+      const search = { id: "answered", query: "tutoring", field: "title" as const, count: 450, queryHistoryCount: 0, questionCount: 0, questionText: "", screeningQuestions: questions.map((question) => ({ question })), screeningResponses: [], createdAt: at, updatedAt: at };
+      await as.mutation(api.research.records.change, { accountId: clerkId, requestId: "create", command: { kind: "createSearch", search } });
+      // Seeded as rows: one import of this many answers wouldn't fit a transaction.
+      const screeningId = await t.run(async (ctx) => {
+        const search = (await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", "answered")).unique())!;
+        return ctx.db.insert("screenings", { userId, searchId: search._id, version: 1, createdAt: 1 });
+      });
+      const answers = questions.map((question, q) => ({ question, answer: q % 2 === 0, setBy: "model" as const, updatedAt: 1, model: { answer: q % 2 === 0, confidence: 0.9, at: 1 } }));
+      await insertMany(t, "screeningAnswers", papers.map((paperId) => ({ screeningId, paperId, answers })), 100);
+      await insertMany(t, "screeningAnswerHistory", papers.map((paperId) => ({ screeningId, paperId, answers, version: 1, at: 1 })), 100);
+
+      const page = await as.query(api.research.records.answersOf, { accountId: clerkId, id: "answered", paperIds: papers.slice(0, 200) });
+      expect(page.page).toHaveLength(200);
+      expect(page.page[0].responses).toHaveLength(MAX_SIZE.questionsPerJob);
+
+      await as.mutation(api.research.records.change, { accountId: clerkId, requestId: "drop", command: { kind: "editSearch", id: "answered", edit: { kind: "replaceScreeningQuestion", question: questions[0], replacement: null } } });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      const left = { rows: 0, withQuestion: 0 };
+      for (let cursor: string | null = null; ;) {
+        const read: { page: Array<{ answers: Array<{ question: string }> }>; isDone: boolean; continueCursor: string } = await t.run((ctx) =>
+          ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId)).paginate({ cursor, numItems: 100 }));
+        left.rows += read.page.length;
+        left.withQuestion += read.page.filter((row) => row.answers.some((answer) => answer.question === questions[0])).length;
+        if (read.isDone) break;
+        cursor = read.continueCursor;
+      }
+      expect(left).toEqual({ rows: 450, withQuestion: 0 });
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 300_000);
 });
