@@ -3,7 +3,8 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import schema from "./schema";
 import { api } from "./_generated/api";
-import { seedOrganizationFeatures } from "./organizationFeatures.test-support";
+import { seedFeatureUser, seedOrganizationFeatures } from "./organizationFeatures.test-support";
+import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const denied = { authors: false, extraction: false, evidenceLibraries: false };
@@ -184,4 +185,16 @@ test("the creation picker and authorization use the same eligible organizations"
   await expect(
     owner.run((ctx) => requireLibraryOrganization(ctx, second!)),
   ).rejects.toThrow(/FORBIDDEN/);
+});
+
+test("refuses to read a person in more organizations than one read takes, not a partial list (#427)", async () => {
+  const t = convexTest(schema, modules);
+  await t.run(async (ctx) => {
+    await seedFeatureUser(ctx, "joiner");
+    for (let i = 0; i < MAX_ORGANIZATIONS_PER_PERSON; i += 1) await seedOrganizationFeatures(ctx, ["joiner"], { authors: true });
+  });
+  const joiner = t.withIdentity({ subject: "joiner" });
+  expect(await joiner.query(api.organizationFeatures.get, {})).toMatchObject({ authors: true });
+  await t.run((ctx) => seedOrganizationFeatures(ctx, ["joiner"], { authors: true }));
+  await expect(joiner.query(api.organizationFeatures.get, {})).rejects.toThrow(/more than 200 organizations/);
 });

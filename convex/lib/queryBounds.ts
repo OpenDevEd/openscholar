@@ -81,3 +81,18 @@ export const MAX_AUTHORS_PER_PUBLICATION = 1_000;
  * few writes clear it.
  */
 export const SINGLE_ROW_CLEANUP = 10;
+
+/**
+ * Most accounts read for one email address when someone is invited. A deleted account keeps
+ * its address, so this counts every sign-up and deletion of it; past it the invitation is refused.
+ */
+export const MAX_ACCOUNTS_PER_EMAIL = 100;
+
+/** Most organizations one person is an active member of; past it their reads fail by name, not with a partial list. */
+export const MAX_ORGANIZATIONS_PER_PERSON = 200;
+
+/**
+ * Most locations of one publication group a topic page reads to find a public one. A page
+ * checks 50 groups, so this keeps it inside one query's read limits.
+ */
+export const MAX_LOCATIONS_READ_PER_GROUP = 100;

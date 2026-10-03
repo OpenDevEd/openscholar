@@ -5,6 +5,7 @@ import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
+import { MAX_LOCATIONS_READ_PER_GROUP } from "../lib/queryBounds";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
 import { readActiveTopicsEnabled } from "../evidenceLibraries/activeTopics";
 import { topicAssociationRequestSchema, topicIdSchema } from "../../lib/topics/contract";
@@ -140,11 +141,17 @@ function publicLibraries(ctx: QueryCtx): PublicLibraries {
   };
 }
 async function hasPublicTopic(ctx: QueryCtx, libraries: PublicLibraries, topicId: string, groupKey: string) {
-  // This reads one indexed publication group and stops at its first eligible assignment.
-  for await (const row of ctx.db.query("topicLocations").withIndex("by_groupKey_and_libraryId_and_itemKey", q => q.eq("groupKey", groupKey))) {
+  // A group is one publication's copies across libraries: a few rows. A regroup can move rows in, so no write caps it.
+  const rows = await ctx.db.query("topicLocations").withIndex("by_groupKey_and_libraryId_and_itemKey", q => q.eq("groupKey", groupKey)).take(MAX_LOCATIONS_READ_PER_GROUP + 1);
+  for (const row of rows.slice(0, MAX_LOCATIONS_READ_PER_GROUP)) {
     if (row.state !== "published" || !row.topicIds.includes(topicId)) continue;
     if (!await libraries(row.libraryId)) continue;
     if (publicationGroupKey(row.libraryId, row.itemKey, row.doi, row.openalexId, await linkedDois(ctx, row.openalexId)) === groupKey) return true;
+  }
+  // None of the rows read is public, and more are unread: saying "not public" would be a guess.
+  if (rows.length > MAX_LOCATIONS_READ_PER_GROUP) {
+    console.error("[topics] A publication group has more locations than one read checks", {groupKey, topicId, read: MAX_LOCATIONS_READ_PER_GROUP});
+    throw createError("VALIDATION_ERROR", "This topic has a publication with more copies than its page can check.");
   }
   return false;
 }

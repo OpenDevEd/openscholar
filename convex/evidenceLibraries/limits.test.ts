@@ -2,7 +2,7 @@
 // libraries are added (#357).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { MAX_CREDENTIALS_PER_LIBRARY, MAX_FEATURE_FLAGS, MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
+import { MAX_ACCOUNTS_PER_EMAIL, MAX_CREDENTIALS_PER_LIBRARY, MAX_FEATURE_FLAGS, MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
 import { assertCredentialRoom, writeEvidenceLibraryCredentialRecord } from "./credentials";
 import { insertMany } from "../lib/maxSize.test-support";
 import { createDraftSetupFixture, createReadySetupFixture, reserveLibraryAddressByName } from "../../tests/helpers/evidence-library-setup-fixture";
@@ -91,6 +91,16 @@ describe("Evidence Library limits", () => {
     await expect(invite("one-more@example.org")).rejects.toThrow(/500 invitations waiting/);
     // An invitation already waiting here is renewed, not counted again.
     await expect(invite("person0@example.org")).resolves.toBeDefined();
+  });
+
+  it("refuses to invite an address more accounts have used than it reads (#427)", async () => {
+    const fixture = await createReadySetupFixture("invite_accounts");
+    const invite = () => fixture.admin.mutation(internal.evidenceLibraries.invitations.prepare, { libraryId: fixture.created.libraryId, email: "serial@example.org", role: "editor" });
+    const accounts = (from: number, count: number) => insertMany(fixture.t, "users", Array.from({ length: count }, (_, i) => ({ libraryItemCount: 0, clerkId: `serial_${from + i}`, email: "serial@example.org", state: "deleted", createdAt: 1, updatedAt: 1 })));
+    await accounts(0, MAX_ACCOUNTS_PER_EMAIL);
+    await expect(invite()).resolves.toBeDefined();
+    await accounts(MAX_ACCOUNTS_PER_EMAIL, 1);
+    await expect(invite()).rejects.toThrow(/Too many accounts/);
   });
 
   it("refuses another stored credential, and another feature flag, past their limits (#427)", async () => {

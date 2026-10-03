@@ -5,6 +5,7 @@ import schema from "../schema";
 import {api, internal} from "../_generated/api";
 import {seedTopicLibrary} from "../../tests/helpers/topic-library-fixture";
 import {digestOpaqueToken} from "../lib/opaqueTokenDigest";
+import {MAX_LOCATIONS_READ_PER_GROUP} from "../lib/queryBounds";
 import type {TopicAssociationRequest} from "../../lib/topics/contract";
 import {readTopicPublications} from "../../app/actions/topic-publications";
 const {fetchQueryMock} = vi.hoisted(() => ({fetchQueryMock: vi.fn()}));
@@ -203,4 +204,18 @@ it("tears down topic records in batches and rebuilds surviving DOI and OpenAlex 
     expect(locations.locations).toHaveLength(23);
     expect(locations.locations.every(row => row.library.id === b.libraryId)).toBe(true);
   } finally {vi.useRealTimers();}
+});
+it("refuses a group with more copies than it reads only when none of those read is public (#427)", async () => {
+  const {t, request, send} = await fixture();
+  await send(request());
+  const first = (await t.run(ctx => ctx.db.query("topicLocations").first()))!;
+  const {_id, _creationTime, ...row} = first;
+  // Unpublished copies that sort after the published one.
+  await t.run(async ctx => {
+    for (let i = 0; i < MAX_LOCATIONS_READ_PER_GROUP; i += 1) await ctx.db.insert("topicLocations", {...row, itemKey: `ZZ${String(i).padStart(6, "0")}`, state: "unpublished"});
+  });
+  const list = () => t.query(api.topics.publications.list, {topicId, cursor: null, limit: 10});
+  expect((await list()).groups).toEqual([{key: first.groupKey}]);
+  await t.run(ctx => ctx.db.patch("topicLocations", _id, {state: "unpublished"}));
+  await expect(list()).rejects.toThrow(/more copies/);
 });
