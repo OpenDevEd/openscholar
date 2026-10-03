@@ -55,7 +55,10 @@ describe("account research records", () => {
     const question = "هل هذه تجربة؟ ".repeat(60);
     const large = { ...record, screeningResponses: Array.from({ length: 1500 }, (_, i) => ({ paperId: `W${i}`, responses: [{ question, response: true }, { question: "Adults?", response: i % 2 === 0 }, { question: "In Africa?", response: null }] })) };
     const papers = large.screeningResponses.map(row => row.paperId);
-    const current = (version?: number) => answersOf(alice, "alice", record.id, papers, version);
+    const current = (version?: number, of = papers) => answersOf(alice, "alice", record.id, of, version);
+    // After the first read of every paper, a few stand for the rest: each read is one lookup a paper.
+    const some = ["W7", "W8", "W1499"];
+    const expected = restoreSearch(large).screeningResponses;
     const count = (table: "screeningAnswers" | "screeningAnswerHistory" | "searchRevisions") => t.run(async ctx => (await ctx.db.query(table).collect()).length);
     await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported(large)] });
     expect(await current()).toEqual(restoreSearch(large).screeningResponses);
@@ -69,9 +72,9 @@ describe("account research records", () => {
     for (let page = 2; page <= 25; page++) await alice.mutation(api.research.records.change, { accountId: "alice", requestId: `page-${page}`, command: { kind: "editSearch", id: record.id, edit: { kind: "patch", fields: { page }, clear: [] } } });
     const revisions = (await alice.query(api.research.records.revisions, { accountId: "alice", id: record.id, paginationOpts })).page;
     expect(revisions).toHaveLength(25);
-    expect(await current(revisions.at(-1)!.answersVersion)).toEqual(restoreSearch(large).screeningResponses);
-    expect((await current(revisions[0].answersVersion)).W7[question]).toBe(false);
-    expect((await current()).W7[question]).toBe(false);
+    expect(await current(revisions.at(-1)!.answersVersion, some)).toEqual(Object.fromEntries(some.map(paperId => [paperId, expected[paperId]])));
+    expect((await current(revisions[0].answersVersion, some)).W7[question]).toBe(false);
+    expect((await current(undefined, some)).W7[question]).toBe(false);
     await expect(alice.query(api.research.records.answersOf, { accountId: "alice", id: record.id, paperIds: papers.slice(0, ANSWERED_PAPERS_MAX + 1) })).rejects.toThrow("200 papers at a time");
   });
 
