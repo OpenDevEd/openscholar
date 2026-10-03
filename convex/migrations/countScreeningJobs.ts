@@ -14,11 +14,16 @@ import { countRow, startCount } from "../research/recordCounts";
  *   npx convex run migrations/countScreeningJobs:run '{"dryRun": true}'
  *   npx convex run migrations/countScreeningJobs:run
  *   npx convex run migrations/countScreeningJobs:verify
+ *
+ * If `verify` stays above 0, a count stopped part way; `migrations/pagedRecords:resume`
+ * carries on every count that did, whichever table it counts.
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
+// A small batch: a job's questions and scoring rules have no byte limit of their own.
 export const jobs = migrations.define({
   table: "screeningJobs",
+  batchSize: 5,
   migrateOne: async (ctx, job) => {
     await startCount(ctx, "screeningJobs", job.userId);
   },
