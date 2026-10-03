@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
-import { FilterSection } from "@/components/shared/filter-section";
+import { FilterList, FilterSection } from "@/components/shared/filter-section";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { DateRangePicker, type DatePreset } from "@/components/shared/date-range-picker";
 import { PublicationTimeframeFilter } from "@/components/shared/publication-timeframe-filter";
@@ -117,7 +117,8 @@ export function LibraryFilterContent({
   );
 
   return (
-    <div className={cn("space-y-4 p-4", !isMobile && "pt-15")}>
+    <div className={cn("p-4", !isMobile && "pt-15")}>
+      <FilterList>
       {/* Date Saved */}
       <FilterSection
         title={t("filterDateSaved")}
@@ -201,6 +202,7 @@ export function LibraryFilterContent({
           </SelectContent>
         </Select>
       </FilterSection>
+      </FilterList>
     </div>
   );
 }
