@@ -1,6 +1,6 @@
 "use client";
 
-import { useRatedPapers } from "@/lib/research/provider";
+import { useRatedPapers } from "@/lib/research/reads";
 import React, {
   useRef,
   useEffect,

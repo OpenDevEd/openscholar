@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getIdColor } from "@/lib/format";
 import { useSearchHistoryStore, useKeywordExpansionStore } from "@/lib/store";
+import { shortcutNames } from "@/lib/query-shortcuts";
 import type { ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
@@ -77,7 +78,7 @@ export function HistoryItem({
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false);
 
   const removeSearchResult = useSearchHistoryStore((state) => state.removeSearchResult);
-  const { addKeyword, keywords } = useKeywordExpansionStore();
+  const addKeyword = useKeywordExpansionStore((state) => state.addKeyword);
 
   const idColor = getIdColor(item.id);
   const queryHistoryCount = item.queryHistoryCount;
@@ -117,7 +118,7 @@ export function HistoryItem({
     });
   };
 
-  const handleBookmarkSubmit = () => {
+  const handleBookmarkSubmit = async () => {
     if (!bookmarkName.trim()) {
       toast.validation.failed(tv("bookmarkNameRequired"));
       return;
@@ -126,7 +127,9 @@ export function HistoryItem({
       toast.validation.failed(tv("bookmarkNameFormat"));
       return;
     }
-    if (keywords[bookmarkName]) {
+    // An account looks up the name, to say whether it's taken, and the shortcuts the query names.
+    await useKeywordExpansionStore.getState().ensureShortcuts([bookmarkName.trim(), ...shortcutNames(item.query)]);
+    if (useKeywordExpansionStore.getState().keywords[bookmarkName.trim()]) {
       toast.validation.failed(tv("bookmarkNameExists", { name: bookmarkName }));
       return;
     }

@@ -275,6 +275,10 @@ export function applySearchEdit(search: SavedSearch, edit: SearchEdit, now: stri
 }
 
 export const shortcutValidator = v.object({ shorthand: v.string(), expansion: v.string(), createdAt: v.number() });
+/** How the Bookmarks page orders shortcuts: newest or oldest first, or by name. */
+export const shortcutSortValidator = v.union(v.literal("recent"), v.literal("oldest"), v.literal("alpha"), v.literal("alpha-desc"));
+/** Shortcut names one read takes: more than any query uses. */
+export const SHORTCUT_NAMES_MAX = 200;
 export const ratingValidator = v.object({ paperId: v.string(), rating: v.number() });
 /** Papers one read of ratings takes: as many as a results page shows. */
 export const RATED_PAPERS_MAX = 200;

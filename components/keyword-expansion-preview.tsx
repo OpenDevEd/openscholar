@@ -3,6 +3,7 @@
 import React from 'react'
 import { useTranslations } from "next-intl"
 import { useKeywordExpansionStore } from "@/lib/store"
+import { useQueryShortcuts } from "@/lib/research/reads"
 import { Badge } from "@/components/ui/badge"
 import { TooltipHint } from "@/components/ui/tooltip"
 
@@ -14,6 +15,7 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
   const tb = useTranslations("bookmarksPage")
   const tl = useTranslations("labels")
   const { expandQuery, keywords } = useKeywordExpansionStore()
+  useQueryShortcuts(query)
   
   if (!query.trim()) {
     return (

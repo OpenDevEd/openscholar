@@ -211,4 +211,34 @@ describe("research save recovery", () => {
     expect(session.ratingsRead(["W1"])).toBe(0);
     stop();
   });
+
+  it("expands only the shortcuts it has read by name, and an upload keeps a name already taken", async () => {
+    const saved = [{ shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1 }];
+    const asked: string[][] = [];
+    const commands: ResearchCommand[] = [];
+    const client = {
+      watchQuery(_query: unknown, args: { names?: string[] }) {
+        if (args.names) asked.push(args.names);
+        return { localQueryResult: () => ({ page: saved.filter(row => args.names?.includes(row.shorthand)), isDone: true, continueCursor: "" }), onUpdate: () => () => {} };
+      },
+      mutation: vi.fn(async (_query: unknown, args: { command: ResearchCommand }) => { commands.push(args.command); return null; }),
+    } as unknown as ConvexReactClient;
+    const session = new ResearchSession(client, "alice");
+    const stop = session.subscribe(() => {});
+    await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
+    const shortcuts = session.stores.shortcuts.getState();
+
+    // Nothing is read until a query names it.
+    expect(asked).toEqual([]);
+    expect(shortcuts.expandQuery("rct... AND reading").warnings).toHaveLength(1);
+    await shortcuts.ensureShortcuts(["rct", "nope"]);
+    expect(asked).toEqual([["rct", "nope"]]);
+    expect(shortcuts.expandQuery("rct... AND reading")).toEqual({ expandedQuery: "randomized controlled trial AND reading", warnings: [] });
+    expect(shortcuts.expandQuery("nope... AND reading").warnings).toEqual([{ key: "bookmarkNotFound", params: { keyword: "nope" } }]);
+
+    expect(await shortcuts.importKeywords([{ name: "rct", expansion: "something else" }, { name: "ml", expansion: "machine learning", createdAt: 5 }, { name: "ml", expansion: "twice" }, { name: "", expansion: "no name" }])).toBe(1);
+    await vi.waitFor(() => expect(session.getSnapshot().pending).toBe(0));
+    expect(commands).toEqual([{ kind: "shortcut", shorthand: "ml", value: { expansion: "machine learning", createdAt: 5 } }]);
+    stop();
+  });
 });

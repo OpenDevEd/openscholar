@@ -3,7 +3,8 @@
 import React, { Suspense, useContext } from "react";
 import { useParams } from "next/navigation";
 import { SearchProvider, SearchInitializer } from "@/lib/search";
-import { ResearchLoading, useResearchStatus, useWatchedSearch } from "@/lib/research/provider";
+import { ResearchLoading, useResearchStatus } from "@/lib/research/provider";
+import { useWatchedSearch } from "@/lib/research/reads";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { ResearchContext } from "@/lib/research/binding";
 import { useSearchHistoryStore } from "@/lib/store";

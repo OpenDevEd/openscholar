@@ -52,6 +52,19 @@ function historyRow(search: ExportedSearch) {
   return { count: search.count, field: search.field, search_query: search.query };
 }
 
+/** A query shortcut as its export reads it. */
+export type ExportedShortcut = { shorthand: string; expansion: string; createdAt: number };
+
+/** A list of plain rows as JSON, which the pages' uploads take back. */
+function jsonList<Item>(row: (item: Item) => Row) {
+  return {
+    contentType: "application/json; charset=utf-8",
+    start: () => "[",
+    item: (item: Item, index: number) => `${index === 0 ? "" : ","}\n  ${JSON.stringify(row(item))}`,
+    end: () => "\n]\n",
+  };
+}
+
 /**
  * Each export as the server writes it (convex/exports.ts): a start, each item, and an end
  * that can say how many there were. The browser only downloads. Columns run in the order the
@@ -71,13 +84,13 @@ export const exportFiles = {
   history: {
     name: () => "search_history",
     csv: csvFile(Object.keys(historyRow({ query: "", count: 0, field: "" })), historyRow),
-    // A plain list, which the history page's upload takes back.
-    json: {
-      contentType: "application/json; charset=utf-8",
-      start: () => "[",
-      item: (search: ExportedSearch, index: number) => `${index === 0 ? "" : ","}\n  ${JSON.stringify(historyRow(search))}`,
-      end: () => "\n]\n",
-    },
+    json: jsonList(historyRow),
+  },
+  // Under the names the Bookmarks page's upload reads back; the CSV says when in words.
+  shortcuts: {
+    name: () => "bookmarks",
+    csv: csvFile(["createdAt", "expansion", "name"], (shortcut: ExportedShortcut) => ({ createdAt: new Date(shortcut.createdAt).toISOString(), expansion: shortcut.expansion, name: shortcut.shorthand })),
+    json: jsonList((shortcut: ExportedShortcut) => ({ name: shortcut.shorthand, expansion: shortcut.expansion, createdAt: shortcut.createdAt })),
   },
 };
 
@@ -92,7 +105,7 @@ export const EXPORT_LINK_MS = 2 * 60_000;
 const PART_START_MS = 30_000;
 
 /**
- * Downloads a library view or the search history as files the server writes a page at a
+ * Downloads a library view, the search history or the query shortcuts as files the server writes a page at a
  * time, so no export is held whole in memory, here or there. A file stops short of Convex's
  * 20 MiB response limit, and the next part follows once it's done. The browser makes a
  * one-time token and registers only its digest; each part's link carries the token. Settles

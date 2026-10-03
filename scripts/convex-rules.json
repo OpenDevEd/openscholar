@@ -134,8 +134,7 @@
       "convex/paperSets/openalex.ts:readWorks": "#421",
       "convex/zotero/actions.ts:fetchAllCollectionsForParent": "#425",
       "convex/zotero/actions.ts:fetchAllTopItemsForCollection": "#425",
-      "convex/zotero/libraryGroupActions.ts:listAllUserGroups": "#425",
-      "lib/research/session.ts:watchPages": "#420"
+      "convex/zotero/libraryGroupActions.ts:listAllUserGroups": "#425"
     }
   },
   "missingReturns": {

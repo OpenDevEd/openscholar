@@ -101,6 +101,16 @@ local store or Convex by mode:
 3. Shortcuts. The Bookmarks page pages them; a query's expansion reads only the
    shortcut names it uses.
 
+   2026-10-03, as built: `research/records:shortcutsOf` reads up to 200
+   shortcuts by name. An action that expands a query reads the names it uses
+   first (`ensureQueryShortcuts`), and a component that shows a query holds
+   that read while it does (`useQueryShortcuts`), so the browser's expansion
+   stays one synchronous function. The Bookmarks page lists
+   `listedShortcuts` by date or by a stored lower-case `sortName`, totals from
+   the same count rows as searches (`recordCounts`, one table for both), and
+   exports through the export route. `migrations/pagedRecords` replaces
+   `pagedSearches`: it counts both and backfills `sortName`.
+
 Each stage is one PR and removes `watchPages` for its records; the last
 removes it. The assistant's tools already read these records by page or ID.
 

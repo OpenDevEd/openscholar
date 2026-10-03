@@ -3,7 +3,7 @@ import { DateRange } from 'react-day-picker';
 import posthog from 'posthog-js';
 import { useUIStore, useRatingsStore, useSearchHistoryStore } from './store';
 import { createSearchParameters, generateFilename, downloadWithMetadata, getRatingOrNull } from './utils';
-import { validateAndExpandKeywordsSilently } from './keyword-validation-browser';
+import { ensureQueryShortcuts, validateAndExpandKeywordsSilently } from './keyword-validation-browser';
 import type { SearchField, SearchFilters, ScreeningResponses, PaperResult } from './types';
 
 export type DownloadSearchState = {
@@ -169,6 +169,7 @@ export const downloadItem = async (
     }
     
     // Expand keywords for export
+    await ensureQueryShortcuts(searchState.query);
     const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
     
     const filename = generateFilename(item.title || '', '', format);
@@ -207,6 +208,7 @@ export const downloadEssentialItem = async (
     }
     
     // Expand keywords for export
+    await ensureQueryShortcuts(searchState.query);
     const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
     
     const essentialInfo = getEssentialInfo(item, ratings, screeningResponses, format);
@@ -238,6 +240,7 @@ export const downloadAll = async (
     }
 
     // Expand keywords for export
+    await ensureQueryShortcuts(searchState.query);
     const { expandedQuery } = validateAndExpandKeywordsSilently(searchState.query);
     
     const filename = generateFilename('search_results', onlyEssential ? 'essential' : '', format);
