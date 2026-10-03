@@ -20,6 +20,7 @@ import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { createError } from "../../lib/errors";
 import { PAPER_LIMIT } from "@/lib/extraction/limits";
+import { paperSelectionValidator } from "../validators";
 import type { Doc, Id } from "../../_generated/dataModel";
 
 const collectionIdValidator = v.optional(
@@ -141,7 +142,7 @@ export const listAllIds = query({
     query: v.optional(v.string()),
     collectionId: collectionIdValidator,
   },
-  returns: v.object({ items: v.array(libraryItemValidator), truncated: v.boolean() }),
+  returns: v.object({ items: paperSelectionValidator(libraryItemValidator), truncated: v.boolean() }),
   handler: async (ctx, args) => {
     await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);

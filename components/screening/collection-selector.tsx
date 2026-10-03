@@ -1,22 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
-import { Plus, Check, FolderPlus, X } from "lucide-react";
+import { Plus, Check, ChevronDown, FolderPlus, X } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useCollectionPicker } from "@/components/library/use-collection-picker";
+import { cn } from "@/lib/utils";
 
 interface CollectionSelectorProps {
   selectedId: Id<"collections"> | undefined;
@@ -35,9 +39,12 @@ export function CollectionSelector({
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
 
-  const { data: collections } = useProtectedQuery(
-    api.library.collections.getCollectionsWithCounts,
-    {}
+  const tl = useTranslations("libraryPage");
+  const [open, setOpen] = useState(false);
+  const picker = useCollectionPicker({ enabled: open });
+  const { data: selected } = useProtectedQuery(
+    api.library.collections.getCollection,
+    selectedId ? { collectionId: selectedId } : "skip",
   );
 
   const createCollection = useMutation(
@@ -51,14 +58,6 @@ export function CollectionSelector({
     onSelect(id);
     setNewName("");
     setIsCreating(false);
-  }
-
-  function handleValueChange(value: string) {
-    if (value === CREATE_NEW_VALUE) {
-      setIsCreating(true);
-      return;
-    }
-    onSelect(value as Id<"collections">);
   }
 
   if (isCreating) {
@@ -117,28 +116,60 @@ export function CollectionSelector({
   }
 
   return (
-    <Select
-      value={selectedId ?? ""}
-      onValueChange={handleValueChange}
-      disabled={disabled}
-    >
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder={t("selectCollection")} />
-      </SelectTrigger>
-      <SelectContent>
-        {collections?.map((col) => (
-          <SelectItem key={col._id} value={col._id}>
-            {col.name} ({col.itemCount})
-          </SelectItem>
-        ))}
-        <SelectSeparator />
-        <SelectItem value={CREATE_NEW_VALUE}>
-          <span className="flex items-center gap-1.5">
-            <Plus className="h-3.5 w-3.5" />
-            {t("createNewCollection")}
+    <Popover modal open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className="h-9 w-full justify-between font-normal"
+        >
+          <span className={cn("truncate", !selected && "text-muted-foreground")}>
+            {selected ? `${selected.name} (${selected.itemCount})` : t("selectCollection")}
           </span>
-        </SelectItem>
-      </SelectContent>
-    </Select>
+          <ChevronDown className="size-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      {/* Its full height, so it opens above the trigger when the dialog leaves no room below. */}
+      <PopoverContent className="max-h-none w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput placeholder={tl("searchCollections")} value={picker.query} onValueChange={picker.setQuery} />
+          <CommandList onScroll={picker.onScroll}>
+            {!picker.isLoading && <CommandEmpty>{picker.search ? tl("noCollectionsMatchSearch") : tl("noCollections")}</CommandEmpty>}
+            <CommandGroup>
+              {picker.collections.map((col) => (
+                <CommandItem
+                  key={col._id}
+                  value={col._id}
+                  onSelect={() => {
+                    onSelect(col._id);
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={cn("size-4", col._id === selectedId ? "opacity-100" : "opacity-0")} />
+                  <span className="min-w-0 flex-1 truncate">{col.name}</span>
+                  <span className="text-xs tabular-nums text-muted-foreground">{col.itemCount}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+          <CommandSeparator />
+          <CommandGroup>
+            <CommandItem
+              value={CREATE_NEW_VALUE}
+              onSelect={() => {
+                setOpen(false);
+                setIsCreating(true);
+              }}
+            >
+              <Plus className="size-4" />
+              {t("createNewCollection")}
+            </CommandItem>
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

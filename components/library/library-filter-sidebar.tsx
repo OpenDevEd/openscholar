@@ -26,9 +26,6 @@ interface LibraryFilterSidebarProps {
   isPublicationDateActive: boolean;
   collectionId: string | null;
   onCollectionChange: (id: string | null) => void;
-  collections:
-    | Array<{ _id: string; name: string; itemCount: number }>
-    | undefined;
   onManageCollections: () => void;
   sort: LibrarySortCombined;
   onSortChange: (value: LibrarySortCombined) => void;
@@ -55,7 +52,6 @@ export function LibraryFilterSidebar(props: LibraryFilterSidebarProps) {
       isPublicationDateActive={props.isPublicationDateActive}
       collectionId={props.collectionId}
       onCollectionChange={props.onCollectionChange}
-      collections={props.collections}
       onManageCollections={props.onManageCollections}
       sort={props.sort}
       onSortChange={props.onSortChange}

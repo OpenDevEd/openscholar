@@ -29,6 +29,10 @@ Convex's limits or the browser's memory.
 - Schemas and queries are optimized: each paged list reads through an index in
   the order it's shown, and counts are kept as rows change, never counted on
   read.
+- 2026-10-03: a numbered list steps previous and next with "page 3 of 12", the
+  total from a kept count. It reads only the page shown; jumping to any page
+  would read every row it skips. A picker searches on the server and loads the
+  next page as it scrolls.
 - The gate (#428) is `npm run check:convex-rules`. Existing cases are pending,
   each with its issue, and the pending lists only shrink.
 
@@ -37,9 +41,12 @@ Convex's limits or the browser's memory.
 - Server: `paginationOptsValidator` and `paginationResultValidator` from
   `convex/server`; `.paginate()` through an index; `getPage` and `stream` from
   `convex-helpers` for ranges and merged or filtered reads.
-- Client: `usePaginatedQuery` (or `useProtectedPaginatedQuery`), the shared
-  `Paged` and `pagerOf` from `components/settings/parts.tsx`, and
-  `CommandCenterPagination`.
+- Client: `useCursorPage` (`lib/hooks/use-cursor-page.ts`) with `PageStepper`
+  (`components/shared/page-stepper.tsx`) for numbered lists; for pickers,
+  `useProtectedPaginatedQuery` with `loadMore` from the list's scroll handler,
+  as `components/library/use-collection-picker.ts` does. `Paged` and `pagerOf`
+  from `components/settings/parts.tsx` and `CommandCenterPagination` jump to any
+  page, so they suit only lists already in memory.
 - Limits proof: `convex/limits/maxSize.test.ts` and
   `convex/lib/maxSize.test-support.ts`.
 
