@@ -35,17 +35,28 @@ export function ScreeningPage() {
   const t = useTranslations("screeningPage");
   const format = useFormatter();
   const date = (at: number) => format.dateTime(new Date(at), { dateStyle: "medium" });
-  // Screen all on a results page opens the form with that search: /screening?search=<id>. A screening shows at ?job=<id>.
+  // Screen all on a results page opens the form with that search: /screening?search=<id>. A
+  // screening shows at ?job=<id>, the form at ?job=new; with neither, the newest screening shows.
   const [searchId] = useQueryState("search");
-  const [jobId, setJobId] = useQueryState("job");
+  const [picked, setPicked] = useQueryState("job");
 
   const jobs = useCursorPage(api.screening.queries.listUserScreeningJobs, {}, RAIL_PAGE);
   const { data: total } = useProtectedQuery(api.screening.queries.countUserScreeningJobs, {});
+  // Until the person's screenings arrive, nothing says whether the form or the newest of them shows.
+  const waiting = picked === null && !searchId && jobs.isLoading;
+  const jobId = picked === "new" || waiting ? null : (picked ?? (searchId ? null : (jobs.items[0]?._id ?? null)));
   const { data: read } = useProtectedQuery(api.screening.queries.getScreeningJob, jobId ? { jobId: jobId as Id<"screeningJobs"> } : "skip");
   // The screening last shown stays up while the next one is read.
   const [shown, setShown] = useState<Job | null>(null);
   if (read && read !== shown) setShown(read);
   const job = !jobId || read === null ? null : (read ?? shown);
+  const setJobId = (id: Id<"screeningJobs"> | null) => setPicked(id ?? "new");
+  const showsForm = !job && !waiting && !(jobId && read === undefined);
+  // The newest screening shows only until the rail turns its page: from then on it's the one picked.
+  const turn = (step: () => void) => () => {
+    if (picked === null && job) setPicked(job._id);
+    step();
+  };
 
   const active = jobs.items.filter((row) => row.status === "processing");
   const past = jobs.items.filter((row) => row.status !== "processing");
@@ -67,7 +78,7 @@ export function ScreeningPage() {
           navigation={
             <ConfigurationNavigation label={t("screenings")}>
               <RailGroup label={t("start")}>
-                <RailLink href="/screening" icon={Plus} active={!job} onClick={() => setJobId(null)}>
+                <RailLink href="/screening?job=new" icon={Plus} active={showsForm} onClick={() => setJobId(null)}>
                   <span className="flex-1 truncate">{t("newScreening")}</span>
                 </RailLink>
               </RailGroup>
@@ -102,8 +113,8 @@ export function ScreeningPage() {
                       pageCount={total === undefined ? undefined : Math.max(1, Math.ceil(total / RAIL_PAGE))}
                       canPrevious={jobs.canPrevious}
                       canNext={jobs.canNext}
-                      onPrevious={jobs.previous}
-                      onNext={jobs.next}
+                      onPrevious={turn(jobs.previous)}
+                      onNext={turn(jobs.next)}
                     />
                   ) : null}
                 </div>
@@ -120,7 +131,7 @@ export function ScreeningPage() {
                   blocker={blockerOf(reading(job._id))}
                   onRunAgain={() => setJobId(null)}
                 />
-              ) : jobId && read === undefined ? null : (
+              ) : !showsForm ? null : (
                 <SetupView key={searchId ?? "new"} fromSearchId={searchId ?? undefined} waitingFor={blockerOf(reading())?.name} onStarted={(id) => setJobId(id)} />
               )}
             </motion.div>
