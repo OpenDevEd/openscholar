@@ -25,7 +25,6 @@ import { query } from "../../_generated/server";
 import { v } from "convex/values";
 import { resolveOwnedJob } from "../access";
 import { RUNNING_JOB_STATUSES } from "../stateMachine";
-import { EXTRACTION_PAPER_CONCURRENCY } from "../../../lib/extraction/limits";
 
 const nowProcessingResultValidator = v.union(
   v.null(),
@@ -52,7 +51,7 @@ export const getNowProcessing = query({
       .withIndex("by_job_status", (q) =>
         q.eq("jobId", jobId).eq("status", "extracting"),
       )
-      .take(EXTRACTION_PAPER_CONCURRENCY);
+      .collect();
     if (inFlight.length === 0) return null;
 
     // Pick the earliest-started paper so parallel workpool dispatch

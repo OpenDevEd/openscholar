@@ -52,7 +52,6 @@ import {
 } from "./configurationSnapshot";
 import { validateSectionPayload } from "./sectionPayload";
 import { changedSectionsValidator } from "./validators";
-import { SECTION_REGISTRY } from "../../lib/evidence-libraries/configuration/section-registry";
 
 const MAX_VERSION_ROWS = 100;
 
@@ -603,8 +602,7 @@ export async function restoreEvidenceLibraryRevision(
     .withIndex("by_draftId_and_sectionKey", (query) =>
       query.eq("draftId", draft._id),
     )
-    // One row per section of the registry.
-    .take(SECTION_REGISTRY.length);
+    .collect();
   for (const row of draftRows) await ctx.db.delete(row._id);
   for (const section of sourceSnapshot.migration.snapshot.sections) {
     await ctx.db.insert("evidenceLibraryConfigSections", {
