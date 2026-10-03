@@ -342,7 +342,7 @@ export function ModelPicker({
           <div className="space-y-2 p-2">
             <label className="flex h-10 items-center gap-2.5 rounded-xl border border-border-subtle bg-inset px-3">
               <Search className="size-4 shrink-0 text-muted-foreground" />
-              <CommandPrimitive.Input ref={search} placeholder={tm("searchModels")} className="h-full w-full bg-transparent text-sm outline-hidden placeholder:text-muted-foreground" />
+              <CommandPrimitive.Input ref={search} placeholder={tm("searchModels")} className="h-full w-full bg-transparent text-sm outline-hidden placeholder:text-subtle-foreground" />
             </label>
             {filters.length > 0 ? (
               <div

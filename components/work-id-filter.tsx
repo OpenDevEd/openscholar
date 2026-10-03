@@ -159,7 +159,7 @@ export function WorkIdFilter({
             </Button>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-subtle-foreground">
           {currentConfig.description}
         </p>
       </div>

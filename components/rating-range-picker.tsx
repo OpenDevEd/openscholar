@@ -101,7 +101,7 @@ export function RatingRangePicker({
             <label className="text-sm font-medium text-foreground">
               {tf("onlyShowRated")}
             </label>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-subtle-foreground">
               {tf("hideUnrated")}
             </p>
           </div>

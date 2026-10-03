@@ -474,7 +474,7 @@ function SwitchRow({
         <Label htmlFor={id} className="text-sm font-medium">
           {label}
         </Label>
-        <p className="text-xs text-muted-foreground">{hint}</p>
+        <p className="text-xs text-subtle-foreground">{hint}</p>
       </div>
       <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
     </div>

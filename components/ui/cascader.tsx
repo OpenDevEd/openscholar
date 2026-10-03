@@ -279,7 +279,7 @@ export function Cascader({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         "h-9 px-3 py-2 w-full cursor-pointer",
-        !displayValue && "text-muted-foreground",
+        !displayValue && "text-subtle-foreground",
         disabled && "pointer-events-none opacity-50",
         className
       )}

@@ -50,7 +50,7 @@ export function ResearchAreaFilter({
         }
       />
       {mixedLevels ? (
-        <p className="text-xs text-muted-foreground">{tf("researchAreasMixedLevels")}</p>
+        <p className="text-xs text-subtle-foreground">{tf("researchAreasMixedLevels")}</p>
       ) : null}
     </div>
   );

@@ -181,7 +181,7 @@ export function Field({
       {error ? (
         <FieldError>{error}</FieldError>
       ) : hint ? (
-        <p className="text-xs text-muted-foreground">{hint}</p>
+        <p className="text-xs text-subtle-foreground">{hint}</p>
       ) : null}
     </div>
   );

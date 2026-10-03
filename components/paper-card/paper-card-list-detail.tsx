@@ -175,7 +175,7 @@ export function PaperCardListDetail({
         {/* Abstract */}
         {result.abstract && (
           <div className="mb-4">
-            <p className="text-sm text-muted-foreground leading-relaxed text-wrap-anywhere">
+            <p className="text-sm text-foreground leading-relaxed text-wrap-anywhere">
               {isExpanded
                 ? showTranslated && translatedContent
                   ? translatedContent.translatedAbstract

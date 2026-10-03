@@ -37,10 +37,13 @@
   --secondary: oklch(0.948 0 0); /* secondary buttons and badges */
   --accent: oklch(0.932 0.032 256); /* hovered and selected items */
   --sidebar-accent: oklch(0.94 0.028 256); /* hovered and selected sidebar items */
+  --segment: var(--muted); /* the track of a segmented switch or tab list */
+  --segment-active: var(--background); /* its selected segment */
 
   /* Text on those surfaces. */
   --foreground: oklch(0.205 0 0);
   --muted-foreground: oklch(0.52 0 0);
+  --subtle-foreground: var(--muted-foreground); /* hints and placeholders; the same grey in light */
   --card-foreground: oklch(0.205 0 0);
   --popover-foreground: oklch(0.205 0 0);
   --secondary-foreground: oklch(0.32 0 0);
@@ -146,23 +149,26 @@
   --logo-b: #525252;
   --logo-c: #fafafa;
 
-  /* Surfaces: the same list as the light theme, each a step lighter than the
-     one behind it. */
+  /* Surfaces: the same list as the light theme. Cards stay close to the page
+     and their edges draw them; selected and raised things are clearly lighter. */
   --background: #000000; /* the page behind everything */
   --sidebar: #0b0b0b; /* the app sidebar */
-  --card: #121212; /* panels, result items and the sections of a floating sidebar */
-  --card-hover: #1a1a1a; /* a card under the pointer */
-  --inset: #1a1a1a; /* rows, wells and sections inside a card */
+  --card: #0a0a0a; /* panels, result items and the sections of a floating sidebar */
+  --card-hover: #141414; /* a card under the pointer */
+  --inset: #141414; /* rows, wells and sections inside a card */
   --field: #0b0b0b; /* text inputs, selects and outline buttons */
   --popover: #181818; /* menus, popovers and dialogs */
   --muted: #212121; /* tracks, chips and quiet fills */
   --secondary: #242424; /* secondary buttons and badges */
   --accent: #2a2a2a; /* hovered and selected items */
   --sidebar-accent: #222222; /* hovered and selected sidebar items */
+  --segment: #141414; /* the track of a segmented switch or tab list */
+  --segment-active: #2a2a2a; /* its selected segment */
 
   /* Text on those surfaces. */
   --foreground: #ededed;
   --muted-foreground: #a6a6a6;
+  --subtle-foreground: #888888; /* hints and placeholders */
   --card-foreground: #ededed;
   --popover-foreground: #ededed;
   --secondary-foreground: #ededed;
@@ -171,8 +177,8 @@
   --sidebar-accent-foreground: #ededed;
 
   /* Edges. */
-  --border: #2c2c2c; /* card and control outlines */
-  --border-subtle: #212121; /* dividers and quiet outlines */
+  --border: #2e2e2e; /* card and control outlines */
+  --border-subtle: #262626; /* dividers and quiet outlines */
   --input: #303030; /* the outline of inputs */
   --sidebar-border: #1f1f1f;
 
@@ -221,6 +227,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
@@ -230,6 +237,8 @@
   --color-card-hover: var(--card-hover);
   --color-inset: var(--inset);
   --color-field: var(--field);
+  --color-segment: var(--segment);
+  --color-segment-active: var(--segment-active);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);

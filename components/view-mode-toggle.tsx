@@ -25,7 +25,7 @@ export function IconSwitch<T extends string>({ label, value, onChange, options }
             onClick={() => onChange(option)}
             className={cn(
               "flex size-7 items-center justify-center rounded-[5px] transition-colors",
-              value === option ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              value === option ? "bg-segment-active text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
             )}
           >
             <Icon className="size-3.5" />

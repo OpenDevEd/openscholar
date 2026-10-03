@@ -55,7 +55,7 @@ export function ModeToggle({ mode, onModeChange, disabled }: ModeToggleProps) {
           {mode === "search" && (
             <motion.div
               layoutId="home-mode-indicator"
-              className="absolute inset-0 rounded-full bg-background shadow-sm border border-border-subtle z-10"
+              className="absolute inset-0 rounded-full bg-segment-active shadow-sm border border-border-subtle z-10"
               transition={indicatorTransition}
             />
           )}
@@ -81,7 +81,7 @@ export function ModeToggle({ mode, onModeChange, disabled }: ModeToggleProps) {
           {mode === "research" && (
             <motion.div
               layoutId="home-mode-indicator"
-              className="absolute inset-0 rounded-full bg-background shadow-sm border border-border-subtle z-10"
+              className="absolute inset-0 rounded-full bg-segment-active shadow-sm border border-border-subtle z-10"
               transition={indicatorTransition}
             />
           )}

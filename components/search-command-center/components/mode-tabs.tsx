@@ -53,7 +53,7 @@ export function ModeTabs({ mode, onChange, disabled }: ModeTabsProps) {
                 layoutId="mode-tab-indicator"
                 className={cn(
                   "absolute inset-0 rounded-md",
-                  "bg-background shadow-sm",
+                  "bg-segment-active shadow-sm",
                   "border border-border-subtle"
                 )}
                 transition={tabSpring}

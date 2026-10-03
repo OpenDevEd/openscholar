@@ -320,7 +320,7 @@ export function CountrySelector({
             variant="outline"
             className={cn(
               "w-full justify-start text-left font-normal",
-              selectedRegions.length === 0 && "text-muted-foreground",
+              selectedRegions.length === 0 && "text-subtle-foreground",
               countryData.isLimitExceeded && "border-warning/40 bg-warning/10",
               triggerClassName
             )}

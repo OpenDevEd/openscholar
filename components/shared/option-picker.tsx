@@ -59,7 +59,7 @@ export function OptionPicker({
             aria-label={label}
             className="h-9 w-full justify-between font-normal"
           >
-            <span className={cn("truncate", selected.length === 0 && "text-muted-foreground")}>
+            <span className={cn("truncate", selected.length === 0 && "text-subtle-foreground")}>
               {selected.length === 0 ? placeholder : selectedText}
             </span>
             <ChevronDown className="size-4 shrink-0 opacity-50" />

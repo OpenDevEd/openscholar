@@ -230,8 +230,8 @@ export function CountChip({
                 className={cn(
                   "flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                   isActive
-                    ? "bg-background text-primary shadow-sm"
-                    : "text-muted-foreground hover:bg-background hover:text-foreground",
+                    ? "bg-segment-active text-primary shadow-sm"
+                    : "text-muted-foreground hover:bg-segment-active hover:text-foreground",
                   "disabled:cursor-not-allowed disabled:opacity-50",
                 )}
               >

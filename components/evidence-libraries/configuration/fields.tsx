@@ -527,7 +527,7 @@ export function ToggleRow({
           {label}
         </Label>
         {hint ? (
-          <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+          <p id={`${id}-hint`} className="text-xs text-subtle-foreground">
             {hint}
           </p>
         ) : null}
@@ -750,7 +750,7 @@ export function ChipInput({
             value={text}
             placeholder={placeholder}
             aria-invalid={invalid || undefined}
-            className="min-w-24 flex-1 bg-transparent font-mono text-xs outline-none placeholder:text-muted-foreground"
+            className="min-w-24 flex-1 bg-transparent font-mono text-xs outline-none placeholder:text-subtle-foreground"
             onChange={(e) => setText(e.target.value)}
             onBlur={commit}
             onKeyDown={(e) => {
