@@ -326,9 +326,10 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
         }))}
       />
       {/* The list keeps a full page's height while its outcome has pages, and its papers' height while they load, so nothing under it moves. */}
-      <div style={{ minHeight: hasPages ? listPx(PAGE_SIZE) + 12 : list.isLoading && !text && count ? listPx(count) + 12 : undefined }}>
+      <div style={{ minHeight: hasPages ? listPx(PAGE_SIZE) : list.isLoading && !text && count ? listPx(count) : undefined }}>
         <motion.div
-          key={`${tab}\n${text}\n${list.page}`}
+          // One list per outcome, search and page, and per arrival of its papers: rows only animate for changes inside the list shown.
+          key={`${tab}\n${text}\n${list.page}\n${list.isStale}`}
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: EASE }}
@@ -343,7 +344,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
               {rows.map((paper, index) => {
                 const expanded = open === paper.openalexId;
                 // Held here after a change that gave it another outcome: it leaves towards that outcome's tab.
-                const leaving = paper.outcome !== tab;
+                const leaving = paper.openalexId === held?.paper.openalexId && paper.outcome !== tab;
                 const towards = OUTCOMES.indexOf(paper.outcome) > OUTCOMES.indexOf(tab) ? 1 : -1;
                 const authors = paper.authors ?? [];
                 return (

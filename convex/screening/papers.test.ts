@@ -107,6 +107,18 @@ describe("a screening job's papers", () => {
     expect(await list("included", {}, t.withIdentity({ subject: "someone_else" }))).toEqual([]);
   });
 
+  it("reads one paper as its list shows it, for its owner alone, and lists a person's jobs of one status", async () => {
+    const { t, as, jobId, list } = await screened();
+    const paperId = "https://openalex.org/W3";
+    expect(await as.query(api.screening.papers.get, { jobId, paperId })).toEqual((await list("excluded"))[0]);
+    expect(await t.withIdentity({ subject: "someone_else" }).query(api.screening.papers.get, { jobId, paperId })).toBeNull();
+    expect(await as.query(api.screening.papers.get, { jobId, paperId: "https://openalex.org/W99" })).toBeNull();
+
+    const jobs = (status: "completed" | "cancelled") => as.query(api.screening.queries.listUserScreeningJobs, { status, paginationOpts: { cursor: null, numItems: 5 } });
+    expect((await jobs("completed")).page.map((job) => job._id)).toEqual([jobId]);
+    expect((await jobs("cancelled")).page).toEqual([]);
+  });
+
   it("moves a paper to the outcome its changed answer gives it, saves one that becomes included, and puts the model's answer back", async () => {
     const { t, as, job, list, answer, saved } = await screened();
     expect(await saved()).toBe(0);

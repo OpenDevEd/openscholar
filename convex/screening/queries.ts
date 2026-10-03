@@ -51,8 +51,9 @@ const jobFacts = {
   first: v.optional(v.number()),
   last: v.optional(v.number()),
   through: v.optional(v.number()),
-  // Papers that failed, and papers the model is reading now.
+  // Papers that failed, papers skipped because the job ended first, and papers the model is reading now.
   failedPapers: v.number(),
+  skippedPapers: v.number(),
   running: v.number(),
 };
 
@@ -67,7 +68,7 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
           .take(SCREENING_POOL_SIZE)
       : [],
   ]);
-  return { set: job.set, label: job.label, first: job.first, last: job.last, through: job.through, failedPapers: counts.failedCount, running: reading.length };
+  return { set: job.set, label: job.label, first: job.first, last: job.last, through: job.through, failedPapers: counts.failedCount, skippedPapers: counts.skippedCount, running: reading.length };
 }
 
 /**

@@ -49,5 +49,5 @@ export function phaseOf(job: Pick<JobRow, "_id" | "status" | "running">, active:
   return job.running === 0 && active.some((other) => other._id !== job._id && other.running > 0) ? "waiting" : "running";
 }
 
-/** Papers of a job that are settled one way or another. */
-export const doneOf = (job: Pick<JobRow, "processedPapers" | "failedPapers">) => job.processedPapers + job.failedPapers;
+/** Papers of a job the model has been through, whether it could read them or not; ones skipped because the job ended aren't. */
+export const doneOf = (job: Pick<JobRow, "processedPapers" | "failedPapers" | "skippedPapers">) => job.processedPapers + job.failedPapers - job.skippedPapers;
