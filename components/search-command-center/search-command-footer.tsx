@@ -36,7 +36,6 @@ import { cn } from "@/lib/utils";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 import { subtleSpring } from "@/lib/animation-config";
 import { ResultsTranslationControl } from "./components/results-translation-control";
-import { ScreeningDialog } from "@/components/screening/screening-dialog";
 import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
@@ -94,7 +93,6 @@ export function SearchCommandFooter({
 
   const [isBroadening, setIsBroadening] = useState(false);
   const [isNarrowing, setIsNarrowing] = useState(false);
-  const [isScreeningDialogOpen, setIsScreeningDialogOpen] = useState(false);
   const [isStartingChat, setIsStartingChat] = useState(false);
 
   const startJob = useMutation(api.extraction.mutations.startJob);
@@ -482,7 +480,7 @@ Return a more targeted version of this query.`;
                   variant="ghost"
                   size="sm"
                   type="button"
-                  onClick={() => phase === "authenticated" ? setIsScreeningDialogOpen(true) : goToSignIn()}
+                  onClick={() => phase === "authenticated" ? router.push(`/screening?search=${encodeURIComponent(searchId)}`) : goToSignIn()}
                   disabled={Boolean(isLoading)}
                   aria-label={tsc("screenAll")}
                   className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
@@ -556,11 +554,6 @@ Return a more targeted version of this query.`;
         </motion.div>
       </div>
 
-      <ScreeningDialog
-        open={isScreeningDialogOpen}
-        onOpenChange={setIsScreeningDialogOpen}
-        searchId={searchId}
-      />
     </div>
   );
 }

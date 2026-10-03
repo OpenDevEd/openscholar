@@ -20,10 +20,8 @@ export interface ExtractionPreflightBannerProps {
 }
 
 /**
- * Pre-submission credit-balance banner for the extraction job creator.
- * Mirrors the screening dialog pattern at
- * components/screening/screening-dialog.tsx:411-440 — same Coins icon,
- * same {estimate}/{total} display, same deep-link to billing top-up.
+ * Pre-submission credit-balance banner for the extraction job creator: a
+ * Coins icon, the {estimate}/{total} display and a deep link to billing top-up.
  *
  * Exposes data-preflight-ok + role="status" so tests can assert on
  * behaviour (sufficient vs insufficient) without coupling to Tailwind
