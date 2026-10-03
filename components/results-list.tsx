@@ -261,8 +261,8 @@ export function ResultsList({
   // Use the new search context
   const search = useSearch();
   const queryError = rejectedQuery(search.error);
-  // The rating filter and the downloads read the ratings of every result, not only the cards on
-  // screen, and a result waits for its rating, so its card opens at its final size.
+  // The rating filter reads the ratings of every result, not only the cards on screen, and a
+  // result waits for its rating, so its card opens at its final size.
   const rated = useRatedPapers(search.results);
   const results = rated.papers;
   const isLoading = searching || rated.loading;

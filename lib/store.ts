@@ -51,6 +51,8 @@ const removeQuestionFromResponses = (
 export interface RatingsState {
   ratings: Record<string, number>
   setRating: (paperId: string, rating: number | null) => void
+  /** The person's ratings of these papers, read now: what a download writes, whatever the page has loaded. */
+  readRatings: (paperIds: string[]) => Promise<Record<string, number>>
 }
 
 /** The search a copy takes its history from, as a list shows it. */
@@ -164,8 +166,9 @@ interface AIConfigState {
 
 export const localRatingsStore = create<RatingsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ratings: {},
+      readRatings: async () => get().ratings,
       setRating: (paperId: string, rating: number | null) =>
         set((state) => {
           if (rating === null) {

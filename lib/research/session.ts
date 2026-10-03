@@ -81,8 +81,10 @@ export class ResearchSession {
   private loaded = new Set<keyof Data>();
   // Only the searches pages read by ID; lists page through `listedSearches` themselves (#420).
   private watched = new Map<string, Watch<SavedSearch | null>>();
-  // Only the ratings of the papers pages show, read by paper ID, up to RATED_PAPERS_MAX a read.
+  // Only the ratings of the papers pages show, read by paper ID, up to RATED_PAPERS_MAX a read;
+  // `ratedBy` says which read has each paper.
   private rated = new Map<string, Watch<Page<Rating>>>();
+  private ratedBy = new Map<string, string>();
   private pending: Array<{ requestId: string; command: ResearchCommand }> = [];
   private listeners = new Set<() => void>();
   private stops: Array<() => void> = [];
@@ -156,6 +158,18 @@ export class ResearchSession {
     const ratings = createStore<RatingsState>(() => ({
       ratings: {},
       setRating: (paperId, rating) => this.dispatch({ kind: "rating", paperId, rating }),
+      readRatings: async paperIds => {
+        const ids = [...new Set(paperIds)];
+        const reads = Array.from({ length: Math.ceil(ids.length / RATED_PAPERS_MAX) }, (_, i) => ids.slice(i * RATED_PAPERS_MAX, (i + 1) * RATED_PAPERS_MAX));
+        const pages = await Promise.all(reads.map(chunk => this.client.query(api.research.records.ratingsOf, { accountId: this.accountId, paperIds: chunk })));
+        const read = Object.fromEntries(pages.flatMap(page => page.page).map(row => [row.paperId, row.rating]));
+        // A rating still being saved counts as the person left it.
+        for (const { command } of this.pending) {
+          if (command.kind !== "rating" || !ids.includes(command.paperId)) continue;
+          if (command.rating === null) delete read[command.paperId]; else read[command.paperId] = command.rating;
+        }
+        return read;
+      },
     }));
     this.stores = { history, shortcuts, ratings };
   }
@@ -220,29 +234,37 @@ export class ResearchSession {
   };
   /**
    * Reads the person's ratings of these papers while `reader` wants them, so the ratings
-   * store has them; returns the unsubscribe. Each read takes up to RATED_PAPERS_MAX papers,
-   * in the order given, so a list that grows keeps the reads of the papers it already had.
+   * store has them; returns the unsubscribe. A paper another read already has stays with that
+   * read, and the rest are read up to RATED_PAPERS_MAX at a time, so a list that grows reads
+   * only the papers it gained.
    */
   watchRatings = (paperIds: string[], reader: () => void) => {
-    const stops: Array<() => void> = [];
-    for (let start = 0; start < paperIds.length; start += RATED_PAPERS_MAX) {
-      const ids = paperIds.slice(start, start + RATED_PAPERS_MAX);
-      const open = () => this.client.watchQuery(api.research.records.ratingsOf, { accountId: this.accountId, paperIds: ids });
-      stops.push(this.hold(this.rated, ids.join("\n"), open, reader));
+    const ids = [...new Set(paperIds)];
+    const fresh = ids.filter(id => !this.ratedBy.has(id));
+    const stops = [...new Set(ids.flatMap(id => this.ratedBy.get(id) ?? []))].map(key => this.hold(this.rated, key, this.rated.get(key)!.open, reader));
+    for (let start = 0; start < fresh.length; start += RATED_PAPERS_MAX) {
+      const chunk = fresh.slice(start, start + RATED_PAPERS_MAX);
+      const key = chunk.join("\n");
+      for (const id of chunk) this.ratedBy.set(id, key);
+      const open = () => this.client.watchQuery(api.research.records.ratingsOf, { accountId: this.accountId, paperIds: chunk });
+      stops.push(this.hold(this.rated, key, open, reader, undefined, () => { for (const id of chunk) this.ratedBy.delete(id); }));
     }
     return () => { for (const stop of stops) stop(); };
   };
-  /** How many of these papers, from the first, have their ratings read (or their read failed): the reads `watchRatings` holds. */
+  /** How many of these papers, from the first, have their ratings read, or a read that failed. */
   ratingsRead = (paperIds: string[]) => {
-    let read = 0;
-    for (; read < paperIds.length; read += RATED_PAPERS_MAX) {
-      const entry = this.rated.get(paperIds.slice(read, read + RATED_PAPERS_MAX).join("\n"));
-      if (!entry || (entry.value === undefined && !entry.failed)) break;
-    }
-    return Math.min(read, paperIds.length);
+    const read = paperIds.findIndex(id => {
+      const entry = this.rated.get(this.ratedBy.get(id) ?? "");
+      return !entry || (entry.value === undefined && !entry.failed);
+    });
+    return read === -1 ? paperIds.length : read;
   };
-  /** Opens the read under `key` if no one holds it yet, and holds it for `reader`; returns the release. */
-  private hold<T>(reads: Map<string, Watch<T>>, key: string, open: () => Subscription<T>, reader: () => void, known?: T) {
+  /**
+   * Opens the read under `key` if no one holds it yet, and holds it for `reader`; returns the
+   * release. A read no one holds is closed a moment later, not at once, so a list that changes
+   * what it reads can take over the reads it keeps.
+   */
+  private hold<T>(reads: Map<string, Watch<T>>, key: string, open: () => Subscription<T>, reader: () => void, known?: T, closed: () => void = () => {}) {
     let entry = reads.get(key);
     if (!entry) {
       const opened: Watch<T> = { readers: new Set(), open, stop: () => {}, value: known, failed: false };
@@ -254,11 +276,14 @@ export class ResearchSession {
     held.readers.add(reader);
     return () => {
       held.readers.delete(reader);
-      if (held.readers.size) return;
-      held.stop();
-      reads.delete(key);
-      this.render();
-      this.settle();
+      queueMicrotask(() => {
+        if (held.readers.size || reads.get(key) !== held) return;
+        held.stop();
+        reads.delete(key);
+        closed();
+        this.render();
+        this.settle();
+      });
     };
   }
   /** Subscribes `entry` to its read. A read that fails stops being waited for, and Retry reads it again. */

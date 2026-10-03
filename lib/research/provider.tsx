@@ -87,9 +87,13 @@ export function usePreloadSearch() {
  */
 export function useRatedPapers<Paper extends { id: string }>(papers: Paper[]): { papers: Paper[]; loading: boolean } {
   const session = useContext(SessionContext);
+  const { phase } = useAuthReadiness();
+  // The account reads once it's ready; until then its papers wait, and if it can't load they show unrated.
+  const reads = session !== null && phase === "authenticated";
+  const waits = session !== null && phase === "initializing";
   const key = papers.map((paper) => paper.id).join("\n");
-  const subscribe = useCallback((listener: () => void) => (session && key ? session.watchRatings(key.split("\n"), listener) : noReaders()), [session, key]);
-  const read = useCallback(() => (session && key ? session.ratingsRead(key.split("\n")) : papers.length), [session, key, papers.length]);
+  const subscribe = useCallback((listener: () => void) => (session && reads && key ? session.watchRatings(key.split("\n"), listener) : noReaders()), [session, reads, key]);
+  const read = useCallback(() => (session && reads && key ? session.ratingsRead(key.split("\n")) : waits ? 0 : papers.length), [session, reads, waits, key, papers.length]);
   const known = useSyncExternalStore(subscribe, read, read);
   return known >= papers.length ? { papers, loading: false } : { papers: papers.slice(0, known), loading: true };
 }

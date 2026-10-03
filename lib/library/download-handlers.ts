@@ -8,13 +8,14 @@ import {
 } from "@/lib/utils";
 
 /**
- * Download a single library paper as JSON or CSV (full data).
+ * Download a single library paper as JSON or CSV (full data), with the person's rating of
+ * it, read as the download starts.
  */
-export function downloadLibraryItem(
+export async function downloadLibraryItem(
   item: PaperResult,
   format: "json" | "csv",
-): void {
-  const { ratings } = useRatingsStore.getState();
+): Promise<void> {
+  const ratings = await useRatingsStore.getState().readRatings([item.id]);
   const data = {
     ...item,
     rating: getRatingOrNull(ratings, item.id),
@@ -31,11 +32,11 @@ export function downloadLibraryItem(
 /**
  * Download essential fields only for a single library paper.
  */
-export function downloadLibraryEssentialItem(
+export async function downloadLibraryEssentialItem(
   item: PaperResult,
   format: "json" | "csv",
-): void {
-  const { ratings } = useRatingsStore.getState();
+): Promise<void> {
+  const ratings = await useRatingsStore.getState().readRatings([item.id]);
   const essentialInfo = {
     id: item.id,
     title: item.title,

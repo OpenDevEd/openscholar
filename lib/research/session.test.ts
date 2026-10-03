@@ -47,6 +47,7 @@ describe("research save recovery", () => {
     expect(session.stores.ratings.getState().ratings).toEqual({ good: 4 });
     // Once no page shows those papers, the browser stops holding their ratings.
     unwatch();
+    await Promise.resolve();
     expect(session.stores.ratings.getState().ratings).toEqual({});
     stop();
   });
@@ -166,6 +167,48 @@ describe("research save recovery", () => {
     expect(told).toHaveBeenCalled();
     expect(session.watchedStatus("gone")).toBe("missing");
     unwatch();
+    stop();
+  });
+
+  it("keeps the ratings a list already read when the list grows, and reads only the papers it gained", async () => {
+    const asked: string[][] = [];
+    const stopped = vi.fn();
+    const client = {
+      watchQuery(query: Parameters<typeof getFunctionName>[0], args: { paperIds?: string[] }) {
+        if (args.paperIds) asked.push(args.paperIds);
+        return {
+          localQueryResult: () => ({ page: (args.paperIds ?? []).filter(id => id === "W2").map(paperId => ({ paperId, rating: 3 })), isDone: true, continueCursor: "" }),
+          onUpdate: () => (args.paperIds ? stopped : () => {}),
+        };
+      },
+      // The save stays on its way, so the download below reads while it's pending.
+      mutation: vi.fn(() => new Promise<null>(() => {})),
+      query: vi.fn(async (_query: unknown, args: { paperIds: string[] }) => ({ page: args.paperIds.filter(id => id === "W2").map(paperId => ({ paperId, rating: 3 })), isDone: true, continueCursor: "" })),
+    } as unknown as ConvexReactClient;
+    const session = new ResearchSession(client, "alice");
+    const stop = session.subscribe(() => {});
+    await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
+
+    // A list that names a paper twice still holds one read of it.
+    const first = session.watchRatings(["W1", "W2", "W1"], () => {});
+    expect(asked).toEqual([["W1", "W2"]]);
+    // Show more: the page lets go of the old list and takes the longer one in the same moment.
+    first();
+    const second = session.watchRatings(["W1", "W2", "W3"], () => {});
+    expect(asked).toEqual([["W1", "W2"], ["W3"]]);
+    expect(session.ratingsRead(["W1", "W2", "W3"])).toBe(3);
+    await Promise.resolve();
+    expect(stopped).not.toHaveBeenCalled();
+    expect(session.stores.ratings.getState().ratings).toEqual({ W2: 3 });
+
+    // A download reads the ratings itself, with a change still being saved.
+    session.stores.ratings.getState().setRating("W9", 5);
+    expect(await session.stores.ratings.getState().readRatings(["W2", "W9", "W4"])).toEqual({ W2: 3, W9: 5 });
+
+    second();
+    await Promise.resolve();
+    expect(stopped).toHaveBeenCalledTimes(2);
+    expect(session.ratingsRead(["W1"])).toBe(0);
     stop();
   });
 });
