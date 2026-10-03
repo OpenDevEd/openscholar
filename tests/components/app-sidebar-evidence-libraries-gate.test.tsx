@@ -152,9 +152,6 @@ vi.mock("@/components/search-history-tab", () => ({
 vi.mock("@/components/keyword-expansion-preview", () => ({
   KeywordExpansionPreview: () => <div data-testid="keyword-expansion-preview" />,
 }));
-vi.mock("@/components/screening/screening-jobs-dialog", () => ({
-  ScreeningJobsDialog: () => <div data-testid="screening-jobs-dialog" />,
-}));
 
 vi.mock("@/components/ui/button", () => ({
   Button: ({

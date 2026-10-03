@@ -3,7 +3,9 @@
  * time, and one answer changed by hand, which the paper's score, stars and outcome follow.
  */
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
+import type { Doc } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
 import { stream } from "convex-helpers/server/stream";
 import { createError } from "../lib/errors";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
@@ -11,7 +13,7 @@ import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery,
 import { answerPaper, paperAnswers, restoreModelAnswer } from "../research/answers";
 import schema from "../schema";
 import { account, answersNow, jobAnswers, shown, stood, withDeltas } from "./accounting";
-import { progressOf, shelve } from "./bookkeeping";
+import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { moveResultAnswers } from "./drain";
 import { screeningJobPaperValidator, screeningOutcomeValidator } from "./validators";
 
@@ -19,6 +21,24 @@ import { screeningJobPaperValidator, screeningOutcomeValidator } from "./validat
 const PAGE_MAX = 50;
 /** Bytes of results one page reads: a result holds its paper's abstract. */
 const PAGE_BYTES = 4 * 1024 * 1024;
+
+/** A paper as a job's list shows it. */
+async function paperOf(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, outcome: Infer<typeof screeningOutcomeValidator>) {
+  return {
+    openalexId: result.openalexId,
+    title: result.title,
+    abstract: result.abstract,
+    authors: result.authors,
+    publicationYear: result.publicationYear,
+    doi: result.doi,
+    venue: result.venue,
+    citedByCount: result.citedByCount,
+    outcome,
+    score: result.score,
+    stars: result.stars,
+    answers: await shown(ctx, job, result),
+  };
+}
 
 export const listAction = defineUserQuery({
   path: "screening/papers:list",
@@ -38,28 +58,26 @@ export const listAction = defineUserQuery({
           // A job holds at most this many papers, so a search looks through all of them.
           .paginate({ ...opts, maximumRowsRead: MAX_SCREENING_PAPERS_PER_JOB })
       : ctx.db.query("screeningResults").withIndex("by_job_and_outcome", (q) => q.eq("jobId", jobId).eq("outcome", outcome)).paginate(opts));
-    const answers = await Promise.all(page.page.map((result) => shown(ctx, job, result)));
-    return {
-      ...page,
-      page: page.page.map((result, i) => ({
-        openalexId: result.openalexId,
-        title: result.title,
-        abstract: result.abstract,
-        authors: result.authors,
-        publicationYear: result.publicationYear,
-        doi: result.doi,
-        venue: result.venue,
-        citedByCount: result.citedByCount,
-        outcome,
-        score: result.score,
-        stars: result.stars,
-        answers: answers[i],
-      })),
-    };
+    return { ...page, page: await Promise.all(page.page.map((result) => paperOf(ctx, job, result, outcome))) };
   },
 });
 export const list = userQuery(listAction);
 export const listForAssistant = assistantQuery(listAction);
+
+export const getAction = defineUserQuery({
+  path: "screening/papers:get",
+  description: "One screened paper of one of the person's screening jobs, as the job's list shows it: where it landed, its score, stars and the answer to every question it was scored on.",
+  args: { jobId: v.id("screeningJobs"), paperId: v.string() },
+  returns: v.union(v.null(), screeningJobPaperValidator),
+  run: async (ctx, userId, { jobId, paperId }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    if (!job || job.userId !== userId) return null;
+    const result = await ctx.db.query("screeningResults").withIndex("by_job_openalexId", (q) => q.eq("jobId", jobId).eq("openalexId", paperId)).unique();
+    return result?.outcome ? await paperOf(ctx, job, result, result.outcome) : null;
+  },
+});
+export const get = userQuery(getAction);
+export const getForAssistant = assistantQuery(getAction);
 
 export const answerAction = defineUserMutation({
   path: "screening/papers:answer",
@@ -115,9 +133,9 @@ export const answerAction = defineUserMutation({
     }
     const progress = await progressOf(ctx, jobId);
     await ctx.db.patch("screeningResults", result._id, { ...scored, counted });
-    await ctx.db.patch("screeningJobProgress", progress._id, withDeltas(progress, job, [delta]));
     // Saved again even if it was saved before: the person may have removed it since.
-    await shelve(ctx, job, { ...result, ...scored }, move);
+    const moved = await shelve(ctx, job, { ...result, ...scored }, move);
+    await ctx.db.patch("screeningJobProgress", progress._id, { ...withDeltas(progress, job, [delta]), ...withMoved(progress, moved) });
     return { outcome };
   },
 });

@@ -108,7 +108,7 @@ export async function progressOf(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
  * to the qualified and unclear counts and the questions' tallies is `deltas`
  * (./accounting.ts).
  */
-async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, results: Doc<"screeningResults">[], deltas: Delta[]) {
+async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, results: Doc<"screeningResults">[], deltas: Delta[], moved: { saved: number; removed: number }) {
   const row = await progressOf(ctx, job._id);
   const add = tally(results);
   const credits = results.reduce((sum, result) => sum + (result.creditsUsed ?? 0), 0);
@@ -117,6 +117,7 @@ async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, result
     skipped: row.skipped + add.skipped,
     failed: row.failed + add.failed,
     ...(credits ? { credits: (row.credits ?? 0) + credits } : {}),
+    ...withMoved(row, moved),
     ...withDeltas(row, job, deltas),
   });
 }
@@ -142,22 +143,44 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
 }
 
 /**
- * Puts a paper where its place in the job sends it. One that becomes included is saved,
- * unless the job saves nothing. In a job that prunes the collection it read, one that comes
- * to be left out (excluded, or failed) leaves that collection, and comes back if a changed
- * answer includes it after all; an unclear one stays.
+ * Puts a paper where its place in the job sends it, and says what that adds to the job's
+ * count of papers saved and of papers removed. One that becomes included is saved, unless
+ * the job saves nothing. In a job that prunes the collection it read, one that comes to be
+ * left out (excluded, or failed) leaves that collection, and comes back if a changed answer
+ * includes it after all; an unclear one stays.
  */
 export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { becameIncluded, left }: Move) {
-  if (becameIncluded && !job.unsaved) await saveQualified(ctx, job, result);
-  if (!job.prune || job.set?.kind !== "collection" || !(becameIncluded || left)) return;
+  const moved = { saved: 0, removed: 0 };
+  if (becameIncluded && !job.unsaved) {
+    moved.saved = result.savedToLibrary ? 0 : 1;
+    await saveQualified(ctx, job, result);
+  }
+  if (!job.prune || job.set?.kind !== "collection" || !(becameIncluded || left)) return moved;
   const collectionId = job.set.collectionId;
   const item = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", job.userId).eq("openalexId", result.openalexId)).first();
-  if (!item) return;
+  if (!item) return moved;
   const membership = await ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collectionId).eq("libraryItemId", item._id)).unique();
-  if (left && membership) await removeCollectionMembership(ctx, membership);
+  if (left && membership) {
+    await removeCollectionMembership(ctx, membership);
+    await ctx.db.patch("screeningResults", result._id, { pruned: true });
+    moved.removed = 1;
+  }
   const collection = becameIncluded && !membership ? await ctx.db.get("collections", collectionId) : null;
-  if (collection) await addCollectionMembership(ctx, { userId: job.userId, collection, libraryItemId: item._id });
+  if (collection) {
+    await addCollectionMembership(ctx, { userId: job.userId, collection, libraryItemId: item._id });
+    if (result.pruned) {
+      await ctx.db.patch("screeningResults", result._id, { pruned: undefined });
+      moved.removed = -1;
+    }
+  }
+  return moved;
 }
+
+/** `progress`'s counts of papers saved and removed with `moved` added. */
+export const withMoved = (progress: Pick<Doc<"screeningJobProgress">, "saved" | "removed">, moved: { saved: number; removed: number }) => ({
+  ...(moved.saved ? { saved: (progress.saved ?? 0) + moved.saved } : {}),
+  ...(moved.removed ? { removed: Math.max(0, (progress.removed ?? 0) + moved.removed) } : {}),
+});
 
 /**
  * Gives a job its progress row, counted from its bookkept papers, when it has none, and
@@ -231,21 +254,26 @@ export const bookkeep = internalMutation({
         for (const result of jobResults) if (result.pendingAnswers) await moveResultAnswers(ctx, result);
         const current = (await ctx.db.get("screeningJobs", jobId))!;
         const deltas: Delta[] = [];
+        const moved = { saved: 0, removed: 0 };
+        const shelved = (to: { saved: number; removed: number }) => {
+          moved.saved += to.saved;
+          moved.removed += to.removed;
+        };
         for (const result of jobResults) {
           if (result.status === "failed") {
             await ctx.db.patch("screeningResults", result._id, FAILED);
             // A paper that failed because its job had ended, as the one that finds the credits
             // spent does, was never screened: it stays where it is.
-            if (current.status === "processing") await shelve(ctx, current, result, { becameIncluded: false, left: true });
+            if (current.status === "processing") shelved(await shelve(ctx, current, result, { becameIncluded: false, left: true }));
           }
           if (result.status !== "completed") continue;
           const settled = (await ctx.db.get("screeningResults", result._id))!;
           const { patch, delta, move } = account(current, settled, await standing(ctx, current, settled));
           await ctx.db.patch("screeningResults", result._id, patch);
           deltas.push(delta);
-          await shelve(ctx, current, { ...settled, ...patch }, move);
+          shelved(await shelve(ctx, current, { ...settled, ...patch }, move));
         }
-        await countFinished(ctx, current, jobResults, deltas);
+        await countFinished(ctx, current, jobResults, deltas, moved);
         await finishIfDone(ctx, jobId);
         const started = jobResults.filter((result) => result.workId !== undefined).length;
         if (started) freed.set(job.userId, (freed.get(job.userId) ?? 0) + started);

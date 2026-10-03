@@ -51,8 +51,9 @@ const jobFacts = {
   first: v.optional(v.number()),
   last: v.optional(v.number()),
   through: v.optional(v.number()),
-  // Papers that failed, and papers the model is reading now.
+  // Papers that failed, papers skipped because the job ended first, and papers the model is reading now.
   failedPapers: v.number(),
+  skippedPapers: v.number(),
   running: v.number(),
 };
 
@@ -67,7 +68,7 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
           .take(SCREENING_POOL_SIZE)
       : [],
   ]);
-  return { set: job.set, label: job.label, first: job.first, last: job.last, through: job.through, failedPapers: counts.failedCount, running: reading.length };
+  return { set: job.set, label: job.label, first: job.first, last: job.last, through: job.through, failedPapers: counts.failedCount, skippedPapers: counts.skippedCount, running: reading.length };
 }
 
 /**
@@ -202,8 +203,12 @@ export const getScreeningJob = query({
       targetCollectionName: v.optional(v.string()),
       unsaved: v.optional(v.literal(true)),
       prune: v.optional(v.literal(true)),
+      // Papers it saved, and papers it took from the collection it read. Missing for a job from before these were kept.
+      saved: v.optional(v.number()),
+      removed: v.optional(v.number()),
       // Credits its counted papers cost, of the most they were expected to when it started.
-      credits: v.object({ spent: v.number(), estimate: v.number() }),
+      // No `spent` for a job from before jobs kept what they cost.
+      credits: v.object({ spent: v.optional(v.number()), estimate: v.number() }),
     })
   ),
   handler: async (ctx, args) => {
@@ -223,7 +228,8 @@ export const getScreeningJob = query({
       ...(target ? { targetCollectionName: target.name } : {}),
       unsaved: job.unsaved,
       prune: job.prune,
-      credits: { spent: kept?.credits ?? 0, estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0).credits },
+      ...(job.set ? { saved: kept?.saved ?? 0, removed: kept?.removed ?? 0 } : {}),
+      credits: { spent: kept?.credits ?? (job.set ? 0 : undefined), estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0).credits },
       outcomes: { included: counts.qualifiedCount, unclear, excluded: Math.max(0, counts.completedCount - counts.qualifiedCount - unclear), failed: counts.failedCount },
       tallies: kept?.tallies,
       _id: job._id,
@@ -290,9 +296,9 @@ export const getActiveScreeningJobProgress = query({
   },
 });
 
-/** The person's screening jobs, newest first, a page at a time. */
+/** The person's screening jobs, newest first, a page at a time; with `status`, only the jobs in it. */
 export const listUserScreeningJobs = query({
-  args: { paginationOpts: paginationOptsValidator },
+  args: { paginationOpts: paginationOptsValidator, status: v.optional(screeningJobStatusValidator) },
   returns: paginationResultValidator(
     v.object({
       _id: v.id("screeningJobs"),
@@ -313,9 +319,11 @@ export const listUserScreeningJobs = query({
     const user = await getCurrentUser(ctx);
     if (!user) return { page: [], isDone: true, continueCursor: "" };
 
-    const jobs = await ctx.db
-      .query("screeningJobs")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+    const { status } = args;
+    const jobs = await (status
+      ? ctx.db.query("screeningJobs").withIndex("by_user_status", (q) => q.eq("userId", user._id).eq("status", status))
+      : ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", user._id))
+    )
       .order("desc")
       .paginate({ ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, MAX_LISTED_SCREENING_JOBS) });
 
