@@ -1,3 +1,4 @@
+import { SECTION_REGISTRY } from "../../lib/evidence-libraries/configuration/section-registry";
 import {
   internalMutation,
   mutation,
@@ -389,6 +390,13 @@ async function queueCandidateOperation(
 // Publishes the active revision again at the newest Evidence Library
 // software. The owner checks for updates first; the fresh release row is
 // the only source of the target commit.
+/**
+ * Section rows a restore deletes from a draft. The schema allows only the registry's
+ * sections, one row each, so a draft has no more than there are sections; twice that leaves
+ * room for a doubled row of each, which a restore clears too.
+ */
+const DRAFT_ROWS_REPLACED = SECTION_REGISTRY.length * 2;
+
 export async function startEvidenceLibraryRuntimeUpdate(
   ctx: MutationCtx,
   args: { libraryId: Id<"evidenceLibraries"> },
@@ -602,7 +610,11 @@ export async function restoreEvidenceLibraryRevision(
     .withIndex("by_draftId_and_sectionKey", (query) =>
       query.eq("draftId", draft._id),
     )
-    .collect();
+    .take(DRAFT_ROWS_REPLACED + 1);
+  // Every prior row must go, or the restored draft would carry a stale section.
+  if (draftRows.length > DRAFT_ROWS_REPLACED) {
+    throw new Error(`The draft has more than ${DRAFT_ROWS_REPLACED} section rows; it can't be restored over until the extra rows are removed.`);
+  }
   for (const row of draftRows) await ctx.db.delete(row._id);
   for (const section of sourceSnapshot.migration.snapshot.sections) {
     await ctx.db.insert("evidenceLibraryConfigSections", {

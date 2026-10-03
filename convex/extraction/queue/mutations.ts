@@ -50,6 +50,8 @@ type DispatchWindowResult = {
 type CancelQueueRowsResult = {
   cancelled: number;
   cancelRequested: number;
+  /** Whose rows they were, when any were cancelled. */
+  userId?: Id<"users">;
 };
 
 async function loadQueueRowsByStatus(
@@ -477,6 +479,18 @@ export async function dispatchPaperQueueWindowTx(
   };
 }
 
+/**
+ * Queue rows of each status one cancelling transaction takes. A job paused and resumed
+ * many times can hold more than a transaction should patch, so the rest are cancelled by
+ * the batches this schedules.
+ */
+const CANCEL_BATCH = 250;
+
+/**
+ * Cancels a batch of the job's queue rows that could still run, and schedules the next
+ * until none are left. The caller frees the person's capacity for the rows cancelled here;
+ * each later batch frees it for its own.
+ */
 export async function cancelPaperQueueRowsForJobTx(
   ctx: MutationCtx,
   args: { jobId: Id<"extractionJobs"> },
@@ -487,7 +501,7 @@ export async function cancelPaperQueueRowsForJobTx(
     "running",
     "parked",
   ];
-  const rows = (
+  const batches = (
     await Promise.all(
       cancellableStatuses.map((status) =>
         ctx.db
@@ -495,10 +509,11 @@ export async function cancelPaperQueueRowsForJobTx(
           .withIndex("by_job_and_status", (q) =>
             q.eq("jobId", args.jobId).eq("status", status),
           )
-          .collect(),
+          .take(CANCEL_BATCH),
       ),
     )
-  ).flat();
+  );
+  const rows = batches.flat();
 
   const now = Date.now();
   let cancelRequested = 0;
@@ -516,7 +531,10 @@ export async function cancelPaperQueueRowsForJobTx(
     });
   }
 
-  return { cancelled: rows.length, cancelRequested };
+  if (batches.some((batch) => batch.length === CANCEL_BATCH)) {
+    await ctx.scheduler.runAfter(0, internal.extraction.queue.mutations.cancelPaperQueueRowsForJob, { jobId: args.jobId });
+  }
+  return { cancelled: rows.length, cancelRequested, userId: rows[0]?.userId };
 }
 
 export const cancelPaperQueueRowsForJob = internalMutation({
@@ -525,8 +543,11 @@ export const cancelPaperQueueRowsForJob = internalMutation({
     cancelled: v.number(),
     cancelRequested: v.number(),
   }),
-  handler: async (ctx, args): Promise<CancelQueueRowsResult> => {
-    return await cancelPaperQueueRowsForJobTx(ctx, args);
+  handler: async (ctx, args) => {
+    const { userId, ...result } = await cancelPaperQueueRowsForJobTx(ctx, args);
+    // The rows a later batch cancels stop holding the person's capacity; their other jobs start in it.
+    if (userId) await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { userId });
+    return result;
   },
 });
 

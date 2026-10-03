@@ -125,6 +125,11 @@ export async function writeJobSources(
   ) {
     throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
   }
+  // Every source brings at least one paper, and a job holds PAPER_LIMIT papers, so it holds
+  // no more sources than that; its source rows then read in one query.
+  if (items.length > PAPER_LIMIT) {
+    throw createError("VALIDATION_ERROR", `A job can have up to ${PAPER_LIMIT.toLocaleString("en")} sources.`);
+  }
   const inserted: Id<"extractionJobSources">[] = [];
   let position = 0;
   for (const item of items) {
@@ -142,13 +147,17 @@ export async function replaceJobSources(
   jobId: Id<"extractionJobs">,
   items: ReadonlyArray<BucketItemInput>,
 ): Promise<Id<"extractionJobSources">[]> {
-  const existing = await ctx.db
-    .query("extractionJobSources")
-    .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
-    .collect();
-
-  for (const row of existing) {
-    await ctx.db.delete(row._id);
+  // A job holds at most PAPER_LIMIT sources now, so this is one batch; a job seeded with
+  // more before that limit takes another, and ends up with only the new ones.
+  for (;;) {
+    const existing = await ctx.db
+      .query("extractionJobSources")
+      .withIndex("by_job_and_position", (q) => q.eq("jobId", jobId))
+      .take(PAPER_LIMIT);
+    for (const row of existing) {
+      await ctx.db.delete(row._id);
+    }
+    if (existing.length < PAPER_LIMIT) break;
   }
 
   return await writeJobSources(ctx, jobId, items);
