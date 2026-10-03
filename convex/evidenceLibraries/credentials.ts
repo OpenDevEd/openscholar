@@ -1,3 +1,4 @@
+import { MAX_CREDENTIALS_PER_LIBRARY } from "../lib/queryBounds";
 import {
   internalMutation,
   query,
@@ -147,6 +148,7 @@ export async function writeEvidenceLibraryCredentialRecord(
     await ctx.db.patch("evidenceLibraryCredentials", existing._id, fields);
     return existing._id;
   }
+  await assertCredentialRoom(ctx, args.libraryId);
   return await ctx.db.insert("evidenceLibraryCredentials", {
     ...fields,
     createdByClerkUserId: args.clerkUserId,
@@ -220,6 +222,7 @@ export async function writeLibraryServiceCredentialRecord(
     });
     credentialId = existing._id;
   } else {
+    await assertCredentialRoom(ctx, args.libraryId);
     credentialId = await ctx.db.insert("evidenceLibraryCredentials", {
       ...fields,
       createdByClerkUserId: args.clerkUserId,
@@ -230,6 +233,14 @@ export async function writeLibraryServiceCredentialRecord(
   return credentialId;
 }
 
+/** Refuses another stored credential once a library has MAX_CREDENTIALS_PER_LIBRARY, so they read in one query (#427). */
+export async function assertCredentialRoom(ctx: Pick<QueryCtx, "db">, libraryId: Id<"evidenceLibraries">) {
+  const stored = await ctx.db.query("evidenceLibraryCredentials").withIndex("by_libraryId", (query) => query.eq("libraryId", libraryId)).take(MAX_CREDENTIALS_PER_LIBRARY);
+  if (stored.length >= MAX_CREDENTIALS_PER_LIBRARY) {
+    throw createError("VALIDATION_ERROR", `A library can store up to ${MAX_CREDENTIALS_PER_LIBRARY} credentials. Remove a source's credential to add another.`);
+  }
+}
+
 export async function readCredentialMetadata(
   ctx: QueryCtx,
   args: { libraryId: Id<"evidenceLibraries"> },
@@ -238,7 +249,7 @@ export async function readCredentialMetadata(
   const credentials = await ctx.db
     .query("evidenceLibraryCredentials")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
-    .collect();
+    .take(MAX_CREDENTIALS_PER_LIBRARY);
   return credentials.map((credential) => ({
     _id: credential._id,
     credentialKey: credential.credentialKey,

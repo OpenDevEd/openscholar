@@ -1,3 +1,4 @@
+import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_INVITATIONS_PER_EMAIL, SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
 import { internalMutation, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
 import {
@@ -153,7 +154,8 @@ export async function applyMembershipProjection(
                 .eq("clerkUserId", args.membership.clerkUserId)
                 .eq("state", "active"),
           )
-          .collect();
+          // Each activation revokes the others it finds, so one stays active.
+          .take(SINGLE_ROW_CLEANUP);
         for (const activeMembership of activeMemberships) {
           if (activeMembership.clerkMembershipId !== args.membership.clerkMembershipId) {
             await ctx.db.patch("organizationMemberships", activeMembership._id, {
@@ -166,7 +168,7 @@ export async function applyMembershipProjection(
       if (args.membership.state === "revoked") {
         const assignments = await ctx.db.query("evidenceLibraryMembers")
           .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.membership.clerkUserId))
-          .collect();
+          .take(MAX_LIBRARY_GRANTS_PER_PERSON);
         for (const assignment of assignments) {
           const library = await ctx.db.get("evidenceLibraries", assignment.libraryId);
           if (library?.organizationId === organizationId) {
@@ -176,7 +178,7 @@ export async function applyMembershipProjection(
         const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.membership.clerkUserId)).unique();
         if (user) {
           const invitations = await ctx.db.query("evidenceLibraryInvitations")
-            .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).collect();
+            .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_EMAIL);
           for (const invitation of invitations) {
             const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
             if (library?.organizationId === organizationId) await ctx.db.patch("evidenceLibraryInvitations", invitation._id, { state: "cancelled" });

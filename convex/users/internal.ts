@@ -1,3 +1,4 @@
+import { MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
 import { internalMutation, internalQuery, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
 import { requireActiveUser, requireAuth } from "../lib/auth";
@@ -128,7 +129,7 @@ export async function applyUserDeleteProjection(
       .unique();
 
     const grants = await ctx.db.query("evidenceLibraryMembers")
-      .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.clerkId)).collect();
+      .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.clerkId)).take(MAX_LIBRARY_GRANTS_PER_PERSON);
     for (const grant of grants) await ctx.db.delete("evidenceLibraryMembers", grant._id);
     // Kept even without a user row, for a deletion that arrives before the
     // account's creation: libraries ask whether a reader still exists.

@@ -19,6 +19,7 @@
  * convention. The asymmetry is intentional.
  */
 
+import { SINGLE_ROW_CLEANUP } from "./queryBounds";
 import { internalMutation } from "./functions";
 import { v } from "convex/values";
 import { createError } from "./errors";
@@ -66,15 +67,11 @@ export const acquireBatchLock = internalMutation({
 
     const expired = await ctx.db
       .query("userResourceLocks")
-      .withIndex("by_user_kind", (q) =>
-        q.eq("userId", userId).eq("kind", kind),
+      .withIndex("by_user_kind_expires", (q) =>
+        q.eq("userId", userId).eq("kind", kind).lte("expiresAt", now),
       )
-      .collect();
-    for (const row of expired) {
-      if (row.expiresAt <= now) {
-        await ctx.db.delete(row._id);
-      }
-    }
+      .take(SINGLE_ROW_CLEANUP);
+    for (const row of expired) await ctx.db.delete(row._id);
 
     return await ctx.db.insert("userResourceLocks", {
       userId,

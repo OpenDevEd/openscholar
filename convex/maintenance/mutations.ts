@@ -1,3 +1,5 @@
+import { MAX_API_KEYS_PER_USER } from "../lib/validators";
+import { SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
 import { internalMutation } from "../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
@@ -32,7 +34,7 @@ export const cleanupDeletedUsers = internalMutation({
         const apiKeys = await ctx.db
           .query("apiKeys")
           .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .collect();
+          .take(MAX_API_KEYS_PER_USER);
 
         for (const key of apiKeys) {
           await ctx.db.delete("apiKeys", key._id);
@@ -60,9 +62,12 @@ export const cleanupDeletedUsers = internalMutation({
         const zoteroConns = await ctx.db
           .query("zoteroConnections")
           .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .collect();
+          .take(SINGLE_ROW_CLEANUP);
         for (const conn of zoteroConns) {
           await ctx.db.delete("zoteroConnections", conn._id);
+        }
+        if (zoteroConns.length === SINGLE_ROW_CLEANUP) {
+          continue; // Skip user delete, process on next run
         }
 
         // billingUsage rows stay as financial records; the snapshot is a cache.

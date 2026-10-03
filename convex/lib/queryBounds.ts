@@ -48,3 +48,29 @@ export const MAX_SCREENING_JOBS_PER_USER = 500;
 
 /** Served hosts one mutation writes or prunes; a Coolify listing takes as many batches as it needs. */
 export const SERVED_HOSTS_BATCH = 500;
+
+/** Most Evidence Libraries one person is granted directly; another grant is refused, so their grants read in one query. */
+export const MAX_LIBRARY_GRANTS_PER_PERSON = 200;
+
+/** Most invitations one library has waiting; another is refused until some are answered, cancelled or expire. */
+export const MAX_PENDING_INVITATIONS_PER_LIBRARY = 500;
+
+/** Most invitations waiting for one address across libraries; another is refused until some are answered or expire. */
+export const MAX_PENDING_INVITATIONS_PER_EMAIL = 100;
+
+/** Most credentials one library stores: one per credential its configuration names. */
+export const MAX_CREDENTIALS_PER_LIBRARY = 500;
+
+/** Most feature flags the table holds; the registry (lib/feature-flags/registry.ts) names a few dozen. */
+export const MAX_FEATURE_FLAGS = 200;
+
+/** Most author profiles one publication links to; a library's update naming more is refused. */
+export const MAX_AUTHORS_PER_PUBLICATION = 1_000;
+
+/**
+ * Rows a write reads of something it keeps to one per person: a lock of one kind, a pending
+ * Zotero sign-in, a Zotero connection, an active membership of one organization. Each write
+ * removes the others it reads, so more than this can only be left by a burst, and the next
+ * few writes clear it.
+ */
+export const SINGLE_ROW_CLEANUP = 10;
