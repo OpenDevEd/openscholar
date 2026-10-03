@@ -195,7 +195,8 @@ export function SetupView({
   const addQuestion = () => {
     const text = draft.trim();
     if (!text) return;
-    setQuestions((qs) => [...qs, { key: `q${Date.now()}`, text, yes: 1, no: 0, unclear: 0 }]);
+    // Answers are kept by a question's text, so the same question isn't asked twice.
+    adopt([{ key: "", text, yes: 1, no: 0, unclear: 0 }]);
     setDraft("");
   };
   /** Adds questions not already asked, keeping their points. */
@@ -393,9 +394,10 @@ export function SetupView({
           }
         >
           <div className={LIST}>
-            <div className="grid grid-cols-[1.5rem_1fr_repeat(3,4rem)_2rem] items-center gap-3 px-4 py-2 text-xs text-muted-foreground">
+            {/* On a narrow screen a question takes a line of its own, with its points under it. */}
+            <div className="grid grid-cols-[1.5rem_repeat(3,minmax(0,1fr))_2rem] items-center gap-3 px-4 py-2 text-xs text-muted-foreground sm:grid-cols-[1.5rem_1fr_repeat(3,4rem)_2rem]">
               <span />
-              <span>{t("question")}</span>
+              <span className="hidden sm:block">{t("question")}</span>
               {ANSWERS.map((a) => {
                 const { icon: Icon } = ANSWER[a];
                 return <span key={a} className="flex items-center justify-center gap-1"><Icon className={cn("size-3", TINT[a].icon)} />{t(`answer.${a}`)}</span>;
@@ -412,11 +414,11 @@ export function SetupView({
                   exit={{ opacity: 0, height: 0, transition: { duration: 0.25, ease: EASE } }}
                   className="overflow-hidden"
                 >
-                  <div className="grid grid-cols-[1.5rem_1fr_repeat(3,4rem)_2rem] items-center gap-3 px-4 py-2.5">
+                  <div className="grid grid-cols-[1.5rem_repeat(3,minmax(0,1fr))_2rem] items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:grid-cols-[1.5rem_1fr_repeat(3,4rem)_2rem]">
                     <span className="flex size-6 items-center justify-center rounded-md bg-muted text-xs font-medium tabular-nums">{i + 1}</span>
-                    <p className="min-w-0 text-sm">{q.text}</p>
-                    {ANSWERS.map((a) => (
-                      <Input key={a} type="number" value={q[a]} onChange={(e) => points(q.key, a, Number(e.target.value))} aria-label={t("pointsFor", { answer: t(`answer.${a}`), number: i + 1 })} className={cn("h-8 border-transparent px-1 text-center text-sm font-medium tabular-nums shadow-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none", TINT[a].input)} />
+                    <p className="col-span-4 min-w-0 text-sm sm:col-span-1">{q.text}</p>
+                    {ANSWERS.map((a, column) => (
+                      <Input key={a} type="number" value={q[a]} onChange={(e) => points(q.key, a, Number(e.target.value))} aria-label={t("pointsFor", { answer: t(`answer.${a}`), number: i + 1 })} className={cn("h-8 border-transparent px-1 text-center text-sm font-medium tabular-nums shadow-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none", column === 0 && "col-start-2 sm:col-start-auto", TINT[a].input)} />
                     ))}
                     <TooltipHint label={t("removeQuestion")}>
                       <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label={t("removeQuestion")} onClick={() => setQuestions((qs) => qs.filter((x) => x.key !== q.key))}><Trash2 /></Button>
