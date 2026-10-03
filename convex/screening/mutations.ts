@@ -71,7 +71,7 @@ export const createScreeningJobForUser = internalMutation({
     // How many of the papers the search's page already answers every question for
     // (`screening/queries:answeredCount`); the credit check leaves them out.
     answered: v.optional(v.number()),
-    // Missing: included papers are saved to the library alone, as the results page's dialog starts jobs.
+    // Missing: included papers are saved to the library alone, as jobs from before the screening page were.
     saveTo: v.optional(saveToValidator),
     prune: v.optional(v.boolean()),
     // The job that follows another in one request: it takes that job's place in the request
