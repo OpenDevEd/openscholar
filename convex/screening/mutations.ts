@@ -27,7 +27,7 @@ import { ensureScreening } from "../research/answers";
 import { bookkeepLater, ensureProgress, saveQualified } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
 import { estimateScreening } from "./estimate";
-import { applyCommand, moveSearchAnswers } from "../research/records";
+import { applyCommand } from "../research/records";
 
 import { availableCredits } from "../billing/accounts";
 import { MAX_AUTHORS } from "../lib/listCaps";
@@ -96,8 +96,6 @@ export const createScreeningJobForUser = internalMutation({
       const localId = args.searchId;
       const search = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", user._id).eq("localId", localId)).unique();
       if (!search) throw createError("NOT_FOUND", "Search not found");
-      // A search still holding answers in chunks moves them before it has a screening.
-      await moveSearchAnswers(ctx, search._id, user._id);
       // The search's page shows answers to its own questions, so it takes on the job's it
       // lacks, all in one edit with one revision.
       const asked = new Set(search.data.screeningQuestions.map(({ question }) => question));

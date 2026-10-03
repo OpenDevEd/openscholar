@@ -266,10 +266,10 @@ import type * as migrations_backfillLibraryCounters from "../migrations/backfill
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
 import type * as migrations_countBillingUsage from "../migrations/countBillingUsage.js";
+import type * as migrations_dropAnswerChunks from "../migrations/dropAnswerChunks.js";
 import type * as migrations_expireInvitations from "../migrations/expireInvitations.js";
 import type * as migrations_moveExtractionCounts from "../migrations/moveExtractionCounts.js";
 import type * as migrations_moveLibraryCounts from "../migrations/moveLibraryCounts.js";
-import type * as migrations_moveScreeningAnswers from "../migrations/moveScreeningAnswers.js";
 import type * as migrations_moveScreeningJobAnswers from "../migrations/moveScreeningJobAnswers.js";
 import type * as migrations_moveScreeningJobProgress from "../migrations/moveScreeningJobProgress.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
@@ -613,10 +613,10 @@ declare const fullApi: ApiFromModules<{
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
   "migrations/countBillingUsage": typeof migrations_countBillingUsage;
+  "migrations/dropAnswerChunks": typeof migrations_dropAnswerChunks;
   "migrations/expireInvitations": typeof migrations_expireInvitations;
   "migrations/moveExtractionCounts": typeof migrations_moveExtractionCounts;
   "migrations/moveLibraryCounts": typeof migrations_moveLibraryCounts;
-  "migrations/moveScreeningAnswers": typeof migrations_moveScreeningAnswers;
   "migrations/moveScreeningJobAnswers": typeof migrations_moveScreeningJobAnswers;
   "migrations/moveScreeningJobProgress": typeof migrations_moveScreeningJobProgress;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;

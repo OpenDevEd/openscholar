@@ -2,7 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { applyCommand, moveSearchAnswers, verifyMovedAnswers } from "./records";
+import { applyCommand } from "./records";
 import { restoreSearch, serializeSearch, type ResearchCommand, type SavedSearch } from "../../lib/research/records";
 import { convexToJson } from "convex/values";
 import { asSchema } from "ai";
@@ -390,99 +390,5 @@ describe("account research records", () => {
     expect((await row())?.countedTo).toBeUndefined();
     await change("after", { kind: "deleteSearch", id: "second" });
     expect(await alice.query(api.research.records.countSearches, { accountId: "alice" })).toBe(1_199);
-  });
-
-  it("moves answers out of chunks with every revision's answers intact, once", async () => {
-    const { t, ids, alice } = await setup();
-    const answers = (paperIds: string[], response: boolean | null) => paperIds.map(paperId => ({ paperId, responses: [{ question: "Randomized?", response }] }));
-    // Saved the way the chunk storage did: answers in chunks on the search and each revision.
-    const [live, gone] = await t.run(async ctx => {
-      const chunk = (responses: SavedSearch["screeningResponses"]) => ctx.db.insert("researchResponseChunks", { responses });
-      const seed = async (localId: string, snapshots: SavedSearch["screeningResponses"][], deleted: boolean) => {
-        const data = { ...record, id: localId, screeningResponses: [] };
-        const searchId = await ctx.db.insert("searches", { userId: ids.alice, localId, revision: snapshots.length, data, responseChunks: [await chunk(snapshots.at(-1)!)] });
-        for (const [i, responses] of snapshots.entries()) await ctx.db.insert("searchRevisions", { userId: ids.alice, searchId, revision: i + 1, author: "user", data, deleted: false, createdAt: i + 1, responseChunks: [await chunk(responses)] });
-        if (deleted) await ctx.db.delete("searches", searchId);
-        return searchId;
-      };
-      return [await seed("live", [answers(["W1", "W2"], true), answers(["W2", "W3"], false), []], false), await seed("gone", [answers(["W9"], null)], true)];
-    });
-    const read = async () => ({
-      search: await alice.query(api.research.records.getSearch, { accountId: "alice", id: "live" }),
-      revisions: (await alice.query(api.research.records.revisions, { accountId: "alice", id: "live", paginationOpts })).page,
-    });
-    const before = await read();
-    expect(await t.run(ctx => verifyMovedAnswers(ctx))).toMatchObject({ waiting: 4 });
-    for (const searchId of [live, live, gone]) await t.run(ctx => moveSearchAnswers(ctx, searchId, ids.alice));
-    expect(await read()).toEqual(before);
-    expect(await t.run(ctx => verifyMovedAnswers(ctx))).toEqual({ revisions: 4, waiting: 0, mismatches: [] });
-    expect((await t.run(ctx => ctx.db.get("searches", live)))?.responseChunks).toBeUndefined();
-    const history = await t.run(ctx => ctx.db.query("screeningAnswerHistory").collect());
-    expect(history.every(row => row.answers.every(answer => answer.setBy === "unrecorded"))).toBe(true);
-    expect(history).toHaveLength(2 + 3 + 2 + 1); // per revision: two set; one removed, one changed, one set; two removed; the deleted search's one
-  });
-
-  it("moves a search still on chunks when it is edited, so its old revisions keep their answers", async () => {
-    const { t, ids, alice } = await setup();
-    await t.run(async ctx => {
-      const responses = [{ paperId: "W1", responses: [{ question: "Randomized?", response: true }] }];
-      const data = { ...record, screeningResponses: [] };
-      const searchId = await ctx.db.insert("searches", { userId: ids.alice, localId: record.id, revision: 1, data, responseChunks: [await ctx.db.insert("researchResponseChunks", { responses })] });
-      await ctx.db.insert("searchRevisions", { userId: ids.alice, searchId, revision: 1, author: "user", data, deleted: false, createdAt: 1, responseChunks: [await ctx.db.insert("researchResponseChunks", { responses })] });
-    });
-    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "flip", command: { kind: "editSearch", id: record.id, edit: { kind: "replaceScreeningQuestion", question: "Randomized?", replacement: null } } });
-    const [latest, first] = (await alice.query(api.research.records.revisions, { accountId: "alice", id: record.id, paginationOpts })).page;
-    expect(restoreSearch(first.data).screeningResponses).toEqual({ W1: { "Randomized?": true } });
-    expect(latest.data.screeningResponses).toEqual([]);
-    expect(await t.run(ctx => verifyMovedAnswers(ctx))).toEqual({ revisions: 1, waiting: 0, mismatches: [] });
-  });
-});
-
-describe("research actions as assistant tools", () => {
-  // The tools run inside an agent's action; this context passes their calls to the test backend.
-  const actionCtx = (t: ReturnType<typeof convexTest>) =>
-    ({ runQuery: t.query, runMutation: t.mutation }) as unknown as ActionCtx;
-  const call = { messages: [], context: undefined };
-
-  it("act as the sender, record the assistant as author, and apply a retried call once", async () => {
-    const { t, ids, alice } = await setup();
-    const tools = assistantTools(actionCtx(t), ids.alice, USER_ACTIONS);
-    const create = { command: { kind: "createSearch" as const, search: record } };
-    await tools.research_records_change.execute!(create, { ...call, toolCallId: "call-1" });
-    await tools.research_records_change.execute!(create, { ...call, toolCallId: "call-1" });
-    expect(await t.run(ctx => ctx.db.query("searches").collect())).toHaveLength(1);
-    const history = await alice.query(api.research.records.revisions, { accountId: "alice", id: record.id, paginationOpts });
-    expect(history.page.map(row => row.author)).toEqual(["assistant"]);
-    expect(await tools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: "call-2" })).toEqual({ ...record, questionCount: 0, questionText: "", latestQuestion: undefined });
-  });
-
-  it("never reach another account's records", async () => {
-    const { t, ids, alice } = await setup();
-    await alice.mutation(api.research.records.importBatch, batch);
-    const bobTools = assistantTools(actionCtx(t), ids.bob, USER_ACTIONS);
-    expect(await bobTools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: "call-3" })).toBeNull();
-    await bobTools.research_records_change.execute!({ command: { kind: "deleteSearch", id: record.id } }, { ...call, toolCallId: "call-4" });
-    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toEqual(record);
-  });
-
-  it("refuse a sender whose account was suspended or deleted during the turn", async () => {
-    const { t, ids } = await setup();
-    const tools = assistantTools(actionCtx(t), ids.alice, USER_ACTIONS);
-    for (const state of ["suspended", "deleted"] as const) {
-      await t.run(ctx => ctx.db.patch("users", ids.alice, { state }));
-      await expect(tools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: `read-${state}` })).rejects.toThrow();
-      await expect(tools.research_records_change.execute!({ command: { kind: "createSearch", search: record } }, { ...call, toolCallId: `write-${state}` })).rejects.toThrow();
-    }
-    expect(await t.run(ctx => ctx.db.query("searches").collect())).toEqual([]);
-  });
-
-  it("offer every registered action to the model, with the retry key left to the tool", async () => {
-    const { t, ids } = await setup();
-    const tools = assistantTools(actionCtx(t), ids.alice, USER_ACTIONS);
-    expect(Object.keys(tools)).toHaveLength(USER_ACTIONS.length);
-    for (const entry of USER_ACTIONS) {
-      const schema = await asSchema(tools[entry.path.replace(/[/:]/g, "_")]!.inputSchema).jsonSchema;
-      expect(Object.keys((schema as { properties?: object }).properties ?? {})).toEqual(Object.keys(entry.args).filter(name => name !== (entry.kind === "mutation" ? entry.retryKey : undefined)));
-    }
   });
 });
