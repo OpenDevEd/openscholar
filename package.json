@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "citations:generate": "node scripts/generate-citation-assets.mjs",
+    "citations:generate": "node scripts/generate-citation-assets.mjs && node scripts/generate-citation-credits.mjs",
     "dev": "node scripts/run-remote-convex.mjs dev",
     "dev:web": "next dev",
     "convex:push": "node scripts/run-remote-convex.mjs push",

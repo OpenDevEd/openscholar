@@ -6,7 +6,9 @@ OpenScholar uses work that other people have made and shared. This page names it
 
 The citation styles and their translations come from the [Citation Style Language project](https://citationstyles.org/), from its [styles](https://github.com/citation-style-language/styles) and [locales](https://github.com/citation-style-language/locales) repositories. They are licensed under [Creative Commons Attribution-ShareAlike 3.0](https://creativecommons.org/licenses/by-sa/3.0/).
 
-OpenScholar converts them from XML to JSON and leaves their formatting rules unchanged. The converted copies are offered under the same license.
+Each style and locale has its own authors. [The full list names them](/citation-styles/credits.txt).
+
+OpenScholar converts the files from XML to JSON. When it lists references, it removes the citation number from styles that number their entries. The changed copies are offered under the same license.
 
 ## Research data
 
