@@ -232,6 +232,7 @@ import type * as lib_capWrites from "../lib/capWrites.js";
 import type * as lib_cascade from "../lib/cascade.js";
 import type * as lib_constants from "../lib/constants.js";
 import type * as lib_crypto from "../lib/crypto.js";
+import type * as lib_cutoff from "../lib/cutoff.js";
 import type * as lib_env from "../lib/env.js";
 import type * as lib_envValidation from "../lib/envValidation.js";
 import type * as lib_errors from "../lib/errors.js";
@@ -277,6 +278,7 @@ import type * as migrations_pagedCollections from "../migrations/pagedCollection
 import type * as migrations_pagedRecords from "../migrations/pagedRecords.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_removeOrphanLibraryAccess from "../migrations/removeOrphanLibraryAccess.js";
+import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
 import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
@@ -578,6 +580,7 @@ declare const fullApi: ApiFromModules<{
   "lib/cascade": typeof lib_cascade;
   "lib/constants": typeof lib_constants;
   "lib/crypto": typeof lib_crypto;
+  "lib/cutoff": typeof lib_cutoff;
   "lib/env": typeof lib_env;
   "lib/envValidation": typeof lib_envValidation;
   "lib/errors": typeof lib_errors;
@@ -623,6 +626,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedRecords": typeof migrations_pagedRecords;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/removeOrphanLibraryAccess": typeof migrations_removeOrphanLibraryAccess;
+  "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
   "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;

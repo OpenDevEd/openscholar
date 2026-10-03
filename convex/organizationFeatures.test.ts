@@ -1,10 +1,11 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import schema from "./schema";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { seedFeatureUser, seedOrganizationFeatures } from "./organizationFeatures.test-support";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
+import { MEMBERSHIP_REVOKE_BATCH } from "./webhooks/projections";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const denied = { authors: false, extraction: false, evidenceLibraries: false };
@@ -197,4 +198,23 @@ test("refuses to read a person in more organizations than one read takes, not a 
   expect(await joiner.query(api.organizationFeatures.get, {})).toMatchObject({ authors: true });
   await t.run((ctx) => seedOrganizationFeatures(ctx, ["joiner"], { authors: true }));
   await expect(joiner.query(api.organizationFeatures.get, {})).rejects.toThrow(/more than 200 organizations/);
+});
+
+test("a deleted organization's memberships are revoked, however many it has (#427)", async () => {
+  const t = convexTest(schema, modules);
+  const members = ["joiner", ...Array.from({ length: MEMBERSHIP_REVOKE_BATCH }, (_, i) => `member_${i}`)];
+  const { gone, kept } = await t.run(async (ctx) => {
+    const gone = (await ctx.db.get("organizations", await seedOrganizationFeatures(ctx, members, { authors: true })))!;
+    return { gone, kept: await seedOrganizationFeatures(ctx, ["joiner"], { authors: true }) };
+  });
+  vi.useFakeTimers();
+  await t.mutation(internal.webhooks.projections.applyOrganizationEvent, {
+    eventId: "msg_gone", eventType: "organization.deleted", instanceId: "ins_test", occurredAt: Date.now(), payloadSha256: "a".repeat(64),
+    action: "delete", entityId: gone.clerkOrganizationId,
+  });
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  vi.useRealTimers();
+  const active = await t.run((ctx) => ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", "joiner").eq("state", "active")).take(3));
+  expect(active.map((membership) => membership.organizationId)).toEqual([kept]);
+  expect(await t.run((ctx) => ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", gone._id).eq("state", "active")).first())).toBeNull();
 });

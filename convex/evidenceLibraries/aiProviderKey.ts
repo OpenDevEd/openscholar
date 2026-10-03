@@ -18,6 +18,7 @@ import {
   isDeploymentLeaseHeld,
   isSetupLeaseHeld,
 } from "./operationLeases";
+import { readActiveOperations } from "./operations";
 import { requireEvidenceLibraryAccess } from "./access";
 import type { LibraryCredentialSource } from "./validators";
 
@@ -138,12 +139,7 @@ export async function requireNoRunningOperation(
   message = AI_PROVIDER_KEY_BUSY_MESSAGE,
 ): Promise<void> {
   const now = Date.now();
-  const running = ctx.db
-    .query("evidenceLibraryConfigOperations")
-    .withIndex("by_libraryId_and_status_and_updatedAt", (query) =>
-      query.eq("libraryId", libraryId).eq("status", "running"),
-    );
-  for await (const operation of running) {
+  for (const operation of await readActiveOperations(ctx, libraryId, "running")) {
     // The same rules the two pipelines use to decide whether an attempt may
     // be reclaimed, so this guard can never disagree with them.
     const held =

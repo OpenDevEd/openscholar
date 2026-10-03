@@ -17,6 +17,7 @@ import {
   evidenceLibraryRequestableOperationKindValidator,
 } from "./validators";
 import { MAX_CONFIGURATION_ISSUES } from "../lib/listCaps";
+import { MAX_ACTIVE_OPERATIONS_READ } from "../lib/queryBounds";
 
 /** Newest publish operations read to find the newest configuration deployment. */
 const NEWEST_PUBLISHES_READ = 50;
@@ -44,6 +45,29 @@ export function isCurrentConfigurationTargetBaseUrl(
     );
   }
   return targetBaseUrl === runtimeBinding.targetBaseUrl;
+}
+
+/**
+ * A library's queued or running operations, for the guards that ask whether work is under
+ * way. A library holds a few at once. Past the bound it's refused as busy by name, because
+ * a guard can't call it idle on a partial read.
+ */
+export async function readActiveOperations(
+  ctx: Pick<OperationReadCtx, "db">,
+  libraryId: Id<"evidenceLibraries">,
+  status: "queued" | "running",
+) {
+  const operations = await ctx.db
+    .query("evidenceLibraryConfigOperations")
+    .withIndex("by_libraryId_and_status_and_updatedAt", (query) =>
+      query.eq("libraryId", libraryId).eq("status", status),
+    )
+    .take(MAX_ACTIVE_OPERATIONS_READ + 1);
+  if (operations.length > MAX_ACTIVE_OPERATIONS_READ) {
+    console.error("[evidence library] More active operations than a guard reads", { libraryId, status, read: MAX_ACTIVE_OPERATIONS_READ });
+    throw createError("CONFLICT", `This library has more than ${MAX_ACTIVE_OPERATIONS_READ} ${status} operations. Wait for them to finish before changing it.`);
+  }
+  return operations;
 }
 
 /** A publish operation owned by the configuration deployment pipeline. */

@@ -2,6 +2,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_INVITATIONS_PER_EMAIL, SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
 import { internalMutation, type MutationCtx } from "../lib/functions";
+import { existingBefore } from "../lib/cutoff";
 import { v } from "convex/values";
 import {
   clerkEventOutcomeValidator,
@@ -17,6 +18,9 @@ import {
   type ClerkEventMetadata,
   type ClerkEventOutcome,
 } from "./eventOrdering";
+
+/** Memberships of a deleted organization one mutation revokes. */
+export const MEMBERSHIP_REVOKE_BATCH = 500;
 
 type ProjectionMetadata = Omit<ClerkEventMetadata, "entityType">;
 type MembershipProjectionMetadata = Omit<ProjectionMetadata, "entityId">;
@@ -77,7 +81,7 @@ async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizat
     .paginate({ cursor, numItems: MAX_LIBRARY_GRANTS_PER_PERSON });
   for (const assignment of page.page) {
     // A grant made since they left, by a later invitation, is theirs to keep.
-    if (assignment._creationTime > before) continue;
+    if (assignment._creationTime >= before) continue;
     const library = await ctx.db.get("evidenceLibraries", assignment.libraryId);
     if (library?.organizationId === organizationId) {
       await ctx.db.delete("evidenceLibraryMembers", assignment._id);
@@ -85,6 +89,27 @@ async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizat
   }
   if (!page.isDone) await ctx.scheduler.runAfter(0, internal.webhooks.projections.revokeGrants, { clerkUserId, organizationId, cursor: page.continueCursor, before });
 }
+
+/**
+ * Revokes one page of a deleted organization's memberships and schedules the next until none
+ * is active, so they stop counting against the organizations a person can belong to.
+ */
+async function revokeMembershipsPage(ctx: MutationCtx, organizationId: Id<"organizations">) {
+  const active = await ctx.db.query("organizationMemberships")
+    .withIndex("by_organizationId_and_state", q => q.eq("organizationId", organizationId).eq("state", "active"))
+    .take(MEMBERSHIP_REVOKE_BATCH);
+  for (const membership of active) await ctx.db.patch("organizationMemberships", membership._id, { state: "revoked", updatedAt: Date.now() });
+  if (active.length === MEMBERSHIP_REVOKE_BATCH) await ctx.scheduler.runAfter(0, internal.webhooks.projections.revokeMemberships, { organizationId });
+}
+
+export const revokeMemberships = internalMutation({
+  args: { organizationId: v.id("organizations") },
+  returns: v.null(),
+  handler: async (ctx, { organizationId }) => {
+    await revokeMembershipsPage(ctx, organizationId);
+    return null;
+  },
+});
 
 export const revokeGrants = internalMutation({
   args: { clerkUserId: v.string(), organizationId: v.id("organizations"), cursor: v.string(), before: v.number() },
@@ -131,6 +156,7 @@ export async function applyOrganizationProjection(
           state: "deleted",
           updatedAt: args.processedAt,
         });
+        await revokeMembershipsPage(ctx, existing._id);
       }
     },
   );
@@ -197,7 +223,7 @@ export async function applyMembershipProjection(
         }
       }
       if (args.membership.state === "revoked") {
-        await revokeGrantsPage(ctx, args.membership.clerkUserId, organizationId, null, Date.now());
+        await revokeGrantsPage(ctx, args.membership.clerkUserId, organizationId, null, existingBefore());
         const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.membership.clerkUserId)).unique();
         if (user) {
           const invitations = await ctx.db.query("evidenceLibraryInvitations")

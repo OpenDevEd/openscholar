@@ -92,7 +92,13 @@ export const MAX_ACCOUNTS_PER_EMAIL = 100;
 export const MAX_ORGANIZATIONS_PER_PERSON = 200;
 
 /**
- * Most locations of one publication group a topic page reads to find a public one. A page
- * checks 50 groups, so this keeps it inside one query's read limits.
+ * Most locations of one publication group a topic page reads looking for a public one. It
+ * stops at the first, so only a group whose first copies are all private reads this far.
  */
 export const MAX_LOCATIONS_READ_PER_GROUP = 100;
+
+/**
+ * Most queued or running operations of one library a guard reads. One setup, one deployment
+ * and one teardown run at a time, so a library past this is refused as busy, by name.
+ */
+export const MAX_ACTIVE_OPERATIONS_READ = 50;

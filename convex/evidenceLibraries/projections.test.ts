@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
 import {
@@ -311,6 +311,9 @@ describe("Evidence Library identity projections", () => {
   });
 
   it("removes library grants and pending invitations only under the revoked organization", async () => {
+    // One frozen millisecond: the grants are made in the millisecond the person leaves, and still go.
+    vi.useFakeTimers();
+    onTestFinished(() => void vi.useRealTimers());
     const t = convexTest(schema);
     const ids = await t.run(async ctx => {
       await ctx.db.insert("users", {libraryItemCount: 0,  clerkId: "user_123", email: "person@example.org", state: "active", createdAt: 1, updatedAt: 1 });

@@ -1,10 +1,6 @@
 {
   "unboundedReads": {
     "pending": {
-      "convex/evidenceLibraries/aiProviderKey.ts:requireNoRunningOperation:evidenceLibraryConfigOperations": "#427: A library's operations that are running now: one or two at a time",
-      "convex/evidenceLibraries/configurationDeployment.ts:requireNoActiveConfigurationDeployment:evidenceLibraryConfigOperations": "#427: A library's operations that are queued or running now: one or two at a time",
-      "convex/evidenceLibraries/domains.ts:claimDomainRoutes:evidenceLibraryConfigOperations": "#427: A library's operations that are queued or running now: one or two at a time",
-      "convex/evidenceLibraries/versions.ts:arrivals:evidenceLibraryConfigOperations": "#427: One library's succeeded operations to one runtime image: a few",
       "convex/research/answers.ts:answersAtVersions:screeningAnswerHistory": "#342",
       "convex/research/answers.ts:currentAnswers:?": "#334",
       "convex/research/answers.ts:existing:?": "#334",
