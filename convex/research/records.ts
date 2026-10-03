@@ -5,9 +5,9 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Author } from "../lib/userActions";
-import { answersAtVersions, clearPaperAnswers, currentAnswers, replaceAnswers, screeningFor, setPaperAnswers, type AnswerSource } from "./answers";
+import { answersAmong, clearPaperAnswers, removeAnswersStep, screeningFor, seedAnswers, setPaperAnswers, type AnswerSource } from "./answers";
 import {
-  applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, RATED_PAPERS_MAX, ratingValidator, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator,
+  ANSWERED_PAPERS_MAX, applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, paperResponsesValidator, RATED_PAPERS_MAX, ratingValidator, searchValidator, SHORTCUT_NAMES_MAX, shortcutSortValidator, shortcutValidator,
   type ResearchCommand, type SavedSearch, type StoredSearch,
 } from "../../lib/research/records";
 import { stream } from "convex-helpers/server/stream";
@@ -179,24 +179,42 @@ export const ratingsOfAction = defineUserQuery({
 export const ratingsOf = accountQuery(ratingsOfAction);
 export const ratingsOfForAssistant = assistantQuery(ratingsOfAction);
 
+/** A search as its page reads it: everything but its screening answers, which `answersOf` reads for the papers on screen. */
+const listed = (search: SavedSearch) => { const { screeningResponses: _answers, ...fields } = search; return fields; };
+
 export const getSearchAction = defineUserQuery({
   path: "research/records:getSearch",
-  description: "Reads one saved search by ID: its query, filters, sort, page, and screening questions and answers.",
+  description: "Reads one saved search by ID: its query, filters, sort, page and screening questions. Its screening answers are read by paper with answersOf.",
   args: { id: v.string() },
-  returns: v.union(searchValidator, v.null()),
+  returns: v.union(listedSearchValidator, v.null()),
   run: async (ctx, userId, args) => {
     const search = await findSearch(ctx, userId, args.id);
-    return search ? hydrate(ctx, search) : null;
+    return search ? listed(currentSearch(search.data)) : null;
   },
 });
 export const getSearch = accountQuery(getSearchAction);
 export const getSearchForAssistant = assistantQuery(getSearchAction);
 
+export const answersOfAction = defineUserQuery({
+  path: "research/records:answersOf",
+  description: `Reads a saved search's screening answers for the papers with these IDs, at most ${ANSWERED_PAPERS_MAX} of them, as one page; a paper with no answers is left out. Given \`version\`, the answers as they were at that screening version, which a revision of the search names.`,
+  args: { id: v.string(), paperIds: v.array(v.string()), version: v.optional(v.number()) },
+  returns: paginationResultValidator(paperResponsesValidator),
+  run: async (ctx, userId, { id, paperIds, version }) => {
+    if (paperIds.length > ANSWERED_PAPERS_MAX) throw new Error(`Answers are read ${ANSWERED_PAPERS_MAX} papers at a time.`);
+    const search = await findSearch(ctx, userId, id);
+    const screening = search && (await screeningFor(ctx, search._id));
+    return { page: screening ? await answersAmong(ctx, screening._id, paperIds, version) : [], isDone: true, continueCursor: "" };
+  },
+});
+export const answersOf = accountQuery(answersOfAction);
+export const answersOfForAssistant = assistantQuery(answersOfAction);
+
 export const revisionsAction = defineUserQuery({
   path: "research/records:revisions",
-  description: "Lists a saved search's earlier versions, newest first, each marked as made by the person or by the assistant.",
+  description: "Lists a saved search's earlier versions, newest first, each marked as made by the person or by the assistant. Each names the screening version its answers stood at, which answersOf reads by paper.",
   args: { ...pageArgs, id: v.string() },
-  returns: paginationResultValidator(v.object({ revision: v.number(), author: v.union(v.literal("user"), v.literal("assistant")), data: searchValidator, deleted: v.boolean(), createdAt: v.number() })),
+  returns: paginationResultValidator(v.object({ revision: v.number(), author: v.union(v.literal("user"), v.literal("assistant")), data: listedSearchValidator, answersVersion: v.optional(v.number()), deleted: v.boolean(), createdAt: v.number() })),
   run: async (ctx, userId, args) => {
     const search = await findSearch(ctx, userId, args.id);
     if (!search) return { page: [], isDone: true, continueCursor: "" };
@@ -204,11 +222,10 @@ export const revisionsAction = defineUserQuery({
       // Revisions saved before #354 hold their search's whole history; a page of them stops at
       // this many bytes and goes on from its cursor.
       .paginate({ ...args.paginationOpts, maximumBytesRead: REVISION_PAGE_BYTES });
-    const data = await hydrateRevisions(ctx, search._id, page.page);
-    return { ...page, page: page.page.map((row, i) => ({ revision: row.revision, author: row.author, data: data[i], deleted: row.deleted, createdAt: row.createdAt })) };
+    return { ...page, page: page.page.map(row => ({ revision: row.revision, author: row.author, data: listed(currentSearch(row.data)), ...(row.answersVersion === undefined ? {} : { answersVersion: row.answersVersion }), deleted: row.deleted, createdAt: row.createdAt })) };
   },
 });
-/** Bytes one page of revisions reads at most, leaving room for their answers. */
+/** Bytes one page of revisions reads at most. */
 const REVISION_PAGE_BYTES = 8 * 2 ** 20;
 export const revisions = accountQuery(revisionsAction);
 export const revisionsForAssistant = assistantQuery(revisionsAction);
@@ -339,22 +356,6 @@ function findSearch(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, localId: str
   return ctx.db.query("searches").withIndex("by_user_and_localId", q => q.eq("userId", userId).eq("localId", localId)).unique();
 }
 
-type RevisionRow = Pick<Doc<"searchRevisions">, "data" | "answersVersion">;
-
-/** A search with its current screening answers. */
-async function hydrate(ctx: Pick<QueryCtx, "db">, row: Pick<Doc<"searches">, "_id" | "data">): Promise<SavedSearch> {
-  const screening = await screeningFor(ctx, row._id);
-  return { ...currentSearch(row.data), screeningResponses: screening ? await currentAnswers(ctx, screening._id) : [] };
-}
-
-/** Revisions of one search, each with the answers at the screening version it saw; one from before the first answer has none. */
-async function hydrateRevisions(ctx: Pick<QueryCtx, "db">, searchId: Id<"searches">, rows: RevisionRow[]): Promise<SavedSearch[]> {
-  const versions = rows.flatMap(row => (row.answersVersion === undefined ? [] : [row.answersVersion]));
-  const screening = versions.length ? await screeningFor(ctx, searchId) : null;
-  const answers = screening ? await answersAtVersions(ctx, screening._id, versions) : new Map();
-  return rows.map(row => ({ ...currentSearch(row.data), screeningResponses: row.answersVersion === undefined || !screening ? [] : answers.get(row.answersVersion)! }));
-}
-
 /** Who a change to answers is recorded as: the assistant, or the person and what the page said. */
 const answerSource = (author: Author, by?: "model" | "person"): AnswerSource => (author === "assistant" ? "assistant" : by ?? "person");
 
@@ -387,7 +388,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       await addHistory(ctx, { _id: id, userId }, "query", queries.map(queryEntry));
       await addHistory(ctx, { _id: id, userId }, "question", questions.map(questionEntry));
       // Answers carried in a new search come from an import or the assistant; neither says who gave them.
-      await replaceAnswers(ctx, userId, id, command.search.screeningResponses, author === "assistant" ? "assistant" : "unrecorded", Date.now());
+      await seedAnswers(ctx, userId, id, command.search.screeningResponses, author === "assistant" ? "assistant" : "unrecorded", Date.now());
       await revision(ctx, (await ctx.db.get("searches", id))!, author);
       return;
     }
@@ -405,17 +406,30 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
         await ctx.db.patch("searches", search._id, { data: { ...search.data, updatedAt: now.toISOString() } });
         return;
       }
-      const previous = await hydrate(ctx, search);
+      // The search's own fields; its answers live in their rows and change only through the edits below.
+      const previous: SavedSearch = { ...currentSearch(search.data), screeningResponses: [] };
       const data = edit.kind === "copySearch"
         ? { ...applySearchEdit(previous, edit, now.toISOString()), ...(await copyHistory(ctx, userId, search, edit.from, edit.fromUpdatedAt)) }
         : applySearchEdit(previous, edit, now.toISOString());
       validateSearch(data);
-      // A copy may change only the history rows, so it always makes a revision.
-      if (edit.kind !== "copySearch" && JSON.stringify({ ...data, updatedAt: previous.updatedAt }) === JSON.stringify(previous)) return;
-      if (JSON.stringify(data.screeningResponses) !== JSON.stringify(previous.screeningResponses)) {
-        await replaceAnswers(ctx, userId, search._id, data.screeningResponses, answerSource(author), now.getTime());
-      }
+      // An edit that takes answers from every paper: all of them, or those to one question.
+      const removes = edit.kind === "clearResponses" || edit.kind === "clearScreeningQuestions" ? { all: true as const }
+        : edit.kind === "removeQuestionResponses" || edit.kind === "replaceScreeningQuestion" ? { question: edit.question } : null;
+      const screening = removes && (await screeningFor(ctx, search._id));
       const next = { ...search, data: { ...data, screeningResponses: [] }, revision: search.revision + 1 };
+      let answersChanged = false;
+      if (removes && screening) {
+        // The first papers go with the edit; a screening with more is swept on in the background.
+        const cursor = await removeAnswersStep(ctx, screening._id, "question" in removes ? removes.question : undefined, screening.version, null, now.getTime());
+        answersChanged = cursor !== null || (await ctx.db.get("screenings", screening._id))!.version !== screening.version;
+        if (cursor !== null) {
+          await ctx.scheduler.runAfter(0, internal.research.records.removeAnswersBatch, {
+            screeningId: screening._id, ...("question" in removes ? { question: removes.question } : {}), version: screening.version, cursor, at: now.getTime(), searchId: search._id, revision: next.revision,
+          });
+        }
+      }
+      // A copy may change only the history rows, so it always makes a revision.
+      if (edit.kind !== "copySearch" && !answersChanged && JSON.stringify({ ...data, updatedAt: previous.updatedAt }) === JSON.stringify(previous)) return;
       await ctx.db.patch("searches", search._id, { data: next.data, revision: next.revision });
       if (edit.kind === "query") await addHistory(ctx, search, "query", [{ text: edit.query, field: edit.field, timestamp: data.updatedAt }]);
       if (edit.kind === "question") await addHistory(ctx, search, "question", [{ text: edit.question, timestamp: data.updatedAt }]);
@@ -517,6 +531,29 @@ async function clearBatch(ctx: MutationCtx, userId: Id<"users">, author: Author,
   for (const search of deleted) await applyCommand(ctx, userId, { kind: "deleteSearch", id: search.localId }, author);
   if (!batch.isDone || deleted.length < batch.page.length) await ctx.scheduler.runAfter(0, internal.research.records.clearSearchesBatch, { userId, author, before });
 }
+
+/**
+ * Carries on an edit that takes answers from every paper of a screening, a step at a time
+ * (./answers.ts). When the last paper is done, the revision the edit made points at the
+ * screening's version then, so it shows the answers as the edit left them.
+ * ponytail: a revision made by another edit while a sweep runs points at a version part way
+ * through it, so it shows answers the sweep hadn't reached; a sweep that locks later edits out would fix that.
+ */
+export const removeAnswersBatch = internalMutation({
+  args: { screeningId: v.id("screenings"), question: v.optional(v.string()), version: v.number(), cursor: v.string(), at: v.number(), searchId: v.id("searches"), revision: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { screeningId, question, version, cursor, at, searchId, revision }) => {
+    if (!(await ctx.db.get("screenings", screeningId))) return null;
+    const next = await removeAnswersStep(ctx, screeningId, question, version, cursor, at);
+    if (next !== null) {
+      await ctx.scheduler.runAfter(0, internal.research.records.removeAnswersBatch, { screeningId, ...(question === undefined ? {} : { question }), version, cursor: next, at, searchId, revision });
+      return null;
+    }
+    const made = await ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", searchId).eq("revision", revision)).unique();
+    if (made) await ctx.db.patch("searchRevisions", made._id, { answersVersion: (await ctx.db.get("screenings", screeningId))!.version });
+    return null;
+  },
+});
 
 /** Shortcuts one clearing transaction deletes, and the bytes of them it reads. */
 const CLEAR_SHORTCUTS = 100;

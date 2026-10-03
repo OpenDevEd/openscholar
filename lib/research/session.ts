@@ -4,13 +4,14 @@ import { api } from "../../convex/_generated/api";
 import { shortcutExpansions, type SearchHistoryState, type KeywordExpansionState, type RatingsState } from "../store";
 import type { SearchResult } from "../types";
 import { expandShortcuts } from "../query-shortcuts";
-import { applySearchEdit, historySummary, importSearchRecord, RATED_PAPERS_MAX, SHORTCUT_NAMES_MAX, restoreSearch, serializeResponses, serializeSearch, serializeSearchPatch, type ResearchCommand, type SavedSearch, type SearchEdit } from "./records";
+import { ANSWERED_PAPERS_MAX, applySearchEdit, editedResponses, historySummary, importSearchRecord, RATED_PAPERS_MAX, SHORTCUT_NAMES_MAX, restoreResponses, restoreSearch, serializeResponses, serializeSearch, serializeSearchPatch, type ListedSearch, type ResearchCommand, type SavedSearch, type SearchEdit } from "./records";
 import { activateResearch, type ResearchStores } from "./binding";
 import { migrateLocalResearch, ResearchImportError } from "./migrate";
 
 type Page<T> = { page: T[]; isDone: boolean; continueCursor: string };
 type Shortcut = { shorthand: string; expansion: string; createdAt: number };
 type Rating = { paperId: string; rating: number };
+type PaperResponses = SavedSearch["screeningResponses"][number];
 /** A set of reads by ID: each read under the IDs it takes, and which read has each ID. */
 type ReadsById<T> = { reads: Map<string, Watch<Page<T>>>; by: Map<string, string> };
 /** How long shortcuts read for a single action stay read, for the code after it to expand with. */
@@ -36,9 +37,11 @@ function createSearch(search: SearchResult): ResearchCommand {
 export class ResearchSession {
   readonly stores: ResearchStores;
   // Only the searches pages read by ID; lists page through `listedSearches` themselves (#420).
-  private watched = new Map<string, Watch<SavedSearch | null>>();
+  private watched = new Map<string, Watch<ListedSearch | null>>();
   // Only the ratings of the papers pages show, read by paper ID, and only the shortcuts the
-  // queries in use name, read by name (#420).
+  // queries in use name, read by name (#420). A search's screening answers likewise: those of
+  // the papers its page shows, by paper ID, under the search's ID (#421).
+  private answered = new Map<string, ReadsById<PaperResponses>>();
   private rated: ReadsById<Rating> = { reads: new Map(), by: new Map() };
   private named: ReadsById<Shortcut> = { reads: new Map(), by: new Map() };
   private pending: Array<{ requestId: string; command: ResearchCommand }> = [];
@@ -78,6 +81,17 @@ export class ResearchSession {
         responses: serializeResponses(responses).map((value) => (confidences?.[value.question] === undefined ? value : { ...value, confidence: confidences[value.question] })),
       }),
       getScreeningResponse: (id, paperId, question) => current(id)?.screeningResponses[paperId]?.[question],
+      readScreeningResponses: async (id, paperIds) => {
+        const ids = [...new Set(paperIds)];
+        const reads = Array.from({ length: Math.ceil(ids.length / ANSWERED_PAPERS_MAX) }, (_, i) => ids.slice(i * ANSWERED_PAPERS_MAX, (i + 1) * ANSWERED_PAPERS_MAX));
+        const pages = await Promise.all(reads.map(chunk => this.client.query(api.research.records.answersOf, { accountId: this.accountId, id, paperIds: chunk })));
+        let responses = pages.flatMap(page => page.page);
+        // Answers still being saved count as the person left them.
+        for (const { command } of this.pending) {
+          if (command.kind === "editSearch" && command.id === id) responses = editedResponses(responses, command.edit);
+        }
+        return restoreResponses(responses);
+      },
       clearScreeningResponses: (id, paperId) => edit(id, { kind: "clearResponses", ...(paperId === undefined ? {} : { paperId }) }),
       removeScreeningQuestionFromAllPapers: (id, question) => edit(id, { kind: "removeQuestionResponses", question }),
       getSearchResult: current,
@@ -174,8 +188,10 @@ export class ResearchSession {
   };
   private beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
   private releaseSettled() { for (const resolve of this.settledListeners) resolve(); this.settledListeners.clear(); }
-  private watches(): Array<Watch<unknown>> { return [...this.watched.values(), ...this.rated.reads.values(), ...this.named.reads.values()]; }
-  /** Whether a read is still on its way: a search, ratings or shortcuts a page just asked for. */
+  private watches(): Array<Watch<unknown>> {
+    return [...this.watched.values(), ...this.rated.reads.values(), ...this.named.reads.values(), ...[...this.answered.values()].flatMap(({ reads }) => [...reads.values()])];
+  }
+  /** Whether a read is still on its way: a search, answers, ratings or shortcuts a page just asked for. */
   private reading() { return this.watches().some(({ value, failed }) => value === undefined && !failed); }
   private settle() { if (!this.reading()) this.releaseSettled(); }
   retry = () => {
@@ -199,12 +215,26 @@ export class ResearchSession {
   /**
    * Reads search `id` while `reader` wants it, so `getSearchResult(id)` has it; returns the
    * unsubscribe. A search this browser just created is there before Convex has it, and so
-   * is one a list already shows (`known`, without its screening answers) until it's read.
+   * is one a list already shows (`known`) until it's read. Its screening answers are read
+   * apart, for the papers a page shows (`watchAnswers`).
    */
-  watchSearch = (id: string, reader: () => void, known?: SavedSearch) => {
+  watchSearch = (id: string, reader: () => void, known?: ListedSearch) => {
     const open = () => this.client.watchQuery(api.research.records.getSearch, { accountId: this.accountId, id });
     return this.hold(this.watched, id, open, reader, known);
   };
+  private answersOf(searchId: string) {
+    let reads = this.answered.get(searchId);
+    if (!reads) this.answered.set(searchId, (reads = { reads: new Map(), by: new Map() }));
+    return reads;
+  }
+  /**
+   * Reads search `searchId`'s screening answers for these papers while `reader` wants them, so
+   * the search in the store has them; returns the unsubscribe.
+   */
+  watchAnswers = (searchId: string, paperIds: string[], reader: () => void) =>
+    this.holdIds(this.answersOf(searchId), paperIds, ANSWERED_PAPERS_MAX, chunk => this.client.watchQuery(api.research.records.answersOf, { accountId: this.accountId, id: searchId, paperIds: chunk }), reader);
+  /** How many of these papers, from the first, have their answers read, or a read that failed. */
+  answersRead = (searchId: string, paperIds: string[]) => this.idsRead(this.answersOf(searchId), paperIds);
   /**
    * Reads the person's ratings of these papers while `reader` wants them, so the ratings
    * store has them; returns the unsubscribe.
@@ -346,7 +376,9 @@ export class ResearchSession {
     }
   }
   private render() {
-    let searches = [...this.watched.values()].flatMap(({ value }) => (value ? [value] : []));
+    // Each search with the answers read for it: those of the papers its page shows.
+    let searches: SavedSearch[] = [...this.watched.values()].flatMap(({ value }) =>
+      value ? [{ ...value, screeningResponses: [...(this.answered.get(value.id)?.reads.values() ?? [])].flatMap(read => read.value?.page ?? []) }] : []);
     const keywords = Object.fromEntries([...this.named.reads.values()].flatMap(({ value }) => value?.page ?? []).map(({ shorthand, ...value }) => [shorthand, value]));
     const ratings = Object.fromEntries([...this.rated.reads.values()].flatMap(({ value }) => value?.page ?? []).map(row => [row.paperId, row.rating]));
     for (const { command } of this.pending) {

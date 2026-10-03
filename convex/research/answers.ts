@@ -31,47 +31,29 @@ function toResponses(papers: Iterable<{ paperId: string; answers: PaperAnswers }
   return Array.from(papers, ({ paperId, answers }) => ({ paperId, responses: answers.map(({ question, answer }) => ({ question, response: answer })) }));
 }
 
-const paperRows = (ctx: Read, screeningId: Id<"screenings">) =>
-  ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId));
-
-/**
- * A search's current answers.
- * ponytail: reads every screened paper, as the chunks did; a list page of searches holding
- * about 32,000 screened papers between them reaches a query's read limit. The results page
- * reading answers per search (#334) removes the ceiling.
- */
-export async function currentAnswers(ctx: Read, screeningId: Id<"screenings">): Promise<Responses> {
-  return toResponses(await paperRows(ctx, screeningId).collect());
+/** A paper's answers as they were at `version`: its newest history up to it. */
+function paperAt(ctx: Read, screeningId: Id<"screenings">, paperId: string, version: number) {
+  return ctx.db.query("screeningAnswerHistory")
+    .withIndex("by_screening_and_paper_and_version", (q) => q.eq("screeningId", screeningId).eq("paperId", paperId).lte("version", version))
+    .order("desc").first();
 }
 
 /**
- * The answers at each of `versions`, rebuilt from one pass over the history, so a page of
- * revisions reads the history once.
- * ponytail: the pass reads every change up to the newest version asked for, so a screening
- * with about 30,000 answer changes over its life reaches a query's read limit. Undo (#342)
- * restores revisions and brings checkpoints or a paged restore.
+ * These papers' answers, now or as they were at `version`: one indexed read a paper, so a
+ * page reads the answers of the papers it shows and no others. A paper with none is left out.
  */
-export async function answersAtVersions(ctx: Read, screeningId: Id<"screenings">, versions: number[]): Promise<Map<number, Responses>> {
-  const result = new Map<number, Responses>();
-  const pending = [...new Set(versions)].sort((a, b) => a - b);
-  if (!pending.length) return result;
-  const state = new Map<string, PaperAnswers>();
-  const snapshot = () => toResponses([...state].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([paperId, answers]) => ({ paperId, answers })));
-  const history = ctx.db.query("screeningAnswerHistory").withIndex("by_screening_and_version", (q) => q.eq("screeningId", screeningId).lte("version", pending.at(-1)!));
-  for await (const row of history) {
-    while (pending.length && row.version > pending[0]) result.set(pending.shift()!, snapshot());
-    if (row.answers.length) state.set(row.paperId, row.answers);
-    else state.delete(row.paperId);
-  }
-  for (const version of pending) result.set(version, snapshot());
-  return result;
+export async function answersAmong(ctx: Read, screeningId: Id<"screenings">, paperIds: string[], version?: number): Promise<Responses> {
+  const rows = await Promise.all(paperIds.map((paperId) =>
+    version === undefined
+      ? ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId).eq("paperId", paperId)).unique()
+      : paperAt(ctx, screeningId, paperId, version)));
+  return toResponses(rows.flatMap((row) => (row && row.answers.length ? [row] : [])));
 }
 
 /**
  * Writes each paper's next answers where they changed, and appends them to the history
  * under the screening's next version. An empty list removes the paper. Returns the
- * screening's version afterwards.
- * ponytail: one transaction, so about 8,000 changed papers at once reach Convex's write limit.
+ * screening's version afterwards. Callers pass a bounded number of papers: one, a new search's, or a sweep's step.
  */
 async function apply(ctx: Write, screening: Doc<"screenings">, updates: Array<{ paperId: string; answers: PaperAnswers }>, existing: Map<string, Doc<"screeningAnswers">>, at: number) {
   const version = screening.version + 1;
@@ -156,28 +138,35 @@ export async function clearPaperAnswers(ctx: Write, searchId: Id<"searches">, pa
 }
 
 /**
- * Makes the answers exactly `next`: for edits that change many papers at once, for new
- * searches, and for the move out of chunks. An answer that keeps its value keeps who set it.
- * Returns the screening's version afterwards, or undefined when the search has no screening.
+ * Gives a search that has just been made the answers it came with, from an import or the
+ * assistant. It has no answers yet, so nothing is read.
  */
-export async function replaceAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, next: Responses, setBy: AnswerSource, at: number) {
-  const found = await screeningFor(ctx, searchId);
-  if (!found && next.length === 0) return undefined;
-  const screening = found ?? (await ensureScreening(ctx, userId, searchId));
-  const existing = new Map(found ? (await paperRows(ctx, screening._id).collect()).map((row) => [row.paperId, row] as const) : []);
-  const wanted = new Map(next.map((row) => [row.paperId, row.responses] as const));
-  const updates = [...existing.keys()].filter((paperId) => !wanted.has(paperId)).map((paperId) => ({ paperId, answers: [] as PaperAnswers }));
-  for (const [paperId, responses] of wanted) {
-    const previous = existing.get(paperId)?.answers ?? [];
-    updates.push({
-      paperId,
-      answers: responses.map(({ question, response }) => {
-        const kept = previous.find((value) => value.question === question && value.answer === response);
-        // A changed answer keeps the model's own answer to the question.
-        const model = modelAnswer(previous.find((value) => value.question === question));
-        return kept ?? { question, answer: response, setBy, updatedAt: at, ...(model ? { model } : {}) };
-      }),
-    });
-  }
-  return apply(ctx, screening, updates, existing, at);
+export async function seedAnswers(ctx: Write, userId: Id<"users">, searchId: Id<"searches">, answers: Responses, setBy: AnswerSource, at: number) {
+  if (answers.length === 0) return;
+  const screening = await ensureScreening(ctx, userId, searchId);
+  const updates = answers.map(({ paperId, responses }) => ({ paperId, answers: responses.map(({ question, response }) => ({ question, answer: response, setBy, updatedAt: at })) }));
+  await apply(ctx, screening, updates, new Map(), at);
+}
+
+/** Papers one step of a sweep reads, and the bytes of them; each also reads its history once. */
+const SWEEP_BATCH = 200;
+const SWEEP_BYTES = 4 * 1024 * 1024;
+
+/**
+ * One step of removing answers from every paper of a screening: all of them, or those to
+ * `question`. It takes the answers that stood at `version`, the screening's when the removal
+ * was asked for, and leaves any given since, which a paper's history up to `version` tells
+ * apart. Returns where the next step starts, or null when every paper has been looked at.
+ */
+export async function removeAnswersStep(ctx: Write, screeningId: Id<"screenings">, question: string | undefined, version: number, cursor: string | null, at: number) {
+  const screening = (await ctx.db.get("screenings", screeningId))!;
+  const page = await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId))
+    .paginate({ cursor, numItems: SWEEP_BATCH, maximumBytesRead: SWEEP_BYTES });
+  const updates = await Promise.all(page.page.map(async (row) => {
+    const stood = new Set(((await paperAt(ctx, screeningId, row.paperId, version))?.answers ?? []).map((answer) => JSON.stringify(answer)));
+    const goes = (answer: PaperAnswers[number]) => (question === undefined || answer.question === question) && stood.has(JSON.stringify(answer));
+    return { paperId: row.paperId, answers: row.answers.filter((answer) => !goes(answer)) };
+  }));
+  await apply(ctx, screening, updates, new Map(page.page.map((row) => [row.paperId, row] as const)), at);
+  return page.isDone ? null : page.continueCursor;
 }

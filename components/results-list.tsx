@@ -1,6 +1,6 @@
 "use client";
 
-import { useRatedPapers } from "@/lib/research/reads";
+import { useAnsweredPapers, useRatedPapers } from "@/lib/research/reads";
 import React, {
   useRef,
   useEffect,
@@ -261,11 +261,16 @@ export function ResultsList({
   // Use the new search context
   const search = useSearch();
   const queryError = rejectedQuery(search.error);
+  // Get the current search ID from the URL
+  const pathname = usePathname();
+  const searchId = getEffectiveSearchId(pathname, search.searchId || undefined);
   // The rating filter reads the ratings of every result, not only the cards on screen, and a
-  // result waits for its rating, so its card opens at its final size.
+  // result waits for its rating, so its card opens at its final size. It waits for its
+  // screening answers too, so a paper already answered isn't screened again.
   const rated = useRatedPapers(search.results);
-  const results = rated.papers;
-  const isLoading = searching || rated.loading;
+  const answered = useAnsweredPapers(searchId ?? undefined, rated.papers);
+  const results = answered.papers;
+  const isLoading = searching || rated.loading || answered.loading;
   const totalCount = search.totalCount;
   
   // Get pagination from URL params (source of truth)
@@ -298,7 +303,6 @@ export function ResultsList({
   const [canStartScreening, setCanStartScreening] = useState(false);
   const [showInitialLoading, setShowInitialLoading] = useState(true);
 
-  const pathname = usePathname();
 
   useEffect(() => {
     const timer = setTimeout(() => setShowInitialLoading(false), 5000);
@@ -316,9 +320,6 @@ export function ResultsList({
       setCanStartScreening(true);
     }, 2000);
   }, []);
-
-  // Get the current search ID from the URL
-  const searchId = getEffectiveSearchId(pathname, search.searchId || undefined);
 
   // Get the current search result
   const currentSearchResult = useSearchHistoryStore((state) =>
