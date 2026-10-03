@@ -12,6 +12,7 @@ export type CompletedScreeningRowDetails = {
   aiMetadata: {
     confidence: number;
   };
+  creditsUsed?: number;
 };
 
 type CompletionTransitionInput = {

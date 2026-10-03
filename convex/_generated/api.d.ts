@@ -287,6 +287,7 @@ import type * as models_queries from "../models/queries.js";
 import type * as models_sync from "../models/sync.js";
 import type * as openalex_limits from "../openalex/limits.js";
 import type * as organizationFeatures from "../organizationFeatures.js";
+import type * as paperSets_held from "../paperSets/held.js";
 import type * as paperSets_openalex from "../paperSets/openalex.js";
 import type * as paperSets_search from "../paperSets/search.js";
 import type * as research_answers from "../research/answers.js";
@@ -636,6 +637,7 @@ declare const fullApi: ApiFromModules<{
   "models/sync": typeof models_sync;
   "openalex/limits": typeof openalex_limits;
   organizationFeatures: typeof organizationFeatures;
+  "paperSets/held": typeof paperSets_held;
   "paperSets/openalex": typeof paperSets_openalex;
   "paperSets/search": typeof paperSets_search;
   "research/answers": typeof research_answers;

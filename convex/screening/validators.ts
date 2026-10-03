@@ -64,6 +64,24 @@ export const screeningPaperInputValidator = v.object({
 });
 
 /**
+ * The papers a job reads (#341), resolved on the server: a saved search by its ID in the
+ * browser, a collection, every saved paper, or an earlier job's included papers.
+ */
+export const paperSetValidator = v.union(
+  v.object({ kind: v.literal("search"), searchId: v.string() }),
+  v.object({ kind: v.literal("collection"), collectionId: v.id("collections") }),
+  v.object({ kind: v.literal("saved") }),
+  v.object({ kind: v.literal("screening"), jobId: v.id("screeningJobs") }),
+);
+
+/** Where a job's included papers go: nowhere, a new collection by name, or one the person has. */
+export const saveToValidator = v.union(
+  v.object({ kind: v.literal("none") }),
+  v.object({ kind: v.literal("new"), name: v.string() }),
+  v.object({ kind: v.literal("collection"), collectionId: v.id("collections") }),
+);
+
+/**
  * Where a screened paper landed: included at the job's minimum score; unclear when its
  * unclear answers could still take it there; excluded; or failed, when the model couldn't read it.
  */

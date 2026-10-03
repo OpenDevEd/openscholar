@@ -4,6 +4,8 @@ import { paginationOptsValidator, paginationResultValidator, type PaginationOpti
 import { effortValidator } from "../aiModelConfig/validators";
 import type { Doc } from "../_generated/dataModel";
 import {
+  paperSetValidator,
+  saveToValidator,
   screeningAnswersValidator,
   screeningAuthorsValidator,
   screeningJobStatusValidator,
@@ -13,6 +15,8 @@ import {
   screeningTalliesValidator,
 } from "./validators";
 import { progressRow } from "./bookkeeping";
+import { paperLimit } from "./slots";
+import { SCREENING_POOL_SIZE } from "../workpool";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { availableCredits } from "../billing/accounts";
@@ -35,6 +39,80 @@ async function readJobProgressSnapshot(
     ...counts,
   });
 }
+
+/** What the screening page shows of a job beside its progress, in its list and on its own view. */
+const jobFacts = {
+  // Where its papers came from, the set's name when it started, and which of its papers.
+  set: v.optional(paperSetValidator),
+  label: v.optional(v.string()),
+  first: v.optional(v.number()),
+  last: v.optional(v.number()),
+  through: v.optional(v.number()),
+  // Papers that failed, and papers the model is reading now.
+  failedPapers: v.number(),
+  running: v.number(),
+};
+
+async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
+  const [counts, reading] = await Promise.all([
+    readScreeningProgressCounts(ctx, job),
+    // Only a running job has papers being read, and never more than the pool holds.
+    job.status === "processing"
+      ? ctx.db
+          .query("screeningResults")
+          .withIndex("by_job_and_status_and_waitingUser", (q) => q.eq("jobId", job._id).eq("status", "processing").eq("waitingUser", undefined))
+          .take(SCREENING_POOL_SIZE)
+      : [],
+  ]);
+  return { set: job.set, label: job.label, first: job.first, last: job.last, through: job.through, failedPapers: counts.failedCount, running: reading.length };
+}
+
+/**
+ * The person's paper slots (#335): how many papers they may have running at once across
+ * their jobs, and how many are running.
+ */
+export const slots = query({
+  args: {},
+  returns: v.union(v.null(), v.object({ limit: v.number(), running: v.number() })),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+    const row = await ctx.db.query("screeningSlots").withIndex("by_user", (q) => q.eq("userId", user._id)).unique();
+    return { limit: await paperLimit(ctx, user._id), running: row?.running ?? 0 };
+  },
+});
+
+/**
+ * A completed job of a request that goes on past it, as the request's next job takes it
+ * over: its papers' set, where the request ends, and the questions, rules and destination.
+ */
+export const requestJob = internalQuery({
+  args: { jobId: v.id("screeningJobs") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      userId: v.id("users"),
+      set: paperSetValidator,
+      through: v.number(),
+      label: v.optional(v.string()),
+      questions: screeningQuestionsValidator,
+      scoringConfig: screeningScoringConfigValidator,
+      saveTo: v.optional(saveToValidator),
+      prune: v.optional(v.boolean()),
+    }),
+  ),
+  handler: async (ctx, { jobId }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    if (!job || job.status !== "completed" || !job.set || job.through === undefined) return null;
+    const saveTo = job.unsaved ? { kind: "none" as const } : job.targetCollectionId ? { kind: "collection" as const, collectionId: job.targetCollectionId } : undefined;
+    return {
+      userId: job.userId, set: job.set, through: job.through, questions: job.questions, scoringConfig: job.scoringConfig,
+      ...(job.label ? { label: job.label } : {}),
+      ...(saveTo ? { saveTo } : {}),
+      ...(job.prune ? { prune: true } : {}),
+    };
+  },
+});
 
 /**
  * Get real-time progress of a screening job.
@@ -85,7 +163,6 @@ export const getScreeningJob = query({
       status: screeningJobStatusValidator,
       totalPapers: v.number(),
       processedPapers: v.number(),
-      failedPapers: v.number(),
       qualifiedPapers: v.number(),
       questions: screeningQuestionsValidator,
       scoringConfig: screeningScoringConfigValidator,
@@ -96,6 +173,13 @@ export const getScreeningJob = query({
       // Its papers by where they landed, and how each question was answered; kept as papers settle.
       outcomes: v.object({ included: v.number(), unclear: v.number(), excluded: v.number(), failed: v.number() }),
       tallies: screeningTalliesValidator,
+      ...jobFacts,
+      // The collection its included papers go to, while it exists; `unsaved` when they go nowhere.
+      targetCollectionName: v.optional(v.string()),
+      unsaved: v.optional(v.literal(true)),
+      prune: v.optional(v.literal(true)),
+      // Credits its counted papers cost, of the most they were expected to when it started.
+      credits: v.object({ spent: v.number(), estimate: v.number() }),
     })
   ),
   handler: async (ctx, args) => {
@@ -108,8 +192,14 @@ export const getScreeningJob = query({
     const kept = await progressRow(ctx, job._id);
     const counts = await readScreeningProgressCounts(ctx, job);
     const unclear = kept?.unclear ?? 0;
+    const target = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
 
     return {
+      ...(await factsOf(ctx, job)),
+      ...(target ? { targetCollectionName: target.name } : {}),
+      unsaved: job.unsaved,
+      prune: job.prune,
+      credits: { spent: kept?.credits ?? 0, estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0).credits },
       outcomes: { included: counts.qualifiedCount, unclear, excluded: Math.max(0, counts.completedCount - counts.qualifiedCount - unclear), failed: counts.failedCount },
       tallies: kept?.tallies,
       _id: job._id,
@@ -118,7 +208,6 @@ export const getScreeningJob = query({
       status: job.status,
       totalPapers: job.totalPapers,
       processedPapers: progress.processedPapers,
-      failedPapers: progress.failedPapers,
       qualifiedPapers: progress.qualifiedPapers,
       questions: job.questions,
       scoringConfig: job.scoringConfig,
@@ -193,6 +282,7 @@ export const listUserScreeningJobs = query({
       questions: screeningQuestionsValidator,
       targetCollectionId: v.optional(v.id("collections")),
       targetCollectionName: v.optional(v.string()),
+      ...jobFacts,
     }),
   ),
   handler: async (ctx, args) => {
@@ -207,14 +297,16 @@ export const listUserScreeningJobs = query({
 
     const page = await Promise.all(
       jobs.page.map(async (job) => {
-        const [progress, targetCollection] = await Promise.all([
+        const [progress, targetCollection, facts] = await Promise.all([
           readJobProgressSnapshot(ctx, job),
           job.targetCollectionId
             ? ctx.db.get("collections", job.targetCollectionId)
             : Promise.resolve(null),
+          factsOf(ctx, job),
         ]);
 
         return {
+          ...facts,
           _id: job._id,
           _creationTime: job._creationTime,
           status: job.status,

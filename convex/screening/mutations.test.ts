@@ -480,7 +480,7 @@ describe("Screen all on a saved search", () => {
     await asUser.mutation(api.research.records.importBatch, { accountId: "clerk_test", searches: [{ search, history: { queryHistory: [], questionHistory: [] } }], shortcuts: [], ratings: [] });
 
     const { jobId } = await createJob(asUser, {
-      papers: makePapers(1), questions: [...defaultQuestions, { key: "q2", question: "Adults?" }], scoringConfig: defaultScoringConfig, searchId: search.id,
+      papers: makePapers(1), questions: [...defaultQuestions, { key: "q2", question: "Adults?" }], scoringConfig: defaultScoringConfig, set: { kind: "search", searchId: search.id },
     });
     const result = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique());
     vi.useFakeTimers();
@@ -511,7 +511,7 @@ describe("Screen all on a saved search", () => {
     await seedCredits(t, user._id, 100, 0);
     const asUser = t.withIdentity({ subject: "clerk_test" });
     await expect(createJob(asUser, {
-      papers: makePapers(1), questions: defaultQuestions, scoringConfig: defaultScoringConfig, searchId: "someone-elses",
+      papers: makePapers(1), questions: defaultQuestions, scoringConfig: defaultScoringConfig, set: { kind: "search", searchId: "someone-elses" },
     })).rejects.toThrow("Search not found");
   });
 });

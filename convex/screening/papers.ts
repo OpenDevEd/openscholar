@@ -11,7 +11,7 @@ import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery,
 import { answerPaper, restoreModelAnswer } from "../research/answers";
 import schema from "../schema";
 import { account, answersNow, byKey, withDeltas } from "./accounting";
-import { progressOf, saveQualified } from "./bookkeeping";
+import { progressOf, shelve } from "./bookkeeping";
 import { moveResultAnswers } from "./drain";
 import { screeningJobPaperValidator, screeningOutcomeValidator } from "./validators";
 
@@ -90,7 +90,7 @@ export const answerAction = defineUserMutation({
     if (answer === "model") await restoreModelAnswer(ctx, job.screeningId, paperId, question.question, now);
     else await answerPaper(ctx, job.screeningId, paperId, [{ question: question.question, response: answer }], author === "assistant" ? "assistant" : "person", now);
 
-    const { patch: { counted, ...shown }, delta, becameIncluded } = account(job, result, byKey(await answersNow(ctx, job, result)));
+    const { patch: { counted, ...shown }, delta, move } = account(job, result, byKey(await answersNow(ctx, job, result)));
     const outcome = shown.outcome;
     // A paper the bookkeeping worker hasn't reached is counted there, on its answers as they stand then.
     if (result.doneAt !== undefined) {
@@ -101,7 +101,7 @@ export const answerAction = defineUserMutation({
     await ctx.db.patch("screeningResults", result._id, { ...shown, counted });
     await ctx.db.patch("screeningJobProgress", progress._id, withDeltas(progress, job, [delta]));
     // Saved again even if it was saved before: the person may have removed it since.
-    if (becameIncluded) await saveQualified(ctx, job, { ...result, ...shown });
+    await shelve(ctx, job, { ...result, ...shown }, move);
     return { outcome };
   },
 });

@@ -95,6 +95,16 @@ function toPaper(work: Work): SearchPaper {
   };
 }
 
+/** Refuses a range that isn't papers `first` to `last` from 1 up, or holds more than one job screens. */
+export function checkRange(first: number, last: number) {
+  if (!Number.isInteger(first) || !Number.isInteger(last) || first < 1 || last < first) {
+    throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
+  }
+  if (last - first + 1 > MAX_SCREENING_PAPERS_PER_JOB) {
+    throw createError("VALIDATION_ERROR", `Cannot screen more than ${MAX_SCREENING_PAPERS_PER_JOB} papers per job`);
+  }
+}
+
 /**
  * Papers `first` to `last` (counting from 1) of the person's saved search, in its results
  * page's order, kept to its rating filter. Spends one OpenAlex request per page read.
@@ -104,12 +114,7 @@ export async function searchPapers(
   userId: Id<"users">,
   { searchId, first, last }: { searchId: string; first: number; last: number },
 ): Promise<SearchPaper[]> {
-  if (!Number.isInteger(first) || !Number.isInteger(last) || first < 1 || last < first) {
-    throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
-  }
-  if (last - first + 1 > MAX_SCREENING_PAPERS_PER_JOB) {
-    throw createError("VALIDATION_ERROR", `Cannot screen more than ${MAX_SCREENING_PAPERS_PER_JOB} papers per job`);
-  }
+  checkRange(first, last);
   // Typed here: the generated API's types depend on this module, so inference would loop.
   const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId });
   const { clerkId, request, ratingRange } = found;
