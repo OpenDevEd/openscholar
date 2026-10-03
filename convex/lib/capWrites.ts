@@ -14,14 +14,24 @@ import { listsIn, overCap, type ListAt } from "./listCaps";
 /** Each table's capped lists, worked out once from the schema. */
 const capsByTable = new Map<string, ListAt[]>(
   Object.entries(schema.tables)
-    .map(([table, definition]) => [table, listsIn(definition.validator).filter((list) => list.cap !== undefined)] as const)
+    .map(([table, definition]) => {
+      // Union members repeat paths they share (a section's draft and revision rows): check each once.
+      const seen = new Set<string>();
+      const lists = listsIn(definition.validator).filter((list) => {
+        const key = `${list.path.join(".")}|${list.kind}|${list.cap}`;
+        if (list.cap === undefined || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return [table, lists] as const;
+    })
     .filter(([, lists]) => lists.length > 0),
 );
 
 function check(table: string, value: unknown) {
   const lists = capsByTable.get(table);
   const over = lists && value ? overCap(value, lists) : undefined;
-  if (over) throw createError("INVALID_DATA", `${table}.${over.path} holds ${over.size} entries; it holds at most ${over.cap}.`, { table, path: over.path, size: over.size, cap: over.cap });
+  if (over) throw createError("INVALID_DATA", `${table}.${over.path} holds ${over.size} ${over.unit}; it holds at most ${over.cap}.`, { table, path: over.path, size: over.size, cap: over.cap });
 }
 
 /** A database writer that refuses a write putting more in a list than its cap. */

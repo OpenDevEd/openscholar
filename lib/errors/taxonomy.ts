@@ -286,7 +286,10 @@ function extractData(err: unknown): Record<string, unknown> | undefined {
   return undefined;
 }
 
-const CONTEXT_BYTE_CAP = 4096;
+/** An error context's most UTF-8 bytes as JSON; longer ones keep a preview (convex/lib/listCaps.ts). */
+export const CONTEXT_BYTE_CAP = 4096;
+
+const utf8Bytes = (text: string) => new TextEncoder().encode(text).length;
 const ALREADY_EXTRACTED_FIELDS = new Set([
   "code",
   "message",
@@ -317,12 +320,16 @@ function captureContext(source: Record<string, unknown> | undefined): unknown {
     return undefined;
   }
   if (serialized === "{}" || serialized === "null") return undefined;
-  if (serialized.length <= CONTEXT_BYTE_CAP) return ownProps;
-  return {
-    _truncated: true,
-    preview: serialized.slice(0, CONTEXT_BYTE_CAP - 200),
-    originalLength: serialized.length,
-  };
+  if (utf8Bytes(serialized) <= CONTEXT_BYTE_CAP) return ownProps;
+  // The preview is itself JSON, so storing it escapes its quotes and backslashes again, and
+  // a character can take several bytes: shorten it until the whole truncated context fits.
+  let length = CONTEXT_BYTE_CAP - 200;
+  for (;;) {
+    const truncated = { _truncated: true, preview: serialized.slice(0, length), originalLength: serialized.length };
+    const over = utf8Bytes(JSON.stringify(truncated)) - CONTEXT_BYTE_CAP;
+    if (over <= 0) return truncated;
+    length = Math.max(0, length - over);
+  }
 }
 
 function extractClassifiableMessage(

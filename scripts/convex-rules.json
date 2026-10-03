@@ -153,6 +153,12 @@
       "convex/zotero/runtimeReadActions.ts:resolveLibraryCollections:.items[]": "#425"
     }
   },
+  "untypedReturns": {
+    "pending": {
+      "convex/chat/messages.ts:listThreadMessages:.streams*": "#422: the agent component's stream deltas",
+      "convex/chat/messages.ts:listThreadMessages:[]*": "#422: the agent component's UI messages"
+    }
+  },
   "everyPage": {
     "pending": {
       "app/actions/topic-publications.ts:rows": "#424",

@@ -9,7 +9,7 @@ import { effortValidator } from "../aiModelConfig/validators";
 import { errorCodeValidator } from "@/lib/errors/taxonomy";
 import { type AssertExactDoc } from "../lib/validators";
 import {
-  MAX_ANSWER_ITEMS, MAX_AUTHORS, MAX_CHAT_PAPERS, MAX_CITATIONS, MAX_FILTER_VALUES, MAX_QUESTIONS, MAX_UNIT_TOKENS, RANGE_ENDS, capped,
+  MAX_ANSWER_ITEMS, MAX_AUTHORS, MAX_CHAT_PAPERS, MAX_CITATIONS, MAX_ERROR_CONTEXT_BYTES, MAX_FILTER_VALUES, MAX_QUESTIONS, MAX_UNIT_TOKENS, RANGE_ENDS, capped, sized,
 } from "../lib/listCaps";
 
 /**
@@ -26,10 +26,13 @@ export { errorCodeValidator };
  * `context` is bounded at 4 KB by classifyUnknownError to keep doc
  * sizes well under the 1 MB row limit.
  */
+/** An error's diagnostic fields: free-form, cut to MAX_ERROR_CONTEXT_BYTES of JSON (lib/errors/taxonomy.ts). */
+const errorContextValidator = sized(v.optional(v.any()), MAX_ERROR_CONTEXT_BYTES);
+
 export const structuredErrorValidator = v.object({
   code: errorCodeValidator,
   message: v.string(),
-  context: v.optional(v.any()),
+  context: errorContextValidator,
   httpStatus: v.optional(v.number()),
   providerName: v.optional(v.string()),
   at: v.number(),
@@ -44,7 +47,7 @@ export const classifiedErrorValidator = v.object({
   code: errorCodeValidator,
   message: v.string(),
   retryable: v.boolean(),
-  context: v.optional(v.any()),
+  context: errorContextValidator,
   httpStatus: v.optional(v.number()),
   providerName: v.optional(v.string()),
 });
@@ -417,7 +420,7 @@ export const extractionPaperErrorFields = {
   message: v.string(),
   httpStatus: v.optional(v.number()),
   providerName: v.optional(v.string()),
-  context: v.optional(v.any()),
+  context: errorContextValidator,
 };
 
 export const extractionPaperErrorValidator = v.object({
