@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import { mutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
-import { existingBefore } from "../lib/cutoff";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Author } from "../lib/userActions";
 import { answersAtVersions, clearPaperAnswers, currentAnswers, replaceAnswers, screeningFor, setPaperAnswers, type AnswerSource } from "./answers";
@@ -512,8 +511,18 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       else await ctx.db.insert("queryShortcuts", { userId, data, sortName: shortcutSortName(command.shorthand) });
       return;
     }
-    case "clearSearches": return await clearBatch(ctx, userId, author, existingBefore());
-    case "clearShortcuts": return await clearShortcutBatch(ctx, userId, existingBefore());
+    // A clear takes the rows up to the newest there is now. A clock can't draw that line:
+    // a row made a moment earlier or later can carry the same millisecond.
+    case "clearSearches": {
+      const newest = await ctx.db.query("searches").withIndex("by_user", q => q.eq("userId", userId)).order("desc").first();
+      if (newest) await clearBatch(ctx, userId, author, newest._creationTime);
+      return;
+    }
+    case "clearShortcuts": {
+      const newest = await ctx.db.query("queryShortcuts").withIndex("by_user", q => q.eq("userId", userId)).order("desc").first();
+      if (newest) await clearShortcutBatch(ctx, userId, newest._creationTime);
+      return;
+    }
     case "rating": {
       if (!command.paperId || (command.rating !== null && (!Number.isInteger(command.rating) || command.rating < 0 || command.rating > 5))) throw new Error("Rating must be an integer from 0 to 5.");
       const row = await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique();
@@ -560,13 +569,13 @@ const CLEAR_BATCH = 25;
 const CLEAR_BYTES = 2 * 1024 * 1024;
 
 /**
- * Deletes a batch of the searches the person had at `before`, when they asked, and schedules
+ * Deletes a batch of the searches made up to `before`, the newest when they asked, and schedules
  * the next until none are left; one saved since stays. A search from before answers and
  * history had their own rows moves them as it goes, which can take a transaction by itself,
  * so it's deleted alone.
  */
 async function clearBatch(ctx: MutationCtx, userId: Id<"users">, author: Author, before: number) {
-  const batch = await ctx.db.query("searches").withIndex("by_user", q => q.eq("userId", userId).lt("_creationTime", before))
+  const batch = await ctx.db.query("searches").withIndex("by_user", q => q.eq("userId", userId).lte("_creationTime", before))
     .paginate({ cursor: null, numItems: CLEAR_BATCH, maximumBytesRead: CLEAR_BYTES });
   const old = batch.page.findIndex(search => search.responseChunks !== undefined || search.data.queryHistory || search.data.questionHistory);
   const deleted = old === -1 ? batch.page : batch.page.slice(0, Math.max(1, old));
@@ -577,9 +586,9 @@ async function clearBatch(ctx: MutationCtx, userId: Id<"users">, author: Author,
 /** Shortcuts one clearing transaction deletes, and the bytes of them it reads. */
 const CLEAR_SHORTCUTS = 100;
 
-/** Deletes a batch of the shortcuts the person had at `before`, when they asked, and schedules the next until none are left. */
+/** Deletes a batch of the shortcuts made up to `before`, the newest when they asked, and schedules the next until none are left. */
 async function clearShortcutBatch(ctx: MutationCtx, userId: Id<"users">, before: number) {
-  const batch = await ctx.db.query("queryShortcuts").withIndex("by_user", q => q.eq("userId", userId).lt("_creationTime", before))
+  const batch = await ctx.db.query("queryShortcuts").withIndex("by_user", q => q.eq("userId", userId).lte("_creationTime", before))
     .paginate({ cursor: null, numItems: CLEAR_SHORTCUTS, maximumBytesRead: CLEAR_BYTES });
   for (const shortcut of batch.page) await ctx.db.delete("queryShortcuts", shortcut._id);
   if (!batch.isDone) await ctx.scheduler.runAfter(0, internal.research.records.clearShortcutsBatch, { userId, before });

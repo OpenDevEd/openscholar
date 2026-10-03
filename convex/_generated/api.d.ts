@@ -232,7 +232,6 @@ import type * as lib_capWrites from "../lib/capWrites.js";
 import type * as lib_cascade from "../lib/cascade.js";
 import type * as lib_constants from "../lib/constants.js";
 import type * as lib_crypto from "../lib/crypto.js";
-import type * as lib_cutoff from "../lib/cutoff.js";
 import type * as lib_env from "../lib/env.js";
 import type * as lib_envValidation from "../lib/envValidation.js";
 import type * as lib_errors from "../lib/errors.js";
@@ -580,7 +579,6 @@ declare const fullApi: ApiFromModules<{
   "lib/cascade": typeof lib_cascade;
   "lib/constants": typeof lib_constants;
   "lib/crypto": typeof lib_crypto;
-  "lib/cutoff": typeof lib_cutoff;
   "lib/env": typeof lib_env;
   "lib/envValidation": typeof lib_envValidation;
   "lib/errors": typeof lib_errors;

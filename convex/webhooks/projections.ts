@@ -2,7 +2,6 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_INVITATIONS_PER_EMAIL, SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
 import { internalMutation, type MutationCtx } from "../lib/functions";
-import { existingBefore } from "../lib/cutoff";
 import { v } from "convex/values";
 import {
   clerkEventOutcomeValidator,
@@ -72,7 +71,7 @@ async function upsertOrganizationSnapshot(
 
 /**
  * Removes one page of a person's library grants in an organization they've left, and
- * schedules the next until every grant they held at `before`, when they left, has been
+ * schedules the next until every grant made up to `before`, their newest when they left, has been
  * looked at: no grant outlives the membership, however many the person holds.
  */
 async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizationId: Id<"organizations">, cursor: string | null, before: number) {
@@ -81,7 +80,7 @@ async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizat
     .paginate({ cursor, numItems: MAX_LIBRARY_GRANTS_PER_PERSON });
   for (const assignment of page.page) {
     // A grant made since they left, by a later invitation, is theirs to keep.
-    if (assignment._creationTime >= before) continue;
+    if (assignment._creationTime > before) continue;
     const library = await ctx.db.get("evidenceLibraries", assignment.libraryId);
     if (library?.organizationId === organizationId) {
       await ctx.db.delete("evidenceLibraryMembers", assignment._id);
@@ -223,7 +222,11 @@ export async function applyMembershipProjection(
         }
       }
       if (args.membership.state === "revoked") {
-        await revokeGrantsPage(ctx, args.membership.clerkUserId, organizationId, null, existingBefore());
+        // The sweep takes the grants up to the newest they hold now. A clock can't draw that
+        // line: a grant made a moment earlier or later can carry the same millisecond.
+        const newest = await ctx.db.query("evidenceLibraryMembers")
+          .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.membership.clerkUserId)).order("desc").first();
+        if (newest) await revokeGrantsPage(ctx, args.membership.clerkUserId, organizationId, null, newest._creationTime);
         const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.membership.clerkUserId)).unique();
         if (user) {
           const invitations = await ctx.db.query("evidenceLibraryInvitations")
@@ -234,12 +237,14 @@ export async function applyMembershipProjection(
           }
         }
       }
+      // A deleted organization has no members: an event that arrives late can't make one.
+      const gone = (await ctx.db.get("organizations", organizationId))?.state === "deleted";
       const membershipFields = {
         organizationId,
         clerkMembershipId: args.membership.clerkMembershipId,
         clerkUserId: args.membership.clerkUserId,
         role: args.membership.role,
-        state: args.membership.state,
+        state: gone ? "revoked" as const : args.membership.state,
         clerkCreatedAt: args.membership.clerkCreatedAt,
         clerkUpdatedAt: args.membership.clerkUpdatedAt,
         updatedAt: args.processedAt,

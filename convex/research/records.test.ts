@@ -352,10 +352,9 @@ describe("account research records", () => {
     try {
       const { alice, t } = await setup();
       for (const start of [0, 13]) await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: Array.from({ length: 13 }, (_, i) => ({ search: { ...record, id: `old-${start + i}` } })), shortcuts: [], ratings: [] });
-      vi.setSystemTime(Date.now() + 1_000);
+      // The clock stands still: the old searches, the clear and the new search share a millisecond.
       // The first batch is gone; the second waits for its turn.
       await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "clear", command: { kind: "clearSearches" } });
-      vi.setSystemTime(Date.now() + 1_000);
       await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "new", command: { kind: "createSearch", search: { ...record, id: "new" } } });
       await t.finishAllScheduledFunctions(vi.runAllTimers);
       expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts })).page.map(row => row.id)).toEqual(["new"]);

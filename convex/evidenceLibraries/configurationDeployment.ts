@@ -303,7 +303,7 @@ export async function requireNoActiveConfigurationDeployment(
   exceptOperationId?: Id<"evidenceLibraryConfigOperations">,
 ) {
   for (const status of ["queued", "running"] as const) {
-    for (const operation of await readActiveOperations(ctx, libraryId, status)) {
+    for (const operation of await readActiveOperations(ctx, libraryId, status, "publish")) {
       if (
         operation._id !== exceptOperationId &&
         isConfigurationDeploymentOperation(operation)

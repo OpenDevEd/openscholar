@@ -109,13 +109,16 @@ describe("Evidence Library limits", () => {
     const fixture = await createReadySetupFixture("active_operations");
     const libraryId = fixture.created.libraryId;
     const { _id, _creationTime, ...setup } = (await fixture.t.run((ctx) => ctx.db.get("evidenceLibraryConfigOperations", fixture.created.setupOperationId)))!;
-    // Queued setups aren't deployments: up to the bound they block nothing.
-    const queue = (from: number, count: number) => insertMany(fixture.t, "evidenceLibraryConfigOperations", Array.from({ length: count }, (_, i) => ({ ...setup, status: "queued", idempotencyKey: `filler-${from + i}` })));
     const guard = () => fixture.t.run((ctx) => requireNoActiveConfigurationDeployment(ctx, libraryId));
-    await queue(0, MAX_ACTIVE_OPERATIONS_READ);
+    // Validations are queued and nothing starts them: however many wait, they aren't deployments.
+    for (let i = 0; i <= MAX_ACTIVE_OPERATIONS_READ; i += 1) await fixture.admin.mutation(api.evidenceLibraries.operations.queueOperation, { libraryId, kind: "validate", idempotencyKey: `validate-${i}` });
     await guard();
-    await queue(MAX_ACTIVE_OPERATIONS_READ, 1);
-    await expect(guard()).rejects.toThrow(/more than 50 queued operations/);
+    // Publishes that aren't deployments, as only old data could hold: up to the bound they block nothing.
+    const publishes = (from: number, count: number) => insertMany(fixture.t, "evidenceLibraryConfigOperations", Array.from({ length: count }, (_, i) => ({ ...setup, kind: "publish", status: "queued", idempotencyKey: `filler-${from + i}`, activationEditVersion: undefined, runtimeUpdate: undefined, addressMove: undefined, domainChange: undefined })));
+    await publishes(0, MAX_ACTIVE_OPERATIONS_READ);
+    await guard();
+    await publishes(MAX_ACTIVE_OPERATIONS_READ, 1);
+    await expect(guard()).rejects.toThrow(/more than 50 queued publish operations/);
   });
 
   it("refuses to restore earlier software when it can't check every publish that moved the library on (#427)", async () => {

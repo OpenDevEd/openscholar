@@ -337,6 +337,16 @@ describe("Evidence Library identity projections", () => {
     expect(pending).toEqual([expect.objectContaining({ libraryId: ids[2] })]);
   });
 
+  it("keeps a deleted organization's membership revoked when an earlier membership event arrives late (#427)", async () => {
+    const t = convexTest(schema);
+    const membership = { clerkCreatedAt: 1, clerkMembershipId: "orgmem_late", clerkUpdatedAt: 2, clerkUserId: "user_late", organization: organizationSnapshot, role: "org:member" as const, state: "active" as const };
+    const event = (eventId: string, occurredAt: number) => t.run((ctx) => applyMembershipProjection(ctx, { ...eventMetadata(eventId, occurredAt), eventType: "organizationMembership.updated", action: "upsert", membership }));
+    await event("msg_joined", 100);
+    await t.run((ctx) => applyOrganizationProjection(ctx, { ...eventMetadata("msg_org_gone", 300), action: "delete", entityId: organizationSnapshot.clerkOrganizationId }));
+    await event("msg_late_update", 200);
+    expect(await t.run((ctx) => ctx.db.query("organizationMemberships").withIndex("by_clerkMembershipId", (q) => q.eq("clerkMembershipId", "orgmem_late")).unique())).toMatchObject({ state: "revoked" });
+  });
+
   it("projects a membership and its organization atomically", async () => {
     const t = convexTest(schema);
     const membership = {

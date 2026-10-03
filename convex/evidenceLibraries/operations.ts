@@ -48,24 +48,27 @@ export function isCurrentConfigurationTargetBaseUrl(
 }
 
 /**
- * A library's queued or running operations, for the guards that ask whether work is under
- * way. A library holds a few at once. Past the bound it's refused as busy by name, because
- * a guard can't call it idle on a partial read.
+ * A library's queued or running operations of one kind, for the guards that ask whether a
+ * setup or a deployment is under way. Only that kind is read, so requests nothing starts,
+ * such as a queued validation, never count. One setup and one deployment run at a time;
+ * past the bound the library is refused as busy by name, because a guard can't call it idle
+ * on a partial read.
  */
 export async function readActiveOperations(
   ctx: Pick<OperationReadCtx, "db">,
   libraryId: Id<"evidenceLibraries">,
   status: "queued" | "running",
+  kind: "setup" | "publish",
 ) {
   const operations = await ctx.db
     .query("evidenceLibraryConfigOperations")
-    .withIndex("by_libraryId_and_status_and_updatedAt", (query) =>
-      query.eq("libraryId", libraryId).eq("status", status),
+    .withIndex("by_libraryId_and_status_and_kind", (query) =>
+      query.eq("libraryId", libraryId).eq("status", status).eq("kind", kind),
     )
     .take(MAX_ACTIVE_OPERATIONS_READ + 1);
   if (operations.length > MAX_ACTIVE_OPERATIONS_READ) {
-    console.error("[evidence library] More active operations than a guard reads", { libraryId, status, read: MAX_ACTIVE_OPERATIONS_READ });
-    throw createError("CONFLICT", `This library has more than ${MAX_ACTIVE_OPERATIONS_READ} ${status} operations. Wait for them to finish before changing it.`);
+    console.error("[evidence library] More active operations than a guard reads", { libraryId, status, kind, read: MAX_ACTIVE_OPERATIONS_READ });
+    throw createError("CONFLICT", `This library has more than ${MAX_ACTIVE_OPERATIONS_READ} ${status} ${kind} operations. Wait for them to finish before changing it.`);
   }
   return operations;
 }

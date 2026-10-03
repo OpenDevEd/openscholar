@@ -98,7 +98,7 @@ export const MAX_ORGANIZATIONS_PER_PERSON = 200;
 export const MAX_LOCATIONS_READ_PER_GROUP = 100;
 
 /**
- * Most queued or running operations of one library a guard reads. One setup, one deployment
- * and one teardown run at a time, so a library past this is refused as busy, by name.
+ * Most queued or running operations of one kind a guard reads for a library. One setup and
+ * one deployment run at a time, so a library past this is refused as busy, by name.
  */
 export const MAX_ACTIVE_OPERATIONS_READ = 50;

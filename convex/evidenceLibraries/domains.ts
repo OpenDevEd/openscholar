@@ -1260,7 +1260,7 @@ export const claimDomainRoutes = internalMutation({
       throw createError("CONFLICT", "This library is not running yet");
     }
     for (const status of ["queued", "running"] as const) {
-      for (const operation of await readActiveOperations(ctx, args.libraryId, status)) {
+      for (const operation of await readActiveOperations(ctx, args.libraryId, status, "publish")) {
         if (isConfigurationDeploymentOperation(operation)) {
           return { status: "busy" as const };
         }

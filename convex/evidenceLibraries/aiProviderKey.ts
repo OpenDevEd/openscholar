@@ -139,16 +139,17 @@ export async function requireNoRunningOperation(
   message = AI_PROVIDER_KEY_BUSY_MESSAGE,
 ): Promise<void> {
   const now = Date.now();
-  for (const operation of await readActiveOperations(ctx, libraryId, "running")) {
-    // The same rules the two pipelines use to decide whether an attempt may
-    // be reclaimed, so this guard can never disagree with them.
-    const held =
-      operation.kind === "setup"
-        ? isSetupLeaseHeld(operation, now)
-        : operation.kind === "publish"
-          ? isDeploymentLeaseHeld(operation, now)
-          : false;
-    if (held) throw createError("CONFLICT", message);
+  // The same rules the two pipelines use to decide whether an attempt may
+  // be reclaimed, so this guard can never disagree with them.
+  const [setups, publishes] = await Promise.all([
+    readActiveOperations(ctx, libraryId, "running", "setup"),
+    readActiveOperations(ctx, libraryId, "running", "publish"),
+  ]);
+  if (
+    setups.some((operation) => isSetupLeaseHeld(operation, now)) ||
+    publishes.some((operation) => isDeploymentLeaseHeld(operation, now))
+  ) {
+    throw createError("CONFLICT", message);
   }
 }
 
