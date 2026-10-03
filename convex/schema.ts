@@ -1,5 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
-import { libraryExportFormatValidator, libraryViewValidator } from "./library/validators";
+import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
 import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
@@ -60,7 +60,11 @@ export default defineSchema({
   searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator, responseChunks: capped(v.optional(v.array(v.id("researchResponseChunks"))), MAX_LEGACY_ENTRIES) })
     .index("by_user", ["userId"])
     .index("by_user_and_createdAt", ["userId", "data.createdAt"])
+    .index("by_user_and_count", ["userId", "data.count"])
     .index("by_user_and_localId", ["userId", "localId"]),
+  // How many saved searches a person has, kept by the trigger on `searches`, for page totals.
+  // While their first count is being taken, `countedTo` is the creation time it has reached.
+  searchCounts: defineTable({ userId: v.id("users"), count: v.number(), countedTo: v.optional(v.number()) }).index("by_user", ["userId"]),
   searchRevisions: defineTable({
     userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
     author: v.union(v.literal("user"), v.literal("assistant")),
@@ -1046,13 +1050,13 @@ export default defineSchema({
     .index("by_user_sortName", ["userId", "sortName"])
     .searchIndex("search_name", { searchField: "name", filterFields: ["userId"] }),
 
-  // A library export a browser is downloading in parts: its token's SHA-256 digest, the view,
+  // An export a browser is downloading in parts: its token's SHA-256 digest, what it writes,
   // the next part to serve and where it starts, whether a part failed, and when the link expires.
-  libraryExports: defineTable({
+  exports: defineTable({
     userId: v.id("users"),
     digest: v.string(),
-    format: libraryExportFormatValidator,
-    view: libraryViewValidator,
+    format: exportFormatValidator,
+    source: exportSourceValidator,
     part: v.number(),
     cursor: v.union(v.string(), v.null()),
     serving: v.boolean(),

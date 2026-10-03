@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { getIdColor } from "@/lib/format";
 import type { SearchResult } from "@/lib/types/search.types";
-import { ScreeningQuestionEntry, ScreeningResponses } from "@/lib/types/screening.types";
 import { SearchTooltipContent } from "@/components/search-tooltip-content";
 import { motion, AnimatePresence } from "motion/react";
 import { countActiveFilters, type FilterParams } from "@/lib/filters";
@@ -44,8 +43,6 @@ interface SearchHistoryTabProps {
   isCollapsed: boolean;
   /** The search, for its query history in the tooltip. */
   search?: SearchResult;
-  screeningQuestions?: ScreeningQuestionEntry[];
-  screeningResponses?: ScreeningResponses;
   onClick?: () => void;
   index?: number;
 }
@@ -61,8 +58,6 @@ export function SearchHistoryTab({
   isActive,
   isCollapsed,
   search,
-  screeningQuestions,
-  screeningResponses,
   onClick,
   index = 0,
 }: SearchHistoryTabProps) {

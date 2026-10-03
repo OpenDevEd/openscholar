@@ -95,10 +95,12 @@ vi.mock("@/lib/store", () => ({
     selector?: (state: typeof sidebarState) => unknown,
   ) => (selector ? selector(sidebarState) : sidebarState),
   getSidebarDimensions: () => ({ currentWidth: 280 }),
-  useSearchHistoryStore: () => ({ searchHistory: [] }),
-  useSearchHistoryUIStore: () => ({ currentPage: 1, setCurrentPage: vi.fn() }),
   useCurrentQueryStore: () => ({ currentQuery: "" }),
   useKeywordExpansionStore: () => ({ keywords: {} }),
+}));
+
+vi.mock("@/lib/research/search-list", () => ({
+  useSearchList: () => ({ items: [], page: 1, pageCount: 1, hasPages: false, canPrevious: false, canNext: false, previous: vi.fn(), next: vi.fn() }),
 }));
 
 vi.mock("motion/react", async () => {

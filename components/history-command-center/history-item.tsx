@@ -76,7 +76,7 @@ export function HistoryItem({
   const [bookmarkName, setBookmarkName] = useState("");
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false);
 
-  const { removeSearchResult, searchHistory } = useSearchHistoryStore();
+  const removeSearchResult = useSearchHistoryStore((state) => state.removeSearchResult);
   const { addKeyword, keywords } = useKeywordExpansionStore();
 
   const idColor = getIdColor(item.id);
@@ -96,9 +96,6 @@ export function HistoryItem({
   const showHistory = isQueryHistoryOpen && queryHistoryCount > 1 && !history.isLoading;
   const historyProps = { queryHistory: history.entries, total: history.total, onLoadOlder: history.hasOlder ? history.loadOlder : undefined };
 
-  // Find the actual index in the full history for deletion
-  const actualIndex = searchHistory.findIndex((h) => h.id === item.id);
-
   // Handlers
   const handleCopy = async () => {
     try {
@@ -115,7 +112,7 @@ export function HistoryItem({
       confirmText: tc("delete"),
       cancelText: tc("cancel"),
       onConfirm: () => {
-        removeSearchResult(actualIndex);
+        removeSearchResult(item.id);
       },
     });
   };

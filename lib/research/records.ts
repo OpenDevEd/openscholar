@@ -67,6 +67,12 @@ export const searchFields = {
   updatedAt: v.string(),
 };
 export const searchValidator = v.object(searchFields);
+/** A search as lists show it: everything but its screening answers, which only its page reads. */
+const { screeningResponses: _responses, ...listedFields } = searchFields;
+export const listedSearchValidator = v.object(listedFields);
+export type ListedSearch = Infer<typeof listedSearchValidator>;
+export const listedSortValidator = v.union(v.literal("recent"), v.literal("oldest"), v.literal("most"), v.literal("least"));
+export type ListedSort = Infer<typeof listedSortValidator>;
 
 /**
  * A search as stored. One saved before its history had its own rows (#354) still holds the
