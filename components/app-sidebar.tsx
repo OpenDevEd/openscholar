@@ -10,7 +10,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSidebarStore, getSidebarDimensions } from "@/lib/store";
 import { useIsMobile } from "@/lib/hooks";
 import { Logo } from "./logo";
-import { ThemeSelector } from "./theme-selector";
+import { ThemeToggle } from "./theme-toggle";
 import { LanguageSwitcher } from "./language-switcher";
 import { Button } from "@/components/ui/button";
 import {
@@ -715,7 +715,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                 progressPercent={progressPercent}
                 label={tc("screening")}
               />
-              <ThemeSelector isCollapsed={false} />
+              <ThemeToggle />
               <LanguageSwitcher isCollapsed={false} />
             </div>
             <AuthButton isCollapsed={false} />
@@ -728,7 +728,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               progressPercent={progressPercent}
               label={tc("screening")}
             />
-            <ThemeSelector isCollapsed={true} />
+            <ThemeToggle />
             <LanguageSwitcher isCollapsed={true} />
             <AuthButton isCollapsed={true} />
           </>

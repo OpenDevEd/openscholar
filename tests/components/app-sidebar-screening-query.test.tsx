@@ -134,8 +134,8 @@ vi.mock("motion/react", async () => {
 vi.mock("@/components/logo", () => ({
   Logo: () => <div data-testid="logo" />,
 }));
-vi.mock("@/components/theme-selector", () => ({
-  ThemeSelector: () => <button type="button">theme</button>,
+vi.mock("@/components/theme-toggle", () => ({
+  ThemeToggle: () => <button type="button">theme</button>,
 }));
 vi.mock("@/components/language-switcher", () => ({
   LanguageSwitcher: () => <button type="button">language</button>,

@@ -140,11 +140,11 @@ export function withToastsInside<Event extends { target: EventTarget | null; pre
 }
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { resolvedTheme } = useTheme();
+  const { theme = "system" } = useTheme();
 
   return (
     <Sonner
-      theme={resolvedTheme && resolvedTheme !== "light" ? "dark" : "light"}
+      theme={theme as ToasterProps["theme"]}
       // A modal blocks pointer events outside itself; toasts stay pressable above it.
       className="toaster group pointer-events-auto"
       position="bottom-right"

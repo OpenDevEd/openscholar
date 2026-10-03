@@ -12,6 +12,7 @@ import {
   useFocusModeSettingsStore,
   useUIStore,
 } from "@/lib/store";
+import { useTheme } from "next-themes";
 import { useIsMobile } from "@/lib/hooks";
 import { useTranslations } from "next-intl";
 
@@ -47,6 +48,7 @@ export function FocusMode({
     null
   );
   const settings = useFocusModeSettingsStore();
+  const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
   const ratePaper = useRatePaper();
 
@@ -447,6 +449,8 @@ export function FocusMode({
             {showSettings ? (
               <FocusModeSettings
                 settings={settings}
+                theme={theme}
+                setTheme={setTheme}
                 maxWidthClass={getMaxWidthClass()}
                 currentPaper={currentPaper}
                 paperContentProps={paperContentProps}

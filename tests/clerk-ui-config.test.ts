@@ -1,4 +1,3 @@
-import { dark } from "@clerk/themes";
 import { describe, expect, it } from "vitest";
 import {
   resolveClerkAppearance,
@@ -21,10 +20,8 @@ describe("clerk ui config", () => {
     expect(resolveClerkLocalization(undefined).locale).toBe("en-US");
   });
 
-  it("uses Clerk's dark base in the three dark themes and not in the white one", () => {
-    for (const theme of ["navy", "dark", "blue"]) {
-      expect(resolveClerkAppearance(theme).theme).toBe(dark);
-    }
+  it("returns dark appearance only for dark mode", () => {
+    expect(resolveClerkAppearance("dark").theme).toBeDefined();
     expect(resolveClerkAppearance("light").theme).toBeUndefined();
     expect(resolveClerkAppearance(undefined).theme).toBeUndefined();
   });

@@ -1298,6 +1298,9 @@
     "bookmarkNotFound": "बुकमार्क \"{keyword}\" नहीं मिला"
   },
   "accessibility": {
+    "toggleTheme": "थीम टॉगल करें",
+    "switchToLightMode": "लाइट मोड पर स्विच करें",
+    "switchToDarkMode": "डार्क मोड पर स्विच करें",
     "closeDialog": "बंद करें",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "पेज नंबर",
@@ -1699,6 +1702,8 @@
     "contentWidth": "सामग्री चौड़ाई",
     "appearance": "दिखावट",
     "appearanceDescription": "दृश्य थीम और जानकारी घनत्व अनुकूलित करें",
+    "darkMode": "डार्क मोड",
+    "darkModeDescription": "कम रोशनी में बेहतर पढ़ने के लिए डार्क थीम पर स्विच करें",
     "showMetadata": "मेटाडेटा दिखाएं",
     "showMetadataDescription": "उद्धरण गणना, विषय और अन्य पेपर विवरण प्रदर्शित करें",
     "compactMode": "कॉम्पैक्ट मोड",
@@ -3304,12 +3309,5 @@
     "source": "Artificial Analysis का इंटेलिजेंस इंडेक्स",
     "back": "मॉडल पर वापस जाएँ",
     "default": "डिफ़ॉल्ट"
-  },
-  "theme": {
-    "label": "थीम",
-    "light": "सफ़ेद",
-    "navy": "नेवी",
-    "dark": "काला",
-    "blue": "नीला"
   }
 }

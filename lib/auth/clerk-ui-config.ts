@@ -3,7 +3,7 @@ import { dark } from "@clerk/themes";
 import type { Appearance, LocalizationResource } from "@clerk/types";
 
 // Clerk's own screens take their colours and typeface from the app's tokens,
-// so they follow whichever theme is active.
+// so they follow the active theme.
 const variables = {
   colorPrimary: "var(--primary)",
   colorTextOnPrimaryBackground: "var(--primary-foreground)",
@@ -15,12 +15,6 @@ const variables = {
   colorNeutral: "var(--foreground)",
   colorDanger: "var(--destructive)",
   fontFamily: "var(--font-sans)",
-};
-// The mark as the brand guidelines draw it on each background. White and navy
-// share one file.
-const LOGO_BY_THEME: Record<string, string> = {
-  dark: "/icon-black.svg",
-  blue: "/icon-white.svg",
 };
 
 const CLERK_LOCALIZATION_BY_LOCALE: Record<string, LocalizationResource> = {
@@ -56,9 +50,8 @@ export function resolveClerkLocalization(
 export function resolveClerkAppearance(
   resolvedTheme: string | null | undefined,
 ): Appearance {
-  const layout = { logoImageUrl: LOGO_BY_THEME[resolvedTheme ?? ""] ?? "/icon.svg" };
-  // Navy, black and blue are all dark schemes.
-  return resolvedTheme && resolvedTheme !== "light"
-    ? { theme: dark, variables, layout }
-    : { variables, layout };
+  // The mark as the brand guidelines draw it on white and on black.
+  return resolvedTheme === "dark"
+    ? { theme: dark, variables, layout: { logoImageUrl: "/icon-black.svg" } }
+    : { variables, layout: { logoImageUrl: "/icon.svg" } };
 }

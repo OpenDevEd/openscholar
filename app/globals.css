@@ -3,18 +3,11 @@
 @import "react-pdf/dist/Page/AnnotationLayer.css";
 @import "react-pdf/dist/Page/TextLayer.css";
 
-/* `dark:` applies in all three dark schemes. */
-@custom-variant dark (&:is(.navy *, .dark *, .blue *));
+@custom-variant dark (&:is(.dark *));
 
-/* Themes. The brand guidelines show four colour versions: white, navy, black
-   and blue. Each is a class on <html> (see components/theme-provider.tsx).
-   White is the default and sets every token. The other three are dark
-   schemes: each sets its page, text and brand colours, and the block they
-   share derives the surfaces from those. */
-:root,
-.light {
-  color-scheme: light;
-
+/* Light and dark follow the white and black versions in the brand guidelines.
+   Light sets every token; dark overrides what differs. */
+:root {
   /* Brand: blue 600, with a brighter and a deeper stop for the brand gradient.
      Everything brand-coloured derives from these. */
   --primary: #2563eb;
@@ -80,10 +73,8 @@
   --chart-5: oklch(0.72 0.16 60);
 
   /* Status. One colour each: fills and icons use it directly, and `ink-*` and
-     `tint-*` derive readable text and soft surfaces from it in every theme.
-     Info is cyan so it stays apart from the brand blue. --ink-mix is how much
-     of the colour that text keeps; the rest is the text colour. */
-  --ink-mix: 55%;
+     `tint-*` derive readable text and soft surfaces from it in both themes.
+     Info is cyan so it stays apart from the brand blue. */
   --success: var(--color-emerald-500);
   --success-foreground: oklch(1 0 0);
   --warning: var(--color-amber-500);
@@ -134,36 +125,13 @@
   --shadow-2xl: 0 25px 50px -12px oklch(0 0 0 / 0.25);
 }
 
-/* Navy: brand navy page, blue 400 as the brand colour. */
-.navy {
-  --background: #172554;
-  --foreground: #eff6ff;
-  --lift: #3b82f6;
-  --lift-step: 13%;
-  --muted-mix: 72%;
-  --destructive: #fca5a5;
-  --destructive-foreground: #7f1d1d;
-
-  --primary: #60a5fa;
-  --primary-bright: #93c5fd;
-  --primary-deep: #3b82f6;
-  --primary-foreground: #172554;
-
-  --brand-ink: #bfdbfe;
-  --logo-a: #60a5fa;
-  --logo-b: #2563eb;
-  --logo-c: #bfdbfe;
-}
-
-/* Black: true black for OLED screens, and no colour in the brand. The logo
-   and every brand-coloured control are white and grey. */
+/* Dark: true black for OLED screens. As in the brand guidelines' black
+   version, the logo and every brand-coloured control are white and grey.
+   Panels, borders, hovers and muted text are derived from the page and text
+   colours, so those two set the whole theme. */
 .dark {
   --background: #000000;
   --foreground: #ededed;
-  --lift: #ffffff;
-  --lift-step: 6%;
-  --muted-mix: 72%;
-  --destructive: oklch(0.65 0.2 25);
 
   --primary: #fafafa;
   --primary-bright: #ffffff;
@@ -174,41 +142,8 @@
   --logo-a: #e5e5e5;
   --logo-b: #525252;
   --logo-c: #fafafa;
-}
 
-/* Blue: a blue page with deeper panels, white as the brand colour. The page is
-   blue 700, one step deeper than the brand blue, and coloured text sits closer
-   to white, so muted, status and error text all pass 4.5:1 on it. */
-.blue {
-  --background: #1d4ed8;
-  --foreground: #ffffff;
-  --lift: #172554;
-  --lift-step: 20%;
-  --muted-mix: 82%;
-  --ink-mix: 35%;
-  --destructive: #fecaca;
-  --destructive-foreground: #7f1d1d;
-
-  --primary: #ffffff;
-  --primary-bright: #ffffff;
-  --primary-deep: #dbeafe;
-  --primary-foreground: #1e40af;
-
-  --brand-ink: #ffffff;
-  --logo-a: #ffffff;
-  --logo-b: #ffffff;
-  --logo-c: #ffffff;
-}
-
-/* What the three dark schemes share. Panels step from the page colour toward
-   --lift; borders, hovers and muted text step toward the text colour. The mixes
-   are in sRGB so a step is as visible on black as on blue. */
-.navy,
-.dark,
-.blue {
-  color-scheme: dark;
-
-  --card: color-mix(in srgb, var(--background), var(--lift) var(--lift-step));
+  --card: color-mix(in srgb, var(--background), var(--foreground) 6%);
   --card-foreground: var(--foreground);
   --popover: color-mix(in srgb, var(--card), var(--foreground) 4%);
   --popover-foreground: var(--foreground);
@@ -216,15 +151,17 @@
   --secondary: color-mix(in srgb, var(--card), var(--foreground) 9%);
   --secondary-foreground: var(--foreground);
   --muted: color-mix(in srgb, var(--card), var(--foreground) 7%);
-  --muted-foreground: color-mix(in srgb, var(--foreground) var(--muted-mix), var(--background));
+  --muted-foreground: color-mix(in srgb, var(--foreground) 72%, var(--background));
   --accent: color-mix(in srgb, var(--card), var(--foreground) 13%);
   --accent-foreground: var(--foreground);
+
+  --destructive: oklch(0.65 0.2 25);
 
   --border: color-mix(in srgb, var(--background), var(--foreground) 17%);
   --input: color-mix(in srgb, var(--background), var(--foreground) 20%);
 
   --sidebar: var(--background);
-  --sidebar-foreground: color-mix(in oklab, var(--foreground) 88%, var(--background));
+  --sidebar-foreground: color-mix(in srgb, var(--foreground) 88%, var(--background));
   --sidebar-accent: var(--accent);
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--border);
@@ -235,7 +172,7 @@
   --ai: oklch(0.65 0.15 303);
   --ai-fg: oklch(0.8 0.12 303);
 
-  /* Radius (slightly smaller in the dark schemes) */
+  /* Radius (slightly smaller in dark mode) */
   --radius: 0.625rem;
 
   --shadow-2xs: 0 1px 2px 0 oklch(0 0 0 / 0.1);
@@ -379,7 +316,7 @@
     background-image: radial-gradient(circle at top, var(--background) 0%, var(--muted) 100%);
   }
 
-  :is(.navy, .dark, .blue) .pdf-viewer-stage {
+  .dark .pdf-viewer-stage {
     background-image: radial-gradient(circle at top, var(--muted) 0%, var(--background) 100%);
   }
 
@@ -446,14 +383,14 @@
 /* Text in a status or category colour, pulled toward the foreground so it
    reads on a plain or tinted background in both themes. */
 @utility ink-* {
-  color: color-mix(in oklab, --value(--color-*) var(--ink-mix), var(--foreground));
+  color: color-mix(in oklab, --value(--color-*) 55%, var(--foreground));
 }
 
 /* A soft chip in any colour: tinted fill, faint border, readable text. */
 @utility tint-* {
   background-color: color-mix(in oklab, --value(--color-*) 10%, transparent);
   border-color: color-mix(in oklab, --value(--color-*) 22%, transparent);
-  color: color-mix(in oklab, --value(--color-*) var(--ink-mix), var(--foreground));
+  color: color-mix(in oklab, --value(--color-*) 55%, var(--foreground));
 }
 
 /* Active nav item with gradient border */
@@ -621,13 +558,13 @@
   --el-hero-tint: var(--color-emerald-400);
   --el-hero-strength: 14%;
 }
-:is(.navy, .dark, .blue) .el-hero-blob-a {
+.dark .el-hero-blob-a {
   --el-hero-strength: 16%;
 }
-:is(.navy, .dark, .blue) .el-hero-blob-b {
+.dark .el-hero-blob-b {
   --el-hero-strength: 12%;
 }
-:is(.navy, .dark, .blue) .el-hero-blob-c {
+.dark .el-hero-blob-c {
   --el-hero-strength: 9%;
 }
 .el-hero-blob-b {
