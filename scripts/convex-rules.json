@@ -4,9 +4,6 @@
       "convex/research/answers.ts:answersAtVersions:screeningAnswerHistory": "#342",
       "convex/research/answers.ts:currentAnswers:?": "#334",
       "convex/research/answers.ts:existing:?": "#334",
-      "convex/research/records.ts:revisions:searchRevisions": "#334",
-      "convex/research/records.ts:verifyMovedAnswers:searchRevisions": "#334",
-      "convex/research/records.ts:verifyMovedAnswers:searches": "#334",
       "convex/wallet/queries.ts:keys:walletKeys": "#427: A user's own wallet keys: a handful"
     }
   },
