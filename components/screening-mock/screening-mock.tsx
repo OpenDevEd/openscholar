@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import { useQueryState } from "nuqs";
+import { useWatchedSearch } from "@/lib/research/reads";
 import { useSearchHistoryStore } from "@/lib/store";
 import type { SearchResult } from "@/lib/types/search.types";
 import { EASE } from "@/components/settings/model-map";
@@ -26,6 +27,8 @@ export function ScreeningMock() {
   const [jobs, setJobs] = useState<Job[]>(START_JOBS);
   // Screen all on a results page opens this form with that search: /screening?search=<id>.
   const [searchId] = useQueryState("search");
+  // The account's session holds only the searches pages read by ID, so this one is read while the page shows.
+  useWatchedSearch(searchId ?? undefined);
   const entry = useSearchHistoryStore((state) => (searchId ? state.searchHistory.find((item) => item.id === searchId) : undefined));
   const fromResults = entry ? sourceOf(entry) : undefined;
   const [selected, setSelected] = useState<string>(searchId ? "new" : "j1");
