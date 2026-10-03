@@ -122,6 +122,39 @@ export function scorePaper(
   return { score, stars, qualified };
 }
 
+/** Where a screened paper lands. A paper the model couldn't read is `failed`, which no score decides. */
+export type ScoredOutcome = "included" | "unclear" | "excluded";
+
+/**
+ * Included at the minimum score. Unclear when it's under it but its unclear answers,
+ * settled the best way the rules allow, would take it there: those are the papers worth a
+ * second look. Excluded otherwise.
+ */
+export function outcomeOf(answers: Record<string, boolean | null>, config: ScoringConfig): ScoredOutcome {
+  if (isQualified(computeScore(answers, config.rules), config.minimumScore)) return "included";
+  // A question with several rules settles one way for all of them.
+  const best = [...new Set(config.rules.map((rule) => rule.questionKey))].reduce((sum, key) => {
+    const points = (field: "yesPoints" | "noPoints" | "nullPoints") => config.rules.reduce((total, rule) => total + (rule.questionKey === key ? rule[field] : 0), 0);
+    const answer = answers[key];
+    return sum + (answer === true ? points("yesPoints") : answer === false ? points("noPoints") : Math.max(points("yesPoints"), points("noPoints"), points("nullPoints")));
+  }, 0);
+  return isQualified(best, config.minimumScore) ? "unclear" : "excluded";
+}
+
+/** How a question's answers split across a job's papers. */
+export type QuestionTally = { key: string; yes: number; no: number; unclear: number };
+
+/** `tallies` with one paper's answers added (`by` 1) or taken away (`by` -1), a row per question in `keys`' order. */
+export function tallied(tallies: QuestionTally[] | undefined, keys: string[], answers: Record<string, boolean | null>, by: 1 | -1): QuestionTally[] {
+  const known = new Map((tallies ?? []).map((tally) => [tally.key, tally] as const));
+  return keys.map((key) => {
+    const tally = known.get(key) ?? { key, yes: 0, no: 0, unclear: 0 };
+    const answer = answers[key];
+    const field = answer === true ? "yes" : answer === false ? "no" : "unclear";
+    return { ...tally, [field]: Math.max(0, tally[field] + by) };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Config validation (warnings, not errors -- engine works with any config)
 // ---------------------------------------------------------------------------

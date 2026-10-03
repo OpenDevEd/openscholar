@@ -3,8 +3,9 @@
  * way Firecrawl queues its billing operations and commits them from one batch process. A
  * finished paper writes only its own result row, stamped with `doneAt`, and pings the queue.
  * The worker then, a batch at a time:
- * - counts the job's finished papers into its progress row, and finishes the job;
  * - moves the papers' answers into the job's screening;
+ * - scores each on its answers as they stand there, counts the job's finished papers into
+ *   its progress row (./accounting.ts), and finishes the job;
  * - saves the qualified papers to the person's library;
  * - starts the person's next waiting papers in the slots the finished ones freed (./slots.ts).
  * Papers finishing together never write the same document; only the worker writes these.
@@ -19,6 +20,7 @@ import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { upsertLibraryItem } from "../library/mutations";
 import { addCollectionMembership } from "../library/collectionMembership";
 import { moveResultAnswers } from "./drain";
+import { account, FAILED, standing, withDeltas, type Delta } from "./accounting";
 import { startWaitingPapers } from "./slots";
 
 /** Papers per batch: each moves its answers and may save a library item, a few dozen reads. */
@@ -82,34 +84,41 @@ export async function progressRow(ctx: QueryCtx | MutationCtx, jobId: Id<"screen
 
 /**
  * Counts a job's papers that are already bookkept, or finished before the worker kept its
- * progress (both have no `doneAt`), and the papers in `batch`. Papers still waiting are
- * counted when their batch comes.
+ * progress (both have no `doneAt`). Papers still waiting are counted when their batch comes.
  */
-export async function countBookkept(ctx: QueryCtx | MutationCtx, jobId: Id<"screeningJobs">, batch: ReadonlySet<Id<"screeningResults">> = new Set()) {
+export async function countBookkept(ctx: QueryCtx | MutationCtx, jobId: Id<"screeningJobs">) {
   const results = await ctx.db
     .query("screeningResults")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
     .take(MAX_SCREENING_PAPERS_PER_JOB);
-  return tally(results.filter((result) => result.doneAt === undefined || batch.has(result._id)));
+  return tally(results.filter((result) => result.doneAt === undefined));
 }
 
-/** Adds a batch's papers to their job's progress; a job without progress yet is counted from its results. */
-async function countFinished(ctx: MutationCtx, jobId: Id<"screeningJobs">, results: Doc<"screeningResults">[]) {
-  const row = await progressRow(ctx, jobId);
-  if (!row) {
-    await ctx.db.insert("screeningJobProgress", { jobId, ...(await countBookkept(ctx, jobId, new Set(results.map((result) => result._id)))) });
-    return;
-  }
+/**
+ * A job's progress row. A job from before the worker kept one gets it counted from its
+ * bookkept papers, so read it before changing what one of them counts as.
+ */
+export async function progressOf(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
+  return (await progressRow(ctx, jobId)) ?? (await ctx.db.get("screeningJobProgress", await ctx.db.insert("screeningJobProgress", { jobId, ...(await countBookkept(ctx, jobId)) })))!;
+}
+
+/**
+ * Adds a batch's papers to their job's progress: how many finished and how. What each adds
+ * to the qualified and unclear counts and the questions' tallies is `deltas`
+ * (./accounting.ts).
+ */
+async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, results: Doc<"screeningResults">[], deltas: Delta[]) {
+  const row = await progressOf(ctx, job._id);
   const add = tally(results);
   await ctx.db.patch("screeningJobProgress", row._id, {
     completed: row.completed + add.completed,
     skipped: row.skipped + add.skipped,
     failed: row.failed + add.failed,
-    qualified: row.qualified + add.qualified,
+    ...withDeltas(row, job, deltas),
   });
 }
 
-/** Saves a qualified paper to the person's library and the job's collection. */
+/** Saves a qualified paper to the person's library and the job's collection; saving one already there changes nothing. */
 export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
   const libraryItemId = await upsertLibraryItem(
     ctx,
@@ -135,7 +144,7 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
  * worker, which nothing else would finish.
  */
 export async function ensureProgress(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
-  if (!(await progressRow(ctx, jobId))) await ctx.db.insert("screeningJobProgress", { jobId, ...(await countBookkept(ctx, jobId)) });
+  await progressOf(ctx, jobId);
   await finishIfDone(ctx, jobId);
 }
 
@@ -192,11 +201,21 @@ export const bookkeep = internalMutation({
           }
           recounted = true;
         }
-        await countFinished(ctx, jobId, jobResults);
+        // Answers move to the job's screening first: a paper is scored on its answers as they
+        // stand there, where a person's or the assistant's answer outranks the model's.
+        for (const result of jobResults) if (result.pendingAnswers) await moveResultAnswers(ctx, result);
+        const current = (await ctx.db.get("screeningJobs", jobId))!;
+        const deltas: Delta[] = [];
         for (const result of jobResults) {
-          if (result.pendingAnswers) await moveResultAnswers(ctx, result);
-          if (result.status === "completed" && result.qualified === true && !result.libraryItemId) await saveQualified(ctx, job, result);
+          if (result.status === "failed") await ctx.db.patch("screeningResults", result._id, FAILED);
+          if (result.status !== "completed") continue;
+          const settled = (await ctx.db.get("screeningResults", result._id))!;
+          const { patch, delta, move } = account(current, settled, await standing(ctx, current, settled));
+          await ctx.db.patch("screeningResults", result._id, patch);
+          deltas.push(delta);
+          if (move.becameIncluded) await saveQualified(ctx, current, { ...settled, ...patch });
         }
+        await countFinished(ctx, current, jobResults, deltas);
         await finishIfDone(ctx, jobId);
         const started = jobResults.filter((result) => result.workId !== undefined).length;
         if (started) freed.set(job.userId, (freed.get(job.userId) ?? 0) + started);

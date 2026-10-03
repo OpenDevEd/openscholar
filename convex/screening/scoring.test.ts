@@ -3,7 +3,9 @@ import {
   computeScore,
   computeStarRating,
   isQualified,
+  outcomeOf,
   scorePaper,
+  tallied,
   validateScoringConfig,
 } from "./scoring";
 
@@ -272,5 +274,42 @@ describe("validateScoringConfig", () => {
     const warnings = validateScoringConfig(config);
     // star_out_of_range for 7, star_out_of_range for -2, missing_negative_coverage
     expect(warnings.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("outcomeOf", () => {
+  const config = {
+    rules: [{ questionKey: "q1", yesPoints: 2, noPoints: 0, nullPoints: 1 }, { questionKey: "q2", yesPoints: 1, noPoints: 0, nullPoints: 0 }],
+    starThresholds: [],
+    minimumScore: 2,
+  };
+  it("includes a paper at the minimum score", () => {
+    expect(outcomeOf({ q1: true, q2: false }, config)).toBe("included");
+  });
+  it("calls a paper unclear when settling its unclear answers the best way would include it", () => {
+    expect(outcomeOf({ q1: null, q2: false }, config)).toBe("unclear");
+    expect(outcomeOf({ q1: false, q2: null }, config)).toBe("excluded");
+  });
+  it("excludes a paper no answer of its could lift to the minimum", () => {
+    expect(outcomeOf({ q1: false, q2: true }, config)).toBe("excluded");
+  });
+  it("includes every paper when there's no minimum", () => {
+    expect(outcomeOf({ q1: false, q2: false }, { ...config, minimumScore: undefined })).toBe("included");
+  });
+  it("settles a question with several rules one way for all of them", () => {
+    // Yes gives 10 and no gives 10, never both: an unclear answer can't reach 20.
+    const rules = [{ questionKey: "q1", yesPoints: 10, noPoints: 0, nullPoints: 0 }, { questionKey: "q1", yesPoints: 0, noPoints: 10, nullPoints: 0 }];
+    expect(outcomeOf({ q1: null }, { rules, starThresholds: [], minimumScore: 20 })).toBe("excluded");
+    expect(outcomeOf({ q1: null }, { rules, starThresholds: [], minimumScore: 10 })).toBe("unclear");
+  });
+});
+
+describe("tallied", () => {
+  it("adds and takes away a paper's answers, one row a question in the job's order", () => {
+    const one = tallied(undefined, ["q1", "q2"], { q1: true, q2: null }, 1);
+    expect(one).toEqual([{ key: "q1", yes: 1, no: 0, unclear: 0 }, { key: "q2", yes: 0, no: 0, unclear: 1 }]);
+    const two = tallied(one, ["q1", "q2"], { q1: false }, 1);
+    expect(two).toEqual([{ key: "q1", yes: 1, no: 1, unclear: 0 }, { key: "q2", yes: 0, no: 0, unclear: 2 }]);
+    expect(tallied(two, ["q1", "q2"], { q1: true, q2: null }, -1)).toEqual([{ key: "q1", yes: 0, no: 1, unclear: 0 }, { key: "q2", yes: 0, no: 0, unclear: 1 }]);
   });
 });

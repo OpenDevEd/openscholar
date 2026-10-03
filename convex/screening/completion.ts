@@ -8,6 +8,7 @@ export type CompletedScreeningRowDetails = {
   score: number;
   stars: number;
   qualified: boolean;
+  outcome: "included" | "unclear" | "excluded";
   aiMetadata: {
     confidence: number;
   };
@@ -30,9 +31,8 @@ export type CompletionTransition =
         | ({
             status: "completed";
           } & CompletedScreeningRowDetails)
-        | {
-            status: "failed" | "skipped";
-          };
+        | { status: "failed"; outcome: "failed" }
+        | { status: "skipped" };
     };
 
 export function deriveCompletionTransition(
@@ -45,7 +45,7 @@ export function deriveCompletionTransition(
   if (input.resultKind !== "success") {
     return {
       kind: "patch",
-      rowPatch: { status: "failed" },
+      rowPatch: { status: "failed", outcome: "failed" },
     };
   }
 

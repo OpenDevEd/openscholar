@@ -10,7 +10,10 @@ import {
   screeningQuestionsValidator,
   screeningResultStatusValidator,
   screeningScoringConfigValidator,
+  screeningTalliesValidator,
 } from "./validators";
+import { progressRow } from "./bookkeeping";
+import { jobAnswers } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { availableCredits } from "../billing/accounts";
@@ -91,6 +94,9 @@ export const getScreeningJob = query({
       createdAt: v.number(),
       updatedAt: v.number(),
       completedAt: v.optional(v.number()),
+      // Its papers by where they landed, and how each question was answered; kept as papers settle.
+      outcomes: v.object({ included: v.number(), unclear: v.number(), excluded: v.number(), failed: v.number() }),
+      tallies: screeningTalliesValidator,
     })
   ),
   handler: async (ctx, args) => {
@@ -100,8 +106,13 @@ export const getScreeningJob = query({
     const job = await ctx.db.get("screeningJobs", args.jobId);
     if (!job || job.userId !== user._id) return null;
     const progress = await readJobProgressSnapshot(ctx, job);
+    const kept = await progressRow(ctx, job._id);
+    const counts = await readScreeningProgressCounts(ctx, job);
+    const unclear = kept?.unclear ?? 0;
 
     return {
+      outcomes: { included: counts.qualifiedCount, unclear, excluded: Math.max(0, counts.completedCount - counts.qualifiedCount - unclear), failed: counts.failedCount },
+      tallies: kept?.tallies,
       _id: job._id,
       _creationTime: job._creationTime,
       userId: job.userId,
@@ -259,25 +270,7 @@ export async function readScreeningResultsPage(ctx: QueryCtx, job: Doc<"screenin
     .query("screeningResults")
     .withIndex("by_job", (q) => q.eq("jobId", job._id))
     .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, RESULTS_PAGE_MAX) });
-  // What the job answered, by question key: a result whose answers haven't moved yet, waiting
-  // or from before #334, still holds them; a moved one reads the model's answers from its
-  // screening's history as of the move, whatever a person or a later run changed since.
-  const screeningId = job.screeningId;
-  const answersOf = async (result: Doc<"screeningResults">) => {
-    if (result.answers || !screeningId || result.answersVersion === undefined) return result.answers;
-    const version = result.answersVersion;
-    const row = await ctx.db
-      .query("screeningAnswerHistory")
-      .withIndex("by_screening_and_paper_and_version", (q) => q.eq("screeningId", screeningId).eq("paperId", result.openalexId).lte("version", version))
-      .order("desc")
-      .first();
-    if (!row) return undefined;
-    return Object.fromEntries(job.questions.map((q) => {
-      const entry = row.answers.find((value) => value.question === q.question);
-      return [q.key, entry?.model ? entry.model.answer : (entry?.answer ?? null)];
-    }));
-  };
-  const answers = await Promise.all(results.page.map(answersOf));
+  const answers = await Promise.all(results.page.map((result) => jobAnswers(ctx, job, result)));
   return {
     ...results,
     page: results.page.map((r, i) => ({

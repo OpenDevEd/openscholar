@@ -399,4 +399,33 @@ describe("at the largest sizes the product allows", () => {
       vi.useRealTimers();
     }
   }, 300_000);
+
+  it("a screening job's list reads its largest page, at 50 questions a paper, and a changed answer rescoring it (#421)", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t, "max_outcomes_user");
+    const questions = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => ({ key: `q${i}`, question: `${text(180, i)}?` }));
+    const { jobId, screeningId } = await t.run(async (ctx) => {
+      const screeningId = await ctx.db.insert("screenings", { userId, version: 1, createdAt: 1 });
+      const jobId = await ctx.db.insert("screeningJobs", {
+        userId, status: "completed", totalPapers: 120, questions, screeningId,
+        scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },
+        createdAt: 1, updatedAt: 1,
+      });
+      await ctx.db.insert("screeningJobProgress", { jobId, completed: 120, skipped: 0, failed: 0, qualified: 120, unclear: 0, tallies: questions.map(({ key }) => ({ key, yes: 120, no: 0, unclear: 0 })) });
+      return { jobId, screeningId };
+    });
+    const answers = questions.map(({ question }) => ({ question, answer: true, setBy: "model" as const, updatedAt: 1, model: { answer: true, confidence: 0.9, at: 1 } }));
+    const ids = Array.from({ length: 120 }, (_, i) => `https://openalex.org/W${i}`);
+    await insertMany(t, "screeningResults", ids.map((openalexId, i) => ({ jobId, openalexId, title: i === 119 ? `needle ${text(150, i)}` : text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), status: "completed", score: 50, stars: 5, qualified: true, outcome: "included", counted: { qualified: true, outcome: "included", answers: Object.fromEntries(questions.map(({ key }) => [key, true])) }, answersVersion: 1, createdAt: 1 })), 60);
+    await insertMany(t, "screeningAnswers", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1 })), 60);
+    await insertMany(t, "screeningAnswerHistory", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1, at: 1 })), 60);
+
+    const page = await as.query(api.screening.papers.list, { jobId, outcome: "included", paginationOpts: { cursor: null, numItems: 1_000 } });
+    expect(page.page).toHaveLength(50);
+    expect(page.page[0].answers).toHaveLength(MAX_SIZE.questionsPerJob);
+    const found = await as.query(api.screening.papers.list, { jobId, outcome: "included", text: "NEEDLE", paginationOpts: { cursor: null, numItems: 10 } });
+    expect(found.page).toHaveLength(1);
+    expect(await as.mutation(api.screening.papers.answer, { jobId, paperId: ids[0], questionKey: "q0", answer: false })).toEqual({ outcome: "included" });
+    expect((await as.query(api.screening.queries.getScreeningJob, { jobId }))?.tallies?.[0]).toEqual({ key: "q0", yes: 119, no: 1, unclear: 0 });
+  }, 300_000);
 });
