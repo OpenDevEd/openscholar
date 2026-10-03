@@ -71,7 +71,7 @@ function FilterChip({ item, compact, singleLine }: { item: FilterItem; compact: 
       className={cn(
         "items-start gap-1.5 rounded-md font-normal",
         singleLine ? "whitespace-nowrap" : "max-w-full whitespace-normal",
-        compact ? "px-1.5 py-0.5 text-[10px] [&>svg]:size-2.5" : "py-1",
+        compact ? "px-1.5 py-0.5 text-3xs [&>svg]:size-2.5" : "py-1",
       )}
     >
       <Icon className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
@@ -98,7 +98,7 @@ function RatingStars({ range: [min, max], label }: { range: [number, number]; la
           key={star}
           className={cn(
             "size-2.5",
-            star >= min && star <= max ? "fill-amber-500 text-amber-500" : "text-muted-foreground/30",
+            star >= min && star <= max ? "fill-rating text-rating" : "text-muted-foreground/30",
           )}
         />
       ))}

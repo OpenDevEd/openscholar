@@ -385,7 +385,7 @@ export function ScreeningDialog({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-6 shrink-0 gap-1.5 px-2 text-[11px] font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all"
+                      className="h-6 shrink-0 gap-1.5 px-2 text-2xs font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all"
                       onClick={() => {
                         onOpenChange(false);
                         router.push("/settings/billing#topup-section");

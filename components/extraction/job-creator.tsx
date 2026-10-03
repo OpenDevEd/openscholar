@@ -478,7 +478,7 @@ function JobSteps({ steps, current, disabled, onSelect }: {
                 isCurrent ? "bg-muted font-medium text-foreground" : done ? "text-foreground hover:bg-muted/60" : "text-muted-foreground",
               )}
             >
-              <Icon aria-hidden className={cn("size-3.5", done && "text-emerald-600 dark:text-emerald-400")} />
+              <Icon aria-hidden className={cn("size-3.5", done && "ink-success")} />
               {/* On a narrow page only the current step keeps its name; the others keep their icon. */}
               <span className={cn(!isCurrent && "@max-md:sr-only")}>{step.title}</span>
             </button>

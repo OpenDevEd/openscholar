@@ -464,7 +464,7 @@ export function ColourField({
             />
           </div>
           {low.length > 0 ? (
-            <p role="status" className="text-xs text-amber-700 dark:text-amber-400" data-contrast="low">
+            <p role="status" className="text-xs ink-warning" data-contrast="low">
               {t("lowContrast", { ratio: contrastRatio(value, low[0]!).toFixed(1) })}
             </p>
           ) : null}
@@ -532,7 +532,7 @@ export function ToggleRow({
           </p>
         ) : null}
         {disabled && disabledReason ? (
-          <p className="text-xs text-amber-700 dark:text-amber-400" data-reason>
+          <p className="text-xs ink-warning" data-reason>
             {disabledReason}
           </p>
         ) : null}

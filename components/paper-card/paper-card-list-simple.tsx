@@ -143,7 +143,7 @@ export function PaperCardListSimple({
                       handleCitesSearch();
                     }
                   }}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ink-cites hover:bg-cites/10 transition-colors cursor-pointer"
                 >
                   <Quote className="h-3 w-3" />
                   <span>{format.number(result.cited_by_count ?? 0)}</span>
@@ -187,7 +187,7 @@ export function PaperCardListSimple({
           {/* Mobile citation count */}
           <div
             role="group"
-            className="@sm/card:hidden flex items-center gap-1 flex-shrink-0 text-xs text-orange-600 dark:text-orange-400"
+            className="@sm/card:hidden flex items-center gap-1 flex-shrink-0 text-xs ink-cites"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >

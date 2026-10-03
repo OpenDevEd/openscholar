@@ -176,7 +176,7 @@ function Identity() {
         <p className="inline-flex items-center gap-1.5 text-sm">
           {user.primaryEmailAddress?.emailAddress}
           {user.primaryEmailAddress?.verification?.status === "verified" ? (
-            <BadgeCheck className="size-4 text-emerald-500" aria-label={t("verified")} />
+            <BadgeCheck className="size-4 text-success" aria-label={t("verified")} />
           ) : null}
         </p>
       </div>
@@ -310,7 +310,7 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
                   </p>
                   <p className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
                     {e.place ? <span className="truncate">{e.place}</span> : null}
-                    {e.ip ? <span className="font-mono text-[11px] text-muted-foreground/70">{e.ip}</span> : null}
+                    {e.ip ? <span className="font-mono text-2xs text-muted-foreground/70">{e.ip}</span> : null}
                   </p>
                 </div>
                 {e.here ? (

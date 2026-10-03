@@ -124,8 +124,8 @@ export function InlineNotice({
     <div
       className={cn(
         "flex flex-wrap items-start gap-3 rounded-lg border p-3 text-sm",
-        tone === "warning" && "border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400",
-        tone === "info" && "border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+        tone === "warning" && "border-warning/30 bg-warning/5 ink-warning",
+        tone === "info" && "border-info/20 bg-info/10 ink-info",
         tone === "danger" && "border-destructive/20 bg-destructive/5 text-destructive",
         className,
       )}

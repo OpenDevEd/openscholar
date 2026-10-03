@@ -48,9 +48,9 @@ function statusDot(status: ScreeningStatus) {
     case "pending":
       return "bg-muted-foreground";
     case "processing":
-      return "bg-orange-500 animate-pulse";
+      return "bg-primary animate-pulse";
     case "completed":
-      return "bg-green-500";
+      return "bg-success";
     case "cancelled":
       return "bg-muted-foreground/50";
     case "failed":
@@ -163,7 +163,7 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
                       <p className="font-medium mb-1.5">
                         {job.questions.length} {t("questionsUsed")}
                       </p>
-                      <ol className="space-y-1 text-[11px] list-decimal list-inside opacity-90">
+                      <ol className="space-y-1 text-2xs list-decimal list-inside opacity-90">
                         {job.questions.map((q) => (
                           <li key={q.key} className="leading-snug">{q.question}</li>
                         ))}
@@ -191,7 +191,7 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       {isIncomplete && (
-                        <div className="px-2 py-1.5 text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1.5 border-b border-border/40 mb-1">
+                        <div className="px-2 py-1.5 text-2xs ink-warning flex items-center gap-1.5 border-b border-border/40 mb-1">
                           <AlertTriangle className="h-3 w-3 shrink-0" />
                           {t("exportIncompleteWarning")}
                         </div>
@@ -225,7 +225,7 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
                 {t("papersLabel")}
               </span>
 
-              <span className="inline-flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+              <span className="inline-flex items-center gap-1.5 text-xs ink-success">
                 <Sparkles className="h-3 w-3" />
                 <span className="tabular-nums font-medium">{job.qualifiedPapers}</span>
                 {t("qualifiedLabel")}
@@ -240,7 +240,7 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
-                  <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
+                  <span className="text-2xs font-medium tabular-nums text-muted-foreground">
                     {percentage}%
                   </span>
                 </div>

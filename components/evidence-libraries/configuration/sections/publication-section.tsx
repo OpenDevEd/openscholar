@@ -420,7 +420,7 @@ function PublicationForm({
             t("needsVerification")
           ) : saved.verifiedAt ? (
             <>
-              <ShieldCheck className="size-4 text-emerald-600" />
+              <ShieldCheck className="size-4 ink-success" />
               {t("verified", {
                 date: format.dateTime(saved.verifiedAt, {
                   dateStyle: "short",

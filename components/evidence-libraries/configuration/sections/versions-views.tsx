@@ -53,21 +53,21 @@ export const VERSION_TONE: Record<VersionStatus, StatusTone> = {
 // Same recipe as the status chip: tinted background, dark text, faint border.
 // The 800 shade keeps the text above 7:1 on the tint in light mode.
 const AREA_TONE: Record<ReleaseNoteArea, string> = {
-  search: "bg-sky-500/10 text-sky-800 dark:text-sky-300 border-sky-500/20",
+  search: "tint-sky-500",
   records:
-    "bg-violet-500/10 text-violet-800 dark:text-violet-300 border-violet-500/20",
+    "tint-violet-500",
   collections:
-    "bg-indigo-500/10 text-indigo-800 dark:text-indigo-300 border-indigo-500/20",
-  sources: "bg-teal-500/10 text-teal-800 dark:text-teal-300 border-teal-500/20",
+    "tint-indigo-500",
+  sources: "tint-teal-500",
   exports:
-    "bg-fuchsia-500/10 text-fuchsia-800 dark:text-fuchsia-300 border-fuchsia-500/20",
+    "tint-fuchsia-500",
   appearance:
-    "bg-pink-500/10 text-pink-800 dark:text-pink-300 border-pink-500/20",
+    "tint-pink-500",
   administration:
-    "bg-slate-500/10 text-slate-800 dark:text-slate-300 border-slate-500/20",
-  speed: "bg-lime-500/10 text-lime-800 dark:text-lime-300 border-lime-500/20",
+    "tint-slate-500",
+  speed: "tint-lime-500",
   reliability:
-    "bg-rose-500/10 text-rose-800 dark:text-rose-300 border-rose-500/20",
+    "tint-rose-500",
 };
 
 function AreaChip({ area }: { area: ReleaseNoteArea }) {
@@ -75,7 +75,7 @@ function AreaChip({ area }: { area: ReleaseNoteArea }) {
   return (
     <span
       className={cn(
-        "inline-flex w-24 shrink-0 items-center justify-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-4",
+        "inline-flex w-24 shrink-0 items-center justify-center rounded-full border px-2 py-0.5 text-2xs font-medium leading-4",
         AREA_TONE[area],
       )}
       data-area={area}
@@ -126,7 +126,7 @@ export function ReleaseNotes({
         >
           <div className="flex flex-wrap items-baseline gap-x-2">
             <h5 className="text-sm font-medium">{release.summary}</h5>
-            <span className="font-mono text-[11px] text-muted-foreground">
+            <span className="font-mono text-2xs text-muted-foreground">
               {shortCommit(release.commit)}
             </span>
           </div>

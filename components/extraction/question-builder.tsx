@@ -50,13 +50,13 @@ const TYPE_ICON_MAP: Record<
 
 const TYPE_COLOR_MAP: Record<ExtractionQuestionType, string> = {
   string:
-    "text-blue-600 border-blue-300 dark:text-blue-400 dark:border-blue-700",
+    "ink-blue-500 border-blue-500/40",
   boolean:
-    "text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700",
+    "ink-emerald-500 border-emerald-500/40",
   number:
-    "text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700",
+    "ink-amber-500 border-amber-500/40",
   array:
-    "text-purple-600 border-purple-300 dark:text-purple-400 dark:border-purple-700",
+    "ink-purple-500 border-purple-500/40",
 };
 
 interface QuestionRowProps {

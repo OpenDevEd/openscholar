@@ -174,7 +174,7 @@ export function HistoryQueryExpansion({
                       exit={{ opacity: 0 }}
                       className="p-3"
                     >
-                      <div className="flex items-center gap-2 text-amber-600 mb-2">
+                      <div className="flex items-center gap-2 ink-warning mb-2">
                         <BookmarkPlus className="h-4 w-4" />
                         <span className="text-sm font-medium">
                           {tc("saveAsBookmark")}

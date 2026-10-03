@@ -105,7 +105,7 @@ export function AISetupGate({ className }: AISetupGateProps) {
               <Button
                 size="sm"
                 onClick={goToSignIn}
-                className="h-7 gap-1 px-2.5 text-[11px]"
+                className="h-7 gap-1 px-2.5 text-2xs"
               >
                 <ArrowRight className="h-2.5 w-2.5" />
                 {t("signInForCredits")}
@@ -114,7 +114,7 @@ export function AISetupGate({ className }: AISetupGateProps) {
                 size="sm"
                 variant="ghost"
                 asChild
-                className="h-7 gap-1 px-2.5 text-[11px] text-muted-foreground"
+                className="h-7 gap-1 px-2.5 text-2xs text-muted-foreground"
               >
                 <Link href="/settings/ai">
                   <Settings className="h-2.5 w-2.5" />

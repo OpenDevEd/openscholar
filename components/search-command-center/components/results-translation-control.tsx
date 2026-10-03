@@ -135,10 +135,10 @@ export function ResultsTranslationControl({
           : "h-8 rounded-full gap-1.5 pl-2.5 pr-2 border-border/70 bg-background/90 hover:bg-accent/50",
         compactTrigger
           ? allTranslated
-            ? "bg-background text-emerald-600 dark:text-emerald-400 shadow-xs"
+            ? "bg-background ink-success shadow-xs"
             : showActiveTranslationState && "bg-background text-foreground shadow-xs"
           : allTranslated
-            ? "border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+            ? "border-success/40 ink-success"
             : showActiveTranslationState && "border-primary/40 text-primary",
         compactTrigger
           ? isOpen && "bg-background text-foreground shadow-xs"
@@ -149,21 +149,21 @@ export function ResultsTranslationControl({
       {isTranslating ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : allTranslated ? (
-        <Check className="h-4 w-4 text-emerald-500" />
+        <Check className="h-4 w-4 text-success" />
       ) : (
         <Globe2 className="h-4 w-4" />
       )}
       <span>{allTranslated ? t("translated") : t("translate")}</span>
       {compactTrigger ? (
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
           {targetBadgeLabel}
         </span>
       ) : (
         <Badge
           variant="outline"
           className={cn(
-            "h-5 rounded-full px-1.5 text-[10px] font-semibold tracking-wide",
-            allTranslated && "border-emerald-500/40 text-emerald-600 dark:text-emerald-400"
+            "h-5 rounded-full px-1.5 text-3xs font-semibold tracking-wide",
+            allTranslated && "border-success/40 ink-success"
           )}
         >
           {targetBadgeLabel}
@@ -189,7 +189,7 @@ export function ResultsTranslationControl({
             </div>
             <Badge
               variant="outline"
-              className="h-5 shrink-0 rounded-full px-1.5 text-[10px] font-semibold tracking-wide"
+              className="h-5 shrink-0 rounded-full px-1.5 text-3xs font-semibold tracking-wide"
             >
               {targetBadgeLabel}
             </Badge>
@@ -258,11 +258,11 @@ export function ResultsTranslationControl({
                             <img
                               src={language.flagUrl}
                               alt={`${language.name} flag`}
-                              className="h-3 w-4 shrink-0 rounded-sm border border-gray-200 object-cover"
+                              className="h-3 w-4 shrink-0 rounded-sm border border-border object-cover"
                             />
                             <span>{tl(language.code as never) || language.name}</span>
                           </span>
-                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          <span className="text-3xs uppercase tracking-wide text-muted-foreground">
                             {language.code}
                           </span>
                         </span>
@@ -283,7 +283,7 @@ export function ResultsTranslationControl({
             className={cn(
               "w-full",
               allTranslated &&
-                "border-emerald-500/40 text-emerald-600 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-400"
+                "border-success/40 ink-success hover:ink-success"
             )}
             variant={allTranslated || autoTranslateResults ? "outline" : "default"}
             onClick={handleRunTranslation}

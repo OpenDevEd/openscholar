@@ -377,7 +377,7 @@ export function PdfViewer({
         onResetZoom={handleReset}
       />
 
-      <div className="border-b border-border/50 bg-muted/30 px-2 py-1 text-[11px] text-muted-foreground">
+      <div className="border-b border-border/50 bg-muted/30 px-2 py-1 text-2xs text-muted-foreground">
         {documentError ? (
           <span className="text-destructive">{t("pdfViewer.unableToLoadPdf", { error: documentError })}</span>
         ) : !highlightValidated ? (
@@ -385,7 +385,7 @@ export function PdfViewer({
         ) : !isCitationPage && highlightPage ? (
           <span>{t("pdfViewer.highlightOnPage", { page: highlightPage })}</span>
         ) : rangeUnavailable ? (
-          <span className="text-amber-600 dark:text-amber-400">{t("pdfViewer.citationRangeUnavailable")}</span>
+          <span className="ink-warning">{t("pdfViewer.citationRangeUnavailable")}</span>
         ) : (
           <span>{t("pdfViewer.keyboardNavHint")}</span>
         )}

@@ -152,7 +152,7 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
                             <span className="block truncate text-sm font-medium">
                               {stripProviderPrefix(name)}
                             </span>
-                            <code className="block truncate font-mono text-[11px] text-muted-foreground">
+                            <code className="block truncate font-mono text-2xs text-muted-foreground">
                               {model}
                             </code>
                           </span>

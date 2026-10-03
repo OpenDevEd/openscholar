@@ -532,7 +532,7 @@ Return a more targeted version of this query.`;
                   <Badge
                     variant={isScreeningOpen ? "default" : "outline"}
                     className={cn(
-                      "h-5 min-w-5 rounded-full px-1.5 text-[10px] font-semibold tabular-nums",
+                      "h-5 min-w-5 rounded-full px-1.5 text-3xs font-semibold tabular-nums",
                       isScreeningOpen
                         ? "bg-primary text-primary-foreground"
                         : "bg-background text-muted-foreground"

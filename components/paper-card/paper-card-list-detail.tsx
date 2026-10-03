@@ -262,7 +262,7 @@ export function PaperCardListDetail({
                 {/* SDGs */}
                 {(result.sustainable_development_goals?.length ?? 0) > 0 && (
                   <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <Leaf className="h-3.5 w-3.5 mt-0.5 text-green-600" />
+                    <Leaf className="h-3.5 w-3.5 mt-0.5 ink-success" />
                     <div>
                       <span className="font-medium">{tp("sdgsLabel")}</span>
                       <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -280,10 +280,10 @@ export function PaperCardListDetail({
                                 score: sdg.score?.toFixed(2) ?? tc("notAvailable"),
                               })}
                             >
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300 rounded-full text-xs border border-green-200 dark:border-green-800">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-success/15 ink-success rounded-full text-xs border border-success/30">
                                 {sdg.display_name}
                                 {sdg.score && (
-                                  <span className="text-green-600 dark:text-green-400 font-medium">
+                                  <span className="ink-success font-medium">
                                     {sdg.score.toFixed(2)}
                                   </span>
                                 )}
@@ -380,44 +380,44 @@ export function PaperCardListDetail({
             <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={handleCitesSearch}
-                className="bg-orange-50 dark:bg-orange-950/30 hover:bg-orange-100 dark:hover:bg-orange-950/50 border border-orange-200 dark:border-orange-800 rounded-xl p-3 text-left transition-all group/cite relative"
+                className="bg-cites/10 hover:bg-cites/15 border border-cites/30 rounded-xl p-3 text-left transition-all group/cite relative"
               >
-                <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400 mb-1">
+                <div className="flex items-center gap-1.5 ink-cites mb-1">
                   <Quote className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium">{tp("citedBy")}</span>
                 </div>
-                <div className="text-lg font-bold text-orange-700 dark:text-orange-300">
+                <div className="text-lg font-bold ink-cites">
                   {format.number(result.cited_by_count ?? 0)}
                 </div>
-                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-orange-400 opacity-50 group-hover/cite:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-cites opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
 
               <button
                 onClick={handleCitedBySearch}
-                className="bg-green-50 dark:bg-green-950/30 hover:bg-green-100 dark:hover:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-xl p-3 text-left transition-all group/cite relative"
+                className="bg-cited-by/10 hover:bg-cited-by/15 border border-cited-by/30 rounded-xl p-3 text-left transition-all group/cite relative"
               >
-                <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 mb-1">
+                <div className="flex items-center gap-1.5 ink-cited-by mb-1">
                   <Quote className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium">{tp("cites")}</span>
                 </div>
-                <div className="text-lg font-bold text-green-700 dark:text-green-300">
+                <div className="text-lg font-bold ink-cited-by">
                   {format.number(result.referenced_works_count ?? 0)}
                 </div>
-                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-green-400 opacity-50 group-hover/cite:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-cited-by opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
 
               <button
                 onClick={handleRelatedSearch}
-                className="bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-left transition-all group/cite relative"
+                className="bg-related/10 hover:bg-related/15 border border-related/30 rounded-xl p-3 text-left transition-all group/cite relative"
               >
-                <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                <div className="flex items-center gap-1.5 ink-related mb-1">
                   <Network className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium">{tc("related")}</span>
                 </div>
-                <div className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                <div className="text-lg font-bold ink-related">
                   {format.number(result.related_works?.length ?? 0)}
                 </div>
-                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-blue-400 opacity-50 group-hover/cite:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-related opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
             </div>
           </div>

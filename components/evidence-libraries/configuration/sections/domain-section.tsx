@@ -487,7 +487,7 @@ export const DomainSection = memo(function DomainSection({
                             recordIndex === 0 ? "" : "border-t border-border/40"
                           }`}
                         >
-                          <span className="w-fit rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
+                          <span className="w-fit rounded-md bg-muted px-1.5 py-0.5 font-mono text-2xs font-semibold text-muted-foreground">
                             {record.type}
                           </span>
                           <div className="flex min-w-0 items-center gap-1">
@@ -495,7 +495,7 @@ export const DomainSection = memo(function DomainSection({
                               <p className="truncate font-mono text-xs font-medium">
                                 {record.label}
                               </p>
-                              <p className="truncate font-mono text-[10px] text-muted-foreground">
+                              <p className="truncate font-mono text-3xs text-muted-foreground">
                                 {record.name}
                               </p>
                             </div>

@@ -124,7 +124,7 @@ export function UpgradeConfirmationDialog({
                     <span className="text-muted-foreground truncate mr-2">
                       {item.description}
                     </span>
-                    <span className={item.amountCents < 0 ? "text-green-600" : ""}>
+                    <span className={item.amountCents < 0 ? "ink-success" : ""}>
                       {format.number(item.amountCents / 100, {
                         style: "currency",
                         currency: item.currency,

@@ -95,11 +95,11 @@ export function QueryEvolution({
         </motion.span>
 
         {isExpanded ? (
-          <span className="text-[10px] text-muted-foreground font-medium">
+          <span className="text-3xs text-muted-foreground font-medium">
             {t("queryEvolution")}
           </span>
         ) : (
-          <div className="flex-1 min-w-0 flex items-center gap-1 text-[10px] text-muted-foreground">
+          <div className="flex-1 min-w-0 flex items-center gap-1 text-3xs text-muted-foreground">
             {previewQueries.map((entry, idx) => (
               <React.Fragment key={entry.query}>
                 <span className="truncate max-w-[80px]">
@@ -158,13 +158,13 @@ export function QueryEvolution({
                       <QueryText 
                         query={entry.query}
                         className={cn(
-                          "text-[10px] break-words leading-relaxed [overflow-wrap:anywhere]",
+                          "text-3xs break-words leading-relaxed [overflow-wrap:anywhere]",
                           isCurrent && "font-medium",
                           // Only long queries are cut off, so a short one keeps its time beside it.
                           entry.query.length > LONG_QUERY_CHARS && "line-clamp-4"
                         )}
                       />
-                      <span className="text-[9px] pl-2 text-muted-foreground/50">
+                      <span className="text-3xs pl-2 text-muted-foreground/50">
                         {format.relativeTime(new Date(entry.timestamp), now)}
                       </span>
                     </div>

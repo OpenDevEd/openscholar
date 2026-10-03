@@ -197,15 +197,15 @@ export function PaperContent({
             {!isPreview && paper.open_access && paper.open_access.is_oa && (
               <span className="flex items-center gap-1">
                 <>
-                  <FileText className="h-3 w-3 text-green-600" />
-                  <span className="text-green-600 font-medium">{tFocus("pdf")}</span>
+                  <FileText className="h-3 w-3 ink-success" />
+                  <span className="ink-success font-medium">{tFocus("pdf")}</span>
                   {paper.open_access.oa_url && (
                     <>
                       <a
                         href={paper.open_access.oa_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
+                        className="ink-info hover:underline"
                       ></a>
                       <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                         A
@@ -226,7 +226,7 @@ export function PaperContent({
                       : `https://doi.org/${paper.doi!}`;
                     window.open(doiUrl, "_blank");
                   }}
-                  className="flex items-center gap-1 text-xs text-blue-600 hover:underline cursor-pointer"
+                  className="flex items-center gap-1 text-xs ink-info hover:underline cursor-pointer"
                 >
                   <ExternalLink className="h-3 w-3" />
                   <span className="font-mono">
@@ -271,10 +271,10 @@ export function PaperContent({
                           score: sdg.score?.toFixed(2) ?? tCommon("notAvailable"),
                         })}
                       >
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-success/15 ink-success rounded-full text-xs">
                           {sdg.display_name}
                           {sdg.score && (
-                            <span className="text-green-600 font-medium">
+                            <span className="ink-success font-medium">
                               {sdg.score.toFixed(2)}
                             </span>
                           )}

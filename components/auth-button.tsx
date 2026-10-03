@@ -306,7 +306,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
               {showUpgradeButton && (
                 <Button
                   size="sm"
-                  className="w-full h-8 text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0"
+                  className="w-full h-8 text-xs font-semibold"
                   onClick={() => {
                     setOpen(false);
                     router.push("/pricing");

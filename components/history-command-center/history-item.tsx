@@ -566,7 +566,7 @@ export function HistoryItem({
               {format.number(item.count, item.count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
             </span>
             <span
-              className="text-[10px] opacity-70 mt-0.5"
+              className="text-3xs opacity-70 mt-0.5"
               style={{ color: idColor.text }}
             >
               {tc("results").toLowerCase()}

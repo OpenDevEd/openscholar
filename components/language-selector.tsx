@@ -83,7 +83,7 @@ export function LanguageSelector({
                   className="absolute inset-0 flex items-center justify-center"
                 >
                   <SelectValue>
-                    <span className="text-[11px] font-medium uppercase leading-none">
+                    <span className="text-2xs font-medium uppercase leading-none">
                       {selectedLanguage.code}
                     </span>
                   </SelectValue>

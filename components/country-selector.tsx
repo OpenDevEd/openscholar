@@ -261,7 +261,7 @@ export function CountrySelector({
             {node.isCountry ? (
               <div className="flex items-center gap-1">
                 <CountryFlag countryCode={node.label} />
-                <div className="h-4 text-xs flex items-center justify-center bg-blue-100 text-blue-600 rounded border px-1">
+                <div className="h-4 text-xs flex items-center justify-center bg-info/15 ink-info rounded border px-1">
                   {node.label}
                 </div>
               </div>
@@ -321,7 +321,7 @@ export function CountrySelector({
             className={cn(
               "w-full justify-start text-left font-normal",
               selectedRegions.length === 0 && "text-muted-foreground",
-              countryData.isLimitExceeded && "border-orange-300 bg-orange-50",
+              countryData.isLimitExceeded && "border-warning/40 bg-warning/10",
               triggerClassName
             )}
           >
@@ -351,7 +351,7 @@ export function CountrySelector({
                 )}
               </span>
               {countryData.isLimitExceeded && (
-                <span className="text-orange-500 text-xs flex-shrink-0">⚠️</span>
+                <span className="text-warning text-xs flex-shrink-0">⚠️</span>
               )}
             </div>
           </Button>
@@ -408,7 +408,7 @@ export function CountrySelector({
                     variant={isCountryCode ? "outline" : "secondary"}
                     className={cn(
                       "cursor-pointer hover:bg-destructive hover:text-destructive-foreground max-w-[200px]",
-                      isCountryCode && "border-blue-300 bg-blue-50 text-blue-700"
+                      isCountryCode && "border-info/40 bg-info/10 ink-info"
                     )}
                     onClick={() => handleSelectRegion(regionId)}
                   >

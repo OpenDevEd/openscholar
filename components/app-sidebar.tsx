@@ -141,7 +141,7 @@ function NavItem({
           <motion.span
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center text-[10px] font-bold bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white rounded-full"
+            className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center text-3xs font-bold bg-gradient-to-r from-primary-400 to-primary-600 text-primary-foreground rounded-full"
           >
             {badge > 9 ? "9+" : badge}
           </motion.span>
@@ -176,7 +176,7 @@ function NavItem({
                 className={cn(
                   "text-xs px-2 py-0.5 rounded-full font-medium badge-glow",
                   isActive
-                    ? "bg-gradient-to-r from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)] text-white shadow-md"
+                    ? "bg-gradient-to-r from-primary-400 via-primary to-primary-600 text-primary-foreground shadow-md"
                     : "bg-muted text-muted-foreground",
                 )}
               >
@@ -191,7 +191,7 @@ function NavItem({
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.1 }}
-          className="absolute inset-0 bg-gradient-to-r from-[oklch(0.70_0.17_54)] to-transparent pointer-events-none"
+          className="absolute inset-0 bg-gradient-to-r from-primary to-transparent pointer-events-none"
         />
       )}
     </Link>
@@ -226,7 +226,7 @@ function NavItem({
                     <motion.span
                       initial={{ scale: 0.95, opacity: 0 }}
                       animate={{ scale: 1 }}
-                      className="text-xs bg-gradient-to-r from-[oklch(0.75_0.15_55)] to-[oklch(0.62_0.16_52)] text-white px-1.5 py-0.5 rounded-full"
+                      className="text-xs bg-gradient-to-r from-primary-400 to-primary-600 text-primary-foreground px-1.5 py-0.5 rounded-full"
                     >{badge}</motion.span>
                   )}
                 </>
@@ -276,7 +276,7 @@ function ScreeningFooterButton({
             cx="12"
             cy="12"
             r="10"
-            stroke="oklch(0.70 0.17 54)"
+            stroke="var(--primary)"
             strokeWidth="1.5"
             strokeDasharray={circumference}
             strokeDashoffset={

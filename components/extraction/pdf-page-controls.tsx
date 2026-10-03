@@ -83,7 +83,7 @@ export function PdfPageControls({
           aria-label={t('accessibility.pageNumberInput')}
           className="h-7 w-10 text-center text-xs"
         />
-        <span className="whitespace-nowrap text-[11px] text-muted-foreground">/ {Math.max(1, numPages)}</span>
+        <span className="whitespace-nowrap text-2xs text-muted-foreground">/ {Math.max(1, numPages)}</span>
       </div>
 
       <IconButton

@@ -150,7 +150,7 @@ export default function ConnectPage() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-400">
+          <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs ink-warning">
             This key grants access to AI generation using your credits.
             Store it securely. You can revoke it from Settings at any time.
           </div>

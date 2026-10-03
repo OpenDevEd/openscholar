@@ -96,7 +96,7 @@ export function SetupHero({
                   style={{ ["--a" as string]: `${angle}deg`, animationDelay: `${520 + delay}ms` }}
                   className={cn(
                     "el-burst-dot absolute left-1/2 top-1/2 size-1.5 rounded-full",
-                    primary ? "bg-primary" : "bg-emerald-400",
+                    primary ? "bg-primary" : "bg-success",
                   )}
                 />
               ))
@@ -131,11 +131,11 @@ export function SetupHero({
               onClick={copyAddress}
               data-copied={copied}
               aria-label={copied ? tl("copiedShort") : tl("copyAddress")}
-              className="inline-flex h-10 max-w-full items-center gap-2 rounded-full border border-border/60 bg-background/70 px-4 font-mono text-sm shadow-xs backdrop-blur transition-colors hover:border-emerald-500/50 hover:bg-background"
+              className="inline-flex h-10 max-w-full items-center gap-2 rounded-full border border-border/60 bg-background/70 px-4 font-mono text-sm shadow-xs backdrop-blur transition-colors hover:border-success/50 hover:bg-background"
             >
               <span className="truncate">{host}</span>
               {copied ? (
-                <Check className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                <Check className="size-4 shrink-0 ink-success" aria-hidden />
               ) : (
                 <Copy className="size-4 shrink-0 text-muted-foreground" aria-hidden />
               )}
@@ -165,7 +165,7 @@ export function SetupHero({
         <ol
           className={cn(
             "el-hero-rise mt-4 flex w-full flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t pt-4",
-            live ? "border-emerald-500/15" : failed ? "border-destructive/15" : "border-primary/15",
+            live ? "border-success/15" : failed ? "border-destructive/15" : "border-primary/15",
           )}
           style={{ animationDelay: live ? "820ms" : "0ms" }}
         >
@@ -202,14 +202,14 @@ export function SetupHero({
 function Mark({ status }: { status: SetupHeroStatus }) {
   if (status === "active") {
     return (
-      <span className="el-hero-check flex size-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/40 ring-8 ring-emerald-500/10">
+      <span className="el-hero-check flex size-16 items-center justify-center rounded-full bg-success text-success-foreground shadow-lg shadow-success/40 ring-8 ring-success/10">
         <Check className="size-8" strokeWidth={3} aria-hidden />
       </span>
     );
   }
   if (status === "setup_failed") {
     return (
-      <span className="flex size-16 items-center justify-center rounded-full bg-destructive text-white shadow-lg shadow-destructive/30 ring-8 ring-destructive/10">
+      <span className="flex size-16 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-lg shadow-destructive/30 ring-8 ring-destructive/10">
         <X className="size-8" strokeWidth={3} aria-hidden />
       </span>
     );
@@ -226,7 +226,7 @@ function StepMark({ status, emphasis }: { status: SetupStep["status"]; emphasis:
   if (status === "done") {
     return (
       <Check
-        className={cn("size-3.5", emphasis ? "text-emerald-500" : "text-emerald-600/70 dark:text-emerald-400/70")}
+        className={cn("size-3.5", emphasis ? "text-success" : "text-success/70")}
         strokeWidth={3}
         aria-hidden
       />

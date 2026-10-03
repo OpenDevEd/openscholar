@@ -430,7 +430,7 @@ export function MapSummary({
                   transition={{ duration: 0.45, ease: EASE }}
                 >
                   <span className="h-1.5 rounded-full" style={{ backgroundColor: routing.colorOf(n.id), opacity: dim ? 0.25 : 1 }} />
-                  <span className={cn("truncate text-[11px] tabular-nums", dim ? "text-muted-foreground/40" : "text-muted-foreground")}>
+                  <span className={cn("truncate text-2xs tabular-nums", dim ? "text-muted-foreground/40" : "text-muted-foreground")}>
                     {`${n.tasks.length}/${total}`}
                   </span>
                 </motion.div>

@@ -423,7 +423,7 @@ function CollectionChecklist({
             </TooltipHint>
             <Badge
               variant="secondary"
-              className="text-[10px] h-4 px-1 shrink-0"
+              className="text-3xs h-4 px-1 shrink-0"
             >
               {collection.itemCount}
             </Badge>

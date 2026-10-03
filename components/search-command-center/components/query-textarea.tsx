@@ -69,7 +69,7 @@ export function QueryTextarea({
             "focus-within:border-primary/50",
             "focus-within:ring-2 focus-within:ring-primary/10",
             "focus-within:bg-background",
-            flash && "bg-green-50 border-green-400 dark:bg-green-950/30 dark:border-green-600"
+            flash && "bg-success/10 border-success"
           )}
         >
           <textarea

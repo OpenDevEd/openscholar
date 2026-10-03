@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils";
 const STATUS_TONE = {
   neutral: "bg-muted text-muted-foreground border-border/50",
   running: "bg-primary/10 text-primary border-primary/20",
-  success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-  warning: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+  success: "bg-success/10 ink-success border-success/20",
+  warning: "bg-warning/10 ink-warning border-warning/20",
   danger: "bg-destructive/10 text-destructive border-destructive/20",
 } as const;
 
@@ -23,8 +23,8 @@ export type StatusTone = keyof typeof STATUS_TONE;
 const STATUS_ICON: Record<StatusTone, { icon: LucideIcon; className: string }> = {
   neutral: { icon: CircleDashed, className: "text-muted-foreground" },
   running: { icon: LoaderCircle, className: "animate-spin text-primary motion-reduce:animate-none" },
-  success: { icon: CircleCheck, className: "text-emerald-600 dark:text-emerald-400" },
-  warning: { icon: TriangleAlert, className: "text-amber-600 dark:text-amber-400" },
+  success: { icon: CircleCheck, className: "ink-success" },
+  warning: { icon: TriangleAlert, className: "ink-warning" },
   danger: { icon: CircleX, className: "text-destructive" },
 };
 

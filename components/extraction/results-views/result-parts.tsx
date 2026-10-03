@@ -15,8 +15,8 @@ import { HighlightedText } from "./highlighted-text";
 // view say the same thing the same way.
 
 const CONFIDENCE_TEXT: Record<StatusTone, string> = {
-  success: "text-emerald-600 dark:text-emerald-400",
-  warning: "text-amber-700 dark:text-amber-400",
+  success: "ink-success",
+  warning: "ink-warning",
   danger: "text-destructive",
   neutral: "text-muted-foreground",
   running: "text-primary",
@@ -99,7 +99,7 @@ export function ResultMeta({ result }: { result?: ExtractionResultRecord }) {
       </span>
       {status === "grounded" ? (
         <span className="inline-flex items-center gap-1 text-muted-foreground">
-          <Quote aria-hidden className="size-3 text-emerald-600 dark:text-emerald-400" />
+          <Quote aria-hidden className="size-3 ink-success" />
           {tc("grounded")}
         </span>
       ) : status === "best_effort" ? (

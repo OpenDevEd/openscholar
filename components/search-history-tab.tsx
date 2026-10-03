@@ -105,7 +105,7 @@ export function SearchHistoryTab({
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-gradient-to-r from-[oklch(0.70_0.17_54)] to-transparent pointer-events-none"
+              className="absolute inset-0 bg-gradient-to-r from-primary to-transparent pointer-events-none"
             />
           )}
         </AnimatePresence>
@@ -117,7 +117,7 @@ export function SearchHistoryTab({
               transition={{ duration: 0.2, ease: "easeInOut" }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="text-[9px] px-1 py-0.5 rounded-full shrink-0 font-medium badge-glow"
+              className="text-3xs px-1 py-0.5 rounded-full shrink-0 font-medium badge-glow"
               style={{
                 backgroundColor: idColor.bg,
                 color: idColor.text,
@@ -144,7 +144,7 @@ export function SearchHistoryTab({
                 <motion.span
                   key={`filter-count-${searchId}`}
                   layoutId={`filter-count-${searchId}`}
-                  className="text-[9px] px-1 py-0.5 rounded shrink-0 font-medium opacity-60"
+                  className="text-3xs px-1 py-0.5 rounded shrink-0 font-medium opacity-60"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 0.6, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
@@ -159,7 +159,7 @@ export function SearchHistoryTab({
               transition={{ duration: 0.2, ease: "easeInOut" }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="text-[9px] px-1 py-0.5 rounded-full shrink-0 font-medium badge-glow"
+              className="text-3xs px-1 py-0.5 rounded-full shrink-0 font-medium badge-glow"
               style={{
                 backgroundColor: idColor.bg,
                 color: idColor.text,

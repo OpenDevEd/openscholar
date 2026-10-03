@@ -37,7 +37,7 @@ export function QueryHistoryNav({
       >
         <ChevronLeft className="h-3 w-3" />
       </Button>
-      <span className="text-[10px] text-muted-foreground tabular-nums px-0.5">
+      <span className="text-3xs text-muted-foreground tabular-nums px-0.5">
         {historyIndex + 1}/{historyLength}
       </span>
       <Button

@@ -33,7 +33,7 @@ function StarRatingDisplay({ rating }: { rating: number }) {
           className={cn(
             "h-4 w-4",
             i < rating
-              ? "fill-yellow-400 text-yellow-400"
+              ? "fill-rating text-rating"
               : "text-muted-foreground/20",
           )}
         />
@@ -150,7 +150,7 @@ export function RatingRangePicker({
             )}
             {[1, 2, 3, 4, 5].map((rating) => (
               <div key={rating} className="flex flex-col items-center gap-1">
-                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                <Star className="h-3 w-3 fill-rating text-rating" />
                 <span className="text-xs text-muted-foreground">
                   {rating}
                 </span>
@@ -163,8 +163,8 @@ export function RatingRangePicker({
       {/* Active filter indicator (search-only) */}
       {showActiveIndicator && isRatingActive && (
         <div className="text-center">
-          <div className="inline-flex items-center gap-2 text-xs text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/30 px-3 py-2 rounded-full">
-            <Star className="h-3 w-3 fill-orange-500 text-orange-500" />
+          <div className="inline-flex items-center gap-2 text-xs tint-rating px-3 py-2 rounded-full">
+            <Star className="h-3 w-3 fill-rating text-rating" />
             <span>
               {onlyRatedPapers
                 ? tf("showingRange", {

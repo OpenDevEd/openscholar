@@ -31,7 +31,7 @@ export function BucketIndicator({
   const tint = atCap
     ? "text-destructive"
     : nearCap
-      ? "text-amber-600 dark:text-amber-400"
+      ? "ink-warning"
       : "";
   return (
     <Button

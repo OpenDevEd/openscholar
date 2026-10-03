@@ -33,7 +33,7 @@ function capacityState(readyCount: number, limit: number): CapacityState {
 
 const CAPACITY_TINT: Record<CapacityState, string> = {
   normal: "text-foreground",
-  near: "text-amber-600 dark:text-amber-400",
+  near: "ink-warning",
   at: "text-destructive",
 };
 
@@ -122,7 +122,7 @@ function BucketHeader({
             "mx-4 mt-3 rounded-md p-2 text-xs",
             atCap
               ? "bg-destructive/10 text-destructive"
-              : "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+              : "bg-warning/10 ink-warning",
           )}
         >
           {atCap

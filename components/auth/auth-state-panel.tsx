@@ -100,7 +100,7 @@ const REDUCED_SPINNER_VARIANTS: Variants = {
 const ICON_TREATMENT: Record<AuthStateVariant, string> = {
   loading: "bg-primary/10 text-primary",
   sign_in_required: "bg-primary/12 text-primary",
-  no_access: "bg-amber-500/14 text-amber-700 dark:text-amber-300",
+  no_access: "bg-warning/14 ink-warning",
   sync_error_retry: "bg-primary/14 text-primary",
 };
 
@@ -203,7 +203,7 @@ export function AuthStatePanel({
       aria-live="polite"
     >
       <div className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-border/60 bg-card/95 px-6 py-8 text-center shadow-lg sm:px-8">
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(70%_55%_at_50%_-5%,oklch(0.7_0.17_54_/_0.12),transparent_70%)]" />
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(70%_55%_at_50%_-5%,color-mix(in_oklab,var(--primary)_12%,transparent),transparent_70%)]" />
         <div className="pointer-events-none absolute -left-20 top-10 -z-10 h-40 w-40 rounded-full bg-primary/8 blur-3xl" />
         <div className="pointer-events-none absolute -right-20 bottom-8 -z-10 h-40 w-40 rounded-full bg-primary/8 blur-3xl" />
 
@@ -218,14 +218,14 @@ export function AuthStatePanel({
         </motion.div>
 
         <motion.h2
-          className="mx-auto mb-2 max-w-[24ch] text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-[1.75rem]"
+          className="mx-auto mb-2 max-w-[24ch] text-balance text-2xl font-semibold tracking-tight text-foreground sm:text-3xl"
           variants={itemVariants}
         >
           {resolvedTitle}
         </motion.h2>
 
         <motion.p
-          className="mx-auto mb-7 max-w-[48ch] text-pretty text-[0.95rem] leading-6 text-muted-foreground"
+          className="mx-auto mb-7 max-w-[48ch] text-pretty text-base leading-6 text-muted-foreground"
           variants={itemVariants}
         >
           {resolvedDescription}

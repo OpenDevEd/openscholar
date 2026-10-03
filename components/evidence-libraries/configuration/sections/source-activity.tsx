@@ -58,7 +58,7 @@ type PhaseState = "running" | "done" | "failed" | "waiting";
 
 const PHASE_LOOK: Record<PhaseState, { text: string; ring: string }> = {
   running: { text: "text-primary", ring: "bg-primary/10" },
-  done: { text: "text-emerald-700 dark:text-emerald-400", ring: "bg-emerald-500/10" },
+  done: { text: "ink-success", ring: "bg-success/10" },
   failed: { text: "text-destructive", ring: "bg-destructive/10" },
   waiting: { text: "text-muted-foreground", ring: "bg-muted" },
 };
@@ -120,7 +120,7 @@ function Connector({ lit }: { lit: boolean }) {
       aria-hidden
       className={cn(
         "h-px min-w-4 flex-1 transition-colors duration-500 motion-reduce:transition-none",
-        lit ? "bg-emerald-500/50" : "bg-border",
+        lit ? "bg-success/50" : "bg-border",
       )}
     />
   );
@@ -176,7 +176,7 @@ function PdfBar({ pdfs, total, label, tone }: { pdfs: PdfCounts; total: number; 
       aria-valuenow={pdfs.added + pdfs.missed}
       className="flex h-2 w-full overflow-hidden rounded-full bg-foreground/10"
     >
-      <span className={cn(SEGMENT, tone === "running" ? "bg-primary" : "bg-emerald-500")} style={{ width: share(pdfs.added) }} />
+      <span className={cn(SEGMENT, tone === "running" ? "bg-primary" : "bg-success")} style={{ width: share(pdfs.added) }} />
       <span className={cn(SEGMENT, "bg-foreground/25")} style={{ width: share(pdfs.missed) }} />
     </div>
   );
@@ -189,7 +189,7 @@ function PdfLegend({ pdfs, tone }: { pdfs: PdfCounts; tone: "running" | "done" }
       <span className="inline-flex items-center gap-1">
         <FileCheck2
           aria-hidden
-          className={cn("size-3.5", tone === "running" ? "text-primary" : "text-emerald-600 dark:text-emerald-400")}
+          className={cn("size-3.5", tone === "running" ? "text-primary" : "ink-success")}
         />
         {t("pdfsAdded", { count: pdfs.added })}
       </span>
@@ -311,7 +311,7 @@ function SucceededActivity({ status, issuesIn }: { status: SourceStatus; issuesI
         {issues > 0 && issuesIn ? (
           <Button asChild variant="outline" size="sm">
             <AdminAreaLink address={issuesIn.address} path={issuesIn.path}>
-              <TriangleAlert className="text-amber-600 dark:text-amber-400" />
+              <TriangleAlert className="ink-warning" />
               {t("reviewIssues", { count: issues })}
               <ExternalLink className="text-muted-foreground" />
             </AdminAreaLink>
@@ -365,7 +365,7 @@ function FailedActivity({
           <DisclosureTrigger className="ml-0">{t("details")}</DisclosureTrigger>
         </div>
         <DisclosureContent>
-          <pre className="whitespace-pre-wrap break-words pt-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
+          <pre className="whitespace-pre-wrap break-words pt-3 font-mono text-2xs leading-relaxed text-muted-foreground">
             {status.failure.details}
           </pre>
         </DisclosureContent>
@@ -376,7 +376,7 @@ function FailedActivity({
 
 const BAND: Record<SourceStatus["state"] | "waiting", string> = {
   running: "bg-primary/[0.05]",
-  succeeded: "bg-emerald-500/[0.05]",
+  succeeded: "bg-success/5",
   failed: "bg-destructive/[0.06]",
   idle: "bg-muted/40",
   waiting: "bg-muted/40",

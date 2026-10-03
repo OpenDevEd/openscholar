@@ -51,11 +51,11 @@ export function SearchTooltipContent({
             query={query}
             className="text-sm font-medium break-words flex-1 leading-snug line-clamp-6 [overflow-wrap:anywhere]"
           />
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium shrink-0">
+          <span className="text-3xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium shrink-0">
             {format.number(count, count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
           </span>
         </div>
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70">
+        <div className="flex items-center gap-1 text-3xs text-muted-foreground/70">
           <Clock className="h-2.5 w-2.5" />
           <span>{timeAgo}</span>
         </div>

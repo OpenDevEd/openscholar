@@ -77,7 +77,7 @@ const PILL_CLASS_BY_STATE: Record<CitationState, string> = {
   ),
   deprecated: cn(
     BASE_PILL,
-    "border border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    "border border-warning/35 bg-warning/10 ink-warning",
   ),
 };
 
@@ -249,7 +249,7 @@ export function PaperCitation({ index }: PaperCitationProps) {
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "h-7 px-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50",
+                    "h-7 px-2 ink-success border-success/30 hover:bg-success/10 hover:border-success/40",
                   )}
                 >
                   <a
@@ -269,7 +269,7 @@ export function PaperCitation({ index }: PaperCitationProps) {
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "h-7 px-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50",
+                    "h-7 px-2 ink-info border-info/30 hover:bg-info/10 hover:border-info/40",
                   )}
                 >
                   <a
@@ -291,7 +291,7 @@ export function PaperCitation({ index }: PaperCitationProps) {
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "h-7 px-2 text-amber-700 border-amber-200 hover:bg-amber-50 hover:border-amber-300 dark:text-amber-400 dark:border-amber-800 dark:hover:bg-amber-950/50",
+                    "h-7 px-2 ink-warning border-warning/30 hover:bg-warning/10 hover:border-warning/40",
                   )}
                 >
                   <a

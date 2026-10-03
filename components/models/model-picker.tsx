@@ -65,7 +65,7 @@ function Stats({ model }: { model: CatalogModel | undefined }) {
       <span className={cn(CONTEXT_CELL, "text-xs tabular-nums text-muted-foreground")}>{contextLabel(model?.contextLength)}</span>
       <span className="text-right text-xs tabular-nums text-muted-foreground">
         {!model ? null : free ? (
-          <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 font-medium text-emerald-600 dark:text-emerald-400">{t("free")}</span>
+          <span className="rounded-full bg-success/15 px-1.5 py-0.5 font-medium ink-success">{t("free")}</span>
         ) : (
           priceLabel(model.inputPricePerMillion, model.outputPricePerMillion)
         )}
@@ -144,7 +144,7 @@ function EffortStep({
         </motion.div>
       </div>
       <motion.div
-        className="px-4 pb-1.5 text-[11px] font-medium text-muted-foreground"
+        className="px-4 pb-1.5 text-2xs font-medium text-muted-foreground"
         initial={reduce ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: reduce ? 0 : 0.12, duration: 0.25 }}
@@ -183,7 +183,7 @@ function EffortStep({
             <EffortMeter levels={levels} level={level} />
             <span className="font-medium">{tm(`efforts.${level}`)}</span>
             {level === row.defaultEffort ? (
-              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{t("default")}</span>
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-2xs text-muted-foreground">{t("default")}</span>
             ) : null}
             <Check className={cn("ml-auto size-4 text-primary", level === chosen ? "opacity-100" : "opacity-0")} />
           </motion.button>
@@ -385,7 +385,7 @@ export function ModelPicker({
               </div>
             ) : null}
           </div>
-          <div className={cn(GRID, "border-y border-border/50 bg-muted/30 px-4 py-1.5 text-[11px] font-medium text-muted-foreground")}>
+          <div className={cn(GRID, "border-y border-border/50 bg-muted/30 px-4 py-1.5 text-2xs font-medium text-muted-foreground")}>
             <span>{t("model")}</span>
             <a
               href="https://artificialanalysis.ai/methodology/intelligence-benchmarking"
@@ -435,7 +435,7 @@ export function ModelPicker({
                               return <Brand key={m.id} className="size-3 shrink-0" />;
                             })}
                             <span className="truncate">{models.map((m) => stripProviderPrefix(m.name)).join(", ")}</span>
-                            {onlyEffort ? <span className="shrink-0 rounded-full bg-muted px-1.5 text-[11px]">{tm(`efforts.${onlyEffort}`)}</span> : null}
+                            {onlyEffort ? <span className="shrink-0 rounded-full bg-muted px-1.5 text-2xs">{tm(`efforts.${onlyEffort}`)}</span> : null}
                           </span>
                         </span>
                       </span>

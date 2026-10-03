@@ -219,7 +219,7 @@ export function PaperCardGrid({
                   }}
                   className={cn(
                     "flex items-center gap-1 rounded-lg font-medium transition-colors",
-                    "text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50",
+                    "ink-cites hover:bg-cites/10",
                     isCompact ? "px-1.5 py-0.5 text-xs" : "px-2 py-1 text-sm"
                   )}
                 >
@@ -236,7 +236,7 @@ export function PaperCardGrid({
                       e.stopPropagation();
                       handleRelatedSearch();
                     }}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium ink-related hover:bg-related/10 transition-colors"
                   >
                     <Network className="h-3.5 w-3.5" />
                     <span>{format.number(result.related_works?.length ?? 0)}</span>

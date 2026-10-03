@@ -30,7 +30,7 @@ export function FilterCountControl({
     >
       <span
         className={cn(
-          "flex items-center justify-center h-7 text-xs font-medium rounded-md bg-gradient-to-r from-[oklch(0.75_0.15_55)] via-[oklch(0.70_0.17_54)] to-[oklch(0.62_0.16_52)] text-white badge-glow",
+          "flex items-center justify-center h-7 text-xs font-medium rounded-md bg-gradient-to-r from-primary-400 via-primary to-primary-600 text-primary-foreground badge-glow",
           column ? "w-7" : "min-w-7 px-2",
         )}
       >

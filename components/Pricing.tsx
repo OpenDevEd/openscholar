@@ -493,7 +493,7 @@ export function Pricing() {
 
       {/* Plans Grid */}
       {hasPendingDowngrade && account?.changesAt !== undefined && (
-        <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-700 flex items-center justify-between gap-3">
+        <div className="rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm ink-info flex items-center justify-between gap-3">
           <span>
             {t("downgradeScheduledTo")}{" "}
             <span className="font-semibold">{planName(scheduledPlan!)}</span>{" "}
@@ -549,8 +549,8 @@ export function Pricing() {
             >
               {/* Current Plan Badge */}
               {isCurrent && (
-                <div className="bg-green-500/10 border-b border-green-500/20 px-4 py-2 flex items-center justify-center">
-                  <span data-testid="pricing-current-badge" className="text-xs font-semibold text-green-600 uppercase tracking-wider">
+                <div className="bg-success/10 border-b border-success/20 px-4 py-2 flex items-center justify-center">
+                  <span data-testid="pricing-current-badge" className="text-xs font-semibold ink-success uppercase tracking-wider">
                     {tc("currentPlan")}
                   </span>
                 </div>
@@ -566,8 +566,8 @@ export function Pricing() {
               )}
 
               {isScheduledTarget && !isCurrent && (
-                <div className="bg-blue-500/10 border-b border-blue-500/20 px-4 py-2 flex items-center justify-center">
-                  <span data-testid="pricing-scheduled-badge" className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
+                <div className="bg-info/10 border-b border-info/20 px-4 py-2 flex items-center justify-center">
+                  <span data-testid="pricing-scheduled-badge" className="text-xs font-semibold ink-info uppercase tracking-wider">
                     Scheduled
                   </span>
                 </div>

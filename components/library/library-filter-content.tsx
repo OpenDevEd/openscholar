@@ -421,7 +421,7 @@ function CollectionRow({
       )}
       <span className="truncate flex-1">{name}</span>
       {count !== undefined && (
-        <span className="text-[11px] tabular-nums text-muted-foreground shrink-0">
+        <span className="text-2xs tabular-nums text-muted-foreground shrink-0">
           {count}
         </span>
       )}

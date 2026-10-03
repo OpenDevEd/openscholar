@@ -131,8 +131,8 @@ export function TranslationToggle({
       if (isTranslating) {
         return (
           <TooltipHint label={tc("translating")}>
-            <div role="img" aria-label={tc("translating")} className="flex items-center justify-center p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30">
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+            <div role="img" aria-label={tc("translating")} className="flex items-center justify-center p-1.5 rounded-md bg-info/10">
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-info border-t-transparent" />
             </div>
           </TooltipHint>
         );
@@ -150,7 +150,7 @@ export function TranslationToggle({
           className={cn(
             "flex items-center justify-center p-1.5 rounded-md text-xs font-medium transition-colors",
             showTranslated
-              ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+              ? "bg-info/15 ink-info"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           )}
         >
@@ -273,11 +273,11 @@ export function ScreeningResponses({
                   className={cn(
                     "flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors",
                     displayState === "checked"
-                      ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100 dark:bg-green-950/30 dark:border-green-800 dark:text-green-400"
+                      ? "bg-success/10 border-success/30 ink-success hover:bg-success/15"
                       : displayState === "crossed"
-                      ? "bg-red-50 border-red-200 text-red-800 hover:bg-red-100 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400"
+                      ? "bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/15"
                       : displayState === "loading"
-                      ? "bg-blue-50 border-blue-200 text-blue-800 cursor-wait dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
+                      ? "bg-info/10 border-info/30 ink-info cursor-wait"
                       : "bg-muted/50 border-border text-muted-foreground hover:bg-muted/80"
                   )}
                 >
@@ -306,7 +306,7 @@ export function ScreeningResponses({
               e.stopPropagation();
               setScreeningDetailExpanded(data.id, !showExpandedView);
             }}
-            className="flex items-center gap-1 px-2 py-1 rounded border bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100 text-xs transition-colors dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
+            className="flex items-center gap-1 px-2 py-1 rounded border bg-info/10 border-info/30 ink-info hover:bg-info/15 text-xs transition-colors"
           >
             <Table className="h-3 w-3" />
             {showExpandedView ? tc("hide") : tc("details")}
@@ -375,12 +375,12 @@ export function ScreeningResponses({
                           className={cn(
                             "inline-flex items-center gap-1 px-2 py-1 rounded text-xs",
                             displayState === "checked"
-                              ? "bg-green-100 text-green-800 border border-green-200 dark:bg-green-950/50 dark:text-green-300 dark:border-green-800"
+                              ? "bg-success/15 ink-success border border-success/30"
                               : displayState === "crossed"
-                              ? "bg-red-100 text-red-800 border border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800"
+                              ? "bg-destructive/15 text-destructive border border-destructive/30"
                               : displayState === "loading"
-                              ? "bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
-                              : "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-muted/50 dark:text-muted-foreground dark:border-border"
+                              ? "bg-info/15 ink-info border border-info/30"
+                              : "bg-muted text-muted-foreground border border-border"
                           )}
                         >
                           {displayState === "checked" && <Check className="h-3 w-3" />}
@@ -417,9 +417,9 @@ export function ScreeningBadge({
   );
 
   const stateClasses = {
-    checked: "bg-green-50 border-green-200 text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-400",
-    crossed: "bg-red-50 border-red-200 text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400",
-    loading: "bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400 cursor-wait",
+    checked: "bg-success/10 border-success/30 ink-success",
+    crossed: "bg-destructive/10 border-destructive/30 text-destructive",
+    loading: "bg-info/10 border-info/30 ink-info cursor-wait",
     unchecked: "bg-muted/50 border-border text-muted-foreground",
   };
 
@@ -459,9 +459,9 @@ export function CitationBadge({
 }) {
   const format = useFormatter();
   const colorClasses = {
-    orange: "text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50",
-    green: "text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/50",
-    blue: "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50",
+    orange: "ink-cites hover:bg-cites/10",
+    green: "ink-cited-by hover:bg-cited-by/10",
+    blue: "ink-related hover:bg-related/10",
   };
 
   const Icon = color === "blue" ? Network : Quote;
@@ -523,7 +523,7 @@ export function OpenAccessBadge({
               window.open(oaUrl, "_blank");
             }
           }}
-          className="flex items-center justify-center p-1.5 rounded-md text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/50 transition-colors cursor-pointer"
+          className="flex items-center justify-center p-1.5 rounded-md ink-success hover:bg-success/10 transition-colors cursor-pointer"
         >
           <FileText className="h-4 w-4" />
         </div>
@@ -542,7 +542,7 @@ export function OpenAccessBadge({
           window.open(oaUrl, "_blank");
         }
       }}
-      className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50 cursor-pointer flex-shrink-0"
+      className="flex items-center gap-2 ink-success border-success/30 hover:bg-success/10 hover:border-success/40 cursor-pointer flex-shrink-0"
     >
       <FileText className="h-4 w-4" />
       <span>{tc("pdf")}</span>
@@ -580,7 +580,7 @@ export function DOIBadge({
               window.open(doiUrl, "_blank");
             }
           }}
-          className="flex items-center justify-center p-1.5 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
+          className="flex items-center justify-center p-1.5 rounded-md ink-info hover:bg-info/10 transition-colors cursor-pointer"
         >
           <ExternalLink className="h-4 w-4" />
         </div>
@@ -601,7 +601,7 @@ export function DOIBadge({
           }
         }}
         className={cn(
-          "flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 cursor-pointer flex-shrink-0",
+          "flex items-center gap-1 ink-info border-info/30 hover:bg-info/10 hover:border-info/40 cursor-pointer flex-shrink-0",
           className,
         )}
       >

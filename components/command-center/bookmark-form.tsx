@@ -43,7 +43,7 @@ export function BookmarkForm({
         <div className="flex-1 flex flex-col gap-2.5">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-amber-600">
+            <div className="flex items-center gap-2 ink-warning">
               <BookmarkPlus className="h-4 w-4" />
               <span className="text-sm font-medium">{tc("saveAsBookmark")}</span>
             </div>
@@ -58,12 +58,12 @@ export function BookmarkForm({
           </div>
 
           {/* Explanation */}
-          <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+          <p className="text-xs ink-warning leading-relaxed">
             {tb("useBookmarkFormat")}
           </p>
 
           {/* Expanded query preview */}
-          <div className="text-xs text-amber-700 dark:text-amber-300 font-mono break-all p-2 rounded border border-amber-200 dark:border-amber-700 bg-amber-100 dark:bg-amber-900/50 max-h-20 overflow-y-auto">
+          <div className="text-xs ink-warning font-mono break-all p-2 rounded border border-warning/30 bg-warning/15 max-h-20 overflow-y-auto">
             &quot;{expandedQuery}&quot;
           </div>
 
@@ -74,11 +74,11 @@ export function BookmarkForm({
             onChange={(e) => onNameChange(e.target.value)}
             onKeyDown={handleKeyDown}
             autoFocus
-            className="text-sm h-8 bg-background border-amber-200 dark:border-amber-800 focus:border-amber-400"
+            className="text-sm h-8 bg-background border-warning/30 focus:border-warning"
           />
 
           {/* Validation hint */}
-          <p className="text-xs text-amber-600 dark:text-amber-400">
+          <p className="text-xs ink-warning">
             {tb("lettersNumbersDashes")}
           </p>
 
@@ -88,7 +88,7 @@ export function BookmarkForm({
               size="sm"
               onClick={onSubmit}
               disabled={!bookmarkName.trim()}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
+              className="bg-warning hover:bg-warning/90 text-warning-foreground"
             >
               <Check className="h-3 w-3 mr-1" />
               {tc("save")}
@@ -97,7 +97,7 @@ export function BookmarkForm({
               size="sm"
               variant="ghost"
               onClick={onCancel}
-              className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
+              className="ink-warning hover:bg-warning/15"
             >
               {tc("cancel")}
             </Button>
@@ -109,17 +109,17 @@ export function BookmarkForm({
 
   // Inline variant
   return (
-    <div className="flex flex-col gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-      <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+    <div className="flex flex-col gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+      <div className="flex items-center gap-2 ink-warning">
         <BookmarkPlus className="h-4 w-4" />
         <span className="text-sm font-medium">{tc("saveAsBookmark")}</span>
       </div>
 
-      <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+      <p className="text-xs ink-warning leading-relaxed">
         {tb("useBookmarkFormat")}
       </p>
 
-      <div className="text-xs text-amber-700 dark:text-amber-300 font-mono break-all p-2 rounded border border-amber-200 dark:border-amber-700 bg-amber-100 dark:bg-amber-900/50">
+      <div className="text-xs ink-warning font-mono break-all p-2 rounded border border-warning/30 bg-warning/15">
         &quot;{expandedQuery}&quot;
       </div>
 
@@ -129,10 +129,10 @@ export function BookmarkForm({
         onChange={(e) => onNameChange(e.target.value)}
         onKeyDown={handleKeyDown}
         autoFocus
-        className="text-sm bg-background border-amber-200 dark:border-amber-800 focus:border-amber-400"
+        className="text-sm bg-background border-warning/30 focus:border-warning"
       />
 
-      <p className="text-xs text-amber-600 dark:text-amber-400">
+      <p className="text-xs ink-warning">
         {tb("lettersNumbersDashes")}
       </p>
 
@@ -141,7 +141,7 @@ export function BookmarkForm({
           size="sm"
           onClick={onSubmit}
           disabled={!bookmarkName.trim()}
-          className="bg-amber-600 hover:bg-amber-700 text-white"
+          className="bg-warning hover:bg-warning/90 text-warning-foreground"
         >
           <Check className="h-3 w-3 mr-1" />
           {tc("save")}
@@ -150,7 +150,7 @@ export function BookmarkForm({
           size="sm"
           variant="ghost"
           onClick={onCancel}
-          className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
+          className="ink-warning hover:bg-warning/15"
         >
           {tc("cancel")}
         </Button>

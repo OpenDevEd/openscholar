@@ -135,7 +135,7 @@ export function SearchCommandHeader({
                 className="h-8 w-8 text-muted-foreground hover:text-foreground"
               >
                 {isCopied ? (
-                  <Check className="h-4 w-4 text-green-500" />
+                  <Check className="h-4 w-4 text-success" />
                 ) : (
                   <Share2 className="h-4 w-4" />
                 )}

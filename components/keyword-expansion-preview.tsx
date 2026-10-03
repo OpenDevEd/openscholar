@@ -85,7 +85,7 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
         </div>
         
         {hasExpansions && (
-          <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded-md border border-green-200 dark:border-green-800">
+          <div className="p-2 bg-success/10 rounded-md border border-success/30">
             <p className="text-xs text-muted-foreground mb-2">{tb("expanded")}</p>
             <div className="flex flex-wrap gap-1 text-sm break-words">
               {parts.map((part) => (
@@ -94,7 +94,7 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
                     <TooltipHint label={tb("expandedFrom", { keyword: part.originalKeyword ?? "" })}>
                       <Badge
                         variant="secondary"
-                        className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 text-xs rounded-md break-words whitespace-normal max-w-full inline-block"
+                        className="bg-success/15 ink-success text-xs rounded-md break-words whitespace-normal max-w-full inline-block"
                       >
                         <span className="break-words overflow-wrap-anywhere">{part.text}</span>
                       </Badge>
@@ -110,7 +110,7 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
       </div>
       
       {!hasExpansions && (
-        <p className="text-xs text-amber-600 dark:text-amber-400">
+        <p className="text-xs ink-warning">
           {tb("someBookmarksNotFound")}
         </p>
       )}

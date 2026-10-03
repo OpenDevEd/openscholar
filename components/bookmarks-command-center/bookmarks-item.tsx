@@ -127,7 +127,7 @@ export function BookmarksItem({
               <Input
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
-                className="h-8 text-sm font-mono border-amber-200 dark:border-amber-800 focus:border-amber-400"
+                className="h-8 text-sm font-mono border-warning/30 focus:border-warning"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSave();
@@ -137,7 +137,7 @@ export function BookmarksItem({
               <Button
                 size="sm"
                 onClick={handleSave}
-                className="h-8 px-2 bg-amber-600 hover:bg-amber-700 text-white"
+                className="h-8 px-2 bg-warning hover:bg-warning/90 text-warning-foreground"
               >
                 <Check className="h-4 w-4" />
               </Button>
@@ -145,7 +145,7 @@ export function BookmarksItem({
                 size="sm"
                 variant="ghost"
                 onClick={handleCancel}
-                className="h-8 px-2 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
+                className="h-8 px-2 ink-warning hover:bg-warning/15"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -253,7 +253,7 @@ export function BookmarksItem({
                 {bookmark.name}
               </span>
               <span
-                className="text-[10px] opacity-70 mt-1"
+                className="text-3xs opacity-70 mt-1"
                 style={{ color: idColor.text }}
               >
                 {tc("bookmark")}
@@ -269,18 +269,18 @@ export function BookmarksItem({
 
               {/* Expansion */}
               {isEditing ? (
-                <div className="flex flex-col gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                <div className="flex flex-col gap-3 p-3 rounded-lg bg-warning/10 border border-warning/30">
                   <Textarea
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
-                    className="min-h-[100px] text-sm font-mono border-amber-200 dark:border-amber-800 focus:border-amber-400"
+                    className="min-h-[100px] text-sm font-mono border-warning/30 focus:border-warning"
                     autoFocus
                   />
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
                       onClick={handleSave}
-                      className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+                      className="gap-1.5 bg-warning hover:bg-warning/90 text-warning-foreground"
                     >
                       <Check className="h-4 w-4" />
                       {tc("save")}
@@ -289,7 +289,7 @@ export function BookmarksItem({
                       size="sm"
                       variant="ghost"
                       onClick={handleCancel}
-                      className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
+                      className="ink-warning hover:bg-warning/15"
                     >
                       {tc("cancel")}
                     </Button>
@@ -416,18 +416,18 @@ export function BookmarksItem({
       {/* Content */}
       <div className={cn("flex-1", isCompact ? "p-2.5" : "p-3")}>
         {isEditing ? (
-          <div className="flex flex-col gap-3 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+          <div className="flex flex-col gap-3 p-2 rounded-lg bg-warning/10 border border-warning/30">
             <Textarea
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
-              className="min-h-[80px] text-sm font-mono border-amber-200 dark:border-amber-800 focus:border-amber-400"
+              className="min-h-[80px] text-sm font-mono border-warning/30 focus:border-warning"
               autoFocus
             />
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
                 onClick={handleSave}
-                className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+                className="gap-1.5 bg-warning hover:bg-warning/90 text-warning-foreground"
               >
                 <Check className="h-4 w-4" />
                 {tc("save")}
@@ -436,7 +436,7 @@ export function BookmarksItem({
                 size="sm"
                 variant="ghost"
                 onClick={handleCancel}
-                className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
+                className="ink-warning hover:bg-warning/15"
               >
                 {tc("cancel")}
               </Button>

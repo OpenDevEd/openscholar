@@ -32,43 +32,43 @@ export function getCardColor(
 
 // Tailwind class maps — dark mode aware
 export const BORDER_COLOR_CLASSES: Record<ThresholdColor, string> = {
-  green: "border-l-4 border-l-emerald-500 dark:border-l-emerald-400",
-  yellow: "border-l-4 border-l-amber-500 dark:border-l-amber-400",
-  red: "border-l-4 border-l-red-500 dark:border-l-red-400",
+  green: "border-l-4 border-l-success",
+  yellow: "border-l-4 border-l-warning",
+  red: "border-l-4 border-l-destructive",
 };
 
 export const BADGE_COLOR_CLASSES: Record<ThresholdColor, string> = {
-  green: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800",
-  yellow: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800",
-  red: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/60 dark:text-red-400 dark:border-red-800",
+  green: "bg-success/10 ink-success border-success/30",
+  yellow: "bg-warning/10 ink-warning border-warning/30",
+  red: "bg-destructive/10 text-destructive border-destructive/30",
 };
 
 export const CARD_TINT_CLASSES: Record<ThresholdColor, string> = {
-  green: "bg-emerald-50/40 dark:bg-emerald-950/20",
-  yellow: "bg-amber-50/40 dark:bg-amber-950/20",
-  red: "bg-red-50/40 dark:bg-red-950/20",
+  green: "bg-success/5",
+  yellow: "bg-warning/5",
+  red: "bg-destructive/5",
 };
 
 export const ICON_COLOR_CLASSES: Record<ThresholdColor, string> = {
-  green: "text-emerald-600 dark:text-emerald-400",
-  yellow: "text-amber-600 dark:text-amber-400",
-  red: "text-red-600 dark:text-red-400",
+  green: "ink-success",
+  yellow: "ink-warning",
+  red: "text-destructive",
 };
 
 /** Confidence distribution bar colors by bucket */
 export const CONFIDENCE_BAR_COLORS: Record<string, string> = {
-  high: "bg-emerald-500 dark:bg-emerald-400",
-  medium: "bg-amber-500 dark:bg-amber-400",
-  low: "bg-red-500 dark:bg-red-400",
-  unknown: "bg-gray-400 dark:bg-gray-500",
+  high: "bg-success",
+  medium: "bg-warning",
+  low: "bg-destructive",
+  unknown: "bg-muted-foreground/60",
 };
 
 /** Citation status bar colors — used in stacked bars, mini-bars, and distribution panels */
 export const CITATION_BAR_COLORS: Record<string, string> = {
-  grounded: "bg-emerald-500 dark:bg-emerald-400",
-  best_effort: "bg-amber-500 dark:bg-amber-400",
-  insufficient_evidence: "bg-red-500 dark:bg-red-400",
-  extraction_error: "bg-gray-400 dark:bg-gray-500",
+  grounded: "bg-success",
+  best_effort: "bg-warning",
+  insufficient_evidence: "bg-destructive",
+  extraction_error: "bg-muted-foreground/60",
 };
 
 /** Format a 0-1 ratio as a rounded percentage string */

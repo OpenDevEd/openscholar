@@ -70,7 +70,7 @@ export function SuggestionChips({ threadId }: SuggestionChipsProps) {
             <span>{t("chatEmptyPaperCount", { count: paperCount })}</span>
           </div>
         ) : null}
-        <h2 className="text-balance text-[26px] font-medium leading-[1.15] tracking-tight text-foreground">
+        <h2 className="text-balance text-2xl font-medium leading-[1.15] tracking-tight text-foreground">
           {t("chatEmptyHeadline")}
         </h2>
       </header>
@@ -98,7 +98,7 @@ export function SuggestionChips({ threadId }: SuggestionChipsProps) {
       ) : null}
 
       <p
-        className="hidden text-[11px] text-muted-foreground sm:block"
+        className="hidden text-2xs text-muted-foreground sm:block"
         data-shortcut-hint="true"
       >
         {t("chatShortcutFocus")}

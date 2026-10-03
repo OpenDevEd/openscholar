@@ -73,7 +73,7 @@ export default function ConnectionsPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold">{key.appName}</p>
                         <p className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
-                          <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[11px]">
+                          <span className="inline-flex shrink-0 items-center gap-1 font-mono text-2xs">
                             <KeyRound className="size-3" /> {key.keyPrefix}
                           </span>
                           {key.redirectOrigin && key.redirectOrigin !== "manual" ? (
@@ -129,7 +129,7 @@ export default function ConnectionsPage() {
                   <li key={key._id} className="flex items-center gap-3 p-3 text-muted-foreground">
                     <Tile icon={AppWindow} tint="#94a3b8" />
                     <span className="min-w-0 flex-1 truncate text-sm line-through decoration-muted-foreground/50">{key.appName}</span>
-                    <span className="font-mono text-[11px]">{key.keyPrefix}</span>
+                    <span className="font-mono text-2xs">{key.keyPrefix}</span>
                   </li>
                 ))}
               </ul>

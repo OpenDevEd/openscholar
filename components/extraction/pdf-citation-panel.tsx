@@ -23,7 +23,7 @@ function CitationTextBlock({
     <div className="mt-1.5">
       <p
         className={cn(
-          "text-[11px] leading-relaxed text-muted-foreground",
+          "text-2xs leading-relaxed text-muted-foreground",
           !expanded && "line-clamp-2"
         )}
       >
@@ -33,7 +33,7 @@ function CitationTextBlock({
         <Button
           variant="link"
           size="sm"
-          className="h-auto p-0 text-[11px]"
+          className="h-auto p-0 text-2xs"
           onClick={() => setExpanded((value) => !value)}
         >
           {expanded ? (
@@ -135,7 +135,7 @@ export function PdfCitationPanel({
                 key={`${item.page}-${item.charRange[0]}-${item.charRange[1]}`}
                 type="button"
                 className={cn(
-                  "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
+                  "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-3xs font-medium transition-colors",
                   index === effectiveSelectedIndex
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80",

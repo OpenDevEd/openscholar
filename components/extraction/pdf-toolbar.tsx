@@ -97,7 +97,7 @@ export function PdfToolbar({
             <ZoomOut className="size-3.5" />
           </ToolbarIconButton>
 
-          <span className="min-w-8 text-center text-[11px] font-medium text-muted-foreground tabular-nums">
+          <span className="min-w-8 text-center text-2xs font-medium text-muted-foreground tabular-nums">
             {scalePercent}%
           </span>
 

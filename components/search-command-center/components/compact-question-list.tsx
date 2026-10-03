@@ -81,7 +81,7 @@ export function CompactQuestionList({
             className={cn(
               "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md",
               "bg-primary/12 text-primary",
-              "text-[11px] font-mono font-semibold"
+              "text-2xs font-mono font-semibold"
             )}
           >
             {index + 1}

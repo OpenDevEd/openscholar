@@ -110,8 +110,8 @@ export function StarThresholdEditor({
                       className={cn(
                         "h-4 w-4 transition-colors",
                         s <= th.stars
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "text-muted-foreground/25 hover:text-yellow-400/50"
+                          ? "fill-rating text-rating"
+                          : "text-muted-foreground/25 hover:text-rating/50"
                       )}
                     />
                   </button>
@@ -150,7 +150,7 @@ export function StarThresholdEditor({
           {warnings.map((w, i) => (
             <p
               key={i}
-              className="text-xs text-amber-600 dark:text-amber-400"
+              className="text-xs ink-warning"
             >
               {w.message}
             </p>

@@ -115,7 +115,7 @@ export function SearchInput({
           className={cn(
             "relative rounded-2xl p-1 transition-[background-color,border-color,box-shadow] duration-300",
             effectiveMode === "research"
-              ? "bg-gradient-to-br from-primary/20 via-primary/10 to-transparent shadow-[0_0_30px_-5px_oklch(0.7_0.17_54/0.2)]"
+              ? "bg-gradient-to-br from-primary/20 via-primary/10 to-transparent shadow-[0_0_30px_-5px] shadow-primary/20"
               : "bg-background/40 shadow-xl border border-white/20 dark:border-white/5",
           )}
         >

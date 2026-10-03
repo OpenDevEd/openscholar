@@ -59,7 +59,7 @@ export function HighlightedText({
         seg.isMatch ? (
           <mark
             key={i}
-            className="bg-yellow-200/50 dark:bg-yellow-500/30 rounded px-0.5"
+            className="bg-highlight rounded px-0.5"
           >
             {seg.text}
           </mark>

@@ -21,7 +21,7 @@ function RatingStarsDisplay({ count }: { count: number }) {
   return (
     <span className="flex shrink-0">
       {Array.from({ length: count }, (_, i) => (
-        <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+        <Star key={i} className="h-3 w-3 fill-rating text-rating" />
       ))}
     </span>
   );

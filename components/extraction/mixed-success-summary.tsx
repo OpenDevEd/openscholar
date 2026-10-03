@@ -85,7 +85,7 @@ export function MixedSuccessSummary({ jobId, onShowFailures, papersRead }: Mixed
       </h3>
       {/* A legend for the bar above: what worked, then each reason something failed. */}
       <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-        <CircleCheck aria-hidden className="size-4 text-emerald-600 dark:text-emerald-400" />
+        <CircleCheck aria-hidden className="size-4 ink-success" />
         {t("answeredOverTotal", {
           papers: papersRead,
           answered: summary.answeredTotal,

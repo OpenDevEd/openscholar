@@ -165,7 +165,7 @@ export default function BillingPage() {
     <Enter ready={ready}>
       <div className="space-y-8">
         {returnedFrom ? (
-          <div role="status" className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 py-2 pl-4 pr-2 text-sm text-emerald-700 dark:text-emerald-400">
+          <div role="status" className="flex items-center justify-between gap-3 rounded-2xl border border-success/30 bg-success/10 py-2 pl-4 pr-2 text-sm ink-success">
             <span className="flex items-center gap-2">
               <CheckCircle2 className="size-4" />
               {t("paymentReceived")}
@@ -271,7 +271,7 @@ export default function BillingPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-2 flex justify-between text-[11px] tabular-nums text-muted-foreground">
+              <div className="mt-2 flex justify-between text-2xs tabular-nums text-muted-foreground">
                 <span>{date(start)}</span>
                 <span>{day !== null ? t("onDay", { credits: format.number(days[day]!.total), date: date(days[day]!.at) }) : t("today")}</span>
               </div>
@@ -286,7 +286,7 @@ export default function BillingPage() {
                     style={{ flexGrow: totals[k] ?? 0, flexBasis: 0 }}
                   >
                     <span className="h-1.5 rounded-full transition-opacity" style={{ backgroundColor: KINDS[k].tint, opacity: hover && hover !== k ? 0.25 : 1 }} />
-                    <span className={cn("truncate text-[11px] transition-colors", hover && hover !== k ? "text-muted-foreground/40" : "text-muted-foreground")}>
+                    <span className={cn("truncate text-2xs transition-colors", hover && hover !== k ? "text-muted-foreground/40" : "text-muted-foreground")}>
                       {tu(`kinds.${k}`)}
                     </span>
                   </div>
@@ -368,7 +368,7 @@ export default function BillingPage() {
                   <div className="flex justify-between text-xs tabular-nums text-muted-foreground">
                     <span>{date(periodStart)}</span>
                     {change ? (
-                      <span data-testid="billing-pending-change-banner" className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                      <span data-testid="billing-pending-change-banner" className="inline-flex items-center gap-1.5 ink-info">
                         <CalendarClock className="size-3.5" />
                         {endsWithoutRenewal
                           ? t("endsOn", { date: date(periodEnd) })

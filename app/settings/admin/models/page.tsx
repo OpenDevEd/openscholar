@@ -116,7 +116,7 @@ export default function ModelListPage() {
                   <Tile icon={getModelIcon(m.modelId)} tint={m.on ? tintOf(m.modelId) : "#94a3b8"} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{stripProviderPrefix(m.name)}</span>
-                    <span className="block truncate font-mono text-[11px] text-muted-foreground">{m.modelId}</span>
+                    <span className="block truncate font-mono text-2xs text-muted-foreground">{m.modelId}</span>
                   </span>
                   {m.contextLength ? <span className="w-12 text-right text-xs tabular-nums text-muted-foreground">{context(m.contextLength)}</span> : null}
                   <IntelligenceMeter index={m.intelligenceIndex} className="w-24" />
