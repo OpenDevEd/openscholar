@@ -12,7 +12,7 @@ const range = () => capped(v.optional(v.array(v.number())), RANGE_ENDS);
 const answer = v.union(v.boolean(), v.null());
 const answers = capped(v.array(v.object({ question: v.string(), response: answer })), MAX_QUESTIONS);
 export const fieldValidator = v.union(...[
-  "title_and_abstract", "title", "abstract", "fulltext", "display_name", "oql",
+  "title_and_abstract", "default", "title", "abstract", "fulltext", "display_name", "oql",
 ].map((field) => v.literal(field as SearchResult["field"])));
 
 export const queryHistoryEntryValidator = v.object({ query: v.string(), timestamp: v.string(), field: v.optional(fieldValidator) });

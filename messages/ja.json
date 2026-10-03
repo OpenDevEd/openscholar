@@ -1066,6 +1066,7 @@
     "countryFocusTip": "国フォーカスは、これらの国に関する論文を含めるよう検索を強化します。クエリテキストを変更せず裏側で動作します。",
     "filterByInstitution": "機関の所在地でフィルター",
     "searchFieldTitleAndAbstract": "タイトルと要約",
+    "searchFieldDefault": "タイトル、要約、全文",
     "searchFieldTitle": "タイトル",
     "searchFieldAbstract": "要約",
     "searchFieldFulltext": "全文",

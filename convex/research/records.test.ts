@@ -128,6 +128,17 @@ describe("account research records", () => {
     expect(await t.run(ctx => ctx.db.query("searchRevisions").collect())).toHaveLength(2);
   });
 
+  it("saves a search of title, abstract and full text with its field, in the search and its history", async () => {
+    const { alice } = await setup();
+    await alice.mutation(api.research.records.importBatch, batch);
+    const edit = { kind: "query" as const, query: "malaria vaccine", field: "default" as const };
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "edit-default", command: { kind: "editSearch", id: record.id, edit } });
+    const after = await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id });
+    expect(after?.field).toBe("default");
+    const queries = (await alice.query(api.research.records.searchHistory, { accountId: "alice", id: record.id, kind: "query", paginationOpts })).page;
+    expect(queries[0]).toMatchObject({ text: "malaria vaccine", field: "default" });
+  });
+
   it("keeps each search's history in rows that its counts match, newest first a page at a time", async () => {
     const { alice } = await setup();
     await alice.mutation(api.research.records.importBatch, { ...batch, searches: [imported(record), imported({ ...record, id: "other" })] });

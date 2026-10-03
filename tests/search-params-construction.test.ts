@@ -11,6 +11,7 @@ describe("createSearchParameters", () => {
   describe("search field mapping", () => {
     it.each([
       ["title_and_abstract", { title_and_abstract: { search: "quantum" } }],
+      ["default", { default: { search: "quantum" } }],
       ["title", { title: { search: "quantum" } }],
       ["abstract", { abstract: { search: "quantum" } }],
       ["fulltext", { fulltext: { search: "quantum" } }],

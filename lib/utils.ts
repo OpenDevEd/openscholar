@@ -338,6 +338,8 @@ export function createSearchParameters(
     // Map search fields to SDK filter format
     const searchFilterMap = {
       'title_and_abstract': 'title_and_abstract',
+      // OpenAlex's default search: title, abstract and full text together.
+      'default': 'default',
       'title': 'title',
       'abstract': 'abstract', 
       'fulltext': 'fulltext',

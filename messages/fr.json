@@ -1066,6 +1066,7 @@
     "countryFocusTip": "Le focus pays améliore votre recherche pour inclure les articles concernant ces pays. Cela fonctionne en arrière-plan sans modifier votre texte de requête.",
     "filterByInstitution": "Filtrer par localisation d'institution",
     "searchFieldTitleAndAbstract": "Titre et résumé",
+    "searchFieldDefault": "Titre, résumé et texte complet",
     "searchFieldTitle": "Titre",
     "searchFieldAbstract": "Résumé",
     "searchFieldFulltext": "Texte complet",

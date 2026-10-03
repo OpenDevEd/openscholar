@@ -1066,6 +1066,7 @@
     "countryFocusTip": "国家重点会增强您的搜索，以包含关于这些国家的论文。它在后台运行，不会更改您的查询文本。",
     "filterByInstitution": "按机构位置筛选",
     "searchFieldTitleAndAbstract": "标题和摘要",
+    "searchFieldDefault": "标题、摘要和全文",
     "searchFieldTitle": "标题",
     "searchFieldAbstract": "摘要",
     "searchFieldFulltext": "全文",

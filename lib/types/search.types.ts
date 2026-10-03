@@ -42,13 +42,14 @@ export type PaperResult = Omit<Work, 'sustainable_development_goals' | 'open_acc
 /**
  * Search field options
  */
-export type SearchField = 'title_and_abstract' | 'title' | 'abstract' | 'fulltext' | 'display_name' | 'oql';
+export type SearchField = 'title_and_abstract' | 'default' | 'title' | 'abstract' | 'fulltext' | 'display_name' | 'oql';
 
 /**
  * Available search fields with labels
  */
 export const SEARCH_FIELDS = [
   { value: 'title_and_abstract', label: 'Title, abstract' },
+  { value: 'default', label: 'Title, abstract, full text' },
   { value: 'title', label: 'Title' },
   { value: 'abstract', label: 'Abstract' },
   { value: 'fulltext', label: 'Fulltext' },

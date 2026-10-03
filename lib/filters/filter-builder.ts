@@ -33,6 +33,7 @@ export type FilterT = {
 
 const FIELD_KEY_MAP: Record<string, string> = {
   title_and_abstract: "searchFieldTitleAndAbstract",
+  default: "searchFieldDefault",
   title: "searchFieldTitle",
   abstract: "searchFieldAbstract",
   fulltext: "searchFieldFulltext",
