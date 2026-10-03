@@ -77,13 +77,13 @@ export function QueryEvolution({
   const remainingCount = total - 2;
 
   return (
-    <div className={cn("pt-2 border-t border-border/30", className)}>
+    <div className={cn("pt-2 border-t border-border-subtle", className)}>
       {/* Collapsed Preview / Toggle Button */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
           "w-full flex items-start gap-1.5 text-left group",
-          "hover:bg-muted/30 -mx-1 px-1 py-0.5 rounded transition-colors"
+          "hover:bg-muted -mx-1 px-1 py-0.5 rounded transition-colors"
         )}
       >
         <motion.span

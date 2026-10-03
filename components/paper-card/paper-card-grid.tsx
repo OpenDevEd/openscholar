@@ -188,7 +188,7 @@ export function PaperCardGrid({
           {/* Footer: Rating and citations */}
           <div
             role="group"
-            className="flex flex-wrap items-center gap-2 pt-3 mt-auto border-t border-border/50"
+            className="flex flex-wrap items-center gap-2 pt-3 mt-auto border-t border-border-subtle"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >

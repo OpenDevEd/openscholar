@@ -229,7 +229,7 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
           transition={commandCenterSpring}
           className="overflow-hidden"
         >
-          <div className="border-t border-border/40 px-4 pb-4 pt-3 space-y-3">
+          <div className="border-t border-border-subtle px-4 pb-4 pt-3 space-y-3">
             {/* Input row */}
             <div className="flex flex-wrap gap-2 items-center">
               <ButtonGroup>

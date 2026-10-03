@@ -188,7 +188,7 @@ export function BulkPdfUpload({ paperLimit }: { paperLimit?: number }) {
           "rounded-xl border-2 border-dashed p-8 text-center transition-colors cursor-pointer",
           isDragActive
             ? "border-primary bg-primary/5"
-            : "border-border hover:border-primary/50 hover:bg-muted/30",
+            : "border-border hover:border-primary/50 hover:bg-muted",
           !pdfEnabled && "opacity-50 cursor-not-allowed",
         )}
       >

@@ -105,7 +105,7 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
   if (!jobs || jobs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="rounded-full bg-muted/50 p-3 mb-3">
+        <div className="rounded-full bg-inset p-3 mb-3">
           <FileText className="h-6 w-6 text-muted-foreground/40" />
         </div>
         <p className="text-sm text-muted-foreground">
@@ -129,7 +129,7 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
         return (
           <div
             key={job._id}
-            className="rounded-lg border border-border/50 bg-card px-3.5 py-3 transition-colors hover:bg-accent/30"
+            className="rounded-lg border border-border-subtle bg-card px-3.5 py-3 transition-colors hover:bg-accent/30"
           >
             {/* Row 1: Status + date + actions */}
             <div className="flex items-center justify-between mb-2">
@@ -191,7 +191,7 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       {isIncomplete && (
-                        <div className="px-2 py-1.5 text-2xs ink-warning flex items-center gap-1.5 border-b border-border/40 mb-1">
+                        <div className="px-2 py-1.5 text-2xs ink-warning flex items-center gap-1.5 border-b border-border-subtle mb-1">
                           <AlertTriangle className="h-3 w-3 shrink-0" />
                           {t("exportIncompleteWarning")}
                         </div>

@@ -116,10 +116,10 @@ export function SearchInput({
             "relative rounded-2xl p-1 transition-[background-color,border-color,box-shadow] duration-300",
             effectiveMode === "research"
               ? "bg-gradient-to-br from-primary/20 via-primary/10 to-transparent shadow-[0_0_30px_-5px] shadow-primary/20"
-              : "bg-background/40 shadow-xl border border-white/20 dark:border-white/5",
+              : "bg-inset shadow-xl border border-white/20 dark:border-white/5",
           )}
         >
-          <div className="relative overflow-hidden rounded-xl bg-background/95 transition-shadow group focus-within:ring-1 focus-within:ring-primary/30 dark:bg-background/90">
+          <div className="relative overflow-hidden rounded-xl bg-field transition-shadow group focus-within:ring-1 focus-within:ring-primary/30">
             <Textarea
               ref={textareaRef}
               name="query"
@@ -138,12 +138,12 @@ export function SearchInput({
             {/* Bottom Action Bar */}
             <div className="flex flex-wrap items-center justify-end md:justify-between p-3 gap-4">
               <div className="text-xs text-muted-foreground hidden md:flex flex-wrap items-center gap-2 shrink-0">
-                <span className="px-1.5 py-0.5 rounded-md bg-muted/50 border border-border/50 font-mono">
+                <span className="px-1.5 py-0.5 rounded-md bg-inset border border-border-subtle font-mono">
                   {t("enterKey")}
                 </span>
                 {t("toSubmit")}
                 <span className="mx-1 opacity-20">|</span>
-                <span className="px-1.5 py-0.5 rounded-md bg-muted/50 border border-border/50 font-mono">
+                <span className="px-1.5 py-0.5 rounded-md bg-inset border border-border-subtle font-mono">
                   {t("shiftEnterKey")}
                 </span>
                 {t("newLine")}
@@ -262,7 +262,7 @@ export function SearchInput({
                 animate="animate"
                 exit="exit"
                 transition={hintAnimTransition}
-                className="h-9 flex items-center justify-center gap-2.5 rounded-full border border-border/40 bg-muted/50 px-3 text-xs text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-200 hover:border-primary/25 hover:bg-muted/70 hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 sm:text-sm"
+                className="h-9 flex items-center justify-center gap-2.5 rounded-full border border-border-subtle bg-inset px-3 text-xs text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-200 hover:border-primary/25 hover:bg-muted hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 sm:text-sm"
               >
                 <Wand2 className="h-3.5 w-3.5 text-foreground/70" />
                 <span>{t("questionShortcutHint")}</span>

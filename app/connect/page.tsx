@@ -133,7 +133,7 @@ export default function ConnectPage() {
             </p>
           </div>
 
-          <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+          <div className="rounded-lg border p-4 space-y-3 bg-inset">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               API Key
             </label>
@@ -210,7 +210,7 @@ export default function ConnectPage() {
           </p>
         </div>
 
-        <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+        <div className="rounded-lg border p-4 space-y-3 bg-inset">
           <div className="text-sm space-y-2">
             <div className="flex justify-between">
               <span className="text-muted-foreground">App</span>

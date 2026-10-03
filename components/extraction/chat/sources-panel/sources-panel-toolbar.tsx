@@ -147,7 +147,7 @@ export function SourcesPanelToolbar({
   return (
     <TooltipProvider delayDuration={0}>
       <div
-        className="flex flex-col gap-2 border-b border-border/50 px-3 py-2"
+        className="flex flex-col gap-2 border-b border-border-subtle px-3 py-2"
         data-sources-panel-toolbar
       >
         <SourceFilterSelect
@@ -192,7 +192,7 @@ export function SourcesPanelToolbar({
             role="group"
             aria-label={t("bulk.include")}
             data-bulk-group
-            className="flex items-center gap-0.5 rounded-md border border-border/60 bg-background p-0.5"
+            className="flex items-center gap-0.5 rounded-md border border-border-subtle bg-background p-0.5"
           >
             <BulkIconButton
               icon={CheckCheck}

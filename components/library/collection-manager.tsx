@@ -338,7 +338,7 @@ export function CollectionManager({
                       data-collection-row
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2.5",
-                        isFocused && !isEditing && "bg-muted/50",
+                        isFocused && !isEditing && "bg-inset",
                       )}
                       onClick={() => setFocusedIndex(index)}
                     >
@@ -442,7 +442,7 @@ export function CollectionManager({
               </p>
             </div>
           ) : totalCollections === 0 ? (
-            <div className="rounded-lg border border-dashed border-border/60 py-8 px-4 text-center">
+            <div className="rounded-lg border border-dashed border-border-subtle py-8 px-4 text-center">
               <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                 <FolderPlus className="h-5 w-5 text-muted-foreground" />
               </div>
@@ -456,7 +456,7 @@ export function CollectionManager({
           ) : null}
 
           {/* Separator + Inline create */}
-          <div className="border-t border-border/40 pt-3">
+          <div className="border-t border-border-subtle pt-3">
             <div className="flex items-center gap-3">
               <FolderPlus className="h-4 w-4 text-muted-foreground/60 shrink-0" />
               <Input

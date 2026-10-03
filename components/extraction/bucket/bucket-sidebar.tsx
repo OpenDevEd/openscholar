@@ -68,7 +68,7 @@ function BucketHeader({
   return (
     <header className="flex flex-col">
       {/* As tall as the page bar, with the same line, so the two top edges meet. */}
-      <div className="flex h-[65px] items-center justify-between gap-3 border-b border-sidebar-border/50 px-4">
+      <div className="flex h-[65px] items-center justify-between gap-3 border-b border-sidebar-border px-4">
         <div className="min-w-0 flex-1">
           <h2
             id="bucket-sidebar-title"

@@ -357,7 +357,7 @@ export function PdfViewer({
       role="application"
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      className="pdf-viewer-shell flex flex-col h-full min-h-0 min-w-0 max-w-full overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm"
+      className="pdf-viewer-shell flex flex-col h-full min-h-0 min-w-0 max-w-full overflow-hidden rounded-xl border border-border-subtle bg-card shadow-sm"
       aria-label={t('accessibility.pdfViewer')}
     >
       <PdfToolbar
@@ -377,7 +377,7 @@ export function PdfViewer({
         onResetZoom={handleReset}
       />
 
-      <div className="border-b border-border/50 bg-muted/30 px-2 py-1 text-2xs text-muted-foreground">
+      <div className="border-b border-border-subtle bg-inset px-2 py-1 text-2xs text-muted-foreground">
         {documentError ? (
           <span className="text-destructive">{t("pdfViewer.unableToLoadPdf", { error: documentError })}</span>
         ) : !highlightValidated ? (
@@ -391,7 +391,7 @@ export function PdfViewer({
         )}
       </div>
 
-      <div ref={viewportRef} className="pdf-viewer-stage min-h-0 min-w-0 flex-1 overflow-auto bg-muted/20">
+      <div ref={viewportRef} className="pdf-viewer-stage min-h-0 min-w-0 flex-1 overflow-auto bg-inset">
         <div className="mx-auto flex w-full items-start justify-center p-2">
           <div
             ref={pageContainerRef}

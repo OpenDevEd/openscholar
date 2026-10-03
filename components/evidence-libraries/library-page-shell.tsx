@@ -74,10 +74,10 @@ export function LibraryPageShell({
 
       <div className="container mx-auto max-w-6xl p-4 sm:p-6">
         <CommandCenterContainer allowOverflow={allowOverflow}>
-          {intro ? <div className="border-b border-border/50">{intro}</div> : null}
+          {intro ? <div className="border-b border-border-subtle">{intro}</div> : null}
           {tabs || cardFilters ? (
             <Collapse className={cardToolbar}>
-              <div className="flex flex-wrap items-center gap-x-3 border-b border-border/50 p-4">
+              <div className="flex flex-wrap items-center gap-x-3 border-b border-border-subtle p-4">
                 {tabs ? <div className="-mx-1 max-w-full overflow-x-auto px-1 @3xl:hidden">{tabs}</div> : null}
                 {cardFilters ? (
                   <Collapse className={cn("w-full min-w-0 @lg:w-auto @lg:flex-1", filters ? OPEN : CLOSED)}>

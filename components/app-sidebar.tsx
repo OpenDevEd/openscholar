@@ -797,7 +797,7 @@ export function AppSidebar() {
   // The saved width is only known after hydration. Until then hold the space
   // the head script measured, so the page does not shift when the sidebar mounts.
   if (!_hasHydrated) {
-    return <div aria-hidden className="sticky top-0 hidden h-screen w-(--app-sidebar-width) shrink-0 border-r border-sidebar-border/60 bg-sidebar md:block" />;
+    return <div aria-hidden className="sticky top-0 hidden h-screen w-(--app-sidebar-width) shrink-0 border-r border-sidebar-border bg-sidebar md:block" />;
   }
 
   if (isMobile) {
@@ -813,7 +813,7 @@ export function AppSidebar() {
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
             className="h-full flex flex-col"
           >
-            <SheetHeader className="px-3 py-4 border-b border-sidebar-border/50 bg-sidebar shrink-0">
+            <SheetHeader className="px-3 py-4 border-b border-sidebar-border bg-sidebar shrink-0">
               <SheetTitle className="flex items-center">
                 <Logo size="sm" context="general" clickable={false} />
               </SheetTitle>
@@ -832,7 +832,7 @@ export function AppSidebar() {
   return (
     <motion.aside
       className={cn(
-        "h-screen flex flex-col border-r border-sidebar-border/60 bg-sidebar",
+        "h-screen flex flex-col border-r border-sidebar-border bg-sidebar",
         "sticky top-0 left-0 z-40 transition-shadow duration-300",
         "hover:shadow-lg",
       )}
@@ -845,7 +845,7 @@ export function AppSidebar() {
     >
       <div
         className={cn(
-          "relative flex items-center border-b border-sidebar-border/50 py-4 min-h-[52px] bg-gradient-to-r from-sidebar/30 to-transparent overflow-hidden px-4",
+          "relative flex items-center border-b border-sidebar-border py-4 min-h-[52px] bg-gradient-to-r from-sidebar/30 to-transparent overflow-hidden px-4",
           "relative justify-center",
           !isCollapsed && "justify-end",
         )}

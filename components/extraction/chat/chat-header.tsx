@@ -38,7 +38,7 @@ export function ChatHeader({ job, threadId }: ChatHeaderProps) {
     <>
       {/* The shared page bar, fixed above the chat, which owns the scroll below it. */}
       <header
-        className="@container shrink-0 border-b border-sidebar-border/50 px-4 sm:px-6"
+        className="@container shrink-0 border-b border-sidebar-border px-4 sm:px-6"
         data-chat-header="true"
       >
         <PanelHeader

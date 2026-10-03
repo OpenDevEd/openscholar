@@ -64,12 +64,12 @@ export function SourceRow({
   ];
   return (
     <li
-      className={cn("@container/source space-y-3 p-4", paused && "bg-muted/30")}
+      className={cn("@container/source space-y-3 p-4", paused && "bg-inset")}
       {...rest}
     >
       <div className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 @min-[24rem]/source:grid-cols-[2rem_minmax(0,1fr)_auto]">
         <span
-          className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/50"
+          className="flex size-8 shrink-0 items-center justify-center rounded-md bg-inset"
           aria-hidden
         >
           {icon}

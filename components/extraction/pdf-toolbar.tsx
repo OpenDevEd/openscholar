@@ -81,7 +81,7 @@ export function PdfToolbar({
 }: PdfToolbarProps) {
   const t = useTranslations();
   return (
-    <div className="pdf-viewer-toolbar border-b border-border/70 bg-background/95">
+    <div className="pdf-viewer-toolbar border-b border-border bg-card">
       <div className="flex flex-wrap items-center gap-1 px-1.5 py-1.5">
         <PdfPageControls
           currentPage={currentPage}

@@ -78,7 +78,7 @@ export function ExtractionPlanGate() {
       <motion.section
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/12 via-background to-info/10 p-6 md:p-8"
+        className="relative overflow-hidden rounded-2xl border border-border-subtle bg-gradient-to-br from-primary/12 via-background to-info/10 p-6 md:p-8"
       >
         <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary/15 blur-3xl" />
         <div className="relative space-y-4">
@@ -111,7 +111,7 @@ export function ExtractionPlanGate() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.06 }}
-        className="rounded-2xl border border-border/50 bg-background/80 p-5 md:p-6"
+        className="rounded-2xl border border-border-subtle bg-card p-5 md:p-6"
       >
         <h2 className="text-lg md:text-xl font-semibold text-foreground">
           {t("planGateHowItWorksTitle")}
@@ -123,7 +123,7 @@ export function ExtractionPlanGate() {
           {steps.map((step, index) => (
             <div
               key={step.title}
-              className="rounded-xl border border-border/60 bg-muted/35 p-4"
+              className="rounded-xl border border-border-subtle bg-inset p-4"
             >
               <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
                 {index + 1}
@@ -141,7 +141,7 @@ export function ExtractionPlanGate() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.12 }}
-        className="rounded-2xl border border-border/50 bg-background/80 p-5 md:p-6"
+        className="rounded-2xl border border-border-subtle bg-card p-5 md:p-6"
       >
         <h2 className="text-lg md:text-xl font-semibold text-foreground">
           {t("planGateWhatYouCanExtractTitle")}
@@ -153,7 +153,7 @@ export function ExtractionPlanGate() {
           {cards.map(({ title, description, icon: Icon }) => (
             <div
               key={title}
-              className="rounded-xl border border-border/60 bg-card p-4"
+              className="rounded-xl border border-border-subtle bg-card p-4"
             >
               <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Icon className="h-4 w-4" />
@@ -168,7 +168,7 @@ export function ExtractionPlanGate() {
       </motion.section>
 
       {plans.length > 0 && (
-        <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border-subtle bg-inset px-4 py-3 text-sm text-muted-foreground">
           <CheckCircle2 className="h-4 w-4 text-primary" />
           {t("planGateNote", {
             plans: format.list([...plans.map((plan) => plan.name), tp("enterprisePlanName")], {

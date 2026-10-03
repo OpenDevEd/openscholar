@@ -70,7 +70,7 @@ export function PanelHeader({
         ) : null}
         {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}
       </div>
-      {tabs ? <div className="hidden shrink-0 border-l border-border/60 pl-4 @3xl:block">{tabs}</div> : null}
+      {tabs ? <div className="hidden shrink-0 border-l border-border-subtle pl-4 @3xl:block">{tabs}</div> : null}
       {filters || children ? (
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {filters ? <div className="hidden items-center gap-2 @6xl:flex">{filters}</div> : null}

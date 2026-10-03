@@ -133,7 +133,7 @@ function StyleMenu({
   return (
     <>
       <div className="shrink-0 p-2">
-        <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3">
+        <div className="flex items-center gap-2 rounded-md bg-inset px-3">
           <Search className="size-4 shrink-0 text-muted-foreground" />
           <Input
             autoFocus

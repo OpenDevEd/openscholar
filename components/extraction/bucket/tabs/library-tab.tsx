@@ -178,7 +178,7 @@ export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
             <Spinner className="h-4 w-4" aria-label="Loading your library" />
           </div>
         ) : (list.results ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground p-6 text-center border border-border rounded-xl bg-muted/30">
+          <p className="text-sm text-muted-foreground p-6 text-center border border-border rounded-xl bg-inset">
             {emptyMessage(view, query)}
           </p>
         ) : (
@@ -266,7 +266,7 @@ function SourceSidebar({ view, onChange }: SourceSidebarProps) {
       initial={false}
       animate={{ width }}
       transition={sidebarSpring}
-      className="shrink-0 overflow-hidden rounded-xl border border-border bg-muted/20"
+      className="shrink-0 overflow-hidden rounded-xl border border-border bg-inset"
       style={{ width }}
     >
       <div className={cn("flex items-center gap-1 p-2", collapsed ? "justify-center" : "justify-between")}>
@@ -329,7 +329,7 @@ function SourceSidebar({ view, onChange }: SourceSidebarProps) {
 
       {hasCollections && (
         <>
-          <div className="mx-2 border-t border-border/60" />
+          <div className="mx-2 border-t border-border-subtle" />
           {!collapsed && (
             <div className="px-2 pt-2">
               <span className="px-1 text-xs font-medium text-muted-foreground">
@@ -415,7 +415,7 @@ function SidebarEntry({
         "w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
         active
           ? "bg-primary/10 text-primary"
-          : "hover:bg-muted/50 text-foreground",
+          : "hover:bg-muted text-foreground",
         collapsed && "justify-center px-0",
       )}
     >

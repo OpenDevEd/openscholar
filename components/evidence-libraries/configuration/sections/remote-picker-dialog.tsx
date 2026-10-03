@@ -326,12 +326,12 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
         className="flex max-h-[85vh] flex-col gap-0 p-0 sm:max-w-3xl"
         onKeyDown={moveFocus}
       >
-        <DialogHeader className="border-b border-border/50 px-5 py-4">
+        <DialogHeader className="border-b border-border-subtle px-5 py-4">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2.5 border-b border-border/50 bg-muted/30 px-5 py-3">
+        <div className="space-y-2.5 border-b border-border-subtle bg-inset px-5 py-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -537,7 +537,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
             </TableBody>
           </Table>
           {ready && cursor ? (
-            <div className="flex justify-center border-t border-border/50 py-3">
+            <div className="flex justify-center border-t border-border-subtle py-3">
               <Button
                 type="button"
                 variant="outline"
@@ -558,13 +558,13 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
             </div>
           ) : null}
           {note ? (
-            <p className="border-t border-border/50 px-5 py-3 text-xs text-muted-foreground">
+            <p className="border-t border-border-subtle px-5 py-3 text-xs text-muted-foreground">
               {note}
             </p>
           ) : null}
         </div>
 
-        <DialogFooter className="items-center border-t border-border/50 px-5 py-3 sm:justify-between">
+        <DialogFooter className="items-center border-t border-border-subtle px-5 py-3 sm:justify-between">
           {props.mode === "multi" ? (
             <span className="text-sm text-muted-foreground" data-picked-count={picked.size}>
               {t("pickedCount", { count: picked.size })}

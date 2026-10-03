@@ -216,7 +216,7 @@ export function CountChip({
           </Button>
         </div>
 
-        <div className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-muted/50 p-0.5 dark:bg-muted/30">
+        <div className="flex items-center gap-0.5 rounded-lg border border-border-subtle bg-inset p-0.5">
           {presets.map((preset) => {
             const isActive = paperCount === preset.value;
             const disabled = preset.value <= 0 || preset.value > stepperMax;
@@ -231,7 +231,7 @@ export function CountChip({
                   "flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                   isActive
                     ? "bg-background text-primary shadow-sm"
-                    : "text-muted-foreground hover:bg-background/50 hover:text-foreground",
+                    : "text-muted-foreground hover:bg-background hover:text-foreground",
                   "disabled:cursor-not-allowed disabled:opacity-50",
                 )}
               >

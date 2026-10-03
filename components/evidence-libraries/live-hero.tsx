@@ -131,7 +131,7 @@ export function SetupHero({
               onClick={copyAddress}
               data-copied={copied}
               aria-label={copied ? tl("copiedShort") : tl("copyAddress")}
-              className="inline-flex h-10 max-w-full items-center gap-2 rounded-full border border-border/60 bg-background/70 px-4 font-mono text-sm shadow-xs backdrop-blur transition-colors hover:border-success/50 hover:bg-background"
+              className="inline-flex h-10 max-w-full items-center gap-2 rounded-full border border-border-subtle bg-card px-4 font-mono text-sm shadow-xs backdrop-blur transition-colors hover:border-success/50 hover:bg-background"
             >
               <span className="truncate">{host}</span>
               {copied ? (

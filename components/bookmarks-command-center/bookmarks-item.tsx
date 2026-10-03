@@ -98,9 +98,9 @@ export function BookmarksItem({
         transition={{ ...subtleSpring, delay: index * 0.03 }}
         className={cn(
           "group relative flex flex-col rounded-xl",
-          "bg-card/40 dark:bg-card/30",
-          "border border-border/40",
-          "hover:bg-card/70 hover:border-border/60 hover:shadow-sm",
+          "bg-inset",
+          "border border-border-subtle",
+          "hover:bg-muted hover:border-border hover:shadow-sm",
           "transition-[background-color,border-color,box-shadow] duration-200"
         )}
       >
@@ -229,9 +229,9 @@ export function BookmarksItem({
         transition={{ ...subtleSpring, delay: index * 0.03 }}
         className={cn(
           "group relative rounded-xl overflow-hidden",
-          "bg-card/50 dark:bg-card/40",
-          "border border-border/40",
-          "hover:border-border/60 hover:shadow-md",
+          "bg-card",
+          "border border-border-subtle",
+          "hover:border-border hover:shadow-md",
           "transition-[background-color,border-color,box-shadow] duration-200"
         )}
       >
@@ -305,7 +305,7 @@ export function BookmarksItem({
 
           {/* Footer */}
           {!isEditing && (
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/40">
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-border-subtle">
               {/* Left: Date */}
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Calendar className="h-3 w-3" />
@@ -388,9 +388,9 @@ export function BookmarksItem({
       whileHover={{ y: -2 }}
       className={cn(
         "group relative flex flex-col rounded-xl overflow-hidden",
-        "bg-card/50 dark:bg-card/40",
-        "border border-border/40",
-        "hover:border-border/60 hover:shadow-md",
+        "bg-card",
+        "border border-border-subtle",
+        "hover:border-border hover:shadow-md",
         "transition-[background-color,border-color,box-shadow] duration-200"
       )}
     >
@@ -458,8 +458,8 @@ export function BookmarksItem({
       {!isEditing && (
         <div
           className={cn(
-            "flex items-center justify-between px-2 py-2 border-t border-border/30",
-            "bg-muted/20"
+            "flex items-center justify-between px-2 py-2 border-t border-border-subtle",
+            "bg-inset"
           )}
         >
           {/* Left: Date */}

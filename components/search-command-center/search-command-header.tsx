@@ -79,7 +79,7 @@ export function SearchCommandHeader({
     <div
       className={cn(
         "relative flex items-center justify-between gap-4 px-4 py-3",
-        "border-b border-border/40"
+        "border-b border-border-subtle"
       )}
     >
       {/* Mode tabs */}

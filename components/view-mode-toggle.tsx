@@ -15,7 +15,7 @@ export function IconSwitch<T extends string>({ label, value, onChange, options }
   options: { value: T; icon: ComponentType<{ className?: string }>; label: string }[];
 }) {
   return (
-    <div role="group" aria-label={label} className="flex shrink-0 items-center gap-0.5 rounded-md bg-muted/40 p-0.5">
+    <div role="group" aria-label={label} className="flex shrink-0 items-center gap-0.5 rounded-md bg-inset p-0.5">
       {options.map(({ value: option, icon: Icon, label: optionLabel }) => (
         <TooltipHint key={option} label={optionLabel}>
           <button

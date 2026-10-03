@@ -84,13 +84,13 @@ function ProfilePage({ security }: { security: boolean }) {
                 profileSectionHeader: "!m-0 !w-full !max-w-none !transform-none !pl-1 !py-0",
                 profileSectionTitle: "!p-0",
                 profileSectionTitleText: "!text-xs !font-medium !text-muted-foreground",
-                profileSectionContent: "!rounded-2xl !border !border-border/60 !bg-muted/40 !px-4 !py-3",
+                profileSectionContent: "!rounded-2xl !border !border-border-subtle !bg-inset !px-4 !py-3",
                 profileSectionPrimaryButton: "!text-primary",
                 // Deleting the account reads as a danger zone.
                 profileSection__danger:
                   "[&_.cl-profileSectionTitleText]:!text-destructive [&_.cl-profileSectionContent]:!border-destructive/30 [&_.cl-profileSectionContent]:!bg-destructive/5 [&_.cl-profileSectionPrimaryButton]:!text-destructive [&_.cl-profileSectionPrimaryButton:hover]:!bg-destructive/10",
                 // Edit forms open inline, flat.
-                actionCard: "!rounded-xl !border !border-border/50 !bg-background/60 !shadow-none",
+                actionCard: "!rounded-xl !border !border-border-subtle !bg-inset !shadow-none",
               },
             }}
           />
@@ -135,7 +135,7 @@ function Identity() {
 
   return (
     <section className="flex items-center gap-6">
-      <label className="group relative size-24 shrink-0 cursor-pointer overflow-hidden rounded-3xl border border-border/60">
+      <label className="group relative size-24 shrink-0 cursor-pointer overflow-hidden rounded-3xl border border-border-subtle">
         <img src={user.imageUrl} alt="" className="size-full object-cover" />
         <span
           className={cn(
@@ -303,7 +303,7 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
                 >
                   <Icon className="size-4" />
                 </span>
-                <div className="min-w-0 rounded-xl px-3 py-2 transition-colors group-hover:bg-muted/40">
+                <div className="min-w-0 rounded-xl px-3 py-2 transition-colors group-hover:bg-muted">
                   <p className="flex items-center gap-2 truncate text-sm font-medium">
                     {e.title}
                     {e.here ? <span className="text-xs font-normal text-primary">{t("thisDevice")}</span> : null}

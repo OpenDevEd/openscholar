@@ -104,9 +104,9 @@ export function ScoringRulesEditor({
   return (
     <div className="space-y-3">
       {/* Table-like container */}
-      <div className="rounded-lg border border-border/50 bg-card">
+      <div className="rounded-lg border border-border-subtle bg-card">
         {/* Column headers */}
-        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border/40">
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border-subtle">
           <div className="flex-1" />
           <div className="flex items-center gap-1.5">
             <span className="w-16 text-center text-xs font-medium text-muted-foreground">
@@ -134,7 +134,7 @@ export function ScoringRulesEditor({
             <div
               key={q.key}
               className={`flex items-start gap-2 px-3 py-2 ${
-                i < questions.length - 1 ? "border-b border-border/30" : ""
+                i < questions.length - 1 ? "border-b border-border-subtle" : ""
               }`}
             >
               {/* Numbered question */}
@@ -277,7 +277,7 @@ export function ScoringRulesEditor({
       )}
 
       {/* Minimum score */}
-      <div className="flex items-center gap-3 rounded-lg bg-muted/30 px-3 py-2">
+      <div className="flex items-center gap-3 rounded-lg bg-inset px-3 py-2">
         <Label className="text-xs font-medium text-muted-foreground whitespace-nowrap">
           {t("minimumScoreLabel")}
         </Label>

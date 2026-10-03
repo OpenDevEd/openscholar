@@ -240,7 +240,7 @@ export function CountrySelector({
           <div
             role="button"
             tabIndex={0}
-            className="flex items-center gap-2 flex-1 cursor-pointer hover:bg-muted/50 rounded-md px-2 py-1"
+            className="flex items-center gap-2 flex-1 cursor-pointer hover:bg-muted rounded-md px-2 py-1"
             onClick={() => toggleNode(node.id)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
@@ -298,7 +298,7 @@ export function CountrySelector({
         </div>
 
         {((isExpanded && hasChildren) || (searchQuery.trim() && hasChildren)) && (
-          <div className="ml-4 border-l border-border/50 pl-2">
+          <div className="ml-4 border-l border-border-subtle pl-2">
             {node.children?.map(child => renderNode(child))}
           </div>
         )}

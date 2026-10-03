@@ -541,10 +541,10 @@ export function Pricing() {
               transition={{ ...subtleSpring, delay: index * 0.1 }}
               className={cn(
                 "relative rounded-xl overflow-hidden flex flex-col",
-                "bg-background/90",
+                "bg-card",
                 "border",
                 isCurrent && "border-primary/50 bg-primary/[0.02]",
-                !isCurrent && "border-border/50",
+                !isCurrent && "border-border-subtle",
               )}
             >
               {/* Current Plan Badge */}
@@ -574,7 +574,7 @@ export function Pricing() {
               )}
 
               {/* Header */}
-              <div className="p-6 border-b border-border/40">
+              <div className="p-6 border-b border-border-subtle">
                 <div className="flex items-center gap-3 mb-4">
                   <Icon className="w-8 h-8 text-primary" />
                   <h3 className="text-2xl font-bold">{plan.name}</h3>

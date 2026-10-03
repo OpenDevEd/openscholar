@@ -378,8 +378,8 @@ const BAND: Record<SourceStatus["state"] | "waiting", string> = {
   running: "bg-primary/[0.05]",
   succeeded: "bg-success/5",
   failed: "bg-destructive/[0.06]",
-  idle: "bg-muted/40",
-  waiting: "bg-muted/40",
+  idle: "bg-inset",
+  waiting: "bg-inset",
 };
 
 /**

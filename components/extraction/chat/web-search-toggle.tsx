@@ -153,12 +153,12 @@ export function WebSearchToggle({
               the user always knows what a search costs. The unsupported
               state has nothing to bill. */}
           {showMeta ? (
-            <div className="mt-2.5 space-y-1.5 border-t border-border/60 pt-2">
+            <div className="mt-2.5 space-y-1.5 border-t border-border-subtle pt-2">
               <div
                 className="flex items-center gap-2 text-2xs"
                 data-tooltip-cost-line=""
               >
-                <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-muted/70 text-muted-foreground">
+                <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
                   <Coins className="size-2.5" aria-hidden="true" />
                 </span>
                 <span className="text-muted-foreground">

@@ -24,7 +24,7 @@ export function ConfigurationLayout({
           allowOverflow
           className="flex flex-col @min-[42rem]/configuration:flex-row"
         >
-          <aside className="w-full border-b border-border/40 bg-muted/20 @min-[42rem]/configuration:w-60 @min-[42rem]/configuration:shrink-0 @min-[42rem]/configuration:border-b-0 @min-[42rem]/configuration:border-r @min-[42rem]/configuration:bg-transparent">
+          <aside className="w-full border-b border-border-subtle bg-inset @min-[42rem]/configuration:w-60 @min-[42rem]/configuration:shrink-0 @min-[42rem]/configuration:border-b-0 @min-[42rem]/configuration:border-r @min-[42rem]/configuration:bg-transparent">
             {navigation}
           </aside>
           <div className="min-w-0 flex-1 space-y-4 p-4 @min-[42rem]/configuration:p-6">{children}</div>

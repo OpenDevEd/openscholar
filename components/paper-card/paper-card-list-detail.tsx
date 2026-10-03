@@ -191,7 +191,7 @@ export function PaperCardListDetail({
 
             {/* Expanded Metadata */}
             {isExpanded && (
-              <div className="mt-5 pt-5 border-t border-border/50 space-y-3">
+              <div className="mt-5 pt-5 border-t border-border-subtle space-y-3">
                 {/* Citation Percentile */}
                 {result.cited_by_percentile_year && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -339,7 +339,7 @@ export function PaperCardListDetail({
         {/* Actions Section */}
         {isMobile ? (
           /* Mobile Layout */
-          <div className="space-y-3 pt-3 border-t border-border/50">
+          <div className="space-y-3 pt-3 border-t border-border-subtle">
             <div className="flex items-center justify-between gap-2">
               {!hide?.rating && (
                 <div className="flex items-center gap-2">
@@ -423,7 +423,7 @@ export function PaperCardListDetail({
           </div>
         ) : (
           /* Desktop Layout */
-          <div className="flex items-center justify-between gap-4 flex-wrap pt-3 border-t border-border/50">
+          <div className="flex items-center justify-between gap-4 flex-wrap pt-3 border-t border-border-subtle">
             <div className="flex items-center gap-3">
               {!hide?.rating && (
                 <>
@@ -456,7 +456,7 @@ export function PaperCardListDetail({
             </div>
 
             {/* Citation buttons bar */}
-            <div className="flex items-center gap-1 w-full bg-muted/50 dark:bg-muted/30 rounded-xl p-1.5">
+            <div className="flex items-center gap-1 w-full bg-inset rounded-xl p-1.5">
               <CitationBadge
                 count={result.cited_by_count ?? 0}
                 label={tp("citedBy")}

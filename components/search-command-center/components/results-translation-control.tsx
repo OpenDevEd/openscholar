@@ -132,7 +132,7 @@ export function ResultsTranslationControl({
       className={cn(
         compactTrigger
           ? "h-8 gap-1.5 px-2.5"
-          : "h-8 rounded-full gap-1.5 pl-2.5 pr-2 border-border/70 bg-background/90 hover:bg-accent/50",
+          : "h-8 rounded-full gap-1.5 pl-2.5 pr-2 border-border bg-field hover:bg-accent/50",
         compactTrigger
           ? allTranslated
             ? "bg-background ink-success shadow-xs"
@@ -179,7 +179,7 @@ export function ResultsTranslationControl({
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent align="end" className="w-[340px] overflow-hidden p-0">
-        <PopoverHeader className="gap-1 border-b bg-muted/25 px-4 py-3">
+        <PopoverHeader className="gap-1 border-b bg-inset px-4 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-0.5">
               <PopoverTitle className="text-sm">{t("translationSettings")}</PopoverTitle>
@@ -197,7 +197,7 @@ export function ResultsTranslationControl({
         </PopoverHeader>
 
         <div className="space-y-4 px-4 py-3">
-          <div className="rounded-lg border border-border/60 bg-background/80 p-3">
+          <div className="rounded-lg border border-border-subtle bg-inset p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <p className="text-sm font-medium">{t("autoTranslateResults")}</p>
@@ -218,7 +218,7 @@ export function ResultsTranslationControl({
               onValueChange={handleTargetModeChange}
               className="gap-2"
             >
-              <div className="flex items-center justify-between rounded-md border border-border/60 px-2.5 py-2">
+              <div className="flex items-center justify-between rounded-md border border-border-subtle px-2.5 py-2">
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="locale" id={localeTargetId} />
                   <Label htmlFor={localeTargetId} className="cursor-pointer text-sm font-medium">
@@ -228,7 +228,7 @@ export function ResultsTranslationControl({
                 {isUsingLocaleTarget && <Check className="h-4 w-4 text-primary" />}
               </div>
 
-              <div className="flex items-center justify-between rounded-md border border-border/60 px-2.5 py-2">
+              <div className="flex items-center justify-between rounded-md border border-border-subtle px-2.5 py-2">
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="manual" id={manualTargetId} />
                   <Label htmlFor={manualTargetId} className="cursor-pointer text-sm font-medium">
@@ -240,7 +240,7 @@ export function ResultsTranslationControl({
             </RadioGroup>
 
             {!isUsingLocaleTarget && (
-              <div className="space-y-1.5 rounded-md border border-border/60 bg-muted/20 p-2.5">
+              <div className="space-y-1.5 rounded-md border border-border-subtle bg-inset p-2.5">
                 <Label className="text-xs text-muted-foreground">{tc("language")}</Label>
                 <Select
                   value={targetLanguageOverride ?? localeTargetLanguage}

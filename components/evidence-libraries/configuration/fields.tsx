@@ -2,8 +2,8 @@
 
 /**
  * Shared controls for the configuration page. All of them follow the look of
- * the settings pages: `bg-background` inputs, `rounded-lg border-border/50`
- * rows, `bg-muted/30` surfaces, dashed drop zones like the PDF uploader.
+ * the settings pages: `bg-background` inputs, `rounded-lg border-border-subtle`
+ * rows, `bg-inset` surfaces, dashed drop zones like the PDF uploader.
  */
 
 import {
@@ -260,7 +260,7 @@ export function TextUploadField({
         >
           {value ? (
             <div className="flex items-center gap-3 p-3">
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-muted/30">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-inset">
                 <FileText className="h-5 w-5 text-muted-foreground" />
               </span>
               <div className="min-w-0 flex-1">
@@ -333,8 +333,8 @@ function UploadSurface({
           ? "border-primary bg-primary/5"
           : invalid
             ? "border-destructive/40"
-            : "border-border/60",
-        !filled && !uploading && "cursor-pointer hover:border-primary/50 hover:bg-muted/30",
+            : "border-border-subtle",
+        !filled && !uploading && "cursor-pointer hover:border-primary/50 hover:bg-muted",
       )}
     >
       <input {...getInputProps()} id={id} />
@@ -360,13 +360,13 @@ function UploadSurface({
 function FileThumb({ url, kind }: { url: string; kind: UploadKind }) {
   if (kind === "legal") {
     return (
-      <span className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-muted/30">
+      <span className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-inset">
         <FileText className="h-5 w-5 text-muted-foreground" />
       </span>
     );
   }
   return (
-    <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-[repeating-conic-gradient(var(--muted)_0%_25%,transparent_0%_50%)] bg-[length:12px_12px]">
+    <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-subtle bg-[repeating-conic-gradient(var(--muted)_0%_25%,transparent_0%_50%)] bg-[length:12px_12px]">
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={url} alt="" className="max-h-full max-w-full object-contain" />
@@ -421,7 +421,7 @@ export function ColourField({
                 <button
                   type="button"
                   aria-label={t("pickColour")}
-                  className="size-9 shrink-0 rounded-md border border-border/50 shadow-xs"
+                  className="size-9 shrink-0 rounded-md border border-border-subtle shadow-xs"
                   style={{ background: valid ? value : "transparent" }}
                 />
               </PopoverTrigger>
@@ -431,7 +431,7 @@ export function ColourField({
                   aria-label={t("pickColour")}
                   value={valid ? value.slice(0, 7) : "#000000"}
                   onChange={(e) => onChange(e.target.value)}
-                  className="h-10 w-full cursor-pointer rounded-md border border-border/50 bg-background p-0.5"
+                  className="h-10 w-full cursor-pointer rounded-md border border-border-subtle bg-background p-0.5"
                 />
                 <div className="grid grid-cols-8 gap-1.5">
                   {COLOUR_PRESETS.map((p) => (
@@ -441,7 +441,7 @@ export function ColourField({
                           type="button"
                           aria-label={tp(p.key)}
                           onClick={() => onChange(p.colors.accent)}
-                          className="flex size-6 items-center justify-center rounded-md border border-border/40"
+                          className="flex size-6 items-center justify-center rounded-md border border-border-subtle"
                           style={{ background: p.colors.accent }}
                         >
                           {p.colors.accent.toLowerCase() === value.toLowerCase() ? (
@@ -514,8 +514,8 @@ export function ToggleRow({
       className={cn(
         "flex items-center justify-between gap-4 rounded-lg border px-3 py-2.5",
         disabled || locked
-          ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
-          : "border-border/50 bg-background",
+          ? "cursor-not-allowed border-dashed border-border-subtle bg-inset text-muted-foreground"
+          : "border-border-subtle bg-background",
         className,
       )}
       data-checked={checked}
@@ -642,7 +642,7 @@ export function ListRow({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       data-dragging={isDragging || undefined}
       className={cn(
-        "flex items-start gap-2 rounded-lg border border-border/50 bg-background p-3",
+        "flex items-start gap-2 rounded-lg border border-border-subtle bg-background p-3",
         isDragging && "relative z-10 shadow-lg",
         className,
       )}
@@ -769,7 +769,7 @@ export function ChipInput({
 
 export function EmptyList({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-lg border border-dashed border-border/60 px-3 py-4 text-center text-sm text-muted-foreground">
+    <p className="rounded-lg border border-dashed border-border-subtle px-3 py-4 text-center text-sm text-muted-foreground">
       {children}
     </p>
   );
@@ -794,7 +794,7 @@ export function NestedList({
   children?: ReactNode;
 }) {
   return (
-    <div className="ml-1 space-y-2 border-l-2 border-border/50 pl-4" role="group" aria-label={label}>
+    <div className="ml-1 space-y-2 border-l-2 border-border-subtle pl-4" role="group" aria-label={label}>
       {children}
       <Button
         type="button"
@@ -866,10 +866,10 @@ export function ChoiceCards<V extends string>({
               className={cn(
                 "flex items-start gap-2.5 rounded-lg border-2 px-3 py-2.5 font-normal transition-colors",
                 o.disabled
-                  ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
+                  ? "cursor-not-allowed border-dashed border-border-subtle bg-inset text-muted-foreground"
                   : selected
                     ? "cursor-pointer border-primary/40 bg-primary/5"
-                    : "cursor-pointer border-border/50 bg-background hover:border-border/80 hover:bg-muted/30",
+                    : "cursor-pointer border-border-subtle bg-background hover:border-border hover:bg-muted",
               )}
             >
               <RadioGroupItem value={o.value} disabled={o.disabled} className="mt-0.5" />
@@ -913,10 +913,10 @@ export function ChoiceChips<V extends string>({
               className={cn(
                 "flex items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm font-normal transition-colors",
                 o.disabled
-                  ? "cursor-not-allowed border-dashed border-border/60 bg-muted/40 text-muted-foreground"
+                  ? "cursor-not-allowed border-dashed border-border-subtle bg-inset text-muted-foreground"
                   : checked
                     ? "cursor-pointer border-primary/40 bg-primary/5"
-                    : "cursor-pointer border-border/50 bg-background hover:border-border/80 hover:bg-muted/30",
+                    : "cursor-pointer border-border-subtle bg-background hover:border-border hover:bg-muted",
               )}
             >
               <Checkbox
@@ -960,8 +960,8 @@ export function Panel({
     <div
       className={cn(
         "rounded-lg border p-3",
-        tone === "muted" && "border-border/50 bg-muted/30",
-        tone === "plain" && "border-border/50 bg-background",
+        tone === "muted" && "border-border-subtle bg-inset",
+        tone === "plain" && "border-border-subtle bg-background",
         tone === "danger" && "border-destructive/20 bg-destructive/5",
         className,
       )}
@@ -1031,7 +1031,7 @@ export function ReadOnlyValue({
         aria-labelledby={id ? labelId(id) : undefined}
         tabIndex={0}
         className={cn(
-          "flex h-9 w-full cursor-default items-center gap-2 rounded-md border border-dashed border-border/60 bg-muted/40 px-3 text-sm text-muted-foreground",
+          "flex h-9 w-full cursor-default items-center gap-2 rounded-md border border-dashed border-border-subtle bg-inset px-3 text-sm text-muted-foreground",
           mono && "font-mono",
           className,
         )}
@@ -1075,7 +1075,7 @@ export function FieldGroup({
   return (
     <section
       className={cn(
-        "border-t border-border/50 pt-5 first:border-t-0 first:pt-0",
+        "border-t border-border-subtle pt-5 first:border-t-0 first:pt-0",
         className,
       )}
       {...rest}

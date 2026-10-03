@@ -722,7 +722,7 @@ export default function JobDetailPage() {
               </>}
               intro={<>
           {/* What the job covers and how far it has got. Its name and state sit in the bar. */}
-          <div className="space-y-3 border-b border-border/40 px-4 py-4 md:px-6">
+          <div className="space-y-3 border-b border-border-subtle px-4 py-4 md:px-6">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <FileText className="size-3.5" />
@@ -766,7 +766,7 @@ export default function JobDetailPage() {
               between real DOM siblings, and `empty:hidden` collapses
               the whole strip when every banner is null — so no phantom
               padding remains on clean completed / idle jobs. */}
-          <div className="space-y-3 border-b border-border/40 px-4 py-4 empty:hidden md:px-6">
+          <div className="space-y-3 border-b border-border-subtle px-4 py-4 empty:hidden md:px-6">
             {job.status === "creditsExhausted" && (
               <CreditsExhaustedBanner
                 onResume={handleResume}

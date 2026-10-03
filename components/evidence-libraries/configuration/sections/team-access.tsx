@@ -145,9 +145,9 @@ export function TeamAccess({
         <EmptyList>{search ? "No matching people." : emptyMessage}</EmptyList>
       );
     return (
-      <ul className="divide-y divide-border/50">
+      <ul className="divide-y divide-border-subtle">
         {list.map((member) => (
-          <li key={member.id} className="px-4 py-4 hover:bg-muted/20">
+          <li key={member.id} className="px-4 py-4 hover:bg-muted">
             <div className="flex flex-wrap items-center gap-3">
               <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-10 rounded-xl" />
               <div className="min-w-0 flex-1">
@@ -516,7 +516,7 @@ export function TeamAccess({
                   : "They’ll receive access to this library only. Organization membership is unchanged."}
             </p>
             {error && <FieldError>{error}</FieldError>}
-            <DialogFooter className="border-t border-border/50 pt-4">
+            <DialogFooter className="border-t border-border-subtle pt-4">
               <DialogClose asChild>
                 <Button type="button" variant="outline">
                   Cancel
@@ -536,7 +536,7 @@ export function TeamAccess({
         {notice && (
           <div
             role="status"
-            className="flex items-center gap-3 border-b border-border/50 bg-muted/30 px-4 py-2 text-xs text-muted-foreground"
+            className="flex items-center gap-3 border-b border-border-subtle bg-inset px-4 py-2 text-xs text-muted-foreground"
           >
             <span className="flex-1">{notice}</span>
             <Button
@@ -551,7 +551,7 @@ export function TeamAccess({
           </div>
         )}
         {!isProfile && (
-          <div className="border-b border-border/50 bg-muted/10">
+          <div className="border-b border-border-subtle bg-inset">
             <div className="px-4 pt-4">
               <h4 className="text-xs font-medium">Organization owners</h4>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -561,7 +561,7 @@ export function TeamAccess({
             {people(members.filter((member) => member.role === "Owner"))}
           </div>
         )}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
           <div className="flex items-center gap-1" aria-label="Team view">
             {(["members", "invitations"] as const).map((tab) => {
               const Icon = tab === "members" ? Users : Mail;
@@ -605,12 +605,12 @@ export function TeamAccess({
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Find a person…"
-              className="h-8 border-transparent bg-muted/40 pl-8 text-xs shadow-none"
+              className="h-8 border-transparent bg-inset pl-8 text-xs shadow-none"
             />
           </div>
         </div>
         {view === "invitations" && (
-          <p className="flex items-center gap-2 border-b border-border/50 px-4 py-3 text-xs text-muted-foreground">
+          <p className="flex items-center gap-2 border-b border-border-subtle px-4 py-3 text-xs text-muted-foreground">
             <Clock3 className="size-3.5" />
             Accepting grants access to this {scope} only.
           </p>
@@ -626,7 +626,7 @@ export function TeamAccess({
             : "No members yet.",
         )}
         {!isProfile && (
-          <div className="border-t border-border/50 px-4 py-3 text-xs text-muted-foreground">
+          <div className="border-t border-border-subtle px-4 py-3 text-xs text-muted-foreground">
             <Disclosure open={rolesOpen} onOpenChange={setRolesOpen} label="About library roles">
             <dl className="grid gap-3 pb-1 pt-3 sm:grid-cols-3">
               {(["Owner", "Editor", "Creator"] as const).map((role) => (
@@ -674,7 +674,7 @@ function RoleSelect({
         aria-label={label}
         size="sm"
         className={cn(
-          "w-fit min-w-36 shrink-0 border-transparent bg-muted/40 shadow-none hover:bg-muted",
+          "w-fit min-w-36 shrink-0 border-transparent bg-inset shadow-none hover:bg-muted",
           className,
         )}
       >

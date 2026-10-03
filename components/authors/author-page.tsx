@@ -261,8 +261,8 @@ export default function AuthorPage({
                 title="Profile details"
                 id="sec-profile-details"
               >
-                <div className="flex items-center gap-4 rounded-xl bg-muted/20 p-3">
-                  <AuthorAvatar photo={draft.photo} className="size-16 border border-border/50" />
+                <div className="flex items-center gap-4 rounded-xl bg-inset p-3">
+                  <AuthorAvatar photo={draft.photo} className="size-16 border border-border-subtle" />
                   <div className="min-w-0 flex-1">
                     <p className="mb-2 text-sm font-medium">Profile photo</p>
                     <div className="flex flex-wrap items-center gap-2">
@@ -446,11 +446,11 @@ export default function AuthorPage({
                     Select all
                   </Button>
                 </div>
-                <div className="divide-y divide-border/50">
+                <div className="divide-y divide-border-subtle">
                   {papers.map((paper) => (
                     <label
                       key={paper.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/30 has-[:checked]:bg-primary/5"
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted has-[:checked]:bg-primary/5"
                     >
                       <input
                         type="checkbox"
@@ -467,7 +467,7 @@ export default function AuthorPage({
                           })
                         }
                       />
-                      <Avatar className="h-14 w-10 shrink-0 rounded-sm border border-border/50">
+                      <Avatar className="h-14 w-10 shrink-0 rounded-sm border border-border-subtle">
                         <AvatarImage
                           src={paper.cover}
                           alt=""
@@ -642,7 +642,7 @@ export default function AuthorPage({
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.85fr)] lg:gap-14">
                   <div>
                     <div className="flex items-center gap-5">
-                      <AuthorAvatar photo={profile.photo} className="size-24 border border-border/50 sm:size-28" />
+                      <AuthorAvatar photo={profile.photo} className="size-24 border border-border-subtle sm:size-28" />
                       <div className="min-w-0">
                         <p className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
                           {profile.name}
@@ -782,7 +782,7 @@ export default function AuthorPage({
                     ))}
                 </div>
                 {hasMoreWorks && (
-                  <div className="flex items-center justify-between gap-3 border-t border-border/50 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-4 py-3">
                     <span className="text-xs text-muted-foreground">
                       {openAlexPapers.length} of{" "}
                       {workCount} publications
@@ -879,7 +879,7 @@ export default function AuthorPage({
                         <button
                           type="button"
                           key={m.id}
-                          className="flex w-full items-center gap-3 p-3 text-left hover:bg-muted/50"
+                          className="flex w-full items-center gap-3 p-3 text-left hover:bg-muted"
                           onClick={async () => {
                             setCandidate(m);
                             try { const detail = await unlessLimited(readProfileAuthor(m.id)); setCandidate(current => current?.id === m.id ? detail : current); }

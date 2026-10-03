@@ -6,7 +6,8 @@
 @custom-variant dark (&:is(.dark *));
 
 /* Light and dark follow the white and black versions in the brand guidelines.
-   Light sets every token; dark overrides what differs. */
+   Light sets every token; dark overrides what differs. Both list their
+   surfaces first, in the same order. */
 :root {
   /* Brand: blue 600, with a brighter and a deeper stop for the brand gradient.
      Everything brand-coloured derives from these. */
@@ -21,49 +22,49 @@
   --logo-b: #2563eb;
   --logo-c: #bfdbfe;
 
-  /* Core */
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.205 0 0);
+  /* Surfaces, from the back of the screen to the front. Each is a solid colour
+     with one job, so changing a line changes that surface everywhere. */
+  --background: oklch(0.968 0 0); /* the page behind everything */
+  --sidebar: oklch(0.985 0 0); /* the app sidebar */
+  --card: oklch(1 0 0); /* panels and result items */
+  --inset: oklch(0.972 0 0); /* rows, wells and sections inside a card */
+  --field: oklch(1 0 0); /* text inputs, selects and outline buttons */
+  --popover: oklch(1 0 0); /* menus, popovers and dialogs */
+  --muted: oklch(0.948 0 0); /* tracks, chips and quiet fills */
+  --secondary: oklch(0.948 0 0); /* secondary buttons and badges */
+  --accent: oklch(0.932 0.032 256); /* hovered and selected items */
+  --sidebar-accent: oklch(0.94 0.028 256); /* hovered and selected sidebar items */
 
-  /* Cards & Popovers */
-  --card: oklch(1 0 0);
+  /* Text on those surfaces. */
+  --foreground: oklch(0.205 0 0);
+  --muted-foreground: oklch(0.52 0 0);
   --card-foreground: oklch(0.205 0 0);
-  --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.205 0 0);
+  --secondary-foreground: oklch(0.32 0 0);
+  --accent-foreground: #1e3a8a;
+  --sidebar-foreground: oklch(0.35 0 0);
+  --sidebar-accent-foreground: #1e3a8a;
+
+  /* Edges. */
+  --border: oklch(0.9 0 0); /* card and control outlines */
+  --border-subtle: oklch(0.935 0 0); /* dividers and quiet outlines */
+  --input: oklch(0.9 0 0); /* the outline of inputs */
+  --sidebar-border: oklch(0.915 0 0);
+  --ring: var(--primary);
+  --sidebar-ring: var(--primary);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+
+  /* Depth: the shadow under a card, and under a hovered one. */
+  --shadow-surface: 0 10px 15px -3px oklch(0 0 0 / 0.04), 0 4px 6px -4px oklch(0 0 0 / 0.03);
+  --shadow-surface-hover: 0 20px 25px -5px oklch(0 0 0 / 0.06), 0 8px 10px -6px oklch(0 0 0 / 0.04);
 
   /* PDF citation highlight */
   --pdf-highlight: color-mix(in oklab, var(--primary) 22%, transparent);
 
-  /* Secondary */
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.32 0 0);
-
-  /* Muted */
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.52 0 0);
-
-  /* Accent */
-  --accent: oklch(0.932 0.032 256);
-  --accent-foreground: #1e3a8a;
-
   /* Destructive */
   --destructive: oklch(0.55 0.22 27);
   --destructive-foreground: oklch(1 0 0);
-
-  /* Borders & Inputs */
-  --border: oklch(0.915 0 0);
-  --input: oklch(0.915 0 0);
-  --ring: var(--primary);
-
-  /* Sidebar */
-  --sidebar: oklch(0.975 0 0);
-  --sidebar-foreground: oklch(0.35 0 0);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: oklch(0.94 0.028 256);
-  --sidebar-accent-foreground: #1e3a8a;
-  --sidebar-border: oklch(0.915 0 0);
-  --sidebar-ring: var(--primary);
 
   /* Charts */
   --chart-1: var(--primary);
@@ -110,7 +111,7 @@
   /* Radius */
   --radius: 0.75rem;
 
-  /* Icons (components/icons.ts) are two-tone. This is how strong
+  /* Icons (components/icons.tsx) are two-tone. This is how strong
      the lighter tone is. */
   --solar-secondary-opacity: 0.45;
 
@@ -130,13 +131,8 @@
 }
 
 /* Dark: true black for OLED screens. As in the brand guidelines' black
-   version, the logo and every brand-coloured control are white and grey.
-   Panels, borders, hovers and muted text are derived from the page and text
-   colours, so those two set the whole theme. */
+   version, the logo and every brand-coloured control are white and grey. */
 .dark {
-  --background: #000000;
-  --foreground: #ededed;
-
   --primary: #fafafa;
   --primary-bright: #ffffff;
   --primary-deep: #a3a3a3;
@@ -147,28 +143,40 @@
   --logo-b: #525252;
   --logo-c: #fafafa;
 
-  --card: color-mix(in srgb, var(--background), var(--foreground) 6%);
-  --card-foreground: var(--foreground);
-  --popover: color-mix(in srgb, var(--card), var(--foreground) 4%);
-  --popover-foreground: var(--foreground);
+  /* Surfaces: the same list as the light theme, each a step lighter than the
+     one behind it. */
+  --background: #000000; /* the page behind everything */
+  --sidebar: #0b0b0b; /* the app sidebar */
+  --card: #121212; /* panels and result items */
+  --inset: #1a1a1a; /* rows, wells and sections inside a card */
+  --field: #0b0b0b; /* text inputs, selects and outline buttons */
+  --popover: #181818; /* menus, popovers and dialogs */
+  --muted: #212121; /* tracks, chips and quiet fills */
+  --secondary: #242424; /* secondary buttons and badges */
+  --accent: #2a2a2a; /* hovered and selected items */
+  --sidebar-accent: #222222; /* hovered and selected sidebar items */
 
-  --secondary: color-mix(in srgb, var(--card), var(--foreground) 9%);
-  --secondary-foreground: var(--foreground);
-  --muted: color-mix(in srgb, var(--card), var(--foreground) 7%);
-  --muted-foreground: color-mix(in srgb, var(--foreground) 72%, var(--background));
-  --accent: color-mix(in srgb, var(--card), var(--foreground) 13%);
-  --accent-foreground: var(--foreground);
+  /* Text on those surfaces. */
+  --foreground: #ededed;
+  --muted-foreground: #a6a6a6;
+  --card-foreground: #ededed;
+  --popover-foreground: #ededed;
+  --secondary-foreground: #ededed;
+  --accent-foreground: #ededed;
+  --sidebar-foreground: #d4d4d4;
+  --sidebar-accent-foreground: #ededed;
+
+  /* Edges. */
+  --border: #2c2c2c; /* card and control outlines */
+  --border-subtle: #212121; /* dividers and quiet outlines */
+  --input: #303030; /* the outline of inputs */
+  --sidebar-border: #1f1f1f;
+
+  /* Depth. */
+  --shadow-surface: 0 10px 15px -3px oklch(0 0 0 / 0.3), 0 4px 6px -4px oklch(0 0 0 / 0.2);
+  --shadow-surface-hover: 0 20px 25px -5px oklch(0 0 0 / 0.4), 0 8px 10px -6px oklch(0 0 0 / 0.25);
 
   --destructive: oklch(0.65 0.2 25);
-
-  --border: color-mix(in srgb, var(--background), var(--foreground) 17%);
-  --input: color-mix(in srgb, var(--background), var(--foreground) 20%);
-
-  --sidebar: var(--background);
-  --sidebar-foreground: color-mix(in srgb, var(--foreground) 88%, var(--background));
-  --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: var(--foreground);
-  --sidebar-border: var(--border);
 
   --pdf-highlight: color-mix(in oklab, var(--primary) 30%, transparent);
   --highlight: color-mix(in oklab, var(--color-yellow-500) 30%, transparent);
@@ -214,6 +222,9 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-inset: var(--inset);
+  --color-field: var(--field);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
@@ -271,6 +282,8 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
+  --shadow-surface: var(--shadow-surface);
+  --shadow-surface-hover: var(--shadow-surface-hover);
 }
 
 @layer base {

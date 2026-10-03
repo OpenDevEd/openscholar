@@ -131,7 +131,7 @@ function EffortStep({
                 type="button"
                 aria-label={t("back")}
                 onClick={onBack}
-                className="-my-1 -ml-1 flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-background/70"
+                className="-my-1 -ml-1 flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-background"
               >
                 <ArrowLeft className="size-4" />
               </button>
@@ -340,7 +340,7 @@ export function ModelPicker({
         {/* Uncontrolled on purpose: a controlled value makes cmdk scroll to every row the pointer passes. */}
         <CommandPrimitive className="flex min-h-0 flex-1 flex-col" defaultValue={current?.id}>
           <div className="space-y-2 p-2">
-            <label className="flex h-10 items-center gap-2.5 rounded-xl border border-border/60 bg-muted/40 px-3">
+            <label className="flex h-10 items-center gap-2.5 rounded-xl border border-border-subtle bg-inset px-3">
               <Search className="size-4 shrink-0 text-muted-foreground" />
               <CommandPrimitive.Input ref={search} placeholder={tm("searchModels")} className="h-full w-full bg-transparent text-sm outline-hidden placeholder:text-muted-foreground" />
             </label>
@@ -385,7 +385,7 @@ export function ModelPicker({
               </div>
             ) : null}
           </div>
-          <div className={cn(GRID, "border-y border-border/50 bg-muted/30 px-4 py-1.5 text-2xs font-medium text-muted-foreground")}>
+          <div className={cn(GRID, "border-y border-border-subtle bg-inset px-4 py-1.5 text-2xs font-medium text-muted-foreground")}>
             <span>{t("model")}</span>
             <a
               href="https://artificialanalysis.ai/methodology/intelligence-benchmarking"
@@ -491,7 +491,7 @@ export function ModelPicker({
           {/* Built from the current pick, which the caller already has, so it's there on the first frame. */}
           {efforts && current?.reasoningEfforts?.length ? (
             // The current model's effort, changed in place without closing.
-            <div className="flex items-center justify-between gap-3 border-t border-border/50 py-2 pl-4 pr-2">
+            <div className="flex items-center justify-between gap-3 border-t border-border-subtle py-2 pl-4 pr-2">
               <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{tm("effort")}</span>
               <Segmented
                 label={tm("effort")}

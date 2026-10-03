@@ -28,7 +28,7 @@ export function ModeTabs({ mode, onChange, disabled }: ModeTabsProps) {
     { id: "adjust", label: ts("adjustTab"), icon: SlidersHorizontal },
   ];
   return (
-    <div className="relative flex bg-muted/50 rounded-lg p-1 gap-0.5">
+    <div className="relative flex bg-inset rounded-lg p-1 gap-0.5">
       {tabs.map((tab) => {
         const isActive = mode === tab.id;
         const Icon = tab.icon;
@@ -54,7 +54,7 @@ export function ModeTabs({ mode, onChange, disabled }: ModeTabsProps) {
                 className={cn(
                   "absolute inset-0 rounded-md",
                   "bg-background shadow-sm",
-                  "border border-border/50"
+                  "border border-border-subtle"
                 )}
                 transition={tabSpring}
               />

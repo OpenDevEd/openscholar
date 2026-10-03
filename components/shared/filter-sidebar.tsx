@@ -100,8 +100,8 @@ export function FilterSidebar({
       <motion.aside
         className={cn(
           "h-full flex flex-col overflow-hidden absolute right-0 top-0 bottom-0",
-          "bg-background/95 dark:bg-background/90",
-          "border-l border-border/50"
+          "bg-card",
+          "border-l border-border-subtle"
         )}
         initial={false}
         animate={{ x: translateX }}
@@ -112,7 +112,7 @@ export function FilterSidebar({
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
 
         {/* Floating controls in top-right corner */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border/30 bg-background/95 p-1">
+        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border-subtle bg-card p-1">
           <AnimatePresence>
             {activeFilterCount > 0 && (
               <FilterCountControl

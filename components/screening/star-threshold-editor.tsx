@@ -62,7 +62,7 @@ export function StarThresholdEditor({
 
   return (
     <div className="space-y-2">
-      <div className="rounded-lg border border-border/50 bg-card">
+      <div className="rounded-lg border border-border-subtle bg-card">
         {thresholds.length === 0 ? (
           <div className="px-3 py-4 text-center text-sm text-muted-foreground">
             {t("addThreshold")}
@@ -73,7 +73,7 @@ export function StarThresholdEditor({
               key={i}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5",
-                i < thresholds.length - 1 && "border-b border-border/30"
+                i < thresholds.length - 1 && "border-b border-border-subtle"
               )}
             >
               {/* Score condition: ≥ [number] */}

@@ -63,7 +63,7 @@ export const CardView = memo(function CardView({
             type="button"
             aria-pressed={openAnswer === openAnswerKey({ paper, question })}
             onClick={() => onOpenAnswer({ paper, question, result: resultFor(question) })}
-            className="max-w-full truncate rounded-md bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground transition-colors duration-100 hover:bg-muted hover:text-foreground aria-pressed:bg-primary/10 aria-pressed:text-foreground"
+            className="max-w-full truncate rounded-md bg-inset px-2 py-0.5 text-xs text-muted-foreground transition-colors duration-100 hover:bg-muted hover:text-foreground aria-pressed:bg-primary/10 aria-pressed:text-foreground"
           >
             {question.question}
           </button>
@@ -73,10 +73,10 @@ export const CardView = memo(function CardView({
             key={paper._id}
             data-paper-id={paper._id}
             data-state={isSelected ? "selected" : undefined}
-            className="flex flex-col rounded-xl border border-border/50 bg-card/50 transition-colors data-[state=selected]:border-primary/40 dark:bg-card/40"
+            className="flex flex-col rounded-xl border border-border-subtle bg-inset transition-colors data-[state=selected]:border-primary/40"
           >
             {/* The paper */}
-            <div className="flex items-start gap-3 border-b border-border/40 p-4">
+            <div className="flex items-start gap-3 border-b border-border-subtle p-4">
               <Checkbox
                 checked={isSelected}
                 onCheckedChange={() => toggleSelect(paper._id)}
@@ -124,7 +124,7 @@ export const CardView = memo(function CardView({
 
             {/* Questions without an answer, grouped so they don't repeat down the card */}
             {missing.length || failed.length ? (
-              <div className="space-y-2 border-t border-border/40 px-4 py-3">
+              <div className="space-y-2 border-t border-border-subtle px-4 py-3">
                 {missing.length ? (
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span className="mr-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">

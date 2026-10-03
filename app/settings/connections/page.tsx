@@ -52,7 +52,7 @@ export default function ConnectionsPage() {
       <div className="space-y-8">
         <Zone label={t("connectedApps")}>
           {active.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/80 px-6 py-10 text-center">
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-6 py-10 text-center">
               <Plug className="size-5 text-muted-foreground" />
               <p className="text-sm font-medium">{t("noConnectedApps")}</p>
               <p className="max-w-sm text-xs text-muted-foreground">{t("noConnectedAppsDescription")}</p>

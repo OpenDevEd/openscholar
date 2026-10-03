@@ -251,7 +251,7 @@ function PayMenu({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button type="button" className="-ml-1.5 flex items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
+        <button type="button" className="-ml-1.5 flex items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted">
           {children}
           {saved.length ? (
             <span className="flex -space-x-1">

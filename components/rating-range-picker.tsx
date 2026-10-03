@@ -141,7 +141,7 @@ export function RatingRangePicker({
           </div>
 
           {/* Rating scale reference */}
-          <div className="flex justify-between items-center px-3 py-2 bg-muted/30 rounded-lg">
+          <div className="flex justify-between items-center px-3 py-2 bg-inset rounded-lg">
             {minValue === 0 && (
               <div className="flex flex-col items-center gap-1">
                 <Star className="h-3 w-3 text-muted-foreground/40" />

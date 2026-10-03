@@ -9,14 +9,14 @@ import { cn } from "@/lib/utils";
 
 /** The icon tile at the start of a list row. */
 export const LIST_TILE =
-  "flex size-10 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-muted/30 text-primary";
+  "flex size-10 items-center justify-center overflow-hidden rounded-lg border border-border-subtle bg-inset text-primary";
 
 /**
  * Toolbar filters sit quietly on the card instead of looking like form fields.
  * Every filter shares the search box's small text. A select's value takes the
  * free space, so a wide select still reads from the left.
  */
-export const LIST_FILTER = "border-transparent bg-muted/40 text-xs shadow-none md:text-xs *:data-[slot=select-value]:flex-1";
+export const LIST_FILTER = "border-transparent bg-inset text-xs shadow-none md:text-xs *:data-[slot=select-value]:flex-1";
 
 /**
  * The view switch at the top of a list card. A count shows only once it is

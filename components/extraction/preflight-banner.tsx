@@ -51,7 +51,7 @@ export function ExtractionPreflightBanner({
       role="status"
       data-preflight-ok={ok ? "true" : "false"}
       className={`flex items-center justify-between rounded-md px-3 py-2 text-xs ${
-        ok ? "bg-muted/50" : "bg-destructive/10"
+        ok ? "bg-inset" : "bg-destructive/10"
       }`}
     >
       <div className="flex items-center gap-3">

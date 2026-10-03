@@ -206,7 +206,7 @@ export const DomainSection = memo(function DomainSection({
         <div
           role="group"
           aria-label={t("platformLabel")}
-          className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-background px-3 py-2.5"
+          className="flex items-center gap-2.5 rounded-xl border border-border-subtle bg-background px-3 py-2.5"
           data-platform-address
         >
           <HugeiconsIcon
@@ -330,7 +330,7 @@ export const DomainSection = memo(function DomainSection({
               </Button>
             </div>
           ) : null}
-          <div className="overflow-hidden rounded-xl border border-border/60 bg-background">
+          <div className="overflow-hidden rounded-xl border border-border-subtle bg-background">
             {domains.map((domain: DomainRow, index) => {
               const checking = busy === "check" && domain.state !== "active";
               const status = dnsStatusOf(domain, checking);
@@ -356,7 +356,7 @@ export const DomainSection = memo(function DomainSection({
                 <article
                   key={domain.domainId}
                   className={
-                    index === 0 ? undefined : "border-t border-border/60"
+                    index === 0 ? undefined : "border-t border-border-subtle"
                   }
                   data-domain-host={domain.host}
                 >
@@ -480,12 +480,12 @@ export const DomainSection = memo(function DomainSection({
                   </header>
 
                   {domain.state !== "active" ? (
-                    <div className="border-t border-border/50 bg-muted/10 px-3">
+                    <div className="border-t border-border-subtle bg-inset px-3">
                       {domain.records.map((record, recordIndex) => (
                         <div
                           key={record.type}
                           className={`grid grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1 py-2 sm:grid-cols-[3.25rem_minmax(0,1fr)_minmax(0,1.5fr)] ${
-                            recordIndex === 0 ? "" : "border-t border-border/40"
+                            recordIndex === 0 ? "" : "border-t border-border-subtle"
                           }`}
                         >
                           <span className="w-fit rounded-md bg-muted px-1.5 py-0.5 font-mono text-2xs font-semibold text-muted-foreground">

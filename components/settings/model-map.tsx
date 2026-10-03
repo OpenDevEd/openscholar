@@ -232,7 +232,7 @@ export function RoutingMap({
         onMouseLeave={() => setHover(null)}
         className={cn(
           "flex h-11 w-full items-center gap-3 rounded-l-xl pl-3 text-left transition-colors",
-          hover?.task === task && "bg-muted/50",
+          hover?.task === task && "bg-inset",
           wrapTask && "cursor-pointer",
         )}
       >
@@ -337,9 +337,9 @@ export function NodeCard({
       {...props}
       className={cn(
         "flex w-full items-center gap-3 rounded-2xl px-3 text-left transition-[background-color,border-color]",
-        key ? "rounded-tl-none bg-primary/10 hover:bg-primary/15" : "border border-border/60 bg-muted/40",
+        key ? "rounded-tl-none bg-primary/10 hover:bg-primary/15" : "border border-border-subtle bg-inset",
         interactive ? "cursor-pointer" : "cursor-default",
-        interactive && !key && "hover:border-border hover:bg-muted/70",
+        interactive && !key && "hover:border-border hover:bg-muted",
       )}
       style={{ height: NODE_H }}
     >

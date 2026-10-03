@@ -330,7 +330,7 @@ function OwnerForm({ organizationId, organizationPicker }: {
           </div>
         </FieldGroup>
 
-        <div className="flex justify-end gap-2 border-t border-border/50 pt-5">
+        <div className="flex justify-end gap-2 border-t border-border-subtle pt-5">
           <Button asChild type="button" variant="ghost">
             <Link href="/evidence-libraries">{tc("cancel")}</Link>
           </Button>

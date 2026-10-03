@@ -35,7 +35,7 @@ export function SectionCard({
       id={id}
       className={cn(
         "overflow-hidden rounded-2xl border-2",
-        tone === "danger" ? "border-destructive/30" : "border-border/60",
+        tone === "danger" ? "border-destructive/30" : "border-border-subtle",
         className,
       )}
       {...rest}
@@ -45,7 +45,7 @@ export function SectionCard({
           "space-y-1 border-b px-4 py-3",
           tone === "danger"
             ? "border-destructive/20 bg-destructive/5"
-            : "border-border/50 bg-muted/30",
+            : "border-border-subtle bg-inset",
         )}
       >
         <div className="flex flex-wrap items-center gap-2.5">

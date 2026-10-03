@@ -75,7 +75,7 @@ export default function ModelListPage() {
                 onClick={() => reset(setProvider)(chip.key)}
                 className={cn(
                   "flex h-9 items-center gap-2 rounded-full border pl-2.5 pr-3.5 text-sm font-medium transition-colors",
-                  active ? "border-transparent" : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  active ? "border-transparent" : "border-border-subtle bg-inset text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
                 style={active ? { backgroundColor: `color-mix(in oklab, ${tint} 18%, transparent)`, color: tint } : undefined}
               >
@@ -95,7 +95,7 @@ export default function ModelListPage() {
                 onChange={(e) => reset(setSearch)(e.target.value)}
                 placeholder={t("search")}
                 aria-label={t("search")}
-                className="h-11 rounded-2xl border border-border/60 bg-muted/40 pl-11"
+                className="h-11 rounded-2xl border border-border-subtle bg-inset pl-11"
               />
             </div>
             <Segmented

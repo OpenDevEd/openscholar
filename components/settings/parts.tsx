@@ -47,7 +47,7 @@ export function Tile({ icon: Icon, tint, className }: { icon: Ico; tint: string;
 }
 
 /** A list of rows in one rounded box. */
-export const LIST = "divide-y divide-border/40 overflow-hidden rounded-2xl border border-border/60";
+export const LIST = "divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle";
 
 /**
  * Pill switch with a sliding highlight. The highlight is measured inside the group
@@ -95,7 +95,7 @@ export function Segmented<T extends string>({
       role="radiogroup"
       aria-label={label}
       className={cn(
-        "relative bg-muted/60 p-1",
+        "relative bg-inset p-1",
         stacked ? "rounded-[1.375rem]" : "rounded-full",
         // Equal segments in one row, two by two on narrow screens.
         fill ? "@container/segments grid w-full auto-cols-fr grid-flow-col @max-[34rem]/configuration:grid-flow-row @max-[34rem]/configuration:grid-cols-2 @max-[34rem]/configuration:rounded-3xl" : "inline-flex shrink-0",

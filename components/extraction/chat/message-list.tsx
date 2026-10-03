@@ -408,7 +408,7 @@ function SourceUpdateDivider({
       role="status"
       className="flex justify-center"
     >
-      <div className="max-w-[90%] rounded-md border border-border/70 bg-muted/45 px-3 py-1.5 text-center text-xs text-muted-foreground">
+      <div className="max-w-[90%] rounded-md border border-border bg-inset px-3 py-1.5 text-center text-xs text-muted-foreground">
         <span className="font-medium text-foreground">{title}</span>
         <span className="ml-1">{description}</span>
       </div>

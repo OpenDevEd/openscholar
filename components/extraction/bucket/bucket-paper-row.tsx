@@ -47,7 +47,7 @@ export function BucketPaperRow({
       exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
       transition={{ duration: 0.18, ease: "easeOut" }}
       className={cn(
-        "group flex min-w-0 max-w-full flex-col gap-2 rounded-lg border border-border/60 bg-card p-3 transition-colors hover:bg-accent/40",
+        "group flex min-w-0 max-w-full flex-col gap-2 rounded-lg border border-border-subtle bg-card p-3 transition-colors hover:bg-accent/40",
         className,
       )}
     >

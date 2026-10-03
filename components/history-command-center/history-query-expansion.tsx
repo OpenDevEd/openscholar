@@ -129,13 +129,13 @@ export function HistoryQueryExpansion({
       <div
         className={cn(
           "rounded-lg overflow-hidden",
-          "bg-muted/30 dark:bg-muted/20",
-          "border border-border/50"
+          "bg-inset",
+          "border border-border-subtle"
         )}
       >
         {/* Header */}
         {!hideHeader && (
-          <div className="px-3 py-2 border-b border-border/40 bg-muted/40">
+          <div className="px-3 py-2 border-b border-border-subtle bg-inset">
             <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <Clock className="h-3.5 w-3.5" />
               <span>{th("queryHistoryCount", { count: total ?? queryHistory.length })}</span>
@@ -163,7 +163,7 @@ export function HistoryQueryExpansion({
               <div
                 key={`${entry.timestamp}-${entry.query}`}
                 className={cn(
-                  "relative border-b border-border/30 last:border-b-0",
+                  "relative border-b border-border-subtle last:border-b-0",
                   isCurrent && "bg-primary/5"
                 )}
               >

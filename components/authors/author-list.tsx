@@ -38,7 +38,7 @@ export function AuthorList({pending = false}: {pending?: boolean}) {
     : <Button size="sm" className={BAR_ACTION} onClick={() => {setError(""); setOpen(true);}}>{createLabel}</Button>}
     filters={<ListSearch aria-label="Find authors" placeholder="Find an author…" className="w-56" value={search} onChange={event => setSearch(event.target.value)} />}>
     {!pending && <AuthorInvitations />}
-    {!!results.length && <ul className="divide-y divide-border/50">{results.map(profile => <li key={profile._id} className="fade-enter"><Link href={`/authors/${profile._id}`} className="group flex items-center gap-3 p-4 hover:bg-muted/15">
+    {!!results.length && <ul className="divide-y divide-border-subtle">{results.map(profile => <li key={profile._id} className="fade-enter"><Link href={`/authors/${profile._id}`} className="group flex items-center gap-3 p-4 hover:bg-muted">
       <AuthorAvatar photo={profile.photo} className="mr-1 size-10 shrink-0" />
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{profile.name}</p><p className="truncate text-xs text-muted-foreground">{profile.headline || profile.affiliation}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
@@ -46,7 +46,7 @@ export function AuthorList({pending = false}: {pending?: boolean}) {
     {!results.length && (pending || status === "LoadingFirstPage"
       ? <ListLoading label="Loading authors" />
       : <ListEmpty icon={search ? SearchX : Users}>{search ? "No authors match your search." : "No authors yet."}</ListEmpty>)}
-    {(status === "CanLoadMore" || status === "LoadingMore") && <div className="flex justify-center border-t border-border/50 p-3"><Button variant="ghost" size="sm" disabled={status === "LoadingMore"} onClick={() => loadMore(20)}>{status === "LoadingMore" && <Spinner />}Show more</Button></div>}
+    {(status === "CanLoadMore" || status === "LoadingMore") && <div className="flex justify-center border-t border-border-subtle p-3"><Button variant="ghost" size="sm" disabled={status === "LoadingMore"} onClick={() => loadMore(20)}>{status === "LoadingMore" && <Spinner />}Show more</Button></div>}
     <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>Create author profile</DialogTitle></DialogHeader><form className="space-y-4" onSubmit={async event => {
       event.preventDefault(); if (creating) return; setCreating(true); setError("");
       try { const id = await create({name}); router.push(`/authors/${id}/configuration`); setOpen(false); }

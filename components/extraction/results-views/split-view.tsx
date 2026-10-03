@@ -32,7 +32,7 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenAnsw
   return (
     <div className="flex h-[calc(100dvh-300px)] min-h-[480px] min-w-0 flex-col lg:flex-row">
       {/* Papers */}
-      <ul className="h-56 w-full shrink-0 divide-y divide-border/50 overflow-y-auto border-b border-border/50 lg:h-full lg:w-80 lg:border-b-0 lg:border-r">
+      <ul className="h-56 w-full shrink-0 divide-y divide-border-subtle overflow-y-auto border-b border-border-subtle lg:h-full lg:w-80 lg:border-b-0 lg:border-r">
         {papers.map((paper) => {
           const isSelected = selectedPaperId === paper._id;
           return (
@@ -41,7 +41,7 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenAnsw
                 type="button"
                 aria-current={isSelected || undefined}
                 onClick={() => setSelectedPaperId(paper._id)}
-                className={cn("w-full space-y-1 px-4 py-3 text-left transition-colors hover:bg-muted/40", isSelected && "bg-muted hover:bg-muted")}
+                className={cn("w-full space-y-1 px-4 py-3 text-left transition-colors hover:bg-muted", isSelected && "bg-muted hover:bg-muted")}
               >
                 <p className="line-clamp-2 text-sm font-medium leading-snug">{paper.title}</p>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -57,7 +57,7 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenAnsw
       {/* The chosen paper's answers */}
       <div className="min-w-0 flex-1 overflow-y-auto">
         {selectedPaper ? (
-          <div className="divide-y divide-border/50">
+          <div className="divide-y divide-border-subtle">
             <div className="space-y-1.5 p-4 md:px-6">
               <h2 className="text-base font-semibold leading-snug">{selectedPaper.title}</h2>
               <PaperDetails paper={selectedPaper} pdfEnabled={pdfEnabled} />
@@ -112,7 +112,7 @@ function CitationPreview({
   return (
     <button
       type="button"
-      className="w-full space-y-2 rounded-lg bg-muted/40 p-3 text-left transition-colors hover:bg-muted/70"
+      className="w-full space-y-2 rounded-lg bg-inset p-3 text-left transition-colors hover:bg-muted"
       onClick={onClick}
     >
       <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">

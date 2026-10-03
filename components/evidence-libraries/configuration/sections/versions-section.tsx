@@ -479,7 +479,7 @@ function SoftwarePanel({
         </dd>
       </dl>
       {updateAvailable && (releases.length > 0 || changes.length > 0) ? (
-        <div className="space-y-2 border-t border-border/50 pt-3">
+        <div className="space-y-2 border-t border-border-subtle pt-3">
           <p className="text-xs font-medium text-muted-foreground">
             {t("versions.changesHeading")}
           </p>

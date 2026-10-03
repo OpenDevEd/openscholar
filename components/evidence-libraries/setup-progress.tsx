@@ -164,7 +164,7 @@ export function SetupProgressView({
               >
                 {t("draftHint")}
               </InlineNotice>
-              <ol className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 bg-background">
+              <ol className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background">
                 {steps.map((step) => (
                   <DraftStepRow key={step.key} step={step} />
                 ))}

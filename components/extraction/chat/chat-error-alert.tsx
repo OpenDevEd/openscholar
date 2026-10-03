@@ -174,7 +174,7 @@ function CreditEstimateRow({
 
   return (
     <div
-      className="mb-3 rounded-md border border-destructive/20 bg-background/60 p-2.5"
+      className="mb-3 rounded-md border border-destructive/20 bg-card p-2.5"
       data-error-credit-estimate
       data-credit-required={String(estimate.required)}
       data-credit-available={String(estimate.available)}

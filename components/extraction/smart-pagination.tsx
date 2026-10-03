@@ -83,7 +83,7 @@ export function SmartPagination({
   };
 
   return (
-    <div className="flex flex-col items-center justify-between gap-3 border-t border-border/50 px-4 py-3 sm:flex-row md:px-6">
+    <div className="flex flex-col items-center justify-between gap-3 border-t border-border-subtle px-4 py-3 sm:flex-row md:px-6">
       {/* Left: Results info */}
       <p className="text-xs tabular-nums text-muted-foreground">
         {t("showingRange", { start: startIdx, end: endIdx, total: filteredCount })}

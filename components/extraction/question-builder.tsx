@@ -127,8 +127,8 @@ function QuestionRow({
         pointerEvents: isDeleting ? "none" : undefined,
       }}
       className={cn(
-        "p-4 hover:bg-muted/50 transition-colors border-b border-border last:border-b-0",
-        index % 2 === 0 ? "bg-background" : "bg-muted/30"
+        "p-4 hover:bg-muted transition-colors border-b border-border last:border-b-0",
+        index % 2 === 0 ? "bg-background" : "bg-inset"
       )}
     >
       <div className="flex items-start gap-3">

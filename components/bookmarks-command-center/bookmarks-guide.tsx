@@ -43,8 +43,8 @@ export function BookmarksGuide() {
       className={cn(
         "mt-6",
         "rounded-xl",
-        "border border-border/40",
-        "bg-muted/20"
+        "border border-border-subtle",
+        "bg-inset"
       )}
     >
       {/* Header */}
@@ -54,9 +54,9 @@ export function BookmarksGuide() {
           "w-full px-4 py-3",
           "flex items-center justify-between gap-3",
           "text-left",
-          "hover:bg-muted/30 transition-colors",
+          "hover:bg-muted transition-colors",
           "rounded-xl",
-          isOpen && "rounded-b-none border-b border-border/30"
+          isOpen && "rounded-b-none border-b border-border-subtle"
         )}
       >
         <div className="flex items-center gap-2">

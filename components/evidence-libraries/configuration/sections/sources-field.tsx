@@ -271,7 +271,7 @@ export function SourcesField({
       ) : (
         <ul
           aria-label={t("listLabel")}
-          className="divide-y divide-border/50 overflow-hidden rounded-lg border border-border/50 bg-background"
+          className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background"
         >
           {zoteroSources.map((entry) => (
             <GroupRow
@@ -425,7 +425,7 @@ export function SourcesField({
                 open={advancedOpen}
                 onOpenChange={setAdvancedOpen}
                 label={t("tagRulesHeading")}
-                className="border-t border-border/50 pt-5"
+                className="border-t border-border-subtle pt-5"
               >
                 <div className="pt-3">
                   <Panel tone="muted" className="space-y-4">

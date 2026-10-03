@@ -51,7 +51,7 @@ export default function SwitchesPage() {
             <ul className={LIST}>
               {group.flags.map(([key, copy]) => (
                 <li key={key}>
-                  <label className="flex cursor-pointer items-center justify-between gap-6 px-4 py-3.5 transition-colors hover:bg-muted/30">
+                  <label className="flex cursor-pointer items-center justify-between gap-6 px-4 py-3.5 transition-colors hover:bg-muted">
                     <span className="min-w-0">
                       <span className="block text-sm font-medium">{t(`flags.${copy}.label`)}</span>
                       <span className="block text-xs text-muted-foreground">{t(`flags.${copy}.hint`)}</span>

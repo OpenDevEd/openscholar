@@ -51,8 +51,8 @@ export function SourcesPanelHeader({
     <header
       className={
         isMobile
-          ? "flex flex-col gap-1.5 border-b border-border/50 px-3 pb-2.5 pt-3 pr-10"
-          : "flex flex-col gap-1.5 border-b border-border/50 px-3 pb-2.5 pt-3"
+          ? "flex flex-col gap-1.5 border-b border-border-subtle px-3 pb-2.5 pt-3 pr-10"
+          : "flex flex-col gap-1.5 border-b border-border-subtle px-3 pb-2.5 pt-3"
       }
       data-sources-panel-header
       data-mobile={isMobile ? "true" : "false"}

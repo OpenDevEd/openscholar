@@ -15,7 +15,6 @@ import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { AuthRouteGate } from "@/components/auth/auth-route-gate";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
-import { PaletteMock } from "@/components/palette-mock";
 import { ConsentAwareGoogleAnalytics } from "@/components/google-analytics";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
@@ -105,8 +104,6 @@ export default async function RootLayout({
                       <Toaster />
                       <ConfirmationHost />
                       <CookieConsentBanner />
-                      {/* MOCK ONLY: colour direction switcher, never in a production build. */}
-                      {process.env.NODE_ENV === "development" && <PaletteMock />}
                       <ConsentAwareGoogleAnalytics />
                     </TooltipProvider>
                   </QuerySyncProvider>

@@ -112,7 +112,7 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
             {models.length === 0 ? (
               <EmptyList>{t("modelsEmpty")}</EmptyList>
             ) : (
-              <div className="overflow-hidden rounded-lg border border-border/60 bg-background">
+              <div className="overflow-hidden rounded-lg border border-border-subtle bg-background">
                 <SortableList
                   ids={models}
                   className="space-y-0"
@@ -140,7 +140,7 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
                             return d;
                           })
                         }
-                        className="items-center rounded-none border-x-0 border-t-0 border-b border-border/50 bg-transparent px-2.5 py-2 last:border-b-0"
+                        className="items-center rounded-none border-x-0 border-t-0 border-b border-border-subtle bg-transparent px-2.5 py-2 last:border-b-0"
                         data-model={model}
                       >
                         <div className="flex min-w-0 items-center gap-3">
@@ -166,7 +166,7 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
             <Field
               label={t("modelLabel")}
               hint={t("modelHint")}
-              className="max-w-md border-t border-border/50 pt-4"
+              className="max-w-md border-t border-border-subtle pt-4"
               error={
                 defaultModel !== "" && !models.includes(defaultModel)
                   ? t("modelError")

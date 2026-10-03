@@ -58,7 +58,7 @@ export function ExtractionResultsShell({
       <div className="min-w-0 overflow-x-hidden">
         <div className="flex min-w-0 flex-col gap-0">
           {/* The shared tabs: the results, or the answer opened from them. */}
-          <div className="border-b border-border/50 px-4 py-3">
+          <div className="border-b border-border-subtle px-4 py-3">
             <ListViewTabs
               label={label}
               value={mobilePane}

@@ -180,7 +180,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
       {notice && (
         <p
           role="status"
-          className="flex items-center gap-2 border-b border-border/50 bg-muted/20 px-4 py-3 text-xs text-muted-foreground"
+          className="flex items-center gap-2 border-b border-border-subtle bg-inset px-4 py-3 text-xs text-muted-foreground"
         >
           <Check className="size-3.5" />
           {notice}
@@ -189,7 +189,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
       {/* Keyed by tab, so switching fades the new list in instead of jumping. */}
       <div key={view} className="fade-enter">
         {view === "invitations" && (
-          <p className="border-b border-border/50 px-4 py-3 text-xs text-muted-foreground">
+          <p className="border-b border-border-subtle px-4 py-3 text-xs text-muted-foreground">
             Accept access to a library without joining its organization.
           </p>
         )}
@@ -204,7 +204,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                   : "Your libraries will appear here when you receive access."}
           </ListEmpty>
         ) : (
-          <ul className="divide-y divide-border/50" data-library-list>
+          <ul className="divide-y divide-border-subtle" data-library-list>
             {visible.map((library) => {
               const RoleIcon = roleIcons[library.role];
               return (
@@ -212,7 +212,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                   key={library.id}
                   data-library-row={library.id}
                   data-status={library.status}
-                  className="fade-enter flex flex-wrap items-center gap-3 p-4 hover:bg-muted/15 sm:flex-nowrap"
+                  className="fade-enter flex flex-wrap items-center gap-3 p-4 hover:bg-muted sm:flex-nowrap"
                 >
                   <div className="relative mr-1 shrink-0">
                     {library.faviconUrl ? (

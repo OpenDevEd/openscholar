@@ -37,7 +37,7 @@ export function ActivationControl({
       aria-label={busy?.accessibleLabel}
       className={cn(
         busy &&
-          "relative w-48 overflow-hidden bg-muted/50 px-3 text-foreground shadow-none disabled:opacity-100 dark:bg-muted/40",
+          "relative w-48 overflow-hidden bg-inset px-3 text-foreground shadow-none disabled:opacity-100",
         className,
       )}
     >

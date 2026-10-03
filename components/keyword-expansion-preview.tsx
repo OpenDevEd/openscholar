@@ -35,7 +35,7 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
     return (
       <div className="space-y-2">
         <p className="text-sm font-medium">{tb("bookmarkExpansionPreview")}</p>
-        <div className="p-2 bg-muted/50 rounded text-xs">
+        <div className="p-2 bg-inset rounded text-xs">
           <span className="text-muted-foreground">{tl("original")}: </span>
           <span>{query}</span>
         </div>
@@ -81,7 +81,7 @@ export function KeywordExpansionPreview({ query }: KeywordExpansionPreviewProps)
       <p className="text-sm font-medium">{tb("bookmarkExpansionPreview")}</p>
       
       <div className="space-y-2">
-        <div className="p-2 bg-muted/30 rounded-md">
+        <div className="p-2 bg-inset rounded-md">
           <p className="text-xs text-muted-foreground mb-1">{tl("original")}:</p>
           <p className="text-sm font-mono">{query}</p>
         </div>

@@ -177,6 +177,8 @@ export const isReviewFilterActive = (reviewFilter?: boolean) => {
 const anyValue = () => true
 const twMerge = extendTailwindMerge<"tint">({
   extend: {
+    // shadow-surface is a size from the theme, not a shadow colour.
+    theme: { shadow: ["surface", "surface-hover"] },
     classGroups: {
       "text-color": [{ ink: [anyValue] }],
       tint: [{ tint: [anyValue] }],

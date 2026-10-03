@@ -63,9 +63,9 @@ export function SearchCommandCenter({
       transition={subtleSpring}
       className={cn(
         "command-center relative rounded-2xl overflow-hidden",
-        "bg-background/95 dark:bg-background/90",
-        "border border-border/50",
-        "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]",
+        "bg-card",
+        "border border-border-subtle",
+        "shadow-surface",
         "transition-shadow duration-300",
         "focus-within:shadow-xl focus-within:shadow-primary/[0.05]",
         "focus-within:border-primary/20"

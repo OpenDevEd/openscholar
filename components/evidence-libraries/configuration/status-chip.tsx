@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  * See `app/settings/billing/page.tsx` and `components/extraction/job-list-item.tsx`.
  */
 const STATUS_TONE = {
-  neutral: "bg-muted text-muted-foreground border-border/50",
+  neutral: "bg-muted text-muted-foreground border-border-subtle",
   running: "bg-primary/10 text-primary border-primary/20",
   success: "bg-success/10 ink-success border-success/20",
   warning: "bg-warning/10 ink-warning border-warning/20",

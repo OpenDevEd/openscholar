@@ -38,8 +38,8 @@ export function TopicList() {
     <Select value={subfield} disabled={!subfields.length} onValueChange={value => void setSubfield(value)}><SelectTrigger size="sm" aria-label={t("subfield")} className={cn("w-44", LIST_FILTER)}><SelectValue placeholder={t("allSubfields")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allSubfields")}</SelectItem>{subfields.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
   </>}>
     {/* Appears when you filter, as the list changes anyway, so the bar never moves. */}
-    {(search || ancestor) && <div className="fade-enter flex justify-end border-b border-border/50 px-4 py-2"><Button variant="ghost" size="sm" className="text-muted-foreground" onClick={clear}>{t("clearFilters")}</Button></div>}
-    {!!topics.length && <ul className="divide-y divide-border/50">{topics.map(topic => <li key={topic.id} className="fade-enter"><Link href={`/topics/${topic.id}`} className="group flex items-center gap-3 p-4 hover:bg-muted/15">
+    {(search || ancestor) && <div className="fade-enter flex justify-end border-b border-border-subtle px-4 py-2"><Button variant="ghost" size="sm" className="text-muted-foreground" onClick={clear}>{t("clearFilters")}</Button></div>}
+    {!!topics.length && <ul className="divide-y divide-border-subtle">{topics.map(topic => <li key={topic.id} className="fade-enter"><Link href={`/topics/${topic.id}`} className="group flex items-center gap-3 p-4 hover:bg-muted">
       <div className={cn(LIST_TILE, "mr-1 shrink-0")}><TopicsIcon className="size-5" /></div>
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{topic.name}</p><p className="truncate text-xs text-muted-foreground">{topic.path.slice(0, -1).join(" / ")}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />

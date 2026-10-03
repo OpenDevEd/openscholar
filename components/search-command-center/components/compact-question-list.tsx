@@ -75,7 +75,7 @@ export function CompactQuestionList({
       {questions.map((questionEntry, index) => (
         <div
           key={`${questionEntry.question}-${index}`}
-          className="flex items-start gap-2.5 rounded-lg bg-muted/20 px-2.5 py-2"
+          className="flex items-start gap-2.5 rounded-lg bg-inset px-2.5 py-2"
         >
           <span
             className={cn(

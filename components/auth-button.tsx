@@ -82,12 +82,12 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
         )}
         disabled
       >
-        <span className="flex h-[1.2rem] w-[1.2rem] items-center justify-center rounded-full border border-border/60 bg-background/70">
+        <span className="flex h-[1.2rem] w-[1.2rem] items-center justify-center rounded-full border border-border-subtle bg-background">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
         </span>
         {!isCollapsed && (
           <span
-            className="h-2.5 w-16 animate-pulse rounded-full bg-muted/60"
+            className="h-2.5 w-16 animate-pulse rounded-full bg-inset"
             aria-hidden
           />
         )}
@@ -269,7 +269,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
                   </span>
                   {isSubscriptionLoading ? (
                     <span
-                      className="h-5 w-16 animate-pulse rounded-full bg-muted/60"
+                      className="h-5 w-16 animate-pulse rounded-full bg-inset"
                       aria-hidden
                     />
                   ) : (

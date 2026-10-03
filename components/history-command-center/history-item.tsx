@@ -163,9 +163,9 @@ export function HistoryItem({
         transition={{ ...subtleSpring, delay: index * 0.03 }}
         className={cn(
           "group relative flex flex-col rounded-xl",
-          "bg-card/40 dark:bg-card/30",
-          "border border-border/40",
-          "hover:bg-card/70 hover:border-border/60 hover:shadow-sm",
+          "bg-inset",
+          "border border-border-subtle",
+          "hover:bg-muted hover:border-border hover:shadow-sm",
           "transition-[background-color,border-color,box-shadow] duration-200"
         )}
       >
@@ -317,9 +317,9 @@ export function HistoryItem({
         whileHover={isQueryHistoryOpen ? undefined : { y: -2 }}
         className={cn(
           "group relative flex flex-col rounded-xl overflow-hidden",
-          "bg-card/50 dark:bg-card/40",
-          "border border-border/40",
-          "hover:border-border/60 hover:shadow-md",
+          "bg-card",
+          "border border-border-subtle",
+          "hover:border-border hover:shadow-md",
           "transition-[background-color,border-color,box-shadow] duration-200"
         )}
       >
@@ -329,8 +329,8 @@ export function HistoryItem({
             {/* Mini-page header */}
             <div
               className={cn(
-                "flex items-center justify-between px-3 py-2 border-b border-border/30",
-                "bg-muted/30"
+                "flex items-center justify-between px-3 py-2 border-b border-border-subtle",
+                "bg-inset"
               )}
             >
               <div className="flex items-center gap-2">
@@ -364,8 +364,8 @@ export function HistoryItem({
             {/* Back button footer */}
             <div
               className={cn(
-                "flex items-center justify-center gap-1 px-2 py-2 border-t border-border/30",
-                "bg-muted/20"
+                "flex items-center justify-center gap-1 px-2 py-2 border-t border-border-subtle",
+                "bg-inset"
               )}
             >
               <Button
@@ -433,7 +433,7 @@ export function HistoryItem({
                   <img
                     src={languageInfo.flagUrl}
                     alt={tl(languageInfo.code as never) || languageInfo.name}
-                    className="w-4 h-3 rounded-sm object-cover shadow-sm border border-border/30"
+                    className="w-4 h-3 rounded-sm object-cover shadow-sm border border-border-subtle"
                   />
                   <span className="text-muted-foreground">{tl(languageInfo.code as never) || languageInfo.name}</span>
                 </div>
@@ -443,8 +443,8 @@ export function HistoryItem({
             {/* Actions footer */}
             <div
               className={cn(
-                "flex items-center justify-center gap-1 px-2 py-2 border-t border-border/30",
-                "bg-muted/20"
+                "flex items-center justify-center gap-1 px-2 py-2 border-t border-border-subtle",
+                "bg-inset"
               )}
             >
               {queryHistoryCount > 1 && (
@@ -544,9 +544,9 @@ export function HistoryItem({
       transition={{ ...subtleSpring, delay: index * 0.03 }}
       className={cn(
         "group relative rounded-xl overflow-hidden",
-        "bg-card/50 dark:bg-card/40",
-        "border border-border/40",
-        "hover:border-border/60 hover:shadow-md",
+        "bg-card",
+        "border border-border-subtle",
+        "hover:border-border hover:shadow-md",
         "transition-[background-color,border-color,box-shadow] duration-200"
       )}
     >
@@ -609,7 +609,7 @@ export function HistoryItem({
                   <img
                     src={languageInfo.flagUrl}
                     alt={tl(languageInfo.code as never) || languageInfo.name}
-                    className="w-4 h-3 rounded-sm object-cover shadow-sm border border-border/30"
+                    className="w-4 h-3 rounded-sm object-cover shadow-sm border border-border-subtle"
                   />
                   <span className="text-foreground">{tl(languageInfo.code as never) || languageInfo.name}</span>
                 </>
@@ -638,7 +638,7 @@ export function HistoryItem({
         )}
 
         {/* Footer: Filters + History + Actions */}
-        <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-border/40">
+        <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-border-subtle">
           {/* Left: Filters */}
           <div className="min-w-0 flex-1 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
             {/* Scope and sort are in the header already. */}

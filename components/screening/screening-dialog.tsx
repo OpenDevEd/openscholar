@@ -336,7 +336,7 @@ export function ScreeningDialog({
         <div className="flex-1 overflow-y-auto -mx-6 px-6">
           <div className="space-y-4 py-2">
             {/* Credit usage card */}
-            <div className="rounded-lg border border-border/50 bg-card px-4 py-3 space-y-3">
+            <div className="rounded-lg border border-border-subtle bg-card px-4 py-3 space-y-3">
               {/* Paper count selector */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -369,7 +369,7 @@ export function ScreeningDialog({
               {estimate && (
                 <div className={`flex items-center justify-between rounded-md px-3 py-2 text-xs ${
                   hasEnough
-                    ? "bg-muted/50"
+                    ? "bg-inset"
                     : "bg-destructive/10"
                 }`}>
                   <div className="flex items-center gap-3">

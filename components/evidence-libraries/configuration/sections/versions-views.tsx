@@ -149,7 +149,7 @@ export function ReleaseNotes({
         </article>
       ))}
       {changes.length > 0 ? (
-        <div className="border-t border-border/50 pt-3">
+        <div className="border-t border-border-subtle pt-3">
           <Disclosure open={changesOpen} onOpenChange={setChangesOpen} label={t("versions.technicalChanges")}>
             <div className="pt-2">
               <CommitList changes={changes} />
@@ -183,7 +183,7 @@ export function VersionHistory<Row extends VersionHistoryRow>({
 
   return (
     <div className="space-y-2">
-      <ol className="divide-y divide-border/50 rounded-lg border border-border/50 bg-background">
+      <ol className="divide-y divide-border-subtle rounded-lg border border-border-subtle bg-background">
         {visible.map((row) => {
           const cards = row.kind === "config" ? changedCards(row.changedSections) : [];
           return (

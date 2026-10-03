@@ -169,7 +169,7 @@ export function AuthStatePanel({
       >
         <div className="relative mx-auto flex items-center justify-center">
           <div className="absolute -z-10 h-24 w-24 rounded-full bg-primary/16 blur-2xl" />
-          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/25 bg-card/95 shadow-lg">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/25 bg-card shadow-lg">
             <Spinner className="h-6 w-6 text-primary" aria-hidden />
           </div>
           <span className="sr-only">{resolvedTitle || t("loadingSession")}</span>
@@ -202,14 +202,14 @@ export function AuthStatePanel({
       exit="exit"
       aria-live="polite"
     >
-      <div className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-border/60 bg-card/95 px-6 py-8 text-center shadow-lg sm:px-8">
+      <div className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-border-subtle bg-card px-6 py-8 text-center shadow-lg sm:px-8">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(70%_55%_at_50%_-5%,color-mix(in_oklab,var(--primary)_12%,transparent),transparent_70%)]" />
         <div className="pointer-events-none absolute -left-20 top-10 -z-10 h-40 w-40 rounded-full bg-primary/8 blur-3xl" />
         <div className="pointer-events-none absolute -right-20 bottom-8 -z-10 h-40 w-40 rounded-full bg-primary/8 blur-3xl" />
 
         <motion.div
           className={cn(
-            "mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-border/50",
+            "mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-border-subtle",
             ICON_TREATMENT[variant],
           )}
           variants={itemVariants}

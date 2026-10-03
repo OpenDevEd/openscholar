@@ -177,7 +177,7 @@ export default function BillingPage() {
         ) : null}
 
         {creditsEnabled ? (
-          <section className="grid overflow-hidden rounded-2xl border border-border/60 @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
+          <section className="grid overflow-hidden rounded-2xl border border-border-subtle @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
             <div className="space-y-5 p-5">
               <div>
                 <p className="text-4xl font-semibold tabular-nums tracking-tight">{format.number(account.balance)}</p>
@@ -212,7 +212,7 @@ export default function BillingPage() {
               ) : null}
             </div>
             {topupsEnabled && bundles.length > 0 ? (
-              <div className="flex flex-col border-t border-border/60 bg-muted/20 @min-[46rem]/configuration:border-l @min-[46rem]/configuration:border-t-0">
+              <div className="flex flex-col border-t border-border-subtle bg-inset @min-[46rem]/configuration:border-l @min-[46rem]/configuration:border-t-0">
                 <p className="px-5 pb-1 pt-4 text-xs font-medium text-muted-foreground">{t("topUp")}</p>
                 <div className="flex flex-1 flex-col justify-center p-2">
                   {bundles.map((bundle) => (
@@ -222,7 +222,7 @@ export default function BillingPage() {
                       disabled={buying !== null}
                       onClick={() => buy(bundle.credits)}
                       aria-label={t("buyBundle", { credits: format.number(bundle.credits), price: money(bundle.amount) })}
-                      className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted/60 disabled:opacity-60"
+                      className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted disabled:opacity-60"
                     >
                       <span className="flex-1 text-sm font-semibold tabular-nums">+{format.number(bundle.credits)}</span>
                       <span className="text-sm tabular-nums text-muted-foreground">{money(bundle.amount)}</span>
@@ -241,7 +241,7 @@ export default function BillingPage() {
 
         {creditsEnabled ? (
           <Zone label={t("spendingLast30Days")}>
-            <div className="rounded-2xl bg-muted/30 px-4 pb-3 pt-4">
+            <div className="rounded-2xl bg-inset px-4 pb-3 pt-4">
               <div className="flex h-28 items-end gap-1" onMouseLeave={() => setDay(null)} role="img" aria-label={t("spendingSummary", { credits: format.number(spent) })}>
                 {days.map((d, i) => (
                   <div key={d.at} onMouseEnter={() => setDay(i)} className="flex h-full flex-1 flex-col justify-end">
@@ -311,7 +311,7 @@ export default function BillingPage() {
               ) : null
             }
           >
-            <div className="space-y-4 rounded-2xl border border-border/60 px-5 py-4">
+            <div className="space-y-4 rounded-2xl border border-border-subtle px-5 py-4">
               <div className="flex items-start justify-between gap-6">
                 <div className="min-w-0 space-y-1">
                   <p className="flex items-baseline gap-2">

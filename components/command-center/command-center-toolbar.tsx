@@ -168,7 +168,7 @@ export function CommandCenterToolbar<TSort extends string>({
   onViewModeChange: (mode: ViewMode) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 p-4">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle p-4">
       <ViewModeSwitch value={viewMode} onChange={onViewModeChange} />
       <div className="flex flex-wrap items-center gap-2">
         <CommandCenterFilters {...props} />

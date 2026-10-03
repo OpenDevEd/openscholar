@@ -93,7 +93,7 @@ function SourceRowImpl({
         "group flex items-start gap-2.5 cursor-pointer border-l-2 px-3 py-2.5 transition-colors",
         selected
           ? "border-l-primary bg-primary/[0.06] hover:bg-primary/[0.09]"
-          : "border-l-transparent hover:bg-muted/40",
+          : "border-l-transparent hover:bg-muted",
       )}
     >
       <motion.span
@@ -207,7 +207,7 @@ function SourceRowImpl({
             )}
             {row.workType?.trim() && (
               <span
-                className="rounded bg-muted/70 px-1.5 py-px text-2xs font-medium text-muted-foreground first-letter:uppercase"
+                className="rounded bg-muted px-1.5 py-px text-2xs font-medium text-muted-foreground first-letter:uppercase"
                 data-paper-work-type
               >
                 {row.workType}

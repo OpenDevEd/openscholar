@@ -32,10 +32,10 @@ export function ModeToggle({ mode, onModeChange, disabled }: ModeToggleProps) {
     <LayoutGroup id="home-mode">
       <motion.div
         layout
-        className="relative flex flex-nowrap rounded-full border border-border/50 bg-muted/70 p-1"
+        className="relative flex flex-nowrap rounded-full border border-border-subtle bg-muted p-1"
         transition={indicatorTransition}
       >
-        <div className="absolute inset-0 bg-background/50 rounded-full shadow-inner pointer-events-none" />
+        <div className="absolute inset-0 bg-inset rounded-full shadow-inner pointer-events-none" />
 
         <motion.button
           type="button"
@@ -55,7 +55,7 @@ export function ModeToggle({ mode, onModeChange, disabled }: ModeToggleProps) {
           {mode === "search" && (
             <motion.div
               layoutId="home-mode-indicator"
-              className="absolute inset-0 rounded-full bg-background shadow-sm border border-border/50 z-10"
+              className="absolute inset-0 rounded-full bg-background shadow-sm border border-border-subtle z-10"
               transition={indicatorTransition}
             />
           )}
@@ -81,7 +81,7 @@ export function ModeToggle({ mode, onModeChange, disabled }: ModeToggleProps) {
           {mode === "research" && (
             <motion.div
               layoutId="home-mode-indicator"
-              className="absolute inset-0 rounded-full bg-background shadow-sm border border-border/50 z-10"
+              className="absolute inset-0 rounded-full bg-background shadow-sm border border-border-subtle z-10"
               transition={indicatorTransition}
             />
           )}

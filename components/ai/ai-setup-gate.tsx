@@ -67,7 +67,7 @@ export function AISetupGate({ className }: AISetupGateProps) {
         className={cn(
           "rounded-xl border p-4 shadow-sm",
           "bg-card",
-          "border-border/60",
+          "border-border-subtle",
           className,
         )}
       >

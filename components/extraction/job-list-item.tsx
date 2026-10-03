@@ -70,9 +70,9 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           data-mode={job.mode}
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-xl",
-            "bg-card/40 dark:bg-card/30",
-            "border border-border/40",
-            "hover:bg-card/70 hover:border-border/60 hover:shadow-sm",
+            "bg-inset",
+            "border border-border-subtle",
+            "hover:bg-muted hover:border-border hover:shadow-sm",
             "transition-[background-color,border-color,box-shadow] duration-200"
           )}
         >
@@ -114,9 +114,9 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           data-mode={job.mode}
           className={cn(
             "relative rounded-xl overflow-hidden",
-            "bg-card/50 dark:bg-card/40",
-            "border border-border/40",
-            "hover:border-border/60 hover:shadow-md",
+            "bg-card",
+            "border border-border-subtle",
+            "hover:border-border hover:shadow-md",
             "transition-[background-color,border-color,box-shadow] duration-200"
           )}
         >
@@ -182,9 +182,9 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
         data-mode={job.mode}
         className={cn(
           "relative flex flex-col rounded-xl overflow-hidden",
-          "bg-card/50 dark:bg-card/40",
-          "border border-border/40",
-          "hover:border-border/60 hover:shadow-md",
+          "bg-card",
+          "border border-border-subtle",
+          "hover:border-border hover:shadow-md",
           "transition-[background-color,border-color,box-shadow] duration-200"
         )}
       >
@@ -213,7 +213,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           )}
 
           {/* Metadata */}
-          <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/30">
+          <div className="flex items-center justify-between mt-3 pt-2 border-t border-border-subtle">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               {isChat ? (
                 <MessageSquare className="w-3 h-3" />

@@ -64,7 +64,7 @@ export default function AdminsPage() {
               }}
               placeholder={t("search")}
               aria-label={t("search")}
-              className="h-11 rounded-2xl border border-border/60 bg-muted/40 pl-11"
+              className="h-11 rounded-2xl border border-border-subtle bg-inset pl-11"
             />
           </div>
           <Paged pager={pager} rowHeight={65} label={t("admins")}>

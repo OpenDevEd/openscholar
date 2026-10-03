@@ -354,7 +354,7 @@ Return a more targeted version of this query.`;
     <div
       className={cn(
         "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between",
-        "border-t border-border/40"
+        "border-t border-border-subtle"
       )}
     >
       {/* Left: Results count */}
@@ -373,7 +373,7 @@ Return a more targeted version of this query.`;
           layout
           transition={contextualTransition}
           className={cn(
-            "inline-flex items-center rounded-2xl border border-border/70 bg-background/90 p-1 shadow-sm"
+            "inline-flex items-center rounded-2xl border border-border bg-field p-1 shadow-sm"
           )}
         >
           <AnimatePresence initial={false} mode="popLayout">
@@ -411,7 +411,7 @@ Return a more targeted version of this query.`;
                       : tsc("makeSpecific")
                   }
                   className={cn(
-                    "h-9 gap-1.5 rounded-xl border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground",
+                    "h-9 gap-1.5 rounded-xl border border-transparent px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground",
                     isContextualActionLoading && "text-foreground"
                   )}
                 >
@@ -440,7 +440,7 @@ Return a more targeted version of this query.`;
                 disabled={isLoading}
                 triggerVariant="ghost"
                 compactTrigger
-                triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+                triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
               />
 
               <div className="mx-1 h-6 w-px bg-border/70" />
@@ -463,7 +463,7 @@ Return a more targeted version of this query.`;
                         : tsc("startChat")
                     }
                     data-chat-button-mode={chatButtonState.mode}
-                    className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+                    className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     {isStartingChat ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -485,7 +485,7 @@ Return a more targeted version of this query.`;
                   onClick={() => phase === "authenticated" ? setIsScreeningDialogOpen(true) : goToSignIn()}
                   disabled={Boolean(isLoading)}
                   aria-label={tsc("screenAll")}
-                  className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted/55 hover:text-foreground"
+                  className="h-9 gap-1.5 rounded-lg border border-transparent px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <ListChecks className="h-3.5 w-3.5" />
                   <span className="hidden text-sm font-medium sm:inline">
@@ -522,9 +522,9 @@ Return a more targeted version of this query.`;
                 aria-controls={screeningPanelId}
                 className={cn(
                   "h-9 min-w-[130px] justify-between gap-2 rounded-xl border border-transparent px-2.5",
-                  "text-muted-foreground hover:bg-muted/55 hover:text-foreground",
+                  "text-muted-foreground hover:bg-muted hover:text-foreground",
                   isScreeningOpen &&
-                    "border-border/70 bg-card text-foreground shadow-[0_10px_22px_-18px_var(--color-primary)]"
+                    "border-border bg-card text-foreground shadow-[0_10px_22px_-18px_var(--color-primary)]"
                 )}
               >
                 <span className="inline-flex items-center gap-1.5">

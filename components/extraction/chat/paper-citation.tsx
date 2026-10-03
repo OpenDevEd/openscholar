@@ -68,8 +68,8 @@ const PILL_CLASS_BY_STATE: Record<CitationState, string> = {
   ),
   excluded: cn(
     BASE_PILL,
-    "border border-dashed border-muted-foreground/40 bg-muted/40 text-muted-foreground",
-    "hover:bg-muted/60 hover:text-foreground",
+    "border border-dashed border-muted-foreground/40 bg-inset text-muted-foreground",
+    "hover:bg-muted hover:text-foreground",
   ),
   unresolved: cn(
     BASE_PILL,

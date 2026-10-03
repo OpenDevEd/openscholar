@@ -148,8 +148,8 @@ export function PaperSidebarShell({
         aria-label={ariaLabel}
         className={cn(
           "absolute bottom-0 left-0 top-0 flex h-full flex-col overflow-hidden",
-          "bg-background/95 dark:bg-background/90",
-          "border-l border-border/50",
+          "bg-card",
+          "border-l border-border-subtle",
         )}
         initial={false}
         animate={{ x: translateX }}
@@ -166,7 +166,7 @@ export function PaperSidebarShell({
             {body}
           </div>
           {footer ? (
-            <footer className="border-t border-border/50">{footer}</footer>
+            <footer className="border-t border-border-subtle">{footer}</footer>
           ) : null}
         </section>
       </motion.aside>
@@ -181,8 +181,8 @@ export function PaperSidebarShell({
               transition={{ duration: 0.15 }}
               className={cn(
                 "absolute bottom-0 left-0 top-0 z-20 flex flex-col items-center gap-3 py-4",
-                "bg-background/95 dark:bg-background/90",
-                "border-l border-border/50",
+                "bg-card",
+                "border-l border-border-subtle",
               )}
               style={{ width: collapsedWidth }}
               data-sidebar-sliver="true"

@@ -80,7 +80,7 @@ export function ChatTable({ children }: { children?: ReactNode }) {
       data-streamdown="table-wrapper"
       className="group/table my-4 overflow-hidden rounded-lg border"
     >
-      <div className="flex items-center justify-end gap-0.5 border-b bg-muted/40 px-1.5 py-1">
+      <div className="flex items-center justify-end gap-0.5 border-b bg-inset px-1.5 py-1">
         <DropdownMenu>
           <TooltipHint label={t("chatTableCopy")}>
             <DropdownMenuTrigger asChild>

@@ -63,9 +63,9 @@ export function QueryTextarea({
         <div
           className={cn(
             "border rounded-xl px-3 py-2.5",
-            "bg-background/50",
+            "bg-field",
             "transition-all duration-300",
-            "border-border/60",
+            "border-border-subtle",
             "focus-within:border-primary/50",
             "focus-within:ring-2 focus-within:ring-primary/10",
             "focus-within:bg-background",
@@ -88,14 +88,14 @@ export function QueryTextarea({
           />
 
           {/* Bottom bar: hints + search button (same as home screen) */}
-          <div className="flex flex-wrap items-center justify-end md:justify-between gap-2 pt-1.5 border-t border-border/40">
+          <div className="flex flex-wrap items-center justify-end md:justify-between gap-2 pt-1.5 border-t border-border-subtle">
             <div className="text-xs text-muted-foreground hidden md:flex flex-wrap items-center gap-2 shrink-0 order-2 md:order-1">
-              <span className="px-1.5 py-0.5 rounded-md bg-muted/50 border border-border/50 font-mono">
+              <span className="px-1.5 py-0.5 rounded-md bg-inset border border-border-subtle font-mono">
                 {th("enterKey")}
               </span>
               {th("toSubmit")}
               <span className="mx-1 opacity-20">|</span>
-              <span className="px-1.5 py-0.5 rounded-md bg-muted/50 border border-border/50 font-mono">
+              <span className="px-1.5 py-0.5 rounded-md bg-inset border border-border-subtle font-mono">
                 {th("shiftEnterKey")}
               </span>
               {th("newLine")}

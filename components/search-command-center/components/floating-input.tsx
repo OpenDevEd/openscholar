@@ -45,9 +45,9 @@ export function FloatingInput({
         className={cn(
           "flex flex-wrap items-center gap-2",
           "border rounded-xl px-4 py-3",
-          "bg-background/50",
+          "bg-field",
           "transition-all duration-200",
-          "border-border/60",
+          "border-border-subtle",
           "focus-within:border-primary/50",
           "focus-within:ring-2 focus-within:ring-primary/10",
           "focus-within:bg-background"

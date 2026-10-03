@@ -68,13 +68,13 @@ export function NoResults({ query, variant = "search", onTryNewSearch }: NoResul
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.15 }}
         >
-          <span className="px-2.5 py-1 rounded-full bg-muted/50">
+          <span className="px-2.5 py-1 rounded-full bg-inset">
             {t("tryBroaderTerms")}
           </span>
-          <span className="hidden sm:inline-block px-2.5 py-1 rounded-full bg-muted/50">
+          <span className="hidden sm:inline-block px-2.5 py-1 rounded-full bg-inset">
             {t("checkSpelling")}
           </span>
-          <span className="px-2.5 py-1 rounded-full bg-muted/50">
+          <span className="px-2.5 py-1 rounded-full bg-inset">
             {t("adjustFilters")}
           </span>
         </motion.div>
@@ -124,7 +124,7 @@ export function QueryErrorState({ detail, oql }: { detail: QueryErrorDetail; oql
         </h2>
         <p className="mt-2 text-base text-foreground">{problem}</p>
         {detail.near && (
-          <pre className="mt-5 w-full whitespace-pre-wrap break-all rounded-lg bg-muted/60 px-4 py-3 text-left font-mono text-xs leading-relaxed text-muted-foreground">
+          <pre className="mt-5 w-full whitespace-pre-wrap break-all rounded-lg bg-inset px-4 py-3 text-left font-mono text-xs leading-relaxed text-muted-foreground">
             {detail.near.before}
             <mark className="rounded-sm bg-destructive/15 px-0.5 text-destructive">{detail.near.token}</mark>
             {detail.near.after}

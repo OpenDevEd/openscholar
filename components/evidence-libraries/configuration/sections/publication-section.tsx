@@ -406,7 +406,7 @@ function PublicationForm({
         </FieldGroup>
       </fieldset>
       {error && <FieldError>{error}</FieldError>}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle pt-4">
         <p
           className="flex items-center gap-2 text-xs text-muted-foreground"
           role="status"

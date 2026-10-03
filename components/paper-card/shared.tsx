@@ -151,7 +151,7 @@ export function TranslationToggle({
             "flex items-center justify-center p-1.5 rounded-md text-xs font-medium transition-colors",
             showTranslated
               ? "bg-info/15 ink-info"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
+              : "bg-muted text-muted-foreground hover:bg-muted"
           )}
         >
           {showTranslated ? tc("originalShort") : tc("translationShort")}
@@ -278,7 +278,7 @@ export function ScreeningResponses({
                       ? "bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/15"
                       : displayState === "loading"
                       ? "bg-info/10 border-info/30 ink-info cursor-wait"
-                      : "bg-muted/50 border-border text-muted-foreground hover:bg-muted/80"
+                      : "bg-inset border-border text-muted-foreground hover:bg-muted"
                   )}
                 >
                   {displayState === "checked" && <Check className="h-3 w-3" />}
@@ -321,7 +321,7 @@ export function ScreeningResponses({
 
       {/* Expanded Table View */}
       {showExpandedView && (
-        <div className="mt-3 p-4 bg-muted/30 rounded-lg border">
+        <div className="mt-3 p-4 bg-inset rounded-lg border">
           <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
             <Table className="h-4 w-4" />
             {tp("screeningResponses")}
@@ -360,7 +360,7 @@ export function ScreeningResponses({
                   return (
                     <tr
                       key={question.question}
-                      className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                      className="border-b border-border-subtle hover:bg-muted transition-colors"
                     >
                       <td className="py-2 px-2 font-mono text-muted-foreground w-8 align-top">
                         {index + 1}
@@ -420,7 +420,7 @@ export function ScreeningBadge({
     checked: "bg-success/10 border-success/30 ink-success",
     crossed: "bg-destructive/10 border-destructive/30 text-destructive",
     loading: "bg-info/10 border-info/30 ink-info cursor-wait",
-    unchecked: "bg-muted/50 border-border text-muted-foreground",
+    unchecked: "bg-inset border-border text-muted-foreground",
   };
 
   const label = tp("questionN", { n: index + 1, question });
@@ -688,14 +688,14 @@ export function JournalLine({
 const cardContainerClasses = {
   base: cn(
     "relative group rounded-2xl border transition-all duration-200",
-    "bg-background/95 dark:bg-background/90",
-    "border-border/60 dark:border-border/40",
-    "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]"
+    "bg-card",
+    "border-border-subtle",
+    "shadow-surface"
   ),
   hover: cn(
     "hover:bg-sidebar-accent/50 dark:hover:bg-sidebar-accent/30",
     "hover:border-primary/20 dark:hover:border-primary/30",
-    "hover:shadow-xl hover:shadow-black/[0.05] dark:hover:shadow-black/[0.15]",
+    "hover:shadow-surface-hover",
     "hover:-translate-y-0.5"
   ),
   focus: cn(
