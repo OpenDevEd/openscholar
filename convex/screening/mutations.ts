@@ -25,7 +25,7 @@ import { addCollectionMembership } from "../library/collectionMembership";
 import { deriveCompletionTransition } from "./completion";
 import { outcomeOf, scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
-import { answersAmong, ensureScreening } from "../research/answers";
+import { answeredFully, ensureScreening } from "../research/answers";
 import { newCollection } from "../library/collections";
 import { bookkeepLater, ensureProgress, saveQualified } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
@@ -65,6 +65,10 @@ export const createScreeningJobForUser = internalMutation({
     first: v.optional(v.number()),
     last: v.optional(v.number()),
     through: v.optional(v.number()),
+    resume: v.optional(v.string()),
+    // How many of the papers the search's page already answers every question for
+    // (`screening/queries:answeredCount`); the credit check leaves them out.
+    answered: v.optional(v.number()),
     // Missing: included papers are saved to the library alone, as the results page's dialog starts jobs.
     saveTo: v.optional(saveToValidator),
     prune: v.optional(v.boolean()),
@@ -73,7 +77,7 @@ export const createScreeningJobForUser = internalMutation({
     chained: v.optional(v.boolean()),
   },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, { userId, author, papers, set, saveTo, prune, chained, ...args }) => {
+  handler: async (ctx, { userId, author, papers, set, saveTo, prune, chained, answered = 0, ...args }) => {
     // The acting user, who may have been suspended since the action began.
     const user = await requireActiveUser(ctx, userId);
     if (papers.length === 0) throw createError("VALIDATION_ERROR", "At least one paper is required");
@@ -107,13 +111,9 @@ export const createScreeningJobForUser = internalMutation({
       label = source ? ("name" in source ? source.name : source.label) : undefined;
     }
 
-    // Papers the search's page already answered every question for keep their answers and
-    // cost nothing; the first batch's are known before the credit check.
-    const screening = (await ctx.db.get("screenings", screeningId))!;
-    const batch = papers.slice(0, CREATE_BATCH);
-    const answered = set?.kind === "search" ? await alreadyAnswered(ctx, screening, args.questions, batch) : new Set<string>();
+    // Papers the search's page already answered keep their answers and cost nothing.
     const available = await availableCredits(ctx, user._id);
-    const estimate = estimateScreening(papers.length - answered.size, available).credits;
+    const estimate = estimateScreening(papers.length - answered, available).credits;
     const affordable = available >= estimate;
     if (!affordable && !chained) {
       throw createError("INSUFFICIENT_CREDITS", `Need ~${estimate} credits for ${papers.length} papers but only have ${available}`);
@@ -136,7 +136,7 @@ export const createScreeningJobForUser = internalMutation({
       updatedAt: now,
     });
     await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
-    if (affordable) await createResults(ctx, (await ctx.db.get("screeningJobs", jobId))!, screening, papers, now, answered);
+    if (affordable) await createResults(ctx, (await ctx.db.get("screeningJobs", jobId))!, papers, now);
     return { jobId };
   },
 });
@@ -145,21 +145,16 @@ export const createScreeningJobForUser = internalMutation({
 const CREATE_BATCH = 250;
 type PaperInput = Infer<typeof screeningPaperInputValidator>;
 
-/** Which of `papers` the screening already answers every one of `questions` for. */
-async function alreadyAnswered(ctx: MutationCtx, screening: Doc<"screenings">, questions: Doc<"screeningJobs">["questions"], papers: PaperInput[]) {
-  const answers = await answersAmong(ctx, screening, papers.map((paper) => paper.openalexId));
-  return new Set(answers.flatMap(({ paperId, responses }) => (questions.every(({ question }) => responses.some((response) => response.question === question)) ? [paperId] : [])));
-}
-
 /**
  * Creates a batch of a job's results, waiting for their person's paper slots, starts as many
  * as the person has free, then schedules the next batch. A paper of a search's that its page
- * already answered every question for (`answered`, read here unless given) is done at once on
- * those answers, takes no slot and costs nothing: the bookkeeping worker scores and counts it.
+ * already answered every question for is done at once on those answers, takes no slot and
+ * costs nothing: the bookkeeping worker scores and counts it.
  */
-async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, screening: Doc<"screenings">, papers: PaperInput[], createdAt: number, answered?: Set<string>) {
+async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers: PaperInput[], createdAt: number) {
   const batch = papers.slice(0, CREATE_BATCH);
-  const reused = answered ?? (job.set?.kind === "search" ? await alreadyAnswered(ctx, screening, job.questions, batch) : new Set<string>());
+  const screening = (await ctx.db.get("screenings", job.screeningId!))!;
+  const reused = job.set?.kind === "search" ? await answeredFully(ctx, screening, job.questions.map((q) => q.question), batch.map((paper) => paper.openalexId)) : new Set<string>();
   for (const paper of batch) {
     const done = reused.has(paper.openalexId);
     await ctx.db.insert("screeningResults", {
@@ -199,6 +194,7 @@ export const stopRequest = internalMutation({
     first: v.number(),
     last: v.number(),
     through: v.optional(v.number()),
+    resume: v.optional(v.string()),
     label: v.optional(v.string()),
     questions: v.array(screeningQuestionValidator),
     scoringConfig: screeningScoringConfigValidator,
@@ -219,7 +215,7 @@ export const createScreeningResults = internalMutation({
   handler: async (ctx, { jobId, papers, createdAt }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
     if (job?.status !== "processing") return null;
-    await createResults(ctx, job, (await ctx.db.get("screenings", job.screeningId!))!, papers, createdAt);
+    await createResults(ctx, job, papers, createdAt);
     return null;
   },
 });
@@ -445,9 +441,11 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
       transition = deriveCompletionTransition({
         currentRowStatus: screeningResult.status,
         jobStatus: job.status,
-        resultKind: result.kind === "success" ? "success" : "failure",
+        resultKind: result.kind === "success" ? "success" : result.kind === "canceled" ? "canceled" : "failure",
       });
     }
+    // A paper the model answered after its job ended still cost what it cost.
+    const spent = result.kind === "success" ? (result.returnValue as { credits?: number }).credits : undefined;
 
     if (transition.kind === "noop") {
       return;
@@ -470,11 +468,8 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
         ...transition.rowPatch,
         completedAt,
         doneAt,
-        ...(result.kind === "failed"
-          ? { errorMessage: result.error }
-          : result.kind === "canceled"
-            ? { errorMessage: "workpool_canceled" }
-            : {}),
+        ...(spent === undefined ? {} : { creditsUsed: spent }),
+        ...(result.kind === "failed" ? { errorMessage: result.error } : {}),
       });
     }
     await bookkeepLater(ctx);

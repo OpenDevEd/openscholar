@@ -74,6 +74,12 @@ export async function answersAmong(ctx: Read, screening: Doc<"screenings">, pape
   }));
 }
 
+/** Which of these papers the screening answers every one of `questions` for. */
+export async function answeredFully(ctx: Read, screening: Doc<"screenings">, questions: string[], paperIds: string[]) {
+  const answers = await answersAmong(ctx, screening, paperIds);
+  return new Set(answers.flatMap(({ paperId, responses }) => (questions.every((question) => responses.some((response) => response.question === question)) ? [paperId] : [])));
+}
+
 /**
  * Takes from a paper's row the removals it owes, recording each that takes something in the
  * paper's history at the removal's version. Returns the row as that leaves it: the same row
