@@ -72,16 +72,18 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
  * The person's paper slots (#335): how many papers they may have running at once across
  * their jobs, and how many are running.
  */
-export const slots = query({
+export const slotsAction = defineUserQuery({
+  path: "screening/queries:slots",
+  description: "The person's paper slots for screening: how many papers they may have running at once across their screening jobs, and how many are running now.",
   args: {},
-  returns: v.union(v.null(), v.object({ limit: v.number(), running: v.number() })),
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-    const row = await ctx.db.query("screeningSlots").withIndex("by_user", (q) => q.eq("userId", user._id)).unique();
-    return { limit: await paperLimit(ctx, user._id), running: row?.running ?? 0 };
+  returns: v.object({ limit: v.number(), running: v.number() }),
+  run: async (ctx, userId) => {
+    const row = await ctx.db.query("screeningSlots").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+    return { limit: await paperLimit(ctx, userId), running: row?.running ?? 0 };
   },
 });
+export const slots = userQuery(slotsAction);
+export const slotsForAssistant = assistantQuery(slotsAction);
 
 /**
  * A completed job of a request that goes on past it, as the request's next job takes it

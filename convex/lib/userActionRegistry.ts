@@ -8,6 +8,7 @@ import { clearLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAc
 import { savedPaperAction } from "../library/queries";
 import { estimateAction as screeningEstimateAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, listAction as screeningPapersAction } from "../screening/papers";
+import { slotsAction as screeningSlotsAction } from "../screening/queries";
 import { screenAction, screenSearchAction } from "../screening/start";
 import type { UserAction } from "./userActions";
 
@@ -29,6 +30,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   screeningEstimateAction,
   screenAction,
   screenSearchAction,
+  screeningSlotsAction,
   screeningPapersAction,
   screeningAnswerAction,
   saveToLibraryAction,
