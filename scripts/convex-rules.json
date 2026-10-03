@@ -1,9 +1,6 @@
 {
   "unboundedReads": {
     "pending": {
-      "convex/research/answers.ts:answersAtVersions:screeningAnswerHistory": "#342",
-      "convex/research/answers.ts:currentAnswers:?": "#334",
-      "convex/research/answers.ts:existing:?": "#334",
       "convex/wallet/queries.ts:keys:walletKeys": "#427: A user's own wallet keys: a handful"
     }
   },
@@ -58,8 +55,6 @@
       "convex/models/queries.ts:list:[]": "#424",
       "convex/models/queries.ts:listCatalogOptions:[]": "#424",
       "convex/organizationFeatures.ts:libraryOrganizations:[]": "#423",
-      "convex/research/records.ts:getSearchAction:.screeningResponses[]": "#421: filled from every screening answer",
-      "convex/research/records.ts:revisionsAction:[].data.screeningResponses[]": "#421: filled from every screening answer",
       "convex/topics/details.ts:get:.keywords[]": "#424",
       "convex/topics/details.ts:get:.path[]": "#424",
       "convex/topics/publications.ts:list:.groups[]": "#424",

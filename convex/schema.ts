@@ -5,7 +5,7 @@ import { MAX_COLLECTIONS_PER_USER } from "./lib/queryBounds";
 import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
-  MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LEGACY_ENTRIES, MAX_METADATA_FIELDS, MAX_QUESTIONS,
+  MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_METADATA_FIELDS, MAX_QUESTIONS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
 import { screeningAnswersValidator, screeningAuthorsValidator, screeningQuestionsValidator, screeningScoringConfigValidator } from "./screening/validators";
@@ -56,10 +56,10 @@ import { authorContentFields } from "./authors/validators";
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
-import { fieldValidator, paperAnswersValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
+import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
 
 export default defineSchema({
-  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator, responseChunks: capped(v.optional(v.array(v.id("researchResponseChunks"))), MAX_LEGACY_ENTRIES) })
+  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator })
     .index("by_user", ["userId"])
     .index("by_user_and_createdAt", ["userId", "data.createdAt"])
     .index("by_user_and_count", ["userId", "data.count"])
@@ -73,7 +73,6 @@ export default defineSchema({
     userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
     author: v.union(v.literal("user"), v.literal("assistant")),
     data: storedSearchValidator, deleted: v.boolean(), createdAt: v.number(),
-    responseChunks: capped(v.optional(v.array(v.id("researchResponseChunks"))), MAX_LEGACY_ENTRIES),
     // The screening version this revision saw; its answers are the history up to it.
     answersVersion: v.optional(v.number()),
   }).index("by_search_and_revision", ["searchId", "revision"]),
@@ -83,15 +82,15 @@ export default defineSchema({
     text: v.string(), field: v.optional(fieldValidator), timestamp: v.string(), position: v.number(),
   }).index("by_search_and_kind_and_position", ["searchId", "kind", "position"])
     .index("by_search_and_kind_and_timestamp", ["searchId", "kind", "timestamp"]),
-  researchResponseChunks: defineTable({ responses: storedSearchValidator.fields.screeningResponses }),
   // A screening's answers, one row per paper, and an append-only history of each paper's
   // answers that old revisions are rebuilt from. A saved search has one screening, which its
   // page and its Screen all jobs both answer into; a Screen all job run before #334 has its
   // own, with no search. `version` counts the writes to its answers, so a revision finds its
   // answers exactly.
-  screenings: defineTable({ userId: v.id("users"), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number() })
+  screenings: defineTable({ userId: v.id("users"), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number(), removals: removalsValidator })
     .index("by_search", ["searchId"]),
-  screeningAnswers: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator })
+  // `version`: the screening's when the row was last written; a row from before this was kept owes every removal.
+  screeningAnswers: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.optional(v.number()) })
     .index("by_screening_and_paper", ["screeningId", "paperId"]),
   // A paper's answers after each change; an empty list means its answers were removed.
   screeningAnswerHistory: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.number(), at: v.number() })

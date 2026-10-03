@@ -14,6 +14,9 @@ vi.mock("../lib/store", () => ({
   useSearchHistoryStore: {
     getState: vi.fn(() => ({
       getSearchResult: vi.fn(() => null),
+      // The search's answers for the papers a download holds: only W123 is answered.
+      readScreeningResponses: async (_searchId: string, paperIds: string[]) =>
+        Object.fromEntries(paperIds.filter((paperId) => paperId === "W123").map((paperId) => [paperId, { "Randomized?": true }])),
     })),
   },
   useUIStore: {
@@ -99,6 +102,15 @@ describe("downloadAll", () => {
       "json",
       expect.objectContaining({ search: expect.any(Object) })
     );
+  });
+
+  it("puts each paper's screening answers, read for the papers downloaded, in a JSON download", async () => {
+    for (const essential of [false, true]) {
+      mockDownloadWithMetadata.mockClear();
+      await downloadAll("json", mockToast, essential, mockSearchState, mockResults);
+      const [items] = mockDownloadWithMetadata.mock.calls[0] as [Array<{ screening_results?: unknown }>];
+      expect(items.map((item) => item.screening_results)).toEqual([{ "Randomized?": true }, undefined]);
+    }
   });
 
   it("calls downloadWithMetadata with CSV format", async () => {

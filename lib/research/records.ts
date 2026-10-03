@@ -2,7 +2,7 @@ import { v, type Infer } from "convex/values";
 import { format, parseISO } from "date-fns";
 import { partial } from "convex-helpers/validators";
 import type { SearchResult } from "../types/search.types";
-import { MAX_FILTER_VALUES, MAX_LEGACY_ENTRIES, MAX_LINKED_ACCOUNTS, MAX_QUESTIONS, RANGE_ENDS, capped } from "../../convex/lib/listCaps";
+import { MAX_FILTER_VALUES, MAX_LEGACY_ENTRIES, MAX_LINKED_ACCOUNTS, MAX_PENDING_REMOVALS, MAX_QUESTIONS, RANGE_ENDS, capped } from "../../convex/lib/listCaps";
 
 const strings = v.array(v.string());
 // Each stored list gets its own validator: a cap sticks to the one it's set on, and
@@ -35,7 +35,8 @@ export const searchFields = {
   latestQuestion: v.optional(v.string()),
   questionText: v.string(),
   screeningQuestions: capped(v.array(v.object({ question: v.string() })), MAX_QUESTIONS),
-  // Read from the search's screening answers (#334), every one of them: pending under #421.
+  // The answers a new search comes with, from an import or the assistant. A saved search's
+  // answers live in its screening's rows and are read by paper (research/records:answersOf).
   screeningResponses: v.array(v.object({ paperId: v.string(), responses: answers })),
   dateRange: v.optional(v.object({ from: v.optional(v.string()), to: v.optional(v.string()) })),
   yearRange: range(),
@@ -107,9 +108,17 @@ export const paperAnswersValidator = capped(v.array(v.object({
   question: v.string(), answer: v.union(v.boolean(), v.null()), setBy: answerSourceValidator, updatedAt: v.number(),
   model: v.optional(v.object({ answer: v.union(v.boolean(), v.null()), confidence: v.optional(v.number()), at: v.number() })),
 })), MAX_QUESTIONS);
+/**
+ * Removals a screening's rows haven't all taken yet: answers to `question`, or every answer,
+ * gone at `version`. One is added by an edit that takes answers from every paper and
+ * forgotten when its sweep ends (convex/research/answers.ts), so few wait at once; an edit
+ * past the cap is refused until one does.
+ */
+export const removalsValidator = capped(v.optional(v.array(v.object({ question: v.optional(v.string()), version: v.number(), at: v.number() }))), MAX_PENDING_REMOVALS);
 export type SavedSearch = Infer<typeof searchValidator>;
-// A search's history summary changes only with its history, never by a patch.
-const { id: _id, createdAt: _createdAt, queryHistoryCount: _queries, questionCount: _questions, latestQuestion: _latest, questionText: _text, ...editableFields } = searchFields;
+// A search's history summary changes only with its history, and its answers only through the
+// answer edits, never by a patch.
+const { id: _id, createdAt: _createdAt, queryHistoryCount: _queries, questionCount: _questions, latestQuestion: _latest, questionText: _text, screeningResponses: _answers, ...editableFields } = searchFields;
 const summaryValidator = v.object({ queryHistoryCount: v.number(), questionCount: v.number(), latestQuestion: v.optional(v.string()), questionText: v.string() });
 export const editValidator = v.union(
   v.object({ kind: v.literal("patch"), fields: v.object(partial(editableFields)), clear: strings }),
@@ -180,8 +189,14 @@ export function serializeResponses(responses: Record<string, boolean | null>) {
 
 export function serializeSearchPatch(updates: Partial<Omit<SearchResult, "id" | "createdAt">>): Extract<SearchEdit, { kind: "patch" }> {
   const fields = JSON.parse(JSON.stringify({ ...updates, ...(updates.dateRange ? { dateRange: dateRangeDays(updates.dateRange) } : {}) })) as Extract<SearchEdit, { kind: "patch" }>["fields"];
-  if (updates.screeningResponses !== undefined) fields.screeningResponses = Object.entries(updates.screeningResponses).map(([paperId, responses]) => ({ paperId, responses: serializeResponses(responses) }));
+  // Answers change through their own edits; a patch never carries them.
+  delete (fields as { screeningResponses?: unknown }).screeningResponses;
   return { kind: "patch", fields, clear: Object.keys(updates).filter(key => updates[key as keyof typeof updates] === undefined) };
+}
+
+/** Answers as the pages hold them: by paper, then by question. */
+export function restoreResponses(responses: SavedSearch["screeningResponses"]): SearchResult["screeningResponses"] {
+  return Object.fromEntries(responses.map(({ paperId, responses }) => [paperId, Object.fromEntries(responses.map(({ question, response }) => [question, response]))]));
 }
 
 export function restoreSearch(search: SavedSearch): SearchResult {
@@ -192,7 +207,7 @@ export function restoreSearch(search: SavedSearch): SearchResult {
   };
   return {
     ...search, dateRange,
-    screeningResponses: Object.fromEntries(search.screeningResponses.map(({ paperId, responses }) => [paperId, Object.fromEntries(responses.map(({ question, response }) => [question, response]))])),
+    screeningResponses: restoreResponses(search.screeningResponses),
     yearRange: search.yearRange as [number, number] | undefined,
     ratingRange: search.ratingRange as [number, number] | undefined,
   };
@@ -228,9 +243,34 @@ function patched(search: SavedSearch, fields: Extract<SearchEdit, { kind: "patch
   return next;
 }
 
-/** Shared by the transaction and the optimistic browser view. */
+/** A search's answers after `edit`: changed by the edits that set or remove answers, the same otherwise. */
+export function editedResponses(responses: SavedSearch["screeningResponses"], edit: SearchEdit): SavedSearch["screeningResponses"] {
+  switch (edit.kind) {
+    case "replaceScreeningQuestion":
+    case "removeQuestionResponses":
+      return withoutQuestion(responses, edit.question);
+    case "clearScreeningQuestions":
+      return [];
+    case "responses": {
+      const existing = responses.find(row => row.paperId === edit.paperId);
+      const merged = new Map((existing?.responses ?? []).map(value => [value.question, value.response]));
+      for (const value of edit.responses) merged.set(value.question, value.response);
+      const row = { paperId: edit.paperId, responses: Array.from(merged, ([question, response]) => ({ question, response })) };
+      return existing ? responses.map(value => value.paperId === edit.paperId ? row : value) : [...responses, row];
+    }
+    case "clearResponses":
+      return edit.paperId ? responses.filter(row => row.paperId !== edit.paperId) : [];
+    default:
+      return responses;
+  }
+}
+
+/**
+ * Shared by the transaction and the optimistic browser view. The transaction passes a search
+ * with no answers, since they live in their own rows; the browser, the answers it has read.
+ */
 export function applySearchEdit(search: SavedSearch, edit: SearchEdit, now: string): SavedSearch {
-  let changes: Partial<SavedSearch>;
+  let changes: Partial<SavedSearch> = {};
   switch (edit.kind) {
     case "patch":
       return { ...patched(search, edit.fields, edit.clear), updatedAt: now };
@@ -249,29 +289,12 @@ export function applySearchEdit(search: SavedSearch, edit: SearchEdit, now: stri
       changes = { screeningQuestions: [...search.screeningQuestions, { question: edit.question }] };
       break;
     case "replaceScreeningQuestion":
-      changes = {
-        screeningQuestions: search.screeningQuestions.flatMap((entry) => entry.question !== edit.question ? [entry] : edit.replacement === null ? [] : [{ question: edit.replacement }]),
-        screeningResponses: withoutQuestion(search.screeningResponses, edit.question),
-      };
+      changes = { screeningQuestions: search.screeningQuestions.flatMap((entry) => entry.question !== edit.question ? [entry] : edit.replacement === null ? [] : [{ question: edit.replacement }]) };
       break;
     case "clearScreeningQuestions":
-      changes = { screeningQuestions: [], screeningResponses: [] };
-      break;
-    case "responses": {
-      const existing = search.screeningResponses.find(row => row.paperId === edit.paperId);
-      const merged = new Map((existing?.responses ?? []).map(value => [value.question, value.response]));
-      for (const value of edit.responses) merged.set(value.question, value.response);
-      const row = { paperId: edit.paperId, responses: Array.from(merged, ([question, response]) => ({ question, response })) };
-      changes = { screeningResponses: existing ? search.screeningResponses.map(value => value.paperId === edit.paperId ? row : value) : [...search.screeningResponses, row] };
-      break;
-    }
-    case "clearResponses":
-      changes = { screeningResponses: edit.paperId ? search.screeningResponses.filter(row => row.paperId !== edit.paperId) : [] };
-      break;
-    case "removeQuestionResponses":
-      changes = { screeningResponses: withoutQuestion(search.screeningResponses, edit.question) };
+      changes = { screeningQuestions: [] };
   }
-  return { ...search, ...changes, updatedAt: now };
+  return { ...search, ...changes, screeningResponses: editedResponses(search.screeningResponses, edit), updatedAt: now };
 }
 
 export const shortcutValidator = v.object({ shorthand: v.string(), expansion: v.string(), createdAt: v.number() });
@@ -282,6 +305,10 @@ export const SHORTCUT_NAMES_MAX = 15;
 export const ratingValidator = v.object({ paperId: v.string(), rating: v.number() });
 /** Papers one read of ratings takes: as many as a results page shows. */
 export const RATED_PAPERS_MAX = 200;
+/** One paper's screening answers, as a search's page reads them. */
+export const paperResponsesValidator = v.object({ paperId: v.string(), responses: answers });
+/** Papers one read of screening answers takes: as many as a results page shows. */
+export const ANSWERED_PAPERS_MAX = 200;
 export const commandValidator = v.union(
   // `history`: the earlier queries and questions of a search brought from this browser or a file.
   v.object({ kind: v.literal("createSearch"), search: searchValidator, history: v.optional(v.object(historyArrays)) }),
