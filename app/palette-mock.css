@@ -1,0 +1,97 @@
+/* MOCK ONLY. Colour directions to compare in the running app; pick one, move
+   its values into globals.css, then delete this file and
+   components/palette-mock.tsx. Each block only overrides tokens. */
+
+/* Light: blue wash. A faintly blue page and sidebar, white cards. */
+html:not(.dark)[data-palette-light="wash"],
+[data-palette-preview="wash"] {
+  --background: #f4f7fe;
+  --secondary: #e8eefb;
+  --muted: #e9eefa;
+  --accent: #dbe7fe;
+  --border: #dde5f5;
+  --input: #dde5f5;
+  --sidebar: #ebf1fd;
+  --sidebar-accent: #d6e4fd;
+  --sidebar-border: #d9e2f5;
+}
+
+/* Light: tinted cards. A white page with blue-grey cards on it. */
+html:not(.dark)[data-palette-light="tinted"],
+[data-palette-preview="tinted"] {
+  --background: #ffffff;
+  --card: #f3f6fc;
+  --secondary: #e9eef8;
+  --muted: #e9eef8;
+  --border: #e2e8f4;
+  --input: #d8e0f0;
+  --sidebar: #ffffff;
+  --sidebar-border: #e2e8f4;
+}
+
+/* Light: navy sidebar. The page stays neutral; the sidebar takes the brand
+   navy, with the logo as the guidelines draw it on navy. */
+html:not(.dark)[data-palette-light="rail"] aside.bg-sidebar,
+[data-palette-preview="rail"] .palette-rail {
+  --sidebar: #172554;
+  --sidebar-foreground: #dbeafe;
+  --sidebar-primary: #93c5fd;
+  --sidebar-accent: #1e3a8a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #26408f;
+  --background: #172554;
+  --foreground: #eff6ff;
+  --card: #1e3a8a;
+  --muted: #1e3a8a;
+  --muted-foreground: #a9bbe8;
+  --secondary: #1e3a8a;
+  --secondary-foreground: #ffffff;
+  --accent: #1e3a8a;
+  --accent-foreground: #ffffff;
+  --border: #2a428f;
+  --primary: #93c5fd;
+  --primary-foreground: #172554;
+  --brand-ink: #dbeafe;
+  --logo-a: #60a5fa;
+  --logo-b: #2563eb;
+  --logo-c: #bfdbfe;
+  color: var(--sidebar-foreground);
+}
+
+/* Dark: blue on black. Same black surfaces, with the brand blue back. */
+html.dark[data-palette-dark="blue"],
+[data-palette-preview="blue"] {
+  --primary: #60a5fa;
+  --primary-bright: #93c5fd;
+  --primary-deep: #3b82f6;
+  --primary-foreground: #0a1226;
+  --brand-ink: #dbeafe;
+  --logo-a: #60a5fa;
+  --logo-b: #2563eb;
+  --logo-c: #bfdbfe;
+}
+
+/* Dark: navy cards. True black page, cards and borders tinted navy, brand blue. */
+html.dark[data-palette-dark="navy"],
+[data-palette-preview="navy"] {
+  --foreground: #e8eeff;
+  --card: #0b1122;
+  --border: #1c2644;
+  --input: #222e52;
+  --primary: #60a5fa;
+  --primary-bright: #93c5fd;
+  --primary-deep: #3b82f6;
+  --primary-foreground: #0a1226;
+  --brand-ink: #dbeafe;
+  --logo-a: #60a5fa;
+  --logo-b: #2563eb;
+  --logo-c: #bfdbfe;
+}
+
+/* Dark: raised cards. White on black as now, with cards lifted further off the page. */
+html.dark[data-palette-dark="raised"],
+[data-palette-preview="raised"] {
+  --card: color-mix(in srgb, var(--background), var(--foreground) 11%);
+  --border: color-mix(in srgb, var(--background), var(--foreground) 23%);
+  --input: color-mix(in srgb, var(--background), var(--foreground) 26%);
+}
