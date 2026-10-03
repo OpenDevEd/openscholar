@@ -1,6 +1,7 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { assertNonProd } from "../lib/assertNonProd";
+import { MAX_QUESTIONS_PER_JOB } from "./validators";
 
 /**
  * Internal query to inspect extraction results for individual papers.
@@ -21,7 +22,7 @@ export const debugPaperResults = internalQuery({
     const results = await ctx.db
       .query("extractionResults")
       .withIndex("by_paper", (q) => q.eq("paperId", paperId))
-      .collect();
+      .take(MAX_QUESTIONS_PER_JOB);
 
     return {
       paper: paper ? {

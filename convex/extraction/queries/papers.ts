@@ -12,6 +12,7 @@ import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedPaper } from "../access";
 import { getFlag, requireFeature } from "../../featureFlags/guard";
 import { extractionPaperValidator, extractionResultValidator, paperResultsValidator } from "../validators";
+import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 export const results = query({
   args: { paperId: v.id("extractionPapers") },
@@ -28,7 +29,7 @@ export const results = query({
     const rows = await ctx.db
       .query("extractionResults")
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-      .collect();
+      .take(MAX_QUESTIONS_PER_JOB);
 
     return ok({ paper, results: rows });
   },
@@ -70,7 +71,7 @@ export const resultsInternal = internalQuery({
     return await ctx.db
       .query("extractionResults")
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
-      .collect();
+      .take(MAX_QUESTIONS_PER_JOB);
   },
 });
 

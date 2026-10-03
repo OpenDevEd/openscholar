@@ -1207,7 +1207,7 @@ export const setDomainPrimary = mutation({
         .withIndex("by_libraryId", (index) =>
           index.eq("libraryId", args.libraryId),
         )
-        .collect()
+        .take(MAX_EVIDENCE_LIBRARY_DOMAINS)
     ).find((entry) => entry.role === "primary");
     const redeploy = leaving !== undefined;
     // The lease is taken now, and held until the deployment carrying this
@@ -1318,7 +1318,7 @@ export async function applyEvidenceLibraryCanonicalAddress(
   const rows = await ctx.db
     .query("evidenceLibraryDomains")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
-    .collect();
+    .take(MAX_EVIDENCE_LIBRARY_DOMAINS);
   for (const entry of rows) {
     const role =
       primary && entry._id === args.domainId ? "primary" : "redirect";

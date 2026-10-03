@@ -11,6 +11,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { MAX_AUTHORS } from "../lib/listCaps";
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 
 export type JobSourceSearchFilters = NonNullable<
   Doc<"extractionJobSources">["searchFilters"]

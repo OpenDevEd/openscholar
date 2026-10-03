@@ -9,6 +9,7 @@
 
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { MAX_EVIDENCE_LIBRARY_DOMAINS } from "./domains";
 
 export type DomainActivationPlan = {
   /** The address the library calls its own once the next activation is live. */
@@ -45,7 +46,7 @@ export async function readDomainActivationPlan(
     .withIndex("by_libraryId", (index) =>
       index.eq("libraryId", input.library._id),
     )
-    .collect();
+    .take(MAX_EVIDENCE_LIBRARY_DOMAINS);
   const platform = input.binding.targetBaseUrl;
   const live = input.binding.canonicalBaseUrl ?? platform;
   const choice = input.draft?.mainDomainId;

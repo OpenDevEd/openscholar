@@ -92,7 +92,7 @@ export const resumeExtraction = mutation({
       const questions = await ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .collect();
+        .take(MAX_QUESTIONS_PER_JOB);
       remainingEstimateHigh = estimatePaperCredits({
         questionCount: questions.length,
         pdf: job.usePdfs ?? false,

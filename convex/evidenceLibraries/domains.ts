@@ -86,7 +86,7 @@ export async function readEvidenceLibraryDomains(
   return await ctx.db
     .query("evidenceLibraryDomains")
     .withIndex("by_libraryId", (index) => index.eq("libraryId", libraryId))
-    .collect();
+    .take(MAX_EVIDENCE_LIBRARY_DOMAINS);
 }
 
 /**

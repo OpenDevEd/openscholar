@@ -19,6 +19,7 @@ import { requireFeature } from "../../featureFlags/guard";
 import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import { readJobCounters } from "../jobCounters";
 import { extractionJobValidator, extractionQuestionValidator, jobQuestionsValidator, jobStatusValidator } from "../validators";
+import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 async function resolveReadableJob(
   ctx: QueryCtx,
@@ -86,7 +87,7 @@ export const getJobDetails = query({
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
       .order("asc")
-      .collect();
+      .take(MAX_QUESTIONS_PER_JOB);
 
     return ok({
       job,

@@ -91,7 +91,7 @@ export const listCollections = query({
     const collections = await ctx.db
       .query("collections")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .take(MAX_COLLECTIONS_PER_USER);
     return collections.sort((a, b) => a.name.localeCompare(b.name));
   },
 });
@@ -174,7 +174,7 @@ export const getCollectionsWithCounts = query({
     const collections = await ctx.db
       .query("collections")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+      .take(MAX_COLLECTIONS_PER_USER);
 
     // Until migrations/backfillLibraryCounters has run everywhere, a collection may have no count yet.
     const result = collections.map((collection) => ({
@@ -203,7 +203,8 @@ export const getItemCollections = query({
     const memberships = await ctx.db
       .query("libraryItemCollections")
       .withIndex("by_item", (q) => q.eq("libraryItemId", args.libraryItemId))
-      .collect();
+      // A paper is in at most every one of its owner's collections.
+      .take(MAX_COLLECTIONS_PER_USER);
 
     return memberships.map((m) => m.collectionId);
   },

@@ -12,6 +12,7 @@ import {
   type ExtractionQueueStatus,
 } from "./status";
 import { planConcurrency } from "../../billing/accounts";
+import { PAPER_LIMIT } from "../../../lib/extraction/limits";
 
 type QueueKind = Doc<"extractionPaperQueue">["kind"];
 
@@ -74,7 +75,7 @@ async function loadQueueRowsByStatus(
       q.eq("jobId", jobId).eq("runEpoch", runEpoch).eq("status", status),
     );
   return normalizedLimit === undefined
-    ? await query.collect()
+    ? await query.take(PAPER_LIMIT)
     : await query.take(normalizedLimit);
 }
 

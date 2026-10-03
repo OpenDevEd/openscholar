@@ -36,6 +36,7 @@ import {
   hasSameOrderedOpenAlexIds,
   orderedOpenAlexIds,
 } from "./sourceRefreshModel";
+import { PAPER_LIMIT } from "../../lib/extraction/limits";
 
 function classifyChatPrepError(error: unknown) {
   const result = classifyUnknownError(error);
@@ -376,7 +377,7 @@ async function replaceChatSourcesForJob(
   const existingPapers = await ctx.db
     .query("chatPapers")
     .withIndex("by_job", (q) => q.eq("jobId", jobId))
-    .collect();
+    .take(PAPER_LIMIT);
   const existingSources = opts.preserveInclusion
     ? await ctx.db
         .query("extractionJobSources")
