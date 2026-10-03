@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
@@ -21,25 +21,28 @@ const job = {
 
 type Request = { url: URL; init?: RequestInit };
 let requests: Request[] = [];
-/** OpenAlex, answering every page with 200 works numbered from the page's start; a cursor is the next page's number. */
+/** How many works the search has. */
+let total = 900;
+/** OpenAlex, answering each page with up to 200 works numbered from the page's start, until the search runs out; a cursor is the next page's number. */
 const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const url = new URL(String(input));
   requests.push({ url, init });
   const cursor = url.searchParams.get("cursor");
   const page = cursor === null ? Number(url.searchParams.get("page")) : cursor === "*" ? 1 : Number(cursor);
   const start = (page - 1) * 200;
-  const results = Array.from({ length: 200 }, (_, i) => ({
+  const results = Array.from({ length: Math.max(0, Math.min(200, total - start)) }, (_, i) => ({
     id: `https://openalex.org/W${start + i + 1}`,
     display_name: `Paper ${start + i + 1}`,
     publication_year: 2020,
     abstract_inverted_index: { Tutoring: [0], works: [1] },
     authorships: [{ author: { display_name: "Ada Lovelace" } }],
   }));
-  return new Response(JSON.stringify({ meta: { count: 900, next_cursor: String(page + 1) }, results }), { status: 200 });
+  return new Response(JSON.stringify({ meta: { count: total, next_cursor: results.length === 200 ? String(page + 1) : null }, results }), { status: 200 });
 });
 
 beforeEach(() => {
   requests = [];
+  total = 900;
   vi.stubEnv("OPENALEX_API_KEY", "platform-key");
   vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
   vi.stubGlobal("fetch", openAlex);
@@ -142,6 +145,40 @@ describe("Screen all on a saved search, read on the server", () => {
 
     await expect(alice.action(api.screening.start.screenSearch, { searchId: search.id, first: 1, last: 10, ...job })).rejects.toThrow();
     expect(requests).toHaveLength(0);
+  });
+
+  it("ends a request where the search's results end, however far it was asked to go", async () => {
+    const { t, alice } = await setup({ ...search, sortBy: "relevance_score:desc" });
+
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 801, last: 1_000_000, ...job, saveTo: { kind: "none" } });
+
+    const made = await t.run((ctx) => ctx.db.get("screeningJobs", jobId));
+    expect(made).toMatchObject({ totalPapers: 100, first: 801, last: 1_800 });
+    // Nothing follows this job: no end of the request to reach, and no papers past the search's last.
+    expect(made?.through).toBeUndefined();
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1_001, last: 1_000_000, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/None of these papers/);
+    expect(requests.length).toBeLessThan(15);
+  });
+
+  it("reads a request's later papers from the search as it was when the request began", async () => {
+    total = 2_500;
+    const { t, alice } = await setup();
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "search", searchId: search.id }, first: 1, last: 2_500, ...job, saveTo: { kind: "none" } });
+    expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ first: 1, last: 1_000, through: 2_500, snapshot: { request: { sort: "cited_by_count:desc" } } });
+
+    // The search is edited while its first job runs; the job after it reads the search as it was.
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "edit", command: { kind: "editSearch", id: search.id, edit: { kind: "patch", fields: { sortBy: "publication_date:desc", query: "something else" }, clear: [] } } });
+    await t.run((ctx) => ctx.db.patch("screeningJobs", jobId, { status: "completed" }));
+    requests = [];
+    await t.action(internal.screening.start.next, { jobId, first: 1_001 });
+
+    expect(requests.length).toBeGreaterThan(0);
+    for (const { url } of requests) {
+      expect(url.searchParams.get("sort")).toBe("cited_by_count:desc");
+      expect(url.searchParams.get("filter")).toContain("randomized controlled trial");
+    }
+    const jobs = await t.run((ctx) => ctx.db.query("screeningJobs").order("asc").take(5));
+    expect(jobs[1]).toMatchObject({ first: 1_001, last: 2_000, through: 2_500, totalPapers: 1_000, snapshot: { request: { sort: "cited_by_count:desc" } } });
   });
 
   it("refuses another account's search", async () => {

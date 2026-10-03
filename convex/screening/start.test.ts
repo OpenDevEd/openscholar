@@ -140,6 +140,20 @@ describe("where a job's papers go", () => {
     expect(await read(jobId)).toMatchObject({ status: "cancelled", credits: { spent: 3 } });
   });
 
+  it("keeps the paper that found the credits spent in the collection of a pruning job", async () => {
+    const { t, alice, collectionId, results, inCollectionNow } = await setup();
+    const { jobId } = await alice.action(api.screening.start.screen, { set: { kind: "collection", collectionId }, first: 1, last: 4, ...job, saveTo: { kind: "none" }, prune: true });
+    const [unlucky] = await results(jobId);
+
+    // As the paper's action does when the balance runs out: the job ends, then its own work fails.
+    await t.mutation(internal.screening.mutations.markScreeningJobCreditsExhausted, { jobId });
+    await t.mutation(internal.screening.mutations.handleScreeningComplete, { workId: unlucky.workId!, context: { jobId, resultId: unlucky._id }, result: { kind: "failed", error: "AI_INSUFFICIENT_CREDITS" } });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect((await results(jobId)).map((paper) => paper.status)).toEqual(["failed", "skipped", "skipped", "skipped"]);
+    expect(await inCollectionNow(collectionId)).toEqual([1, 2, 3, 4].map(W));
+  });
+
   it("saves nothing, and leaves the collection it read alone, when told to", async () => {
     const { t, alice, userId, collectionId, answerAll, inCollectionNow } = await setup({ saved: 0, inCollection: 0 });
     // Papers from a job, which aren't saved yet.

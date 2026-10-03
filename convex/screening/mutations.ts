@@ -27,6 +27,7 @@ import { outcomeOf, scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { answeredFully, ensureScreening } from "../research/answers";
 import { newCollection } from "../library/collections";
+import { searchSnapshotValidator } from "../paperSets/openalex";
 import { bookkeepLater, ensureProgress, saveQualified } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
 import { estimateScreening } from "./estimate";
@@ -66,6 +67,7 @@ export const createScreeningJobForUser = internalMutation({
     last: v.optional(v.number()),
     through: v.optional(v.number()),
     resume: v.optional(v.string()),
+    snapshot: v.optional(searchSnapshotValidator),
     // How many of the papers the search's page already answers every question for
     // (`screening/queries:answeredCount`); the credit check leaves them out.
     answered: v.optional(v.number()),
@@ -194,7 +196,6 @@ export const stopRequest = internalMutation({
     first: v.number(),
     last: v.number(),
     through: v.optional(v.number()),
-    resume: v.optional(v.string()),
     label: v.optional(v.string()),
     questions: v.array(screeningQuestionValidator),
     scoringConfig: screeningScoringConfigValidator,

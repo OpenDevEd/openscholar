@@ -19,7 +19,7 @@ import { paramsToBucketSearchFilters } from "../../lib/chat/params-to-bucket-fil
 import { isRatingFilterActive } from "../../lib/utils";
 import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
 import { ratingsAmong, shortcutExpansions } from "../research/records";
-import { readSearchWorks, searchRequestValidator } from "./openalex";
+import { readSearchWorks, searchRequestValidator, type SearchSnapshot } from "./openalex";
 
 /** The fields a screening paper keeps. */
 const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location";
@@ -108,28 +108,39 @@ export function checkRange(first: number, last: number) {
 /**
  * Papers `first` to `last` (counting from 1) of the person's saved search, in its results
  * page's order, kept to its rating filter. Spends one OpenAlex request per page read.
+ * `ended`: the search has no results past these. Given `snapshot`, the papers of the search
+ * as it was then, whatever has been edited since: a request's later jobs read the same
+ * search its first job did.
  */
 export async function searchPapers(
   ctx: ActionCtx,
   userId: Id<"users">,
   { searchId, first, last }: { searchId: string; first: number; last: number },
-): Promise<SearchPaper[]> {
+  snapshot?: SearchSnapshot,
+): Promise<{ papers: SearchPaper[]; ended: boolean; snapshot: SearchSnapshot }> {
   checkRange(first, last);
   // Typed here: the generated API's types depend on this module, so inference would loop.
   const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId });
-  const { clerkId, request, ratingRange } = found;
+  const request = snapshot ? snapshot.request : found.request;
   if (!request) throw createError("VALIDATION_ERROR", "This search's query isn't valid. Fix it on the results page first.");
+  const rating = snapshot ? snapshot.rating : found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined;
+  const taken: SearchSnapshot = { request, ...(rating ? { rating } : {}) };
 
   const works = await readSearchWorks<Work>(request, { first, last, select: SCREENING_FIELDS }, (count) =>
-    ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId, count }),
+    ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId: found.clerkId, count }),
   );
+  const ended = works.length < last - first + 1;
   const papers = works.map(toPaper);
-  if (!ratingRange) return papers;
+  if (!rating) return { papers, ended, snapshot: taken };
 
   const rated: Array<{ paperId: string; rating: number }> = await ctx.runQuery(internal.paperSets.search.ratingsOf, { userId, paperIds: papers.map((paper) => paper.openalexId) });
-  const ratings = new Map(rated.map(({ paperId, rating }) => [paperId, rating]));
-  return papers.filter((paper) => {
-    const rating = ratings.get(paper.openalexId);
-    return rating !== undefined && rating >= ratingRange[0] && rating <= ratingRange[1];
-  });
+  const ratings = new Map(rated.map((row) => [row.paperId, row.rating]));
+  return {
+    papers: papers.filter((paper) => {
+      const value = ratings.get(paper.openalexId);
+      return value !== undefined && value >= rating.min && value <= rating.max;
+    }),
+    ended,
+    snapshot: taken,
+  };
 }

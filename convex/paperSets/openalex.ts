@@ -30,6 +30,13 @@ export const searchRequestValidator = v.object({
 });
 export type SearchRequest = Infer<typeof searchRequestValidator>;
 
+/** A search's request and rating filter as they were when a request for its papers began. */
+export const searchSnapshotValidator = v.object({
+  request: searchRequestValidator,
+  rating: v.optional(v.object({ min: v.number(), max: v.number() })),
+});
+export type SearchSnapshot = Infer<typeof searchSnapshotValidator>;
+
 type Page = { page: number } | { cursor: string };
 
 /** One page of the search, by number or cursor. An OQL search goes in a POST body: it outgrows the URL limit. */
