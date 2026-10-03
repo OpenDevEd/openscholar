@@ -9,6 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ListChecks } from "lucide-react";
+import { api } from "@/convex/_generated/api";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { ScreeningJobHistory } from "@/components/screening/screening-job-history";
 
 interface ScreeningJobsDialogProps {
@@ -21,6 +23,8 @@ export function ScreeningJobsDialog({
   onOpenChange,
 }: ScreeningJobsDialogProps) {
   const t = useTranslations("screeningDialog");
+  // Read while the dialog is closed, so it opens at the size its first page takes.
+  const { data: total } = useProtectedQuery(api.screening.queries.countUserScreeningJobs, {});
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -35,11 +39,7 @@ export function ScreeningJobsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
-          <ScreeningJobHistory
-            onClose={() => onOpenChange(false)}
-          />
-        </div>
+        <ScreeningJobHistory total={total} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );

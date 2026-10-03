@@ -63,8 +63,6 @@
       "convex/organizationFeatures.ts:libraryOrganizations:[]": "#423",
       "convex/research/records.ts:getSearchAction:.screeningResponses[]": "#421: filled from every screening answer",
       "convex/research/records.ts:revisionsAction:[].data.screeningResponses[]": "#421: filled from every screening answer",
-      "convex/screening/queries.ts:getScreeningResultsForExport:.results[]": "#421",
-      "convex/screening/queries.ts:listUserScreeningJobs:[]": "#421",
       "convex/topics/details.ts:get:.keywords[]": "#424",
       "convex/topics/details.ts:get:.path[]": "#424",
       "convex/topics/publications.ts:list:.groups[]": "#424",

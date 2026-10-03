@@ -1,72 +1,56 @@
 /**
- * Screening export functions - pure formatting for CSV, JSON, and XLSX.
- * These receive already-fetched ScreeningExportData and produce downloadable files.
+ * A screening job's export: what each format writes for the job and for one result. The
+ * server streams CSV and JSON a page of results at a time (convex/exports.ts); the browser
+ * builds the XLSX, since a workbook can't be written in parts.
  */
+import type { ConvexReactClient } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export interface ScreeningExportData {
-  job: {
-    _id: string;
-    status: string;
-    questions: Array<{ key: string; question: string }>;
-    scoringConfig: {
-      rules: Array<{
-        questionKey: string;
-        yesPoints: number;
-        noPoints: number;
-        nullPoints: number;
-      }>;
-      starThresholds: Array<{
-        minScore: number;
-        stars: number;
-      }>;
-      minimumScore?: number;
-    };
-    totalPapers: number;
-    qualifiedPapers: number;
-    createdAt: number;
-    completedAt?: number;
+export interface ScreeningExportJob {
+  status: string;
+  questions: Array<{ key: string; question: string }>;
+  scoringConfig: {
+    rules: Array<{
+      questionKey: string;
+      yesPoints: number;
+      noPoints: number;
+      nullPoints: number;
+    }>;
+    starThresholds: Array<{
+      minScore: number;
+      stars: number;
+    }>;
+    minimumScore?: number;
   };
-  results: Array<{
-    openalexId: string;
-    title: string;
-    authors?: string[];
-    publicationYear?: number;
-    doi?: string;
-    status: string;
-    answers?: Record<string, boolean | null>;
-    score?: number;
-    stars?: number;
-    qualified?: boolean;
-  }>;
+  totalPapers: number;
+  qualifiedPapers: number;
+  createdAt: number;
+  completedAt?: number;
 }
+
+export interface ScreeningExportResult {
+  openalexId: string;
+  title: string;
+  authors?: string[];
+  publicationYear?: number;
+  doi?: string;
+  status: string;
+  answers?: Record<string, boolean | null>;
+  score?: number;
+  stars?: number;
+  qualified?: boolean;
+}
+
+type Questions = ScreeningExportJob["questions"];
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Triggers a browser file download.
- */
-function downloadFile(
-  content: string | Blob,
-  filename: string,
-  mimeType: string,
-): void {
-  const blob =
-    content instanceof Blob ? content : new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
 
 /**
  * Formats a screening answer for display.
@@ -95,128 +79,90 @@ function escapeCSVCell(value: string): string {
   return value;
 }
 
-/**
- * Builds the date-based filename prefix.
- */
-function buildFilename(
-  data: ScreeningExportData,
-  ext: string,
-): string {
-  const date = new Date(data.job.createdAt).toISOString().slice(0, 10);
-  return `screening-export-${date}-${data.job.status}.${ext}`;
+/** The export's name without its extension: the day the job was made and how it ended. */
+export function screeningExportName(job: Pick<ScreeningExportJob, "createdAt" | "status">): string {
+  const date = new Date(job.createdAt).toISOString().slice(0, 10);
+  return `screening-export-${date}-${job.status}`;
 }
 
-// ---------------------------------------------------------------------------
-// CSV
-// ---------------------------------------------------------------------------
+/** The columns of the results table: the paper, an answer per question, then the scoring. */
+export function screeningHeaders(questions: Questions): string[] {
+  return ['Title', 'Authors', 'Year', 'DOI', 'OpenAlex ID', ...questions.map((q) => q.question), 'Score', 'Stars', 'Qualified', 'Status'];
+}
 
-/**
- * Generates a CSV string from screening export data.
- */
-export function generateScreeningCSV(data: ScreeningExportData): string {
-  const { job, results } = data;
-
-  // Build headers
-  const headers: string[] = [
-    'Title',
-    'Authors',
-    'Year',
-    'DOI',
-    'OpenAlex ID',
+/** One result under those columns. Score and stars stay numbers, for a spreadsheet. */
+export function screeningCells(questions: Questions, result: ScreeningExportResult): Array<string | number> {
+  return [
+    result.title,
+    result.authors?.join('; ') ?? '',
+    result.publicationYear?.toString() ?? '',
+    result.doi ?? '',
+    result.openalexId,
+    ...questions.map((q) => formatScreeningAnswer(result.answers?.[q.key])),
+    result.score ?? '',
+    result.stars ?? '',
+    result.qualified === undefined ? '' : result.qualified ? 'Yes' : 'No',
+    result.status,
   ];
-  job.questions.forEach((q) => headers.push(q.question));
-  headers.push('Score', 'Stars', 'Qualified', 'Status');
-
-  // Build rows
-  const rows = results.map((result) => {
-    const row: string[] = [
-      result.title,
-      result.authors?.join('; ') ?? '',
-      result.publicationYear?.toString() ?? '',
-      result.doi ?? '',
-      result.openalexId,
-    ];
-
-    // Question answers
-    job.questions.forEach((q) => {
-      row.push(formatScreeningAnswer(result.answers?.[q.key]));
-    });
-
-    // Scoring columns
-    row.push(
-      result.score !== undefined ? result.score.toString() : '',
-      result.stars !== undefined ? result.stars.toString() : '',
-      result.qualified !== undefined
-        ? result.qualified
-          ? 'Yes'
-          : 'No'
-        : '',
-      result.status,
-    );
-
-    return row;
-  });
-
-  // Build CSV with escaping
-  return [headers, ...rows]
-    .map((row) => row.map((cell) => escapeCSVCell(String(cell))).join(','))
-    .join('\n');
 }
 
+const csvLine = (cells: Array<string | number>) => cells.map((cell) => escapeCSVCell(String(cell))).join(',');
+/** `text`, a value printed with two-space indentation, moved `by` spaces in. */
+const indented = (text: string, by: number) => text.replace(/\n/g, `\n${' '.repeat(by)}`);
+
+/** One result in each format, as it follows the results before it. */
+export const screeningItems = (questions: Questions) => ({
+  csv: (result: ScreeningExportResult) => `\n${csvLine(screeningCells(questions, result))}`,
+  json: (result: ScreeningExportResult, index: number) =>
+    `${index === 0 ? '' : ','}\n    ${indented(JSON.stringify({
+      openalexId: result.openalexId,
+      title: result.title,
+      authors: result.authors ?? [],
+      publicationYear: result.publicationYear ?? null,
+      doi: result.doi ?? null,
+      status: result.status,
+      answers: result.answers ?? null,
+      score: result.score ?? null,
+      stars: result.stars ?? null,
+      qualified: result.qualified ?? null,
+    }, null, 2), 4)}`,
+});
+
 /**
- * Exports screening data as a CSV file download.
+ * A job's export as the server writes it: a start, each result, and an end. Put together
+ * they are the file: for JSON, the same text as the whole export printed with two-space
+ * indentation.
  */
-export function exportScreeningToCSV(data: ScreeningExportData): void {
-  const csv = generateScreeningCSV(data);
-  downloadFile(csv, buildFilename(data, 'csv'), 'text/csv');
-}
-
-// ---------------------------------------------------------------------------
-// JSON
-// ---------------------------------------------------------------------------
-
-/**
- * Generates a JSON string from screening export data.
- */
-export function generateScreeningJSON(data: ScreeningExportData): string {
-  const { job, results } = data;
-
-  const envelope = {
-    exportedAt: new Date().toISOString(),
-    job: {
-      status: job.status,
-      createdAt: new Date(job.createdAt).toISOString(),
-      completedAt: job.completedAt
-        ? new Date(job.completedAt).toISOString()
-        : null,
-      totalPapers: job.totalPapers,
-      qualifiedPapers: job.qualifiedPapers,
-      questions: job.questions,
-      scoringConfig: job.scoringConfig,
+export function screeningExportFiles(job: ScreeningExportJob) {
+  const items = screeningItems(job.questions);
+  return {
+    name: () => screeningExportName(job),
+    csv: {
+      contentType: 'text/csv; charset=utf-8',
+      start: () => csvLine(screeningHeaders(job.questions)),
+      item: items.csv,
+      end: () => '',
     },
-    results: results.map((r) => ({
-      openalexId: r.openalexId,
-      title: r.title,
-      authors: r.authors ?? [],
-      publicationYear: r.publicationYear ?? null,
-      doi: r.doi ?? null,
-      status: r.status,
-      answers: r.answers ?? null,
-      score: r.score ?? null,
-      stars: r.stars ?? null,
-      qualified: r.qualified ?? null,
-    })),
+    json: {
+      contentType: 'application/json; charset=utf-8',
+      start: (exportedAt: Date) =>
+        JSON.stringify({
+          exportedAt: exportedAt.toISOString(),
+          job: {
+            status: job.status,
+            createdAt: new Date(job.createdAt).toISOString(),
+            completedAt: job.completedAt ? new Date(job.completedAt).toISOString() : null,
+            totalPapers: job.totalPapers,
+            qualifiedPapers: job.qualifiedPapers,
+            questions: job.questions,
+            scoringConfig: job.scoringConfig,
+          },
+          results: [],
+        }, null, 2).replace(/\[\]\n\}$/, '['),
+      item: items.json,
+      end: (count: number) => (count === 0 ? ']\n}' : '\n  ]\n}'),
+    },
   };
-
-  return JSON.stringify(envelope, null, 2);
-}
-
-/**
- * Exports screening data as a JSON file download.
- */
-export function exportScreeningToJSON(data: ScreeningExportData): void {
-  const json = generateScreeningJSON(data);
-  downloadFile(json, buildFilename(data, 'json'), 'application/json');
 }
 
 // ---------------------------------------------------------------------------
@@ -224,14 +170,13 @@ export function exportScreeningToJSON(data: ScreeningExportData): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Generates an ExcelJS Workbook from screening export data.
- * Returns the workbook for testability.
+ * Builds the workbook from a job and its results as they arrive, a page at a time: each
+ * page's rows go straight into the sheet.
  */
 export async function generateScreeningXLSXWorkbook(
-  data: ScreeningExportData,
+  job: ScreeningExportJob,
+  pages: AsyncIterable<ScreeningExportResult[]>,
 ): Promise<import('exceljs').Workbook> {
-  const { job, results } = data;
-
   // Dynamic import to keep ExcelJS out of the initial bundle
   const mod = await import('exceljs');
   const ExcelJSModule =
@@ -242,45 +187,18 @@ export async function generateScreeningXLSXWorkbook(
 
   // ---- Results sheet ----
   const resultsSheet = workbook.addWorksheet('Results');
-
-  const headers: string[] = [
-    'Title',
-    'Authors',
-    'Year',
-    'DOI',
-    'OpenAlex ID',
-  ];
-  job.questions.forEach((q) => headers.push(q.question));
-  headers.push('Score', 'Stars', 'Qualified', 'Status');
-
-  resultsSheet.addRow(headers);
-
-  results.forEach((result) => {
-    const row: (string | number)[] = [
-      result.title,
-      result.authors?.join('; ') ?? '',
-      result.publicationYear?.toString() ?? '',
-      result.doi ?? '',
-      result.openalexId,
-    ];
-
-    job.questions.forEach((q) => {
-      row.push(formatScreeningAnswer(result.answers?.[q.key]));
-    });
-
-    row.push(
-      result.score !== undefined ? result.score : '',
-      result.stars !== undefined ? result.stars : '',
-      result.qualified !== undefined
-        ? result.qualified
-          ? 'Yes'
-          : 'No'
-        : '',
-      result.status,
-    );
-
-    resultsSheet.addRow(row);
-  });
+  resultsSheet.addRow(screeningHeaders(job.questions));
+  let scored = 0;
+  let scoreSum = 0;
+  for await (const results of pages) {
+    for (const result of results) {
+      resultsSheet.addRow(screeningCells(job.questions, result));
+      if (result.score !== undefined) {
+        scored += 1;
+        scoreSum += result.score;
+      }
+    }
+  }
 
   // ---- Summary sheet ----
   const summarySheet = workbook.addWorksheet('Summary');
@@ -341,12 +259,7 @@ export async function generateScreeningXLSXWorkbook(
       : 0;
   summarySheet.addRow(['Qualified Rate', `${qualifiedRate}%`]);
 
-  const scoredResults = results.filter((r) => r.score !== undefined);
-  const avgScore =
-    scoredResults.length > 0
-      ? scoredResults.reduce((sum, r) => sum + r.score!, 0) /
-        scoredResults.length
-      : 0;
+  const avgScore = scored > 0 ? scoreSum / scored : 0;
   summarySheet.addRow([
     'Average Score',
     Math.round(avgScore * 100) / 100,
@@ -355,20 +268,34 @@ export async function generateScreeningXLSXWorkbook(
   return workbook;
 }
 
+/** Results one read takes while the workbook is built. */
+const XLSX_PAGE_SIZE = 200;
+
 /**
- * Exports screening data as an XLSX file download.
+ * Downloads a job's results as an XLSX file, read a page at a time.
+ * ponytail: the workbook is built whole in the browser, as XLSX needs. A job holds at most
+ * MAX_SCREENING_PAPERS_PER_JOB papers; larger jobs would need a format that streams.
  */
-export async function exportScreeningToXLSX(
-  data: ScreeningExportData,
-): Promise<void> {
-  const workbook = await generateScreeningXLSXWorkbook(data);
+export async function exportScreeningToXLSX(convex: ConvexReactClient, jobId: Id<"screeningJobs">): Promise<void> {
+  const job = await convex.query(api.screening.queries.getScreeningJob, { jobId });
+  if (!job) return;
+  async function* pages() {
+    let cursor: string | null = null;
+    do {
+      const page: { page: ScreeningExportResult[]; isDone: boolean; continueCursor: string } =
+        await convex.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor, numItems: XLSX_PAGE_SIZE } });
+      yield page.page;
+      cursor = page.isDone ? null : page.continueCursor;
+    } while (cursor !== null);
+  }
+  const workbook = await generateScreeningXLSXWorkbook(job, pages());
   const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
-  downloadFile(
-    blob,
-    buildFilename(data, 'xlsx'),
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  );
+  const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${screeningExportName(job)}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
