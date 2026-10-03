@@ -64,10 +64,10 @@ export default defineSchema({
     .index("by_user_and_createdAt", ["userId", "data.createdAt"])
     .index("by_user_and_count", ["userId", "data.count"])
     .index("by_user_and_localId", ["userId", "localId"]),
-  // How many saved searches and shortcuts a person has, kept by the triggers on those tables
+  // How many saved searches, shortcuts and screening jobs a person has, kept by the triggers on those tables
   // (research/recordCounts.ts), for page totals. While a first count is being taken,
   // `countedTo` is the creation time it has reached.
-  recordCounts: defineTable({ userId: v.id("users"), table: v.union(v.literal("searches"), v.literal("queryShortcuts")), count: v.number(), countedTo: v.optional(v.number()) })
+  recordCounts: defineTable({ userId: v.id("users"), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs")), count: v.number(), countedTo: v.optional(v.number()) })
     .index("by_user_and_table", ["userId", "table"]),
   searchRevisions: defineTable({
     userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),

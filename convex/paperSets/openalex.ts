@@ -62,35 +62,50 @@ async function readPage<Work>(request: SearchRequest, at: Page, select: string):
   return { works: body.results ?? [], nextCursor: body.meta?.next_cursor || null };
 }
 
+const limited = () => createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
+
 /**
- * Works up to the `last` (counting from 1), from page `firstPage` on. Numbered pages in
- * parallel when they keep the results page's order, spent for together first; otherwise the
- * cursor pages it reads, one after another from the start, each spent for just before it's
- * asked, so a search that runs out early spends only the pages it had.
+ * The search's cursor pages, one after another from the start, each spent for just before
+ * it's asked, so a search that runs out early spends only the pages it had.
+ */
+async function* cursorPages<Work>(request: SearchRequest, select: string, spend: (pages: number) => Promise<boolean>) {
+  let cursor: string | null = "*";
+  while (cursor) {
+    if (!(await spend(1))) throw limited();
+    const page: { works: Work[]; nextCursor: string | null } = await readPage<Work>(request, { cursor }, select);
+    yield page.works;
+    cursor = page.nextCursor;
+  }
+}
+
+/**
+ * Works `first` to `last` (counting from 1), and how many works came before the first one
+ * returned. Numbered pages in parallel when they keep the results page's order, spent for
+ * together first. Otherwise cursor pages from the start, keeping only the range asked for:
+ * a range deep in the search still holds no more than its own works.
  */
 async function readWorks<Work>(
   request: SearchRequest,
-  firstPage: number,
+  first: number,
   last: number,
   select: string,
   spend: (pages: number) => Promise<boolean>,
 ): Promise<{ works: Work[]; offset: number }> {
-  const limited = () => createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
   if (request.sort === PAGE_ORDERED_SORT) {
+    const firstPage = Math.floor((first - 1) / PAGE_SIZE) + 1;
     const pages = Array.from({ length: Math.ceil(last / PAGE_SIZE) - firstPage + 1 }, (_, i) => firstPage + i);
     if (!(await spend(pages.length))) throw limited();
     const read = await Promise.all(pages.map((page) => readPage<Work>(request, { page }, select)));
     return { works: read.flatMap((page) => page.works), offset: (firstPage - 1) * PAGE_SIZE };
   }
   const works: Work[] = [];
-  let cursor: string | null = "*";
-  while (cursor && works.length < last) {
-    if (!(await spend(1))) throw limited();
-    const page: { works: Work[]; nextCursor: string | null } = await readPage<Work>(request, { cursor }, select);
-    works.push(...page.works);
-    cursor = page.nextCursor;
+  let seen = 0;
+  for await (const page of cursorPages<Work>(request, select, spend)) {
+    works.push(...page.slice(Math.max(0, first - 1 - seen), Math.max(0, last - seen)));
+    seen += page.length;
+    if (seen >= last) break;
   }
-  return { works, offset: 0 };
+  return { works, offset: first - 1 };
 }
 
 /**
@@ -107,8 +122,6 @@ export async function readSearchWorks<Work>(
   if (!process.env.OPENALEX_CONTACT_EMAIL) {
     throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
   }
-  // Cursor pages are read from the start; numbered pages from the range's first page.
-  const firstPage = request.sort === PAGE_ORDERED_SORT ? Math.floor((first - 1) / PAGE_SIZE) + 1 : 1;
-  const { works, offset } = await readWorks<Work>(request, firstPage, last, select, spend);
+  const { works, offset } = await readWorks<Work>(request, first, last, select, spend);
   return works.slice(first - 1 - offset, last - offset);
 }

@@ -1,6 +1,6 @@
 /**
- * How many saved searches and shortcuts each person has, so a list of them totals its pages
- * without reading every one. The triggers on `searches` and `queryShortcuts`
+ * How many saved searches, shortcuts and screening jobs each person has, so a list of them
+ * totals its pages without reading every one. The triggers on those tables
  * (`convex/lib/triggers.ts`) keep the counts with every insert and delete, whichever function
  * makes it.
  *
@@ -15,7 +15,7 @@ import type { DataModel, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
 /** The tables whose records are counted for each person. */
-export type Counted = "searches" | "queryShortcuts";
+export type Counted = "searches" | "queryShortcuts" | "screeningJobs";
 
 /** Records, and bytes, one step of a first count reads; a record is at most 1 MiB, so a step always moves on. */
 const COUNT_PAGE = 500;
@@ -33,7 +33,7 @@ export async function startCount(ctx: Pick<MutationCtx, "db" | "scheduler">, tab
 }
 
 /** The trigger for a counted table. */
-export const countChange = (table: Counted) => async (ctx: MutationCtx, change: Change<DataModel, "searches"> | Change<DataModel, "queryShortcuts">) => {
+export const countChange = (table: Counted) => async (ctx: MutationCtx, change: Change<DataModel, Counted>) => {
   if (change.operation === "update") return;
   const userId = (change.newDoc ?? change.oldDoc).userId;
   const row = await countRow(ctx, table, userId);

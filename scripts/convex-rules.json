@@ -55,8 +55,6 @@
       "convex/models/queries.ts:list:[]": "#424",
       "convex/models/queries.ts:listCatalogOptions:[]": "#424",
       "convex/organizationFeatures.ts:libraryOrganizations:[]": "#423",
-      "convex/screening/queries.ts:getScreeningResultsForExport:.results[]": "#421",
-      "convex/screening/queries.ts:listUserScreeningJobs:[]": "#421",
       "convex/topics/details.ts:get:.keywords[]": "#424",
       "convex/topics/details.ts:get:.path[]": "#424",
       "convex/topics/publications.ts:list:.groups[]": "#424",
@@ -87,7 +85,6 @@
       "convex/chat/messages.ts:listRecentThreadArtifacts": "#422",
       "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#422",
       "convex/evidenceLibraries/uploadsClient.ts:listObjectNames": "#425",
-      "convex/paperSets/openalex.ts:readWorks": "#421",
       "convex/zotero/actions.ts:fetchAllCollectionsForParent": "#425",
       "convex/zotero/actions.ts:fetchAllTopItemsForCollection": "#425",
       "convex/zotero/libraryGroupActions.ts:listAllUserGroups": "#425"
