@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import schema from "../schema";
 import type { Id } from "../_generated/dataModel";
 import {
@@ -311,6 +311,9 @@ describe("Evidence Library identity projections", () => {
   });
 
   it("removes library grants and pending invitations only under the revoked organization", async () => {
+    // One frozen millisecond: the grants are made in the millisecond the person leaves, and still go.
+    vi.useFakeTimers();
+    onTestFinished(() => void vi.useRealTimers());
     const t = convexTest(schema);
     const ids = await t.run(async ctx => {
       await ctx.db.insert("users", {libraryItemCount: 0,  clerkId: "user_123", email: "person@example.org", state: "active", createdAt: 1, updatedAt: 1 });
@@ -332,6 +335,16 @@ describe("Evidence Library identity projections", () => {
     expect(await t.run(ctx => ctx.db.query("evidenceLibraryMembers").collect())).toEqual([expect.objectContaining({ libraryId: ids[2] })]);
     const pending = await t.run(ctx => ctx.db.query("evidenceLibraryInvitations").withIndex("by_email_and_state", q => q.eq("email", "person@example.org").eq("state", "pending")).collect());
     expect(pending).toEqual([expect.objectContaining({ libraryId: ids[2] })]);
+  });
+
+  it("keeps a deleted organization's membership revoked when an earlier membership event arrives late (#427)", async () => {
+    const t = convexTest(schema);
+    const membership = { clerkCreatedAt: 1, clerkMembershipId: "orgmem_late", clerkUpdatedAt: 2, clerkUserId: "user_late", organization: organizationSnapshot, role: "org:member" as const, state: "active" as const };
+    const event = (eventId: string, occurredAt: number) => t.run((ctx) => applyMembershipProjection(ctx, { ...eventMetadata(eventId, occurredAt), eventType: "organizationMembership.updated", action: "upsert", membership }));
+    await event("msg_joined", 100);
+    await t.run((ctx) => applyOrganizationProjection(ctx, { ...eventMetadata("msg_org_gone", 300), action: "delete", entityId: organizationSnapshot.clerkOrganizationId }));
+    await event("msg_late_update", 200);
+    expect(await t.run((ctx) => ctx.db.query("organizationMemberships").withIndex("by_clerkMembershipId", (q) => q.eq("clerkMembershipId", "orgmem_late")).unique())).toMatchObject({ state: "revoked" });
   });
 
   it("projects a membership and its organization atomically", async () => {

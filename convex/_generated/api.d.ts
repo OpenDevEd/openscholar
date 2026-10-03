@@ -277,6 +277,7 @@ import type * as migrations_pagedCollections from "../migrations/pagedCollection
 import type * as migrations_pagedRecords from "../migrations/pagedRecords.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_removeOrphanLibraryAccess from "../migrations/removeOrphanLibraryAccess.js";
+import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
 import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
@@ -623,6 +624,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedRecords": typeof migrations_pagedRecords;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/removeOrphanLibraryAccess": typeof migrations_removeOrphanLibraryAccess;
+  "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
   "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;

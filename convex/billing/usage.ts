@@ -20,12 +20,14 @@ export const claimRefund = internalMutation({
   },
   returns: v.union(v.number(), v.null()),
   handler: async (ctx, args) => {
-    const rows = await ctx.db
+    // Only refund rows name a Stripe charge. Each is keyed refund:<charge>:<refunded cents>
+    // and written only for more cents than the last, so the newest holds the most.
+    const latest = await ctx.db
       .query("billingUsage")
       .withIndex("by_stripe_charge", (q) => q.eq("stripeChargeId", args.stripeChargeId))
-      .collect();
-    // Refund rows are keyed refund:<charge>:<refunded cents>.
-    const previousCents = Math.max(0, ...rows.map((row) => Number(row.chargeId.split(":").at(-1)) || 0));
+      .order("desc")
+      .first();
+    const previousCents = (latest && Number(latest.chargeId.split(":").at(-1))) || 0;
     if (args.refundedCents <= previousCents) return null;
     await insertUsage(ctx, {
       userId: args.userId,

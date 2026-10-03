@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query, type QueryCtx, type MutationCtx } from "./_generated/server";
 import { getCurrentUser } from "./lib/auth";
 import { createError } from "./lib/errors";
+import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 import { hasDirectLibraryAccess } from "./evidenceLibraries/access";
 
 export const organizationFeatureFields = {
@@ -21,7 +22,11 @@ export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx) {
     .withIndex("by_clerkUserId_and_state", (q) =>
       q.eq("clerkUserId", user.clerkId).eq("state", "active"),
     )
-    .collect();
+    .take(MAX_ORGANIZATIONS_PER_PERSON + 1);
+  // Clerk's webhooks write memberships, so no write here can refuse one more.
+  if (memberships.length > MAX_ORGANIZATIONS_PER_PERSON) {
+    throw createError("VALIDATION_ERROR", `This account belongs to more than ${MAX_ORGANIZATIONS_PER_PERSON} organizations, more than OpenScholar reads. Leave some to continue.`);
+  }
   const rows = await Promise.all(
     memberships.map(async (membership) => ({
       membership,

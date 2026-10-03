@@ -7,7 +7,7 @@ import { getCurrentUser } from "../lib/auth";
 import { rateLimit } from "../lib/rateLimit";
 import { createError } from "../lib/errors";
 import { assertLibraryHasRoom, assertPersonHasRoom } from "./members";
-import { MAX_PENDING_INVITATIONS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
+import { MAX_ACCOUNTS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_EMAIL,MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
 
 const roleValidator = v.union(v.literal("editor"), v.literal("creator"));
 const invitationArgs = { libraryId: v.id("evidenceLibraries"), email: v.string(), role: roleValidator };
@@ -20,7 +20,9 @@ export const prepare = internalMutation({
     await rateLimit(ctx, { name: "library-invitation", key: args.libraryId, throws: true });
     const email = args.email.trim().toLowerCase();
     if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw createError("VALIDATION_ERROR", "Enter a valid email address");
-    const users = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", email)).collect();
+    // A deleted account keeps its address, so one address can name several accounts.
+    const users = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", email)).take(MAX_ACCOUNTS_PER_EMAIL + 1);
+    if (users.length > MAX_ACCOUNTS_PER_EMAIL) throw createError("VALIDATION_ERROR", "Too many accounts have used this address to check which of them already has access. Invite a different address.");
     for (const user of users) {
       if (await readLibraryRole(ctx, access.library, user.clerkId)) throw createError("CONFLICT", "This person already has library access");
     }

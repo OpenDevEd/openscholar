@@ -1,22 +1,12 @@
 {
   "unboundedReads": {
     "pending": {
-      "convex/billing/migrate.ts:legacyAccounts:creditTransactions": "#427: One user's legacy credit transactions in the one-off billing migration; that ledger stopped growing when billing moved to Autumn",
-      "convex/billing/migrate.ts:legacyAccounts:subscriptions": "#427: One user's legacy subscriptions in the one-off billing migration: a few",
-      "convex/billing/usage.ts:rows:billingUsage": "#427: The usage rows of one Stripe charge: a few",
-      "convex/evidenceLibraries/aiProviderKey.ts:requireNoRunningOperation:evidenceLibraryConfigOperations": "#427: A library's operations that are running now: one or two at a time",
-      "convex/evidenceLibraries/configurationDeployment.ts:requireNoActiveConfigurationDeployment:evidenceLibraryConfigOperations": "#427: A library's operations that are queued or running now: one or two at a time",
-      "convex/evidenceLibraries/domains.ts:claimDomainRoutes:evidenceLibraryConfigOperations": "#427: A library's operations that are queued or running now: one or two at a time",
-      "convex/evidenceLibraries/invitations.ts:users:users": "#427: Accounts with one email address: one",
-      "convex/evidenceLibraries/versions.ts:arrivals:evidenceLibraryConfigOperations": "#427: One library's succeeded operations to one runtime image: a few",
-      "convex/organizationFeatures.ts:memberships:organizationMemberships": "#427: One person's active organization memberships: a few",
       "convex/research/answers.ts:answersAtVersions:screeningAnswerHistory": "#342",
       "convex/research/answers.ts:currentAnswers:?": "#334",
       "convex/research/answers.ts:existing:?": "#334",
       "convex/research/records.ts:revisions:searchRevisions": "#334",
       "convex/research/records.ts:verifyMovedAnswers:searchRevisions": "#334",
       "convex/research/records.ts:verifyMovedAnswers:searches": "#334",
-      "convex/topics/publications.ts:hasPublicTopic:topicLocations": "#427: One publication's locations: one per library record of that publication, and a library holds a publication once",
       "convex/wallet/queries.ts:keys:walletKeys": "#427: A user's own wallet keys: a handful"
     }
   },

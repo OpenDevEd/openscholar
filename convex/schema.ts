@@ -341,6 +341,8 @@ export default defineSchema({
       "status",
       "updatedAt",
     ])
+    // The queued or running operations of one kind, which the guards ask about (#427).
+    .index("by_libraryId_and_status_and_kind", ["libraryId", "status", "kind"])
     .index("by_libraryId_and_failed_runtime", [
       "libraryId",
       "status",

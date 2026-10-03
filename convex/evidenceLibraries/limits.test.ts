@@ -2,8 +2,10 @@
 // libraries are added (#357).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { MAX_CREDENTIALS_PER_LIBRARY, MAX_FEATURE_FLAGS, MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
+import { MAX_ACCOUNTS_PER_EMAIL, MAX_ACTIVE_OPERATIONS_READ, MAX_CREDENTIALS_PER_LIBRARY, MAX_FEATURE_FLAGS, MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
 import { assertCredentialRoom, writeEvidenceLibraryCredentialRecord } from "./credentials";
+import { requireNoActiveConfigurationDeployment } from "./configurationDeployment";
+import { RUNTIME_ARRIVALS_READ } from "./versions";
 import { insertMany } from "../lib/maxSize.test-support";
 import { createDraftSetupFixture, createReadySetupFixture, reserveLibraryAddressByName } from "../../tests/helpers/evidence-library-setup-fixture";
 
@@ -91,6 +93,53 @@ describe("Evidence Library limits", () => {
     await expect(invite("one-more@example.org")).rejects.toThrow(/500 invitations waiting/);
     // An invitation already waiting here is renewed, not counted again.
     await expect(invite("person0@example.org")).resolves.toBeDefined();
+  });
+
+  it("refuses to invite an address more accounts have used than it reads (#427)", async () => {
+    const fixture = await createReadySetupFixture("invite_accounts");
+    const invite = () => fixture.admin.mutation(internal.evidenceLibraries.invitations.prepare, { libraryId: fixture.created.libraryId, email: "serial@example.org", role: "editor" });
+    const accounts = (from: number, count: number) => insertMany(fixture.t, "users", Array.from({ length: count }, (_, i) => ({ libraryItemCount: 0, clerkId: `serial_${from + i}`, email: "serial@example.org", state: "deleted", createdAt: 1, updatedAt: 1 })));
+    await accounts(0, MAX_ACCOUNTS_PER_EMAIL);
+    await expect(invite()).resolves.toBeDefined();
+    await accounts(MAX_ACCOUNTS_PER_EMAIL, 1);
+    await expect(invite()).rejects.toThrow(/Too many accounts/);
+  });
+
+  it("refuses a library as busy when it has more active operations than a guard reads (#427)", async () => {
+    const fixture = await createReadySetupFixture("active_operations");
+    const libraryId = fixture.created.libraryId;
+    const { _id, _creationTime, ...setup } = (await fixture.t.run((ctx) => ctx.db.get("evidenceLibraryConfigOperations", fixture.created.setupOperationId)))!;
+    const guard = () => fixture.t.run((ctx) => requireNoActiveConfigurationDeployment(ctx, libraryId));
+    // Validations are queued and nothing starts them: however many wait, they aren't deployments.
+    for (let i = 0; i <= MAX_ACTIVE_OPERATIONS_READ; i += 1) await fixture.admin.mutation(api.evidenceLibraries.operations.queueOperation, { libraryId, kind: "validate", idempotencyKey: `validate-${i}` });
+    await guard();
+    // Publishes that aren't deployments, as only old data could hold: up to the bound they block nothing.
+    const publishes = (from: number, count: number) => insertMany(fixture.t, "evidenceLibraryConfigOperations", Array.from({ length: count }, (_, i) => ({ ...setup, kind: "publish", status: "queued", idempotencyKey: `filler-${from + i}`, activationEditVersion: undefined, runtimeUpdate: undefined, addressMove: undefined, domainChange: undefined })));
+    await publishes(0, MAX_ACTIVE_OPERATIONS_READ);
+    await guard();
+    await publishes(MAX_ACTIVE_OPERATIONS_READ, 1);
+    await expect(guard()).rejects.toThrow(/more than 50 queued publish operations/);
+  });
+
+  it("refuses to restore earlier software when it can't check every publish that moved the library on (#427)", async () => {
+    const fixture = await createReadySetupFixture("runtime_arrivals");
+    const libraryId = fixture.created.libraryId;
+    const { binding, setup } = await fixture.t.run(async (ctx) => {
+      const library = (await ctx.db.get("evidenceLibraries", libraryId))!;
+      const binding = (await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId!))!;
+      if (!("runtimeCommit" in binding) || !binding.runtimeCommit || !binding.runtimeImage) throw new Error("not bound");
+      await ctx.db.patch("evidenceLibraryRuntimeBindings", binding._id, { previousRuntime: { commit: "e".repeat(40), image: binding.runtimeImage } });
+      const { _id, _creationTime, ...setup } = (await ctx.db.get("evidenceLibraryConfigOperations", fixture.created.setupOperationId))!;
+      return { binding, setup };
+    });
+    // Publishes that moved the library here from other software, so none answers the check.
+    const arrivals = (from: number, count: number) => insertMany(fixture.t, "evidenceLibraryConfigOperations", Array.from({ length: count }, (_, i) => ({
+      ...setup, kind: "publish", status: "succeeded", idempotencyKey: `arrival-${from + i}`,
+      runtimeUpdate: { from: "f".repeat(40), to: binding.runtimeCommit, fromImage: binding.runtimeImage, toImage: binding.runtimeImage },
+    })));
+    const restore = () => fixture.t.mutation(internal.evidenceLibraries.versions.startRuntimeRollback, { libraryId });
+    await arrivals(0, RUNTIME_ARRIVALS_READ + 1);
+    await expect(restore()).rejects.toThrow(/more than 100 times/);
   });
 
   it("refuses another stored credential, and another feature flag, past their limits (#427)", async () => {

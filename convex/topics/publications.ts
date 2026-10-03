@@ -1,10 +1,13 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { stream } from "convex-helpers/server/stream";
+import schema from "../schema";
 import { internalMutation, query, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
+import { MAX_LOCATIONS_READ_PER_GROUP } from "../lib/queryBounds";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
 import { readActiveTopicsEnabled } from "../evidenceLibraries/activeTopics";
 import { topicAssociationRequestSchema, topicIdSchema } from "../../lib/topics/contract";
@@ -140,13 +143,16 @@ function publicLibraries(ctx: QueryCtx): PublicLibraries {
   };
 }
 async function hasPublicTopic(ctx: QueryCtx, libraries: PublicLibraries, topicId: string, groupKey: string) {
-  // This reads one indexed publication group and stops at its first eligible assignment.
-  for await (const row of ctx.db.query("topicLocations").withIndex("by_groupKey_and_libraryId_and_itemKey", q => q.eq("groupKey", groupKey))) {
-    if (row.state !== "published" || !row.topicIds.includes(topicId)) continue;
-    if (!await libraries(row.libraryId)) continue;
-    if (publicationGroupKey(row.libraryId, row.itemKey, row.doi, row.openalexId, await linkedDois(ctx, row.openalexId)) === groupKey) return true;
-  }
-  return false;
+  // Reads the group a row at a time and stops at its first public copy, so a page of large groups stays within one query's limits.
+  const read = await stream(ctx.db, schema).query("topicLocations").withIndex("by_groupKey_and_libraryId_and_itemKey", q => q.eq("groupKey", groupKey))
+    .filterWith(async row => row.state === "published" && row.topicIds.includes(topicId) && await libraries(row.libraryId) !== null
+      && publicationGroupKey(row.libraryId, row.itemKey, row.doi, row.openalexId, await linkedDois(ctx, row.openalexId)) === groupKey)
+    .paginate({cursor: null, numItems: 1, maximumRowsRead: MAX_LOCATIONS_READ_PER_GROUP + 1});
+  if (read.page.length > 0) return true;
+  if (read.isDone) return false;
+  // None of the rows read is public, and more are unread: saying "not public" would be a guess. A regroup can move rows in, so no write caps a group.
+  console.error("[topics] A publication group has more locations than one read checks", {groupKey, topicId, read: MAX_LOCATIONS_READ_PER_GROUP});
+  throw createError("VALIDATION_ERROR", "This topic has a publication with more copies than its page can check.");
 }
 /** Page over materialized publication groups, not per-library records. The cursor is the last group key, which deliveries never move. */
 const publicLibraryValidator = v.object({id: v.id("evidenceLibraries"), name: v.string(), url: v.string()});
