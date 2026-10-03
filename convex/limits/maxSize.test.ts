@@ -5,7 +5,7 @@ import { getDocumentSize } from "convex/values";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { readEveryLibraryPage } from "../../lib/library/export";
+import { exportLibrary, exportedTitles } from "../library/exports.test-support";
 import { RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
 import { collectionSortName } from "../library/collections";
 import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
@@ -136,9 +136,26 @@ describe("at the largest sizes the product allows", () => {
     }
     expect(await as.query(api.library.queries.getLibraryFilteredCount, { ...sorted, collectionId })).toEqual({ count: MAX_SIZE.libraryItems, capped: false });
     expect(await as.query(api.library.queries.getLibraryFilteredCount, { ...sorted, minRating: 5, yearTo: 1990 })).toEqual({ count: 0, capped: false });
-    const exported = await readEveryLibraryPage((cursor) => as.query(api.library.queries.browseLibrary, { ...sorted, minRating: 2, paginationOpts: { cursor, numItems: 500 } }));
+    const exported = await exportedTitles(t, as, { ...sorted, minRating: 2 });
     expect(exported).toHaveLength(MAX_SIZE.libraryItems * 0.8);
   }, 300_000);
+
+  it("a 10,000-paper library of long abstracts exports in parts under Convex's 20 MiB response limit", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    await seedLibrary(t, userId, { abstractChars: 4_500 });
+    const { parts } = await exportLibrary(t, as, { sortBy: "savedAt", sortOrder: "desc" }, "csv");
+    expect(parts.length).toBeGreaterThan(1);
+    for (const { response, text } of parts) {
+      expect(response.status).toBe(200);
+      expect(new TextEncoder().encode(text).byteLength).toBeLessThan(20 * 1024 * 1024);
+    }
+    // Each part is a whole CSV: a header, then its rows; together they hold every paper once.
+    const rows = parts.flatMap(({ text }) => text.trimEnd().split("\n").slice(1));
+    expect(rows).toHaveLength(MAX_SIZE.libraryItems);
+    expect(parts.every(({ text }) => text.startsWith("\ufeffabstract,"))).toBe(true);
+    expect(new Set(rows.map((row) => row.match(/https:\/\/openalex\.org\/W\d+/)?.[0])).size).toBe(MAX_SIZE.libraryItems);
+  }, 600_000);
 
   it("a 10,000-paper library of long abstracts counts a filter that matches nothing", async () => {
     const t = convexTest(schema);

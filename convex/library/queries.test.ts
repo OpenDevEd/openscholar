@@ -4,7 +4,7 @@ import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { readEveryLibraryPage } from "../../lib/library/export";
+import { exportedTitles } from "./exports.test-support";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
@@ -507,14 +507,14 @@ describe("a filtered library view, read page by page", () => {
       if (i % 3 !== 0) await asUser.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: item!._id });
     }
     const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, minRating: 2, maxRating: 4, yearFrom: 2012, collectionId };
-    const exported = await readEveryLibraryPage((cursor) => asUser.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { cursor, numItems: 2 } }));
+    const exported = await exportedTitles(t, asUser, view);
 
     const expected = Array.from({ length: 24 }, (_, i) => i)
       .filter((i) => i % 3 !== 0 && (i % 5) + 1 >= 2 && (i % 5) + 1 <= 4 && 2010 + (i % 12) >= 2012)
       .reverse()
       .map((i) => `Paper ${i}`);
     expect(expected.length).toBeGreaterThan(4);
-    expect(exported.map((item) => item.title)).toEqual(expected);
+    expect(exported).toEqual(expected);
     expect(await asUser.query(api.library.queries.getLibraryFilteredCount, view)).toEqual({ count: expected.length, capped: false });
   });
 });

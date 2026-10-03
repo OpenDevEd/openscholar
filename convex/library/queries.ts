@@ -1,6 +1,6 @@
 import { query, type QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
-import { paginationOptsValidator, paginationResultValidator, type Cursor } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator, type Cursor, type PaginationOptions } from "convex/server";
 import { v } from "convex/values";
 import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
@@ -9,6 +9,7 @@ import { MAX_COLLECTION_MEMBERS } from "../lib/queryBounds";
 import { libraryCount } from "./counter";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { LIBRARY_SEARCH_RESULTS_MAX as SEARCH_RESULTS_MAX } from "../../lib/library/limits";
+import { libraryFilterFields, librarySortOrderValidator, librarySortValidator, type LibraryView } from "./validators";
 
 /**
  * Papers one page of a filtered view reads at most. A sparse filter gets a short page
@@ -28,16 +29,7 @@ const FILTERED_COUNT_ROWS = 4_000;
  */
 const FILTERED_BYTES = 8 * 1024 * 1024;
 
-const libraryPageValidator = paginationResultValidator(schema.tables.libraryItems.validator.extend({ _id: v.id("libraryItems"), _creationTime: v.number() }));
-
-const librarySortValidator = v.union(
-  v.literal("savedAt"),
-  v.literal("rating"),
-  v.literal("publicationYear"),
-  v.literal("citedByCount"),
-  v.literal("title"),
-);
-const librarySortOrderValidator = v.union(v.literal("asc"), v.literal("desc"));
+export const libraryPageValidator = paginationResultValidator(schema.tables.libraryItems.validator.extend({ _id: v.id("libraryItems"), _creationTime: v.number() }));
 
 type LibraryItem = Doc<"libraryItems">;
 
@@ -256,47 +248,53 @@ function paginateLibraryItems(
   };
 }
 
+export type LibraryPage = { page: LibraryItem[]; isDone: boolean; continueCursor: Cursor };
+
+const emptyPage: LibraryPage = { page: [], isDone: true, continueCursor: "" as Cursor };
+
+/**
+ * One page of someone's library view. A search reads its every match, the search engine's
+ * limit, and pages them in memory; a browse reads through the sort's index, and a filtered
+ * one stops after FILTERED_PAGE_ROWS papers with a cursor to carry on from.
+ */
+export async function readLibraryPage(ctx: QueryCtx, userId: Id<"users">, view: LibraryView, paginationOpts: PaginationOptions): Promise<LibraryPage> {
+  const collectionItemIds = await loadCollectionItemIds(ctx, userId, view.collectionId);
+  if (view.collectionId && (collectionItemIds === null || collectionItemIds.size === 0)) return emptyPage;
+
+  if (view.searchText !== undefined) {
+    const searchText = view.searchText.trim();
+    if (!searchText) return emptyPage;
+    const items = await searchLibraryItems(ctx, userId, searchText);
+    return paginateLibraryItems(
+      sortLibraryItems(items.filter((item) => matchesLibraryFilters(item, view, collectionItemIds)), view.sortBy, view.sortOrder),
+      // Every match is read anyway, so a caller may take them all in one page.
+      { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SEARCH_RESULTS_MAX) },
+    );
+  }
+
+  const page = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LIBRARY_PAGE_MAX) };
+  if (!collectionItemIds && !hasNonCollectionLibraryFilters(view)) {
+    return await ctx.db
+      .query("libraryItems")
+      .withIndex(SORT_INDEX_MAP[view.sortBy], (q) => q.eq("userId", userId))
+      .order(view.sortOrder)
+      .paginate(page);
+  }
+  return await filteredItems(ctx, userId, view.sortBy, view.sortOrder, view, collectionItemIds)
+    .paginate({ ...page, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: FILTERED_BYTES });
+}
+
 export const browseLibrary = query({
   args: {
     sortBy: librarySortValidator,
     sortOrder: librarySortOrderValidator,
-    minRating: v.optional(v.number()),
-    maxRating: v.optional(v.number()),
-    savedAfter: v.optional(v.number()),
-    savedBefore: v.optional(v.number()),
-    yearFrom: v.optional(v.number()),
-    yearTo: v.optional(v.number()),
-    collectionId: v.optional(v.id("collections")),
+    ...libraryFilterFields,
     paginationOpts: paginationOptsValidator,
   },
   returns: libraryPageValidator,
-  handler: async (ctx, args) => {
+  handler: async (ctx, { paginationOpts, ...view }) => {
     const user = await requireAuth(ctx);
-    const collectionItemIds = await loadCollectionItemIds(
-      ctx,
-      user._id,
-      args.collectionId,
-    );
-
-    if (args.collectionId && collectionItemIds === null) {
-      return { page: [], isDone: true, continueCursor: "" as Cursor };
-    }
-
-    if (collectionItemIds?.size === 0) {
-      return { page: [], isDone: true, continueCursor: "" as Cursor };
-    }
-
-    const paginationOpts = { ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, LIBRARY_PAGE_MAX) };
-    if (!collectionItemIds && !hasNonCollectionLibraryFilters(args)) {
-      return await ctx.db
-        .query("libraryItems")
-        .withIndex(SORT_INDEX_MAP[args.sortBy], (q) => q.eq("userId", user._id))
-        .order(args.sortOrder)
-        .paginate(paginationOpts);
-    }
-
-    return await filteredItems(ctx, user._id, args.sortBy, args.sortOrder, args, collectionItemIds)
-      .paginate({ ...paginationOpts, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: FILTERED_BYTES });
+    return await readLibraryPage(ctx, user._id, view, paginationOpts);
   },
 });
 
@@ -305,49 +303,13 @@ export const searchLibrary = query({
     searchText: v.string(),
     sortBy: v.optional(librarySortValidator),
     sortOrder: v.optional(librarySortOrderValidator),
-    minRating: v.optional(v.number()),
-    maxRating: v.optional(v.number()),
-    savedAfter: v.optional(v.number()),
-    savedBefore: v.optional(v.number()),
-    yearFrom: v.optional(v.number()),
-    yearTo: v.optional(v.number()),
-    collectionId: v.optional(v.id("collections")),
+    ...libraryFilterFields,
     paginationOpts: paginationOptsValidator,
   },
   returns: libraryPageValidator,
-  handler: async (ctx, args) => {
+  handler: async (ctx, { paginationOpts, sortBy = "savedAt", sortOrder = "desc", ...view }) => {
     const user = await requireAuth(ctx);
-    const collectionItemIds = await loadCollectionItemIds(
-      ctx,
-      user._id,
-      args.collectionId,
-    );
-
-    if (args.collectionId && collectionItemIds === null) {
-      return { page: [], isDone: true, continueCursor: "" as Cursor };
-    }
-
-    if (collectionItemIds?.size === 0) {
-      return { page: [], isDone: true, continueCursor: "" as Cursor };
-    }
-    const sortBy = args.sortBy ?? "savedAt";
-    const sortOrder = args.sortOrder ?? "desc";
-    const searchText = args.searchText.trim();
-    if (!searchText) return { page: [], isDone: true, continueCursor: "" as Cursor };
-    const items = await searchLibraryItems(ctx, user._id, searchText);
-
-    return paginateLibraryItems(
-      sortLibraryItems(
-        items.filter((item) =>
-          matchesLibraryFilters(item, args, collectionItemIds),
-        ),
-        sortBy,
-        sortOrder,
-      ),
-      // Every match is read anyway, so a caller may take them all in one page: an export
-      // that reads them at once can't skip or repeat one that moves between pages.
-      { ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, SEARCH_RESULTS_MAX) },
-    );
+    return await readLibraryPage(ctx, user._id, { ...view, sortBy, sortOrder }, paginationOpts);
   },
 });
 
@@ -360,13 +322,7 @@ export const getLibraryFilteredCount = query({
   args: {
     sortBy: librarySortValidator,
     sortOrder: librarySortOrderValidator,
-    minRating: v.optional(v.number()),
-    maxRating: v.optional(v.number()),
-    savedAfter: v.optional(v.number()),
-    savedBefore: v.optional(v.number()),
-    yearFrom: v.optional(v.number()),
-    yearTo: v.optional(v.number()),
-    collectionId: v.optional(v.id("collections")),
+    ...libraryFilterFields,
     searchText: v.optional(v.string()),
   },
   returns: v.object({ count: v.number(), capped: v.boolean() }),

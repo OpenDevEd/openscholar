@@ -256,8 +256,10 @@ import type * as library_backfillMutations from "../library/backfillMutations.js
 import type * as library_collectionMembership from "../library/collectionMembership.js";
 import type * as library_collections from "../library/collections.js";
 import type * as library_counter from "../library/counter.js";
+import type * as library_exports from "../library/exports.js";
 import type * as library_mutations from "../library/mutations.js";
 import type * as library_queries from "../library/queries.js";
+import type * as library_validators from "../library/validators.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_backfillLibraryCounters from "../migrations/backfillLibraryCounters.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
@@ -596,8 +598,10 @@ declare const fullApi: ApiFromModules<{
   "library/collectionMembership": typeof library_collectionMembership;
   "library/collections": typeof library_collections;
   "library/counter": typeof library_counter;
+  "library/exports": typeof library_exports;
   "library/mutations": typeof library_mutations;
   "library/queries": typeof library_queries;
+  "library/validators": typeof library_validators;
   "maintenance/mutations": typeof maintenance_mutations;
   "migrations/backfillLibraryCounters": typeof migrations_backfillLibraryCounters;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;

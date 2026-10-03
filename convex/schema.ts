@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
+import { libraryExportFormatValidator, libraryViewValidator } from "./library/validators";
 import { v } from "convex/values";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
@@ -1044,6 +1045,20 @@ export default defineSchema({
   })
     .index("by_user_sortName", ["userId", "sortName"])
     .searchIndex("search_name", { searchField: "name", filterFields: ["userId"] }),
+
+  // A library export a browser is downloading in parts: its token's SHA-256 digest, the view,
+  // the next part to serve and where it starts, whether a part failed, and when the link expires.
+  libraryExports: defineTable({
+    userId: v.id("users"),
+    digest: v.string(),
+    format: libraryExportFormatValidator,
+    view: libraryViewValidator,
+    part: v.number(),
+    cursor: v.union(v.string(), v.null()),
+    serving: v.boolean(),
+    failed: v.boolean(),
+    expiresAt: v.number(),
+  }).index("by_digest", ["digest"]),
 
   // How many collections a person has, kept as they make and delete them, for page totals.
   collectionCounts: defineTable({ userId: v.id("users"), count: v.number() }).index("by_user", ["userId"]),

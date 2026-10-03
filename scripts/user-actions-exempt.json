@@ -7,6 +7,8 @@
     "billing/catalog:get": "The plan catalog the billing pages render from Autumn's copy.",
     "evidenceLibraries/uploads:generateUploadUrl": "A storage URL for a file the person picks in their browser.",
     "extraction/uploads:generateUploadUrl": "A storage URL for a file the person picks in their browser.",
+    "library/exports:progress": "Tells the browser downloading an export when its next part is ready.",
+    "library/exports:start": "Registers an export the person's browser downloads at once, a part at a time.",
     "featureFlags/queries:getAll": "Feature flags the pages check before showing a feature.",
     "openalex/limits:spend": "Counts a signed-in account's OpenAlex requests for the server actions that make them.",
     "organizationFeatures:get": "Which features the person's organization has, for the pages to check.",
