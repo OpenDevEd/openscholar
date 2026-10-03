@@ -9,7 +9,7 @@ import { exportLibrary, exportParts, exportedTitles } from "../exports.test-supp
 import { PAPER_LIMIT, RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
 import { replaceJobSources, writeJobSources } from "../extraction/jobSources";
 import { collectionSortName } from "../library/collections";
-import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
+import { MAX_COLLECTIONS_PER_USER, MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { MAX_SIZE, insertMany, seedAccount, seedExtractionJob, seedLibrary, text } from "../lib/maxSize.test-support";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 import { assertApprovedQueriesUnchanged } from "../evidenceLibraries/approvedQueries";
@@ -333,4 +333,29 @@ describe("at the largest sizes the product allows", () => {
     expect(await average("extractionResults")).toBeGreaterThan(800);
     expect(await average("libraryItems")).toBeGreaterThan(2_000);
   });
+
+  it("a 1,000-paper, 50-question screening job exports every result, and reads its largest page", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    const questions = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => ({ key: `q${i}`, question: `${text(180, i)}?` }));
+    const jobId = await t.run((ctx) => ctx.db.insert("screeningJobs", {
+      userId, status: "completed", totalPapers: MAX_SCREENING_PAPERS_PER_JOB, questions,
+      scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }] },
+      createdAt: 1, updatedAt: 1,
+    }));
+    await insertMany(t, "screeningResults", Array.from({ length: MAX_SCREENING_PAPERS_PER_JOB }, (_, i) => ({
+      jobId, openalexId: `https://openalex.org/W${i}`, title: text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), publicationYear: 2020, doi: `10.1234/${i}`,
+      status: "completed", answers: Object.fromEntries(questions.map(({ key }, q) => [key, (i + q) % 3 === 0 ? null : (i + q) % 2 === 0])), score: 25, stars: 5, qualified: true, createdAt: 1,
+    })), 250);
+
+    const csv = await exportParts(t, as, { kind: "screening", jobId }, "csv");
+    expect(csv.parts).toHaveLength(1);
+    expect(csv.text.split("\n")).toHaveLength(MAX_SCREENING_PAPERS_PER_JOB + 1);
+    const json = await exportParts(t, as, { kind: "screening", jobId });
+    expect(json.parts).toHaveLength(1);
+    expect(JSON.parse(json.text).results).toHaveLength(MAX_SCREENING_PAPERS_PER_JOB);
+    // The workbook reads the largest page a read allows.
+    const page = await as.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: null, numItems: 1_000 } });
+    expect(page.page).toHaveLength(200);
+  }, 300_000);
 });

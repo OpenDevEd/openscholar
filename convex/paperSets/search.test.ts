@@ -101,6 +101,16 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(firstResult?.openalexId).toBe("https://openalex.org/W250");
   });
 
+  it("keeps exactly the range asked for when it runs across cursor pages", async () => {
+    const { t, alice } = await setup();
+
+    const { jobId } = await alice.action(api.screening.start.screenSearch, { searchId: search.id, first: 190, last: 410, ...job });
+
+    expect(requests.map(({ url }) => url.searchParams.get("cursor"))).toEqual(["*", "2", "3"]);
+    const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(300));
+    expect(results.map((result) => result.openalexId)).toEqual(Array.from({ length: 221 }, (_, i) => `https://openalex.org/W${190 + i}`));
+  });
+
   it("filters by the days picked, whatever the server's timezone", async () => {
     const { alice } = await setup({ ...search, sortBy: "relevance_score:desc", filterType: "date", isYearRangeEnabled: false, yearRange: undefined, dateRange: { from: "2024-12-31T23:00:00.000Z", to: "2025-01-30T23:00:00.000Z" } });
 
