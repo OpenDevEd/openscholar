@@ -242,7 +242,7 @@ export function RoutingMap({
         <span className={cn("truncate text-sm font-medium transition-colors", hover && !edges.some((e) => e.task === task && lit(e)) && "text-muted-foreground")}>
           {tm(`tasks.${task}`)}
         </span>
-        {wrapTask ? <ChevronsUpDown className="ml-auto mr-2 size-3.5 shrink-0 text-muted-foreground/60" /> : null}
+        {wrapTask ? <ChevronsUpDown className="ml-auto mr-2 size-3.5 shrink-0 text-solid-muted-foreground/60" /> : null}
       </div>
     );
     return <div key={task}>{wrapTask ? wrapTask(task, row) : row}</div>;

@@ -377,7 +377,7 @@ export function CountrySelector({
                 filteredTree.children.map(child => renderNode(child))
               ) : (
                 <div className="text-center text-muted-foreground py-8">
-                  <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <Search className="h-8 w-8 mx-auto mb-2 text-subtle-foreground" />
                   <p>{tc("noMatchesFound")}</p>
                   <p className="text-xs mt-1">{tf("tryDifferentSearch")}</p>
                 </div>

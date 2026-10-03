@@ -37,7 +37,7 @@ export function PublicationListItem({ publication: p, locations }: {
             className="object-cover"
           />
           <AvatarFallback className="rounded-none bg-inset">
-            <FileText className="size-6 text-muted-foreground/50" />
+            <FileText className="size-6 text-solid-muted-foreground/50" />
           </AvatarFallback>
         </Avatar>
       </button>

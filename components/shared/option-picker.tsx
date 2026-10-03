@@ -62,7 +62,7 @@ export function OptionPicker({
             <span className={cn("truncate", selected.length === 0 && "text-subtle-foreground")}>
               {selected.length === 0 ? placeholder : selectedText}
             </span>
-            <ChevronDown className="size-4 shrink-0 opacity-50" />
+            <ChevronDown className="size-4 shrink-0 text-subtle-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-96 p-0" align="start">

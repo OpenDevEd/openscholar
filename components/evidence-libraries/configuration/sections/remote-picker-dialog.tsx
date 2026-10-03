@@ -661,7 +661,7 @@ function SortHead({
       >
         {children}
         {!on ? (
-          <ArrowUpDown className="h-3 w-3 opacity-50" />
+          <ArrowUpDown className="h-3 w-3 text-subtle-foreground" />
         ) : active.direction === "asc" ? (
           <ArrowUp className="h-3 w-3" />
         ) : (

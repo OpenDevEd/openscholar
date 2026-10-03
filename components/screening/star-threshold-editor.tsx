@@ -94,7 +94,7 @@ export function StarThresholdEditor({
               </div>
 
               {/* Arrow */}
-              <ArrowRight className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+              <ArrowRight className="h-3 w-3 text-solid-muted-foreground/40 shrink-0" />
 
               {/* Inline clickable stars */}
               <div className="flex items-center gap-0.5 flex-1">
@@ -111,7 +111,7 @@ export function StarThresholdEditor({
                         "h-4 w-4 transition-colors",
                         s <= th.stars
                           ? "fill-rating text-rating"
-                          : "text-muted-foreground/25 hover:text-rating/50"
+                          : "text-solid-muted-foreground/25 hover:text-solid-rating/50"
                       )}
                     />
                   </button>
@@ -124,7 +124,7 @@ export function StarThresholdEditor({
                 size="icon"
                 onClick={() => handleRemove(i)}
                 disabled={disabled}
-                className="h-6 w-6 shrink-0 text-muted-foreground/50 hover:text-destructive"
+                className="h-6 w-6 shrink-0 text-solid-muted-foreground/50 hover:text-destructive"
               >
                 <X className="h-3 w-3" />
                 <span className="sr-only">{t("removeThreshold")}</span>

@@ -226,7 +226,7 @@ function StepMark({ status, emphasis }: { status: SetupStep["status"]; emphasis:
   if (status === "done") {
     return (
       <Check
-        className={cn("size-3.5", emphasis ? "text-success" : "text-success/70")}
+        className={cn("size-3.5", emphasis ? "text-success" : "text-solid-success/70")}
         strokeWidth={3}
         aria-hidden
       />

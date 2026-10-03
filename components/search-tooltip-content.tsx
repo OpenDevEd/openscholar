@@ -55,7 +55,7 @@ export function SearchTooltipContent({
             {format.number(count, count >= 1000 ? { notation: 'compact', maximumFractionDigits: 1 } : undefined)}
           </span>
         </div>
-        <div className="flex items-center gap-1 text-3xs text-muted-foreground/70">
+        <div className="flex items-center gap-1 text-3xs text-solid-muted-foreground/70">
           <Clock className="h-2.5 w-2.5" />
           <span>{timeAgo}</span>
         </div>

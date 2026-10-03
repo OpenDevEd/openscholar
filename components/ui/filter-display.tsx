@@ -98,7 +98,7 @@ function RatingStars({ range: [min, max], label }: { range: [number, number]; la
           key={star}
           className={cn(
             "size-2.5",
-            star >= min && star <= max ? "fill-rating text-rating" : "text-muted-foreground/30",
+            star >= min && star <= max ? "fill-rating text-rating" : "text-solid-muted-foreground/30",
           )}
         />
       ))}

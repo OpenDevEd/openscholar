@@ -43,7 +43,7 @@ export function NoResults({ query, variant = "search", onTryNewSearch }: NoResul
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.05 }}
         >
-          <SearchX className="h-12 w-12 text-muted-foreground opacity-40" />
+          <SearchX className="h-12 w-12 text-solid-muted-foreground/40" />
         </motion.div>
 
         {/* Typography hierarchy */}
@@ -118,7 +118,7 @@ export function QueryErrorState({ detail, oql }: { detail: QueryErrorDetail; oql
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
       >
-        <CircleAlert className="mb-6 h-12 w-12 text-destructive opacity-60" aria-hidden />
+        <CircleAlert className="mb-6 h-12 w-12 text-solid-destructive/60" aria-hidden />
         <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
           {t("queryErrorTitle")}
         </h2>
@@ -193,7 +193,7 @@ export function LoadingResults({ variant = "full" }: LoadingResultsProps) {
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.05 }}
         >
-          <Loader2 className="h-12 w-12 text-muted-foreground opacity-40 animate-spin" />
+          <Loader2 className="h-12 w-12 text-solid-muted-foreground/40 animate-spin" />
         </motion.div>
 
         {/* Typography */}

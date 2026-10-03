@@ -264,7 +264,7 @@ export function SearchInput({
                 transition={hintAnimTransition}
                 className="h-9 flex items-center justify-center gap-2.5 rounded-full border border-border-subtle bg-inset px-3 text-xs text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-200 hover:border-primary/25 hover:bg-muted hover:text-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2 sm:text-sm"
               >
-                <Wand2 className="h-3.5 w-3.5 text-foreground/70" />
+                <Wand2 className="h-3.5 w-3.5 text-solid-foreground/70" />
                 <span>{t("questionShortcutHint")}</span>
               </motion.button>
             ) : (

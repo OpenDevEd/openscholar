@@ -117,9 +117,10 @@
   /* Radius */
   --radius: 0.75rem;
 
-  /* Icons (components/icons.tsx) are two-tone. This is how strong
-     the lighter tone is. */
-  --solar-secondary-opacity: 0.45;
+  /* Icons (components/icons.tsx) are two-tone. The lighter tone is a solid
+     colour: this much of the icon's colour, mixed into the surface the icon
+     sits on. Nothing is see-through, so overlapping shapes stay clean. */
+  --icon-tone: 45%;
 
   /* Shadows */
   --shadow-2xs: 0 1px 2px 0 oklch(0 0 0 / 0.03);
@@ -312,6 +313,35 @@
   [role="button"]:not([aria-disabled="true"]) {
     cursor: pointer;
   }
+
+  /* The lighter tone of a two-tone icon, as a solid colour. */
+  .solar {
+    --solar-secondary-opacity: 1;
+    --solar-secondary-color: color-mix(in oklab, currentColor var(--icon-tone), var(--icon-surface, var(--card)));
+  }
+  /* Each surface names itself, so the icons on it mix into the right colour. */
+  .bg-background { --icon-surface: var(--background); }
+  .bg-sidebar { --icon-surface: var(--sidebar); }
+  .bg-card { --icon-surface: var(--card); }
+  .bg-card-hover, .hover\:bg-card-hover:hover { --icon-surface: var(--card-hover); }
+  .bg-inset, .hover\:bg-inset:hover { --icon-surface: var(--inset); }
+  .bg-field { --icon-surface: var(--field); }
+  .bg-popover { --icon-surface: var(--popover); }
+  .bg-muted, .hover\:bg-muted:hover { --icon-surface: var(--muted); }
+  .bg-secondary { --icon-surface: var(--secondary); }
+  .bg-accent, .hover\:bg-accent:hover, .focus\:bg-accent:focus,
+  [class*="[state=open]:bg-accent"][data-state="open"],
+  [class*="[selected=true]:bg-accent"][data-selected="true"] { --icon-surface: var(--accent); }
+  .bg-sidebar-accent, .hover\:bg-sidebar-accent:hover { --icon-surface: var(--sidebar-accent); }
+  .bg-segment { --icon-surface: var(--segment); }
+  .bg-segment-active { --icon-surface: var(--segment-active); }
+  .bg-primary, .hover\:bg-primary:hover,
+  [class*="[state=checked]:bg-primary"][data-state="checked"],
+  [class*="[state=active]:bg-primary"][data-state="active"] { --icon-surface: var(--primary); }
+  .bg-destructive, .hover\:bg-destructive:hover { --icon-surface: var(--destructive); }
+  .bg-success { --icon-surface: var(--success); }
+  .bg-warning { --icon-surface: var(--warning); }
+  .bg-foreground { --icon-surface: var(--foreground); }
 }
 
 @layer utilities {
@@ -420,8 +450,15 @@
 /* A soft chip in any colour: tinted fill, faint border, readable text. */
 @utility tint-* {
   background-color: color-mix(in oklab, --value(--color-*) 10%, transparent);
+  --icon-surface: color-mix(in oklab, --value(--color-*) 10%, var(--card));
   border-color: color-mix(in oklab, --value(--color-*) 22%, transparent);
   color: color-mix(in oklab, --value(--color-*) 55%, var(--foreground));
+}
+
+/* A colour at part strength as a solid colour: mixed into the surface behind
+   it instead of made see-through. Icons use it, because their shapes overlap. */
+@utility text-solid-* {
+  color: color-mix(in oklab, --value(--color-*) calc(--modifier(integer) * 1%), var(--icon-surface, var(--card)));
 }
 
 /* Active nav item with gradient border */

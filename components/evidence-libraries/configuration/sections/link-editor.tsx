@@ -223,7 +223,7 @@ function CollectionTrigger({
       className="w-full justify-between bg-background font-normal"
     >
       <span className={chosen ? "truncate" : "truncate text-muted-foreground"}>{label}</span>
-      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
+      <ChevronsUpDown className="h-4 w-4 shrink-0 text-subtle-foreground" aria-hidden />
     </Button>
   );
 }

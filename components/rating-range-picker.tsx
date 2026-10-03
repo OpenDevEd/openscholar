@@ -20,7 +20,7 @@ function StarRatingDisplay({ rating }: { rating: number }) {
     return (
       <div className="flex items-center gap-0.5">
         {STAR_SLOT_IDS.map((id) => (
-          <Star key={id} className="h-4 w-4 text-muted-foreground/20" />
+          <Star key={id} className="h-4 w-4 text-solid-muted-foreground/20" />
         ))}
       </div>
     );
@@ -34,7 +34,7 @@ function StarRatingDisplay({ rating }: { rating: number }) {
             "h-4 w-4",
             i < rating
               ? "fill-rating text-rating"
-              : "text-muted-foreground/20",
+              : "text-solid-muted-foreground/20",
           )}
         />
       ))}
@@ -144,7 +144,7 @@ export function RatingRangePicker({
           <div className="flex justify-between items-center px-3 py-2 bg-inset rounded-lg">
             {minValue === 0 && (
               <div className="flex flex-col items-center gap-1">
-                <Star className="h-3 w-3 text-muted-foreground/40" />
+                <Star className="h-3 w-3 text-solid-muted-foreground/40" />
                 <span className="text-xs text-muted-foreground">0</span>
               </div>
             )}

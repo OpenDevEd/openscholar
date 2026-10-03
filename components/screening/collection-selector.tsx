@@ -129,7 +129,7 @@ export function CollectionSelector({
           <span className={cn("truncate", !selected && "text-muted-foreground")}>
             {selected ? `${selected.name} (${selected.itemCount})` : t("selectCollection")}
           </span>
-          <ChevronDown className="size-4 shrink-0 opacity-50" />
+          <ChevronDown className="size-4 shrink-0 text-subtle-foreground" />
         </Button>
       </PopoverTrigger>
       {/* Its full height, so it opens above the trigger when the dialog leaves no room below. */}

@@ -87,7 +87,7 @@ export function FocusModeHeader({
                     "h-3 w-3",
                     effectiveRating === undefined
                       ? "text-rating hover:text-rating"
-                      : "text-muted-foreground/40 hover:text-muted-foreground/60"
+                      : "text-solid-muted-foreground/40 hover:text-solid-muted-foreground/60"
                   )}
                 />
                 <div className="absolute inset-0 flex items-center justify-center">
