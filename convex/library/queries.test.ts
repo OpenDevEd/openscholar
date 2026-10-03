@@ -1062,7 +1062,8 @@ describe("saving without a rating", () => {
 
     const restored = await t.run(async (ctx) => await ctx.db.get("libraryItems", restoredId));
     expect(restored).toMatchObject({ openalexId: paper.openalexId, rating: 5, savedAt });
-    expect(await asUser.query(api.library.collections.getItemCollections, { libraryItemId: restoredId })).toEqual([collectionId]);
+    const holding = await asUser.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: 10 }, openalexId: paper.openalexId });
+    expect(holding.page.filter((c) => c.containsItem).map((c) => c._id)).toEqual([collectionId]);
     const collection = await t.run(async (ctx) => await ctx.db.get("collections", collectionId));
     expect(collection?.itemCount).toBe(1);
     expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);

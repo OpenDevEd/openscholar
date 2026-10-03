@@ -1034,12 +1034,19 @@ export default defineSchema({
   collections: defineTable({
     userId: v.id("users"),
     name: v.string(),
+    // `name` folded for ordering (collectionSortName); optional until migrations/pagedCollections has run.
+    sortName: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
     itemCount: v.optional(v.number()),
     // Goes up on every item added or removed; libraries following the collection compare it.
     membershipRevision: v.optional(v.number()),
-  }).index("by_user", ["userId"]),
+  })
+    .index("by_user_sortName", ["userId", "sortName"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["userId"] }),
+
+  // How many collections a person has, kept as they make and delete them, for page totals.
+  collectionCounts: defineTable({ userId: v.id("users"), count: v.number() }).index("by_user", ["userId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEM COLLECTIONS - Junction table for many-to-many

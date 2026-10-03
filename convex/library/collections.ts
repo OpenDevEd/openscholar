@@ -1,10 +1,26 @@
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import type { Id } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
 import { mutation, query } from "../lib/functions";
 import { v } from "convex/values";
-import schema from "../schema";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { MAX_COLLECTION_MEMBERS, MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
+
+/** Most collections one page holds. */
+const COLLECTIONS_PAGE_MAX = 50;
+/** Convex's full text search takes at most 16 terms. */
+const SEARCH_TERMS_MAX = 16;
+
+export function collectionCountRow(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
+  return ctx.db.query("collectionCounts").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+}
+
+/** How collections sort: by name, ignoring case and accents. */
+export function collectionSortName(name: string) {
+  return name.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
+}
 
 // ═══════════════════════════════════════════════════════════════
 // COLLECTION CRUD (Plan 01 prerequisites)
@@ -19,13 +35,18 @@ export const createCollection = mutation({
     if (!trimmed) {
       throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
     }
-    const existing = await ctx.db.query("collections").withIndex("by_user", (q) => q.eq("userId", user._id)).take(MAX_COLLECTIONS_PER_USER);
+    const existing = await ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", user._id)).take(MAX_COLLECTIONS_PER_USER);
     if (existing.length >= MAX_COLLECTIONS_PER_USER) {
       throw createError("VALIDATION_ERROR", `You can have up to ${MAX_COLLECTIONS_PER_USER} collections. Delete one to make another.`);
     }
+    // Every collection was just read for the cap, so a missing count starts exact.
+    const counted = await collectionCountRow(ctx, user._id);
+    if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: counted.count + 1 });
+    else await ctx.db.insert("collectionCounts", { userId: user._id, count: existing.length + 1 });
     return await ctx.db.insert("collections", {
       userId: user._id,
       name: trimmed,
+      sortName: collectionSortName(trimmed),
       itemCount: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -51,6 +72,7 @@ export const renameCollection = mutation({
     }
     await ctx.db.patch("collections", args.collectionId, {
       name: trimmed,
+      sortName: collectionSortName(trimmed),
       updatedAt: Date.now(),
     });
     return null;
@@ -78,21 +100,9 @@ export const deleteCollection = mutation({
       await ctx.db.delete("libraryItemCollections", m._id);
     }
     await ctx.db.delete("collections", args.collectionId);
+    const counted = await collectionCountRow(ctx, user._id);
+    if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: Math.max(0, counted.count - 1) });
     return null;
-  },
-});
-
-export const listCollections = query({
-  args: {},
-  returns: v.array(schema.doc("collections")),
-  handler: async (ctx) => {
-    const user = await requireAuth(ctx);
-    // Cardinality: ~1-50 collections per user (user-created)
-    const collections = await ctx.db
-      .query("collections")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .take(MAX_COLLECTIONS_PER_USER);
-    return collections.sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 
@@ -164,48 +174,78 @@ export const removeFromCollection = mutation({
 // COLLECTION QUERIES (Plan 02)
 // ═══════════════════════════════════════════════════════════════
 
-export const getCollectionsWithCounts = query({
-  args: {},
-  returns: v.array(v.object({ ...schema.doc("collections").fields, itemCount: v.number() })),
-  handler: async (ctx) => {
+const collectionRow = v.object({
+  _id: v.id("collections"),
+  name: v.string(),
+  itemCount: v.number(),
+  /** Whether the paper asked about is in it; false when none was asked about. */
+  containsItem: v.boolean(),
+});
+
+/**
+ * A page of the person's collections by name, or those whose name matches `search`, best
+ * match first. Given a paper by its OpenAlex ID, each says whether the paper is in it; the
+ * ID stays the same when the paper is first saved, so the list keeps its place.
+ */
+export const listCollections = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    search: v.optional(v.string()),
+    openalexId: v.optional(v.string()),
+  },
+  returns: paginationResultValidator(collectionRow),
+  handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
-
-    // Cardinality: ~1-50 collections per user (user-created)
-    const collections = await ctx.db
-      .query("collections")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .take(MAX_COLLECTIONS_PER_USER);
-
-    // Until migrations/backfillLibraryCounters has run everywhere, a collection may have no count yet.
-    const result = collections.map((collection) => ({
-      ...collection,
-      itemCount: collection.itemCount ?? 0,
-    }));
-
-    // Sort alphabetically by name (case-insensitive)
-    return result.sort((a, b) => a.name.localeCompare(b.name));
+    const paginationOpts = { ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, COLLECTIONS_PAGE_MAX) };
+    const search = args.search?.trim().split(/\s+/).slice(0, SEARCH_TERMS_MAX).join(" ");
+    const page = await (search
+      ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", search).eq("userId", user._id))
+      : ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", user._id))
+    ).paginate(paginationOpts);
+    const { openalexId } = args;
+    const item = openalexId
+      ? await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", user._id).eq("openalexId", openalexId)).unique()
+      : null;
+    const libraryItemId = item?._id;
+    return {
+      ...page,
+      page: await Promise.all(
+        page.page.map(async (collection) => ({
+          _id: collection._id,
+          name: collection.name,
+          // Until migrations/backfillLibraryCounters has run everywhere, a collection may have no count yet.
+          itemCount: collection.itemCount ?? 0,
+          containsItem:
+            libraryItemId !== undefined &&
+            (await ctx.db
+              .query("libraryItemCollections")
+              .withIndex("by_collection_item", (q) => q.eq("collectionId", collection._id).eq("libraryItemId", libraryItemId))
+              .unique()) !== null,
+        })),
+      ),
+    };
   },
 });
 
-export const getItemCollections = query({
-  args: { libraryItemId: v.id("libraryItems") },
-  returns: v.array(v.id("collections")),
+/** How many collections the person has, for page totals. */
+export const countCollections = query({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const user = await requireAuth(ctx);
+    // Until migrations/pagedCollections has run everywhere, someone may have no count yet.
+    return (await collectionCountRow(ctx, user._id))?.count ?? 0;
+  },
+});
+
+/** One of the person's collections, or null when it's gone or someone else's. */
+export const getCollection = query({
+  args: { collectionId: v.id("collections") },
+  returns: v.union(v.object({ _id: v.id("collections"), name: v.string(), itemCount: v.number() }), v.null()),
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx);
-
-    // Verify library item ownership to prevent cross-user data access
-    const item = await ctx.db.get("libraryItems", args.libraryItemId);
-    if (!item || item.userId !== user._id) {
-      return [];
-    }
-
-    // Cardinality: ~1-50 collections per library item (user-created)
-    const memberships = await ctx.db
-      .query("libraryItemCollections")
-      .withIndex("by_item", (q) => q.eq("libraryItemId", args.libraryItemId))
-      // A paper is in at most every one of its owner's collections.
-      .take(MAX_COLLECTIONS_PER_USER);
-
-    return memberships.map((m) => m.collectionId);
+    const collection = await ctx.db.get("collections", args.collectionId);
+    if (!collection || collection.userId !== user._id) return null;
+    return { _id: collection._id, name: collection.name, itemCount: collection.itemCount ?? 0 };
   },
 });

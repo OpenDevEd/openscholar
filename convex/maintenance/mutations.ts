@@ -1,6 +1,7 @@
 import { internalMutation } from "../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
+import { collectionCountRow } from "../library/collections";
 import { libraryCountRow } from "../library/counter";
 
 // Retention period for deleted users (30 days)
@@ -72,6 +73,8 @@ export const cleanupDeletedUsers = internalMutation({
         // The library count is a cache of the person's saved papers, so it goes with them.
         const libraryCount = await libraryCountRow(ctx, user._id);
         if (libraryCount) await ctx.db.delete("libraryCounts", libraryCount._id);
+        const collectionCount = await collectionCountRow(ctx, user._id);
+        if (collectionCount) await ctx.db.delete("collectionCounts", collectionCount._id);
 
         // Hard delete the user to prevent re-processing
         await ctx.db.delete("users", user._id);

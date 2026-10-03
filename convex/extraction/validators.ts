@@ -4,7 +4,7 @@
  * These mirror the schema definitions in convex/schema.ts exactly.
  */
 
-import { v } from "convex/values";
+import { v, type Validator } from "convex/values";
 import { effortValidator } from "../aiModelConfig/validators";
 import { errorCodeValidator } from "@/lib/errors/taxonomy";
 import { type AssertExactDoc } from "../lib/validators";
@@ -59,6 +59,11 @@ export const classifiedErrorValidator = v.object({
 // enforced inline.
 
 export const MAX_QUESTIONS_PER_JOB = MAX_QUESTIONS;
+
+/** Papers picked at once for a job or chat, which holds at most this many. */
+export function paperSelectionValidator<V extends Validator<any, "required", any>>(paper: V) {
+  return capped(v.array(paper), MAX_CHAT_PAPERS);
+}
 export const MAX_QUESTION_TEXT_LENGTH = 2000;
 export const MAX_PAPER_TITLE_LENGTH = 500;
 export const MAX_PAPER_ABSTRACT_LENGTH = 10000;

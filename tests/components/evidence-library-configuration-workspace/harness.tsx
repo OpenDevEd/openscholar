@@ -126,7 +126,7 @@ vi.mock("@/convex/_generated/api", () => ({
         requestSourceRun: "requestSourceRun",
       },
     },
-    library: { collections: { getCollectionsWithCounts: "getCollectionsWithCounts" } },
+    library: { collections: { listCollections: "listCollections" } },
     models: {
       queries: {
         listCatalogOptions: "listCatalogOptions",

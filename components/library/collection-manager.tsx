@@ -5,8 +5,6 @@ import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import {
-  ChevronLeft,
-  ChevronRight,
   Folder,
   FolderOpen,
   FolderPlus,
@@ -32,24 +30,26 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { PageStepper } from "@/components/shared/page-stepper";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
 
 interface CollectionManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  collections: Array<{
-    _id: Id<"collections">;
-    name: string;
-    itemCount: number;
-  }> | undefined;
 }
 
 const SEARCH_THRESHOLD = 8;
+const DIALOG_PAGE_SIZE = 8;
+/** A row and the gap under it, measured: a paged list keeps a full page's height, so the pager stays put. */
+const ROW_PX = 45;
+const FULL_PAGE_PX = DIALOG_PAGE_SIZE * ROW_PX - 1;
 
 export function CollectionManager({
   open,
   onOpenChange,
-  collections,
 }: CollectionManagerProps) {
   const t = useTranslations("libraryPage");
 
@@ -83,9 +83,6 @@ export function CollectionManager({
     new Map(),
   );
 
-  // Pagination
-  const [page, setPage] = useState(0);
-
   // Focused row for keyboard navigation
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const listRef = useRef<HTMLDivElement>(null);
@@ -97,7 +94,6 @@ export function CollectionManager({
       setEditingId(null);
       setEditingName("");
       setSearchQuery("");
-      setPage(0);
       setFocusedIndex(-1);
     }
   }, [open]);
@@ -119,27 +115,18 @@ export function CollectionManager({
     };
   }, []);
 
-  const totalCollections = collections?.length ?? 0;
-  const showSearch = totalCollections >= SEARCH_THRESHOLD;
-  const hasSearch = searchQuery.trim().length > 0;
+  const search = useDebouncedValue(searchQuery.trim(), 300);
+  const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, open ? {} : "skip");
+  const collections = useCursorPage(api.library.collections.listCollections, open ? { search: search || undefined } : "skip", DIALOG_PAGE_SIZE);
+  const showSearch = (totalCollections ?? 0) >= SEARCH_THRESHOLD;
+  const hasSearch = search.length > 0;
 
-  const DIALOG_PAGE_SIZE = 8;
-
-  const filteredCollections = useMemo(() => {
-    if (!collections) return [];
-    // Hide optimistically deleted items
-    const visible = collections.filter((c) => !pendingDeletes.has(c._id));
-    if (!hasSearch) return visible;
-    const q = searchQuery.toLowerCase().trim();
-    return visible.filter((c) => c.name.toLowerCase().includes(q));
-  }, [collections, pendingDeletes, searchQuery, hasSearch]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredCollections.length / DIALOG_PAGE_SIZE));
-  const effectivePage = Math.min(page, totalPages - 1);
-  const pageCollections = hasSearch
-    ? filteredCollections
-    : filteredCollections.slice(effectivePage * DIALOG_PAGE_SIZE, (effectivePage + 1) * DIALOG_PAGE_SIZE);
-  const showPagination = !hasSearch && filteredCollections.length > DIALOG_PAGE_SIZE;
+  // Hide optimistically deleted items
+  const filteredCollections = useMemo(
+    () => collections.items.filter((c) => !pendingDeletes.has(c._id)),
+    [collections.items, pendingDeletes],
+  );
+  const showPagination = collections.hasPages;
 
   // -----------------------------------------------------------------------
   // Handlers
@@ -321,7 +308,6 @@ export function CollectionManager({
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  setPage(0);
                   setFocusedIndex(-1);
                 }}
                 placeholder={t("searchCollections")}
@@ -331,16 +317,18 @@ export function CollectionManager({
           )}
 
           {/* Collection list */}
-          {filteredCollections.length > 0 ? (
+          {/* A paged list stays up, pager included, while undo-able deletes empty the page shown. */}
+          {filteredCollections.length > 0 || collections.hasPages ? (
             <div>
               {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
               <div
                 ref={listRef}
-                className="space-y-px"
+                className={cn("space-y-px", collections.isStale && "pointer-events-none opacity-60")}
+                style={showPagination ? { minHeight: FULL_PAGE_PX } : undefined}
                 onKeyDown={handleListKeyDown}
                 tabIndex={-1}
               >
-                {pageCollections.map((collection, index) => {
+                {filteredCollections.map((collection, index) => {
                   const isEditing = editingId === collection._id;
                   const isFocused = focusedIndex === index;
 
@@ -428,29 +416,22 @@ export function CollectionManager({
                 })}
               </div>
 
-              {/* Pagination */}
               {showPagination && (
-                <div className="flex items-center justify-between px-3 pt-2">
-                  <button
-                    type="button"
-                    disabled={effectivePage === 0}
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                  </button>
-                  <span className="text-[11px] tabular-nums text-muted-foreground">
-                    {effectivePage + 1} / {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={effectivePage >= totalPages - 1}
-                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                    className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none transition-colors"
-                  >
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+                <PageStepper
+                  className="px-3 pt-2"
+                  page={collections.page}
+                  pageCount={hasSearch || totalCollections === undefined ? undefined : Math.ceil(totalCollections / DIALOG_PAGE_SIZE)}
+                  canPrevious={collections.canPrevious}
+                  canNext={collections.canNext}
+                  onPrevious={() => {
+                    collections.previous();
+                    setFocusedIndex(-1);
+                  }}
+                  onNext={() => {
+                    collections.next();
+                    setFocusedIndex(-1);
+                  }}
+                />
               )}
             </div>
           ) : hasSearch ? (
@@ -460,7 +441,7 @@ export function CollectionManager({
                 {t("noCollectionsMatchSearch")}
               </p>
             </div>
-          ) : !collections?.length ? (
+          ) : totalCollections === 0 ? (
             <div className="rounded-lg border border-dashed border-border/60 py-8 px-4 text-center">
               <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                 <FolderPlus className="h-5 w-5 text-muted-foreground" />

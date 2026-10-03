@@ -226,6 +226,7 @@ import type * as lib_assertNonProd from "../lib/assertNonProd.js";
 import type * as lib_assistantTools from "../lib/assistantTools.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_capWrites from "../lib/capWrites.js";
 import type * as lib_cascade from "../lib/cascade.js";
 import type * as lib_constants from "../lib/constants.js";
 import type * as lib_crypto from "../lib/crypto.js";
@@ -235,6 +236,7 @@ import type * as lib_errors from "../lib/errors.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_invitationDelivery from "../lib/invitationDelivery.js";
 import type * as lib_libraryServiceHttp from "../lib/libraryServiceHttp.js";
+import type * as lib_listCaps from "../lib/listCaps.js";
 import type * as lib_locks from "../lib/locks.js";
 import type * as lib_opaqueToken from "../lib/opaqueToken.js";
 import type * as lib_opaqueTokenDigest from "../lib/opaqueTokenDigest.js";
@@ -268,6 +270,7 @@ import type * as migrations_moveScreeningAnswers from "../migrations/moveScreeni
 import type * as migrations_moveScreeningJobAnswers from "../migrations/moveScreeningJobAnswers.js";
 import type * as migrations_moveScreeningJobProgress from "../migrations/moveScreeningJobProgress.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
+import type * as migrations_pagedCollections from "../migrations/pagedCollections.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
 import type * as models_admin from "../models/admin.js";
@@ -563,6 +566,7 @@ declare const fullApi: ApiFromModules<{
   "lib/assistantTools": typeof lib_assistantTools;
   "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
+  "lib/capWrites": typeof lib_capWrites;
   "lib/cascade": typeof lib_cascade;
   "lib/constants": typeof lib_constants;
   "lib/crypto": typeof lib_crypto;
@@ -572,6 +576,7 @@ declare const fullApi: ApiFromModules<{
   "lib/functions": typeof lib_functions;
   "lib/invitationDelivery": typeof lib_invitationDelivery;
   "lib/libraryServiceHttp": typeof lib_libraryServiceHttp;
+  "lib/listCaps": typeof lib_listCaps;
   "lib/locks": typeof lib_locks;
   "lib/opaqueToken": typeof lib_opaqueToken;
   "lib/opaqueTokenDigest": typeof lib_opaqueTokenDigest;
@@ -605,6 +610,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/moveScreeningJobAnswers": typeof migrations_moveScreeningJobAnswers;
   "migrations/moveScreeningJobProgress": typeof migrations_moveScreeningJobProgress;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
+  "migrations/pagedCollections": typeof migrations_pagedCollections;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
   "models/admin": typeof models_admin;

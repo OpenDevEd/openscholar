@@ -22,7 +22,7 @@ vi.mock("@/convex/_generated/api", () => ({
   api: {
     library: {
       collections: {
-        getCollectionsWithCounts: "library:getCollectionsWithCounts",
+        getCollection: "library:getCollection",
       },
       queries: {
         getLibraryCount: "library:getLibraryCount",
@@ -233,10 +233,6 @@ vi.mock("@/components/library/collection-manager", () => ({
   CollectionManager: () => null,
 }));
 
-vi.mock("@/components/library/collection-picker", () => ({
-  CollectionPicker: () => null,
-}));
-
 vi.mock("@/components/library/library-command-center", () => ({
   LibraryCommandCenter: ({
     rawSearch,
@@ -393,7 +389,7 @@ function resetQueryFixtures() {
   queryFixtureStore.protected = {};
   queryFixtureStore.paginated = {};
 
-  setProtectedQueryFixture(api.library.collections.getCollectionsWithCounts, []);
+  setProtectedQueryFixture(api.library.collections.getCollection, null);
   setProtectedQueryFixture(api.library.queries.getLibraryCount, 42);
   setProtectedQueryFixture(
     api.library.queries.getLibraryFilteredCount,
@@ -467,9 +463,7 @@ function configurePaginatedMocks() {
 }
 
 function seedCollectionScopedCounts() {
-  setProtectedQueryFixture(api.library.collections.getCollectionsWithCounts, [
-    { _id: "collection_1", name: "Focus set", itemCount: 84 },
-  ]);
+  setProtectedQueryFixture(api.library.collections.getCollection, { _id: "collection_1", name: "Focus set", itemCount: 84 });
   setProtectedQueryFixture(api.library.queries.getLibraryCount, 86);
   setProtectedQueryFixture(api.library.queries.getLibraryFilteredCount, { count: 84, capped: false });
   setPaginatedQueryFixture(api.library.queries.browseLibrary, {

@@ -102,11 +102,6 @@ export function LibraryPageClient() {
 
   const [collectionManagerOpen, setCollectionManagerOpen] = useState(false);
 
-  const { data: collectionsWithCounts } = useProtectedQuery(
-    api.library.collections.getCollectionsWithCounts,
-    {},
-  );
-
   const { data: totalCount } = useProtectedQuery(
     api.library.queries.getLibraryCount,
     {},
@@ -380,12 +375,9 @@ export function LibraryPageClient() {
     [setParams],
   );
 
-  const selectedCollection = useMemo(
-    () =>
-      collectionsWithCounts?.find(
-        (collection) => collection._id === params.col,
-      ),
-    [collectionsWithCounts, params.col],
+  const { data: selectedCollection } = useProtectedQuery(
+    api.library.collections.getCollection,
+    params.col ? { collectionId: params.col as Id<"collections"> } : "skip",
   );
 
   const sortLabelMap = useMemo<Record<LibrarySortCombined, string>>(
@@ -560,7 +552,6 @@ export function LibraryPageClient() {
               isPublicationDateActive={publicationDateRange !== undefined && (publicationDateRange.from !== undefined || publicationDateRange.to !== undefined)}
               collectionId={params.col}
               onCollectionChange={(id) => setParams({ col: id, p: 1 })}
-              collections={collectionsWithCounts}
               onManageCollections={() => setCollectionManagerOpen(true)}
               sort={params.sort}
               onSortChange={(value) => setParams({ sort: value, p: 1 })}
@@ -696,7 +687,6 @@ export function LibraryPageClient() {
               <CollectionManager
                 open={collectionManagerOpen}
                 onOpenChange={setCollectionManagerOpen}
-                collections={collectionsWithCounts}
               />
 
             </div>
