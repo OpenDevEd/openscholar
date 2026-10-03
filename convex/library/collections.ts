@@ -1,11 +1,12 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
-import { mutation, query } from "../lib/functions";
+import { internal } from "../_generated/api";
+import { internalMutation, mutation, query, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { MAX_COLLECTION_MEMBERS, MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
+import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
 
 /** Most collections one page holds. */
@@ -79,6 +80,31 @@ export const renameCollection = mutation({
   },
 });
 
+/** Memberships one transaction deletes of a collection being deleted. */
+const MEMBERSHIP_DELETE_BATCH = 2_000;
+
+/** Deletes a batch of a deleted collection's memberships; says whether more are left. */
+async function deleteMembershipBatch(ctx: MutationCtx, collectionId: Id<"collections">) {
+  const memberships = await ctx.db
+    .query("libraryItemCollections")
+    .withIndex("by_collection", (q) => q.eq("collectionId", collectionId))
+    .take(MEMBERSHIP_DELETE_BATCH);
+  for (const membership of memberships) await ctx.db.delete("libraryItemCollections", membership._id);
+  return memberships.length === MEMBERSHIP_DELETE_BATCH;
+}
+
+/** Deletes the next batch of a deleted collection's memberships, until none are left. */
+export const deleteMemberships = internalMutation({
+  args: { collectionId: v.id("collections") },
+  returns: v.null(),
+  handler: async (ctx, { collectionId }) => {
+    if (await deleteMembershipBatch(ctx, collectionId)) {
+      await ctx.scheduler.runAfter(0, internal.library.collections.deleteMemberships, { collectionId });
+    }
+    return null;
+  },
+});
+
 export const deleteCollection = mutation({
   args: { collectionId: v.id("collections") },
   returns: v.null(),
@@ -91,13 +117,9 @@ export const deleteCollection = mutation({
     if (collection.userId !== user._id) {
       throw createError("FORBIDDEN", "Not your collection");
     }
-    // Cascade: delete all junction rows
-    const memberships = await ctx.db
-      .query("libraryItemCollections")
-      .withIndex("by_collection", (q) => q.eq("collectionId", args.collectionId))
-      .take(MAX_COLLECTION_MEMBERS);
-    for (const m of memberships) {
-      await ctx.db.delete("libraryItemCollections", m._id);
+    // Its papers' places in it go with it: this batch now, the rest in the batches it schedules.
+    if (await deleteMembershipBatch(ctx, args.collectionId)) {
+      await ctx.scheduler.runAfter(0, internal.library.collections.deleteMemberships, { collectionId: args.collectionId });
     }
     await ctx.db.delete("collections", args.collectionId);
     const counted = await collectionCountRow(ctx, user._id);
