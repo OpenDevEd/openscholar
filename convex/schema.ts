@@ -817,6 +817,8 @@ export default defineSchema({
     .index("by_job", ["jobId"])
     .index("by_job_processable", ["jobId", "processable"])
     .index("by_job_status", ["jobId", "status"])
+    // A job's papers of one status from the earliest started; `by_job_status` reads them as they were added.
+    .index("by_job_status_and_startedAt", ["jobId", "status", "startedAt"])
     .index("by_openalex", ["openalexId"])
     .index("by_work", ["workId"])
     .index("by_status_completedAt", ["status", "completedAt"])

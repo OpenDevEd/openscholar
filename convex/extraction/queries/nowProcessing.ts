@@ -21,7 +21,6 @@
  * the client through the query channel.
  */
 
-import { PAPER_LIMIT } from "../../../lib/extraction/limits";
 import { query } from "../../_generated/server";
 import { v } from "convex/values";
 import { resolveOwnedJob } from "../access";
@@ -47,24 +46,23 @@ export const getNowProcessing = query({
       return null;
     }
 
-    const inFlight = await ctx.db
-      .query("extractionPapers")
-      .withIndex("by_job_status", (q) =>
-        q.eq("jobId", jobId).eq("status", "extracting"),
-      )
-      // A retry can mark every paper of the job extracting at once: up to PAPER_LIMIT.
-      .take(PAPER_LIMIT);
-    if (inFlight.length === 0) return null;
-
-    // Pick the earliest-started paper so parallel workpool dispatch
-    // doesn't cause the banner to flicker between siblings.
-    let chosen = inFlight[0];
-    for (let i = 1; i < inFlight.length; i++) {
-      const candidate = inFlight[i];
-      const candidateAt = candidate.startedAt ?? Number.POSITIVE_INFINITY;
-      const chosenAt = chosen.startedAt ?? Number.POSITIVE_INFINITY;
-      if (candidateAt < chosenAt) chosen = candidate;
-    }
+    // The earliest-started paper in flight, read through the index in that order, so parallel
+    // workpool dispatch doesn't make the banner flicker between siblings. A paper not stamped
+    // yet sorts before the stamped ones, so it's asked for only when none is.
+    const chosen =
+      (await ctx.db
+        .query("extractionPapers")
+        .withIndex("by_job_status_and_startedAt", (q) =>
+          q.eq("jobId", jobId).eq("status", "extracting").gt("startedAt", 0),
+        )
+        .first()) ??
+      (await ctx.db
+        .query("extractionPapers")
+        .withIndex("by_job_status", (q) =>
+          q.eq("jobId", jobId).eq("status", "extracting"),
+        )
+        .first());
+    if (!chosen) return null;
     return {
       paperId: chosen._id,
       paperTitle: chosen.title,
