@@ -1,6 +1,15 @@
 import { internalMutation } from "../lib/functions";
+import type { QueryCtx } from "../_generated/server";
+import { MAX_FEATURE_FLAGS } from "../lib/queryBounds";
 import { v } from "convex/values";
 import { FLAG_REGISTRY } from "../../lib/feature-flags/registry";
+
+/** Refuses another flag once the table holds MAX_FEATURE_FLAGS, so every read of it is one small query. */
+export async function assertFlagRoom(ctx: Pick<QueryCtx, "db">) {
+  if ((await ctx.db.query("featureFlags").take(MAX_FEATURE_FLAGS)).length >= MAX_FEATURE_FLAGS) {
+    throw new Error(`There are already ${MAX_FEATURE_FLAGS} feature flags; remove a retired one first.`);
+  }
+}
 
 /**
  * Upsert a feature flag. Used for seeding and admin operations.
@@ -27,6 +36,7 @@ export const upsert = internalMutation({
         updatedAt: Date.now(),
       });
     } else {
+      await assertFlagRoom(ctx);
       await ctx.db.insert("featureFlags", { ...args, updatedAt: Date.now() });
     }
     return null;
@@ -47,6 +57,7 @@ export const seed = internalMutation({
         .withIndex("by_key", (q) => q.eq("key", key))
         .unique();
       if (!existing) {
+        await assertFlagRoom(ctx);
         await ctx.db.insert("featureFlags", {
           key,
           enabled: flag.enabled,
@@ -75,7 +86,7 @@ export const adoptPlanFeatures = internalMutation({
   handler: async (ctx) => {
     let updated = 0;
     let removed = 0;
-    for (const flag of await ctx.db.query("featureFlags").collect()) {
+    for (const flag of await ctx.db.query("featureFlags").take(MAX_FEATURE_FLAGS)) {
       if (RETIRED_FLAGS.includes(flag.key)) {
         await ctx.db.delete("featureFlags", flag._id);
         removed += 1;

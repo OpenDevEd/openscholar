@@ -14,7 +14,7 @@ import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
-import { MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ } from "../lib/queryBounds";
+import { MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_MEMBERS_READ, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
 import {
   evidenceLibraryTeardownStepValidator,
   sectionPayloadValidator,
@@ -123,9 +123,10 @@ export async function readEvidenceLibraries(ctx: QueryCtx) {
   if (!identity) return [];
   const [memberships, assignments] = await Promise.all([
     readMemberOrganizations(ctx),
+    // A person has at most MAX_LIBRARY_GRANTS_PER_PERSON grants (./members.ts).
     ctx.db.query("evidenceLibraryMembers")
       .withIndex("by_clerkUserId", q => q.eq("clerkUserId", identity.subject))
-      .collect(),
+      .take(MAX_LIBRARY_GRANTS_PER_PERSON),
   ]);
   const owned = await Promise.all(memberships.filter(({membership}) => membership.role === "org:admin").map(({membership}) =>
     // An organization makes at most MAX_LIBRARIES_PER_ORGANIZATION libraries (mutations.ts).
@@ -793,7 +794,7 @@ export const listTeam = query({
     const people = await readLibraryPeople(ctx, access.library);
     people.sort((a, b) => (a.person.name || a.person.email).localeCompare(b.person.name || b.person.email));
     return {
-      invitations: (await ctx.db.query("evidenceLibraryInvitations").withIndex("by_libraryId_and_state", q => q.eq("libraryId", args.libraryId).eq("state", "pending")).collect())
+      invitations: (await ctx.db.query("evidenceLibraryInvitations").withIndex("by_libraryId_and_state", q => q.eq("libraryId", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY))
         .map(i => ({ invitationId: i._id, email: i.email, role: i.role, delivery: i.delivery })),
       organizationName: access.organization.name,
       owners: people.filter(p => p.role === "owner").map(p => p.person),

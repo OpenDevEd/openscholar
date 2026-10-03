@@ -1,3 +1,4 @@
+import { assertCredentialRoom } from "./credentials";
 import type { Doc } from "../_generated/dataModel";
 import { v } from "convex/values";
 import {
@@ -179,12 +180,14 @@ export const saveVerified = internalMutation({
     };
     if (current)
       await ctx.db.patch("evidenceLibraryCredentials", current._id, fields);
-    else
+    else {
+      await assertCredentialRoom(ctx, args.libraryId);
       await ctx.db.insert("evidenceLibraryCredentials", {
         ...fields,
         createdAt: fields.updatedAt,
         createdByClerkUserId: access.clerkUserId,
       });
+    }
     await writeAuditLogRecord(ctx, {
       action: "evidence_library.publication_credentials.verified",
       userId: access.clerkUserId,

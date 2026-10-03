@@ -1,3 +1,4 @@
+import { assertCredentialRoom } from "../evidenceLibraries/credentials";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import {
@@ -173,6 +174,7 @@ export const saveLibraryZoteroGroup = internalMutation({
     if (credential) {
       await ctx.db.patch("evidenceLibraryCredentials", credential._id, credentialFields);
     } else {
+      await assertCredentialRoom(ctx, args.libraryId);
       await ctx.db.insert("evidenceLibraryCredentials", {
         ...credentialFields,
         createdByClerkUserId: args.clerkUserId,
