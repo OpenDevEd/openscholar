@@ -51,7 +51,6 @@ const removeQuestionFromResponses = (
 export interface RatingsState {
   ratings: Record<string, number>
   setRating: (paperId: string, rating: number | null) => void
-  clearRatings: () => void
 }
 
 /** The search a copy takes its history from, as a list shows it. */
@@ -180,7 +179,6 @@ export const localRatingsStore = create<RatingsState>()(
             },
           }
         }),
-      clearRatings: () => set({ ratings: {} }),
     }),
     {
       name: 'paper-ratings-store',

@@ -92,6 +92,12 @@ local store or Convex by mode:
    (`migrations/pagedSearches` backfills it).
 2. Ratings. A results page reads the ratings of the papers it shows, at most a
    results page's 200, by paper ID.
+
+   2026-10-03, as built: `research/records:ratingsOf` reads up to 200 papers'
+   ratings; a longer list reads in chunks of 200. The results, library, topic
+   and author pages each hold the read for the papers they show
+   (`useRatedPapers`), and a paper is shown once its rating is read, so its
+   rating control never changes size after it appears.
 3. Shortcuts. The Bookmarks page pages them; a query's expansion reads only the
    shortcut names it uses.
 

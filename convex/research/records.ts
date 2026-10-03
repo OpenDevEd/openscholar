@@ -7,7 +7,7 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Author } from "../lib/userActions";
 import { answersAtVersions, clearPaperAnswers, currentAnswers, replaceAnswers, screeningFor, setPaperAnswers, type AnswerSource } from "./answers";
 import {
-  applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, ratingValidator, searchValidator, shortcutValidator,
+  applySearchEdit, commandValidator, currentSearch, historyArrays, historySummary, listedSearchValidator, listedSortValidator, RATED_PAPERS_MAX, ratingValidator, searchValidator, shortcutValidator,
   type ResearchCommand, type SavedSearch, type StoredSearch,
 } from "../../lib/research/records";
 import { stream } from "convex-helpers/server/stream";
@@ -116,6 +116,27 @@ export const ratingsAction = defineUserQuery({
 });
 export const ratings = accountQuery(ratingsAction);
 export const ratingsForAssistant = assistantQuery(ratingsAction);
+
+/** The person's ratings among `paperIds`. */
+export async function ratingsAmong(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperIds: string[]) {
+  const rows = await Promise.all(
+    paperIds.map(paperId => ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", paperId)).first()),
+  );
+  return rows.flatMap(row => (row ? [row.data] : []));
+}
+
+export const ratingsOfAction = defineUserQuery({
+  path: "research/records:ratingsOf",
+  description: `Reads the person's ratings of the papers with these IDs, at most ${RATED_PAPERS_MAX} of them, as one page; a paper they haven't rated is left out.`,
+  args: { paperIds: v.array(v.string()) },
+  returns: paginationResultValidator(ratingValidator),
+  run: async (ctx, userId, { paperIds }) => {
+    if (paperIds.length > RATED_PAPERS_MAX) throw new Error(`Ratings are read ${RATED_PAPERS_MAX} papers at a time.`);
+    return { page: await ratingsAmong(ctx, userId, paperIds), isDone: true, continueCursor: "" };
+  },
+});
+export const ratingsOf = accountQuery(ratingsOfAction);
+export const ratingsOfForAssistant = assistantQuery(ratingsOfAction);
 
 export const getSearchAction = defineUserQuery({
   path: "research/records:getSearch",

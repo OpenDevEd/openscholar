@@ -276,6 +276,8 @@ export function applySearchEdit(search: SavedSearch, edit: SearchEdit, now: stri
 
 export const shortcutValidator = v.object({ shorthand: v.string(), expansion: v.string(), createdAt: v.number() });
 export const ratingValidator = v.object({ paperId: v.string(), rating: v.number() });
+/** Papers one read of ratings takes: as many as a results page shows. */
+export const RATED_PAPERS_MAX = 200;
 export const commandValidator = v.union(
   // `history`: the earlier queries and questions of a search brought from this browser or a file.
   v.object({ kind: v.literal("createSearch"), search: searchValidator, history: v.optional(v.object(historyArrays)) }),

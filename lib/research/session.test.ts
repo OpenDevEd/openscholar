@@ -14,7 +14,7 @@ function connection() {
   const client = {
     watchQuery(query: Parameters<typeof getFunctionName>[0]) {
       return {
-        localQueryResult: () => ({ page: getFunctionName(query).endsWith(":ratings") ? [...ratings] : [], isDone: true, continueCursor: "" }),
+        localQueryResult: () => ({ page: getFunctionName(query).endsWith(":ratingsOf") ? [...ratings] : [], isDone: true, continueCursor: "" }),
         onUpdate: (update: () => void) => { updates.add(update); return () => { updates.delete(update); }; },
       };
     },
@@ -38,12 +38,16 @@ describe("research save recovery", () => {
     const session = new ResearchSession(client, "alice", error => errors.push(error));
     const stop = session.subscribe(() => {});
     await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
+    const unwatch = session.watchRatings(["bad", "good"], () => {});
     session.stores.ratings.getState().setRating("bad", 6);
     session.stores.ratings.getState().setRating("good", 4);
     await vi.waitFor(() => expect(session.getSnapshot().pending).toBe(0));
     expect(commands).toHaveLength(2);
     expect(errors[0].message).toBe("Invalid rating");
     expect(session.stores.ratings.getState().ratings).toEqual({ good: 4 });
+    // Once no page shows those papers, the browser stops holding their ratings.
+    unwatch();
+    expect(session.stores.ratings.getState().ratings).toEqual({});
     stop();
   });
 
@@ -56,9 +60,11 @@ describe("research save recovery", () => {
     expect(session.getSnapshot().pending).toBe(1);
     stop();
     const resume = session.subscribe(() => {}, true);
+    const unwatch = session.watchRatings(["W1"], () => {});
     await vi.waitFor(() => expect(session.getSnapshot().pending).toBe(0));
     expect(commands).toEqual([{ kind: "rating", paperId: "W1", rating: 5 }]);
     expect(session.stores.ratings.getState().ratings.W1).toBe(5);
+    unwatch();
     resume();
   });
 

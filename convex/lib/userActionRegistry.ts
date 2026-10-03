@@ -3,7 +3,7 @@
  * (`assistantTools`), and `scripts/check-user-actions.ts` fails CI when a public
  * function built from a registry entry is missing here.
  */
-import { changeAction, clearSearchesAction, countSearchesAction, getSearchAction, listedSearchesAction, ratingsAction, revisionsAction, searchHistoryAction, searchHistoryEntryAction, shortcutsAction } from "../research/records";
+import { changeAction, clearSearchesAction, countSearchesAction, getSearchAction, listedSearchesAction, ratingsAction, ratingsOfAction, revisionsAction, searchHistoryAction, searchHistoryEntryAction, shortcutsAction } from "../research/records";
 import { clearLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAction, saveToLibraryAction, setPaperInCollectionAction } from "../library/mutations";
 import { savedPaperAction } from "../library/queries";
 import { estimateAction as screeningEstimateAction } from "../screening/queries";
@@ -19,6 +19,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   searchHistoryEntryAction,
   shortcutsAction,
   ratingsAction,
+  ratingsOfAction,
   changeAction,
   clearSearchesAction,
   savedPaperAction,

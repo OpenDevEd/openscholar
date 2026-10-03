@@ -77,6 +77,22 @@ export function usePreloadSearch() {
     if (session) setTimeout(session.watchSearch(search.id, () => {}, serializeSearch(search)), PRELOAD_MS);
   }, [session]);
 }
+
+/**
+ * Has the signed-in session read the person's ratings of these papers while this component
+ * shows, so the ratings store has them. Returns the papers whose ratings are read, from the
+ * first, and whether more are on their way: a page shows a paper once its rating is known,
+ * so its rating control never changes size after it appears. Signed out, every rating is in
+ * this browser's store.
+ */
+export function useRatedPapers<Paper extends { id: string }>(papers: Paper[]): { papers: Paper[]; loading: boolean } {
+  const session = useContext(SessionContext);
+  const key = papers.map((paper) => paper.id).join("\n");
+  const subscribe = useCallback((listener: () => void) => (session && key ? session.watchRatings(key.split("\n"), listener) : noReaders()), [session, key]);
+  const read = useCallback(() => (session && key ? session.ratingsRead(key.split("\n")) : papers.length), [session, key, papers.length]);
+  const known = useSyncExternalStore(subscribe, read, read);
+  return known >= papers.length ? { papers, loading: false } : { papers: papers.slice(0, known), loading: true };
+}
 const noReaders = () => () => {};
 
 /**

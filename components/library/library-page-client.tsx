@@ -1,5 +1,6 @@
 "use client";
 
+import { useRatedPapers } from "@/lib/research/provider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
@@ -252,6 +253,9 @@ export function LibraryPageClient() {
   }, [setParams]);
 
   const pageResults = paperResults;
+  // A paper's download carries the person's own rating of it, read with the page. The cards
+  // show the library's ratings, which come with the papers, so they don't wait for it.
+  useRatedPapers(paperResults);
   const pageStart = paged.offset;
   const rangeStart = pageResults.length > 0 ? pageStart + 1 : 0;
   const rangeEnd = rangeStart + pageResults.length - 1;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRatedPapers } from "@/lib/research/provider";
 import React, {
   useRef,
   useEffect,
@@ -251,7 +252,7 @@ export function ResultsList({
   onDownloadAllCSV,
   onDownloadAllEssentialJSON,
   onDownloadAllEssentialCSV,
-  isLoading = false,
+  isLoading: searching = false,
   isValidating = false,
   currentQuery,
   onBackToHome,
@@ -260,7 +261,11 @@ export function ResultsList({
   // Use the new search context
   const search = useSearch();
   const queryError = rejectedQuery(search.error);
-  const results = search.results;
+  // The rating filter and the downloads read the ratings of every result, not only the cards on
+  // screen, and a result waits for its rating, so its card opens at its final size.
+  const rated = useRatedPapers(search.results);
+  const results = rated.papers;
+  const isLoading = searching || rated.loading;
   const totalCount = search.totalCount;
   
   // Get pagination from URL params (source of truth)
