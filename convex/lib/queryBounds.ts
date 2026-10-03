@@ -61,6 +61,13 @@ export const MAX_PENDING_INVITATIONS_PER_EMAIL = 100;
 /** Most credentials one library stores: one per credential its configuration names. */
 export const MAX_CREDENTIALS_PER_LIBRARY = 500;
 
+/**
+ * Of those, the places kept for the credentials a library's own setup writes (its database,
+ * storage, application and service credentials: fixed keys, a handful). The credentials
+ * people add are refused before they reach these, so setup can always finish.
+ */
+export const SETUP_CREDENTIALS_RESERVED = 20;
+
 /** Most feature flags the table holds; the registry (lib/feature-flags/registry.ts) names a few dozen. */
 export const MAX_FEATURE_FLAGS = 200;
 

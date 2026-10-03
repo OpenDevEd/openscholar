@@ -2,8 +2,8 @@
 // libraries are added (#357).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { MAX_CREDENTIALS_PER_LIBRARY, MAX_FEATURE_FLAGS, MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
-import { assertCredentialRoom } from "./credentials";
+import { MAX_CREDENTIALS_PER_LIBRARY, MAX_FEATURE_FLAGS, MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
+import { assertCredentialRoom, writeEvidenceLibraryCredentialRecord } from "./credentials";
 import { insertMany } from "../lib/maxSize.test-support";
 import { createDraftSetupFixture, createReadySetupFixture, reserveLibraryAddressByName } from "../../tests/helpers/evidence-library-setup-fixture";
 
@@ -39,6 +39,36 @@ describe("Evidence Library limits", () => {
     await expect(fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_everywhere", role: "editor" })).rejects.toThrow(/already has access to 200 libraries/);
   });
 
+  it("takes away every grant in an organization someone leaves, however many grants they hold (#427)", async () => {
+    const fixture = await createReadySetupFixture("revoke_all");
+    const libraryId = fixture.created.libraryId;
+    const { organization, elsewhere } = await fixture.t.run(async (ctx) => {
+      const { _id, _creationTime, ...library } = (await ctx.db.get("evidenceLibraries", libraryId))!;
+      const organization = (await ctx.db.get("organizations", library.organizationId))!;
+      const { _id: _organizationId, _creationTime: _made, ...other } = organization;
+      const otherOrganization = await ctx.db.insert("organizations", { ...other, clerkOrganizationId: "org_elsewhere", slug: "elsewhere" });
+      return { organization, elsewhere: await ctx.db.insert("evidenceLibraries", { ...library, organizationId: otherOrganization, name: "Elsewhere", slug: "revoke-all-elsewhere" }) };
+    });
+    // From before grants were capped: more than one read holds, with this organization's grant last.
+    await insertMany(fixture.t, "evidenceLibraryMembers", [
+      ...Array.from({ length: MAX_LIBRARY_GRANTS_PER_PERSON + 20 }, () => ({ libraryId: elsewhere, clerkUserId: "user_leaving", role: "editor", grantedBy: "owner", grantedAt: 1 })),
+      { libraryId, clerkUserId: "user_leaving", role: "editor", grantedBy: "owner", grantedAt: 1 },
+    ]);
+    const grantsHere = () => fixture.t.run(async (ctx) => (await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", (q) => q.eq("libraryId", libraryId).eq("clerkUserId", "user_leaving")).take(2)).length);
+    expect(await grantsHere()).toBe(1);
+
+    await fixture.t.mutation(internal.webhooks.projections.applyOrganizationMembershipEvent, {
+      eventId: "msg_leaving", eventType: "organizationMembership.deleted", instanceId: "ins_test", occurredAt: Date.now(), payloadSha256: "a".repeat(64),
+      action: "delete",
+      membership: {
+        clerkMembershipId: "orgmem_leaving", clerkUserId: "user_leaving", role: "org:member", state: "revoked", clerkCreatedAt: 1, clerkUpdatedAt: 2,
+        organization: { clerkOrganizationId: organization.clerkOrganizationId, name: organization.name, slug: organization.slug, evidenceLibrariesEnabled: organization.evidenceLibrariesEnabled, authorsEnabled: organization.authorsEnabled ?? false, extractionEnabled: organization.extractionEnabled ?? false, clerkCreatedAt: organization.clerkCreatedAt, clerkUpdatedAt: organization.clerkUpdatedAt },
+      },
+    });
+    await fixture.t.finishAllScheduledFunctions(() => {});
+    expect(await grantsHere()).toBe(0);
+  });
+
   it("refuses another invitation once a library, or an address, has the most waiting (#427)", async () => {
     const fixture = await createReadySetupFixture("invite_limit");
     const libraryId = fixture.created.libraryId;
@@ -62,8 +92,11 @@ describe("Evidence Library limits", () => {
     const fixture = await createReadySetupFixture("credential_limit");
     const libraryId = fixture.created.libraryId;
     const stored = await fixture.t.run(async (ctx) => (await ctx.db.query("evidenceLibraryCredentials").withIndex("by_libraryId", (q) => q.eq("libraryId", libraryId)).take(MAX_CREDENTIALS_PER_LIBRARY)).length);
-    await insertMany(fixture.t, "evidenceLibraryCredentials", Array.from({ length: MAX_CREDENTIALS_PER_LIBRARY - stored }, (_, i) => ({ libraryId, credentialKey: `sources.filler.${i}`, encryptedValue: "x", validationState: "untested", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 })));
-    await expect(fixture.t.run((ctx) => assertCredentialRoom(ctx, libraryId))).rejects.toThrow(/up to 500 credentials/);
+    const room = MAX_CREDENTIALS_PER_LIBRARY - SETUP_CREDENTIALS_RESERVED;
+    await insertMany(fixture.t, "evidenceLibraryCredentials", Array.from({ length: room - stored }, (_, i) => ({ libraryId, credentialKey: `sources.filler.${i}`, encryptedValue: "x", validationState: "untested", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 })));
+    await expect(fixture.t.run((ctx) => assertCredentialRoom(ctx, libraryId))).rejects.toThrow(/up to 480 credentials/);
+    // The library's own setup still stores what it needs.
+    await expect(fixture.t.run((ctx) => writeEvidenceLibraryCredentialRecord(ctx as never, { libraryId, concretePath: "/services/storage/serviceRoleKey", encryptedValue: "x", clerkUserId: "owner", validationState: "valid" }))).resolves.toBeDefined();
 
     await insertMany(fixture.t, "featureFlags", Array.from({ length: MAX_FEATURE_FLAGS }, (_, i) => ({ key: `filler.${i}`, enabled: false, updatedAt: 1 })));
     await expect(fixture.t.mutation(internal.featureFlags.internal.upsert, { key: "one.more", enabled: true })).rejects.toThrow(/already 200 feature flags/);

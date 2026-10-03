@@ -1,4 +1,4 @@
-import { MAX_CREDENTIALS_PER_LIBRARY } from "../lib/queryBounds";
+import { MAX_CREDENTIALS_PER_LIBRARY, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
 import {
   internalMutation,
   query,
@@ -108,6 +108,7 @@ export async function storeEvidenceLibraryCredential(
     ...args,
     clerkUserId: access.clerkUserId,
     validationState: "untested",
+    added: true,
   });
 }
 
@@ -121,6 +122,8 @@ export async function writeEvidenceLibraryCredentialRecord(
     maskedHint?: string;
     clerkUserId: string;
     validationState: "untested" | "valid" | "invalid";
+    /** A credential a person adds, which waits for room; setup's own are always written. */
+    added?: boolean;
   },
 ) {
   const resolved = resolveCredentialPath(args.concretePath, args.instanceKey);
@@ -148,7 +151,7 @@ export async function writeEvidenceLibraryCredentialRecord(
     await ctx.db.patch("evidenceLibraryCredentials", existing._id, fields);
     return existing._id;
   }
-  await assertCredentialRoom(ctx, args.libraryId);
+  if (args.added) await assertCredentialRoom(ctx, args.libraryId);
   return await ctx.db.insert("evidenceLibraryCredentials", {
     ...fields,
     createdByClerkUserId: args.clerkUserId,
@@ -222,7 +225,6 @@ export async function writeLibraryServiceCredentialRecord(
     });
     credentialId = existing._id;
   } else {
-    await assertCredentialRoom(ctx, args.libraryId);
     credentialId = await ctx.db.insert("evidenceLibraryCredentials", {
       ...fields,
       createdByClerkUserId: args.clerkUserId,
@@ -233,11 +235,16 @@ export async function writeLibraryServiceCredentialRecord(
   return credentialId;
 }
 
-/** Refuses another stored credential once a library has MAX_CREDENTIALS_PER_LIBRARY, so they read in one query (#427). */
+/**
+ * Refuses another credential a person adds once the library has all but the places kept
+ * for setup's own, so a library's credentials read in one query (#427) and its setup can
+ * always store what it needs.
+ */
 export async function assertCredentialRoom(ctx: Pick<QueryCtx, "db">, libraryId: Id<"evidenceLibraries">) {
-  const stored = await ctx.db.query("evidenceLibraryCredentials").withIndex("by_libraryId", (query) => query.eq("libraryId", libraryId)).take(MAX_CREDENTIALS_PER_LIBRARY);
-  if (stored.length >= MAX_CREDENTIALS_PER_LIBRARY) {
-    throw createError("VALIDATION_ERROR", `A library can store up to ${MAX_CREDENTIALS_PER_LIBRARY} credentials. Remove a source's credential to add another.`);
+  const room = MAX_CREDENTIALS_PER_LIBRARY - SETUP_CREDENTIALS_RESERVED;
+  const stored = await ctx.db.query("evidenceLibraryCredentials").withIndex("by_libraryId", (query) => query.eq("libraryId", libraryId)).take(room);
+  if (stored.length >= room) {
+    throw createError("VALIDATION_ERROR", `A library can store up to ${room} credentials for its sources. Remove one to add another.`);
   }
 }
 
