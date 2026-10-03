@@ -11,7 +11,9 @@
 //   result. Any other array or record in its `returns` validator, top level or nested, is
 //   listed under listReturns.pending with the issue that pages or caps it. Keys are the
 //   function and the list's path, with a page's items written like a list's (`[]`), so
-//   turning a list into a page keeps its items' keys. A list capped on write
+//   turning a list into a page keeps its items' keys. An untyped value (`v.any()`) in a
+//   public function's `returns` can hold any list, so it's listed under
+//   untypedReturns.pending with the issue that types it. A list capped on write
 //   (`capped(...)` from convex/lib/listCaps.ts) is a record's field and passes; caps are
 //   set only in the schema and its validators files (#426).
 // - Client code and actions never load every page: no `loadMore` from an effect or a loop,
@@ -306,6 +308,10 @@ function listPaths(type: ts.Type, at: ts.Node, where = "", stack = new Set<ts.Ty
         if (element) listPaths(element, at, `${where}[]`, stack, out);
       } else listPaths(fieldType, at, `${where}.${field.getName()}`, stack, out);
     }
+  } else if (name === "VAny") {
+    // An untyped value can hold any list; `*` marks it for the untyped-returns rule, unless
+    // its JSON size is bounded on write (`sized(...)` from convex/lib/listCaps.ts).
+    if (!type.getProperty("__jsonBytes")) out.add(`${where}*`);
   } else if (name === "VUnion") {
     const members = validatorPart(type, "members", at);
     if (members) for (const member of checker.getTypeArguments(members as ts.TypeReference)) listPaths(member, at, where, stack, out);
@@ -480,13 +486,13 @@ function capsOutsideValidators(tree: ts.SourceFile, file: string): string[] {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || !/listCaps$/.test(statement.moduleSpecifier.text)) continue;
     const bindings = statement.importClause?.namedBindings;
     if (bindings && ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);
-    if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) if ((element.propertyName ?? element.name).text === "capped") names.add(element.name.text);
+    if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) if (["capped", "sized"].includes((element.propertyName ?? element.name).text)) names.add(element.name.text);
   }
   const found: string[] = [];
   const visit = (node: ts.Node) => {
     if (ts.isCallExpression(node)) {
       const callee = node.expression;
-      const isCapped = (ts.isIdentifier(callee) && names.has(callee.text)) || (ts.isPropertyAccessExpression(callee) && callee.name.text === "capped" && ts.isIdentifier(callee.expression) && namespaces.has(callee.expression.text));
+      const isCapped = (ts.isIdentifier(callee) && names.has(callee.text)) || (ts.isPropertyAccessExpression(callee) && ["capped", "sized"].includes(callee.name.text) && ts.isIdentifier(callee.expression) && namespaces.has(callee.expression.text));
       if (isCapped) found.push(`${file}:${holderName(node)}: caps a list outside the validators files; cap a stored field where its validator is defined, and page any other list.`);
     }
     ts.forEachChild(node, visit);
@@ -577,12 +583,12 @@ for (const file of clientSources) {
 }
 
 if (process.argv.includes("--list")) {
-  console.log([...reads.map((key) => `unboundedReads ${key}`), ...listReturns.map((key) => `listReturns ${key}`), ...everyPage.map((key) => `everyPage ${key}`)].join("\n"));
+  console.log([...reads.map((key) => `unboundedReads ${key}`), ...listReturns.map((key) => `${key.endsWith("*") ? "untypedReturns" : "listReturns"} ${key}`), ...everyPage.map((key) => `everyPage ${key}`)].join("\n"));
   process.exit(0);
 }
 
 type Pending = { pending: Record<string, string> };
-type Rules = { unboundedReads: Pending & { bounded?: Record<string, string> }; listReturns: Pending; everyPage: Pending; missingReturns: Pending; argumentSizedTakes: { bounded: Record<string, string> } };
+type Rules = { unboundedReads: Pending & { bounded?: Record<string, string> }; listReturns: Pending; untypedReturns?: Pending; everyPage: Pending; missingReturns: Pending; argumentSizedTakes: { bounded: Record<string, string> } };
 const rules = JSON.parse(readFileSync("scripts/convex-rules.json", "utf8")) as Rules;
 // An issue, optionally followed by a note for whoever fixes it: "#427" or "#427: a user's keys".
 const issue = /^#\d+(: .+)?$/;
@@ -598,7 +604,9 @@ function checkPending(section: string, found: string[], pending: Record<string, 
 }
 if (rules.unboundedReads.bounded) problems.push("unboundedReads.bounded: a reason isn't a bound; page or cap these reads, or list them as pending with their issue.");
 checkPending("unboundedReads", [...new Set(reads)], rules.unboundedReads.pending, "a whole-result read; read a page with .paginate() or a named cap with .take(CAP).");
-checkPending("listReturns", [...new Set(listReturns)], rules.listReturns.pending, "returns a list outside a pagination page; return one page by cursor (paginationResultValidator), or cap the field where it's written.");
+const untyped = (key: string) => key.endsWith("*");
+checkPending("listReturns", [...new Set(listReturns.filter((key) => !untyped(key)))], rules.listReturns.pending, "returns a list outside a pagination page; return one page by cursor (paginationResultValidator), or cap the field where it's written.");
+checkPending("untypedReturns", [...new Set(listReturns.filter(untyped))], rules.untypedReturns?.pending ?? {}, "returns an untyped value (v.any()), which can hold a list nothing checks; give it a validator.");
 checkPending("everyPage", [...new Set(everyPage)], rules.everyPage.pending, "loads every page; load the next page when the person asks for it, and stream exports page by page.");
 
 // Pending lists only shrink: compared with dev where this branch left it.
@@ -613,11 +621,11 @@ try {
   else console.warn(`Convex rules: no ${given} to compare pending lists with; skipping the shrink check.`);
 }
 if (base) {
-  for (const section of ["unboundedReads", "listReturns", "everyPage"] as const) {
+  for (const section of ["unboundedReads", "listReturns", "untypedReturns", "everyPage"] as const) {
     const before = base[section] as (Pending & { bounded?: Record<string, string> }) | undefined;
     if (!before) continue;
     const was = new Set([...Object.keys(before.pending), ...Object.keys(before.bounded ?? {})]);
-    for (const key of Object.keys(rules[section].pending)) if (!was.has(key)) problems.push(`${key}: not pending under ${section} on dev; fix it instead of listing it.`);
+    for (const key of Object.keys(rules[section]?.pending ?? {})) if (!was.has(key)) problems.push(`${key}: not pending under ${section} on dev; fix it instead of listing it.`);
   }
 }
 
@@ -639,4 +647,4 @@ if (problems.length) {
   console.error(`Convex rules: ${problems.length} problem${problems.length === 1 ? "" : "s"}.\n\n${problems.join("\n")}`);
   process.exit(1);
 }
-console.log(`Convex rules: pending ${Object.keys(rules.unboundedReads.pending).length} whole-result reads, ${Object.keys(rules.listReturns.pending).length} returned lists and ${Object.keys(rules.everyPage.pending).length} every-page loads; ${Object.keys(rules.missingReturns.pending).length} functions waiting on a returns validator.`);
+console.log(`Convex rules: pending ${Object.keys(rules.unboundedReads.pending).length} whole-result reads, ${Object.keys(rules.listReturns.pending).length} returned lists, ${Object.keys(rules.untypedReturns?.pending ?? {}).length} untyped returns and ${Object.keys(rules.everyPage.pending).length} every-page loads; ${Object.keys(rules.missingReturns.pending).length} functions waiting on a returns validator.`);

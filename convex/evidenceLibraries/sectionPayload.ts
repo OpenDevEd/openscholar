@@ -3,8 +3,9 @@ import {
   jsonPointerPatternMatches,
 } from "../../lib/evidence-libraries/configuration/json-pointer";
 import { WRITE_ONLY_POINTER_PATTERNS } from "../../lib/evidence-libraries/configuration/section-registry";
+import { MAX_SECTION_PAYLOAD_BYTES } from "../lib/listCaps";
 
-export const MAX_SECTION_PAYLOAD_BYTES = 512 * 1024;
+export { MAX_SECTION_PAYLOAD_BYTES };
 export const MAX_DRAFT_PAYLOAD_BYTES = 768 * 1024;
 
 function assertStrictJson(value: unknown, seen: WeakSet<object>): void {
