@@ -135,7 +135,7 @@ export function HistoryQueryExpansion({
       >
         {/* Header */}
         {!hideHeader && (
-          <div className="px-3 py-2 border-b border-border-subtle bg-inset">
+          <div className="px-3 py-2 border-b border-border-subtle bg-muted">
             <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <Clock className="h-3.5 w-3.5" />
               <span>{th("queryHistoryCount", { count: total ?? queryHistory.length })}</span>

@@ -138,7 +138,7 @@ export function PdfCitationPanel({
                   "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-3xs font-medium transition-colors",
                   index === effectiveSelectedIndex
                     ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted",
+                    : "bg-muted text-muted-foreground hover:bg-accent",
                 )}
                 onClick={() => setSelectedIndex(index)}
               >

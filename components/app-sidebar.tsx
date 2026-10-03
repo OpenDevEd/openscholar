@@ -110,8 +110,8 @@ function NavItem({
         "flex items-center gap-3 px-3 py-2.5 rounded-lg h-auto",
         "group relative overflow-hidden",
         isActive
-          ? "bg-sidebar-accent/80"
-          : "hover:bg-sidebar-accent/60",
+          ? "bg-sidebar-accent"
+          : "hover:bg-sidebar-accent",
         isActive
           ? "text-sidebar-primary font-medium"
           : "text-sidebar-foreground",
@@ -299,7 +299,7 @@ function ScreeningFooterButton({
             size="icon"
             onClick={onClick}
             aria-label={accessibleLabel}
-            className="h-8 w-8 px-0 transition-all duration-200 hover:bg-sidebar-accent/80"
+            className="h-8 w-8 px-0 transition-all duration-200 hover:bg-sidebar-accent"
           >
             {icon}
           </Button>
@@ -322,7 +322,7 @@ function ScreeningFooterButton({
       size="sm"
       onClick={onClick}
       aria-label={accessibleLabel}
-      className="h-8 w-auto px-2 transition-all duration-200 hover:bg-sidebar-accent/80"
+      className="h-8 w-auto px-2 transition-all duration-200 hover:bg-sidebar-accent"
     >
       {icon}
       {progressPercent !== null && (
@@ -581,7 +581,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                             className={cn(
                               "h-7 w-7 transition-all duration-200",
                               isCollapsed && !isMobile ? "h-8 w-8" : "",
-                              currentPage > 1 && "hover:bg-sidebar-accent/80",
+                              currentPage > 1 && "hover:bg-sidebar-accent",
                             )}
                           >
                             <motion.div
@@ -648,7 +648,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                               "h-7 w-7 transition-all duration-200",
                               isCollapsed && !isMobile ? "h-8 w-8" : "",
                               recents.canNext &&
-                                "hover:bg-sidebar-accent/80",
+                                "hover:bg-sidebar-accent",
                             )}
                           >
                             <motion.div
@@ -882,7 +882,7 @@ export function AppSidebar() {
                 onClick={() => toggle(isMobile)}
                 aria-label={isCollapsed ? ts("expandSidebar") : ts("collapseSidebar")}
                 aria-expanded={!isCollapsed}
-                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
               >
                 <motion.div
                   animate={{ rotate: isCollapsed ? 0 : 180 }}

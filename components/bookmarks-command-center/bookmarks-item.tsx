@@ -229,7 +229,7 @@ export function BookmarksItem({
         transition={{ ...subtleSpring, delay: index * 0.03 }}
         className={cn(
           "group relative rounded-xl overflow-hidden",
-          "bg-card",
+          "bg-inset",
           "border border-border-subtle",
           "hover:border-border hover:shadow-md",
           "transition-[background-color,border-color,box-shadow] duration-200"
@@ -388,7 +388,7 @@ export function BookmarksItem({
       whileHover={{ y: -2 }}
       className={cn(
         "group relative flex flex-col rounded-xl overflow-hidden",
-        "bg-card",
+        "bg-inset",
         "border border-border-subtle",
         "hover:border-border hover:shadow-md",
         "transition-[background-color,border-color,box-shadow] duration-200"

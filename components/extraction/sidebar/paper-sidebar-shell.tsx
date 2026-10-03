@@ -148,7 +148,7 @@ export function PaperSidebarShell({
         aria-label={ariaLabel}
         className={cn(
           "absolute bottom-0 left-0 top-0 flex h-full flex-col overflow-hidden",
-          "bg-card",
+          "bg-background",
           "border-l border-border-subtle",
         )}
         initial={false}
@@ -181,7 +181,7 @@ export function PaperSidebarShell({
               transition={{ duration: 0.15 }}
               className={cn(
                 "absolute bottom-0 left-0 top-0 z-20 flex flex-col items-center gap-3 py-4",
-                "bg-card",
+                "bg-background",
                 "border-l border-border-subtle",
               )}
               style={{ width: collapsedWidth }}

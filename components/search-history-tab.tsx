@@ -87,7 +87,7 @@ export function SearchHistoryTab({
         className={cn(
           "group relative flex w-full overflow-hidden",
           "hover:bg-sidebar-accent transition-colors duration-200",
-          isActive && "bg-sidebar-accent/80",
+          isActive && "bg-sidebar-accent",
           isCollapsed
             ? "flex-col items-center justify-center px-2 py-1.5 gap-1 h-auto"
             : "flex-row items-center px-3 py-1.5 gap-1.5 h-auto",

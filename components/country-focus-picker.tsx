@@ -47,7 +47,7 @@ export function CountryFocusPicker() {
 
       {/* Enhanced search preview */}
       {countryNames.length > 0 && (
-        <div className="p-3 bg-sidebar-accent/50 rounded-lg border border-border-subtle">
+        <div className="p-3 bg-sidebar-accent rounded-lg border border-border-subtle">
           <div className="flex items-start gap-2">
             <Focus className="h-4 w-4 text-sidebar-primary mt-0.5 flex-shrink-0" />
             <div className="min-w-0 flex-1">

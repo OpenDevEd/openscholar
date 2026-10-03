@@ -63,7 +63,7 @@ export const CardView = memo(function CardView({
             type="button"
             aria-pressed={openAnswer === openAnswerKey({ paper, question })}
             onClick={() => onOpenAnswer({ paper, question, result: resultFor(question) })}
-            className="max-w-full truncate rounded-md bg-inset px-2 py-0.5 text-xs text-muted-foreground transition-colors duration-100 hover:bg-muted hover:text-foreground aria-pressed:bg-primary/10 aria-pressed:text-foreground"
+            className="max-w-full truncate rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground transition-colors duration-100 hover:bg-accent hover:text-foreground aria-pressed:bg-primary/10 aria-pressed:text-foreground"
           >
             {question.question}
           </button>

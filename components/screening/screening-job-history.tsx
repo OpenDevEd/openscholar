@@ -129,7 +129,7 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
         return (
           <div
             key={job._id}
-            className="rounded-lg border border-border-subtle bg-card px-3.5 py-3 transition-colors hover:bg-accent/30"
+            className="rounded-lg border border-border-subtle bg-card px-3.5 py-3 transition-colors hover:bg-card-hover"
           >
             {/* Row 1: Status + date + actions */}
             <div className="flex items-center justify-between mb-2">

@@ -114,7 +114,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
           data-mode={job.mode}
           className={cn(
             "relative rounded-xl overflow-hidden",
-            "bg-card",
+            "bg-inset",
             "border border-border-subtle",
             "hover:border-border hover:shadow-md",
             "transition-[background-color,border-color,box-shadow] duration-200"
@@ -182,7 +182,7 @@ export function JobListItem({ job, viewMode, index }: JobListItemProps) {
         data-mode={job.mode}
         className={cn(
           "relative flex flex-col rounded-xl overflow-hidden",
-          "bg-card",
+          "bg-inset",
           "border border-border-subtle",
           "hover:border-border hover:shadow-md",
           "transition-[background-color,border-color,box-shadow] duration-200"

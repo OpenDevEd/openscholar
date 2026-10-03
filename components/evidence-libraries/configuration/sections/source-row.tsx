@@ -69,7 +69,7 @@ export function SourceRow({
     >
       <div className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 @min-[24rem]/source:grid-cols-[2rem_minmax(0,1fr)_auto]">
         <span
-          className="flex size-8 shrink-0 items-center justify-center rounded-md bg-inset"
+          className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted"
           aria-hidden
         >
           {icon}

@@ -23,10 +23,13 @@
   --logo-c: #bfdbfe;
 
   /* Surfaces, from the back of the screen to the front. Each is a solid colour
-     with one job, so changing a line changes that surface everywhere. */
+     with one job, so changing a line changes that surface everywhere. Side
+     columns that float beside the page (filters, paper details) take
+     --background, so their sections hover on the page as cards. */
   --background: oklch(0.968 0 0); /* the page behind everything */
   --sidebar: oklch(0.985 0 0); /* the app sidebar */
-  --card: oklch(1 0 0); /* panels and result items */
+  --card: oklch(1 0 0); /* panels, result items and the sections of a floating sidebar */
+  --card-hover: oklch(0.975 0.012 256); /* a card under the pointer */
   --inset: oklch(0.972 0 0); /* rows, wells and sections inside a card */
   --field: oklch(1 0 0); /* text inputs, selects and outline buttons */
   --popover: oklch(1 0 0); /* menus, popovers and dialogs */
@@ -147,7 +150,8 @@
      one behind it. */
   --background: #000000; /* the page behind everything */
   --sidebar: #0b0b0b; /* the app sidebar */
-  --card: #121212; /* panels and result items */
+  --card: #121212; /* panels, result items and the sections of a floating sidebar */
+  --card-hover: #1a1a1a; /* a card under the pointer */
   --inset: #1a1a1a; /* rows, wells and sections inside a card */
   --field: #0b0b0b; /* text inputs, selects and outline buttons */
   --popover: #181818; /* menus, popovers and dialogs */
@@ -223,6 +227,7 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-border-subtle: var(--border-subtle);
+  --color-card-hover: var(--card-hover);
   --color-inset: var(--inset);
   --color-field: var(--field);
   --color-input: var(--input);

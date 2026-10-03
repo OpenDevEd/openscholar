@@ -32,8 +32,8 @@ export const FilterSection = React.memo(function FilterSection({
         "relative rounded-xl overflow-hidden transition-all duration-200",
         "border",
         isActive
-          ? "bg-sidebar-accent/80 border-border-subtle"
-          : "bg-inset border-border-subtle hover:border-border"
+          ? "bg-sidebar-accent border-border-subtle"
+          : "bg-card border-border-subtle hover:border-border"
       )}
     >
       {/* Active indicator - left gradient bar */}
@@ -70,7 +70,7 @@ export const FilterSection = React.memo(function FilterSection({
                 variant="ghost"
                 size="sm"
                 onClick={onClear}
-                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
               >
                 <X className="h-3 w-3 mr-1" />
                 {tc("clear")}

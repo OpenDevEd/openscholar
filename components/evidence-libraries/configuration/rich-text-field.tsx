@@ -141,7 +141,7 @@ function RichTextEditor({
   return (
     <div
       className={cn(
-        "rounded-md border border-input bg-field shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30",
+        "rounded-md border border-input bg-field shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
         invalid && "border-destructive ring-destructive/20",
       )}
     >

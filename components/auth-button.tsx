@@ -103,7 +103,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
         variant="ghost"
         size="sm"
         className={cn(
-          "transition-all duration-200 hover:bg-sidebar-accent/80",
+          "transition-all duration-200 hover:bg-sidebar-accent",
           isCollapsed ? "h-8 w-8 px-0" : "w-full justify-start px-2 h-8 gap-2",
         )}
       >
@@ -217,7 +217,7 @@ export function AuthButton({ isCollapsed = false }: AuthButtonProps) {
       variant="ghost"
       size="sm"
       className={cn(
-        "transition-all duration-200 hover:bg-sidebar-accent/80",
+        "transition-all duration-200 hover:bg-sidebar-accent",
         isCollapsed ? "h-8 w-8 px-0" : "w-full justify-start px-2 h-8 gap-2",
       )}
     >

@@ -151,7 +151,7 @@ export function TranslationToggle({
             "flex items-center justify-center p-1.5 rounded-md text-xs font-medium transition-colors",
             showTranslated
               ? "bg-info/15 ink-info"
-              : "bg-muted text-muted-foreground hover:bg-muted"
+              : "bg-muted text-muted-foreground hover:bg-accent"
           )}
         >
           {showTranslated ? tc("originalShort") : tc("translationShort")}
@@ -693,7 +693,7 @@ const cardContainerClasses = {
     "shadow-surface"
   ),
   hover: cn(
-    "hover:bg-sidebar-accent/50 dark:hover:bg-sidebar-accent/30",
+    "hover:bg-card-hover",
     "hover:border-primary/20 dark:hover:border-primary/30",
     "hover:shadow-surface-hover",
     "hover:-translate-y-0.5"

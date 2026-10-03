@@ -153,7 +153,7 @@ export function ExtractionPlanGate() {
           {cards.map(({ title, description, icon: Icon }) => (
             <div
               key={title}
-              className="rounded-xl border border-border-subtle bg-card p-4"
+              className="rounded-xl border border-border-subtle bg-inset p-4"
             >
               <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Icon className="h-4 w-4" />

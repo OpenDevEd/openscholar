@@ -155,7 +155,7 @@ export const TableView = memo(function TableView({
                 onClick={() => toggleSelect(paper._id)}
               >
                 {/* The paper stays in view while the answers scroll sideways; its hover colour is opaque so they never show through. */}
-                <TableCell className={cn(pinnedShadow, "sticky left-0 z-10 bg-card py-4 pl-4 pr-4 align-top whitespace-normal group-hover:bg-[color-mix(in_oklab,var(--card),var(--muted)_50%)] group-data-[state=selected]:bg-muted md:pl-6")}>
+                <TableCell className={cn(pinnedShadow, "sticky left-0 z-10 bg-card py-4 pl-4 pr-4 align-top whitespace-normal group-hover:bg-inset group-data-[state=selected]:bg-muted md:pl-6")}>
                   <div className="flex max-w-[188px] gap-3 sm:max-w-[288px]">
                     <Checkbox
                       checked={isSelected}

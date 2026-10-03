@@ -353,7 +353,7 @@ export function Cascader({
                   "hover:bg-accent hover:text-accent-foreground",
                   "focus:bg-accent focus:text-accent-foreground focus:outline-none",
                   isSelected && "bg-accent text-accent-foreground",
-                  isExpanded && "bg-accent/50",
+                  isExpanded && "bg-accent",
                   option.disabled && "opacity-50 cursor-not-allowed"
                 )}
                 onClick={() => handleSelect(option, columnIndex)}

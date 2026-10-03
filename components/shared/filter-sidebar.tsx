@@ -100,7 +100,7 @@ export function FilterSidebar({
       <motion.aside
         className={cn(
           "h-full flex flex-col overflow-hidden absolute right-0 top-0 bottom-0",
-          "bg-card",
+          "bg-background",
           "border-l border-border-subtle"
         )}
         initial={false}
@@ -133,7 +133,7 @@ export function FilterSidebar({
                   variant="ghost"
                   size="icon"
                   onClick={toggle}
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
                 >
                   <motion.div
                     animate={{ rotate: 0 }}
@@ -178,7 +178,7 @@ export function FilterSidebar({
                     variant="ghost"
                     size="icon"
                     onClick={toggle}
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 transition-all duration-200"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
                   >
                     <motion.div
                       animate={{ rotate: 0 }}
