@@ -151,7 +151,7 @@ export function YearRangePicker({
           <span className="truncate">
             {isFilterActive
               ? `${yearRange[0]} → ${yearRange[1]}`
-              : tf("filterByYearRange")}
+              : tf("chooseYearRange")}
           </span>
         </Button>
       </PopoverTrigger>
