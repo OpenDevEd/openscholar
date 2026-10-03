@@ -148,7 +148,6 @@ export function YearRangePicker({
               : "border-dashed border-muted-foreground/30",
           )}
         >
-          <CalendarIcon className="mr-3 h-4 w-4 text-muted-foreground" />
           <span className="truncate">
             {isFilterActive
               ? `${yearRange[0]} → ${yearRange[1]}`

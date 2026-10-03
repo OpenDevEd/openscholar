@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarIcon } from "@/components/icons";
 import type { DateRange } from "react-day-picker";
 import { useFormatter, useTranslations } from "next-intl";
 import { Calendar } from "@/components/ui/calendar";
@@ -98,7 +97,6 @@ export function DateRangePicker({
                 : "border-dashed border-muted-foreground/30",
             )}
           >
-            <CalendarIcon className="mr-3 h-4 w-4 text-muted-foreground" />
             <span className="truncate text-sm">{label}</span>
           </Button>
         </PopoverTrigger>

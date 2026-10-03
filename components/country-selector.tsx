@@ -326,7 +326,6 @@ export function CountrySelector({
             )}
           >
             <div className="flex items-center gap-2 min-w-0">
-              <Globe className="h-4 w-4 flex-shrink-0" />
               <span className="truncate">
                 {selectedRegions.length > 0 ? (
                   (() => {
