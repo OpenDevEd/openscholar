@@ -467,7 +467,7 @@ function JobSteps({ steps, current, disabled, onSelect }: {
         const Icon = done ? CircleCheck : step.icon;
         return (
           <li key={step.id} className="flex items-center gap-1">
-            {index > 0 ? <ChevronRight aria-hidden className="size-3.5 text-solid-muted-foreground/60" /> : null}
+            {index > 0 ? <ChevronRight aria-hidden className="size-3.5 text-muted-foreground/60" /> : null}
             <button
               type="button"
               disabled={!done || disabled}

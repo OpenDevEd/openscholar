@@ -231,7 +231,7 @@ export function HistoryQueryExpansion({
                         <div className="shrink-0 mt-0.5">
                           <Search
                             aria-hidden
-                            className={cn("size-3.5", isCurrent ? "text-primary" : "text-solid-muted-foreground/60")}
+                            className={cn("size-3.5", isCurrent ? "text-primary" : "text-muted-foreground/60")}
                           />
                         </div>
 

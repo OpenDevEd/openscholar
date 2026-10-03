@@ -59,7 +59,7 @@ export function RailLink({
           "h-4 w-4 shrink-0 transition-colors",
           active
             ? "text-primary"
-            : "text-solid-primary/65 group-hover:text-primary",
+            : "text-primary/65 group-hover:text-primary",
           danger && "text-destructive group-hover:text-destructive",
         )}
       />

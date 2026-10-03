@@ -296,12 +296,12 @@ export function Cascader({
       <div className="flex items-center gap-1 shrink-0">
         {allowClear && displayValue && !disabled && (
           <X
-            className="h-4 w-4 text-subtle-foreground hover:text-foreground cursor-pointer"
+            className="h-4 w-4 opacity-50 hover:opacity-100 cursor-pointer"
             onClick={handleClear}
             aria-label={t("clearSelection")}
           />
         )}
-        <ChevronDown className="h-4 w-4 text-subtle-foreground" aria-hidden="true" />
+        <ChevronDown className="h-4 w-4 opacity-50" aria-hidden="true" />
       </div>
     </div>
   )
@@ -371,7 +371,7 @@ export function Cascader({
                 <span className="truncate">{option.label}</span>
                 {hasChildren && (
                   <ChevronRight
-                    className="h-4 w-4 ml-2 shrink-0 text-subtle-foreground"
+                    className="h-4 w-4 ml-2 shrink-0 opacity-50"
                     aria-hidden="true"
                   />
                 )}

@@ -219,7 +219,7 @@ function SourceRowImpl({
                 data-paper-cited-by
               >
                 <Quote
-                  className="size-2.5 fill-current text-subtle-foreground"
+                  className="size-2.5 fill-current opacity-60"
                   aria-hidden="true"
                 />
                 {tMeta("cites", { count: row.citedByCount })}

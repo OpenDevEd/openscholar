@@ -314,10 +314,20 @@
     cursor: pointer;
   }
 
+  /* Icons are drawn from overlapping shapes, so transparency must apply to the
+     icon as a whole, never to one shape. Each shape is painted in a solid
+     colour, and a see-through text colour (text-x/NN, set here or inherited)
+     fades the finished icon by its alpha through the mask. */
+  .solar, .lucide {
+    mask-image: linear-gradient(currentColor, currentColor);
+  }
+  .solar *, .lucide * {
+    color: oklch(from currentColor l c h / 1);
+  }
   /* The lighter tone of a two-tone icon, as a solid colour. */
   .solar {
     --solar-secondary-opacity: 1;
-    --solar-secondary-color: color-mix(in oklab, currentColor var(--icon-tone), var(--icon-surface, var(--card)));
+    --solar-secondary-color: color-mix(in oklab, oklch(from currentColor l c h / 1) var(--icon-tone), var(--icon-surface, var(--card)));
   }
   /* Each surface names itself, so the icons on it mix into the right colour. */
   .bg-background { --icon-surface: var(--background); }
@@ -453,12 +463,6 @@
   --icon-surface: color-mix(in oklab, --value(--color-*) 10%, var(--card));
   border-color: color-mix(in oklab, --value(--color-*) 22%, transparent);
   color: color-mix(in oklab, --value(--color-*) 55%, var(--foreground));
-}
-
-/* A colour at part strength as a solid colour: mixed into the surface behind
-   it instead of made see-through. Icons use it, because their shapes overlap. */
-@utility text-solid-* {
-  color: color-mix(in oklab, --value(--color-*) calc(--modifier(integer) * 1%), var(--icon-surface, var(--card)));
 }
 
 /* Active nav item with gradient border */

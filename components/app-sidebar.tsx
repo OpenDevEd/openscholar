@@ -132,7 +132,7 @@ function NavItem({
             "h-5 w-5 flex-shrink-0 transition-colors duration-200",
             isActive
               ? "text-sidebar-primary drop-shadow-sm"
-              : "text-solid-sidebar-primary/65 group-hover:text-sidebar-primary",
+              : "text-sidebar-primary/65 group-hover:text-sidebar-primary",
           )}
         />
         {/* Badge overlay when collapsed */}

@@ -4,7 +4,9 @@
 //
 // The style is the brand's two-tone one, from Solar's bold duotone set (Solar by
 // 480 Design, CC BY 4.0, credited on /credits). The lighter tone is a solid colour,
-// set by --icon-tone in globals.css. Chevrons use Solar's line style,
+// set by --icon-tone in globals.css. A see-through colour or opacity on an icon
+// fades the icon as a whole (globals.css), so its overlapping shapes stay clean.
+// Chevrons use Solar's line style,
 // because a filled chevron reads as a play button.
 import type { ComponentPropsWithoutRef, ComponentType } from "react";
 import { StarIcon as StarSolid } from "@solar-icons/react/bold-duotone/star";

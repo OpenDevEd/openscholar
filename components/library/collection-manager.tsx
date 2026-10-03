@@ -384,7 +384,7 @@ export function CollectionManager({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6 shrink-0 text-solid-muted-foreground/50 hover:text-foreground"
+                              className="h-6 w-6 shrink-0 text-muted-foreground/50 hover:text-foreground"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreHorizontal className="h-3.5 w-3.5" />
@@ -436,7 +436,7 @@ export function CollectionManager({
             </div>
           ) : hasSearch ? (
             <div className="text-center py-6">
-              <Search className="h-5 w-5 mx-auto mb-2 text-solid-muted-foreground/40" />
+              <Search className="h-5 w-5 mx-auto mb-2 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">
                 {t("noCollectionsMatchSearch")}
               </p>
@@ -458,7 +458,7 @@ export function CollectionManager({
           {/* Separator + Inline create */}
           <div className="border-t border-border-subtle pt-3">
             <div className="flex items-center gap-3">
-              <FolderPlus className="h-4 w-4 text-solid-muted-foreground/60 shrink-0" />
+              <FolderPlus className="h-4 w-4 text-muted-foreground/60 shrink-0" />
               <Input
                 ref={createInputRef}
                 value={newName}

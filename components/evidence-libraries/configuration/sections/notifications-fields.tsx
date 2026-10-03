@@ -101,7 +101,7 @@ function TimezonePicker({id, invalid, value, onChange}: {id: string; invalid: bo
     <PopoverTrigger asChild>
       <Button id={id} type="button" variant="outline" role="combobox" aria-expanded={open} aria-invalid={invalid || undefined} className="h-9 w-full justify-between bg-background px-3 font-normal hover:bg-background hover:text-foreground">
         <span className="truncate">{current.replaceAll("_", " ")}</span>
-        <ChevronDown className="size-4 shrink-0 text-subtle-foreground" />
+        <ChevronDown className="size-4 shrink-0 opacity-50" />
       </Button>
     </PopoverTrigger>
     <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] min-w-72 p-0">

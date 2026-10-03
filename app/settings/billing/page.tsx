@@ -229,7 +229,7 @@ export default function BillingPage() {
                       {buying === bundle.credits ? (
                         <Loader2 className="size-4 animate-spin text-muted-foreground" />
                       ) : (
-                        <ArrowRight className="size-4 text-solid-muted-foreground/50 transition-colors group-hover:text-foreground" />
+                        <ArrowRight className="size-4 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
                       )}
                     </button>
                   ))}

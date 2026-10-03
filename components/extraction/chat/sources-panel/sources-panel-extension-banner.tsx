@@ -77,7 +77,7 @@ export function SourcesPanelExtensionBanner({
             reduceMotion ? { duration: 0 } : { duration: 0.18, ease: "easeOut" }
           }
         >
-          <span className="flex min-w-0 items-center gap-1.5 text-solid-foreground/80">
+          <span className="flex min-w-0 items-center gap-1.5 text-foreground/80">
             <CheckCircle2
               className="size-3.5 shrink-0 text-primary"
               aria-hidden

@@ -195,7 +195,7 @@ export function PaperCardListDetail({
                 {/* Citation Percentile */}
                 {result.cited_by_percentile_year && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Award className="h-3.5 w-3.5 text-solid-primary/70" />
+                    <Award className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">{tp("citationPercentile")}</span>
                     <span className="text-foreground">
                       {result.cited_by_percentile_year.min}-
@@ -207,7 +207,7 @@ export function PaperCardListDetail({
                 {/* Publication Type */}
                 {result.type && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <FileText className="h-3.5 w-3.5 text-solid-primary/70" />
+                    <FileText className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">{tp("typeLabel")}</span>
                     <span className="text-foreground capitalize">
                       {result.type.replace(/-/g, " ")}
@@ -218,7 +218,7 @@ export function PaperCardListDetail({
                 {/* Topic */}
                 {result.primary_topic && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Target className="h-3.5 w-3.5 text-solid-primary/70" />
+                    <Target className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">{tp("topicLabel")}</span>
                     <span className="text-foreground">
                       <TopicLink topic={result.primary_topic} />
@@ -229,7 +229,7 @@ export function PaperCardListDetail({
                 {/* Subfield */}
                 {result.primary_topic?.subfield && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Layers className="h-3.5 w-3.5 text-solid-primary/70" />
+                    <Layers className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">{tp("subfieldLabel")}</span>
                     <span className="text-foreground">
                       <TopicLink topic={result.primary_topic.subfield} />
@@ -240,7 +240,7 @@ export function PaperCardListDetail({
                 {/* Field */}
                 {result.primary_topic?.field && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <BookOpen className="h-3.5 w-3.5 text-solid-primary/70" />
+                    <BookOpen className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">{tp("fieldLabel")}</span>
                     <span className="text-foreground">
                       <TopicLink topic={result.primary_topic.field} />
@@ -251,7 +251,7 @@ export function PaperCardListDetail({
                 {/* Domain */}
                 {result.primary_topic?.domain && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Building className="h-3.5 w-3.5 text-solid-primary/70" />
+                    <Building className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">{tp("domainLabel")}</span>
                     <span className="text-foreground">
                       <TopicLink topic={result.primary_topic.domain} />
@@ -389,7 +389,7 @@ export function PaperCardListDetail({
                 <div className="text-lg font-bold ink-cites">
                   {format.number(result.cited_by_count ?? 0)}
                 </div>
-                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-solid-cites/50 group-hover/cite:text-cites transition-colors" />
+                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-cites opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
 
               <button
@@ -403,7 +403,7 @@ export function PaperCardListDetail({
                 <div className="text-lg font-bold ink-cited-by">
                   {format.number(result.referenced_works_count ?? 0)}
                 </div>
-                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-solid-cited-by/50 group-hover/cite:text-cited-by transition-colors" />
+                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-cited-by opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
 
               <button
@@ -417,7 +417,7 @@ export function PaperCardListDetail({
                 <div className="text-lg font-bold ink-related">
                   {format.number(result.related_works?.length ?? 0)}
                 </div>
-                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-solid-related/50 group-hover/cite:text-related transition-colors" />
+                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-related opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
             </div>
           </div>

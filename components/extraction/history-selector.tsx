@@ -142,7 +142,7 @@ export function HistorySelector({ paperLimit }: { paperLimit?: number }) {
         animate={{ opacity: 1, y: 0 }}
         className="text-center py-16 px-4 bg-muted rounded-xl border border-border"
       >
-        <Search className="w-12 h-12 mx-auto text-solid-muted-foreground/50 mb-4" />
+        <Search className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
         <h3 className="text-lg font-semibold text-foreground mb-2">
           {t("noSearchHistoryFound")}
         </h3>

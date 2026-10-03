@@ -262,7 +262,7 @@ function PayMenu({
               ))}
             </span>
           ) : null}
-          <ChevronsUpDown className="size-3 text-solid-muted-foreground/60" />
+          <ChevronsUpDown className="size-3 text-muted-foreground/60" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[26rem] space-y-3 p-3">

@@ -170,7 +170,7 @@ export function ResultsTranslationControl({
         </Badge>
       )}
       {showActiveTranslationState && !isTranslating && !allTranslated && !compactTrigger && (
-        <Sparkles className="h-3.5 w-3.5 text-solid-primary/80" />
+        <Sparkles className="h-3.5 w-3.5 text-primary/80" />
       )}
     </Button>
   );

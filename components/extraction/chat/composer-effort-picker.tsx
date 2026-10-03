@@ -43,7 +43,7 @@ export function ComposerEffortPicker({
         >
           {current ? <EffortMeter levels={levels} level={current} filled="bg-current" /> : <Brain className="size-3.5" />}
           {current ? t(`efforts.${current}`) : t("effort")}
-          <ChevronDownIcon className="size-3 text-subtle-foreground" />
+          <ChevronDownIcon className="size-3 opacity-60" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" side="top" className="w-44">

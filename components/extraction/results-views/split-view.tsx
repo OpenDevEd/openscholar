@@ -86,7 +86,7 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenAnsw
           </div>
         ) : (
           <div className="flex h-full flex-col items-center justify-center text-center">
-            <FileText className="mb-3 size-8 text-solid-muted-foreground/40" />
+            <FileText className="mb-3 size-8 text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">{t("selectPaperToView")}</p>
           </div>
         )}

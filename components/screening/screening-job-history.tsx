@@ -103,7 +103,7 @@ export function ScreeningJobHistory({ total, onClose }: ScreeningJobHistoryProps
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <div className="rounded-full bg-inset p-3 mb-3">
-          <FileText className="h-6 w-6 text-solid-muted-foreground/40" />
+          <FileText className="h-6 w-6 text-muted-foreground/40" />
         </div>
         <p className="text-sm text-muted-foreground">
           {t("noJobsYet")}
