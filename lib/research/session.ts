@@ -12,7 +12,10 @@ type Page<T> = { page: T[]; isDone: boolean; continueCursor: string };
 type PageQuery<T> = FunctionReference<"query", "public", { accountId: string; paginationOpts: { cursor: string | null; numItems: number } }, Page<T>>;
 type Shortcut = { shorthand: string; expansion: string; createdAt: number };
 type Rating = { paperId: string; rating: number };
-type Data = { searches: SavedSearch[]; shortcuts: Shortcut[]; ratings: Rating[] };
+type Data = { shortcuts: Shortcut[]; ratings: Rating[] };
+/** A search a page reads by ID: how many readers want it, and what Convex has of it (undefined while loading). */
+type Watched = { readers: Set<() => void>; stop: () => void; value: SavedSearch | null | undefined };
+export type WatchedStatus = "loading" | "found" | "missing";
 
 /** Each live query is bounded. A changed cursor replaces only the following pages. */
 export function watchPages<T>(client: ConvexReactClient, query: PageQuery<T>, accountId: string, publish: (rows: T[]) => void, fail: (error: unknown) => void, loading: () => void = () => {}) {
@@ -73,8 +76,10 @@ function expand(query: string, keywords: Record<string, BookmarkData>) {
 
 export class ResearchSession {
   readonly stores: ResearchStores;
-  private data: Data = { searches: [], shortcuts: [], ratings: [] };
+  private data: Data = { shortcuts: [], ratings: [] };
   private loaded = new Set<keyof Data>();
+  // Only the searches pages read by ID; lists page through `listedSearches` themselves (#420).
+  private watched = new Map<string, Watched>();
   private pending: Array<{ requestId: string; command: ResearchCommand }> = [];
   private listeners = new Set<() => void>();
   private stops: Array<() => void> = [];
@@ -100,9 +105,8 @@ export class ResearchSession {
       addQueryToHistory: (id, query, field) => edit(id, { kind: "query", query, field }),
       addQuestionToHistory: (id, question) => edit(id, { kind: "question", question }),
       removeQueryHistoryEntry: (id, entry) => edit(id, { kind: "removeQueryHistoryEntry", query: entry.query, ...(entry.field ? { field: entry.field } : {}), timestamp: entry.timestamp }),
-      copySearch: (id, from, updates) => {
-        const source = current(from);
-        if (source) edit(id, { ...serializeSearchPatch(updates), kind: "copySearch", from, fromUpdatedAt: source.updatedAt, summary: { queryHistoryCount: source.queryHistoryCount, questionCount: source.questionCount, ...(source.latestQuestion === undefined ? {} : { latestQuestion: source.latestQuestion }), questionText: source.questionText } });
+      copySearch: (id, source, updates) => {
+        edit(id, { ...serializeSearchPatch(updates), kind: "copySearch", from: source.id, fromUpdatedAt: source.updatedAt, summary: { queryHistoryCount: source.queryHistoryCount, questionCount: source.questionCount, ...(source.latestQuestion === undefined ? {} : { latestQuestion: source.latestQuestion }), questionText: source.questionText } });
       },
       addScreeningQuestion: (id, question) => edit(id, { kind: "addScreeningQuestion", question }),
       updateScreeningQuestion: (id, index, updates) => { if (updates.question !== undefined) replaceQuestion(id, index, updates.question); },
@@ -117,8 +121,9 @@ export class ResearchSession {
       clearScreeningResponses: (id, paperId) => edit(id, { kind: "clearResponses", ...(paperId === undefined ? {} : { paperId }) }),
       removeScreeningQuestionFromAllPapers: (id, question) => edit(id, { kind: "removeQuestionResponses", question }),
       getSearchResult: current,
-      removeSearchResult: index => { const search = history.getState().searchHistory[index]; if (search) this.dispatch({ kind: "deleteSearch", id: search.id }); },
-      clearSearchHistory: () => { for (const search of history.getState().searchHistory) this.dispatch({ kind: "deleteSearch", id: search.id }); },
+      removeSearchResult: id => this.dispatch({ kind: "deleteSearch", id }),
+      // On the server, a batch at a time: the browser holds only the searches it shows.
+      clearSearchHistory: () => { void this.client.mutation(api.research.records.clearSearches, { accountId: this.accountId }).catch(this.fail); },
       migrateSearchResult: search => search.id,
       importSearchHistory: rows => {
         for (const row of rows) {
@@ -166,7 +171,7 @@ export class ResearchSession {
     };
   };
   private notify() {
-    this.snapshot = { ...this.snapshot, ready: this.imported && this.loaded.size === 3, pending: this.pending.length };
+    this.snapshot = { ...this.snapshot, ready: this.imported && this.loaded.size === Object.keys(this.data).length, pending: this.pending.length };
     if (typeof window !== "undefined") {
       if (this.pending.length) window.addEventListener("beforeunload", this.beforeUnload);
       else window.removeEventListener("beforeunload", this.beforeUnload);
@@ -180,6 +185,9 @@ export class ResearchSession {
   };
   private beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
   private releaseSettled() { for (const resolve of this.settledListeners) resolve(); this.settledListeners.clear(); }
+  /** Whether a read is still on its way: a following page, or a search a page just asked for. */
+  private reading() { return this.unsettled.size > 0 || [...this.watched.values()].some(({ value }) => value === undefined); }
+  private settle() { if (!this.reading()) this.releaseSettled(); }
   retry = () => {
     this.snapshot = { ...this.snapshot, error: null };
     this.notify();
@@ -191,15 +199,62 @@ export class ResearchSession {
     if (!this.enabled) return;
     void this.connect(epoch);
   }
+  /**
+   * Reads search `id` while `reader` wants it, so `getSearchResult(id)` has it; returns the
+   * unsubscribe. A search this browser just created is there before Convex has it, and so
+   * is one a list already shows (`known`, without its screening answers) until it's read.
+   */
+  watchSearch = (id: string, reader: () => void, known?: SavedSearch) => {
+    let watched = this.watched.get(id);
+    if (!watched) {
+      const subscription = this.client.watchQuery(api.research.records.getSearch, { accountId: this.accountId, id });
+      const entry: Watched = { readers: new Set(), stop: () => {}, value: known };
+      const update = () => {
+        try {
+          const value = subscription.localQueryResult();
+          if (value === undefined || value === entry.value) return;
+          entry.value = value;
+          this.render();
+          for (const notify of entry.readers) notify();
+        } catch (error) {
+          // A read that failed has nothing to wait for.
+          entry.value ??= null;
+          this.fail(error);
+        }
+        this.settle();
+      };
+      entry.stop = subscription.onUpdate(update);
+      this.watched.set(id, (watched = entry));
+      update();
+      if (entry.value === known && known) this.render();
+    }
+    const entry = watched;
+    entry.readers.add(reader);
+    return () => {
+      entry.readers.delete(reader);
+      if (entry.readers.size) return;
+      entry.stop();
+      this.watched.delete(id);
+      this.render();
+      this.settle();
+    };
+  };
+  /** Whether the account has search `id`, reading it once when no page is. */
+  hasSearch = async (id: string) =>
+    this.watchedStatus(id) === "found" || (await this.client.query(api.research.records.getSearch, { accountId: this.accountId, id })) !== null;
+  watchedStatus = (id: string): WatchedStatus => {
+    if (this.pending.some(({ command }) => command.kind === "createSearch" && command.search.id === id)) return "found";
+    const value = this.watched.get(id)?.value;
+    return value === undefined ? "loading" : value === null ? "missing" : "found";
+  };
   private connect(epoch: number) {
     const receive = <K extends keyof Data>(key: K) => (value: Data[K]) => {
       if (epoch !== this.epoch) return;
       this.data[key] = value; this.loaded.add(key); this.render(); this.notify();
       this.unsettled.delete(key);
-      if (!this.unsettled.size) this.releaseSettled();
+      this.settle();
     };
     this.stops.push(
-      watchPages(this.client, api.research.records.searches, this.accountId, receive("searches"), this.fail, () => this.unsettled.add("searches")),
       watchPages(this.client, api.research.records.shortcuts, this.accountId, receive("shortcuts"), this.fail, () => this.unsettled.add("shortcuts")),
       watchPages(this.client, api.research.records.ratings, this.accountId, receive("ratings"), this.fail, () => this.unsettled.add("ratings")),
     );
@@ -227,9 +282,10 @@ export class ResearchSession {
         const next = this.pending[0];
         try {
           await this.client.mutation(api.research.records.change, { accountId: this.accountId, ...next });
-          // Mutation completion includes live-query updates, but a changed cursor
-          // may still be fetching the following page. Keep optimism until it arrives.
-          if (this.epoch === epoch && this.unsettled.size) await new Promise<void>(resolve => this.settledListeners.add(resolve));
+          // Mutation completion includes live-query updates, but a changed cursor may still
+          // be fetching the following page, and a page that just opened a new search may
+          // still be reading it. Keep optimism until they arrive.
+          if (this.epoch === epoch && this.reading()) await new Promise<void>(resolve => this.settledListeners.add(resolve));
           this.pending.shift();
         } catch (error) {
           if (this.epoch !== epoch) break;
@@ -247,7 +303,7 @@ export class ResearchSession {
     }
   }
   private render() {
-    let searches = this.data.searches;
+    let searches = [...this.watched.values()].flatMap(({ value }) => (value ? [value] : []));
     const keywords = Object.fromEntries(this.data.shortcuts.map(({ shorthand, ...value }) => [shorthand, value]));
     const ratings = Object.fromEntries(this.data.ratings.map(row => [row.paperId, row.rating]));
     for (const { command } of this.pending) {

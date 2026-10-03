@@ -79,6 +79,17 @@ local store or Convex by mode:
    Edits keep their instant feel through Convex optimistic updates on those
    queries, replacing the session's pending-command overlay. Clearing history
    deletes in batches on the server.
+
+   2026-10-03, as built: the pending-command overlay stays, applied to the
+   searches read by ID, because every edit a page makes is to a search it is
+   reading; optimistic updates would add a second mechanism for the same
+   result. A list changes when its save lands. The history filter reads through
+   the sort's index and keeps the rows whose query or questions contain the
+   text, as the library's filters do, so it keeps the chosen sort and matches
+   any part of a word; a full text index would do neither. An account's history
+   export is written by the server through the library's export route
+   (`convex/exports.ts`). Page totals come from a count row a trigger keeps
+   (`migrations/pagedSearches` backfills it).
 2. Ratings. A results page reads the ratings of the papers it shows, at most a
    results page's 200, by paper ID.
 3. Shortcuts. The Bookmarks page pages them; a query's expansion reads only the

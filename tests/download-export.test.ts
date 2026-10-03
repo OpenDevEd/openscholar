@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConvexReactClient } from "convex/react";
-import { downloadLibraryExport } from "@/lib/library/export";
+import { downloadExport } from "@/lib/export";
 
 type Progress = { part: number; serving: boolean; failed: boolean } | null;
 
@@ -19,7 +19,7 @@ function client() {
 }
 
 const frames = () => [...document.querySelectorAll("iframe")].map((frame) => new URL(frame.src).searchParams.get("part"));
-const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const };
+const source = { kind: "history" as const };
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
@@ -27,10 +27,10 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-describe("downloadLibraryExport", () => {
+describe("downloadExport", () => {
   it("opens each part as the one before it finishes, and settles when the last is done", async () => {
     const { convex, watched, set } = client();
-    const done = downloadLibraryExport(convex, view, "csv");
+    const done = downloadExport(convex, source, "csv");
     await watched;
     set({ part: 1, serving: false, failed: false });
     set({ part: 1, serving: true, failed: false });
@@ -42,7 +42,7 @@ describe("downloadLibraryExport", () => {
 
   it("fails when a part fails on the server", async () => {
     const { convex, watched, set } = client();
-    const done = downloadLibraryExport(convex, view, "json");
+    const done = downloadExport(convex, source, "json");
     await watched;
     set({ part: 1, serving: false, failed: false });
     set({ part: 1, serving: false, failed: true });
@@ -51,7 +51,7 @@ describe("downloadLibraryExport", () => {
 
   it("fails when a part it opened never starts", async () => {
     const { convex, watched, set } = client();
-    const done = downloadLibraryExport(convex, view, "csv");
+    const done = downloadExport(convex, source, "csv");
     const failed = expect(done).rejects.toThrow(/didn't start/);
     await watched;
     set({ part: 1, serving: false, failed: false });

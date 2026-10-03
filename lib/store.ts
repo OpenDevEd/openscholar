@@ -54,6 +54,9 @@ export interface RatingsState {
   clearRatings: () => void
 }
 
+/** The search a copy takes its history from, as a list shows it. */
+export type CopySource = Pick<SearchResult, 'id' | 'updatedAt' | 'queryHistoryCount' | 'questionCount' | 'latestQuestion' | 'questionText'>;
+
 export interface SearchHistoryState {
   searchHistory: SearchResult[]
   addSearchResult: (result: Omit<SearchResult, 'id' | 'createdAt' | 'updatedAt' | 'queryHistory' | 'screeningQuestions' | 'screeningResponses' | 'questionHistory' | 'queryHistoryCount' | 'questionCount' | 'latestQuestion' | 'questionText'> & { questionHistory?: QuestionHistoryEntry[] }) => string
@@ -62,7 +65,7 @@ export interface SearchHistoryState {
   removeQueryHistoryEntry: (id: string, entry: QueryHistoryEntry) => void
   /** Gives search `id` the history of search `from`. */
   /** Gives a search another search's parameters (`updates`) and history at once. */
-  copySearch: (id: string, from: string, updates: Partial<Omit<SearchResult, 'id' | 'createdAt'>>) => void
+  copySearch: (id: string, from: CopySource, updates: Partial<Omit<SearchResult, 'id' | 'createdAt'>>) => void
   addQuestionToHistory: (id: string, question: string) => void
   addScreeningQuestion: (id: string, question: string) => void
   updateScreeningQuestion: (id: string, questionIndex: number, updates: Partial<ScreeningQuestionEntry>) => void
@@ -75,7 +78,7 @@ export interface SearchHistoryState {
   clearScreeningResponses: (searchId: string, paperId?: string) => void
   removeScreeningQuestionFromAllPapers: (searchId: string, question: string) => void
   getSearchResult: (id: string) => SearchResult | undefined
-  removeSearchResult: (index: number) => void
+  removeSearchResult: (id: string) => void
   clearSearchHistory: () => void
   migrateSearchResult: (result: SearchResult) => string
   importSearchHistory: (data: Record<string, unknown>[]) => number
@@ -388,7 +391,7 @@ export const localSearchHistoryStore = create<SearchHistoryState>()(
       },
       copySearch: (id, from, updates) => {
         set((state) => {
-          const source = state.searchHistory.find((item) => item.id === from);
+          const source = state.searchHistory.find((item) => item.id === from.id);
           if (!source) return state;
           const { queryHistory, questionHistory, queryHistoryCount, questionCount, latestQuestion, questionText } = source;
           return { searchHistory: state.searchHistory.map((item) => item.id === id ? { ...item, ...updates, queryHistory, questionHistory, queryHistoryCount, questionCount, latestQuestion, questionText, updatedAt: new Date().toISOString() } : item) };
@@ -552,9 +555,9 @@ export const localSearchHistoryStore = create<SearchHistoryState>()(
       getSearchResult: (id) => {
         return get().searchHistory.find((item) => item.id === id);
       },
-      removeSearchResult: (index) =>
+      removeSearchResult: (id) =>
         set((state) => ({
-          searchHistory: state.searchHistory.filter((_, i) => i !== index),
+          searchHistory: state.searchHistory.filter((item) => item.id !== id),
         })),
       clearSearchHistory: () => set({ searchHistory: [] }),
       migrateSearchResult: (result) => {
@@ -880,11 +883,6 @@ interface KeywordExpansionDialogState {
   resetForm: () => void
 }
 
-interface SearchHistoryUIState {
-  currentPage: number
-  setCurrentPage: (page: number) => void
-}
-
 // Removed NavbarState - using currentQuery from ResultsStore as single source of truth
 // Removed PageContentState - using currentQuery from ResultsStore as single source of truth
 
@@ -926,11 +924,6 @@ export const useKeywordExpansionDialogStore = create<KeywordExpansionDialogState
   setCurrentKeyword: (keyword) => set({ currentKeyword: keyword }),
   setSuggestedQuery: (query) => set({ suggestedQuery: query }),
   resetForm: () => set({ newShorthand: '', newExpansion: '', currentKeyword: '', suggestedQuery: '' }),
-}))
-
-export const useSearchHistoryUIStore = create<SearchHistoryUIState>((set) => ({
-  currentPage: 1,
-  setCurrentPage: (page) => set({ currentPage: page }),
 }))
 
 export const useAIConfigDialogStore = create<AIConfigDialogState>((set) => ({

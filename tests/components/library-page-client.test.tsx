@@ -19,8 +19,8 @@ type LibraryQueryState = {
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
+    exports: { start: "exports:start" },
     library: {
-      exports: { start: "library:exports:start" },
       collections: {
         getCollection: "library:getCollection",
       },
@@ -493,12 +493,12 @@ describe("LibraryPageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "export csv" }));
 
     await waitFor(() => expect(startExportMock).toHaveBeenCalledTimes(1));
-    const [mutation, { digest, format, view }] = startExportMock.mock.calls[0];
-    expect(mutation).toBe(api.library.exports.start);
+    const [mutation, { digest, format, source }] = startExportMock.mock.calls[0];
+    expect(mutation).toBe(api.exports.start);
     expect(format).toBe("csv");
     expect(digest).toMatch(/^[0-9a-f]{64}$/);
-    expect(view).toEqual(expect.objectContaining({ sortBy: "savedAt", sortOrder: "desc", minRating: 2 }));
-    await waitFor(() => expect(document.querySelector("iframe")?.getAttribute("src")).toMatch(/\/library\/export\?token=[\w-]{43}&part=1$/));
+    expect(source).toEqual({ kind: "library", view: expect.objectContaining({ sortBy: "savedAt", sortOrder: "desc", minRating: 2 }) });
+    await waitFor(() => expect(document.querySelector("iframe")?.getAttribute("src")).toMatch(/\/export\?token=[\w-]{43}&part=1$/));
   });
 
   it("shows a count that stopped before the end as at least that many", () => {

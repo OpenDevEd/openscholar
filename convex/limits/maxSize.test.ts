@@ -5,7 +5,7 @@ import { getDocumentSize } from "convex/values";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { exportLibrary, exportedTitles } from "../library/exports.test-support";
+import { exportLibrary, exportParts, exportedTitles } from "../exports.test-support";
 import { RESULTS_PAGE_SIZE_MAX } from "../../lib/extraction/limits";
 import { collectionSortName } from "../library/collections";
 import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
@@ -176,13 +176,41 @@ describe("at the largest sizes the product allows", () => {
     for (let i = 0; i < 25; i++) await change(`create-${i}`, { kind: "createSearch", search: search(`search-${i}`, i) });
     for (let i = 1; i <= 200; i++) await change(`edit-${i}`, { kind: "editSearch", id: "search-0", edit: { kind: "query", query: query(1000 + i), field: "oql" } });
     const paginationOpts = { cursor: null, numItems: 25 };
-    const page = await as.query(api.research.records.searches, { accountId: clerkId, paginationOpts });
+    const page = await as.query(api.research.records.listedSearches, { accountId: clerkId, sort: "recent", paginationOpts });
     expect(page.page).toHaveLength(25);
     expect(page.page.find((row) => row.id === "search-0")?.queryHistoryCount).toBe(201);
     expect((await as.query(api.research.records.revisions, { accountId: clerkId, id: "search-0", paginationOpts })).page).toHaveLength(25);
     const history = await as.query(api.research.records.searchHistory, { accountId: clerkId, id: "search-0", kind: "query", paginationOpts: { cursor: null, numItems: 100 } });
     expect(history.page).toHaveLength(100);
     expect(history.page[0].text).toBe(query(1200));
+  }, 300_000);
+
+  it("a history of 100 searches of the longest OQL query filters, exports and clears (#420)", async () => {
+    const t = convexTest({ schema, transactionLimits: true });
+    const clerkId = "max_size_user";
+    const { as } = await seedAccount(t, clerkId);
+    const search = (i: number) => ({ id: `search-${i}`, query: `${i === 99 ? "needle" : "hay"} ${text(MAX_SIZE.oqlQueryChars - 7, i)}`, field: "oql" as const, count: i, queryHistoryCount: 0, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: new Date(Date.UTC(2026, 8, 1, 0, 0, i)).toISOString(), updatedAt: "2026-09-01T00:00:00.000Z" });
+    for (let i = 0; i < 100; i++) await as.mutation(api.research.records.change, { accountId: clerkId, requestId: `create-${i}`, command: { kind: "createSearch", search: search(i) } });
+    expect(await as.query(api.research.records.countSearches, { accountId: clerkId })).toBe(100);
+
+    // The one match is the last search the oldest-first read reaches.
+    const found: string[] = [];
+    for (let cursor: string | null = null; ;) {
+      const page: { page: Array<{ id: string }>; isDone: boolean; continueCursor: string } = await as.query(api.research.records.listedSearches, { accountId: clerkId, sort: "oldest", text: "NEEDLE", paginationOpts: { cursor, numItems: 12 } });
+      found.push(...page.page.map((row) => row.id));
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    expect(found).toEqual(["search-99"]);
+
+    const { parts } = await exportParts(t, as, { kind: "history" });
+    expect(parts.flatMap(({ text }) => JSON.parse(text) as unknown[])).toHaveLength(100);
+
+    vi.useFakeTimers();
+    await as.mutation(api.research.records.clearSearches, { accountId: clerkId });
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    vi.useRealTimers();
+    expect(await as.query(api.research.records.countSearches, { accountId: clerkId })).toBe(0);
   }, 300_000);
 
   it("a search saved before #354 with 44 revisions of the longest OQL query lists every revision (#354)", async () => {

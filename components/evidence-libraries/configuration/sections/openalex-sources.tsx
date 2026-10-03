@@ -33,6 +33,7 @@ import {
 } from "@/lib/evidence-libraries/configuration/sources";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSearchHistoryStore } from "@/lib/store";
+import { useHasSearch } from "@/lib/research/provider";
 import { paramsToSearchResult } from "@/lib/search-params";
 import { readOpenAlexSourceSearch, sourceSearchHistoryId } from "@/lib/evidence-libraries/openalex-source-query";
 import { Field } from "../section-card";
@@ -60,6 +61,7 @@ export function useOpenAlexSources({
 }) {
   const [editingKey, setEditingKey] = useState<"new" | string | null>(null);
   const [editorSession, setEditorSession] = useState<{ id: string; created: boolean } | null>(null);
+  const hasSearch = useHasSearch();
   const [apiKey, setApiKey] = useState("");
   const [selectedMode, setSelectedMode] = useState<
     "openscholar" | "custom" | null
@@ -94,20 +96,17 @@ export function useOpenAlexSources({
       ? "new"
       : (sources.find((source) => source.key === editingKey) ?? null);
 
-  function setEditing(source: "new" | OpenAlexSourceEntry | null) {
+  async function setEditing(source: "new" | OpenAlexSourceEntry | null) {
     const history = useSearchHistoryStore.getState();
     if (source === null) {
-      if (editorSession?.created) {
-        const index = history.searchHistory.findIndex((entry) => entry.id === editorSession.id);
-        if (index >= 0) history.removeSearchResult(index);
-      }
+      if (editorSession?.created) history.removeSearchResult(editorSession.id);
       setEditingKey(null);
       setEditorSession(null);
       return;
     }
     const initial = source === "new" ? null : source;
     const savedId = sourceSearchHistoryId(initial);
-    const existing = savedId && history.searchHistory.some((entry) => entry.id === savedId);
+    const existing = savedId && (await hasSearch(savedId));
     const id = existing ? savedId : history.addSearchResult(paramsToSearchResult(readOpenAlexSourceSearch(initial)));
     setEditorSession({ id, created: !existing });
     setEditingKey(initial?.key ?? "new");

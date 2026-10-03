@@ -28,11 +28,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import {
-  useSearchHistoryStore,
-  useSearchHistoryUIStore,
   useCurrentQueryStore,
   useKeywordExpansionStore,
 } from "@/lib/store";
+import { useSearchList } from "@/lib/research/search-list";
+import { usePreloadSearch } from "@/lib/research/provider";
 import { useEffectiveSearchId } from "@/lib/hooks";
 import { restoreFromHistory } from "@/lib/search";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
@@ -351,8 +351,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const isCollapsed = useSidebarStore((s) => s.isCollapsed);
-  const { searchHistory } = useSearchHistoryStore();
-  const { currentPage, setCurrentPage } = useSearchHistoryUIStore();
+  const recents = useSearchList({ sort: "recent", pageSize: 10 });
+  const preloadSearch = usePreloadSearch();
+  const currentPage = recents.page;
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
   const effectiveSearchId = useEffectiveSearchId();
@@ -384,12 +385,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const expandableCount = getExpandableCount(activeQuery);
   const hasBookmarkSyntax = /(\w[\w-]*)\.\.\./g.test(activeQuery);
 
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(searchHistory.length / itemsPerPage);
-  const displayItems = searchHistory.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const totalPages = Math.max(currentPage, recents.pageCount ?? currentPage);
+  const displayItems = recents.items;
 
   const getCurrentPage = () => {
     if (!pathname) return null;
@@ -412,21 +409,12 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     onClose?.();
   };
 
-  const handlePrevPage = () => {
-    setCurrentPage(Math.max(1, currentPage - 1));
-  };
+  const handlePrevPage = recents.previous;
+  const handleNextPage = recents.next;
 
-  const handleNextPage = () => {
-    setCurrentPage(Math.min(totalPages, currentPage + 1));
-  };
-
-  const handleSearchHistoryClick = (searchId: string) => {
-    const entry = searchHistory.find((s) => s.id === searchId);
-    if (entry) {
-      router.push(restoreFromHistory(entry));
-    } else {
-      router.push(`/results/${searchId}`);
-    }
+  const handleSearchHistoryClick = (search: (typeof recents.items)[number]) => {
+    preloadSearch(search);
+    router.push(restoreFromHistory(search));
     onClose?.();
   };
 
@@ -526,7 +514,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       {/* Search history - scrollable */}
       <div className="flex-1 min-h-0 flex flex-col">
-        {searchHistory.length > 0 && (
+        {(recents.items.length > 0 || recents.hasPages) && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
@@ -565,15 +553,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                       isActive={search.id === effectiveSearchId}
                       isCollapsed={isCollapsed && !isMobile}
                       search={search}
-                      screeningQuestions={search.screeningQuestions}
-                      screeningResponses={search.screeningResponses}
-                      onClick={() => handleSearchHistoryClick(search.id)}
+                      onClick={() => handleSearchHistoryClick(search)}
                       index={idx + 3}
                     />
                   ))}
                 </motion.div>
 
-                {totalPages > 1 && (
+                {recents.hasPages && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -591,7 +577,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                             size="icon"
                             onClick={handlePrevPage}
                             aria-label={tc("previousPage")}
-                            disabled={currentPage === 1}
+                            disabled={!recents.canPrevious}
                             className={cn(
                               "h-7 w-7 transition-all duration-200",
                               isCollapsed && !isMobile ? "h-8 w-8" : "",
@@ -657,11 +643,11 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                             size="icon"
                             onClick={handleNextPage}
                             aria-label={tc("nextPage")}
-                            disabled={currentPage === totalPages}
+                            disabled={!recents.canNext}
                             className={cn(
                               "h-7 w-7 transition-all duration-200",
                               isCollapsed && !isMobile ? "h-8 w-8" : "",
-                              currentPage < totalPages &&
+                              recents.canNext &&
                                 "hover:bg-sidebar-accent/80",
                             )}
                           >

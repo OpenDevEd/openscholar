@@ -3,7 +3,7 @@
  *
  * Integration test for the history-selector ↔ CountChip ↔ bucket store
  * wiring added in P7 T8. Uses the real bucket store; mocks Convex, the
- * search-history store, the fresh-count SWR hook, and next-intl.
+ * saved search list, the fresh-count SWR hook, and next-intl.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -56,9 +56,20 @@ vi.mock("@/convex/_generated/api", () => ({
   },
 }));
 
+vi.mock("@/lib/research/search-list", () => ({
+  useSearchList: () => ({
+    items: historyEntriesRef.current,
+    count: historyEntriesRef.current.length,
+    isLoading: false,
+    hasPages: false,
+  }),
+}));
+
+vi.mock("@/lib/research/provider", () => ({
+  useResearchStatus: () => ({ ready: true }),
+}));
+
 vi.mock("@/lib/store", () => ({
-  useSearchHistoryStore: <T,>(selector: (s: unknown) => T) =>
-    selector({ searchHistory: historyEntriesRef.current }),
   useKeywordExpansionStore: {
     getState: () => ({ expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }),
   },

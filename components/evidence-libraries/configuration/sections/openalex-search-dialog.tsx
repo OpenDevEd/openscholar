@@ -19,6 +19,7 @@ import { useIsTablet } from "@/lib/hooks";
 import { DEFAULT_SEARCH_PARAMS, SearchProvider, useSearch, type SearchParams } from "@/lib/search";
 import { paramsToSearchResult, searchResultToParams } from "@/lib/search-params";
 import { useSearchHistoryStore } from "@/lib/store";
+import { useWatchedSearch } from "@/lib/research/provider";
 import { sidebarSpring } from "@/lib/ui/sidebar-motion";
 import { isCitedByFilterActive, isCitesFilterActive, isRelatedToFilterActive } from "@/lib/utils";
 
@@ -197,7 +198,7 @@ function SearchWorkspace({
                 onPick: (entry) => {
                   const picked = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(entry) };
                   const history = useSearchHistoryStore.getState();
-                  history.copySearch(search.searchId, entry.id, paramsToSearchResult(picked));
+                  history.copySearch(search.searchId, entry, paramsToSearchResult(picked));
                   setParams(() => picked);
                   if (!name) setName(entry.query.slice(0, 80));
                   setChoosingFromHistory(false);
@@ -263,6 +264,8 @@ export function OpenAlexSearchDialog({
   onApprove: (source: OpenAlexSourceEntry) => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources.openAlex");
+  // The editor's search, read by ID while it's open, so its screening and history are there.
+  useWatchedSearch(searchId);
   const startingName = initial?.settings.name ?? "";
   const startingParams = useMemo(() => readOpenAlexSourceSearch(initial), [initial]);
   const [name, setName] = useState(startingName);
