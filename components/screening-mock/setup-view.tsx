@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import { Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Loader2, Minus, Plus, Sparkles, Star, Trash2, TriangleAlert, X, Zap, type LucideIcon } from "lucide-react";
@@ -25,6 +25,11 @@ const TINT = {
   no: { icon: "text-muted-foreground", input: "bg-foreground/[0.05]" },
   unclear: { icon: "text-amber-500", input: "bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
 } as const;
+
+/** A track with nothing on it yet, the height of the slider that takes its place. */
+function EmptyTrack() {
+  return <div aria-hidden className="h-2 w-full rounded-full border border-dashed border-foreground/20" />;
+}
 
 const KINDS: Array<{ id: Source["kind"]; label: string }> = [
   { id: "search", label: "Search" },
@@ -93,6 +98,9 @@ export function SetupView({
   const credits = Math.ceil((papers - skipped) * CREDITS_PER_PAPER);
   const enough = credits <= BALANCE;
   const max = maxScore(questions);
+  // With no question there's nothing to score: Keep and Stars wait, at the size they'll have.
+  const unscored = questions.length === 0;
+  const questionInput = useRef<HTMLInputElement>(null);
   // Removing questions can drop the highest score under the threshold; it reads as the top score then.
   const threshold = Math.min(minScore, max);
   const stars = (starsSet ?? defaultStars(max)).map((t) => Math.min(t, max));
@@ -323,22 +331,25 @@ export function SetupView({
           ))}
           </AnimatePresence>
           <div className="flex items-center gap-2 px-4 py-2.5">
-            <Input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQuestion()} placeholder="Add a question with a yes or no answer" className="h-9 flex-1" />
+            <Input ref={questionInput} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQuestion()} placeholder="Add a question with a yes or no answer" className="h-9 flex-1" />
             <Button variant="outline" size="sm" className="h-9" onClick={addQuestion} disabled={!draft.trim()}><Plus />Add</Button>
           </div>
         </div>
       </Zone>
 
       <Zone label="Keep">
-        <div className="space-y-3 rounded-2xl border border-border/60 bg-muted/40 p-4">
+        <div className={cn("space-y-3 rounded-2xl border p-4 transition-colors duration-300", unscored ? "border-dashed border-border" : "border-border/60 bg-muted/40")}>
           <div className="flex items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+            <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300", unscored ? "bg-muted text-muted-foreground/60" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400")}>
               <CircleCheck className="size-5" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Included from</span>
-              <span className="block text-xs text-muted-foreground">Points add up across the questions</span>
+              <span className={cn("block text-sm font-semibold", unscored && "text-muted-foreground")}>{unscored ? "Nothing to score yet" : "Included from"}</span>
+              <span className="block text-xs text-muted-foreground">{unscored ? "A question's points decide which papers are kept" : "Points add up across the questions"}</span>
             </span>
+            {unscored ? (
+              <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => questionInput.current?.focus()}><Plus />Add a question</Button>
+            ) : (
             <span className="flex shrink-0 items-center gap-1">
               <Button variant="ghost" size="icon" className="size-8" aria-label="One point fewer" disabled={threshold <= 0} onClick={() => setMinScore(threshold - 1)}><Minus /></Button>
               <Input
@@ -354,10 +365,12 @@ export function SetupView({
               <Button variant="ghost" size="icon" className="size-8" aria-label="One point more" disabled={threshold >= max} onClick={() => setMinScore(threshold + 1)}><Plus /></Button>
               <span className="w-16 whitespace-nowrap text-sm tabular-nums text-muted-foreground">of {max} points</span>
             </span>
+            )}
           </div>
           {/* One track from 0 to the highest score, however many questions there are: grey
               below the threshold, green from it. */}
           <div className="space-y-2 pt-1">
+            {unscored ? <EmptyTrack /> : (
             <Slider
               min={0}
               max={Math.max(1, max)}
@@ -367,23 +380,25 @@ export function SetupView({
               aria-label="Lowest score that's included"
               className="[&_[data-slot=slider-range]]:bg-muted [&_[data-slot=slider-thumb]]:border-emerald-500 [&_[data-slot=slider-track]]:h-2 [&_[data-slot=slider-track]]:bg-emerald-500/70"
             />
+            )}
           </div>
         </div>
       </Zone>
 
       <Zone label="Stars">
-        <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/40 p-4">
+        <div className={cn("space-y-4 rounded-2xl border p-4 transition-colors duration-300", unscored ? "border-dashed border-border" : "border-border/60 bg-muted/40")}>
           <div className="flex items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+            <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300", unscored ? "bg-muted text-muted-foreground/60" : "bg-primary/15 text-primary")}>
               <Star className="size-5" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Rating</span>
-              <span className="block text-xs text-muted-foreground">The stars a saved paper gets for its score</span>
+              <span className={cn("block text-sm font-semibold", unscored && "text-muted-foreground")}>{unscored ? "No ratings yet" : "Rating"}</span>
+              <span className="block text-xs text-muted-foreground">{unscored ? "Stars come from the same points" : "The stars a saved paper gets for its score"}</span>
             </span>
-            <span className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">of {max} points</span>
+            {unscored ? null : <span className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">of {max} points</span>}
           </div>
           {/* Five handles on one track, one where each rating begins: always five, at any number of points. */}
+          {unscored ? <EmptyTrack /> : (
           <Slider
             min={0}
             max={Math.max(1, max)}
@@ -394,19 +409,21 @@ export function SetupView({
             aria-label="Scores where each star rating begins"
             className="[&_[data-slot=slider-range]]:bg-primary/60 [&_[data-slot=slider-track]]:h-2"
           />
+          )}
           <div className="grid grid-cols-5 gap-2">
             {stars.map((t, i) => (
-              <label key={i} className="flex items-center gap-2 rounded-xl bg-foreground/[0.04] py-1.5 pl-2.5 pr-1.5">
+              <label key={i} className={cn("flex items-center gap-2 rounded-xl py-1.5 pl-2.5 pr-1.5 transition-colors duration-300", unscored ? "bg-foreground/[0.02]" : "bg-foreground/[0.04]")}>
                 <span className="flex flex-1 items-center gap-0.5" aria-hidden>
                   {Array.from({ length: i + 1 }, (_, j) => (
-                    <Star key={j} className="size-2.5 fill-primary text-primary" />
+                    <Star key={j} className={cn("size-2.5 transition-colors duration-300", unscored ? "text-muted-foreground/40" : "fill-primary text-primary")} />
                   ))}
                 </span>
                 <Input
                   type="number"
                   min={0}
                   max={max}
-                  value={t}
+                  disabled={unscored}
+                  value={unscored ? "" : t}
                   onChange={(e) => setStar(i, Number(e.target.value))}
                   onFocus={(e) => e.target.select()}
                   aria-label={`Points for ${i + 1} ${i === 0 ? "star" : "stars"}`}
