@@ -19,3 +19,4 @@ triggers.register("extractionPapers", countPaperChange);
 triggers.register("evidenceLibraryConfigSections", recordRevisionApprovedQueries);
 triggers.register("searches", countChange("searches"));
 triggers.register("queryShortcuts", countChange("queryShortcuts"));
+triggers.register("screeningJobs", countChange("screeningJobs"));

@@ -1,11 +1,26 @@
 import { describe, it, expect } from 'vitest';
 import {
-  generateScreeningCSV,
-  generateScreeningJSON,
-  generateScreeningXLSXWorkbook,
+  generateScreeningXLSXWorkbook as buildWorkbook,
   formatScreeningAnswer,
-  type ScreeningExportData,
+  screeningExportFiles,
+  type ScreeningExportJob,
+  type ScreeningExportResult,
 } from '../lib/screening/export';
+
+type ScreeningExportData = { job: ScreeningExportJob & { _id: string }; results: ScreeningExportResult[] };
+
+// Each file put together as the server streams it: a start, each result, an end.
+function generateScreeningCSV({ job, results }: ScreeningExportData) {
+  const file = screeningExportFiles(job).csv;
+  return file.start() + results.map(file.item).join('') + file.end();
+}
+function generateScreeningJSON({ job, results }: ScreeningExportData) {
+  const file = screeningExportFiles(job).json;
+  return file.start(new Date()) + results.map(file.item).join('') + file.end(results.length);
+}
+// The workbook takes its results a page at a time.
+const generateScreeningXLSXWorkbook = ({ job, results }: ScreeningExportData) =>
+  buildWorkbook(job, (async function* () { yield results.slice(0, 1); yield results.slice(1); })());
 
 const mockData: ScreeningExportData = {
   job: {
@@ -182,6 +197,20 @@ describe('Screening Export', () => {
         (r: { openalexId: string }) => r.openalexId === 'W789'
       );
       expect(failedResult.authors).toEqual([]);
+    });
+
+    it('writes answer keys in one order, however the answers were read', () => {
+      const answers = Object.fromEntries(['q2', 'q10', 'q0', 'q1'].map((key) => [key, true]));
+      const parsed = JSON.parse(generateScreeningJSON({ ...mockData, results: [{ ...mockData.results[0], answers }] }));
+      expect(Object.keys(parsed.results[0].answers)).toEqual(['q0', 'q1', 'q10', 'q2']);
+    });
+
+    it('is the whole export printed at once, and valid with no results', () => {
+      const parsed = JSON.parse(generateScreeningJSON(mockData));
+      expect(generateScreeningJSON(mockData)).toBe(JSON.stringify(parsed, null, 2));
+      const empty = generateScreeningJSON({ ...mockData, results: [] });
+      expect(empty).toBe(JSON.stringify(JSON.parse(empty), null, 2));
+      expect(JSON.parse(empty).results).toEqual([]);
     });
 
     it('uses 2-space indentation', () => {

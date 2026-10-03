@@ -1,5 +1,6 @@
 import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
+import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import { effortValidator } from "../aiModelConfig/validators";
 import type { Doc } from "../_generated/dataModel";
 import {
@@ -14,12 +15,12 @@ import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { availableCredits } from "../billing/accounts";
 import { estimateScreening } from "./estimate";
-import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
-
-/** Most screening jobs one history request lists; each one also reads its progress. */
-const MAX_LISTED_SCREENING_JOBS = 100;
+import { countRow } from "../research/recordCounts";
 import { readScreeningProgressCounts } from "./aggregates";
 import { buildScreeningProgressSnapshot } from "./progress";
+
+/** Most screening jobs one page lists; each one also reads its progress. */
+const MAX_LISTED_SCREENING_JOBS = 50;
 
 async function readJobProgressSnapshot(
   ctx: QueryCtx,
@@ -166,15 +167,10 @@ export const getActiveScreeningJobProgress = query({
   },
 });
 
-/**
- * List screening jobs for the authenticated user, newest first.
- *
- * Returns a paginated list of job summaries (default limit 20).
- * Returns empty array for unauthenticated users.
- */
+/** The person's screening jobs, newest first, a page at a time. */
 export const listUserScreeningJobs = query({
-  args: { limit: v.optional(v.number()) },
-  returns: v.array(
+  args: { paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(
     v.object({
       _id: v.id("screeningJobs"),
       _creationTime: v.number(),
@@ -187,20 +183,20 @@ export const listUserScreeningJobs = query({
       questions: screeningQuestionsValidator,
       targetCollectionId: v.optional(v.id("collections")),
       targetCollectionName: v.optional(v.string()),
-    })
+    }),
   ),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    if (!user) return [];
+    if (!user) return { page: [], isDone: true, continueCursor: "" };
 
     const jobs = await ctx.db
       .query("screeningJobs")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
-      .take(Math.min(args.limit ?? 20, MAX_LISTED_SCREENING_JOBS));
+      .paginate({ ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, MAX_LISTED_SCREENING_JOBS) });
 
-    return Promise.all(
-      jobs.map(async (job) => {
+    const page = await Promise.all(
+      jobs.page.map(async (job) => {
         const [progress, targetCollection] = await Promise.all([
           readJobProgressSnapshot(ctx, job),
           job.targetCollectionId
@@ -223,104 +219,92 @@ export const listUserScreeningJobs = query({
         };
       }),
     );
+    return { ...jobs, page };
   },
 });
 
+/** How many screening jobs the person has, from the kept count (research/recordCounts.ts). */
+export const countUserScreeningJobs = query({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    // Someone with no job has no count; one from before counts were kept gets theirs from migrations/countScreeningJobs.
+    return user ? ((await countRow(ctx, "screeningJobs", user._id))?.count ?? 0) : 0;
+  },
+});
+
+const screeningResultRowValidator = v.object({
+  openalexId: v.string(),
+  title: v.string(),
+  authors: screeningAuthorsValidator,
+  publicationYear: v.optional(v.number()),
+  doi: v.optional(v.string()),
+  status: screeningResultStatusValidator,
+  answers: screeningAnswersValidator,
+  score: v.optional(v.number()),
+  stars: v.optional(v.number()),
+  qualified: v.optional(v.boolean()),
+});
+
+/** Most results one page of a job holds; each also reads its answers. */
+const RESULTS_PAGE_MAX = 200;
+
 /**
- * Get all screening results for a job, for export.
- *
- * Returns job metadata and all results (any status) for the authenticated
- * owner, or null if unauthenticated / non-owner / job not found.
- * Results are bounded by MAX_SCREENING_PAPERS_PER_JOB.
- * Does NOT include aiMetadata or abstract (out of scope for export).
+ * One page of a job's results, any status, in the order they were made, each with what the
+ * job answered. No `aiMetadata` or abstract: an export doesn't write them.
  */
-export const getScreeningResultsForExport = query({
-  args: { jobId: v.id("screeningJobs") },
-  returns: v.union(
-    v.null(),
-    v.object({
-      job: v.object({
-        _id: v.id("screeningJobs"),
-        status: screeningJobStatusValidator,
-        questions: screeningQuestionsValidator,
-        scoringConfig: screeningScoringConfigValidator,
-        totalPapers: v.number(),
-        qualifiedPapers: v.number(),
-        createdAt: v.number(),
-        completedAt: v.optional(v.number()),
-      }),
-      results: v.array(
-        v.object({
-          openalexId: v.string(),
-          title: v.string(),
-          authors: screeningAuthorsValidator,
-          publicationYear: v.optional(v.number()),
-          doi: v.optional(v.string()),
-          status: screeningResultStatusValidator,
-          answers: screeningAnswersValidator,
-          score: v.optional(v.number()),
-          stars: v.optional(v.number()),
-          qualified: v.optional(v.boolean()),
-        })
-      ),
-    })
-  ),
+export async function readScreeningResultsPage(ctx: QueryCtx, job: Doc<"screeningJobs">, paginationOpts: PaginationOptions) {
+  const results = await ctx.db
+    .query("screeningResults")
+    .withIndex("by_job", (q) => q.eq("jobId", job._id))
+    .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, RESULTS_PAGE_MAX) });
+  // What the job answered, by question key: a result whose answers haven't moved yet, waiting
+  // or from before #334, still holds them; a moved one reads the model's answers from its
+  // screening's history as of the move, whatever a person or a later run changed since.
+  const screeningId = job.screeningId;
+  const answersOf = async (result: Doc<"screeningResults">) => {
+    if (result.answers || !screeningId || result.answersVersion === undefined) return result.answers;
+    const version = result.answersVersion;
+    const row = await ctx.db
+      .query("screeningAnswerHistory")
+      .withIndex("by_screening_and_paper_and_version", (q) => q.eq("screeningId", screeningId).eq("paperId", result.openalexId).lte("version", version))
+      .order("desc")
+      .first();
+    if (!row) return undefined;
+    return Object.fromEntries(job.questions.map((q) => {
+      const entry = row.answers.find((value) => value.question === q.question);
+      return [q.key, entry?.model ? entry.model.answer : (entry?.answer ?? null)];
+    }));
+  };
+  const answers = await Promise.all(results.page.map(answersOf));
+  return {
+    ...results,
+    page: results.page.map((r, i) => ({
+      openalexId: r.openalexId,
+      title: r.title,
+      authors: r.authors,
+      publicationYear: r.publicationYear,
+      doi: r.doi,
+      status: r.status,
+      answers: answers[i],
+      score: r.score,
+      stars: r.stars,
+      qualified: r.qualified,
+    })),
+  };
+}
+export type ScreeningResultRow = Awaited<ReturnType<typeof readScreeningResultsPage>>["page"][number];
+
+/** One page of the results of a job the person owns; an empty page for anyone else. */
+export const listScreeningResults = query({
+  args: { jobId: v.id("screeningJobs"), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(screeningResultRowValidator),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    if (!user) return null;
-
-    const job = await ctx.db.get("screeningJobs", args.jobId);
-    if (!job || job.userId !== user._id) return null;
-    const progress = await readJobProgressSnapshot(ctx, job);
-
-    const results = await ctx.db
-      .query("screeningResults")
-      .withIndex("by_job", (q) => q.eq("jobId", args.jobId))
-      .take(MAX_SCREENING_PAPERS_PER_JOB);
-    // What the job answered, by question key: a result whose answers haven't moved yet, waiting
-    // or from before #334, still holds them; a moved one reads the model's answers from its
-    // screening's history as of the move, whatever a person or a later run changed since.
-    const screeningId = job.screeningId;
-    const answersOf = async (result: (typeof results)[number]) => {
-      if (result.answers || !screeningId || result.answersVersion === undefined) return result.answers;
-      const version = result.answersVersion;
-      const row = await ctx.db
-        .query("screeningAnswerHistory")
-        .withIndex("by_screening_and_paper_and_version", (q) => q.eq("screeningId", screeningId).eq("paperId", result.openalexId).lte("version", version))
-        .order("desc")
-        .first();
-      if (!row) return undefined;
-      return Object.fromEntries(job.questions.map((q) => {
-        const entry = row.answers.find((value) => value.question === q.question);
-        return [q.key, entry?.model ? entry.model.answer : (entry?.answer ?? null)];
-      }));
-    };
-    const answers = await Promise.all(results.map(answersOf));
-
-    return {
-      job: {
-        _id: job._id,
-        status: job.status,
-        questions: job.questions,
-        scoringConfig: job.scoringConfig,
-        totalPapers: job.totalPapers,
-        qualifiedPapers: progress.qualifiedPapers,
-        createdAt: job.createdAt,
-        completedAt: job.completedAt,
-      },
-      results: results.map((r, i) => ({
-        openalexId: r.openalexId,
-        title: r.title,
-        authors: r.authors,
-        publicationYear: r.publicationYear,
-        doi: r.doi,
-        status: r.status,
-        answers: answers[i],
-        score: r.score,
-        stars: r.stars,
-        qualified: r.qualified,
-      })),
-    };
+    const job = user ? await ctx.db.get("screeningJobs", args.jobId) : null;
+    if (!user || !job || job.userId !== user._id) return { page: [], isDone: true, continueCursor: "" };
+    return await readScreeningResultsPage(ctx, job, args.paginationOpts);
   },
 });
 

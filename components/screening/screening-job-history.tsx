@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useConvex } from "convex/react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,11 +28,21 @@ import {
   MessageSquareText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  exportScreeningToCSV,
-  exportScreeningToJSON,
-  exportScreeningToXLSX,
-} from "@/lib/screening/export";
+import { PageStepper } from "@/components/shared/page-stepper";
+import { downloadExport } from "@/lib/export";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { exportScreeningToXLSX } from "@/lib/screening/export";
+import { cn } from "@/lib/utils";
+
+/** Jobs a page of the history lists. */
+const PAGE_SIZE = 10;
+/**
+ * The list's height with `rows` jobs: 74px a row, 6px between rows, 8px under the last, and
+ * a pixel over, since a job in progress is half a pixel taller. The list keeps a full page's
+ * height while it has pages, so the pager stays put on a short last page, and takes its first
+ * page's height from the job count before the jobs arrive.
+ */
+const listPx = (rows: number) => rows * 80 + 3;
 
 type ScreeningStatus =
   | "pending"
@@ -60,18 +69,17 @@ function statusDot(status: ScreeningStatus) {
 }
 
 interface ScreeningJobHistoryProps {
+  /** How many jobs the person has, read before the history opens. */
+  total: number;
   onClose?: () => void;
 }
 
-export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
+export function ScreeningJobHistory({ total, onClose }: ScreeningJobHistoryProps) {
   const t = useTranslations("screeningDialog");
   const format = useFormatter();
   const convex = useConvex();
   const [exportingJobId, setExportingJobId] = useState<string | null>(null);
-  const { data: jobs } = useProtectedQuery(
-    api.screening.queries.listUserScreeningJobs,
-    { limit: 10 }
-  );
+  const jobs = useCursorPage(api.screening.queries.listUserScreeningJobs, {}, PAGE_SIZE);
 
   async function handleExport(
     jobId: Id<"screeningJobs">,
@@ -79,22 +87,9 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
   ) {
     setExportingJobId(jobId);
     try {
-      const data = await convex.query(
-        api.screening.queries.getScreeningResultsForExport,
-        { jobId }
-      );
-      if (!data) return;
-      switch (fmt) {
-        case "csv":
-          exportScreeningToCSV(data);
-          break;
-        case "json":
-          exportScreeningToJSON(data);
-          break;
-        case "xlsx":
-          await exportScreeningToXLSX(data);
-          break;
-      }
+      // The server writes CSV and JSON a page of results at a time; a workbook is built here.
+      if (fmt === "xlsx") await exportScreeningToXLSX(convex, jobId);
+      else await downloadExport(convex, { kind: "screening", jobId }, fmt);
     } catch (err) {
       console.error("Export failed:", err);
     } finally {
@@ -102,7 +97,9 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
     }
   }
 
-  if (!jobs || jobs.length === 0) {
+  // Until the jobs arrive the count sizes the list, so the dialog opens at its final size.
+  const hasPages = jobs.isLoading ? total > PAGE_SIZE : jobs.hasPages;
+  if (jobs.isLoading ? total === 0 : jobs.items.length === 0 && !jobs.hasPages) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <div className="rounded-full bg-muted/50 p-3 mb-3">
@@ -116,8 +113,13 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
   }
 
   return (
-    <div className="space-y-1.5 pb-2">
-      {jobs.map((job) => {
+    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="min-h-0 flex-1 overflow-y-auto -mx-6 px-6">
+    <div
+      className={cn("space-y-1.5 pb-2", jobs.isStale && "pointer-events-none opacity-60")}
+      style={{ minHeight: listPx(hasPages ? PAGE_SIZE : jobs.isLoading ? total : jobs.items.length) }}
+    >
+      {jobs.items.map((job) => {
         const isActive = job.status === "processing";
         const percentage =
           job.totalPapers > 0
@@ -262,6 +264,19 @@ export function ScreeningJobHistory({ onClose }: ScreeningJobHistoryProps) {
           </div>
         );
       })}
+    </div>
+    </div>
+      {hasPages && (
+        <PageStepper
+          className="shrink-0 pt-3"
+          page={jobs.page}
+          pageCount={Math.ceil(total / PAGE_SIZE)}
+          canPrevious={jobs.canPrevious}
+          canNext={jobs.canNext}
+          onPrevious={jobs.previous}
+          onNext={jobs.next}
+        />
+      )}
     </div>
   );
 }

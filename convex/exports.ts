@@ -12,6 +12,10 @@ import { expandShortcuts, shortcutNames } from "../lib/query-shortcuts";
 import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
 import { readLibraryPage } from "./library/queries";
 import { shortcutExpansions } from "./research/records";
+import { screeningExportFiles, screeningItems } from "../lib/screening/export";
+import { readScreeningProgressCounts } from "./screening/aggregates";
+import { readScreeningResultsPage } from "./screening/queries";
+import { screeningJobStatusValidator, screeningQuestionsValidator, screeningScoringConfigValidator } from "./screening/validators";
 
 /** Rows one export read takes; a library search reads its every match at once. */
 const EXPORT_PAGE_SIZE = 100;
@@ -25,7 +29,7 @@ const PART_BYTES = 15 * 1024 * 1024;
 /** How long serving one part may take: an HTTP action runs at most 10 minutes. */
 const PART_SERVE_MS = 10 * 60_000;
 
-/** Registers an export of a library view, the search history or the query shortcuts; `/export` downloads it a part at a time. */
+/** Registers an export of a library view, the search history, the query shortcuts or a screening job's results; `/export` downloads it a part at a time. */
 export const start = mutation({
   args: { digest: v.string(), format: exportFormatValidator, source: exportSourceValidator },
   returns: v.null(),
@@ -128,6 +132,11 @@ export const page = internalQuery({
       const numItems = source.view.searchText === undefined ? EXPORT_PAGE_SIZE : LIBRARY_SEARCH_RESULTS_MAX;
       return write(await readLibraryPage(ctx, userId, source.view, { cursor, numItems }), exportFiles.library[format].item);
     }
+    if (source.kind === "screening") {
+      const job = await ctx.db.get("screeningJobs", source.jobId);
+      if (!job || job.userId !== userId) throw createError("NOT_FOUND", "Screening job not found");
+      return write(await readScreeningResultsPage(ctx, job, { cursor, numItems: EXPORT_PAGE_SIZE }), screeningItems(job.questions)[format]);
+    }
     if (source.kind === "shortcuts") {
       const read = await ctx.db.query("queryShortcuts").withIndex("by_user", (q) => q.eq("userId", userId)).paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
       return write({ ...read, page: read.page.map((row) => row.data) }, exportFiles.shortcuts[format].item);
@@ -143,6 +152,26 @@ export const page = internalQuery({
       field: data.field,
     }));
     return write({ ...read, page: searches }, exportFiles.history[format].item);
+  },
+});
+
+/** What a screening job's export says about the job, or null when it isn't the person's. */
+export const screeningJob = internalQuery({
+  args: { userId: v.id("users"), jobId: v.id("screeningJobs") },
+  returns: v.union(v.null(), v.object({
+    status: screeningJobStatusValidator,
+    questions: screeningQuestionsValidator,
+    scoringConfig: screeningScoringConfigValidator,
+    totalPapers: v.number(),
+    qualifiedPapers: v.number(),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })),
+  handler: async (ctx, { userId, jobId }) => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    if (!job || job.userId !== userId) return null;
+    const { status, questions, scoringConfig, totalPapers, createdAt, completedAt } = job;
+    return { status, questions, scoringConfig, totalPapers, qualifiedPapers: (await readScreeningProgressCounts(ctx, job)).qualifiedCount, createdAt, completedAt };
   },
 });
 
@@ -162,8 +191,14 @@ export const download = httpAction(async (ctx, request) => {
   if (!claimed) return new Response("This export link has expired or was used. Start the export again.", { status: 410 });
 
   const { id, userId, source, format } = claimed;
-  const file = exportFiles[source.kind][format];
   const at = new Date();
+  const job = source.kind === "screening" ? await ctx.runQuery(internal.exports.screeningJob, { userId, jobId: source.jobId }) : null;
+  if (source.kind === "screening" && !job) {
+    await ctx.runMutation(internal.exports.failPart, { id });
+    return new Response("This screening job wasn't found.", { status: 404 });
+  }
+  const files = job ? screeningExportFiles(job) : exportFiles[source.kind as Exclude<typeof source.kind, "screening">];
+  const file = files[format];
   const encoder = new TextEncoder();
   let cursor = claimed.cursor;
   let started = false;
@@ -200,7 +235,7 @@ export const download = httpAction(async (ctx, request) => {
   return new Response(body, {
     headers: {
       "Content-Type": file.contentType,
-      "Content-Disposition": `attachment; filename="${exportFilename(source.kind, format, at, part)}"`,
+      "Content-Disposition": `attachment; filename="${exportFilename(files.name(at), format, part)}"`,
       "Cache-Control": "no-store",
     },
   });

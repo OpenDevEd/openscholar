@@ -125,3 +125,41 @@ describe("shortcut export", () => {
     expect(csv.text.trimEnd().split("\n")).toEqual(["\ufeffcreatedAt,expansion,name", '2023-11-14T22:13:20.000Z,"randomized, ""controlled"" trial by owner",rct']);
   });
 });
+
+describe("screening export", () => {
+  it("writes the owner's job a page of results at a time, and nothing of anyone else's", async () => {
+    const t = convexTest(schema);
+    const jobId = await t.run(async (ctx) => {
+      const user = (clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", libraryItemCount: 0, createdAt: 1, updatedAt: 1 });
+      const userId = await user("owner");
+      await user("someone_else");
+      const jobId = await ctx.db.insert("screeningJobs", {
+        userId, status: "completed", totalPapers: 120, questions: [{ key: "q1", question: "Randomized, or quasi-experimental?" }],
+        scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }] },
+        createdAt: Date.UTC(2026, 8, 1), updatedAt: 1,
+      });
+      // More than one read holds, so the file runs across pages.
+      for (let i = 0; i < 120; i++) {
+        await ctx.db.insert("screeningResults", { jobId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, status: "completed", answers: { q1: i % 2 === 0 }, score: i % 2 === 0 ? 1 : 0, stars: 5, qualified: i % 2 === 0, createdAt: 1 });
+      }
+      return jobId;
+    });
+    const as = t.withIdentity({ subject: "owner" });
+
+    const csv = await exportParts(t, as, { kind: "screening", jobId }, "csv");
+    expect(csv.response.headers.get("Content-Disposition")).toBe('attachment; filename="screening-export-2026-09-01-completed.csv"');
+    const lines = csv.text.split("\n");
+    expect(lines).toHaveLength(121);
+    expect(lines[0]).toBe('Title,Authors,Year,DOI,OpenAlex ID,"Randomized, or quasi-experimental?",Score,Stars,Qualified,Status');
+    expect(lines[1]).toBe("Paper 0,,,,https://openalex.org/W0,Yes,1,5,Yes,completed");
+    expect(lines[120]).toBe("Paper 119,,,,https://openalex.org/W119,No,0,5,No,completed");
+
+    const json = JSON.parse((await exportParts(t, as, { kind: "screening", jobId })).text);
+    expect(json.job).toMatchObject({ status: "completed", totalPapers: 120, createdAt: "2026-09-01T00:00:00.000Z" });
+    expect(json.results).toHaveLength(120);
+    expect(json.results[119]).toMatchObject({ title: "Paper 119", answers: { q1: false }, qualified: false });
+
+    const other = await exportParts(t, t.withIdentity({ subject: "someone_else" }), { kind: "screening", jobId });
+    expect(other.response.status).toBe(404);
+  });
+});
