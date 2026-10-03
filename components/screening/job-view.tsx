@@ -229,7 +229,8 @@ export function JobView({
       </Zone>
 
       <Zone label={t("questions")} aside={<span className="text-xs text-muted-foreground">{t("includedAt", { minimum, max })}</span>}>
-        <div className={LIST}>
+        {/* The list is the container its rows measure: a row's bar and counts sit beside the question only where the list is wide enough to leave the question room. */}
+        <div className={cn(LIST, "@container")}>
           {questions.map((q, i) => {
             const kept = job.tallies?.find((tally) => tally.key === q.key);
             const tally: Record<Answer, number> = { yes: kept?.yes ?? 0, no: kept?.no ?? 0, unclear: kept?.unclear ?? 0 };
@@ -238,18 +239,19 @@ export function JobView({
               <div key={q.key} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
                 <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-medium tabular-nums">{i + 1}</span>
                 <p className="min-w-0 flex-1 text-sm">{q.text}</p>
-                <div className="flex w-full items-center gap-3 sm:w-72">
-                  <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10">
+                <div className="flex w-full items-center gap-4 @2xl:w-auto">
+                  <div className="flex h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-foreground/10 @2xl:w-40 @2xl:flex-none">
                     {(["yes", "unclear", "no"] as const).map((a) => (
                       <span key={a} className={cn("h-full transition-[width] duration-500 motion-reduce:transition-none", a === "yes" ? "bg-emerald-500" : a === "unclear" ? "bg-amber-400" : "bg-muted-foreground/35")} style={{ width: `${answered ? (tally[a] / answered) * 100 : 0}%` }} />
                     ))}
                   </div>
-                  <span className="flex w-28 shrink-0 items-center justify-end gap-2.5 text-xs tabular-nums">
+                  {/* Three columns, each wide enough for the job's every paper, so no count reaches the bar and the counts line up from question to question. */}
+                  <span className="flex shrink-0 items-center gap-3 text-xs tabular-nums">
                     {(["yes", "unclear", "no"] as const).map((a) => {
                       const { icon: Icon } = ANSWER[a];
                       return (
-                        <span key={a} className="inline-flex items-center gap-0.5" aria-label={t("tally", { count: tally[a], answer: t(`answer.${a}`) })}>
-                          <Icon aria-hidden className={cn("size-3", a === "yes" ? "text-emerald-500" : a === "unclear" ? "text-amber-500" : "text-muted-foreground")} />
+                        <span key={a} className="inline-flex items-center justify-end gap-1" style={{ width: `calc(${String(total).length}ch + 1rem)` }} aria-label={t("tally", { count: tally[a], answer: t(`answer.${a}`) })}>
+                          <Icon aria-hidden className={cn("size-3 shrink-0", a === "yes" ? "text-emerald-500" : a === "unclear" ? "text-amber-500" : "text-muted-foreground")} />
                           {tally[a]}
                         </span>
                       );
