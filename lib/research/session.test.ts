@@ -128,4 +128,38 @@ describe("research save recovery", () => {
     unwatch();
     stop();
   });
+
+  it("says when a search's read failed, saves other changes meanwhile, and reads it again on Retry", async () => {
+    let failing = true;
+    const updates = new Set<() => void>();
+    const client = {
+      watchQuery(query: Parameters<typeof getFunctionName>[0]) {
+        return {
+          localQueryResult: () => {
+            if (!getFunctionName(query).endsWith(":getSearch")) return { page: [], isDone: true, continueCursor: "" };
+            if (failing) throw new Error("Server Error");
+            return null;
+          },
+          onUpdate: (update: () => void) => { updates.add(update); return () => { updates.delete(update); }; },
+        };
+      },
+      mutation: vi.fn(async () => null),
+    } as unknown as ConvexReactClient;
+    const session = new ResearchSession(client, "alice");
+    const stop = session.subscribe(() => {});
+    await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
+
+    const told = vi.fn();
+    const unwatch = session.watchSearch("gone", told);
+    expect(session.watchedStatus("gone")).toBe("failed");
+    session.stores.ratings.getState().setRating("W1", 4);
+    await vi.waitFor(() => expect(session.getSnapshot().pending).toBe(0));
+
+    failing = false;
+    session.retry();
+    expect(told).toHaveBeenCalled();
+    expect(session.watchedStatus("gone")).toBe("missing");
+    unwatch();
+    stop();
+  });
 });

@@ -3,7 +3,8 @@
 import React, { Suspense, useContext } from "react";
 import { useParams } from "next/navigation";
 import { SearchProvider, SearchInitializer } from "@/lib/search";
-import { ResearchLoading, useWatchedSearch } from "@/lib/research/provider";
+import { ResearchLoading, useResearchStatus, useWatchedSearch } from "@/lib/research/provider";
+import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { ResearchContext } from "@/lib/research/binding";
 import { useSearchHistoryStore } from "@/lib/store";
 
@@ -11,9 +12,11 @@ function InitializeResults({ children }: { children: React.ReactNode }) {
   const account = useContext(ResearchContext);
   const { searchId } = useParams<{ searchId?: string }>();
   const watched = useWatchedSearch(account ? searchId : undefined);
+  const { retry } = useResearchStatus();
   const saved = useSearchHistoryStore(state => searchId !== undefined && state.getSearchResult(searchId) !== undefined);
   // An existing account record owns its state. A stale URL must not overwrite it, so the
   // page waits to learn whether the account has this search.
+  if (account && watched === "failed") return <AuthStatePanel variant="sync_error_retry" onRetry={retry} />;
   if (account && watched === "loading") return <ResultsLoading />;
   return account && saved ? children : <SearchInitializer>{children}</SearchInitializer>;
 }

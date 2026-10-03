@@ -63,7 +63,8 @@ export default defineSchema({
     .index("by_user_and_count", ["userId", "data.count"])
     .index("by_user_and_localId", ["userId", "localId"]),
   // How many saved searches a person has, kept by the trigger on `searches`, for page totals.
-  searchCounts: defineTable({ userId: v.id("users"), count: v.number() }).index("by_user", ["userId"]),
+  // While their first count is being taken, `countedTo` is the creation time it has reached.
+  searchCounts: defineTable({ userId: v.id("users"), count: v.number(), countedTo: v.optional(v.number()) }).index("by_user", ["userId"]),
   searchRevisions: defineTable({
     userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
     author: v.union(v.literal("user"), v.literal("assistant")),

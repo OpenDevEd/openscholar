@@ -13,9 +13,9 @@ type PageQuery<T> = FunctionReference<"query", "public", { accountId: string; pa
 type Shortcut = { shorthand: string; expansion: string; createdAt: number };
 type Rating = { paperId: string; rating: number };
 type Data = { shortcuts: Shortcut[]; ratings: Rating[] };
-/** A search a page reads by ID: how many readers want it, and what Convex has of it (undefined while loading). */
-type Watched = { readers: Set<() => void>; stop: () => void; value: SavedSearch | null | undefined };
-export type WatchedStatus = "loading" | "found" | "missing";
+/** A search a page reads by ID: who wants it, what Convex has of it (undefined while loading), and whether its read failed. */
+type Watched = { readers: Set<() => void>; stop: () => void; value: SavedSearch | null | undefined; failed: boolean };
+export type WatchedStatus = "loading" | "found" | "missing" | "failed";
 
 /** Each live query is bounded. A changed cursor replaces only the following pages. */
 export function watchPages<T>(client: ConvexReactClient, query: PageQuery<T>, accountId: string, publish: (rows: T[]) => void, fail: (error: unknown) => void, loading: () => void = () => {}) {
@@ -186,11 +186,18 @@ export class ResearchSession {
   private beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
   private releaseSettled() { for (const resolve of this.settledListeners) resolve(); this.settledListeners.clear(); }
   /** Whether a read is still on its way: a following page, or a search a page just asked for. */
-  private reading() { return this.unsettled.size > 0 || [...this.watched.values()].some(({ value }) => value === undefined); }
+  private reading() { return this.unsettled.size > 0 || [...this.watched.values()].some(({ value, failed }) => value === undefined && !failed); }
   private settle() { if (!this.reading()) this.releaseSettled(); }
   retry = () => {
     this.snapshot = { ...this.snapshot, error: null };
     this.notify();
+    for (const [id, entry] of this.watched) {
+      if (!entry.failed) continue;
+      entry.stop();
+      entry.failed = false;
+      for (const notify of entry.readers) notify();
+      this.read(id, entry);
+    }
     if (this.enabled) { void this.import(this.epoch); void this.pump(); }
   };
   private start() {
@@ -207,26 +214,9 @@ export class ResearchSession {
   watchSearch = (id: string, reader: () => void, known?: SavedSearch) => {
     let watched = this.watched.get(id);
     if (!watched) {
-      const subscription = this.client.watchQuery(api.research.records.getSearch, { accountId: this.accountId, id });
-      const entry: Watched = { readers: new Set(), stop: () => {}, value: known };
-      const update = () => {
-        try {
-          const value = subscription.localQueryResult();
-          if (value === undefined || value === entry.value) return;
-          entry.value = value;
-          this.render();
-          for (const notify of entry.readers) notify();
-        } catch (error) {
-          // A read that failed has nothing to wait for.
-          entry.value ??= null;
-          this.fail(error);
-        }
-        this.settle();
-      };
-      entry.stop = subscription.onUpdate(update);
-      this.watched.set(id, (watched = entry));
-      update();
-      if (entry.value === known && known) this.render();
+      this.watched.set(id, (watched = { readers: new Set(), stop: () => {}, value: known, failed: false }));
+      this.read(id, watched);
+      if (known && watched.value === known) this.render();
     }
     const entry = watched;
     entry.readers.add(reader);
@@ -239,13 +229,34 @@ export class ResearchSession {
       this.settle();
     };
   };
+  /** Subscribes `entry` to search `id`. A read that fails stops being waited for, and Retry reads it again. */
+  private read(id: string, entry: Watched) {
+    const subscription = this.client.watchQuery(api.research.records.getSearch, { accountId: this.accountId, id });
+    const update = () => {
+      try {
+        const value = subscription.localQueryResult();
+        if (value === undefined || (value === entry.value && !entry.failed)) return;
+        entry.value = value;
+        entry.failed = false;
+        this.render();
+      } catch (error) {
+        entry.failed = true;
+        this.fail(error);
+      }
+      for (const notify of entry.readers) notify();
+      this.settle();
+    };
+    entry.stop = subscription.onUpdate(update);
+    update();
+  }
   /** Whether the account has search `id`, reading it once when no page is. */
   hasSearch = async (id: string) =>
     this.watchedStatus(id) === "found" || (await this.client.query(api.research.records.getSearch, { accountId: this.accountId, id })) !== null;
   watchedStatus = (id: string): WatchedStatus => {
     if (this.pending.some(({ command }) => command.kind === "createSearch" && command.search.id === id)) return "found";
-    const value = this.watched.get(id)?.value;
-    return value === undefined ? "loading" : value === null ? "missing" : "found";
+    const watched = this.watched.get(id);
+    if (watched?.value === undefined) return watched?.failed ? "failed" : "loading";
+    return watched.value === null ? "missing" : "found";
   };
   private connect(epoch: number) {
     const receive = <K extends keyof Data>(key: K) => (value: Data[K]) => {

@@ -185,13 +185,23 @@ describe("at the largest sizes the product allows", () => {
     expect(history.page[0].text).toBe(query(1200));
   }, 300_000);
 
-  it("a history of 100 searches of the longest OQL query filters, exports and clears (#420)", async () => {
+  it("a history of 100 searches, each query 180,000 characters, lists, filters, exports and clears (#420)", async () => {
     const t = convexTest({ schema, transactionLimits: true });
     const clerkId = "max_size_user";
     const { as } = await seedAccount(t, clerkId);
-    const search = (i: number) => ({ id: `search-${i}`, query: `${i === 99 ? "needle" : "hay"} ${text(MAX_SIZE.oqlQueryChars - 7, i)}`, field: "oql" as const, count: i, queryHistoryCount: 0, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: new Date(Date.UTC(2026, 8, 1, 0, 0, i)).toISOString(), updatedAt: "2026-09-01T00:00:00.000Z" });
+    const search = (i: number) => ({ id: `search-${i}`, query: `${i === 99 ? "needle" : "hay"} ${text(180_000 - 7, i)}`, field: "oql" as const, count: i, queryHistoryCount: 0, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: new Date(Date.UTC(2026, 8, 1, 0, 0, i)).toISOString(), updatedAt: "2026-09-01T00:00:00.000Z" });
     for (let i = 0; i < 100; i++) await as.mutation(api.research.records.change, { accountId: clerkId, requestId: `create-${i}`, command: { kind: "createSearch", search: search(i) } });
+    await t.finishAllScheduledFunctions(() => {});
     expect(await as.query(api.research.records.countSearches, { accountId: clerkId })).toBe(100);
+    // More than one transaction can read: each read stops at its byte budget, and the next carries on.
+    const listed: string[] = [];
+    for (let cursor: string | null = null; ;) {
+      const page: { page: Array<{ id: string }>; isDone: boolean; continueCursor: string } = await as.query(api.research.records.listedSearches, { accountId: clerkId, sort: "recent", paginationOpts: { cursor, numItems: 50 } });
+      listed.push(...page.page.map((row) => row.id));
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+    expect(listed).toHaveLength(100);
 
     // The one match is the last search the oldest-first read reaches.
     const found: string[] = [];

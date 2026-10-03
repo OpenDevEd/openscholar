@@ -14,7 +14,7 @@ import { stream } from "convex-helpers/server/stream";
 import { internal } from "../_generated/api";
 import { internalMutation } from "../lib/functions";
 import schema from "../schema";
-import { searchCountRow } from "./searchCounts";
+import { countSearchPage, searchCountRow } from "./searchCounts";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
@@ -29,11 +29,11 @@ async function account(ctx: Parameters<typeof requireAuth>[0], expected: string)
 /** Most searches one listed page holds. */
 const LISTED_PAGE_MAX = 50;
 /**
- * Searches, and bytes, one read of a text-filtered page looks through. A page that finds
- * too few matches comes back short with a cursor, and the list reads on from it.
+ * Searches a text-filtered read looks through, and bytes any listed read takes, at most. A
+ * page that stops there comes back short with a cursor, and the list reads on from it.
  */
 const FILTER_ROWS = 1_000;
-const FILTER_BYTES = 8 * 1024 * 1024;
+const LISTED_BYTES = 8 * 1024 * 1024;
 
 export const listedSearchesAction = defineUserQuery({
   path: "research/records:listedSearches",
@@ -52,8 +52,8 @@ export const listedSearchesAction = defineUserQuery({
             const search = currentSearch(row.data);
             return search.query.toLowerCase().includes(needle) || search.questionText.toLowerCase().includes(needle);
           })
-          .paginate({ ...opts, maximumRowsRead: FILTER_ROWS, maximumBytesRead: FILTER_BYTES })
-      : ctx.db.query("searches").withIndex(index, q => q.eq("userId", userId)).order(order).paginate(opts));
+          .paginate({ ...opts, maximumRowsRead: FILTER_ROWS, maximumBytesRead: LISTED_BYTES })
+      : ctx.db.query("searches").withIndex(index, q => q.eq("userId", userId)).order(order).paginate({ ...opts, maximumBytesRead: LISTED_BYTES }));
     return { ...page, page: page.page.map(row => { const { screeningResponses: _answers, ...listed } = currentSearch(row.data); return listed; }) };
   },
 });
@@ -65,11 +65,21 @@ export const countSearchesAction = defineUserQuery({
   description: "Says how many saved searches the person has.",
   args: {},
   returns: v.number(),
-  // Until migrations/pagedSearches has run everywhere, someone may have no count yet.
+  // Someone who has saved nothing has no count; one from before counts were kept gets theirs from migrations/pagedSearches.
   run: async (ctx, userId) => (await searchCountRow(ctx, userId))?.count ?? 0,
 });
 export const countSearches = accountQuery(countSearchesAction);
 export const countSearchesForAssistant = assistantQuery(countSearchesAction);
+
+/** One step of a person's first search count (./searchCounts.ts). */
+export const countSearchesPage = internalMutation({
+  args: { userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    await countSearchPage(ctx, userId);
+    return null;
+  },
+});
 
 export const shortcutsAction = defineUserQuery({
   path: "research/records:shortcuts",
@@ -475,32 +485,38 @@ export const changeAction = defineUserMutation({
 export const change = accountMutation(changeAction);
 export const changeForAssistant = assistantMutation(changeAction);
 
-/** Searches one clearing transaction deletes, each leaving a revision. */
+/**
+ * Searches one clearing transaction deletes, each leaving a revision, and the bytes of them
+ * it reads: deleting a search reads it a few times over and writes it once more.
+ */
 const CLEAR_BATCH = 25;
+const CLEAR_BYTES = 2 * 1024 * 1024;
 
 /**
- * Deletes a batch of the person's searches, and schedules the next until none are left. A
- * search from before answers and history had their own rows moves them as it goes, which
- * can take a transaction by itself, so it's deleted alone.
+ * Deletes a batch of the searches the person had at `before`, when they asked, and schedules
+ * the next until none are left; one saved since stays. A search from before answers and
+ * history had their own rows moves them as it goes, which can take a transaction by itself,
+ * so it's deleted alone.
  */
-async function clearBatch(ctx: MutationCtx, userId: Id<"users">, author: Author) {
-  const batch = await ctx.db.query("searches").withIndex("by_user", q => q.eq("userId", userId)).take(CLEAR_BATCH);
-  const old = batch.findIndex(search => search.responseChunks !== undefined || search.data.queryHistory || search.data.questionHistory);
-  const deleted = old === -1 ? batch : batch.slice(0, Math.max(1, old));
+async function clearBatch(ctx: MutationCtx, userId: Id<"users">, author: Author, before: number) {
+  const batch = await ctx.db.query("searches").withIndex("by_user", q => q.eq("userId", userId).lte("_creationTime", before))
+    .paginate({ cursor: null, numItems: CLEAR_BATCH, maximumBytesRead: CLEAR_BYTES });
+  const old = batch.page.findIndex(search => search.responseChunks !== undefined || search.data.queryHistory || search.data.questionHistory);
+  const deleted = old === -1 ? batch.page : batch.page.slice(0, Math.max(1, old));
   for (const search of deleted) await applyCommand(ctx, userId, { kind: "deleteSearch", id: search.localId }, author);
-  if (batch.length === CLEAR_BATCH || deleted.length < batch.length) await ctx.scheduler.runAfter(0, internal.research.records.clearSearchesBatch, { userId, author });
+  if (!batch.isDone || deleted.length < batch.page.length) await ctx.scheduler.runAfter(0, internal.research.records.clearSearchesBatch, { userId, author, before });
 }
 
 export const clearSearchesAction = defineUserMutation({
   path: "research/records:clearSearches",
-  description: "Deletes every one of the person's saved searches, a batch at a time; each keeps its revisions.",
+  description: "Deletes every saved search the person has now, a batch at a time; each keeps its revisions.",
   args: {},
   returns: v.null(),
   spendsCredits: false,
   outsideEffect: false,
   undoable: false,
   run: async (ctx, userId, _args, author: Author) => {
-    await clearBatch(ctx, userId, author);
+    await clearBatch(ctx, userId, author, Date.now());
     return null;
   },
 });
@@ -508,10 +524,10 @@ export const clearSearches = accountMutation(clearSearchesAction);
 export const clearSearchesForAssistant = assistantMutation(clearSearchesAction);
 
 export const clearSearchesBatch = internalMutation({
-  args: { userId: v.id("users"), author: v.union(v.literal("user"), v.literal("assistant")) },
+  args: { userId: v.id("users"), author: v.union(v.literal("user"), v.literal("assistant")), before: v.number() },
   returns: v.null(),
-  handler: async (ctx, { userId, author }) => {
-    await clearBatch(ctx, userId, author);
+  handler: async (ctx, { userId, author, before }) => {
+    await clearBatch(ctx, userId, author, before);
     return null;
   },
 });

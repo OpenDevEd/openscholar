@@ -15,6 +15,8 @@ import { shortcutExpansions } from "./research/records";
 
 /** Rows one export read takes; a library search reads its every match at once. */
 const EXPORT_PAGE_SIZE = 100;
+/** Bytes of searches one history read takes at most; a read that stops there carries on from its cursor. */
+const HISTORY_PAGE_BYTES = 8 * 1024 * 1024;
 /**
  * Where a part file ends: Convex refuses an HTTP response over 20 MiB, and one more page of
  * rows can follow this mark, so it sits well below.
@@ -126,7 +128,7 @@ export const page = internalQuery({
       const numItems = source.view.searchText === undefined ? EXPORT_PAGE_SIZE : LIBRARY_SEARCH_RESULTS_MAX;
       return write(await readLibraryPage(ctx, userId, source.view, { cursor, numItems }), exportFiles.library[format].item);
     }
-    const read = await ctx.db.query("searches").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)).order("desc").paginate({ cursor, numItems: EXPORT_PAGE_SIZE });
+    const read = await ctx.db.query("searches").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)).order("desc").paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
     // Each query with the person's shortcuts expanded, as the history page shows it.
     const expansions = await shortcutExpansions(ctx, userId, shortcutNames(read.page.map((row) => row.data.query).join("\n")));
     const searches = read.page.map(({ data }) => ({

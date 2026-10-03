@@ -1,9 +1,9 @@
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
-import { api } from "../_generated/api";
+import { describe, expect, it, vi } from "vitest";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { applyCommand, moveSearchAnswers, verifyMovedAnswers } from "./records";
-import { restoreSearch, serializeSearch, type SavedSearch } from "../../lib/research/records";
+import { restoreSearch, serializeSearch, type ResearchCommand, type SavedSearch } from "../../lib/research/records";
 import { convexToJson } from "convex/values";
 import { asSchema } from "ai";
 import type { ActionCtx } from "../_generated/server";
@@ -289,6 +289,7 @@ describe("account research records", () => {
     for (let start = 0; start < 60; start += 20) await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: Array.from({ length: 20 }, (_, i) => ({ search: { ...record, id: `search-${start + i}` } })), shortcuts: [], ratings: [] });
     await bob.mutation(api.research.records.importBatch, { accountId: "bob", searches: [{ search: { ...record, id: "bobs" } }], shortcuts: [], ratings: [] });
     await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "delete-one", command: { kind: "deleteSearch", id: "search-0" } });
+    await t.finishAllScheduledFunctions(() => {});
     expect(await count(alice, "alice")).toBe(59);
 
     await alice.mutation(api.research.records.clearSearches, { accountId: "alice" });
@@ -298,6 +299,52 @@ describe("account research records", () => {
     // Each cleared search leaves a revision that says it was deleted, and no one else's go.
     expect(await t.run(async ctx => (await ctx.db.query("searchRevisions").collect()).filter(row => row.deleted).length)).toBe(60);
     expect(await count(bob, "bob")).toBe(1);
+  });
+
+  it("leaves a search saved while the history is still being cleared", async () => {
+    vi.useFakeTimers();
+    try {
+      const { alice, t } = await setup();
+      for (const start of [0, 13]) await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: Array.from({ length: 13 }, (_, i) => ({ search: { ...record, id: `old-${start + i}` } })), shortcuts: [], ratings: [] });
+      vi.setSystemTime(Date.now() + 1_000);
+      // The first batch is gone; the second waits for its turn.
+      await alice.mutation(api.research.records.clearSearches, { accountId: "alice" });
+      vi.setSystemTime(Date.now() + 1_000);
+      await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "new", command: { kind: "createSearch", search: { ...record, id: "new" } } });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts })).page.map(row => row.id)).toEqual(["new"]);
+      expect(await alice.query(api.research.records.countSearches, { accountId: "alice" })).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("takes a first count a page at a time, right through searches saved and deleted meanwhile", async () => {
+    const { alice, ids, t } = await setup();
+    // 1,200 searches from before counts were kept, so none is counted yet.
+    const stored = (i: number) => ({ userId: ids.alice, localId: `old-${i}`, revision: 1, data: { ...record, id: `old-${i}`, screeningResponses: [] } });
+    for (let start = 0; start < 1_200; start += 300) await t.run(async ctx => { for (let i = start; i < start + 300; i++) await ctx.db.insert("searches", stored(i)); });
+    const change = (requestId: string, command: ResearchCommand) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command });
+    const row = () => t.run(ctx => ctx.db.query("searchCounts").withIndex("by_user", q => q.eq("userId", ids.alice)).unique());
+
+    vi.useFakeTimers();
+    try {
+      // The first save starts the count; one step reaches the first 500.
+      await change("first", { kind: "createSearch", search: { ...record, id: "first" } });
+      await t.mutation(internal.research.records.countSearchesPage, { userId: ids.alice });
+      expect(await row()).toMatchObject({ count: 500 });
+      await change("counted", { kind: "deleteSearch", id: "old-0" });
+      await change("not-reached", { kind: "deleteSearch", id: "old-1100" });
+      await change("second", { kind: "createSearch", search: { ...record, id: "second" } });
+      expect(await row()).toMatchObject({ count: 499 });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(await row()).toEqual(expect.objectContaining({ count: 1_200 }));
+    expect((await row())?.countedTo).toBeUndefined();
+    await change("after", { kind: "deleteSearch", id: "second" });
+    expect(await alice.query(api.research.records.countSearches, { accountId: "alice" })).toBe(1_199);
   });
 
   it("moves answers out of chunks with every revision's answers intact, once", async () => {
