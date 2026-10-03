@@ -112,9 +112,10 @@ export function SetupView({
   const catalog = useQuery(api.models.queries.listCatalogOptions, {});
   const model = catalog?.find((row) => row.modelId === modelId);
 
-  /** Picks a source; a search brings its own screening questions. */
+  /** Picks a source; a search brings its own screening questions, and each source starts on its own first papers. */
   const choose = (next: Source) => {
     setSourceId(next.id);
+    setRange([1, Math.min(300, next.count)]);
     if (next.kind === "search") setQuestions(next.questions);
   };
   const pick = (k: Source["kind"]) => {
@@ -173,7 +174,8 @@ export function SetupView({
                   <PickMark on={on} />
                 </button>
                 <AnimatePresence initial={false}>
-                {on && s.kind === "search" ? (
+                {/* Every source is picked from the same way: a range of its papers, or all of them; a search also has the page being read. */}
+                {on ? (
                   <motion.div
                     key="scope"
                     initial={{ height: 0, opacity: 0 }}
@@ -188,9 +190,9 @@ export function SetupView({
                       value={scope}
                       onChange={setScope}
                       options={[
-                        { id: "range", label: "A range" },
-                        { id: "page", label: "This page" },
-                        { id: "all", label: "All results" },
+                        { id: "range" as const, label: "A range" },
+                        ...(s.kind === "search" ? [{ id: "page" as const, label: "This page" }] : []),
+                        { id: "all" as const, label: s.kind === "search" ? "All results" : "All papers" },
                       ]}
                     />
                     {scope === "range" ? (
@@ -233,11 +235,16 @@ export function SetupView({
                           )}
                         </div>
                       </div>
-                    ) : scope === "all" ? (
+                    ) : scope === "all" && jobs > 1 ? (
                       <div className="flex flex-wrap items-center gap-1.5">
                         <Chip icon={Zap} className="text-foreground"><span><span className="font-semibold">{jobs.toLocaleString()}</span> jobs, one after another</span></Chip>
                         <Chip>Up to {JOB_LIMIT.toLocaleString()} papers each</Chip>
                         <Chip icon={Check}>One approval</Chip>
+                      </div>
+                    ) : scope === "all" ? (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Chip className="text-foreground"><span><span className="font-semibold">{papers.toLocaleString()}</span> papers</span></Chip>
+                        <Chip>One job</Chip>
                       </div>
                     ) : (
                       <div className="flex flex-wrap items-center gap-1.5">
