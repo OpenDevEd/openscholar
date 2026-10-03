@@ -416,7 +416,7 @@ describe("at the largest sizes the product allows", () => {
     });
     const answers = questions.map(({ question }) => ({ question, answer: true, setBy: "model" as const, updatedAt: 1, model: { answer: true, confidence: 0.9, at: 1 } }));
     const ids = Array.from({ length: 120 }, (_, i) => `https://openalex.org/W${i}`);
-    await insertMany(t, "screeningResults", ids.map((openalexId, i) => ({ jobId, openalexId, title: i === 119 ? `needle ${text(150, i)}` : text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), status: "completed", score: 50, stars: 5, qualified: true, outcome: "included", answersVersion: 1, createdAt: 1 })), 60);
+    await insertMany(t, "screeningResults", ids.map((openalexId, i) => ({ jobId, openalexId, title: i === 119 ? `needle ${text(150, i)}` : text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), status: "completed", score: 50, stars: 5, qualified: true, outcome: "included", counted: { qualified: true, outcome: "included", answers: Object.fromEntries(questions.map(({ key }) => [key, true])) }, answersVersion: 1, createdAt: 1 })), 60);
     await insertMany(t, "screeningAnswers", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1 })), 60);
     await insertMany(t, "screeningAnswerHistory", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1, at: 1 })), 60);
 

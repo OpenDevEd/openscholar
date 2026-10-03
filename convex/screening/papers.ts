@@ -5,46 +5,20 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import { stream } from "convex-helpers/server/stream";
-import type { Doc } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
-import { answerPaper, paperAnswers, restoreModelAnswer } from "../research/answers";
+import { answerPaper, restoreModelAnswer } from "../research/answers";
 import schema from "../schema";
-import { progressRow, saveQualified } from "./bookkeeping";
+import { account, answersNow, byKey, withDeltas } from "./accounting";
+import { progressOf, saveQualified } from "./bookkeeping";
 import { moveResultAnswers } from "./drain";
-import { outcomeOf, scorePaper, tallied } from "./scoring";
 import { screeningJobPaperValidator, screeningOutcomeValidator } from "./validators";
 
 /** Papers one page holds at most; each also reads its answers. */
 const PAGE_MAX = 50;
 /** Bytes of results one page reads: a result holds its paper's abstract. */
 const PAGE_BYTES = 4 * 1024 * 1024;
-
-type Answer = { key: string; answer: boolean | null; changed: boolean; confidence?: number };
-
-/**
- * A paper's answer to each of the job's questions as it stands now: still on its result
- * while it waits to move to the job's screening, in the screening's rows after.
- */
-async function answersNow(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">): Promise<Answer[]> {
-  const held = result.answers;
-  if (held) {
-    return job.questions.map(({ key }) => ({ key, answer: held[key] ?? null, changed: false, ...(result.confidences?.[key] === undefined ? {} : { confidence: result.confidences[key] }) }));
-  }
-  const screening = job.screeningId ? await ctx.db.get("screenings", job.screeningId) : null;
-  const answers = screening ? await paperAnswers(ctx, screening, result.openalexId) : [];
-  return job.questions.map(({ key, question }) => {
-    const given = answers.find((value) => value.question === question);
-    return {
-      key,
-      answer: given?.answer ?? null,
-      changed: given?.setBy === "person" || given?.setBy === "assistant",
-      ...(given?.model?.confidence === undefined ? {} : { confidence: given.model.confidence }),
-    };
-  });
-}
 
 export const listAction = defineUserQuery({
   path: "screening/papers:list",
@@ -112,27 +86,22 @@ export const answerAction = defineUserMutation({
     }
     if (!job.screeningId) throw createError("VALIDATION_ERROR", "This screening kept no answers to change");
 
-    const keys = job.questions.map((q) => q.key);
-    const byKey = (answers: Answer[]) => Object.fromEntries(answers.map((value) => [value.key, value.answer]));
-    const before = byKey(await answersNow(ctx, job, result));
     const now = Date.now();
     if (answer === "model") await restoreModelAnswer(ctx, job.screeningId, paperId, question.question, now);
     else await answerPaper(ctx, job.screeningId, paperId, [{ question: question.question, response: answer }], author === "assistant" ? "assistant" : "person", now);
-    const after = byKey(await answersNow(ctx, job, result));
 
-    const scored = scorePaper(after, job.scoringConfig);
-    const outcome = outcomeOf(after, job.scoringConfig);
-    await ctx.db.patch("screeningResults", result._id, { ...scored, outcome });
-    const progress = await progressRow(ctx, jobId);
-    if (progress) {
-      await ctx.db.patch("screeningJobProgress", progress._id, {
-        qualified: Math.max(0, progress.qualified + Number(scored.qualified) - Number(result.qualified === true)),
-        // Kept from the moment a job's outcomes are; one from before has neither until migrations/screeningOutcomes.
-        ...(progress.unclear === undefined ? {} : { unclear: Math.max(0, progress.unclear + Number(outcome === "unclear") - Number(result.outcome === "unclear")) }),
-        ...(progress.tallies === undefined ? {} : { tallies: tallied(tallied(progress.tallies, keys, before, -1), keys, after, 1) }),
-      });
+    const { patch: { counted, ...shown }, delta, becameIncluded } = account(job, result, byKey(await answersNow(ctx, job, result)));
+    const outcome = shown.outcome;
+    // A paper the bookkeeping worker hasn't reached is counted there, on its answers as they stand then.
+    if (result.doneAt !== undefined) {
+      await ctx.db.patch("screeningResults", result._id, shown);
+      return { outcome };
     }
-    if (scored.qualified && !result.libraryItemId) await saveQualified(ctx, job, { ...result, stars: scored.stars });
+    const progress = await progressOf(ctx, jobId);
+    await ctx.db.patch("screeningResults", result._id, { ...shown, counted });
+    await ctx.db.patch("screeningJobProgress", progress._id, withDeltas(progress, job, [delta]));
+    // Saved again even if it was saved before: the person may have removed it since.
+    if (becameIncluded) await saveQualified(ctx, job, { ...result, ...shown });
     return { outcome };
   },
 });

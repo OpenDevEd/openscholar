@@ -11,7 +11,7 @@ import { bookkeepLater, progressRow } from "./bookkeeping";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 
 const questions = [{ key: "q1", question: "Is this relevant?" }];
-const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] };
+const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }], minimumScore: 1 };
 type Finished = { status: "completed" | "skipped" | "failed"; qualified?: boolean; answered?: boolean; abstract?: string };
 
 // The worker schedules its runs on whichever timers are active when papers finish.
@@ -41,7 +41,7 @@ function finish(ctx: MutationCtx, jobId: Id<"screeningJobs">, papers: Array<Fini
         createdAt: 1,
         completedAt: 2,
         ...(qualified === undefined ? {} : { qualified, score: qualified ? 1 : 0, stars: 1 }),
-        ...(answered ? { answers: { q1: true }, confidences: { q1: 0.9 }, pendingAnswers: true as const } : {}),
+        ...(answered ? { answers: { q1: qualified ?? true }, confidences: { q1: 0.9 }, pendingAnswers: true as const } : {}),
         ...(stamped ? { doneAt: ctx.db.vars.commitTs } : {}),
       }),
     ),

@@ -965,6 +965,10 @@ export default defineSchema({
     // answer of its is changed; a job's list reads its papers by it. Results from before it
     // was kept get theirs from migrations/screeningOutcomes.
     outcome: v.optional(screeningOutcomeValidator),
+    // What the paper has added to its job's kept counts (./screening/accounting.ts), so a
+    // later change adds only the difference. Missing while it waits for the bookkeeping
+    // worker, and on a paper counted before outcomes were kept.
+    counted: v.optional(v.object({ qualified: v.boolean(), outcome: screeningOutcomeValidator, answers: screeningAnswersValidator })),
     venue: v.optional(v.string()),
     citedByCount: v.optional(v.number()),
     aiMetadata: v.optional(

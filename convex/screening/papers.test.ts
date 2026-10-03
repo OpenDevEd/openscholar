@@ -1,7 +1,9 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { answerPaper } from "../research/answers";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { createJob } from "./createJob.test-support";
@@ -24,8 +26,11 @@ const ANSWERS: Array<Record<string, boolean | null> | null> = [
   { "Randomized?": true, "Primary schools?": false }, // W5: 2 points, included
 ];
 
-/** A job of five papers the model has answered, bookkept. */
-async function screened() {
+/**
+ * A job of five papers the model has answered, bookkept unless `bookkept` is false: then
+ * `settle` runs the worker. `before` runs once the job exists, before the model answers.
+ */
+async function screened({ bookkept = true, before }: { bookkept?: boolean; before?: (t: ReturnType<typeof convexTest>, jobId: Id<"screeningJobs">) => Promise<void> } = {}) {
   const t = convexTest(schema);
   setupScreeningWorkpool(t);
   const userId = await t.run(async (ctx) => {
@@ -37,6 +42,7 @@ async function screened() {
   const as = t.withIdentity({ subject: "owner" });
   const { jobId } = await createJob(as, { papers: ANSWERS.map((_, i) => paper(i + 1)), questions, scoringConfig });
   const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(10));
+  await before?.(t, jobId);
   vi.useFakeTimers();
   for (const [i, answers] of ANSWERS.entries()) {
     await t.mutation(internal.screening.mutations.handleScreeningComplete, {
@@ -47,21 +53,37 @@ async function screened() {
         : { kind: "failed", error: "The model didn't answer" },
     });
   }
-  await t.finishAllScheduledFunctions(vi.runAllTimers);
-  vi.useRealTimers();
+  const settle = async () => {
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    vi.useRealTimers();
+  };
+  if (bookkept) await settle();
   const job = () => as.query(api.screening.queries.getScreeningJob, { jobId });
+  const answer = (paperId: string, questionKey: string, value: boolean | null | "model", signed = as) =>
+    signed.mutation(api.screening.papers.answer, { jobId, paperId: `https://openalex.org/${paperId}`, questionKey, answer: value });
+  /** How many of the owner's library items are paper W3. */
+  const saved = () => t.run(async (ctx) => (await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", "https://openalex.org/W3")).take(2)).length);
   const list = async (outcome: "included" | "unclear" | "excluded" | "failed", extra: { text?: string } = {}, signed = as) =>
     (await signed.query(api.screening.papers.list, { jobId, outcome, paginationOpts: { cursor: null, numItems: 10 }, ...extra })).page;
-  return { t, as, userId, jobId, job, list };
+  return { t, as, jobId, job, list, answer, saved, settle };
 }
+
+const COUNTED = {
+  outcomes: { included: 2, unclear: 1, excluded: 1, failed: 1 },
+  tallies: [{ key: "q1", yes: 2, no: 1, unclear: 1 }, { key: "q2", yes: 2, no: 2, unclear: 0 }],
+};
+/** The counts once W3's first question is answered yes, which takes it from excluded to included. */
+const W3_INCLUDED = {
+  outcomes: { included: 3, unclear: 1, excluded: 0, failed: 1 },
+  tallies: [{ key: "q1", yes: 3, no: 0, unclear: 1 }, { key: "q2", yes: 2, no: 2, unclear: 0 }],
+};
 
 describe("a screening job's papers", () => {
   it("lands each paper in its outcome, and keeps the counts and each question's answers as papers settle", async () => {
-    const { job, list } = await screened();
-    expect(await job()).toMatchObject({
-      outcomes: { included: 2, unclear: 1, excluded: 1, failed: 1 },
-      tallies: [{ key: "q1", yes: 2, no: 1, unclear: 1 }, { key: "q2", yes: 2, no: 2, unclear: 0 }],
-    });
+    const { t, job, list } = await screened();
+    expect(await job()).toMatchObject(COUNTED);
+    // Each paper recorded what it counted, so the migration for older jobs has nothing to add.
+    expect(await t.action(internal.migrations.screeningOutcomes.verify, {})).toBe(0);
     expect((await list("unclear")).map((row) => row.title)).toEqual(["Paper 2 on reading"]);
     expect((await list("failed")).map((row) => row.title)).toEqual(["Paper 4 on reading"]);
     const [first] = await list("included");
@@ -86,26 +108,27 @@ describe("a screening job's papers", () => {
   });
 
   it("moves a paper to the outcome its changed answer gives it, saves one that becomes included, and puts the model's answer back", async () => {
-    const { t, as, userId, jobId, job, list } = await screened();
-    const answer = (paperId: string, questionKey: string, value: boolean | null | "model", signed = as) =>
-      signed.mutation(api.screening.papers.answer, { jobId, paperId: `https://openalex.org/${paperId}`, questionKey, answer: value });
-    const saved = () => t.run(async (ctx) => (await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", "https://openalex.org/W3")).take(2)).length);
+    const { t, as, job, list, answer, saved } = await screened();
     expect(await saved()).toBe(0);
 
     // W3 was excluded: answering that it's randomized takes it to 3 points.
     expect(await answer("W3", "q1", true)).toEqual({ outcome: "included" });
-    expect(await job()).toMatchObject({
-      outcomes: { included: 3, unclear: 1, excluded: 0, failed: 1 },
-      tallies: [{ key: "q1", yes: 3, no: 0, unclear: 1 }, { key: "q2", yes: 2, no: 2, unclear: 0 }],
-    });
+    expect(await job()).toMatchObject(W3_INCLUDED);
     const moved = (await list("included")).find((row) => row.openalexId === "https://openalex.org/W3");
     expect(moved).toMatchObject({ score: 3, stars: 5, answers: [{ key: "q1", answer: true, changed: true, confidence: 0.9 }, { key: "q2", answer: true, changed: false }] });
     expect(await list("excluded")).toEqual([]);
     expect(await saved()).toBe(1);
 
     expect(await answer("W3", "q1", "model")).toEqual({ outcome: "excluded" });
-    expect(await job()).toMatchObject({ outcomes: { included: 2, unclear: 1, excluded: 1, failed: 1 }, tallies: [{ key: "q1", yes: 2, no: 1, unclear: 1 }, { key: "q2", yes: 2, no: 2, unclear: 0 }] });
+    expect(await job()).toMatchObject(COUNTED);
     expect((await list("excluded"))[0]).toMatchObject({ score: 1, answers: [{ key: "q1", answer: false, changed: false }, { key: "q2", answer: true, changed: false }] });
+
+    // Removed from the library since: becoming included again saves it again.
+    await as.mutation(api.library.mutations.removeFromLibrary, { openalexId: "https://openalex.org/W3" });
+    expect(await saved()).toBe(0);
+    expect(await answer("W3", "q1", true)).toEqual({ outcome: "included" });
+    expect(await saved()).toBe(1);
+    await answer("W3", "q1", "model");
 
     // Unclear to yes on the unclear paper's deciding question includes it.
     expect(await answer("W2", "q1", true)).toEqual({ outcome: "included" });
@@ -116,26 +139,59 @@ describe("a screening job's papers", () => {
     await expect(answer("W1", "q1", false, t.withIdentity({ subject: "someone_else" }))).rejects.toThrow(/not found/i);
   });
 
-  it("gives a job from before outcomes were kept its papers' outcomes and its counts", async () => {
-    const { t, job, list } = await screened();
-    // As a job screened before: no outcome on its papers, no unclear count or tallies on its progress.
+  it("counts a paper once when its answer changes before the worker reaches it", async () => {
+    const { job, list, answer, saved, settle } = await screened({ bookkept: false });
+    expect(await answer("W3", "q1", true)).toEqual({ outcome: "included" });
+    expect((await list("included")).map((row) => row.openalexId)).toContain("https://openalex.org/W3");
+
+    await settle();
+    expect(await job()).toMatchObject(W3_INCLUDED);
+    expect(await saved()).toBe(1);
+    // Counted on the changed answer, so putting the model's back takes away exactly that.
+    expect(await answer("W3", "q1", "model")).toEqual({ outcome: "excluded" });
+    expect(await job()).toMatchObject(COUNTED);
+  });
+
+  it("scores and counts a paper on a person's earlier answer, which the model's doesn't replace", async () => {
+    const { job, list, answer, settle } = await screened({
+      bookkept: false,
+      before: (t, jobId) => t.run(async (ctx) => {
+        const { screeningId } = (await ctx.db.get("screeningJobs", jobId))!;
+        await answerPaper(ctx, screeningId!, "https://openalex.org/W3", [{ question: "Randomized?", response: true }], "person", 1);
+      }),
+    });
+    // The model said no; while its answers wait to move, the paper already shows the person's.
+    expect((await list("excluded"))[0].answers).toMatchObject([{ key: "q1", answer: true, changed: true, confidence: 0.9 }, { key: "q2", answer: true, changed: false }]);
+
+    await settle();
+    expect(await job()).toMatchObject(W3_INCLUDED);
+    expect((await list("included")).find((row) => row.openalexId === "https://openalex.org/W3")).toMatchObject({ score: 3, stars: 5 });
+    expect(await answer("W3", "q1", "model")).toEqual({ outcome: "excluded" });
+    expect(await job()).toMatchObject(COUNTED);
+  });
+
+  it("gives a job from before outcomes were kept its papers' outcomes and its counts, each paper once", async () => {
+    const { t, job, list, answer } = await screened();
+    // As a job screened before: its papers have no outcome and haven't recorded what they count as; its progress has no unclear count or tallies.
     await t.run(async (ctx) => {
-      for (const result of await ctx.db.query("screeningResults").take(10)) await ctx.db.patch("screeningResults", result._id, { outcome: undefined });
+      for (const result of await ctx.db.query("screeningResults").take(10)) await ctx.db.patch("screeningResults", result._id, { outcome: undefined, counted: undefined });
       const progress = (await ctx.db.query("screeningJobProgress").first())!;
       await ctx.db.patch("screeningJobProgress", progress._id, { unclear: undefined, tallies: undefined });
     });
     expect(await list("included")).toEqual([]);
     expect(await t.action(internal.migrations.screeningOutcomes.verify, {})).toBe(5);
+    // A paper answered before the migration reaches it records its counts then, and the migration leaves it.
+    expect(await answer("W3", "q1", true)).toEqual({ outcome: "included" });
+    expect(await t.action(internal.migrations.screeningOutcomes.verify, {})).toBe(4);
 
     vi.useFakeTimers();
     await t.mutation(internal.migrations.screeningOutcomes.run, {});
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     vi.useRealTimers();
     expect(await t.action(internal.migrations.screeningOutcomes.verify, {})).toBe(0);
-    expect(await job()).toMatchObject({
-      outcomes: { included: 2, unclear: 1, excluded: 1, failed: 1 },
-      tallies: [{ key: "q1", yes: 2, no: 1, unclear: 1 }, { key: "q2", yes: 2, no: 2, unclear: 0 }],
-    });
-    expect((await list("included")).map((row) => row.openalexId)).toEqual(["https://openalex.org/W1", "https://openalex.org/W5"]);
+    expect(await job()).toMatchObject(W3_INCLUDED);
+    expect((await list("included")).map((row) => row.openalexId)).toEqual(["https://openalex.org/W1", "https://openalex.org/W3", "https://openalex.org/W5"]);
+    await answer("W3", "q1", "model");
+    expect(await job()).toMatchObject(COUNTED);
   });
 });
