@@ -1288,9 +1288,6 @@
     "bookmarkNotFound": "Bookmark \"{keyword}\" not found"
   },
   "accessibility": {
-    "toggleTheme": "Toggle theme",
-    "switchToLightMode": "Switch to light mode",
-    "switchToDarkMode": "Switch to dark mode",
     "closeDialog": "Close",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "Page number",
@@ -1694,8 +1691,6 @@
     "contentWidth": "Content Width",
     "appearance": "Appearance",
     "appearanceDescription": "Customize the visual theme and information density",
-    "darkMode": "Dark Mode",
-    "darkModeDescription": "Switch to dark theme for better reading in low light",
     "showMetadata": "Show Metadata",
     "showMetadataDescription": "Display citation counts, topics, and other paper details",
     "compactMode": "Compact Mode",
@@ -3301,5 +3296,12 @@
     "source": "Intelligence Index by Artificial Analysis",
     "back": "Back to models",
     "default": "Default"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "White",
+    "navy": "Navy",
+    "dark": "Black",
+    "blue": "Blue"
   }
 }

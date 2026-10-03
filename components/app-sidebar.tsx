@@ -10,7 +10,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSidebarStore, getSidebarDimensions } from "@/lib/store";
 import { useIsMobile } from "@/lib/hooks";
 import { Logo } from "./logo";
-import { ThemeToggle } from "./theme-toggle";
+import { ThemeSelector } from "./theme-selector";
 import { LanguageSwitcher } from "./language-switcher";
 import { Button } from "@/components/ui/button";
 import {
@@ -141,7 +141,7 @@ function NavItem({
           <motion.span
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center text-3xs font-bold bg-gradient-to-r from-primary-400 to-primary-600 text-primary-foreground rounded-full"
+            className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center text-3xs font-bold bg-gradient-to-r from-primary-bright to-primary-deep text-primary-foreground rounded-full"
           >
             {badge > 9 ? "9+" : badge}
           </motion.span>
@@ -176,7 +176,7 @@ function NavItem({
                 className={cn(
                   "text-xs px-2 py-0.5 rounded-full font-medium badge-glow",
                   isActive
-                    ? "bg-gradient-to-r from-primary-400 via-primary to-primary-600 text-primary-foreground shadow-md"
+                    ? "bg-gradient-to-r from-primary-bright via-primary to-primary-deep text-primary-foreground shadow-md"
                     : "bg-muted text-muted-foreground",
                 )}
               >
@@ -226,7 +226,7 @@ function NavItem({
                     <motion.span
                       initial={{ scale: 0.95, opacity: 0 }}
                       animate={{ scale: 1 }}
-                      className="text-xs bg-gradient-to-r from-primary-400 to-primary-600 text-primary-foreground px-1.5 py-0.5 rounded-full"
+                      className="text-xs bg-gradient-to-r from-primary-bright to-primary-deep text-primary-foreground px-1.5 py-0.5 rounded-full"
                     >{badge}</motion.span>
                   )}
                 </>
@@ -715,7 +715,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                 progressPercent={progressPercent}
                 label={tc("screening")}
               />
-              <ThemeToggle />
+              <ThemeSelector isCollapsed={false} />
               <LanguageSwitcher isCollapsed={false} />
             </div>
             <AuthButton isCollapsed={false} />
@@ -728,7 +728,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
               progressPercent={progressPercent}
               label={tc("screening")}
             />
-            <ThemeToggle />
+            <ThemeSelector isCollapsed={true} />
             <LanguageSwitcher isCollapsed={true} />
             <AuthButton isCollapsed={true} />
           </>

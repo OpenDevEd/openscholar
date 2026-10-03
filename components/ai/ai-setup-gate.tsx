@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
-import Image from "next/image";
+import { LogoMark } from "@/components/logo";
 import { X, ArrowRight, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
@@ -74,7 +74,7 @@ export function AISetupGate({ className }: AISetupGateProps) {
         <div className="flex items-start gap-3">
           {/* Logo icon */}
           <div className="flex h-9 w-9 shrink-0 items-center justify-center">
-            <Image src="/icon.svg" alt="" width={28} height={28} className="w-7 h-7" />
+            <LogoMark className="size-7" />
           </div>
 
           {/* Content */}

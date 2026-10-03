@@ -39,7 +39,7 @@ export const FilterSection = React.memo(function FilterSection({
       {/* Active indicator - left gradient bar */}
       {isActive && (
         <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-sm bg-gradient-to-b from-primary-400 via-primary to-primary-600"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-sm bg-gradient-to-b from-primary-bright via-primary to-primary-deep"
         />
       )}
 

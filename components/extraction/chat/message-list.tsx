@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { LogoMark } from "@/components/logo";
 import {
   Children,
   Fragment,
@@ -580,7 +580,7 @@ export const MessageRow = memo(function MessageRow({
     >
       {!isUser && isFirstInGroup ? (
         <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <Image src="/icon.svg" alt="" width={20} height={20} className="size-5" />
+          <LogoMark className="size-5" />
           <span>Assistant</span>
         </div>
       ) : null}

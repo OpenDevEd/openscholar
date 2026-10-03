@@ -1298,9 +1298,6 @@
     "bookmarkNotFound": "未找到书签「{keyword}」"
   },
   "accessibility": {
-    "toggleTheme": "切换主题",
-    "switchToLightMode": "切换到浅色模式",
-    "switchToDarkMode": "切换到深色模式",
     "closeDialog": "关闭",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "页码",
@@ -1702,8 +1699,6 @@
     "contentWidth": "内容宽度",
     "appearance": "外观",
     "appearanceDescription": "自定义视觉主题和信息密度",
-    "darkMode": "深色模式",
-    "darkModeDescription": "在弱光环境下切换到深色主题以获得更好的阅读体验",
     "showMetadata": "显示元数据",
     "showMetadataDescription": "显示引用次数、主题及其他论文详情",
     "compactMode": "紧凑模式",
@@ -3309,5 +3304,12 @@
     "source": "Artificial Analysis 智能指数",
     "back": "返回模型列表",
     "default": "默认"
+  },
+  "theme": {
+    "label": "主题",
+    "light": "白色",
+    "navy": "藏青",
+    "dark": "黑色",
+    "blue": "蓝色"
   }
 }

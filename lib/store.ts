@@ -851,11 +851,6 @@ export const useAIConfigStore = create<AIConfigState>()(
 );
 
 // UI Component States
-interface ThemeToggleState {
-  mounted: boolean
-  setMounted: (mounted: boolean) => void
-}
-
 interface CurrentQueryState {
   currentQuery: string
   setCurrentQuery: (query: string) => void
@@ -898,11 +893,6 @@ interface AIConfigDialogState {
   setEnhancedPreview: (preview: { enhancedQuery: string; explanation: string } | null) => void
 }
 
-
-export const useThemeToggleStore = create<ThemeToggleState>((set) => ({
-  mounted: false,
-  setMounted: (mounted) => set({ mounted }),
-}))
 
 export const useCurrentQueryStore = create<CurrentQueryState>((set) => ({
   currentQuery: '',

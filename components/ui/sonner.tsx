@@ -55,7 +55,7 @@ function CustomToast({
               }}
               className={cn(
                 "inline-flex h-7 w-fit items-center justify-center gap-1.5 rounded-md border-0 px-3 text-xs font-medium",
-                "bg-primary text-primary-foreground transition-colors duration-150 hover:bg-primary-600",
+                "bg-primary text-primary-foreground transition-colors duration-150 hover:bg-primary-deep",
                 "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               )}
             >
@@ -140,11 +140,11 @@ export function withToastsInside<Event extends { target: EventTarget | null; pre
 }
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
+  const { resolvedTheme } = useTheme();
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={resolvedTheme && resolvedTheme !== "light" ? "dark" : "light"}
       // A modal blocks pointer events outside itself; toasts stay pressable above it.
       className="toaster group pointer-events-auto"
       position="bottom-right"

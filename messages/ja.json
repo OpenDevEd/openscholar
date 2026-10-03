@@ -1298,9 +1298,6 @@
     "bookmarkNotFound": "ブックマーク「{keyword}」が見つかりません"
   },
   "accessibility": {
-    "toggleTheme": "テーマを切り替え",
-    "switchToLightMode": "ライトモードに切り替え",
-    "switchToDarkMode": "ダークモードに切り替え",
     "closeDialog": "閉じる",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "ページ番号",
@@ -1702,8 +1699,6 @@
     "contentWidth": "コンテンツ幅",
     "appearance": "外観",
     "appearanceDescription": "ビジュアルテーマと情報密度をカスタマイズ",
-    "darkMode": "ダークモード",
-    "darkModeDescription": "暗い環境での読書にダークテーマに切り替え",
     "showMetadata": "メタデータを表示",
     "showMetadataDescription": "引用数、トピック、その他の論文詳細を表示",
     "compactMode": "コンパクトモード",
@@ -3309,5 +3304,12 @@
     "source": "Artificial Analysis の Intelligence Index",
     "back": "モデル一覧に戻る",
     "default": "デフォルト"
+  },
+  "theme": {
+    "label": "テーマ",
+    "light": "ホワイト",
+    "navy": "ネイビー",
+    "dark": "ブラック",
+    "blue": "ブルー"
   }
 }

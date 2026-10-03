@@ -1298,9 +1298,6 @@
     "bookmarkNotFound": "Favori \"{keyword}\" non trouvé"
   },
   "accessibility": {
-    "toggleTheme": "Basculer le thème",
-    "switchToLightMode": "Passer en mode clair",
-    "switchToDarkMode": "Passer en mode sombre",
     "closeDialog": "Fermer",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "Numéro de page",
@@ -1702,8 +1699,6 @@
     "contentWidth": "Largeur du contenu",
     "appearance": "Apparence",
     "appearanceDescription": "Personnalisez le thème visuel et la densité d'information",
-    "darkMode": "Mode sombre",
-    "darkModeDescription": "Passez au thème sombre pour une meilleure lecture en faible luminosité",
     "showMetadata": "Afficher les métadonnées",
     "showMetadataDescription": "Afficher les counts de citation, sujets et autres détails de l'article",
     "compactMode": "Mode compact",
@@ -3309,5 +3304,12 @@
     "source": "Indice d'intelligence par Artificial Analysis",
     "back": "Retour aux modèles",
     "default": "Par défaut"
+  },
+  "theme": {
+    "label": "Thème",
+    "light": "Blanc",
+    "navy": "Marine",
+    "dark": "Noir",
+    "blue": "Bleu"
   }
 }

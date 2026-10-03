@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { ChevronLeft, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeTiles } from "@/components/theme-selector";
 import { PaperContent } from "./paper-content";
 import type { PaperContentProps } from "./paper-content";
 import type { PaperResult } from "@/lib/types";
@@ -31,8 +32,6 @@ interface FocusModeSettingsConfig {
 
 export interface FocusModeSettingsProps {
   settings: FocusModeSettingsConfig;
-  theme: string | undefined;
-  setTheme: (theme: string) => void;
   maxWidthClass: string;
   currentPaper: PaperResult;
   paperContentProps: Omit<PaperContentProps, "paper" | "isPreview">;
@@ -47,8 +46,6 @@ export interface FocusModeSettingsProps {
 
 export function FocusModeSettings({
   settings,
-  theme,
-  setTheme,
   maxWidthClass,
   currentPaper,
   paperContentProps,
@@ -202,22 +199,7 @@ export function FocusModeSettings({
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                  <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">
-                      {tFocus("darkMode")}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {tFocus("darkModeDescription")}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={theme === "dark"}
-                    onCheckedChange={() =>
-                      setTheme(theme === "dark" ? "light" : "dark")
-                    }
-                  />
-                </div>
+                <ThemeTiles className="grid-cols-4" />
 
                 <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
                   <div className="space-y-0.5">

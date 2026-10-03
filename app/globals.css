@@ -3,58 +3,73 @@
 @import "react-pdf/dist/Page/AnnotationLayer.css";
 @import "react-pdf/dist/Page/TextLayer.css";
 
-@custom-variant dark (&:is(.dark *));
+/* `dark:` applies in all three dark schemes. */
+@custom-variant dark (&:is(.navy *, .dark *, .blue *));
 
-:root {
-  /* Brand. Everything brand-coloured derives from these three: --primary, and
-     the lighter and darker stops of the brand gradient. */
-  --primary: oklch(0.7 0.17 54);
-  --primary-400: oklch(0.75 0.15 55);
-  --primary-600: oklch(0.62 0.16 52);
-  --primary-foreground: oklch(1 0 0);
+/* Themes. The brand guidelines show four colour versions: white, navy, black
+   and blue. Each is a class on <html> (see components/theme-provider.tsx).
+   White is the default and sets every token. The other three are dark
+   schemes: each sets its page, text and brand colours, and the block they
+   share derives the surfaces from those. */
+:root,
+.light {
+  color-scheme: light;
+
+  /* Brand: blue 600, with a brighter and a deeper stop for the brand gradient.
+     Everything brand-coloured derives from these. */
+  --primary: #2563eb;
+  --primary-bright: #3b82f6;
+  --primary-deep: #1d4ed8;
+  --primary-foreground: #ffffff;
+
+  /* Logo: the wordmark, and the three tones of the mark's arcs. */
+  --brand-ink: #172554;
+  --logo-a: #60a5fa;
+  --logo-b: #2563eb;
+  --logo-c: #bfdbfe;
 
   /* Core */
-  --background: oklch(0.985 0.002 75);
-  --foreground: oklch(0.25 0.015 60);
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.205 0 0);
 
   /* Cards & Popovers */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.015 60);
+  --card-foreground: oklch(0.205 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.25 0.015 60);
+  --popover-foreground: oklch(0.205 0 0);
 
   /* PDF citation highlight */
   --pdf-highlight: color-mix(in oklab, var(--primary) 22%, transparent);
 
   /* Secondary */
-  --secondary: oklch(0.955 0.01 60);
-  --secondary-foreground: oklch(0.35 0.02 60);
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.32 0 0);
 
   /* Muted */
-  --muted: oklch(0.955 0.008 60);
-  --muted-foreground: oklch(0.55 0.01 60);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.52 0 0);
 
   /* Accent */
-  --accent: oklch(0.93 0.04 55);
-  --accent-foreground: oklch(0.3 0.02 55);
+  --accent: oklch(0.932 0.032 256);
+  --accent-foreground: #1e3a8a;
 
   /* Destructive */
   --destructive: oklch(0.55 0.22 27);
   --destructive-foreground: oklch(1 0 0);
 
   /* Borders & Inputs */
-  --border: oklch(0.9 0.005 60);
-  --input: oklch(0.9 0.005 60);
+  --border: oklch(0.915 0 0);
+  --input: oklch(0.915 0 0);
   --ring: var(--primary);
 
   /* Sidebar */
-  --sidebar: oklch(0.975 0.006 55);
-  --sidebar-foreground: oklch(0.35 0.015 60);
+  --sidebar: oklch(0.975 0 0);
+  --sidebar-foreground: oklch(0.35 0 0);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: oklch(0.94 0.03 55);
-  --sidebar-accent-foreground: oklch(0.3 0.02 55);
-  --sidebar-border: oklch(0.91 0.008 55);
+  --sidebar-accent: oklch(0.94 0.028 256);
+  --sidebar-accent-foreground: #1e3a8a;
+  --sidebar-border: oklch(0.915 0 0);
   --sidebar-ring: var(--primary);
 
   /* Charts */
@@ -62,15 +77,16 @@
   --chart-2: oklch(0.65 0.15 200);
   --chart-3: oklch(0.75 0.12 140);
   --chart-4: oklch(0.6 0.18 330);
-  --chart-5: oklch(0.55 0.14 280);
+  --chart-5: oklch(0.72 0.16 60);
 
   /* Status. One colour each: fills and icons use it directly, and `ink-*` and
-     `tint-*` derive readable text and soft surfaces from it in both themes. */
+     `tint-*` derive readable text and soft surfaces from it in every theme.
+     Info is cyan so it stays apart from the brand blue. */
   --success: var(--color-emerald-500);
   --success-foreground: oklch(1 0 0);
   --warning: var(--color-amber-500);
   --warning-foreground: oklch(0.25 0.05 60);
-  --info: var(--color-blue-500);
+  --info: var(--color-cyan-500);
 
   /* Citation links on paper cards and in the search sidebar */
   --cites: var(--color-orange-500);
@@ -81,8 +97,17 @@
   --rating: var(--color-yellow-400);
   --highlight: color-mix(in oklab, var(--color-yellow-200) 50%, transparent);
 
-  /* Fonts */
-  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, -apple-system,
+  /* AI accent. The surfaces derive from --ai. */
+  --ai: oklch(0.55 0.17 303);
+  --ai-fg: oklch(0.45 0.17 303);
+  --ai-bg: color-mix(in oklab, var(--ai) 6%, transparent);
+  --ai-bg-hover: color-mix(in oklab, var(--ai) 12%, transparent);
+  --ai-border: color-mix(in oklab, var(--ai) 25%, transparent);
+  --ai-border-hover: color-mix(in oklab, var(--ai) 40%, transparent);
+  --ai-glow: 0 1px 10px -3px color-mix(in oklab, var(--ai) 30%, transparent);
+
+  /* Fonts. --font-app is the family loaded in app/layout.tsx. */
+  --font-sans: var(--font-app), ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans",
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
@@ -105,64 +130,103 @@
   --shadow-xl: 0 20px 25px -5px oklch(0 0 0 / 0.1),
     0 8px 10px -6px oklch(0 0 0 / 0.05);
   --shadow-2xl: 0 25px 50px -12px oklch(0 0 0 / 0.25);
-
-  /* AI accent — violet */
-  --ai-bg: oklch(0.55 0.15 293 / 0.06);
-  --ai-bg-hover: oklch(0.55 0.15 293 / 0.12);
-  --ai-border: oklch(0.55 0.15 293 / 0.25);
-  --ai-border-hover: oklch(0.55 0.15 293 / 0.40);
-  --ai-fg: oklch(0.45 0.16 293);
-  --ai-glow: 0 1px 10px -3px oklch(0.55 0.2 293 / 0.3);
 }
 
+/* Navy: brand navy page, blue 400 as the brand colour. */
+.navy {
+  --background: #172554;
+  --foreground: #eff6ff;
+  --lift: #3b82f6;
+  --lift-step: 13%;
+
+  --primary: #60a5fa;
+  --primary-bright: #93c5fd;
+  --primary-deep: #3b82f6;
+  --primary-foreground: #172554;
+
+  --brand-ink: #bfdbfe;
+  --logo-a: #60a5fa;
+  --logo-b: #2563eb;
+  --logo-c: #bfdbfe;
+}
+
+/* Black: true black for OLED screens, and no colour in the brand. The logo
+   and every brand-coloured control are white and grey. */
 .dark {
-  /* Core */
-  --background: oklch(0.17 0.01 55);
-  --foreground: oklch(0.92 0.008 60);
+  --background: #000000;
+  --foreground: #ededed;
+  --lift: #ffffff;
+  --lift-step: 6%;
 
-  /* Cards & Popovers */
-  --card: oklch(0.21 0.012 55);
-  --card-foreground: oklch(0.95 0.005 60);
-  --popover: oklch(0.23 0.012 55);
-  --popover-foreground: oklch(0.92 0.008 60);
+  --primary: #fafafa;
+  --primary-bright: #ffffff;
+  --primary-deep: #a3a3a3;
+  --primary-foreground: #0a0a0a;
 
-  /* Primary - Orange Brand (slightly brighter for dark mode) */
-  --primary: oklch(0.72 0.17 54);
-  --primary-foreground: oklch(0.15 0.01 55);
+  --brand-ink: #e5e5e5;
+  --logo-a: #e5e5e5;
+  --logo-b: #525252;
+  --logo-c: #fafafa;
+}
+
+/* Blue: brand blue page with deeper panels, white as the brand colour. */
+.blue {
+  --background: #2563eb;
+  --foreground: #ffffff;
+  --lift: #172554;
+  --lift-step: 20%;
+
+  --primary: #ffffff;
+  --primary-bright: #ffffff;
+  --primary-deep: #dbeafe;
+  --primary-foreground: #1d4ed8;
+
+  --brand-ink: #ffffff;
+  --logo-a: #ffffff;
+  --logo-b: #ffffff;
+  --logo-c: #ffffff;
+}
+
+/* What the three dark schemes share. Panels step from the page colour toward
+   --lift; borders, hovers and muted text step toward the text colour. The mixes
+   are in sRGB so a step is as visible on black as on blue. */
+.navy,
+.dark,
+.blue {
+  color-scheme: dark;
+
+  --card: color-mix(in srgb, var(--background), var(--lift) var(--lift-step));
+  --card-foreground: var(--foreground);
+  --popover: color-mix(in srgb, var(--card), var(--foreground) 4%);
+  --popover-foreground: var(--foreground);
+
+  --secondary: color-mix(in srgb, var(--card), var(--foreground) 9%);
+  --secondary-foreground: var(--foreground);
+  --muted: color-mix(in srgb, var(--card), var(--foreground) 7%);
+  --muted-foreground: color-mix(in srgb, var(--foreground) 72%, var(--background));
+  --accent: color-mix(in srgb, var(--card), var(--foreground) 13%);
+  --accent-foreground: var(--foreground);
+
+  --border: color-mix(in srgb, var(--background), var(--foreground) 17%);
+  --input: color-mix(in srgb, var(--background), var(--foreground) 20%);
+
+  --destructive: oklch(0.65 0.2 25);
+
+  --sidebar: var(--background);
+  --sidebar-foreground: color-mix(in oklab, var(--foreground) 88%, var(--background));
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+
   --pdf-highlight: color-mix(in oklab, var(--primary) 30%, transparent);
   --highlight: color-mix(in oklab, var(--color-yellow-500) 30%, transparent);
 
-  /* Secondary */
-  --secondary: oklch(0.25 0.012 55);
-  --secondary-foreground: oklch(0.85 0.008 60);
+  --ai: oklch(0.65 0.15 303);
+  --ai-fg: oklch(0.8 0.12 303);
 
-  /* Muted */
-  --muted: oklch(0.23 0.01 55);
-  --muted-foreground: oklch(0.65 0.01 60);
-
-  /* Accent */
-  --accent: oklch(0.28 0.03 55);
-  --accent-foreground: oklch(0.92 0.01 55);
-
-  /* Destructive */
-  --destructive: oklch(0.6 0.2 27);
-  --destructive-foreground: oklch(1 0 0);
-
-  /* Borders & Inputs */
-  --border: oklch(0.3 0.012 55);
-  --input: oklch(0.3 0.012 55);
-
-  /* Sidebar */
-  --sidebar: oklch(0.15 0.008 55);
-  --sidebar-foreground: oklch(0.85 0.008 60);
-  --sidebar-accent: oklch(0.24 0.02 55);
-  --sidebar-accent-foreground: oklch(0.9 0.008 55);
-  --sidebar-border: oklch(0.28 0.01 55);
-
-  /* Radius (slightly smaller in dark mode) */
+  /* Radius (slightly smaller in the dark schemes) */
   --radius: 0.625rem;
 
-  /* Shadows (same structure, works with dark bg) */
   --shadow-2xs: 0 1px 2px 0 oklch(0 0 0 / 0.1);
   --shadow-xs: 0 1px 2px 0 oklch(0 0 0 / 0.15);
   --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 0.2),
@@ -175,14 +239,6 @@
   --shadow-xl: 0 20px 25px -5px oklch(0 0 0 / 0.25),
     0 8px 10px -6px oklch(0 0 0 / 0.15);
   --shadow-2xl: 0 25px 50px -12px oklch(0 0 0 / 0.4);
-
-  /* AI accent — violet (dark) */
-  --ai-bg: oklch(0.65 0.15 293 / 0.08);
-  --ai-bg-hover: oklch(0.65 0.15 293 / 0.15);
-  --ai-border: oklch(0.65 0.12 293 / 0.20);
-  --ai-border-hover: oklch(0.65 0.12 293 / 0.35);
-  --ai-fg: oklch(0.78 0.12 293);
-  --ai-glow: 0 1px 10px -3px oklch(0.65 0.15 293 / 0.25);
 }
 
 @theme inline {
@@ -194,8 +250,9 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-primary-400: var(--primary-400);
-  --color-primary-600: var(--primary-600);
+  --color-primary-bright: var(--primary-bright);
+  --color-primary-deep: var(--primary-deep);
+  --color-brand-ink: var(--brand-ink);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -240,6 +297,10 @@
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+
+  /* The brand typeface ships regular, medium and bold, so semibold maps to
+     bold. */
+  --font-weight-semibold: 700;
 
   /* Two steps below text-xs, for dense labels and badges. */
   --text-2xs: 0.6875rem;
@@ -307,7 +368,7 @@
     background-image: radial-gradient(circle at top, var(--background) 0%, var(--muted) 100%);
   }
 
-  .dark .pdf-viewer-stage {
+  :is(.navy, .dark, .blue) .pdf-viewer-stage {
     background-image: radial-gradient(circle at top, var(--muted) 0%, var(--background) 100%);
   }
 
@@ -396,7 +457,7 @@
     transform: translateY(-50%);
     width: 3px;
     height: 60%;
-    background: linear-gradient(180deg, var(--primary-400) 0%, var(--primary) 50%, var(--primary-600) 100%);
+    background: linear-gradient(180deg, var(--primary-bright) 0%, var(--primary) 50%, var(--primary-deep) 100%);
     border-radius: 0 2px 2px 0;
   }
 }
@@ -549,13 +610,13 @@
   --el-hero-tint: var(--color-emerald-400);
   --el-hero-strength: 14%;
 }
-.dark .el-hero-blob-a {
+:is(.navy, .dark, .blue) .el-hero-blob-a {
   --el-hero-strength: 16%;
 }
-.dark .el-hero-blob-b {
+:is(.navy, .dark, .blue) .el-hero-blob-b {
   --el-hero-strength: 12%;
 }
-.dark .el-hero-blob-c {
+:is(.navy, .dark, .blue) .el-hero-blob-c {
   --el-hero-strength: 9%;
 }
 .el-hero-blob-b {

@@ -30,7 +30,7 @@ export function FilterCountControl({
     >
       <span
         className={cn(
-          "flex items-center justify-center h-7 text-xs font-medium rounded-md bg-gradient-to-r from-primary-400 via-primary to-primary-600 text-primary-foreground badge-glow",
+          "flex items-center justify-center h-7 text-xs font-medium rounded-md bg-gradient-to-r from-primary-bright via-primary to-primary-deep text-primary-foreground badge-glow",
           column ? "w-7" : "min-w-7 px-2",
         )}
       >
