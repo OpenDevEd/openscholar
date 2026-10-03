@@ -4,19 +4,22 @@ import type { FunctionReference } from "convex/server";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 
 type Page = { page: string[]; isDone: boolean; continueCursor: string };
-type Args = { search?: string; paginationOpts: { cursor: string | null; numItems: number } };
+type Args = { search?: string; paginationOpts: { cursor: string | null; numItems: number; id?: number } };
 
 // What the server holds, by search then start cursor; a page missing from it is still loading.
-const server = vi.hoisted(() => ({ pages: new Map<string, Page>() }));
+const server = vi.hoisted(() => ({ pages: new Map<string, Page>(), reads: [] as Args[] }));
 vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: (_query: unknown, args: Args | "skip") =>
-    ({ data: args === "skip" ? undefined : server.pages.get(`${args.search ?? ""}|${args.paginationOpts.cursor}`) }),
+  useProtectedQuery: (_query: unknown, args: Args | "skip") => {
+    if (args !== "skip") server.reads.push(args);
+    return { data: args === "skip" ? undefined : server.pages.get(`${args.search ?? ""}|${args.paginationOpts.cursor}|${args.paginationOpts.id ?? 0}`) ?? server.pages.get(`${args.search ?? ""}|${args.paginationOpts.cursor}`) };
+  },
 }));
 
 const query = "collections:list" as unknown as FunctionReference<"query", "public", Args, Page>;
 const page = (items: string[], continueCursor: string, isDone = false): Page => ({ page: items, isDone, continueCursor });
 
 beforeEach(() => {
+  server.reads = [];
   server.pages = new Map([
     ["|null", page(["a", "b"], "c1")],
     ["|c1", page(["c", "d"], "c2", true)],
@@ -57,5 +60,13 @@ describe("useCursorPage", () => {
     server.pages.set("|c1", page([], "c2", true));
     rerender();
     expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canPrevious: false });
+  });
+
+  it("reads a page again from its start when rows added inside it grow it past its size", () => {
+    // The first read of page 1 kept its range and grew; a fresh read of it is a page again.
+    server.pages.set("|null|0", page(["a", "a2", "b"], "c1"));
+    const { result } = renderHook(() => useCursorPage(query, {}, 2));
+    expect(result.current.items).toEqual(["a", "b"]);
+    expect(server.reads.at(-1)?.paginationOpts).toMatchObject({ cursor: null, id: 1 });
   });
 });

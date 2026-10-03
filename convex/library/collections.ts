@@ -182,13 +182,14 @@ const collectionRow = v.object({
 
 /**
  * A page of the person's collections by name, or those whose name matches `search`, best
- * match first. Given a paper of theirs, each says whether the paper is in it.
+ * match first. Given a paper by its OpenAlex ID, each says whether the paper is in it; the
+ * ID stays the same when the paper is first saved, so the list keeps its place.
  */
 export const listCollections = query({
   args: {
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
-    libraryItemId: v.optional(v.id("libraryItems")),
+    openalexId: v.optional(v.string()),
   },
   returns: paginationResultValidator(collectionRow),
   handler: async (ctx, args) => {
@@ -199,8 +200,11 @@ export const listCollections = query({
       ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", search).eq("userId", user._id))
       : ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", user._id))
     ).paginate(paginationOpts);
-    const item = args.libraryItemId ? await ctx.db.get("libraryItems", args.libraryItemId) : null;
-    const libraryItemId = item?.userId === user._id ? item._id : undefined;
+    const { openalexId } = args;
+    const item = openalexId
+      ? await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", user._id).eq("openalexId", openalexId)).unique()
+      : null;
+    const libraryItemId = item?._id;
     return {
       ...page,
       page: await Promise.all(

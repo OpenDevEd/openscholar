@@ -257,8 +257,6 @@ export function SaveControl({
           <PopoverContent align="start" className="w-72 p-2">
             <CollectionsPanel
               paper={paper}
-              libraryItemId={saved?.libraryItemId}
-              inCollection={Boolean(saved?.inCollection)}
               pending={pendingCollections}
             />
           </PopoverContent>
@@ -276,25 +274,20 @@ export function SaveControl({
 /** The popover's checklist of collections, with a field to make a new one. */
 function CollectionsPanel({
   paper,
-  libraryItemId,
-  inCollection,
   pending,
 }: {
   paper: WorkInput;
-  libraryItemId: Id<"libraryItems"> | undefined;
-  inCollection: boolean;
   pending: Record<string, Pending>;
 }) {
   const t = useTranslations("saveToLibrary");
   const tl = useTranslations("libraryPage");
   const { userId } = useAuth();
   const [newName, setNewName] = useState("");
-  // Only a paper that's in a collection needs its memberships read.
-  const picker = useCollectionPicker({ libraryItemId: inCollection ? libraryItemId : undefined });
+  const picker = useCollectionPicker({ openalexId: paper.id });
   const setInCollection = useMutation(api.library.mutations.setPaperInCollection);
   const createCollection = useMutation(api.library.collections.createCollection);
 
-  const loadingMembers = inCollection && (libraryItemId === undefined || picker.isLoading);
+  const loadingMembers = picker.isLoading;
   const checkedIds = new Set<string>(picker.collections.filter((collection) => collection.containsItem).map((collection) => collection._id));
   for (const [collectionId, { value: checked }] of Object.entries(pending)) {
     if (checked) checkedIds.add(collectionId);

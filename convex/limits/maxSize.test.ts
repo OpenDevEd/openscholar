@@ -97,7 +97,7 @@ describe("at the largest sizes the product allows", () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     // seedLibrary makes the first collection, which holds its paper.
-    const { itemIds: [libraryItemId] } = await seedLibrary(t, userId, { items: 1 });
+    await seedLibrary(t, userId, { items: 1 });
     await insertMany(t, "collections", Array.from({ length: MAX_COLLECTIONS_PER_USER - 1 }, (_, i) => {
       const name = `Reading list ${i}: ${text(200, i)}`;
       return { userId, name, sortName: collectionSortName(name), itemCount: 0, createdAt: 1, updatedAt: 1 };
@@ -105,7 +105,7 @@ describe("at the largest sizes the product allows", () => {
     await t.run((ctx) => ctx.db.insert("collectionCounts", { userId, count: MAX_COLLECTIONS_PER_USER }));
     expect(await as.query(api.library.collections.countCollections, {})).toBe(MAX_COLLECTIONS_PER_USER);
     // Asking for more than the largest page gets the largest page.
-    const page = await as.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: MAX_COLLECTIONS_PER_USER }, libraryItemId });
+    const page = await as.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: MAX_COLLECTIONS_PER_USER }, openalexId: "https://openalex.org/W0" });
     expect(page.page).toHaveLength(50);
     expect(page.isDone).toBe(false);
     expect(page.page.filter((collection) => collection.containsItem).map((collection) => collection.name)).toEqual(["Everything"]);

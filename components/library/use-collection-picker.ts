@@ -2,7 +2,6 @@
 
 import { useState, type UIEvent } from "react";
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedPaginatedQuery } from "@/lib/auth/use-auth-query";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 
@@ -13,14 +12,14 @@ const LOAD_AHEAD_PX = 80;
 
 /**
  * A collection picker's list: searched by name on the server and read a page at a time
- * as the list scrolls. Given a paper, each collection says whether the paper is in it.
+ * as the list scrolls. Given a paper's OpenAlex ID, each collection says whether the paper is in it.
  */
-export function useCollectionPicker({ enabled = true, libraryItemId }: { enabled?: boolean; libraryItemId?: Id<"libraryItems"> } = {}) {
+export function useCollectionPicker({ enabled = true, openalexId }: { enabled?: boolean; openalexId?: string } = {}) {
   const [query, setQuery] = useState("");
   const search = useDebouncedValue(query.trim(), 300);
   const list = useProtectedPaginatedQuery(
     api.library.collections.listCollections,
-    enabled ? { search: search || undefined, libraryItemId } : "skip",
+    enabled ? { search: search || undefined, openalexId } : "skip",
     { initialNumItems: PICKER_PAGE_SIZE },
   );
   const onScroll = (event: UIEvent<HTMLElement>) => {

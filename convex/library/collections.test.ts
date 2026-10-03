@@ -392,7 +392,7 @@ describe("listCollections", () => {
     expect(page.page.map((c) => c.name)).toEqual(["Climate adaptation"]);
   });
 
-  it("says which collections hold a paper of the person's, and none for someone else's paper", async () => {
+  it("says which collections hold a paper of the person's, and none for a paper they haven't saved", async () => {
     const t = convexTest(schema);
     const user1 = await seedUser(t, "clerk_user1", "user1@test.com");
     const user2 = await seedUser(t, "clerk_user2", "user2@test.com");
@@ -403,10 +403,12 @@ describe("listCollections", () => {
     const theirs = await seedLibraryItem(t, user2!._id, { openalexId: "https://openalex.org/W2" });
     await seedJunctionRow(t, user1!._id, holding!._id, mine!._id);
 
-    const flags = async (libraryItemId: Id<"libraryItems">) =>
-      (await asUser1.query(api.library.collections.listCollections, { ...firstPage(10), libraryItemId })).page.map((c) => [c.name, c.containsItem]);
-    expect(await flags(mine!._id)).toEqual([["Holding", true], ["Other", false]]);
-    expect(await flags(theirs!._id)).toEqual([["Holding", false], ["Other", false]]);
+    const flags = async (openalexId: string) =>
+      (await asUser1.query(api.library.collections.listCollections, { ...firstPage(10), openalexId })).page.map((c) => [c.name, c.containsItem]);
+    expect(await flags(mine!.openalexId)).toEqual([["Holding", true], ["Other", false]]);
+    // Someone else's saved paper, and a paper nobody saved.
+    expect(await flags(theirs!.openalexId)).toEqual([["Holding", false], ["Other", false]]);
+    expect(await flags("https://openalex.org/W404")).toEqual([["Holding", false], ["Other", false]]);
   });
 
   it("shows each collection's item count", async () => {

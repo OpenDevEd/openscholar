@@ -49,6 +49,8 @@ type ViewId = "all" | "unfiled" | Id<"collections">;
 
 /** Collections the sidebar lists at a time. */
 const SIDEBAR_PAGE_SIZE = 20;
+/** A row and the gap under it, measured: a paged list keeps a full page's height, so the pager stays put. */
+const SIDEBAR_ROW_PX = 34;
 
 export function LibraryTab({ paperLimit }: { paperLimit?: number }) {
   const [view, setView] = useState<ViewId>("all");
@@ -337,6 +339,8 @@ function SourceSidebar({ view, onChange }: SourceSidebarProps) {
           )}
           <nav
             className={cn("flex flex-col gap-0.5 px-2 py-2", collections.isStale && "pointer-events-none opacity-60")}
+            // The padding's 16px plus a full page of rows.
+            style={collections.hasPages ? { minHeight: SIDEBAR_PAGE_SIZE * SIDEBAR_ROW_PX - 2 + 16 } : undefined}
             aria-label="Collections"
           >
             {collections.items.map((c) => (

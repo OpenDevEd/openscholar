@@ -317,7 +317,8 @@ export function CollectionManager({
           )}
 
           {/* Collection list */}
-          {filteredCollections.length > 0 ? (
+          {/* A paged list stays up, pager included, while undo-able deletes empty the page shown. */}
+          {filteredCollections.length > 0 || collections.hasPages ? (
             <div>
               {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
               <div
