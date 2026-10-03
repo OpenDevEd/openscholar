@@ -114,6 +114,31 @@ local store or Convex by mode:
 Each stage is one PR and removes `watchPages` for its records; the last
 removes it. The assistant's tools already read these records by page or ID.
 
+## Screenings (#421)
+
+2026-10-03, as built:
+
+1. The job history pages by cursor with a kept count (`recordCounts`, table
+   `screeningJobs`). A job's CSV and JSON come from the export route a page of
+   results at a time; the XLSX is built in the browser from pages of
+   `screening/queries:listScreeningResults`, since a workbook can't be written
+   in parts. A job holds at most 1,000 papers.
+2. A saved search is read without its answers. Its page reads the answers of
+   the papers it shows with `research/records:answersOf` (200 papers a read,
+   now or at a screening version), as it reads ratings. A result waits for its
+   answers, so a paper already answered isn't screened again.
+3. An edit that takes answers from every paper (a question removed or renamed,
+   all answers cleared) removes the first 200 papers' with the edit and the rest
+   in scheduled steps. A step takes the answers that stood at the screening's
+   version when the edit was made, told apart by each paper's history, and
+   leaves any given since. The revision the edit made points at the version
+   the last step leaves.
+4. Revisions list without answers and name the screening version theirs stood
+   at. The code that read answers from the old chunks is deleted: only the dev
+   deployments ever had chunks, and both verified as moved.
+5. Not built: a screening's papers by outcome with kept counts. The outcomes
+   are the screening page mock's (#341), which isn't agreed yet.
+
 ## Data
 
 Paging changes no stored data. Caps (#426) audit shared dev first: a record
