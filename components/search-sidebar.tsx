@@ -54,7 +54,7 @@ import { ResearchAreaFilter } from "./research-area-filter";
 import { FunderFilter } from "./funder-filter";
 import { useLocale, useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
-import { FilterList, FilterSection } from "@/components/shared/filter-section";
+import { FilterSection } from "@/components/shared/filter-section";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -725,7 +725,6 @@ export const SidebarContent = React.memo(function SidebarContent({
         </div>
       )}
 
-      <FilterList>
       {/* ID Filters - Show at top when active */}
       {isCitesActive && <CitesFilterPanel />}
       {isCitedByActive && <CitedByFilterPanel />}
@@ -769,7 +768,6 @@ export const SidebarContent = React.memo(function SidebarContent({
 
       {/* Related To Filter (when not active) */}
       {!isRelatedToActive && <RelatedToFilterPanel />}
-      </FilterList>
     </div>
   );
 });

@@ -16,15 +16,6 @@ export interface FilterSectionProps {
   headerAction?: React.ReactNode;
 }
 
-/** The filters as one card. Each FilterSection is a row in it, divided from the next. */
-export function FilterList({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle bg-card">
-      {children}
-    </div>
-  );
-}
-
 export const FilterSection = React.memo(function FilterSection({
   title,
   icon: Icon,
@@ -37,7 +28,13 @@ export const FilterSection = React.memo(function FilterSection({
   return (
     <div
       data-filter-section={isActive ? "active" : "idle"}
-      className={cn("relative transition-colors duration-200", isActive && "bg-sidebar-accent")}
+      className={cn(
+        "relative rounded-xl overflow-hidden transition-all duration-200",
+        "border",
+        isActive
+          ? "bg-sidebar-accent border-border-subtle"
+          : "bg-card border-border-subtle hover:border-border"
+      )}
     >
       {/* Active indicator - left gradient bar */}
       {isActive && (
