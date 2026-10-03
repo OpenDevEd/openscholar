@@ -8,7 +8,8 @@ import {
   MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_METADATA_FIELDS, MAX_QUESTIONS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
-import { screeningAnswersValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
+import { screeningAnswersValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
+import { searchSnapshotValidator } from "./paperSets/openalex";
 import {
   errorCodeValidator,
   extractionEvidenceUnitFields,
@@ -916,6 +917,27 @@ export default defineSchema({
     questions: screeningQuestionsValidator,
     scoringConfig: screeningScoringConfigValidator,
     targetCollectionId: v.optional(v.id("collections")),
+    // Where its papers came from (#341), as the screening page shows it: the set, the set's
+    // name when it started (a search's query, a collection's or a job's name), and which of
+    // its papers, counting from 1. Jobs from before the page have none.
+    set: v.optional(paperSetValidator),
+    label: v.optional(v.string()),
+    first: v.optional(v.number()),
+    last: v.optional(v.number()),
+    // The last paper of the whole request when one job can't hold it: the job for the next
+    // papers starts when this one completes.
+    through: v.optional(v.number()),
+    // Where a collection, the saved papers or a job's papers go on after this job's (./paperSets/held.ts).
+    resume: v.optional(v.string()),
+    // The search as it was when the request began, which its later jobs read their papers from.
+    snapshot: v.optional(searchSnapshotValidator),
+    // Its included papers aren't saved anywhere.
+    unsaved: v.optional(v.literal(true)),
+    // Papers that end excluded or failed leave the collection it read (`set`).
+    prune: v.optional(v.literal(true)),
+    // Papers its search's page had already answered every question for: done on those
+    // answers, without asking the model.
+    reused: v.optional(v.number()),
     // "sharded" when its progress is counted by convex/screening/resultCounts.ts; a job from
     // before #383 reads the aggregates until migrations/recountScreeningJobs recounts it.
     resultCounts: v.optional(v.literal("sharded")),
@@ -1003,10 +1025,11 @@ export default defineSchema({
     errorMessage: v.optional(v.string()),
   })
     .index("by_job", ["jobId"])
-    .index("by_job_status", ["jobId", "status"])
     .index("by_job_openalexId", ["jobId", "openalexId"])
     // A job's papers of one outcome, in the order the job took them.
     .index("by_job_and_outcome", ["jobId", "outcome"])
+    // A job's papers the model is reading: processing, and no longer waiting for a slot.
+    .index("by_job_and_status_and_waitingUser", ["jobId", "status", "waitingUser"])
     .index("by_job_and_pendingAnswers", ["jobId", "pendingAnswers"])
     .index("by_waitingUser_and_waitingSince", ["waitingUser", "waitingSince"])
     .index("by_doneAt", ["doneAt"]),
@@ -1025,6 +1048,8 @@ export default defineSchema({
     // Missing on a job counted before they were kept, until migrations/screeningOutcomes.
     unclear: v.optional(v.number()),
     tallies: screeningTalliesValidator,
+    // Credits its counted papers cost.
+    credits: v.optional(v.number()),
   }).index("by_job", ["jobId"]),
 
   // How many papers a person has saved. It has its own row, not a field on `users`, because

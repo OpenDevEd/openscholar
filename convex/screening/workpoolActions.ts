@@ -27,6 +27,8 @@ type ScreeningActionResult = {
   // The confidence in each answer, under the same encoded keys.
   confidences: Record<string, number>;
   confidence: number;
+  // What the paper cost in credits; none when the model wasn't asked.
+  credits?: number;
 };
 
 /**
@@ -50,6 +52,7 @@ export const screenPaperAction = internalAction({
     responses: v.record(v.string(), v.union(v.boolean(), v.null())),
     confidences: v.record(v.string(), v.number()),
     confidence: v.number(),
+    credits: v.optional(v.number()),
   }),
   handler: async (ctx, args): Promise<ScreeningActionResult> => {
     const emptyResult: ScreeningActionResult = {
@@ -101,7 +104,7 @@ export const screenPaperAction = internalAction({
 
     // 5. Call AI screening with credit billing
     try {
-      const screeningResult: ScreeningResultData = await withUserCredits<ScreeningResultData>(
+      const { result: screeningResult, credits } = await withUserCredits<ScreeningResultData>(
         ctx,
         {
           userId: job.userId as Id<"users">,
@@ -183,6 +186,7 @@ export const screenPaperAction = internalAction({
         responses: encodedResponses,
         confidences: encodeQuestionResponseMap(screeningResult.confidences),
         confidence: screeningResult.confidence,
+        credits,
       };
     } catch (error: unknown) {
       // Handle credit exhaustion: update job status and re-throw

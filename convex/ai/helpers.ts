@@ -322,14 +322,14 @@ export async function withAuthAndCreditsBatch<T>(
 
 /**
  * Credits for background work where the user is known but not signed in to
- * this request (workpool items).
+ * this request (workpool items). Returns the work's result and what it cost.
  */
 export async function withUserCredits<T>(
   ctx: ActionCtx,
   target: CreditTarget,
   pricing: Pricing,
   handler: () => Promise<{ result: T; totalUsage: Usage; trackingEntries?: AITrackingEntry[] }>,
-): Promise<T> {
+): Promise<{ result: T; credits: number }> {
   try {
     const user = target.clerkId
       ? { clerkId: target.clerkId }
@@ -351,7 +351,7 @@ export async function withUserCredits<T>(
         entries: trackingEntries.map((entry) => ({ ...entry, creditsDeducted: credits })),
         });
     }
-    return result;
+    return { result, credits };
   } catch (error) {
     throwStructuredAIError(error);
   }

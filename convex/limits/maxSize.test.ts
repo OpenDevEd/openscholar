@@ -16,6 +16,7 @@ import { assertApprovedQueriesUnchanged } from "../evidenceLibraries/approvedQue
 import { isAcceptableSavedConfigurationTarget } from "../evidenceLibraries/operations";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "../extraction/queue/workpool.test-support";
+import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 
 const filters = { searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [] };
 
@@ -428,4 +429,68 @@ describe("at the largest sizes the product allows", () => {
     expect(await as.mutation(api.screening.papers.answer, { jobId, paperId: ids[0], questionKey: "q0", answer: false })).toEqual({ outcome: "included" });
     expect((await as.query(api.screening.queries.getScreeningJob, { jobId }))?.tallies?.[0]).toEqual({ key: "q0", yes: 119, no: 1, unclear: 0 });
   }, 300_000);
+
+  it("a job reads the last 1,000 papers of a 10,000-paper collection of long abstracts (#341)", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      setupScreeningWorkpool(t);
+      const { userId, as } = await seedAccount(t, "max_sets_user");
+      await t.run((ctx) => seedCreditsForTest(ctx, { userId, paid: 10_000_000 }));
+      const { collectionId } = await seedLibrary(t, userId, { abstractChars: 2_000 });
+
+      const { jobId } = await as.action(api.screening.start.screen, {
+        set: { kind: "collection", collectionId }, first: MAX_SIZE.libraryItems - MAX_SCREENING_PAPERS_PER_JOB + 1, last: MAX_SIZE.libraryItems,
+        questions: [{ key: "q0", question: "Randomized?" }],
+        scoringConfig: { rules: [{ questionKey: "q0", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },
+        saveTo: { kind: "none" },
+      });
+
+      // Newest saved first, so the last 1,000 are the first 1,000 saved, from W999 down.
+      const job = await t.run((ctx) => ctx.db.get("screeningJobs", jobId));
+      expect(job).toMatchObject({ totalPapers: MAX_SCREENING_PAPERS_PER_JOB, first: 9_001, last: 10_000 });
+      const [first] = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1));
+      expect(first.openalexId).toBe("https://openalex.org/W999");
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 600_000);
+
+  it("a job on a search reuses its page's answers for 1,000 papers at 50 questions, and counts them (#341)", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      setupScreeningWorkpool(t);
+      const clerkId = "max_reuse_user";
+      const { userId, as } = await seedAccount(t, clerkId);
+      await t.run((ctx) => seedCreditsForTest(ctx, { userId, paid: 10_000_000 }));
+      const asked = Array.from({ length: MAX_SIZE.questionsPerJob }, (_, i) => `${text(180, i)}?`);
+      const ids = Array.from({ length: MAX_SCREENING_PAPERS_PER_JOB }, (_, i) => `https://openalex.org/W${i}`);
+      const at = new Date(Date.UTC(2026, 8, 1)).toISOString();
+      const search = { id: "reused", query: "tutoring", field: "title" as const, count: ids.length, queryHistoryCount: 0, questionCount: 0, questionText: "", screeningQuestions: asked.map((question) => ({ question })), screeningResponses: [], createdAt: at, updatedAt: at };
+      await as.mutation(api.research.records.change, { accountId: clerkId, requestId: "create", command: { kind: "createSearch", search } });
+      const screeningId = await t.run(async (ctx) => {
+        const row = (await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", "reused")).unique())!;
+        return ctx.db.insert("screenings", { userId, searchId: row._id, version: 1, createdAt: 1 });
+      });
+      const answers = asked.map((question) => ({ question, answer: true, setBy: "model" as const, updatedAt: 1, model: { answer: true, confidence: 0.9, at: 1 } }));
+      await insertMany(t, "screeningAnswers", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1 })), 100);
+      await insertMany(t, "screeningAnswerHistory", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1, at: 1 })), 100);
+      const questions = asked.map((question, i) => ({ key: `q${i}`, question }));
+
+      const { jobId } = await t.mutation(internal.screening.mutations.createScreeningJobForUser, {
+        userId, author: "user", set: { kind: "search", searchId: "reused" }, first: 1, last: ids.length, saveTo: { kind: "none" },
+        papers: ids.map((openalexId, i) => ({ openalexId, title: text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)) })),
+        questions,
+        scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },
+      });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+      expect(await as.query(api.screening.queries.getScreeningJob, { jobId })).toMatchObject({
+        status: "completed", processedPapers: ids.length, outcomes: { included: ids.length }, credits: { spent: 0, estimate: 0 },
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 600_000);
 });

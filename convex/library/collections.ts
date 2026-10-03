@@ -27,32 +27,34 @@ export function collectionSortName(name: string) {
 // COLLECTION CRUD (Plan 01 prerequisites)
 // ═══════════════════════════════════════════════════════════════
 
+/** Makes an empty collection of `userId`'s named `name`, and counts it. */
+export async function newCollection(ctx: MutationCtx, userId: Id<"users">, name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
+  }
+  const existing = await ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId)).take(MAX_COLLECTIONS_PER_USER);
+  if (existing.length >= MAX_COLLECTIONS_PER_USER) {
+    throw createError("VALIDATION_ERROR", `You can have up to ${MAX_COLLECTIONS_PER_USER} collections. Delete one to make another.`);
+  }
+  // Every collection was just read for the cap, so a missing count starts exact.
+  const counted = await collectionCountRow(ctx, userId);
+  if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: counted.count + 1 });
+  else await ctx.db.insert("collectionCounts", { userId, count: existing.length + 1 });
+  return await ctx.db.insert("collections", {
+    userId,
+    name: trimmed,
+    sortName: collectionSortName(trimmed),
+    itemCount: 0,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  });
+}
+
 export const createCollection = mutation({
   args: { name: v.string() },
   returns: v.id("collections"),
-  handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
-    const trimmed = args.name.trim();
-    if (!trimmed) {
-      throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
-    }
-    const existing = await ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", user._id)).take(MAX_COLLECTIONS_PER_USER);
-    if (existing.length >= MAX_COLLECTIONS_PER_USER) {
-      throw createError("VALIDATION_ERROR", `You can have up to ${MAX_COLLECTIONS_PER_USER} collections. Delete one to make another.`);
-    }
-    // Every collection was just read for the cap, so a missing count starts exact.
-    const counted = await collectionCountRow(ctx, user._id);
-    if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: counted.count + 1 });
-    else await ctx.db.insert("collectionCounts", { userId: user._id, count: existing.length + 1 });
-    return await ctx.db.insert("collections", {
-      userId: user._id,
-      name: trimmed,
-      sortName: collectionSortName(trimmed),
-      itemCount: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  },
+  handler: async (ctx, args) => newCollection(ctx, (await requireAuth(ctx))._id, args.name),
 });
 
 export const renameCollection = mutation({

@@ -96,6 +96,8 @@ function recorded(result: Doc<"screeningResults">): Partial<Counted> | null {
 }
 
 export type Delta = { qualified: number; unclear: number; before?: Answers; after?: Answers };
+/** How a paper's place changed: it became included, or came to be left out (excluded) when it wasn't before. */
+export type Move = { becameIncluded: boolean; left: boolean };
 
 /**
  * Scores a completed paper on `answers`, of which a person or the assistant set `changed`,
@@ -112,7 +114,8 @@ export function account(job: Doc<"screeningJobs">, result: Doc<"screeningResults
     ...(was?.answers ? { before: was.answers } : {}),
     ...(answers ? { after: answers } : {}),
   };
-  return { patch: { ...scored, counted }, delta, move: { becameIncluded: counted.qualified && was?.qualified !== true } };
+  const move: Move = { becameIncluded: counted.qualified && was?.qualified !== true, left: counted.outcome === "excluded" && was?.outcome !== "excluded" };
+  return { patch: { ...scored, counted }, delta, move };
 }
 
 /** What a paper the model couldn't read records; it adds to no count but the failed papers'. */
