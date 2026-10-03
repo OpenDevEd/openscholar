@@ -130,6 +130,8 @@ export const page = internalQuery({
     }
     const read = await ctx.db.query("searches").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)).order("desc").paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
     // Each query with the person's shortcuts expanded, as the history page shows it.
+    // ponytail: one lookup per shortcut name the page uses; a page naming more than a
+    // function's 4,096 lookups fails the export by name, and would need the names read in chunks.
     const expansions = await shortcutExpansions(ctx, userId, shortcutNames(read.page.map((row) => row.data.query).join("\n")));
     const searches = read.page.map(({ data }) => ({
       query: validateAndExpandKeywordsSilently(data.query, (text) => expandShortcuts(text, expansions)).expandedQuery,

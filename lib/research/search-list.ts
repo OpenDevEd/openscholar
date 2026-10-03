@@ -41,7 +41,7 @@ export function useSearchList({ sort, text = "", pageSize, excludeId }: { sort: 
   const session = useResearchSession();
   const accountId = session?.accountId;
   const match = useDebouncedValue(text.trim(), 300);
-  const remote = useCursorPage(api.research.records.listedSearches, accountId ? { accountId, sort, text: match || undefined } : "skip", pageSize);
+  const remote = useCursorPage(api.research.records.listedSearches, accountId ? { accountId, sort, text: match || undefined, exclude: excludeId } : "skip", pageSize);
   const { data: count } = useProtectedQuery(api.research.records.countSearches, accountId ? { accountId } : "skip");
 
   const localHistory = useStore(localSearchHistoryStore, (state) => state.searchHistory);
@@ -52,29 +52,19 @@ export function useSearchList({ sort, text = "", pageSize, excludeId }: { sort: 
     const needle = text.trim().toLowerCase();
     return localHistory.filter((item) => item.id !== excludeId && (!needle || matchesLocally(item, needle))).sort(LOCAL_ORDER[sort]);
   }, [accountId, localHistory, text, excludeId, sort]);
-  const remoteItems = useMemo(
-    () => remote.items.filter((item) => item.id !== excludeId).map((item) => restoreSearch({ ...item, screeningResponses: [] })),
-    [remote.items, excludeId],
-  );
-  // The left-out search sits on one page of the account's list; the pages after it start a row earlier.
-  const remoteKey = JSON.stringify([sort, match]);
-  const [leftOut, setLeftOut] = useState<{ key: string; page: number } | null>(null);
-  if (excludeId && !remote.isStale && remote.items.some((item) => item.id === excludeId) && (leftOut?.key !== remoteKey || leftOut.page !== remote.page)) {
-    setLeftOut({ key: remoteKey, page: remote.page });
-  }
-  const before = leftOut?.key === remoteKey && remote.page > leftOut.page ? 1 : 0;
+  const remoteItems = useMemo(() => remote.items.map((item) => restoreSearch({ ...item, screeningResponses: [] })), [remote.items]);
 
   if (accountId) {
     const all = count === undefined ? undefined : Math.max(0, count - (excludeId ? 1 : 0));
     // A page still catching up with a deletion can hold more than the count says; the total never reads below it.
-    const total = match || all === undefined ? undefined : Math.max(all, remote.offset - before + remoteItems.length);
+    const total = match || all === undefined ? undefined : Math.max(all, remote.offset + remoteItems.length);
     return {
       items: remoteItems,
       count: all,
       total,
       page: remote.page,
       pageCount: total === undefined ? undefined : Math.max(1, Math.ceil(total / pageSize)),
-      offset: remote.offset - before,
+      offset: remote.offset,
       canPrevious: remote.canPrevious,
       canNext: remote.canNext,
       hasPages: remote.hasPages,

@@ -280,6 +280,8 @@ describe("account research records", () => {
     expect((await listed({ sort: "recent", text: "smaller classes" })).map(row => row.id)).toEqual(["some"]);
     expect((await listed({ sort: "most", text: "in" })).map(row => row.id)).toEqual(["many", "few"]);
     expect((await listed({ sort: "recent" }))[0]).not.toHaveProperty("screeningResponses");
+    // A search left out doesn't take a place on the page.
+    expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "oldest", exclude: "few", paginationOpts: { cursor: null, numItems: 2 } })).page.map(row => row.id)).toEqual(["many", "some"]);
   });
 
   it("counts a person's searches as they're made and deleted, and clears them all a batch at a time", async () => {

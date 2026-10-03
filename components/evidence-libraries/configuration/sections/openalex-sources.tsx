@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { Building2, KeyRound } from "lucide-react";
 import { useAction, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,8 @@ export function useOpenAlexSources({
   const [editingKey, setEditingKey] = useState<"new" | string | null>(null);
   const [editorSession, setEditorSession] = useState<{ id: string; created: boolean } | null>(null);
   const hasSearch = useHasSearch();
+  // Opening an existing source waits to learn whether its search is still saved; only the latest request opens.
+  const editRequest = useRef(0);
   const [apiKey, setApiKey] = useState("");
   const [selectedMode, setSelectedMode] = useState<
     "openscholar" | "custom" | null
@@ -97,6 +99,7 @@ export function useOpenAlexSources({
       : (sources.find((source) => source.key === editingKey) ?? null);
 
   async function setEditing(source: "new" | OpenAlexSourceEntry | null) {
+    const request = ++editRequest.current;
     const history = useSearchHistoryStore.getState();
     if (source === null) {
       if (editorSession?.created) history.removeSearchResult(editorSession.id);
@@ -107,6 +110,7 @@ export function useOpenAlexSources({
     const initial = source === "new" ? null : source;
     const savedId = sourceSearchHistoryId(initial);
     const existing = savedId && (await hasSearch(savedId));
+    if (request !== editRequest.current) return;
     const id = existing ? savedId : history.addSearchResult(paramsToSearchResult(readOpenAlexSourceSearch(initial)));
     setEditorSession({ id, created: !existing });
     setEditingKey(initial?.key ?? "new");

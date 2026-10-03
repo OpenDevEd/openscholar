@@ -38,17 +38,19 @@ const LISTED_BYTES = 8 * 1024 * 1024;
 export const listedSearchesAction = defineUserQuery({
   path: "research/records:listedSearches",
   description:
-    "Lists the person's saved searches without their screening answers, a page at a time: newest, oldest, most or fewest results first. Given `text`, only those whose query or questions contain it; a page can then come back short without being the last.",
-  args: { ...pageArgs, sort: listedSortValidator, text: v.optional(v.string()) },
+    "Lists the person's saved searches without their screening answers, a page at a time: newest, oldest, most or fewest results first. Given `text`, only those whose query or questions contain it; given `exclude`, all but the search with that ID. A page can come back short without being the last.",
+  args: { ...pageArgs, sort: listedSortValidator, text: v.optional(v.string()), exclude: v.optional(v.string()) },
   returns: paginationResultValidator(listedSearchValidator),
-  run: async (ctx, userId, { paginationOpts, sort, text }) => {
+  run: async (ctx, userId, { paginationOpts, sort, text, exclude }) => {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LISTED_PAGE_MAX) };
     const index = sort === "most" || sort === "least" ? "by_user_and_count" : "by_user_and_createdAt";
     const order = sort === "oldest" || sort === "least" ? "asc" : "desc";
     const needle = text?.trim().toLowerCase();
-    const page = await (needle
+    const page = await (needle || exclude !== undefined
       ? stream(ctx.db, schema).query("searches").withIndex(index, q => q.eq("userId", userId)).order(order)
           .filterWith(async row => {
+            if (row.localId === exclude) return false;
+            if (!needle) return true;
             const search = currentSearch(row.data);
             return search.query.toLowerCase().includes(needle) || search.questionText.toLowerCase().includes(needle);
           })

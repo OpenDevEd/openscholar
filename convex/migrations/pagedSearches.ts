@@ -14,6 +14,10 @@ import { searchCountRow, startSearchCount } from "../research/searchCounts";
  *   npx convex run migrations/pagedSearches:run '{"dryRun": true}'
  *   npx convex run migrations/pagedSearches:run
  *   npx convex run migrations/pagedSearches:verify
+ *
+ * If `verify` stays above 0, a count stopped part way; `resume` carries each on:
+ *
+ *   npx convex run migrations/pagedSearches:resume
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
@@ -39,6 +43,20 @@ export const verifyPage = internalQuery({
       if (!row || row.countedTo !== undefined) wrong++;
     }
     return { wrong, isDone: page.isDone, continueCursor: page.continueCursor };
+  },
+});
+
+/** Carries on every first count that stopped part way; a count still running just takes an extra step. */
+export const resume = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: v.null(),
+  handler: async (ctx, { cursor = null }) => {
+    const page = await ctx.db.query("searchCounts").paginate({ cursor, numItems: 100 });
+    for (const row of page.page) {
+      if (row.countedTo !== undefined) await ctx.scheduler.runAfter(0, internal.research.records.countSearchesPage, { userId: row.userId });
+    }
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.pagedSearches.resume, { cursor: page.continueCursor });
+    return null;
   },
 });
 
