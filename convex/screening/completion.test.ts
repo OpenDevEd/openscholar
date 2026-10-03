@@ -8,6 +8,7 @@ const completedRowDetails: CompletedScreeningRowDetails = {
   score: 3,
   stars: 2,
   qualified: true,
+  outcome: "included",
   aiMetadata: { confidence: 0.87 },
 };
 
@@ -27,6 +28,7 @@ describe("deriveCompletionTransition", () => {
         score: 3,
         stars: 2,
         qualified: true,
+        outcome: "included",
         aiMetadata: { confidence: 0.87 },
       },
     });
@@ -54,7 +56,7 @@ describe("deriveCompletionTransition", () => {
       }),
     ).toEqual({
       kind: "patch",
-      rowPatch: { status: "failed" },
+      rowPatch: { status: "failed", outcome: "failed" },
     });
   });
 

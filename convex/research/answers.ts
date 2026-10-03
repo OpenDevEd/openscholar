@@ -182,6 +182,21 @@ export async function answerPaper(ctx: Write, screeningId: Id<"screenings">, pap
   return apply(ctx, screening, [{ paperId, answers }], existing, at);
 }
 
+/** One paper's answers as they stand, each with who set it and the model's own answer, the removals it owes left out. */
+export async function paperAnswers(ctx: Read, screening: Doc<"screenings">, paperId: string): Promise<PaperAnswers> {
+  const row = await paperRow(ctx, screening._id, paperId);
+  return row ? owed(screening.removals, row.version ?? 0).reduce(without, row.answers) : [];
+}
+
+/** Puts back the model's own answer to `question` where someone changed it; nothing changes where the model gave none. */
+export async function restoreModelAnswer(ctx: Write, screeningId: Id<"screenings">, paperId: string, question: string, at: number) {
+  const screening = (await ctx.db.get("screenings", screeningId))!;
+  const existing = await settledRow(ctx, screening, paperId);
+  const answers = (existing.get(paperId)?.answers ?? []).map((value) =>
+    value.question === question && value.model ? { question, answer: value.model.answer, setBy: "model" as const, updatedAt: at, model: value.model } : value);
+  return apply(ctx, screening, [{ paperId, answers }], existing, at);
+}
+
 /** Removes one paper's answers, reading only that paper's row. */
 export async function clearPaperAnswers(ctx: Write, searchId: Id<"searches">, paperId: string, at: number) {
   const screening = await screeningFor(ctx, searchId);

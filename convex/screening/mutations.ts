@@ -21,7 +21,7 @@ import {
 import { upsertLibraryItem } from "../library/mutations";
 import { addCollectionMembership } from "../library/collectionMembership";
 import { deriveCompletionTransition } from "./completion";
-import { scorePaper } from "./scoring";
+import { outcomeOf, scorePaper } from "./scoring";
 import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { ensureScreening } from "../research/answers";
 import { bookkeepLater, ensureProgress, saveQualified } from "./bookkeeping";
@@ -149,6 +149,8 @@ async function createResults(ctx: MutationCtx, userId: Id<"users">, jobId: Id<"s
       authors: paper.authors?.slice(0, MAX_AUTHORS),
       publicationYear: paper.publicationYear,
       doi: paper.doi,
+      venue: paper.venue,
+      citedByCount: paper.citedByCount,
       status: "processing",
       waitingUser: userId,
       waitingSince: createdAt,
@@ -374,6 +376,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
       };
 
       const { score, stars, qualified } = scorePaper(answers, job.scoringConfig);
+      const outcome = outcomeOf(answers, job.scoringConfig);
       transition = deriveCompletionTransition({
         currentRowStatus: screeningResult.status,
         jobStatus: job.status,
@@ -382,6 +385,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
           score,
           stars,
           qualified,
+          outcome,
           aiMetadata: { confidence: data.confidence },
         },
       });

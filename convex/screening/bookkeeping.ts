@@ -19,6 +19,7 @@ import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { upsertLibraryItem } from "../library/mutations";
 import { addCollectionMembership } from "../library/collectionMembership";
 import { moveResultAnswers } from "./drain";
+import { tallied } from "./scoring";
 import { startWaitingPapers } from "./slots";
 
 /** Papers per batch: each moves its answers and may save a library item, a few dozen reads. */
@@ -93,19 +94,27 @@ export async function countBookkept(ctx: QueryCtx | MutationCtx, jobId: Id<"scre
   return tally(results.filter((result) => result.doneAt === undefined || batch.has(result._id)));
 }
 
-/** Adds a batch's papers to their job's progress; a job without progress yet is counted from its results. */
-async function countFinished(ctx: MutationCtx, jobId: Id<"screeningJobs">, results: Doc<"screeningResults">[]) {
-  const row = await progressRow(ctx, jobId);
+/**
+ * Adds a batch's papers to their job's progress: how many finished and how, how many are
+ * unclear, and how each question was answered. A paper still holds its answers here: they
+ * move to the screening after it's counted. A job without progress yet is counted from its results.
+ */
+async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, results: Doc<"screeningResults">[]) {
+  const row = await progressRow(ctx, job._id);
   if (!row) {
-    await ctx.db.insert("screeningJobProgress", { jobId, ...(await countBookkept(ctx, jobId, new Set(results.map((result) => result._id)))) });
+    await ctx.db.insert("screeningJobProgress", { jobId: job._id, ...(await countBookkept(ctx, job._id, new Set(results.map((result) => result._id)))) });
     return;
   }
   const add = tally(results);
+  const keys = job.questions.map((question) => question.key);
+  const completed = results.filter((result) => result.status === "completed");
   await ctx.db.patch("screeningJobProgress", row._id, {
     completed: row.completed + add.completed,
     skipped: row.skipped + add.skipped,
     failed: row.failed + add.failed,
     qualified: row.qualified + add.qualified,
+    unclear: (row.unclear ?? 0) + completed.filter((result) => result.outcome === "unclear").length,
+    tallies: completed.reduce((tallies, result) => (result.answers ? tallied(tallies, keys, result.answers, 1) : tallies), row.tallies ?? []),
   });
 }
 
@@ -192,7 +201,7 @@ export const bookkeep = internalMutation({
           }
           recounted = true;
         }
-        await countFinished(ctx, jobId, jobResults);
+        await countFinished(ctx, job, jobResults);
         for (const result of jobResults) {
           if (result.pendingAnswers) await moveResultAnswers(ctx, result);
           if (result.status === "completed" && result.qualified === true && !result.libraryItemId) await saveQualified(ctx, job, result);

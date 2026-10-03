@@ -22,7 +22,7 @@ import { ratingsAmong, shortcutExpansions } from "../research/records";
 import { readSearchWorks, searchRequestValidator } from "./openalex";
 
 /** The fields a screening paper keeps. */
-const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships";
+const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location";
 
 export type SearchPaper = Infer<typeof screeningPaperInputValidator>;
 
@@ -77,6 +77,8 @@ type Work = {
   publication_year?: number | null;
   abstract_inverted_index?: Record<string, number[]> | null;
   authorships?: Array<{ author?: { display_name?: string | null } | null }> | null;
+  cited_by_count?: number | null;
+  primary_location?: { source?: { display_name?: string | null } | null } | null;
 };
 
 function toPaper(work: Work): SearchPaper {
@@ -88,6 +90,8 @@ function toPaper(work: Work): SearchPaper {
     ...(authors.length ? { authors } : {}),
     ...(typeof work.publication_year === "number" ? { publicationYear: work.publication_year } : {}),
     ...(work.doi ? { doi: work.doi } : {}),
+    ...(work.primary_location?.source?.display_name ? { venue: work.primary_location.source.display_name } : {}),
+    ...(typeof work.cited_by_count === "number" ? { citedByCount: work.cited_by_count } : {}),
   };
 }
 

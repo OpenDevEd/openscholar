@@ -8,7 +8,7 @@ import {
   MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_METADATA_FIELDS, MAX_QUESTIONS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
-import { screeningAnswersValidator, screeningAuthorsValidator, screeningQuestionsValidator, screeningScoringConfigValidator } from "./screening/validators";
+import { screeningAnswersValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
 import {
   errorCodeValidator,
   extractionEvidenceUnitFields,
@@ -961,6 +961,12 @@ export default defineSchema({
     score: v.optional(v.number()),
     stars: v.optional(v.number()),
     qualified: v.optional(v.boolean()),
+    // Where the paper landed (./screening/scoring.ts), set as it settles and again when an
+    // answer of its is changed; a job's list reads its papers by it. Results from before it
+    // was kept get theirs from migrations/screeningOutcomes.
+    outcome: v.optional(screeningOutcomeValidator),
+    venue: v.optional(v.string()),
+    citedByCount: v.optional(v.number()),
     aiMetadata: v.optional(
       v.object({
         reasoning: v.optional(v.string()),
@@ -987,6 +993,8 @@ export default defineSchema({
     .index("by_job", ["jobId"])
     .index("by_job_status", ["jobId", "status"])
     .index("by_job_openalexId", ["jobId", "openalexId"])
+    // A job's papers of one outcome, in the order the job took them.
+    .index("by_job_and_outcome", ["jobId", "outcome"])
     .index("by_job_and_pendingAnswers", ["jobId", "pendingAnswers"])
     .index("by_waitingUser_and_waitingSince", ["waitingUser", "waitingSince"])
     .index("by_doneAt", ["doneAt"]),
@@ -1001,6 +1009,10 @@ export default defineSchema({
     skipped: v.number(),
     failed: v.number(),
     qualified: v.number(),
+    // Completed papers that aren't included but could be, and each question's answers.
+    // Missing on a job counted before they were kept, until migrations/screeningOutcomes.
+    unclear: v.optional(v.number()),
+    tallies: screeningTalliesValidator,
   }).index("by_job", ["jobId"]),
 
   // How many papers a person has saved. It has its own row, not a field on `users`, because

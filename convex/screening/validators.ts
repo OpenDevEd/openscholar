@@ -58,6 +58,38 @@ export const screeningPaperInputValidator = v.object({
   authors: screeningAuthorsValidator,
   publicationYear: v.optional(v.number()),
   doi: v.optional(v.string()),
+  /** Where it was published, and how often it's cited: what a job's list shows beside a paper. */
+  venue: v.optional(v.string()),
+  citedByCount: v.optional(v.number()),
+});
+
+/**
+ * Where a screened paper landed: included at the job's minimum score; unclear when its
+ * unclear answers could still take it there; excluded; or failed, when the model couldn't read it.
+ */
+export const screeningOutcomeValidator = v.union(v.literal("included"), v.literal("unclear"), v.literal("excluded"), v.literal("failed"));
+
+/** How each question's answers split across a job's papers, kept as papers settle. */
+export const screeningTalliesValidator = capped(
+  v.optional(v.array(v.object({ key: v.string(), yes: v.number(), no: v.number(), unclear: v.number() }))),
+  MAX_QUESTIONS,
+);
+
+/** One paper of a job as its list shows it: the paper, its score, and its answer to each question now. */
+export const screeningJobPaperValidator = v.object({
+  openalexId: v.string(),
+  title: v.string(),
+  abstract: v.optional(v.string()),
+  authors: screeningAuthorsValidator,
+  publicationYear: v.optional(v.number()),
+  doi: v.optional(v.string()),
+  venue: v.optional(v.string()),
+  citedByCount: v.optional(v.number()),
+  outcome: screeningOutcomeValidator,
+  score: v.optional(v.number()),
+  stars: v.optional(v.number()),
+  /** By question key. `changed`: a person or the assistant set it; `confidence`: the model's in its own answer. */
+  answers: capped(v.array(v.object({ key: v.string(), answer: v.union(v.boolean(), v.null()), changed: v.boolean(), confidence: v.optional(v.number()) })), MAX_QUESTIONS),
 });
 
 /**
