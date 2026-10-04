@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { useCollectionPicker } from "./use-collection-picker";
 
 /** A removal's ID: the server keeps what was removed for a day, for Undo. */
-type Removal = NonNullable<FunctionReturnType<typeof api.library.mutations.removeFromLibrary>>;
+type Removal = Id<"libraryRemovals">;
 type Pending = { value: boolean; token: number };
 
 let lastToken = 0;
@@ -160,7 +160,7 @@ export function useSavePaper(paper: WorkInput | undefined) {
     const { setSaved, settleSaved } = usePending.getState();
     const token = setSaved(paper.id, false);
     // The server clears the research rating with the paper.
-    const request = remove({ openalexId: paper.id });
+    const request = remove({ openalexId: paper.id }).then(({ undo }) => undo?.args.removalId ?? null);
     const removal = request.catch(() => null);
     removals.set(key, removal);
     request
@@ -322,7 +322,7 @@ function CollectionsPanel({
     if (!name) return;
     setNewName("");
     createCollection({ name })
-      .then((collectionId) => toggle(collectionId, true))
+      .then(({ id }) => toggle(id, true))
       .catch((error) => {
         console.error("[Library] Failed to create collection:", error);
         toast.error(t("collectionError"));

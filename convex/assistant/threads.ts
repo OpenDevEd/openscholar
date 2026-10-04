@@ -33,9 +33,28 @@ const LIST_FILTER_ROWS = 500;
 const LIST_PAGE_BYTES = 2 * 1024 * 1024;
 const PREVIEW_MAX = 120;
 
-/** The start of a message, on one line, for the list of chats. Cut between characters, never inside one. */
+const EMPHASIS = /(\*\*|__|~~|\*)(?=\S)(.+?)(?<=\S)\1/g;
+/** An underscore is a mark only at the edge of a word, so snake_case_name keeps its own. */
+const UNDERSCORES = /(?<![\p{L}\p{N}_])_(?=\S)(.+?)(?<=\S)_(?![\p{L}\p{N}_])/gu;
+/** A link or image, its address allowed one pair of brackets inside, as Wikipedia's have. */
+const LINK = /!?\[([^\]]*)\]\((?:[^()]|\([^()]*\))*\)/g;
+
+/**
+ * The start of a message, on one line and without its markdown marks, for the list of chats.
+ * Cut between characters, never inside one.
+ */
 export function previewOf(text: string) {
-  const characters = [...text.trim().replace(/\s+/g, " ")];
+  // ponytail: a few patterns for the marks a message opens with, not a markdown parser. Use one if a preview ever has to read a table or a code block.
+  // Only the start is read, so a long reply costs no more than a short one. A cut through an emoji drops its first half too.
+  const plain = text
+    .slice(0, PREVIEW_MAX * 20)
+    .replace(/[\uD800-\uDBFF]$/, "")
+    .replace(/^\s{0,3}(#{1,6}|>|[-*+])\s+/gm, "")
+    // Code keeps what's inside it as written. The rest loses its links and marks, twice for marks inside marks.
+    .split(/`([^`]+)`/)
+    .map((part, index) => (index % 2 ? part : part.replace(LINK, "$1").replace(EMPHASIS, "$2").replace(EMPHASIS, "$2").replace(UNDERSCORES, "$1")))
+    .join("");
+  const characters = [...plain.trim().replace(/\s+/g, " ")];
   return characters.length > PREVIEW_MAX ? `${characters.slice(0, PREVIEW_MAX - 1).join("").trimEnd()}…` : characters.join("");
 }
 
@@ -83,11 +102,23 @@ export async function chatModel(ctx: QueryCtx | MutationCtx, thread: Doc<"assist
   return { modelId: pick?.modelId ?? null, effort: pick?.effort };
 }
 
+/** The smallest window a model needs: the context budget and a reply fit in it (./context.ts). */
+const MIN_CONTEXT_WINDOW = 64_000;
+
+/** Refuses a model the assistant can't run on: one that doesn't call tools, or has no room for the conversation. */
+export function requireAssistantModel(model: Doc<"models">) {
+  requireTaskModel(model, "chat");
+  if (!model.supportedParameters?.includes("tools")) throw createError("VALIDATION_ERROR", `${model.name} can't use the tools the assistant works with. Pick another model for this chat.`);
+  if ((model.contextLength ?? 0) < MIN_CONTEXT_WINDOW) {
+    throw createError("VALIDATION_ERROR", `${model.name} can't hold a long enough conversation for the assistant. Pick another model for this chat.`);
+  }
+}
+
 /** A model a chat can run on, with an effort it takes. */
 async function pickable(ctx: MutationCtx, modelId: Id<"models">, effort: Effort | undefined) {
   const model = await requireAvailableModel(ctx, modelId);
   requireEffort(model, effort);
-  requireTaskModel(model, "chat");
+  requireAssistantModel(model);
 }
 
 function titled(title: string | undefined) {

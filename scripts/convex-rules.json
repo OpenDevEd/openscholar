@@ -4,9 +4,6 @@
   },
   "listReturns": {
     "pending": {
-      "convex/authors/invitations.ts:listMine:[]": "#424",
-      "convex/authors/members.ts:list:.invitations[]": "#424",
-      "convex/authors/members.ts:list:.members[]": "#424",
       "convex/authors/publications.ts:list:[]": "#424",
       "convex/chat/chatPapers.ts:listChatSourcesWithInclusion:.rows[]": "#325",
       "convex/chat/model.ts:listChatModels:[]": "#325",
@@ -33,7 +30,6 @@
     "pending": {
       "convex/chat/messages.ts:listRecentThreadArtifacts": "#325",
       "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#325",
-      "convex/evidenceLibraries/uploadsClient.ts:listObjectNames": "#425",
       "convex/zotero/actions.ts:fetchAllCollectionsForParent": "#425",
       "convex/zotero/actions.ts:fetchAllTopItemsForCollection": "#425",
       "convex/zotero/libraryGroupActions.ts:listAllUserGroups": "#425"

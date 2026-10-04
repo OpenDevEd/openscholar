@@ -52,13 +52,13 @@ import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidator
 import { evidenceLibraryCollectionSourceFields } from "./evidenceLibraries/collectionSourceValidators";
 import { evidenceLibrarySourceStatusFields } from "./evidenceLibraries/sourceStatusValidators";
 
-import { authorContentFields } from "./authors/validators";
+import { authorContentFields, authorProfileInvitationFields } from "./authors/validators";
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { assistantThreadAccessFields, assistantThreadFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
-import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator } from "../lib/research/records";
+import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
 export default defineSchema({
   searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator })
@@ -108,7 +108,8 @@ export default defineSchema({
   paperRatings: defineTable({ userId: v.id("users"), data: ratingValidator })
     .index("by_user", ["userId"])
     .index("by_user_and_paperId", ["userId", "data.paperId"]),
-  researchReceipts: defineTable({ userId: v.id("users"), key: v.string(), fingerprint: v.optional(v.string()) })
+  // `undo` is what reverses the change a request made, kept so a retry of it answers the same (#342).
+  researchReceipts: defineTable({ userId: v.id("users"), key: v.string(), fingerprint: v.optional(v.string()), undo: v.optional(undoCommandValidator) })
     .index("by_user_and_key", ["userId", "key"]),
   topicCatalog: defineTable(topicNodeFields)
     .index("by_external_id", ["id"]).index("by_parent_and_name", ["parent", "name"])
@@ -162,14 +163,9 @@ export default defineSchema({
   }).index("by_profileId_and_userId", ["profileId", "userId"])
     .index("by_userId", ["userId"]),
 
-  authorProfileInvitations: defineTable({
-    profileId: v.id("authorProfiles"),
-    email: v.string(),
-    invitedBy: v.id("users"),
-    expiresAt: v.number(),
-    state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
-    delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
-  }).index("by_profileId_and_email", ["profileId", "email"])
+  authorProfileInvitations: defineTable(authorProfileInvitationFields)
+    .index("by_profileId_and_email", ["profileId", "email"])
+    .index("by_profileId_and_state", ["profileId", "state"])
     .index("by_email_and_state", ["email", "state"]),
 
   clerkEventLogs: defineTable(clerkEventLogFields)
@@ -1106,6 +1102,8 @@ export default defineSchema({
     userId: v.id("users"),
     item: removedItemValidator,
     collectionIds: capped(v.array(v.id("collections")), MAX_COLLECTIONS_PER_USER),
+    // When the paper was put in each of `collectionIds`, in the same order. A removal from before these were kept has none.
+    assignedAts: capped(v.optional(v.array(v.number())), MAX_COLLECTIONS_PER_USER),
     expiresAt: v.number(),
   }),
 

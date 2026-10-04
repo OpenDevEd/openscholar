@@ -24,7 +24,7 @@ async function setup() {
   });
   const owner = t.withIdentity({ subject: "owner" });
   const colleague = t.withIdentity({ subject: "colleague" });
-  const collectionId = await owner.mutation(api.library.collections.createCollection, { name: "Reading list" });
+  const collectionId = (await owner.mutation(api.library.collections.createCollection, { name: "Reading list" })).id;
   const read = async (body: Record<string, unknown> = {}, credential = token) => {
     const response = await t.fetch("/api/v1/evidence-libraries/source-collections/items", {
       method: "POST",
@@ -80,7 +80,7 @@ it("lets only the collection's owner connect it, and stops serving it once they 
 
 it("reads the library's connections to the collections asked for as one page, and leaves out one it never connected", async () => {
   const { owner, collectionId, libraryId } = await setup();
-  const other = await owner.mutation(api.library.collections.createCollection, { name: "Other" });
+  const other = (await owner.mutation(api.library.collections.createCollection, { name: "Other" })).id;
   await owner.mutation(api.evidenceLibraries.collectionSources.connectCollectionSource, { libraryId, collectionId: other });
   const read = (collectionIds: string[]) => owner.query(api.evidenceLibraries.collectionSources.listCollectionSources, { libraryId, collectionIds });
   expect(await read([other, collectionId, other])).toMatchObject({ page: [{ collectionId: other, name: "Other" }], isDone: true });

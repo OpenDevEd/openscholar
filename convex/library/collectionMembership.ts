@@ -17,13 +17,18 @@ async function touchCollection(
   });
 }
 
-/** Adds an item to a collection once; returns false when it was already there. */
+/**
+ * Adds an item to a collection once. Returns when it was put in, or null when it was already
+ * there. `assignedAt` puts back a place taken away, as the place it was: the date tells one
+ * time a paper was put in a collection from another, which is how an undo knows its own.
+ */
 export async function addCollectionMembership(
   ctx: MutationCtx,
   args: {
     userId: Id<"users">;
     collection: Doc<"collections">;
     libraryItemId: Id<"libraryItems">;
+    assignedAt?: number;
   },
 ) {
   const existing = await ctx.db
@@ -34,15 +39,16 @@ export async function addCollectionMembership(
         .eq("libraryItemId", args.libraryItemId),
     )
     .unique();
-  if (existing) return false;
+  if (existing) return null;
+  const assignedAt = args.assignedAt ?? Date.now();
   await ctx.db.insert("libraryItemCollections", {
     userId: args.userId,
     collectionId: args.collection._id,
     libraryItemId: args.libraryItemId,
-    assignedAt: Date.now(),
+    assignedAt,
   });
   await touchCollection(ctx, args.collection, 1);
-  return true;
+  return assignedAt;
 }
 
 /** Removes one membership row and counts it off its collection, if the collection still exists. */

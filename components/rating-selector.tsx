@@ -51,13 +51,13 @@ export function useRatePaper() {
   const { setRating } = useRatingsStore();
   const { phase } = useAuthReadiness();
   const saveToLibrary = useMutation(api.library.mutations.saveToLibrary);
-  const clearLibraryRating = useMutation(api.library.mutations.clearLibraryRating);
+  const setLibraryRating = useMutation(api.library.mutations.setLibraryRating);
 
   return useCallback((paper: WorkInput, rating: number | null) => {
     setRating(paper.id, rating);
     if (phase !== "authenticated") return;
     if (rating === null) {
-      clearLibraryRating({ openalexId: paper.id }).catch((error) => {
+      setLibraryRating({ openalexId: paper.id, rating: null }).catch((error) => {
         console.error("[Library] Failed to clear rating:", error);
       });
     } else {
@@ -65,7 +65,7 @@ export function useRatePaper() {
         console.error("[Library] Failed to save to library:", error);
       });
     }
-  }, [setRating, phase, saveToLibrary, clearLibraryRating]);
+  }, [setRating, phase, saveToLibrary, setLibraryRating]);
 }
 
 interface RatingSelectorProps {
