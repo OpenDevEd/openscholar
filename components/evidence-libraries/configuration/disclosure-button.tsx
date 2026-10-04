@@ -60,7 +60,8 @@ export function useFullText<T extends HTMLElement>(watch?: unknown) {
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(node);
-    void document.fonts.ready.then(measure);
+    // The font can arrive after the first measure and change how much fits. Not every environment has `document.fonts`.
+    void document.fonts?.ready.then(measure);
     return () => {
       watching = false;
       observer.disconnect();
