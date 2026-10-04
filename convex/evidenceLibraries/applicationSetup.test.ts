@@ -156,7 +156,7 @@ describe("Evidence Library application setup", () => {
     expect(
       JSON.stringify(
         await fixture.admin.query(
-          api.evidenceLibraries.credentials.listCredentialMetadata,
+          api.evidenceLibraries.credentials.listCredentials,
           { libraryId: fixture.created.libraryId },
         ),
       ),

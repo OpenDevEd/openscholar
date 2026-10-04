@@ -77,3 +77,20 @@ it("lets only the collection's owner connect it, and stops serving it once they 
   await t.run(async (ctx) => ctx.db.delete("collections", collectionId));
   expect(await read()).toEqual({ status: 404, body: { error: "collection_not_found" } });
 });
+
+it("lists a library's collections as one page, and refuses one more than a page holds", async () => {
+  const { t, owner, collectionId, libraryId } = await setup();
+  const other = await owner.mutation(api.library.collections.createCollection, { name: "Other" });
+  await owner.mutation(api.evidenceLibraries.collectionSources.connectCollectionSource, { libraryId, collectionId: other });
+  const listed = await owner.query(api.evidenceLibraries.collectionSources.listCollectionSources, { libraryId });
+  expect(listed).toMatchObject({ page: [{ collectionId: other, name: "Other" }], isDone: true });
+
+  // 99 more connections fill the library's allowance.
+  for (let i = 0; i < 99; i++) {
+    const filler = await owner.mutation(api.library.collections.createCollection, { name: `Filler ${i}` });
+    await t.run((ctx) => ctx.db.insert("evidenceLibraryCollectionSources", { libraryId, collectionId: filler, connectedByClerkUserId: "owner", connectedAt: i }));
+  }
+  await expect(owner.mutation(api.evidenceLibraries.collectionSources.connectCollectionSource, { libraryId, collectionId })).rejects.toThrow(/at most 100 collections/);
+  // One already connected can still be connected again.
+  await owner.mutation(api.evidenceLibraries.collectionSources.connectCollectionSource, { libraryId, collectionId: other });
+});

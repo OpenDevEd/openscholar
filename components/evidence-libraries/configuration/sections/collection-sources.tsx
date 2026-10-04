@@ -50,7 +50,7 @@ export function useCollectionSources({
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const convex = useConvex();
   const connected = useProtectedQuery(
-    api.evidenceLibraries.collectionSources.listLibraryCollectionSources,
+    api.evidenceLibraries.collectionSources.listCollectionSources,
     { libraryId },
   );
   const connect = useMutation(api.evidenceLibraries.collectionSources.connectCollectionSource);
@@ -58,7 +58,7 @@ export function useCollectionSources({
   const sources = value.filter(
     (source): source is OpenScholarCollectionSourceEntry => source.provider === "openscholar",
   );
-  const byId = new Map((connected.data ?? []).map((row) => [row.collectionId as string, row]));
+  const byId = new Map((connected.data?.page ?? []).map((row) => [row.collectionId as string, row]));
 
   const readMine: PickerSource = async ({ query, cursor }) => {
     const page = await convex.query(api.library.collections.listCollections, {

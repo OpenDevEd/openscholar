@@ -28,7 +28,6 @@
       "convex/evidenceLibraries/collectionSources.ts:listLibraryCollectionSources:[]": "#423",
       "convex/evidenceLibraries/credentials.ts:listCredentialMetadata:[]": "#423",
       "convex/evidenceLibraries/domainActions.ts:checkDomains:.results[]": "#425",
-      "convex/evidenceLibraries/domains.ts:listDomains:.domains[]": "#423",
       "convex/evidenceLibraries/invitations.ts:listMine:[]": "#423",
       "convex/evidenceLibraries/queries.ts:listLibraryOverviews:[]": "#423",
       "convex/evidenceLibraries/queries.ts:listTeam:.availablePeople[]": "#423",

@@ -1,4 +1,6 @@
 import { v } from "convex/values";
+import { paginationResultValidator } from "convex/server";
+import { MAX_COLLECTION_SOURCES_PER_LIBRARY } from "../lib/queryBounds";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   httpAction,
@@ -17,8 +19,6 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { readActiveOrganizationMembership, requireEvidenceLibraryAccess } from "./access";
 import { authenticateLibraryServiceCredential } from "./credentials";
 
-// A library follows at most this many collections; far more than it lists.
-const MAX_LIBRARY_COLLECTIONS = 100;
 // Items a page carries. Each costs one read of its library item.
 const ITEMS_PER_PAGE = 1_000;
 
@@ -47,28 +47,39 @@ const collectionSourceValidator = v.object({
 });
 
 /** The collections the library follows, with their current names. */
+/** The collections a library follows: at most MAX_COLLECTION_SOURCES_PER_LIBRARY, which `connectCollectionSource` enforces. */
+async function readCollectionSources(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">) {
+  await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
+  const rows = await ctx.db
+    .query("evidenceLibraryCollectionSources")
+    .withIndex("by_libraryId_and_collectionId", (q) => q.eq("libraryId", libraryId))
+    .take(MAX_COLLECTION_SOURCES_PER_LIBRARY);
+  return await Promise.all(
+    rows.map(async (row) => {
+      const collection = await ctx.db.get("collections", row.collectionId);
+      return {
+        collectionId: row.collectionId,
+        name: collection?.name ?? null,
+        itemCount: collection?.itemCount ?? 0,
+        connectedByClerkUserId: row.connectedByClerkUserId,
+        connectedAt: row.connectedAt,
+      };
+    }),
+  );
+}
+
+/** The collections a library follows, as one page: a library holds no more than one page of them. */
+export const listCollectionSources = query({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: paginationResultValidator(collectionSourceValidator),
+  handler: async (ctx, args) => ({ page: await readCollectionSources(ctx, args.libraryId), isDone: true, continueCursor: "" }),
+});
+
+/** Kept for one release, while the deployed site still calls it; `listCollectionSources` replaces it. */
 export const listLibraryCollectionSources = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.array(collectionSourceValidator),
-  handler: async (ctx, args) => {
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    const rows = await ctx.db
-      .query("evidenceLibraryCollectionSources")
-      .withIndex("by_libraryId_and_collectionId", (q) => q.eq("libraryId", args.libraryId))
-      .take(MAX_LIBRARY_COLLECTIONS);
-    return await Promise.all(
-      rows.map(async (row) => {
-        const collection = await ctx.db.get("collections", row.collectionId);
-        return {
-          collectionId: row.collectionId,
-          name: collection?.name ?? null,
-          itemCount: collection?.itemCount ?? 0,
-          connectedByClerkUserId: row.connectedByClerkUserId,
-          connectedAt: row.connectedAt,
-        };
-      }),
-    );
-  },
+  handler: (ctx, args) => readCollectionSources(ctx, args.libraryId),
 });
 
 /**
@@ -94,7 +105,16 @@ export const connectCollectionSource = mutation({
     };
     const existing = await findConnection(ctx, args.libraryId, args.collectionId);
     if (existing) await ctx.db.replace("evidenceLibraryCollectionSources", existing._id, fields);
-    else await ctx.db.insert("evidenceLibraryCollectionSources", fields);
+    else {
+      const followed = await ctx.db
+        .query("evidenceLibraryCollectionSources")
+        .withIndex("by_libraryId_and_collectionId", (q) => q.eq("libraryId", args.libraryId))
+        .take(MAX_COLLECTION_SOURCES_PER_LIBRARY);
+      if (followed.length >= MAX_COLLECTION_SOURCES_PER_LIBRARY) {
+        throw createError("VALIDATION_ERROR", `A library follows at most ${MAX_COLLECTION_SOURCES_PER_LIBRARY} collections. Remove one to add another.`);
+      }
+      await ctx.db.insert("evidenceLibraryCollectionSources", fields);
+    }
     await writeAuditLogRecord(ctx, {
       action: "evidence_library.collection_source.connected",
       userId: access.clerkUserId,
