@@ -140,6 +140,10 @@ export const editValidator = v.union(
   }),
   v.object({ kind: v.literal("clearResponses"), paperId: v.optional(v.string()) }),
   v.object({ kind: v.literal("removeQuestionResponses"), question: v.string() }),
+  // Brings the search's query and filters back to an earlier revision, as a new revision.
+  // `expect` is the revision the search should be at now: a change since then refuses the
+  // restore, so undoing one change never overwrites a later one.
+  v.object({ kind: v.literal("restore"), revision: v.number(), expect: v.optional(v.number()) }),
 );
 export type SearchEdit = Infer<typeof editValidator>;
 
@@ -267,6 +271,22 @@ export function editedResponses(responses: SavedSearch["screeningResponses"], ed
 }
 
 /**
+ * The search with its query and filters as they were in `then`. What stays as it is now:
+ * its identity, its history (going back to an earlier query adds to it), its research
+ * questions, and its screening questions and answers, which have their own history.
+ */
+export function restoredSearch(search: SavedSearch, then: SavedSearch, now: string): SavedSearch {
+  const next: Record<string, unknown> = { ...search };
+  for (const key of Object.keys(editableFields)) {
+    if (key === "screeningQuestions") continue;
+    if (key in then) next[key] = then[key as keyof SavedSearch];
+    else delete next[key];
+  }
+  const requeried = then.query !== search.query || then.field !== search.field;
+  return { ...(next as SavedSearch), queryHistoryCount: search.queryHistoryCount + (requeried ? 1 : 0), updatedAt: now };
+}
+
+/**
  * Shared by the transaction and the optimistic browser view. The transaction passes a search
  * with no answers, since they live in their own rows; the browser, the answers it has read.
  */
@@ -315,8 +335,10 @@ export const commandValidator = v.union(
   v.object({ kind: v.literal("createSearch"), search: searchValidator, history: v.optional(v.object(historyArrays)) }),
   v.object({ kind: v.literal("editSearch"), id: v.string(), edit: editValidator }),
   v.object({ kind: v.literal("deleteSearch"), id: v.string() }),
-  v.object({ kind: v.literal("shortcut"), shorthand: v.string(), value: v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null()) }),
-  v.object({ kind: v.literal("rating"), paperId: v.string(), rating: v.union(v.number(), v.null()) }),
+  // `expect`, on a shortcut or a rating, is what it should be now (null for none): a change
+  // since then refuses this one, so undoing one change never overwrites a later one.
+  v.object({ kind: v.literal("shortcut"), shorthand: v.string(), value: v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null()), expect: v.optional(v.union(v.string(), v.null())) }),
+  v.object({ kind: v.literal("rating"), paperId: v.string(), rating: v.union(v.number(), v.null()), expect: v.optional(v.union(v.number(), v.null())) }),
   // Every saved search, or every shortcut, the person has when it's applied: in order with
   // the saves around it, so one made before goes and one made after stays.
   v.object({ kind: v.literal("clearSearches") }),
