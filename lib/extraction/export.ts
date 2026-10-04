@@ -109,6 +109,14 @@ export interface ExportOptions {
   includeCitations?: boolean;
 }
 
+const paperMetadataHeaders = ['Authors', 'Authors (unparsed)', 'Open Access', 'PDF Used', 'Venue', 'Citation Count', 'Work Type', 'Access Status', 'Open Access URL', 'PDF URL'];
+const paperMetadataCells = (paper: PaperWithResults): string[] => [
+  paper.authors?.join('; ') ?? '', paper.authorsUnparsed ?? '',
+  paper.isOpenAccess === undefined ? 'Unknown' : paper.isOpenAccess ? 'Yes' : 'No',
+  paper.pdfContentUsed ? 'Yes' : 'No', paper.venueName ?? '', paper.citedByCount?.toString() ?? '',
+  paper.workType ?? '', paper.oaStatus ?? '', paper.oaUrl ?? '', paper.pdfUrl ?? '',
+];
+
 /**
  * Exports papers to CSV format
  */
@@ -129,7 +137,7 @@ export function exportToCSV(
   ];
 
   if (includeMetadata) {
-    headers.push('Authors', 'Open Access', 'PDF Used');
+    headers.push(...paperMetadataHeaders);
   }
 
   // Add question columns
@@ -152,11 +160,7 @@ export function exportToCSV(
     ];
 
     if (includeMetadata) {
-      row.push(
-        paper.authors?.join('; ') || '',
-        paper.isOpenAccess ? 'Yes' : 'No',
-        paper.pdfContentUsed ? 'Yes' : 'No'
-      );
+      row.push(...paperMetadataCells(paper));
     }
 
     // Add answers
@@ -212,6 +216,13 @@ export function exportToJSON(
       doi: paper.doi,
       year: paper.publicationYear,
       authors: paper.authors,
+      authorsUnparsed: paper.authorsUnparsed,
+      venue: paper.venueName,
+      citedByCount: paper.citedByCount,
+      workType: paper.workType,
+      oaStatus: paper.oaStatus,
+      oaUrl: paper.oaUrl,
+      pdfUrl: paper.pdfUrl,
       openAccess: paper.isOpenAccess,
       pdfUsed: paper.pdfContentUsed,
       results: paper.results.map(r => ({
@@ -256,7 +267,7 @@ export async function exportToExcel(
   // Build headers
   const headers: string[] = ['Title', 'DOI', 'Year'];
   if (includeMetadata) {
-    headers.push('Authors', 'Open Access', 'PDF Used');
+    headers.push(...paperMetadataHeaders);
   }
   questions.forEach(q => {
     headers.push(q.question);
@@ -278,11 +289,7 @@ export async function exportToExcel(
     ];
 
     if (includeMetadata) {
-      row.push(
-        paper.authors?.join('; ') || '',
-        paper.isOpenAccess ? 'Yes' : 'No',
-        paper.pdfContentUsed ? 'Yes' : 'No'
-      );
+      row.push(...paperMetadataCells(paper));
     }
 
     questions.forEach(q => {

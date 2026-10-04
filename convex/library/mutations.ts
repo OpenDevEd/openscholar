@@ -13,12 +13,15 @@ import { workUrl } from "../../lib/openalex/work-id";
 import { libraryCountRow, resolveLibraryCount } from "./counter";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
 import { followed, inFollowedCollection } from "./followed";
+import { authorDisplay, mergePaperMetadata } from "../../lib/library/paper-metadata";
+import { MAX_AUTHORS } from "../lib/listCaps";
 
 /** What the library keeps about a paper, apart from its rating. */
 export const libraryPaper = v.object({
   openalexId: v.string(),
   title: v.string(),
-  authors: v.optional(v.string()),
+  authors: v.optional(v.union(v.string(), v.array(v.string()))),
+  authorsUnparsed: v.optional(v.string()),
   doi: v.optional(v.string()),
   abstract: v.optional(v.string()),
   publicationYear: v.optional(v.number()),
@@ -27,6 +30,8 @@ export const libraryPaper = v.object({
   workType: v.optional(v.string()),
   isOpenAccess: v.optional(v.boolean()),
   oaStatus: v.optional(v.string()),
+  oaUrl: v.optional(v.string()),
+  pdfUrl: v.optional(v.string()),
   paperData: v.optional(v.string()),
 });
 
@@ -59,7 +64,13 @@ export const canonical = (openalexId: string) => workUrl(openalexId) ?? openalex
 export async function findItem(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, openalexId: string) {
   const byId = (id: string) => ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", id)).unique();
   const kept = canonical(openalexId);
-  return (await byId(kept)) ?? (kept === openalexId ? null : await byId(openalexId));
+  const ids = new Set([kept, openalexId, workUrl(openalexId)?.split("/").at(-1)]);
+  for (const id of ids) {
+    if (!id) continue;
+    const item = await byId(id);
+    if (item) return item;
+  }
+  return null;
 }
 
 /**
@@ -94,14 +105,21 @@ export async function upsertLibraryItem(
   userId: Id<"users">,
   paper: Infer<typeof libraryPaper>,
   rating?: number,
+  options: { preserveRating?: boolean } = {},
 ) {
-  const searchableText = [paper.title, paper.abstract, paper.authors].filter(Boolean).join(" ");
   const existing = await findItem(ctx, userId, paper.openalexId);
+  // Project only metadata: system fields, ownership, dates and ratings never enter this merge.
+  const before = existing ? Object.fromEntries(Object.keys(libraryPaper.fields).map((key) => [key, existing[key as keyof typeof existing]])) as Infer<typeof libraryPaper> : { title: "" };
+  const merged = mergePaperMetadata(before, paper);
+  if (Array.isArray(merged.authors) && merged.authors.length > MAX_AUTHORS) {
+    merged.authorsUnparsed = merged.authors.join(", ");
+    merged.authors = undefined;
+  }
+  const searchableText = [merged.title, merged.abstract, authorDisplay(merged)].filter(Boolean).join(" ");
   if (existing) {
-    // Keep the metadata and savedAt from the first save.
     await ctx.db.patch("libraryItems", existing._id, {
-      ...(rating !== undefined && { rating }),
-      ...(paper.paperData !== undefined && { paperData: paper.paperData }),
+      ...merged,
+      ...(rating !== undefined && !options.preserveRating && { rating }),
       searchableText,
       updatedAt: Date.now(),
     });
@@ -112,6 +130,8 @@ export async function upsertLibraryItem(
     ctx.db.insert("libraryItems", {
       userId,
       ...paper,
+      ...merged,
+      metadataVersion: 2,
       // Every writer saves through here, so a paper has one row whatever form its ID came in.
       openalexId: canonical(paper.openalexId),
       ...(rating !== undefined && { rating }),

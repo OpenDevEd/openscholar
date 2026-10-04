@@ -14,7 +14,7 @@ function libraryDoc(overrides: {
   _id?: Id<"libraryItems">;
   openalexId?: string;
   title?: string;
-  authors?: string;
+  authors?: string | string[];
   doi?: string;
   publicationYear?: number;
   abstract?: string;
@@ -62,11 +62,11 @@ describe("lib/bucket/bucketItem normalizers", () => {
     expect(item.status).toBe("ready");
   });
 
-  test("fromLibraryItem keys on openalexId, flattens authors string, source=library", () => {
+  test("fromLibraryItem keys on openalexId and keeps author boundaries, source=library", () => {
     const item = fromLibraryItem(
       libraryDoc({
         openalexId: "https://openalex.org/W5",
-        authors: "Alice Smith, Bob Jones",
+        authors: ["Smith, Jr., John", "Bob Jones"],
         doi: "10.1/lib",
         title: "Lib Paper",
         publicationYear: 2020,
@@ -74,7 +74,7 @@ describe("lib/bucket/bucketItem normalizers", () => {
     );
     expect(item.source).toBe("library");
     expect(item.bucketKey).toBe("openalex:W5");
-    expect(item.authors).toEqual(["Alice Smith", "Bob Jones"]);
+    expect(item.authors).toEqual(["Smith, Jr., John", "Bob Jones"]);
     expect(item.sourceRefId).toBe("lib_1");
     expect(item.title).toBe("Lib Paper");
     expect(item.year).toBe(2020);

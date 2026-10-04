@@ -370,7 +370,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
                       <div className={cn("min-w-0 flex-1 transition-opacity duration-300", leaving && "opacity-50")}>
                         <p className="truncate text-sm font-medium">{paper.title}</p>
                         <p className="truncate text-xs text-muted-foreground">
-                          {[authors.length > 2 ? t("andOthers", { authors: authors.slice(0, 2).join(", ") }) : authors.join(", "), paper.publicationYear].filter(Boolean).join(", ")}
+                          {[authors.length > 2 ? t("andOthers", { authors: authors.slice(0, 2).join(", ") }) : authors.join(", ") || paper.authorsUnparsed, paper.publicationYear].filter(Boolean).join(", ")}
                         </p>
                       </div>
                       {leaving ? (

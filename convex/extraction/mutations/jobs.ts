@@ -15,6 +15,7 @@
  */
 
 import { mutation } from "../../lib/functions";
+import { sourceMetadata } from "../../../lib/library/paper-metadata";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
@@ -240,6 +241,9 @@ export const duplicateJob = mutation({
       .withIndex("by_job_and_position", (q) => q.eq("jobId", args.jobId))
       .take(PAPER_LIMIT * 2);
     const bucketItems: BucketItemInput[] = oldSourceRows.map((row) => ({
+      ...sourceMetadata(row),
+      citedByCount: row.citedByCount,
+      venueName: row.venueName,
       bucketKey: row.bucketKey,
       source: row.source,
       sourceRefId: row.sourceRefId,

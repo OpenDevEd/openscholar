@@ -22,9 +22,9 @@ import { ratingsAmong, shortcutExpansions } from "../research/records";
 import { readSearchWorks, searchRequestValidator, type SearchSnapshot } from "./openalex";
 
 /** The fields a screening paper keeps. */
-export const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location";
+export const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location,best_oa_location,type,open_access";
 /** The fields the assistant reads of a paper: those, and what kind of work it is and whether it's free to read. */
-export const ASSISTANT_FIELDS = `${SCREENING_FIELDS},type,open_access,language`;
+export const ASSISTANT_FIELDS = `${SCREENING_FIELDS},language`;
 
 export type SearchPaper = Infer<typeof screeningPaperInputValidator>;
 
@@ -107,10 +107,11 @@ export type Work = {
   abstract_inverted_index?: Record<string, number[]> | null;
   authorships?: Array<{ author?: { id?: string | null; display_name?: string | null } | null; institutions?: Array<{ display_name?: string | null; country_code?: string | null }> | null }> | null;
   cited_by_count?: number | null;
-  primary_location?: { source?: { display_name?: string | null } | null } | null;
+  primary_location?: { source?: { display_name?: string | null } | null; pdf_url?: string | null } | null;
+  best_oa_location?: { pdf_url?: string | null } | null;
   type?: string | null;
   language?: string | null;
-  open_access?: { is_oa?: boolean | null; oa_url?: string | null } | null;
+  open_access?: { is_oa?: boolean | null; oa_url?: string | null; oa_status?: string | null } | null;
   funders?: Array<{ id?: string | null; display_name?: string | null }> | null;
 };
 
@@ -125,6 +126,11 @@ export function toPaper(work: Work): SearchPaper {
     ...(work.doi ? { doi: work.doi } : {}),
     ...(work.primary_location?.source?.display_name ? { venue: work.primary_location.source.display_name } : {}),
     ...(typeof work.cited_by_count === "number" ? { citedByCount: work.cited_by_count } : {}),
+    ...(work.type ? { workType: work.type } : {}),
+    ...(typeof work.open_access?.is_oa === "boolean" ? { isOpenAccess: work.open_access.is_oa } : {}),
+    ...(work.open_access?.oa_status ? { oaStatus: work.open_access.oa_status } : {}),
+    ...(work.open_access?.oa_url ? { oaUrl: work.open_access.oa_url } : {}),
+    ...(work.best_oa_location?.pdf_url || work.primary_location?.pdf_url ? { pdfUrl: work.best_oa_location?.pdf_url || work.primary_location?.pdf_url || undefined } : {}),
   };
 }
 

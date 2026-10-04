@@ -1,7 +1,7 @@
 export interface TrimmedPaperData {
   openalexId: string;
   title: string;
-  authors: string | undefined;
+  authors: string[] | undefined;
   doi: string | undefined;
   abstract: string | undefined;
   publicationYear: number | undefined;
@@ -10,4 +10,6 @@ export interface TrimmedPaperData {
   workType: string | undefined;
   isOpenAccess: boolean | undefined;
   oaStatus: string | undefined;
+  oaUrl?: string;
+  pdfUrl?: string;
 }

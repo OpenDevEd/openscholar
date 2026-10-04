@@ -53,7 +53,7 @@ describe("saving a paper by its ID", () => {
     expect(requests[0].pathname).toMatch(/\/works\/W7$/);
     const [item] = await items();
     // What the page saves from a results card: the trimmed fields, the abstract as text, and the whole record for the card.
-    expect(item).toMatchObject({ userId, openalexId: "https://openalex.org/W7", title: "Tutoring at scale", authors: "Ada Okafor, Ben Mwangi", doi: "https://doi.org/10.1234/tutoring", abstract: "Tutoring works", publicationYear: 2021, journal: "Journal of Trials", citedByCount: 40, workType: "article", isOpenAccess: true, oaStatus: "gold" });
+    expect(item).toMatchObject({ userId, openalexId: "https://openalex.org/W7", title: "Tutoring at scale", authors: ["Ada Okafor", "Ben Mwangi"], doi: "https://doi.org/10.1234/tutoring", abstract: "Tutoring works", publicationYear: 2021, journal: "Journal of Trials", citedByCount: 40, workType: "article", isOpenAccess: true, oaStatus: "gold" });
     expect(item.rating).toBeUndefined();
     expect(JSON.parse(item.paperData!)).toMatchObject({ id: "https://openalex.org/W7", abstract: "Tutoring works", authorships: [{ author: { display_name: "Ada Okafor" } }, { author: { display_name: "Ben Mwangi" } }] });
     expect(JSON.parse(item.paperData!).abstract_inverted_index).toBeUndefined();

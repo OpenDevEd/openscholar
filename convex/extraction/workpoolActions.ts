@@ -699,7 +699,7 @@ export async function runDownloadAndIndexPdf(
     const resolved = await resolvePdfBlob(ctx, job, {
       paperId: args.paperId,
       jobId: args.jobId,
-      pdfUrl: existingPaper.pdfUrl ?? "",
+      pdfUrl: existingPaper.pdfUrl || existingPaper.oaUrl || "",
       storageId: existingPaper.storageId,
       doi: existingPaper.doi,
     });

@@ -54,6 +54,7 @@ export const debugJobContent = internalQuery({
     for (const paper of papers) {
       const { hasPdfUrl, hasAbstract } = getProcessableFlags({
         pdfUrl: paper.pdfUrl,
+        oaUrl: paper.oaUrl,
         storageId: paper.storageId,
         abstract: paper.abstract,
         pdfEnabled,
