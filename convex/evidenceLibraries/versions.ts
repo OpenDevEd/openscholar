@@ -49,9 +49,8 @@ import {
 } from "./operations";
 import { isFreshRuntimeRelease } from "./runtimeReleases";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
-import { sectionKeyValidator, type SectionKey } from "./validators";
+import { sectionKeyValidator } from "./validators";
 import {
-  configurationSectionFingerprints,
   loadDraftConfigurationSnapshot,
   loadRevisionConfigurationSnapshot,
   persistDraftConfigurationSnapshot,
@@ -667,23 +666,6 @@ export async function restoreEvidenceLibraryRevision(
   };
 }
 
-async function readSectionFingerprints(
-  ctx: QueryCtx,
-  revisionId: Id<"evidenceLibraryConfigRevisions">,
-  cache: Map<Id<"evidenceLibraryConfigRevisions">, Map<SectionKey, string>>,
-) {
-  const cached = cache.get(revisionId);
-  if (cached) return cached;
-  const loaded = await loadRevisionConfigurationSnapshot(ctx, revisionId, {
-    requireComplete: false,
-  });
-  const fingerprints = configurationSectionFingerprints(
-    loaded.migration.snapshot,
-  );
-  cache.set(revisionId, fingerprints);
-  return fingerprints;
-}
-
 async function readRequesterName(
   ctx: QueryCtx,
   clerkUserId: string,
@@ -726,13 +708,12 @@ export const versionRowValidator = v.object({
   runtimeCommit: v.optional(v.string()),
 });
 
-/** What a read of versions has looked up so far, so each revision, its sections and each person are read once. */
+/** What a read of versions has looked up so far, so each revision and each person is read once. */
 type VersionReads = {
   revisions: Map<Id<"evidenceLibraryConfigRevisions">, Doc<"evidenceLibraryConfigRevisions"> | null>;
-  fingerprints: Map<Id<"evidenceLibraryConfigRevisions">, Map<SectionKey, string>>;
   names: Map<string, string>;
 };
-const versionReads = (): VersionReads => ({ revisions: new Map(), fingerprints: new Map(), names: new Map() });
+const versionReads = (): VersionReads => ({ revisions: new Map(), names: new Map() });
 
 /** The revision a version operation ran, or null when the operation isn't a version or its revision is gone. */
 async function versionRevision(ctx: QueryCtx, operation: Doc<"evidenceLibraryConfigOperations">, reads: VersionReads) {
@@ -762,15 +743,8 @@ async function versionRow(
           ? "live"
           : "previous"
         : "deploying";
-  let changedSections: SectionKey[] = [];
-  if (kind === "config") {
-    const current = await readSectionFingerprints(ctx, revision._id, reads.fingerprints);
-    const previous = revision.basedOnRevisionId
-      ? await readSectionFingerprints(ctx, revision.basedOnRevisionId, reads.fingerprints)
-      : new Map<SectionKey, string>();
-    const keys = new Set<SectionKey>([...current.keys(), ...previous.keys()]);
-    changedSections = [...keys].filter((key) => current.get(key) !== previous.get(key)).sort();
-  }
+  // Recorded with the version (./operations.ts), so a page of versions reads no configuration.
+  const changedSections = kind === "config" ? (operation.changedSections ?? []) : [];
   const runtimeCommit =
     operation.runtimeUpdate?.to ??
     (operation.receipt && "runtimeCommit" in operation.receipt ? operation.receipt.runtimeCommit : undefined);
@@ -788,13 +762,7 @@ async function versionRow(
   };
 }
 
-/**
- * Most versions one page holds, and the operations one read of it passes over looking for them.
- * ponytail: naming what a version changed reads its revision's sections and its predecessor's,
- * so a page reads up to 20 configurations: about 57 KB each at the largest on shared dev
- * (2026-10-04), 1 MB together. Configurations near the 512 KB a section may hold would not
- * fit; a fingerprint stored with each section would lift that.
- */
+/** Most versions one page holds, and the operations one read of it passes over looking for them. */
 const VERSIONS_PAGE_MAX = 10;
 const VERSION_ROWS_READ = 500;
 

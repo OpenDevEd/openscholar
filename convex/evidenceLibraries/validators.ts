@@ -805,6 +805,9 @@ export const evidenceLibraryOperationFields = {
   addressMove: v.optional(evidenceLibraryAddressMoveValidator),
   domainChange: v.optional(evidenceLibraryDomainChangeValidator),
   revisionId: v.optional(v.id("evidenceLibraryConfigRevisions")),
+  // The sections this version's revision changed, recorded with the revision so the Versions
+  // list reads no configuration. Absent on a software update and on an operation with no revision.
+  changedSections: capped(v.optional(v.array(sectionKeyValidator)), MAX_CONFIG_SECTIONS),
   setupReceipts: v.optional(evidenceLibrarySetupReceiptsValidator),
   setupAttemptToken: v.optional(v.string()),
   setupLeaseExpiresAt: v.optional(v.number()),

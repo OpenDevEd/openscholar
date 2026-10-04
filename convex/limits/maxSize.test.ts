@@ -328,7 +328,7 @@ describe("at the largest sizes the product allows", () => {
   it("an Evidence Library with 1,000 versions reads its history a page at a time and totals it (#423)", async () => {
     const fixture = await createReadySetupFixture("max_size_versions");
     const libraryId = fixture.created.libraryId;
-    // Thirteen revisions, each built on the one before as activations make them, so a page names what ten different ones changed.
+    // Thirteen revisions, each built on the one before as activations make them, so a page lists ten different ones.
     const { operation, revisionIds } = await fixture.t.run(async (ctx) => {
       const operation = (await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_createdAt", (q) => q.eq("libraryId", libraryId)).first())!;
       const revision = (await ctx.db.get(operation.revisionId!))!;

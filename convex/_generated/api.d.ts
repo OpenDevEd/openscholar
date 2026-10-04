@@ -285,6 +285,7 @@ import type * as migrations_removeOrphanLibraryAccess from "../migrations/remove
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
 import type * as migrations_setExistingJobsToExtractionMode from "../migrations/setExistingJobsToExtractionMode.js";
+import type * as migrations_versionChangedSections from "../migrations/versionChangedSections.js";
 import type * as models_admin from "../models/admin.js";
 import type * as models_catalog from "../models/catalog.js";
 import type * as models_mutations from "../models/mutations.js";
@@ -639,6 +640,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
   "migrations/setExistingJobsToExtractionMode": typeof migrations_setExistingJobsToExtractionMode;
+  "migrations/versionChangedSections": typeof migrations_versionChangedSections;
   "models/admin": typeof models_admin;
   "models/catalog": typeof models_catalog;
   "models/mutations": typeof models_mutations;
