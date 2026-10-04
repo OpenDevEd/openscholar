@@ -27,8 +27,12 @@ export const STEP_RESULT_MAX = 200_000;
 export const STEPS_SHOWN = 60;
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
 export const MAX_ASKS = 10;
-/** Characters of anything a tool hands the model, about 2,000 tokens (#326). A step keeps the rest of a result. */
-const MODEL_READS = 8_000;
+/**
+ * Characters of anything a tool hands the model, about 4,000 tokens (#326). A step keeps the
+ * rest of a result. Room for a page of ten papers with enough of each abstract to say what
+ * the paper studied: at half this, a page carried a sentence of each.
+ */
+export const MODEL_READS = 16_000;
 /** Rows one batch deletes of a chat being deleted: results are large, so few at a time. */
 const FORGET_RESULTS = 20;
 const FORGET_STEPS = 100;

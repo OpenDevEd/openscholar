@@ -10,7 +10,7 @@ import schema from "../schema";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
-import { MAX_ASKS, forModel } from "./steps";
+import { MAX_ASKS, MODEL_READS, forModel } from "./steps";
 import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found } from "./tools";
 import { finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
@@ -652,7 +652,7 @@ describe("the assistant's tools", () => {
     expect(found("research/records:change clear every saved search").actions.map((action) => action.name)).not.toContain("research/records:change");
     expect(found("zzzz").actions).toEqual([]);
     // What a search returns stays within what the model reads at once.
-    expect(JSON.stringify(found("list count get search collection paper screening extraction")).length).toBeLessThanOrEqual(8_000 + 6 * 60);
+    expect(JSON.stringify(found("list count get search collection paper screening extraction")).length).toBeLessThanOrEqual(MODEL_READS + 6 * 60);
   });
 
   it("go with their chat when it's deleted", async () => {
