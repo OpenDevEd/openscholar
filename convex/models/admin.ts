@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
 import type { Doc, Id } from "../_generated/dataModel";
-import { mutation, query, type QueryCtx } from "../lib/functions";
+import { mutation, type QueryCtx } from "../lib/functions";
 import schema from "../schema";
 import { requireAdmin, requireAdminUser } from "../admins/access";
 import { topProvidersValidator } from "../aiModelConfig/validators";

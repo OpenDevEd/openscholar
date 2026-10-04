@@ -9,9 +9,6 @@ import { ADMIN_LIST, countOf } from "../lib/listCounts";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { isAdmin, normalizeEmail, requireAdmin, requireAdminUser } from "./access";
 
-/** Admins are a handful of people; the list is read whole. */
-const MAX_ADMINS = 500;
-
 /** Whether the signed-in user is an admin. Drives the Admin group in settings. */
 export const amI = query({
   args: {},
