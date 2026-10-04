@@ -32,7 +32,7 @@ import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { compactionDue } from "./context";
 import { detailsOf } from "./details";
-import { declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
+import { declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking, STEPS_SHOWN } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { askedDetailsValidator } from "./validators";
 
@@ -569,6 +569,8 @@ export const live = query({
     if (!current || !(await writing(ctx, current))) {
       // One terminal message gives the launcher an outcome without loading the conversation.
       const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null, maximumRowsRead: 1, maximumBytesRead: MESSAGES_PAGE_BYTES }, excludeToolMessages: true })).page[0];
+      // A saved prompt with no active reply means setup failed before writing its first message.
+      if (newest?.message?.role === "user") return { reply: null, activity: { phase: "failed" as const, order: newest.order } };
       if (newest?.message?.role !== "assistant") return { reply: null, activity: { phase: "idle" as const, order: null } };
       const stopped = newest.status === "failed" && parseChatError(newest.error)?.class === "aborted";
       const phase = stopped ? "stopped" as const : newest.status === "success" && newest.text?.trim() ? "complete" as const : "failed" as const;
@@ -583,8 +585,9 @@ export const live = query({
     });
     const stream = streams.find((candidate) => candidate.order === current.order);
     const output = stream ? await textSoFar(ctx, thread.agentThreadId, stream.streamId) : { text: "", writing: false };
-    const step = await ctx.db.query("assistantSteps").withIndex("by_thread_order_status", (q) => q.eq("threadId", threadId).eq("order", current.order).eq("status", "running")).order("desc").first();
-    const phase = current.stop ? "stopping" as const : current.compacting ? "thinking" as const : step ? actionView(step.path).searching ? "searching" as const : "thinking" as const : output.writing ? "writing" as const : "thinking" as const;
+    const running = await ctx.db.query("assistantSteps").withIndex("by_thread_order_status", (q) => q.eq("threadId", threadId).eq("order", current.order).eq("status", "running")).take(STEPS_SHOWN);
+    const searching = running.some((step) => actionView(step.path).searching);
+    const phase = current.stop ? "stopping" as const : current.compacting ? "thinking" as const : searching ? "searching" as const : running.length ? "thinking" as const : output.writing ? "writing" as const : "thinking" as const;
     return {
       activity: { phase, order: current.order },
       reply: {
