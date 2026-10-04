@@ -3,6 +3,7 @@ import { SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
 import { internalMutation } from "../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
+import { purgeAccountChats } from "../assistant/access";
 import { collectionCountRow } from "../library/collections";
 import { countRow } from "../research/recordCounts";
 import { libraryCountRow } from "../library/counter";
@@ -70,6 +71,12 @@ export const cleanupDeletedUsers = internalMutation({
           await ctx.db.delete("zoteroConnections", conn._id);
         }
         if (zoteroConns.length === SINGLE_ROW_CLEANUP) {
+          deferred = true;
+          continue; // Skip user delete, process on next run
+        }
+
+        // Their assistant chats go for everyone they were shared with, and so does their access to other people's.
+        if (!(await purgeAccountChats(ctx, user._id))) {
           deferred = true;
           continue; // Skip user delete, process on next run
         }

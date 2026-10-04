@@ -8,6 +8,8 @@ import { clearLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAc
 import { countJobsAction as extractionJobCountAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
 import { countJobFailuresAction as extractionFailureCountAction } from "../extraction/queries/failures";
 import { countJobResultsAction as extractionResultCountAction, listJobResultsAction as extractionResultsAction } from "../extraction/queries/results";
+import { grantAction as chatGrantAction, listAccessAction as chatAccessAction, revokeAction as chatRevokeAction } from "../assistant/sharing";
+import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, removeAction as chatRemoveAction, renameAction as chatRenameAction } from "../assistant/threads";
 import { savedPaperAction } from "../library/queries";
 import { estimateAction as screeningEstimateAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
@@ -19,6 +21,14 @@ import { countKeysAction as walletKeyCountAction, listKeysAction as walletKeysAc
 import type { UserAction } from "./userActions";
 
 export const USER_ACTIONS: readonly UserAction[] = [
+  chatsAction,
+  chatAction,
+  chatCreateAction,
+  chatRenameAction,
+  chatRemoveAction,
+  chatAccessAction,
+  chatGrantAction,
+  chatRevokeAction,
   extractionJobsAction,
   extractionJobCountAction,
   extractionResultsAction,
