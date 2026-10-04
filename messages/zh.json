@@ -3424,6 +3424,7 @@
     "stop": "停止",
     "thinking": "思考中",
     "stopped": "此回复已被停止",
+    "failed": "回复未完成。请重新发送你的消息。",
     "interrupted": "此回复在完成前中断了",
     "earlier": "更早的消息",
     "model": "模型",

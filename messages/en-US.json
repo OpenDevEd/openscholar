@@ -3414,6 +3414,7 @@
     "stop": "Stop",
     "thinking": "Thinking",
     "stopped": "This reply was stopped",
+    "failed": "The reply didn't finish. Send your message again to retry.",
     "interrupted": "This reply was interrupted before it finished",
     "earlier": "Earlier messages",
     "model": "Model",

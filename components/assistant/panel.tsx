@@ -343,7 +343,8 @@ function FailedRow({ error }: { error: Message["error"] }) {
       <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-destructive" />
       {error ? (
         <span className="leading-5">
-          <span className="font-medium text-foreground">{te(`title.${error.code}`)}</span> {te(`body.${error.code}`)}
+          {/* The shared text for an unknown error points at details this row doesn't have. */}
+          <span className="font-medium text-foreground">{te(`title.${error.code}`)}</span> {error.code === "unknown" ? t("failed") : te(`body.${error.code}`)}
         </span>
       ) : (
         <span className="leading-5">{t("interrupted")}</span>
@@ -556,27 +557,30 @@ function Footer({
         />
         <div className="flex items-center gap-2 px-2 pb-2">
           <ModelPill model={model} onChange={onModel} presetModel={presetModel} />
-          <TooltipHint label={busy ? t("stop") : t("send")}>
-            <button
-              type="button"
-              aria-label={busy ? t("stop") : t("send")}
-              disabled={!canWrite}
-              onClick={busy ? onStop : onSend}
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              <AnimatePresence mode="popLayout" initial={false}>
-                <motion.span
-                  key={busy ? "stop" : "send"}
-                  initial={{ opacity: 0, scale: 0.4, rotate: busy ? -90 : 90 }}
-                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                  exit={{ opacity: 0, scale: 0.4 }}
-                  transition={{ type: "spring", stiffness: 520, damping: 30 }}
-                  className="flex"
-                >
-                  {busy ? <Square className="size-3 fill-current" /> : <ArrowUp className="size-4" />}
-                </motion.span>
-              </AnimatePresence>
-            </button>
+          {/* The span keeps the hint reachable while the button is disabled. */}
+          <TooltipHint label={!canWrite ? t("readOnly") : busy ? t("stop") : t("send")}>
+            <span className="flex shrink-0" tabIndex={canWrite ? undefined : 0}>
+              <button
+                type="button"
+                aria-label={busy ? t("stop") : t("send")}
+                disabled={!canWrite}
+                onClick={busy ? onStop : onSend}
+                className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.span
+                    key={busy ? "stop" : "send"}
+                    initial={{ opacity: 0, scale: 0.4, rotate: busy ? -90 : 90 }}
+                    animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                    exit={{ opacity: 0, scale: 0.4 }}
+                    transition={{ type: "spring", stiffness: 520, damping: 30 }}
+                    className="flex"
+                  >
+                    {busy ? <Square className="size-3 fill-current" /> : <ArrowUp className="size-4" />}
+                  </motion.span>
+                </AnimatePresence>
+              </button>
+            </span>
           </TooltipHint>
         </div>
       </div>
