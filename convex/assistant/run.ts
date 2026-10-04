@@ -10,6 +10,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { effortValidator } from "../aiModelConfig/validators";
+import { refreshAccount } from "../billing/accounts";
 import { ASSISTANT_REPLY_CREDITS, ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import { errorToLogString } from "../lib/errors";
 import { internalAction } from "../lib/functions";
@@ -17,7 +18,7 @@ import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 import { COMPACT_AT_TOKENS, compactedOf, contextSince, summarize } from "./context";
 import { lockArgs, turnArgs } from "./replies";
-import { MAX_STEPS, OUT_OF_CREDITS, OUT_OF_STEPS, toolsFor } from "./tools";
+import { MAX_STEPS, OUT_OF_CREDITS, OUT_OF_STEPS, askedSteps, toolsFor } from "./tools";
 import { runTurn } from "./turn";
 
 export const reply = internalAction({
@@ -28,16 +29,15 @@ export const reply = internalAction({
     senderId: v.id("users"),
     modelId: v.union(v.id("models"), v.null()),
     effort: v.optional(effortValidator),
+    // What the reply used of one reply's credits and rounds before it asked the person something, when it carries on from their answer.
+    used: v.optional(v.object({ credits: v.number(), rounds: v.number(), calls: v.number() })),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort }) => {
+  handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort, used = { credits: 0, rounds: 0, calls: 0 } }) => {
     const lock = { threadId, attemptId };
     const state = () => ctx.runQuery(internal.assistant.replies.lockState, lock);
-    const atStart = await state();
-    // A reply whose chat was deleted, or whose lock is another reply's, never starts.
-    if (atStart === "gone") return null;
-    // Stopped while it waited to run: no credits are held and no model is called. The chat shows a stopped reply.
-    if (atStart === "stop") {
+    // Ends a reply stopped before the model is called: no credits are held, and the chat shows a stopped reply.
+    const stopHere = async () => {
       await assistant.saveMessage(ctx, {
         threadId: agentThreadId,
         promptMessageId,
@@ -47,7 +47,11 @@ export const reply = internalAction({
       });
       await ctx.runMutation(internal.assistant.replies.release, lock);
       return null;
-    }
+    };
+    const atStart = await state();
+    // A reply whose chat was deleted, or whose lock is another reply's, never starts.
+    if (atStart === "gone") return null;
+    if (atStart === "stop") return stopHere();
     // How much history the reply's request read, which decides whether a compaction follows it.
     let history = { messages: 0, bytes: 0 };
     const turn = { agentThreadId, senderId, modelId, effort };
@@ -65,14 +69,32 @@ export const reply = internalAction({
         console.error("[assistant] owed compaction failed", { threadId, error: errorToLogString(error) });
       }
     }
-    // What the reply may cost: a reply's cap, or what the person has when that's less, down
-    // to the least a reply starts on. It holds that much, so a small balance still gets an answer.
-    const balance = (await ctx.runQuery(internal.billing.accounts.forUser, { userId: senderId }))?.balance;
-    const cap = Math.max(ESTIMATED_CREDITS_PER_CHAT_MESSAGE, Math.min(ASSISTANT_REPLY_CREDITS, balance ?? ASSISTANT_REPLY_CREDITS));
+    // What the reply may cost: what's left of a reply's cap, or what the person has when
+    // that's less, down to the least a reply starts on. It holds that much, so a small
+    // balance, or a reply that has used its cap and only has to answer, still gets its answer.
+    const left = Math.max(0, ASSISTANT_REPLY_CREDITS - used.credits);
+    let balance = (await ctx.runQuery(internal.billing.accounts.forUser, { userId: senderId }))?.balance;
+    // The account's copy of the balance can be behind a top-up. When it says the reply can't have all it may use, it's read again from Autumn.
+    if (balance !== undefined && balance < left) balance = (await refreshAccount(ctx, senderId).catch(() => null))?.balance ?? balance;
+    const cap = Math.max(ESTIMATED_CREDITS_PER_CHAT_MESSAGE, Math.min(left, balance ?? left));
     // Where the reply stands, heard before each of its requests. Its actions stop a round
     // before its last request and once it has cost its hold, so the request after is its answer.
     let step = { number: 0, credits: 0 };
-    const stopped = () => (step.number >= MAX_STEPS - 2 ? OUT_OF_STEPS : step.credits >= cap ? OUT_OF_CREDITS : null);
+    const stopped = () => (used.rounds + step.number >= MAX_STEPS - 2 ? OUT_OF_STEPS : step.credits >= Math.min(cap, left) ? OUT_OF_CREDITS : null);
+    // Each action it runs is kept as a step of the exchange it's answering.
+    const { tools, approval, resume, made } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped, made: used.calls });
+    // A reply that waited for an answer carries on here: what the person allowed runs first,
+    // and each result is written where the model's call left off. A Stop ends it between two.
+    const allowed = await ctx.runQuery(internal.assistant.steps.allowed, { threadId });
+    for (const waiting of allowed) {
+      if (!(await resume(waiting))) break;
+    }
+    if (allowed.length) {
+      const now = await state();
+      if (now === "gone") return null;
+      // What didn't run is declined as the chat is released (./steps.ts).
+      if (now === "stop") return stopHere();
+    }
     await runTurn(ctx, {
       agent: assistant,
       threadId: agentThreadId,
@@ -82,9 +104,10 @@ export const reply = internalAction({
       effort,
       attemptId,
       credits: cap,
-      // Each action it runs is kept as a step of the exchange it's answering.
-      tools: toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped }),
-      maxSteps: MAX_STEPS,
+      tools,
+      approval,
+      // What's left of one reply's requests, and always one for its answer.
+      maxSteps: Math.max(1, MAX_STEPS - used.rounds),
       onStep: (now) => {
         step = now;
       },
@@ -101,7 +124,14 @@ export const reply = internalAction({
           history = read;
         },
       }),
-      release: ({ lastInputTokens }) => ctx.runMutation(internal.assistant.replies.release, { ...lock, ended: { ...turn, ...history, lastInputTokens } }),
+      release: ({ lastInputTokens, asked, credits, requests }) => {
+        const calls = askedSteps(asked);
+        return ctx.runMutation(internal.assistant.replies.release, {
+          ...lock,
+          ended: { ...turn, ...history, lastInputTokens },
+          ...(calls.length ? { asking: { promptMessageId, calls, spent: used.credits + credits, rounds: used.rounds + requests, made: made() } } : {}),
+        });
+      },
     });
     return null;
   },

@@ -53,14 +53,14 @@ export function inputSchema(entry: UserAction) {
 /**
  * Runs an action as `userId`. `callKey` names this call and fills the action's retry key, so
  * the same call tried again applies once. A change given `stepId` ends that step itself, in
- * its own transaction.
+ * its own transaction. `approved`: the person was asked about this call and said yes.
  */
-export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction, input: Record<string, unknown>, callKey: string, stepId?: Id<"assistantSteps">): Promise<unknown> {
+export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction, input: Record<string, unknown>, callKey: string, stepId?: Id<"assistantSteps">, approved = false): Promise<unknown> {
   const retryKey = retryKeyOf(entry);
   const args = { ...input, ...(retryKey ? { [retryKey]: callKey } : {}), userId };
   const ref = assistantPath(entry.path);
   if (entry.kind === "query") return ctx.runQuery(makeFunctionReference<"query">(ref), args);
-  if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), { ...args, ...(stepId ? { stepId } : {}) });
+  if (entry.kind === "mutation") return ctx.runMutation(makeFunctionReference<"mutation">(ref), { ...args, ...(stepId ? { stepId } : {}), ...(approved ? { approved } : {}) });
   return ctx.runAction(makeFunctionReference<"action">(ref), args);
 }
 

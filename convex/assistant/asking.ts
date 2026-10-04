@@ -1,6 +1,8 @@
 /**
- * Whether one call of an action asks the person first (decision 12), read by the assistant's
- * tools before they run it (./tools.ts). Apart from them, because it reads the database.
+ * Whether one call of an action asks the person first (decision 12), where the action
+ * itself doesn't always: read by the assistant's tools before they run it (./tools.ts).
+ * Apart from them, because it reads the database, and from ./steps.ts, where asking is
+ * described, because it loads the action registry.
  */
 import { v } from "convex/values";
 import { internalQuery } from "../lib/functions";
