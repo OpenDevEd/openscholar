@@ -224,12 +224,15 @@ export function toolsFor(
         "Finds what else you can do in the person's account: every action that has no tool of its own, by keywords from what you want to do, such as \"rename collection\" or \"extraction results\". " +
         "Returns each match's name, what it does and the arguments it takes. Run one with run_action.",
       inputSchema: z.object({ keywords: z.string() }),
-      execute: async ({ keywords }) => forModel(found(keywords)),
+      // Looking for more to do is refused with the rest once the reply's actions have stopped, or it could go on asking.
+      execute: async ({ keywords }) => (stopped() ? { error: stopped() } : forModel(found(keywords))),
     }),
     run_action: tool({
       description: "Runs an action find_action returned, by its name, with its arguments. An undo in a result is run the same way: the action it names, with its arguments.",
       inputSchema: z.object({ name: z.string(), arguments: z.record(z.string(), z.unknown()) }),
       execute: async ({ name, arguments: given }, { toolCallId }) => {
+        const why = stopped();
+        if (why) return { error: why };
         const entry = entryAt(name);
         if (!entry) return { error: `No action is named ${cut(name, 200)}. Look one up with find_action.` };
         const parsed = inputSchema(entry).safeParse(given);

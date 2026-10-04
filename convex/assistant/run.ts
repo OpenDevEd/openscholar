@@ -10,7 +10,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { effortValidator } from "../aiModelConfig/validators";
-import { ASSISTANT_REPLY_CREDITS } from "../lib/constants";
+import { ASSISTANT_REPLY_CREDITS, ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import { errorToLogString } from "../lib/errors";
 import { internalAction } from "../lib/functions";
 import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
@@ -65,22 +65,26 @@ export const reply = internalAction({
         console.error("[assistant] owed compaction failed", { threadId, error: errorToLogString(error) });
       }
     }
+    // What the reply may cost: a reply's cap, or what the person has when that's less, down
+    // to the least a reply starts on. It holds that much, so a small balance still gets an answer.
+    const balance = (await ctx.runQuery(internal.billing.accounts.forUser, { userId: senderId }))?.balance;
+    const cap = Math.max(ESTIMATED_CREDITS_PER_CHAT_MESSAGE, Math.min(ASSISTANT_REPLY_CREDITS, balance ?? ASSISTANT_REPLY_CREDITS));
     // Where the reply stands, heard before each of its requests. Its actions stop a round
     // before its last request and once it has cost its hold, so the request after is its answer.
     let step = { number: 0, credits: 0 };
-    const stopped = () => (step.number >= MAX_STEPS - 2 ? OUT_OF_STEPS : step.credits >= ASSISTANT_REPLY_CREDITS ? OUT_OF_CREDITS : null);
+    const stopped = () => (step.number >= MAX_STEPS - 2 ? OUT_OF_STEPS : step.credits >= cap ? OUT_OF_CREDITS : null);
     const order = read.answering ?? 0;
     // Each action it runs is kept as a step of the exchange it's answering.
     const { tools, approval, resume } = toolsFor(ctx, { userId: senderId, threadId, order, attemptId, stopped });
     // A reply that waited for an answer carries on here: what the person allowed runs first,
     // and its result goes where the model's call left off, so the model reads what came of it.
     const allowed = await ctx.runQuery(internal.assistant.steps.allowed, { threadId, order });
-    for (const step of allowed) {
-      const output = forModel(await resume(step));
+    for (const waiting of allowed) {
+      const output = forModel(await resume(waiting));
       await assistant.saveMessage(ctx, {
         threadId: agentThreadId,
         promptMessageId,
-        message: { role: "tool", content: [{ type: "tool-result", toolCallId: step.toolCallId, toolName: step.tool, output: typeof output === "string" ? { type: "text", value: output } : { type: "json", value: output as never } }] },
+        message: { role: "tool", content: [{ type: "tool-result", toolCallId: waiting.toolCallId, toolName: waiting.tool, output: typeof output === "string" ? { type: "text", value: output } : { type: "json", value: output as never } }] },
         skipEmbeddings: true,
       });
     }
@@ -92,7 +96,7 @@ export const reply = internalAction({
       modelId,
       effort,
       attemptId,
-      credits: ASSISTANT_REPLY_CREDITS,
+      credits: cap,
       tools,
       approval,
       maxSteps: MAX_STEPS,

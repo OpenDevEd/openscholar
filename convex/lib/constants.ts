@@ -28,7 +28,8 @@ export const ESTIMATED_CREDITS_PER_CHAT_MESSAGE = 200;
 
 /**
  * Credits held before an assistant reply, and the most its requests may cost before its
- * tools stop running (#326). The reply then settles to what it really cost. Measured on
+ * tools stop running (#326). A person with fewer holds what they have, down to a chat
+ * message's hold. The reply then settles to what it really cost. Measured on
  * 2026-10-04 with Claude Sonnet 5.5: a reply's first request costs about 300 when the
  * fixed tool list isn't cached yet, and a request that reads it from cache about 30.
  */
