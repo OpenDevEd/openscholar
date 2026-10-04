@@ -9,7 +9,7 @@ import type { QueryCtx } from "../_generated/server";
 import { stream } from "convex-helpers/server/stream";
 import { createError } from "../lib/errors";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
-import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
+import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { answerPaper, paperAnswers, restoreModelAnswer } from "../research/answers";
 import schema from "../schema";
 import { account, answersNow, jobAnswers, shown, stood, withDeltas } from "./accounting";
@@ -79,18 +79,22 @@ export const getAction = defineUserQuery({
 export const get = userQuery(getAction);
 export const getForAssistant = assistantQuery(getAction);
 
+const answerArgs = { jobId: v.id("screeningJobs"), paperId: v.string(), questionKey: v.string(), answer: v.union(v.boolean(), v.null(), v.literal("model")) };
+/** An answer as a change left it: what it is and when it was set. An undo is refused once either differs. */
+const answerAsLeft = v.object({ answer: v.union(v.boolean(), v.null()), at: v.number() });
+
 export const answerAction = defineUserMutation({
   path: "screening/papers:answer",
   description:
     "Changes one answer of a screened paper in one of the person's screening jobs: yes (true), no (false) or unclear (null), or \"model\" to put back the model's own answer. " +
-    "The paper's score, stars and outcome follow, and a paper that becomes included is saved the way the job saves included papers.",
-  args: { jobId: v.id("screeningJobs"), paperId: v.string(), questionKey: v.string(), answer: v.union(v.boolean(), v.null(), v.literal("model")) },
-  returns: v.object({ outcome: screeningOutcomeValidator }),
+    "The paper's score, stars and outcome follow, and a paper that becomes included is saved the way the job saves included papers. " +
+    "A change returns `undo`: the action to run and the arguments to run it with to put the answer back. It is refused if the answer changed again in between.",
+  args: { ...answerArgs, expect: v.optional(answerAsLeft) },
+  returns: v.object({ outcome: screeningOutcomeValidator, undo: reversedBy("screening/papers:answer", { ...answerArgs, expect: answerAsLeft }) }),
   spendsCredits: false,
   outsideEffect: false,
-  // "model" puts an answer back, but nothing hands the assistant the command that reverses a change yet (#342).
-  undoable: false,
-  run: async (ctx, userId, { jobId, paperId, questionKey, answer }, author) => {
+  undoable: true,
+  run: async (ctx, userId, { jobId, paperId, questionKey, answer, expect }, author) => {
     let job = await ctx.db.get("screeningJobs", jobId);
     if (!job || job.userId !== userId) throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
     const question = job.questions.find((q) => q.key === questionKey);
@@ -108,14 +112,23 @@ export const answerAction = defineUserMutation({
     const now = Date.now();
     // The model's own answer is the one this job got, even if the screening has lost it since.
     const original = answer === "model" ? ((await jobAnswers(ctx, job, result))?.[questionKey] ?? null) : null;
+    const stands = async () => (await paperAnswers(ctx, (await ctx.db.get("screenings", screeningId))!, paperId)).find((value) => value.question === question.question);
+    const kept = await stands();
+    if (expect && (kept?.answer !== expect.answer || kept.updatedAt !== expect.at)) throw createError("CONFLICT", "This answer has changed since then, so it was left as it is.");
     if (answer === "model") {
-      const kept = (await paperAnswers(ctx, (await ctx.db.get("screenings", screeningId))!, paperId)).find((value) => value.question === question.question);
       // Cleared from the screening since: the model's answer goes back in before it's restored.
       if (!kept?.model && kept?.setBy !== "model") await answerPaper(ctx, screeningId, paperId, [{ question: question.question, response: original }], "model", now);
       await restoreModelAnswer(ctx, screeningId, paperId, question.question, now);
     } else {
       await answerPaper(ctx, screeningId, paperId, [{ question: question.question, response: answer }], author === "assistant" ? "assistant" : "person", now);
     }
+
+    // What puts it back: the model's own answer where that's what it was, or else the answer it
+    // had. None where nothing changed, or where there was no answer to go back to.
+    const left = await stands();
+    const undo = kept && left && (kept.answer !== left.answer || kept.setBy !== left.setBy)
+      ? { undo: { path: "screening/papers:answer" as const, args: { jobId, paperId, questionKey, answer: kept.setBy === "model" ? ("model" as const) : kept.answer, expect: { answer: left.answer, at: left.updatedAt } } } }
+      : {};
 
     // A counted paper keeps the answers it was scored on, with this one changed; one not
     // counted yet, or counted before papers kept theirs, is scored on its answers as they stand.
@@ -128,14 +141,14 @@ export const answerAction = defineUserMutation({
     // A paper the bookkeeping worker hasn't reached is counted there, on its answers as they stand then.
     if (result.doneAt !== undefined) {
       await ctx.db.patch("screeningResults", result._id, scored);
-      return { outcome };
+      return { outcome, ...undo };
     }
     const progress = await progressOf(ctx, jobId);
     await ctx.db.patch("screeningResults", result._id, { ...scored, counted });
     // Saved again even if it was saved before: the person may have removed it since.
     const moved = await shelve(ctx, job, { ...result, ...scored }, move);
     await ctx.db.patch("screeningJobProgress", progress._id, { ...withDeltas(progress, job, [delta]), ...withMoved(progress, moved) });
-    return { outcome };
+    return { outcome, ...undo };
   },
 });
 export const answer = userMutation(answerAction);
