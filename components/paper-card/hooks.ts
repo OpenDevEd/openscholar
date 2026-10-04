@@ -12,6 +12,7 @@ import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { createCitationSearch, useSearchOptional } from "@/lib/search";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { rememberAuthorNames } from "@/lib/openalex/use-author-names";
+import { authorFilterValue, isAuthorId } from "@/lib/openalex/author-filter";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { ScreeningContext, TranslationContext } from "@/components/results-contexts";
 
@@ -158,6 +159,14 @@ export function useCitationHandlers(paperId: string) {
 }
 
 /**
+ * What the search keeps for one of a work's authors: the OpenAlex id, or the
+ * name where OpenAlex has no author record (often an organisation).
+ */
+export function authorValue(author: { id?: string | null; display_name: string }): string | null {
+  return authorFilterValue(author.id ?? author.display_name);
+}
+
+/**
  * The authors the page's search is filtered by, and the control that adds or
  * drops one. `toggle` is undefined on a page that has no search to narrow.
  */
@@ -166,11 +175,11 @@ export function useAuthorFilter() {
   const canFilter = Boolean(useSearchOptional()) || pathname.startsWith("/results");
   const { authors } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
-  const toggle = (author: { id: string; name: string }) => {
-    if (authors.includes(author.id)) return updateFilter({ authors: authors.filter((id) => id !== author.id) });
-    // Saved as it is picked, so the filter's chip never has to look the name up.
-    rememberAuthorNames({ [author.id]: author.name });
-    updateFilter({ authors: [...authors, author.id] });
+  const toggle = (author: { value: string; name: string }) => {
+    if (authors.includes(author.value)) return updateFilter({ authors: authors.filter((one) => one !== author.value) });
+    // An id's name is saved as it is picked, so the filter's chip never has to look it up.
+    if (isAuthorId(author.value)) rememberAuthorNames({ [author.value]: author.name });
+    updateFilter({ authors: [...authors, author.value] });
   };
   return { authors, toggle: canFilter ? toggle : undefined };
 }

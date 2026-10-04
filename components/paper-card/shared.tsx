@@ -17,7 +17,7 @@ import {
   Table,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { useScreening } from "./hooks";
+import { authorValue, useScreening } from "./hooks";
 import type { TranslationContent } from "./hooks";
 import { useUIStore } from "@/lib/store";
 import { useTranslations, useFormatter } from "next-intl";
@@ -68,27 +68,6 @@ function authorsShown(authorships: { author: { display_name: string } }[], maxLe
     if (length > maxLength) break;
   }
   return count;
-}
-
-export function truncateAuthors(
-  authorships: { author: { display_name: string } }[],
-  maxLength: number = 100
-): string {
-  if (!authorships || authorships.length === 0) return "";
-  const count = authorsShown(authorships, maxLength);
-  const names = authorships.slice(0, count).map((a) => a.author.display_name).join(", ");
-  return count < authorships.length ? `${names} et al.` : names;
-}
-
-export function getFirstAuthor(
-  authorships: { author: { display_name: string } }[]
-): string {
-  if (!authorships || authorships.length === 0) return "";
-  const first = authorships[0].author.display_name;
-  if (authorships.length > 1) {
-    return `${first} et al.`;
-  }
-  return first;
 }
 
 export function finalState(
@@ -640,16 +619,16 @@ interface AuthorNamesProps {
   authorships: { author: { id?: string | null; display_name: string } }[];
   /** How many characters of names to show before "et al."; leave out to name every author. */
   maxLength?: number;
-  /** The authors the search is filtered by, as OpenAlex ids. */
+  /** The authors the search is filtered by, as the search keeps them (`authorValue`). */
   selected?: readonly string[];
   /** Makes each name a control that filters the search by that author, or stops filtering by them. */
-  onToggleAuthor?: (author: { id: string; name: string }) => void;
+  onToggleAuthor?: (author: { value: string; name: string }) => void;
 }
 
 /**
- * A work's authors, comma separated. With `onToggleAuthor`, each name that
- * OpenAlex has an author record for is a control; a name without one (often an
- * organisation typed in as an author) stays plain text.
+ * A work's authors, comma separated. With `onToggleAuthor` each name is a
+ * control. It keeps its click and its Enter or Space to itself, since it sits
+ * inside cards that open on both.
  */
 export function AuthorNames({ authorships, maxLength = Infinity, selected, onToggleAuthor }: AuthorNamesProps) {
   const tf = useTranslations("searchFilters");
@@ -659,16 +638,22 @@ export function AuthorNames({ authorships, maxLength = Infinity, selected, onTog
   return (
     <>
       {authorships.slice(0, shown).map(({ author }, index) => {
-        const id = author.id?.split("/").at(-1);
+        const value = authorValue(author);
         return (
-          <React.Fragment key={`${id}-${index}`}>
+          <React.Fragment key={`${value}-${index}`}>
             {index > 0 && ", "}
-            {id && onToggleAuthor ? (
+            {value && onToggleAuthor ? (
               <button
                 type="button"
-                aria-pressed={selected?.includes(id) ?? false}
+                aria-pressed={selected?.includes(value) ?? false}
                 aria-label={tf("filterByAuthor", { name: author.display_name })}
-                onClick={() => onToggleAuthor({ id, name: author.display_name })}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleAuthor({ value, name: author.display_name });
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+                }}
                 className="rounded-sm underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring aria-pressed:font-medium aria-pressed:text-primary"
               >
                 {author.display_name}

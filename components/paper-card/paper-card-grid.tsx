@@ -13,14 +13,14 @@ import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Quote, Network, Users, BookOpen } from "@/components/icons";
-import { useTranslate, useScreening, useCitationHandlers } from "./hooks";
+import { useAuthorFilter, useTranslate, useScreening, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
   PaperCardProps,
   CardContainer,
   OpenAccessBadge,
   DOIBadge,
-  getFirstAuthor,
+  AuthorNames,
   ScreeningBadge,
   finalState,
   DownloadMenuCompact,
@@ -62,7 +62,7 @@ export function PaperCardGrid({
     ? translatedContent.translatedTitle
     : result.title;
 
-  const author = result.authorships ? getFirstAuthor(result.authorships) : "";
+  const authorFilter = useAuthorFilter();
   const journal = result.primary_location?.source?.display_name || "";
 
   const isCompact = viewMode === "grid-3";
@@ -135,15 +135,23 @@ export function PaperCardGrid({
           </h3>
 
           {/* Author */}
-          {author && (
+          {result.authorships?.length ? (
             <div className={cn(
               "flex items-center gap-1.5 text-muted-foreground mb-1.5",
               isCompact ? "text-xs" : "text-sm"
             )}>
               <Users className={cn(isCompact ? "h-3 w-3" : "h-3.5 w-3.5", "flex-shrink-0")} />
-              <span className="line-clamp-1">{author}</span>
+              <span className="line-clamp-1">
+                {/* The first author; "et al." stands for the rest. */}
+                <AuthorNames
+                  authorships={result.authorships}
+                  maxLength={0}
+                  selected={authorFilter.authors}
+                  onToggleAuthor={authorFilter.toggle}
+                />
+              </span>
             </div>
-          )}
+          ) : null}
 
           {/* Journal - hidden in compact mode */}
           {journal && !isCompact && (

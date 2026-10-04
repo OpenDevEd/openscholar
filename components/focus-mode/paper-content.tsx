@@ -30,7 +30,7 @@ export interface PaperContentProps {
   /** The authors the search is filtered by, as OpenAlex ids. */
   selectedAuthors?: readonly string[];
   /** Filters the search by an author, or stops filtering by them. Left out where there is no search. */
-  onToggleAuthor?: (author: { id: string; name: string }) => void;
+  onToggleAuthor?: (author: { value: string; name: string }) => void;
 }
 
 export function PaperContent({

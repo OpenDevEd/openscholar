@@ -8,6 +8,7 @@ import type { SearchResult, SearchField, SearchFilters } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
 import { buildSearchSubfilter } from './search/search-field'
 import { researchAreaFilter, sdgFilterValue } from './openalex/vocabulary'
+import { isAuthorId } from './openalex/author-filter'
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -417,11 +418,17 @@ export function createSearchParameters(
     };
   }
   if (filters.funders.length) apiFilters.funders = { id: filters.funders.join('|') };
-  if (filters.authors.length) {
+  const authorIds = filters.authors.filter(isAuthorId);
+  if (authorIds.length) {
     apiFilters.authorships = {
       ...(apiFilters.authorships as Record<string, unknown> | undefined),
-      author: { id: filters.authors.join('|') },
+      author: { id: authorIds.join('|') },
     };
+  }
+  // An author OpenAlex has no record for is found by the name the work gives, as a phrase.
+  const authorNames = filters.authors.filter((author) => !isAuthorId(author));
+  if (authorNames.length) {
+    apiFilters.raw_author_name = { search: authorNames.map((name) => `"${name}"`).join('|') };
   }
   // OpenAlex takes "more than", so at least N is more than N - 1.
   if (filters.minCitations) apiFilters.cited_by_count = `>${filters.minCitations - 1}`;

@@ -13,15 +13,15 @@ import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { Quote } from "@/components/icons";
-import { useTranslate, useCitationHandlers } from "./hooks";
+import { BookOpen, Quote } from "@/components/icons";
+import { useAuthorFilter, useTranslate, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
   PaperCardProps,
   CardContainer,
   OpenAccessBadge,
   DOIBadge,
-  truncateAuthors,
+  AuthorNames,
   DownloadMenuCompact,
   TranslationToggle,
   ScreeningResponses,
@@ -52,9 +52,7 @@ export function PaperCardListSimple({
     ? translatedContent.translatedTitle
     : result.title;
 
-  const authors = result.authorships
-    ? truncateAuthors(result.authorships, 60)
-    : "";
+  const authorFilter = useAuthorFilter();
 
   const journal = result.primary_location?.source?.display_name || "";
 
@@ -103,12 +101,25 @@ export function PaperCardListSimple({
                 </span>
               </h3>
               
-              {/* Authors and journal - hidden on smallest, visible on @sm */}
-              <p className="hidden @sm/card:block text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                {authors && <span>{authors}</span>}
-                {authors && journal && <span className="mx-1.5">·</span>}
-                {journal && <span className="italic">{journal}</span>}
-              </p>
+              {/* Authors and journal - hidden on smallest, visible on @sm. The journal is cut first, so no author control is hidden. */}
+              <div className="hidden @sm/card:flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                {result.authorships?.length ? (
+                  <span className="max-w-full shrink-0 overflow-clip text-ellipsis whitespace-nowrap">
+                    <AuthorNames
+                      authorships={result.authorships}
+                      maxLength={60}
+                      selected={authorFilter.authors}
+                      onToggleAuthor={authorFilter.toggle}
+                    />
+                  </span>
+                ) : null}
+                {journal && (
+                  <span className="flex min-w-0 items-center gap-1.5 italic">
+                    <BookOpen aria-hidden className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{journal}</span>
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Screening badges - icon only */}
