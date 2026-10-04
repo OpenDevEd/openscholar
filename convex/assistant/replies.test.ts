@@ -457,8 +457,17 @@ describe("assistant replies", () => {
       for (let i = 0; i < 3; i++) await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: `Message ${i}`, skipEmbeddings: true });
     });
     const one = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: { cursor: null, numItems: 1 } });
-    expect(one).toMatchObject({ page: [{ text: "Message 2" }], isDone: false });
-    expect(one.pageStatus ?? null).toBeNull();
+    expect(one).toMatchObject({ page: [{ text: "Message 2" }], isDone: false, pageStatus: null });
+    // Two rows that each fill most of a page stop the read at the first. It still has no split to offer.
+    await t.run(async (ctx) => {
+      const thread = (await ctx.db.get("assistantThreads", threadId))!;
+      const [prompt] = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { cursor: null, numItems: 1 } })).page;
+      await saveMessages(ctx, components.agent, { threadId: thread.agentThreadId, promptMessageId: prompt._id, messages: [{ role: "assistant", content: [{ type: "tool-call", toolCallId: "big", toolName: "run_action", input: { text: "y".repeat(600_000) } }] }] });
+      await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: `Message 3 ${"x".repeat(300_000)}`, skipEmbeddings: true });
+    });
+    const heavy = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: { cursor: null, numItems: 1 } });
+    expect(heavy).toMatchObject({ isDone: false, pageStatus: null, splitCursor: null });
+    expect(heavy.page).toHaveLength(1);
   });
 
   it("are refused while the assistant is switched off", async () => {

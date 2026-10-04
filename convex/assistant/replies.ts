@@ -491,8 +491,8 @@ async function senders(ctx: QueryCtx, rows: MessageDoc[]) {
 async function pageOf<Opts extends { numItems: number; cursor: string | null; endCursor?: string | null }>(list: (opts: Opts) => ReturnType<typeof listMessages>, opts: Opts) {
   const end = opts.endCursor;
   if (!end) {
-    // One item can't be split.
-    if (opts.numItems < 2) return list(opts);
+    // One item can't be split, so a cap that stopped at it has no split to offer.
+    if (opts.numItems < 2) return { ...(await list(opts)), pageStatus: null, splitCursor: null };
     const half = Math.ceil(opts.numItems / 2);
     const newer = await list({ ...opts, numItems: half });
     // Nothing is past this half, so there's nothing to split yet.
