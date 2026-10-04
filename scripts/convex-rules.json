@@ -8,12 +8,6 @@
     "pending": {
       "convex/admins/queries.ts:candidates:[]": "#424",
       "convex/admins/queries.ts:list:[]": "#424",
-      "convex/ai/actions.ts:generateBatchScreeningResponses:.errors[]": "#425",
-      "convex/ai/actions.ts:generateBatchScreeningResponses:.results{}": "#425",
-      "convex/ai/actions.ts:generateBatchScreeningResponses:.results{}.confidences{}": "#425",
-      "convex/ai/actions.ts:generateBatchScreeningResponses:.results{}.responses{}": "#425",
-      "convex/ai/actions.ts:generateBatchTranslations:.errors[]": "#425",
-      "convex/ai/actions.ts:generateBatchTranslations:.results{}": "#425",
       "convex/aiModelConfig/queries.ts:presets:[]": "#424",
       "convex/authors/invitations.ts:listMine:[]": "#424",
       "convex/authors/members.ts:list:.invitations[]": "#424",
