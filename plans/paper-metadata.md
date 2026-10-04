@@ -56,6 +56,10 @@ preserves names over the 100-author storage cap as full unparsed text.
    concurrent edits block rollback for that record.
 4. Narrow the stored validator after verification finds no string authors. Remove
    transitional readers and writers. Retain unparsed text as a supported value.
+   Recheck the separate CI backend before opening the narrowing PR, since its
+   auth tests deploy the schema too. Old rollback receipts retain their original
+   bytes; rollback translates old author strings to unparsed text and keeps
+   version 2 so a migration retry cannot reapply a deliberately reverted repair.
 
 Do not fetch fresh OpenAlex records or rerun AI to reconstruct historical inputs.
 Do not alter saved Evidence Library configuration or new-el tenant data.

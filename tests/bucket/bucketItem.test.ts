@@ -14,7 +14,7 @@ function libraryDoc(overrides: {
   _id?: Id<"libraryItems">;
   openalexId?: string;
   title?: string;
-  authors?: string | string[];
+  authors?: string[];
   doi?: string;
   publicationYear?: number;
   abstract?: string;
@@ -232,7 +232,7 @@ describe("lib/bucket/bucketItem normalizers", () => {
 
   test("cross-source dedup: library + zotero share doi key", () => {
     const lib = fromLibraryItem(
-      libraryDoc({ openalexId: "", doi: "10.1/shared", authors: "" }),
+      libraryDoc({ openalexId: "", doi: "10.1/shared", authors: [] }),
     );
     const zot = fromZoteroItem(
       { itemKey: "Z", title: lib.title, authors: [], doi: "10.1/shared" },
@@ -241,7 +241,7 @@ describe("lib/bucket/bucketItem normalizers", () => {
     // library has openalexId, so key would be openalex:... — reset that case
     // by dropping the openalexId explicitly to force DOI fallback.
     const libNoOa = fromLibraryItem(
-      libraryDoc({ openalexId: "", doi: "10.1/shared", authors: "" }),
+      libraryDoc({ openalexId: "", doi: "10.1/shared", authors: [] }),
     );
     expect(libNoOa.bucketKey).toBe(zot.bucketKey);
   });

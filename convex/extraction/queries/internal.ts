@@ -319,7 +319,7 @@ export const LIBRARY_READ_BATCH = 100;
 const libraryPaperValidator = v.object({
   _id: v.id("libraryItems"),
   title: v.string(),
-  authors: v.optional(v.union(v.string(), v.array(v.string()))),
+  authors: v.optional(v.array(v.string())),
   authorsUnparsed: v.optional(v.string()),
   isOpenAccess: v.optional(v.boolean()),
   oaStatus: v.optional(v.string()),

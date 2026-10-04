@@ -20,7 +20,7 @@ import { MAX_AUTHORS } from "../lib/listCaps";
 export const libraryPaper = v.object({
   openalexId: v.string(),
   title: v.string(),
-  authors: v.optional(v.union(v.string(), v.array(v.string()))),
+  authors: v.optional(v.array(v.string())),
   authorsUnparsed: v.optional(v.string()),
   doi: v.optional(v.string()),
   abstract: v.optional(v.string()),
@@ -111,7 +111,7 @@ export async function upsertLibraryItem(
   // Project only metadata: system fields, ownership, dates and ratings never enter this merge.
   const before = existing ? Object.fromEntries(Object.keys(libraryPaper.fields).map((key) => [key, existing[key as keyof typeof existing]])) as Infer<typeof libraryPaper> : { title: "" };
   const merged = mergePaperMetadata(before, paper);
-  if (Array.isArray(merged.authors) && merged.authors.length > MAX_AUTHORS) {
+  if (merged.authors && merged.authors.length > MAX_AUTHORS) {
     merged.authorsUnparsed = merged.authors.join(", ");
     merged.authors = undefined;
   }

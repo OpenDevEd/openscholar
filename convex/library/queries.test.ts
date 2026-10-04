@@ -40,7 +40,7 @@ async function seedLibraryItem(
     openalexId: string;
     rating: number;
     title: string;
-    authors: string;
+    authors: string[];
     doi: string;
     abstract: string;
     publicationYear: number;
@@ -56,7 +56,7 @@ async function seedLibraryItem(
   return await t.run(async (ctx) => {
     const now = Date.now();
     const title = overrides.title ?? "Default Title";
-    const authors = overrides.authors ?? "Author A";
+    const authors = overrides.authors ?? ["Author A"];
     const abstract = overrides.abstract ?? "Default abstract text";
     const searchableText =
       overrides.searchableText ?? [title, abstract, authors].join(" ");
@@ -1362,7 +1362,7 @@ describe("the library as the assistant reads it", () => {
     const asUser = t.withIdentity({ subject: "clerk_reader" });
     const papers = (args: Parameters<typeof asUser.query<typeof api.library.queries.papers>>[1] = {}) => asUser.query(api.library.queries.papers, args);
 
-    const tutoring = await seedLibraryItem(t, user!._id, { title: "Tutoring at scale", authors: "Ada Okafor", rating: 5, publicationYear: 2020, journal: "Journal of Trials", savedAt: Date.UTC(2026, 8, 1), openalexId: "https://openalex.org/W1" });
+    const tutoring = await seedLibraryItem(t, user!._id, { title: "Tutoring at scale", authors: ["Ada Okafor"], rating: 5, publicationYear: 2020, journal: "Journal of Trials", savedAt: Date.UTC(2026, 8, 1), openalexId: "https://openalex.org/W1" });
     const phones = await seedLibraryItem(t, user!._id, { title: "Phones and literacy", publicationYear: 2022, savedAt: Date.UTC(2026, 8, 2), openalexId: "https://openalex.org/W2" });
     await seedLibraryItem(t, user!._id, { title: "School feeding", rating: 2, publicationYear: 2018, savedAt: Date.UTC(2026, 8, 3), openalexId: "https://openalex.org/W3" });
     await seedLibraryItem(t, other!._id, { title: "Someone else's paper", openalexId: "https://openalex.org/W4" });
