@@ -335,16 +335,22 @@ export const RATED_PAPERS_MAX = 200;
 export const paperResponsesValidator = v.object({ paperId: v.string(), responses: answers });
 /** Papers one read of screening answers takes: as many as a results page shows. */
 export const ANSWERED_PAPERS_MAX = 200;
+/**
+ * A search as its creation left it: the row itself (`created`), its revision and time of last
+ * change, and the version of its answers, which a screening job moves without touching the search.
+ */
+const searchAsMade = v.object({ created: v.number(), revision: v.number(), updatedAt: v.string(), answers: v.optional(v.number()) });
+const shortcutValue = v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null());
 export const commandValidator = v.union(
   // `history`: the earlier queries and questions of a search brought from this browser or a file.
   v.object({ kind: v.literal("createSearch"), search: searchValidator, history: v.optional(v.object(historyArrays)) }),
   v.object({ kind: v.literal("editSearch"), id: v.string(), edit: editValidator }),
-  // `expect` is the revision and time of last change the search should have now: a change
-  // since then refuses the deletion, so undoing a search's creation never deletes later work.
-  v.object({ kind: v.literal("deleteSearch"), id: v.string(), expect: v.optional(v.object({ revision: v.number(), updatedAt: v.string() })) }),
+  // `expect` is the search as it should be now: anything done to it since refuses the
+  // deletion, so undoing a search's creation never deletes later work.
+  v.object({ kind: v.literal("deleteSearch"), id: v.string(), expect: v.optional(searchAsMade) }),
   // `expect`, on a shortcut or a rating, is what it should be now (null for none): a change
   // since then refuses this one, so undoing one change never overwrites a later one.
-  v.object({ kind: v.literal("shortcut"), shorthand: v.string(), value: v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null()), expect: v.optional(v.union(v.string(), v.null())) }),
+  v.object({ kind: v.literal("shortcut"), shorthand: v.string(), value: shortcutValue, expect: v.optional(shortcutValue) }),
   v.object({ kind: v.literal("rating"), paperId: v.string(), rating: v.union(v.number(), v.null()), expect: v.optional(v.union(v.number(), v.null())) }),
   // Every saved search, or every shortcut, the person has when it's applied: in order with
   // the saves around it, so one made before goes and one made after stays.
@@ -354,11 +360,11 @@ export const commandValidator = v.union(
 export type ResearchCommand = Infer<typeof commandValidator>;
 /** The commands that reverse a change: each is one of the commands above, with what the record should be now. */
 export const undoCommandValidator = v.union(
-  v.object({ kind: v.literal("deleteSearch"), id: v.string(), expect: v.object({ revision: v.number(), updatedAt: v.string() }) }),
+  v.object({ kind: v.literal("deleteSearch"), id: v.string(), expect: searchAsMade }),
   v.object({ kind: v.literal("editSearch"), id: v.string(), edit: v.object({ kind: v.literal("restore"), revision: v.number(), expect: v.number() }) }),
-  v.object({ kind: v.literal("shortcut"), shorthand: v.string(), value: v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null()), expect: v.union(v.string(), v.null()) }),
+  v.object({ kind: v.literal("shortcut"), shorthand: v.string(), value: shortcutValue, expect: shortcutValue }),
   v.object({ kind: v.literal("rating"), paperId: v.string(), rating: v.union(v.number(), v.null()), expect: v.union(v.number(), v.null()) }),
 );
 export type UndoCommand = Infer<typeof undoCommandValidator>;
-/** The longest shortcut a change keeps for its undo, so an undo command is always small enough to store with the request's receipt. */
+/** The longest shortcut, before or after a change, that the change keeps for its undo, so an undo command is always small enough to store with the request's receipt. */
 export const UNDO_SHORTCUT_MAX = 10_000;

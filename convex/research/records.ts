@@ -382,6 +382,16 @@ function revisionRow(ctx: Pick<QueryCtx, "db">, searchId: Id<"searches">, number
 }
 
 /**
+ * A search as it stands, for the undo of its creation to check against: the row itself, its
+ * revision and time of last change, and the version of its answers. A screening job answers
+ * into the search's screening without touching the search, so only that version shows it.
+ */
+async function asMade(ctx: Pick<QueryCtx, "db">, search: Doc<"searches">) {
+  const answers = (await screeningFor(ctx, search._id))?.version;
+  return { created: search._creationTime, revision: search.revision, updatedAt: search.data.updatedAt, ...(answers === undefined ? {} : { answers }) };
+}
+
+/**
  * Applies one change, in the caller's transaction, for the person it's made for. Returns the
  * command that reverses it (#342), when it changed something that can be put back: making a
  * search, changing its query or filters, a shortcut, a rating. Deleting, clearing, and
@@ -402,7 +412,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       await seedAnswers(ctx, userId, id, command.search.screeningResponses, author === "assistant" ? "assistant" : "unrecorded", Date.now());
       const made = (await ctx.db.get("searches", id))!;
       await revision(ctx, made, author);
-      return { kind: "deleteSearch", id: command.search.id, expect: { revision: made.revision, updatedAt: made.data.updatedAt } };
+      return { kind: "deleteSearch", id: command.search.id, expect: await asMade(ctx, made) };
     }
     case "editSearch": {
       const found = await findSearch(ctx, userId, command.id);
@@ -467,7 +477,8 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
     case "deleteSearch": {
       const found = await findSearch(ctx, userId, command.id);
       if (!found) return;
-      if (command.expect && (found.revision !== command.expect.revision || found.data.updatedAt !== command.expect.updatedAt)) {
+      const [then, now] = [command.expect, command.expect && (await asMade(ctx, found))];
+      if (then && now && (now.created !== then.created || now.revision !== then.revision || now.updatedAt !== then.updatedAt || now.answers !== then.answers)) {
         throw createError("CONFLICT", "This search has changed since then, so it was left as it is.");
       }
       // Its history stays in its rows, with the revisions, after the search is gone.
@@ -479,13 +490,16 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
     case "shortcut": {
       if (!command.shorthand.trim()) throw new Error("Bookmark name is required.");
       const row = await ctx.db.query("queryShortcuts").withIndex("by_user_and_shorthand", q => q.eq("userId", userId).eq("data.shorthand", command.shorthand)).unique();
-      if (command.expect !== undefined && (row?.data.expansion ?? null) !== command.expect) throw createError("CONFLICT", "This shortcut has changed since then, so it was left as it is.");
+      type Value = typeof command.value;
+      const before: Value = row ? { expansion: row.data.expansion, createdAt: row.data.createdAt } : null;
+      const same = (a: Value, b: Value) => a?.expansion === b?.expansion && a?.createdAt === b?.createdAt;
+      if (command.expect !== undefined && !same(before, command.expect)) throw createError("CONFLICT", "This shortcut has changed since then, so it was left as it is.");
       // What puts it back: the shortcut as it was, or none, as long as it's still what this change made it.
-      // A change that changes nothing has no undo, and neither does one over a shortcut too long to keep.
-      const unchanged = row ? row.data.expansion === command.value?.expansion && row.data.createdAt === command.value.createdAt : command.value === null;
-      const undo: UndoCommand | undefined = unchanged || (row && row.data.expansion.length > UNDO_SHORTCUT_MAX)
+      // A change that changes nothing has no undo, and neither does one with a shortcut too long to keep on either side.
+      const tooLong = [before, command.value].some(value => value && value.expansion.length > UNDO_SHORTCUT_MAX);
+      const undo: UndoCommand | undefined = same(before, command.value) || tooLong
         ? undefined
-        : { kind: "shortcut", shorthand: command.shorthand, value: row ? { expansion: row.data.expansion, createdAt: row.data.createdAt } : null, expect: command.value?.expansion ?? null };
+        : { kind: "shortcut", shorthand: command.shorthand, value: before, expect: command.value };
       if (command.value === null) { if (row) await ctx.db.delete("queryShortcuts", row._id); return undo; }
       const data = { shorthand: command.shorthand, ...command.value };
       if (row) await ctx.db.patch("queryShortcuts", row._id, { data });
