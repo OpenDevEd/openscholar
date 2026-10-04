@@ -3397,5 +3397,27 @@
     "source": "Intelligence Index by Artificial Analysis",
     "back": "Back to models",
     "default": "Default"
+  },
+  "assistant": {
+    "label": "OpenScholar assistant",
+    "open": "Open the assistant",
+    "fold": "Fold the assistant away",
+    "foldHint": "Fold away",
+    "foldIntoBubble": "Fold into a bubble",
+    "newChat": "New chat",
+    "emptyTitle": "Ask about anything here",
+    "emptyBody": "For now I can only talk. I can't search, open pages or change anything yet.",
+    "placeholder": "Ask the assistant",
+    "readOnly": "You can read this chat, but not write in it",
+    "messageLabel": "Message the assistant",
+    "send": "Send",
+    "stop": "Stop",
+    "thinking": "Thinking",
+    "stopped": "This reply was stopped",
+    "interrupted": "This reply was interrupted before it finished",
+    "earlier": "Earlier messages",
+    "model": "Model",
+    "sendFailed": "Couldn't send your message",
+    "modelFailed": "Couldn't change the model"
   }
 }

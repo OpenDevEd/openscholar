@@ -3407,5 +3407,27 @@
     "source": "Indice d'intelligence par Artificial Analysis",
     "back": "Retour aux modèles",
     "default": "Par défaut"
+  },
+  "assistant": {
+    "label": "Assistant OpenScholar",
+    "open": "Ouvrir l'assistant",
+    "fold": "Replier l'assistant",
+    "foldHint": "Replier",
+    "foldIntoBubble": "Réduire en bulle",
+    "newChat": "Nouvelle discussion",
+    "emptyTitle": "Posez vos questions ici",
+    "emptyBody": "Pour l'instant, je peux seulement discuter. Je ne peux pas encore chercher, ouvrir des pages ni modifier quoi que ce soit.",
+    "placeholder": "Écrire à l'assistant",
+    "readOnly": "Vous pouvez lire cette discussion, mais pas y écrire",
+    "messageLabel": "Écrire à l'assistant",
+    "send": "Envoyer",
+    "stop": "Arrêter",
+    "thinking": "Réflexion",
+    "stopped": "Cette réponse a été arrêtée",
+    "interrupted": "Cette réponse a été interrompue avant la fin",
+    "earlier": "Messages précédents",
+    "model": "Modèle",
+    "sendFailed": "Impossible d'envoyer votre message",
+    "modelFailed": "Impossible de changer de modèle"
   }
 }

@@ -3407,5 +3407,27 @@
     "source": "Artificial Analysis の Intelligence Index",
     "back": "モデル一覧に戻る",
     "default": "デフォルト"
+  },
+  "assistant": {
+    "label": "OpenScholar アシスタント",
+    "open": "アシスタントを開く",
+    "fold": "アシスタントをたたむ",
+    "foldHint": "たたむ",
+    "foldIntoBubble": "バブルにたたむ",
+    "newChat": "新しいチャット",
+    "emptyTitle": "ここで何でも聞いてください",
+    "emptyBody": "今のところ会話しかできません。検索、ページを開くこと、変更はまだできません。",
+    "placeholder": "アシスタントに質問する",
+    "readOnly": "このチャットは閲覧できますが、書き込みはできません",
+    "messageLabel": "アシスタントへのメッセージ",
+    "send": "送信",
+    "stop": "停止",
+    "thinking": "考え中",
+    "stopped": "この返信は停止されました",
+    "interrupted": "この返信は完了前に中断されました",
+    "earlier": "以前のメッセージ",
+    "model": "モデル",
+    "sendFailed": "メッセージを送信できませんでした",
+    "modelFailed": "モデルを変更できませんでした"
   }
 }

@@ -19,6 +19,7 @@ import { ConsentAwareGoogleAnalytics } from "@/components/google-analytics";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { preloadQuery } from "convex/nextjs";
+import { AssistantPanel } from "@/components/assistant/panel";
 import { api } from "@/convex/_generated/api";
 
 const outfit = Outfit({
@@ -105,6 +106,7 @@ export default async function RootLayout({
                       </div>
                       <Toaster />
                       <ConfirmationHost />
+                      <AssistantPanel />
                       <CookieConsentBanner />
                       <ConsentAwareGoogleAnalytics />
                     </TooltipProvider>

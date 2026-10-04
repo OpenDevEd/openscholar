@@ -3407,5 +3407,27 @@
     "source": "Artificial Analysis 智能指数",
     "back": "返回模型列表",
     "default": "默认"
+  },
+  "assistant": {
+    "label": "OpenScholar 助手",
+    "open": "打开助手",
+    "fold": "收起助手",
+    "foldHint": "收起",
+    "foldIntoBubble": "收起为气泡",
+    "newChat": "新对话",
+    "emptyTitle": "在这里随便问",
+    "emptyBody": "目前我只能对话，还不能搜索、打开页面或更改任何内容。",
+    "placeholder": "向助手提问",
+    "readOnly": "你可以阅读此对话，但不能在其中发言",
+    "messageLabel": "给助手发消息",
+    "send": "发送",
+    "stop": "停止",
+    "thinking": "思考中",
+    "stopped": "此回复已被停止",
+    "interrupted": "此回复在完成前中断了",
+    "earlier": "更早的消息",
+    "model": "模型",
+    "sendFailed": "无法发送你的消息",
+    "modelFailed": "无法更改模型"
   }
 }

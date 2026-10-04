@@ -1,0 +1,620 @@
+"use client";
+
+// The research assistant (#324, #346): a panel that hovers above every page of the app
+// and folds into a launcher. The mock on branch mock/research-assistant is its spec.
+// This is the chat itself. The run map, the cards, the sheets, the @ picker and the
+// spending controls arrive with the issues that build what they show.
+
+import { Component, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useSmoothText } from "@convex-dev/agent/react";
+import { insertAtTop, useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
+import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
+import { ArrowUp, ChevronDown, CircleAlert, CircleStop, PictureInPicture2, Square, SquarePen } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { Conversation, ConversationContent } from "@/components/ai-elements/conversation";
+import { MessageResponse } from "@/components/ai-elements/message";
+import { CHAT_LINK_SAFETY } from "@/components/extraction/chat/link-safety-dialog";
+import { getModelIcon } from "@/components/icons/provider-icons";
+import { EffortMeter } from "@/components/models/meters";
+import { ModelPicker } from "@/components/models/model-picker";
+import { EASE, effortOf, toMapModel, usePresetModels, type PickedModel, type PresetPick } from "@/components/settings/model-map";
+import { EDGE_FADE } from "@/components/ui/scroll-area";
+import { TooltipHint } from "@/components/ui/tooltip";
+import { PRESET_KEYS } from "@/lib/ai/tasks";
+import type { Effort } from "@/lib/ai/core/call-options";
+import { stripProviderPrefix } from "@/lib/chat/model-display";
+import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
+import { cn } from "@/lib/utils";
+import { LogoMark } from "./logo-mark";
+
+type ThreadId = Id<"assistantThreads">;
+type Message = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
+type Live = NonNullable<FunctionReturnType<typeof api.assistant.replies.live>>;
+
+const PANEL_W = 440;
+/** How far the chips above the composer hang over the thread: half their height. */
+const CHIP_HANG = 16;
+const SHELL_SPRING = { type: "spring" as const, stiffness: 380, damping: 36, mass: 0.9 };
+const FIRST_MESSAGES = 30;
+const TITLE_MAX = 60;
+/** The ID of a message shown ahead of the server's copy of it. */
+const SENDING = "sending:";
+
+/** A new chat is named after its first message. */
+function titleFrom(text: string) {
+  const line = text.trim().split("\n")[0]!.replace(/\s+/g, " ");
+  return line.length > TITLE_MAX ? `${line.slice(0, TITLE_MAX - 1).trimEnd()}…` : line;
+}
+
+export function AssistantPanel() {
+  const enabled = useFeatureFlag("assistant.enabled");
+  const { isAuthenticated } = useConvexAuth();
+  const [open, setOpen] = useState(false);
+  const [threadId, setThreadId] = useState<ThreadId | null>(null);
+  if (!enabled || !isAuthenticated) return null;
+  return (
+    <Lost fresh={threadId === null} onLost={() => setThreadId(null)}>
+      <Overlay open={open} setOpen={setOpen} threadId={threadId} setThreadId={setThreadId} />
+    </Lost>
+  );
+}
+
+/**
+ * A chat that was deleted, or is no longer shared with you, fails its reads. The panel
+ * then goes back to a new chat instead of taking the page down with it.
+ */
+class Lost extends Component<{ fresh: boolean; onLost: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    // With no chat open there's nothing left to drop, so the panel stays away rather than fail again.
+    if (this.props.fresh) return;
+    this.props.onLost();
+    this.setState({ failed: false });
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+function Overlay({
+  open,
+  setOpen,
+  threadId,
+  setThreadId,
+}: {
+  open: boolean;
+  setOpen: (update: (open: boolean) => boolean) => void;
+  threadId: ThreadId | null;
+  setThreadId: (id: ThreadId | null) => void;
+}) {
+  const t = useTranslations("assistant");
+  // Read here, not in the chat, so the launcher shows a reply being written while the panel is folded.
+  const live = useQuery(api.assistant.replies.live, threadId ? { threadId } : "skip") ?? null;
+  const working = live !== null;
+  // A keyboard shortcut is an outside system: ⌘J or Ctrl+J opens and closes the panel.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") {
+        e.preventDefault();
+        setOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [setOpen]);
+  const fold = () => setOpen(() => false);
+
+  return (
+    <MotionConfig reducedMotion="user">
+      <EdgeGlow open={open} working={working} />
+      {/* The panel hovers above the page: it's fixed, and the page underneath keeps its full width. */}
+      <AnimatePresence>
+        {open ? (
+          <motion.aside
+            key="panel"
+            layoutId="assistant-shell"
+            // Measure only when the panel opens or folds, never on other re-renders.
+            layoutDependency={open}
+            transition={SHELL_SPRING}
+            className="fixed bottom-3 right-3 top-3 z-40 max-w-[calc(100vw-1.5rem)] sm:bottom-4 sm:right-4 sm:top-4"
+            style={{ width: PANEL_W, borderRadius: 18 }}
+            aria-label={t("label")}
+          >
+            <div className="absolute inset-0 flex flex-col overflow-hidden rounded-[18px] border border-border/70 bg-card/[0.97] shadow-[0_24px_80px_-24px_rgb(0_0_0/0.55),0_0_0_1px_rgb(255_255_255/0.03)] backdrop-blur-xl">
+              <TooltipHint label={`${t("foldHint")}  ⌘J`}>
+                <motion.button
+                  type="button"
+                  layoutId="assistant-logo"
+                  layoutDependency={open}
+                  onClick={fold}
+                  aria-label={t("fold")}
+                  transition={SHELL_SPRING}
+                  className="absolute left-4 top-3.5 z-10 flex size-9 items-center justify-center rounded-xl bg-primary/10 hover:bg-primary/15"
+                >
+                  <LogoMark size={24} draw working={working} />
+                </motion.button>
+              </TooltipHint>
+              <motion.div
+                className="flex min-h-0 flex-1 flex-col"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { delay: 0.16, duration: 0.25 } }}
+                exit={{ opacity: 0, transition: { duration: 0.08 } }}
+              >
+                <Chat threadId={threadId} setThreadId={setThreadId} live={live} onFold={fold} />
+              </motion.div>
+            </div>
+          </motion.aside>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>{!open ? <Launcher key="launcher" working={working} onOpen={() => setOpen(() => true)} /> : null}</AnimatePresence>
+    </MotionConfig>
+  );
+}
+
+function Chat({ threadId, setThreadId, live, onFold }: { threadId: ThreadId | null; setThreadId: (id: ThreadId | null) => void; live: Live | null; onFold: () => void }) {
+  const t = useTranslations("assistant");
+  const toast = useAppToast();
+  const thread = useQuery(api.assistant.threads.get, threadId ? { threadId } : "skip");
+  const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.messages, threadId ? { threadId } : "skip", { initialNumItems: FIRST_MESSAGES });
+  const presetModel = usePresetModels();
+  // The model picked before the chat exists; once it does, the chat keeps its own.
+  const [picked, setPicked] = useState<PickedModel | null>(null);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const composer = useRef<HTMLTextAreaElement>(null);
+
+  const create = useMutation(api.assistant.threads.create);
+  const setModel = useMutation(api.assistant.threads.setModel);
+  const stopReply = useMutation(api.assistant.replies.stop);
+  // The message shows the moment it's sent, ahead of the server's copy.
+  const sendMessage = useMutation(api.assistant.replies.send).withOptimisticUpdate((localQueryStore, args) =>
+    insertAtTop({
+      paginatedQuery: api.assistant.replies.messages,
+      argsToMatch: { threadId: args.threadId },
+      localQueryStore,
+      item: { id: `${SENDING}${crypto.randomUUID()}`, role: "user", order: Number.MAX_SAFE_INTEGER, text: args.text, status: "done", mine: true, at: Date.now() },
+    }),
+  );
+
+  const model: PickedModel | null = threadId ? (thread?.model ? toMapModel(thread.model, thread.effort) : null) : (picked ?? presetModel?.("balanced", "chat") ?? null);
+  const pickModel = (next: PickedModel, effort: Effort | undefined) => {
+    if (!threadId) return setPicked(effort ? { ...next, effort } : next);
+    setModel({ threadId, modelId: next._id, effort }).catch((error) => toast.error(t("modelFailed"), getErrorMessage(error, "")));
+  };
+
+  const busy = sending || live !== null;
+  const canWrite = thread?.role !== "read";
+  const send = async () => {
+    const text = draft.trim();
+    if (!text || busy || !canWrite) return;
+    setDraft("");
+    setSending(true);
+    try {
+      const effort = model?.effort;
+      const id = threadId ?? (await create({ title: titleFrom(text), ...(model ? { modelId: model._id, ...(effort ? { effort } : {}) } : {}) }));
+      if (!threadId) setThreadId(id);
+      await sendMessage({ threadId: id, text });
+    } catch (error) {
+      // The message goes back in the box, unless something new was typed meanwhile.
+      setDraft((now) => now || text);
+      toast.error(t("sendFailed"), getErrorMessage(error, ""));
+    } finally {
+      setSending(false);
+    }
+  };
+  const stop = () => {
+    if (threadId && live) stopReply({ threadId, attemptId: live.attemptId }).catch(() => {});
+  };
+  const restart = () => {
+    setThreadId(null);
+    setDraft("");
+    composer.current?.focus();
+  };
+
+  return (
+    <>
+      <Header title={threadId ? (thread?.title ?? "") : t("newChat")} onRestart={restart} onFold={onFold} />
+      <Thread
+        messages={[...results].reverse()}
+        live={live}
+        fresh={threadId === null}
+        older={status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
+      />
+      <Footer composer={composer} draft={draft} setDraft={setDraft} busy={busy} canWrite={canWrite} onSend={send} onStop={stop} model={model} onModel={pickModel} presetModel={presetModel} />
+    </>
+  );
+}
+
+/** The folded panel: the mark, on every page. */
+function Launcher({ working, onOpen }: { working: boolean; onOpen: () => void }) {
+  const t = useTranslations("assistant");
+  return (
+    <TooltipHint label={`${t("open")}  ⌘J`}>
+      <motion.button
+        type="button"
+        layoutId="assistant-shell"
+        layoutDependency={false}
+        onClick={onOpen}
+        aria-label={t("open")}
+        transition={SHELL_SPRING}
+        className="fixed bottom-6 right-6 z-40 flex size-14 items-center justify-center border border-border/60 bg-card shadow-lg transition-colors hover:bg-muted"
+        style={{ borderRadius: 18 }}
+      >
+        <motion.span layoutId="assistant-logo" layoutDependency={false} transition={SHELL_SPRING} className="relative flex size-11 items-center justify-center rounded-xl">
+          <LogoMark size={30} working={working} />
+        </motion.span>
+      </motion.button>
+    </TooltipHint>
+  );
+}
+
+function Thread({
+  messages,
+  live,
+  fresh,
+  older,
+}: {
+  /** Oldest first. */
+  messages: Message[];
+  live: Live | null;
+  /** No chat yet: the empty state shows. */
+  fresh: boolean;
+  /** Loads the messages before these, when there are any. */
+  older: (() => void) | "loading" | null;
+}) {
+  const t = useTranslations("assistant");
+  // A reply that has no message yet: its action is still starting.
+  const starting = live !== null && !messages.some((m) => m.role === "assistant" && m.order === live.order);
+  return (
+    // Both edges fade. The bottom one is clear under the hanging chips, then fades the usual
+    // distance; the content's bottom padding keeps the last message clear of both.
+    <Conversation
+      className="min-h-0 flex-1"
+      style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${CHIP_HANG + EDGE_FADE}px), transparent calc(100% - ${CHIP_HANG}px))` }}
+    >
+      <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: CHIP_HANG + EDGE_FADE + 8 }}>
+        {fresh ? <Empty /> : null}
+        {older ? (
+          <button
+            type="button"
+            disabled={older === "loading"}
+            onClick={older === "loading" ? undefined : older}
+            className="flex h-7 items-center self-center rounded-full px-2.5 text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground disabled:opacity-50"
+          >
+            {t("earlier")}
+          </button>
+        ) : null}
+        {messages.map((m) =>
+          m.role === "user" ? (
+            <UserBubble key={m.id} message={m} />
+          ) : (
+            <div key={m.id} className="space-y-3">
+              <Reply message={m} live={live?.order === m.order ? live.text : ""} />
+              {m.status === "stopped" ? <StoppedRow /> : null}
+              {m.status === "failed" ? <FailedRow error={m.error} /> : null}
+            </div>
+          ),
+        )}
+        {starting ? <Thinking /> : null}
+      </ConversationContent>
+    </Conversation>
+  );
+}
+
+/** A reply: its text as it arrives, or "Thinking" until the first of it does. */
+function Reply({ message, live }: { message: Message; live: string }) {
+  const pending = message.status === "pending";
+  // One hook for the reply's whole life, so text still being revealed carries on when the reply is done.
+  const [text, { isStreaming }] = useSmoothText(pending ? live : message.text, { startStreaming: pending });
+  if (!text) return pending ? <Thinking /> : null;
+  return (
+    <div className="text-sm leading-relaxed text-foreground">
+      <MessageResponse isAnimating={pending || isStreaming} parseIncompleteMarkdown={pending || isStreaming} linkSafety={CHAT_LINK_SAFETY}>
+        {text}
+      </MessageResponse>
+    </div>
+  );
+}
+
+/** Under a reply that was stopped. */
+function StoppedRow() {
+  const t = useTranslations("assistant");
+  return (
+    <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }} className="flex h-8 items-center gap-2 text-xs text-muted-foreground">
+      <CircleStop className="size-3.5" /> {t("stopped")}
+    </motion.div>
+  );
+}
+
+/** Under a reply that failed: what went wrong, in the app's words for that error. */
+function FailedRow({ error }: { error: Message["error"] }) {
+  const t = useTranslations("assistant");
+  const te = useTranslations("errors");
+  return (
+    <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }} className="flex items-start gap-2 text-xs text-muted-foreground">
+      <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+      {error ? (
+        <span className="leading-5">
+          <span className="font-medium text-foreground">{te(`title.${error.code}`)}</span> {te(`body.${error.code}`)}
+        </span>
+      ) : (
+        <span className="leading-5">{t("interrupted")}</span>
+      )}
+    </motion.div>
+  );
+}
+
+/**
+ * A message someone sent. In a shared chat, another person's carries their name. It rises
+ * in as it's sent; the server's copy then takes its place without moving.
+ */
+function UserBubble({ message }: { message: Message }) {
+  return (
+    <motion.div
+      initial={message.id.startsWith(SENDING) ? { opacity: 0, y: 8 } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      className="ml-10 self-end"
+    >
+      {!message.mine && message.sender?.name ? <p className="mb-1 pr-1 text-right text-[11px] text-muted-foreground">{message.sender.name}</p> : null}
+      <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm leading-6">{message.text}</div>
+    </motion.div>
+  );
+}
+
+function Thinking() {
+  const t = useTranslations("assistant");
+  return (
+    <div className="flex h-9 items-center gap-2 pl-1 text-sm">
+      <LogoMark size={18} working />
+      <WorkingText>{t("thinking")}</WorkingText>
+    </div>
+  );
+}
+
+/**
+ * Text that a light sweeps across while work runs. It never drops below the muted
+ * text colour, so the words stay readable mid-sweep; it holds still when motion is reduced.
+ */
+function WorkingText({ children }: { children: string }) {
+  const reduceMotion = useReducedMotion();
+  if (reduceMotion) return <span className="text-muted-foreground">{children}</span>;
+  return (
+    <motion.span
+      className="bg-[linear-gradient(90deg,var(--muted-foreground)_0%,var(--muted-foreground)_38%,var(--foreground)_50%,var(--muted-foreground)_62%,var(--muted-foreground)_100%)] bg-[length:250%_100%] bg-clip-text text-transparent"
+      animate={{ backgroundPosition: ["100% 0%", "-150% 0%"] }}
+      transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
+    >
+      {children}
+    </motion.span>
+  );
+}
+
+function Empty() {
+  const t = useTranslations("assistant");
+  return (
+    <div className="space-y-1 pt-2">
+      <p className="text-base font-semibold">{t("emptyTitle")}</p>
+      <p className="text-sm leading-relaxed text-muted-foreground">{t("emptyBody")}</p>
+    </div>
+  );
+}
+
+function Header({ title, onRestart, onFold }: { title: string; onRestart: () => void; onFold: () => void }) {
+  const t = useTranslations("assistant");
+  return (
+    <div className="border-b border-border/50 px-4 pb-3 pt-3.5">
+      <div className="flex items-center gap-2.5">
+        {/* The logo itself sits on the panel, above this spacer, so it can fly into the launcher. */}
+        <span className="size-9 shrink-0" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.p
+              key={title}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.25, ease: EASE }}
+              // A title still loading keeps its line, so nothing moves when it arrives.
+              className="h-5 truncate text-sm font-semibold"
+            >
+              {title}
+            </motion.p>
+          </AnimatePresence>
+        </div>
+        <div className="flex items-center">
+          <IconButton label={t("newChat")} icon={<SquarePen className="size-4" />} onClick={onRestart} />
+          <IconButton label={t("foldIntoBubble")} shortcut="⌘J" icon={<PictureInPicture2 className="size-4" />} onClick={onFold} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IconButton({ label, shortcut, icon, onClick }: { label: string; shortcut?: string; icon: ReactNode; onClick?: () => void }) {
+  return (
+    <TooltipHint label={shortcut ? `${label}  ${shortcut}` : label}>
+      <button type="button" aria-label={label} onClick={onClick} className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
+        {icon}
+      </button>
+    </TooltipHint>
+  );
+}
+
+/**
+ * The chat's model and effort, beside Send, on the shared model picker with each
+ * preset's chat model first. A new chat starts on the Balanced preset's chat model.
+ */
+function ModelPill({
+  model,
+  onChange,
+  presetModel,
+}: {
+  model: PickedModel | null;
+  onChange: (model: PickedModel, effort: Effort | undefined) => void;
+  presetModel: ReturnType<typeof usePresetModels>;
+}) {
+  const t = useTranslations("assistant");
+  const tm = useTranslations("settingsAi");
+  const presets: PresetPick[] = presetModel
+    ? PRESET_KEYS.flatMap((preset) => {
+        const m = presetModel(preset, "chat");
+        return m ? [{ id: preset, models: [m], onSelect: () => onChange(m, m.effort) }] : [];
+      })
+    : [];
+  const effort = model ? effortOf(model) : null;
+  const Brand = getModelIcon(model?.id ?? "");
+  return (
+    <ModelPicker
+      align="end"
+      side="top"
+      tasks={["chat"]}
+      presets={presets}
+      efforts
+      current={model ?? undefined}
+      onChange={onChange}
+      trigger={
+        // Right-aligned, so while the model loads nothing beside it moves when it fills in.
+        <button
+          type="button"
+          aria-label={model ? [stripProviderPrefix(model.name), effort && tm(`efforts.${effort}`)].filter(Boolean).join(", ") : t("model")}
+          className={cn(
+            "ml-auto flex h-8 min-w-0 items-center gap-2 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground",
+            !model && "pointer-events-none opacity-0",
+          )}
+        >
+          <Brand className="size-3.5 shrink-0 text-foreground/80" />
+          <TooltipHint label={model ? stripProviderPrefix(model.name) : ""} onlyWhenClipped>
+            <span className="min-w-0 truncate">{model ? stripProviderPrefix(model.name) : ""}</span>
+          </TooltipHint>
+          {model?.reasoningEfforts && effort ? (
+            <span className="shrink-0">
+              <EffortMeter levels={model.reasoningEfforts} level={effort} filled="bg-current" small />
+            </span>
+          ) : null}
+          <ChevronDown className="size-3 shrink-0 opacity-60" />
+        </button>
+      }
+    />
+  );
+}
+
+function Footer({
+  composer,
+  draft,
+  setDraft,
+  busy,
+  canWrite,
+  onSend,
+  onStop,
+  model,
+  onModel,
+  presetModel,
+}: {
+  composer: RefObject<HTMLTextAreaElement | null>;
+  draft: string;
+  setDraft: (text: string) => void;
+  /** A reply is being written, here or for someone else in the chat. */
+  busy: boolean;
+  /** Someone who only reads the chat can't send. */
+  canWrite: boolean;
+  onSend: () => void;
+  onStop: () => void;
+  model: PickedModel | null;
+  onModel: (model: PickedModel, effort: Effort | undefined) => void;
+  presetModel: ReturnType<typeof usePresetModels>;
+}) {
+  const t = useTranslations("assistant");
+  return (
+    <div className="space-y-2 p-3 pt-0">
+      {/* The chips hang from their middle on the thread's bottom edge; their frame is the lower half. */}
+      <div style={{ height: CHIP_HANG }} />
+      <div className="rounded-2xl border border-border/60 bg-background shadow-xs focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
+        <textarea
+          ref={composer}
+          value={draft}
+          disabled={!canWrite}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              onSend();
+            }
+          }}
+          rows={2}
+          placeholder={canWrite ? t("placeholder") : t("readOnly")}
+          aria-label={t("messageLabel")}
+          className="relative block w-full resize-none bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground"
+        />
+        <div className="flex items-center gap-2 px-2 pb-2">
+          <ModelPill model={model} onChange={onModel} presetModel={presetModel} />
+          <TooltipHint label={busy ? t("stop") : t("send")}>
+            <button
+              type="button"
+              aria-label={busy ? t("stop") : t("send")}
+              disabled={!canWrite}
+              onClick={busy ? onStop : onSend}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={busy ? "stop" : "send"}
+                  initial={{ opacity: 0, scale: 0.4, rotate: busy ? -90 : 90 }}
+                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                  exit={{ opacity: 0, scale: 0.4 }}
+                  transition={{ type: "spring", stiffness: 520, damping: 30 }}
+                  className="flex"
+                >
+                  {busy ? <Square className="size-3 fill-current" /> : <ArrowUp className="size-4" />}
+                </motion.span>
+              </AnimatePresence>
+            </button>
+          </TooltipHint>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A slow, drifting glow on the screen's right edge while the assistant is open. */
+function EdgeGlow({ open, working }: { open: boolean; working: boolean }) {
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          key="glow"
+          aria-hidden
+          className="pointer-events-none fixed inset-y-0 right-0 z-0 w-[560px] overflow-hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: working ? 1 : 0.7 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.8, ease: EASE }}
+        >
+          <motion.div
+            className="absolute -right-40 top-[-10%] h-[70%] w-[420px] rounded-full bg-[radial-gradient(closest-side,rgb(255_120_40/0.32),transparent)] blur-3xl"
+            animate={{ y: ["0%", "45%", "0%"], x: [0, -40, 0] }}
+            transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute -right-48 bottom-[-15%] h-[70%] w-[440px] rounded-full bg-[radial-gradient(closest-side,rgb(150_110_255/0.28),transparent)] blur-3xl"
+            animate={{ y: ["0%", "-40%", "0%"], x: [0, -30, 0] }}
+            transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-orange-400/70 to-transparent"
+            animate={{ opacity: working ? [0.4, 1, 0.4] : 0.5 }}
+            transition={working ? { duration: 1.8, repeat: Infinity, ease: "easeInOut" } : { duration: 0.6 }}
+          />
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
