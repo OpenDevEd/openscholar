@@ -47,8 +47,12 @@ export const assistantThreadFields = {
   compactedThrough: v.optional(v.number()),
   /** A compaction was due and didn't finish, so the next reply writes the summary before it answers. */
   compactionOwed: v.optional(v.boolean()),
-  /** The page the newest message that named one was sent from (lib/assistant/view.ts), while the model still reads that message. A message sent from the same page doesn't say it again. */
-  view: v.optional(v.string()),
+  /**
+   * The page the newest message that named one was sent from (lib/assistant/view.ts), who
+   * sent it, and which exchange it was. The same person's next message from the same page
+   * doesn't say it again while the model still reads that one.
+   */
+  view: v.optional(v.object({ address: v.string(), userId: v.id("users"), order: v.number() })),
   createdAt: v.number(),
   updatedAt: v.number(),
 };

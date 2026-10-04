@@ -87,10 +87,14 @@ export const send = mutation({
 
     // The message, the lock and the scheduled reply commit together, so a second send
     // can't slip in between them.
-    // Where it's sent from goes with the message, for the model alone, when that's a new place: it stays there, so nothing already sent changes.
+    // Where it's sent from goes with the message, for the model alone, and stays there, so
+    // nothing already sent changes. It's left out when this person's last message said the
+    // same place and the model still reads that message: it isn't summarized, and no summary
+    // is owed that would take its place before this one is answered. In a shared chat each
+    // person's messages say their own place.
     const view = address === undefined ? null : viewOf(address);
-    // A summary still owed is written before this message is answered, and takes the place of the one that last said it.
-    const moved = view !== null && (view !== thread.view || thread.compactionOwed === true);
+    const said = thread.view && thread.view.userId === userId && thread.view.order > (thread.compactedThrough ?? -1) && thread.compactionOwed !== true ? thread.view.address : undefined;
+    const moved = view !== null && view !== said;
     const { messageId, message } = await assistant.saveMessage(ctx, {
       threadId: thread.agentThreadId,
       userId,
@@ -111,7 +115,7 @@ export const send = mutation({
       // An effort the catalog has since dropped runs at the model's default.
       effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
     });
-    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), ...(moved ? { view } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
+    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), ...(moved ? { view: { address: view, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
     return null;
   },
 });
@@ -145,8 +149,7 @@ export const summarized = internalMutation({
   handler: async (ctx, { threadId, attemptId, summary, through }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
     // One handed in after Stop isn't kept: the reply it was written for won't run, and it stays owed.
-    // The summary replaces the message that said where the person was, so the next one says it again.
-    if (thread?.reply?.attemptId === attemptId && !thread.reply.stop) await ctx.db.patch("assistantThreads", threadId, { summary, compactedThrough: through, compactionOwed: undefined, view: undefined });
+    if (thread?.reply?.attemptId === attemptId && !thread.reply.stop) await ctx.db.patch("assistantThreads", threadId, { summary, compactedThrough: through, compactionOwed: undefined });
     return null;
   },
 });
@@ -196,7 +199,7 @@ export const release = internalMutation({
       const kept = summarized && !current.stop;
       await ctx.db.patch("assistantThreads", threadId, {
         reply: undefined,
-        ...(kept ? { summary: summarized.summary, compactedThrough: summarized.through, compactionOwed: undefined, view: undefined } : { compactionOwed: true }),
+        ...(kept ? { summary: summarized.summary, compactedThrough: summarized.through, compactionOwed: undefined } : { compactionOwed: true }),
       });
       return null;
     }
