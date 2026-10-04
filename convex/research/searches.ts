@@ -11,7 +11,7 @@ import { assistantAction, assistantMutation, defineUserAction, defineUserMutatio
 import { readSearchPage } from "../paperSets/openalex";
 import { SCREENING_FIELDS, toPaper, type Work } from "../paperSets/search";
 import { currentSearch, searchAsMade, type SavedSearch, type UndoCommand } from "../../lib/research/records";
-import { applyCommand, findSearch } from "./records";
+import { applyCommand, findSearch, revisionRow } from "./records";
 import { RESULTS_PAGE, resultsValidator, searchSettings } from "./searchValidators";
 
 const CREATE = "research/searches:create" as const;
@@ -105,6 +105,11 @@ export const updateAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
+  // A change is undone by restoring the revision before it. A search from before revisions were kept has none to go back to.
+  asksFirst: async (ctx, userId, { id }) => {
+    const found = await findSearch(ctx, userId, id);
+    return found !== null && (await revisionRow(ctx, found._id, found.revision)) === null;
+  },
   run: async (ctx, userId, { id, query, ...settings }, author) => {
     const found = await findSearch(ctx, userId, id);
     if (!found) throw createError("NOT_FOUND", "Search not found.");

@@ -377,7 +377,7 @@ async function revision(ctx: MutationCtx, search: Doc<"searches">, author: Autho
 }
 
 /** One revision of a search, if it was kept. */
-function revisionRow(ctx: Pick<QueryCtx, "db">, searchId: Id<"searches">, number: number) {
+export function revisionRow(ctx: Pick<QueryCtx, "db">, searchId: Id<"searches">, number: number) {
   return ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", searchId).eq("revision", number)).unique();
 }
 
