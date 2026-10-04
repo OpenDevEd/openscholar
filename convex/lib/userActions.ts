@@ -11,7 +11,7 @@ import { v, type GenericValidator, type Infer, type ObjectType, type PropertyVal
 import { action, internalAction, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./functions";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import { requireActiveUser, requireAuth } from "./auth";
+import { getCurrentUser, requireActiveUser, requireAuth } from "./auth";
 import { createError } from "./errors";
 import { DONE, endStep } from "../assistant/steps";
 
@@ -138,12 +138,15 @@ function split<Args extends PropertyValidators>(args: ObjectType<Args & typeof a
 }
 
 /** The public query the UI calls, for the signed-in user. */
-export function userQuery<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserQuery<Args, Returns>) {
+export function userQuery<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserQuery<Args, Returns>, options?: { signedOut: Infer<Returns> }) {
   return tagged(
     query<Args, Returns, Promise<Infer<Returns>>>({
       args: entry.args,
       returns: entry.returns,
-      handler: async (ctx, args) => entry.run(ctx, (await requireAuth(ctx))._id, args as ObjectType<Args>),
+      handler: async (ctx, args) => {
+        const user = options ? await getCurrentUser(ctx) : await requireAuth(ctx);
+        return user ? entry.run(ctx, user._id, args as ObjectType<Args>) : options!.signedOut;
+      },
     }),
     entry.path,
   );

@@ -13,10 +13,12 @@
  */
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
-import { paperAnswers } from "../research/answers";
+import { paperAnswers, type AnswerSource } from "../research/answers";
 import { outcomeOf, scorePaper, tallied, type QuestionTally } from "./scoring";
+import { createError } from "../lib/errors";
 
 export type PaperAnswer = { key: string; answer: boolean | null; changed: boolean; confidence?: number };
+type CurrentAnswer = PaperAnswer & { by?: AnswerSource; at?: number };
 type Answers = Record<string, boolean | null>;
 type Counted = NonNullable<Doc<"screeningResults">["counted"]>;
 
@@ -25,7 +27,7 @@ type Counted = NonNullable<Doc<"screeningResults">["counted"]>;
  * result haven't moved to the job's screening yet: they're the model's, and give way to a
  * person's or the assistant's there, as they will once moved.
  */
-export async function answersNow(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">): Promise<PaperAnswer[]> {
+export async function answersNow(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">): Promise<CurrentAnswer[]> {
   const screening = await ctx.db.get("screenings", job.screeningId);
   const given = screening ? await paperAnswers(ctx, screening, result.openalexId) : [];
   const held = result.answers;
@@ -34,14 +36,15 @@ export async function answersNow(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJ
     const changed = kept?.setBy === "person" || kept?.setBy === "assistant";
     const confidence = (held ? result.confidences?.[key] : undefined) ?? kept?.model?.confidence;
     const answer = held && key in held && !changed ? (held[key] ?? null) : (kept?.answer ?? null);
-    return { key, answer, changed, ...(confidence === undefined ? {} : { confidence }) };
+    return { key, answer, changed, by: held && !changed ? "model" : kept?.setBy ?? "unrecorded", at: held && !changed ? result.completedAt : kept?.updatedAt, ...(confidence === undefined ? {} : { confidence }) };
   });
 }
 
 /** Answers by question key, and the keys of those a person or the assistant set. */
-export const stood = (answers: PaperAnswer[]) => ({
+export const stood = (answers: CurrentAnswer[]) => ({
   answers: Object.fromEntries(answers.map((value) => [value.key, value.answer])) as Answers,
   changed: answers.flatMap((value) => (value.changed ? [value.key] : [])),
+  decisions: Object.fromEntries(answers.map(({ key, by, at }) => [key, { by: by ?? "unrecorded", ...(at === undefined ? {} : { at }) }])),
 });
 
 /** A paper's answers as they stand; none for a paper from before its job kept answers. */
@@ -55,11 +58,11 @@ export async function standing(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJob
  * its answers, score and outcome always agree; as they stand while it waits to be counted.
  */
 export async function shown(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">): Promise<PaperAnswer[]> {
-  const now = await answersNow(ctx, job, result);
   const counted = result.counted?.answers;
-  if (!counted) return now;
+  if (!counted) return (await answersNow(ctx, job, result)).map(({ key, answer, changed, confidence }) => ({ key, answer, changed, ...(confidence === undefined ? {} : { confidence }) }));
+  const model = await jobModel(ctx, job, result);
   const changed = new Set(result.counted?.changed);
-  return now.map(({ key, confidence }) => ({ key, answer: counted[key] ?? null, changed: changed.has(key), ...(confidence === undefined ? {} : { confidence }) }));
+  return job.questions.map(({ key }) => ({ key, answer: counted[key] ?? null, changed: changed.has(key), ...(model?.confidences[key] === undefined ? {} : { confidence: model.confidences[key] }) }));
 }
 
 /**
@@ -68,8 +71,14 @@ export async function shown(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">
  * from its screening's history as of the move, whatever a person or a later run changed since.
  */
 export async function jobAnswers(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
+  return (await jobModel(ctx, job, result))?.answers;
+}
+
+/** The model values from this run's saved version, never another run's current answer. */
+export async function jobModel(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
   const screeningId = job.screeningId;
-  if (result.answers || result.answersVersion === undefined) return result.answers;
+  if (result.answers) return { answers: result.answers, confidences: result.confidences ?? {} };
+  if (result.answersVersion === undefined) return undefined;
   const version = result.answersVersion;
   const row = await ctx.db
     .query("screeningAnswerHistory")
@@ -77,10 +86,19 @@ export async function jobAnswers(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJ
     .order("desc")
     .first();
   if (!row) return undefined;
-  return Object.fromEntries(job.questions.map((q) => {
+  const entries = job.questions.map((q) => {
     const entry = row.answers.find((value) => value.question === q.question);
-    return [q.key, entry?.model ? entry.model.answer : (entry?.answer ?? null)];
-  }));
+    return { key: q.key, answer: entry?.model ? entry.model.answer : (entry?.setBy === "model" ? entry.answer : null), confidence: entry?.model?.confidence };
+  });
+  return { answers: Object.fromEntries(entries.map(({ key, answer }) => [key, answer])), confidences: Object.fromEntries(entries.flatMap(({ key, confidence }) => confidence === undefined ? [] : [[key, confidence]])) };
+}
+
+/** Committed counts and decisions define an export revision; unfinished results remain pending. */
+export async function screeningRevision(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, expected?: string) {
+  const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", job._id)).unique();
+  const revision = `${job.updatedAt}:${job.status}:${progress?.exportRevision ?? 0}`;
+  if (expected !== undefined && expected !== revision) throw createError("CONFLICT", "Screening changed during export. Download it again to get one consistent version.");
+  return revision;
 }
 
 
@@ -104,10 +122,10 @@ export type Move = { becameIncluded: boolean; left: boolean };
  * and says what its row becomes and what changes in its job's counts. No answers
  * (`standing`): the paper keeps its score, and is included or excluded as it qualified.
  */
-export function account(job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { answers, changed }: { answers?: Answers; changed?: string[] } = {}) {
+export function account(job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { answers, changed, decisions }: { answers?: Answers; changed?: string[]; decisions?: Counted["decisions"] } = {}) {
   const was = recorded(result);
   const scored = answers ? { ...scorePaper(answers, job.scoringConfig), outcome: outcomeOf(answers, job.scoringConfig) } : { qualified: result.qualified === true, outcome: result.qualified === true ? ("included" as const) : ("excluded" as const) };
-  const counted: Counted = { qualified: scored.qualified, outcome: scored.outcome, ...(answers ? { answers } : {}), ...(changed?.length ? { changed } : {}) };
+  const counted: Counted = { qualified: scored.qualified, outcome: scored.outcome, ...(answers ? { answers } : {}), ...(changed?.length ? { changed } : {}), ...(decisions ? { decisions } : {}) };
   const delta: Delta = {
     qualified: Number(counted.qualified) - Number(was?.qualified === true),
     unclear: Number(counted.outcome === "unclear") - Number(was?.outcome === "unclear"),
@@ -133,5 +151,5 @@ export function withDeltas(progress: Doc<"screeningJobProgress">, job: Doc<"scre
     if (delta.before) tallies = tallied(tallies, keys, delta.before, -1);
     if (delta.after) tallies = tallied(tallies, keys, delta.after, 1);
   }
-  return { qualified: Math.max(0, qualified), unclear: Math.max(0, unclear), tallies };
+  return { qualified: Math.max(0, qualified), unclear: Math.max(0, unclear), tallies, exportRevision: (progress.exportRevision ?? 0) + 1 };
 }

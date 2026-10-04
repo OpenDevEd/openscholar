@@ -143,7 +143,7 @@ export const answerAction = defineUserMutation({
     // counted yet, or counted before papers kept theirs, is scored on its answers as they stand.
     const was = result.counted?.answers;
     const scoredOn = was
-      ? { answers: { ...was, [questionKey]: mine.answer }, changed: [...(result.counted?.changed ?? []).filter((key) => key !== questionKey), ...(mine.changed ? [questionKey] : [])] }
+      ? { answers: { ...was, [questionKey]: mine.answer }, changed: [...(result.counted?.changed ?? []).filter((key) => key !== questionKey), ...(mine.changed ? [questionKey] : [])], decisions: { ...result.counted?.decisions, [questionKey]: { by: left?.setBy ?? "unrecorded", ...(left ? { at: left.updatedAt } : {}) } } }
       : stood(await answersNow(ctx, job, result));
 
     const { patch: { counted, ...scored }, delta, move } = account(job, result, scoredOn);

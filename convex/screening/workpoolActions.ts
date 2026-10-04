@@ -23,6 +23,7 @@ import type { ScreeningResultData } from "../../lib/ai/core/batch-types";
 import { truncateForTracking, type AITrackingEntry } from "../../lib/posthog-ai-shared";
 
 type ScreeningActionResult = {
+  model?: string;
   responses: Record<string, boolean | null>;
   // The confidence in each answer, under the same encoded keys.
   confidences: Record<string, number>;
@@ -49,6 +50,7 @@ export const screenPaperAction = internalAction({
     jobId: v.id("screeningJobs"),
   },
   returns: v.object({
+    model: v.optional(v.string()),
     responses: v.record(v.string(), v.union(v.boolean(), v.null())),
     confidences: v.record(v.string(), v.number()),
     confidence: v.number(),
@@ -183,6 +185,7 @@ export const screenPaperAction = internalAction({
 
       // 7. Return for onComplete handler, with the confidence in each answer under the same keys
       return {
+        model: serverModelSlug,
         responses: encodedResponses,
         confidences: encodeQuestionResponseMap(screeningResult.confidences),
         confidence: screeningResult.confidence,

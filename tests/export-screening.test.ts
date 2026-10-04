@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { Readable } from 'node:stream';
+import ExcelJS from 'exceljs';
 import {
   generateScreeningXLSXWorkbook as buildWorkbook,
   formatScreeningAnswer,
@@ -81,6 +83,47 @@ const mockData: ScreeningExportData = {
 };
 
 describe('Screening Export', () => {
+  it('preserves long search provenance once per CSV part and across spreadsheet cells', async () => {
+    const snapshot = { request: { oql: 'بحث😀'.repeat(12_000), sort: 'relevance_score:desc' } };
+    const data = { ...mockData, job: { ...mockData.job, snapshot } };
+    const sheet = await new ExcelJS.Workbook().csv.read(Readable.from([generateScreeningCSV(data)]));
+    const headers = (sheet.getRow(1).values as string[]).slice(1);
+    const columns = headers.flatMap((name, index) => name.startsWith('Run provenance') ? [index + 1] : []);
+    const metadata = columns.map(column => String(sheet.getRow(2).getCell(column).value ?? ''));
+    expect(metadata.every(cell => cell.length <= 32_000)).toBe(true);
+    expect(JSON.parse(metadata.join('')).searchSnapshot).toEqual(snapshot);
+    expect(JSON.parse(String(sheet.getRow(3).getCell(columns[0]).value))).toEqual({ jobId: mockData.job._id, revision: null });
+    const workbook = await generateScreeningXLSXWorkbook(data);
+    const saved = new ExcelJS.Workbook();
+    await saved.xlsx.load(await workbook.xlsx.writeBuffer());
+    const parts: string[] = [];
+    saved.getWorksheet('Summary')!.eachRow(row => {
+      if (String(row.getCell(1).value).startsWith('Search snapshot')) parts.push(String(row.getCell(2).value));
+    });
+    expect(parts.every(cell => cell.length <= 32_000)).toBe(true);
+    expect(JSON.parse(parts.join(''))).toEqual(snapshot);
+  });
+  it('round-trips CSV and XLSX bytes with provenance, zero confidence and quoted Unicode authors', async () => {
+    const data = { ...mockData, results: [{ ...mockData.results[0], title: 'بحث, "quoted"\nsecond line', modelAnswers: { q1: false, q2: null }, modelConfidences: { q1: 0 }, decisions: { q1: { by: 'person' as const, at: 1 } } }] };
+    const csv = new ExcelJS.Workbook();
+    const sheet = await csv.csv.read(Readable.from([generateScreeningCSV(data)]));
+    const values = (sheet.getRow(1).values as string[]).slice(1);
+    const read = (name: string) => sheet.getRow(2).getCell(values.indexOf(name) + 1).value;
+    expect(read('Title')).toBe(data.results[0].title);
+    expect(read('q1: model confidence')).toBe(0);
+    expect(read('q1: decided by')).toBe('person');
+    expect(JSON.parse(String(read('Run provenance')))).toMatchObject({ jobId: mockData.job._id, scoringConfig: { minimumScore: 1 } });
+    expect(sheet.getRow(2).cellCount).toBe(sheet.getRow(1).cellCount);
+    const original = await generateScreeningXLSXWorkbook(data);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await original.xlsx.writeBuffer());
+    expect(workbook.getWorksheet('Results')!.getRow(2).getCell(1).value).toBe(data.results[0].title);
+    const summary = workbook.getWorksheet('Summary')!;
+    const metadata = new Map<unknown, unknown>();
+    summary.eachRow((row) => metadata.set(row.getCell(1).value, row.getCell(2).value));
+    expect(metadata.get('Minimum score')).toBe(1);
+    expect(metadata.get('Job ID')).toBe(mockData.job._id);
+  });
   describe('formatScreeningAnswer', () => {
     it('returns Yes for true', () => {
       expect(formatScreeningAnswer(true)).toBe('Yes');
@@ -90,12 +133,12 @@ describe('Screening Export', () => {
       expect(formatScreeningAnswer(false)).toBe('No');
     });
 
-    it('returns N/A for null', () => {
-      expect(formatScreeningAnswer(null)).toBe('N/A');
+    it('distinguishes unclear answers from missing ones', () => {
+      expect(formatScreeningAnswer(null)).toBe('Unclear');
     });
 
-    it('returns N/A for undefined', () => {
-      expect(formatScreeningAnswer(undefined)).toBe('N/A');
+    it('labels an absent answer', () => {
+      expect(formatScreeningAnswer(undefined)).toBe('Not answered');
     });
   });
 
@@ -116,14 +159,13 @@ describe('Screening Export', () => {
       expect(headerLine).toContain('Status');
     });
 
-    it('formats answers as Yes/No/N/A', () => {
+    it('formats answers as Yes, No or Unclear', () => {
       const csv = generateScreeningCSV(mockData);
       const lines = csv.split('\n');
       // First result: q1=true -> Yes, q2=false -> No
       expect(lines[1]).toContain('Yes');
       expect(lines[1]).toContain('No');
-      // Second result: q1=false -> No, q2=null -> N/A
-      expect(lines[2]).toContain('N/A');
+      expect(lines[2]).toContain('Unclear');
     });
 
     it('includes scoring columns', () => {
@@ -141,16 +183,14 @@ describe('Screening Export', () => {
       expect(lines[2]).toContain('"Paper with, comma"');
     });
 
-    it('handles failed/skipped results with N/A and empty scoring', () => {
+    it('keeps failed results distinct from unclear decisions', () => {
       const csv = generateScreeningCSV(mockData);
       const lines = csv.split('\n');
-      // Third result (failed): answers -> N/A, score/stars/qualified -> empty
       const failedLine = lines[3];
       expect(failedLine).toContain('Failed Paper');
       expect(failedLine).toContain('failed');
-      // Should have N/A for both question answers
-      const naCounts = (failedLine.match(/N\/A/g) || []).length;
-      expect(naCounts).toBe(2);
+      expect(failedLine).not.toContain('Unclear');
+      expect(failedLine).toContain('Not answered,Not answered,,,,failed');
     });
   });
 
@@ -236,8 +276,8 @@ describe('Screening Export', () => {
       expect(headers).toContain('Year');
       expect(headers).toContain('DOI');
       expect(headers).toContain('OpenAlex ID');
-      expect(headers).toContain('Is this a clinical trial?');
-      expect(headers).toContain('Sample size > 100?');
+      expect(headers).toContain('q1: Is this a clinical trial?');
+      expect(headers).toContain('q2: Sample size > 100?');
       expect(headers).toContain('Score');
       expect(headers).toContain('Stars');
       expect(headers).toContain('Qualified');

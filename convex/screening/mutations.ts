@@ -374,6 +374,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
     let pending: { answers: Record<string, boolean | null>; confidences: Record<string, number> } | null = null;
     if (result.kind === "success" && job.status === "processing") {
       const data = result.returnValue as {
+        model?: string;
         responses: Record<string, boolean | null>;
         // Missing from results returned before #334.
         confidences?: Record<string, number>;
@@ -404,7 +405,7 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
           stars,
           qualified,
           outcome,
-          aiMetadata: { confidence: data.confidence },
+          aiMetadata: { confidence: data.confidence, ...(data.model ? { model: data.model } : {}) },
           ...(data.credits === undefined ? {} : { creditsUsed: data.credits }),
         },
       });

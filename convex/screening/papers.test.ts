@@ -8,6 +8,8 @@ import { seedCreditsForTest } from "../billing/billing.test-support";
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
 import { createJob } from "./createJob.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { exportParts } from "../exports.test-support";
+import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 
 const questions = [{ key: "q1", question: "Randomized?" }, { key: "q2", question: "Primary schools?" }];
 // Included from 2 points: a randomized study, or one unclear on that and set in primary schools.
@@ -79,6 +81,70 @@ const W3_INCLUDED = {
 };
 
 describe("a screening job's papers", () => {
+  it("does not attribute an unrecorded older answer to the model after undo", async () => {
+    const { t, as, jobId, answer } = await screened();
+    await t.run(async ctx => {
+      const job = (await ctx.db.get("screeningJobs", jobId))!;
+      const row = (await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", q => q.eq("screeningId", job.screeningId).eq("paperId", "https://openalex.org/W1")).unique())!;
+      const answers = row.answers.map(value => value.question === "Primary schools?" ? { ...value, setBy: "unrecorded" as const } : value);
+      await ctx.db.patch("screeningAnswers", row._id, { answers });
+      const history = await ctx.db.query("screeningAnswerHistory").take(20);
+      for (const previous of history.filter(value => value.screeningId === job.screeningId && value.paperId === row.paperId)) await ctx.db.patch("screeningAnswerHistory", previous._id, { answers });
+    });
+    const changed = await answer("W1", "q2", false);
+    expect(changed.undo).toBeDefined();
+    await as.mutation(api.screening.papers.answer, changed.undo!.args);
+    const exported = JSON.parse((await exportParts(t, as, { kind: "screening", jobId })).text);
+    expect(exported.results[0].decisions.q2.by).toBe("unrecorded");
+  });
+  it("refuses changed decisions between export pages and before closing a part", async () => {
+    const { t, as, jobId, job, answer } = await screened();
+    const before = (await job())!;
+    const digest = await digestOpaqueToken("revision-test");
+    await as.mutation(api.exports.start, { source: { kind: "screening", jobId }, format: "json", digest });
+    const claimed = (await t.mutation(internal.exports.claim, { digest, part: 1 }))!;
+    const first = await as.query(api.screening.queries.listScreeningResults, { jobId, revision: before.revision, paginationOpts: { cursor: null, numItems: 1 } });
+    // This changes an answer without changing the number of included papers.
+    await answer("W1", "q2", false);
+    expect((await job())!.qualifiedPapers).toBe(before.qualifiedPapers);
+    await expect(as.query(api.screening.queries.listScreeningResults, { jobId, revision: before.revision, paginationOpts: { cursor: first.continueCursor, numItems: 1 } })).rejects.toThrow(/changed during export/);
+    await expect(t.query(internal.exports.page, { userId: before.userId, source: { kind: "screening", jobId }, sourceRevision: claimed.sourceRevision, format: "json", cursor: first.continueCursor, written: 1 })).rejects.toThrow(/changed during export/);
+    await expect(t.mutation(internal.exports.finishPart, { id: claimed.id, cursor: null })).rejects.toThrow(/changed during export/);
+  });
+
+  it("keeps model confidence and decision authorship from the job when shared answers change later", async () => {
+    const { t, as, jobId, job, answer, list } = await screened();
+    await answer("W1", "q2", false);
+    const revision = (await job())!.revision;
+    const before = JSON.parse((await exportParts(t, as, { kind: "screening", jobId })).text).results[0];
+    await t.run(async (ctx) => {
+      const job = (await ctx.db.get("screeningJobs", jobId))!;
+      await answerPaper(ctx, job.screeningId, "https://openalex.org/W1", [{ question: "Randomized?", response: false, confidence: 0 }], "model", 999);
+    });
+    expect((await list("included"))[0].answers[0].confidence).toBe(0.9);
+    const after = JSON.parse((await exportParts(t, as, { kind: "screening", jobId })).text).results[0];
+    expect(after).toEqual(before);
+    expect((await job())!.revision).toBe(revision);
+    expect((await as.query(api.screening.queries.listScreeningResults, { jobId, revision, paginationOpts: { cursor: null, numItems: 5 } })).page).toHaveLength(5);
+  });
+
+  it("exports the decisions that were scored, alongside the original model answers", async () => {
+    const { t, as, jobId, answer } = await screened();
+    await answer("W1", "q1", false);
+    const { text } = await exportParts(t, as, { kind: "screening", jobId });
+    const exported = JSON.parse(text);
+    expect(exported.results.find((row: { status: string }) => row.status === "failed")).not.toHaveProperty("error");
+    expect(exported.job).toMatchObject({ id: jobId, scoringConfig: { minimumScore: 2 } });
+    expect(exported.results[0]).toMatchObject({
+      answers: { q1: false, q2: true }, modelAnswers: { q1: true, q2: true },
+      modelConfidences: { q1: 0.9, q2: 0.7 }, score: 1, qualified: false, outcome: "excluded",
+      decisions: { q1: { by: "person", at: expect.any(Number) }, q2: { by: "model", at: expect.any(Number) } },
+    });
+    await answer("W1", "q1", "model");
+    const restored = JSON.parse((await exportParts(t, as, { kind: "screening", jobId })).text);
+    expect(restored.results[0]).toMatchObject({ answers: { q1: true, q2: true }, score: 3, qualified: true });
+  });
+
   it("lands each paper in its outcome, and keeps the counts and each question's answers as papers settle", async () => {
     const { t, job, list } = await screened();
     expect(await job()).toMatchObject(COUNTED);
