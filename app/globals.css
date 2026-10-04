@@ -3,6 +3,11 @@
 @import "react-pdf/dist/Page/AnnotationLayer.css";
 @import "react-pdf/dist/Page/TextLayer.css";
 
+/* Streamdown renders chat and assistant replies and styles them with Tailwind classes of
+   its own. Tailwind only writes the classes it finds, and it doesn't look in node_modules,
+   so without this a list's markers hang outside the text. */
+@source "../node_modules/streamdown/dist/*.js";
+
 @custom-variant dark (&:is(.dark *));
 
 /* Light and dark follow the white and black versions in the brand guidelines.
