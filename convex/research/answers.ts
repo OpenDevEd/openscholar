@@ -205,27 +205,27 @@ export async function restoreModelAnswer(ctx: Write, screeningId: Id<"screenings
   return apply(ctx, screening, [{ paperId, answers }], existing, at);
 }
 
-/** One answer of a paper as it was at `version` of its screening's answers; none where the history has none. */
-export async function answerAt(ctx: Read, screeningId: Id<"screenings">, paperId: string, question: string, version: number) {
-  return (await paperAt(ctx, screeningId, paperId, version))?.answers.find((value) => value.question === question);
+/** One answer of a paper as it was at `version` of its screening's answers, removals up to then taken; none where it had none. */
+export async function answerAt(ctx: Read, screening: Doc<"screenings">, paperId: string, question: string, version: number) {
+  const row = await paperAt(ctx, screening._id, paperId, version);
+  return row && owed(screening.removals, row.version, version).reduce(without, row.answers).find((value) => value.question === question);
 }
 
 /**
  * Puts one answer of a paper back as it was at `version`: its value, who set it and when.
- * The model's own answer kept beside it stays the newest one. Returns false when the history
- * has no such answer to go back to.
+ * The model's own answer kept beside it stays the newest one. Returns false when there's
+ * nothing to put it back onto: the history has no such answer, or the paper's answer to the
+ * question has been removed since.
  */
 export async function restoreAnswer(ctx: Write, screeningId: Id<"screenings">, paperId: string, question: string, version: number, at: number) {
-  const then = await answerAt(ctx, screeningId, paperId, question, version);
-  if (!then) return false;
   const screening = (await ctx.db.get("screenings", screeningId))!;
+  const then = await answerAt(ctx, screening, paperId, question, version);
   const existing = await settledRow(ctx, screening, paperId);
   const answers = [...(existing.get(paperId)?.answers ?? [])];
   const index = answers.findIndex((value) => value.question === question);
-  const model = (index >= 0 ? answers[index].model : undefined) ?? then.model;
-  const value = { ...then, ...(model ? { model } : {}) };
-  if (index >= 0) answers[index] = value;
-  else answers.push(value);
+  if (!then || index < 0) return false;
+  const model = answers[index].model ?? then.model;
+  answers[index] = { ...then, ...(model ? { model } : {}) };
   await apply(ctx, screening, [{ paperId, answers }], existing, at);
   return true;
 }

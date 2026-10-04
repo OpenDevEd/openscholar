@@ -114,14 +114,14 @@ export const answerAction = defineUserMutation({
     const now = Date.now();
     // The model's own answer is the one this job got, even if the screening has lost it since.
     const original = answer === "model" ? ((await jobAnswers(ctx, job, result))?.[questionKey] ?? null) : null;
-    const versionBefore = (await ctx.db.get("screenings", screeningId))!.version;
+    const screening = (await ctx.db.get("screenings", screeningId))!;
     const stands = async () => (await paperAnswers(ctx, (await ctx.db.get("screenings", screeningId))!, paperId)).find((value) => value.question === question.question);
     const kept = await stands();
     if (expect && (kept?.answer !== expect.answer || kept.updatedAt !== expect.at)) throw createError("CONFLICT", "This answer has changed since then, so it was left as it is.");
     // The history's copy of the answer as it stands, which is what an undo goes back to.
-    const recorded = await answerAt(ctx, screeningId, paperId, question.question, versionBefore);
+    const recorded = await answerAt(ctx, screening, paperId, question.question, screening.version);
     if (answer !== null && typeof answer === "object") {
-      if (!(await restoreAnswer(ctx, screeningId, paperId, question.question, answer.asOf, now))) throw createError("NOT_FOUND", "This answer has no earlier version to go back to.");
+      if (!(await restoreAnswer(ctx, screeningId, paperId, question.question, answer.asOf, now))) throw createError("NOT_FOUND", "This answer has no such version to go back to.");
     } else if (answer === "model") {
       // Cleared from the screening since: the model's answer goes back in before it's restored.
       if (!kept?.model && kept?.setBy !== "model") await answerPaper(ctx, screeningId, paperId, [{ question: question.question, response: original }], "model", now);
@@ -143,16 +143,23 @@ export const answerAction = defineUserMutation({
       ? { answers: { ...was, [questionKey]: mine.answer }, changed: [...(result.counted?.changed ?? []).filter((key) => key !== questionKey), ...(mine.changed ? [questionKey] : [])] }
       : stood(await answersNow(ctx, job, result));
 
-    // What puts it back: the answer as the history has it from before this change, with who set
-    // it. None where nothing changed or the history has no copy of what stood. None either
-    // where the job's own record of the answer differed from the screening's, as it does once
-    // the search's page changes the answer after the job counted the paper: one step can't put both back.
-    const agreed = !was || ((was[questionKey] ?? null) === kept?.answer && (result.counted?.changed ?? []).includes(questionKey) === bySomeone(kept));
-    const undo = kept && left && agreed && recorded?.answer === kept.answer && recorded.setBy === kept.setBy && recorded.updatedAt === kept.updatedAt && (kept.answer !== left.answer || kept.setBy !== left.setBy)
-      ? { undo: { path: "screening/papers:answer" as const, args: { jobId, paperId, questionKey, answer: { asOf: versionBefore }, expect: { answer: left.answer, at: left.updatedAt } } } }
-      : {};
     const { patch: { counted, ...scored }, delta, move } = account(job, result, scoredOn);
     const outcome = scored.outcome;
+
+    // What puts it back: the answer as the history has it from before this change, with who set
+    // it. None where nothing changed or the history has no copy of what stood. None where the
+    // job's own record of the answer differed from the screening's, as it does once the
+    // search's page changes the answer after the job counted the paper: one step can't put
+    // both back. And none where the change, or its undo, moves the paper in or out of what
+    // the job saves or prunes: an answer put back doesn't put the library back.
+    const agreed = !was || ((was[questionKey] ?? null) === kept?.answer && (result.counted?.changed ?? []).includes(questionKey) === bySomeone(kept));
+    const [wasQualified, wasExcluded] = [(result.counted?.qualified ?? result.qualified) === true, (result.counted?.outcome ?? result.outcome) === "excluded"];
+    const shelves = (!job.unsaved && wasQualified !== scored.qualified)
+      || (job.prune === true && job.set?.kind === "collection" && (wasQualified !== scored.qualified || wasExcluded !== (outcome === "excluded")));
+    const changed = kept && left && (kept.answer !== left.answer || kept.setBy !== left.setBy || kept.updatedAt !== left.updatedAt);
+    const undo = changed && agreed && !shelves && recorded?.answer === kept.answer && recorded.setBy === kept.setBy && recorded.updatedAt === kept.updatedAt
+      ? { undo: { path: "screening/papers:answer" as const, args: { jobId, paperId, questionKey, answer: { asOf: screening.version }, expect: { answer: left.answer, at: left.updatedAt } } } }
+      : {};
     // A paper the bookkeeping worker hasn't reached is counted there, on its answers as they stand then.
     if (result.doneAt !== undefined) {
       await ctx.db.patch("screeningResults", result._id, scored);
