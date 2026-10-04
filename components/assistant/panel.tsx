@@ -10,7 +10,8 @@ import { useSmoothText } from "@convex-dev/agent/react";
 import { insertAtTop, useConvex, useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { ArrowUp, ChevronDown, CircleAlert, CircleStop, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "@/components/icons";
+import { usePathname } from "next/navigation";
+import { ArrowUp, ChevronDown, CircleAlert, CircleStop, Eye, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -343,7 +344,8 @@ function Chat({
     const sent = (async () => {
       const id = await started(titleFrom(text));
       if (!from) setFirst({ threadId: id, text });
-      await sendMessage({ threadId: id, text });
+      // Where it's sent from goes with it, so "this" and "here" mean the page the person is on.
+      await sendMessage({ threadId: id, text, view: window.location.pathname + window.location.search });
       return id;
     })();
     outgoing.current = sent.catch(() => null);
@@ -655,6 +657,29 @@ function ModelPill({
   );
 }
 
+/** The page the person is on, as the composer names it. Each message carries its address (`send`). */
+function useViewName() {
+  const pathname = usePathname();
+  const t = useTranslations("assistant.views");
+  const common = useTranslations("common");
+  const topics = useTranslations("topics");
+  const at = (route: string) => pathname === route || pathname.startsWith(`${route}/`);
+  if (pathname === "/") return common("home");
+  if (at("/results")) return t("results");
+  if (at("/history")) return common("history");
+  if (at("/bookmarks")) return common("bookmarks");
+  if (at("/library")) return common("library");
+  if (at("/screening")) return common("screening");
+  if (pathname.startsWith("/extraction/")) return t("extractionJob");
+  if (at("/extraction")) return common("extraction");
+  if (/^\/evidence-libraries\/[^/]+\/configuration/.test(pathname)) return t("librarySettings");
+  if (at("/evidence-libraries")) return common("evidenceLibraries");
+  if (at("/topics")) return topics("title");
+  if (at("/authors")) return t("authors");
+  if (at("/settings")) return common("settings");
+  return t("page");
+}
+
 function Footer({
   composer,
   draft,
@@ -684,6 +709,7 @@ function Footer({
   presetModel: ReturnType<typeof usePresetModels>;
 }) {
   const t = useTranslations("assistant");
+  const view = useViewName();
   return (
     <div className="space-y-2 p-3 pt-0">
       {/* The chips hang from their middle on the thread's bottom edge; their frame is the lower half. */}
@@ -706,6 +732,9 @@ function Footer({
           className="relative block w-full resize-none bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground"
         />
         <div className="flex items-center gap-2 px-2 pb-2">
+          <span className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground">
+            <Eye className="size-3" /> {t("sees", { view })}
+          </span>
           <ModelPill model={model} onChange={onModel} presetModel={presetModel} />
           {/* The span keeps the hint reachable while the button is disabled. */}
           <TooltipHint label={!canWrite ? t("readOnly") : busy ? t("stop") : t("send")}>

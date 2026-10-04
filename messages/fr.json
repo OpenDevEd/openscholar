@@ -3408,6 +3408,14 @@
     "placeholder": "Écrire à l'assistant",
     "readOnly": "Vous pouvez lire cette discussion, mais pas y écrire",
     "messageLabel": "Écrire à l'assistant",
+    "sees": "Voit {view}",
+    "views": {
+      "results": "Résultats de recherche",
+      "extractionJob": "Tâche d'extraction",
+      "librarySettings": "Paramètres de la bibliothèque",
+      "authors": "Auteurs",
+      "page": "cette page"
+    },
     "send": "Envoyer",
     "stop": "Arrêter",
     "thinking": "Réflexion",
