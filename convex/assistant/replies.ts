@@ -12,7 +12,7 @@
  */
 import { listMessages, listStreams, saveMessages, type MessageDoc } from "@convex-dev/agent";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { v, type Infer } from "convex/values";
+import { getConvexSize, v, type Infer, type Value } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -40,6 +40,8 @@ const FLAG = "assistant.enabled";
 const MESSAGES_PAGE_MAX = 50;
 /** What one page of messages may read. A message can be tens of kilobytes, so a page of long ones ends early. */
 const MESSAGES_PAGE_BYTES = 1024 * 1024;
+/** The cursor the agent component's paginator gives for the end of a chat's messages. */
+const CHAT_END = "[]";
 /** Rows of a reply's stream one read returns: the agent component's own limit. */
 const DELTAS_PER_READ = 100;
 /**
@@ -442,6 +444,8 @@ const messageValidator = v.object({
   mine: v.boolean(),
   /** The model that wrote it, on a reply. */
   model: v.optional(v.string()),
+  /** A reply's message that also ran actions: the reply goes on after it. */
+  acted: v.optional(v.boolean()),
   at: v.number(),
 });
 
@@ -476,6 +480,41 @@ async function senders(ctx: QueryCtx, rows: MessageDoc[]) {
   return new Map(people.flat());
 }
 
+/**
+ * One page of a chat's messages, with its end kept where it is. The agent component pages
+ * without recording where a page ended, so a page read with no `endCursor` is so many rows
+ * from its start, whatever they are: as a reply adds rows to the newest page, the ones before
+ * them drop out of it, and the message it answers takes its steps along. So a page read with
+ * no end says where to split, and the page that subscribes then reads each half to a fixed
+ * end, the newest one growing with the chat.
+ */
+async function pageOf<Opts extends { numItems: number; cursor: string | null; endCursor?: string | null }>(list: (opts: Opts) => ReturnType<typeof listMessages>, opts: Opts) {
+  const end = opts.endCursor;
+  if (!end) {
+    // One item can't be split, so a cap that stopped at it has no split to offer.
+    if (opts.numItems < 2) return { ...(await list(opts)), pageStatus: null, splitCursor: null };
+    const half = Math.ceil(opts.numItems / 2);
+    const newer = await list({ ...opts, numItems: half });
+    // Nothing is past this half, so there's nothing to split yet.
+    if (newer.isDone) return newer;
+    // Whether the half read its share or a cap stopped it, its last row is where the split falls.
+    const older = await list({ ...opts, cursor: newer.continueCursor, numItems: opts.numItems - half });
+    return { ...older, page: [...newer.page, ...older.page], splitCursor: newer.continueCursor, pageStatus: "SplitRecommended" as const };
+  }
+  const raw = await list(opts);
+  // The component calls an empty page the last one. A page read to a fixed end is the last only when that end is the chat's.
+  const read = { ...raw, isDone: raw.isDone && end === CHAT_END };
+  // A cap stopped it short of its end. The halves it splits into end where it was to end, or the rows between would be in no page.
+  if (read.pageStatus === "SplitRequired" && read.continueCursor !== end) return { ...read, continueCursor: end };
+  if (read.pageStatus === "SplitRecommended") return read;
+  // It reads whole. A page that a cap stops shows nothing until its halves load, so one that holds half of what
+  // a page may read is split while it still reads whole. One row can't be split, however large.
+  const whole = { ...read, pageStatus: null, splitCursor: null };
+  if (read.page.length < 2 || getConvexSize(read.page as Value) < MESSAGES_PAGE_BYTES / 2) return whole;
+  const middle = (await list({ ...opts, endCursor: undefined, numItems: Math.ceil(read.page.length / 2) })).continueCursor;
+  return middle === read.continueCursor ? whole : { ...read, splitCursor: middle, pageStatus: "SplitRecommended" as const };
+}
+
 export const messagesAction = defineUserQuery({
   path: "assistant/replies:messages",
   description: "Reads an assistant chat's messages, newest first, a page at a time: what each person wrote, what the assistant replied, and each action it ran on the way.",
@@ -484,16 +523,10 @@ export const messagesAction = defineUserQuery({
   run: async (ctx, userId, { threadId, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
-    const read = await listMessages(ctx, components.agent, {
-      threadId: thread.agentThreadId,
-      // The caps bound a page whatever the caller asks for: with an `endCursor`, `numItems` alone doesn't.
-      paginationOpts: {
-        ...paginationOpts,
-        numItems: Math.min(paginationOpts.numItems, MESSAGES_PAGE_MAX),
-        maximumRowsRead: MESSAGES_PAGE_MAX,
-        maximumBytesRead: MESSAGES_PAGE_BYTES,
-      },
-    });
+    // The caps bound a page whatever the caller asks for: with an `endCursor`, `numItems` alone doesn't.
+    const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, MESSAGES_PAGE_MAX), maximumRowsRead: MESSAGES_PAGE_MAX, maximumBytesRead: MESSAGES_PAGE_BYTES };
+    const list = (pageOpts: typeof opts) => listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: pageOpts });
+    const read = await pageOf(list, opts);
     const sentBy = await senders(ctx, read.page);
     // Each exchange's steps come with the message it answers, which a page holds once.
     const asked = read.page.filter((row) => row.message?.role === "user");
@@ -539,6 +572,7 @@ export const messagesAction = defineUserQuery({
           ...(sender ? { sender } : {}),
           mine: role === "user" && row.userId === userId,
           ...(role === "assistant" && row.model ? { model: row.model } : {}),
+          ...(role === "assistant" && row.tool ? { acted: true } : {}),
           at: row._creationTime,
         },
       ];
@@ -570,15 +604,15 @@ function shownStep(step: Doc<"assistantSteps">, { userId, answering, details }: 
 export const stepsAction = defineUserQuery({
   path: "assistant/replies:steps",
   description:
-    "Reads the actions the assistant ran in answer to one message of a chat, newest first, a page at a time. A chat's messages come with the newest of each exchange's steps; this reads the ones before them, when a reply ran more.",
-  args: { threadId: v.id("assistantThreads"), order: v.number(), paginationOpts: paginationOptsValidator },
+    "Reads the actions the assistant ran in answer to one message of a chat, newest first, a page at a time. A chat's messages come with the newest of each exchange's steps; this reads the ones before them, when a reply ran more. A reply that was summarized partway carries on in the exchanges after its own: `through` names the last of them to read.",
+  args: { threadId: v.id("assistantThreads"), order: v.number(), through: v.optional(v.number()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(stepValidator),
-  run: async (ctx, userId, { threadId, order, paginationOpts }) => {
+  run: async (ctx, userId, { threadId, order, through, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
     const read = await ctx.db
       .query("assistantSteps")
-      .withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).eq("order", order))
+      .withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).gte("order", order).lte("order", through ?? order))
       .order("desc")
       .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, STEPS_SHOWN) });
     const answering = (await writing(ctx, thread.reply)) ? thread.reply?.order : thread.asking?.order;

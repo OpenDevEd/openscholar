@@ -16,6 +16,7 @@ import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
+import { STEPS_SHOWN } from "../../lib/assistant/steps";
 import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 
@@ -23,8 +24,7 @@ import { assistant } from "./agent";
 export const STEP_TEXT_MAX = 16_000;
 /** Characters of an action's result that are kept, well inside one document. */
 export const STEP_RESULT_MAX = 200_000;
-/** Steps of one exchange a page of the chat lists: the newest, when a reply ran more. */
-export const STEPS_SHOWN = 150;
+export { STEPS_SHOWN };
 
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
 export const MAX_ASKS = 10;
