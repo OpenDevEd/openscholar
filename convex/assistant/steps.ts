@@ -24,7 +24,7 @@ export const STEP_TEXT_MAX = 16_000;
 /** Characters of an action's result that are kept, well inside one document. */
 export const STEP_RESULT_MAX = 200_000;
 /** Steps of one exchange a page of the chat shows. A reply takes few; this bounds a runaway one. */
-export const STEPS_SHOWN = 60;
+export const STEPS_SHOWN = 150;
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
 export const MAX_ASKS = 10;
 /**

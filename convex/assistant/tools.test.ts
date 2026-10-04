@@ -470,10 +470,11 @@ describe("the assistant's tools", () => {
     const { asAda, threadId, sayUntilAsked, settled, steps, thread } = await chatOf(t);
     const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
     const list = () => ({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } });
-    // Nine rounds of reading, then a round that asks: ten of the reply's twelve requests.
-    mockDoStream.mockImplementation(async () => (requests.length < 10 ? calling(list())() : calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } })()));
+    // Rounds of reading, then a round that asks: all but two of the reply's requests.
+    const before = MAX_STEPS - 2;
+    mockDoStream.mockImplementation(async () => (requests.length < before ? calling(list())() : calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } })()));
     await sayUntilAsked("Read around, then delete my old chat");
-    expect((await thread())?.asking).toMatchObject({ rounds: 10, made: 10 });
+    expect((await thread())?.asking).toMatchObject({ rounds: before, made: before });
 
     // Carrying on, the model keeps calling. Its actions have stopped, and its second request is made to answer.
     toolChoices.length = 0;
@@ -545,12 +546,12 @@ describe("the assistant's tools", () => {
     requests.length = 0;
     toolChoices.length = 0;
     mockDoStream
-      .mockImplementationOnce(calling({ ...list(100), read: 2_000_000_000 }))
+      .mockImplementationOnce(calling({ ...list(1_000), read: 2_000_000_000 }))
       // Looking for something else to do is refused with the rest.
-      .mockImplementationOnce(calling(list(101), { id: "find", name: "find_action", input: { keywords: "rename collection" } }, { id: "run", name: "run_action", input: { name: "no/such:action", arguments: {} } }))
+      .mockImplementationOnce(calling(list(1_001), { id: "find", name: "find_action", input: { keywords: "rename collection" } }, { id: "run", name: "run_action", input: { name: "no/such:action", arguments: {} } }))
       .mockImplementationOnce(finishingDoStream(["Stopping here."]));
     await say("Look again");
-    for (const id of ["c101", "find", "run"]) expect(told(2, id)).toMatchObject({ error: expect.stringMatching(/spent the credits/) });
+    for (const id of ["c1001", "find", "run"]) expect(told(2, id)).toMatchObject({ error: expect.stringMatching(/spent the credits/) });
     expect(await steps()).toHaveLength(MAX_CALLS + 1);
     expect(toolChoices).toEqual(["auto", "auto", "auto"]);
     expect((await shown()).at(-1)).toBe("assistant: Stopping here.");
