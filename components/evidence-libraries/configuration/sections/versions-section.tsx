@@ -335,6 +335,7 @@ export function VersionsSection({
             rows={versions.results}
             total={versionCount.data}
             more={versions.status === "CanLoadMore" ? () => versions.loadMore(VERSIONS_PAGE_SIZE) : undefined}
+            loading={versions.status === "LoadingMore"}
             blocked={blocked}
             onRestore={setRestoring}
           />

@@ -788,8 +788,14 @@ async function versionRow(
   };
 }
 
-/** Most versions one page holds, and the operations one read of it passes over looking for them. */
-const VERSIONS_PAGE_MAX = 50;
+/**
+ * Most versions one page holds, and the operations one read of it passes over looking for them.
+ * ponytail: naming what a version changed reads its revision's sections and its predecessor's,
+ * so a page reads up to 20 configurations: about 57 KB each at the largest on shared dev
+ * (2026-10-04), 1 MB together. Configurations near the 512 KB a section may hold would not
+ * fit; a fingerprint stored with each section would lift that.
+ */
+const VERSIONS_PAGE_MAX = 10;
 const VERSION_ROWS_READ = 500;
 
 /** One row per setup, publish or software update, newest first, a page at a time. */
