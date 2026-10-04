@@ -47,10 +47,29 @@ export function stepsAt(ctx: Pick<QueryCtx, "db">, threadId: Id<"assistantThread
 
 const cut = (text: string, max: number) => (text.length > max ? text.slice(0, max) : text);
 
-/** What the model reads of anything a tool returns: all of it when it's short, its start and how much was left out when it isn't. */
+/**
+ * Levels of lists and objects a tool's result keeps. A result is saved with the reply, five
+ * levels down in its message, and Convex saves no document nested past sixteen: an action
+ * whose arguments nest deeper ended the reply that looked it up.
+ */
+export const RESULT_LEVELS = 10;
+/** A value no deeper than that: what sits below is given as its JSON text, which reads the same to the model. */
+const shallow = (value: unknown, levels: number): unknown =>
+  !value || typeof value !== "object"
+    ? value
+    : levels === 0
+      ? JSON.stringify(value)
+      : Array.isArray(value)
+        ? value.map((inner) => shallow(inner, levels - 1))
+        : Object.fromEntries(Object.entries(value).map(([key, inner]) => [key, shallow(inner, levels - 1)]));
+
+/**
+ * What the model reads of anything a tool returns, and what's saved with the reply: all of
+ * it when it's short, its start and how much was left out when it isn't.
+ */
 export function forModel(value: unknown) {
   const text = JSON.stringify(value ?? null);
-  return text.length <= MODEL_READS ? (value ?? null) : `${text.slice(0, MODEL_READS)}… (cut: ${(text.length - MODEL_READS).toLocaleString("en")} more characters. Ask for less at a time.)`;
+  return text.length <= MODEL_READS ? shallow(value ?? null, RESULT_LEVELS) : `${text.slice(0, MODEL_READS)}… (cut: ${(text.length - MODEL_READS).toLocaleString("en")} more characters. Ask for less at a time.)`;
 }
 
 /** The command that reverses a change, when its result carries one (#342) short enough to keep. */
