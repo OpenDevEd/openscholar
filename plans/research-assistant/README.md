@@ -171,6 +171,14 @@ everything a user can, calling the same actions as the UI:
     shared dev is the live deployment. Migrations run there, and its data is
     user data, so #325 moves existing chat threads into assistant threads
     instead of deleting them.
+- **2026-10-04, the old chats.** Was: #325 moves shared dev's chat jobs into
+  assistant threads before deleting chat mode. Now: #325 deletes them. Reason:
+  the user said the chat data can go; the chat is a system that leaves once
+  the assistant exists, and nothing more is built on it. For the same reason
+  the chat's lists were not paged under #422: its seven pending entries in
+  `scripts/convex-rules.json` name #325 and leave with that code (#467). "Start
+  chat" still puts an @ mention of the search in the composer; the user kept
+  that the same day. Everything else on shared dev stays user data.
 
 ## Tools considered (2026-09-30)
 
@@ -485,10 +493,10 @@ Later, without issues yet:
 - Browser search history, shortcuts and ratings are user data. They're
   imported on sign-in, never wiped. The import is idempotent by local ID, and
   the local copy stays until the server confirms.
-- Shared dev is the live deployment, so its data is user data. Its chat jobs
-  (6 on 2026-09-30), with their `chatPapers` and `chatSourceEvents`, move into
-  assistant threads with #325, which then removes the chat-mode fields from
-  extraction. Decided on 2026-10-02, see "Decision changes".
+- Shared dev is the live deployment, so its data is user data. The one
+  exception is its chat jobs (9 on 2026-10-04): #325 deletes them, with their
+  `chatPapers`, `chatSourceEvents` and threads, when it removes chat mode from
+  extraction. Decided on 2026-10-04, see "Decision changes".
 - Each migration runs on shared dev, and on e2e when its tests need it, and is
   verified there before a schema is narrowed. #384 and #403 narrow after
   theirs.
