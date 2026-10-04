@@ -10,7 +10,7 @@ import { register as registerAgentComponent } from "@convex-dev/agent/test";
 import { APICallError } from "@ai-sdk/provider";
 import { paperChat } from "./agent";
 import { startAbortPoller } from "../../lib/chat/abort-poller";
-import { STOP_ABORT_POLL_INTERVAL_MS } from "./messages";
+import { STOP_ABORT_POLL_INTERVAL_MS } from "../assistant/turn";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import { convertUsdToCredits, creditsForUsage } from "../../lib/pricing";
 import { parseChatError } from "../../lib/errors/taxonomy";
