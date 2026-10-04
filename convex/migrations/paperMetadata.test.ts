@@ -22,7 +22,7 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
     const retained = await saved("W1", "Smith, Jr., John, ليلى");
     const foreignOnly = await saved("W2", "Smith, John");
     const ambiguous = await saved("W3", "Smith, John");
-    const raw = await saved("W4", "Doe, Jane", JSON.stringify({ authorships: [{ author: { display_name: "Doe, Jane" } }] }));
+    const raw = await saved("W4", "Doe, Jane", JSON.stringify({ authorships: [{ author: { display_name: "Doe, Jane" } }], primary_location: { source: { display_name: "Saved raw journal" }, pdf_url: "https://example.test/primary.pdf" }, best_oa_location: { pdf_url: "https://example.test/best.pdf" }, open_access: { is_oa: false, oa_status: "closed", oa_url: "https://example.test/landing" }, cited_by_count: 0, type: "preprint" }));
     await saved("W5");
     const longAuthors = Array.from({ length: 101 }, (_, i) => `Author ${i}`);
     const long = await saved("W6", longAuthors.join(", "), JSON.stringify({ authorships: longAuthors.map(display_name => ({ author: { display_name } })) }));
@@ -40,7 +40,7 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
     }
   };
   const before = await t.run((ctx) => ctx.db.get("libraryItems", seeded.retained));
-  await expect(t.mutation(internal.migrations.paperMetadata.papers, { cursor: null, dryRun: true, oneBatchOnly: true })).rejects.toThrow();
+  await expect(t.mutation(internal.migrations.paperMetadata.papers, { cursor: null, dryRun: true, oneBatchOnly: true })).rejects.toMatchObject({ data: { kind: "DRY RUN" } });
   expect(await t.run((ctx) => ctx.db.get("libraryItems", seeded.retained))).toEqual(before);
   expect(await t.run((ctx) => ctx.db.query("paperMetadataChanges").take(10))).toEqual([]);
   await t.withIdentity({ subject: "owner" }).mutation(api.library.mutations.saveToLibrary, { openalexId: "W1", title: "Partial save before migration" });
@@ -50,6 +50,7 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
   const oversized = await t.run((ctx) => ctx.db.get("libraryItems", seeded.long));
   expect(oversized!.authors).toBeUndefined();
   expect(oversized!.authorsUnparsed).toBe(seeded.longAuthors.join(", "));
+  expect(await t.run(ctx => ctx.db.get("libraryItems", seeded.raw))).toMatchObject({ journal: "Saved raw journal", pdfUrl: "https://example.test/best.pdf", oaUrl: "https://example.test/landing", isOpenAccess: false, oaStatus: "closed", citedByCount: 0, workType: "preprint" });
   for (const id of [seeded.foreignOnly, seeded.ambiguous]) {
     const item = await t.run((ctx) => ctx.db.get("libraryItems", id));
     expect(item!.authors).toBeUndefined();

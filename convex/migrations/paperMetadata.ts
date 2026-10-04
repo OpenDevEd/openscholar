@@ -4,7 +4,7 @@ import { components, internal } from "../_generated/api";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation, type MutationCtx } from "../lib/functions";
-import { authorMetadata } from "../../lib/library/paper-metadata";
+import { authorMetadata, metadataFromPaperData } from "../../lib/library/paper-metadata";
 import { workUrl } from "../../lib/openalex/work-id";
 import { MAX_AUTHORS } from "../lib/listCaps";
 
@@ -45,12 +45,13 @@ export async function recoverMetadata(ctx: MutationCtx, userId: Id<"users">, ite
       const distinct = [...new Set(matching.map((authors) => JSON.stringify(authors)))];
       if (distinct.length === 1 && matching[0].length <= MAX_AUTHORS) { patch.authors = matching[0]; patch.authorsUnparsed = undefined; }
     }
-    const sources = candidates.map((paper) => ({ journal: paper.venue, citedByCount: paper.citedByCount, workType: paper.workType, isOpenAccess: paper.isOpenAccess, oaStatus: paper.oaStatus, oaUrl: paper.oaUrl, pdfUrl: paper.pdfUrl }));
-    for (const key of ["journal", "citedByCount", "workType", "isOpenAccess", "oaStatus", "oaUrl", "pdfUrl"] as const) {
-      if (item[key] !== undefined && item[key] !== "") continue;
-      const values = [...new Set(sources.map((source) => source[key]).filter((value) => value !== undefined && value !== ""))];
-      if (values.length === 1) Object.assign(patch, { [key]: values[0] });
-    }
+  }
+  const raw = metadataFromPaperData(item.paperData);
+  const sources = candidates.map((paper) => ({ journal: paper.venue, citedByCount: paper.citedByCount, workType: paper.workType, isOpenAccess: paper.isOpenAccess, oaStatus: paper.oaStatus, oaUrl: paper.oaUrl, pdfUrl: paper.pdfUrl }));
+  for (const key of ["journal", "citedByCount", "workType", "isOpenAccess", "oaStatus", "oaUrl", "pdfUrl"] as const) {
+    if (item[key] !== undefined && item[key] !== "") continue;
+    const values = raw[key] !== undefined && raw[key] !== "" ? [raw[key]] : complete ? [...new Set(sources.map((source) => source[key]).filter((value) => value !== undefined && value !== ""))] : [];
+    if (values.length === 1) Object.assign(patch, { [key]: values[0] });
   }
   if (patch.authors || Object.keys(patch).some((key) => !["authors", "authorsUnparsed", "metadataVersion"].includes(key))) patch.metadataRecoveredAt = Date.now();
   return patch;

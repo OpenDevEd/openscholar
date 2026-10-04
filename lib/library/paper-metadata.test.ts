@@ -13,6 +13,8 @@ describe("saved paper metadata", () => {
     expect(authorMetadata({ authors })).toEqual({ authorsUnparsed: authors });
     expect(authorMetadata({ authors, paperData: JSON.stringify({ authorships: [{ author: { display_name: "Smith, Jr., John" } }, { author: { display_name: "ليلى" } }] }) })).toEqual({ authors: ["Smith, Jr., John", "ليلى"] });
     expect(authorMetadata({ authors, paperData: JSON.stringify({ authorships: [{ author: { display_name: "Someone else" } }] }) })).toEqual({ authorsUnparsed: authors });
+    const many = Array.from({ length: 101 }, (_, i) => `Author ${i}`);
+    expect(authorMetadata({ authorsUnparsed: many.join(", "), paperData: JSON.stringify({ authorships: many.map(display_name => ({ author: { display_name } })) }) })).toEqual({ authorsUnparsed: many.join(", ") });
   });
 
   it("fills absent fields without degrading an existing paper or its raw record", () => {
