@@ -15,14 +15,18 @@ import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { ASKS_FIRST, type UserAction } from "../lib/userActions";
 import { DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, forModel } from "./steps";
 
-/** Requests to the model one reply may make. The last is kept for its answer (./turn.ts). */
-export const MAX_STEPS = 12;
+/**
+ * Requests to the model one reply may make. The last is kept for its answer (./turn.ts).
+ * What a reply spends is held to its credits; this stops one that goes round in circles.
+ * At 12, a literature review that searched, read, saved ten papers and filed them ran out.
+ */
+export const MAX_STEPS = 20;
 /** Characters of an action's description and arguments, about 1,000 tokens (#326). A longer one has no tool. */
 export const DEFINITION_MAX = 4_000;
 /** Actions one search returns. */
 const FOUND_MAX = 6;
-/** Actions one reply may run, however many it calls at once: every one of them shows on the chat's page (./steps.ts). */
-export const MAX_CALLS = 40;
+/** Actions one reply may run, however many it calls at once: every one of them shows on the chat's page (./steps.ts). At 40, the same review saved five of its ten papers. */
+export const MAX_CALLS = 100;
 
 /**
  * Why a reply's tools have stopped, as the model is told when it calls one: it then knows
