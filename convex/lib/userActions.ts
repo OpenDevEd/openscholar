@@ -45,8 +45,10 @@ type Labels<Key extends string = string> = {
  * the assistant took can be undone without knowing which action made it. Left out when the
  * change changed nothing or can't be put back.
  */
-export const reversedBy = <Path extends string, Args extends PropertyValidators>(path: Path, args: Args) =>
-  v.optional(v.object({ path: v.literal(path), args: v.object(args) }));
+export const reversedBy = <Path extends string, Args extends PropertyValidators>(path: Path, args: Args) => v.optional(reversal(path, args));
+/** One way a change is reversed, for an action that has more than one: `v.optional(v.union(reversal(…), reversal(…)))`. */
+export const reversal = <Path extends string, Args extends PropertyValidators>(path: Path, args: Args) =>
+  v.object({ path: v.literal(path), args: v.object(args) });
 
 export type UserMutation<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
   Labels<keyof Args & string> & {
