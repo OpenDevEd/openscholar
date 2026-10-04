@@ -10,6 +10,7 @@ import { localSearchHistoryStore } from "@/lib/store";
 import type { SearchResult } from "@/lib/types";
 import type { ListedSort } from "./records";
 import { restoreSearch } from "./records";
+import { withAuthors } from "./mock-author-filter";
 import { useResearchSession } from "./reads";
 import { usePagedRecords } from "./paged-records";
 
@@ -51,7 +52,7 @@ export function useSearchList({ sort, text = "", pageSize, excludeId }: { sort: 
     const needle = text.trim().toLowerCase();
     return localHistory.filter((item) => item.id !== excludeId && (!needle || matchesLocally(item, needle))).sort(LOCAL_ORDER[sort]);
   }, [accountId, localHistory, text, excludeId, sort]);
-  const remoteItems = useMemo(() => remote.items.map((item) => restoreSearch({ ...item, screeningResponses: [] })), [remote.items]);
+  const remoteItems = useMemo(() => remote.items.map((item) => withAuthors(restoreSearch({ ...item, screeningResponses: [] }))), [remote.items]);
 
   return usePagedRecords({
     remote: accountId ? { ...remote, items: remoteItems } : null,
