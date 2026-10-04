@@ -3527,6 +3527,21 @@
         "did": "已查找名称",
         "where": "检索筛选条件"
       },
+      "lookPapers": {
+        "doing": "正在查找论文",
+        "did": "已查找论文",
+        "where": "OpenAlex"
+      },
+      "readPaper": {
+        "doing": "正在读取论文",
+        "did": "已读取论文",
+        "where": "OpenAlex"
+      },
+      "credits": {
+        "doing": "正在检查你的积分",
+        "did": "已检查你的积分",
+        "where": "账单"
+      },
       "bookmarks": {
         "doing": "正在查看你的书签",
         "did": "已查看你的书签",

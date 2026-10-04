@@ -3527,6 +3527,21 @@
         "did": "Nom recherché",
         "where": "Filtres de recherche"
       },
+      "lookPapers": {
+        "doing": "Recherche d'articles",
+        "did": "Articles recherchés",
+        "where": "OpenAlex"
+      },
+      "readPaper": {
+        "doing": "Lecture d'un article",
+        "did": "Article lu",
+        "where": "OpenAlex"
+      },
+      "credits": {
+        "doing": "Vérification de vos crédits",
+        "did": "Crédits vérifiés",
+        "where": "Facturation"
+      },
       "bookmarks": {
         "doing": "Parcours de vos favoris",
         "did": "Favoris parcourus",

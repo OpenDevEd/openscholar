@@ -36,7 +36,7 @@ const KIND = {
 type Kind = keyof typeof KIND;
 
 /** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "other";
+type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "other";
 
 /** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
 const ACTIONS: Record<string, { kind: Kind; words: Words }> = {
@@ -50,9 +50,19 @@ const ACTIONS: Record<string, { kind: Kind; words: Words }> = {
   "research/searches:remove": { kind: "search", words: "removeSearch" },
   "research/searches:results": { kind: "search", words: "results" },
   "research/lookup:find": { kind: "search", words: "lookup" },
+  "research/papers:search": { kind: "search", words: "lookPapers" },
+  "research/papers:get": { kind: "paper", words: "readPaper" },
+  "research/searches:deleteSearch": { kind: "search", words: "removeSearch" },
   "research/records:listedShortcuts": { kind: "search", words: "bookmarks" },
   "research/records:ratingsOf": { kind: "paper", words: "ratings" },
   "library/queries:savedPaper": { kind: "paper", words: "saved" },
+  "library/queries:papers": { kind: "paper", words: "saved" },
+  "library/queries:countPapers": { kind: "paper", words: "saved" },
+  "library/papers:save": { kind: "paper", words: "save" },
+  "billing/usage:balance": { kind: "other", words: "credits" },
+  "billing/usage:spending": { kind: "other", words: "credits" },
+  "billing/usage:listCharges": { kind: "other", words: "credits" },
+  "screening/queries:listJobs": { kind: "screening", words: "screening" },
   "library/mutations:saveToLibrary": { kind: "paper", words: "save" },
   "library/mutations:setLibraryRating": { kind: "paper", words: "rate" },
   "library/mutations:removeFromLibrary": { kind: "paper", words: "remove" },

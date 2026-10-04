@@ -3517,6 +3517,21 @@
         "did": "Looked up a name",
         "where": "Search filters"
       },
+      "lookPapers": {
+        "doing": "Looking papers up",
+        "did": "Looked papers up",
+        "where": "OpenAlex"
+      },
+      "readPaper": {
+        "doing": "Reading a paper",
+        "did": "Read a paper",
+        "where": "OpenAlex"
+      },
+      "credits": {
+        "doing": "Checking your credits",
+        "did": "Checked your credits",
+        "where": "Billing"
+      },
       "bookmarks": {
         "doing": "Looking through your bookmarks",
         "did": "Looked through your bookmarks",

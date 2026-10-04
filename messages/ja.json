@@ -3527,6 +3527,21 @@
         "did": "名前を調べました",
         "where": "検索フィルター"
       },
+      "lookPapers": {
+        "doing": "論文を検索しています",
+        "did": "論文を検索しました",
+        "where": "OpenAlex"
+      },
+      "readPaper": {
+        "doing": "論文を読んでいます",
+        "did": "論文を読みました",
+        "where": "OpenAlex"
+      },
+      "credits": {
+        "doing": "クレジットを確認しています",
+        "did": "クレジットを確認しました",
+        "where": "請求"
+      },
       "bookmarks": {
         "doing": "ブックマークを確認しています",
         "did": "ブックマークを確認しました",
