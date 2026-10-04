@@ -53,10 +53,7 @@ import {
   requireRuntimeEnvironment,
   requireRuntimeHttpsOrigin,
 } from "./runtimeActionConfig";
-import {
-  evidenceLibraryDomainFailureValidator,
-  evidenceLibraryDomainStateValidator,
-} from "./validators";
+import { checkedDomainResultsValidator } from "./validators";
 
 /** A step that could not run. Nothing is written and no state moves. */
 class DomainCheckUnavailable extends Error {
@@ -125,13 +122,7 @@ const checkedDomainsValidator = v.object({
     v.literal("deploying"),
     v.literal("rate-limited"),
   ),
-  results: v.array(
-    v.object({
-      domainId: v.id("evidenceLibraryDomains"),
-      state: evidenceLibraryDomainStateValidator,
-      failure: v.optional(evidenceLibraryDomainFailureValidator),
-    }),
-  ),
+  results: checkedDomainResultsValidator,
 });
 
 /**

@@ -1014,5 +1014,17 @@ export const dnsRecordsValidator = capped(
   MAX_DNS_RECORDS,
 );
 
+/** What a check found for each of a library's domains still waiting: at most the MAX_LIBRARY_DOMAINS a library has. */
+export const checkedDomainResultsValidator = capped(
+  v.array(
+    v.object({
+      domainId: v.id("evidenceLibraryDomains"),
+      state: evidenceLibraryDomainStateValidator,
+      failure: v.optional(evidenceLibraryDomainFailureValidator),
+    }),
+  ),
+  MAX_LIBRARY_DOMAINS,
+);
+
 /** The sections one configuration version changed. */
 export const changedSectionsValidator = capped(v.array(sectionKeyValidator), MAX_CONFIG_SECTIONS);
