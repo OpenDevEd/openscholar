@@ -8,11 +8,11 @@ import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
-import { readWork } from "../paperSets/openalex";
+import { countSearch, groupSearch, readWork } from "../paperSets/openalex";
 import { ASSISTANT_FIELDS, spender, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
 import { readPage, short } from "./searches";
 import { workUrl } from "../../lib/openalex/work-id";
-import { AUTHORS_LISTED, FUNDERS_LISTED, INSTITUTIONS_LISTED, pageValidator, paperRecordValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
+import { AUTHORS_LISTED, countValidator, FUNDERS_LISTED, GROUPINGS, GROUPS_MAX, INSTITUTIONS_LISTED, pageValidator, paperRecordValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS, type Grouping } from "./searchValidators";
 
 export const searchAction = defineUserAction({
   path: "research/papers:search",
@@ -36,6 +36,43 @@ export const searchAction = defineUserAction({
 });
 export const search = userAction(searchAction);
 export const searchForAssistant = assistantAction(searchAction);
+
+/** The groupings whose groups are records the matching filter takes by ID: `authors`, `funders`. */
+const FILTERED_BY_ID: readonly Grouping[] = ["author", "funder"];
+
+export const countAction = defineUserAction({
+  path: "research/papers:count",
+  description:
+    "Counts the papers a query, filters, or both find in OpenAlex, and saves nothing. With `by`, also how they divide: by year, language, type, openAccess, country (where the authors work), author, institution, funder, journal, field or sdg. " +
+    `It returns up to ${GROUPS_MAX} groups with how many papers each has: the largest first, or by year the latest ${GROUPS_MAX} in order. Use it for how many, how a topic changed over the years, who publishes most, which countries or languages, in one call, and never by reading pages of results. ` +
+    "An author's or a funder's group comes with the ID the `authors` and `funders` filters take. The query and the filters are the ones research/papers:search takes, and mean the same. " +
+    "One request against the person's OpenAlex allowance.",
+  args: { query: v.optional(v.string()), ...searchSettings, by: v.optional(v.union(...(Object.keys(GROUPINGS) as Grouping[]).map((name) => v.literal(name)), v.null())) },
+  returns: countValidator,
+  spendsCredits: false,
+  outsideEffect: false,
+  // It changes nothing, so there's nothing to undo.
+  undoable: true,
+  run: async (ctx, userId, { query, by, ...settings }): Promise<Infer<typeof countValidator>> => {
+    // Typed here: the generated API's types depend on this module, so inference would loop.
+    const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, query, settings });
+    if (!found.request) throw createError("VALIDATION_ERROR", "This query isn't one OpenAlex can read. Check its brackets and quotes.");
+    // Which papers a person rated is theirs, not OpenAlex's, so it can't count them.
+    if (found.ratingRange) throw createError("VALIDATION_ERROR", "Papers kept by the person's ratings can't be counted this way. Leave `ratedOnly`, `minRating` and `maxRating` out.");
+    const spend = spender(ctx, found.clerkId);
+    if (!by) return { total: await countSearch(found.request, spend) };
+    const { total, groups } = await groupSearch(found.request, GROUPINGS[by], spend);
+    // Years read in order, and the latest are the ones asked about; anything else, largest first, as OpenAlex returns them.
+    const ordered = by === "year" ? groups.sort((a, b) => Number(a.key) - Number(b.key)).slice(-GROUPS_MAX) : groups.slice(0, GROUPS_MAX);
+    return {
+      total,
+      groups: ordered.map(({ key, name, count }) => ({ name: name.slice(0, NAME_MAX), count, ...(FILTERED_BY_ID.includes(by) ? { id: key.split("/").at(-1)! } : {}) })),
+      ...(groups.length > ordered.length ? { moreGroups: groups.length - ordered.length } : {}),
+    };
+  },
+});
+export const count = userAction(countAction);
+export const countForAssistant = assistantAction(countAction);
 
 /** Characters of an abstract a paper's record carries: all of nearly every one. A longer one is cut and marked as cut. */
 const ABSTRACT_MAX = 6_000;

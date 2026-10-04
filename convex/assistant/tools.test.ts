@@ -223,8 +223,8 @@ describe("the assistant's tools", () => {
     const paper = { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" };
     mockDoStream.mockImplementationOnce(
       calling(
-        { id: "public", name: "library_mutations_setPaperInCollection", input: { paper, collectionId: followed, inCollection: true } },
-        { id: "private", name: "library_mutations_setPaperInCollection", input: { paper, collectionId: own, inCollection: true } },
+        { id: "public", name: "run_action", input: { name: "library/mutations:setPaperInCollection", arguments: { paper, collectionId: followed, inCollection: true } } },
+        { id: "private", name: "run_action", input: { name: "library/mutations:setPaperInCollection", arguments: { paper, collectionId: own, inCollection: true } } },
       ),
     );
     await sayUntilAsked("Add it to both");
@@ -593,7 +593,7 @@ describe("the assistant's tools", () => {
     // A collection that isn't the sender's.
     const { id: theirs } = await asBen.mutation(api.library.collections.createCollection, { name: "Ben's" });
     mockDoStream
-      .mockImplementationOnce(calling({ id: "add", name: "library_mutations_setPaperInCollection", input: { paper: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" }, collectionId: theirs, inCollection: true } }))
+      .mockImplementationOnce(calling({ id: "add", name: "run_action", input: { name: "library/mutations:setPaperInCollection", arguments: { paper: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" }, collectionId: theirs, inCollection: true } } }))
       .mockImplementationOnce(finishingDoStream(["That collection isn't yours."]));
     await say("Add it to Ben's collection");
 

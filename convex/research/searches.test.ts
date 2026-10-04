@@ -19,6 +19,17 @@ const openAlex = vi.fn(async (input: string | URL) => {
     const author = url.pathname.endsWith("/authors");
     return new Response(JSON.stringify({ results: [{ id: `https://openalex.org/${author ? "A5023888391" : "F4320332161"}`, display_name: author ? "Jane Smith" : "Wellcome Trust", hint: author ? "University of Nairobi, Kenya" : "United Kingdom" }] }), { status: 200 });
   }
+  // A count by group: OpenAlex returns the groups largest first, an entity by the address of its record.
+  const by = url.searchParams.get("group_by");
+  if (by) {
+    const groups =
+      by === "publication_year"
+        ? [["2023", "2023", 30], ["2024", "2024", 22], ["2022", "2022", 5]]
+        : by === "authorships.author.id"
+          ? [["https://openalex.org/A1", "Ada Okafor", 9], ["https://openalex.org/A2", "Ben Mwangi", 4]]
+          : [["https://openalex.org/languages/en", "English", 50], ["https://openalex.org/languages/fr", "French", 7]];
+    return new Response(JSON.stringify({ meta: { count: 57 }, group_by: groups.map(([key, name, count]) => ({ key, key_display_name: name, count })) }), { status: 200 });
+  }
   const one = url.pathname.match(/\/works\/(?:https:\/\/doi\.org\/)?(.+)$/)?.[1];
   if (one) {
     if (one === "W404") return new Response("{}", { status: 404 });
@@ -338,6 +349,30 @@ describe("the assistant's search tools", () => {
     expect(await alice.mutation(api.research.searches.deleteSearch, { id })).toBeNull();
     expect(await search(id)).toBeNull();
     await expect(alice.mutation(api.research.searches.deleteSearch, { id })).rejects.toThrow(/not found/i);
+  });
+
+  it("count papers and how they divide, in one request, and take the names people use for parts of the world", async () => {
+    const { alice, make, search } = await setup();
+    const { count } = api.research.papers;
+    // How many, and nothing else. null is what a model that fills in every argument sends for what it doesn't mean.
+    expect(await alice.action(count, { query: "tutoring", by: null, fromYear: null })).toEqual({ total: 57 });
+    // By year, in order, whatever order OpenAlex counted them in.
+    requests = [];
+    expect(await alice.action(count, { query: "tutoring", by: "year", about: ["sub_saharan_africa"] })).toEqual({ total: 57, groups: [{ name: "2022", count: 5 }, { name: "2023", count: 30 }, { name: "2024", count: 22 }] });
+    expect(requests).toHaveLength(1);
+    expect(requests[0].url.searchParams.get("group_by")).toBe("publication_year");
+    // By author, largest first, each with the ID the `authors` filter takes; by language, with none.
+    expect((await alice.action(count, { query: "tutoring", by: "author" })).groups).toEqual([{ name: "Ada Okafor", count: 9, id: "A1" }, { name: "Ben Mwangi", count: 4, id: "A2" }]);
+    expect((await alice.action(count, { query: "tutoring", by: "language" })).groups).toEqual([{ name: "English", count: 50 }, { name: "French", count: 7 }]);
+    // Which papers a person rated isn't OpenAlex's to count.
+    await expect(alice.action(count, { query: "tutoring", ratedOnly: true, by: "year" })).rejects.toThrow(/can't be counted/);
+
+    // Sub-Saharan Africa and Latin America are the page's own regions put together, each once.
+    const { id } = await make({ query: "tutoring", about: ["Sub-Saharan Africa", "latin_america", "eastern_africa"], authorsIn: ["latin america and the caribbean"] });
+    expect(await search(id)).toMatchObject({
+      selectedCountryFocus: ["eastern_africa", "middle_africa", "southern_africa", "western_africa", "caribbean", "central_america", "south_america"],
+      selectedRegions: ["caribbean", "central_america", "south_america"],
+    });
   });
 
   it("count a search again when its query or filters change, and record a count as whoever's read made it", async () => {
