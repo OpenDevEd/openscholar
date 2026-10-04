@@ -96,7 +96,9 @@ export const answerAction = defineUserMutation({
   returns: v.object({ outcome: screeningOutcomeValidator, undo: reversedBy("screening/papers:answer", { ...answerOf, answer: asItWas, expect: answerAsLeft }) }),
   spendsCredits: false,
   outsideEffect: false,
-  undoable: true,
+  // A change returns its undo, but not every one: an answer that moves a paper in or out of
+  // what the job saves has none yet (#342). Until it does, the assistant asks before it changes one.
+  undoable: false,
   run: async (ctx, userId, { jobId, paperId, questionKey, answer, expect }, author) => {
     let job = await ctx.db.get("screeningJobs", jobId);
     if (!job || job.userId !== userId) throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
