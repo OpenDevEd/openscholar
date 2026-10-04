@@ -50,6 +50,19 @@ async function setup() {
 }
 
 describe("account research records", () => {
+  it("keeps file imports on repeat upload without overwriting edits or another account", async () => {
+    const { alice, bob } = await setup();
+    const command = { kind: "createSearch" as const, search: { ...record, id: "import:file-record", screeningResponses: [] }, ifExists: "keep" as const };
+    const create = (as: Signed, accountId: string, requestId: string) => as.mutation(api.research.records.change, { accountId, requestId, command });
+    await create(alice, "alice", "first");
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "edit", command: { kind: "editSearch", id: command.search.id, edit: { kind: "query", query: "edited after import", field: "abstract" } } });
+    await create(alice, "alice", "repeat");
+    await create(bob, "bob", "first");
+    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: command.search.id })).toMatchObject({ query: "edited after import", field: "abstract" });
+    expect(await bob.query(api.research.records.getSearch, { accountId: "bob", id: command.search.id })).toMatchObject({ query: record.query, field: record.field });
+    await expect(create(bob, "alice", "foreign")).rejects.toThrow();
+    expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts })).page).toHaveLength(1);
+  });
   it("stores one row per paper, so changing one answer writes one row, and old revisions keep their answers", async () => {
     const { alice, t } = await setup();
     const question = "هل هذه تجربة؟ ".repeat(60);

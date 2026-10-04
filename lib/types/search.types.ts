@@ -147,6 +147,7 @@ export interface SearchFilters {
  */
 export interface SearchResult {
   id: string;
+  importSource?: { id: string; query: string; resolvedQuery: string; resolution: "at_export" };
   query: string;
   /** How many queries the search has had, the current one included. */
   queryHistoryCount: number;

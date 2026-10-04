@@ -8,7 +8,7 @@ import {
   MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_METADATA_FIELDS, MAX_QUESTIONS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
-import { screeningAnswersValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
+import { screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import {
   errorCodeValidator,
@@ -1022,6 +1022,7 @@ export default defineSchema({
         // The answers it was scored on, by question key, and the keys of those a person or the assistant set.
         answers: screeningAnswersValidator,
         changed: capped(v.optional(v.array(v.string())), MAX_QUESTIONS),
+        decisions: screeningDecisionSourcesValidator,
       }),
     ),
     venue: v.optional(v.string()),
@@ -1066,6 +1067,7 @@ export default defineSchema({
   // A Screen all job's finished papers, counted by the bookkeeping worker alone.
   screeningJobProgress: defineTable({
     jobId: v.id("screeningJobs"),
+    exportRevision: v.optional(v.number()),
     completed: v.number(),
     skipped: v.number(),
     failed: v.number(),
@@ -1139,6 +1141,8 @@ export default defineSchema({
     digest: v.string(),
     format: exportFormatValidator,
     source: exportSourceValidator,
+    sourceRevision: v.optional(v.string()),
+    failureReason: v.optional(v.literal("changed")),
     part: v.number(),
     cursor: v.union(v.string(), v.null()),
     serving: v.boolean(),

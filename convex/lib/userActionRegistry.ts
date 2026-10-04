@@ -19,7 +19,7 @@ import { countPapersAction as libraryCountPapersAction, papersAction as libraryP
 import { addToCollectionAction, countCollectionsAction, createCollectionAction, deleteCollectionAction, getCollectionAction, listCollectionsAction, removeFromCollectionAction, renameCollectionAction } from "../library/collections";
 import { estimateAction as screeningEstimateAction, listJobsAction as screeningJobsAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
-import { slotsAction as screeningSlotsAction } from "../screening/queries";
+import { slotsAction as screeningSlotsAction, getScreeningJobAction, listScreeningResultsAction } from "../screening/queries";
 import { screenAction } from "../screening/start";
 import { countAdminsAction, listAdminsAction, listCandidatesAction } from "../admins/queries";
 import { listModelsAction as adminModelsAction, summaryAction as adminModelSummaryAction } from "../models/admin";
@@ -62,6 +62,8 @@ export const USER_ACTIONS: readonly UserAction[] = [
   libraryCountPapersAction,
   balanceAction,
   screeningJobsAction,
+  getScreeningJobAction,
+  listScreeningResultsAction,
   lookupFindAction,
   revisionsAction,
   searchHistoryAction,

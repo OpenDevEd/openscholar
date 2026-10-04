@@ -11,12 +11,12 @@ import { Button } from "@/components/ui/button";
 import { localSearchHistoryStore, useSearchHistoryStore, useUIStore } from "@/lib/store";
 import { restoreFromHistory } from "@/lib/search/actions";
 import {
-  jsonToCSV,
   downloadAsFile,
   uploadFile,
   triggerFileUpload,
 } from "@/lib/utils";
-import { downloadExport } from "@/lib/export";
+import { downloadExport, exportFiles } from "@/lib/export";
+import { serializeSearch } from "@/lib/research/records";
 import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
 import { validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
@@ -40,6 +40,7 @@ import { useSearchList } from "@/lib/research/search-list";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 import posthog from "posthog-js";
+import { toast as notify } from "sonner";
 
 interface HistoryCommandCenterProps {
   /**
@@ -115,38 +116,28 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
       if (account) return await downloadExport(convex, { kind: "history" }, format);
       const data = localSearchHistoryStore.getState().searchHistory.map((item) => {
         const { expandedQuery } = validateAndExpandKeywordsSilently(item.query);
-        return {
-          search_query: expandedQuery,
-          count: item.count,
-          field: item.field,
-        };
+        return { ...serializeSearch(item), resolvedQuery: expandedQuery };
       });
-      downloadAsFile(format === "json" ? JSON.stringify(data, null, 2) : jsonToCSV(data), `search_history.${format}`, format);
+      const file = exportFiles.history[format];
+      downloadAsFile(file.start(new Date()) + data.map(file.item).join('') + file.end(), `search_history.${format}`, format);
     } catch (error) {
       console.error(`[History] Failed to export as ${format}:`, error);
       toast.io.downloadFailed(tToast(format === "json" ? "entityJson" : "entityCsv"));
     }
   };
 
-  const handleUploadJSON = async () => {
+  const upload = async (format: "json" | "csv") => {
     try {
-      const file = await triggerFileUpload(".json");
+      const file = await triggerFileUpload(`.${format}`);
       const data = await uploadFile(file);
       importSearchHistory(data);
+      if (data.some(row => row.spec === undefined && typeof row.search_query === "string")) notify.info(th("importMissingFilters"));
     } catch (error) {
-      toast.io.uploadFailed(tToast("entityJson"), error);
+      toast.io.uploadFailed(tToast(format === "json" ? "entityJson" : "entityCsv"), error);
     }
   };
-
-  const handleUploadCSV = async () => {
-    try {
-      const file = await triggerFileUpload(".csv");
-      const data = await uploadFile(file);
-      importSearchHistory(data);
-    } catch (error) {
-      toast.io.uploadFailed(tToast("entityCsv"), error);
-    }
-  };
+  const handleUploadJSON = () => upload("json");
+  const handleUploadCSV = () => upload("csv");
 
   const handleClearAll = () => {
     showConfirmation({

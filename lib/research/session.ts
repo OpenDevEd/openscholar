@@ -30,7 +30,7 @@ function newSearch(input: Parameters<SearchHistoryState["addSearchResult"]>[0]):
 }
 
 /** A search to create on the account, with the history it starts with. */
-function createSearch(search: SearchResult): ResearchCommand {
+function createSearch(search: SearchResult): Extract<ResearchCommand, { kind: "createSearch" }> {
   return { kind: "createSearch", search: serializeSearch(search), history: { queryHistory: search.queryHistory ?? [], questionHistory: search.questionHistory ?? [] } };
 }
 
@@ -102,8 +102,9 @@ export class ResearchSession {
       clearSearchHistory: () => this.dispatch({ kind: "clearSearches" }),
       migrateSearchResult: search => search.id,
       importSearchHistory: rows => {
-        for (const row of rows) {
-          this.dispatch(createSearch(importSearchRecord(row)));
+        const searches = rows.map(row => importSearchRecord(row));
+        for (const search of searches) {
+          this.dispatch({ ...createSearch(search), ifExists: "keep" });
         }
         return rows.length;
       },

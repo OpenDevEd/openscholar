@@ -19,6 +19,18 @@ function seed() {
 }
 
 describe("local research import acknowledgement", () => {
+  it("keeps invalid older records while migrating valid records and their screening answers", async () => {
+    const id = seed();
+    const original = localSearchHistoryStore.getState().getSearchResult(id)!;
+    const invalid = { ...original, id: "", count: -1 };
+    localSearchHistoryStore.setState({ searchHistory: [{ ...original, id: "" }, invalid] });
+    const saved: unknown[] = [];
+    const failures = await importLocalResearch("alice", async batch => { saved.push(...batch.searches); return null; }, () => true);
+    expect(failures).toHaveLength(1);
+    expect(saved).toMatchObject([{ search: { id: expect.any(String), screeningResponses: [{ paperId: "W1", responses: [{ question: "Randomized?", response: true }] }] } }]);
+    expect(localSearchHistoryStore.getState().searchHistory).toEqual([invalid]);
+    expect(localRatingsStore.getState().ratings).toEqual({});
+  });
   it("keeps a rejected record while importing unrelated valid records", async () => {
     const id = seed();
     const errors = await importLocalResearch("alice", async batch => {

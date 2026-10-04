@@ -601,7 +601,12 @@ export const localSearchHistoryStore = create<SearchHistoryState>()(
         return result.id;
       },
       importSearchHistory: (data) => {
-        const validItems = data.map(item => importSearchRecord(item, generateUUID()));
+        const existing = new Set(get().searchHistory.map(search => search.id));
+        const validItems = data.map(item => importSearchRecord(item)).filter(item => {
+          if (existing.has(item.id)) return false;
+          existing.add(item.id);
+          return true;
+        });
         
         if (validItems.length > 0) {
           set((state) => ({

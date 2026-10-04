@@ -17,7 +17,8 @@
  */
 
 import { useState, useEffect, type ReactNode } from 'react';
-import { useRouter, useSearchParams, useParams, usePathname } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { getEffectiveSearchId } from '../utils';
 import { useSearchHistoryStore } from '../store';
 import { searchResultToParams } from '../search-params/converters';
 import { buildResultsUrl, parseSearchParamsFromUrl, readSharedOql } from '../search-params';
@@ -31,10 +32,9 @@ interface SearchInitializerProps {
 
 export function SearchInitializer({ children }: SearchInitializerProps) {
   const router = useRouter();
-  const routeParams = useParams<{ searchId: string }>();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const searchId = routeParams?.searchId ?? '';
+  const searchId = getEffectiveSearchId(pathname) ?? '';
 
   // Store methods
   const getSearchResult = useSearchHistoryStore((state) => state.getSearchResult);

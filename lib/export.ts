@@ -3,6 +3,7 @@ import type { ExportFormat, ExportSource } from "@/convex/exportValidators";
 import type { ConvexReactClient } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { digestOpaqueToken } from "@/convex/lib/opaqueTokenDigest";
+import { searchFields, type SavedSearch } from "./research/records";
 
 type Row = Record<string, string | number | boolean>;
 
@@ -44,12 +45,19 @@ function libraryRow(item: Doc<"libraryItems">) {
   };
 }
 
-/** A saved search as its export reads it: `query` with the person's shortcuts expanded. */
-export type ExportedSearch = { query: string; count: number; field: string };
+/** The current search specification, with shortcut expansion recorded at export time. */
+export type ExportedSearch = Pick<SavedSearch, "query" | "count" | "field"> & Partial<SavedSearch> & { resolvedQuery?: string };
 
 /** One exported search, under the names the history page's upload reads back. */
-function historyRow(search: ExportedSearch) {
-  return { count: search.count, field: search.field, search_query: search.query };
+export function historyRow(search: ExportedSearch) {
+  const omitted = new Set(['chatJobIdsByAccountId', 'screeningResponses', 'queryHistoryCount', 'questionCount', 'questionText', 'latestQuestion', 'importSource']);
+  const spec = Object.fromEntries(Object.entries(search).filter(([key]) => key in searchFields && !omitted.has(key)));
+  const id = search.id ?? '';
+  const resolvedQuery = search.resolvedQuery ?? search.query;
+  return {
+    format_version: 1, export_id: id, count: search.count, field: search.field, search_query: resolvedQuery,
+    spec,
+  };
 }
 
 /** A query shortcut as its export reads it. */
@@ -84,8 +92,13 @@ export const exportFiles = {
   },
   history: {
     name: () => "search_history",
-    csv: csvFile(Object.keys(historyRow({ query: "", count: 0, field: "" })), historyRow),
-    json: jsonList(historyRow),
+    csv: csvFile(['format_version', 'export_id', 'count', 'field', 'search_query', 'spec'], (search: ExportedSearch) => { const row = historyRow(search); return { ...row, spec: JSON.stringify(row.spec) }; }),
+    json: {
+      contentType: "application/json; charset=utf-8",
+      start: (at: Date) => JSON.stringify({ format: 'openscholar.searches', version: 1, exportedAt: at.toISOString(), scope: 'current search specifications', searches: [] }).replace(/\[\]\}$/, '['),
+      item: (search: ExportedSearch, index: number) => `${index ? ',' : ''}\n${JSON.stringify(historyRow(search))}`,
+      end: () => '\n]}\n',
+    },
   },
   // Under the names the Bookmarks page's upload reads back; the CSV says when in words.
   shortcuts: {
@@ -140,7 +153,7 @@ export async function downloadExport(convex: ConvexReactClient, source: ExportSo
       const progress = watch.localQueryResult();
       if (progress === undefined) return;
       if (progress === null) return settle();
-      if (progress.failed) return settle(new Error(`Part ${progress.part} of the export failed`));
+      if (progress.failed) return settle(new Error(progress.failureReason === "changed" ? "Screening changed during export. Download it again to get one consistent version." : `Part ${progress.part} of the export failed`));
       if (progress.serving) return clearTimeout(timer);
       if (progress.part > opened) {
         open((opened = progress.part));
