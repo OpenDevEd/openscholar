@@ -32,6 +32,7 @@ export const DEFAULT_FILTERS = {
   workLanguages: [] as string[],
   institutionTypes: [] as string[],
   funders: [] as string[],
+  authors: [] as string[],
   minCitations: null as number | null,
   hasAbstract: false,
   includeRetracted: false,
@@ -60,6 +61,7 @@ export function clearedFilterUpdates() {
     workLanguages: [],
     institutionTypes: [],
     funders: [],
+    authors: [],
     minCitations: DEFAULT_FILTERS.minCitations,
     hasAbstract: DEFAULT_FILTERS.hasAbstract,
     includeRetracted: DEFAULT_FILTERS.includeRetracted,
@@ -92,6 +94,7 @@ export function createDefaultFilters(): SearchFilters {
     workLanguages: [],
     institutionTypes: [],
     funders: [],
+    authors: [],
     minCitations: DEFAULT_FILTERS.minCitations,
     hasAbstract: DEFAULT_FILTERS.hasAbstract,
     includeRetracted: DEFAULT_FILTERS.includeRetracted,
@@ -414,6 +417,12 @@ export function createSearchParameters(
     };
   }
   if (filters.funders.length) apiFilters.funders = { id: filters.funders.join('|') };
+  if (filters.authors.length) {
+    apiFilters.authorships = {
+      ...(apiFilters.authorships as Record<string, unknown> | undefined),
+      author: { id: filters.authors.join('|') },
+    };
+  }
   // OpenAlex takes "more than", so at least N is more than N - 1.
   if (filters.minCitations) apiFilters.cited_by_count = `>${filters.minCitations - 1}`;
   if (filters.hasAbstract) apiFilters.has_abstract = true;

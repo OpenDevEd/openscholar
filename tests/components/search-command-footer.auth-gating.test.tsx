@@ -170,6 +170,7 @@ vi.mock("@/lib/search", () => ({
       wlang: [],
       itype: [],
       funder: [],
+      author: [],
       mincite: null,
       abs: false,
       retracted: false,

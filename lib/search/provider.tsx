@@ -101,6 +101,7 @@ function cloneSearchParams(params: SearchParams): SearchParams {
     wlang: [...params.wlang],
     itype: [...params.itype],
     funder: [...params.funder],
+    author: [...params.author],
   };
 }
 
@@ -201,6 +202,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       wlang: urlParams.wlang,
       itype: urlParams.itype,
       funder: urlParams.funder,
+      author: urlParams.author,
       mincite: urlParams.mincite,
       abs: urlParams.abs,
       retracted: urlParams.retracted,
@@ -239,6 +241,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     urlParams.wlang,
     urlParams.itype,
     urlParams.funder,
+    urlParams.author,
     urlParams.mincite,
     urlParams.abs,
     urlParams.retracted,
@@ -273,6 +276,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
           wlang: parsedParams.wlang ? [...parsedParams.wlang] : [],
           itype: parsedParams.itype ? [...parsedParams.itype] : [],
           funder: parsedParams.funder ? [...parsedParams.funder] : [],
+          author: parsedParams.author ? [...parsedParams.author] : [],
           page: DEFAULT_SEARCH_PARAMS.page,
           rmin: DEFAULT_SEARCH_PARAMS.rmin,
           rmax: DEFAULT_SEARCH_PARAMS.rmax,
@@ -338,6 +342,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       workLanguages: params.wlang,
       institutionTypes: params.itype,
       funders: params.funder,
+      authors: params.author,
       minCitations: params.mincite,
       hasAbstract: params.abs,
       includeRetracted: params.retracted,
@@ -488,6 +493,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     currentParams.wlang,
     currentParams.itype,
     currentParams.funder,
+    currentParams.author,
     currentParams.mincite,
     currentParams.abs,
     currentParams.retracted,
@@ -657,6 +663,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     if ('wlang' in updates) storeUpdates.workLanguages = updates.wlang;
     if ('itype' in updates) storeUpdates.institutionTypes = updates.itype;
     if ('funder' in updates) storeUpdates.funders = updates.funder;
+    if ('author' in updates) storeUpdates.authors = updates.author;
     if ('mincite' in updates) storeUpdates.minCitations = updates.mincite ?? undefined;
     if ('abs' in updates) storeUpdates.hasAbstract = updates.abs;
     if ('retracted' in updates) storeUpdates.includeRetracted = updates.retracted;
@@ -692,6 +699,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       wlang: [],
       itype: [],
       funder: [],
+      author: [],
       mincite: null,
       abs: false,
       retracted: false,
@@ -718,6 +726,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       workLanguages: [],
       institutionTypes: [],
       funders: [],
+      authors: [],
       minCitations: undefined,
       hasAbstract: false,
       includeRetracted: false,
@@ -767,6 +776,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     workLanguages: urlParams.wlang,
     institutionTypes: urlParams.itype,
     funders: urlParams.funder,
+    authors: urlParams.author,
     minCitations: urlParams.mincite,
     hasAbstract: urlParams.abs,
     includeRetracted: urlParams.retracted,

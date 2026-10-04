@@ -135,6 +135,7 @@ export interface SearchFilters {
   workLanguages: string[];
   institutionTypes: string[];
   funders: string[];
+  authors: string[];
   minCitations: number | null;
   hasAbstract: boolean;
   /** Retracted works are left out unless this is set. */
@@ -183,6 +184,7 @@ export interface SearchResult {
   workLanguages?: string[];
   institutionTypes?: string[];
   funders?: string[];
+  authors?: string[];
   minCitations?: number;
   hasAbstract?: boolean;
   includeRetracted?: boolean;

@@ -18,6 +18,7 @@ import {
   Building2,
   HandCoins,
   Award,
+  UserRound,
 } from "@/components/icons";
 import {
   cn,
@@ -49,6 +50,7 @@ import {
 } from "@/components/ui/select";
 import { ResearchAreaFilter } from "./research-area-filter";
 import { FunderFilter } from "./funder-filter";
+import { AuthorFilter } from "./author-filter";
 import { useLocale, useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { FilterSection } from "@/components/shared/filter-section";
@@ -607,6 +609,23 @@ const FunderFilterPanel = React.memo(function FunderFilterPanel() {
   );
 });
 
+const AuthorFilterPanel = React.memo(function AuthorFilterPanel() {
+  const tf = useTranslations("searchFilters");
+  const { authors } = useCurrentSearchFormState();
+  const updateFilter = useUpdateSearchFilter();
+  const isActive = authors.length > 0;
+  return (
+    <FilterSection
+      title={tf("authors")}
+      icon={UserRound}
+      isActive={isActive}
+      onClear={isActive ? () => updateFilter({ authors: [] }) : undefined}
+    >
+      <AuthorFilter selected={authors} onChange={(ids) => updateFilter({ authors: ids })} />
+    </FilterSection>
+  );
+});
+
 const MinCitationsFilterPanel = React.memo(function MinCitationsFilterPanel() {
   const tf = useTranslations("searchFilters");
   const { minCitations } = useCurrentSearchFormState();
@@ -718,6 +737,7 @@ export const SidebarContent = React.memo(function SidebarContent({
       <SdgFilterPanel />
       <InstitutionTypeFilterPanel />
       <FunderFilterPanel />
+      <AuthorFilterPanel />
       <MinCitationsFilterPanel />
 
       {/* Cites Filter (when not active) */}

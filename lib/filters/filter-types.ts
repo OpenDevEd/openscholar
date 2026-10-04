@@ -31,6 +31,7 @@ export type FilterType =
   | "workLanguage"
   | "institutionType"
   | "funder"
+  | "author"
   | "minCitations"
   | "hasAbstract"
   | "includeRetracted";
@@ -105,6 +106,7 @@ export interface FilterParams {
   workLanguages?: string[];
   institutionTypes?: string[];
   funders?: string[];
+  authors?: string[];
   minCitations?: number | null;
   hasAbstract?: boolean;
   includeRetracted?: boolean;
