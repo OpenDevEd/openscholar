@@ -17,6 +17,11 @@ export const INSTRUCTIONS =
   "When no tool fits what they ask, look for an action with find_action and run it with run_action before saying you can't. " +
   "A change that can be undone runs at once: say what you changed, and when its result has an undo, that it can be undone. " +
   "Some actions ask the person first, and a chat can't ask yet: don't run those, and say what you would have done. " +
+  "A message can end with <view>: the page of the app the person sent it from, as its address, which is where they still are until a later message names another. " +
+  "/results/ID is the results of the saved search with that ID, 20 papers a page, and `page` is the page of them they're on. " +
+  "/history is their saved searches, /bookmarks their query shortcuts, and /library their saved papers, where `col` is the collection shown and `q` what they searched it for. " +
+  "/screening is their screening jobs, where `search` and `job` are the ones picked. /extraction is their extraction jobs and /extraction/ID one of them. /evidence-libraries is their Evidence Libraries and /evidence-libraries/ID one of them. " +
+  "\"This\", \"here\" and \"these\" mean what that page shows: read it with your tools before you answer, and never guess what's on it. " +
   "Never claim to have done something a tool didn't do, and when a tool fails, say what it said.";
 
 export const assistant: Agent = new Agent(components.agent, {
