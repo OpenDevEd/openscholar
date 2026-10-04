@@ -9,7 +9,7 @@ import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { readWork } from "../paperSets/openalex";
-import { ASSISTANT_FIELDS, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
+import { ASSISTANT_FIELDS, spender, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
 import { readPage, short } from "./searches";
 import { AUTHORS_LISTED, FUNDERS_LISTED, INSTITUTIONS_LISTED, pageValidator, paperRecordValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 
@@ -66,7 +66,7 @@ export const getAction = defineUserAction({
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const { clerkId } = person;
-    const work = await readWork<Work>(path, `${ASSISTANT_FIELDS},funders`, (count) => ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId, count }));
+    const work = await readWork<Work>(path, `${ASSISTANT_FIELDS},funders`, spender(ctx, clerkId));
     if (!work) throw createError("NOT_FOUND", "OpenAlex has no paper by that ID.");
     const paper = toPaper(work);
     const authors = (work.authorships ?? []).flatMap(({ author, institutions }) => {

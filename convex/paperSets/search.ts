@@ -77,6 +77,27 @@ export const spendRequests = internalMutation({
   handler: async (ctx, { clerkId, count }) => spendOpenAlexRequests(ctx, clerkId, count),
 });
 
+/** Times a count that lost a race for the counter is tried, and the longest wait before the first retry. */
+const SPEND_TRIES = 6;
+const SPEND_WAIT_MS = 300;
+/**
+ * Counts requests against an account's OpenAlex allowance, from an action. Calls made at
+ * once write the same counter (the assistant reads ten papers in one step), and those that
+ * keep losing the race fail: each is tried again a moment later, further apart each time.
+ */
+export const spender =
+  (ctx: Pick<ActionCtx, "runMutation">, clerkId: string) =>
+  async (count: number): Promise<boolean> => {
+    for (let tries = 1; ; tries += 1) {
+      try {
+        return await ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId, count });
+      } catch (error) {
+        if (tries >= SPEND_TRIES || !/changed while this mutation was being run/.test(String(error))) throw error;
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * SPEND_WAIT_MS * tries));
+      }
+    }
+  };
+
 export type Work = {
   id: string;
   display_name?: string | null;
@@ -138,9 +159,7 @@ export async function searchPapers(
   const rating = snapshot ? snapshot.rating : found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined;
   const taken: SearchSnapshot = { request, ...(rating ? { rating } : {}) };
 
-  const works = await readSearchWorks<Work>(request, { first, last, select: SCREENING_FIELDS }, (count) =>
-    ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId: found.clerkId, count }),
-  );
+  const works = await readSearchWorks<Work>(request, { first, last, select: SCREENING_FIELDS }, spender(ctx, found.clerkId));
   return { papers: await keptByRating(ctx, userId, works.map(toPaper), rating), ended: works.length < last - first + 1, snapshot: taken };
 }
 

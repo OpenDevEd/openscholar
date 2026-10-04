@@ -189,3 +189,25 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(requests).toHaveLength(0);
   });
 });
+
+describe("counting OpenAlex requests from an action", () => {
+  it("tries again when calls made at once collide on the counter, and gives up on anything else", async () => {
+    const { spender } = await import("./search");
+    const collision = new Error('Documents read from or written to the "rateLimits" table changed while this mutation was being run and on every subsequent retry.');
+    // Two collisions, then it counts: the caller never sees them.
+    const runMutation = vi.fn().mockRejectedValueOnce(collision).mockRejectedValueOnce(collision).mockResolvedValueOnce(true);
+    expect(await spender({ runMutation } as never, "clerk_1")(3)).toBe(true);
+    expect(runMutation).toHaveBeenCalledTimes(3);
+    expect(runMutation.mock.calls[2][1]).toEqual({ clerkId: "clerk_1", count: 3 });
+    // An allowance that's used up is an answer, not a collision.
+    expect(await spender({ runMutation: vi.fn().mockResolvedValue(false) } as never, "clerk_1")(1)).toBe(false);
+    // Any other failure is the caller's to hear about, at once.
+    const broken = vi.fn().mockRejectedValue(new Error("Authentication required"));
+    await expect(spender({ runMutation: broken } as never, "clerk_1")(1)).rejects.toThrow(/Authentication required/);
+    expect(broken).toHaveBeenCalledTimes(1);
+    // A counter that never frees up fails after a bounded number of tries.
+    const stuck = vi.fn().mockRejectedValue(collision);
+    await expect(spender({ runMutation: stuck } as never, "clerk_1")(1)).rejects.toThrow(/changed while this mutation/);
+    expect(stuck).toHaveBeenCalledTimes(6);
+  }, 20_000);
+});
