@@ -105,13 +105,6 @@ export const listInvitations = query({
   handler: async (ctx, args) => ({page: await waitingInvitations(ctx, args), isDone: true, continueCursor: ""}),
 });
 
-/** Kept for one release, while the deployed site still calls it; `listInvitations` replaces it. */
-export const listMine = query({
-  args: waitingArgs,
-  returns: v.array(waitingInvitationValidator),
-  handler: waitingInvitations,
-});
-
 export const respondVerified = internalMutation({
   args: {invitationId: v.id("authorProfileInvitations"), emails: v.array(v.string()), accept: v.boolean()},
   handler: async (ctx, args) => {
