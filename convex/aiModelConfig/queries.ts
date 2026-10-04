@@ -1,8 +1,7 @@
 import { query, type QueryCtx } from "../_generated/server";
-import { v } from "convex/values";
 import { modelSummary, presetPick } from "../ai/serverModel";
-import { AI_TASKS, PRESET_KEYS, type PresetKey } from "../../lib/ai/tasks";
-import { presetKeyValidator, presetPicksValidator, taskPicksValidator } from "./validators";
+import { AI_TASKS, type PresetKey } from "../../lib/ai/tasks";
+import { presetPicksValidator } from "./validators";
 
 /** What a preset runs every task on. A null model means nothing live is set. */
 const picksOf = (ctx: QueryCtx, preset: PresetKey) =>
@@ -23,9 +22,3 @@ export const presetPicks = query({
   },
 });
 
-/** Kept for one release, while the deployed site still calls it; `presetPicks` replaces it. */
-export const presets = query({
-  args: {},
-  returns: v.array(v.object({ preset: presetKeyValidator, tasks: taskPicksValidator })),
-  handler: async (ctx) => await Promise.all(PRESET_KEYS.map(async (preset) => ({ preset, tasks: await picksOf(ctx, preset) }))),
-});
