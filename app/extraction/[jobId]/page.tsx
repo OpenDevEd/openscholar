@@ -146,7 +146,8 @@ export default function JobDetailPage() {
   const [exportMode, setExportMode] = useState<'all' | 'selected'>('all');
   const [openAnswer, setOpenAnswer] = useState<OpenAnswer | null>(null);
   const [mobilePane, setMobilePane] = useState<"results" | "citation">("results");
-  const { expand: expandCitationPanel } = useExtractionCitationPanelStore();
+  // Only the action: reading the whole store would redraw this page each time the panel collapses or expands.
+  const expandCitationPanel = useExtractionCitationPanelStore((state) => state.expand);
 
   const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
   const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
@@ -304,17 +305,14 @@ export default function JobDetailPage() {
     setSelection(newIds);
   }, [setSelection]);
 
-  // Clicking the answer that is already open closes the panel again.
+  // Clicking the answer that is already open closes the panel again. The callback
+  // never changes, so the table's rows are not redrawn for it. With no answer open
+  // the panel and the mobile pane are not shown, so setting them either way is the same.
   const openAnswerPanel = useCallback((answer: OpenAnswer) => {
-    if (openAnswerKey(answer) === openAnswerKey(openAnswer)) {
-      setOpenAnswer(null);
-      setMobilePane("results");
-      return;
-    }
-    setOpenAnswer(answer);
+    setOpenAnswer((current) => (openAnswerKey(answer) === openAnswerKey(current) ? null : answer));
     expandCitationPanel();
     setMobilePane("citation");
-  }, [expandCitationPanel, openAnswer]);
+  }, [expandCitationPanel]);
 
   const handleCancel = async () => {
     try {
