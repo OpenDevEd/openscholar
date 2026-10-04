@@ -12,7 +12,6 @@
  */
 
 export {
-  getMyJobs,
   listJobs,
   listJobsForAssistant,
   countJobs,
@@ -23,4 +22,4 @@ export {
 } from "./queries/jobs";
 
 export { countJobFailures, countJobFailuresForAssistant } from "./queries/failures";
-export { getJobResultsPage, listJobResults, listJobResultsForAssistant, countJobResults, countJobResultsForAssistant } from "./queries/results";
+export { listJobResults, listJobResultsForAssistant, countJobResults, countJobResultsForAssistant } from "./queries/results";

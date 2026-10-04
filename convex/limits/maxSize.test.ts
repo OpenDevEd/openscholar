@@ -26,9 +26,9 @@ describe("at the largest sizes the product allows", () => {
     const t = convexTest(schema);
     const { userId, as } = await seedAccount(t);
     const { jobId } = await seedExtractionJob(t, userId);
-    const page = await as.query(api.extraction.queries.getJobResultsPage, { jobId, page: 1, pageSize: 25, filters, sortBy: "default" });
-    expect(page).toMatchObject({ status: "ok", totalAll: MAX_SIZE.papersPerJob });
-    expect(page.items).toHaveLength(25);
+    const page = await as.query(api.extraction.queries.listJobResults, { jobId, filters, sortBy: "default", paginationOpts: { cursor: null, numItems: 25 } });
+    expect(page.page).toHaveLength(25);
+    expect(page.isDone).toBe(false);
     const details = await as.query(api.extraction.queries.getJobDetails, { jobId });
     expect(details).toMatchObject({ status: "ok" });
   }, 300_000);
@@ -40,13 +40,13 @@ describe("at the largest sizes the product allows", () => {
     const { userId, as } = await seedAccount(t);
     const { jobId } = await seedExtractionJob(t, userId);
     const page = (searchQuery: string, pageSize: number) =>
-      as.query(api.extraction.queries.getJobResultsPage, { jobId, page: 1, pageSize, filters: { ...filters, searchQuery }, sortBy: "default" });
+      as.query(api.extraction.queries.listJobResults, { jobId, filters: { ...filters, searchQuery }, sortBy: "default", paginationOpts: { cursor: null, numItems: pageSize } });
     // Asking for more than the largest page gets the largest page.
     const whole = await page("", MAX_SIZE.papersPerJob);
-    expect(whole.items).toHaveLength(RESULTS_PAGE_SIZE_MAX);
-    expect(whole.items.every((paper) => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
+    expect(whole.page).toHaveLength(RESULTS_PAGE_SIZE_MAX);
+    expect(whole.page.every((paper) => paper.results.length === MAX_SIZE.questionsPerJob)).toBe(true);
     // A search reads only its matches, so its largest page fits too.
-    expect((await page("tutoring", RESULTS_PAGE_SIZE_MAX)).items).toHaveLength(RESULTS_PAGE_SIZE_MAX);
+    expect((await page("tutoring", RESULTS_PAGE_SIZE_MAX)).page).toHaveLength(RESULTS_PAGE_SIZE_MAX);
   }, 300_000);
 
   it("a 1,000-paper, 50-question extraction job shows its progress and retry summaries", async () => {
@@ -54,8 +54,9 @@ describe("at the largest sizes the product allows", () => {
     const { userId, as } = await seedAccount(t);
     const { jobId } = await seedExtractionJob(t, userId);
     const results = MAX_SIZE.papersPerJob * MAX_SIZE.questionsPerJob;
-    expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ answeredTotal: results, totalQuestions: results });
-    expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toEqual({ retryableCount: 0, permanentCount: 0, permanentBreakdown: {} });
+    expect(await as.query(api.extraction.queries.countJobFailures, { jobId })).toEqual({ asked: results, answered: results, retryable: 0, permanent: {}, paperErrors: {} });
+    // Counting a filtered view reads every paper of the job once.
+    expect(await as.query(api.extraction.queries.countJobResults, { jobId, filters: { ...filters, confidenceRange: [0, 50] } })).toMatchObject({ all: MAX_SIZE.papersPerJob });
   }, 300_000);
 
   // A retry batch's work is 25 papers × their questions whatever the job's size, so 100
@@ -78,7 +79,7 @@ describe("at the largest sizes the product allows", () => {
         done.add(next._id);
         await t.mutation(internal.extraction.mutations.retry.resetRetryBatch, next.args[0] as never);
       }
-      expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toMatchObject({ retryableCount: 0 });
+      expect(await as.query(api.extraction.queries.countJobFailures, { jobId })).toMatchObject({ retryable: 0 });
       const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
       expect(job).toMatchObject({ status: "extracting", runEpoch: 1 });
       expect(job?.retryReset).toBeUndefined();

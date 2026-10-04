@@ -48,8 +48,6 @@ describe("extraction job counters", () => {
     const { jobId, papers, results } = await seedJob(t, userId);
     expect(await verify(t)).toMatchObject({ mismatches: [] });
     await folded(t);
-    expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toEqual({ retryableCount: 2, permanentCount: 2, permanentBreakdown: { moderation: 1, pdf_invalid: 1 } });
-    expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ total: 2, answeredTotal: 1, totalQuestions: 5 });
     expect(await as.query(api.extraction.queries.countJobFailures, { jobId })).toEqual({ asked: 5, answered: 1, retryable: 2, permanent: { moderation: 1, pdf_invalid: 1 }, paperErrors: { pdf_invalid: 2 } });
 
     await t.run(async (ctx) => {
@@ -61,8 +59,20 @@ describe("extraction job counters", () => {
     });
     expect(await verify(t)).toMatchObject({ mismatches: [] });
     await folded(t);
-    expect(await as.query(api.extraction.queries.retry.getRetryableSummary, { jobId })).toEqual({ retryableCount: 0, permanentCount: 2, permanentBreakdown: { auth: 1, pdf_invalid: 1 } });
-    expect(await as.query(api.extraction.queries.mixedSuccessSummary.getMixedSuccessSummary, { jobId })).toMatchObject({ answeredTotal: 2, totalQuestions: 4 });
     expect(await as.query(api.extraction.queries.countJobFailures, { jobId })).toMatchObject({ asked: 4, answered: 2, retryable: 0, permanent: { auth: 1, pdf_invalid: 1 } });
+  });
+
+  it("show someone else's job, and a job with nothing counted, as zeros", async () => {
+    const t = convexTest(schema);
+    const { userId, as } = await seedAccount(t);
+    const { jobId } = await seedJob(t, userId);
+    await folded(t);
+    const zeros = { asked: 0, answered: 0, retryable: 0, permanent: {}, paperErrors: {} };
+    await t.run((ctx) => ctx.db.insert("users", { clerkId: "clerk_someone_else", email: "else@example.org", state: "active", createdAt: 1, updatedAt: 1 }));
+    const other = t.withIdentity({ tokenIdentifier: "https://test.clerk.local|clerk_someone_else", subject: "clerk_someone_else", issuer: "https://test.clerk.local" });
+    expect(await other.query(api.extraction.queries.countJobFailures, { jobId })).toEqual(zeros);
+
+    const empty = await t.run((ctx) => ctx.db.insert("extractionJobs", { userId, mode: "extraction", name: "Nothing yet", totalPapers: 0, createdAt: 1, updatedAt: 1 }));
+    expect(await as.query(api.extraction.queries.countJobFailures, { jobId: empty })).toEqual(zeros);
   });
 });
