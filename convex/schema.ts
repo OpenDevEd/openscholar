@@ -201,7 +201,10 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   // ASSISTANT CHATS (#324) - a chat, and who it is shared with
   // ═══════════════════════════════════════════════════════════════
-  assistantThreads: defineTable(assistantThreadFields).index("by_agentThreadId", ["agentThreadId"]),
+  assistantThreads: defineTable(assistantThreadFields)
+    .index("by_agentThreadId", ["agentThreadId"])
+    // An account's chats, for deleting them with it.
+    .index("by_owner", ["ownerId"]),
   assistantThreadAccess: defineTable(assistantThreadAccessFields)
     // A person's chats, newest first, through each of their principals.
     .index("by_principal_and_lastMessageAt", ["principal", "lastMessageAt"])

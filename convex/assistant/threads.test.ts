@@ -2,7 +2,7 @@
 import { register as registerAgentComponent } from "@convex-dev/agent/test";
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import schema from "../schema";
@@ -165,6 +165,24 @@ describe("assistant chats", () => {
     await expect(asBen.query(api.assistant.threads.get, { threadId })).rejects.toThrow(/Chat not found/);
     expect(titles(await asAda.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage }))).toEqual([]);
     expect(await t.run((ctx) => ctx.db.query("assistantThreadAccess").take(5))).toEqual([]);
+  });
+
+  it("go with their owner's account when it is purged, and so does that person's access to other chats", async () => {
+    const t = convexTest(schema);
+    const { asAda, asBen, ada, ben } = await people(t);
+    const hers = await asAda.mutation(api.assistant.threads.create, { title: "Ada's" });
+    await asAda.mutation(api.assistant.sharing.grant, { threadId: hers, principal: { kind: "user", userId: ben }, role: "read" });
+    const his = await asBen.mutation(api.assistant.threads.create, { title: "Ben's" });
+    await asBen.mutation(api.assistant.sharing.grant, { threadId: his, principal: { kind: "user", userId: ada }, role: "write" });
+    // Ada's account was deleted more than 30 days ago.
+    await t.run((ctx) => ctx.db.patch(ada, { state: "deleted", updatedAt: 1 }));
+
+    await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+
+    await expect(asBen.query(api.assistant.threads.get, { threadId: hers })).rejects.toThrow(/Chat not found/);
+    expect(titles(await asBen.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage }))).toEqual(["Ben's"]);
+    const left = await t.run((ctx) => ctx.db.query("assistantThreadAccess").take(10));
+    expect(left.map((row) => [row.threadId, row.role])).toEqual([[his, "owner"]]);
   });
 
   it("are refused while the assistant is switched off", async () => {

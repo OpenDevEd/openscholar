@@ -12,7 +12,7 @@ import { requireFeature } from "../featureFlags/guard";
 import { createError } from "../lib/errors";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import schema from "../schema";
-import { accessRows, best, principalsOf, requireThread, userPrincipal, type AssistantRole } from "./access";
+import { accessRows, best, deleteThread, principalsOf, requireThread, userPrincipal, type AssistantRole } from "./access";
 import { assistantRoleValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
@@ -169,10 +169,7 @@ export const removeAction = defineUserMutation({
   run: async (ctx, userId, { threadId }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId, "owner");
-    for (const row of await accessRows(ctx, threadId)) await ctx.db.delete("assistantThreadAccess", row._id);
-    await ctx.db.delete("assistantThreads", threadId);
-    // The agent component deletes the chat's messages a page at a time.
-    await ctx.runMutation(components.agent.threads.deleteAllForThreadIdAsync, { threadId: thread.agentThreadId });
+    await deleteThread(ctx, thread);
     return null;
   },
 });

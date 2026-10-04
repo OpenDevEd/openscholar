@@ -5,6 +5,7 @@
  * all import it.
  */
 import type { Infer } from "convex/values";
+import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
@@ -86,4 +87,29 @@ export async function requireThread(ctx: QueryCtx | MutationCtx, userId: Id<"use
 export async function touchThread(ctx: MutationCtx, threadId: Id<"assistantThreads">, at: number) {
   await ctx.db.patch("assistantThreads", threadId, { lastMessageAt: at, updatedAt: at });
   for (const row of await accessRows(ctx, threadId)) await ctx.db.patch("assistantThreadAccess", row._id, { lastMessageAt: at });
+}
+
+/** Deletes the chat for everyone: its access rows, its record, and its messages, which the agent component deletes a page at a time. */
+export async function deleteThread(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
+  for (const row of await accessRows(ctx, thread._id)) await ctx.db.delete("assistantThreadAccess", row._id);
+  await ctx.db.delete("assistantThreads", thread._id);
+  await ctx.runMutation(components.agent.threads.deleteAllForThreadIdAsync, { threadId: thread.agentThreadId });
+}
+
+/** Chats one cleanup run deletes for a purged account; each takes its access rows with it. */
+const PURGE_BATCH = 20;
+
+/**
+ * Deletes a purged account's chats, and its access to other people's, a batch at a time.
+ * Returns whether everything is gone; the cleanup runs again until it is.
+ */
+export async function purgeAccountChats(ctx: MutationCtx, userId: Id<"users">) {
+  const owned = await ctx.db.query("assistantThreads").withIndex("by_owner", (q) => q.eq("ownerId", userId)).take(PURGE_BATCH);
+  for (const thread of owned) await deleteThread(ctx, thread);
+  const shared = await ctx.db
+    .query("assistantThreadAccess")
+    .withIndex("by_principal_and_lastMessageAt", (q) => q.eq("principal", userPrincipal(userId)))
+    .take(PURGE_BATCH);
+  for (const row of shared) await ctx.db.delete("assistantThreadAccess", row._id);
+  return owned.length < PURGE_BATCH && shared.length < PURGE_BATCH;
 }
