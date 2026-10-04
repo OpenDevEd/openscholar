@@ -4,6 +4,7 @@ import { convexTest } from "convex-test";
 import type { FunctionArgs } from "convex/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
+import { MODEL_READS } from "../assistant/steps";
 import schema from "../schema";
 
 type Request = { url: URL };
@@ -18,21 +19,36 @@ const openAlex = vi.fn(async (input: string | URL) => {
     const author = url.pathname.endsWith("/authors");
     return new Response(JSON.stringify({ results: [{ id: `https://openalex.org/${author ? "A5023888391" : "F4320332161"}`, display_name: author ? "Jane Smith" : "Wellcome Trust", hint: author ? "University of Nairobi, Kenya" : "United Kingdom" }] }), { status: 200 });
   }
+  const one = url.pathname.match(/\/works\/(?:https:\/\/doi\.org\/)?(.+)$/)?.[1];
+  if (one) {
+    if (one === "W404") return new Response("{}", { status: 404 });
+    return new Response(JSON.stringify(work(7, "y".repeat(40))), { status: 200 });
+  }
   const [page, size] = [url.searchParams.has("cursor") ? 1 : Number(url.searchParams.get("page")), Number(url.searchParams.get("per-page"))];
   const start = (page - 1) * size;
   // A search for "verbose" finds papers whose every text runs long.
   const long = decodeURIComponent(url.search).includes("verbose") ? "x".repeat(900) : "";
-  const results = Array.from({ length: Math.max(0, Math.min(size, 57 - start)) }, (_, i) => ({
-    id: `https://openalex.org/W${start + i + 1}`,
-    display_name: `Paper ${start + i + 1}${long}`,
-    publication_year: 2020,
-    cited_by_count: 12,
-    abstract_inverted_index: Object.fromEntries(Array.from({ length: 120 }, (_, word) => [`word${word}`, [word]])),
-    // OpenAlex has no record for the third author: a paper names them, and that's all.
-    authorships: ["Ada Lovelace", "Alan Turing", "Grace Hopper", "Edsger Dijkstra"].map((name, at) => ({ author: { ...(at === 2 ? {} : { id: `https://openalex.org/A${at + 1}` }), display_name: name + long } })),
-    primary_location: { source: { display_name: `A journal${long}` } },
-  }));
+  const results = Array.from({ length: Math.max(0, Math.min(size, 57 - start)) }, (_, i) => work(start + i + 1, long));
   return new Response(JSON.stringify({ meta: { count: 57 }, results }), { status: 200 });
+});
+
+/** A work as OpenAlex returns one. */
+const work = (number: number, long: string) => ({
+  id: `https://openalex.org/W${number}`,
+  display_name: `Paper ${number}${long}`,
+  doi: `https://doi.org/10.1234/paper.${number}`,
+  type: "article",
+  language: "en",
+  open_access: { is_oa: true, oa_url: `https://example.org/paper-${number}.pdf` },
+  publication_year: 2020,
+  cited_by_count: 12,
+  abstract_inverted_index: Object.fromEntries(Array.from({ length: 120 }, (_, word) => [`word${word}`, [word]])),
+  // OpenAlex has no record for the third author: a paper names them, and that's all.
+  authorships: ["Ada Lovelace", "Alan Turing", "Grace Hopper", "Edsger Dijkstra"].map((name, at) => ({
+    author: { ...(at === 2 ? {} : { id: `https://openalex.org/A${at + 1}` }), display_name: name + long },
+    institutions: at < 2 ? [{ display_name: "University of Nairobi", country_code: "KE" }] : [{ display_name: "MIT", country_code: "US" }],
+  })),
+  primary_location: { source: { display_name: `A journal${long}` } },
 });
 
 beforeEach(() => {
@@ -99,7 +115,8 @@ describe("the assistant's search tools", () => {
     // Naming the revision it's at now doesn't pass it off as untouched.
     await expect(alice.mutation(remove, { id: kept.id, expect: { ...kept.undo!.args.expect, revision: await t.run(async (ctx) => (await ctx.db.query("searches").collect()).find((row) => row.localId === kept.id)!.revision) } })).rejects.toThrow(/changed since/);
     expect(await search(kept.id)).not.toBeNull();
-    await expect(alice.mutation(create, { query: "  " })).rejects.toThrow(/needs a query/);
+    // Nothing to search by: no query, and no filter that narrows it.
+    await expect(alice.mutation(create, { query: "  ", sort: "newest" })).rejects.toThrow(/needs a query, or a filter/);
     await expect(alice.mutation(create, { query: "tutoring", fromYear: 2020.5 })).rejects.toThrow(/whole number/);
     await expect(alice.mutation(create, { query: "tutoring", minCitations: -1 })).rejects.toThrow(/whole number/);
   });
@@ -134,9 +151,11 @@ describe("the assistant's search tools", () => {
     await edit({ id, fromYear: null, toYear: null });
     expect(await search(id)).toMatchObject({ isYearRangeEnabled: false });
     await expect(update({ id, fromYear: 2021, toYear: 2020 })).rejects.toThrow(/first year is after/);
-    // A blank query changes nothing, the filters given with it included.
-    await expect(update({ id, query: "   ", openAccessOnly: true })).rejects.toThrow(/needs a query/);
-    expect((await search(id))!.openAccessOnly).toBeUndefined();
+    // A search can lose its query while a filter still narrows it, and not otherwise.
+    await expect(update({ id, query: "   ", reviewsOnly: false })).rejects.toThrow(/needs a query, or a filter/);
+    expect((await search(id))!.query).toBe("tutoring AND randomized");
+    await edit({ id, query: "", openAccessOnly: true });
+    expect(await search(id)).toMatchObject({ query: "", openAccessOnly: true });
   });
 
   it("read a page of a search's results, ten papers at a time, where the person sees them, with how many it has in all", async () => {
@@ -148,8 +167,9 @@ describe("the assistant's search tools", () => {
     // Its first authors come with their IDs, which the `authors` filter takes.
     expect(page.papers[0]).toMatchObject({ title: "Paper 51", authors: [{ name: "Ada Lovelace", id: "A1" }, { name: "Alan Turing", id: "A2" }, { name: "Grace Hopper" }], moreAuthors: 1, year: 2020, venue: "A journal", citations: 12 });
     // An abstract is cut, so ten papers stay short enough for the model to read at once.
-    expect(page.papers[0].abstract!.length).toBeLessThanOrEqual(181);
-    expect(JSON.stringify(await alice.action(results, { id })).length).toBeLessThan(8_000);
+    expect(page.papers[0].abstract!.length).toBeLessThanOrEqual(601);
+    expect(page.papers[0]).toMatchObject({ countries: ["KE", "US"], type: "article", doi: "10.1234/paper.51", openAccess: true });
+    expect(JSON.stringify(await alice.action(results, { id })).length).toBeLessThan(MODEL_READS);
     // By relevance, a page is one request for only its papers.
     expect(reads()).toHaveLength(2);
     expect(Object.fromEntries(reads()[0].url.searchParams)).toMatchObject({ page: "6", "per-page": "10", sort: "relevance_score:desc" });
@@ -174,7 +194,7 @@ describe("the assistant's search tools", () => {
     const verbose = await make({ query: "verbose" });
     const wordy = await alice.action(results, { id: verbose.id });
     expect(wordy.papers).toHaveLength(10);
-    expect(JSON.stringify(wordy).length).toBeLessThan(8_000);
+    expect(JSON.stringify(wordy).length).toBeLessThan(MODEL_READS);
     // An author with an ID is filtered by it, so their name is cut. One without is filtered by name: a long one comes as its leading whole words, which still find them.
     expect(wordy.papers[0].authors!.map((author) => author.name)).toEqual([expect.stringMatching(/^Ada Lovelacex+…$/), expect.stringMatching(/^Alan Turingx+…$/), "Grace"]);
 
@@ -209,7 +229,7 @@ describe("the assistant's search tools", () => {
     await expect(update({ id, fromDate: "2025-02-30" })).rejects.toThrow(/the calendar has/);
     await expect(update({ id, fromDate: "2025-13-01" })).rejects.toThrow(/the calendar has/);
     // Taking a filter off that's already off changes nothing: no revision, no undo.
-    expect(await update({ id, funders: null, cites: null, openAccessOnly: false })).toEqual({});
+    expect(await update({ id, funders: null, citationsOf: null, openAccessOnly: false })).toEqual({});
     // Years in place of days, in one call.
     await edit({ id, fromDate: null, toDate: null, fromYear: 2020, toYear: 2024 });
     expect(await search(id)).toMatchObject({ filterType: "year", yearRange: [2020, 2024] });
@@ -240,7 +260,7 @@ describe("the assistant's search tools", () => {
     // A value a setting doesn't take is refused with what it does.
     await expect(update({ id, sort: "best" })).rejects.toThrow(/`sort` takes .*relevance.* or .*most_cited.* or .*newest.* or .*oldest/);
     await expect(update({ id, minCitations: "many" })).rejects.toThrow(/`minCitations` takes a number or null/);
-    await expect(update({ id, query: null })).rejects.toThrow(/needs a query/);
+    await expect(update({ id, query: 7 })).rejects.toThrow(/`query` takes text/);
   });
 
   it("filter by an author, a funder, a research area or a paper, by the IDs a result or a lookup gives", async () => {
@@ -257,7 +277,7 @@ describe("the assistant's search tools", () => {
     for (const area of areas.matches) expect(area).toMatchObject({ id: expect.stringMatching(/^(?:(?:domains|fields|subfields)\/\d+|T\d+)$/), name: expect.stringMatching(/education/i), detail: expect.any(String) });
     expect(requests).toHaveLength(2);
 
-    const { id } = await make({ query: "tutoring", authors: ["A5023888391", "https://openalex.org/authors/A1", "UNESCO"], funders: ["https://openalex.org/F4320332161"], researchAreas: [areas.matches[0].id], cites: "https://openalex.org/W2741809807" });
+    const { id } = await make({ query: "tutoring", authors: ["A5023888391", "https://openalex.org/authors/A1", "UNESCO"], funders: ["https://openalex.org/F4320332161"], researchAreas: [areas.matches[0].id], citationsOf: "https://openalex.org/W2741809807" });
     expect(await search(id)).toMatchObject({ authors: ["A5023888391", "A1", "UNESCO"], funders: ["F4320332161"], researchAreas: [areas.matches[0].id], citesItemId: "W2741809807" });
     requests = [];
     await alice.action(results, { id });
@@ -269,6 +289,47 @@ describe("the assistant's search tools", () => {
     await expect(update({ id, researchAreas: ["Education"] })).rejects.toThrow(/research\/lookup:find/);
     await expect(update({ id, relatedTo: "that paper" })).rejects.toThrow(/one paper's ID/);
     await expect(alice.action(find, { kind: "author", text: " " })).rejects.toThrow(/name to look for/);
+  });
+
+  it("look papers up without saving anything: by a query, by a filter alone, and one paper whole", async () => {
+    const { t, alice, make, search } = await setup();
+    const { search: find, get } = api.research.papers;
+    const rows = () => t.run(async (ctx) => (await ctx.db.query("searches").take(10)).length);
+    // The papers that cite one paper, with no query: nothing is saved, and the request is the filter alone.
+    requests = [];
+    const citing = await alice.action(find, { citationsOf: "W2741809807", authorsIn: ["KE"] });
+    expect(citing).toMatchObject({ total: 57, page: 1, papers: expect.arrayContaining([expect.objectContaining({ id: "https://openalex.org/W1", countries: ["KE", "US"], openAccess: true })]) });
+    expect(citing.papers).toHaveLength(10);
+    expect(await rows()).toBe(0);
+    const asked = decodeURIComponent(reads()[0].url.search);
+    expect(asked).toContain("cites:https://openalex.org/W2741809807");
+    expect(reads()[0].url.searchParams.get("search")).toBeNull();
+    // A paper's own reference list is the other direction.
+    requests = [];
+    await alice.action(find, { query: "tutoring", referencesOf: "W2741809807", page: 2 });
+    expect(decodeURIComponent(reads()[0].url.search)).toContain("cited_by:https://openalex.org/W2741809807");
+    expect(reads()[0].url.searchParams.get("page")).toBe("2");
+    // A model that fills in every argument sends null for what it doesn't mean: that reads as left out.
+    expect((await alice.action(find, { query: "tutoring", page: null, fromYear: null, about: null, citationsOf: null })).page).toBe(1);
+    await expect(alice.action(find, {})).rejects.toThrow(/needs a query, or a filter/);
+
+    // One paper, whole: every author with where they work, and all of its abstract.
+    const paper = await alice.action(get, { id: "https://openalex.org/W7" });
+    expect(paper).toMatchObject({ id: "https://openalex.org/W7", doi: "10.1234/paper.7", type: "article", language: "en", openAccess: true, link: "https://example.org/paper-7.pdf", year: 2020, citations: 12 });
+    expect(paper.authors[0]).toEqual({ name: `Ada Lovelace${"y".repeat(40)}`, id: "A1", institutions: ["University of Nairobi (KE)"] });
+    expect(paper.abstract!.split(" ")).toHaveLength(120);
+    // By its DOI too, and one OpenAlex doesn't have says so.
+    requests = [];
+    await alice.action(get, { id: "doi:10.1234/paper.7" });
+    expect(requests[0].url.pathname).toContain("/works/https://doi.org/10.1234/paper.7");
+    await expect(alice.action(get, { id: "W404" })).rejects.toThrow(/no paper by that ID/);
+    await expect(alice.action(get, { id: "the third one" })).rejects.toThrow(/its ID, such as W2741809807, or its DOI/);
+
+    // A saved search is deleted for good, with nothing kept to bring it back.
+    const { id } = await make({ query: "tutoring" });
+    expect(await alice.mutation(api.research.searches.deleteSearch, { id })).toBeNull();
+    expect(await search(id)).toBeNull();
+    await expect(alice.mutation(api.research.searches.deleteSearch, { id })).rejects.toThrow(/not found/i);
   });
 
   it("count a search again when its query or filters change, and record a count as whoever's read made it", async () => {

@@ -5,14 +5,14 @@
  */
 import { v, type Infer } from "convex/values";
 import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
-import { internalMutation, internalQuery, type ActionCtx } from "../lib/functions";
+import { internalMutation, internalQuery, type ActionCtx, type QueryCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { spendOpenAlexRequests } from "../lib/rateLimit";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { screeningPaperInputValidator } from "../screening/validators";
-import { currentSearch, restoreSearch } from "../../lib/research/records";
+import { currentSearch, restoreSearch, type SavedSearch } from "../../lib/research/records";
 import { DEFAULT_SEARCH_PARAMS } from "../../lib/search-params/parsers";
 import { searchResultToParams } from "../../lib/search-params/converters";
 import { paramsToBucketSearchFilters } from "../../lib/chat/params-to-bucket-filters";
@@ -23,10 +23,12 @@ import { readSearchWorks, searchRequestValidator, type SearchSnapshot } from "./
 
 /** The fields a screening paper keeps. */
 export const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location";
+/** The fields the assistant reads of a paper: those, and what kind of work it is and whether it's free to read. */
+export const ASSISTANT_FIELDS = `${SCREENING_FIELDS},type,open_access,language`;
 
 export type SearchPaper = Infer<typeof screeningPaperInputValidator>;
 
-const savedSearchValidator = v.object({
+export const savedSearchValidator = v.object({
   clerkId: v.string(),
   request: v.union(searchRequestValidator, v.null()),
   ratingRange: v.union(v.array(v.number()), v.null()),
@@ -35,22 +37,26 @@ const savedSearchValidator = v.object({
 });
 export type SavedSearchRequest = Infer<typeof savedSearchValidator>;
 
+/** The request a search's results page makes for it, and its rating filter: a saved search's, or one that's only being tried. */
+export async function requestOf(ctx: QueryCtx, userId: Id<"users">, saved: SavedSearch, revision: number): Promise<SavedSearchRequest> {
+  const user = await ctx.db.get("users", userId);
+  if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
+  const params = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(restoreSearch({ ...saved, screeningResponses: [] })), q: saved.query };
+  // The account's shortcuts this query uses, as the results page expands them.
+  const expansions = await shortcutExpansions(ctx, userId, shortcutNames(saved.query));
+  const request = paramsToBucketSearchFilters(params, { expand: (query) => expandShortcuts(query, expansions) })?.openAlexQuery ?? null;
+  const ratingRange: [number, number] = [params.rmin, params.rmax];
+  return { clerkId: user.clerkId, request, ratingRange: isRatingFilterActive(ratingRange, params.rated) ? ratingRange : null, revision };
+}
+
 /** The request a saved search's results page makes, and its rating filter. */
 export const readSearch = internalQuery({
   args: { userId: v.id("users"), searchId: v.string() },
   returns: savedSearchValidator,
   handler: async (ctx, { userId, searchId }) => {
-    const user = await ctx.db.get("users", userId);
-    if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
     const row = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", searchId)).unique();
     if (!row) throw createError("NOT_FOUND", "Search not found");
-    const saved = currentSearch(row.data);
-    const params = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(restoreSearch({ ...saved, screeningResponses: [] })), q: saved.query };
-    // The account's shortcuts this query uses, as the results page expands them.
-    const expansions = await shortcutExpansions(ctx, userId, shortcutNames(saved.query));
-    const request = paramsToBucketSearchFilters(params, { expand: (query) => expandShortcuts(query, expansions) })?.openAlexQuery ?? null;
-    const ratingRange: [number, number] = [params.rmin, params.rmax];
-    return { clerkId: user.clerkId, request, ratingRange: isRatingFilterActive(ratingRange, params.rated) ? ratingRange : null, revision: row.revision };
+    return await requestOf(ctx, userId, currentSearch(row.data), row.revision);
   },
 });
 
@@ -78,9 +84,12 @@ export type Work = {
   doi?: string | null;
   publication_year?: number | null;
   abstract_inverted_index?: Record<string, number[]> | null;
-  authorships?: Array<{ author?: { id?: string | null; display_name?: string | null } | null }> | null;
+  authorships?: Array<{ author?: { id?: string | null; display_name?: string | null } | null; institutions?: Array<{ display_name?: string | null; country_code?: string | null }> | null }> | null;
   cited_by_count?: number | null;
   primary_location?: { source?: { display_name?: string | null } | null } | null;
+  type?: string | null;
+  language?: string | null;
+  open_access?: { is_oa?: boolean | null; oa_url?: string | null } | null;
 };
 
 export function toPaper(work: Work): SearchPaper {

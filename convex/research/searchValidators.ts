@@ -22,6 +22,8 @@ const numberValidator = v.optional(v.union(v.number(), v.null()));
 /** A day or a paper's ID, or null to take it off. */
 const textValidator = v.optional(v.union(v.string(), v.null()));
 const listValidator = v.optional(v.union(v.array(v.string()), v.null()));
+/** A page of results to read; left out or null, the first. */
+export const pageValidator = v.optional(v.union(v.number(), v.null()));
 
 /**
  * A search's settings, as the assistant gives them: the filters its page has that take
@@ -44,8 +46,8 @@ export const searchSettings = {
   authors: listValidator,
   funders: listValidator,
   researchAreas: listValidator,
-  cites: textValidator,
-  citedBy: textValidator,
+  citationsOf: textValidator,
+  referencesOf: textValidator,
   relatedTo: textValidator,
   openAccessOnly: v.optional(v.boolean()),
   withAbstractOnly: v.optional(v.boolean()),
@@ -77,7 +79,7 @@ export const SETTINGS =
   "`authorsIn` is where the authors' institutions are and `about` is where the paper is about: each a list of two-letter country codes or regions, such as africa, western_africa, southern_asia or europe. " +
   "`types` and `institutionTypes` are OpenAlex's, such as article, preprint, book-chapter, and education, government. `languages` are ISO 639 codes. `sdgs` are goal numbers, 1 to 17. " +
   "`authors` are author IDs from a result or from research/lookup:find, or names as papers print them. `funders` and `researchAreas` are IDs from research/lookup:find. " +
-  "`cites`, `citedBy` and `relatedTo` each take one paper's ID: papers that cite it, papers it cites, papers related to it. " +
+  "`citationsOf`, `referencesOf` and `relatedTo` each take one paper's ID: the papers that cite that paper, the papers in its own reference list, and papers related to it. " +
   "`ratedOnly` keeps only papers the person rated. `minRating` and `maxRating` (0 to 5) keep those rated within them, and turn `ratedOnly` on.";
 
 /** Authors of a paper the results name, each with its ID to filter by. */
@@ -89,16 +91,46 @@ export const lookupValidator = v.object({
   matches: capped(v.array(v.object({ id: v.string(), name: v.string(), detail: v.optional(v.string()) })), LOOKUP_MAX),
 });
 
+/** Countries a paper's authors work in that a results page names. */
+export const COUNTRIES_SHOWN = 5;
 const paperValidator = v.object({
   id: v.string(),
   title: v.string(),
   /** Its first authors, and how many more it has. An author OpenAlex has a record for comes with their ID. */
   authors: capped(v.optional(v.array(v.object({ name: v.string(), id: v.optional(v.string()) }))), AUTHORS_SHOWN),
   moreAuthors: v.optional(v.number()),
+  /** The countries its authors' institutions are in, as two-letter codes. */
+  countries: capped(v.optional(v.array(v.string())), COUNTRIES_SHOWN),
   year: v.optional(v.number()),
   venue: v.optional(v.string()),
+  /** What kind of work it is: article, preprint, book-chapter and so on. */
+  type: v.optional(v.string()),
+  doi: v.optional(v.string()),
+  /** Whether anyone can read it for free. */
+  openAccess: v.optional(v.boolean()),
   citations: v.optional(v.number()),
-  /** The start of its abstract. */
+  /** The start of its abstract. research/papers:get reads all of it. */
+  abstract: v.optional(v.string()),
+});
+
+/** Authors of one paper its record lists, and institutions named for each. */
+export const AUTHORS_LISTED = 20;
+export const INSTITUTIONS_LISTED = 3;
+/** One paper, whole: what a results page says of it, with every author it can list, where each works, and all of its abstract. */
+export const paperRecordValidator = v.object({
+  id: v.string(),
+  title: v.string(),
+  authors: capped(v.array(v.object({ name: v.string(), id: v.optional(v.string()), institutions: capped(v.optional(v.array(v.string())), INSTITUTIONS_LISTED) })), AUTHORS_LISTED),
+  moreAuthors: v.optional(v.number()),
+  year: v.optional(v.number()),
+  venue: v.optional(v.string()),
+  type: v.optional(v.string()),
+  language: v.optional(v.string()),
+  doi: v.optional(v.string()),
+  openAccess: v.optional(v.boolean()),
+  /** Where it can be read for free, when it can. */
+  link: v.optional(v.string()),
+  citations: v.optional(v.number()),
   abstract: v.optional(v.string()),
 });
 
