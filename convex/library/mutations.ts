@@ -8,12 +8,13 @@ import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { assistantMutation, defineUserMutation, reversal, reversedBy, userMutation, type Author } from "../lib/userActions";
 import { applyCommand } from "../research/records";
 import { undoCommandValidator } from "../../lib/research/records";
+import { workUrl } from "../../lib/openalex/work-id";
 import { libraryCountRow, resolveLibraryCount } from "./counter";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
 import { followed, inFollowedCollection } from "./followed";
 
 /** What the library keeps about a paper, apart from its rating. */
-const libraryPaper = v.object({
+export const libraryPaper = v.object({
   openalexId: v.string(),
   title: v.string(),
   authors: v.optional(v.string()),
@@ -50,10 +51,13 @@ function requireRating(rating: number) {
   }
 }
 
+/** A paper's ID as the library keeps it. The assistant gives the bare ID as often as the whole one, and both are the same paper. */
+export const canonical = (openalexId: string) => workUrl(openalexId) ?? openalexId;
+
 async function findItem(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, openalexId: string) {
   return await ctx.db
     .query("libraryItems")
-    .withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", openalexId))
+    .withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", canonical(openalexId)))
     .unique();
 }
 
@@ -122,12 +126,12 @@ export async function upsertLibraryItem(
  * research rating isn't that now.
  */
 function setResearchRating(ctx: MutationCtx, userId: Id<"users">, paperId: string, rating: number | null, author: Author, expect?: number | null) {
-  return applyCommand(ctx, userId, { kind: "rating", paperId, rating, ...(expect === undefined ? {} : { expect }) }, author);
+  return applyCommand(ctx, userId, { kind: "rating", paperId: canonical(paperId), rating, ...(expect === undefined ? {} : { expect }) }, author);
 }
 
 /** The paper's rating on search cards, or null. */
 async function researchRating(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId: string) {
-  return (await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", (q) => q.eq("userId", userId).eq("data.paperId", paperId)).unique())?.data.rating ?? null;
+  return (await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", (q) => q.eq("userId", userId).eq("data.paperId", canonical(paperId))).unique())?.data.rating ?? null;
 }
 
 async function ownedCollection(ctx: MutationCtx, userId: Id<"users">, collectionId: Id<"collections">) {
@@ -137,45 +141,78 @@ async function ownedCollection(ctx: MutationCtx, userId: Id<"users">, collection
   return collection;
 }
 
+const saveUndo = v.union(reversal(REMOVE, { openalexId: v.string(), expect: ratingAsLeft }), reversal(RATE, { openalexId: v.string(), rating: ratingOrNone, expect: ratingAsLeft }));
+
+/** Whether a save asks the person first: one whose undo would lose the rating the paper has on search cards (see `savePaper`). */
+export async function saveAsksFirst(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, openalexId: string, rating: number | undefined) {
+  const [item, onCards] = [await findItem(ctx, userId, openalexId), await researchRating(ctx, userId, openalexId)];
+  if (!item) return onCards !== null;
+  const was = item.rating ?? null;
+  return rating !== undefined && rating !== was && onCards !== was;
+}
+
+/** Saves a paper, rated when a rating is given, and says what reverses it. */
+async function savePaper(ctx: MutationCtx, userId: Id<"users">, given: Infer<typeof libraryPaper>, rating: number | undefined, author: Author): Promise<{ id: Id<"libraryItems">; added: boolean; undo?: Infer<typeof saveUndo> }> {
+  if (rating !== undefined) requireRating(rating);
+  const paper = { ...given, openalexId: canonical(given.openalexId) };
+  const before = await findItem(ctx, userId, paper.openalexId);
+  const onCards = await researchRating(ctx, userId, paper.openalexId);
+  const id = await upsertLibraryItem(ctx, userId, paper, rating);
+  if (rating !== undefined) await setResearchRating(ctx, userId, paper.openalexId, rating, author);
+  // What reverses it: a paper it added is removed again, and a rating it changed goes back.
+  // A save that changed neither has nothing to undo. Nor has one whose undo would lose the
+  // rating the paper had on search cards: removing a paper clears that rating, and a rating
+  // put back is put back in both places.
+  if (!before) {
+    if (onCards !== null) return { id, added: true };
+    const saved = (await ctx.db.get("libraryItems", id))!;
+    return { id, added: true, undo: { path: REMOVE, args: { openalexId: paper.openalexId, expect: { savedAt: saved.savedAt, rating: rating ?? null } } } };
+  }
+  const was = before.rating ?? null;
+  if (rating === undefined || rating === was || onCards !== was) return { id, added: false };
+  return { id, added: false, undo: { path: RATE, args: { openalexId: paper.openalexId, rating: was, expect: { savedAt: before.savedAt, rating } } } };
+}
+
+/**
+ * Saves a paper whose record an action has just read from OpenAlex (./papers.ts), and puts
+ * it in a collection when one is given. One undo for both: a paper this added is removed
+ * again, which takes it out of the collection too; one that was already saved goes back to
+ * its rating, or leaves the collection.
+ */
+export const saveRead = internalMutation({
+  args: { userId: v.id("users"), paper: libraryPaper, rating: v.optional(ratingArg), collectionId: v.optional(v.id("collections")), author: v.union(v.literal("user"), v.literal("assistant")) },
+  returns: v.object({
+    id: v.id("libraryItems"),
+    undo: v.optional(v.union(...saveUndo.members, reversal(IN_COLLECTION, { paper: savedPaper, collectionId: v.id("collections"), inCollection: v.boolean(), assignedAt: v.number() }))),
+  }),
+  handler: async (ctx, { userId, paper, rating, collectionId, author }) => {
+    const collection = collectionId ? await ownedCollection(ctx, userId, collectionId) : null;
+    const saved = await savePaper(ctx, userId, paper, rating, author);
+    if (!collection) return { id: saved.id, ...(saved.undo ? { undo: saved.undo } : {}) };
+    const item = (await ctx.db.get("libraryItems", saved.id))!;
+    const at = await addCollectionMembership(ctx, { userId, collection, libraryItemId: item._id });
+    if (saved.added || at === null) return { id: saved.id, ...(saved.undo ? { undo: saved.undo } : {}) };
+    // Already in the library: what this did was put it in the collection, and that's what's taken back. A rating changed with it stays.
+    return { id: saved.id, undo: { path: IN_COLLECTION, args: { paper: { openalexId: item.openalexId, savedAt: item.savedAt }, collectionId: collection._id, inCollection: false, assignedAt: at } } };
+  },
+});
+
 export const saveToLibraryAction = defineUserMutation({
   path: "library/mutations:saveToLibrary",
   description:
-    "Saves a paper to the person's library, with or without a rating from 0 to 5. Saving a paper that's already there updates its rating when one is given and otherwise keeps it. " +
+    "Saves a paper to the person's library from its whole record, as a results card has it, with or without a rating from 0 to 5. To save a paper by its ID alone, use library/papers:save. Saving a paper that's already there updates its rating when one is given and otherwise keeps it. " +
     "A save that added the paper or changed its rating returns `undo`: the action to run and the arguments to run it with to put things back. It is refused if the paper changed again in between. " +
     "A save has no undo when the paper carried a different rating on search cards, which undoing would lose.",
   args: { ...libraryPaper.fields, rating: v.optional(ratingArg) },
-  returns: v.object({
-    id: v.id("libraryItems"),
-    undo: v.optional(v.union(reversal(REMOVE, { openalexId: v.string(), expect: ratingAsLeft }), reversal(RATE, { openalexId: v.string(), rating: ratingOrNone, expect: ratingAsLeft }))),
-  }),
+  returns: v.object({ id: v.id("libraryItems"), undo: v.optional(saveUndo) }),
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
   // The saves that return no undo (see `run`): one whose undo would lose the rating the paper has on search cards.
-  asksFirst: async (ctx, userId, { rating, openalexId }) => {
-    const [item, onCards] = [await findItem(ctx, userId, openalexId), await researchRating(ctx, userId, openalexId)];
-    if (!item) return onCards !== null;
-    const was = item.rating ?? null;
-    return rating !== undefined && rating !== was && onCards !== was;
-  },
+  asksFirst: (ctx, userId, { rating, openalexId }) => saveAsksFirst(ctx, userId, openalexId, rating),
   run: async (ctx, userId, { rating, ...paper }, author) => {
-    if (rating !== undefined) requireRating(rating);
-    const before = await findItem(ctx, userId, paper.openalexId);
-    const onCards = await researchRating(ctx, userId, paper.openalexId);
-    const id = await upsertLibraryItem(ctx, userId, paper, rating);
-    if (rating !== undefined) await setResearchRating(ctx, userId, paper.openalexId, rating, author);
-    // What reverses it: a paper it added is removed again, and a rating it changed goes back.
-    // A save that changed neither has nothing to undo. Nor has one whose undo would lose the
-    // rating the paper had on search cards: removing a paper clears that rating, and a rating
-    // put back is put back in both places.
-    if (!before) {
-      if (onCards !== null) return { id };
-      const saved = (await ctx.db.get("libraryItems", id))!;
-      return { id, undo: { path: REMOVE, args: { openalexId: paper.openalexId, expect: { savedAt: saved.savedAt, rating: rating ?? null } } } };
-    }
-    const was = before.rating ?? null;
-    if (rating === undefined || rating === was || onCards !== was) return { id };
-    return { id, undo: { path: RATE, args: { openalexId: paper.openalexId, rating: was, expect: { savedAt: before.savedAt, rating } } } };
+    const { id, undo } = await savePaper(ctx, userId, paper, rating, author);
+    return { id, ...(undo ? { undo } : {}) };
   },
 });
 export const saveToLibrary = userMutation(saveToLibraryAction);
