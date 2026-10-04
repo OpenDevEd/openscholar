@@ -10,7 +10,7 @@ import { createError } from "../lib/errors";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { readWork } from "../paperSets/openalex";
 import { ASSISTANT_FIELDS, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
-import { readPage } from "./searches";
+import { readPage, short } from "./searches";
 import { AUTHORS_LISTED, FUNDERS_LISTED, INSTITUTIONS_LISTED, pageValidator, paperRecordValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 
 export const searchAction = defineUserAction({
@@ -36,7 +36,7 @@ export const searchAction = defineUserAction({
 export const search = userAction(searchAction);
 export const searchForAssistant = assistantAction(searchAction);
 
-/** Characters of an abstract a paper's record carries: all of nearly every one. */
+/** Characters of an abstract a paper's record carries: all of nearly every one. A longer one is cut and marked as cut. */
 const ABSTRACT_MAX = 6_000;
 const NAME_MAX = 120;
 /** A paper by its OpenAlex ID or its DOI, as OpenAlex's address for one work takes it. */
@@ -52,7 +52,7 @@ function workPath(id: string) {
 export const getAction = defineUserAction({
   path: "research/papers:get",
   description:
-    "Reads one paper whole, by its ID as results give it (such as W2741809807) or its DOI: its title, its authors with their IDs and where each works, year, venue, type, language, DOI, whether and where it's free to read, citations, who funded it, and all of its abstract. " +
+    "Reads one paper whole, by its ID as results give it (such as W2741809807) or its DOI: its title, its authors with their IDs and where each works, year, venue, type, language, DOI, whether and where it's free to read, citations, who funded it, and all of its abstract. An abstract cut short ends in an ellipsis. " +
     "One request against the person's OpenAlex allowance.",
   args: { id: v.string() },
   returns: paperRecordValidator,
@@ -88,7 +88,7 @@ export const getAction = defineUserAction({
       ...(work.open_access?.oa_url ? { link: work.open_access.oa_url } : {}),
       ...(paper.citedByCount === undefined ? {} : { citations: paper.citedByCount }),
       ...(funders.length ? { funders: funders.slice(0, FUNDERS_LISTED) } : {}),
-      ...(paper.abstract ? { abstract: paper.abstract.slice(0, ABSTRACT_MAX) } : {}),
+      ...(paper.abstract ? { abstract: short(paper.abstract, ABSTRACT_MAX) } : {}),
     };
   },
 });

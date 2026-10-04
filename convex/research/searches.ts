@@ -40,8 +40,9 @@ type Settings = ObjectType<typeof searchSettings>;
 
 const needsQuery = () => createError("VALIDATION_ERROR", "A search needs a query, or a filter to search by.");
 /** The fields that narrow a search by themselves, so it can do without a query: its page searches by a filter alone too. */
-const NARROWS = ["authors", "funders", "researchAreas", "selectedRegions", "selectedCountryFocus", "workTypes", "workLanguages", "institutionTypes", "sdgs", "citesItemId", "citedByItemId", "relatedToItemId", "dateRange", "yearRange", "minCitations", "openAccessOnly", "reviewFilter", "onlyRatedPapers"] as const;
-const off = (value: unknown) => value === undefined || value === false || value === "" || (Array.isArray(value) && !value.length);
+const NARROWS = ["authors", "funders", "researchAreas", "selectedRegions", "selectedCountryFocus", "workTypes", "workLanguages", "institutionTypes", "sdgs", "citesItemId", "citedByItemId", "relatedToItemId", "dateRange", "yearRange", "minCitations", "openAccessOnly", "hasAbstract", "reviewFilter", "onlyRatedPapers"] as const;
+// A citation minimum of none is no filter: the request leaves it out.
+const off = (value: unknown) => value === undefined || value === false || value === 0 || value === "" || (Array.isArray(value) && !value.length);
 const narrowed = (search: Partial<SavedSearch>) => Boolean(search.query?.trim()) || NARROWS.some((field) => !off(search[field]));
 
 /** A search from a query and settings, as one is first saved. */

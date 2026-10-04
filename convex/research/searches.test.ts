@@ -153,7 +153,7 @@ describe("the assistant's search tools", () => {
     expect(await search(id)).toMatchObject({ isYearRangeEnabled: false });
     await expect(update({ id, fromYear: 2021, toYear: 2020 })).rejects.toThrow(/first year is after/);
     // A search can lose its query while a filter still narrows it, and not otherwise.
-    await expect(update({ id, query: "   ", reviewsOnly: false })).rejects.toThrow(/needs a query, or a filter/);
+    await expect(update({ id, query: "   ", reviewsOnly: false, withAbstractOnly: false })).rejects.toThrow(/needs a query, or a filter/);
     expect((await search(id))!.query).toBe("tutoring AND randomized");
     await edit({ id, query: "", openAccessOnly: true });
     expect(await search(id)).toMatchObject({ query: "", openAccessOnly: true });
@@ -313,6 +313,9 @@ describe("the assistant's search tools", () => {
     // A model that fills in every argument sends null for what it doesn't mean: that reads as left out.
     expect((await alice.action(find, { query: "tutoring", page: null, fromYear: null, about: null, citationsOf: null })).page).toBe(1);
     await expect(alice.action(find, {})).rejects.toThrow(/needs a query, or a filter/);
+    // A citation minimum of none narrows nothing; papers with an abstract do.
+    await expect(alice.action(find, { minCitations: 0, sort: "newest" })).rejects.toThrow(/needs a query, or a filter/);
+    expect((await alice.action(find, { withAbstractOnly: true })).total).toBe(57);
 
     // One paper, whole: every author with where they work, and all of its abstract.
     const paper = await alice.action(get, { id: "https://openalex.org/W7" });
