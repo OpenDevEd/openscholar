@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
-import { getCurrentUser } from "../lib/auth";
 import { countOf, PENDING_WALLET_KEY, walletKeysOf } from "../lib/listCounts";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 
@@ -31,37 +30,6 @@ const walletKeyValidator = v.object({
   isActive: v.boolean(),
   lastUsedAt: v.optional(v.number()),
   createdAt: v.number(),
-});
-
-/**
- * List all wallet keys for the current user (for settings/key management).
- * Kept for one release, while the deployed site still calls it; `listKeys` replaces it.
- */
-export const listMyKeys = query({
-  args: {},
-  returns: v.array(walletKeyValidator),
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return [];
-
-    const keys = await ctx.db
-      .query("walletKeys")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .order("desc")
-      .collect();
-
-    return keys
-      .filter((k) => k.hashedKey !== PENDING_WALLET_KEY)
-      .map((k) => ({
-        _id: k._id,
-        keyPrefix: k.keyPrefix,
-        appName: k.appName,
-        redirectOrigin: k.redirectOrigin,
-        isActive: k.isActive,
-        lastUsedAt: k.lastUsedAt,
-        createdAt: k.createdAt,
-      }));
-  },
 });
 
 /** Most keys one page holds, and the rows one read of it takes past keys still being made. */

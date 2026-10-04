@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { internalMutation, query, type QueryCtx } from "../lib/functions";
 import type { Id } from "../_generated/dataModel";
-import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { usageKindValidator } from "./validators";
 import { jobSpace, spendSpace, usageAgg, userSpace } from "./usageLog";
@@ -106,44 +105,6 @@ export const countChargesAction = defineUserQuery({
 export const countCharges = userQuery(countChargesAction);
 export const countChargesForAssistant = assistantQuery(countChargesAction);
 
-/**
- * One page of the user's charges, newest first, with the total for page
- * numbers. With `jobId`, only that job's charges (the job must be theirs).
- * Kept for one release, while the deployed site still calls it; `listCharges` and `countCharges` replace it.
- */
-export const pageMine = query({
-  args: { page: v.number(), pageSize: v.number(), jobId: v.optional(v.id("extractionJobs")) },
-  returns: v.object({ total: v.number(), rows: v.array(usageRowValidator) }),
-  handler: async (ctx, { page, pageSize, jobId }) => {
-    const user = await getCurrentUser(ctx);
-    const empty = { total: 0, rows: [] };
-    if (!user) return empty;
-    if (jobId && (await ctx.db.get("extractionJobs", jobId))?.userId !== user._id) return empty;
-    const namespace = jobId ? jobSpace(jobId) : userSpace(user._id);
-    const total = await usageAgg.count(ctx, { namespace, stale: true });
-    const size = Math.min(Math.max(1, Math.floor(pageSize)), MAX_PAGE_SIZE);
-    const lastPage = Math.max(1, Math.ceil(total / size));
-    const start = (Math.min(Math.max(1, Math.floor(page)), lastPage) - 1) * size;
-    const end = Math.min(start + size, total);
-    if (start >= end) return { total, rows: [] };
-    // Offsets count from the newest charge: -1 is the latest.
-    const items = await usageAgg.atBatch(
-      ctx,
-      Array.from({ length: end - start }, (_, i) => ({ namespace, offset: -(start + i) - 1 })),
-      { stale: true },
-    );
-    const rows = [];
-    for (const item of items) {
-      const row = await ctx.db.get("billingUsage", item.id as Id<"billingUsage">);
-      if (row) {
-        const { _id, credits, kind, description, jobId, model, createdAt } = row;
-        rows.push({ _id, credits, kind, description, jobId, model, createdAt });
-      }
-    }
-    return { total, rows };
-  },
-});
-
 const DAY = 86_400_000;
 const CHART_KINDS = usageKindValidator.members.map((m) => m.value).filter((kind) => kind !== "refund");
 
@@ -182,15 +143,3 @@ export const spendingAction = defineUserQuery({
 export const spending = userQuery(spendingAction);
 export const spendingForAssistant = assistantQuery(spendingAction);
 
-/**
- * Credits spent per day and kind over the last `days` days, oldest day first.
- * Kept for one release, while the deployed site still calls it; `spending` replaces it.
- */
-export const spendingMine = query({
-  args: { since: v.number(), days: v.number() },
-  returns: v.array(spendingCellValidator),
-  handler: async (ctx, { since, days }) => {
-    const user = await getCurrentUser(ctx);
-    return user ? await spendingOf(ctx, user._id, since, days) : [];
-  },
-});

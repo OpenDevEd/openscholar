@@ -102,34 +102,6 @@ export const summaryAction = defineUserQuery({
 export const summary = userQuery(summaryAction);
 export const summaryForAssistant = assistantQuery(summaryAction);
 
-/**
- * One page of the model list for admins, with the provider chips.
- * Kept for one release, while the deployed site still calls it; `listModels` and `summary` replace it.
- */
-export const list = query({
-  args: { ...viewArgs, page: v.number(), pageSize: v.number() },
-  returns: v.object({
-    total: v.number(),
-    providers: v.array(v.object({ provider: v.string(), sampleModelId: v.string() })),
-    rows: v.array(adminModelValidator),
-  }),
-  handler: async (ctx, args) => {
-    await requireAdmin(ctx);
-    const all = await activeModels(ctx).take(MAX_CATALOG_MODELS);
-    const providers = topProviders(all);
-    const matches = all.filter(inView(args, names(providers)));
-    const size = Math.min(Math.max(1, Math.floor(args.pageSize)), 100);
-    // A page past the end (after the last row on it was switched off) shows the last page.
-    const lastPage = Math.max(1, Math.ceil(matches.length / size));
-    const start = (Math.min(Math.max(1, Math.floor(args.page)), lastPage) - 1) * size;
-    return {
-      total: matches.length,
-      providers,
-      rows: matches.slice(start, start + size).map(row),
-    };
-  },
-});
-
 /** Keeps a model out of users' pickers, or offers it again. */
 export const setOffered = mutation({
   args: { modelId: v.id("models"), on: v.boolean() },
