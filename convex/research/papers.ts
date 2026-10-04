@@ -44,8 +44,9 @@ function workPath(id: string) {
   const given = id.trim();
   const work = given.match(/^(?:https?:\/\/openalex\.org\/(?:works\/)?)?(W\d+)$/i)?.[1];
   if (work) return work.toUpperCase();
-  const doi = given.match(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?(10\.\d{4,9}\/\S+)$/i)?.[1];
-  if (doi) return `https://doi.org/${doi}`;
+  // A DOI goes into the address as it is, so one that would change the address isn't taken: a "?" or "#", or a ".." that climbs out of the work's path.
+  const doi = given.match(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?(10\.\d{4,9}\/[^\s?#]+)$/i)?.[1];
+  if (doi && !doi.split("/").some((part) => part === "." || part === "..")) return `https://doi.org/${doi}`;
   throw createError("VALIDATION_ERROR", "A paper is read by its ID, such as W2741809807, or its DOI.");
 }
 

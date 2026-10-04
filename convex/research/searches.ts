@@ -385,12 +385,12 @@ export const removeForAssistant = assistantMutation(removeAction);
 
 export const deleteAction = defineUserMutation({
   path: DELETE,
-  description: "Deletes one of the person's saved searches for good, with its earlier queries and its screening answers. It can't be undone, so the person is asked first.",
+  description: "Deletes one of the person's saved searches: it leaves their search history, and they can't get it back. So the person is asked first.",
   args: { id: v.string() },
   returns: v.null(),
   spendsCredits: false,
   outsideEffect: false,
-  // Nothing brings back a search's history and answers, so the person is asked.
+  // The app has no way to bring a deleted search back, so the person is asked.
   undoable: false,
   run: async (ctx, userId, { id }, author) => {
     if (!(await findSearch(ctx, userId, id))) throw createError("NOT_FOUND", "Search not found.");
