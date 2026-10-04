@@ -8,17 +8,28 @@ import { clearLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAc
 import { countJobsAction as extractionJobCountAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
 import { countJobFailuresAction as extractionFailureCountAction } from "../extraction/queries/failures";
 import { countJobResultsAction as extractionResultCountAction, listJobResultsAction as extractionResultsAction } from "../extraction/queries/results";
+import { grantAction as chatGrantAction, listAccessAction as chatAccessAction, revokeAction as chatRevokeAction } from "../assistant/sharing";
+import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, removeAction as chatRemoveAction, renameAction as chatRenameAction } from "../assistant/threads";
 import { savedPaperAction } from "../library/queries";
 import { estimateAction as screeningEstimateAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
 import { slotsAction as screeningSlotsAction } from "../screening/queries";
 import { screenAction } from "../screening/start";
 import { countAdminsAction, listAdminsAction, listCandidatesAction } from "../admins/queries";
+import { listModelsAction as adminModelsAction, summaryAction as adminModelSummaryAction } from "../models/admin";
 import { countChargesAction, listChargesAction, spendingAction } from "../billing/usage";
 import { countKeysAction as walletKeyCountAction, listKeysAction as walletKeysAction } from "../wallet/queries";
 import type { UserAction } from "./userActions";
 
 export const USER_ACTIONS: readonly UserAction[] = [
+  chatsAction,
+  chatAction,
+  chatCreateAction,
+  chatRenameAction,
+  chatRemoveAction,
+  chatAccessAction,
+  chatGrantAction,
+  chatRevokeAction,
   extractionJobsAction,
   extractionJobCountAction,
   extractionResultsAction,
@@ -57,4 +68,6 @@ export const USER_ACTIONS: readonly UserAction[] = [
   listAdminsAction,
   countAdminsAction,
   listCandidatesAction,
+  adminModelsAction,
+  adminModelSummaryAction,
 ];

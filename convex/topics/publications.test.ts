@@ -45,48 +45,48 @@ it("authenticates HTTP delivery, preserves receipts, and rejects stale replay af
   await send(request(a.libraryId, {generation: 3, idempotencyKey: "remove", state: "unpublished", topicIds: [], metadata: null}));
   await expect(send(request(a.libraryId, {generation: 2, idempotencyKey: "late"}))).resolves.toMatchObject({status: "superseded"});
   await expect(send(request())).resolves.toMatchObject({status: "applied", generation: 1});
-  expect((await t.query(api.topics.publications.list, {topicId, cursor: null, limit: 10})).groups).toEqual([]);
+  expect((await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}})).page).toEqual([]);
   expect(await t.run(ctx => ctx.db.query("topicLocations").first())).toMatchObject({generation: 3, state: "unpublished"});
 });
 it("groups DOI variants, returns all enabled public locations, and retains private assignments", async () => {
   const {t, a, b, request, send} = await fixture();
   await send(request());
   await send(request(b.libraryId, {doi: "doi:10.1234/abc", topicIds: [], openalexId: null}), "second-credential");
-  const page = await t.query(api.topics.publications.list, {topicId, cursor: null, limit: 10});
-  expect(page.groups).toEqual([{key: "doi:10.1234/abc"}]);
-  const read = () => t.query(api.topics.publications.locations, {groupKey: page.groups[0].key, paginationOpts: {cursor: null, numItems: 100}});
-  expect((await read()).locations.map(row => row.library.name).sort()).toEqual(["first", "second"]);
+  const page = await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}});
+  expect(page.page).toEqual([{key: "doi:10.1234/abc"}]);
+  const read = () => t.query(api.topics.publications.listLocations, {groupKey: page.page[0].key, paginationOpts: {cursor: null, numItems: 100}});
+  expect((await read()).page.map(row => row.library.name).sort()).toEqual(["first", "second"]);
   await t.run(ctx => ctx.db.patch("evidenceLibraryConfigSections", a.sectionId, {payload: {enabled: false}}));
-  expect((await read()).locations.map(row => row.library.name)).toEqual(["second"]);
-  expect((await t.query(api.topics.publications.list, {topicId, cursor: null, limit: 10})).groups).toEqual([]);
+  expect((await read()).page.map(row => row.library.name)).toEqual(["second"]);
+  expect((await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}})).page).toEqual([]);
   expect(await t.run(ctx => ctx.db.query("topicLocations").withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", a.libraryId).eq("itemKey", "ABCD1234")).unique())).toMatchObject({topicIds: [topicId]});
   await t.run(ctx => ctx.db.patch("evidenceLibraryConfigSections", a.sectionId, {payload: {enabled: true}}));
-  expect((await read()).locations).toHaveLength(2);
+  expect((await read()).page).toHaveLength(2);
 });
 it("does not bridge conflicting DOIs through an OpenAlex-only location and keeps manual records separate", async () => {
   const {t, a, b, request, send} = await fixture();
   await send(request());
   await send(request(a.libraryId, {itemKey: "NODOI001", idempotencyKey: "without-doi", doi: null}));
-  expect((await t.query(api.topics.publications.list, {topicId, cursor: null, limit: 10})).groups).toHaveLength(1);
+  expect((await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}})).page).toHaveLength(1);
   await send(request(b.libraryId, {doi: "10.1234/conflict"}), "second-credential");
   await send(request(a.libraryId, {itemKey: "MANUAL01", idempotencyKey: "manual-a", doi: null, openalexId: null}));
   await send(request(b.libraryId, {itemKey: "MANUAL01", idempotencyKey: "manual-b", doi: null, openalexId: null}), "second-credential");
-  const groups = (await t.query(api.topics.publications.list, {topicId, cursor: null, limit: 10})).groups;
+  const groups = (await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}})).page;
   expect(groups.map(row => row.key)).toEqual(["doi:10.1234/abc", "doi:10.1234/conflict", "openalex:W1234", `record:${a.libraryId}:MANUAL01`, `record:${b.libraryId}:MANUAL01`].sort());
-  const isolated = await t.query(api.topics.publications.locations, {groupKey: "openalex:W1234", paginationOpts: {cursor: null, numItems: 100}});
-  expect(isolated.locations.map(row => row.itemKey)).toEqual(["NODOI001"]);
+  const isolated = await t.query(api.topics.publications.listLocations, {groupKey: "openalex:W1234", paginationOpts: {cursor: null, numItems: 100}});
+  expect(isolated.page.map(row => row.itemKey)).toEqual(["NODOI001"]);
 });
 it("paginates unique publications and keeps a cursor valid across later deliveries", async () => {
   const {t, a, b, request, send} = await fixture();
   await send(request());
   await send(request(b.libraryId), "second-credential");
   await send(request(a.libraryId, {itemKey: "MANUAL01", idempotencyKey: "manual", doi: null, openalexId: null}));
-  const first = await t.query(api.topics.publications.list, {topicId, cursor: null, limit: 1});
-  const second = await t.query(api.topics.publications.list, {topicId, cursor: first.nextCursor, limit: 1});
-  expect([...first.groups, ...second.groups].map(row => row.key)).toEqual(["doi:10.1234/abc", `record:${a.libraryId}:MANUAL01`]);
-  expect(second.nextCursor).toBeNull();
+  const first = await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 1}});
+  const second = await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: first.continueCursor, numItems: 1}});
+  expect([...first.page, ...second.page].map(row => row.key)).toEqual(["doi:10.1234/abc", `record:${a.libraryId}:MANUAL01`]);
+  expect(second.isDone).toBe(true);
   await send(request(a.libraryId, {generation: 2, idempotencyKey: "update"}));
-  expect((await t.query(api.topics.publications.list, {topicId, cursor: first.nextCursor, limit: 1})).groups).toEqual(second.groups);
+  expect((await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: first.continueCursor, numItems: 1}})).page).toEqual(second.page);
 });
 it("serves bounded authenticated catalog pages and rejects unknown topic details", async () => {
   const {t, a} = await fixture();
@@ -142,13 +142,13 @@ it("finishes a bounded identity rebuild without reporting incomplete groups as a
       await send(request(a.libraryId, {itemKey: `TEST${String(index).padStart(4, "0")}`, idempotencyKey: `no-doi-${index}`, doi: null}));
     }
     await send(request());
-    expect((await t.query(api.topics.publications.list, {topicId, cursor: null, limit: 10})).updating).toBe(true);
+    expect((await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}})).updating).toBe(true);
     await t.finishAllScheduledFunctions(vi.runAllTimers);
-    const groups = await t.query(api.topics.publications.list, {topicId, cursor: null, limit: 10});
-    expect(groups).toMatchObject({groups: [{key: "doi:10.1234/abc"}], updating: false, nextCursor: null});
-    const page = await t.query(api.topics.publications.locations, {groupKey: groups.groups[0].key, paginationOpts: {cursor: null, numItems: 10}});
-    const next = await t.query(api.topics.publications.locations, {groupKey: groups.groups[0].key, paginationOpts: {cursor: page.nextCursor, numItems: 100}});
-    expect([...page.locations, ...next.locations]).toHaveLength(23);
+    const groups = await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}});
+    expect(groups).toMatchObject({page: [{key: "doi:10.1234/abc"}], updating: false, isDone: true});
+    const page = await t.query(api.topics.publications.listLocations, {groupKey: groups.page[0].key, paginationOpts: {cursor: null, numItems: 10}});
+    const next = await t.query(api.topics.publications.listLocations, {groupKey: groups.page[0].key, paginationOpts: {cursor: page.continueCursor, numItems: 100}});
+    expect([...page.page, ...next.page]).toHaveLength(23);
   } finally {vi.useRealTimers();}
 });
 
@@ -201,10 +201,10 @@ it("tears down topic records in batches and rebuilds surviving DOI and OpenAlex 
       {groupKey: "doi:10.1234/surviving", count: 23},
       {groupKey: "openalex:W5678", count: 1},
     ]);
-    expect(await t.query(api.topics.publications.list, {topicId, cursor: null, limit: 10})).toMatchObject({groups: [{key: "doi:10.1234/surviving"}, {key: "openalex:W5678"}], updating: false, nextCursor: null});
-    const locations = await t.query(api.topics.publications.locations, {groupKey: "doi:10.1234/surviving", paginationOpts: {cursor: null, numItems: 100}});
-    expect(locations.locations).toHaveLength(23);
-    expect(locations.locations.every(row => row.library.id === b.libraryId)).toBe(true);
+    expect(await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}})).toMatchObject({page: [{key: "doi:10.1234/surviving"}, {key: "openalex:W5678"}], updating: false, isDone: true});
+    const locations = await t.query(api.topics.publications.listLocations, {groupKey: "doi:10.1234/surviving", paginationOpts: {cursor: null, numItems: 100}});
+    expect(locations.page).toHaveLength(23);
+    expect(locations.page.every(row => row.library.id === b.libraryId)).toBe(true);
   } finally {vi.useRealTimers();}
 });
 it("refuses a group with more copies than it reads only when none of those read is public (#427)", async () => {
@@ -216,10 +216,20 @@ it("refuses a group with more copies than it reads only when none of those read 
   await t.run(async ctx => {
     for (let i = 0; i < MAX_LOCATIONS_READ_PER_GROUP; i += 1) await ctx.db.insert("topicLocations", {...row, itemKey: `ZZ${String(i).padStart(6, "0")}`, state: "unpublished"});
   });
-  const list = () => t.query(api.topics.publications.list, {topicId, cursor: null, limit: 10});
-  expect((await list()).groups).toEqual([{key: first.groupKey}]);
+  const list = () => t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}});
+  expect((await list()).page).toEqual([{key: first.groupKey}]);
   await t.run(ctx => ctx.db.patch("topicLocations", _id, {state: "unpublished"}));
   await expect(list()).rejects.toThrow(/more copies/);
+});
+it("says a publication with more copies than one page lists isn't fully loaded, instead of calling the topic complete", async () => {
+  const {t, request, send} = await fixture();
+  await send(request());
+  const {_id, _creationTime, ...row} = (await t.run(ctx => ctx.db.query("topicLocations").first()))!;
+  // 100 copies filed under no topic sort before the one this topic lists.
+  await insertMany(t, "topicLocations", Array.from({length: 100}, (_, i) => ({...row, itemKey: `AA${String(i).padStart(6, "0")}`, topicIds: []})));
+  fetchQueryMock.mockImplementation((reference, args) => t.query(reference, args));
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({item: {key: "ABCD1234", title: "Live card title", itemType: "journalArticle", date: "2026", numPages: null, PDFCoverPageImage: null, creators: []}})));
+  expect(await readTopicPublications(topicId, "", null)).toMatchObject({papers: [], unavailableCount: 1, complete: false});
 });
 it("lists a full page of groups that each hold many long copies (#427)", async () => {
   const {t, a, request, send} = await fixture();
@@ -231,7 +241,7 @@ it("lists a full page of groups that each hold many long copies (#427)", async (
   await insertMany(t, "topicPublicationGroups", dois.map(doi => ({topicId, groupKey: key(doi), count: 80})));
   await insertMany(t, "topicLocations", dois.flatMap((doi, group) => Array.from({length: 80}, (_, copy) => (
     {...row, itemKey: `G${group}C${copy}`, doi, openalexId: null, groupKey: key(doi), metadata: {...row.metadata!, abstract: text(4_500, copy)}}))), 500);
-  const page = await t.query(api.topics.publications.list, {topicId, cursor: null, limit: 50});
-  expect(page.groups).toHaveLength(50);
-  expect(page.nextCursor).not.toBeNull();
+  const page = await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 50}});
+  expect(page.page).toHaveLength(50);
+  expect(page.isDone).toBe(false);
 });

@@ -23,6 +23,7 @@ export const FLAG_REGISTRY = {
   "extraction.pdf": { enabled: true, description: "PDF processing capability gate (per-job toggle visibility)" },
   "extraction.chat": { enabled: false, description: "Chat mode for job creation (paper Q&A)" },
   "extraction.start": { enabled: true, planFeature: "extraction", description: "Start new extraction jobs" },
+  "assistant.enabled": { enabled: false, description: "The research assistant and its chats" },
   "credits.enabled": { enabled: true, description: "Credit system master switch" },
   "credits.topups": { enabled: true, description: "On-demand credit top-up purchases" },
   "subscriptions.enabled": { enabled: true, description: "Subscription/billing system master switch" },
