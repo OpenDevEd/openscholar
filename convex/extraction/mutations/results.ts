@@ -31,6 +31,36 @@ import {
 import { aggregatePaperStatus } from "@/lib/extraction/paper-status";
 import type { ErrorCode } from "@/lib/errors/taxonomy";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
+import { pdfEvidenceHash, validatedAbstractCitations, type SourceCitation } from "../../../lib/extraction/source-evidence";
+import { MAX_CITATIONS } from "../../lib/listCaps";
+
+/** Only retained evidence belonging to this paper can support a saved result. */
+export async function validateResultEvidence(ctx: MutationCtx, paper: Doc<"extractionPapers">, result: OneAnswerBody): Promise<OneAnswerBody> {
+  const candidates: SourceCitation[] = result.citations.slice(0, MAX_CITATIONS).flatMap(c => c.validated && c.charRange.length === 2 && c.charRange.every(Number.isInteger) && c.charRange[0] >= 0 && c.charRange[1] > c.charRange[0] ? [{ ...c, validated: true as const, charRange: [c.charRange[0], c.charRange[1]] as [number, number] }] : []);
+  const abstracts = new Map((await validatedAbstractCitations(paper._id, paper.abstract ?? "", candidates)).map(c => [c.evidenceId, c]));
+  const citations: SourceCitation[] = [];
+  const seen = new Set<string>();
+  for (const c of candidates) {
+    const key = `${c.source ?? "pdf"}:${c.evidenceId}`;
+    if (seen.has(key)) continue;
+    if (c.source === "abstract") {
+      const validated = abstracts.get(c.evidenceId);
+      if (validated) { citations.push(validated); seen.add(key); }
+      continue;
+    }
+    if ((c.paperId && c.paperId !== paper._id) || !Number.isInteger(c.page) || c.page < 1) continue;
+    // Older indexing retries can retain the same immutable unit more than once.
+    const unit = await ctx.db.query("extractionEvidenceUnits").withIndex("by_paper_evidence", q => q.eq("paperId", paper._id).eq("evidenceId", c.evidenceId)).first();
+    if (!unit || c.page !== unit.page || c.quote !== unit.text || c.charRange[0] !== unit.charRange[0] || c.charRange[1] !== unit.charRange[1]) continue;
+    const sourceHash = await pdfEvidenceHash(unit);
+    if (c.sourceHash && c.sourceHash !== sourceHash) continue;
+    citations.push({ ...c, source: "pdf", paperId: paper._id, sourceHash });
+    seen.add(key);
+  }
+  const hasAnswer = result.answer !== null;
+  const citationStatus = result.citationStatus === "extraction_error" ? "extraction_error" : !hasAnswer ? "insufficient_evidence" : citations.length && result.citationStatus === "grounded" ? "grounded" : "best_effort";
+  return { ...result, citations: hasAnswer ? citations : [], citationStatus, retrievalDiagnostics: result.retrievalDiagnostics ? { ...result.retrievalDiagnostics, validatedCitations: hasAnswer ? citations.length : 0, strictNull: !hasAnswer && citationStatus !== "extraction_error" } : undefined };
+}
 
 export const updateJobStatus = internalMutation({
   args: {
@@ -134,6 +164,7 @@ function matchesExpectedEpoch(
 const oneAnswerBody = v.object({
   answer: answerValidator,
   confidence: v.optional(v.number()),
+  modelConfidence: v.optional(v.number()),
   reasoning: v.optional(v.string()),
   citations: v.array(citationValidator),
   citationStatus: citationStatusValidator,
@@ -200,9 +231,11 @@ function buildCompletedResultFields({
     questionKey,
     answer: result.answer,
     confidence: result.confidence,
+    modelConfidence: result.modelConfidence,
     reasoning: result.reasoning,
     citations: result.citations,
     citationStatus: result.citationStatus,
+    evidenceVersion: 2,
     retrievalDiagnostics: result.retrievalDiagnostics,
     pdfContentUsed: result.pdfContentUsed,
     creditsUsed: (existing?.creditsUsed ?? 0) + creditsUsed,
@@ -234,9 +267,11 @@ function buildFailedResultFields({
     questionKey,
     answer: null,
     confidence: 0,
+    modelConfidence: undefined,
     reasoning: `Extraction failed: ${error.message}`,
     citations: [],
     citationStatus: "extraction_error",
+    evidenceVersion: 2,
     retrievalDiagnostics: undefined,
     pdfContentUsed: false,
     status: "failed",
@@ -373,7 +408,7 @@ export const recordQuestionBatch = internalMutation({
         paper,
         paperId: args.paperId,
         questionKey: item.questionKey,
-        result: item.result,
+        result: await validateResultEvidence(ctx, paper, item.result),
         creditsUsed: item.creditsUsed,
         existing,
         now,

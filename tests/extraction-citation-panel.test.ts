@@ -1,8 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { mockId } from "./factories";
 import { buildCitationPanelPayload } from "../lib/extraction/citation-panel";
+import { getAllCitationLocations } from "../lib/extraction/citations";
 
 describe("citation panel payload gating", () => {
+  it("opens saved abstract evidence with PDFs disabled, preserving zero and false answers", () => {
+    const paperId = mockId("extractionPapers", "abstract");
+    const raw = { source: "abstract", paperId, sourceHash: "saved-version", evidenceId: "abstract:1", quote: "No schools dropped out.", charRange: [0, 22], retrieval: {}, validated: true };
+    const citations = getAllCitationLocations({ citations: [raw] }, false);
+    expect(citations).toHaveLength(1);
+    expect(citations[0]).toMatchObject({ source: "abstract", paperId, sourceHash: "saved-version", text: raw.quote });
+    expect(citations[0]).not.toHaveProperty("page");
+    for (const [answer, text] of [[0, "0"], [false, "No"]] as const) {
+      expect(buildCitationPanelPayload({ paperId, paperTitle: "Trial", citations, answer, questionText: "Dropouts?", pdfEnabled: false, abstract: raw.quote })).toMatchObject({ answerText: text, abstract: raw.quote, citations });
+    }
+    expect(getAllCitationLocations({ citations: [{ ...raw, page: 0 }] }, false)).toEqual([]);
+  });
   const baseParams = {
     paperId: mockId("extractionPapers", "1"),
     paperTitle: "Sample Paper",

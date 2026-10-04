@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { ExternalLink, ChevronDown, ChevronUp, Loader2 } from "@/components/icons";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CitationPanelPayload } from "@/lib/extraction/citation-panel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { normalizedAbstract } from "@/lib/extraction/source-evidence";
 
 function CitationTextBlock({
   citation,
@@ -24,7 +25,7 @@ function CitationTextBlock({
       <p
         className={cn(
           "text-2xs leading-relaxed text-muted-foreground",
-          !expanded && "line-clamp-2"
+          !expanded && "line-clamp-2 min-h-[2lh]"
         )}
       >
         {citation.text}
@@ -58,29 +59,30 @@ const PdfViewer = dynamic(
   { ssr: false },
 );
 
-type PdfCitationPanelProps = {
+type CitationPanelProps = {
   payload: CitationPanelPayload | null;
 };
 
-export function PdfCitationPanel({
+export function CitationPanel({
   payload,
-}: PdfCitationPanelProps) {
+}: CitationPanelProps) {
   const t = useTranslations();
-  const pdfUrlQuery = useProtectedQuery(
-    api.extraction.queries.papers.pdfUrl,
-    payload?.paperId ? { paperId: payload.paperId } : "skip",
-  );
-  const pdfUrlResult = pdfUrlQuery.data;
-  const pdfUrl = pdfUrlResult?.status === "ok" ? pdfUrlResult.pdfUrl : null;
-
   const [selectedIndex, setSelectedIndex] = useState(0);
   const effectiveSelectedIndex = payload
     ? Math.min(selectedIndex, Math.max(0, payload.citations.length - 1))
     : 0;
-
   const citation = payload?.citations[effectiveSelectedIndex] || null;
+  const pdfCitation = citation?.source !== "abstract" ? citation : null;
+  const pdfUrlQuery = useProtectedQuery(
+    api.extraction.queries.papers.pdfUrl,
+    payload?.paperId && pdfCitation ? { paperId: payload.paperId } : "skip",
+  );
+  const pdfUrlResult = pdfUrlQuery.data;
+  const pdfUrl = pdfCitation && pdfUrlResult?.status === "ok" ? pdfUrlResult.pdfUrl : null;
   const shouldRenderPdfViewer =
-    !pdfUrlQuery.isDeferred && Boolean(pdfUrl) && Boolean(citation);
+    !pdfUrlQuery.isDeferred && Boolean(pdfUrl) && Boolean(pdfCitation);
+  const abstract = normalizedAbstract(payload?.abstract ?? "");
+  const abstractMatches = citation?.source === "abstract" && citation.paperId === payload?.paperId && abstract.slice(...citation.charRange) === citation.text;
 
   const isLongCitation = (citation?.text?.length || 0) > 260;
 
@@ -104,7 +106,7 @@ export function PdfCitationPanel({
           <h3 className="min-w-0 truncate text-sm font-semibold">{t('common.citation')}</h3>
           <div className="ml-auto flex shrink-0 items-center gap-2">
             {citation ? (
-              <span className="text-xs tabular-nums text-muted-foreground">p.{citation.page}</span>
+              <span className="text-xs tabular-nums text-muted-foreground">{citation.source === "abstract" ? t("common.abstract") : `p.${citation.page}`}</span>
             ) : null}
             {pdfUrl ? (
               <Button
@@ -122,7 +124,7 @@ export function PdfCitationPanel({
 
         {citation?.text ? (
           <CitationTextBlock
-            key={effectiveSelectedIndex}
+            key={citation.evidenceId}
             citation={citation}
             isLongCitation={isLongCitation}
           />
@@ -132,10 +134,11 @@ export function PdfCitationPanel({
           <div className="mt-1.5 flex max-w-full flex-wrap gap-1">
             {payload.citations.map((item, index) => (
               <button
-                key={`${item.page}-${item.charRange[0]}-${item.charRange[1]}`}
+                key={item.evidenceId}
                 type="button"
                 className={cn(
                   "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-3xs font-medium transition-colors",
+                  item.source === "abstract" && "h-6",
                   index === effectiveSelectedIndex
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:bg-accent",
@@ -143,7 +146,7 @@ export function PdfCitationPanel({
                 onClick={() => setSelectedIndex(index)}
               >
                 {index + 1}
-                <span className="opacity-70">p{item.page}</span>
+                {item.source !== "abstract" ? <span className="opacity-70">p{item.page}</span> : null}
               </button>
             ))}
           </div>
@@ -151,6 +154,11 @@ export function PdfCitationPanel({
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden p-1.5">
+        {citation?.source === "abstract" ? (
+          <div className="h-full overflow-y-auto p-2.5">
+            {abstractMatches ? <p className="whitespace-pre-wrap text-sm leading-relaxed">{abstract.slice(0, citation.charRange[0])}<mark className="rounded-sm bg-primary/20 text-foreground">{abstract.slice(...citation.charRange)}</mark>{abstract.slice(citation.charRange[1])}</p> : <p className="text-sm text-muted-foreground">{t("pdfViewer.citationUnavailable")}</p>}
+          </div>
+        ) : <>
         {pdfUrlQuery.isDeferred ? (
           <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-inset p-6 text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -171,14 +179,15 @@ export function PdfCitationPanel({
           </div>
         ) : shouldRenderPdfViewer ? (
           <PdfViewer
-            key={`${pdfUrl}-${citation!.page}-${citation!.charRange?.[0] ?? 0}`}
+            key={`${pdfUrl}-${pdfCitation!.page}-${pdfCitation!.charRange[0]}`}
             pdfUrl={pdfUrl!}
-            initialPageNumber={citation!.page}
-            highlightPage={citation!.page}
-            highlightRange={citation!.charRange}
-            highlightValidated={citation!.validated}
+            initialPageNumber={pdfCitation!.page}
+            highlightPage={pdfCitation!.page}
+            highlightRange={pdfCitation!.charRange}
+            highlightValidated={pdfCitation!.validated}
           />
         ) : null}
+        </>}
       </div>
     </div>
   );

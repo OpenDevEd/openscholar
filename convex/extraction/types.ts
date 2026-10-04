@@ -5,6 +5,7 @@
 
 import { v } from "convex/values";
 import type { PaperSourceMetadata } from "../../lib/library/paper-metadata";
+import type { SourceCitation } from "../../lib/extraction/source-evidence";
 
 export const extractionQuestionSchema = v.object({
   key: v.string(),
@@ -50,20 +51,9 @@ export interface ExtractionResult {
   questionKey: string;
   answer: string | boolean | number | string[] | null;
   confidence?: number;
+  modelConfidence?: number;
   reasoning?: string;
-  citations: Array<{
-    evidenceId: string;
-    page: number;
-    charRange: [number, number];
-    quote: string;
-    retrieval: {
-      denseScore?: number;
-      lexicalScore?: number;
-      fusedScore?: number;
-      rerankScore?: number;
-    };
-    validated: true;
-  }>;
+  citations: SourceCitation[];
   citationStatus:
     | "grounded"
     | "best_effort"

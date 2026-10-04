@@ -389,68 +389,65 @@ function pickChunkEnd(
   return maxEnd;
 }
 
-export function buildChunkedEvidenceUnitsFromPdfPages(
-  pages: PdfChunkPageSource[],
-  options?: {
-    targetChars?: number;
-    maxChars?: number;
-    overlapChars?: number;
-    source?: AnchoredEvidenceUnit["source"];
-  }
-): AnchoredEvidenceUnit[] {
+type ChunkOptions = { targetChars?: number; maxChars?: number; overlapChars?: number };
+
+/** Character ranges always refer to the supplied source text. */
+export function chunkEvidenceText(pageText: string, options?: ChunkOptions): Array<{ text: string; charRange: [number, number] }> {
   const targetChars = Math.max(180, options?.targetChars ?? DEFAULT_TARGET_CHARS);
   const maxChars = Math.max(targetChars, options?.maxChars ?? DEFAULT_MAX_CHARS);
   const overlapChars = Math.max(0, Math.min(targetChars - 40, options?.overlapChars ?? DEFAULT_OVERLAP_CHARS));
-  const source = options?.source ?? "pdfjs_chunks";
-
-  const units: AnchoredEvidenceUnit[] = [];
+  const units: Array<{ text: string; charRange: [number, number] }> = [];
   const seenRanges = new Set<string>();
 
-  for (const page of pages) {
-    const pageText = page.text || "";
-    if (!pageText.trim()) continue;
+  if (!pageText.trim()) return units;
 
-    let cursor = skipLeadingWhitespace(pageText, 0);
-    while (cursor < pageText.length) {
-      const idealEnd = Math.min(pageText.length, cursor + targetChars);
-      const minEnd = Math.min(pageText.length, cursor + Math.max(140, Math.floor(targetChars * 0.6)));
-      const maxEnd = Math.min(pageText.length, cursor + maxChars);
-      let rawEnd = pickChunkEnd(pageText, cursor, minEnd, idealEnd, maxEnd);
-      if (rawEnd <= cursor) {
-        rawEnd = Math.min(pageText.length, cursor + targetChars);
-      }
+  let cursor = skipLeadingWhitespace(pageText, 0);
+  while (cursor < pageText.length) {
+    const idealEnd = Math.min(pageText.length, cursor + targetChars);
+    const minEnd = Math.min(pageText.length, cursor + Math.max(140, Math.floor(targetChars * 0.6)));
+    const maxEnd = Math.min(pageText.length, cursor + maxChars);
+    let rawEnd = pickChunkEnd(pageText, cursor, minEnd, idealEnd, maxEnd);
+    if (rawEnd <= cursor) rawEnd = Math.min(pageText.length, cursor + targetChars);
 
-      const [start, end] = trimRange(pageText, cursor, rawEnd);
-      if (end <= start) {
-        if (rawEnd >= pageText.length) break;
-        cursor = skipLeadingWhitespace(pageText, Math.max(rawEnd, cursor + 1));
-        continue;
-      }
-
-      const rangeKey = `${page.pageNumber}:${start}:${end}`;
-      if (!seenRanges.has(rangeKey)) {
-        seenRanges.add(rangeKey);
-        const text = pageText.slice(start, end);
-        const evidenceId = `ev_${page.pageNumber}_${start}_${end}_${hashText(text).slice(0, 6)}`;
-        units.push({
-          evidenceId,
-          page: page.pageNumber,
-          charRange: [start, end],
-          text,
-          section: page.section || "body",
-          tokens: tokenizeForLexical(text),
-          anchorConfidence: 1,
-          source,
-        });
-      }
-
-      if (end >= pageText.length) break;
-      const nextCursor = Math.max(end - overlapChars, cursor + 1);
-      cursor = skipLeadingWhitespace(pageText, nextCursor);
+    const [start, end] = trimRange(pageText, cursor, rawEnd);
+    if (end <= start) {
+      if (rawEnd >= pageText.length) break;
+      cursor = skipLeadingWhitespace(pageText, Math.max(rawEnd, cursor + 1));
+      continue;
     }
-  }
 
+    const rangeKey = `${start}:${end}`;
+    if (!seenRanges.has(rangeKey)) {
+      seenRanges.add(rangeKey);
+      units.push({ charRange: [start, end], text: pageText.slice(start, end) });
+    }
+
+    if (end >= pageText.length) break;
+    cursor = skipLeadingWhitespace(pageText, Math.max(end - overlapChars, cursor + 1));
+  }
   return units;
+}
+
+export function buildChunkedEvidenceUnitsFromPdfPages(
+  pages: PdfChunkPageSource[],
+  options?: ChunkOptions & { source?: AnchoredEvidenceUnit["source"] },
+): AnchoredEvidenceUnit[] {
+  const seenRanges = new Set<string>();
+  return pages.flatMap(page => chunkEvidenceText(page.text || "", options).flatMap(({ text, charRange }) => {
+    const rangeKey = `${page.pageNumber}:${charRange[0]}:${charRange[1]}`;
+    if (seenRanges.has(rangeKey)) return [];
+    seenRanges.add(rangeKey);
+    return [{
+      evidenceId: `ev_${page.pageNumber}_${charRange[0]}_${charRange[1]}_${hashText(text).slice(0, 6)}`,
+      page: page.pageNumber,
+      charRange,
+      text,
+      section: page.section || "body",
+      tokens: tokenizeForLexical(text),
+      anchorConfidence: 1,
+      source: options?.source ?? "pdfjs_chunks",
+    }];
+  }));
 }
 
 function buildQueryTokenWeights(query: string, baseTokens: string[]) {

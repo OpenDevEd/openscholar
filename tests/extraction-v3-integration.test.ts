@@ -68,6 +68,21 @@ describe("V3.2 evidence policy", () => {
     },
   ];
 
+  it("never treats a null answer as grounded even with a selected passage", () => {
+    const policy = applyEvidencePolicy({ extracted: { answer: null, confidence: 0, reasoning: "Not reported", supportEvidenceIds: [evidencePool[0].unit.evidenceId] }, validated: evidencePool, fallbackCandidates: evidencePool });
+    expect(policy).toMatchObject({ answer: null, confidence: 0, citationStatus: "insufficient_evidence", selectedCandidates: [] });
+  });
+
+  it("keeps an uncited abstract answer best effort when PDFs are disabled", () => {
+    expect(applyAbstractOnlyPolicy({ extracted: { answer: 0, confidence: 0, reasoning: "No supporting passage selected", supportEvidenceIds: [] }, pdfEnabled: false, validatedCount: 0 })).toMatchObject({ answer: 0, confidence: 0, citationStatus: "best_effort" });
+  });
+
+  it("grounds a cited abstract answer without capping its confidence, but keeps null unsupported", () => {
+    const extracted = { answer: 0, confidence: 0.94, reasoning: "No adverse events occurred.", supportEvidenceIds: ["abstract-unit"] };
+    expect(applyAbstractOnlyPolicy({ extracted, pdfEnabled: true, validatedCount: 1 })).toMatchObject({ answer: 0, confidence: 0.94, citationStatus: "grounded", strictNull: false });
+    expect(applyAbstractOnlyPolicy({ extracted: { ...extracted, answer: null }, pdfEnabled: true, validatedCount: 1 })).toMatchObject({ answer: null, citationStatus: "insufficient_evidence", strictNull: true });
+  });
+
   it("returns grounded when valid support IDs are present", () => {
     const validated = validateSupportEvidenceIds(
       ["ev_2_120_280_abc123"],
@@ -138,6 +153,7 @@ describe("V3.2 evidence policy", () => {
         supportEvidenceIds: [],
       },
       pdfEnabled: true,
+      validatedCount: 0,
     });
 
     expect(policy.citationStatus).toBe("best_effort");
@@ -155,6 +171,7 @@ describe("V3.2 evidence policy", () => {
         supportEvidenceIds: [],
       },
       pdfEnabled: true,
+      validatedCount: 0,
     });
 
     expect(policy.citationStatus).toBe("insufficient_evidence");
