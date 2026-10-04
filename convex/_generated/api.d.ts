@@ -115,8 +115,8 @@ import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutation
 import type * as evidenceLibraries_oauthClientSync from "../evidenceLibraries/oauthClientSync.js";
 import type * as evidenceLibraries_oauthClients from "../evidenceLibraries/oauthClients.js";
 import type * as evidenceLibraries_openAlexSourceKey from "../evidenceLibraries/openAlexSourceKey.js";
-import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
 import type * as evidenceLibraries_operationKinds from "../evidenceLibraries/operationKinds.js";
+import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
 import type * as evidenceLibraries_platformMail from "../evidenceLibraries/platformMail.js";
 import type * as evidenceLibraries_provisioning from "../evidenceLibraries/provisioning.js";
@@ -469,8 +469,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/oauthClientSync": typeof evidenceLibraries_oauthClientSync;
   "evidenceLibraries/oauthClients": typeof evidenceLibraries_oauthClients;
   "evidenceLibraries/openAlexSourceKey": typeof evidenceLibraries_openAlexSourceKey;
-  "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
   "evidenceLibraries/operationKinds": typeof evidenceLibraries_operationKinds;
+  "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
   "evidenceLibraries/platformMail": typeof evidenceLibraries_platformMail;
   "evidenceLibraries/provisioning": typeof evidenceLibraries_provisioning;
