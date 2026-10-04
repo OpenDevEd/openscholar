@@ -517,10 +517,11 @@ async function pageOf<Opts extends { numItems: number; cursor: string | null; en
 
 export const messagesAction = defineUserQuery({
   path: "assistant/replies:messages",
-  description: "Reads an assistant chat's messages, newest first, a page at a time: what each person wrote, what the assistant replied, and each action it ran on the way.",
-  args: { threadId: v.id("assistantThreads"), paginationOpts: paginationOptsValidator },
+  description:
+    "Reads an assistant chat's messages, newest first, a page at a time: what each person wrote, what the assistant replied, and each action it ran on the way. An exchange's actions come with the message they answer. With `stepsAhead`, the newest page also brings the actions of a reply whose message is on an earlier page, and they come again with that message.",
+  args: { threadId: v.id("assistantThreads"), stepsAhead: v.optional(v.boolean()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(v.union(messageValidator, stepValidator)),
-  run: async (ctx, userId, { threadId, paginationOpts }) => {
+  run: async (ctx, userId, { threadId, stepsAhead, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId);
     // The caps bound a page whatever the caller asks for: with an `endCursor`, `numItems` alone doesn't.
@@ -530,11 +531,12 @@ export const messagesAction = defineUserQuery({
     const sentBy = await senders(ctx, read.page);
     // Each exchange's steps come with the message it answers, which a page holds once.
     const asked = read.page.filter((row) => row.message?.role === "user");
-    // The newest page also brings the steps of an exchange whose message is on a page before it: a long reply's rows
-    // fill pages of their own, and its steps would otherwise wait for the person to load back to where it began.
-    // They come with the oldest of its rows here, and again with its message when that page loads, under the same IDs.
+    // For a reader that asks (`stepsAhead`, the panel), the newest page also brings the steps of an exchange whose
+    // message is on a page before it: a long reply's rows fill pages of their own, and its steps would otherwise wait
+    // for the person to load back to where it began. They come with the oldest of its rows here, and again with its
+    // message when that page loads, under the same IDs, which is why a reader has to ask.
     const begun = new Set(asked.map((row) => row.order));
-    const cut = paginationOpts.cursor === null ? [...new Map(read.page.filter((row) => !begun.has(row.order)).map((row) => [row.order, row])).values()] : [];
+    const cut = stepsAhead && paginationOpts.cursor === null ? [...new Map(read.page.filter((row) => !begun.has(row.order)).map((row) => [row.order, row])).values()] : [];
     const ran = new Map(await Promise.all([...asked, ...cut].map(async (row) => [row._id, await stepsOfExchange(ctx, threadId, row.order)] as const)));
     // The exchange being answered now, or waiting for the person's answer. A lock whose action died isn't one.
     const answering = (await writing(ctx, thread.reply)) ? thread.reply?.order : thread.asking?.order;
