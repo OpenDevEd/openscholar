@@ -31,8 +31,8 @@ import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
-import { compactedOf, compactionDue, contextSince, summarize } from "./context";
-import { chatModel, previewOf, writing } from "./threads";
+import { COMPACT_AT_TOKENS, compactedOf, compactionDue, contextSince, summarize } from "./context";
+import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { runTurn } from "./turn";
 
 const FLAG = "assistant.enabled";
@@ -80,6 +80,8 @@ export const send = mutation({
     }
     const { modelId, effort } = await chatModel(ctx, thread);
     const model = modelId ? await requireAvailableModel(ctx, modelId) : null;
+    // The model the chat falls back on, or one picked before the rule, is held to it too.
+    if (model) requireAssistantModel(model);
 
     // The message, the lock and the scheduled reply commit together, so a second send
     // can't slip in between them.
@@ -136,6 +138,20 @@ export const reply = internalAction({
     // How much history the reply's request read, which decides whether a compaction follows it.
     let history = { messages: 0, bytes: 0 };
     const turn = { agentThreadId, senderId, modelId, effort };
+    const shouldStop = async () => (await state()) !== "writing";
+    let read = await compactedOf(ctx, threadId);
+    // A compaction that was due and didn't finish is written now, before the reply reads the conversation.
+    if (read.owed && read.answering) {
+      try {
+        const through = read.answering - 1;
+        const summary = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:summary`, shouldStop });
+        await ctx.runMutation(internal.assistant.replies.summarized, { ...lock, summary, through });
+        read = { ...read, summary, compactedThrough: through, owed: false };
+      } catch (error) {
+        // Still owed. The reply goes ahead if the conversation can be read whole, and fails saying so if it can't.
+        console.error("[assistant] owed compaction failed", { threadId, error: errorToLogString(error) });
+      }
+    }
     await runTurn(ctx, {
       agent: assistant,
       threadId: agentThreadId,
@@ -146,11 +162,12 @@ export const reply = internalAction({
       attemptId,
       credits: ESTIMATED_CREDITS_PER_CHAT_MESSAGE,
       log: { assistantThreadId: threadId },
-      shouldStop: async () => (await state()) !== "writing",
+      shouldStop,
       // People come back to a chat after a pause, so its cache is kept for an hour.
       cache: "1h",
       contextHandler: contextSince({
-        ...(await compactedOf(ctx, threadId)),
+        summary: read.summary,
+        compactedThrough: read.compactedThrough,
         agentThreadId,
         promptMessageId,
         onHistory: (read) => {
@@ -165,13 +182,32 @@ export const reply = internalAction({
 
 const turnArgs = { agentThreadId: v.string(), senderId: v.id("users"), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator) };
 
-/** What a chat's replies read from its record: its summary and the exchange the summary runs through. */
+/**
+ * What a chat's replies read from its record: its summary, the exchange the summary runs
+ * through, whether a compaction is owed, and the exchange being answered now.
+ */
 export const compacted = internalQuery({
   args: { threadId: v.id("assistantThreads") },
-  returns: v.object({ summary: v.optional(v.string()), compactedThrough: v.optional(v.number()) }),
+  returns: v.object({ summary: v.optional(v.string()), compactedThrough: v.optional(v.number()), owed: v.boolean(), answering: v.optional(v.number()) }),
   handler: async (ctx, { threadId }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
-    return { ...(thread?.summary ? { summary: thread.summary } : {}), ...(thread?.compactedThrough !== undefined ? { compactedThrough: thread.compactedThrough } : {}) };
+    return {
+      ...(thread?.summary ? { summary: thread.summary } : {}),
+      ...(thread?.compactedThrough !== undefined ? { compactedThrough: thread.compactedThrough } : {}),
+      owed: thread?.compactionOwed === true,
+      ...(thread?.reply ? { answering: thread.reply.order } : {}),
+    };
+  },
+});
+
+/** Keeps the summary a reply wrote before it answered, while the reply still holds the chat. */
+export const summarized = internalMutation({
+  args: { ...lockArgs, summary: v.string(), through: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { threadId, attemptId, summary, through }) => {
+    const thread = await ctx.db.get("assistantThreads", threadId);
+    if (thread?.reply?.attemptId === attemptId) await ctx.db.patch("assistantThreads", threadId, { summary, compactedThrough: through, compactionOwed: undefined });
+    return null;
   },
 });
 
@@ -186,9 +222,10 @@ export const compact = internalAction({
   handler: async (ctx, { threadId, attemptId, through, ...turn }) => {
     const lock = { threadId, attemptId };
     let summary: string | undefined;
+    const shouldStop = async () => (await ctx.runQuery(internal.assistant.replies.lockState, lock)) !== "writing";
     try {
-      if ((await ctx.runQuery(internal.assistant.replies.lockState, lock)) === "writing") {
-        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:summary` });
+      if (!(await shouldStop())) {
+        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:summary`, shouldStop });
       }
     } catch (error) {
       console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });
@@ -239,7 +276,12 @@ export const release = internalMutation({
     if (thread?.reply?.attemptId !== attemptId) return null;
     const current = thread.reply;
     if (current.compacting) {
-      await ctx.db.patch("assistantThreads", threadId, { reply: undefined, ...(summarized ? { summary: summarized.summary, compactedThrough: summarized.through } : {}) });
+      // A summary that was stopped, or never written, stays owed: the next reply writes it first.
+      const kept = summarized && !current.stop;
+      await ctx.db.patch("assistantThreads", threadId, {
+        reply: undefined,
+        ...(kept ? { summary: summarized.summary, compactedThrough: summarized.through, compactionOwed: undefined } : { compactionOwed: true }),
+      });
       return null;
     }
     const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null }, excludeToolMessages: true })).page[0];

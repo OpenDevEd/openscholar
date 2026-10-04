@@ -238,6 +238,11 @@ describe("assistant replies", () => {
     await expect(asAda.mutation(api.assistant.threads.setModel, { threadId, modelId: toolless })).rejects.toThrow(/tools/);
     await expect(asAda.mutation(api.assistant.threads.create, { modelId: small })).rejects.toThrow(/long enough/);
 
+    // A chat that fell back on a model like that, or had one picked before the rule, doesn't send on it either.
+    await t.run(async (ctx) => ctx.db.patch("assistantThreads", threadId, { modelId: small }));
+    await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "Third" })).rejects.toThrow(/long enough/);
+    await asAda.mutation(api.assistant.threads.setModel, { threadId, modelId: picked });
+
     // A chat started on a model runs on it from its first message.
     const own = await asAda.mutation(api.assistant.threads.create, { modelId: picked });
     await asAda.mutation(api.assistant.replies.send, { threadId: own, text: "First" });

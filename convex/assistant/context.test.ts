@@ -3,11 +3,11 @@
 // provider's cache holds, and a chat that has grown long carries on from a summary.
 import { convexTest } from "convex-test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
-import { INSTRUCTIONS } from "./agent";
+import { INSTRUCTIONS, assistant } from "./agent";
 import { people } from "./assistant.test-support";
 import { COMPACT_AT_TOKENS, MAX_CONTEXT_BYTES, MAX_CONTEXT_MESSAGES, compactionDue } from "./context";
 import { finishingDoStream, waitFor } from "./turn.test-support";
@@ -126,7 +126,7 @@ describe("what the assistant's model is sent", () => {
     expect(charged).toHaveLength(5);
   });
 
-  it("stays as it was when the summary can't be written", async () => {
+  it("owes a summary that couldn't be written, and the next reply writes it before it answers", async () => {
     const t = convexTest(schema);
     const { say, thread } = await chatOf(t);
     mockDoStream.mockImplementation(finishingDoStream(["Answer 1"], COMPACT_AT_TOKENS + 1));
@@ -134,15 +134,73 @@ describe("what the assistant's model is sent", () => {
       throw new Error("The provider is down");
     });
     await say("Question 1");
-    expect(await thread()).toMatchObject({ preview: "Answer 1" });
+    expect(await thread()).toMatchObject({ preview: "Answer 1", compactionOwed: true });
     expect((await thread())?.summary).toBeUndefined();
 
-    // The chat takes the next message, which reads the whole conversation again.
+    // The next reply tries the summary first. That fails again, so it answers from the whole conversation.
     mockDoStream.mockImplementation(finishingDoStream(["Answer 2"]));
     await say("Question 2");
-    expect(said(sent(2))).toEqual([`system: ${INSTRUCTIONS}`, "user: Question 1", "assistant: Answer 1", "user: Question 2"]);
+    expect(said(sent(requests.length - 1))).toEqual([`system: ${INSTRUCTIONS}`, "user: Question 1", "assistant: Answer 1", "user: Question 2"]);
+    expect(await thread()).toMatchObject({ compactionOwed: true });
     // Only the two replies were charged.
     expect(await t.run(async (ctx) => ctx.db.query("billingUsage").collect())).toHaveLength(2);
+
+    // Once it can be written, the reply that writes it starts from it.
+    mockDoGenerate.mockImplementation(summaryOf("Decisions\nNone."));
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 3"]));
+    await say("Question 3");
+    expect(await thread()).toMatchObject({ summary: "Decisions\nNone.", compactedThrough: 1 });
+    expect((await thread())?.compactionOwed).toBeUndefined();
+    expect(said(sent(requests.length - 2)).slice(1, -1)).toEqual(["user: Question 1", "assistant: Answer 1", "user: Question 2", "assistant: Answer 2"]);
+    expect(said(sent(requests.length - 1))).toEqual([`system: ${INSTRUCTIONS}`, expect.stringMatching(/Decisions\nNone\.$/), "user: Question 3"]);
+  });
+
+  it("is summarized again from its last summary, not from the start", async () => {
+    const t = convexTest(schema);
+    const { say, thread } = await chatOf(t);
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 1"], COMPACT_AT_TOKENS + 1));
+    mockDoGenerate.mockImplementation(summaryOf("First summary"));
+    await say("Question 1");
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 2"], COMPACT_AT_TOKENS + 1));
+    mockDoGenerate.mockImplementation(summaryOf("Second summary"));
+    await say("Question 2");
+
+    expect(await thread()).toMatchObject({ summary: "Second summary", compactedThrough: 1 });
+    // The second summary read the first one and the exchange since it.
+    expect(said(sent(requests.length - 1)).slice(0, -1)).toEqual([`system: ${INSTRUCTIONS}`, expect.stringMatching(/First summary$/), "user: Question 2", "assistant: Answer 2"]);
+  });
+
+  it("keeps the old view when its summary was stopped, and owes a new one", async () => {
+    const t = convexTest(schema);
+    const { threadId, say, thread } = await chatOf(t);
+    mockDoStream.mockImplementation(finishingDoStream(["Answer 1"]));
+    await say("Question 1");
+    // A compaction someone stopped hands its summary in after the stop.
+    await t.run(async (ctx) => {
+      const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
+      const row = (await ctx.db.get("assistantThreads", threadId))!;
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "summary", senderId: row.ownerId, order: 0, startedAt: Date.now(), scheduledId, compacting: true, stop: true } });
+    });
+    await t.mutation(internal.assistant.replies.release, { threadId, attemptId: "summary", summarized: { summary: "Too late", through: 0 } });
+
+    expect(await thread()).toMatchObject({ compactionOwed: true });
+    expect((await thread())?.summary).toBeUndefined();
+    expect((await thread())?.reply).toBeUndefined();
+  });
+
+  it("fails a reply, saying the chat is too long, rather than answer from part of a conversation it can't read whole", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId, say } = await chatOf(t);
+    await t.run(async (ctx) => {
+      const row = (await ctx.db.get("assistantThreads", threadId))!;
+      for (let i = 0; i < 510; i++) await assistant.saveMessage(ctx, { threadId: row.agentThreadId, userId: ada, prompt: `Message ${i}`, skipEmbeddings: true });
+    });
+    await say("One more");
+
+    expect(mockDoStream).not.toHaveBeenCalled();
+    const newest = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0];
+    expect(newest).toMatchObject({ role: "assistant", status: "failed", error: { code: "context_too_long" } });
+    expect(await t.run(async (ctx) => ctx.db.query("billingUsage").collect())).toEqual([]);
   });
 
   it("is compacted past 50,000 tokens, 60% of a small model's window, 400 messages or 4 MB", () => {

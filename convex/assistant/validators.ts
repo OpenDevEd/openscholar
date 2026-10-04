@@ -45,6 +45,8 @@ export const assistantThreadFields = {
   summary: v.optional(v.string()),
   /** The last exchange the summary covers, by the agent component's order. */
   compactedThrough: v.optional(v.number()),
+  /** A compaction was due and didn't finish, so the next reply writes the summary before it answers. */
+  compactionOwed: v.optional(v.boolean()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
