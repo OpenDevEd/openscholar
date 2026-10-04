@@ -62,11 +62,15 @@ export const SUMMARY_MAX_TOKENS = 8_000;
 const SUMMARY_LEAD = "This conversation grew long, so its earlier messages were replaced with this summary:\n\n";
 /**
  * The message a reply summarized partway goes on from. The app writes it, the model reads
- * it as the person's, and the chat's page leaves it out (./replies.ts).
+ * it as the person's, and the chat's page leaves it out (./replies.ts). It names everything
+ * left, not the next step alone: told to continue with the next step, GPT-6 Luna did that
+ * one step of six and stopped.
  */
 /** The name that message is saved under, in place of the agent's, which is what tells it from a message a person wrote, whatever theirs says. */
 export const CARRIED = "carry-on";
-export const CARRY_ON = "Continue with the next step the summary names, and don't do again what it says is done. If nothing is left to do, tell me what was done. If you're unsure how to proceed, ask me.";
+export const CARRY_ON =
+  "Carry on. Do everything the summary lists as unfinished, starting with its next step, and don't do again what it says is done. " +
+  "Keep going until all of it is done, then give me the answer I asked for. If you're unsure how to proceed, ask me.";
 
 const SUMMARIZE =
   "Write a summary of this conversation that can replace every message above, so the conversation can carry on from the summary alone. " +
