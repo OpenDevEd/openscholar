@@ -67,8 +67,15 @@ const CORE_PATHS = [
  */
 export const runsWithoutAsking = (entry: UserAction) => entry.kind === "query" || (!entry.spendsCredits && !entry.outsideEffect && entry.undoable);
 
-/** An action's description and arguments, as the model is sent them. */
-export const definition = (entry: UserAction) => ({ does: entry.description, arguments: z.toJSONSchema(inputSchema(entry)) });
+/**
+ * An action's description and arguments, as the model is sent them. Without the schema's
+ * own "$schema" line: what a tool returns is kept with the reply, and Convex keeps no
+ * field whose name starts with a dollar sign, so a result that held it ended the reply.
+ */
+export function definition(entry: UserAction) {
+  const { $schema: _dialect, ...args } = z.toJSONSchema(inputSchema(entry));
+  return { does: entry.description, arguments: args };
+}
 const sizes = new Map<string, number>();
 /** Whether an action is short enough to be a tool at all (#326). One that isn't waits to be split into smaller actions. */
 function fits(entry: UserAction) {
