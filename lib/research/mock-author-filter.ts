@@ -35,6 +35,7 @@ const strip = <T,>(value: T): T =>
   ) as T;
 
 type Sent = {
+  searches?: { search: { id: string; authors?: string[] } }[];
   command?: {
     kind: string;
     id?: string;
@@ -45,7 +46,12 @@ type Sent = {
 
 /** What is sent to the backend, without any search's authors; they are kept here first. */
 export function withoutAuthors<T>(sent: T): T {
-  const command = (sent as Sent).command;
+  const { command, searches } = sent as Sent;
+  // Searches made signed out, imported at sign-in.
+  for (const { search } of searches ?? []) {
+    const { id, authors } = search;
+    if (authors?.length) keep((all) => { all[id] = authors; });
+  }
   if (command?.kind === "createSearch" && command.search?.authors?.length) {
     const { id, authors } = command.search;
     keep((all) => { all[id] = authors; });
