@@ -163,46 +163,46 @@ export async function deleteLibraryUpload(
   await deleteObjects(createStorageClient(input), [input.key]);
 }
 
-async function listObjectNames(
+/**
+ * The first page of the files under `prefix`, and whether the list ends with it. Null when
+ * the bucket is missing.
+ */
+async function listObjectPage(
   client: StorageClient,
   prefix: string,
-  onBatch?: () => Promise<void>,
-): Promise<string[]> {
-  const names: string[] = [];
-  for (let offset = 0; ; offset += LIST_PAGE_SIZE) {
-    await onBatch?.();
-    const response = await requestObjects(client, {
-      method: "POST",
-      path: bucketPath(`list/${EVIDENCE_LIBRARY_UPLOAD_BUCKET}`),
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prefix, limit: LIST_PAGE_SIZE, offset }),
-      allowMissingBucket: true,
-    });
-    if (!response) return names;
-    let payload: unknown;
-    try {
-      payload = await response.json();
-    } catch {
-      throw new StorageSetupError(
-        "STORAGE_INVALID_RESPONSE",
-        "The file store returned an invalid file list",
-      );
-    }
-    if (!Array.isArray(payload)) {
-      throw new StorageSetupError(
-        "STORAGE_INVALID_RESPONSE",
-        "The file store returned an invalid file list",
-      );
-    }
-    for (const entry of payload) {
-      const name =
-        typeof entry === "object" && entry !== null && "name" in entry
-          ? entry.name
-          : null;
-      if (typeof name === "string" && name) names.push(name);
-    }
-    if (payload.length < LIST_PAGE_SIZE) return names;
+): Promise<{ names: string[]; isLast: boolean } | null> {
+  const response = await requestObjects(client, {
+    method: "POST",
+    path: bucketPath(`list/${EVIDENCE_LIBRARY_UPLOAD_BUCKET}`),
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ prefix, limit: LIST_PAGE_SIZE, offset: 0 }),
+    allowMissingBucket: true,
+  });
+  if (!response) return null;
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new StorageSetupError(
+      "STORAGE_INVALID_RESPONSE",
+      "The file store returned an invalid file list",
+    );
   }
+  if (!Array.isArray(payload)) {
+    throw new StorageSetupError(
+      "STORAGE_INVALID_RESPONSE",
+      "The file store returned an invalid file list",
+    );
+  }
+  const names: string[] = [];
+  for (const entry of payload) {
+    const name =
+      typeof entry === "object" && entry !== null && "name" in entry
+        ? entry.name
+        : null;
+    if (typeof name === "string" && name) names.push(name);
+  }
+  return { names, isLast: payload.length < LIST_PAGE_SIZE };
 }
 
 /**
@@ -222,9 +222,27 @@ export async function deleteLibraryUploads(
 ): Promise<{ deleted: number }> {
   const client = createStorageClient(input);
   const prefix = evidenceLibraryUploadPrefix(input.libraryId);
-  const names = await listObjectNames(client, prefix, input.onBatch);
-  const keys = names.map((name) => `${prefix}${name}`);
-  await input.onBatch?.();
-  await deleteObjects(client, keys);
-  return { deleted: keys.length };
+  let deleted = 0;
+  let previous: string | undefined;
+  // A page is deleted before the next is read, so every read starts at the
+  // first file still there and no list of them all is ever held.
+  for (;;) {
+    await input.onBatch?.();
+    const page = await listObjectPage(client, prefix);
+    if (!page || page.names.length === 0) return { deleted };
+    if (page.names[0] === previous) {
+      throw new StorageSetupError(
+        "STORAGE_REQUEST_FAILED",
+        "The file store kept files it was asked to delete",
+      );
+    }
+    previous = page.names[0];
+    await input.onBatch?.();
+    await deleteObjects(
+      client,
+      page.names.map((name) => `${prefix}${name}`),
+    );
+    deleted += page.names.length;
+    if (page.isLast) return { deleted };
+  }
 }

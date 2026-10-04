@@ -302,9 +302,27 @@ describe("ensureUploadBucket", () => {
         holds.push(Date.now());
       },
     });
-    // Once before each page it asked for, and once more before the deletes.
-    expect(holds.length).toBe(listed + 1);
+    // Once before each page it asked for, and once before deleting it.
+    expect(holds.length).toBe(listed * 2);
     expect(holds.length).toBeGreaterThan(2);
+  });
+
+  it("stops when the file store keeps the files it was asked to delete", async () => {
+    // The same full page every time: without a stop, the walk would never end.
+    const page = Array.from({ length: 100 }, (_, index) => ({ name: `file-${index}` }));
+    const fetchImpl = (async (url: RequestInfo | URL) =>
+      new URL(String(url)).pathname.includes("/list/")
+        ? Response.json(page)
+        : Response.json([])) as unknown as typeof fetch;
+
+    await expect(
+      deleteLibraryUploads({
+        storageUrl: "https://storage.example.test",
+        serviceRoleKey: "service-key",
+        libraryId: "library_1",
+        fetchImpl,
+      }),
+    ).rejects.toThrow(/kept files/);
   });
 
 });
