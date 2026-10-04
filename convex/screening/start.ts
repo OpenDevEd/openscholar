@@ -49,7 +49,7 @@ async function jobPapers(ctx: ActionCtx, userId: Id<"users">, { set, first, thro
     const count: number = await ctx.runQuery(internal.screening.queries.answeredCount, { userId, searchId, questions: asked, paperIds });
     answered += count;
   }
-  return { papers, ended, range: { set, first, last, answered, ...(through > last && !ended ? { through, snapshot: taken } : {}) } };
+  return { papers, ended, range: { set, first, last, answered, snapshot: taken, ...(through > last && !ended ? { through } : {}) } };
 }
 
 /**

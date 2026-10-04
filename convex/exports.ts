@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { httpAction, internalQuery, query } from "./_generated/server";
 import { requireAuth } from "./lib/auth";
-import { createError } from "./lib/errors";
+import { createError, readConvexErrorData } from "./lib/errors";
 import { internalMutation, mutation } from "./lib/functions";
 import { digestOpaqueToken } from "./lib/opaqueTokenDigest";
 import { EXPORT_LINK_MS, exportFilename, exportFiles } from "../lib/export";
@@ -15,7 +15,10 @@ import { shortcutExpansions } from "./research/records";
 import { screeningExportFiles, screeningItems } from "../lib/screening/export";
 import { readScreeningProgressCounts } from "./screening/progress";
 import { readScreeningResultsPage } from "./screening/queries";
-import { screeningJobStatusValidator, screeningQuestionsValidator, screeningScoringConfigValidator } from "./screening/validators";
+import { screeningRevision } from "./screening/accounting";
+import { paperSetValidator, screeningJobStatusValidator, screeningQuestionsValidator, screeningScoringConfigValidator } from "./screening/validators";
+import { searchSnapshotValidator } from "./paperSets/openalex";
+import { effortValidator } from "./aiModelConfig/validators";
 
 /** Rows one export read takes; a library search reads its every match at once. */
 const EXPORT_PAGE_SIZE = 100;
@@ -37,7 +40,10 @@ export const start = mutation({
     const user = await requireAuth(ctx);
     if (!/^[0-9a-f]{64}$/.test(args.digest)) throw createError("VALIDATION_ERROR", "An export needs a SHA-256 digest.");
     const expiresAt = Date.now() + EXPORT_LINK_MS;
-    const id = await ctx.db.insert("exports", { ...args, userId: user._id, part: 1, cursor: null, serving: false, failed: false, expiresAt });
+    const job = args.source.kind === "screening" ? await ctx.db.get("screeningJobs", args.source.jobId) : null;
+    if (args.source.kind === "screening" && (!job || job.userId !== user._id)) throw createError("NOT_FOUND", "Screening job not found");
+    const sourceRevision = job ? await screeningRevision(ctx, job) : undefined;
+    const id = await ctx.db.insert("exports", { ...args, sourceRevision, userId: user._id, part: 1, cursor: null, serving: false, failed: false, expiresAt });
     await ctx.scheduler.runAfter(EXPORT_LINK_MS, internal.exports.expire, { id });
     return null;
   },
@@ -49,11 +55,11 @@ export const start = mutation({
  */
 export const progress = query({
   args: { digest: v.string() },
-  returns: v.union(v.object({ part: v.number(), serving: v.boolean(), failed: v.boolean() }), v.null()),
+  returns: v.union(v.object({ part: v.number(), serving: v.boolean(), failed: v.boolean(), failureReason: v.optional(v.literal("changed")) }), v.null()),
   handler: async (ctx, { digest }) => {
     const user = await requireAuth(ctx);
     const row = await ctx.db.query("exports").withIndex("by_digest", (q) => q.eq("digest", digest)).unique();
-    return row && row.userId === user._id ? { part: row.part, serving: row.serving, failed: row.failed } : null;
+    return row && row.userId === user._id ? { part: row.part, serving: row.serving, failed: row.failed, failureReason: row.failureReason } : null;
   },
 });
 
@@ -72,7 +78,7 @@ export const expire = internalMutation({
 export const claim = internalMutation({
   args: { digest: v.string(), part: v.number() },
   returns: v.union(
-    v.object({ id: v.id("exports"), userId: v.id("users"), format: exportFormatValidator, source: exportSourceValidator, cursor: v.union(v.string(), v.null()) }),
+    v.object({ id: v.id("exports"), userId: v.id("users"), format: exportFormatValidator, source: exportSourceValidator, sourceRevision: v.optional(v.string()), cursor: v.union(v.string(), v.null()) }),
     v.null(),
   ),
   handler: async (ctx, { digest, part }) => {
@@ -81,7 +87,7 @@ export const claim = internalMutation({
     const expiresAt = Date.now() + PART_SERVE_MS;
     await ctx.db.patch("exports", row._id, { serving: true, expiresAt });
     await ctx.scheduler.runAfter(PART_SERVE_MS, internal.exports.expire, { id: row._id });
-    return { id: row._id, userId: row.userId, format: row.format, source: row.source, cursor: row.cursor };
+    return { id: row._id, userId: row.userId, format: row.format, source: row.source, sourceRevision: row.sourceRevision, cursor: row.cursor };
   },
 });
 
@@ -92,6 +98,11 @@ export const finishPart = internalMutation({
   handler: async (ctx, { id, cursor }) => {
     const row = await ctx.db.get("exports", id);
     if (!row) return null;
+    if (row.source.kind === "screening") {
+      const job = await ctx.db.get("screeningJobs", row.source.jobId);
+      if (!job) throw createError("NOT_FOUND", "Screening job not found");
+      await screeningRevision(ctx, job, row.sourceRevision);
+    }
     if (cursor === null) {
       await ctx.db.delete("exports", id);
       return null;
@@ -105,11 +116,11 @@ export const finishPart = internalMutation({
 
 /** Marks an export failed, so the page that started it can say so; the link then lapses. */
 export const failPart = internalMutation({
-  args: { id: v.id("exports") },
+  args: { id: v.id("exports"), reason: v.optional(v.literal("changed")) },
   returns: v.null(),
-  handler: async (ctx, { id }) => {
+  handler: async (ctx, { id, reason }) => {
     if (!(await ctx.db.get("exports", id))) return null;
-    await ctx.db.patch("exports", id, { serving: false, failed: true, expiresAt: Date.now() + EXPORT_LINK_MS });
+    await ctx.db.patch("exports", id, { serving: false, failed: true, failureReason: reason, expiresAt: Date.now() + EXPORT_LINK_MS });
     await ctx.scheduler.runAfter(EXPORT_LINK_MS, internal.exports.expire, { id });
     return null;
   },
@@ -120,9 +131,9 @@ export const failPart = internalMutation({
  * where the next read starts (null at the end). `written` rows came before in this part.
  */
 export const page = internalQuery({
-  args: { userId: v.id("users"), source: exportSourceValidator, format: exportFormatValidator, cursor: v.union(v.string(), v.null()), written: v.number() },
+  args: { userId: v.id("users"), source: exportSourceValidator, sourceRevision: v.optional(v.string()), format: exportFormatValidator, cursor: v.union(v.string(), v.null()), written: v.number() },
   returns: v.object({ text: v.string(), count: v.number(), cursor: v.union(v.string(), v.null()) }),
-  handler: async (ctx, { userId, source, format, cursor, written }) => {
+  handler: async (ctx, { userId, source, sourceRevision, format, cursor, written }) => {
     const write = <Item>(read: { page: Item[]; isDone: boolean; continueCursor: string }, item: (item: Item, index: number) => string) => ({
       text: read.page.map((row, i) => item(row, written + i)).join(""),
       count: read.page.length,
@@ -135,7 +146,8 @@ export const page = internalQuery({
     if (source.kind === "screening") {
       const job = await ctx.db.get("screeningJobs", source.jobId);
       if (!job || job.userId !== userId) throw createError("NOT_FOUND", "Screening job not found");
-      return write(await readScreeningResultsPage(ctx, job, { cursor, numItems: EXPORT_PAGE_SIZE }), screeningItems(job.questions)[format]);
+      await screeningRevision(ctx, job, sourceRevision);
+      return write(await readScreeningResultsPage(ctx, job, { cursor, numItems: EXPORT_PAGE_SIZE }), screeningItems(job.questions, { ...job, revision: sourceRevision })[format]);
     }
     if (source.kind === "shortcuts") {
       const read = await ctx.db.query("queryShortcuts").withIndex("by_user", (q) => q.eq("userId", userId)).paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
@@ -159,6 +171,13 @@ export const page = internalQuery({
 export const screeningJob = internalQuery({
   args: { userId: v.id("users"), jobId: v.id("screeningJobs") },
   returns: v.union(v.null(), v.object({
+    _id: v.id("screeningJobs"),
+    revision: v.string(),
+    set: v.optional(paperSetValidator),
+    snapshot: v.optional(searchSnapshotValidator),
+    serverEffort: v.optional(effortValidator),
+    first: v.optional(v.number()),
+    last: v.optional(v.number()),
     status: screeningJobStatusValidator,
     questions: screeningQuestionsValidator,
     scoringConfig: screeningScoringConfigValidator,
@@ -171,7 +190,7 @@ export const screeningJob = internalQuery({
     const job = await ctx.db.get("screeningJobs", jobId);
     if (!job || job.userId !== userId) return null;
     const { status, questions, scoringConfig, totalPapers, createdAt, completedAt } = job;
-    return { status, questions, scoringConfig, totalPapers, qualifiedPapers: (await readScreeningProgressCounts(ctx, job)).qualifiedCount, createdAt, completedAt };
+    return { _id: jobId, revision: await screeningRevision(ctx, job), set: job.set, snapshot: job.snapshot, serverEffort: job.serverEffort, first: job.first, last: job.last, status, questions, scoringConfig, totalPapers, qualifiedPapers: (await readScreeningProgressCounts(ctx, job)).qualifiedCount, createdAt, completedAt };
   },
 });
 
@@ -197,6 +216,10 @@ export const download = httpAction(async (ctx, request) => {
     await ctx.runMutation(internal.exports.failPart, { id });
     return new Response("This screening job wasn't found.", { status: 404 });
   }
+  if (job && job.revision !== claimed.sourceRevision) {
+    await ctx.runMutation(internal.exports.failPart, { id, reason: "changed" });
+    return new Response("Screening changed. Start the export again.", { status: 409 });
+  }
   const files = job ? screeningExportFiles(job) : exportFiles[source.kind as Exclude<typeof source.kind, "screening">];
   const file = files[format];
   const encoder = new TextEncoder();
@@ -216,18 +239,18 @@ export const download = httpAction(async (ctx, request) => {
           started = true;
           send(controller, file.start(at));
         }
-        const read: { text: string; count: number; cursor: string | null } = await ctx.runQuery(internal.exports.page, { userId, source, format, cursor, written: count });
+        const read: { text: string; count: number; cursor: string | null } = await ctx.runQuery(internal.exports.page, { userId, source, sourceRevision: claimed.sourceRevision, format, cursor, written: count });
         send(controller, read.text);
         count += read.count;
         cursor = read.cursor;
         if (cursor === null || bytes >= PART_BYTES) {
-          send(controller, file.end(count));
           await ctx.runMutation(internal.exports.finishPart, { id, cursor });
+          send(controller, file.end(count));
           controller.close();
         }
       } catch (error) {
         console.error("[export] Stopped part way", { userId, format, source, part, written: count, bytes, error });
-        await ctx.runMutation(internal.exports.failPart, { id }).catch((cause) => console.error("[export] Couldn't mark the export failed", { id, cause }));
+        await ctx.runMutation(internal.exports.failPart, { id, reason: readConvexErrorData(error)?.code === "CONFLICT" ? "changed" : undefined }).catch((cause) => console.error("[export] Couldn't mark the export failed", { id, cause }));
         controller.error(error);
       }
     },

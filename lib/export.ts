@@ -140,7 +140,7 @@ export async function downloadExport(convex: ConvexReactClient, source: ExportSo
       const progress = watch.localQueryResult();
       if (progress === undefined) return;
       if (progress === null) return settle();
-      if (progress.failed) return settle(new Error(`Part ${progress.part} of the export failed`));
+      if (progress.failed) return settle(new Error(progress.failureReason === "changed" ? "Screening changed during export. Download it again to get one consistent version." : `Part ${progress.part} of the export failed`));
       if (progress.serving) return clearTimeout(timer);
       if (progress.part > opened) {
         open((opened = progress.part));

@@ -151,16 +151,15 @@ describe("screening export", () => {
     expect(csv.response.headers.get("Content-Disposition")).toBe('attachment; filename="screening-export-2026-09-01-completed.csv"');
     const lines = csv.text.split("\n");
     expect(lines).toHaveLength(121);
-    expect(lines[0]).toBe('Title,Authors,Year,DOI,OpenAlex ID,"Randomized, or quasi-experimental?",Score,Stars,Qualified,Status');
-    expect(lines[1]).toBe("Paper 0,,,,https://openalex.org/W0,Yes,1,5,Yes,completed");
-    expect(lines[120]).toBe("Paper 119,,,,https://openalex.org/W119,No,0,5,No,completed");
+    expect(lines[0]).toContain('Title,Authors,Year,DOI,OpenAlex ID,"q1: Randomized, or quasi-experimental?",Score,Stars,Qualified,Status');
+    expect(lines[1]).toMatch(/^Paper 0,,,,https:\/\/openalex.org\/W0,Yes,1,5,Yes,completed,/);
+    expect(lines[120]).toMatch(/^Paper 119,,,,https:\/\/openalex.org\/W119,No,0,5,No,completed,/);
 
     const json = JSON.parse((await exportParts(t, as, { kind: "screening", jobId })).text);
     expect(json.job).toMatchObject({ status: "completed", totalPapers: 120, createdAt: "2026-09-01T00:00:00.000Z" });
     expect(json.results).toHaveLength(120);
     expect(json.results[119]).toMatchObject({ title: "Paper 119", answers: { q1: false }, qualified: false });
 
-    const other = await exportParts(t, t.withIdentity({ subject: "someone_else" }), { kind: "screening", jobId });
-    expect(other.response.status).toBe(404);
+    await expect(exportParts(t, t.withIdentity({ subject: "someone_else" }), { kind: "screening", jobId })).rejects.toThrow(/not found/i);
   });
 });
