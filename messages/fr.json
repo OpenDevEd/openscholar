@@ -984,6 +984,7 @@
     "filterByAuthor": "Uniquement les travaux de {name}",
     "authorByName": "Tout auteur portant ce nom",
     "authorsAndNames": "Un travail doit avoir l'un des auteurs OpenAlex et l'un des noms saisis.",
+    "authorsAndNamesWhy": "OpenAlex cherche séparément dans ses fiches d'auteurs et dans les noms écrits sur les travaux. Dans chacun, un seul de vos choix suffit, mais entre les deux il ne peut qu'exiger les deux.",
     "minCitations": "Citations minimum",
     "anyNumber": "Aucun minimum",
     "atLeastCitations": "{count, plural, one {Au moins # citation} other {Au moins # citations}}",

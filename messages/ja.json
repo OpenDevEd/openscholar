@@ -984,6 +984,7 @@
     "filterByAuthor": "{name} の著作のみ",
     "authorByName": "この名前の著者すべて",
     "authorsAndNames": "OpenAlex の著者のいずれかと、入力した名前のいずれかの両方を含む著作が対象です。",
+    "authorsAndNamesWhy": "OpenAlex は著者レコードと、著作に記された名前を別々に検索します。それぞれの中ではいずれか一つに一致すれば足りますが、両者の間では両方への一致しか指定できません。",
     "minCitations": "最小被引用数",
     "anyNumber": "指定なし",
     "atLeastCitations": "{count, plural, other {被引用数#件以上}}",

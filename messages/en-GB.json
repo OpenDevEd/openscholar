@@ -974,6 +974,7 @@
     "filterByAuthor": "Only works by {name}",
     "authorByName": "Any author with this name",
     "authorsAndNames": "A work needs one of the OpenAlex authors and one of the typed names.",
+    "authorsAndNamesWhy": "OpenAlex searches its author records and the names written on works separately. Within each, matching any one of your choices is enough, but across the two it can only require both.",
     "minCitations": "Minimum citations",
     "anyNumber": "Any number",
     "atLeastCitations": "{count, plural, one {At least # citation} other {At least # citations}}",

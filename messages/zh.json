@@ -984,6 +984,7 @@
     "filterByAuthor": "仅显示 {name} 的作品",
     "authorByName": "任何使用此名称的作者",
     "authorsAndNames": "作品须同时包含所选 OpenAlex 作者之一和所输入名称之一。",
+    "authorsAndNamesWhy": "OpenAlex 分别检索作者记录和作品上所写的名称。在每一类中匹配任意一项即可，但两类之间只能要求同时满足。",
     "minCitations": "最少被引次数",
     "anyNumber": "不限",
     "atLeastCitations": "{count, plural, other {至少被引 # 次}}",
