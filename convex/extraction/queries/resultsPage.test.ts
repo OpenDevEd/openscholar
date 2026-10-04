@@ -165,6 +165,8 @@ describe("listJobResults", () => {
 
     expect(await kept({ confidenceRange: [90, 100] })).toEqual(["Rare Search Match"]);
     expect(await kept({ statusFilters: ["has-pdf"] })).toEqual(["Rare Search Match"]);
+    expect(await kept({ statusFilters: ["open-access"] })).toEqual(["Rare Search Match"]);
+    expect(await countMatching(auth, jobId, { ...DEFAULT_FILTERS, statusFilters: ["open-access"] })).toEqual({ all: 60, matching: 1 });
     expect(await kept({ statusFilters: ["low-confidence"] })).toEqual(["Alpha Result"]);
     expect(await kept({ questionFilters: [{ questionKey: "q1", value: true }] })).toEqual(["Rare Search Match"]);
     expect(await countMatching(auth, jobId, { ...DEFAULT_FILTERS, confidenceRange: [90, 100] })).toEqual({ all: 60, matching: 1 });
