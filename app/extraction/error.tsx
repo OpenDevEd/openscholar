@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 
 export default function ExtractionErrorPage({

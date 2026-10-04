@@ -2,7 +2,6 @@
 
 import { NotificationsFields } from "./notifications-fields";
 
-import { Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,6 +20,7 @@ import {
 import { Field } from "../section-card";
 import { FieldGroup, Panel, TextUploadField, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
+import { MailIcon } from "@/components/icons";
 
 type LegalKind = LegalSource["kind"];
 const LEGAL_KINDS: LegalKind[] = ["none", "text", "url"];
@@ -67,7 +67,7 @@ export function ContactSection({ libraryId, draft, saved, patch, reset }: Sectio
   return (
     <SectionShell
       sectionKey="contact"
-      icon={Mail}
+      icon={MailIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

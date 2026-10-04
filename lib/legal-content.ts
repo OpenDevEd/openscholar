@@ -7,11 +7,12 @@ export const LEGAL_DEFAULT_LOCALE = "en-US";
 const DOC_DIRECTORY: Record<LegalDocumentType, string> = {
   privacy: "privacy-policy",
   cookie: "cookie-policy",
+  credits: "credits",
 };
 
 const SAFE_LOCALE_PATTERN = /^[A-Za-z0-9-]+$/;
 
-export type LegalDocumentType = "privacy" | "cookie";
+export type LegalDocumentType = "privacy" | "cookie" | "credits";
 
 export interface GetLegalMarkdownParams {
   docType: LegalDocumentType;

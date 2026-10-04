@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
-import { BookOpen } from "lucide-react";
+import { BookOpen, BookmarksIcon } from "@/components/icons";
 import {
   localKeywordExpansionStore,
   useKeywordExpansionStore,
@@ -42,17 +42,10 @@ function createBookmarkListItem(
   onCancelEdit: () => void,
   onDelete: (name: string) => void
 ) {
-  return function BookmarkListItem({
-    item,
-    index,
-  }: {
-    item: BookmarkEntry;
-    index: number;
-  }) {
+  return function BookmarkListItem({ item }: { item: BookmarkEntry }) {
     return (
       <BookmarksItem
         bookmark={item}
-        index={index}
         viewMode={viewMode}
         isEditing={editingBookmark === item.name}
         onEdit={() => onEdit(item.name)}
@@ -203,8 +196,7 @@ export function BookmarksCommandCenter() {
     >
 
 
-      {/* List */}
-      <div className="p-4 md:p-6">
+      <div>
         {!ready ? error ? <AuthStatePanel variant="sync_error_retry" onRetry={retry} /> : <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={bookmarks.items}
           viewMode={bookmarkViewMode}
@@ -227,6 +219,7 @@ export function BookmarksCommandCenter() {
         {/* Pagination */}
         {ready && bookmarks.hasPages && (
           <CommandCenterPagination
+            className="border-t border-border-subtle p-4"
             currentPage={bookmarks.page}
             itemLabel={tcc("bookmarksLabel")}
             steps={{
@@ -252,7 +245,7 @@ export function BookmarksCommandCenter() {
 /** The bookmarks page's frame, shared with its loading state so nothing moves when it loads. */
 export function BookmarksPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
   const tc = useTranslations("common");
-  return <LibraryPageShell icon={BookOpen} title={tc("bookmarks")} {...controls}>{children}</LibraryPageShell>;
+  return <LibraryPageShell icon={BookmarksIcon} title={tc("bookmarks")} {...controls}>{children}</LibraryPageShell>;
 }
 
 export function BookmarksLoading() {

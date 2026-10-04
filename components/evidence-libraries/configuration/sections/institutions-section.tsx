@@ -1,6 +1,5 @@
 "use client";
 
-import { Building2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { newId, SCHEMA_LIMITS } from "@/lib/evidence-libraries/configuration/rules";
 import { Field } from "../section-card";
@@ -14,6 +13,7 @@ import {
 } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { InstitutionNamePicker } from "./institution-pickers";
+import { BuildingsIcon } from "@/components/icons";
 
 const LIMITS = SCHEMA_LIMITS.institutions;
 
@@ -24,7 +24,7 @@ export function InstitutionsSection({ libraryId, draft, saved, patch, reset }: S
   return (
     <SectionShell
       sectionKey="institutions"
-      icon={Building2}
+      icon={BuildingsIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

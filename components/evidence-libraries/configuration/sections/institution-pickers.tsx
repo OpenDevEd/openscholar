@@ -8,7 +8,7 @@
  */
 
 import { useAction } from "convex/react";
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";

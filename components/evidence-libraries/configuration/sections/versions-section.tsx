@@ -3,7 +3,7 @@
 import { ConvexError } from "convex/values";
 import { useAction, useMutation } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
-import { History, RefreshCw } from "lucide-react";
+import { RefreshCw, HistoryIcon } from "@/components/icons";
 import { useFormatter, useTranslations } from "next-intl";
 import { Suspense, use, useDeferredValue, useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -244,7 +244,7 @@ export function VersionsSection({
   return (
     <SectionCard
       id="sec-versions"
-      icon={History}
+      icon={HistoryIcon}
       title={t("sections.versions")}
       description={t("versions.description")}
     >
@@ -479,7 +479,7 @@ function SoftwarePanel({
         </dd>
       </dl>
       {updateAvailable && (releases.length > 0 || changes.length > 0) ? (
-        <div className="space-y-2 border-t border-border/50 pt-3">
+        <div className="space-y-2 border-t border-border-subtle pt-3">
           <p className="text-xs font-medium text-muted-foreground">
             {t("versions.changesHeading")}
           </p>

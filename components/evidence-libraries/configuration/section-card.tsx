@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, AlertTriangle, Info, type LucideIcon } from "lucide-react";
+import { AlertCircle, AlertTriangle, Info, type AppIcon } from "@/components/icons";
 import { type ReactNode, useId } from "react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -22,7 +22,7 @@ export function SectionCard({
   ...rest
 }: Omit<React.HTMLAttributes<HTMLElement>, "title"> & {
   id?: string;
-  icon?: LucideIcon | React.ComponentType<{ className?: string }>;
+  icon?: AppIcon | React.ComponentType<{ className?: string }>;
   title: ReactNode;
   description?: ReactNode;
   /** Right-hand slot in the header strip, such as a status chip. */
@@ -35,7 +35,7 @@ export function SectionCard({
       id={id}
       className={cn(
         "overflow-hidden rounded-2xl border-2",
-        tone === "danger" ? "border-destructive/30" : "border-border/60",
+        tone === "danger" ? "border-destructive/30" : "border-border-subtle",
         className,
       )}
       {...rest}
@@ -45,7 +45,7 @@ export function SectionCard({
           "space-y-1 border-b px-4 py-3",
           tone === "danger"
             ? "border-destructive/20 bg-destructive/5"
-            : "border-border/50 bg-muted/30",
+            : "border-border-subtle bg-inset",
         )}
       >
         <div className="flex flex-wrap items-center gap-2.5">
@@ -124,8 +124,8 @@ export function InlineNotice({
     <div
       className={cn(
         "flex flex-wrap items-start gap-3 rounded-lg border p-3 text-sm",
-        tone === "warning" && "border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400",
-        tone === "info" && "border-blue-500/20 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+        tone === "warning" && "border-warning/30 bg-warning/5 ink-warning",
+        tone === "info" && "border-info/20 bg-info/10 ink-info",
         tone === "danger" && "border-destructive/20 bg-destructive/5 text-destructive",
         className,
       )}
@@ -181,7 +181,7 @@ export function Field({
       {error ? (
         <FieldError>{error}</FieldError>
       ) : hint ? (
-        <p className="text-xs text-muted-foreground">{hint}</p>
+        <p className="text-xs text-subtle-foreground">{hint}</p>
       ) : null}
     </div>
   );

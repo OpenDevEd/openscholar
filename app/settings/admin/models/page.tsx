@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { Boxes, Search } from "lucide-react";
+import { Boxes, Search } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -72,7 +72,7 @@ export default function ModelListPage() {
                 onClick={() => setProvider(chip.key)}
                 className={cn(
                   "flex h-9 items-center gap-2 rounded-full border pl-2.5 pr-3.5 text-sm font-medium transition-colors",
-                  active ? "border-transparent" : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  active ? "border-transparent" : "border-border-subtle bg-inset text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
                 style={active ? { backgroundColor: `color-mix(in oklab, ${tint} 18%, transparent)`, color: tint } : undefined}
               >
@@ -92,7 +92,7 @@ export default function ModelListPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("search")}
                 aria-label={t("search")}
-                className="h-11 rounded-2xl border border-border/60 bg-muted/40 pl-11"
+                className="h-11 rounded-2xl border border-border-subtle bg-inset pl-11"
               />
             </div>
             <Segmented
@@ -113,7 +113,7 @@ export default function ModelListPage() {
                   <Tile icon={getModelIcon(m.modelId)} tint={m.on ? tintOf(m.modelId) : "#94a3b8"} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{stripProviderPrefix(m.name)}</span>
-                    <span className="block truncate font-mono text-[11px] text-muted-foreground">{m.modelId}</span>
+                    <span className="block truncate font-mono text-2xs text-muted-foreground">{m.modelId}</span>
                   </span>
                   {m.contextLength ? <span className="w-12 text-right text-xs tabular-nums text-muted-foreground">{context(m.contextLength)}</span> : null}
                   <IntelligenceMeter index={m.intelligenceIndex} className="w-24" />

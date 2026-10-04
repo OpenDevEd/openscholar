@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, Pencil, Play, Trash2, X } from "lucide-react";
+import { Check, Pencil, Play, Trash2, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
@@ -75,13 +75,13 @@ export function CompactQuestionList({
       {questions.map((questionEntry, index) => (
         <div
           key={`${questionEntry.question}-${index}`}
-          className="flex items-start gap-2.5 rounded-lg bg-muted/20 px-2.5 py-2"
+          className="flex items-start gap-2.5 rounded-lg bg-inset px-2.5 py-2"
         >
           <span
             className={cn(
               "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md",
               "bg-primary/12 text-primary",
-              "text-[11px] font-mono font-semibold"
+              "text-2xs font-mono font-semibold"
             )}
           >
             {index + 1}

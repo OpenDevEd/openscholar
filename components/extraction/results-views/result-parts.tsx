@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ExternalLink, PanelLeftOpen, Quote } from "lucide-react";
+import { ExternalLink, PanelLeftOpen, Quote } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { StatusChip, type StatusTone } from "@/components/evidence-libraries/configuration/status-chip";
@@ -15,8 +15,8 @@ import { HighlightedText } from "./highlighted-text";
 // view say the same thing the same way.
 
 const CONFIDENCE_TEXT: Record<StatusTone, string> = {
-  success: "text-emerald-600 dark:text-emerald-400",
-  warning: "text-amber-700 dark:text-amber-400",
+  success: "ink-success",
+  warning: "ink-warning",
   danger: "text-destructive",
   neutral: "text-muted-foreground",
   running: "text-primary",
@@ -99,7 +99,7 @@ export function ResultMeta({ result }: { result?: ExtractionResultRecord }) {
       </span>
       {status === "grounded" ? (
         <span className="inline-flex items-center gap-1 text-muted-foreground">
-          <Quote aria-hidden className="size-3 text-emerald-600 dark:text-emerald-400" />
+          <Quote aria-hidden className="size-3 ink-success" />
           {tc("grounded")}
         </span>
       ) : status === "best_effort" ? (
@@ -139,11 +139,11 @@ export function ResultCell({ result, type, searchQuery = "", clamp, selected = f
         "group/cell block space-y-1.5 text-left",
         fill
           ? cn(
-              "static w-full outline-none after:absolute after:inset-0 after:-z-10 after:transition-colors after:duration-100 hover:after:bg-muted/60 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-ring",
+              "static w-full outline-none after:absolute after:inset-0 after:-z-10 after:transition-colors after:duration-100 hover:after:bg-muted focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-ring",
               selected && "after:bg-primary/5 after:ring-1 after:ring-inset after:ring-primary/30 hover:after:bg-primary/10",
             )
           : cn(
-              "relative -mx-2 w-[calc(100%+1rem)] rounded-lg px-2 py-1.5 pr-7 transition-colors duration-100 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring",
+              "relative -mx-2 w-[calc(100%+1rem)] rounded-lg px-2 py-1.5 pr-7 transition-colors duration-100 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring",
               selected && "bg-primary/5 ring-1 ring-primary/30 hover:bg-primary/10",
             ),
       )}

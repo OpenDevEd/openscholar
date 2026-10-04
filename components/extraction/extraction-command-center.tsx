@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Database, Plus } from "lucide-react";
+import { Database, Plus, ExtractionIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -27,14 +27,8 @@ import { JobListItem } from "./job-list-item";
 import type { ViewMode } from "@/lib/types";
 
 function createExtractionJobListItem(viewMode: ViewMode) {
-  return function ExtractionJobListItem({
-    item,
-    index,
-  }: {
-    item: ExtractionJob;
-    index: number;
-  }) {
-    return <JobListItem job={item} viewMode={viewMode} index={index} />;
+  return function ExtractionJobListItem({ item }: { item: ExtractionJob }) {
+    return <JobListItem job={item} viewMode={viewMode} />;
   };
 }
 
@@ -72,7 +66,7 @@ export function ExtractionCommandCenter() {
 
   return (
     <LibraryPageShell
-      icon={Database}
+      icon={ExtractionIcon}
       title={tc("extraction")}
       tabs={<ViewModeSwitch value={extractionViewMode} onChange={setExtractionViewMode} />}
       filters={<CommandCenterFilters
@@ -92,7 +86,7 @@ export function ExtractionCommandCenter() {
         </Button>
       }
     >
-      <div className={cn("p-4 md:p-6", jobs.isStale && "pointer-events-none opacity-60")}>
+      <div className={cn(jobs.isStale && "pointer-events-none opacity-60")}>
         {jobs.isLoading ? <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={jobs.items}
           viewMode={extractionViewMode}
@@ -108,6 +102,7 @@ export function ExtractionCommandCenter() {
         {/* Pagination */}
         {!jobs.isLoading && jobs.hasPages && (
           <CommandCenterPagination
+            className="border-t border-border-subtle p-4"
             currentPage={jobs.page}
             itemLabel={t("jobs")}
             steps={{

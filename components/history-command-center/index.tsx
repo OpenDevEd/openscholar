@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useConvex } from "convex/react";
-import { Clock, Search, ArrowRight } from "lucide-react";
+import { Clock, Search, ArrowRight, HistoryIcon } from "@/components/icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ interface HistoryCommandCenterProps {
    * instead of opening it, and the import, export and clear-all tools are
    * left out.
    */
-  pick?: { label: string; onPick: (item: SearchResult) => void; excludeId?: string };
+  pick?: { onPick: (item: SearchResult) => void; excludeId?: string };
 }
 
 export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
@@ -170,7 +170,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   };
 
   const list = (
-    <div className="p-4 md:p-6">
+    <div>
       {!ready ? error ? <AuthStatePanel variant="sync_error_retry" onRetry={retry} /> : <ListLoading label={tc("loading")} /> : <CommandCenterList
         items={history.items}
         viewMode={historyViewMode}
@@ -189,13 +189,12 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
         )}
         hasFilter={!!searchFilter.trim()}
         onClearFilter={() => setSearchFilter("")}
-        renderItem={(item, index) => (
+        renderItem={(item) => (
           <HistoryItem
             item={item}
-            index={index}
             viewMode={historyViewMode}
             onSearchClick={handleSearchClick}
-            pickLabel={pick?.label}
+            choosing={Boolean(pick)}
           />
         )}
       />}
@@ -203,6 +202,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
       {/* Pagination */}
       {ready && history.hasPages && (
         <CommandCenterPagination
+          className="border-t border-border-subtle p-4"
           currentPage={history.page}
           itemLabel={tcc("searchesLabel")}
           steps={{
@@ -240,7 +240,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
 /** The history page's frame, shared with its loading state so nothing moves when it loads. */
 export function HistoryPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
   const tc = useTranslations("common");
-  return <LibraryPageShell icon={Clock} title={tc("searchHistory")} {...controls}>{children}</LibraryPageShell>;
+  return <LibraryPageShell icon={HistoryIcon} title={tc("searchHistory")} {...controls}>{children}</LibraryPageShell>;
 }
 
 export function HistoryLoading() {

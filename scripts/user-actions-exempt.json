@@ -43,6 +43,8 @@
     "app/actions/authors:searchProfileAuthors": "#327",
     "app/actions/citations:enrichPaperCitationMetadata": "#327",
     "app/actions/funders:readFunderNames": "#327",
+    "app/actions/openalex-authors:readAuthorNames": "#327",
+    "app/actions/openalex-authors:searchAuthors": "#327",
     "app/actions/funders:searchFunders": "#327",
     "app/actions/openalex-count:countOpenAlexQueries": "#327",
     "app/actions/openalex-count:searchOpenAlexCount": "#327",

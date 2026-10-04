@@ -25,7 +25,7 @@ export function StickyPageHeader({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div ref={ref} data-sticky-page-header className="sticky top-[var(--app-navbar-height)] z-20 border-b border-sidebar-border/50 bg-background">
+    <div ref={ref} data-sticky-page-header className="sticky top-[var(--app-navbar-height)] z-20 border-b border-sidebar-border bg-background">
       <div className="container mx-auto max-w-6xl px-4 sm:px-6">{children}</div>
     </div>
   );

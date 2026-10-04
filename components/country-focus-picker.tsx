@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import { Focus } from "lucide-react";
+import { Focus } from "@/components/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { isCountryFocusActive } from "@/lib/utils";
 import { COUNTRIES, getCountryCodesForRegions } from "@/lib/constants";
@@ -39,15 +39,14 @@ export function CountryFocusPicker() {
       <CountrySelector
         selectedRegions={selectedValues}
         onSelectionChange={handleSelectionChange}
+        label={tf("countryFocus")}
         placeholder={tf("addCountryFocus")}
-        description={tf("chooseCountriesToAdd")}
-        showCountryNames={true}
-        bypassLimit={true}
+        bypassLimit
       />
 
       {/* Enhanced search preview */}
       {countryNames.length > 0 && (
-        <div className="p-3 bg-sidebar-accent/50 rounded-lg border border-border/40">
+        <div className="p-3 bg-sidebar-accent rounded-lg border border-border-subtle">
           <div className="flex items-start gap-2">
             <Focus className="h-4 w-4 text-sidebar-primary mt-0.5 flex-shrink-0" />
             <div className="min-w-0 flex-1">
@@ -61,7 +60,7 @@ export function CountryFocusPicker() {
                 {countryNames.slice(0, 10).map((countryName) => (
                   <span 
                     key={countryName}
-                    className="text-xs bg-sidebar-accent text-sidebar-primary px-2 py-1 rounded-md border border-border/40"
+                    className="text-xs bg-sidebar-accent text-sidebar-primary px-2 py-1 rounded-md border border-border-subtle"
                   >
                     {countryName}
                   </span>
@@ -82,7 +81,7 @@ export function CountryFocusPicker() {
 
       {/* Info about the difference */}
       {(isCountryFocusFilterActive || selectedValues.length > 0) && (
-        <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+        <div className="text-xs text-muted-foreground bg-inset p-3 rounded-lg">
           {tf("countryFocusTip")}
         </div>
       )}

@@ -33,6 +33,7 @@ export function toSearchFilters(entry: SearchResult): SearchFilters {
     workLanguages: entry.workLanguages ?? [],
     institutionTypes: entry.institutionTypes ?? [],
     funders: entry.funders ?? [],
+    authors: entry.authors ?? [],
     minCitations: entry.minCitations ?? null,
     hasAbstract: entry.hasAbstract ?? false,
     includeRetracted: entry.includeRetracted ?? false,

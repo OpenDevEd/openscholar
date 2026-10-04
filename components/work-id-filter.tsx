@@ -7,61 +7,23 @@ import { Label } from "@/components/ui/label";
 import { useUpdateSearchFilter, useCurrentSearchFormState } from "@/lib/hooks";
 import { useAppToast } from "@/lib/toast";
 import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive } from "@/lib/utils";
-import { Quote, Network, ExternalLink, X, type LucideIcon } from "lucide-react";
+import { Quote, Network, ExternalLink, X, type AppIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 
 interface WorkIdFilterProps {
   type: 'cites' | 'cited_by' | 'related';
-  icon?: LucideIcon;
-  colorScheme?: {
-    primary: string;
-    secondary: string;
-    bg: string;
-    darkBg: string;
-    textPrimary: string;
-    textSecondary: string;
-    codeBg: string;
-    darkCodeBg: string;
-  };
+  icon?: AppIcon;
 }
 
-const defaultColorSchemes = {
-  cites: {
-    primary: 'text-orange-500',
-    secondary: 'text-orange-600',
-    bg: 'bg-orange-50',
-    darkBg: 'dark:bg-orange-950/20',
-    textPrimary: 'text-orange-700',
-    textSecondary: 'dark:text-orange-300',
-    codeBg: 'bg-orange-100',
-    darkCodeBg: 'dark:bg-orange-900/40',
-  },
-  cited_by: {
-    primary: 'text-green-500',
-    secondary: 'text-green-600',
-    bg: 'bg-green-50',
-    darkBg: 'dark:bg-green-950/20',
-    textPrimary: 'text-green-700',
-    textSecondary: 'dark:text-green-300',
-    codeBg: 'bg-green-100',
-    darkCodeBg: 'dark:bg-green-900/40',
-  },
-  related: {
-    primary: 'text-blue-500',
-    secondary: 'text-blue-600',
-    bg: 'bg-blue-50',
-    darkBg: 'dark:bg-blue-950/20',
-    textPrimary: 'text-blue-700',
-    textSecondary: 'dark:text-blue-300',
-    codeBg: 'bg-blue-100',
-    darkCodeBg: 'dark:bg-blue-900/40',
-  },
+const RELATION_COLORS = {
+  cites: { icon: 'text-cites', link: 'ink-cites', bg: 'bg-cites/10', code: 'bg-cites/15 ink-cites' },
+  cited_by: { icon: 'text-cited-by', link: 'ink-cited-by', bg: 'bg-cited-by/10', code: 'bg-cited-by/15 ink-cited-by' },
+  related: { icon: 'text-related', link: 'ink-related', bg: 'bg-related/10', code: 'bg-related/15 ink-related' },
 };
 
-export function WorkIdFilter({ 
-  type, 
+export function WorkIdFilter({
+  type,
   icon,
-  colorScheme 
 }: WorkIdFilterProps) {
   const toast = useAppToast();
   const t = useTranslations("workId");
@@ -107,7 +69,7 @@ export function WorkIdFilter({
     },
   };
 
-  const colors = colorScheme || defaultColorSchemes[type];
+  const colors = RELATION_COLORS[type];
   const typeConfig = config[type];
   const Icon = icon || typeConfig.icon;
   
@@ -197,7 +159,7 @@ export function WorkIdFilter({
             </Button>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-subtle-foreground">
           {currentConfig.description}
         </p>
       </div>
@@ -228,17 +190,16 @@ export function WorkIdFilter({
              {isActive && itemId && (
          <div className={cn(
            "text-xs text-muted-foreground p-2 rounded-lg space-y-1",
-           colors.bg,
-           colors.darkBg
+           colors.bg
          )}>
            <div className="flex items-center gap-2">
-             <Icon className={cn("h-3 w-3 flex-shrink-0", colors.primary)} />
+             <Icon className={cn("h-3 w-3 flex-shrink-0", colors.icon)} />
              <span className="flex-shrink-0">{currentConfig.statusText}</span>
              <a
                href={itemId.startsWith('https://') ? itemId : `https://openalex.org/${itemId}`}
                target="_blank"
                rel="noopener noreferrer"
-               className={cn("ml-auto flex-shrink-0 hover:opacity-80", colors.secondary)}
+               className={cn("ml-auto flex-shrink-0 hover:opacity-80", colors.link)}
              >
                <ExternalLink className="h-3 w-3" />
              </a>
@@ -246,10 +207,7 @@ export function WorkIdFilter({
            <div className="w-full">
              <code className={cn(
                "block w-full px-1 py-0.5 rounded text-xs break-all word-break-all",
-               colors.codeBg,
-               colors.darkCodeBg,
-               colors.textPrimary,
-               colors.textSecondary
+               colors.code
              )}>
                {itemId.startsWith('https://openalex.org/') ? itemId.replace('https://openalex.org/', '') : itemId}
              </code>

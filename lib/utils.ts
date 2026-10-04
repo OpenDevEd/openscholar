@@ -1,5 +1,5 @@
 import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { extendTailwindMerge } from "tailwind-merge"
 import { Work } from "@sickrin/openalex-sdk/dist/src/types/work";
 import type { SortByWork } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { format } from "date-fns";
@@ -8,6 +8,7 @@ import type { SearchResult, SearchField, SearchFilters } from './types'
 import { getCountryCodesForRegions, MIN_YEAR } from './constants'
 import { buildSearchSubfilter } from './search/search-field'
 import { researchAreaFilter, sdgFilterValue } from './openalex/vocabulary'
+import { authorFilterValue, isAuthorId } from './openalex/author-filter'
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -32,6 +33,7 @@ export const DEFAULT_FILTERS = {
   workLanguages: [] as string[],
   institutionTypes: [] as string[],
   funders: [] as string[],
+  authors: [] as string[],
   minCitations: null as number | null,
   hasAbstract: false,
   includeRetracted: false,
@@ -60,6 +62,7 @@ export function clearedFilterUpdates() {
     workLanguages: [],
     institutionTypes: [],
     funders: [],
+    authors: [],
     minCitations: DEFAULT_FILTERS.minCitations,
     hasAbstract: DEFAULT_FILTERS.hasAbstract,
     includeRetracted: DEFAULT_FILTERS.includeRetracted,
@@ -92,6 +95,7 @@ export function createDefaultFilters(): SearchFilters {
     workLanguages: [],
     institutionTypes: [],
     funders: [],
+    authors: [],
     minCitations: DEFAULT_FILTERS.minCitations,
     hasAbstract: DEFAULT_FILTERS.hasAbstract,
     includeRetracted: DEFAULT_FILTERS.includeRetracted,
@@ -171,6 +175,23 @@ export const isRelatedToFilterActive = (relatedToItemId?: string) => {
 export const isReviewFilterActive = (reviewFilter?: boolean) => {
   return !isFilterAtDefault.reviewFilter(reviewFilter);
 };
+
+// `ink-*` sets the text colour and `tint-*` sets fill, border and text (see
+// globals.css), so a later one replaces the classes it overrides.
+const anyValue = () => true
+const twMerge = extendTailwindMerge<"tint">({
+  extend: {
+    // shadow-surface is a size from the theme, not a shadow colour.
+    theme: { shadow: ["surface", "surface-hover"] },
+    classGroups: {
+      "text-color": [{ ink: [anyValue] }],
+      tint: [{ tint: [anyValue] }],
+    },
+    conflictingClassGroups: {
+      tint: ["bg-color", "border-color", "text-color"],
+    },
+  },
+})
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -397,6 +418,20 @@ export function createSearchParameters(
     };
   }
   if (filters.funders.length) apiFilters.funders = { id: filters.funders.join('|') };
+  // Put in the search's form again here: a saved search or the assistant can hand one over as it likes.
+  const authors = filters.authors.map(authorFilterValue).filter((author) => author !== null);
+  const authorIds = authors.filter(isAuthorId);
+  if (authorIds.length) {
+    apiFilters.authorships = {
+      ...(apiFilters.authorships as Record<string, unknown> | undefined),
+      author: { id: authorIds.join('|') },
+    };
+  }
+  // An author OpenAlex has no record for is found by the name the work gives, as a phrase.
+  const authorNames = authors.filter((author) => !isAuthorId(author));
+  if (authorNames.length) {
+    apiFilters.raw_author_name = { search: authorNames.map((name) => `"${name}"`).join('|') };
+  }
   // OpenAlex takes "more than", so at least N is more than N - 1.
   if (filters.minCitations) apiFilters.cited_by_count = `>${filters.minCitations - 1}`;
   if (filters.hasAbstract) apiFilters.has_abstract = true;

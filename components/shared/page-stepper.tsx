@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 const STEP_CLASS =
@@ -34,7 +34,7 @@ export function PageStepper({
       <button type="button" aria-label={t("previousPage")} disabled={!canPrevious} onClick={onPrevious} className={STEP_CLASS}>
         <ChevronLeft className="h-3.5 w-3.5" />
       </button>
-      <span className="text-[11px] tabular-nums text-muted-foreground">
+      <span className="text-2xs tabular-nums text-muted-foreground">
         {pageCount === undefined ? page : `${page} / ${Math.max(page, pageCount)}`}
       </span>
       <button type="button" aria-label={t("nextPage")} disabled={!canNext} onClick={onNext} className={STEP_CLASS}>

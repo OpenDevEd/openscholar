@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Trash2, TrashIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { PanelRow } from "../fields";
@@ -12,7 +12,7 @@ export function DangerSection({ onDelete }: { onDelete: () => void }) {
   return (
     <SectionCard
       id="sec-danger"
-      icon={Trash2}
+      icon={TrashIcon}
       tone="danger"
       title={t("sections.danger")}
       description={t("danger.description")}

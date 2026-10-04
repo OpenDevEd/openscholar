@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "motion/react";
-import { HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { HelpCircle, ChevronDown, ChevronUp } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
 
@@ -40,12 +40,7 @@ export function BookmarksGuide() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ ...subtleSpring, delay: 0.2 }}
-      className={cn(
-        "mt-6",
-        "rounded-xl",
-        "border border-border/40",
-        "bg-muted/20"
-      )}
+      className="border-t border-border-subtle"
     >
       {/* Header */}
       <button
@@ -54,9 +49,8 @@ export function BookmarksGuide() {
           "w-full px-4 py-3",
           "flex items-center justify-between gap-3",
           "text-left",
-          "hover:bg-muted/30 transition-colors",
-          "rounded-xl",
-          isOpen && "rounded-b-none border-b border-border/30"
+          "hover:bg-muted transition-colors",
+          isOpen && "border-b border-border-subtle"
         )}
       >
         <div className="flex items-center gap-2">

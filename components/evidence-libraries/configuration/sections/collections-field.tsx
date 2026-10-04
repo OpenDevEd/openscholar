@@ -1,7 +1,7 @@
 "use client";
 
 import { useAction } from "convex/react";
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Suspense, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -303,7 +303,7 @@ function FilterChip({
         "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
         active
           ? "border-primary/40 bg-primary/10 font-medium text-primary"
-          : "border-border/50 bg-background text-muted-foreground hover:border-border/80 hover:text-foreground",
+          : "border-border-subtle bg-background text-muted-foreground hover:border-border hover:text-foreground",
       )}
     >
       {children}

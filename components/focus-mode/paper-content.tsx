@@ -1,9 +1,10 @@
 import { TopicLink } from "@/components/topics/topic-link";
 import React from "react";
-import { BookOpen, Award, ExternalLink, FileText } from "lucide-react";
+import { BookOpen, Award, ExternalLink, FileText } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { workToCoins } from "@/lib/utils";
 import { ScreeningResponses } from "@/components/paper-card";
+import { AuthorNames } from "@/components/paper-card/shared";
 import { TooltipHint } from "@/components/ui/tooltip";
 import type { PaperResult } from "@/lib/types";
 
@@ -26,6 +27,10 @@ export interface PaperContentProps {
   tp: (key: string, opts?: Record<string, unknown>) => string;
   tAccessibility: (key: string) => string;
   isOpen: boolean;
+  /** The authors the search is filtered by, as OpenAlex ids. */
+  selectedAuthors?: readonly string[];
+  /** Filters the search by an author, or stops filtering by them. Left out where there is no search. */
+  onToggleAuthor?: (author: { value: string; name: string }) => void;
 }
 
 export function PaperContent({
@@ -43,6 +48,8 @@ export function PaperContent({
   tp,
   tAccessibility,
   isOpen,
+  selectedAuthors,
+  onToggleAuthor,
 }: PaperContentProps) {
   return (
     <div className={contentClasses}>
@@ -68,24 +75,18 @@ export function PaperContent({
             ? `${translatedContent.translatedTitle} (${paper.publication_year})`
             : `${paper.title} (${paper.publication_year})`}
         </h1>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground">
           {isPreview ? (
-            <span className="flex-1 truncate">
+            <span className="block truncate">
               {tFocus("authorsPreview")}
             </span>
           ) : (
             paper.authorships && (
-              <span className="flex-1 truncate">
-                {paper.authorships
-                  .slice(0, 3)
-                  .map(
-                    (author: { author: { display_name: string } }) =>
-                      author.author.display_name
-                  )
-                  .join(", ")}
-                {paper.authorships.length > 3 &&
-                  ` +${paper.authorships.length - 3} more`}
-              </span>
+              <AuthorNames
+                authorships={paper.authorships}
+                selected={selectedAuthors}
+                onToggleAuthor={onToggleAuthor}
+              />
             )
           )}
         </div>
@@ -197,15 +198,15 @@ export function PaperContent({
             {!isPreview && paper.open_access && paper.open_access.is_oa && (
               <span className="flex items-center gap-1">
                 <>
-                  <FileText className="h-3 w-3 text-green-600" />
-                  <span className="text-green-600 font-medium">{tFocus("pdf")}</span>
+                  <FileText className="h-3 w-3 ink-success" />
+                  <span className="ink-success font-medium">{tFocus("pdf")}</span>
                   {paper.open_access.oa_url && (
                     <>
                       <a
                         href={paper.open_access.oa_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
+                        className="ink-info hover:underline"
                       ></a>
                       <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                         A
@@ -226,7 +227,7 @@ export function PaperContent({
                       : `https://doi.org/${paper.doi!}`;
                     window.open(doiUrl, "_blank");
                   }}
-                  className="flex items-center gap-1 text-xs text-blue-600 hover:underline cursor-pointer"
+                  className="flex items-center gap-1 text-xs ink-info hover:underline cursor-pointer"
                 >
                   <ExternalLink className="h-3 w-3" />
                   <span className="font-mono">
@@ -271,10 +272,10 @@ export function PaperContent({
                           score: sdg.score?.toFixed(2) ?? tCommon("notAvailable"),
                         })}
                       >
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-success/15 ink-success rounded-full text-xs">
                           {sdg.display_name}
                           {sdg.score && (
-                            <span className="text-green-600 font-medium">
+                            <span className="ink-success font-medium">
                               {sdg.score.toFixed(2)}
                             </span>
                           )}

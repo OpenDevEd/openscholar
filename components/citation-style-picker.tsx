@@ -4,7 +4,7 @@ import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
 import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Check, ChevronDown, Search } from "@/components/icons";
 import {
   Popover,
   PopoverContent,
@@ -133,7 +133,7 @@ function StyleMenu({
   return (
     <>
       <div className="shrink-0 p-2">
-        <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3">
+        <div className="flex items-center gap-2 rounded-md bg-inset px-3">
           <Search className="size-4 shrink-0 text-muted-foreground" />
           <Input
             autoFocus
@@ -256,7 +256,7 @@ export function CitationStylePicker({
       <PopoverContent
         align="start"
         collisionPadding={16}
-        className="flex max-h-[var(--radix-popover-content-available-height)] w-96 flex-col overflow-hidden p-0"
+        className="flex max-h-[var(--radix-popover-content-available-height)] w-(--radix-popover-trigger-width) flex-col overflow-hidden p-0"
         style={{ maxWidth: "calc(100vw - 2rem)" }}
       >
         {open && (

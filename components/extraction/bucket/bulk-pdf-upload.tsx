@@ -14,7 +14,7 @@ import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
 import { validatePdfFile } from "@/lib/bucket/bulk-upload";
 import { useBucketStore } from "@/lib/store/bucket";
 import { fromUpload } from "@/lib/bucket/bucketItem";
-import { FileUp, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { FileUp, Loader2, RefreshCw, Trash2 } from "@/components/icons";
 import { PAPER_LIMIT } from "@/lib/extraction/limits";
 
 const CONCURRENCY = 3;
@@ -188,7 +188,7 @@ export function BulkPdfUpload({ paperLimit }: { paperLimit?: number }) {
           "rounded-xl border-2 border-dashed p-8 text-center transition-colors cursor-pointer",
           isDragActive
             ? "border-primary bg-primary/5"
-            : "border-border hover:border-primary/50 hover:bg-muted/30",
+            : "border-border hover:border-primary/50 hover:bg-muted",
           !pdfEnabled && "opacity-50 cursor-not-allowed",
         )}
       >

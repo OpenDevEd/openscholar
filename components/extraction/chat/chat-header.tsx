@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  MessageSquareIcon,
   MoreHorizontalIcon,
   Trash2Icon,
-} from "lucide-react";
+  ChatIcon,
+} from "@/components/icons";
 import { PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,11 +38,11 @@ export function ChatHeader({ job, threadId }: ChatHeaderProps) {
     <>
       {/* The shared page bar, fixed above the chat, which owns the scroll below it. */}
       <header
-        className="@container shrink-0 border-b border-sidebar-border/50 px-4 sm:px-6"
+        className="@container shrink-0 border-b border-sidebar-border px-4 sm:px-6"
         data-chat-header="true"
       >
         <PanelHeader
-          icon={MessageSquareIcon}
+          icon={ChatIcon}
           title={job.name}
           backHref="/extraction"
           backLabel={t("chatBack")}

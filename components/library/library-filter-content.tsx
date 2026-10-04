@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { subMonths, subWeeks, subYears } from "date-fns";
-import { Check, Clock, FolderOpen, LibraryBig, Search, Settings, SlidersHorizontal, Star } from "lucide-react";
+import { Check, Clock, FolderOpen, LibraryBig, Search, Settings, SlidersHorizontal, Star } from "@/components/icons";
 import type { DateRange } from "react-day-picker";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -411,7 +411,7 @@ function CollectionRow({
         "flex items-center gap-2 w-full rounded-lg px-2.5 py-2 text-sm transition-colors text-left",
         isActive
           ? "bg-primary/10 text-foreground"
-          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
       {isActive ? (
@@ -421,7 +421,7 @@ function CollectionRow({
       )}
       <span className="truncate flex-1">{name}</span>
       {count !== undefined && (
-        <span className="text-[11px] tabular-nums text-muted-foreground shrink-0">
+        <span className="text-2xs tabular-nums text-muted-foreground shrink-0">
           {count}
         </span>
       )}

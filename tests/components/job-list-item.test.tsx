@@ -77,7 +77,7 @@ describe("<JobListItem> status-icon a11y", () => {
   it("list-simple: exposes role, aria-label, and data-job-status on the status icon", () => {
     const job = buildJob({ status: "extracting" });
     const { container } = render(
-      <JobListItem job={job} viewMode="list-simple" index={0} />,
+      <JobListItem job={job} viewMode="list-simple" />,
     );
     const dot = container.querySelector('[data-job-status="extracting"]');
     expect(dot).not.toBeNull();
@@ -88,7 +88,7 @@ describe("<JobListItem> status-icon a11y", () => {
   it("list-detail: the status icon carries the paused state label", () => {
     const job = buildJob({ status: "paused" });
     const { container } = render(
-      <JobListItem job={job} viewMode="list-detail" index={0} />,
+      <JobListItem job={job} viewMode="list-detail" />,
     );
     const dot = container.querySelector('[data-job-status="paused"]');
     expect(dot).not.toBeNull();
@@ -98,7 +98,7 @@ describe("<JobListItem> status-icon a11y", () => {
   it("grid-3: the status icon exposes aria-label + data-job-status", () => {
     const job = buildJob({ status: "completed" });
     const { container } = render(
-      <JobListItem job={job} viewMode="grid-3" index={0} />,
+      <JobListItem job={job} viewMode="grid-3" />,
     );
     const stripe = container.querySelector('[data-job-status="completed"]');
     expect(stripe).not.toBeNull();
@@ -111,7 +111,7 @@ describe("<JobListItem> status-icon a11y", () => {
     const job = buildJob({ mode: "chat", status: "extracting" });
     // list-simple hides the dot entirely in chat mode.
     const { container: simpleContainer } = render(
-      <JobListItem job={job} viewMode="list-simple" index={0} />,
+      <JobListItem job={job} viewMode="list-simple" />,
     );
     expect(
       simpleContainer.querySelector("[data-job-status]"),
@@ -120,7 +120,7 @@ describe("<JobListItem> status-icon a11y", () => {
     // grid-3 shows a stripe but it's decorative for chat (no pipeline
     // state); the attr must not leak.
     const { container: gridContainer } = render(
-      <JobListItem job={job} viewMode="grid-3" index={0} />,
+      <JobListItem job={job} viewMode="grid-3" />,
     );
     expect(
       gridContainer.querySelector("[data-job-status]"),
@@ -130,7 +130,7 @@ describe("<JobListItem> status-icon a11y", () => {
   it("humanises unknown states ('download_failed' → 'download failed') for aria-label", () => {
     const job = buildJob({ status: "download_failed" as Doc<"extractionJobs">["status"] });
     const { container } = render(
-      <JobListItem job={job} viewMode="list-simple" index={0} />,
+      <JobListItem job={job} viewMode="list-simple" />,
     );
     const dot = container.querySelector(
       '[data-job-status="download_failed"]',

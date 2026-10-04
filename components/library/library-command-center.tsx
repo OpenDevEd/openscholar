@@ -2,7 +2,7 @@
 
 import {
   Download,
-} from "lucide-react";
+} from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { AnimatedCount } from "@/components/search-command-center/components/animated-count";
@@ -79,7 +79,7 @@ export function LibraryCommandCenter({
             {activeFilterLabels.map((label) => (
               <span
                 key={label}
-                className="inline-flex items-center rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs text-muted-foreground"
+                className="inline-flex items-center rounded-full border border-border-subtle bg-inset px-3 py-1 text-xs text-muted-foreground"
               >
                 {label}
               </span>
@@ -121,7 +121,7 @@ export function LibraryCommandCenter({
           value={rawSearch}
           onChange={onSearchChange}
           className="w-full"
-          inputClassName="h-12 rounded-xl border-border/60 bg-background/85 text-sm shadow-sm sm:text-base"
+          inputClassName="h-12 rounded-xl border-border-subtle bg-field text-sm shadow-sm sm:text-base"
           clearButtonClassName="h-8 w-8 rounded-lg"
         />
       </div>
