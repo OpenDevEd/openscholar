@@ -60,13 +60,13 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
-      credentials: { listCredentialMetadata: "listCredentialMetadata" },
+      credentials: { listCredentials: "listCredentials" },
       credentialActions: { writeCredential: "writeCredential" },
       openAlexSourceKey: { removeOpenAlexKey: "removeOpenAlexKey" },
       sourceStatus: { listForLibrary: "listForLibrary" },
       queries: { getDraft: "getDraft" },
       collectionSources: {
-        listLibraryCollectionSources: "listLibraryCollectionSources",
+        listCollectionSources: "listCollectionSources",
         connectCollectionSource: "connectCollectionSource",
       },
     },
@@ -76,7 +76,7 @@ vi.mock("@/convex/_generated/api", () => ({
       mutations: { disconnect: "disconnect" },
       queries: { getConnectionStatus: "getConnectionStatus" },
       libraryGroups: {
-        listLibraryZoteroGroups: "listLibraryZoteroGroups",
+        listZoteroGroups: "listZoteroGroups",
         removeZoteroGroup: "removeZoteroGroup",
       },
       libraryGroupActions: {
@@ -191,11 +191,11 @@ function queries(input: {
         ? input.connected
           ? { connected: true, zoteroUserId: "1", username: "owner" }
           : { connected: false }
-        : query === "listCredentialMetadata"
-          ? (input.credentials ?? [])
+        : query === "listCredentials"
+          ? { page: input.credentials ?? [], isDone: true, continueCursor: "" }
           : query === "getDraft"
             ? { liveAddress: "https://library.example.test" }
-            : (input.groups ?? []),
+            : { page: input.groups ?? [], isDone: true, continueCursor: "" },
     isReady: true,
   }));
 }

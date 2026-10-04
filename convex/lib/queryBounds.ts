@@ -58,6 +58,9 @@ export const MAX_PENDING_INVITATIONS_PER_LIBRARY = 500;
 /** Most invitations waiting for one address across libraries; another is refused until some are answered or expire. */
 export const MAX_PENDING_INVITATIONS_PER_EMAIL = 100;
 
+/** Most Zotero groups one library connects; another is refused until one is removed. */
+export const MAX_ZOTERO_GROUPS_PER_LIBRARY = 100;
+
 /** Most credentials one library stores: one per credential its configuration names. */
 export const MAX_CREDENTIALS_PER_LIBRARY = 500;
 

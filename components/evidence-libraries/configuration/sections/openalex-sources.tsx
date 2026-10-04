@@ -69,7 +69,7 @@ export function useOpenAlexSources({
     "openscholar" | "custom" | null
   >(null);
   const credentials = useProtectedQuery(
-    api.evidenceLibraries.credentials.listCredentialMetadata,
+    api.evidenceLibraries.credentials.listCredentials,
     { libraryId },
   );
   const writeCredential = useAction(
@@ -83,7 +83,7 @@ export function useOpenAlexSources({
   );
   // How many works each approved query finds now: what the library imports.
   const counts = useOpenAlexQueryCounts(sources.map((source) => source.settings.approvedQuery.query));
-  const customCredential = (credentials.data ?? []).find(
+  const customCredential = (credentials.data?.page ?? []).find(
     (credential) => credential.credentialKey === OPENALEX_API_CREDENTIAL_KEY,
   );
   // Collections read OpenAlex with the same key as searches.
