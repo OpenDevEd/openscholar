@@ -30,6 +30,7 @@ import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
+import { chatModel } from "./threads";
 import { runTurn } from "./turn";
 
 const FLAG = "assistant.enabled";
@@ -86,7 +87,8 @@ export const send = mutation({
     if (stillWriting >= CHAT_CONCURRENCY_LIMIT) {
       throw createError("CONFLICT", `The assistant is already writing ${CHAT_CONCURRENCY_LIMIT} replies for you. Wait for one to finish.`);
     }
-    const model = thread.modelId ? await requireAvailableModel(ctx, thread.modelId) : null;
+    const { modelId, effort } = await chatModel(ctx, thread);
+    const model = modelId ? await requireAvailableModel(ctx, modelId) : null;
 
     // The message, the lock and the scheduled reply commit together, so a second send
     // can't slip in between them.
@@ -101,9 +103,9 @@ export const send = mutation({
       attemptId,
       senderId: userId,
       // Taken when the message is sent, so a later change only affects the next reply.
-      modelId: thread.modelId ?? null,
+      modelId,
       // An effort the catalog has since dropped runs at the model's default.
-      effort: thread.effort && model?.reasoningEfforts?.includes(thread.effort) ? thread.effort : undefined,
+      effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
     });
     await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
     return null;
@@ -230,6 +232,8 @@ const messageValidator = v.object({
   ),
   /** Who sent it, on a person's message. Their name is empty when they gave none. */
   sender: v.optional(v.object({ userId: v.id("users"), name: v.string() })),
+  /** Whether the person reading sent it. */
+  mine: v.boolean(),
   /** The model that wrote it, on a reply. */
   model: v.optional(v.string()),
   at: v.number(),
@@ -296,6 +300,7 @@ export const messagesAction = defineUserQuery({
               }
             : {}),
           ...(sender ? { sender } : {}),
+          mine: role === "user" && row.userId === userId,
           ...(role === "assistant" && row.model ? { model: row.model } : {}),
           at: row._creationTime,
         },

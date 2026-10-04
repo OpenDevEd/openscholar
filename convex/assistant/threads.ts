@@ -7,13 +7,16 @@ import { paginationOptsValidator, paginationResultValidator } from "convex/serve
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import { v } from "convex/values";
 import { components } from "../_generated/api";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { modelSummary, presetPick } from "../ai/serverModel";
 import { requireFeature } from "../featureFlags/guard";
 import { createError } from "../lib/errors";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import schema from "../schema";
 import { accessRows, best, deleteThread, principalsOf, requireThread, userPrincipal, type AssistantRole } from "./access";
-import { effortValidator } from "../aiModelConfig/validators";
+import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
+import type { Effort } from "../../lib/ai/core/call-options";
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import { assistantRoleValidator } from "./validators";
 
@@ -33,12 +36,26 @@ const threadValidator = v.object({
   title: v.string(),
   lastMessageAt: v.number(),
   createdAt: v.number(),
-  /** The model its replies run on, and their reasoning effort; none runs the server's default. */
-  modelId: v.optional(v.id("models")),
-  effort: v.optional(effortValidator),
   /** The most the person may do in it, through any way it reaches them. */
   role: assistantRoleValidator,
 });
+
+/**
+ * What a chat's replies run on: the model picked for it, or the Balanced preset's chat
+ * model while it has none. The model is null when neither is set.
+ */
+export async function chatModel(ctx: QueryCtx | MutationCtx, thread: Doc<"assistantThreads">): Promise<{ modelId: Id<"models"> | null; effort?: Effort }> {
+  if (thread.modelId) return { modelId: thread.modelId, effort: thread.effort };
+  const pick = await presetPick(ctx, "balanced", "chat");
+  return { modelId: pick?.modelId ?? null, effort: pick?.effort };
+}
+
+/** A model a chat can run on, with an effort it takes. */
+async function pickable(ctx: MutationCtx, modelId: Id<"models">, effort: Effort | undefined) {
+  const model = await requireAvailableModel(ctx, modelId);
+  requireEffort(model, effort);
+  requireTaskModel(model, "chat");
+}
 
 function titled(title: string | undefined) {
   const clean = title?.trim().replace(/\s+/g, " ") ?? "";
@@ -48,8 +65,8 @@ function titled(title: string | undefined) {
 
 export const createAction = defineUserMutation({
   path: "assistant/threads:create",
-  description: "Starts a new assistant chat that belongs to the person. Returns its ID.",
-  args: { title: v.optional(v.string()) },
+  description: "Starts a new assistant chat that belongs to the person, on a model and reasoning effort if given. Returns its ID.",
+  args: { title: v.optional(v.string()), modelId: v.optional(v.id("models")), effort: v.optional(effortValidator) },
   returns: v.id("assistantThreads"),
   spendsCredits: false,
   outsideEffect: false,
@@ -57,9 +74,18 @@ export const createAction = defineUserMutation({
   run: async (ctx, userId, args) => {
     await requireFeature(ctx, FLAG, userId);
     const title = titled(args.title) || "New chat";
+    if (args.modelId) await pickable(ctx, args.modelId, args.effort);
     const now = Date.now();
     const agentThreadId = await createThread(ctx, components.agent, { userId, title });
-    const threadId = await ctx.db.insert("assistantThreads", { ownerId: userId, title, agentThreadId, lastMessageAt: now, createdAt: now, updatedAt: now });
+    const threadId = await ctx.db.insert("assistantThreads", {
+      ownerId: userId,
+      title,
+      agentThreadId,
+      lastMessageAt: now,
+      ...(args.modelId ? { modelId: args.modelId, effort: args.effort } : {}),
+      createdAt: now,
+      updatedAt: now,
+    });
     await ctx.db.insert("assistantThreadAccess", { threadId, principal: userPrincipal(userId), role: "owner", lastMessageAt: now, createdAt: now });
     return threadId;
   },
@@ -125,20 +151,19 @@ const shown = (thread: Doc<"assistantThreads">, role: AssistantRole) => ({
   title: thread.title,
   lastMessageAt: thread.lastMessageAt,
   createdAt: thread.createdAt,
-  ...(thread.modelId ? { modelId: thread.modelId } : {}),
-  ...(thread.effort ? { effort: thread.effort } : {}),
   role,
 });
 
 export const getAction = defineUserQuery({
   path: "assistant/threads:get",
-  description: "Reads one assistant chat the person can open: its title, when it was last written in, and what they may do in it.",
+  description: "Reads one assistant chat the person can open: its title, when it was last written in, the model and reasoning effort its replies run on, and what they may do in it.",
   args: { threadId: v.id("assistantThreads") },
-  returns: threadValidator,
+  returns: v.object({ ...threadValidator.fields, model: v.union(modelSummaryValidator, v.null()), effort: v.optional(effortValidator) }),
   run: async (ctx, userId, { threadId }) => {
     await requireFeature(ctx, FLAG, userId);
     const { thread, role } = await requireThread(ctx, userId, threadId);
-    return shown(thread, role);
+    const { modelId, effort } = await chatModel(ctx, thread);
+    return { ...shown(thread, role), model: await modelSummary(ctx, modelId), ...(effort ? { effort } : {}) };
   },
 });
 export const get = userQuery(getAction);
@@ -177,9 +202,7 @@ export const setModelAction = defineUserMutation({
   run: async (ctx, userId, { threadId, modelId, effort }) => {
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId, "write");
-    const model = await requireAvailableModel(ctx, modelId);
-    requireEffort(model, effort);
-    requireTaskModel(model, "chat");
+    await pickable(ctx, modelId, effort);
     await ctx.db.patch("assistantThreads", threadId, { modelId, effort, updatedAt: Date.now() });
     return null;
   },
