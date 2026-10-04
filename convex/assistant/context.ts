@@ -1,0 +1,130 @@
+/**
+ * What the model is sent, and how that is kept small (#326).
+ *
+ * A request holds, most stable first: the fixed instructions, the summary once the chat
+ * has been compacted, every message since then exactly as it was sent, and the new
+ * message. Nothing already sent is rewritten between compactions, so the provider's cache
+ * of the conversation stays valid from one request to the next.
+ *
+ * Compaction is the only rewrite. When a reply's last request was large, the chat's own
+ * model writes a summary of everything so far, and the next request starts from that
+ * summary. Only the model's view is compacted: the chat keeps every message.
+ */
+import { docsToModelMessages, type ContextHandler, type MessageDoc } from "@convex-dev/agent";
+import { generateText, type ModelMessage } from "ai";
+import { components, internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import type { ActionCtx } from "../_generated/server";
+import { releaseCredits, reserveCredits, settleCredits, tokenDetails } from "../billing/charge";
+import { resolveOpenRouterModel } from "../chat/provider";
+import { callOptions, type Effort } from "../../lib/ai/core/call-options";
+import { calculateCostInDollars, usageOf } from "../../lib/ai/core/cost";
+import { pickProviderCostUsd } from "../../lib/chat/pick-provider-cost";
+import { convertUsdToCredits } from "../../lib/pricing";
+import { INSTRUCTIONS } from "./agent";
+
+/** A reply whose last request read more input than this is followed by a compaction. */
+export const COMPACT_AT_TOKENS = 50_000;
+/** Or more than this share of the model's window, when that is lower. */
+export const COMPACT_AT_WINDOW = 0.6;
+/** Messages a request reads since the last compaction, and the most a chat holds before one runs. */
+export const MAX_CONTEXT_MESSAGES = 400;
+/** The same limit in bytes, so reading the history stays inside what one query may read. */
+export const MAX_CONTEXT_BYTES = 4 * 1024 * 1024;
+/** The most a summary may be. */
+export const SUMMARY_MAX_TOKENS = 8_000;
+
+const SUMMARY_LEAD = "This conversation grew long, so its earlier messages were replaced with this summary:\n\n";
+
+const SUMMARIZE =
+  "Write a summary of this conversation that can replace every message above, so the conversation can carry on from the summary alone. " +
+  "Use exactly these headings, in this order, and write \"None\" under a heading with nothing to say: " +
+  "Decisions. The person's preferences. Records worked on, each by its ID. Open jobs. Unfinished requests. Next step. Last exchanges. " +
+  "Under Last exchanges, write the last few exchanges as plain text, who said what. " +
+  "Keep every decision and preference from an earlier summary unless the person changed it. " +
+  "Don't call a tool, and don't address the person: write only the summary.";
+
+/** Where a chat's history stands: what is summarized, and through which exchange. */
+export type Compacted = { summary?: string; compactedThrough?: number };
+
+/** The chat's messages the model still reads in full, oldest first: the ones after the last compaction, up to an exchange. */
+export async function historySince(
+  ctx: ActionCtx,
+  args: { agentThreadId: string; compactedThrough?: number; before?: string },
+): Promise<MessageDoc[]> {
+  const { page } = await ctx.runQuery(components.agent.messages.listMessagesByThreadId, {
+    threadId: args.agentThreadId,
+    order: "desc",
+    // A reply that failed or was stopped never reaches the model.
+    statuses: ["success"],
+    paginationOpts: { numItems: MAX_CONTEXT_MESSAGES, cursor: null },
+    ...(args.before ? { upToAndIncludingMessageId: args.before } : {}),
+  });
+  return page.filter((doc) => doc._id !== args.before && doc.order > (args.compactedThrough ?? -1)).reverse();
+}
+
+const summaryMessage = (summary: string): ModelMessage => ({ role: "system", content: SUMMARY_LEAD + summary });
+
+/**
+ * The context of one reply: the summary, then the history since it, then the new message.
+ * `onHistory` hears how much history that was, which decides whether a compaction follows.
+ */
+export function contextSince(args: Compacted & { agentThreadId: string; promptMessageId: string; onHistory: (history: { messages: number; bytes: number }) => void }): ContextHandler {
+  return async (ctx, { inputMessages, inputPrompt, existingResponses }) => {
+    const docs = await historySince(ctx, { agentThreadId: args.agentThreadId, compactedThrough: args.compactedThrough, before: args.promptMessageId });
+    args.onHistory({ messages: docs.length, bytes: JSON.stringify(docs).length });
+    return [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), ...inputMessages, ...inputPrompt, ...existingResponses];
+  };
+}
+
+/** Whether a reply that just ended should be followed by a compaction. */
+export function compactionDue(reply: { lastInputTokens: number; window?: number; messages: number; bytes: number }) {
+  const tokens = Math.min(COMPACT_AT_TOKENS, reply.window ? reply.window * COMPACT_AT_WINDOW : COMPACT_AT_TOKENS);
+  // The reply added at least its message and its answer to what the request read.
+  return reply.lastInputTokens > tokens || reply.messages + 2 >= MAX_CONTEXT_MESSAGES || reply.bytes >= MAX_CONTEXT_BYTES;
+}
+
+/**
+ * Writes the summary that replaces everything through `through`. One call on the chat's
+ * own model, reading the same instructions, summary and history its last reply read, so
+ * the provider serves them from cache. It has its own hold and its own line in the usage
+ * ledger, charged to the person whose reply made it due.
+ */
+export async function summarize(
+  ctx: ActionCtx,
+  args: Compacted & { agentThreadId: string; through: number; senderId: Id<"users">; modelId: Id<"models"> | null; effort?: Effort; lastInputTokens: number; chargeId: string },
+): Promise<string> {
+  const { model, modelSlug, pricing } = await resolveOpenRouterModel(ctx, args.modelId);
+  const docs = (await historySince(ctx, { agentThreadId: args.agentThreadId, compactedThrough: args.compactedThrough })).filter((doc) => doc.order <= args.through);
+  const estimate = calculateCostInDollars({ inputTokens: args.lastInputTokens, outputTokens: SUMMARY_MAX_TOKENS }, pricing);
+  const held = convertUsdToCredits({ usd: estimate }) || 1;
+  if (!(await reserveCredits(ctx, { userId: args.senderId, chargeId: args.chargeId, credits: held }))) throw new Error("Not enough credits to summarize the conversation.");
+  let settled = false;
+  try {
+    const result = await generateText({
+      model,
+      system: INSTRUCTIONS,
+      messages: [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), { role: "user", content: SUMMARIZE }],
+      maxOutputTokens: SUMMARY_MAX_TOKENS,
+      maxRetries: 1,
+      providerOptions: callOptions(model, { cache: true, sessionId: args.agentThreadId, effort: args.effort }),
+    });
+    const usage = usageOf({ usage: result.usage, providerMetadata: result.providerMetadata });
+    const usd = pickProviderCostUsd(result.providerMetadata) ?? calculateCostInDollars({ inputTokens: usage.inputTokens, outputTokens: usage.outputTokens }, pricing);
+    await settleCredits(ctx, {
+      userId: args.senderId,
+      chargeId: args.chargeId,
+      credits: convertUsdToCredits({ usd }) || 1,
+      usage: { kind: "chat", description: "Conversation summary", model: modelSlug, ...tokenDetails(usage), costUsd: usd },
+    });
+    settled = true;
+    const summary = result.text.trim();
+    if (!summary) throw new Error("The model wrote an empty summary.");
+    return summary;
+  } finally {
+    if (!settled) await releaseCredits(ctx, { userId: args.senderId, chargeId: args.chargeId }).catch(() => {});
+  }
+}
+
+/** What a chat's replies read from its record. */
+export const compactedOf = (ctx: ActionCtx, threadId: Id<"assistantThreads">) => ctx.runQuery(internal.assistant.replies.compacted, { threadId });

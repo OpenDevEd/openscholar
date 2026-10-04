@@ -24,6 +24,8 @@ export const assistantReplyValidator = v.object({
   scheduledId: v.id("_scheduled_functions"),
   /** Set when someone stops it. */
   stop: v.optional(v.boolean()),
+  /** The reply is written, and the conversation so far is being summarized before the chat takes its next message (./context.ts). */
+  compacting: v.optional(v.boolean()),
 });
 
 export const assistantThreadFields = {
@@ -39,6 +41,10 @@ export const assistantThreadFields = {
   /** The reasoning effort its replies run at, when the model takes one. */
   effort: v.optional(effortValidator),
   reply: v.optional(assistantReplyValidator),
+  /** What the model reads in place of the messages through `compactedThrough` (./context.ts). The chat itself keeps them all. */
+  summary: v.optional(v.string()),
+  /** The last exchange the summary covers, by the agent component's order. */
+  compactedThrough: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
