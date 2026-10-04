@@ -24,6 +24,8 @@ interface CommandCenterListProps<T> {
   // Filter state
   hasFilter: boolean;
   onClearFilter: () => void;
+  /** Replaces parts of the view mode's layout, such as its gaps. */
+  className?: string;
 }
 
 /**
@@ -42,6 +44,7 @@ export function CommandCenterList<T>({
   emptyAction,
   hasFilter,
   onClearFilter,
+  className,
 }: CommandCenterListProps<T>) {
   const tc = useTranslations("common");
   // Empty state
@@ -62,7 +65,7 @@ export function CommandCenterList<T>({
   }
 
   return (
-    <div className={cn(GRID_CLASSES[viewMode])}>
+    <div className={cn(GRID_CLASSES[viewMode], className)}>
       {items.map((item, index) => (
         <React.Fragment key={keyExtractor(item)}>
           {ItemComponent ? (
