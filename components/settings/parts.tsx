@@ -186,7 +186,7 @@ export function Paged({
   // The rows or the total are an earlier view's: both stay up, dimmed and inert, until this view's arrive.
   const stale = "list" in pager && (pager.list.isStale || pager.counting === true);
   return (
-    <div className={cn(stale && "pointer-events-none opacity-60")} aria-busy={stale || undefined}>
+    <div className={cn(stale && "opacity-60")} aria-busy={stale || undefined} inert={stale || undefined}>
       {/* `rowHeight` counts a row with its divider: a page has one divider fewer, inside the box's two borders. */}
       <div style={multi ? { minHeight: pager.size * rowHeight + 1 } : undefined}>{children}</div>
       {!multi ? null : "list" in pager ? (
