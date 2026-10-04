@@ -769,6 +769,41 @@ describe("the assistant's tools", () => {
     expect(said).toEqual([["Saving the first two.", true], ["All saved.", false]]);
   });
 
+  it("bring a long reply's steps with the chat's newest page, though the message it answers is pages back", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, threadId, say, thread } = await chatOf(t);
+    mockDoStream.mockImplementationOnce(finishingDoStream(["All read."]));
+    await say("Read a great deal");
+    const agentThreadId = (await thread())!.agentThreadId;
+    await t.run(async (ctx) => {
+      // Thirty requests that each called an action: sixty rows the chat doesn't show, between the message and its answer's page.
+      const prompt = (await listMessages(ctx, components.agent, { threadId: agentThreadId, paginationOpts: { cursor: null, numItems: 10 } })).page.find((doc) => doc.message?.role === "user")!;
+      const call = (id: string) => ({ role: "assistant" as const, content: [{ type: "tool-call" as const, toolCallId: id, toolName: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } }] });
+      const result = (id: string) => ({ role: "tool" as const, content: [{ type: "tool-result" as const, toolCallId: id, toolName: "library_collections_listCollections", output: { type: "json" as const, value: { page: [] } } }] });
+      for (let round = 0; round < 30; round++) {
+        await saveMessages(ctx, components.agent, { threadId: agentThreadId, promptMessageId: prompt._id, messages: [call(`c${round}`), result(`c${round}`)] });
+        await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: `c${round}`, path: "library/collections:listCollections", input: "{}", subject: `Read ${round}`, status: "done", startedAt: round, endedAt: round });
+      }
+    });
+    const read = (paginationOpts: { cursor: string | null; numItems: number }) => asAda.query(api.assistant.replies.messages, { threadId, paginationOpts });
+    const newest = await read(firstPage);
+    // The newest page holds none of the reply's messages to show, and all its steps, newest first.
+    expect(newest.page.filter((item) => item.role !== "step")).toEqual([]);
+    expect(newest.page.map((item) => (item.role === "step" ? item.subject : item.role))).toEqual(Array.from({ length: 30 }, (_, i) => `Read ${29 - i}`));
+    // A page before it isn't the newest: it brings steps only with the message they answer, under the same IDs.
+    const all = [...newest.page];
+    for (let cursor = newest.continueCursor, done = newest.isDone; !done; ) {
+      const page = await read({ cursor, numItems: 20 });
+      all.push(...page.page);
+      cursor = page.continueCursor;
+      done = page.isDone;
+    }
+    const stepIds = all.flatMap((item) => (item.role === "step" ? [item.id] : []));
+    expect(stepIds).toHaveLength(60);
+    expect(new Set(stepIds).size).toBe(30);
+    expect(all.filter((item) => item.role !== "step").map((item) => `${item.role}: ${"text" in item ? item.text : ""}`)).toEqual(["assistant: All read.", "user: Read a great deal"]);
+  });
+
   it("give a call left without a result its result, however long the reply it's in ran", async () => {
     const t = convexTest(schema);
     const { say, shown, thread } = await chatOf(t);
