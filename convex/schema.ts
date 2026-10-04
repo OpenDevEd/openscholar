@@ -517,7 +517,9 @@ export default defineSchema({
     .index("by_charge", ["chargeId"])
     .index("by_queuedAt", ["queuedAt"])
     .index("by_user_and_createdAt", ["userId", "createdAt"])
+    // `by_job` stays for the chat's tests, which go with chat mode (#325); the charge list reads `by_job_and_createdAt`.
     .index("by_job", ["jobId"])
+    .index("by_job_and_createdAt", ["jobId", "createdAt"])
     .index("by_stripe_charge", ["stripeChargeId"]),
   billingHolds: defineTable({
     userId: v.id("users"),

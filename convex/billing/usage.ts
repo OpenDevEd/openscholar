@@ -74,7 +74,7 @@ const MAX_PAGE_SIZE = 50;
 async function chargesOf(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"extractionJobs"> | undefined) {
   if (!jobId) return { namespace: userSpace(userId), rows: ctx.db.query("billingUsage").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)) };
   if ((await ctx.db.get("extractionJobs", jobId))?.userId !== userId) return null;
-  return { namespace: jobSpace(jobId), rows: ctx.db.query("billingUsage").withIndex("by_job", (q) => q.eq("jobId", jobId)) };
+  return { namespace: jobSpace(jobId), rows: ctx.db.query("billingUsage").withIndex("by_job_and_createdAt", (q) => q.eq("jobId", jobId)) };
 }
 
 export const listChargesAction = defineUserQuery({

@@ -47,7 +47,7 @@ export default function ConnectionsPage() {
     <Enter ready>
       <div className="space-y-8">
         <Zone label={t("connectedApps")}>
-          {active.items.length === 0 ? (
+          {active.items.length === 0 && !active.hasPages ? (
             <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/80 px-6 py-10 text-center">
               <Plug className="size-5 text-muted-foreground" />
               <p className="text-sm font-medium">{t("noConnectedApps")}</p>
@@ -118,7 +118,7 @@ export default function ConnectionsPage() {
           )}
         </Zone>
 
-        {revoked.items.length > 0 ? (
+        {revoked.items.length > 0 || revoked.hasPages ? (
           <Zone label={t("revokedBadge")}>
             <Paged pager={{ list: revoked, size: PER_PAGE, total: counts.revoked }} rowHeight={61} label={t("apps")}>
               <ul className={LIST}>

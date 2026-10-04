@@ -55,6 +55,17 @@ describe("charge pages", () => {
     expect(await other.query(api.billing.usage.countCharges, { jobId })).toBe(0);
   });
 
+  it("lists a job's charges by their time, whatever order they were recorded in", async () => {
+    const { t, userId, jobId, me } = await setup();
+    await t.run(async (ctx) => {
+      for (const [chargeId, createdAt] of [["late", 2000], ["early", 1000]] as const) {
+        await insertUsage(ctx, { userId, chargeId, credits: 1, kind: "extraction", description: chargeId, createdAt, jobId });
+      }
+    });
+    const page = await me.query(api.billing.usage.listCharges, { jobId, paginationOpts: { cursor: null, numItems: 10 } });
+    expect(page.page.map((r) => r.description)).toEqual(["late", "early"]);
+  });
+
   it("counts charges recorded before the pages existed once the backfill runs", async () => {
     const { t, userId, me } = await setup();
     await t.run(async (ctx) => {

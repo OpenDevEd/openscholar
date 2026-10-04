@@ -157,6 +157,8 @@ export const listCandidatesAction = defineUserQuery({
     await requireAdminUser(ctx, userId);
     const prefix = normalizeEmail(search);
     // Through the index of active users by email, so a page fills however many accounts were deleted.
+    // ponytail: admins are passed over as they're read, so a run of ROWS_READ admins in a row by email
+    // returns an empty page the picker can't scroll past. An index of non-admin users would lift it.
     return await stream(ctx.db, schema)
       .query("users")
       .withIndex("by_state_and_email", (q) => (prefix ? q.eq("state", "active").gte("email", prefix).lt("email", `${prefix}\uffff`) : q.eq("state", "active")))
