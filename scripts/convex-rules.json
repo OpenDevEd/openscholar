@@ -18,8 +18,6 @@
       "convex/chat/chatPapers.ts:listChatSourcesWithInclusion:.rows[]": "#325",
       "convex/chat/model.ts:listChatModels:[]": "#325",
       "convex/chat/sourceEvents.ts:listForThread:[]": "#325",
-      "convex/evidenceLibraries/collectionSources.ts:listLibraryCollectionSources:[]": "#423",
-      "convex/evidenceLibraries/credentials.ts:listCredentialMetadata:[]": "#423",
       "convex/evidenceLibraries/domainActions.ts:checkDomains:.results[]": "#425",
       "convex/evidenceLibraries/invitations.ts:listMine:[]": "#423",
       "convex/evidenceLibraries/queries.ts:listLibraryOverviews:[]": "#423",
@@ -40,7 +38,6 @@
       "convex/zotero/actions.ts:fetchItems:.items[]": "#425",
       "convex/zotero/actions.ts:fetchItems:.items[].authors[]": "#425",
       "convex/zotero/libraryGroupActions.ts:listMyZoteroGroups:.groups[]": "#425",
-      "convex/zotero/libraryGroups.ts:listLibraryZoteroGroups:[]": "#423",
       "convex/zotero/runtimeReadActions.ts:listLibraryCollections:.items[]": "#425",
       "convex/zotero/runtimeReadActions.ts:listRecordInstitutions:.items[]": "#425",
       "convex/zotero/runtimeReadActions.ts:listReviewedPublications:.items[]": "#425"

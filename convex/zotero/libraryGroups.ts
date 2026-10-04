@@ -96,16 +96,6 @@ export const listZoteroGroups = query({
   },
 });
 
-/** Kept for one release, while the deployed site still calls it; `listZoteroGroups` replaces it. */
-export const listLibraryZoteroGroups = query({
-  args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.array(evidenceLibraryZoteroGroupValidator),
-  handler: async (ctx, args) => {
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    return await libraryZoteroGroups(ctx, args.libraryId);
-  },
-});
-
 // The signed-in owner's own Zotero connection, for the connect actions.
 // Access is checked here because actions cannot read the database.
 export const readOwnerZoteroConnection = internalQuery({

@@ -78,20 +78,6 @@ export const listCollectionSources = query({
   },
 });
 
-/** The first 100 connections a library made. Kept for one release, while the deployed site still calls it; `listCollectionSources` replaces it. */
-export const listLibraryCollectionSources = query({
-  args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.array(collectionSourceValidator),
-  handler: async (ctx, args) => {
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    const rows = await ctx.db
-      .query("evidenceLibraryCollectionSources")
-      .withIndex("by_libraryId_and_collectionId", (q) => q.eq("libraryId", args.libraryId))
-      .take(100);
-    return await Promise.all(rows.map((connection) => row(ctx, connection)));
-  },
-});
-
 /**
  * Lets the library follow one of the signed-in owner's own collections. The
  * connection stays when the source leaves a draft, so a discarded draft or an
