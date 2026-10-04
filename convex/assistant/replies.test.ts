@@ -8,6 +8,7 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
+import { SERVER_MODEL_SLUG } from "../ai/config";
 import { assistant } from "./agent";
 import { people } from "./assistant.test-support";
 import { erroringOnAbortDoStream, finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, waitFor } from "./turn.test-support";
@@ -226,6 +227,32 @@ describe("assistant replies", () => {
     // An effort with no model to take it is refused, not dropped.
     await expect(asAda.mutation(api.assistant.threads.create, { effort: "low" })).rejects.toThrow(/Pick a model/);
 
+    // A model that can't call tools, or is too small for a long conversation, can't be picked.
+    const [toolless, small] = await t.run(async (ctx) => {
+      const row = (await ctx.db.get("models", picked))!;
+      const { _id, _creationTime, ...fields } = row;
+      return [
+        await ctx.db.insert("models", { ...fields, modelId: "mock/toolless", supportedParameters: [] }),
+        await ctx.db.insert("models", { ...fields, modelId: "mock/small", contextLength: 32_000 }),
+      ];
+    });
+    await expect(asAda.mutation(api.assistant.threads.setModel, { threadId, modelId: toolless })).rejects.toThrow(/tools/);
+    await expect(asAda.mutation(api.assistant.threads.create, { modelId: small })).rejects.toThrow(/long enough/);
+
+    // A chat that fell back on a model like that, or had one picked before the rule, doesn't send on it either.
+    await t.run(async (ctx) => ctx.db.patch("assistantThreads", threadId, { modelId: small }));
+    await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "Third" })).rejects.toThrow(/long enough/);
+    await asAda.mutation(api.assistant.threads.setModel, { threadId, modelId: picked });
+
+    // With nothing picking a model, the server's own default runs, and it's held to the rule where the catalog has it.
+    const bare = await asAda.mutation(api.assistant.threads.create, {});
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("aiModelConfig").collect()) await ctx.db.delete("aiModelConfig", row._id);
+      const { _id, _creationTime, ...fields } = (await ctx.db.get("models", picked))!;
+      await ctx.db.insert("models", { ...fields, modelId: SERVER_MODEL_SLUG, supportedParameters: [] });
+    });
+    await expect(asAda.mutation(api.assistant.replies.send, { threadId: bare, text: "First" })).rejects.toThrow(/tools/);
+
     // A chat started on a model runs on it from its first message.
     const own = await asAda.mutation(api.assistant.threads.create, { modelId: picked });
     await asAda.mutation(api.assistant.replies.send, { threadId: own, text: "First" });
@@ -322,6 +349,8 @@ function mockModel(t: Test, slug = "mock/model") {
       inputPricePerMillion: 1_000,
       outputPricePerMillion: 2_000,
       costMarkup: 1,
+      contextLength: 200_000,
+      supportedParameters: ["tools"],
       isServed: true,
       sortOrder: 0,
       syncedAt: 1,

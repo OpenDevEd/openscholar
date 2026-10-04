@@ -16,6 +16,10 @@ describe("callOptions", () => {
       openrouter: { cache_control: { type: "ephemeral" } },
     });
     expect(callOptions(openrouter("google/gemini-3.1-flash-lite-preview"), { cache: true })).toEqual({ openrouter: {} });
+    // A conversation someone comes back to after a pause keeps its cache for an hour.
+    expect(callOptions(openrouter("anthropic/claude-sonnet-4.6"), { cache: "1h" })).toEqual({
+      openrouter: { cache_control: { type: "ephemeral", ttl: "1h" } },
+    });
   });
 
   it("pins a session to one upstream host within OpenRouter's 256-character limit", () => {

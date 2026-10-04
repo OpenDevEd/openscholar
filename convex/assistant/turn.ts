@@ -9,7 +9,7 @@
  *   settle the credits, from the steps' usage or OpenRouter's generation record
  *   release the lock, always
  */
-import { listMessages, type Agent } from "@convex-dev/agent";
+import { listMessages, type Agent, type ContextHandler, type ContextOptions } from "@convex-dev/agent";
 import type { ToolSet } from "ai";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -52,8 +52,16 @@ export type Turn = {
   shouldStop: () => Promise<boolean>;
   /** Called every LEASE_RENEW_MS, where a lock is one that has to be renewed. */
   renewLease?: () => Promise<unknown>;
-  /** Releases the reply's lock. Runs whether the reply finished, failed or was stopped. */
-  release: () => Promise<unknown>;
+  /**
+   * Releases the reply's lock. Runs whether the reply finished, failed or was stopped, with
+   * the input tokens the provider reported for the reply's last request (0 when none finished).
+   */
+  release: (outcome: { lastInputTokens: number }) => Promise<unknown>;
+  /** What the model is sent, in place of the agent's own choice of recent messages. */
+  contextHandler?: ContextHandler;
+  contextOptions?: ContextOptions;
+  /** How long Claude keeps the conversation cached: five minutes, or an hour (`"1h"`) at a dearer write. */
+  cache?: "1h";
   /** Keeps a failure where the caller shows it, besides the failed message. A stop isn't one. */
   recordError?: (error: unknown) => Promise<unknown>;
   clearError?: () => Promise<unknown>;
@@ -184,7 +192,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           maxRetries: 0,
           // Claude caches the context and earlier turns; the thread id keeps
           // every turn on the same upstream host so that cache stays warm.
-          providerOptions: callOptions(model, { cache: true, sessionId: threadId, effort: turn.effort }),
+          providerOptions: callOptions(model, { cache: turn.cache ?? true, sessionId: threadId, effort: turn.effort }),
           onStepEnd: async ({ usage, providerMetadata }) => {
             stepUsages.push(usageOf({ usage, providerMetadata }));
             const inputTokens = usage?.inputTokens ?? 0;
@@ -243,7 +251,11 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
             if (patched) envelopePatchedFromOnError = true;
           },
         },
-        { saveStreamDeltas: { chunking: "word", throttleMs: 250 } },
+        {
+          saveStreamDeltas: { chunking: "word", throttleMs: 250 },
+          ...(turn.contextHandler ? { contextHandler: turn.contextHandler } : {}),
+          ...(turn.contextOptions ? { contextOptions: turn.contextOptions } : {}),
+        },
       );
       streamReturned = true;
     } catch (err) {
@@ -436,7 +448,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
     // current per-thread lock, but defence in depth). See plan § 3
     // placement notes.
     await stopAbortPoller();
-    await turn.release();
+    await turn.release({ lastInputTokens: stepUsages.at(-1)?.inputTokens ?? 0 });
   }
 }
 

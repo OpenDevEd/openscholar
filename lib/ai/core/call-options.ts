@@ -13,9 +13,11 @@ export interface CallOptionsArgs {
   sessionId?: string
   /**
    * Ask Anthropic models to cache the prompt. Only for prompts that repeat (chat turns):
-   * a cache write costs 1.25× input, which a one-off call never earns back.
+   * a cache write costs 1.25× input, which a one-off call never earns back. `"1h"` keeps
+   * the cache an hour instead of five minutes, for a write at 2× input: for conversations
+   * a person comes back to after a pause.
    */
-  cache?: boolean
+  cache?: boolean | '1h'
 }
 
 // ponytail: fixed budgets per level; switch to Anthropic's adaptive thinking once every Claude model a key can pick supports it.
@@ -45,7 +47,7 @@ export function callOptions(model: LanguageModel, { effort, sessionId, cache }: 
         openrouter: {
           // The SDK's types stop at xhigh, but the API takes max.
           ...(effort && { reasoning: { effort } }),
-          ...(cache && modelId.startsWith('anthropic/') && { cache_control: { type: 'ephemeral' } }),
+          ...(cache && modelId.startsWith('anthropic/') && { cache_control: { type: 'ephemeral', ...(cache === '1h' && { ttl: '1h' }) } }),
           // Not in the SDK's types; it passes unknown keys through to the request body.
           ...(sessionId && { session_id: sessionId.slice(0, 256) }),
         },
