@@ -1107,6 +1107,8 @@ export default defineSchema({
     userId: v.id("users"),
     item: removedItemValidator,
     collectionIds: capped(v.array(v.id("collections")), MAX_COLLECTIONS_PER_USER),
+    // When the paper was put in each of `collectionIds`, in the same order. A removal from before these were kept has none.
+    assignedAts: capped(v.optional(v.array(v.number())), MAX_COLLECTIONS_PER_USER),
     expiresAt: v.number(),
   }),
 
