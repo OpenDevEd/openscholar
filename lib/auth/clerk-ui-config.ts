@@ -2,8 +2,20 @@ import { enGB, enUS, frFR, hiIN, jaJP, zhCN } from "@clerk/localizations";
 import { dark } from "@clerk/themes";
 import type { Appearance, LocalizationResource } from "@clerk/types";
 
-const CLERK_LIGHT_APPEARANCE: Appearance = {};
-const CLERK_DARK_APPEARANCE: Appearance = { theme: dark };
+// Clerk's own screens take their colours and typeface from the app's tokens,
+// so they follow the active theme.
+const variables = {
+  colorPrimary: "var(--primary)",
+  colorTextOnPrimaryBackground: "var(--primary-foreground)",
+  colorBackground: "var(--card)",
+  colorText: "var(--foreground)",
+  colorTextSecondary: "var(--muted-foreground)",
+  colorInputBackground: "var(--background)",
+  colorInputText: "var(--foreground)",
+  colorNeutral: "var(--foreground)",
+  colorDanger: "var(--destructive)",
+  fontFamily: "var(--font-sans)",
+};
 
 const CLERK_LOCALIZATION_BY_LOCALE: Record<string, LocalizationResource> = {
   "en-us": enUS,
@@ -38,7 +50,8 @@ export function resolveClerkLocalization(
 export function resolveClerkAppearance(
   resolvedTheme: string | null | undefined,
 ): Appearance {
+  // The mark as the brand guidelines draw it on white and on black.
   return resolvedTheme === "dark"
-    ? CLERK_DARK_APPEARANCE
-    : CLERK_LIGHT_APPEARANCE;
+    ? { theme: dark, variables, layout: { logoImageUrl: "/icon-black.svg" } }
+    : { variables, layout: { logoImageUrl: "/icon.svg" } };
 }

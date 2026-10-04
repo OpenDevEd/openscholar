@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Languages } from "lucide-react";
+import { Languages } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { languageOptions } from "@/lib/ai/core/languages";
 import { useTranslations } from "next-intl";
@@ -83,7 +83,7 @@ export function LanguageSelector({
                   className="absolute inset-0 flex items-center justify-center"
                 >
                   <SelectValue>
-                    <span className="text-[11px] font-medium uppercase leading-none">
+                    <span className="text-2xs font-medium uppercase leading-none">
                       {selectedLanguage.code}
                     </span>
                   </SelectValue>

@@ -4,24 +4,24 @@
 import { useEffect, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
-import { BookMarked, Check, CircleHelp, FolderOpen, ListChecks, Search, Star, TriangleAlert, X, type LucideIcon } from "lucide-react";
+import { BookMarked, Check, CircleHelp, FolderOpen, ListChecks, Search, Star, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { OUTCOMES, type Answer, type Outcome, type PaperSet, type Phase } from "@/lib/screening/setup";
 
-export const OUTCOME: Record<Outcome, { bar: string; text: string; icon: LucideIcon }> = {
-  included: { bar: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400", icon: Check },
-  unclear: { bar: "bg-amber-400", text: "text-amber-600 dark:text-amber-400", icon: CircleHelp },
+export const OUTCOME: Record<Outcome, { bar: string; text: string; icon: AppIcon }> = {
+  included: { bar: "bg-success", text: "ink-success", icon: Check },
+  unclear: { bar: "bg-warning", text: "ink-warning", icon: CircleHelp },
   excluded: { bar: "bg-muted-foreground/35", text: "text-muted-foreground", icon: X },
   failed: { bar: "bg-destructive", text: "text-destructive", icon: TriangleAlert },
 };
 
-export const ANSWER: Record<Answer, { icon: LucideIcon; className: string }> = {
-  yes: { icon: Check, className: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400" },
+export const ANSWER: Record<Answer, { icon: AppIcon; className: string }> = {
+  yes: { icon: Check, className: "bg-success/12 ink-success" },
   no: { icon: X, className: "bg-muted text-muted-foreground" },
-  unclear: { icon: CircleHelp, className: "bg-amber-500/12 text-amber-700 dark:text-amber-400" },
+  unclear: { icon: CircleHelp, className: "bg-warning/12 ink-warning" },
 };
 
-export const SOURCE_ICON: Record<PaperSet["kind"], LucideIcon> = { search: Search, collection: FolderOpen, saved: BookMarked, screening: ListChecks };
+export const SOURCE_ICON: Record<PaperSet["kind"], AppIcon> = { search: Search, collection: FolderOpen, saved: BookMarked, screening: ListChecks };
 
 /** One answer as a small square with its sign; `label` names its question. */
 export function AnswerMark({ answer, changed, label }: { answer: Answer; changed?: boolean; label: string }) {
@@ -68,7 +68,7 @@ export function ProgressRing({ value, max, phase }: { value: number; max: number
   const c = 2 * Math.PI * r;
   const f = max ? value / max : 0;
   const stroke =
-    phase === "completed" ? "stroke-emerald-500" : phase === "running" ? "stroke-primary" : phase === "waiting" ? "stroke-amber-400" : phase === "cancelled" ? "stroke-muted-foreground/50" : "stroke-destructive";
+    phase === "completed" ? "stroke-success" : phase === "running" ? "stroke-primary" : phase === "waiting" ? "stroke-warning" : phase === "cancelled" ? "stroke-muted-foreground/50" : "stroke-destructive";
   return (
     <span className="relative inline-flex size-14 shrink-0" role="img" aria-label={t("screenedOf", { done: value, total: max })}>
       <svg viewBox={`0 0 ${size} ${size}`} className="size-full -rotate-90">
@@ -88,7 +88,7 @@ export function ProgressRing({ value, max, phase }: { value: number; max: number
       <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold tabular-nums">
         {phase === "completed" ? (
           <motion.span initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 420, damping: 22 }}>
-            <Check className="size-5 text-emerald-500" />
+            <Check className="size-5 text-success" />
           </motion.span>
         ) : (
           <span><AnimatedNumber value={Math.round(f * 100)} />%</span>
@@ -99,7 +99,7 @@ export function ProgressRing({ value, max, phase }: { value: number; max: number
 }
 
 /** A small fact chip: an icon, then a short label. */
-export function Chip({ icon: Icon, children, className }: { icon?: LucideIcon; children: ReactNode; className?: string }) {
+export function Chip({ icon: Icon, children, className }: { icon?: AppIcon; children: ReactNode; className?: string }) {
   return (
     <span className={cn("inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md bg-foreground/[0.06] px-2 text-xs tabular-nums text-muted-foreground", className)}>
       {Icon ? <Icon className="size-3.5" /> : null}
@@ -113,7 +113,7 @@ export function Stars({ count, of = 5 }: { count: number; of?: number }) {
   return (
     <span role="img" aria-label={t("starsOf", { count, of })} className="inline-flex shrink-0 items-center gap-0.5">
       {Array.from({ length: of }, (_, i) => (
-        <Star key={i} aria-hidden className={cn("size-3", i < count ? "fill-primary text-primary" : "text-muted-foreground/30")} />
+        <Star key={i} aria-hidden className={cn("size-3", i < count ? "fill-rating text-rating" : "text-muted-foreground/30")} />
       ))}
     </span>
   );

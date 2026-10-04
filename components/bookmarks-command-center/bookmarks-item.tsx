@@ -1,29 +1,23 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
-import { Trash2, Pencil, Check, X, Calendar, Copy, Search } from "lucide-react";
+import { Trash2, Pencil, Check, X, Copy } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { TooltipHint } from "@/components/ui/tooltip";
+import { Entry, EntryAction, EntryAside, EntryTile, ENTRY_OPEN, FullTextToggle, isGrid } from "@/components/command-center/entry";
+import { useFullText } from "@/components/evidence-libraries/configuration/disclosure-button";
 import { cn, createDefaultFilters } from "@/lib/utils";
-import { getIdColor } from "@/lib/format";
-import { ViewMode } from "@/lib/types";
+import type { ViewMode } from "@/lib/types";
 import { useAppToast } from "@/lib/toast";
 import { submitNewSearch } from "@/lib/search/actions";
-import { subtleSpring } from "@/lib/animation-config";
 import type { BookmarkEntry } from "./types";
 
 interface BookmarksItemProps {
   bookmark: BookmarkEntry;
-  index: number;
   viewMode: ViewMode;
   isEditing: boolean;
   onEdit: () => void;
@@ -32,42 +26,31 @@ interface BookmarksItemProps {
   onDelete: () => void;
 }
 
-export function BookmarksItem({
-  bookmark,
-  index,
-  viewMode,
-  isEditing,
-  onEdit,
-  onSaveEdit,
-  onCancelEdit,
-  onDelete,
-}: BookmarksItemProps) {
+export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdit, onCancelEdit, onDelete }: BookmarksItemProps) {
   const toast = useAppToast();
   const tb = useTranslations("bookmarksPage");
   const tc = useTranslations("common");
   const tToast = useTranslations("toast");
   const format = useFormatter();
-  const [editValue, setEditValue] = useState(bookmark.expansion);
   const router = useRouter();
-  const idColor = getIdColor(bookmark.name);
+  const [editValue, setEditValue] = useState(bookmark.expansion);
+  const expansionText = useFullText<HTMLButtonElement>(`${viewMode}|${isEditing}|${bookmark.expansion}`);
+  const grid = isGrid(viewMode);
+  const simple = viewMode === "list-simple";
 
-  const handleSave = () => {
-    if (editValue.trim()) {
-      onSaveEdit(editValue.trim());
-    }
+  const save = () => {
+    if (editValue.trim()) onSaveEdit(editValue.trim());
   };
-
-  const handleCancel = () => {
+  const cancel = () => {
     setEditValue(bookmark.expansion);
     onCancelEdit();
   };
-
-  const handleStartEdit = () => {
+  const startEdit = () => {
     setEditValue(bookmark.expansion);
     onEdit();
   };
 
-  const handleCopy = async () => {
+  const copy = async () => {
     try {
       await navigator.clipboard.writeText(bookmark.expansion);
     } catch {
@@ -75,459 +58,128 @@ export function BookmarksItem({
     }
   };
 
-  const handleUseInSearch = () => {
-    // Create search using the bookmark syntax (name...) which will auto-expand
-    const query = `${bookmark.name}...`;
-    const filters = createDefaultFilters();
-    const { url } = submitNewSearch(query, filters);
-    router.push(url);
+  // A search for the bookmark as it is typed: the name, then three periods.
+  const useInSearch = () => {
+    router.push(submitNewSearch(`${bookmark.name}...`, createDefaultFilters()).url);
   };
 
-  const formattedDate = format.dateTime(new Date(bookmark.createdAt), {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  // The bookmark's name, in its own colour. In the list views it sits in a column, so the expansions line up.
+  // It sits above the entry's hit area so its full name can show when clipped; a click still uses it.
+  const name = (
+    <span className={cn("flex min-w-0", grid ? "flex-1" : "w-36 shrink-0")}>
+      <TooltipHint label={bookmark.name} onlyWhenClipped>
+        <EntryTile id={bookmark.name} className="relative z-10 inline-flex min-w-0 shrink font-mono font-medium" onClick={isEditing ? undefined : useInSearch}>
+          <span className="truncate">{bookmark.name}</span>
+        </EntryTile>
+      </TooltipHint>
+    </span>
+  );
 
-  // Render based on view mode
-  if (viewMode === "list-simple") {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 5 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ ...subtleSpring, delay: index * 0.03 }}
-        className={cn(
-          "group relative flex flex-col rounded-xl",
-          "bg-card/40 dark:bg-card/30",
-          "border border-border/40",
-          "hover:bg-card/70 hover:border-border/60 hover:shadow-sm",
-          "transition-[background-color,border-color,box-shadow] duration-200"
-        )}
-      >
-        {/* Main row */}
-        <div className="flex items-center gap-3 px-3 py-2.5">
-          {/* Colored badge with name */}
-          <div
-            className="shrink-0 px-2.5 py-1 rounded-md text-xs font-semibold font-mono"
-            style={{
-              backgroundColor: idColor.bg,
-              color: idColor.text,
-              border: `1px solid ${idColor.border}`,
-            }}
-          >
-            {bookmark.name}
-          </div>
+  const aside = (
+    <EntryAside
+      meta={
+        <time dateTime={new Date(bookmark.createdAt).toISOString()} className={cn(simple && "max-sm:hidden")}>
+          {format.dateTime(new Date(bookmark.createdAt), { month: "short", day: "numeric", year: "numeric" })}
+        </time>
+      }
+      className={cn(!grid && "h-7 self-start")}
+    >
+      <EntryAction label={tb("copyExpansion")} icon={Copy} onClick={copy} />
+      <EntryAction label={tc("edit")} icon={Pencil} onClick={startEdit} />
+      <EntryAction label={tc("delete")} icon={Trash2} danger onClick={onDelete} />
+    </EntryAside>
+  );
 
-          {/* Arrow */}
-          <span className="text-muted-foreground text-xs shrink-0">→</span>
+  // What the bookmark expands to, cut to `clamp` until it is asked for in full.
+  const open = (clamp: string, shape?: string) => (
+    <button
+      ref={expansionText.ref}
+      type="button"
+      aria-label={`${tb("useInSearchTooltip")}: ${bookmark.name}`}
+      className={cn(ENTRY_OPEN, "font-normal", shape, !expansionText.expanded && clamp)}
+      onClick={useInSearch}
+    >
+      {bookmark.expansion}
+    </button>
+  );
 
-          {/* Expansion (truncated) */}
-          {isEditing ? (
-            <div className="flex-1 flex items-center gap-2">
-              <Input
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                className="h-8 text-sm font-mono border-amber-200 dark:border-amber-800 focus:border-amber-400"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSave();
-                  if (e.key === "Escape") handleCancel();
-                }}
-              />
-              <Button
-                size="sm"
-                onClick={handleSave}
-                className="h-8 px-2 bg-amber-600 hover:bg-amber-700 text-white"
-              >
-                <Check className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleCancel}
-                className="h-8 px-2 text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : (
-            <>
-              <span className="flex-1 text-sm text-muted-foreground truncate">
-                {bookmark.expansion}
-              </span>
-
-              {/* Actions */}
-              <div className="flex items-center gap-0.5 shrink-0">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={handleCopy}
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{tb("copyExpansion")}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={handleUseInSearch}
-                    >
-                      <Search className="h-3 w-3" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{tb("useInSearchTooltip")}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={handleStartEdit}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{tc("edit")}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 hover:text-destructive"
-                      onClick={onDelete}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{tc("delete")}</TooltipContent>
-                </Tooltip>
-              </div>
-            </>
-          )}
-        </div>
-      </motion.div>
-    );
-  }
-
-  if (viewMode === "list-detail") {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 5 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ ...subtleSpring, delay: index * 0.03 }}
-        className={cn(
-          "group relative rounded-xl overflow-hidden",
-          "bg-card/50 dark:bg-card/40",
-          "border border-border/40",
-          "hover:border-border/60 hover:shadow-md",
-          "transition-[background-color,border-color,box-shadow] duration-200"
-        )}
-      >
-        <div className="p-4">
-          {/* Main content row */}
-          <div className="flex gap-4">
-            {/* Colored badge block */}
-            <div
-              className="shrink-0 flex flex-col items-center justify-center px-4 py-3 rounded-lg min-w-[80px]"
-              style={{
-                backgroundColor: idColor.bg,
-                border: `1px solid ${idColor.border}`,
-              }}
-            >
-              <span
-                className="text-base font-bold font-mono leading-none"
-                style={{ color: idColor.text }}
-              >
-                {bookmark.name}
-              </span>
-              <span
-                className="text-[10px] opacity-70 mt-1"
-                style={{ color: idColor.text }}
-              >
-                {tc("bookmark")}
-              </span>
-            </div>
-
-            {/* Info section */}
-            <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
-              {/* Label */}
-              <span className="text-xs text-muted-foreground font-medium">
-                {tb("expandsTo")}
-              </span>
-
-              {/* Expansion */}
-              {isEditing ? (
-                <div className="flex flex-col gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                  <Textarea
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    className="min-h-[100px] text-sm font-mono border-amber-200 dark:border-amber-800 focus:border-amber-400"
-                    autoFocus
-                  />
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleSave}
-                      className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
-                    >
-                      <Check className="h-4 w-4" />
-                      {tc("save")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleCancel}
-                      className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
-                    >
-                      {tc("cancel")}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground leading-relaxed break-words">
-                  {bookmark.expansion}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Footer */}
-          {!isEditing && (
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/40">
-              {/* Left: Date */}
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Calendar className="h-3 w-3" />
-                <span>{tb("addedDate", { date: formattedDate })}</span>
-              </div>
-
-              {/* Right: Actions */}
-              <div className="flex items-center gap-1 shrink-0">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={handleCopy}
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{tb("copyExpansion")}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={handleUseInSearch}
-                    >
-                      <Search className="h-3 w-3" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{tb("useInSearchTooltip")}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={handleStartEdit}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{tc("edit")}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 hover:text-destructive"
-                      onClick={onDelete}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{tc("delete")}</TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-          )}
-        </div>
-      </motion.div>
-    );
-  }
-
-  // Grid view (grid-2 and grid-3)
-  const isCompact = viewMode === "grid-3";
+  const editor = simple ? (
+    <div className="flex min-w-0 flex-1 items-center gap-1">
+      <Input
+        aria-label={tb("expandsTo")}
+        value={editValue}
+        onChange={(event) => setEditValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") save();
+          if (event.key === "Escape") cancel();
+        }}
+        autoFocus
+        className="h-8 font-mono text-sm"
+      />
+      <EntryAction label={tc("save")} icon={Check} onClick={save} />
+      <EntryAction label={tc("cancel")} icon={X} onClick={cancel} />
+    </div>
+  ) : (
+    <div className="min-w-0 flex-1 space-y-2">
+      <Textarea
+        aria-label={tb("expandsTo")}
+        value={editValue}
+        onChange={(event) => setEditValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") cancel();
+        }}
+        autoFocus
+        className="max-h-72 min-h-24 font-mono text-sm"
+      />
+      <div className="flex gap-2">
+        <Button size="sm" onClick={save} disabled={!editValue.trim()}>
+          {tc("save")}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={cancel}>
+          {tc("cancel")}
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ ...subtleSpring, delay: index * 0.03 }}
-      whileHover={{ y: -2 }}
-      className={cn(
-        "group relative flex flex-col rounded-xl overflow-hidden",
-        "bg-card/50 dark:bg-card/40",
-        "border border-border/40",
-        "hover:border-border/60 hover:shadow-md",
-        "transition-[background-color,border-color,box-shadow] duration-200"
-      )}
-    >
-      {/* Top colored section with name */}
-      <div
-        className={cn(
-          "flex items-center justify-center",
-          isCompact ? "py-3" : "py-4"
-        )}
-        style={{ backgroundColor: idColor.bg }}
-      >
-        <span
-          className={cn(
-            "font-bold font-mono",
-            isCompact ? "text-lg" : "text-xl"
+    // In the one-line view everything lines up on the expansion's first line, also when it is shown in full.
+    <Entry viewMode={viewMode} active={isEditing} className={cn(simple && !isEditing && "items-start")}>
+      {grid ? (
+        <>
+          <div className="flex items-center gap-2">
+            {name}
+            {!isEditing && aside}
+          </div>
+          {isEditing ? editor : (
+            <>
+              {open(viewMode === "grid-2" ? "line-clamp-4" : "line-clamp-3")}
+              <FullTextToggle text={expansionText} className="-ml-1.5 self-start" />
+            </>
           )}
-          style={{ color: idColor.text }}
-        >
-          {bookmark.name}
-        </span>
-      </div>
-
-      {/* Content */}
-      <div className={cn("flex-1", isCompact ? "p-2.5" : "p-3")}>
-        {isEditing ? (
-          <div className="flex flex-col gap-3 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-            <Textarea
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              className="min-h-[80px] text-sm font-mono border-amber-200 dark:border-amber-800 focus:border-amber-400"
-              autoFocus
-            />
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                onClick={handleSave}
-                className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
-              >
-                <Check className="h-4 w-4" />
-                {tc("save")}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleCancel}
-                className="text-amber-700 hover:bg-amber-100 dark:text-amber-300 dark:hover:bg-amber-900/50"
-              >
-                {tc("cancel")}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <p
-            className={cn(
-              "text-muted-foreground leading-relaxed",
-              isCompact ? "text-xs line-clamp-3" : "text-sm line-clamp-4"
-            )}
-          >
-            {bookmark.expansion}
-          </p>
-        )}
-      </div>
-
-      {/* Actions footer */}
-      {!isEditing && (
-        <div
-          className={cn(
-            "flex items-center justify-between px-2 py-2 border-t border-border/30",
-            "bg-muted/20"
+        </>
+      ) : (
+        <>
+          {name}
+          {isEditing ? editor : (
+            <>
+              {simple ? (
+                <>
+                  <span className="min-w-0">{open("truncate", "block w-full py-1")}</span>
+                  <FullTextToggle text={expansionText} iconOnly className="mt-0.5" />
+                  <span className="flex-1" />
+                </>
+              ) : (
+                <div className="min-w-0 flex-1">
+                  {open("line-clamp-3")}
+                  <FullTextToggle text={expansionText} className="-ml-1.5 mt-1 flex" />
+                </div>
+              )}
+              {aside}
+            </>
           )}
-        >
-          {/* Left: Date */}
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Calendar className="h-3 w-3" />
-            <span>{formattedDate}</span>
-          </div>
-
-          {/* Right: Actions */}
-          <div className="flex items-center gap-0.5">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={handleCopy}
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{tb("copyExpansion")}</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={handleUseInSearch}
-                >
-                  <Search className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{tb("useInSearchTooltip")}</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={handleStartEdit}
-                >
-                  <Pencil className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{tc("edit")}</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 hover:text-destructive"
-                  onClick={onDelete}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{tc("delete")}</TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
+        </>
       )}
-    </motion.div>
+    </Entry>
   );
 }

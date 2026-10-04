@@ -43,6 +43,7 @@ export type NewSearchResultData = {
   workLanguages?: string[];
   institutionTypes?: string[];
   funders?: string[];
+  authors?: string[];
   minCitations?: number;
   hasAbstract?: boolean;
   includeRetracted?: boolean;
@@ -101,6 +102,7 @@ export function paramsToSearchResult(params: ParsedSearchParams): NewSearchResul
     workLanguages: params.wlang,
     institutionTypes: params.itype,
     funders: params.funder,
+    authors: params.author,
     minCitations: params.mincite ?? undefined,
     hasAbstract: params.abs,
     includeRetracted: params.retracted,
@@ -182,6 +184,7 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
   if (result.workLanguages?.length) params.wlang = result.workLanguages;
   if (result.institutionTypes?.length) params.itype = result.institutionTypes;
   if (result.funders?.length) params.funder = result.funders;
+  if (result.authors?.length) params.author = result.authors;
   if (result.minCitations) params.mincite = result.minCitations;
   if (result.hasAbstract) params.abs = true;
   if (result.includeRetracted) params.retracted = true;
@@ -248,6 +251,7 @@ export function paramsToFilters(params: ParsedSearchParams): SearchFilters {
     workLanguages: params.wlang,
     institutionTypes: params.itype,
     funders: params.funder,
+    authors: params.author,
     minCitations: params.mincite,
     hasAbstract: params.abs,
     includeRetracted: params.retracted,
@@ -319,6 +323,7 @@ export function paramsMatchState(params: ParsedSearchParams, state: SearchResult
   if (!arraysEqual(params.wlang, state.workLanguages ?? [])) return false;
   if (!arraysEqual(params.itype, state.institutionTypes ?? [])) return false;
   if (!arraysEqual(params.funder, state.funders ?? [])) return false;
+  if (!arraysEqual(params.author, state.authors ?? [])) return false;
   if (params.mincite !== (state.minCitations ?? null)) return false;
   if (params.abs !== (state.hasAbstract ?? false)) return false;
   if (params.retracted !== (state.includeRetracted ?? false)) return false;
@@ -354,6 +359,7 @@ export function hasActiveFilters(params: ParsedSearchParams): boolean {
     params.wlang.length > 0 ||
     params.itype.length > 0 ||
     params.funder.length > 0 ||
+    params.author.length > 0 ||
     params.mincite !== null ||
     params.abs ||
     params.retracted

@@ -137,6 +137,7 @@ export function hasActiveFiltersFromResult(result: {
   workLanguages?: string[];
   institutionTypes?: string[];
   funders?: string[];
+  authors?: string[];
   minCitations?: number | null;
   hasAbstract?: boolean;
   includeRetracted?: boolean;
@@ -159,6 +160,7 @@ export function hasActiveFiltersFromResult(result: {
     result.workLanguages?.length ||
     result.institutionTypes?.length ||
     result.funders?.length ||
+    result.authors?.length ||
     result.minCitations ||
     result.hasAbstract ||
     result.includeRetracted
@@ -211,6 +213,7 @@ export type FormatDateTimeFn = (
 export type FilterNames = {
   researchAreas?: Record<string, string>;
   funders?: Record<string, string>;
+  authors?: Record<string, string>;
   place?: (codeOrRegionId: string) => string;
   language?: (code: string) => string;
 };
@@ -396,6 +399,16 @@ export function buildFilterData(
         "funder",
         params.funders.map((id) => names.funders?.[id] ?? id).join(", "),
         t ? t("funders") : "Funders"
+      )
+    );
+  }
+  if (params.authors?.length) {
+    contentItems.push(
+      createFilterItem(
+        "author",
+        "author",
+        params.authors.map((id) => names.authors?.[id] ?? id).join(", "),
+        t ? t("authors") : "Authors"
       )
     );
   }

@@ -13,7 +13,7 @@ import {
   ExternalLink,
   Settings,
   Loader2,
-} from "lucide-react";
+} from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { DownloadMenu } from "@/components/download-menu";
 import { RatingSelector } from "@/components/rating-selector";
@@ -86,7 +86,7 @@ export function FocusModeHeader({
                   className={cn(
                     "h-3 w-3",
                     effectiveRating === undefined
-                      ? "text-yellow-400 hover:text-yellow-400"
+                      ? "text-rating hover:text-rating"
                       : "text-muted-foreground/40 hover:text-muted-foreground/60"
                   )}
                 />
@@ -107,8 +107,8 @@ export function FocusModeHeader({
                   className={cn(
                     "h-3 w-3",
                     effectiveRating === 0
-                      ? "text-yellow-400 hover:text-yellow-400"
-                      : "text-muted-foreground hover:text-yellow-400"
+                      ? "text-rating hover:text-rating"
+                      : "text-muted-foreground hover:text-rating"
                   )}
                 />
               </button>
@@ -136,8 +136,8 @@ export function FocusModeHeader({
                       "h-3 w-3",
                       effectiveRating !== undefined &&
                         effectiveRating >= star
-                        ? "fill-yellow-400 text-yellow-400"
-                        : "fill-muted-foreground text-muted-foreground hover:fill-yellow-400 hover:text-yellow-400"
+                        ? "fill-rating text-rating"
+                        : "fill-muted-foreground text-muted-foreground hover:fill-rating hover:text-rating"
                     )}
                   />
                 </button>

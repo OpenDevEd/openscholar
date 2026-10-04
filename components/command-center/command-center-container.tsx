@@ -35,9 +35,9 @@ export function CommandCenterContainer({
       className={cn(
         "relative rounded-2xl",
         allowOverflow ? "overflow-visible" : "overflow-clip",
-        "bg-background/95 dark:bg-background/90",
-        "border border-border/50",
-        "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]",
+        "bg-card",
+        "border border-border-subtle",
+        "shadow-surface",
         className
       )}
     >

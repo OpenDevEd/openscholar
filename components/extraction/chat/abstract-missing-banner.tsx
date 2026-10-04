@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "@/components/icons";
 import { useBucketStore } from "@/lib/store/bucket";
 import { useTranslations } from "next-intl";
 import { summarizeChatSources } from "@/lib/bucket/chat-source-stats";

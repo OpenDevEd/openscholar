@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { ChevronDown, ChevronRight, X } from "lucide-react"
+import { ChevronDown, ChevronRight, X } from "@/components/icons"
 
 import { cn } from "@/lib/utils"
 import {
@@ -279,7 +279,7 @@ export function Cascader({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         "h-9 px-3 py-2 w-full cursor-pointer",
-        !displayValue && "text-muted-foreground",
+        !displayValue && "text-subtle-foreground",
         disabled && "pointer-events-none opacity-50",
         className
       )}
@@ -353,7 +353,7 @@ export function Cascader({
                   "hover:bg-accent hover:text-accent-foreground",
                   "focus:bg-accent focus:text-accent-foreground focus:outline-none",
                   isSelected && "bg-accent text-accent-foreground",
-                  isExpanded && "bg-accent/50",
+                  isExpanded && "bg-accent",
                   option.disabled && "opacity-50 cursor-not-allowed"
                 )}
                 onClick={() => handleSelect(option, columnIndex)}

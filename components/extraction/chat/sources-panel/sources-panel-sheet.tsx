@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { PanelRightOpenIcon } from "lucide-react";
+import { PanelRightOpenIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,

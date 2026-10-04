@@ -15,9 +15,9 @@ import {
   Users,
   BookOpen,
   Table,
-} from "lucide-react";
+} from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { useScreening } from "./hooks";
+import { authorValue, useScreening } from "./hooks";
 import type { TranslationContent } from "./hooks";
 import { useUIStore } from "@/lib/store";
 import { useTranslations, useFormatter } from "next-intl";
@@ -59,35 +59,15 @@ export interface TranslationToggleProps {
 
 // ==================== Utility Functions ====================
 
-export function truncateAuthors(
-  authorships: { author: { display_name: string } }[],
-  maxLength: number = 100
-): string {
-  if (!authorships || authorships.length === 0) return "";
-  
-  const names = authorships.map((a) => a.author.display_name);
-  let result = names[0];
-  
-  for (let i = 1; i < names.length; i++) {
-    const next = `${result}, ${names[i]}`;
-    if (next.length > maxLength) {
-      return `${result} et al.`;
-    }
-    result = next;
+/** How many of the authors fit in `maxLength` characters, before "et al.". */
+function authorsShown(authorships: { author: { display_name: string } }[], maxLength: number): number {
+  let length = authorships[0].author.display_name.length;
+  let count = 1;
+  for (; count < authorships.length; count++) {
+    length += 2 + authorships[count].author.display_name.length;
+    if (length > maxLength) break;
   }
-  
-  return result;
-}
-
-export function getFirstAuthor(
-  authorships: { author: { display_name: string } }[]
-): string {
-  if (!authorships || authorships.length === 0) return "";
-  const first = authorships[0].author.display_name;
-  if (authorships.length > 1) {
-    return `${first} et al.`;
-  }
-  return first;
+  return count;
 }
 
 export function finalState(
@@ -131,8 +111,8 @@ export function TranslationToggle({
       if (isTranslating) {
         return (
           <TooltipHint label={tc("translating")}>
-            <div role="img" aria-label={tc("translating")} className="flex items-center justify-center p-1.5 rounded-md bg-blue-50 dark:bg-blue-950/30">
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+            <div role="img" aria-label={tc("translating")} className="flex items-center justify-center p-1.5 rounded-md bg-info/10">
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-info border-t-transparent" />
             </div>
           </TooltipHint>
         );
@@ -150,8 +130,8 @@ export function TranslationToggle({
           className={cn(
             "flex items-center justify-center p-1.5 rounded-md text-xs font-medium transition-colors",
             showTranslated
-              ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
-              : "bg-muted text-muted-foreground hover:bg-muted/80"
+              ? "bg-info/15 ink-info"
+              : "bg-muted text-muted-foreground hover:bg-accent"
           )}
         >
           {showTranslated ? tc("originalShort") : tc("translationShort")}
@@ -273,12 +253,12 @@ export function ScreeningResponses({
                   className={cn(
                     "flex items-center gap-1 px-2 py-1 rounded border text-xs transition-colors",
                     displayState === "checked"
-                      ? "bg-green-50 border-green-200 text-green-800 hover:bg-green-100 dark:bg-green-950/30 dark:border-green-800 dark:text-green-400"
+                      ? "bg-success/10 border-success/30 ink-success hover:bg-success/15"
                       : displayState === "crossed"
-                      ? "bg-red-50 border-red-200 text-red-800 hover:bg-red-100 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400"
+                      ? "bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/15"
                       : displayState === "loading"
-                      ? "bg-blue-50 border-blue-200 text-blue-800 cursor-wait dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
-                      : "bg-muted/50 border-border text-muted-foreground hover:bg-muted/80"
+                      ? "bg-info/10 border-info/30 ink-info cursor-wait"
+                      : "bg-inset border-border text-muted-foreground hover:bg-muted"
                   )}
                 >
                   {displayState === "checked" && <Check className="h-3 w-3" />}
@@ -306,7 +286,7 @@ export function ScreeningResponses({
               e.stopPropagation();
               setScreeningDetailExpanded(data.id, !showExpandedView);
             }}
-            className="flex items-center gap-1 px-2 py-1 rounded border bg-blue-50 border-blue-200 text-blue-800 hover:bg-blue-100 text-xs transition-colors dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
+            className="flex items-center gap-1 px-2 py-1 rounded border bg-info/10 border-info/30 ink-info hover:bg-info/15 text-xs transition-colors"
           >
             <Table className="h-3 w-3" />
             {showExpandedView ? tc("hide") : tc("details")}
@@ -321,7 +301,7 @@ export function ScreeningResponses({
 
       {/* Expanded Table View */}
       {showExpandedView && (
-        <div className="mt-3 p-4 bg-muted/30 rounded-lg border">
+        <div className="mt-3 p-4 bg-inset rounded-lg border">
           <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
             <Table className="h-4 w-4" />
             {tp("screeningResponses")}
@@ -360,7 +340,7 @@ export function ScreeningResponses({
                   return (
                     <tr
                       key={question.question}
-                      className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                      className="border-b border-border-subtle hover:bg-muted transition-colors"
                     >
                       <td className="py-2 px-2 font-mono text-muted-foreground w-8 align-top">
                         {index + 1}
@@ -375,12 +355,12 @@ export function ScreeningResponses({
                           className={cn(
                             "inline-flex items-center gap-1 px-2 py-1 rounded text-xs",
                             displayState === "checked"
-                              ? "bg-green-100 text-green-800 border border-green-200 dark:bg-green-950/50 dark:text-green-300 dark:border-green-800"
+                              ? "bg-success/15 ink-success border border-success/30"
                               : displayState === "crossed"
-                              ? "bg-red-100 text-red-800 border border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800"
+                              ? "bg-destructive/15 text-destructive border border-destructive/30"
                               : displayState === "loading"
-                              ? "bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
-                              : "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-muted/50 dark:text-muted-foreground dark:border-border"
+                              ? "bg-info/15 ink-info border border-info/30"
+                              : "bg-muted text-muted-foreground border border-border"
                           )}
                         >
                           {displayState === "checked" && <Check className="h-3 w-3" />}
@@ -417,10 +397,10 @@ export function ScreeningBadge({
   );
 
   const stateClasses = {
-    checked: "bg-green-50 border-green-200 text-green-800 dark:bg-green-950/30 dark:border-green-800 dark:text-green-400",
-    crossed: "bg-red-50 border-red-200 text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400",
-    loading: "bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400 cursor-wait",
-    unchecked: "bg-muted/50 border-border text-muted-foreground",
+    checked: "bg-success/10 border-success/30 ink-success",
+    crossed: "bg-destructive/10 border-destructive/30 text-destructive",
+    loading: "bg-info/10 border-info/30 ink-info cursor-wait",
+    unchecked: "bg-inset border-border text-muted-foreground",
   };
 
   const label = tp("questionN", { n: index + 1, question });
@@ -459,9 +439,9 @@ export function CitationBadge({
 }) {
   const format = useFormatter();
   const colorClasses = {
-    orange: "text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/50",
-    green: "text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/50",
-    blue: "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50",
+    orange: "ink-cites hover:bg-cites/10",
+    green: "ink-cited-by hover:bg-cited-by/10",
+    blue: "ink-related hover:bg-related/10",
   };
 
   const Icon = color === "blue" ? Network : Quote;
@@ -523,7 +503,7 @@ export function OpenAccessBadge({
               window.open(oaUrl, "_blank");
             }
           }}
-          className="flex items-center justify-center p-1.5 rounded-md text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/50 transition-colors cursor-pointer"
+          className="flex items-center justify-center p-1.5 rounded-md ink-success hover:bg-success/10 transition-colors cursor-pointer"
         >
           <FileText className="h-4 w-4" />
         </div>
@@ -542,7 +522,7 @@ export function OpenAccessBadge({
           window.open(oaUrl, "_blank");
         }
       }}
-      className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-950/50 cursor-pointer flex-shrink-0"
+      className="flex items-center gap-2 ink-success border-success/30 hover:bg-success/10 hover:border-success/40 cursor-pointer flex-shrink-0"
     >
       <FileText className="h-4 w-4" />
       <span>{tc("pdf")}</span>
@@ -580,7 +560,7 @@ export function DOIBadge({
               window.open(doiUrl, "_blank");
             }
           }}
-          className="flex items-center justify-center p-1.5 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
+          className="flex items-center justify-center p-1.5 rounded-md ink-info hover:bg-info/10 transition-colors cursor-pointer"
         >
           <ExternalLink className="h-4 w-4" />
         </div>
@@ -601,7 +581,7 @@ export function DOIBadge({
           }
         }}
         className={cn(
-          "flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-950/50 cursor-pointer flex-shrink-0",
+          "flex items-center gap-1 ink-info border-info/30 hover:bg-info/10 hover:border-info/40 cursor-pointer flex-shrink-0",
           className,
         )}
       >
@@ -635,21 +615,76 @@ export function DownloadMenuCompact({
 }
 
 
+interface AuthorNamesProps {
+  authorships: { author: { id?: string | null; display_name: string } }[];
+  /** How many characters of names to show before "et al."; leave out to name every author. */
+  maxLength?: number;
+  /** The authors the search is filtered by, as the search keeps them (`authorValue`). */
+  selected?: readonly string[];
+  /** Makes each name a control that filters the search by that author, or stops filtering by them. */
+  onToggleAuthor?: (author: { value: string; name: string }) => void;
+}
+
+/**
+ * A work's authors, comma separated. With `onToggleAuthor` each name is a
+ * control. It keeps its click and its Enter or Space to itself, since it sits
+ * inside cards that open on both.
+ */
+export function AuthorNames({ authorships, maxLength = Infinity, selected, onToggleAuthor }: AuthorNamesProps) {
+  const tf = useTranslations("searchFilters");
+  if (authorships.length === 0) return null;
+
+  const shown = authorsShown(authorships, maxLength);
+  return (
+    <>
+      {authorships.slice(0, shown).map(({ author }, index) => {
+        const value = authorValue(author);
+        return (
+          <React.Fragment key={`${value}-${index}`}>
+            {index > 0 && ", "}
+            {value && onToggleAuthor ? (
+              <button
+                type="button"
+                aria-pressed={selected?.includes(value) ?? false}
+                aria-label={tf("filterByAuthor", { name: author.display_name })}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleAuthor({ value, name: author.display_name });
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+                }}
+                className="rounded-sm underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring aria-pressed:font-medium aria-pressed:text-primary"
+              >
+                {author.display_name}
+              </button>
+            ) : (
+              author.display_name
+            )}
+          </React.Fragment>
+        );
+      })}
+      {shown < authorships.length && " et al."}
+    </>
+  );
+}
+
 export function AuthorsLine({
   authorships,
   maxLength = 200,
   className,
-}: {
-  authorships?: { author: { display_name: string } }[];
-  maxLength?: number;
-  className?: string;
-}) {
+  selected,
+  onToggleAuthor,
+}: Partial<AuthorNamesProps> & { className?: string }) {
   if (!authorships || authorships.length === 0) return null;
 
   return (
     <div className={cn("flex gap-2 text-sm text-muted-foreground", className)}>
       <Users className="h-4 w-4 flex-shrink-0 mt-0.5" />
-      <span className="line-clamp-1">{truncateAuthors(authorships, maxLength)}</span>
+      {/* With controls it is not cut to one line: a name hidden by the cut would still take keyboard focus. */}
+      <span className={cn(!onToggleAuthor && "line-clamp-1")}>
+        <AuthorNames authorships={authorships} maxLength={maxLength} selected={selected} onToggleAuthor={onToggleAuthor} />
+      </span>
     </div>
   );
 }
@@ -688,14 +723,14 @@ export function JournalLine({
 const cardContainerClasses = {
   base: cn(
     "relative group rounded-2xl border transition-all duration-200",
-    "bg-background/95 dark:bg-background/90",
-    "border-border/60 dark:border-border/40",
-    "shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]"
+    "bg-card",
+    "border-border-subtle",
+    "shadow-surface"
   ),
   hover: cn(
-    "hover:bg-sidebar-accent/50 dark:hover:bg-sidebar-accent/30",
+    "hover:bg-card-hover",
     "hover:border-primary/20 dark:hover:border-primary/30",
-    "hover:shadow-xl hover:shadow-black/[0.05] dark:hover:shadow-black/[0.15]",
+    "hover:shadow-surface-hover",
     "hover:-translate-y-0.5"
   ),
   focus: cn(

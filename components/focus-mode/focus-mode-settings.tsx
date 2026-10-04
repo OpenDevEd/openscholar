@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, RotateCcw } from "lucide-react";
+import { ChevronLeft, RotateCcw } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { PaperContent } from "./paper-content";
 import type { PaperContentProps } from "./paper-content";

@@ -29,7 +29,7 @@ import { OQL_FIELD } from '../openalex/oql';
 import { buildOpenAlexWorksQuery } from '../openalex/works-query';
 import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
 import { ResearchContext } from '../research/binding';
-import { searchResultToParams } from '../search-params/converters';
+import { paramsToSearchResult, searchResultToParams } from '../search-params/converters';
 import { browserExpand, validateAndExpandKeywordsSilently } from '../keyword-validation-browser';
 import { useQueryShortcuts } from '../research/reads';
 import type { SearchFilters, SearchField, PaperResult } from '../types';
@@ -73,6 +73,23 @@ interface PendingSearchRequest {
 
 const SEARCH_FETCH_PARAM_KEY_SET = new Set<SearchParamKey>(SEARCH_FETCH_PARAM_KEYS);
 
+/** Where a history entry keeps the search it showed, in `history.state`. */
+const ENTRY_SEARCH = 'openScholarSearch';
+/** What an entry keeps: the search's parameters and how many works it found. */
+type KeptSearch = SearchParams & { count: number };
+
+/** Whether the address is this search's results page, with or without a trailing slash. */
+const onSearchRoute = (searchId: string) => window.location.pathname.replace(/\/$/, '').endsWith(`/${searchId}`);
+
+/** The tab's storage, which lasts as long as its Back and Forward list; a browser may refuse it. */
+function tabStorage<T>(use: (storage: Storage) => T): T | null {
+  try {
+    return use(window.sessionStorage);
+  } catch {
+    return null;
+  }
+}
+
 // Module-level cache for params snapshots (avoids ref access during render)
 const paramsSnapshotByKey = new Map<string, SearchParams>();
 
@@ -101,6 +118,7 @@ function cloneSearchParams(params: SearchParams): SearchParams {
     wlang: [...params.wlang],
     itype: [...params.itype],
     funder: [...params.funder],
+    author: [...params.author],
   };
 }
 
@@ -131,6 +149,50 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   );
   const urlParams = local ? local.params : routeSearchParams;
   const onLocalParamsChange = local?.onParamsChange;
+
+  // Back and Forward. The address cannot say what a history entry showed: an OQL query is not in
+  // it, an account's page shows the saved search and not the address, and a search opened from the
+  // history list has a bare address. So each entry keeps the search it showed, in the browser's
+  // own history state, written as a change leaves it and read when Back or Forward lands on it.
+  // The newest entry is never left by a change, and Next rewrites the state of the entry it is
+  // on, so its search is kept in the tab's storage when Back leaves it. An entry with neither
+  // changes nothing.
+  const newestKey = `${ENTRY_SEARCH}:newest:${searchId}`;
+  const shownNow = useCallback((): KeptSearch | null => {
+    if (local || !searchId || !onSearchRoute(searchId)) return null;
+    const saved = useSearchHistoryStore.getState().getSearchResult(searchId);
+    return saved ? { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(saved), q: saved.query, count: saved.count } : null;
+  }, [local, searchId]);
+  const keepInEntry = useCallback(() => {
+    const shown = shownNow();
+    if (!shown) return;
+    tabStorage((storage) => storage.removeItem(newestKey));
+    // Once per entry: several changes can share one new entry (a slider being dragged), and by the
+    // second the saved search is already ahead of what this entry showed.
+    if (window.history.state?.[ENTRY_SEARCH]) return;
+    // The browser's own method, not `history.replaceState`: nuqs and Next both wrap that one, and
+    // nuqs drops its pending address update when anything else calls it. The address is not changed.
+    History.prototype.replaceState.call(window.history, { ...window.history.state, [ENTRY_SEARCH]: shown }, '');
+  }, [shownNow, newestKey]);
+  useEffect(() => {
+    if (local || !searchId) return;
+    const takeEntry = (event: PopStateEvent) => {
+      if (!onSearchRoute(searchId)) return;
+      // Still the search of the entry just left: the saved search has not changed yet.
+      const leaving = shownNow();
+      const newest = tabStorage((storage) => {
+        if (leaving && !storage.getItem(newestKey)) storage.setItem(newestKey, JSON.stringify(leaving));
+        return JSON.parse(storage.getItem(newestKey) ?? 'null') as KeptSearch | null;
+      });
+      const kept = (event.state as { [ENTRY_SEARCH]?: KeptSearch } | null)?.[ENTRY_SEARCH] ?? newest;
+      if (!kept) return;
+      const { count, ...params } = kept;
+      // The count goes back too: results still in the cache are not fetched again, so nothing else would set it.
+      useSearchHistoryStore.getState().updateSearchResult(searchId, { ...paramsToSearchResult({ ...DEFAULT_SEARCH_PARAMS, ...params }), count });
+    };
+    window.addEventListener('popstate', takeEntry);
+    return () => window.removeEventListener('popstate', takeEntry);
+  }, [local, searchId, shownNow, newestKey]);
   const setUrlParams = useCallback(
     (updates: Partial<SearchParams>, options?: { scroll?: boolean }) => {
       const fromOql = (local ? local.params.field : routeSearchParams.field) === OQL_FIELD;
@@ -141,6 +203,8 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       if (onLocalParamsChange) {
         return onLocalParamsChange(switching && updates.q === undefined ? { ...updates, q: '' } : updates);
       }
+      // The entry this change leaves keeps the search as it was.
+      keepInEntry();
       if (switching && updates.q === undefined && searchId) {
         useSearchHistoryStore.getState().updateSearchResult(searchId, { query: '' });
       }
@@ -150,7 +214,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
         options,
       );
     },
-    [onLocalParamsChange, setRouteUrlParams, routeSearchParams.field, local, searchId],
+    [onLocalParamsChange, setRouteUrlParams, routeSearchParams.field, local, searchId, keepInEntry],
   );
 
   const currentParams = urlParams as SearchParams;
@@ -201,6 +265,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       wlang: urlParams.wlang,
       itype: urlParams.itype,
       funder: urlParams.funder,
+      author: urlParams.author,
       mincite: urlParams.mincite,
       abs: urlParams.abs,
       retracted: urlParams.retracted,
@@ -239,6 +304,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     urlParams.wlang,
     urlParams.itype,
     urlParams.funder,
+    urlParams.author,
     urlParams.mincite,
     urlParams.abs,
     urlParams.retracted,
@@ -273,6 +339,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
           wlang: parsedParams.wlang ? [...parsedParams.wlang] : [],
           itype: parsedParams.itype ? [...parsedParams.itype] : [],
           funder: parsedParams.funder ? [...parsedParams.funder] : [],
+          author: parsedParams.author ? [...parsedParams.author] : [],
           page: DEFAULT_SEARCH_PARAMS.page,
           rmin: DEFAULT_SEARCH_PARAMS.rmin,
           rmax: DEFAULT_SEARCH_PARAMS.rmax,
@@ -338,6 +405,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       workLanguages: params.wlang,
       institutionTypes: params.itype,
       funders: params.funder,
+      authors: params.author,
       minCitations: params.mincite,
       hasAbstract: params.abs,
       includeRetracted: params.retracted,
@@ -488,6 +556,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     currentParams.wlang,
     currentParams.itype,
     currentParams.funder,
+    currentParams.author,
     currentParams.mincite,
     currentParams.abs,
     currentParams.retracted,
@@ -657,6 +726,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     if ('wlang' in updates) storeUpdates.workLanguages = updates.wlang;
     if ('itype' in updates) storeUpdates.institutionTypes = updates.itype;
     if ('funder' in updates) storeUpdates.funders = updates.funder;
+    if ('author' in updates) storeUpdates.authors = updates.author;
     if ('mincite' in updates) storeUpdates.minCitations = updates.mincite ?? undefined;
     if ('abs' in updates) storeUpdates.hasAbstract = updates.abs;
     if ('retracted' in updates) storeUpdates.includeRetracted = updates.retracted;
@@ -692,6 +762,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       wlang: [],
       itype: [],
       funder: [],
+      author: [],
       mincite: null,
       abs: false,
       retracted: false,
@@ -718,6 +789,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       workLanguages: [],
       institutionTypes: [],
       funders: [],
+      authors: [],
       minCitations: undefined,
       hasAbstract: false,
       includeRetracted: false,
@@ -767,6 +839,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     workLanguages: urlParams.wlang,
     institutionTypes: urlParams.itype,
     funders: urlParams.funder,
+    authors: urlParams.author,
     minCitations: urlParams.mincite,
     hasAbstract: urlParams.abs,
     includeRetracted: urlParams.retracted,

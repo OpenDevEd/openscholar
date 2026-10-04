@@ -7,7 +7,7 @@ import { isReverificationCancelledError } from "@clerk/nextjs/errors";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { BadgeCheck, Camera, Check, Loader2, LogOut, Monitor, Pencil, Smartphone, Tablet, X } from "lucide-react";
+import { BadgeCheck, Camera, Check, Loader2, LogOut, Monitor, Pencil, Smartphone, Tablet, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Enter, Paged, pagerOf } from "@/components/settings/parts";
@@ -84,13 +84,13 @@ function ProfilePage({ security }: { security: boolean }) {
                 profileSectionHeader: "!m-0 !w-full !max-w-none !transform-none !pl-1 !py-0",
                 profileSectionTitle: "!p-0",
                 profileSectionTitleText: "!text-xs !font-medium !text-muted-foreground",
-                profileSectionContent: "!rounded-2xl !border !border-border/60 !bg-muted/40 !px-4 !py-3",
+                profileSectionContent: "!rounded-2xl !border !border-border-subtle !bg-inset !px-4 !py-3",
                 profileSectionPrimaryButton: "!text-primary",
                 // Deleting the account reads as a danger zone.
                 profileSection__danger:
                   "[&_.cl-profileSectionTitleText]:!text-destructive [&_.cl-profileSectionContent]:!border-destructive/30 [&_.cl-profileSectionContent]:!bg-destructive/5 [&_.cl-profileSectionPrimaryButton]:!text-destructive [&_.cl-profileSectionPrimaryButton:hover]:!bg-destructive/10",
                 // Edit forms open inline, flat.
-                actionCard: "!rounded-xl !border !border-border/50 !bg-background/60 !shadow-none",
+                actionCard: "!rounded-xl !border !border-border-subtle !bg-inset !shadow-none",
               },
             }}
           />
@@ -135,7 +135,7 @@ function Identity() {
 
   return (
     <section className="flex items-center gap-6">
-      <label className="group relative size-24 shrink-0 cursor-pointer overflow-hidden rounded-3xl border border-border/60">
+      <label className="group relative size-24 shrink-0 cursor-pointer overflow-hidden rounded-3xl border border-border-subtle">
         <img src={user.imageUrl} alt="" className="size-full object-cover" />
         <span
           className={cn(
@@ -176,7 +176,7 @@ function Identity() {
         <p className="inline-flex items-center gap-1.5 text-sm">
           {user.primaryEmailAddress?.emailAddress}
           {user.primaryEmailAddress?.verification?.status === "verified" ? (
-            <BadgeCheck className="size-4 text-emerald-500" aria-label={t("verified")} />
+            <BadgeCheck className="size-4 text-success" aria-label={t("verified")} />
           ) : null}
         </p>
       </div>
@@ -303,14 +303,14 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
                 >
                   <Icon className="size-4" />
                 </span>
-                <div className="min-w-0 rounded-xl px-3 py-2 transition-colors group-hover:bg-muted/40">
+                <div className="min-w-0 rounded-xl px-3 py-2 transition-colors group-hover:bg-muted">
                   <p className="flex items-center gap-2 truncate text-sm font-medium">
                     {e.title}
                     {e.here ? <span className="text-xs font-normal text-primary">{t("thisDevice")}</span> : null}
                   </p>
                   <p className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
                     {e.place ? <span className="truncate">{e.place}</span> : null}
-                    {e.ip ? <span className="font-mono text-[11px] text-muted-foreground/70">{e.ip}</span> : null}
+                    {e.ip ? <span className="font-mono text-2xs text-muted-foreground/70">{e.ip}</span> : null}
                   </p>
                 </div>
                 {e.here ? (

@@ -1,4 +1,4 @@
-import { Clock, FolderOpen, Library, Upload, type LucideIcon } from "lucide-react";
+import { Clock, FolderOpen, Library, Upload, type AppIcon } from "@/components/icons";
 import type { ComponentType } from "react";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import type { BucketSource } from "@/lib/bucket/bucketItem";
@@ -30,7 +30,7 @@ export const SOURCE_COLOR_VAR: Record<BucketSource, string> = {
 };
 
 /** Each source's icon, coloured by `SOURCE_COLOR_VAR`, the way chat sources are shown. */
-export const SOURCE_ICON: Record<BucketSource, LucideIcon | ComponentType<{ className?: string }>> = {
+export const SOURCE_ICON: Record<BucketSource, AppIcon | ComponentType<{ className?: string }>> = {
   history: Clock,
   library: Library,
   collection: FolderOpen,

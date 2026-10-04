@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { ZoomIn, ZoomOut, MoreHorizontal } from "lucide-react";
+import { ZoomIn, ZoomOut, MoreHorizontal } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -81,7 +81,7 @@ export function PdfToolbar({
 }: PdfToolbarProps) {
   const t = useTranslations();
   return (
-    <div className="pdf-viewer-toolbar border-b border-border/70 bg-background/95">
+    <div className="pdf-viewer-toolbar border-b border-border bg-card">
       <div className="flex flex-wrap items-center gap-1 px-1.5 py-1.5">
         <PdfPageControls
           currentPage={currentPage}
@@ -97,7 +97,7 @@ export function PdfToolbar({
             <ZoomOut className="size-3.5" />
           </ToolbarIconButton>
 
-          <span className="min-w-8 text-center text-[11px] font-medium text-muted-foreground tabular-nums">
+          <span className="min-w-8 text-center text-2xs font-medium text-muted-foreground tabular-nums">
             {scalePercent}%
           </span>
 

@@ -3,7 +3,7 @@ import Link from "next/link";
 import {useTranslations} from "next-intl";
 import {parseAsString, useQueryState} from "nuqs";
 import {useState} from "react";
-import {ArrowUpRight, Network, SearchX} from "lucide-react";
+import { ArrowUpRight, SearchX, TopicsIcon } from "@/components/icons";
 import {LibraryPageShell} from "@/components/evidence-libraries/library-page-shell";
 import {LIST_FILTER, LIST_TILE, ListEmpty, ListSearch} from "@/components/evidence-libraries/list-controls";
 import {catalogChildren, catalogNode, searchCatalogTopics} from "@/lib/topics/search";
@@ -31,16 +31,16 @@ export function TopicList() {
   const topics = matches.slice(0, count);
   const more = matches.length > count;
   const clear = () => {void setSearch(""); void setDomain("all"); void setField("all"); void setSubfield("all");};
-  return <LibraryPageShell icon={Network} title={t("title")} filters={<>
+  return <LibraryPageShell icon={TopicsIcon} title={t("title")} filters={<>
     <ListSearch aria-label={t("find")} placeholder={t("findPlaceholder")} className="w-56" value={search} maxLength={200} onChange={event => void setSearch(event.target.value)} />
     <Select value={domain} onValueChange={value => {void setDomain(value); void setField("all"); void setSubfield("all");}}><SelectTrigger size="sm" aria-label={t("domain")} className={cn("w-40", LIST_FILTER)}><SelectValue placeholder={t("allDomains")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allDomains")}</SelectItem>{domains.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
     <Select value={field} onValueChange={value => {void setField(value); void setSubfield("all");}}><SelectTrigger size="sm" aria-label={t("field")} className={cn("w-44", LIST_FILTER)}><SelectValue placeholder={t("allFields")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allFields")}</SelectItem>{fields.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
     <Select value={subfield} disabled={!subfields.length} onValueChange={value => void setSubfield(value)}><SelectTrigger size="sm" aria-label={t("subfield")} className={cn("w-44", LIST_FILTER)}><SelectValue placeholder={t("allSubfields")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allSubfields")}</SelectItem>{subfields.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
   </>}>
     {/* Appears when you filter, as the list changes anyway, so the bar never moves. */}
-    {(search || ancestor) && <div className="fade-enter flex justify-end border-b border-border/50 px-4 py-2"><Button variant="ghost" size="sm" className="text-muted-foreground" onClick={clear}>{t("clearFilters")}</Button></div>}
-    {!!topics.length && <ul className="divide-y divide-border/50">{topics.map(topic => <li key={topic.id} className="fade-enter"><Link href={`/topics/${topic.id}`} className="group flex items-center gap-3 p-4 hover:bg-muted/15">
-      <div className={cn(LIST_TILE, "mr-1 shrink-0")}><Network aria-hidden className="size-5" /></div>
+    {(search || ancestor) && <div className="fade-enter flex justify-end border-b border-border-subtle px-4 py-2"><Button variant="ghost" size="sm" className="text-muted-foreground" onClick={clear}>{t("clearFilters")}</Button></div>}
+    {!!topics.length && <ul className="divide-y divide-border-subtle">{topics.map(topic => <li key={topic.id} className="fade-enter"><Link href={`/topics/${topic.id}`} className="group flex items-center gap-3 p-4 hover:bg-muted">
+      <div className={cn(LIST_TILE, "mr-1 shrink-0")}><TopicsIcon className="size-5" /></div>
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{topic.name}</p><p className="truncate text-xs text-muted-foreground">{topic.path.slice(0, -1).join(" / ")}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
     </Link></li>)}</ul>}

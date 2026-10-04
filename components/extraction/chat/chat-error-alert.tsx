@@ -14,8 +14,8 @@ import {
   SlidersHorizontalIcon,
   SquareIcon,
   WifiOffIcon,
-  type LucideIcon,
-} from "lucide-react";
+  type AppIcon,
+} from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,7 +49,7 @@ interface ChatErrorAlertProps {
   models: ChatModelRow[];
 }
 
-const ICONS: Partial<Record<ChatErrorClass, LucideIcon>> = {
+const ICONS: Partial<Record<ChatErrorClass, AppIcon>> = {
   rate_limit: ClockIcon,
   insufficient_credits: CoinsIcon,
   model_unavailable: SlidersHorizontalIcon,
@@ -174,7 +174,7 @@ function CreditEstimateRow({
 
   return (
     <div
-      className="mb-3 rounded-md border border-destructive/20 bg-background/60 p-2.5"
+      className="mb-3 rounded-md border border-destructive/20 bg-card p-2.5"
       data-error-credit-estimate
       data-credit-required={String(estimate.required)}
       data-credit-available={String(estimate.available)}

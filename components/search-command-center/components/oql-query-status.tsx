@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useTranslations } from "next-intl";
-import { BookOpen, CircleAlert } from "lucide-react";
+import { BookOpen, CircleAlert } from "@/components/icons";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { rejectedQuery } from "@/lib/search/search-error";
 import { OQL_REFERENCE_URL } from "@/lib/openalex/oql";

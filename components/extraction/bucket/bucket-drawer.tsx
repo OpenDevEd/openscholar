@@ -80,7 +80,7 @@ export function BucketDrawer({
                 "mt-2 rounded-md p-2 text-xs",
                 atCap
                   ? "bg-destructive/10 text-destructive"
-                  : "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+                  : "bg-warning/10 ink-warning",
               )}
             >
               {atCap

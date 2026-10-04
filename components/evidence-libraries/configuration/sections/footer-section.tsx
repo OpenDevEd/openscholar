@@ -1,6 +1,6 @@
 "use client";
 
-import { Github, Linkedin, PanelBottom, Youtube } from "lucide-react";
+import { Github, Linkedin, Youtube, FooterIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,7 +66,7 @@ export function FooterSection({ draft, saved, patch, reset }: SectionProps) {
   return (
     <SectionShell
       sectionKey="footer"
-      icon={PanelBottom}
+      icon={FooterIcon}
       description={t("description")}
       draft={draft}
       saved={saved}

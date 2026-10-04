@@ -120,22 +120,22 @@ describe("Evidence Library runtime reads", () => {
     const libraryId = fixture.created.libraryId;
     await expect(
       fixture.admin.action(
-        api.zotero.runtimeReadActions.listLibraryCollections,
-        { libraryId },
+        api.zotero.runtimeReadActions.listCollections,
+        { libraryId, paginationOpts: { cursor: null, numItems: 50 } },
       ),
-    ).resolves.toEqual({ reason: "not-set-up", items: [], nextCursor: null });
+    ).resolves.toEqual({ reason: "not-set-up", page: [], isDone: true, continueCursor: "" });
     await expect(
       fixture.admin.action(
-        api.zotero.runtimeReadActions.listRecordInstitutions,
-        { libraryId },
+        api.zotero.runtimeReadActions.listInstitutions,
+        { libraryId, paginationOpts: { cursor: null, numItems: 50 } },
       ),
-    ).resolves.toEqual({ reason: "not-set-up", items: [], nextCursor: null });
+    ).resolves.toEqual({ reason: "not-set-up", page: [], isDone: true, continueCursor: "" });
     await expect(
       fixture.admin.action(
-        api.zotero.runtimeReadActions.listReviewedPublications,
-        { libraryId },
+        api.zotero.runtimeReadActions.listPublications,
+        { libraryId, paginationOpts: { cursor: null, numItems: 50 } },
       ),
-    ).resolves.toEqual({ reason: "not-set-up", items: [], nextCursor: null });
+    ).resolves.toEqual({ reason: "not-set-up", page: [], isDone: true, continueCursor: "" });
     await expect(
       fixture.admin.action(api.zotero.runtimeReadActions.readHomeQuestions, {
         libraryId,
@@ -151,14 +151,15 @@ describe("Evidence Library runtime reads", () => {
 
     await expect(
       fixture.admin.action(
-        api.zotero.runtimeReadActions.listLibraryCollections,
+        api.zotero.runtimeReadActions.listCollections,
         {
           libraryId,
+          paginationOpts: { cursor: null, numItems: 50 },
           query: "cli",
         },
       ),
     ).resolves.toEqual({
-      items: [
+      page: [
         {
           id: "COLL0001",
           title: "Climate",
@@ -168,44 +169,50 @@ describe("Evidence Library runtime reads", () => {
           hasChildren: true,
         },
       ],
-      nextCursor: null,
+      isDone: true,
+      continueCursor: "",
     });
     await expect(
       fixture.admin.action(
-        api.zotero.runtimeReadActions.listRecordInstitutions,
+        api.zotero.runtimeReadActions.listInstitutions,
         {
           libraryId,
+          paginationOpts: { cursor: null, numItems: 50 },
           sort: "name",
         },
       ),
     ).resolves.toEqual({
-      items: [{ name: "Makerere University", count: 9 }],
-      nextCursor: "second",
+      page: [{ name: "Makerere University", count: 9 }],
+      isDone: false,
+      continueCursor: "second",
     });
     await expect(
       fixture.admin.action(
-        api.zotero.runtimeReadActions.listRecordInstitutions,
+        api.zotero.runtimeReadActions.listInstitutions,
         {
           libraryId,
           sort: "name",
-          cursor: "second",
+          paginationOpts: { cursor: "second", numItems: 50 },
         },
       ),
     ).resolves.toEqual({
-      items: [{ name: "University of Nairobi", count: 4 }],
-      nextCursor: null,
+      page: [{ name: "University of Nairobi", count: 4 }],
+      isDone: true,
+      continueCursor: "",
     });
     await expect(
       fixture.admin.action(
-        api.zotero.runtimeReadActions.listRecordInstitutions,
+        api.zotero.runtimeReadActions.listInstitutions,
         {
           libraryId,
+          paginationOpts: { cursor: null, numItems: 50 },
           query: "makerere",
         },
       ),
     ).resolves.toEqual({
-      items: [{ name: "Makerere University", count: 9 }],
-      nextCursor: null,
+      page: [{ name: "Makerere University", count: 9 }],
+      isDone: true,
+      continueCursor: "",
     });
     expect(
       fetchImpl.mock.calls.map(([input]) => new URL(String(input)).origin),
@@ -219,18 +226,20 @@ describe("Evidence Library runtime reads", () => {
     const libraryId = fixture.created.libraryId;
     const read = () =>
       fixture.admin.action(
-        api.zotero.runtimeReadActions.listRecordInstitutions,
-        { libraryId },
+        api.zotero.runtimeReadActions.listInstitutions,
+        { libraryId, paginationOpts: { cursor: null, numItems: 50 } },
       );
 
     await expect(read()).resolves.toEqual({
-      items: [{ name: "Makerere University", count: 9 }],
-      nextCursor: "second",
+      page: [{ name: "Makerere University", count: 9 }],
+      isDone: false,
+      continueCursor: "second",
     });
     state.institutions = [{ name: "Strathmore University", count: 1 }];
     await expect(read()).resolves.toEqual({
-      items: [{ name: "Strathmore University", count: 1 }],
-      nextCursor: null,
+      page: [{ name: "Strathmore University", count: 1 }],
+      isDone: true,
+      continueCursor: "",
     });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
@@ -368,18 +377,20 @@ describe("Evidence Library runtime reads", () => {
     const libraryId = fixture.created.libraryId;
     await expect(
       fixture.admin.action(
-        api.zotero.runtimeReadActions.listRecordInstitutions,
+        api.zotero.runtimeReadActions.listInstitutions,
         {
           libraryId,
+          paginationOpts: { cursor: null, numItems: 50 },
           sort: "records" as unknown as "count",
         },
       ),
     ).rejects.toThrow();
     await expect(
       fixture.admin.action(
-        api.zotero.runtimeReadActions.listRecordInstitutions,
+        api.zotero.runtimeReadActions.listInstitutions,
         {
           libraryId,
+          paginationOpts: { cursor: null, numItems: 50 },
           direction: "sideways" as unknown as "asc",
         },
       ),
@@ -402,29 +413,74 @@ describe("Evidence Library runtime reads", () => {
     const libraryId = fixture.created.libraryId;
     await expect(
       fixture.admin.action(
-        api.zotero.runtimeReadActions.listRecordInstitutions,
+        api.zotero.runtimeReadActions.listInstitutions,
         {
           libraryId,
+          paginationOpts: { cursor: null, numItems: 50 },
           sort: "count",
           direction: "asc",
         },
       ),
     ).resolves.toEqual({
-      items: [{ name: "University of Nairobi", count: 4 }],
-      nextCursor: "second",
+      page: [{ name: "University of Nairobi", count: 4 }],
+      isDone: false,
+      continueCursor: "second",
     });
     expect(
       new URL(String(fetchImpl.mock.calls[0][0])).searchParams.get("direction"),
     ).toBe("asc");
   });
 
+  it("asks the library for the page size it was given, and never more than a page", async () => {
+    const fixture = await readyLibrary("reads_page_size");
+    const { fetchImpl } = runtime();
+    vi.stubGlobal("fetch", fetchImpl);
+    for (const numItems of [10, 500]) {
+      await fixture.admin.action(api.zotero.runtimeReadActions.listInstitutions, {
+        libraryId: fixture.created.libraryId,
+        paginationOpts: { cursor: null, numItems },
+      });
+    }
+    expect(
+      fetchImpl.mock.calls.map(([input]) =>
+        new URL(String(input)).searchParams.get("pageSize"),
+      ),
+    ).toEqual(["10", "50"]);
+  });
+
+  it("reads the one publication a saved choice names, or nothing", async () => {
+    const fixture = await readyLibrary("reads_publication");
+    const publication = {
+      key: "PUB00001",
+      title: "Reading at home",
+      publishedAt: "2026-01-05T00:00:00.000Z",
+      reviewer: "",
+      reviewed: false,
+    };
+    // A library that does not read `ids` answers with its own first page.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () =>
+        jsonResponse({ items: [publication], nextCursor: null }),
+      ),
+    );
+    const read = (key: string) =>
+      fixture.admin.action(api.zotero.runtimeReadActions.readPublication, {
+        libraryId: fixture.created.libraryId,
+        key,
+      });
+    await expect(read("PUB00001")).resolves.toEqual(publication);
+    await expect(read("PUB00002")).resolves.toBeNull();
+  });
+
   it("refuses readers who cannot manage the library", async () => {
     const fixture = await readyLibrary("reads_member");
     vi.stubGlobal("fetch", runtime().fetchImpl);
     await fixture.admin.action(
-      api.zotero.runtimeReadActions.listRecordInstitutions,
+      api.zotero.runtimeReadActions.listInstitutions,
       {
         libraryId: fixture.created.libraryId,
+        paginationOpts: { cursor: null, numItems: 50 },
       },
     );
     const outsider = fixture.t.withIdentity({
@@ -432,8 +488,9 @@ describe("Evidence Library runtime reads", () => {
       o: { id: "org_other", rol: "org:admin" },
     });
     await expect(
-      outsider.action(api.zotero.runtimeReadActions.listRecordInstitutions, {
+      outsider.action(api.zotero.runtimeReadActions.listInstitutions, {
         libraryId: fixture.created.libraryId,
+        paginationOpts: { cursor: null, numItems: 50 },
       }),
     ).rejects.toThrow();
     // Even a question about nothing is a question about this library.

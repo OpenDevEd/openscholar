@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -83,7 +83,7 @@ export function PdfPageControls({
           aria-label={t('accessibility.pageNumberInput')}
           className="h-7 w-10 text-center text-xs"
         />
-        <span className="whitespace-nowrap text-[11px] text-muted-foreground">/ {Math.max(1, numPages)}</span>
+        <span className="whitespace-nowrap text-2xs text-muted-foreground">/ {Math.max(1, numPages)}</span>
       </div>
 
       <IconButton

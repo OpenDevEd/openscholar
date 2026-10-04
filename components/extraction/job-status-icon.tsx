@@ -1,9 +1,9 @@
 "use client";
 
-import { Ban, CirclePause, type LucideIcon } from "lucide-react";
+import { Ban, CirclePause, type AppIcon } from "@/components/icons";
 import { StatusIcon, type StatusTone } from "@/components/evidence-libraries/configuration/status-chip";
 
-const JOB_STATUS: Record<string, { tone: StatusTone; icon?: LucideIcon }> = {
+const JOB_STATUS: Record<string, { tone: StatusTone; icon?: AppIcon }> = {
   pending: { tone: "neutral" },
   downloading_pdfs: { tone: "running" },
   extracting: { tone: "running" },

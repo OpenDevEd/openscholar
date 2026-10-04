@@ -7,7 +7,7 @@ import {PublicationListItem} from "@/components/evidence-libraries/publication-l
 import {Button} from "@/components/ui/button";
 import {Spinner} from "@/components/ui/spinner";
 import {ListEmpty, ListLoading} from "@/components/evidence-libraries/list-controls";
-import {BookOpen, SearchX} from "lucide-react";
+import {BookOpen, SearchX} from "@/components/icons";
 
 /** The topic's library publications, loaded by the page so its tab can show the count. */
 export function useTopicLibraryResults(topicId: string) {

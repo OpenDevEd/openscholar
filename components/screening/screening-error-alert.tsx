@@ -14,8 +14,8 @@ import {
   ShieldIcon,
   SlidersHorizontalIcon,
   WifiOffIcon,
-  type LucideIcon,
-} from "lucide-react";
+  type AppIcon,
+} from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,7 +53,7 @@ const CLASS_PRIORITY: ReadonlyArray<ChatErrorClass> = [
   "unknown",
 ];
 
-const ICONS: Partial<Record<ChatErrorClass, LucideIcon>> = {
+const ICONS: Partial<Record<ChatErrorClass, AppIcon>> = {
   rate_limit: ClockIcon,
   insufficient_credits: CoinsIcon,
   model_unavailable: SlidersHorizontalIcon,

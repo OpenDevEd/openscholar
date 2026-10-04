@@ -3,7 +3,7 @@
 import { useState, type UIEvent } from "react";
 import { useAction, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { Check, ChevronsUpDown, Loader2, Mail, Plus, RotateCcw, Search, Trash2, UserRound } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Mail, Plus, RotateCcw, Search, Trash2, UserRound } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,7 @@ export default function AdminsPage() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("search")}
               aria-label={t("search")}
-              className="h-11 rounded-2xl border border-border/60 bg-muted/40 pl-11"
+              className="h-11 rounded-2xl border border-border-subtle bg-inset pl-11"
             />
           </div>
           <Paged pager={{ list: admins, size: PER_PAGE, total: search ? undefined : count }} rowHeight={65} label={t("admins")}>

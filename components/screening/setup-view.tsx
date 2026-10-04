@@ -4,7 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { useAction } from "convex/react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Loader2, Minus, Plus, Sparkles, Star, Trash2, TriangleAlert, X, Zap, type LucideIcon } from "lucide-react";
+import { Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Loader2, Minus, Plus, Sparkles, Star, Trash2, TriangleAlert, X, Zap, type AppIcon } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { MAX_SCREENING_PAPERS_PER_JOB as JOB_LIMIT } from "@/convex/lib/queryBounds";
@@ -38,9 +38,9 @@ import { ANSWER, AnimatedNumber, Chip, Meter, SOURCE_ICON } from "./parts";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
 const TINT = {
-  yes: { icon: "text-emerald-500", input: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  yes: { icon: "text-success", input: "bg-success/10 ink-success" },
   no: { icon: "text-muted-foreground", input: "bg-foreground/[0.05]" },
-  unclear: { icon: "text-amber-500", input: "bg-amber-500/10 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
+  unclear: { icon: "text-warning", input: "bg-warning/10 ink-warning" },
 } as const;
 
 /** A track with nothing on it yet, the height of the slider that takes its place. */
@@ -268,8 +268,8 @@ export function SetupView({
                   const Icon = SOURCE_ICON[s.kind];
                   return (
                     <div key={s.id} className={cn("transition-colors", on && "bg-primary/5")}>
-                      <button type="button" role="radio" aria-checked={on} onClick={() => choose(s)} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors", !on && "hover:bg-muted/40")}>
-                        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/60", on ? "text-primary" : "text-muted-foreground")}>
+                      <button type="button" role="radio" aria-checked={on} onClick={() => choose(s)} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors", !on && "hover:bg-muted")}>
+                        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", on ? "text-primary" : "text-muted-foreground")}>
                           <Icon className="size-4" />
                         </span>
                         <span className="min-w-0 flex-1 space-y-1.5">
@@ -435,9 +435,9 @@ export function SetupView({
         </Zone>
 
         <Zone label={t("keep")}>
-          <div className={cn("space-y-3 rounded-2xl border p-4 transition-colors duration-300", unscored ? "border-dashed border-border" : "border-border/60 bg-muted/40")}>
+          <div className={cn("space-y-3 rounded-2xl border p-4 transition-colors duration-300", unscored ? "border-dashed border-border" : "border-border-subtle bg-inset")}>
             <div className="flex items-center gap-3">
-              <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300", unscored ? "bg-muted text-muted-foreground/60" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400")}>
+              <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300", unscored ? "bg-muted text-muted-foreground/60" : "bg-success/15 ink-success")}>
                 <CircleCheck className="size-5" />
               </span>
               <span className="min-w-0 flex-1">
@@ -474,7 +474,7 @@ export function SetupView({
                   value={[threshold]}
                   onValueChange={(v) => setMinScore(v[0]!)}
                   aria-label={t("lowestIncluded")}
-                  className="[&_[data-slot=slider-range]]:bg-muted [&_[data-slot=slider-thumb]]:border-emerald-500 [&_[data-slot=slider-track]]:h-2 [&_[data-slot=slider-track]]:bg-emerald-500/70"
+                  className="[&_[data-slot=slider-range]]:bg-muted [&_[data-slot=slider-thumb]]:border-success [&_[data-slot=slider-track]]:h-2 [&_[data-slot=slider-track]]:bg-success/70"
                 />
               )}
             </div>
@@ -482,7 +482,7 @@ export function SetupView({
         </Zone>
 
         <Zone label={t("stars")}>
-          <div className={cn("space-y-4 rounded-2xl border p-4 transition-colors duration-300", unscored ? "border-dashed border-border" : "border-border/60 bg-muted/40")}>
+          <div className={cn("space-y-4 rounded-2xl border p-4 transition-colors duration-300", unscored ? "border-dashed border-border" : "border-border-subtle bg-inset")}>
             <div className="flex items-center gap-3">
               <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300", unscored ? "bg-muted text-muted-foreground/60" : "bg-primary/15 text-primary")}>
                 <Star className="size-5" />
@@ -511,7 +511,7 @@ export function SetupView({
                 <label key={i} className={cn("flex items-center gap-2 rounded-xl py-1.5 pl-2.5 pr-1.5 transition-colors duration-300", unscored ? "bg-foreground/[0.02]" : "bg-foreground/[0.04]")}>
                   <span className="flex flex-1 items-center gap-0.5" aria-hidden>
                     {Array.from({ length: i + 1 }, (_, j) => (
-                      <Star key={j} className={cn("size-2.5 transition-colors duration-300", unscored ? "text-muted-foreground/40" : "fill-primary text-primary")} />
+                      <Star key={j} className={cn("size-2.5 transition-colors duration-300", unscored ? "text-muted-foreground/40" : "fill-rating text-rating")} />
                     ))}
                   </span>
                   <Input
@@ -539,8 +539,8 @@ export function SetupView({
 
         <Zone label={t("collections")}>
           {source?.kind === "collection" ? (
-            <label className="mb-3 flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border border-border/60 px-4 py-2.5">
-              <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/60", prune ? "text-primary" : "text-muted-foreground")}>
+            <label className="mb-3 flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border border-border-subtle px-4 py-2.5">
+              <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", prune ? "text-primary" : "text-muted-foreground")}>
                 <FolderMinus className="size-4" />
               </span>
               <span className="min-w-0 flex-1">
@@ -587,7 +587,7 @@ export function SetupView({
           ) : null}
         </Zone>
 
-        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border/60 bg-background p-4 shadow-lg">
+        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg">
           <div className="min-w-48 flex-1 space-y-1.5">
             <p className="flex items-center justify-between text-xs">
               <span className="flex items-center gap-1.5 font-medium"><Coins className="size-3.5 text-primary" /><span>{t.rich("upToCredits", { n: () => <AnimatedNumber value={credits} /> })}</span></span>
@@ -618,10 +618,10 @@ export function SetupView({
 }
 
 /** One place the included papers can go, as the chat offers them: none, a new collection, or one you have. */
-function DestinationRow({ on, onPick, icon: Icon, name, facts, children }: { on: boolean; onPick: () => void; icon: LucideIcon; name?: string; facts?: ReactNode; children?: ReactNode }) {
+function DestinationRow({ on, onPick, icon: Icon, name, facts, children }: { on: boolean; onPick: () => void; icon: AppIcon; name?: string; facts?: ReactNode; children?: ReactNode }) {
   return (
-    <div role="radio" aria-checked={on} tabIndex={0} onClick={onPick} onKeyDown={(e) => (e.key === " " || e.key === "Enter") && e.target === e.currentTarget && onPick()} className={cn("flex min-h-14 w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors", on ? "bg-primary/5" : "hover:bg-muted/40")}>
-      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/60", on ? "text-primary" : "text-muted-foreground")}>
+    <div role="radio" aria-checked={on} tabIndex={0} onClick={onPick} onKeyDown={(e) => (e.key === " " || e.key === "Enter") && e.target === e.currentTarget && onPick()} className={cn("flex min-h-14 w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors", on ? "bg-primary/5" : "hover:bg-muted")}>
+      <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", on ? "text-primary" : "text-muted-foreground")}>
         <Icon className="size-4" />
       </span>
       {name ? <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span> : <span className="flex min-w-0 flex-1">{children}</span>}

@@ -2,7 +2,7 @@
 
 import { LibraryOrganizationPicker, useLibraryOrganizationChoice } from "./organization-picker";
 import { useAction } from "convex/react";
-import { Building2, Check, Lock, RotateCw } from "lucide-react";
+import { Building2, Check, Lock, RotateCw } from "@/components/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -330,7 +330,7 @@ function OwnerForm({ organizationId, organizationPicker }: {
           </div>
         </FieldGroup>
 
-        <div className="flex justify-end gap-2 border-t border-border/50 pt-5">
+        <div className="flex justify-end gap-2 border-t border-border-subtle pt-5">
           <Button asChild type="button" variant="ghost">
             <Link href="/evidence-libraries">{tc("cancel")}</Link>
           </Button>

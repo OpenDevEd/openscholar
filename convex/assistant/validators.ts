@@ -4,6 +4,7 @@
  */
 import { v } from "convex/values";
 import { effortValidator } from "../aiModelConfig/validators";
+import { capped } from "../lib/listCaps";
 
 /** What someone may do in a chat: the owner also shares, renames and deletes it; `write` sends messages; `read` only reads. */
 export const assistantRoleValidator = v.union(v.literal("owner"), v.literal("write"), v.literal("read"));
@@ -31,6 +32,8 @@ export const assistantThreadFields = {
   agentThreadId: v.string(),
   /** When its newest message was sent; a chat with none yet has when it was made. */
   lastMessageAt: v.number(),
+  /** The start of its newest message, for the list of chats. */
+  preview: v.optional(v.string()),
   /** The model its replies run on; a chat with none runs the server's default. */
   modelId: v.optional(v.id("models")),
   /** The reasoning effort its replies run at, when the model takes one. */
@@ -58,3 +61,11 @@ export const assistantPrincipalValidator = v.union(
   v.object({ kind: v.literal("user"), userId: v.id("users") }),
   v.object({ kind: v.literal("organization"), organizationId: v.id("organizations") }),
 );
+
+/** People a chat's row in the list of chats names. */
+export const ASSISTANT_MEMBERS_SHOWN = 3;
+/** The first few people in a chat besides the reader, those who have it open now first. */
+export const assistantMembersValidator = capped(v.array(v.object({ userId: v.id("users"), name: v.string(), here: v.boolean() })), ASSISTANT_MEMBERS_SHOWN);
+
+/** Someone a chat's owner could share it with: one of their organizations, or a person in one. */
+export const assistantCandidateValidator = v.object({ principal: assistantPrincipalValidator, name: v.string(), email: v.optional(v.string()) });

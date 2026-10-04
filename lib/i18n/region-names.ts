@@ -55,7 +55,6 @@ const REGION_ID_TO_UN_M49: Record<string, string> = {
 /** Fallback for codes Intl.DisplayNames may not support (e.g. XK for Kosovo) */
 const FALLBACK_COUNTRY_NAMES: Record<string, string> = {
   XK: "Kosovo",
-  AN: "Netherlands Antilles",
 };
 
 /** Translation function type for region names (e.g. from useTranslations("searchFilters")) */

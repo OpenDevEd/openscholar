@@ -89,7 +89,7 @@ vi.mock("@/convex/_generated/api", () => ({
       teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
       uploads: { generateUploadUrl: "generateUploadUrl" },
       uploadActions: { upload: "upload", remove: "remove" },
-      updates: { check: "check", listAddressNotices: "listAddressNotices", publishRuntime: "publishRuntime" },
+      updates: { check: "check", getAddressNotice: "getAddressNotice", publishRuntime: "publishRuntime" },
       addressActions: { moveLibraryAddress: "moveLibraryAddress" },
       configurationDeployment: {
         retryConfigurationDeployment: "retryConfigurationDeployment",
@@ -105,7 +105,8 @@ vi.mock("@/convex/_generated/api", () => ({
         removeDomain: "removeDomain",
       },
       versions: {
-        listVersions: "listVersions",
+        listVersionRows: "listVersionRows",
+        countVersions: "countVersions",
         startRuntimeUpdate: "startRuntimeUpdate",
         restoreRevision: "restoreRevision",
         setDomainPrimary: "setDomainPrimary",
@@ -118,10 +119,11 @@ vi.mock("@/convex/_generated/api", () => ({
       libraryGroups: { listZoteroGroups: "listZoteroGroups", removeZoteroGroup: "removeZoteroGroup" },
       libraryGroupActions: { listMyZoteroGroups: "listMyZoteroGroups", connectZoteroGroup: "connectZoteroGroup" },
       runtimeReadActions: {
-        listLibraryCollections: "listLibraryCollections",
-        listRecordInstitutions: "listRecordInstitutions",
+        listCollections: "listRuntimeCollections",
+        listInstitutions: "listInstitutions",
         resolveLibraryCollections: "resolveLibraryCollections",
-        listReviewedPublications: "listReviewedPublications",
+        listPublications: "listPublications",
+        readPublication: "readPublication",
         readHomeQuestions: "readHomeQuestions",
         requestSourceRun: "requestSourceRun",
       },
@@ -142,7 +144,7 @@ const resolveCollectionsMock = vi.hoisted(() => vi.fn(async () => ({ items: [] }
 const homeQuestionsMock = vi.hoisted(() =>
   vi.fn(async () => ({ questions: ["What does the evidence say about literacy?", null, null] })),
 );
-const reviewedPublicationsMock = vi.hoisted(() => vi.fn(async () => ({ items: [], nextCursor: null })));
+const reviewedPublicationsMock = vi.hoisted(() => vi.fn(async () => ({ page: [], isDone: true, continueCursor: "" })));
 
 // OpenAlex is not asked during tests.
 vi.mock("@/lib/hooks/use-history-count", () => ({
@@ -176,19 +178,22 @@ vi.mock("convex/react", () => ({
         ? resolveCollectionsMock
         : action === "readHomeQuestions"
           ? homeQuestionsMock
-          : action === "listReviewedPublications"
+          : action === "listPublications"
             ? reviewedPublicationsMock
             : mutationMock(action),
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
+  useProtectedStreamPaginatedQuery: () => ({ results: [], status: "Exhausted", isInitialLoading: false, loadMore: vi.fn() }),
   useProtectedQuery: (query: unknown, args: unknown) =>
     query === "manualDigestAvailable" ? {data: harness.manualDigestAvailable, isReady: harness.manualDigestAvailable !== undefined} : query === "getPublicationProviders" ? {data: undefined, isReady: false} : query === "getConnectionStatus"
       ? { data: { connected: false }, isReady: true }
       : query === "listZoteroGroups" || query === "listCollectionSources"
         ? { data: { page: [], isDone: true, continueCursor: "" }, isReady: true }
-        : query === "listVersions" || query === "listAddressNotices"
-        ? { data: [], isReady: true }
+        : query === "countVersions"
+        ? { data: 0, isReady: true }
+        : query === "getAddressNotice"
+        ? { data: null, isReady: true }
         : query === "listCredentials"
           ? { data: { page: harness.storedCredentials, isDone: true, continueCursor: "" }, isReady: true }
           : query === "listTeam"

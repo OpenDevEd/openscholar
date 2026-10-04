@@ -4,11 +4,12 @@ import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 
 import { cn } from "@/lib/utils"
+import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
 
 function Drawer({
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-  return <DrawerPrimitive.Root data-slot="drawer" {...props} />
+  return <TrackOpen open={props.open} defaultOpen={props.defaultOpen} onOpenChange={props.onOpenChange}>{(root) => <DrawerPrimitive.Root data-slot="drawer" {...props} {...root} />}</TrackOpen>
 }
 
 function DrawerTrigger({
@@ -50,10 +51,12 @@ function DrawerContent({
   children,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Content>) {
+  const closing = useClosing()
   return (
     <DrawerPortal data-slot="drawer-portal">
       <DrawerOverlay />
       <DrawerPrimitive.Content
+        inert={closing}
         data-slot="drawer-content"
         className={cn(
           "group/drawer-content bg-background fixed z-50 flex h-auto flex-col",
@@ -66,7 +69,7 @@ function DrawerContent({
         {...props}
       >
         <div className="bg-muted mx-auto mt-4 hidden h-2 w-[100px] shrink-0 rounded-full group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
-        {children}
+        {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}
       </DrawerPrimitive.Content>
     </DrawerPortal>
   )
