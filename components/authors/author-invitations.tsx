@@ -16,7 +16,7 @@ export function AuthorInvitations({profileId, showEmpty = false}: {profileId?: I
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const respond = useAction(api.authors.invitationActions.respond);
-  const {data: invitations} = useProtectedQuery(api.authors.invitations.listMine, profileId ? {profileId} : {});
+  const invitations = useProtectedQuery(api.authors.invitations.listInvitations, profileId ? {profileId} : {}).data?.page;
   if (!invitations) return showEmpty ? <div className="flex justify-center p-4"><Spinner aria-label="Loading invitation" /></div> : null;
   if (!invitations.length) return showEmpty ? <p className="rounded-xl bg-muted/30 p-4 text-sm text-muted-foreground">No pending invitation for this profile. Check that you are signed in with the invited email address.</p> : null;
   return invitations.map(invitation => <div key={invitation.invitationId} className="flex flex-wrap items-center gap-3 border-b border-border/50 bg-muted/20 px-4 py-3">
