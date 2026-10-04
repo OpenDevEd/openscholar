@@ -59,6 +59,8 @@ export const parseAsRegions = createParser({
  * - retracted: include retracted works, which are left out by default
  * - lang: language filter
  */
+const parseAsAuthorId = createParser({ parse: authorId, serialize: String });
+
 export const searchParamsParsers = {
   // Core search
   q: parseAsString.withDefault(''),
@@ -100,7 +102,7 @@ export const searchParamsParsers = {
   wlang: parseAsArrayOf(parseAsString).withDefault([]),
   itype: parseAsArrayOf(parseAsString).withDefault([]),
   funder: parseAsArrayOf(parseAsString).withDefault([]),
-  author: parseAsArrayOf(parseAsString).withDefault([]),
+  author: parseAsArrayOf(parseAsAuthorId).withDefault([]),
   mincite: parseAsInteger,
   abs: parseAsBoolean.withDefault(false),
   retracted: parseAsBoolean.withDefault(false),
@@ -148,6 +150,15 @@ export type ParsedSearchParams = {
 /** A comma-separated list param, as nuqs writes it. */
 function parseListParam(searchParams: URLSearchParams, key: string): string[] {
   return searchParams.get(key)?.split(',').filter(Boolean) ?? [];
+}
+
+/**
+ * An author as the search keeps it: OpenAlex's bare id, such as A5023888391. A
+ * pasted OpenAlex address is cut down to it, and anything else is dropped, so
+ * the same author is never in the filter twice under two spellings.
+ */
+export function authorId(value: string): string | null {
+  return value.match(/(?:^|\/)(a\d+)$/i)?.[1].toUpperCase() ?? null;
 }
 
 /**
@@ -207,7 +218,7 @@ export function parseSearchParamsFromUrl(
     wlang: parseListParam(searchParams, 'wlang'),
     itype: parseListParam(searchParams, 'itype'),
     funder: parseListParam(searchParams, 'funder'),
-    author: parseListParam(searchParams, 'author'),
+    author: parseListParam(searchParams, 'author').map(authorId).filter((id) => id !== null),
     mincite: parseIntegerParam(searchParams, 'mincite', null),
     abs: searchParams.get('abs') === 'true',
     retracted: searchParams.get('retracted') === 'true',

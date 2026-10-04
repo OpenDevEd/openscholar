@@ -21,6 +21,11 @@ describe("parseSearchParamsFromUrl", () => {
     expect(Number.isNaN(p.page)).toBe(false);
   });
 
+  it("keeps each author once, as OpenAlex's bare id, whatever form the address gives", () => {
+    const p = parse("author=https%3A%2F%2Fopenalex.org%2FA5075388625,a5023888391,not-an-author");
+    expect(p.author).toEqual(["A5075388625", "A5023888391"]);
+  });
+
   it("falls back to null for a non-numeric yf/yt", () => {
     const p = parse("yf=foo&yt=bar");
     expect(p.yf).toBeNull();
