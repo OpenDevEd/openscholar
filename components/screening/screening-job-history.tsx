@@ -142,9 +142,6 @@ export function ScreeningJobHistory({ total, onClose }: ScreeningJobHistoryProps
                 <span className="text-xs font-medium text-foreground truncate">
                   {t(`jobStatus.${job.status}`)}
                 </span>
-                <span className="text-xs text-muted-foreground/60">
-                  &middot;
-                </span>
                 <time className="text-xs text-muted-foreground shrink-0">
                   {format.dateTime(new Date(job.createdAt), {
                     dateStyle: "medium",

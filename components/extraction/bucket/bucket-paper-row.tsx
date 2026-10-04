@@ -60,14 +60,13 @@ export function BucketPaperRow({
           {authorsPreview(paper)}
           {status !== "ready" && (
             <>
-              {" · "}
               {status === "uploading" && (
-                <span className="inline-flex items-center gap-1 align-middle">
+                <span className="ml-2 inline-flex items-center gap-1 align-middle">
                   <Loader2 className="h-3 w-3 animate-spin" />
                   uploading
                 </span>
               )}
-              {status === "failed" && <span>upload failed</span>}
+              {status === "failed" && <span className="ml-2">upload failed</span>}
             </>
           )}
         </span>
