@@ -622,6 +622,13 @@ export async function queueDomainChangeOperation(
       redeploy?: true;
       token: string;
     };
+    /** Set when the activation's settings need newer software than is running. */
+    runtimeUpdate?: {
+      from: string;
+      to: string;
+      fromImage: string;
+      toImage: string;
+    };
   },
 ) {
   const { domainChange, ...record } = args;

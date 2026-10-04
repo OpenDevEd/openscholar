@@ -271,6 +271,41 @@ export const runConfigurationDeployment = internalAction({
       if (prepared.state === "saved") {
         target = prepared.target;
       } else {
+        // A software update that failed late leaves the application on the
+        // release it staged, which only the next update finishes. A deployment
+        // without one would be refused as a hosting conflict the owner cannot
+        // act on, so say what to do, before anything changes.
+        if (prepared.requiresDeployment && !runtimeUpdate && coolify) {
+          const staged = await coolify
+            .readBoundApplication({
+              applicationUuid: prepared.applicationId,
+              libraryId: args.libraryId,
+              publicDomain:
+                prepared.addressMove && !prepared.addressMove.applied
+                  ? prepared.addressMove.from
+                  : prepared.targetBaseUrl,
+              customDomains: prepared.customDomains,
+            })
+            .catch(() => null);
+          if (
+            staged &&
+            staged.runtimeCommit !== prepared.runtimeCommit &&
+            (await ctx.runQuery(
+              internal.evidenceLibraries.configurationDeployment
+                .isFailedRuntimeTarget,
+              {
+                libraryId: args.libraryId,
+                runtimeCommit: staged.runtimeCommit,
+                runtimeImage: staged.runtimeImage,
+              },
+            ))
+          ) {
+            throw new ReadinessClientError(
+              "SOFTWARE_UPDATE_UNFINISHED",
+              "A software update did not finish. Update the software, then activate again.",
+            );
+          }
+        }
         // A move changes Coolify's domain first. Only when the application
         // answers on the new address do the records take it, so a failure
         // here leaves the library on the address it has.

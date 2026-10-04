@@ -1,6 +1,7 @@
 import { assert } from "vitest";
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import {
@@ -453,16 +454,6 @@ async function saveDeploymentTarget(
     args,
   );
   if (prepared.state !== "new") throw new Error("The target is already saved");
-  const runtimeCommit = await fixture.t.run(async (ctx) => {
-    const library = await ctx.db.get(fixture.created.libraryId);
-    const binding = library?.runtimeBindingId
-      ? await ctx.db.get(library.runtimeBindingId)
-      : null;
-    if (!binding || !("runtimeCommit" in binding)) {
-      throw new Error("The runtime binding is missing its commit");
-    }
-    return binding.runtimeCommit;
-  });
   await fixture.t.mutation(
     internal.evidenceLibraries.configurationDeployment
       .saveConfigurationDeploymentTarget,
@@ -475,8 +466,10 @@ async function saveDeploymentTarget(
         customDomains: prepared.customDomains,
         revisionKey: prepared.revision.key,
         defaultLocale: prepared.defaultLocale,
-        runtimeCommit,
-        runtimeImage: TEST_RUNTIME_IMAGE,
+        // The software the deployment is for: the running one, or the one a
+        // software update moves the library to.
+        runtimeCommit: prepared.runtimeCommit,
+        runtimeImage: prepared.runtimeImage,
         encryptedRuntimeConfig: "encrypted",
         runtimeConfigSha256: "e".repeat(64),
       },
@@ -3593,6 +3586,73 @@ describe("custom domains", () => {
       await runDeploymentCompletion(fixture, activated.operationId);
       return activated;
     }
+
+    it("keeps the software update the settings need when the activation also changes the main address", async () => {
+      const fixture = await createReadySetupFixture("draft-address-and-software");
+      const tag = await bindApplication(fixture);
+      vi.stubGlobal(
+        "fetch",
+        createWorld(
+          { routesDomains: [], serving: [`https://${CUSTOM_HOST}`] },
+          tag,
+        ).fetchImpl,
+      );
+      const libraryId = fixture.created.libraryId;
+      const added = await addDomain(fixture);
+      if (added.status !== "added") throw new Error("not added");
+      await makeWorking(fixture, added.domainId);
+      // The running software is too old for OpenScholar's settings; the
+      // latest release reads them.
+      const newerCommit = "b".repeat(40);
+      const newerImage = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"c".repeat(64)}`;
+      const running = await fixture.t.run(async (ctx) => {
+        const library = await ctx.db.get(libraryId);
+        const binding = await ctx.db.get(library!.runtimeBindingId!);
+        if (!binding || !("runtimeCommit" in binding)) {
+          throw new Error("The runtime binding is missing its commit");
+        }
+        await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+          running: binding.runtimeCommit,
+          latest: newerCommit,
+          latestImage: newerImage,
+          changes: [],
+          releases: [],
+          checkedAt: Date.now(),
+          contractSupport: {
+            commit: EVIDENCE_LIBRARY_CONFIG_PROVENANCE.commit,
+            running: false,
+            latest: true,
+          },
+        });
+        return binding.runtimeCommit;
+      });
+
+      const draft = await readDraft(fixture);
+      const activated = await fixture.admin.mutation(
+        api.evidenceLibraries.mutations.activateConfiguration,
+        { libraryId, expectedEditVersion: draft.draft.editVersion },
+      );
+      expect(
+        await fixture.t.run((ctx) => ctx.db.get(activated.operationId)),
+      ).toMatchObject({
+        domainChange: { reason: "canonical", address: `https://${CUSTOM_HOST}` },
+        runtimeUpdate: { from: running, to: newerCommit, toImage: newerImage },
+      });
+
+      await saveDeploymentTarget(fixture, activated.operationId);
+      await runDeploymentCompletion(fixture, activated.operationId);
+      const listed = await fixture.admin.query(
+        api.evidenceLibraries.domains.listDomains,
+        { libraryId },
+      );
+      expect(listed.canonicalAddress).toBe(`https://${CUSTOM_HOST}`);
+      expect(
+        await fixture.t.run(async (ctx) => {
+          const library = await ctx.db.get(libraryId);
+          return await ctx.db.get(library!.runtimeBindingId!);
+        }),
+      ).toMatchObject({ runtimeCommit: newerCommit });
+    });
 
     it("moves a library from one domain to another through two activations", async () => {
       const fixture = await createReadySetupFixture("draft-addresses");
