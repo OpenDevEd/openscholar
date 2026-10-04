@@ -655,6 +655,12 @@ export const checkDomains = action({
     );
     const held = new Set(claimed.claims.map((claim) => claim.domainId));
     const results: CheckedDomain[] = [];
+    // One result a domain: a later outcome, such as a host found taken after its DNS verified, replaces the earlier one.
+    const record = (result: CheckedDomain) => {
+      const earlier = results.findIndex((entry) => entry.domainId === result.domainId);
+      if (earlier === -1) results.push(result);
+      else results[earlier] = result;
+    };
     const deploymentChanges: Array<{
       domainId: Id<"evidenceLibraryDomains">;
       token: string;
@@ -688,7 +694,7 @@ export const checkDomains = action({
           ...(failure ? { failure } : {}),
         },
       );
-      results.push({
+      record({
         domainId: row.domainId,
         state: outcome.state,
         ...(failure ? { failure } : {}),
@@ -749,7 +755,7 @@ export const checkDomains = action({
               },
             );
             held.delete(row.domainId);
-            results.push({ domainId: row.domainId, state: "active" });
+            record({ domainId: row.domainId, state: "active" });
             continue;
           }
           if (live?.state === "failed") {
