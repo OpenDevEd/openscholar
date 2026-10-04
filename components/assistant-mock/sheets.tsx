@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useFormatter } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Eye, Link2, Loader2, Lock, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus } from "lucide-react";
+import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Eye, Infinity as Unlimited, Link2, Loader2, Lock, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus } from "lucide-react";
 import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 import { topUpBundles } from "@/lib/billing/catalog";
 import { cn } from "@/lib/utils";
@@ -620,19 +620,27 @@ export function EdgeGlow({ open, working }: { open: boolean; working: boolean })
 
 /** Spending allowed without asking in one chat, for one person; `cap` is the most one job may hold. */
 export type Allowance = { on: boolean; cap: JobCap };
+/**
+ * What one reply may spend on its own AI use in one chat, for one person. Off, a reply runs
+ * for as long as they have credits; on, it pauses at `cap`, any whole number from 1.
+ */
+export type ReplyLimit = { on: boolean; cap: number };
+/** Digits the custom limit takes: the most a number holds exactly. */
+const CUSTOM_DIGITS = 15;
 
 const capLabel = (cap: JobCap, format: ReturnType<typeof useFormatter>) => (cap === null ? "No limit" : format.number(cap));
 /** The reply chart's top: just above the largest reply; a higher cap sits on the top edge. */
 const CHART_MAX = Math.max(...RECENT_REPLIES) * 1.15;
 
 /**
- * What this chat may spend without stopping to ask, for the person looking. A reply pauses
- * at its cap; a job either asks every time or runs without asking up to its own cap.
+ * What this chat may spend without stopping to ask, for the person looking. A reply runs
+ * with no limit or pauses at the one they set; a job either asks every time or runs
+ * without asking up to its own cap.
  */
 export function SpendingSheet({
   chat,
-  replyCap,
-  onReplyCap,
+  replyLimit,
+  onReplyLimit,
   allowance,
   onAllowance,
   forNewChats,
@@ -641,8 +649,8 @@ export function SpendingSheet({
   onBack,
 }: {
   chat: string;
-  replyCap: number;
-  onReplyCap: (cap: number) => void;
+  replyLimit: ReplyLimit;
+  onReplyLimit: (limit: ReplyLimit) => void;
   allowance: Allowance;
   onAllowance: (allowance: Allowance) => void;
   forNewChats: boolean;
@@ -652,54 +660,117 @@ export function SpendingSheet({
   onBack: () => void;
 }) {
   const format = useFormatter();
-  const paused = RECENT_REPLIES.filter((spent) => spent > replyCap).length;
+  const { on, cap } = replyLimit;
+  const paused = RECENT_REPLIES.filter((spent) => spent > cap).length;
+  // A limit that isn't one of the listed ones is the person's own.
+  const [custom, setCustom] = useState(!(REPLY_CAPS as readonly number[]).includes(cap));
+  // What the custom field holds while it's typed in. Empty, the limit keeps its last number.
+  const [typed, setTyped] = useState(String(cap));
+  const field = useRef<HTMLInputElement>(null);
   return (
     <>
       <SheetHeader title="Spending" detail={chat} onBack={onBack} />
       <ScrollArea shades className="min-h-0 flex-1">
         <div className="space-y-6 px-3 py-4">
           <Zone label="Each reply">
-            <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
-              <div className="flex items-baseline gap-2 px-1">
-                <span className="text-3xl font-semibold tracking-tight">
-                  <AnimatedNumber value={replyCap} />
-                </span>
-                <span className="text-sm text-muted-foreground">credits, then it pauses and asks</span>
-              </div>
-              {/* Your last replies against the cap: the ones over the line would have paused. */}
-              <div className="relative mt-4 flex h-20 items-end gap-1 px-1" aria-hidden>
-                {RECENT_REPLIES.map((spent, i) => (
-                  <span
-                    key={i}
-                    className={cn(
-                      "flex-1 rounded-t-[3px] transition-colors duration-300",
-                      spent > replyCap ? "bg-amber-400" : "bg-foreground/15",
-                    )}
-                    style={{ height: `${(Math.min(spent, CHART_MAX) / CHART_MAX) * 100}%` }}
-                  />
-                ))}
-                <motion.span
-                  className="absolute inset-x-0 border-t border-dashed border-foreground/40"
-                  initial={false}
-                  animate={{ bottom: `${Math.min(1, replyCap / CHART_MAX) * 100}%` }}
-                  transition={{ type: "spring", stiffness: 260, damping: 30 }}
-                />
-              </div>
-              <p className="mt-2 flex h-4 items-center gap-1.5 px-1 text-xs text-muted-foreground">
-                <CirclePause className={cn("size-3.5", paused ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground/60")} />
-                <span className="tabular-nums">
-                  {paused} of your last {RECENT_REPLIES.length} replies would have paused
-                </span>
-              </p>
-              <div className="mt-3">
-                <Segmented
-                  fill
-                  label="Credits a reply may spend"
-                  value={String(replyCap)}
-                  onChange={(v) => onReplyCap(Number(v))}
-                  options={REPLY_CAPS.map((cap) => ({ id: String(cap), label: String(cap) }))}
-                />
-              </div>
+            <div className="space-y-2.5">
+              <Segmented
+                fill
+                label="What a reply may spend"
+                value={on ? "limit" : "none"}
+                onChange={(v) => onReplyLimit({ ...replyLimit, on: v === "limit" })}
+                options={[
+                  { id: "none", label: "No limit", icon: Unlimited },
+                  { id: "limit", label: "Pause at a limit", icon: CirclePause },
+                ]}
+              />
+              {/* The limit opens under the switch, as the jobs' one does: the frame grows, its content
+                  laid out at full size, and its gap to the switch is inside it. */}
+              <motion.div
+                inert={!on}
+                initial={false}
+                animate={on ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: EASE }}
+                className="!my-0 overflow-hidden"
+              >
+                <div className="pt-2.5">
+                  <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                    <div className="flex items-baseline gap-2 px-1">
+                      <span className="text-3xl font-semibold tracking-tight">
+                        <AnimatedNumber value={cap} />
+                      </span>
+                      <span className="min-w-0 truncate text-sm text-muted-foreground">credits, then it pauses and asks</span>
+                    </div>
+                    {/* Your last replies against the limit: the ones over the line would have paused. */}
+                    <div className="relative mt-4 flex h-20 items-end gap-1 px-1" aria-hidden>
+                      {RECENT_REPLIES.map((spent, i) => (
+                        <span
+                          key={i}
+                          className={cn("flex-1 rounded-t-[3px] transition-colors duration-300", spent > cap ? "bg-amber-400" : "bg-foreground/15")}
+                          style={{ height: `${(Math.min(spent, CHART_MAX) / CHART_MAX) * 100}%` }}
+                        />
+                      ))}
+                      <motion.span
+                        className="absolute inset-x-0 border-t border-dashed border-foreground/40"
+                        initial={false}
+                        animate={{ bottom: `${Math.min(1, cap / CHART_MAX) * 100}%` }}
+                        transition={{ type: "spring", stiffness: 260, damping: 30 }}
+                      />
+                    </div>
+                    <p className="mt-2 flex h-4 items-center gap-1.5 px-1 text-xs text-muted-foreground">
+                      <CirclePause className={cn("size-3.5", paused ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground/60")} />
+                      <span className="tabular-nums">
+                        {paused} of your last {RECENT_REPLIES.length} replies would have paused
+                      </span>
+                    </p>
+                    <div className="mt-3">
+                      <Segmented
+                        fill
+                        label="Credits a reply may spend"
+                        value={custom ? "custom" : String(cap)}
+                        onChange={(v) => {
+                          if (v !== "custom") {
+                            setCustom(false);
+                            onReplyLimit({ on: true, cap: Number(v) });
+                            return;
+                          }
+                          setCustom(true);
+                          setTyped(String(cap));
+                          // The field takes the keyboard once it's open, its number selected to type over.
+                          requestAnimationFrame(() => field.current?.select());
+                        }}
+                        options={[...REPLY_CAPS.map((listed) => ({ id: String(listed), label: String(listed) })), { id: "custom", label: "Custom" }]}
+                      />
+                    </div>
+                    {/* The person's own limit, under the listed ones: any whole number from 1. */}
+                    <motion.div
+                      inert={!custom}
+                      initial={false}
+                      animate={custom ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: EASE }}
+                      className="overflow-hidden"
+                    >
+                      <label className="mt-2 flex h-9 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
+                        <Coins className="size-3.5 text-muted-foreground" />
+                        <input
+                          ref={field}
+                          inputMode="numeric"
+                          value={typed}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, CUSTOM_DIGITS);
+                            setTyped(digits);
+                            if (digits) onReplyLimit({ on: true, cap: Number(digits) });
+                          }}
+                          onBlur={() => setTyped(String(cap))}
+                          aria-label="Credits a reply may spend before it pauses"
+                          className="min-w-0 flex-1 bg-transparent tabular-nums outline-none"
+                        />
+                        <span className="shrink-0 text-xs text-muted-foreground">credits</span>
+                      </label>
+                    </motion.div>
+                  </div>
+                </div>
+              </motion.div>
             </div>
           </Zone>
 
