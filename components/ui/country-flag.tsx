@@ -11,7 +11,7 @@ export const CountryFlag = ({ countryCode, className = "" }: CountryFlagProps) =
   return (
     <img
       src={flagUrl}
-      alt={`${countryCode} flag`}
+      alt=""
       loading="lazy"
       className={cn("inline-block rounded-[2px] border border-border", className)}
       width="16"

@@ -201,7 +201,6 @@ export const COUNTRIES: Record<string, string> = {
 	NA: 'Namibia',
 	NP: 'Nepal',
 	NL: 'Netherlands',
-	AN: 'Netherlands Antilles',
 	NC: 'New Caledonia',
 	NZ: 'New Zealand',
 	NI: 'Nicaragua',
@@ -412,7 +411,6 @@ export const COUNTRY_HIERARCHY: Entry = {
 						{ label: "JM" }, // Jamaica
 						{ label: "MQ" }, // Martinique
 						{ label: "MS" }, // Montserrat
-						{ label: "AN" }, // Netherlands Antilles (Added - Dissolved)
 						{ label: "PR" }, // Puerto Rico
 						{ label: "BL" }, // Saint Barthelemy
 						{ label: "KN" }, // Saint Kitts and Nevis
