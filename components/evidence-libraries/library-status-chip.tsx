@@ -43,7 +43,7 @@ export function libraryStatusOf(
 
 /** The build a live library is running: a software update, or published changes. */
 export type LibraryOperation = NonNullable<
-  FunctionReturnType<typeof api.evidenceLibraries.queries.listLibraryOverviews>[number]["operation"]
+  FunctionReturnType<typeof api.evidenceLibraries.queries.listLibraries>["page"][number]["operation"]
 >;
 
 /**
