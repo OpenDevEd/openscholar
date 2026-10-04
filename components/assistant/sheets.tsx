@@ -367,7 +367,8 @@ export function ShareSheet({ threadId, title, onBack }: { threadId: ThreadId; ti
       <ScrollArea shades className="min-h-0 flex-1">
         <div className="space-y-4 px-3 py-3">
           {owner ? (
-            <div className="space-y-1">
+            // The suggestions open over the list below, at the box's width, so nothing under them moves.
+            <div className="relative">
               <label className="flex h-10 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
                 <UserPlus className="size-4 text-muted-foreground" />
                 <input
@@ -381,7 +382,7 @@ export function ShareSheet({ threadId, title, onBack }: { threadId: ThreadId; ti
                 />
               </label>
               {adding && suggestions ? (
-                <ul className="rounded-2xl border border-border/60 bg-popover p-1.5">
+                <ul className="absolute inset-x-0 top-full z-20 mt-1 rounded-2xl border border-border/60 bg-popover p-1.5 shadow-[0_18px_50px_-18px_rgb(0_0_0/0.45)]">
                   {suggestions.map((candidate) => (
                     <li key={keyOf(candidate.principal)}>
                       <button
