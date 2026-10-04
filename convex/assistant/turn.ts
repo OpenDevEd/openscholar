@@ -14,6 +14,7 @@ import { isStepCount, type ToolSet } from "ai";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
+import { refreshAccount } from "../billing/accounts";
 import { releaseCredits, reserveCredits, settleCredits, tokenCounts, tokenDetails } from "../billing/charge";
 import { LEASE_RENEW_MS } from "../chat/concurrency";
 import { resolveOpenRouterModel } from "../chat/provider";
@@ -29,6 +30,21 @@ import { convertUsdToCredits } from "../../lib/pricing";
 
 export const STOP_ABORT_POLL_INTERVAL_MS = 500;
 
+/** Where a reply stands before one of its requests. */
+export type Standing = {
+  /** Which request it is, from 0: as many have been made. */
+  number: number;
+  /** What the reply's requests have cost so far, and what it holds, in credits. */
+  credits: number;
+  held: number;
+  /** The input tokens its last request read. */
+  inputTokens: number;
+  /** Bytes its requests have added to the conversation: their calls, results and text. */
+  bytes: number;
+  /** Tokens the model reads at once, where the catalog says. */
+  window?: number;
+};
+
 export type Turn = {
   agent: Agent;
   /** The agent component's thread. */
@@ -43,11 +59,20 @@ export type Turn = {
   attemptId?: string;
   /** Credits held before the reply starts. */
   credits: number;
+  /**
+   * Credits the reply holds again each time its requests have cost what it holds, for as
+   * long as the person has them. With it, what a reply may cost is the person's credits.
+   * Without it, the reply is held to `credits`.
+   */
+  more?: number;
   tools?: ToolSet;
-  /** Requests to the model one reply may make while it uses its tools. */
+  /** Requests to the model one reply may make while it uses its tools. Left out, as many as it takes. */
   maxSteps?: number;
-  /** Hears, before each request, which one it is (from 0) and the credits the reply's requests have cost so far. */
-  onStep?: (step: { number: number; credits: number }) => void;
+  /**
+   * Hears, before each request, where the reply stands. Returning true makes that request
+   * the reply's answer: the model can't call a tool in it.
+   */
+  onStep?: (step: Standing) => boolean | void;
   /** The reply's rule for asking the person before a tool call runs (the AI SDK's `toolApproval`). A call it asks about ends the reply there, unanswered. */
   approval?: (options: { toolCall: { toolName: string; input: unknown } }) => unknown;
   /** The paper chat the reply is in, which its charge is recorded under. */
@@ -66,9 +91,9 @@ export type Turn = {
     lastInputTokens: number;
     /** The tool calls the reply ended on, which wait for the person's answer. */
     asked: Array<{ toolCallId: string; toolName: string; input: unknown }>;
-    /** What its requests cost, in credits, and how many it made. */
-    credits: number;
+    /** How many requests it made, and the bytes they added to the conversation. */
     requests: number;
+    bytes: number;
   }) => Promise<unknown>;
   /** What the model is sent, in place of the agent's own choice of recent messages. */
   contextHandler?: ContextHandler;
@@ -151,11 +176,35 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
   const chargeId = `chat:${turn.attemptId ?? crypto.randomUUID()}`;
   let reserved = false;
   let settledOrScheduled = false;
+  // What the reply holds: `turn.credits` under chargeId, and each further hold (`turn.more`) under an ID of its own.
+  let held = turn.credits;
+  const further: string[] = [];
+  let holds = 0;
+  const holdMore = async (credits: number) => {
+    const id = `${chargeId}:more:${++holds}`;
+    const got =
+      credits > 0 &&
+      (await reserveCredits(ctx, { userId, chargeId: id, credits }).catch((err) => {
+        console.error("[chat] failed to hold more credits for a reply", { ...log, threadId, err: errorToLogString(err) });
+        return false;
+      }));
+    if (!got) return false;
+    further.push(id);
+    held += credits;
+    return true;
+  };
+  // The further holds are given back before the reply is charged, so the charge for all it cost can be taken from them.
+  const releaseFurther = async () => {
+    for (const id of further.splice(0)) {
+      await releaseCredits(ctx, { userId, chargeId: id }).catch((err) => console.error("[chat] failed to release a further hold", { chargeId: id, err: errorToLogString(err) }));
+    }
+  };
   // A turn can take several model steps (tool calls). Each completed step
   // adds its cost; a step still running at a stop or error is billed from
   // its OpenRouter generation record.
   let completedUsd = 0;
   let completedTokens = 0;
+  let addedBytes = 0;
   // The tool calls the reply asked the person about, which it ended on without running.
   const asked: Array<{ toolCallId: string; toolName: string; input: unknown }> = [];
   const stepUsages: Usage[] = [];
@@ -178,7 +227,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
     }
     reserved = true;
 
-    const { model, modelSlug, pricing } = await resolveOpenRouterModel(
+    const { model, modelSlug, pricing, window } = await resolveOpenRouterModel(
       ctx,
       turn.modelId,
       {
@@ -208,10 +257,20 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
             ? {
                 tools: turn.tools,
                 ...(turn.approval ? { toolApproval: turn.approval as never } : {}),
-                stopWhen: isStepCount(turn.maxSteps ?? 1),
-                prepareStep: ({ stepNumber }: { stepNumber: number }) => {
-                  turn.onStep?.({ number: stepNumber, credits: convertUsdToCredits({ usd: completedUsd }) || 0 });
-                  return turn.maxSteps && stepNumber >= turn.maxSteps - 1 ? { toolChoice: "none" as const } : undefined;
+                // A reply held to no number of requests ends when the model answers, or when a request is made its answer below.
+                stopWhen: isStepCount(turn.maxSteps ?? Number.MAX_SAFE_INTEGER),
+                prepareStep: async ({ stepNumber }: { stepNumber: number }) => {
+                  const spent = convertUsdToCredits({ usd: completedUsd }) || 0;
+                  // The reply has cost what it holds. It holds more, in one go: enough to be ahead
+                  // of what it has cost by a hold's worth or less. A person with less than that left
+                  // holds what they have, so a reply runs their credits down to the last. One it
+                  // still costs more than is out of credits, and is told so (`onStep`).
+                  if (turn.more && spent >= held) {
+                    const credits = (Math.floor((spent - held) / turn.more) + 1) * turn.more;
+                    if (!(await holdMore(credits))) await holdMore(Math.min(credits, (await refreshAccount(ctx, userId).catch(() => null))?.balance ?? 0));
+                  }
+                  const answer = turn.onStep?.({ number: stepNumber, credits: spent, held, inputTokens: stepUsages.at(-1)?.inputTokens ?? 0, bytes: addedBytes, window }) === true;
+                  return answer || (turn.maxSteps && stepNumber >= turn.maxSteps - 1) ? { toolChoice: "none" as const } : undefined;
                 },
               }
             : {}),
@@ -228,6 +287,8 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
               if (part.type === "tool-approval-request" && !part.isAutomatic) asked.push({ toolCallId: part.toolCall.toolCallId, toolName: part.toolCall.toolName, input: part.toolCall.input });
             }
             stepUsages.push(usageOf({ usage, providerMetadata }));
+            // Bytes as Convex counts them: a character outside ASCII is two to four.
+            addedBytes += new TextEncoder().encode(JSON.stringify(content)).length;
             const inputTokens = usage?.inputTokens ?? 0;
             const outputTokens = usage?.outputTokens ?? 0;
             completedTokens += inputTokens + outputTokens;
@@ -412,6 +473,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
         ? capturedGenerationId
         : undefined;
     const cleanFinish = finished && !streamErrored && !streamAbortedByUser;
+    await releaseFurther();
     if (unfinishedGeneration && !cleanFinish) {
       // Stopped or failed mid-step. The step's generation record says what
       // OpenRouter billed, including a response the provider finished
@@ -472,6 +534,7 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
     });
     throw err;
   } finally {
+    await releaseFurther();
     if (reserved && !settledOrScheduled) {
       await releaseCredits(ctx, { userId, chargeId }).catch((err) => {
         console.error("[chat] failed to release reserved credits", {
@@ -490,8 +553,8 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
     await turn.release({
       lastInputTokens: stepUsages.at(-1)?.inputTokens ?? 0,
       asked: finished && !streamErrored && !streamAbortedByUser ? asked : [],
-      credits: convertUsdToCredits({ usd: completedUsd }) || 0,
       requests: stepUsages.length,
+      bytes: addedBytes,
     });
   }
 }

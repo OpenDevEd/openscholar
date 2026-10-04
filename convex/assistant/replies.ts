@@ -26,12 +26,12 @@ import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { notePart, viewOf } from "../../lib/assistant/view";
-import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
+import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
-import { compactionDue } from "./context";
+import { compactionDue, messageTooLong } from "./context";
 import { detailsOf } from "./details";
-import { declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
+import { STEPS_PAGE_BYTES, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { askedDetailsValidator } from "./validators";
 
@@ -62,14 +62,14 @@ async function admit(ctx: MutationCtx, userId: Id<"users">) {
   const mine = await ctx.db
     .query("assistantThreads")
     .withIndex("by_replySender", (q) => q.eq("reply.senderId", userId))
-    .take(CHAT_CONCURRENCY_LIMIT * 2);
+    .take(ASSISTANT_REPLIES_AT_ONCE * 2);
   let stillWriting = 0;
   for (const other of mine) {
     if (await writing(ctx, other.reply)) stillWriting++;
     else await ctx.db.patch("assistantThreads", other._id, { reply: undefined });
   }
-  if (stillWriting >= CHAT_CONCURRENCY_LIMIT) {
-    throw createError("CONFLICT", `The assistant is already writing ${CHAT_CONCURRENCY_LIMIT} replies for you. Wait for one to finish.`);
+  if (stillWriting >= ASSISTANT_REPLIES_AT_ONCE) {
+    throw createError("CONFLICT", `The assistant is already writing ${ASSISTANT_REPLIES_AT_ONCE} replies for you. Wait for one to finish.`);
   }
 }
 
@@ -81,9 +81,6 @@ export const send = mutation({
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     if (!text.trim()) throw createError("VALIDATION_ERROR", "Write a message first.");
-    if (text.length > CHAT_PROMPT_MAX_CHARS) {
-      throw createError("VALIDATION_ERROR", `A message can be at most ${CHAT_PROMPT_MAX_CHARS.toLocaleString("en")} characters.`);
-    }
     const { thread } = await requireThread(ctx, userId, threadId, "write");
     if (await writing(ctx, thread.reply)) throw createError("CONFLICT", "The assistant is still replying in this chat.");
     if (thread.asking) throw createError("CONFLICT", "The assistant is waiting for an answer in this chat. Answer it, or stop the reply.");
@@ -91,13 +88,15 @@ export const send = mutation({
     // A reply that was stopped, or died, around asking the person can leave calls without their results.
     await settleAsked(ctx, threadId);
     await healCalls(ctx, thread.agentThreadId);
-    const { modelId, effort } = await chatModel(ctx, thread);
+    const { modelId, effort } = await chatModel(ctx, thread, userId);
     // The model the chat falls back on, or one picked before the rule, is held to it too. So is
     // the server's own default, which runs when nothing picks a model, where the catalog has it.
     const model = modelId
       ? await requireAvailableModel(ctx, modelId)
       : await ctx.db.query("models").withIndex("by_model_id", (q) => q.eq("modelId", SERVER_MODEL_SLUG)).unique();
     if (model) requireAssistantModel(model);
+    // What a message can be is what its record holds and what the chat's model reads at once (./context.ts).
+    if (messageTooLong(text, model?.contextLength)) throw createError("VALIDATION_ERROR", "This message is too long to send in one go. Split it into shorter ones.");
 
     // The message, the lock and the scheduled reply commit together, so a second send
     // can't slip in between them.
@@ -171,7 +170,7 @@ export const answer = mutation({
       senderId: waiting.senderId,
       modelId: waiting.modelId,
       effort: waiting.effort,
-      used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made },
+      made: waiting.made,
     });
     await ctx.db.patch("assistantThreads", threadId, { asking: undefined, reply: { attemptId, senderId: waiting.senderId, order: waiting.order, startedAt: now, scheduledId } });
     return null;
@@ -252,13 +251,11 @@ export const release = internalMutation({
     ended: v.optional(v.object({ ...turnArgs, lastInputTokens: v.number(), messages: v.number(), bytes: v.number() })),
     summarized: v.optional(v.object({ summary: v.string(), through: v.number() })),
     // The reply ended on calls it asks the person about (./steps.ts): the message it answers, each call as the step
-    // that waits, and what the reply has used of one reply's credits and rounds so far.
+    // that waits, and how many actions the reply has called so far.
     asking: v.optional(
       v.object({
         promptMessageId: v.string(),
         calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) })),
-        spent: v.number(),
-        rounds: v.number(),
         made: v.number(),
       }),
     ),
@@ -292,8 +289,6 @@ export const release = internalMutation({
         promptMessageId: asking.promptMessageId,
         modelId: ended.modelId,
         ...(ended.effort ? { effort: ended.effort } : {}),
-        spent: asking.spent,
-        rounds: asking.rounds,
         made: asking.made,
         askedAt: now,
       };
@@ -442,9 +437,12 @@ export const messagesAction = defineUserQuery({
       },
     });
     const sentBy = await senders(ctx, read.page);
-    // Each exchange's steps come with the message it answers, which a page holds once.
+    // Each exchange's steps come with the message it answers, which a page holds once: the
+    // newest exchange's first, for as long as they fit what the page may read of them.
     const asked = read.page.filter((row) => row.message?.role === "user");
-    const ran = new Map(await Promise.all(asked.map(async (row) => [row._id, await stepsOfExchange(ctx, threadId, row.order)] as const)));
+    const room = { bytes: STEPS_PAGE_BYTES };
+    const ran = new Map<string, Doc<"assistantSteps">[]>();
+    for (const row of asked) ran.set(row._id, await stepsOfExchange(ctx, threadId, row.order, room));
     // The exchange being answered now, or waiting for the person's answer. A lock whose action died isn't one.
     const answering = (await writing(ctx, thread.reply)) ? thread.reply?.order : thread.asking?.order;
     // What each call that waits for this person would do.

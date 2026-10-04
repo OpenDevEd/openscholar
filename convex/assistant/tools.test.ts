@@ -8,17 +8,26 @@ import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
 import { inputSchema } from "../lib/assistantTools";
+import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
-import { MAX_ASKS, MODEL_READS, forModel } from "./steps";
-import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found, written } from "./tools";
+import { MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, forModel } from "./steps";
+import { core, definition, found, written } from "./tools";
 import { finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
 type Sent = Array<{ role: string; content: string | Part[] }>;
 
-const { mockDoStream, requests, toolsSent, toolChoices, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), requests: [] as unknown[], toolsSent: [] as string[][], toolChoices: [] as string[], fetchMock: vi.fn() }));
+const { mockDoStream, requests, toolsSent, toolChoices, fetchMock, model } = vi.hoisted(() => ({
+  mockDoStream: vi.fn(),
+  requests: [] as unknown[],
+  toolsSent: [] as string[][],
+  toolChoices: [] as string[],
+  fetchMock: vi.fn(),
+  // Tokens the model reads at once.
+  model: { window: 1_000_000 },
+}));
 vi.stubGlobal("fetch", fetchMock);
 
 // The model every reply runs on, in place of OpenRouter. It keeps each request it is sent.
@@ -37,6 +46,7 @@ vi.mock("../chat/provider", async () => {
       }),
       modelSlug: "mock/model",
       pricing: { input: 1, output: 2 },
+      window: model.window,
     }),
   };
 });
@@ -46,6 +56,7 @@ beforeEach(() => {
   requests.length = 0;
   toolsSent.length = 0;
   toolChoices.length = 0;
+  model.window = 1_000_000;
   fetchMock.mockReset();
   fakeAutumn.reset();
   fetchMock.mockImplementation(fakeAutumnFetch());
@@ -186,15 +197,13 @@ describe("the assistant's tools", () => {
     expect((await steps()).map((step) => [step.order, step.toolCallId, step.status])).toEqual([[0, "call_0", "done"], [1, "call_0", "done"]]);
   });
 
-  it("don't run an action that doesn't exist, one too long to be a tool, or one whose arguments don't fit, and say why", async () => {
+  it("don't run an action that doesn't exist, or one whose arguments don't fit, and say why", async () => {
     const t = convexTest(schema);
     const { say, steps } = await chatOf(t);
     mockDoStream
       .mockImplementationOnce(
         calling(
           { id: "missing", name: "run_action", input: { name: "library/mutations:burn", arguments: {} } },
-          // Every saved search and shortcut could be cleared through this one, and its arguments run to thousands of tokens.
-          { id: "long", name: "run_action", input: { name: "research/records:change", arguments: { command: { kind: "clearSearches" } } } },
           { id: "unfit", name: "run_action", input: { name: "library/collections:renameCollection", arguments: { name: 3 } } },
         ),
       )
@@ -202,7 +211,6 @@ describe("the assistant's tools", () => {
     await say("Clear everything");
 
     expect(told(1, "missing")).toMatchObject({ error: expect.stringMatching(/No action is named/) });
-    expect(told(1, "long")).toMatchObject({ error: expect.stringMatching(/No action is named/) });
     // The arguments the action takes come back with the refusal.
     expect(told(1, "unfit")).toMatchObject({ error: expect.stringMatching(/don't fit/), arguments: { type: "object" } });
     expect(await steps()).toEqual([]);
@@ -284,6 +292,11 @@ describe("the assistant's tools", () => {
     await settled();
     expect(told(1, "delete")).toEqual({ done: true });
     expect(await shown()).toEqual(["user: Delete it", "step: library/collections:deleteCollection done", "assistant: Deleted."]);
+
+    // The action that changes any research record is reachable now that none is hidden for its length. What it can't undo asks first.
+    const asks = (command: unknown) => t.query(internal.assistant.asking.first, { userId: ada, path: "research/records:change", input: JSON.stringify({ requestId: "r", command }) });
+    expect(await Promise.all([asks({ kind: "clearSearches" }), asks({ kind: "clearShortcuts" }), asks({ kind: "deleteSearch", id: "s" }), asks({ kind: "editSearch", id: "s", edit: { kind: "clearScreeningQuestions" } })])).toEqual([true, true, true, true]);
+    expect(await Promise.all([asks({ kind: "rating", paperId: "W1", rating: 4 }), asks({ kind: "deleteSearch", id: "s", expect: { created: 1, revision: 1 } }), asks({ kind: "editSearch", id: "s", edit: { kind: "restore", revision: 1, expect: 2 } })])).toEqual([false, false, false]);
 
     // Whether a call asks first is read before it runs. Arguments that check can't read aren't a reason to ask: the call goes on to run, and fails there with a message the model reads.
     expect(await t.query(internal.assistant.asking.first, { userId: ada, path: "library/mutations:removeFromLibrary", input: "{}" })).toBe(false);
@@ -398,17 +411,18 @@ describe("the assistant's tools", () => {
   it("hold a reply that carries on to how many a person has at once, and tell the model when a call it asked about was cut off mid-run", async () => {
     const t = convexTest(schema);
     const { asAda, threadId, say, sayUntilAsked, steps, thread } = await chatOf(t);
-    const others = await Promise.all(["Two", "Three", "Four", "Old chat"].map((title) => asAda.mutation(api.assistant.threads.create, { title })));
-    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: others[3] } } }));
+    const others = await Promise.all(Array.from({ length: ASSISTANT_REPLIES_AT_ONCE }, (_, index) => asAda.mutation(api.assistant.threads.create, { title: `Chat ${index + 2}` })));
+    const old = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
+    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: old } } }));
     await sayUntilAsked("Delete my old chat");
     const [asked] = await steps();
 
-    // Three replies of hers are being written elsewhere. Waiting isn't one of them, but carrying on would be a fourth.
+    // As many replies of hers as one person has at once are being written elsewhere. Waiting isn't one of them, but carrying on would be one more.
     mockDoStream.mockImplementation(hangingDoStream());
-    for (const id of others.slice(0, 3)) await asAda.mutation(api.assistant.replies.send, { threadId: id, text: "Go" });
-    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asked._id, allow: true })).rejects.toThrow(/already writing 3 replies/);
+    for (const id of others) await asAda.mutation(api.assistant.replies.send, { threadId: id, text: "Go" });
+    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asked._id, allow: true })).rejects.toThrow(new RegExp(`already writing ${ASSISTANT_REPLIES_AT_ONCE} replies`));
     expect((await steps())[0].status).toBe("asking");
-    for (const id of others.slice(0, 3)) {
+    for (const id of others) {
       await asAda.mutation(api.assistant.replies.stop, { threadId: id, attemptId: (await t.run(async (ctx) => ctx.db.get("assistantThreads", id)))!.reply!.attemptId });
       await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", id)))?.reply, { timeoutMs: 5_000 });
     }
@@ -465,26 +479,146 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId: theirs })))).toEqual([{ name: "collection", value: theirs }]);
   });
 
-  it("keep one reply to its requests through a pause: carrying on gets what's left of them", async () => {
+  it("run for as long as the person has credits: hold more when a reply has cost what it holds, and stop its actions when there's no more to hold", async () => {
     const t = convexTest(schema);
-    const { asAda, threadId, sayUntilAsked, settled, steps, thread } = await chatOf(t);
-    const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
-    const list = () => ({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } });
-    // Rounds of reading, then a round that asks: all but two of the reply's requests.
-    const before = MAX_STEPS - 2;
-    mockDoStream.mockImplementation(async () => (requests.length < before ? calling(list())() : calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } })()));
-    await sayUntilAsked("Read around, then delete my old chat");
-    expect((await thread())?.asking).toMatchObject({ rounds: before, made: before });
+    const { ada, say, steps, shown } = await chatOf(t);
+    const list = (index: number) => ({ id: `c${index}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } });
+    const holds = () => t.run(async (ctx) => (await ctx.db.query("billingHolds").collect()).map((row) => row.credits));
+    // More actions in one round than any count would have let through: all of them run.
+    mockDoStream.mockImplementationOnce(calling(...Array.from({ length: 120 }, (_, index) => list(index)))).mockImplementationOnce(finishingDoStream(["Looked at all of it."]));
+    await say("Look at everything");
+    expect(await steps()).toHaveLength(120);
+    // A step that lists things says how many it found.
+    expect((await steps()).at(-1)).toMatchObject({ path: "library/collections:listCollections", count: 0 });
 
-    // Carrying on, the model keeps calling. Its actions have stopped, and its second request is made to answer.
+    // A round that costs more than the reply holds. It holds more, and the action called next runs.
+    requests.length = 0;
+    let held: number[] = [];
+    mockDoStream
+      .mockImplementationOnce(calling({ ...list(1_000), read: 150_000 }))
+      .mockImplementationOnce(async () => {
+        held = await holds();
+        return calling(list(1_001))();
+      })
+      .mockImplementationOnce(finishingDoStream(["Done."]));
+    await say("Look again");
+    expect(held).toEqual([1_000, 1_000]);
+    expect(told(2, "c1001")).toMatchObject({ page: [] });
+    // Everything it held is given back or charged once the reply has ended.
+    expect(await holds()).toEqual([]);
+
+    // A round that costs more than the person has. There's no more to hold: the actions called next aren't
+    // run, and the model is told why, so it answers. Its tools stay as they were for that request, since
+    // taking them away would void the cache. A model that calls one anyway gets a request that is its answer.
+    requests.length = 0;
     toolChoices.length = 0;
-    mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) => (options.toolChoice?.type === "none" ? finishingDoStream(["Deleted. That's all I could do in one reply."])() : calling(list())()));
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: true });
-    await settled();
-    expect(requests).toHaveLength(MAX_STEPS);
-    expect(toolChoices).toEqual(["auto", "none"]);
-    expect(told(MAX_STEPS - 1, `c${MAX_STEPS - 1}`)).toMatchObject({ error: expect.stringMatching(/as many rounds/) });
-    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).toBeNull();
+    mockDoStream
+      .mockImplementationOnce(calling({ ...list(2_000), read: 2_000_000_000 }))
+      // Looking for something else to do is refused with the rest.
+      .mockImplementationOnce(calling(list(2_001), { id: "find", name: "find_action", input: { keywords: "rename collection" } }, { id: "run", name: "run_action", input: { name: "no/such:action", arguments: {} } }))
+      .mockImplementationOnce(finishingDoStream(["Stopping here."]));
+    await say("And again");
+    for (const id of ["c2001", "find", "run"]) expect(told(2, id)).toMatchObject({ error: expect.stringMatching(/credits have run out/) });
+    expect(toolChoices).toEqual(["auto", "auto", "none"]);
+    expect((await shown()).at(-1)).toBe("assistant: Stopping here.");
+    void ada;
+  });
+
+  it("hold what the person has left when that's less than a reply holds at a time, so it runs their credits down to the last", async () => {
+    const t = convexTest(schema);
+    const { ada, say } = await chatOf(t);
+    await t.run(async (ctx) => {
+      fakeAutumn.setBalance(ada, { free: 1_500, paid: 0 });
+      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      await ctx.db.patch("billingAccounts", account!._id, { balance: 1_500 });
+    });
+    const list = (id: string, read?: number) => ({ id, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } }, ...(read ? { read } : {}) });
+    let held: number[] = [];
+    mockDoStream
+      // A round that costs 1,300 credits, of a reply that held 1,000 of the person's 1,500.
+      .mockImplementationOnce(calling(list("first", 100_000)))
+      .mockImplementationOnce(async () => {
+        held = await t.run(async (ctx) => (await ctx.db.query("billingHolds").collect()).map((row) => row.credits));
+        return calling(list("second"))();
+      })
+      .mockImplementationOnce(finishingDoStream(["Done."]));
+    await say("Look at everything");
+    expect(held).toEqual([1_000, 500]);
+    expect(told(2, "second")).toMatchObject({ page: [] });
+  });
+
+  it("stop a reply's actions when it has run as long as one action can, so it ends by saying what's left", async () => {
+    const t = convexTest(schema);
+    const { say, steps, shown } = await chatOf(t);
+    const real = Date.now.bind(Date);
+    let later = 0;
+    const clock = vi.spyOn(Date, "now").mockImplementation(() => real() + later);
+    try {
+      mockDoStream
+        .mockImplementationOnce(async () => {
+          // Nine minutes on: a reply is one action, and Convex ends an action at ten.
+          later = 9 * 60_000;
+          return calling({ id: "late", name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } })();
+        })
+        .mockImplementationOnce(finishingDoStream(["I got this far. Say carry on for the rest."]));
+      await say("Do a great deal");
+    } finally {
+      clock.mockRestore();
+    }
+    expect(told(1, "late")).toMatchObject({ error: expect.stringMatching(/as long as one reply can/) });
+    expect(await steps()).toEqual([]);
+    expect((await shown()).at(-1)).toBe("assistant: I got this far. Say carry on for the rest.");
+  });
+
+  it("stop a reply's actions when the conversation is as long as it can get before it's summarized, so the summary can read all of it", async () => {
+    const t = convexTest(schema);
+    const { say, steps, shown } = await chatOf(t);
+    // A request may fill 60% of the model's window: 38,400 tokens of this one.
+    model.window = 64_000;
+    const list = (id: string, read?: number) => ({ id, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } }, ...(read ? { read } : {}) });
+    mockDoStream
+      .mockImplementationOnce(calling(list("first")))
+      .mockImplementationOnce(calling(list("second", 40_000)))
+      // A conversation only grows while a reply runs, so the request after reads as much and more.
+      .mockImplementationOnce(calling(list("third", 41_000)))
+      .mockImplementationOnce(finishingDoStream(["I got this far. Say carry on for the rest."]));
+    await say("Do a great deal");
+    // What was called before the request that read that much ran. What's called after it is told why it didn't.
+    expect((await steps()).map((step) => [step.toolCallId, step.status])).toEqual([["first", "done"], ["second", "done"]]);
+    expect(told(3, "third")).toMatchObject({ error: expect.stringMatching(/before it's summarized/) });
+    expect(toolChoices).toEqual(["auto", "auto", "auto", "none"]);
+    expect((await shown()).at(-1)).toBe("assistant: I got this far. Say carry on for the rest.");
+  });
+
+  it("leave a result out once a round's results are as long as the one message they're saved in holds", async () => {
+    const t = convexTest(schema);
+    const { say } = await chatOf(t);
+    const keywords = "search papers library collection screening extraction";
+    // Enough calls in one round for their results to be half as long again as a document can be.
+    const count = Math.ceil((1.5 * 1024 * 1024) / JSON.stringify(forModel(found(keywords))).length);
+    const ids = Array.from({ length: count }, (_, index) => `find${index}`);
+    mockDoStream.mockImplementationOnce(calling(...ids.map((id) => ({ id, name: "find_action", input: { keywords } })))).mockImplementationOnce(finishingDoStream(["Found them."]));
+    await say("What can you do?");
+    expect(told(1, ids[0])).toHaveProperty("actions");
+    expect(told(1, ids.at(-1)!)).toMatchObject({ done: true, result: expect.stringMatching(/^Left out/) });
+    // Convex saves no document past 1 MiB.
+    expect(ids.reduce((sum, id) => sum + JSON.stringify(told(1, id)).length, 0)).toBeLessThan(1024 * 1024);
+  });
+
+  it("list as many of an exchange's steps as a page of the chat can read, going by their size", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda, threadId, say } = await chatOf(t);
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Done."]));
+    await say("Do a great deal");
+    // Steps whose arguments are as long as a step keeps, 5 MB of them, where a page reads 4 MB of steps.
+    await t.run(async (ctx) => {
+      for (let index = 0; index < 320; index++) {
+        await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: `call${index}`, path: "library/queries:papers", input: "a".repeat(STEP_TEXT_MAX), status: "done", startedAt: index, endedAt: index });
+      }
+    });
+    const listed = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step").length;
+    expect(listed).toBeGreaterThan(200);
+    expect(listed).toBeLessThan(320);
   });
 
   it("claim a step the person allowed only for the reply that carries on, and not once that reply is stopped", async () => {
@@ -507,54 +641,25 @@ describe("the assistant's tools", () => {
     await t.run(async (ctx) => ctx.scheduler.cancel(reply.scheduledId));
   });
 
-  it("ask about a few actions at a time, and carry on within what's left of one reply's rounds and credits", async () => {
+  it("ask about a few actions at a time, and carry on from the answers with the person's credits still to spend", async () => {
     const t = convexTest(schema);
     const { asAda, threadId, sayUntilAsked, settled, steps, thread } = await chatOf(t);
     const chats = await Promise.all(Array.from({ length: MAX_ASKS + 1 }, (_, index) => asAda.mutation(api.assistant.threads.create, { title: `Chat ${index}` })));
-    // One round that asks about more than a person would read. Its request reads enough to cost more than one reply may.
+    // One round that asks about more than a person would read. Its request reads enough to cost more than the reply held.
     mockDoStream.mockImplementationOnce(calling(...chats.map((chat, index) => ({ id: `rename${index}`, name: "run_action", input: { name: "assistant/threads:rename", arguments: { threadId: chat, title: `Renamed ${index}` } }, ...(index ? {} : { read: 100_000 }) }))));
     await sayUntilAsked("Rename them all");
     const asked = await steps();
     expect(asked).toHaveLength(MAX_ASKS);
-    // What the reply has used so far waits with it.
-    expect((await thread())?.asking).toMatchObject({ rounds: 1, spent: expect.any(Number) });
-    expect((await thread())!.asking!.spent).toBeGreaterThan(1_000);
 
     // Carrying on, the last call is already answered: it was refused, since it wasn't asked about.
-    mockDoStream.mockImplementationOnce(calling({ id: "more", name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } })).mockImplementationOnce(finishingDoStream(["Ten renamed."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "more", name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } })).mockImplementationOnce(finishingDoStream(["All but one renamed."]));
     for (const step of asked) await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: step._id, allow: true });
     await settled();
     expect(outcome(1, `rename${MAX_ASKS}`)).toMatchObject({ type: "execution-denied" });
     expect(await t.run(async (ctx) => (await ctx.db.get("assistantThreads", chats[0]))?.title)).toBe("Renamed 0");
     expect(await t.run(async (ctx) => (await ctx.db.get("assistantThreads", chats[MAX_ASKS]))?.title)).toBe(`Chat ${MAX_ASKS}`);
-    // The reply had already cost what one may before it asked, so what it calls next isn't run.
-    expect(told(2, "more")).toMatchObject({ error: expect.stringMatching(/spent the credits/) });
-  });
-
-  it("run at most so many actions in one reply, and once the reply has cost what one may, refuse the rest and say why", async () => {
-    const t = convexTest(schema);
-    const { say, steps, shown } = await chatOf(t);
-    const list = (index: number) => ({ id: `c${index}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } });
-    // One round that calls more actions than a reply may run.
-    mockDoStream.mockImplementationOnce(calling(...Array.from({ length: MAX_CALLS + 2 }, (_, index) => list(index)))).mockImplementationOnce(finishingDoStream(["That's all I could run."]));
-    await say("Look at everything");
-    expect(await steps()).toHaveLength(MAX_CALLS);
-    expect(told(1, `c${MAX_CALLS + 1}`)).toMatchObject({ error: expect.stringMatching(/at most/) });
-
-    // A round that read a great deal costs more than a reply may. The action called next isn't run, and the
-    // model is told why, so it answers. Its tools stay as they were: taking them away would void the cache.
-    requests.length = 0;
-    toolChoices.length = 0;
-    mockDoStream
-      .mockImplementationOnce(calling({ ...list(1_000), read: 2_000_000_000 }))
-      // Looking for something else to do is refused with the rest.
-      .mockImplementationOnce(calling(list(1_001), { id: "find", name: "find_action", input: { keywords: "rename collection" } }, { id: "run", name: "run_action", input: { name: "no/such:action", arguments: {} } }))
-      .mockImplementationOnce(finishingDoStream(["Stopping here."]));
-    await say("Look again");
-    for (const id of ["c1001", "find", "run"]) expect(told(2, id)).toMatchObject({ error: expect.stringMatching(/spent the credits/) });
-    expect(await steps()).toHaveLength(MAX_CALLS + 1);
-    expect(toolChoices).toEqual(["auto", "auto", "auto"]);
-    expect((await shown()).at(-1)).toBe("assistant: Stopping here.");
+    // What it had cost before it asked is no reason to stop: the person has credits, so what it calls next runs.
+    expect(told(2, "more")).toMatchObject({ page: [] });
   });
 
   it("hold what the person has when that's less than a reply may cost, so a small balance still gets an answer", async () => {
@@ -604,30 +709,15 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => ctx.db.query("libraryItems").collect())).toEqual([]);
   });
 
-  it("show a step whose reply died as failed, not as running for ever, and keep the last request of a reply for its answer", async () => {
+  it("show a step whose reply died as failed, not as running for ever", async () => {
     const t = convexTest(schema);
-    const { ada, asAda, threadId, say, shown } = await chatOf(t);
+    const { ada, asAda, threadId, shown } = await chatOf(t);
     // A step whose action is still running, as the page reads it mid-reply.
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Save that paper" }).catch(() => {});
     await t.mutation(internal.assistant.steps.begin, { threadId, order: 0, userId: ada, toolCallId: "save", path: "library/mutations:saveToLibrary", input: "{}" });
     await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: 5_000 }).catch(() => {});
     // Its reply is over without ending it: the step shows as failed, not as running for ever.
     expect((await shown())[1]).toBe("step: library/mutations:saveToLibrary failed");
-
-    // A reply that keeps calling tools is told to stop a round before its last request, which is made to answer.
-    requests.length = 0;
-    toolChoices.length = 0;
-    mockDoStream.mockReset();
-    mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) =>
-      options.toolChoice?.type === "none" ? finishingDoStream(["Here is what I did."])() : calling({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } })(),
-    );
-    await say("Keep going");
-    expect(requests).toHaveLength(MAX_STEPS);
-    expect(told(MAX_STEPS - 1, `c${MAX_STEPS - 1}`)).toMatchObject({ error: expect.stringMatching(/as many rounds/) });
-    // A step that lists things says how many it found.
-    expect((await t.run(async (ctx) => ctx.db.query("assistantSteps").collect())).at(-1)).toMatchObject({ path: "library/collections:listCollections", count: 0 });
-    expect(toolChoices.at(-1)).toBe("none");
-    expect((await shown()).at(-1)).toBe("assistant: Here is what I did.");
   });
 
   it("are undone by the person they ran for, once, and by no one else in the chat", async () => {
@@ -663,8 +753,6 @@ describe("the assistant's tools", () => {
     expect(toolsSent[1]).toEqual(toolsSent[0]);
     expect(toolsSent[0].slice(-2)).toEqual(["find_action", "run_action"]);
     expect(toolsSent[0]).toHaveLength(core().length + 2);
-    // About 1,000 tokens at most for a tool's description and arguments (#326).
-    for (const entry of core()) expect(JSON.stringify(definition(entry)).length, entry.path).toBeLessThanOrEqual(DEFINITION_MAX);
   });
 
   it("return nothing Convex can't keep: no field of an action's definition is named with a dollar sign or an underscore", () => {
@@ -706,8 +794,8 @@ describe("the assistant's tools", () => {
     expect(remove).toMatchObject({ asksFirst: true, arguments: { type: "object", properties: { threadId: { type: "string" } } } });
     // An action named outright comes first.
     expect(found("library/collections:renameCollection").actions[0]).toMatchObject({ name: "library/collections:renameCollection", arguments: { type: "object" } });
-    // One too long to be a tool isn't found.
-    expect(found("research/records:change clear every saved search").actions.map((action) => action.name)).not.toContain("research/records:change");
+    // An action is found however long its description. This one can clear every saved search: what it can't undo asks the person first.
+    expect(found("research/records:change clear every saved search").actions.map((action) => action.name)).toContain("research/records:change");
     expect(found("zzzz").actions).toEqual([]);
     // What a search returns stays within what the model reads at once.
     expect(JSON.stringify(found("list count get search collection paper screening extraction")).length).toBeLessThanOrEqual(MODEL_READS + 6 * 60);

@@ -11,15 +11,22 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { effortValidator } from "../aiModelConfig/validators";
 import { refreshAccount } from "../billing/accounts";
-import { ASSISTANT_REPLY_CREDITS, ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
+import { ASSISTANT_HOLD_CREDITS, ESTIMATED_CREDITS_PER_CHAT_MESSAGE } from "../lib/constants";
 import { errorToLogString } from "../lib/errors";
 import { internalAction } from "../lib/functions";
 import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
-import { COMPACT_AT_TOKENS, compactedOf, contextSince, summarize } from "./context";
+import { COMPACT_AT_TOKENS, compactedOf, contextSince, full, summarize } from "./context";
 import { lockArgs, turnArgs } from "./replies";
-import { MAX_STEPS, OUT_OF_CREDITS, OUT_OF_STEPS, askedSteps, toolsFor } from "./tools";
-import { runTurn } from "./turn";
+import { OUT_OF_CREDITS, OUT_OF_ROOM, OUT_OF_TIME, askedSteps, toolsFor } from "./tools";
+import { runTurn, type Standing } from "./turn";
+
+/**
+ * How long a reply runs its actions. Convex ends an action at ten minutes, and a reply is
+ * one: past this its actions stop and its next request is its answer, so it ends by saying
+ * what it did and what's left, and isn't cut off mid-way with nothing said.
+ */
+const REPLY_RUNS_MS = 8 * 60_000;
 
 export const reply = internalAction({
   args: {
@@ -29,11 +36,12 @@ export const reply = internalAction({
     senderId: v.id("users"),
     modelId: v.union(v.id("models"), v.null()),
     effort: v.optional(effortValidator),
-    // What the reply used of one reply's credits and rounds before it asked the person something, when it carries on from their answer.
-    used: v.optional(v.object({ credits: v.number(), rounds: v.number(), calls: v.number() })),
+    // How many actions the reply had called before it asked the person something, when it carries on from their answer.
+    made: v.optional(v.number()),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort, used = { credits: 0, rounds: 0, calls: 0 } }) => {
+  handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort, made: madeBefore = 0 }) => {
+    const startedAt = Date.now();
     const lock = { threadId, attemptId };
     const state = () => ctx.runQuery(internal.assistant.replies.lockState, lock);
     // Ends a reply stopped before the model is called: no credits are held, and the chat shows a stopped reply.
@@ -69,20 +77,28 @@ export const reply = internalAction({
         console.error("[assistant] owed compaction failed", { threadId, error: errorToLogString(error) });
       }
     }
-    // What the reply may cost: what's left of a reply's cap, or what the person has when
-    // that's less, down to the least a reply starts on. It holds that much, so a small
-    // balance, or a reply that has used its cap and only has to answer, still gets its answer.
-    const left = Math.max(0, ASSISTANT_REPLY_CREDITS - used.credits);
+    // What the reply holds to start: a hold's worth, or what the person has when that's less,
+    // down to the least a reply starts on, so a small balance still gets an answer. It holds
+    // as much again each time it has cost that (./turn.ts): what a reply may cost is the
+    // person's credits, and nothing else.
     let balance = (await ctx.runQuery(internal.billing.accounts.forUser, { userId: senderId }))?.balance;
-    // The account's copy of the balance can be behind a top-up. When it says the reply can't have all it may use, it's read again from Autumn.
-    if (balance !== undefined && balance < left) balance = (await refreshAccount(ctx, senderId).catch(() => null))?.balance ?? balance;
-    const cap = Math.max(ESTIMATED_CREDITS_PER_CHAT_MESSAGE, Math.min(left, balance ?? left));
-    // Where the reply stands, heard before each of its requests. Its actions stop a round
-    // before its last request and once it has cost its hold, so the request after is its answer.
-    let step = { number: 0, credits: 0 };
-    const stopped = () => (used.rounds + step.number >= MAX_STEPS - 2 ? OUT_OF_STEPS : step.credits >= Math.min(cap, left) ? OUT_OF_CREDITS : null);
+    // The account's copy of the balance can be behind a top-up. When it says the reply can't hold a whole hold, it's read again from Autumn.
+    if (balance !== undefined && balance < ASSISTANT_HOLD_CREDITS) balance = (await refreshAccount(ctx, senderId).catch(() => null))?.balance ?? balance;
+    const hold = Math.max(ESTIMATED_CREDITS_PER_CHAT_MESSAGE, Math.min(ASSISTANT_HOLD_CREDITS, balance ?? ASSISTANT_HOLD_CREDITS));
+    // Where the reply stands, heard before each of its requests. Its actions stop when it has
+    // cost all it could hold, which is when the person's credits have run out; when it has
+    // run as long as one action can; and when the conversation is as long as it may get
+    // before it's compacted (./context.ts). The model is told why, and answers.
+    let step: Standing = { number: 0, credits: 0, held: hold, inputTokens: 0, bytes: 0 };
+    // The conversation with what the reply has added to it: each request writes two messages, its calls and their results.
+    const grown = (requests: number, bytes: number) => ({ messages: history.messages + 2 * requests, bytes: history.bytes + bytes });
+    const stopped = () => {
+      if (Date.now() - startedAt >= REPLY_RUNS_MS) return OUT_OF_TIME;
+      if (step.credits >= step.held) return OUT_OF_CREDITS;
+      return full({ lastInputTokens: step.inputTokens, window: step.window, ...grown(step.number, step.bytes) }) ? OUT_OF_ROOM : null;
+    };
     // Each action it runs is kept as a step of the exchange it's answering.
-    const { tools, approval, resume, made } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped, made: used.calls });
+    const { tools, approval, resume, made } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped, round: () => step.number, made: madeBefore });
     // A reply that waited for an answer carries on here: what the person allowed runs first,
     // and each result is written where the model's call left off. A Stop ends it between two.
     const allowed = await ctx.runQuery(internal.assistant.steps.allowed, { threadId });
@@ -103,13 +119,16 @@ export const reply = internalAction({
       modelId,
       effort,
       attemptId,
-      credits: cap,
+      credits: hold,
+      more: ASSISTANT_HOLD_CREDITS,
       tools,
       approval,
-      // What's left of one reply's requests, and always one for its answer.
-      maxSteps: Math.max(1, MAX_STEPS - used.rounds),
+      // A reply takes as many requests as its work needs. Once its actions have stopped and
+      // the model has been told, a request that would call one anyway is made its answer.
       onStep: (now) => {
+        const told = stopped() !== null;
         step = now;
+        return told && stopped() !== null;
       },
       log: { assistantThreadId: threadId },
       shouldStop,
@@ -124,12 +143,12 @@ export const reply = internalAction({
           history = read;
         },
       }),
-      release: ({ lastInputTokens, asked, credits, requests }) => {
+      release: ({ lastInputTokens, asked, requests, bytes }) => {
         const calls = askedSteps(asked);
         return ctx.runMutation(internal.assistant.replies.release, {
           ...lock,
-          ended: { ...turn, ...history, lastInputTokens },
-          ...(calls.length ? { asking: { promptMessageId, calls, spent: used.credits + credits, rounds: used.rounds + requests, made: made() } } : {}),
+          ended: { ...turn, ...grown(requests, bytes), lastInputTokens },
+          ...(calls.length ? { asking: { promptMessageId, calls, made: made() } } : {}),
         });
       },
     });

@@ -32,8 +32,8 @@ export const assistantReplyValidator = v.object({
  * A reply that asked the person before running an action, and waits for their answer
  * (./steps.ts). Nothing runs meanwhile, so no reply holds the chat; the chat takes no
  * message until every call is answered, or the reply is stopped. What the reply needs to
- * carry on is kept here: who it runs for, the message it answers, its model, and what it
- * has used of one reply's credits, rounds and calls, which carrying on doesn't start over.
+ * carry on is kept here: who it runs for, the message it answers, its model, and how many
+ * actions it has called, which carrying on counts on from.
  */
 export const assistantAskingValidator = v.object({
   senderId: v.id("users"),
@@ -41,8 +41,6 @@ export const assistantAskingValidator = v.object({
   promptMessageId: v.string(),
   modelId: v.union(v.id("models"), v.null()),
   effort: v.optional(effortValidator),
-  spent: v.number(),
-  rounds: v.number(),
   made: v.number(),
   askedAt: v.number(),
 });

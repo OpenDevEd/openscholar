@@ -30,7 +30,7 @@ const openAlex = vi.fn(async (input: string | URL) => {
           : by === "primary_topic.field.id"
             ? [["https://openalex.org/fields/33", "Social Sciences", 50]]
             : by === "authorships.institutions.id"
-              ? Array.from({ length: 60 }, (_, at) => [`https://openalex.org/I${at}`, `Institution ${at}`, 100 - at])
+              ? Array.from({ length: 120 }, (_, at) => [`https://openalex.org/I${at}`, `Institution ${at}`, 200 - at])
               : [["https://openalex.org/languages/en", "English", 50], ["https://openalex.org/languages/fr", "French", 7]];
     return new Response(JSON.stringify({ meta: { count: 57 }, group_by: groups.map(([key, name, count]) => ({ key, key_display_name: name, count })) }), { status: 200 });
   }
@@ -200,10 +200,10 @@ describe("the assistant's search tools", () => {
     // Someone else's search isn't read.
     await expect(bob.action(results, { id })).rejects.toThrow(/not found/i);
     await expect(alice.action(results, { id, page: 0 })).rejects.toThrow(/count from 1/);
-    // A page OpenAlex wouldn't answer, or one that would take many requests to reach, isn't asked for.
+    // A page OpenAlex wouldn't answer isn't asked for, under any sort.
     requests = [];
     await expect(alice.action(results, { id, page: 1_001 })).rejects.toThrow(/up to page 1,000/);
-    await expect(alice.action(results, { id: byDate.id, page: 201 })).rejects.toThrow(/up to page 200/);
+    await expect(alice.action(results, { id: byDate.id, page: 1_001 })).rejects.toThrow(/up to page 1,000/);
     expect(requests).toHaveLength(0);
 
     // Ten papers whose every text runs long are still read whole.
@@ -371,7 +371,7 @@ describe("the assistant's search tools", () => {
     expect((await alice.action(count, { query: "tutoring", by: "language" })).groups).toEqual([{ name: "English", count: 50, id: "en" }, { name: "French", count: 7, id: "fr" }]);
     expect((await alice.action(count, { query: "tutoring", by: "field" })).groups![0]).toEqual({ name: "Social Sciences", count: 50, id: "fields/33" });
     // More groups than are returned says so, without a number: OpenAlex gives its largest 200.
-    expect(await alice.action(count, { query: "tutoring", by: "institution" })).toMatchObject({ moreGroups: true, groups: expect.arrayContaining([{ name: "Institution 0", count: 100 }]) });
+    expect(await alice.action(count, { query: "tutoring", by: "institution" })).toMatchObject({ moreGroups: true, groups: expect.arrayContaining([{ name: "Institution 0", count: 200 }]) });
     // Which papers a person rated isn't OpenAlex's to count.
     await expect(alice.action(count, { query: "tutoring", ratedOnly: true, by: "year" })).rejects.toThrow(/can't be counted/);
 

@@ -635,7 +635,9 @@ describe("research actions as assistant tools", () => {
     await alice.mutation(api.research.records.importBatch, batch);
     const bobTools = assistantTools(actionCtx(t), ids.bob, USER_ACTIONS);
     expect(await bobTools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: "call-3" })).toBeNull();
-    await bobTools.research_records_change.execute!({ command: { kind: "deleteSearch", id: record.id } }, { ...call, toolCallId: "call-4" });
+    // Deleting a search outright asks the person first. Allowed by Bob, it still deletes nothing of Alice's.
+    await expect(bobTools.research_records_change.execute!({ command: { kind: "deleteSearch", id: record.id } }, { ...call, toolCallId: "call-4" })).rejects.toThrow(/person's say first/);
+    await t.mutation(internal.research.records.changeForAssistant, { userId: ids.bob, requestId: "call-4", command: { kind: "deleteSearch", id: record.id }, approved: true });
     expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toEqual(listedRecord);
   });
 

@@ -15,26 +15,23 @@ import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { ASKS_FIRST, type UserAction } from "../lib/userActions";
 import { DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, forModel } from "./steps";
 
+/** Actions one search returns. As many are returned whole as the model reads at once (./steps.ts). */
+const FOUND_MAX = 12;
 /**
- * Requests to the model one reply may make. The last is kept for its answer (./turn.ts).
- * What a reply spends is held to its credits; this stops one that goes round in circles.
- * At 12, a literature review that searched, read, saved ten papers and filed them ran out.
+ * Bytes of results one round of calls hands the model. A round's results are saved
+ * together as one message, and Convex saves no document past 1 MiB.
  */
-export const MAX_STEPS = 20;
-/** Characters of an action's description and arguments, about 1,000 tokens (#326). A longer one has no tool. */
-export const DEFINITION_MAX = 4_000;
-/** Actions one search returns. */
-const FOUND_MAX = 6;
-/** Actions one reply may run, however many it calls at once: every one of them shows on the chat's page (./steps.ts). At 40, the same review saved five of its ten papers. */
-export const MAX_CALLS = 100;
+const ROUND_READS = 700_000;
+const LEFT_OUT = "Left out: this round's results are as long as one round can hold. Call fewer actions at once, and read again what you still need.";
 
 /**
  * Why a reply's tools have stopped, as the model is told when it calls one: it then knows
  * to answer with what it has, where a model simply kept from calling tools can say nothing.
  */
 const WRAP_UP = "Don't call another action. Tell the person what you did and what's left, so they can ask for it.";
-export const OUT_OF_STEPS = `This reply has taken as many rounds of actions as one reply may. ${WRAP_UP}`;
-export const OUT_OF_CREDITS = `This reply has spent the credits one reply may. ${WRAP_UP}`;
+export const OUT_OF_TIME = `This reply has run for as long as one reply can. ${WRAP_UP} They can say "carry on" to pick it up from here.`;
+export const OUT_OF_ROOM = `This conversation is as long as it can get before it's summarized. ${WRAP_UP} It's summarized once you have answered, and they can say "carry on" to pick it up from there.`;
+export const OUT_OF_CREDITS = `The person's credits have run out. ${WRAP_UP} It can carry on once they have more credits.`;
 
 /**
  * The actions that are tools of their own, in this order. Changing the list resets every
@@ -84,21 +81,14 @@ export function definition(entry: UserAction) {
   const { $schema: _dialect, ...args } = z.toJSONSchema(inputSchema(entry));
   return { does: entry.description, arguments: args };
 }
-const sizes = new Map<string, number>();
-/** Whether an action is short enough to be a tool at all (#326). One that isn't waits to be split into smaller actions. */
-function fits(entry: UserAction) {
-  if (!sizes.has(entry.path)) sizes.set(entry.path, JSON.stringify(definition(entry)).length);
-  return sizes.get(entry.path)! <= DEFINITION_MAX;
-}
-/** The actions the assistant can reach: every registered one that fits. */
-const reachable = () => USER_ACTIONS.filter(fits);
-const entryAt = (path: string) => reachable().find((entry) => entry.path === path);
+/** The actions the assistant can reach: every registered one, however long its description. */
+const entryAt = (path: string) => USER_ACTIONS.find((entry) => entry.path === path);
 
 /** The core actions, as registered. */
 export function core() {
   return CORE_PATHS.map((path) => {
     const entry = entryAt(path);
-    if (!entry || !runsWithoutAsking(entry)) throw new Error(`${path} can't be a tool of its own: it isn't registered, it's too long, or it asks first.`);
+    if (!entry || !runsWithoutAsking(entry)) throw new Error(`${path} can't be a tool of its own: it isn't registered, or it asks first.`);
     return entry;
   });
 }
@@ -179,8 +169,7 @@ const messageOf = (error: unknown) => {
 export function found(keywords: string) {
   const asked = keywords.toLowerCase();
   const words = asked.split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 1);
-  const matches = reachable()
-    .map((entry) => {
+  const matches = USER_ACTIONS.map((entry) => {
       const text = `${entry.path} ${entry.description}`.toLowerCase();
       return { entry, score: words.filter((word) => text.includes(word)).length + (asked.includes(entry.path.toLowerCase()) ? words.length : 0) };
     })
@@ -206,7 +195,8 @@ export function found(keywords: string) {
  * count of its calls it makes each call's own key, since models reuse their call IDs.
  * `stopped` says why the reply's actions have stopped, once they have. `made` is how many
  * calls the reply had made before it asked the person something, when it carries on from
- * their answer: one reply's calls are counted through every pause, so they all fit the chat's page.
+ * their answer: each call's key counts on from there. `round` is which of the reply's
+ * requests is being answered, since a round's results have to fit one message together.
  *
  * `approval` is the reply's rule for asking first, which pauses it at a call the person is
  * asked about. `resume` runs a step they then allowed; its outcome is written to the model
@@ -214,10 +204,24 @@ export function found(keywords: string) {
  */
 export function toolsFor(
   ctx: ActionCtx,
-  { userId, threadId, order, attemptId, stopped, made = 0 }: { userId: Id<"users">; threadId: Id<"assistantThreads">; order: number; attemptId: string; stopped: () => string | null; made?: number },
+  { userId, threadId, order, attemptId, stopped, round, made = 0 }: { userId: Id<"users">; threadId: Id<"assistantThreads">; order: number; attemptId: string; stopped: () => string | null; round: () => number; made?: number },
 ) {
   let calls = made;
   let asked = 0;
+  let read = { round: round(), bytes: 0 };
+  /**
+   * What the model reads of a result (./steps.ts), while the round's results fit the one
+   * message they're saved as. One past that ran all the same, and its step keeps what it
+   * returned: the model is told it was left out.
+   */
+  const shown = (value: unknown) => {
+    if (read.round !== round()) read = { round: round(), bytes: 0 };
+    const result = forModel(value);
+    const bytes = new TextEncoder().encode(JSON.stringify(result)).length;
+    if (read.bytes + bytes > ROUND_READS) return { ...DONE, result: LEFT_OUT };
+    read.bytes += bytes;
+    return result;
+  };
   /**
    * Runs one call, kept as a step from when it starts to how it ended. The model reads the
    * short form of the result, and an action's failure as its message, so it can say what
@@ -228,7 +232,6 @@ export function toolsFor(
     if (!allowed) {
       const why = stopped();
       if (why) return { error: why };
-      if (calls >= MAX_CALLS) return { error: `A reply runs at most ${MAX_CALLS} actions, and this one has. Say what's left, so the person can ask for it.` };
       // One that asks first only gets here allowed. The rest is refused: an action that spends credits, or a call nothing asked about.
       if (!runsWithoutAsking(entry)) return { error: ASKS_FIRST };
     }
@@ -242,7 +245,7 @@ export function toolsFor(
       const result = await written(() => runAction(ctx, userId, entry, input, key, change ? stepId : undefined, allowed !== undefined));
       if (!change) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
       // A change that returns nothing says it was made. A read that returns nothing found nothing.
-      return forModel(change ? (result ?? DONE) : result);
+      return shown(change ? (result ?? DONE) : result);
     } catch (error) {
       const message = messageOf(error);
       await ctx.runMutation(internal.assistant.steps.failed, { stepId, error: message });
@@ -257,7 +260,7 @@ export function toolsFor(
     entry.kind !== "query" && !entry.spendsCredits && (!runsWithoutAsking(entry) || (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) })));
   const approval = async ({ toolCall }: { toolCall: { toolName: string; input: unknown } }) => {
     // A call the reply's limits refuse anyway isn't worth asking about.
-    if (stopped() || calls >= MAX_CALLS) return undefined;
+    if (stopped()) return undefined;
     const call = called(toolCall.toolName, toolCall.input);
     if (!call || !(await asks(call.entry, call.input))) return undefined;
     // Its arguments wait on its step for the answer, so they have to fit there.
@@ -283,7 +286,7 @@ export function toolsFor(
         "Returns each match's name, what it does and the arguments it takes. Run one with run_action.",
       inputSchema: z.object({ keywords: z.string() }),
       // Looking for more to do is refused with the rest once the reply's actions have stopped, or it could go on asking.
-      execute: async ({ keywords }) => (stopped() ? { error: stopped() } : forModel(found(keywords))),
+      execute: async ({ keywords }) => (stopped() ? { error: stopped() } : shown(found(keywords))),
     }),
     run_action: tool({
       description: "Runs an action find_action returned, by its name, with its arguments. An undo in a result is run the same way: the action it names, with its arguments.",
@@ -295,7 +298,7 @@ export function toolsFor(
         if (!entry) return { error: `No action is named ${cut(name, 200)}. Look one up with find_action.` };
         const parsed = inputSchema(entry).safeParse(given);
         // The arguments it takes come back with the refusal, for one more try.
-        if (!parsed.success) return forModel({ error: `These arguments don't fit: ${cut(z.prettifyError(parsed.error), 1_000)}`, arguments: definition(entry).arguments });
+        if (!parsed.success) return shown({ error: `These arguments don't fit: ${cut(z.prettifyError(parsed.error), 1_000)}`, arguments: definition(entry).arguments });
         return call(entry, parsed.data as Record<string, unknown>, toolCallId);
       },
     }),

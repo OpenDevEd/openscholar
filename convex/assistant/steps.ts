@@ -11,11 +11,13 @@
  * allowed it, or that they didn't. `settleAsked` ends any that a stopped or dead reply left.
  */
 import { listMessages } from "@convex-dev/agent";
-import { v } from "convex/values";
+import { stream } from "convex-helpers/server/stream";
+import { getDocumentSize, v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
+import schema from "../schema";
 import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { assistant } from "./agent";
 
@@ -23,10 +25,12 @@ import { assistant } from "./agent";
 export const STEP_TEXT_MAX = 16_000;
 /** Characters of an action's result that are kept, well inside one document. */
 export const STEP_RESULT_MAX = 200_000;
-/** Steps of one exchange a page of the chat shows. A reply takes few; this bounds a runaway one. */
-export const STEPS_SHOWN = 150;
+/** Steps of one exchange a page of the chat shows. A reply runs as many actions as the person's credits pay for; this is what a page lists of them. */
+export const STEPS_SHOWN = 1_000;
+/** Bytes of steps one page of the chat reads, beside its messages: a quarter of what one query may read. */
+export const STEPS_PAGE_BYTES = 4 * 1024 * 1024;
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
-export const MAX_ASKS = 10;
+export const MAX_ASKS = 50;
 /**
  * Characters of anything a tool hands the model, about 4,000 tokens (#326). A step keeps the
  * rest of a result. Room for a page of ten papers with enough of each abstract to say what
@@ -39,9 +43,19 @@ const FORGET_STEPS = 100;
 
 type Step = Doc<"assistantSteps">;
 
-/** An exchange's steps, in the order they ran. */
-export function stepsOfExchange(ctx: Pick<QueryCtx, "db">, threadId: Id<"assistantThreads">, order: number) {
-  return ctx.db.query("assistantSteps").withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).eq("order", order)).take(STEPS_SHOWN);
+/**
+ * An exchange's steps, in the order they ran: as many as a page shows, and as fit what is
+ * left of `room`, the bytes the page may still read of them. A step keeps its arguments,
+ * so a count alone doesn't say how much a read of them takes.
+ */
+export async function stepsOfExchange(ctx: Pick<QueryCtx, "db">, threadId: Id<"assistantThreads">, order: number, room: { bytes: number }): Promise<Step[]> {
+  if (room.bytes <= 0) return [];
+  const { page } = await stream(ctx.db, schema)
+    .query("assistantSteps")
+    .withIndex("by_thread_and_order", (q) => q.eq("threadId", threadId).eq("order", order))
+    .paginate({ cursor: null, numItems: STEPS_SHOWN, maximumBytesRead: room.bytes });
+  for (const step of page) room.bytes -= getDocumentSize(step);
+  return page;
 }
 
 /** A chat's steps at one status. Only steps a reply asked about are ever many at once, and those are bounded. */

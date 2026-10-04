@@ -103,17 +103,45 @@ export function contextSince(args: Compacted & { agentThreadId: string; promptMe
     const { docs, whole } = await historySince(ctx, { agentThreadId: args.agentThreadId, compactedThrough: args.compactedThrough, before: args.promptMessageId });
     // Answering from part of the conversation would lose the rest without a word.
     if (!whole) throw tooLong();
-    // Bytes as Convex counts them: a character outside ASCII is two to four.
-    args.onHistory({ messages: docs.length, bytes: new TextEncoder().encode(JSON.stringify(docs)).length });
+    // Bytes as Convex counts them: a character outside ASCII is two to four. A reply that carries on
+    // after asking the person has already written part of this exchange, which counts with the rest.
+    args.onHistory({ messages: docs.length + existingResponses.length, bytes: new TextEncoder().encode(JSON.stringify([docs, existingResponses])).length });
     return [...(args.summary ? [summaryMessage(args.summary)] : []), ...docsToModelMessages(docs), ...inputMessages, ...inputPrompt, ...existingResponses];
   };
 }
 
+/** A model whose window the catalog doesn't say is taken to have the one that compacts at COMPACT_AT_TOKENS. */
+const windowOf = (window?: number) => window ?? COMPACT_AT_TOKENS / COMPACT_AT_WINDOW;
+
+/**
+ * Whether the conversation is as long as it may get before it's compacted: its last request
+ * filled the model's window as far as one may, or it is as long as one summary can read. A
+ * reply still running then ends its actions and answers (./run.ts), so the compaction that
+ * follows reads all of it. Nothing else holds a reply to a number of rounds.
+ */
+export function full(reply: { lastInputTokens: number; window?: number; messages: number; bytes: number }) {
+  // The reply adds at least its message and its answer to what the request read.
+  return reply.lastInputTokens > windowOf(reply.window) * COMPACT_AT_WINDOW || reply.messages + 2 >= MAX_CONTEXT_MESSAGES || reply.bytes >= MAX_CONTEXT_BYTES;
+}
+
 /** Whether a reply that just ended should be followed by a compaction. */
-export function compactionDue(reply: { lastInputTokens: number; window?: number; messages: number; bytes: number }) {
-  const tokens = Math.min(COMPACT_AT_TOKENS, reply.window ? reply.window * COMPACT_AT_WINDOW : COMPACT_AT_TOKENS);
-  // The reply added at least its message and its answer to what the request read.
-  return reply.lastInputTokens > tokens || reply.messages + 2 >= MAX_CONTEXT_MESSAGES || reply.bytes >= MAX_CONTEXT_BYTES;
+export function compactionDue(reply: Parameters<typeof full>[0]) {
+  return reply.lastInputTokens > COMPACT_AT_TOKENS || full(reply);
+}
+
+/** A message's share of the model's window: beside a conversation just short of its compaction, the model can still read it. */
+const MESSAGE_AT_WINDOW = 0.3;
+/** Bytes of one message. Its record holds it twice, as sent and as its text, and Convex saves no document past 1 MiB. */
+const MESSAGE_MAX_BYTES = 450_000;
+
+/**
+ * Whether a message is too long to send: for its record, or for the model to read at once.
+ * A token is taken as three bytes, which is about right for Chinese, Japanese and Hindi
+ * and leaves English room to spare.
+ */
+export function messageTooLong(text: string, window?: number) {
+  const bytes = new TextEncoder().encode(text).length;
+  return bytes > MESSAGE_MAX_BYTES || bytes / 3 > windowOf(window) * MESSAGE_AT_WINDOW;
 }
 
 /**

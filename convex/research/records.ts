@@ -569,6 +569,14 @@ export const changeAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   retryKey: "requestId",
+  // What nothing puts back asks the person first: clearing every search or every shortcut, deleting a
+  // search outright, and an edit made here, where the search tools check for themselves that theirs
+  // can be undone. The undo of a creation or of an edit, which names what it expects to find, doesn't.
+  asksFirst: async (_ctx, _userId, { command }) =>
+    command.kind === "clearSearches" ||
+    command.kind === "clearShortcuts" ||
+    (command.kind === "deleteSearch" && command.expect === undefined) ||
+    (command.kind === "editSearch" && !(command.edit.kind === "restore" && command.edit.expect !== undefined)),
   // The receipt makes a retried request apply once, from the page or from the assistant. It
   // keeps the undo, so a caller that lost the first answer gets the same one from a retry.
   run: async (ctx, userId, args, author: Author) => {

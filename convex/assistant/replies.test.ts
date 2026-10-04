@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
+import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import schema from "../schema";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { assistant } from "./agent";
@@ -42,7 +43,7 @@ const firstPage = { cursor: null, numItems: 20 };
 async function sharedChat(t: Test) {
   const who = await people(t);
   await t.run(async (ctx) => {
-    for (const userId of [who.ada, who.ben]) await seedCreditsForTest(ctx, { userId, free: 10_000 });
+    for (const userId of [who.ada, who.ben]) await seedCreditsForTest(ctx, { userId, free: 100_000 });
   });
   const threadId = await who.asAda.mutation(api.assistant.threads.create, { title: "Reading trials" });
   await who.asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: who.ben }, role: "write" });
@@ -158,13 +159,13 @@ describe("assistant replies", () => {
     expect(mockDoStream).not.toHaveBeenCalled();
   });
 
-  it("are limited to three at once for one person", async () => {
+  it("are limited to so many at once for one person, which a deployment's actions are shared by", async () => {
     const t = convexTest(schema);
     const { asAda, ada, threadId } = await sharedChat(t);
-    const others = await Promise.all(["Two", "Three", "Four"].map((title) => asAda.mutation(api.assistant.threads.create, { title })));
+    const others = await Promise.all(Array.from({ length: ASSISTANT_REPLIES_AT_ONCE }, (_, index) => asAda.mutation(api.assistant.threads.create, { title: `Chat ${index + 2}` })));
     mockDoStream.mockImplementation(hangingDoStream());
 
-    const writing = [threadId, others[0], others[1]];
+    const writing = [threadId, ...others.slice(0, -1)];
     // A lock whose action died, older than the live ones, doesn't count and doesn't hide them.
     const dead = await asAda.mutation(api.assistant.threads.create, { title: "Dead" });
     await t.run(async (ctx) => {
@@ -173,15 +174,15 @@ describe("assistant replies", () => {
       await ctx.db.patch("assistantThreads", dead, { reply: { attemptId: "dead", senderId: ada, order: 0, startedAt: 1, scheduledId } });
     });
     for (const id of writing) await asAda.mutation(api.assistant.replies.send, { threadId: id, text: "Go" });
-    await expect(asAda.mutation(api.assistant.replies.send, { threadId: others[2], text: "Go" })).rejects.toThrow(/already writing 3 replies/);
+    await expect(asAda.mutation(api.assistant.replies.send, { threadId: others.at(-1)!, text: "Go" })).rejects.toThrow(new RegExp(`already writing ${ASSISTANT_REPLIES_AT_ONCE} replies`));
 
     for (const id of writing) {
       await asAda.mutation(api.assistant.replies.stop, { threadId: id, attemptId: (await chat(t, id))!.reply!.attemptId });
       await ended(t, id);
     }
     mockDoStream.mockImplementation(finishingDoStream(["Ok"]));
-    await asAda.mutation(api.assistant.replies.send, { threadId: others[2], text: "Go" });
-    await ended(t, others[2]);
+    await asAda.mutation(api.assistant.replies.send, { threadId: others.at(-1)!, text: "Go" });
+    await ended(t, others.at(-1)!);
   });
 
   it("say why when they fail, and charge nothing", async () => {
@@ -208,14 +209,25 @@ describe("assistant replies", () => {
     expect(mockDoStream).not.toHaveBeenCalled();
   });
 
-  it("run on the Balanced preset's chat model until someone who writes in the chat picks one", async () => {
+  it("run on what the sender's own AI settings run chat on, until someone who writes in the chat picks a model for it", async () => {
     const t = convexTest(schema);
-    const { asAda, asBen, threadId } = await sharedChat(t);
-    const [balanced, picked] = [await mockModel(t, "mock/balanced"), await mockModel(t, "mock/picked")];
-    await t.run(async (ctx) => ctx.db.insert("aiModelConfig", { key: "preset.balanced.chat", modelId: "mock/balanced", updatedAt: 1 }));
+    const { asAda, asBen, ben, threadId } = await sharedChat(t);
+    const [balanced, cheap, picked] = [await mockModel(t, "mock/balanced"), await mockModel(t, "mock/cheap"), await mockModel(t, "mock/picked")];
+    await t.run(async (ctx) => {
+      await ctx.db.insert("aiModelConfig", { key: "preset.balanced.chat", modelId: "mock/balanced", effort: "medium", updatedAt: 1 });
+      await ctx.db.insert("aiModelConfig", { key: "preset.cheap.chat", modelId: "mock/cheap", updatedAt: 1 });
+      // Ben chose the Cheap preset. Ada chose nothing, which is the Balanced one.
+      await ctx.db.insert("userAiConfig", { userId: ben, choice: "cheap", updatedAt: 1 });
+    });
     mockDoStream.mockImplementation(finishingDoStream(["Ok"]));
 
+    // Each reads the chat's model as their own message would run on it.
     expect(await asAda.query(api.assistant.threads.get, { threadId })).toMatchObject({ model: { _id: balanced } });
+    expect(await asBen.query(api.assistant.threads.get, { threadId })).toMatchObject({ model: { _id: cheap } });
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "From Ben" });
+    await ended(t, threadId);
+    expect(modelIdsSeen).toEqual([cheap]);
+    modelIdsSeen.length = 0;
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "First" });
     await ended(t, threadId);
     await asBen.mutation(api.assistant.threads.setModel, { threadId, modelId: picked });

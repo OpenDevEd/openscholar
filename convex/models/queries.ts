@@ -186,6 +186,7 @@ export const getById = internalQuery({
       isServed: v.boolean(),
       inputPricePerMillion: v.number(),
       outputPricePerMillion: v.number(),
+      contextLength: v.optional(v.number()),
     }),
   ),
   handler: async (ctx, { modelId }) => {
@@ -199,6 +200,7 @@ export const getById = internalQuery({
       isServed: row.isServed,
       inputPricePerMillion: row.inputPricePerMillion,
       outputPricePerMillion: row.outputPricePerMillion,
+      ...(row.contextLength === undefined ? {} : { contextLength: row.contextLength }),
     };
   },
 });

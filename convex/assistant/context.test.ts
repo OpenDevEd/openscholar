@@ -9,7 +9,7 @@ import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/bill
 import schema from "../schema";
 import { INSTRUCTIONS, assistant } from "./agent";
 import { people } from "./assistant.test-support";
-import { COMPACT_AT_TOKENS, MAX_CONTEXT_BYTES, MAX_CONTEXT_MESSAGES, compactionDue } from "./context";
+import { COMPACT_AT_TOKENS, MAX_CONTEXT_BYTES, MAX_CONTEXT_MESSAGES, compactionDue, full, messageTooLong } from "./context";
 import { finishingDoStream, waitFor } from "./turn.test-support";
 
 type Part = { type: string; text?: string };
@@ -314,5 +314,31 @@ describe("what the assistant's model is sent", () => {
     expect(compactionDue({ ...small, messages: MAX_CONTEXT_MESSAGES - 3 })).toBe(false);
     expect(compactionDue({ ...small, messages: MAX_CONTEXT_MESSAGES - 2 })).toBe(true);
     expect(compactionDue({ ...small, bytes: MAX_CONTEXT_BYTES })).toBe(true);
+  });
+
+  it("is full, for a reply still running, at 60% of the model's window, 400 messages or 4 MB, and not at the 50,000 tokens that compact it afterwards", () => {
+    const small = { lastInputTokens: 100, messages: 10, bytes: 1_000 };
+    expect(full({ ...small, lastInputTokens: COMPACT_AT_TOKENS + 1, window: 1_000_000 })).toBe(false);
+    expect(full({ ...small, lastInputTokens: 38_400, window: 64_000 })).toBe(false);
+    expect(full({ ...small, lastInputTokens: 38_401, window: 64_000 })).toBe(true);
+    // A window the catalog doesn't say is taken to be one that fills where it compacts.
+    expect(full({ ...small, lastInputTokens: COMPACT_AT_TOKENS - 1 })).toBe(false);
+    expect(full({ ...small, lastInputTokens: COMPACT_AT_TOKENS + 1 })).toBe(true);
+    expect(full({ ...small, messages: MAX_CONTEXT_MESSAGES - 3 })).toBe(false);
+    expect(full({ ...small, messages: MAX_CONTEXT_MESSAGES - 2 })).toBe(true);
+    expect(full({ ...small, bytes: MAX_CONTEXT_BYTES })).toBe(true);
+  });
+
+  it("takes a message as long as its record holds and as the model reads beside the conversation", () => {
+    // A record holds 450,000 bytes of one message, whatever the model.
+    expect(messageTooLong("a".repeat(450_000), 2_000_000)).toBe(false);
+    expect(messageTooLong("a".repeat(450_001), 2_000_000)).toBe(true);
+    // Outside ASCII a character is more bytes, so fewer fit.
+    expect(messageTooLong("文".repeat(150_000), 2_000_000)).toBe(false);
+    expect(messageTooLong("文".repeat(150_001), 2_000_000)).toBe(true);
+    // A model reads 30% of its window in one message, at three bytes a token: about 115,000 bytes of a 128,000-token window.
+    expect(messageTooLong("a".repeat(100_000), 128_000)).toBe(false);
+    expect(messageTooLong("a".repeat(130_000), 128_000)).toBe(true);
+    expect(messageTooLong("a".repeat(130_000), 1_000_000)).toBe(false);
   });
 });

@@ -33,6 +33,8 @@ export type ResolvedChatModel = {
   model: Awaited<ReturnType<typeof getProviderModel>>;
   modelSlug: string;
   pricing: Pricing;
+  /** Tokens the model reads at once, where the catalog says. */
+  window?: number;
 };
 
 /**
@@ -52,6 +54,7 @@ export async function resolveOpenRouterModel(
 ): Promise<ResolvedChatModel> {
   let modelSlug: string;
   let pricing: Pricing;
+  let window: number | undefined;
 
   if (modelId) {
     const row = await ctx.runQuery(
@@ -68,6 +71,7 @@ export async function resolveOpenRouterModel(
       );
     }
     modelSlug = row.modelId;
+    window = row.contextLength;
     pricing = {
       input: row.inputPricePerMillion,
       output: row.outputPricePerMillion,
@@ -87,7 +91,7 @@ export async function resolveOpenRouterModel(
     pricing = p ?? { input: 0, output: 0 };
   }
 
-  return { model: await openRouterModel(modelSlug, options), modelSlug, pricing };
+  return { model: await openRouterModel(modelSlug, options), modelSlug, pricing, window };
 }
 
 /** A catalog model the caller already read, wired through OpenRouter with the server's provider preferences. */
