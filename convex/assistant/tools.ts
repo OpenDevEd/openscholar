@@ -157,7 +157,9 @@ export function found(keywords: string) {
  * The assistant's tools for one reply. `userId` is who it acts as, and each action it runs
  * is kept as a step of exchange `order`. `attemptId` names this run of the reply: with a
  * count of its calls it makes each call's own key, since models reuse their call IDs.
- * `stopped` says why the reply's actions have stopped, once they have.
+ * `stopped` says why the reply's actions have stopped, once they have. `made` is how many
+ * calls the reply had made before it asked the person something, when it carries on from
+ * their answer: one reply's calls are counted through every pause, so they all fit the chat's page.
  *
  * `approval` is the reply's rule for asking first, which pauses it at a call the person is
  * asked about. `resume` runs a step they then allowed; its outcome is written to the model
@@ -165,9 +167,9 @@ export function found(keywords: string) {
  */
 export function toolsFor(
   ctx: ActionCtx,
-  { userId, threadId, order, attemptId, stopped }: { userId: Id<"users">; threadId: Id<"assistantThreads">; order: number; attemptId: string; stopped: () => string | null },
+  { userId, threadId, order, attemptId, stopped, made = 0 }: { userId: Id<"users">; threadId: Id<"assistantThreads">; order: number; attemptId: string; stopped: () => string | null; made?: number },
 ) {
-  let calls = 0;
+  let calls = made;
   let asked = 0;
   /**
    * Runs one call, kept as a step from when it starts to how it ended. The model reads the
@@ -183,7 +185,8 @@ export function toolsFor(
       // One that asks first only gets here allowed. The rest is refused: an action that spends credits, or a call nothing asked about.
       if (!runsWithoutAsking(entry)) return { error: ASKS_FIRST };
     }
-    const key = `${attemptId}:${calls++}`;
+    // A call the person allowed was counted when it was asked about.
+    const key = allowed ? `${attemptId}:${allowed}` : `${attemptId}:${calls++}`;
     const subject = subjectOf(input);
     const stepId = allowed ?? (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}) }));
     try {
@@ -212,6 +215,7 @@ export function toolsFor(
     if (JSON.stringify(call.input).length > STEP_TEXT_MAX) return { type: "denied" as const, reason: "Its arguments are too long to ask the person about." };
     if (asked >= MAX_ASKS) return { type: "denied" as const, reason: `A reply asks the person about at most ${MAX_ASKS} actions at a time. Ask about the rest once these are answered.` };
     asked++;
+    calls++;
     return "user-approval" as const;
   };
   const resume = async (step: { stepId: Id<"assistantSteps">; toolCallId: string; path: string; input: string }) => {
@@ -247,5 +251,5 @@ export function toolsFor(
       },
     }),
   };
-  return { tools, approval, resume };
+  return { tools, approval, resume, made: () => calls };
 }

@@ -2,8 +2,9 @@
  * What a call the assistant asks about would do, for the person asked: its arguments, one
  * by one, so they allow the exact change and not just a kind of action. A record an argument
  * names by ID is shown by its name, but only where that person can already see it: a chat
- * they can open, a collection of theirs, an organization they're in, someone in one of
- * their organizations. Any other ID stays an ID, so asking never reveals a name.
+ * they can open, a collection, a saved or removed paper of theirs, an organization they're
+ * in, someone in one of their organizations. Any other ID stays an ID, so asking never
+ * reveals a name.
  */
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
@@ -16,13 +17,15 @@ const VALUE_MAX = 200;
 /** How deep an argument's own fields are listed. */
 const DEPTH_MAX = 3;
 
+type Leaf = [path: string[], value: string | number | boolean | null];
+
 /** An argument's name: the last part of its path, without the "Id" that only says it's a reference. */
 const nameOf = (path: string[]) => (path.at(-1) ?? "").replace(/Ids?$/, "") || (path.at(-2) ?? "");
 
-/** Every plain value among a call's arguments, with the path to it. */
-function plain(value: unknown, path: string[] = []): Array<[string[], string | number | boolean]> {
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return [[path, value]];
-  if (!value || typeof value !== "object" || path.length >= DEPTH_MAX) return [];
+/** Every plain value among a call's arguments, with the path to it. One given as null is kept: taking a value off is a change too. */
+function plain(value: unknown, path: string[] = []): Leaf[] {
+  if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") return [[path, value]];
+  if (typeof value !== "object" || path.length >= DEPTH_MAX) return [];
   return Object.entries(value).flatMap(([key, inner]) => plain(inner, Array.isArray(value) ? path : [...path, key]));
 }
 
@@ -44,6 +47,16 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
       const collection = await ctx.db.get("collections", collectionId);
       return collection?.userId === reader._id ? collection.name : null;
     }
+    const itemId = ctx.db.normalizeId("libraryItems", id);
+    if (itemId) {
+      const item = await ctx.db.get("libraryItems", itemId);
+      return item?.userId === reader._id ? item.title : null;
+    }
+    const removalId = ctx.db.normalizeId("libraryRemovals", id);
+    if (removalId) {
+      const removal = await ctx.db.get("libraryRemovals", removalId);
+      return removal?.userId === reader._id ? removal.item.title : null;
+    }
     const organizationId = ctx.db.normalizeId("organizations", id);
     if (organizationId) return mine.find(({ organization }) => organization._id === organizationId)?.organization.name ?? null;
     const userId = ctx.db.normalizeId("users", id);
@@ -57,9 +70,13 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
     // The model catalog is the same for everyone.
     return modelId ? ((await ctx.db.get("models", modelId))?.name ?? null) : null;
   };
+  // The call's own arguments come before the fields inside them, so what it acts on and what
+  // it changes are shown even when a paper it carries has more fields than fit.
+  const leaves = plain(args).sort(([a], [b]) => a.length - b.length);
   const details: Array<{ name: string; value: string }> = [];
-  for (const [path, value] of plain(args).slice(0, ASKED_DETAILS_MAX)) {
-    const shown = typeof value === "string" ? ((await named(value)) ?? value) : String(value);
+  for (const [path, value] of leaves.slice(0, ASKED_DETAILS_MAX)) {
+    // A name that can't be read, such as someone in more organizations than are read at once, stays an ID.
+    const shown = typeof value === "string" ? ((await named(value).catch(() => null)) ?? value) : String(value);
     details.push({ name: nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown });
   }
   return details;

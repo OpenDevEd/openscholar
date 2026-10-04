@@ -29,10 +29,10 @@ export const reply = internalAction({
     modelId: v.union(v.id("models"), v.null()),
     effort: v.optional(effortValidator),
     // What the reply used of one reply's credits and rounds before it asked the person something, when it carries on from their answer.
-    used: v.optional(v.object({ credits: v.number(), rounds: v.number() })),
+    used: v.optional(v.object({ credits: v.number(), rounds: v.number(), calls: v.number() })),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort, used = { credits: 0, rounds: 0 } }) => {
+  handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort, used = { credits: 0, rounds: 0, calls: 0 } }) => {
     const lock = { threadId, attemptId };
     const state = () => ctx.runQuery(internal.assistant.replies.lockState, lock);
     // Ends a reply stopped before the model is called: no credits are held, and the chat shows a stopped reply.
@@ -79,7 +79,7 @@ export const reply = internalAction({
     let step = { number: 0, credits: 0 };
     const stopped = () => (used.rounds + step.number >= MAX_STEPS - 2 ? OUT_OF_STEPS : step.credits >= Math.min(cap, left) ? OUT_OF_CREDITS : null);
     // Each action it runs is kept as a step of the exchange it's answering.
-    const { tools, approval, resume } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped });
+    const { tools, approval, resume, made } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped, made: used.calls });
     // A reply that waited for an answer carries on here: what the person allowed runs first,
     // and each result is written where the model's call left off. A Stop ends it between two.
     const allowed = await ctx.runQuery(internal.assistant.steps.allowed, { threadId });
@@ -103,7 +103,8 @@ export const reply = internalAction({
       credits: cap,
       tools,
       approval,
-      maxSteps: MAX_STEPS,
+      // What's left of one reply's requests, and always one for its answer.
+      maxSteps: Math.max(1, MAX_STEPS - used.rounds),
       onStep: (now) => {
         step = now;
       },
@@ -125,7 +126,7 @@ export const reply = internalAction({
         return ctx.runMutation(internal.assistant.replies.release, {
           ...lock,
           ended: { ...turn, ...history, lastInputTokens },
-          ...(calls.length ? { asking: { promptMessageId, calls, spent: used.credits + credits, rounds: used.rounds + requests } } : {}),
+          ...(calls.length ? { asking: { promptMessageId, calls, spent: used.credits + credits, rounds: used.rounds + requests, made: made() } } : {}),
         });
       },
     });

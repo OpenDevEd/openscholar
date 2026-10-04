@@ -8,6 +8,7 @@ import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
 import { people } from "./assistant.test-support";
+import { detailsOf } from "./details";
 import { MAX_ASKS } from "./steps";
 import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found } from "./tools";
 import { finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
@@ -317,16 +318,18 @@ describe("the assistant's tools", () => {
 
   it("run nothing the person allowed once the reply is stopped, and still give every call its result", async () => {
     const t = convexTest(schema);
-    const { asAda, threadId, say, sayUntilAsked, stop, steps, shown } = await chatOf(t);
+    const { asAda, threadId, say, sayUntilAsked, steps, shown } = await chatOf(t);
     const [first, second] = await Promise.all(["Old chat", "Older chat"].map((title) => asAda.mutation(api.assistant.threads.create, { title })));
     const remove = (id: string, chat: string) => ({ id, name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: chat } } });
     mockDoStream.mockImplementationOnce(calling(remove("one", first), remove("two", second)));
     await sayUntilAsked("Delete my old chats");
     const [one, two] = await steps();
+    // What Stop takes while the reply waits, as another tab of hers holds it.
+    const waiting = (await asAda.query(api.assistant.replies.live, { threadId }))!.attemptId;
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: one._id, allow: true });
-    // The last answer starts the reply again. It's stopped before it runs.
+    // The last answer starts the reply again. Stop, pressed on the waiting reply, arrives just after it: it stops the reply all the same.
     await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: two._id, allow: true });
-    await stop();
+    await asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: waiting });
     await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: 5_000 });
 
     // Neither chat was deleted, and both calls show as not run.
@@ -369,6 +372,60 @@ describe("the assistant's tools", () => {
     expect(outcome(0, "delete")).toMatchObject({ type: "json", value: { error: expect.stringMatching(/may or may not have finished/) } });
     expect((await steps())[0]).toMatchObject({ status: "failed" });
     expect((await thread())?.asking).toBeUndefined();
+  });
+
+  it("give a call its result from the conversation itself, when its reply died before recording that it asked", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, say, sayUntilAsked, steps } = await chatOf(t);
+    const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
+    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } }));
+    await sayUntilAsked("Delete my old chat");
+    // The call is saved with the reply's message. A reply that dies right then leaves no step for it and holds nothing.
+    await t.run(async (ctx) => {
+      for (const step of await ctx.db.query("assistantSteps").collect()) await ctx.db.delete("assistantSteps", step._id);
+      await ctx.db.patch("assistantThreads", threadId, { asking: undefined });
+    });
+    requests.length = 0;
+    mockDoStream.mockImplementationOnce(finishingDoStream(["It wasn't deleted."]));
+    await say("Did that work?");
+    expect(outcome(0, "delete")).toMatchObject({ type: "execution-denied" });
+    expect(await steps()).toEqual([]);
+    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).not.toBeNull();
+  });
+
+  it("show the person what a call acts on and what it changes before anything else about it", async () => {
+    const t = convexTest(schema);
+    const { ada, asAda } = await chatOf(t);
+    const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
+    const paper = Object.fromEntries(Array.from({ length: 14 }, (_, index) => [`field${index}`, `value ${index}`]));
+    const details = await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ paper, collectionId, inCollection: false, note: null })));
+    // The call's own arguments lead, a value taken off is said, and the paper's fields fill what's left.
+    expect(details.slice(0, 3)).toEqual([{ name: "collection", value: "Trials" }, { name: "inCollection", value: "false" }, { name: "note", value: "null" }]);
+    expect(details).toHaveLength(12);
+    // A collection that isn't hers stays an ID.
+    const theirs = await t.run(async (ctx) => ctx.db.insert("collections", { ...(await ctx.db.get("collections", collectionId))!, _id: undefined, _creationTime: undefined, userId: (await ctx.db.query("users").collect()).find((user) => user._id !== ada)!._id, name: "Private to someone else" } as never));
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId: theirs })))).toEqual([{ name: "collection", value: theirs }]);
+  });
+
+  it("keep one reply to its requests through a pause: carrying on gets what's left of them", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, sayUntilAsked, settled, steps, thread } = await chatOf(t);
+    const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
+    const list = () => ({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } });
+    // Nine rounds of reading, then a round that asks: ten of the reply's twelve requests.
+    mockDoStream.mockImplementation(async () => (requests.length < 10 ? calling(list())() : calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } })()));
+    await sayUntilAsked("Read around, then delete my old chat");
+    expect((await thread())?.asking).toMatchObject({ rounds: 10, made: 10 });
+
+    // Carrying on, the model keeps calling. Its actions have stopped, and its second request is made to answer.
+    toolChoices.length = 0;
+    mockDoStream.mockImplementation(async (options: { toolChoice?: { type: string } }) => (options.toolChoice?.type === "none" ? finishingDoStream(["Deleted. That's all I could do in one reply."])() : calling(list())()));
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: true });
+    await settled();
+    expect(requests).toHaveLength(MAX_STEPS);
+    expect(toolChoices).toEqual(["auto", "none"]);
+    expect(told(MAX_STEPS - 1, `c${MAX_STEPS - 1}`)).toMatchObject({ error: expect.stringMatching(/as many rounds/) });
+    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).toBeNull();
   });
 
   it("claim a step the person allowed only for the reply that carries on, and not once that reply is stopped", async () => {

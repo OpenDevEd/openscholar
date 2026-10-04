@@ -10,8 +10,9 @@
  * step writes that result in the same transaction: the action's outcome when the person
  * allowed it, or that they didn't. `settleAsked` ends any that a stopped or dead reply left.
  */
+import { listMessages } from "@convex-dev/agent";
 import { v } from "convex/values";
-import { internal } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
@@ -170,17 +171,42 @@ export async function declineSteps(ctx: MutationCtx, steps: Step[], reason = DEC
 }
 
 /**
- * Ends every call a reply asked about that nothing will end now: the reply was stopped,
- * died, or was never carried on. Ones still waiting, or allowed and not yet run, are
- * declined. One that had started may or may not have finished, and says so. After this,
- * each of the model's calls has its result, so the conversation reads whole again.
+ * Ends every step nothing will end now, when no reply is running in the chat: its reply
+ * was stopped, died, or was never carried on. Calls still waiting, or allowed and not yet
+ * run, are declined. A step that had started may or may not have finished, and says so;
+ * one the person was asked about tells the model too. After this, each call the reply
+ * asked about has its result, so the conversation reads whole again.
  */
 export async function settleAsked(ctx: MutationCtx, threadId: Id<"assistantThreads">) {
   await declineSteps(ctx, [...(await stepsAt(ctx, threadId, "asking")), ...(await stepsAt(ctx, threadId, "allowed"))], "This wasn't run: the reply ended before the person's answer could be acted on.");
-  // ponytail: reads the chat's first 40 running steps, and a step whose reply died stays running. A chat with that many dead ones could hide an asked one here; end dead steps when their reply's lock is swept if that ever shows.
-  for (const step of await stepsAt(ctx, threadId, "running")) {
-    if (step.tool && step.prompt) await failStep(ctx, step, "The reply ended while this ran, so it may or may not have finished. Check before trying it again.");
-  }
+  // Every one read is ended, so a chat with many dead steps is worked through and none hides behind them.
+  for (const step of await stepsAt(ctx, threadId, "running")) await failStep(ctx, step, "The reply ended while this ran, so it may or may not have finished. Check before trying it again.");
+}
+
+/** Messages of a chat's newest exchange that are read to find calls left without a result: more than a reply's rounds write. */
+const HEAL_MESSAGES = 80;
+type Part = { type?: string; toolCallId?: string; toolName?: string };
+const partsOf = (content: unknown): Part[] => (Array.isArray(content) ? (content as Part[]) : []);
+
+/**
+ * Gives a result to any call of the chat's newest exchange that has none, read from the
+ * conversation itself. A reply that died between asking the person and recording what it
+ * asked leaves such calls with no step to end them by, and the provider refuses a
+ * conversation that holds one. Run before the chat takes its next message.
+ */
+export async function healCalls(ctx: MutationCtx, agentThreadId: string) {
+  const { page } = await listMessages(ctx, components.agent, { threadId: agentThreadId, paginationOpts: { numItems: HEAL_MESSAGES, cursor: null }, statuses: ["success"] });
+  const exchange = page.filter((doc) => doc.order === page[0]?.order);
+  const answered = new Set(exchange.flatMap((doc) => partsOf(doc.message?.content).flatMap((part) => (part.type === "tool-result" && part.toolCallId ? [part.toolCallId] : []))));
+  const open = exchange.flatMap((doc) => (doc.message?.role === "assistant" ? partsOf(doc.message.content).filter((part) => part.type === "tool-call" && part.toolCallId && !answered.has(part.toolCallId)) : []));
+  const prompt = exchange.find((doc) => doc.message?.role === "user");
+  if (!open.length || !prompt) return;
+  await assistant.saveMessage(ctx, {
+    threadId: agentThreadId,
+    promptMessageId: prompt._id,
+    message: { role: "tool", content: open.map((call) => ({ type: "tool-result" as const, toolCallId: call.toolCallId!, toolName: call.toolName ?? "", output: { type: "execution-denied" as const, reason: "This was never run: the reply ended before it could be." } })) },
+    skipEmbeddings: true,
+  });
 }
 
 /**

@@ -30,7 +30,7 @@ import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { compactionDue } from "./context";
 import { detailsOf } from "./details";
-import { declineSteps, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
+import { declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { askedDetailsValidator } from "./validators";
 
@@ -86,8 +86,9 @@ export const send = mutation({
     if (await writing(ctx, thread.reply)) throw createError("CONFLICT", "The assistant is still replying in this chat.");
     if (thread.asking) throw createError("CONFLICT", "The assistant is waiting for an answer in this chat. Answer it, or stop the reply.");
     await admit(ctx, userId);
-    // A reply that was stopped, or died, as it carried on from an answer can leave calls without their results.
+    // A reply that was stopped, or died, around asking the person can leave calls without their results.
     await settleAsked(ctx, threadId);
+    await healCalls(ctx, thread.agentThreadId);
     const { modelId, effort } = await chatModel(ctx, thread);
     // The model the chat falls back on, or one picked before the rule, is held to it too. So is
     // the server's own default, which runs when nothing picks a model, where the catalog has it.
@@ -119,7 +120,8 @@ export const send = mutation({
 });
 
 /** What Stop takes for a reply that waits for an answer: no reply is being written then, so it has no attempt of its own. */
-const waitingAttempt = (waiting: { order: number; askedAt: number }) => `waiting:${waiting.order}:${waiting.askedAt}`;
+const waitingPrefix = (order: number) => `waiting:${order}:`;
+const waitingAttempt = (waiting: { order: number; askedAt: number }) => `${waitingPrefix(waiting.order)}${waiting.askedAt}`;
 
 /** The person's answer to a call the assistant asked about (./steps.ts): run it, or don't. */
 export const answer = mutation({
@@ -152,7 +154,7 @@ export const answer = mutation({
       senderId: waiting.senderId,
       modelId: waiting.modelId,
       effort: waiting.effort,
-      used: { credits: waiting.spent, rounds: waiting.rounds },
+      used: { credits: waiting.spent, rounds: waiting.rounds, calls: waiting.made },
     });
     await ctx.db.patch("assistantThreads", threadId, { asking: undefined, reply: { attemptId, senderId: waiting.senderId, order: waiting.order, startedAt: now, scheduledId } });
     return null;
@@ -202,8 +204,11 @@ export const stop = mutation({
     const { thread } = await requireThread(ctx, userId, threadId, "write");
     // One that waits for an answer has nothing running to hear the stop, so it ends here.
     if (thread.asking && attemptId === waitingAttempt(thread.asking)) await stopAsking(ctx, thread, thread.asking);
-    // A reply that has ended, or a later one, isn't this Stop's to stop.
-    else if (thread.reply?.attemptId === attemptId) await ctx.db.patch("assistantThreads", threadId, { reply: { ...thread.reply, stop: true } });
+    // The reply being written, or the same reply carrying on from an answer that was given as Stop
+    // was pressed on it waiting. A reply that has ended, or a later exchange's, isn't this Stop's to stop.
+    else if (thread.reply && (thread.reply.attemptId === attemptId || attemptId.startsWith(waitingPrefix(thread.reply.order)))) {
+      await ctx.db.patch("assistantThreads", threadId, { reply: { ...thread.reply, stop: true } });
+    }
     return null;
   },
 });
@@ -237,6 +242,7 @@ export const release = internalMutation({
         calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()) })),
         spent: v.number(),
         rounds: v.number(),
+        made: v.number(),
       }),
     ),
   },
@@ -271,6 +277,7 @@ export const release = internalMutation({
         ...(ended.effort ? { effort: ended.effort } : {}),
         spent: asking.spent,
         rounds: asking.rounds,
+        made: asking.made,
         askedAt: now,
       };
       await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: undefined, asking: waiting });
