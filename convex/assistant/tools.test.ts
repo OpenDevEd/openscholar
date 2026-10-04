@@ -7,6 +7,7 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
+import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
 import { MAX_ASKS } from "./steps";
@@ -613,6 +614,14 @@ describe("the assistant's tools", () => {
     expect(toolsSent[0]).toHaveLength(core().length + 2);
     // About 1,000 tokens at most for a tool's description and arguments (#326).
     for (const entry of core()) expect(JSON.stringify(definition(entry)).length, entry.path).toBeLessThanOrEqual(DEFINITION_MAX);
+  });
+
+  it("return nothing Convex can't keep: no field of an action's definition is named with a dollar sign or an underscore", () => {
+    // A tool's result is saved with the reply as it streams. A field named like that fails the save, which ends the reply.
+    const reserved = (value: unknown, path = ""): string[] =>
+      !value || typeof value !== "object" ? [] : Object.entries(value).flatMap(([key, inner]) => [...(/^[$_]/.test(key) ? [path + "." + key] : []), ...reserved(inner, path + "." + key)]);
+    expect(USER_ACTIONS.flatMap((entry) => reserved(definition(entry), entry.path))).toEqual([]);
+    expect(reserved(found("rename collection share chat delete search"))).toEqual([]);
   });
 
   it("find actions by what they do, with the arguments they take and whether they ask first", () => {
