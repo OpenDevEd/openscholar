@@ -62,10 +62,11 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
   };
 
   // The bookmark's name, in its own colour. In the list views it sits in a column, so the expansions line up.
+  // It sits above the entry's hit area so its full name can show when clipped; a click still uses it.
   const name = (
     <span className={cn("flex min-w-0", grid ? "flex-1" : "w-36 shrink-0")}>
       <TooltipHint label={bookmark.name} onlyWhenClipped>
-        <EntryTile id={bookmark.name} className="relative z-10 inline-flex min-w-0 shrink font-mono font-medium">
+        <EntryTile id={bookmark.name} className="relative z-10 inline-flex min-w-0 shrink font-mono font-medium" onClick={isEditing ? undefined : useInSearch}>
           <span className="truncate">{bookmark.name}</span>
         </EntryTile>
       </TooltipHint>

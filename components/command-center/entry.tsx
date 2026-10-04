@@ -44,21 +44,23 @@ export const ENTRY_OPEN =
 
 /**
  * The entry's time, and the actions that take its place while the entry is
- * pointed at, focused or active, so nothing moves and no space sits empty. A
- * touch screen has no pointer to wait for, so it shows both.
+ * pointed at, reached with the keyboard or active, so nothing moves and no
+ * space sits empty. Focus from a click doesn't count, or the actions would stay
+ * after the pointer leaves. A touch screen has no pointer to wait for, so it
+ * shows both.
  */
 export function EntryAside({ meta, className, children }: { meta: ReactNode; className?: string; children?: ReactNode }) {
   return (
     <div className={cn("relative flex min-w-[5.25rem] shrink-0 items-center justify-end gap-1", className)}>
       {children ? (
-        <div className="z-10 flex items-center transition-opacity [@media(hover:hover)]:absolute [@media(hover:hover)]:right-0 [@media(hover:hover)]:[[data-entry]:not(:hover,:focus-within,[data-active])_&]:opacity-0">
+        <div className="z-10 flex items-center transition-opacity [@media(hover:hover)]:absolute [@media(hover:hover)]:right-0 [@media(hover:hover)]:[[data-entry]:not(:hover,:has(:focus-visible),[data-active])_&]:opacity-0">
           {children}
         </div>
       ) : null}
       <span
         className={cn(
           "whitespace-nowrap text-xs tabular-nums text-muted-foreground transition-opacity",
-          children && "group-hover/entry:opacity-0 group-data-[active]/entry:opacity-0 [@media(hover:hover)]:group-focus-within/entry:opacity-0",
+          children && "group-hover/entry:opacity-0 [@media(hover:hover)]:group-data-[active]/entry:opacity-0 [@media(hover:hover)]:group-has-[:focus-visible]/entry:opacity-0",
         )}
       >
         {meta}

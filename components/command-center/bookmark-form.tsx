@@ -20,7 +20,9 @@ export function BookmarkForm({ query, onDone, className }: { query: string; onDo
   const tc = useTranslations("common");
   const th = useTranslations("historyPage");
   const tv = useTranslations("validation");
-  const [name, setName] = useState("");
+  const [typed, setTyped] = useState("");
+  // A name starts and ends with a letter or number.
+  const name = typed.replace(/^-+|-+$/g, "");
   const addKeyword = useKeywordExpansionStore((state) => state.addKeyword);
 
   const save = async (event: FormEvent) => {
@@ -47,8 +49,8 @@ export function BookmarkForm({ query, onDone, className }: { query: string; onDo
         <input
           aria-label={tc("saveAsBookmark")}
           placeholder={th("bookmarkNamePlaceholder")}
-          value={name}
-          onChange={(event) => setName(event.target.value.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-]/g, ""))}
+          value={typed}
+          onChange={(event) => setTyped(event.target.value.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-]/g, ""))}
           onKeyDown={(event) => {
             if (event.key === "Escape") onDone();
           }}

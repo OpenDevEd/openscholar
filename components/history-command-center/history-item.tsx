@@ -98,13 +98,18 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
 
   // How many queries the search has had; opens them.
   const versions = item.queryHistoryCount > 1 ? (
-    <Popover open={isQueryHistoryOpen && !history.isLoading} onOpenChange={setIsQueryHistoryOpen}>
+    <Popover open={isQueryHistoryOpen && !history.isLoading} onOpenChange={(next) => !next && setIsQueryHistoryOpen(false)}>
       <TooltipHint label={th("queryHistory")}>
         <PopoverTrigger asChild>
           <button
             type="button"
             aria-label={th("queryHistory")}
             className="relative z-10 inline-flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs tabular-nums text-muted-foreground transition-colors hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground"
+            // Toggled here, not by the popover: it isn't open yet while the queries load, and a second click must still cancel.
+            onClick={(event) => {
+              event.preventDefault();
+              setIsQueryHistoryOpen(!isQueryHistoryOpen);
+            }}
             onPointerEnter={() => setIsHistoryWanted(true)}
             onPointerLeave={() => setIsHistoryWanted(false)}
             onFocus={() => setIsHistoryWanted(true)}

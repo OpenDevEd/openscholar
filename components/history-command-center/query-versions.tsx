@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FocusEvent } from "react";
 import { useTranslations, useFormatter, useNow } from "next-intl";
 import { BookmarkPlus, Copy, Trash2 } from "@/components/icons";
 import { BookmarkForm } from "@/components/command-center";
@@ -36,6 +36,9 @@ export function QueryVersions({
   const [bookmarking, setBookmarking] = useState<string | null>(null);
   const removeQueryHistoryEntry = useSearchHistoryStore((state) => state.removeQueryHistoryEntry);
 
+  // A tooltip opened by keyboard focus would take the first Escape from the popover.
+  const noTooltipOnFocus = { onFocus: (event: FocusEvent) => event.preventDefault() };
+
   const copy = async (query: string) => {
     try {
       await navigator.clipboard.writeText(query);
@@ -46,7 +49,7 @@ export function QueryVersions({
 
   return (
     <ol
-      className="max-h-80 divide-y divide-border-subtle overflow-y-auto"
+      className="max-h-[min(20rem,var(--radix-popover-content-available-height))] divide-y divide-border-subtle overflow-y-auto"
       onScroll={onLoadOlder && ((event) => {
         const list = event.currentTarget;
         if (list.scrollTop + list.clientHeight >= list.scrollHeight - 48) onLoadOlder();
@@ -78,9 +81,9 @@ export function QueryVersions({
               <>
                 <p className="min-w-0 flex-1 py-0.5 text-sm [overflow-wrap:anywhere]">{entry.query}</p>
                 <EntryAside meta={<time dateTime={entry.timestamp}>{format.relativeTime(new Date(entry.timestamp), now)}</time>} className="h-6">
-                  <EntryAction label={tc("copyQuery")} icon={Copy} onClick={() => void copy(entry.query)} />
-                  {!readOnly && <EntryAction label={tc("saveAsBookmark")} icon={BookmarkPlus} onClick={() => setBookmarking(key)} />}
-                  {!readOnly && !current && <EntryAction label={tc("delete")} icon={Trash2} danger onClick={() => removeQueryHistoryEntry(searchId, entry)} />}
+                  <EntryAction label={tc("copyQuery")} icon={Copy} onClick={() => void copy(entry.query)} {...noTooltipOnFocus} />
+                  {!readOnly && <EntryAction label={tc("saveAsBookmark")} icon={BookmarkPlus} onClick={() => setBookmarking(key)} {...noTooltipOnFocus} />}
+                  {!readOnly && !current && <EntryAction label={tc("delete")} icon={Trash2} danger onClick={() => removeQueryHistoryEntry(searchId, entry)} {...noTooltipOnFocus} />}
                 </EntryAside>
               </>
             )}

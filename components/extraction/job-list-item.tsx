@@ -50,8 +50,13 @@ export function JobListItem({ job, viewMode }: JobListItemProps) {
       <KindIcon aria-hidden className="size-4" />
     </span>
   );
-  // A chat has no pipeline, so it has no state to show.
-  const state = isChat ? null : <JobStatusIcon status={status} label={statusLabel} className="relative z-10" />;
+  // A chat has no pipeline, so it has no state to show. The icon sits above the entry's
+  // hit area so it can say what it means, in a link of its own so a click on it still opens the job.
+  const state = isChat ? null : (
+    <Link href={`/extraction/${job._id}`} tabIndex={-1} className="relative z-10 flex shrink-0">
+      <JobStatusIcon status={status} label={statusLabel} />
+    </Link>
+  );
   const open = (clamp: string) => (
     <Link href={`/extraction/${job._id}`} className={cn(ENTRY_OPEN, clamp)}>
       {job.name}
