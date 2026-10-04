@@ -3,11 +3,27 @@
  * and organizations in. Its messages live in the agent component, under `agentThreadId`.
  */
 import { v } from "convex/values";
+import { effortValidator } from "../aiModelConfig/validators";
 
 /** What someone may do in a chat: the owner also shares, renames and deletes it; `write` sends messages; `read` only reads. */
 export const assistantRoleValidator = v.union(v.literal("owner"), v.literal("write"), v.literal("read"));
 /** The roles an owner hands out. */
 export const assistantGrantRoleValidator = v.union(v.literal("write"), v.literal("read"));
+
+/** The reply a chat is writing. It writes one at a time, so this is also the chat's lock. */
+export const assistantReplyValidator = v.object({
+  /** Names this run of the reply, so a late write from an earlier run changes nothing. */
+  attemptId: v.string(),
+  /** Who sent the message it answers. It runs with their access, on their credits. */
+  senderId: v.id("users"),
+  /** The exchange it belongs to: the agent component's order of the message it answers. */
+  order: v.number(),
+  startedAt: v.number(),
+  /** The scheduled action writing it. The reply is being written while that waits to run or runs. */
+  scheduledId: v.id("_scheduled_functions"),
+  /** Set when someone stops it. */
+  stop: v.optional(v.boolean()),
+});
 
 export const assistantThreadFields = {
   ownerId: v.id("users"),
@@ -15,6 +31,11 @@ export const assistantThreadFields = {
   agentThreadId: v.string(),
   /** When its newest message was sent; a chat with none yet has when it was made. */
   lastMessageAt: v.number(),
+  /** The model its replies run on; a chat with none runs the server's default. */
+  modelId: v.optional(v.id("models")),
+  /** The reasoning effort its replies run at, when the model takes one. */
+  effort: v.optional(effortValidator),
+  reply: v.optional(assistantReplyValidator),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
