@@ -54,10 +54,10 @@ const LOOP_MS = 2_000;
 /** What is typed and not yet sent, a draft per chat, so one chat's never lands in another. */
 type Drafts = { of: (id: ThreadId | null) => string; set: (id: ThreadId | null, text: string | ((now: string) => string)) => void };
 
-/** A new chat is named after its first message. */
+/** A new chat is named after its first message's first line, cut between characters, never inside one. */
 function titleFrom(text: string) {
-  const line = text.trim().split("\n")[0]!.replace(/\s+/g, " ");
-  return line.length > TITLE_MAX ? `${line.slice(0, TITLE_MAX - 1).trimEnd()}…` : line;
+  const line = [...text.trim().split("\n")[0]!.replace(/\s+/g, " ")];
+  return line.length > TITLE_MAX ? `${line.slice(0, TITLE_MAX - 1).join("").trimEnd()}…` : line.join("");
 }
 
 export function AssistantPanel() {
