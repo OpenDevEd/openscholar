@@ -3396,7 +3396,7 @@
     "foldIntoBubble": "Fold into a bubble",
     "newChat": "New chat",
     "emptyTitle": "Ask about anything here",
-    "emptyBody": "I can look through your searches, library, collections, screenings and extractions, and save, rate and collect papers for you. I can't change a search or start a job yet.",
+    "emptyBody": "I can look through your searches, library, collections, screenings and extractions, make and change searches and read their results, and save, rate and collect papers for you. I can't start a job yet.",
     "placeholder": "Ask the assistant",
     "readOnly": "You can read this chat, but not write in it",
     "messageLabel": "Message the assistant",

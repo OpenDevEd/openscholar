@@ -3404,7 +3404,7 @@
     "foldIntoBubble": "Réduire en bulle",
     "newChat": "Nouvelle discussion",
     "emptyTitle": "Posez vos questions ici",
-    "emptyBody": "Je peux parcourir vos recherches, votre bibliothèque, vos collections, vos sélections et vos extractions, et enregistrer, noter et classer des articles pour vous. Je ne peux pas encore modifier une recherche ni lancer une tâche.",
+    "emptyBody": "Je peux parcourir vos recherches, votre bibliothèque, vos collections, vos sélections et vos extractions, créer et modifier des recherches et lire leurs résultats, et enregistrer, noter et classer des articles pour vous. Je ne peux pas encore lancer une tâche.",
     "placeholder": "Écrire à l'assistant",
     "readOnly": "Vous pouvez lire cette discussion, mais pas y écrire",
     "messageLabel": "Écrire à l'assistant",
