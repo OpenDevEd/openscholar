@@ -3475,6 +3475,9 @@
       "undoFailed": "Impossible d'annuler",
       "interrupted": "La réponse s'est terminée avant la fin de cette étape",
       "found": "trouvés",
+      "declined": "Non autorisé",
+      "waiting": "En attente d'une réponse",
+      "allowed": "Autorisé",
       "searches": {
         "doing": "Parcours de vos recherches",
         "did": "Recherches parcourues",
@@ -3493,22 +3496,26 @@
       "newSearch": {
         "doing": "Création d'une recherche",
         "did": "Recherche créée",
-        "where": "Recherches enregistrées"
+        "where": "Recherches enregistrées",
+        "ask": "Créer une recherche"
       },
       "changeSearch": {
         "doing": "Modification d'une recherche",
         "did": "Recherche modifiée",
-        "where": "Recherches enregistrées"
+        "where": "Recherches enregistrées",
+        "ask": "Modifier une recherche"
       },
       "restoreSearch": {
         "doing": "Remise en place d'une recherche",
         "did": "Recherche remise en place",
-        "where": "Recherches enregistrées"
+        "where": "Recherches enregistrées",
+        "ask": "Remettre une recherche en place"
       },
       "removeSearch": {
         "doing": "Retrait d'une recherche",
         "did": "Recherche retirée",
-        "where": "Recherches enregistrées"
+        "where": "Recherches enregistrées",
+        "ask": "Retirer une recherche"
       },
       "results": {
         "doing": "Lecture des résultats d'une recherche",
@@ -3533,27 +3540,32 @@
       "save": {
         "doing": "Enregistrement d'un article",
         "did": "Article enregistré",
-        "where": "Bibliothèque"
+        "where": "Bibliothèque",
+        "ask": "Enregistrer un article"
       },
       "rate": {
         "doing": "Notation d'un article",
         "did": "Article noté",
-        "where": "Bibliothèque"
+        "where": "Bibliothèque",
+        "ask": "Noter un article"
       },
       "remove": {
         "doing": "Retrait d'un article",
         "did": "Article retiré",
-        "where": "Bibliothèque"
+        "where": "Bibliothèque",
+        "ask": "Retirer un article"
       },
       "restore": {
         "doing": "Remise en place d'un article",
         "did": "Article remis en place",
-        "where": "Bibliothèque"
+        "where": "Bibliothèque",
+        "ask": "Remettre un article en place"
       },
       "collect": {
         "doing": "Mise à jour d'une collection",
         "did": "Collection mise à jour",
-        "where": "Collections"
+        "where": "Collections",
+        "ask": "Modifier une collection"
       },
       "collections": {
         "doing": "Parcours de vos collections",
@@ -3568,12 +3580,14 @@
       "newCollection": {
         "doing": "Création d'une collection",
         "did": "Collection créée",
-        "where": "Collections"
+        "where": "Collections",
+        "ask": "Créer une collection"
       },
       "renameCollection": {
         "doing": "Renommage d'une collection",
         "did": "Collection renommée",
-        "where": "Collections"
+        "where": "Collections",
+        "ask": "Renommer une collection"
       },
       "screening": {
         "doing": "Lecture d'une sélection",
@@ -3585,10 +3599,76 @@
         "did": "Extractions parcourues",
         "where": "Extraction"
       },
+      "deleteCollection": {
+        "doing": "Suppression d'une collection",
+        "did": "Collection supprimée",
+        "where": "Collections",
+        "ask": "Supprimer une collection"
+      },
+      "shareChat": {
+        "doing": "Partage d'une conversation",
+        "did": "Conversation partagée",
+        "where": "Conversations",
+        "ask": "Partager une conversation"
+      },
+      "unshareChat": {
+        "doing": "Arrêt du partage d'une conversation",
+        "did": "Partage arrêté",
+        "where": "Conversations",
+        "ask": "Arrêter le partage d'une conversation"
+      },
+      "deleteChat": {
+        "doing": "Suppression d'une conversation",
+        "did": "Conversation supprimée",
+        "where": "Conversations",
+        "ask": "Supprimer une conversation"
+      },
+      "newChat": {
+        "doing": "Création d'une conversation",
+        "did": "Conversation créée",
+        "where": "Conversations",
+        "ask": "Créer une conversation"
+      },
+      "renameChat": {
+        "doing": "Renommage d'une conversation",
+        "did": "Conversation renommée",
+        "where": "Conversations",
+        "ask": "Renommer une conversation"
+      },
+      "chatModel": {
+        "doing": "Changement du modèle d'une conversation",
+        "did": "Modèle de la conversation changé",
+        "where": "Conversations",
+        "ask": "Changer le modèle d'une conversation"
+      },
+      "answer": {
+        "doing": "Modification d'une réponse de sélection",
+        "did": "Réponse de sélection modifiée",
+        "where": "Sélection",
+        "ask": "Modifier une réponse de sélection"
+      },
       "other": {
         "doing": "Travail dans votre compte",
         "did": "Travail effectué dans votre compte",
-        "where": "Votre compte"
+        "where": "Votre compte",
+        "ask": "Exécuter une action dans votre compte"
+      }
+    },
+    "asks": {
+      "allow": "Autoriser une fois",
+      "notNow": "Pas maintenant",
+      "decline": "Ne pas le faire",
+      "why": "Cette action est irréversible ou visible en dehors de votre compte. La question est posée à chaque fois.",
+      "failed": "Impossible d'envoyer votre réponse",
+      "names": {
+        "thread": "Conversation",
+        "collection": "Collection",
+        "user": "Personne",
+        "organization": "Organisation",
+        "role": "Accès",
+        "name": "Nom",
+        "title": "Titre",
+        "model": "Modèle"
       }
     }
   }

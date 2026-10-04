@@ -3467,6 +3467,9 @@
       "undoFailed": "Couldn't undo that",
       "interrupted": "The reply ended before this finished",
       "found": "found",
+      "declined": "Not allowed",
+      "waiting": "Waiting for an answer",
+      "allowed": "Allowed",
       "searches": {
         "doing": "Looking through your searches",
         "did": "Looked through your searches",
@@ -3485,22 +3488,26 @@
       "newSearch": {
         "doing": "Making a search",
         "did": "Made a search",
-        "where": "Saved searches"
+        "where": "Saved searches",
+        "ask": "Make a search"
       },
       "changeSearch": {
         "doing": "Changing a search",
         "did": "Changed a search",
-        "where": "Saved searches"
+        "where": "Saved searches",
+        "ask": "Change a search"
       },
       "restoreSearch": {
         "doing": "Putting a search back",
         "did": "Put a search back",
-        "where": "Saved searches"
+        "where": "Saved searches",
+        "ask": "Put a search back"
       },
       "removeSearch": {
         "doing": "Removing a search",
         "did": "Removed a search",
-        "where": "Saved searches"
+        "where": "Saved searches",
+        "ask": "Remove a search"
       },
       "results": {
         "doing": "Reading a search's results",
@@ -3525,27 +3532,32 @@
       "save": {
         "doing": "Saving a paper",
         "did": "Saved a paper",
-        "where": "Library"
+        "where": "Library",
+        "ask": "Save a paper"
       },
       "rate": {
         "doing": "Rating a paper",
         "did": "Rated a paper",
-        "where": "Library"
+        "where": "Library",
+        "ask": "Rate a paper"
       },
       "remove": {
         "doing": "Removing a paper",
         "did": "Removed a paper",
-        "where": "Library"
+        "where": "Library",
+        "ask": "Remove a paper"
       },
       "restore": {
         "doing": "Putting a paper back",
         "did": "Put a paper back",
-        "where": "Library"
+        "where": "Library",
+        "ask": "Put a paper back"
       },
       "collect": {
         "doing": "Updating a collection",
         "did": "Updated a collection",
-        "where": "Collections"
+        "where": "Collections",
+        "ask": "Change a collection"
       },
       "collections": {
         "doing": "Looking through your collections",
@@ -3560,12 +3572,14 @@
       "newCollection": {
         "doing": "Making a collection",
         "did": "Made a collection",
-        "where": "Collections"
+        "where": "Collections",
+        "ask": "Make a collection"
       },
       "renameCollection": {
         "doing": "Renaming a collection",
         "did": "Renamed a collection",
-        "where": "Collections"
+        "where": "Collections",
+        "ask": "Rename a collection"
       },
       "screening": {
         "doing": "Reading a screening",
@@ -3577,10 +3591,76 @@
         "did": "Looked through your extractions",
         "where": "Extraction"
       },
+      "deleteCollection": {
+        "doing": "Deleting a collection",
+        "did": "Deleted a collection",
+        "where": "Collections",
+        "ask": "Delete a collection"
+      },
+      "shareChat": {
+        "doing": "Sharing a chat",
+        "did": "Shared a chat",
+        "where": "Chats",
+        "ask": "Share a chat"
+      },
+      "unshareChat": {
+        "doing": "Ending a chat's sharing",
+        "did": "Stopped sharing a chat",
+        "where": "Chats",
+        "ask": "Stop sharing a chat"
+      },
+      "deleteChat": {
+        "doing": "Deleting a chat",
+        "did": "Deleted a chat",
+        "where": "Chats",
+        "ask": "Delete a chat"
+      },
+      "newChat": {
+        "doing": "Starting a chat",
+        "did": "Started a chat",
+        "where": "Chats",
+        "ask": "Start a chat"
+      },
+      "renameChat": {
+        "doing": "Renaming a chat",
+        "did": "Renamed a chat",
+        "where": "Chats",
+        "ask": "Rename a chat"
+      },
+      "chatModel": {
+        "doing": "Changing a chat's model",
+        "did": "Changed a chat's model",
+        "where": "Chats",
+        "ask": "Change a chat's model"
+      },
+      "answer": {
+        "doing": "Changing a screening answer",
+        "did": "Changed a screening answer",
+        "where": "Screening",
+        "ask": "Change a screening answer"
+      },
       "other": {
         "doing": "Working in your account",
         "did": "Worked in your account",
-        "where": "Your account"
+        "where": "Your account",
+        "ask": "Run an action in your account"
+      }
+    },
+    "asks": {
+      "allow": "Allow once",
+      "notNow": "Not now",
+      "decline": "Don't do this",
+      "why": "This can't be undone, or it shows outside your account. It asks every time.",
+      "failed": "Couldn't send your answer",
+      "names": {
+        "thread": "Chat",
+        "collection": "Collection",
+        "user": "Person",
+        "organization": "Organization",
+        "role": "Access",
+        "name": "Name",
+        "title": "Title",
+        "model": "Model"
       }
     }
   }

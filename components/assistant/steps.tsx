@@ -1,14 +1,17 @@
 "use client";
 
 // What the assistant did in a reply, drawn like the AI settings routing map: a tile at the
-// top, a tinted curve out to each step's card, one card per action it ran.
+// top, a tinted curve out to each step's card, one card per action it ran. An action it
+// asks the person about first shows under the map as the mock's approval card.
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check, CircleAlert, Compass, FileText, FolderPlus, ListChecks, Search, TableProperties, Undo2, type AppIcon } from "@/components/icons";
+import { Check, CircleAlert, Compass, FileText, FolderPlus, ListChecks, MessagesSquare, Search, TableProperties, Undo2, X, type AppIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { EASE } from "@/components/settings/model-map";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -27,12 +30,13 @@ const KIND = {
   collection: { icon: FolderPlus, tint: "#2dd4bf" },
   screening: { icon: ListChecks, tint: "#a78bfa" },
   extraction: { icon: TableProperties, tint: "#fb923c" },
+  chat: { icon: MessagesSquare, tint: "#f472b6" },
   other: { icon: Compass, tint: "#94a3b8" },
 } satisfies Record<string, { icon: AppIcon; tint: string }>;
 type Kind = keyof typeof KIND;
 
 /** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "screening" | "extractions" | "other";
+type Words = "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "other";
 
 /** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
 const ACTIONS: Record<string, { kind: Kind; words: Words }> = {
@@ -59,6 +63,14 @@ const ACTIONS: Record<string, { kind: Kind; words: Words }> = {
   "library/collections:getCollection": { kind: "collection", words: "collection" },
   "library/collections:createCollection": { kind: "collection", words: "newCollection" },
   "library/collections:renameCollection": { kind: "collection", words: "renameCollection" },
+  "library/collections:deleteCollection": { kind: "collection", words: "deleteCollection" },
+  "assistant/sharing:grant": { kind: "chat", words: "shareChat" },
+  "assistant/sharing:revoke": { kind: "chat", words: "unshareChat" },
+  "assistant/threads:remove": { kind: "chat", words: "deleteChat" },
+  "assistant/threads:create": { kind: "chat", words: "newChat" },
+  "assistant/threads:rename": { kind: "chat", words: "renameChat" },
+  "assistant/threads:setModel": { kind: "chat", words: "chatModel" },
+  "screening/papers:answer": { kind: "screening", words: "answer" },
   "screening/papers:list": { kind: "screening", words: "screening" },
   "screening/papers:get": { kind: "screening", words: "screening" },
   "extraction/queries:listJobs": { kind: "extraction", words: "extractions" },
@@ -102,7 +114,92 @@ function Fact({ value, children }: { value?: ReactNode; children: ReactNode }) {
  * runs a curve from each task to its model. Each card is as tall as the next, and the map
  * grows by a card as a step starts, so nothing above it moves.
  */
-export function Steps({ threadId, steps }: { threadId: Id<"assistantThreads">; steps: StepItem[] }) {
+export function Steps({ threadId, steps: all }: { threadId: Id<"assistantThreads">; steps: StepItem[] }) {
+  const asked = all.filter((step) => step.canAnswer);
+  const steps = all.filter((step) => !step.canAnswer);
+  return (
+    <div className="space-y-3">
+      {steps.length ? <RunMap threadId={threadId} steps={steps} /> : null}
+      <AnimatePresence initial={false}>
+        {asked.map((step) => (
+          <ApprovalCard key={step.id} threadId={threadId} step={step} />
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/** Names of a call's arguments the card says in the person's language; any other shows as the action names it. */
+const NAMED = ["thread", "collection", "user", "organization", "role", "name", "title", "model"] as const;
+
+/**
+ * Asks before a change that can't be undone or that shows outside the account: what it
+ * would do, with the records it names, then Allow once or Not now. The mock's approval
+ * card, without the credits row, which comes with the actions that spend them (#328).
+ */
+function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; step: StepItem }) {
+  const t = useTranslations("assistant");
+  const answer = useMutation(api.assistant.replies.answer);
+  const toast = useAppToast();
+  // Pressed once: the buttons rest until the chat shows the answer, or says it couldn't be sent.
+  const [sent, setSent] = useState(false);
+  const { kind, words } = viewOf(step.action);
+  // Only the kinds of action that can ask have the words for it.
+  const title = `steps.${words}.ask` as "steps.other.ask";
+  const say = (allow: boolean) => {
+    setSent(true);
+    answer({ threadId, stepId: step.id as Id<"assistantSteps">, allow }).catch((error) => {
+      setSent(false);
+      toast.error(t("asks.failed"), getErrorMessage(error, ""));
+    });
+  };
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      className="overflow-hidden rounded-2xl border border-primary/30 bg-primary/[0.04]"
+    >
+      <div className="flex items-start gap-3 p-4">
+        <KindTile kind={kind} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">{t.has(title) ? t(title) : t("steps.other.ask")}</p>
+          <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground">
+            {(step.details ?? []).map((detail, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="shrink-0 text-foreground/50">{(NAMED as readonly string[]).includes(detail.name) ? t(`asks.names.${detail.name as (typeof NAMED)[number]}`) : detail.name}</span>
+                <span className="min-w-0 break-words">{detail.value}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <TooltipHint label={t("asks.decline")}>
+          <button
+            type="button"
+            aria-label={t("asks.decline")}
+            disabled={sent}
+            onClick={() => say(false)}
+            className="-mr-1 -mt-1 flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+          >
+            <X className="size-4" />
+          </button>
+        </TooltipHint>
+      </div>
+      <p className="px-4 pb-4 text-xs text-muted-foreground">{t("asks.why")}</p>
+      <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-primary/15 p-3">
+        <Button className="h-9" disabled={sent} onClick={() => say(true)}>
+          {t("asks.allow")}
+        </Button>
+        <Button className="h-9 px-4" variant="secondary" disabled={sent} onClick={() => say(false)}>
+          {t("asks.notNow")}
+        </Button>
+      </div>
+    </motion.div>
+  );
+}
+
+function RunMap({ threadId, steps }: { threadId: Id<"assistantThreads">; steps: StepItem[] }) {
   const t = useTranslations("assistant");
   const reduceMotion = useReducedMotion();
   const undo = useMutation(api.assistant.undo.run);
@@ -129,7 +226,7 @@ export function Steps({ threadId, steps }: { threadId: Id<"assistantThreads">; s
             strokeWidth={2}
             strokeLinecap="round"
             initial={reduceMotion ? false : { pathLength: 0 }}
-            animate={{ pathLength: 1, opacity: step.undone || step.status === "failed" ? 0.25 : 1 }}
+            animate={{ pathLength: 1, opacity: step.undone || step.status === "failed" || step.status === "declined" ? 0.25 : 1 }}
             transition={{ duration: 0.5, ease: EASE }}
           />
         ))}
@@ -139,7 +236,8 @@ export function Steps({ threadId, steps }: { threadId: Id<"assistantThreads">; s
           {steps.map((step, i) => {
             const { kind, words } = viewOf(step.action);
             const working = step.status === "running";
-            const faded = step.undone || step.status === "failed";
+            const faded = step.undone || step.status === "failed" || step.status === "declined";
+            const state = step.status === "asking" ? t("steps.waiting") : step.status === "allowed" ? t("steps.allowed") : step.status === "declined" ? t("steps.declined") : null;
             const title = t(`steps.${words}.${working || step.status === "failed" ? "doing" : "did"}`);
             return (
               <motion.div
@@ -157,6 +255,11 @@ export function Steps({ threadId, steps }: { threadId: Id<"assistantThreads">; s
                     <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-muted-foreground">
                       {step.status === "failed" ? (
                         <span className="truncate">{step.error ?? t("steps.interrupted")}</span>
+                      ) : state ? (
+                        <>
+                          <Fact>{state}</Fact>
+                          {step.subject ? <span className="truncate">{step.subject}</span> : null}
+                        </>
                       ) : (
                         <>
                           {step.count !== undefined ? <Fact value={step.count}>{t("steps.found")}</Fact> : null}
