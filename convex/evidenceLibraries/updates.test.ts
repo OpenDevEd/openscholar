@@ -755,8 +755,8 @@ describe("Evidence Library address notices", () => {
     const movedTo = "https://climate-evidence-2-lib.libraries.example.test";
 
     await expect(
-      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
-    ).resolves.toEqual([]);
+      fixture.admin.query(api.evidenceLibraries.updates.getAddressNotice, { libraryId: fixture.created.libraryId }),
+    ).resolves.toBeNull();
 
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(fixture.created.setupOperationId, {
@@ -771,15 +771,13 @@ describe("Evidence Library address notices", () => {
     });
 
     await expect(
-      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
-    ).resolves.toEqual([
-      {
-        libraryId: fixture.created.libraryId,
-        address: fixture.created.publicAddress,
-        movedFrom: fixture.created.publicAddress,
-        addressState: null,
-      },
-    ]);
+      fixture.admin.query(api.evidenceLibraries.updates.getAddressNotice, { libraryId: fixture.created.libraryId }),
+    ).resolves.toEqual({
+      libraryId: fixture.created.libraryId,
+      address: fixture.created.publicAddress,
+      movedFrom: fixture.created.publicAddress,
+      addressState: null,
+    });
   });
 
   it("says nothing once the library is live at its address", async () => {
@@ -797,8 +795,8 @@ describe("Evidence Library address notices", () => {
     });
 
     await expect(
-      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
-    ).resolves.toEqual([]);
+      fixture.admin.query(api.evidenceLibraries.updates.getAddressNotice, { libraryId: fixture.created.libraryId }),
+    ).resolves.toBeNull();
   });
 });
 
@@ -842,8 +840,8 @@ describe("Evidence Library address ownership check", () => {
     );
     expect(afterProbe).toMatchObject({ addressState: "ours" });
     await expect(
-      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
-    ).resolves.toEqual([]);
+      fixture.admin.query(api.evidenceLibraries.updates.getAddressNotice, { libraryId: fixture.created.libraryId }),
+    ).resolves.toBeNull();
   });
 
   it("checks the canonical custom address instead of its redirecting platform address", async () => {
@@ -893,15 +891,13 @@ describe("Evidence Library address ownership check", () => {
     );
     expect(binding).toMatchObject({ addressState: "not-ours" });
     await expect(
-      fixture.admin.query(api.evidenceLibraries.updates.listAddressNotices, {}),
-    ).resolves.toEqual([
-      {
-        libraryId: fixture.created.libraryId,
-        address: fixture.created.publicAddress,
-        movedFrom: null,
-        addressState: "not-ours",
-      },
-    ]);
+      fixture.admin.query(api.evidenceLibraries.updates.getAddressNotice, { libraryId: fixture.created.libraryId }),
+    ).resolves.toEqual({
+      libraryId: fixture.created.libraryId,
+      address: fixture.created.publicAddress,
+      movedFrom: null,
+      addressState: "not-ours",
+    });
   });
 
   it("stores an address that nothing answers as unreachable", async () => {

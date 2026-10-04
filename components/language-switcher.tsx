@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, Globe } from "lucide-react";
+import { Check, Globe } from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 
 import { Button } from "@/components/ui/button";
@@ -79,7 +79,7 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
               variant="ghost"
               size={isCollapsed ? "icon" : "sm"}
               className={cn(
-                "h-8 transition-all duration-200 hover:bg-sidebar-accent/80",
+                "h-8 transition-all duration-200 hover:bg-sidebar-accent",
                 isCollapsed ? "w-8 px-0" : "w-auto px-2"
               )}
             >
@@ -106,7 +106,7 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
                 "w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-sm transition-colors",
                 currentLocale === locale
                   ? "bg-accent text-accent-foreground"
-                  : "hover:bg-accent/50"
+                  : "hover:bg-accent"
               )}
               whileHover={{ x: 2 }}
               whileTap={{ scale: 0.98 }}

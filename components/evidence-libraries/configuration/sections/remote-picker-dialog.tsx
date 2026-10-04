@@ -6,7 +6,7 @@
  * typed text to the server, and never downloads a whole catalogue.
  */
 
-import { ArrowDown, ArrowUp, ArrowUpDown, Check, Plus, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Plus, Search, X } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { type ReactNode, type Ref, useImperativeHandle, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,8 @@ export type PickerSource = (input: {
   direction: PickerDirection | null;
 }) => Promise<PickerPage>;
 
+/** The rows a source is asked for at a time. */
+export const PICKER_PAGE_SIZE = 50;
 /** How long the dialog waits after a keystroke before asking the server. */
 const SEARCH_DEBOUNCE_MS = 300;
 /** The runtime read API refuses a longer search than this. */
@@ -326,12 +328,12 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
         className="flex max-h-[85vh] flex-col gap-0 p-0 sm:max-w-3xl"
         onKeyDown={moveFocus}
       >
-        <DialogHeader className="border-b border-border/50 px-5 py-4">
+        <DialogHeader className="border-b border-border-subtle px-5 py-4">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2.5 border-b border-border/50 bg-muted/30 px-5 py-3">
+        <div className="space-y-2.5 border-b border-border-subtle bg-inset px-5 py-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -537,7 +539,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
             </TableBody>
           </Table>
           {ready && cursor ? (
-            <div className="flex justify-center border-t border-border/50 py-3">
+            <div className="flex justify-center border-t border-border-subtle py-3">
               <Button
                 type="button"
                 variant="outline"
@@ -558,13 +560,13 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
             </div>
           ) : null}
           {note ? (
-            <p className="border-t border-border/50 px-5 py-3 text-xs text-muted-foreground">
+            <p className="border-t border-border-subtle px-5 py-3 text-xs text-muted-foreground">
               {note}
             </p>
           ) : null}
         </div>
 
-        <DialogFooter className="items-center border-t border-border/50 px-5 py-3 sm:justify-between">
+        <DialogFooter className="items-center border-t border-border-subtle px-5 py-3 sm:justify-between">
           {props.mode === "multi" ? (
             <span className="text-sm text-muted-foreground" data-picked-count={picked.size}>
               {t("pickedCount", { count: picked.size })}
@@ -673,7 +675,7 @@ function SortHead({
 }
 
 /** Pages an in-memory list the same way a server source does. */
-export function localPickerSource(rows: readonly PickerRow[], pageSize = 50): PickerSource {
+export function localPickerSource(rows: readonly PickerRow[], pageSize = PICKER_PAGE_SIZE): PickerSource {
   return async ({ query, cursor }) => {
     const text = query.trim().toLowerCase();
     const matching = text

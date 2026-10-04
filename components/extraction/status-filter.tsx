@@ -6,7 +6,7 @@ import {
   AlertCircle,
   TrendingUp,
   TrendingDown,
-} from "lucide-react";
+} from "@/components/icons";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslations } from "next-intl";

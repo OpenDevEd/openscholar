@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { CopyIcon, RefreshCwIcon } from "lucide-react";
+import { CopyIcon, RefreshCwIcon } from "@/components/icons";
 import {
   MessageAction,
   MessageActions as MessageActionsBar,

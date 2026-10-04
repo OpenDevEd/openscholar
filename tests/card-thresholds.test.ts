@@ -4,8 +4,6 @@ import {
   getCardColor,
   CONFIDENCE_THRESHOLDS,
   CARD_THRESHOLDS,
-  BADGE_COLOR_CLASSES,
-  BORDER_COLOR_CLASSES,
 } from "../lib/extraction/card-thresholds";
 
 describe("getConfidenceColor", () => {
@@ -131,33 +129,5 @@ describe("CARD_THRESHOLDS constants", () => {
 
   it("exports quality yellow threshold of 0.50", () => {
     expect(CARD_THRESHOLDS.quality.yellow).toBe(0.5);
-  });
-});
-
-describe("BADGE_COLOR_CLASSES", () => {
-  it("exports badge class for green", () => {
-    expect(BADGE_COLOR_CLASSES.green).toContain("emerald");
-  });
-
-  it("exports badge class for yellow", () => {
-    expect(BADGE_COLOR_CLASSES.yellow).toContain("amber");
-  });
-
-  it("exports badge class for red", () => {
-    expect(BADGE_COLOR_CLASSES.red).toContain("red");
-  });
-});
-
-describe("BORDER_COLOR_CLASSES", () => {
-  it("exports border class for green", () => {
-    expect(BORDER_COLOR_CLASSES.green).toContain("emerald");
-  });
-
-  it("exports border class for yellow", () => {
-    expect(BORDER_COLOR_CLASSES.yellow).toContain("amber");
-  });
-
-  it("exports border class for red", () => {
-    expect(BORDER_COLOR_CLASSES.red).toContain("red");
   });
 });

@@ -11,7 +11,7 @@ import {
   Plus,
   Sparkles,
   Trash2,
-} from "lucide-react";
+} from "@/components/icons";
 import posthog from "posthog-js";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -229,7 +229,7 @@ export function ScreeningExpansion({ isOpen, searchId, panelId }: ScreeningExpan
           transition={commandCenterSpring}
           className="overflow-hidden"
         >
-          <div className="border-t border-border/40 px-4 pb-4 pt-3 space-y-3">
+          <div className="border-t border-border-subtle px-4 pb-4 pt-3 space-y-3">
             {/* Input row */}
             <div className="flex flex-wrap gap-2 items-center">
               <ButtonGroup>

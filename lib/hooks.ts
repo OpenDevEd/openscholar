@@ -251,6 +251,7 @@ function useCurrentSearchFormStateFromUrl() {
     workLanguages: search.params.wlang,
     institutionTypes: search.params.itype,
     funders: search.params.funder,
+    authors: search.params.author,
     minCitations: search.params.mincite,
     hasAbstract: search.params.abs,
     includeRetracted: search.params.retracted,
@@ -293,6 +294,7 @@ function useCurrentSearchFormStateFromStore() {
     workLanguages: searchResult?.workLanguages ?? [],
     institutionTypes: searchResult?.institutionTypes ?? [],
     funders: searchResult?.funders ?? [],
+    authors: searchResult?.authors ?? [],
     minCitations: searchResult?.minCitations ?? null,
     hasAbstract: searchResult?.hasAbstract ?? false,
     includeRetracted: searchResult?.includeRetracted ?? false,
@@ -446,6 +448,10 @@ function useUpdateSearchFilterFromUrl() {
       batchUpdates.funder = updates.funders as string[];
       shouldResetPage = true;
     }
+    if ('authors' in updates) {
+      batchUpdates.author = updates.authors as string[];
+      shouldResetPage = true;
+    }
     if ('minCitations' in updates) {
       batchUpdates.mincite = updates.minCitations as number | null;
       shouldResetPage = true;
@@ -501,6 +507,7 @@ export function useCreateSearchFilters() {
     workLanguages,
     institutionTypes,
     funders,
+    authors,
     minCitations,
     hasAbstract,
     includeRetracted,
@@ -528,6 +535,7 @@ export function useCreateSearchFilters() {
     workLanguages,
     institutionTypes,
     funders,
+    authors,
     minCitations,
     hasAbstract,
     includeRetracted,

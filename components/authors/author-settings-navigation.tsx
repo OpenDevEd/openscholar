@@ -1,18 +1,18 @@
 "use client";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { ConfigurationNavigation } from "@/components/evidence-libraries/configuration/configuration-layout";
-import { BookOpen, Link2, UserRound, Users } from "lucide-react";
 import {
   RailGroup,
   RailLink,
 } from "@/components/evidence-libraries/configuration/navigation-rail";
 import { useScrollSpy } from "@/components/evidence-libraries/configuration/use-scroll-spy";
+import { TeamIcon, PersonIcon, LinkIcon, BookIcon } from "@/components/icons";
 const sections = [
-  ["profile-details", "Profile", UserRound],
-  ["profile-links", "Links & identifiers", Link2],
-  ["profile-publications", "Publications", BookOpen],
+  ["profile-details", "Profile", PersonIcon],
+  ["profile-links", "Links & identifiers", LinkIcon],
+  ["profile-publications", "Publications", BookIcon],
   ["profile-openalex", "OpenAlex", OpenAlexIcon],
-  ["profile-access", "Access", Users],
+  ["profile-access", "Access", TeamIcon],
 ] as const;
 const editorSections = sections.filter(([id]) => id !== "profile-access");
 const ownerIds = sections.map(([id]) => id);

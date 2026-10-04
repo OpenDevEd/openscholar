@@ -17,10 +17,10 @@ import {
   Layers,
   FileText,
   Zap,
-  Database,
   CircleCheck,
   ChevronRight,
-} from "lucide-react";
+  ExtractionIcon,
+} from "@/components/icons";
 import { useExtractionStore, type JobMode } from "@/lib/store/extraction";
 import { useBucketStore } from "@/lib/store/bucket";
 import { bucketItemToServerInput } from "@/lib/bucket/to-server-input";
@@ -240,7 +240,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
 
   return (
     <LibraryPageShell
-      icon={Database}
+      icon={ExtractionIcon}
       title={t("newJobTitle")}
       backHref="/extraction"
       backLabel={tc("cancel")}
@@ -408,7 +408,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="sticky bottom-0 z-20 mt-12 -mx-4 md:-mx-6 rounded-b-2xl border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 md:px-6 py-4 flex justify-between items-center"
+        className="sticky bottom-0 z-20 mt-12 -mx-4 md:-mx-6 rounded-b-2xl border-t border-border bg-card px-4 md:px-6 py-4 flex justify-between items-center"
       >
         <Button
           variant="ghost"
@@ -474,10 +474,10 @@ function JobSteps({ steps, current, disabled, onSelect }: {
               onClick={() => onSelect(step.id as 1 | 2 | 3)}
               className={cn(
                 "inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-md px-3 text-sm transition-colors",
-                isCurrent ? "bg-muted font-medium text-foreground" : done ? "text-foreground hover:bg-muted/60" : "text-muted-foreground",
+                isCurrent ? "bg-muted font-medium text-foreground" : done ? "text-foreground hover:bg-muted" : "text-muted-foreground",
               )}
             >
-              <Icon aria-hidden className={cn("size-3.5", done && "text-emerald-600 dark:text-emerald-400")} />
+              <Icon aria-hidden className={cn("size-3.5", done && "ink-success")} />
               {/* On a narrow page only the current step keeps its name; the others keep their icon. */}
               <span className={cn(!isCurrent && "@max-md:sr-only")}>{step.title}</span>
             </button>

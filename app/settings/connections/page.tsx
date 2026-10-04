@@ -5,7 +5,7 @@ import { useMutation } from "convex/react";
 import { AnimatePresence, motion } from "motion/react";
 import posthog from "posthog-js";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { AppWindow, Globe, KeyRound, Plug, Trash2 } from "lucide-react";
+import { AppWindow, Globe, KeyRound, Plug, Trash2 } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,7 @@ export default function ConnectionsPage() {
       <div className="space-y-8">
         <Zone label={t("connectedApps")}>
           {active.items.length === 0 && !active.hasPages ? (
-            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/80 px-6 py-10 text-center">
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-6 py-10 text-center">
               <Plug className="size-5 text-muted-foreground" />
               <p className="text-sm font-medium">{t("noConnectedApps")}</p>
               <p className="max-w-sm text-xs text-muted-foreground">{t("noConnectedAppsDescription")}</p>
@@ -70,7 +70,7 @@ export default function ConnectionsPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold">{key.appName}</p>
                         <p className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
-                          <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[11px]">
+                          <span className="inline-flex shrink-0 items-center gap-1 font-mono text-2xs">
                             <KeyRound className="size-3" /> {key.keyPrefix}
                           </span>
                           {key.redirectOrigin && key.redirectOrigin !== "manual" ? (
@@ -126,7 +126,7 @@ export default function ConnectionsPage() {
                   <li key={key._id} className="flex items-center gap-3 p-3 text-muted-foreground">
                     <Tile icon={AppWindow} tint="#94a3b8" />
                     <span className="min-w-0 flex-1 truncate text-sm line-through decoration-muted-foreground/50">{key.appName}</span>
-                    <span className="font-mono text-[11px]">{key.keyPrefix}</span>
+                    <span className="font-mono text-2xs">{key.keyPrefix}</span>
                   </li>
                 ))}
               </ul>

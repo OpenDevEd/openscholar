@@ -1,41 +1,10 @@
 "use client";
 
-import useSWR from "swr";
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
 import { readFunderNames } from "@/app/actions/funders";
-import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
-import { unlessLimited } from "./limited";
+import { createNameLookup } from "./use-entity-names";
 
-/** Funder names this browser has seen, so a funder chip starts with its name instead of its ID. */
-const useFunderNameStore = create<{ names: Record<string, string> }>()(
-  persist(() => ({ names: {} }), { name: "funder-names", storage: createJSONStorage(() => localStorage) }),
-);
+const funders = createNameLookup("funder", readFunderNames);
 
-/** Best effort: if the browser can't store them (full, blocked), they still last for this visit. */
-export function rememberFunderNames(names: Record<string, string>) {
-  try {
-    useFunderNameStore.setState((state) => ({ names: { ...state.names, ...names } }));
-  } catch (error) {
-    console.warn("Funder names could not be saved in the browser", error);
-  }
-}
-
-/** Names for funder ids such as F4320311904: saved ones at once, others looked up once and then saved. */
-export function useFunderNames(ids: readonly string[]): Record<string, string> {
-  // Saved names only after the first browser render, so it matches the server's. Without browser storage
-  // (blocked, or the server) the store only holds this visit's lookups, which start empty on both sides.
-  const ready = usePersistedStoreReady(useFunderNameStore) || !useFunderNameStore.persist;
-  const saved = useFunderNameStore((state) => state.names);
-  const missing = ready ? [...new Set(ids)].filter((id) => !saved[id]).sort() : [];
-  useSWR(
-    missing.length ? ["funder-names", ...missing] : null,
-    async () => {
-      const names = await unlessLimited(readFunderNames(missing));
-      rememberFunderNames(names);
-      return names;
-    },
-    { revalidateOnFocus: false },
-  );
-  return ready ? saved : {};
-}
+/** Names for funder ids such as F4320311904. */
+export const useFunderNames = funders.useNames;
+export const rememberFunderNames = funders.remember;

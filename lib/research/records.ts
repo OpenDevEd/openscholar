@@ -58,6 +58,7 @@ export const searchFields = {
   workLanguages: filterValues(),
   institutionTypes: filterValues(),
   funders: filterValues(),
+  authors: filterValues(),
   minCitations: v.optional(v.number()),
   hasAbstract: v.optional(v.boolean()),
   includeRetracted: v.optional(v.boolean()),

@@ -40,6 +40,7 @@ export interface SearchParams {
   wlang: string[];        // languages the works are written in
   itype: string[];        // author institution types
   funder: string[];       // OpenAlex funder ids
+  author: string[];       // OpenAlex author ids, or names OpenAlex has no author record for
   mincite: number | null; // minimum citations
   abs: boolean;           // only works with an abstract
   retracted: boolean;     // include retracted works

@@ -1,15 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
+import { CheckIcon, ChevronRightIcon, CircleIcon } from "@/components/icons"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
 
 function DropdownMenu({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+  return <TrackOpen {...props}>{(root) => <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} {...root} />}</TrackOpen>
 }
 
 function DropdownMenuPortal({
@@ -34,11 +35,14 @@ function DropdownMenuTrigger({
 function DropdownMenuContent({
   className,
   sideOffset = 4,
+  children,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+  const closing = useClosing()
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
+        inert={closing}
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
@@ -46,7 +50,9 @@ function DropdownMenuContent({
           className
         )}
         {...props}
-      />
+      >
+        {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}
+      </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>
   )
 }

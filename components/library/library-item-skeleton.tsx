@@ -25,8 +25,8 @@ function SkeletonRow() {
     <div
       className={cn(
         "rounded-2xl border p-5",
-        "bg-background/80 dark:bg-background/60",
-        "border-border/40 shadow-lg shadow-black/[0.03] dark:shadow-black/[0.1]",
+        "bg-card",
+        "border-border-subtle shadow-surface",
       )}
     >
       <div className="flex items-start gap-4">
@@ -57,8 +57,8 @@ function SkeletonCard() {
   return (
     <div className={cn(
       "rounded-2xl border p-4 flex flex-col gap-2",
-      "bg-background/80 dark:bg-background/60",
-      "border-border/40"
+      "bg-card",
+      "border-border-subtle"
     )}>
       <div className="flex justify-between gap-3">
         <SkeletonBar className="h-6 w-14 rounded-md" />
@@ -88,8 +88,8 @@ function SkeletonSimple() {
     <div
       className={cn(
         "rounded-xl border px-4 py-3",
-        "bg-background/80 dark:bg-background/60",
-        "border-border/40",
+        "bg-card",
+        "border-border-subtle",
       )}
     >
       <div className="flex items-center gap-3">

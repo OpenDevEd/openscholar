@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Check, ChevronsUpDown, Coins, ExternalLink, KeyRound, Monitor, Save, Sparkles } from "lucide-react";
+import { Check, ChevronsUpDown, Coins, ExternalLink, KeyRound, Monitor, Save, Sparkles } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -200,7 +200,7 @@ function PayMenu({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button type="button" className="-ml-1.5 flex items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/50">
+        <button type="button" className="-ml-1.5 flex items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted">
           {children}
           {saved.length ? (
             <span className="flex -space-x-1">

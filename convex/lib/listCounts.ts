@@ -13,6 +13,7 @@ import type { Change } from "convex-helpers/server/triggers";
 import { components } from "../_generated/api";
 import type { DataModel, Doc, Id, TableNames } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { isVersionOperation } from "../evidenceLibraries/operationKinds";
 
 export const listCounts = new DirectAggregate<{ Namespace: string; Key: null; Id: string }>(components.listCounts);
 
@@ -23,6 +24,10 @@ export const walletKeysOf = (userId: Id<"users">, active: boolean) => `walletKey
 export const walletKeyList = (key: Pick<Doc<"walletKeys">, "userId" | "isActive" | "hashedKey">) =>
   key.hashedKey === PENDING_WALLET_KEY ? null : walletKeysOf(key.userId, key.isActive);
 export const ADMIN_LIST = "admins";
+export const libraryVersionsOf = (libraryId: Id<"evidenceLibraries">) => `libraryVersions:${libraryId}`;
+/** The versions list an operation shows in, if it is one of a library's versions. */
+export const libraryVersionList = (operation: Doc<"evidenceLibraryConfigOperations">) =>
+  isVersionOperation(operation) ? libraryVersionsOf(operation.libraryId) : null;
 
 /** The trigger that keeps a table's rows counted, each under the list `listOf` puts it in, if any. */
 export const countList =
@@ -37,3 +42,13 @@ export const countList =
 
 /** How many rows `list` holds. */
 export const countOf = (ctx: QueryCtx, list: string) => listCounts.count(ctx, { namespace: list });
+
+/** How many of `rows` the list `listOf` puts each in doesn't count: what a backfill's verify adds up. */
+export async function uncounted<Row extends { _id: string }>(ctx: QueryCtx, rows: Row[], listOf: (row: Row) => string | null) {
+  const listed = rows.flatMap((row) => {
+    const list = listOf(row);
+    const only = { key: null, id: row._id, inclusive: true };
+    return list === null ? [] : [{ namespace: list, bounds: { lower: only, upper: only } }];
+  });
+  return (await listCounts.countBatch(ctx, listed)).filter((count) => count !== 1).length;
+}

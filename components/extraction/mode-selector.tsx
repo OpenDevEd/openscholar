@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { FileText, MessageSquare } from "lucide-react";
+import { FileText, MessageSquare } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import type { JobMode } from "@/lib/store/extraction";
 

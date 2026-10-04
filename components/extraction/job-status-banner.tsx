@@ -17,7 +17,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, Coins, Pause } from "lucide-react";
+import { AlertTriangle, Coins, Pause } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";

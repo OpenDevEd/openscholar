@@ -31,7 +31,7 @@ vi.mock("next-intl", () => ({
   }),
 }));
 
-vi.mock("lucide-react", () => ({
+vi.mock("@/components/icons", () => ({
   Minus: () => null,
   Plus: () => null,
   ChevronDown: () => null,

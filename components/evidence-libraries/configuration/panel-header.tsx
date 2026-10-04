@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, type LucideIcon } from "lucide-react";
+import { ChevronLeft, type AppIcon } from "@/components/icons";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ export function PanelHeader({
   children,
 }: {
   /** Null while the page is still loading and its kind is not known yet. */
-  icon: LucideIcon | null;
+  icon: AppIcon | null;
   /** A library page: its favicon, or null for the OpenScholar one. Leave undefined for the icon. */
   image?: string | null;
   title: string;
@@ -70,7 +70,7 @@ export function PanelHeader({
         ) : null}
         {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}
       </div>
-      {tabs ? <div className="hidden shrink-0 border-l border-border/60 pl-4 @3xl:block">{tabs}</div> : null}
+      {tabs ? <div className="hidden shrink-0 border-l border-border-subtle pl-4 @3xl:block">{tabs}</div> : null}
       {filters || children ? (
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {filters ? <div className="hidden items-center gap-2 @6xl:flex">{filters}</div> : null}

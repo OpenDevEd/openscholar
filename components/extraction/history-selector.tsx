@@ -6,7 +6,7 @@ import { useSearchList } from "@/lib/research/search-list";
 import { useResearchStatus } from "@/lib/research/provider";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
-import { Search, Calendar, FileText } from "lucide-react";
+import { Search, Calendar, FileText } from "@/components/icons";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { SelectableList } from "./bucket/selectable-list";
 import { CountChip } from "./bucket/count-chip";

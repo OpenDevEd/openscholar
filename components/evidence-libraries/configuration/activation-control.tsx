@@ -1,7 +1,6 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-import { Rocket } from "lucide-react";
+import { type AppIcon, Rocket } from "@/components/icons";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ export function ActivationControl({
 }: {
   busy: {
     accessibleLabel: string;
-    icon: LucideIcon;
+    icon: AppIcon;
     label: string;
   } | null;
   disabled: boolean;
@@ -38,7 +37,7 @@ export function ActivationControl({
       aria-label={busy?.accessibleLabel}
       className={cn(
         busy &&
-          "relative w-48 overflow-hidden bg-muted/50 px-3 text-foreground shadow-none disabled:opacity-100 dark:bg-muted/40",
+          "relative w-48 overflow-hidden bg-inset px-3 text-foreground shadow-none disabled:opacity-100",
         className,
       )}
     >
