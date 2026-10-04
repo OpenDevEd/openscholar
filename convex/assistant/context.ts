@@ -102,11 +102,15 @@ export async function historySince(
   // the person already has responses there, which the agent hands over with the message itself.
   const exchange = read.page.find((doc) => doc._id === args.before)?.order ?? Infinity;
   const since = read.page.filter((doc) => kept(doc, args)).reverse();
+  const through = args.compactedThrough ?? -1;
   return {
     docs: since.filter((doc) => doc.order < exchange),
     responses: since.filter((doc) => doc.order === exchange && doc.stepOrder > 0),
     exchange,
-    whole: read.isDone || read.page.some((doc) => !kept(doc, args)),
+    // The read got back to the summary's end: to an exchange it covers whole, or, where it runs partway into
+    // one, to the message that exchange began with, which is kept. Stopping among that exchange's
+    // summarized steps would leave its message out.
+    whole: read.isDone || read.page.some((doc) => doc.order <= through || (args.compactedStep !== undefined && doc.order === through + 1 && doc.stepOrder === 0)),
   };
 }
 

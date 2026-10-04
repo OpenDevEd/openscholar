@@ -298,8 +298,9 @@ export const release = internalMutation({
         : null;
       if (resume) {
         // The reply goes on, from the summary if one was written: its next request then reads the summary, not
-        // what the last one read. A summary that wasn't written is tried again after the reply's next request.
-        await ctx.db.patch("assistantThreads", threadId, { ...(position ?? {}), reply: await goOn(position ? { ...resume, used: { ...resume.used, tokens: 0 } } : resume) });
+        // what the last one read, and nothing is owed any more, since the summary runs through everything before
+        // it. One that wasn't written stays owed, and is tried again after the reply's next request.
+        await ctx.db.patch("assistantThreads", threadId, { ...(position ? { ...position, compactionOwed: undefined } : {}), reply: await goOn(position ? { ...resume, used: { ...resume.used, tokens: 0 } } : resume) });
         return null;
       }
       // A summary that was stopped, or never written, stays owed: the next reply writes it first.
@@ -349,7 +350,8 @@ export const release = internalMutation({
           lastInputTokens,
           resume: from,
         });
-        await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: { ...current, scheduledId, compacting: true } });
+        // Owed from here until a summary is kept, so one that is stopped, or whose action dies, is written by the next reply.
+        await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true } });
         return null;
       }
       await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: await goOn(from) });

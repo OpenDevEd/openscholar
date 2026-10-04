@@ -58,11 +58,13 @@ export const reply = internalAction({
     const turn = { agentThreadId, senderId, modelId, effort };
     const shouldStop = async () => (await state()) !== "writing";
     let read = await compactedOf(ctx, threadId);
-    // A compaction that was due and didn't finish is written now, before the request reads the conversation.
-    if (read.owed && read.answering) {
+    // A compaction that was due and didn't finish is written now, before the request reads the conversation:
+    // the exchanges before this one, where the summary doesn't run through them already. What the reply has
+    // written of its own exchange is summarized as it goes (./replies.ts).
+    if (read.owed && read.answering && (read.compactedThrough ?? -1) < read.answering - 1) {
       try {
         const through = read.answering - 1;
-        const summary = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:${used.rounds}:summary`, shouldStop });
+        const summary = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:before:${used.rounds}:summary`, shouldStop });
         await ctx.runMutation(internal.assistant.replies.summarized, { ...lock, summary, through });
         read = { ...read, summary, compactedThrough: through, compactedStep: undefined, owed: false };
       } catch (error) {
@@ -167,7 +169,7 @@ export const compact = internalAction({
     try {
       if (!(await shouldStop())) {
         // A reply can be summarized more than once as it goes: each summary is a charge of its own.
-        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, step, chargeId: `chat:${attemptId}:${step ?? "end"}:summary`, shouldStop });
+        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, step, chargeId: `chat:${attemptId}:through:${step ?? "end"}:summary`, shouldStop });
       }
     } catch (error) {
       console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });
