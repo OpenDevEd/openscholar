@@ -46,6 +46,8 @@ export type Turn = {
   tools?: ToolSet;
   /** Requests to the model one reply may make while it uses its tools. */
   maxSteps?: number;
+  /** Hears, before each request, which one it is (from 0) and the credits the reply's requests have cost so far. */
+  onStep?: (step: { number: number; credits: number }) => void;
   /** The paper chat the reply is in, which its charge is recorded under. */
   jobId?: Id<"extractionJobs">;
   /** IDs for the log lines. */
@@ -188,14 +190,17 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           abortSignal: abortController.signal,
           // A reply with tools takes a step for each round of calls, up to its limit. The last
           // step it's allowed is for its answer: it can't call a tool there, so it never ends
-          // on actions it hasn't told the person about. It's also made to answer once its
-          // requests have cost what was held for it, so a reply spends at most one request past its hold.
+          // on actions it hasn't told the person about. Only that step is forced: taking the
+          // tools away voids the provider's cache of the conversation, and a model that isn't
+          // told why can answer with nothing. Every other limit is the tools' own to refuse (`onStep`).
           ...(turn.tools
             ? {
                 tools: turn.tools,
                 stopWhen: isStepCount(turn.maxSteps ?? 1),
-                prepareStep: ({ stepNumber }: { stepNumber: number }) =>
-                  (turn.maxSteps && stepNumber >= turn.maxSteps - 1) || (convertUsdToCredits({ usd: completedUsd }) || 0) >= turn.credits ? { toolChoice: "none" as const } : undefined,
+                prepareStep: ({ stepNumber }: { stepNumber: number }) => {
+                  turn.onStep?.({ number: stepNumber, credits: convertUsdToCredits({ usd: completedUsd }) || 0 });
+                  return turn.maxSteps && stepNumber >= turn.maxSteps - 1 ? { toolChoice: "none" as const } : undefined;
+                },
               }
             : {}),
           // Retries serve no user when the stream is live — the user
