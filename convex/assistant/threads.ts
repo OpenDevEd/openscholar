@@ -10,14 +10,16 @@ import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { modelSummary, presetPick } from "../ai/serverModel";
+import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
 import { requireFeature } from "../featureFlags/guard";
 import { createError } from "../lib/errors";
+import { capped } from "../lib/listCaps";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
-import schema from "../schema";
-import { accessRows, best, deleteThread, principalsOf, requireThread, userPrincipal, type AssistantRole } from "./access";
-import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
-import type { Effort } from "../../lib/ai/core/call-options";
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
+import schema from "../schema";
+import type { Effort } from "../../lib/ai/core/call-options";
+import { accessRows, best, deleteThread, personName, principalOf, principalsOf, requireThread, userPrincipal, type AssistantRole } from "./access";
+import { viewers } from "./presence";
 import { assistantRoleValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
@@ -30,6 +32,27 @@ const LIST_PAGE_MAX = 50;
  */
 const LIST_FILTER_ROWS = 500;
 const LIST_PAGE_BYTES = 2 * 1024 * 1024;
+/** People a chat's row in the list names. */
+const MEMBERS_SHOWN = 3;
+const PREVIEW_MAX = 120;
+
+/** The start of a message, on one line, for the list of chats. */
+export function previewOf(text: string) {
+  const line = text.trim().replace(/\s+/g, " ");
+  return line.length > PREVIEW_MAX ? `${line.slice(0, PREVIEW_MAX - 1).trimEnd()}…` : line;
+}
+
+type Reply = NonNullable<Doc<"assistantThreads">["reply"]>;
+
+/**
+ * Whether a reply is still being written: its action is waiting to run or running. An
+ * action that ended, or died, without releasing its lock no longer holds the chat.
+ */
+export async function writing(ctx: QueryCtx | MutationCtx, reply: Reply | undefined): Promise<boolean> {
+  if (!reply) return false;
+  const state = (await ctx.db.system.get(reply.scheduledId))?.state.kind;
+  return state === "pending" || state === "inProgress";
+}
 
 const threadValidator = v.object({
   _id: v.id("assistantThreads"),
@@ -38,6 +61,19 @@ const threadValidator = v.object({
   createdAt: v.number(),
   /** The most the person may do in it, through any way it reaches them. */
   role: assistantRoleValidator,
+});
+
+/** A chat as the list shows it. */
+const listedValidator = v.object({
+  ...threadValidator.fields,
+  /** The start of its newest message; empty before its first. */
+  preview: v.string(),
+  /** A reply is being written in it now. */
+  writing: v.boolean(),
+  /** The first few people in it besides the reader, those who have it open now first, then its owner. */
+  members: capped(v.array(v.object({ userId: v.id("users"), name: v.string(), here: v.boolean() })), MEMBERS_SHOWN),
+  /** The first organization it's shared with, by name. */
+  organization: v.optional(v.string()),
 });
 
 /**
@@ -97,9 +133,10 @@ export const listAction = defineUserQuery({
   path: "assistant/threads:list",
   description:
     "Lists the assistant chats the person can open, newest first, a page at a time: all of them, only their own, or only the ones shared with them. " +
-    "Given `text`, only chats whose title contains it.",
+    "Given `text`, only chats whose title or newest message contains it. Each comes with the start of its newest message, whether a reply is being written in it, " +
+    "the first few people in it and who of them has it open now.",
   args: { scope: v.union(v.literal("all"), v.literal("mine"), v.literal("shared")), text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
-  returns: paginationResultValidator(threadValidator),
+  returns: paginationResultValidator(listedValidator),
   run: async (ctx, userId, { scope, text, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const user = await ctx.db.get("users", userId);
@@ -115,29 +152,56 @@ export const listAction = defineUserQuery({
       ),
       ["lastMessageAt"],
     );
-    // What each chat the filter keeps lets the person do, for the page built below.
-    const roles = new Map<string, AssistantRole>();
+    // Each chat the filter keeps: its access rows and what they let the person do, for the page built below.
+    const kept = new Map<string, { role: AssistantRole; access: Doc<"assistantThreadAccess">[] }>();
     const read = await rows
       .filterWith(async (row) => {
         if (scope !== "all" && (row.role === "owner") !== (scope === "mine")) return false;
         // One read of the chat's access rows says both which of the person's principals reach
         // it and the most they may do. A chat that reaches them several ways lists once,
         // through the first of those principals.
-        const reaching = (await accessRows(ctx, row.threadId)).filter((other) => mine.has(other.principal));
+        const access = await accessRows(ctx, row.threadId);
+        const reaching = access.filter((other) => mine.has(other.principal));
         if (principals.find((principal) => reaching.some((other) => other.principal === principal)) !== row.principal) return false;
         if (needle) {
           const thread = await ctx.db.get("assistantThreads", row.threadId);
-          if (!thread?.title.toLowerCase().includes(needle)) return false;
+          if (!thread || !`${thread.title}\n${thread.preview ?? ""}`.toLowerCase().includes(needle)) return false;
         }
-        roles.set(row.threadId, best(reaching.map((other) => other.role)));
+        kept.set(row.threadId, { role: best(reaching.map((other) => other.role)), access });
         return true;
       })
       .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LIST_PAGE_MAX), maximumRowsRead: LIST_FILTER_ROWS, maximumBytesRead: LIST_PAGE_BYTES });
     const page = await Promise.all(
       read.page.map(async (row) => {
         const thread = await ctx.db.get("assistantThreads", row.threadId);
-        const role = roles.get(row.threadId);
-        return thread && role ? [shown(thread, role)] : [];
+        const found = kept.get(row.threadId);
+        if (!thread || !found) return [];
+        const here = await viewers(ctx, thread._id);
+        const others = found.access.flatMap((other) => {
+          const principal = principalOf(ctx, other.principal);
+          return principal && !(principal.kind === "user" && principal.userId === userId) ? [{ principal, owner: other.role === "owner" }] : [];
+        });
+        const people = others
+          .flatMap(({ principal, owner }) => (principal.kind === "user" ? [{ userId: principal.userId, owner, here: here.has(principal.userId) }] : []))
+          .sort((a, b) => Number(b.here) - Number(a.here) || Number(b.owner) - Number(a.owner))
+          .slice(0, MEMBERS_SHOWN);
+        const members = await Promise.all(
+          people.map(async ({ userId: memberId, here: isHere }) => {
+            const person = await ctx.db.get("users", memberId);
+            return person ? [{ userId: memberId, name: personName(person), here: isHere }] : [];
+          }),
+        );
+        const sharedWith = others.flatMap(({ principal }) => (principal.kind === "organization" ? [principal.organizationId] : []))[0];
+        const organization = sharedWith ? await ctx.db.get("organizations", sharedWith) : null;
+        return [
+          {
+            ...shown(thread, found.role),
+            preview: thread.preview ?? "",
+            writing: await writing(ctx, thread.reply),
+            members: members.flat(),
+            ...(organization ? { organization: organization.name } : {}),
+          },
+        ];
       }),
     );
     return { ...read, page: page.flat() };

@@ -15,8 +15,8 @@ import { listMessages, listStreams, type MessageDoc } from "@convex-dev/agent";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
-import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
@@ -30,7 +30,7 @@ import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
-import { chatModel } from "./threads";
+import { chatModel, previewOf, writing } from "./threads";
 import { runTurn } from "./turn";
 
 const FLAG = "assistant.enabled";
@@ -49,17 +49,6 @@ const LIVE_READS = 30;
 /** Chats writing a reply that one sweep checks, oldest first. */
 const SWEEP_BATCH = 200;
 
-type Reply = NonNullable<Doc<"assistantThreads">["reply"]>;
-
-/**
- * Whether a reply is still being written: its action is waiting to run or running. An
- * action that ended, or died, without releasing its lock no longer holds the chat.
- */
-async function writing(ctx: QueryCtx | MutationCtx, reply: Reply | undefined): Promise<boolean> {
-  if (!reply) return false;
-  const state = (await ctx.db.system.get(reply.scheduledId))?.state.kind;
-  return state === "pending" || state === "inProgress";
-}
 
 export const send = mutation({
   args: { threadId: v.id("assistantThreads"), text: v.string() },
@@ -107,7 +96,7 @@ export const send = mutation({
       // An effort the catalog has since dropped runs at the model's default.
       effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
     });
-    await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
+    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
     return null;
   },
 });
@@ -183,13 +172,16 @@ export const lockState = internalQuery({
   },
 });
 
-/** Releases a reply's lock when it ends, however it ends. */
+/** Releases a reply's lock when it ends, however it ends. What it wrote becomes the chat's preview. */
 export const release = internalMutation({
   args: lockArgs,
   returns: v.null(),
   handler: async (ctx, { threadId, attemptId }) => {
-    const current = (await ctx.db.get("assistantThreads", threadId))?.reply;
-    if (current?.attemptId === attemptId) await ctx.db.patch("assistantThreads", threadId, { reply: undefined });
+    const thread = await ctx.db.get("assistantThreads", threadId);
+    if (thread?.reply?.attemptId !== attemptId) return null;
+    const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null }, excludeToolMessages: true })).page[0];
+    const written = newest?.message?.role === "assistant" && newest.order === thread.reply.order ? previewOf(newest.text ?? "") : "";
+    await ctx.db.patch("assistantThreads", threadId, { reply: undefined, ...(written ? { preview: written } : {}) });
     return null;
   },
 });

@@ -70,6 +70,9 @@ describe("assistant replies", () => {
     expect((await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[1].mine).toBe(true);
     expect(page[0].order).toBe(page[1].order);
     expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
+    // The list shows the chat by what was said last.
+    expect((await asAda.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage })).page[0]).toMatchObject({ preview: "Hello Ben", writing: false });
+    expect((await asAda.query(api.assistant.threads.list, { scope: "all", text: "hello b", paginationOpts: firstPage })).page).toHaveLength(1);
 
     // Ben sent it, so Ben pays, though the chat is Ada's.
     const paid = await charges(t);

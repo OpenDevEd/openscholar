@@ -12,6 +12,33 @@ const firstPage = { cursor: null, numItems: 10 };
 const titles = (page: { page: Array<{ title: string }> }) => page.page.map((chat) => chat.title);
 
 describe("assistant chats", () => {
+  it("list with who each is shared with and who has it open now", async () => {
+    const t = convexTest(schema);
+    const { asAda, asBen, asCy, ada, ben, team, threadId } = await (async () => {
+      const who = await people(t);
+      const threadId = await who.asAda.mutation(api.assistant.threads.create, { title: "Reading trials" });
+      await who.asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: who.ben }, role: "read" });
+      await who.asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "organization", organizationId: who.team }, role: "read" });
+      return { ...who, threadId };
+    })();
+    const row = async (as: typeof asAda) => (await as.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage })).page[0];
+    const organization = (await t.run(async (ctx) => ctx.db.get("organizations", team)))!.name;
+
+    // Ada sees Ben; Ben sees Ada, the owner. Nobody has it open yet.
+    expect(await row(asAda)).toMatchObject({ preview: "", writing: false, members: [{ userId: ben, here: false }], organization });
+    expect(await row(asBen)).toMatchObject({ members: [{ userId: ada, here: false }], organization });
+
+    // Ben opens it. Whatever user ID his browser sends, the room holds his own.
+    const opened = await asBen.mutation(api.assistant.presence.heartbeat, { roomId: threadId, userId: ada, sessionId: "tab-1", interval: 10_000 });
+    expect((await row(asAda)).members).toEqual([{ userId: ben, name: "", here: true }]);
+    expect(await t.query(api.assistant.presence.list, { roomToken: opened.roomToken })).toMatchObject([{ userId: ben, online: true }]);
+    await expect(asCy.mutation(api.assistant.presence.heartbeat, { roomId: threadId, userId: ben, sessionId: "tab-2", interval: 10_000 })).rejects.toThrow(/Chat not found/);
+
+    // His tab closes.
+    await t.mutation(api.assistant.presence.disconnect, { sessionToken: opened.sessionToken });
+    expect((await row(asAda)).members).toEqual([{ userId: ben, name: "", here: false }]);
+  });
+
   it("belong to the person who starts them, and a stranger can't open, rename or delete one", async () => {
     const t = convexTest(schema);
     const { asAda, asCy } = await people(t);

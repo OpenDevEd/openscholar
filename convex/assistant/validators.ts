@@ -31,6 +31,8 @@ export const assistantThreadFields = {
   agentThreadId: v.string(),
   /** When its newest message was sent; a chat with none yet has when it was made. */
   lastMessageAt: v.number(),
+  /** The start of its newest message, for the list of chats. */
+  preview: v.optional(v.string()),
   /** The model its replies run on; a chat with none runs the server's default. */
   modelId: v.optional(v.id("models")),
   /** The reasoning effort its replies run at, when the model takes one. */

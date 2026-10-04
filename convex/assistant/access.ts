@@ -92,10 +92,11 @@ export async function touchThread(ctx: MutationCtx, threadId: Id<"assistantThrea
   for (const row of await accessRows(ctx, threadId)) await ctx.db.patch("assistantThreadAccess", row._id, { lastMessageAt: at });
 }
 
-/** Deletes the chat for everyone: its access rows, its record, and its messages, which the agent component deletes a page at a time. */
+/** Deletes the chat for everyone: its access rows, its record, the room of people who had it open, and its messages, which the agent component deletes a page at a time. */
 export async function deleteThread(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
   for (const row of await accessRows(ctx, thread._id)) await ctx.db.delete("assistantThreadAccess", row._id);
   await ctx.db.delete("assistantThreads", thread._id);
+  await ctx.runMutation(components.presence.public.removeRoom, { roomId: thread._id });
   await ctx.runMutation(components.agent.threads.deleteAllForThreadIdAsync, { threadId: thread.agentThreadId });
 }
 
