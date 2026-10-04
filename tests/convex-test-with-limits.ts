@@ -56,11 +56,24 @@ export function runUncapped<T extends { run: (fn: (ctx: any) => Promise<any>) =>
   return (t as unknown as Runner).runUncapped!(fn) as Promise<R>;
 }
 
+/**
+ * Runs `fn` like `t.run`, without the database triggers or the list caps: for seeding rows
+ * as they were before a trigger kept something on them, such as a job without its sort name.
+ */
+export function runUntriggered<T extends { run: (fn: (ctx: any) => Promise<any>) => Promise<any> }, R>(
+  t: T,
+  fn: (ctx: Parameters<Parameters<T["run"]>[0]>[0]) => Promise<R>,
+): Promise<R> {
+  return (t as unknown as Runner).runUntriggered!(fn) as Promise<R>;
+}
+
 type Runner = {
   run: (fn: (ctx: any) => Promise<any>) => Promise<any>;
   withIdentity: (identity: any) => Runner;
   /** Like `run`, without the list caps: for seeding rows saved before their cap existed. */
   runUncapped?: (fn: (ctx: any) => Promise<any>) => Promise<any>;
+  /** Like `run`, without the triggers or the caps. */
+  runUntriggered?: (fn: (ctx: any) => Promise<any>) => Promise<any>;
 };
 
 /**
@@ -72,6 +85,7 @@ function withTriggersInRun<T extends Runner>(target: T): T {
   const withIdentity = target.withIdentity.bind(target);
   target.run = (fn) => run((ctx) => fn(triggers.wrapDB({ ...ctx, db: capWrites(ctx.db) })));
   target.runUncapped = (fn) => run((ctx) => fn(triggers.wrapDB(ctx)));
+  target.runUntriggered = run;
   target.withIdentity = (identity) => withTriggersInRun(withIdentity(identity));
   return target;
 }

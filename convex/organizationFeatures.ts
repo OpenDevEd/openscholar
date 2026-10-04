@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
 import { query, type QueryCtx, type MutationCtx } from "./_generated/server";
 import { getCurrentUser } from "./lib/auth";
 import { createError } from "./lib/errors";
@@ -14,8 +15,8 @@ export type OrganizationFeature = keyof typeof organizationFeatureFields;
 type FeatureAccess = Record<OrganizationFeature, boolean>;
 
 /** The same active memberships drive feature access and organization pickers. */
-export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx) {
-  const user = await getCurrentUser(ctx);
+export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx, person?: Doc<"users"> | null) {
+  const user = person ?? (await getCurrentUser(ctx));
   if (!user) return [];
   const memberships = await ctx.db
     .query("organizationMemberships")
@@ -43,19 +44,20 @@ export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx) {
 
 export async function readOrganizationFeatures(
   ctx: QueryCtx | MutationCtx,
+  person?: Doc<"users"> | null,
 ): Promise<FeatureAccess> {
   const access: FeatureAccess = {
     evidenceLibraries: false,
     authors: false,
     extraction: false,
   };
-  for (const { organization } of await readMemberOrganizations(ctx)) {
+  for (const { organization } of await readMemberOrganizations(ctx, person)) {
     access.evidenceLibraries ||= organization.evidenceLibrariesEnabled === true;
     access.authors ||= organization.authorsEnabled === true;
     access.extraction ||= organization.extractionEnabled === true;
   }
   if (!access.evidenceLibraries) {
-    const user = await getCurrentUser(ctx);
+    const user = person ?? (await getCurrentUser(ctx));
     access.evidenceLibraries = user !== null && await hasDirectLibraryAccess(ctx, user);
   }
   return access;
@@ -86,13 +88,16 @@ export async function requireLibraryOrganization(
   return { ...entry, clerkUserId: entry.membership.clerkUserId };
 }
 
+/** Refuses unless one of the person's organizations has the feature: `userId`'s when the assistant acts for them, else the signed-in person's. */
 export async function requireOrganizationFeature(
   ctx: QueryCtx | MutationCtx,
   feature: OrganizationFeature,
+  userId?: Id<"users">,
 ) {
-  if (!(await ctx.auth.getUserIdentity()))
+  const person = userId ? await ctx.db.get("users", userId) : null;
+  if (!person && !(await ctx.auth.getUserIdentity()))
     throw createError("UNAUTHENTICATED", "Authentication required");
-  if (!(await readOrganizationFeatures(ctx))[feature]) {
+  if (!(await readOrganizationFeatures(ctx, person))[feature]) {
     throw createError(
       "FORBIDDEN",
       "None of your organizations has this feature enabled.",
@@ -103,7 +108,7 @@ export async function requireOrganizationFeature(
 export const get = query({
   args: {},
   returns: v.object(organizationFeatureFields),
-  handler: readOrganizationFeatures,
+  handler: (ctx) => readOrganizationFeatures(ctx),
 });
 
 export const libraryOrganizations = query({

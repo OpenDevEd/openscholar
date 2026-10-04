@@ -68,7 +68,7 @@ export default defineSchema({
   // How many saved searches, shortcuts and screening jobs a person has, kept by the triggers on those tables
   // (research/recordCounts.ts), for page totals. While a first count is being taken,
   // `countedTo` is the creation time it has reached.
-  recordCounts: defineTable({ userId: v.id("users"), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs")), count: v.number(), countedTo: v.optional(v.number()) })
+  recordCounts: defineTable({ userId: v.id("users"), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), count: v.number(), countedTo: v.optional(v.number()) })
     .index("by_user_and_table", ["userId", "table"]),
   searchRevisions: defineTable({
     userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
@@ -710,6 +710,8 @@ export default defineSchema({
   extractionJobs: defineTable(extractionJobFields)
     .index("by_user", ["userId"])
     .index("by_user_status", ["userId", "status"])
+    // The job list ordered by name.
+    .index("by_user_and_sortName", ["userId", "sortName"])
     // Unified history list + single-mode scoping (count user's chats).
     .index("by_user_mode_updated", ["userId", "mode", "updatedAt"])
     // Cross-user iteration by mode (admin backfills, ops tooling).

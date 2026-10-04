@@ -15,7 +15,7 @@ import type { DataModel, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
 /** The tables whose records are counted for each person. */
-export type Counted = "searches" | "queryShortcuts" | "screeningJobs";
+export type Counted = "searches" | "queryShortcuts" | "screeningJobs" | "extractionJobs";
 
 /** Records, and bytes, one step of a first count reads; a record is at most 1 MiB, so a step always moves on. */
 const COUNT_PAGE = 500;

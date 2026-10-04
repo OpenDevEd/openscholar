@@ -273,6 +273,9 @@ export const extractionJobFields = {
   chatSourceFingerprint: v.optional(v.string()),
   chatSourceOpenAlexIds: capped(v.optional(v.array(v.string())), MAX_CHAT_PAPERS),
   name: v.string(),
+  // The name as the job list orders it, ignoring case and accents; a trigger keeps it
+  // (../extraction/jobList.ts). Missing until migrations/pagedExtractionJobs has run.
+  sortName: v.optional(v.string()),
   description: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
