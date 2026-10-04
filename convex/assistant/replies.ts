@@ -263,9 +263,12 @@ export const release = internalMutation({
         made: v.number(),
       }),
     ),
+    // The reply's request ended on actions that ran (./turn.ts): their results go back to the model in
+    // its next request, with what the reply has used so far.
+    next: v.optional(v.object({ promptMessageId: v.string(), spent: v.number(), rounds: v.number(), made: v.number(), tokens: v.number() })),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, ended, summarized, asking }) => {
+  handler: async (ctx, { threadId, attemptId, ended, summarized, asking, next }) => {
     const thread = await ctx.db.get("assistantThreads", threadId);
     if (thread?.reply?.attemptId !== attemptId) return null;
     const current = thread.reply;
@@ -301,6 +304,20 @@ export const release = internalMutation({
       await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: undefined, asking: waiting });
       // Stopped as it asked: the stop found nothing running, and takes effect here.
       if (current.stop) await stopAsking(ctx, thread, waiting);
+      return null;
+    }
+    if (ended && next) {
+      // The reply goes on under the same lock, in an action of its own. One stopped meanwhile
+      // finds that out there, and shows as stopped.
+      const { lastInputTokens: _tokens, messages: _messages, bytes: _bytes, ...turn } = ended;
+      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.reply, {
+        threadId,
+        attemptId,
+        ...turn,
+        promptMessageId: next.promptMessageId,
+        used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens },
+      });
+      await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: { ...current, scheduledId } });
       return null;
     }
     // A reply that carried on from an answer and was stopped, or failed, on the way can leave calls it never ran.
@@ -562,12 +579,13 @@ export const live = query({
     }
     const current = thread.reply;
     if (!current || !(await writing(ctx, current))) return null;
-    // Newest first. A stream that has just ended still counts: its text stays up until the
-    // reply's message holds it and the lock is released, so the page never shows it vanish.
+    // Newest first. A request's stream finishes in the write that saves its message, so one
+    // that has finished has nothing the page doesn't hold already. Between two of a reply's
+    // requests there is none, and the text is empty.
     const streams = await listStreams(ctx, components.agent, {
       threadId: thread.agentThreadId,
       startOrder: current.order,
-      includeStatuses: ["streaming", "finished", "aborted"],
+      includeStatuses: ["streaming", "aborted"],
     });
     const stream = streams.find((candidate) => candidate.order === current.order);
     return {
