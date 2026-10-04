@@ -1,25 +1,24 @@
 "use server";
-import type { FunctionReturnType } from "convex/server";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { readPublicationCard } from "@/lib/evidence-libraries/publication-card";
 import { topicIdSchema } from "@/lib/topics/contract";
 import type { TopicPublication, TopicPublicationPage } from "@/lib/topics/publications";
 
+/** Copies of one publication a page lists: the most `topics/publications:listLocations` reads at once. */
+const MAX_LOCATIONS = 100;
+
 export async function readTopicPublications(topicId: string, query: string, cursor: string | null): Promise<TopicPublicationPage> {
   topicIdSchema.parse(topicId);
   if (query.length > 200 || (cursor?.length ?? 0) > 8192) throw new Error("Invalid publication search");
-  const result = await fetchQuery(api.topics.publications.list, {topicId, cursor, limit: 10});
+  const result = await fetchQuery(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor, numItems: 10}});
   let unavailableCount = 0;
-  const rows = await Promise.all(result.groups.map(async group => {
+  const rows = await Promise.all(result.page.map(async group => {
     try {
-      const locations: FunctionReturnType<typeof api.topics.publications.locations>["locations"] = [];
-      let next: string | null = null;
-      do {
-        const page: FunctionReturnType<typeof api.topics.publications.locations> = await fetchQuery(api.topics.publications.locations, {groupKey: group.key, paginationOpts: {cursor: next, numItems: 100}});
-        locations.push(...page.locations);
-        next = page.nextCursor;
-      } while (next);
+      // ponytail: a publication's first 100 copies. One held by more libraries than that needs its links read a page at a time, when asked for.
+      const read = await fetchQuery(api.topics.publications.listLocations, {groupKey: group.key, paginationOpts: {cursor: null, numItems: MAX_LOCATIONS}});
+      if (!read.isDone) console.error("Topic publication has more copies than one page lists", {topicId, group: group.key, listed: MAX_LOCATIONS});
+      const locations = read.page;
       const cards = await Promise.allSettled(locations.map(async location => ({location, card: await readPublicationCard(location.library.id, location.itemKey, location.library.url)})));
       const available = cards.flatMap((result, index) => {
         if (result.status === "fulfilled") return result.value.card ? [{location: result.value.location, card: result.value.card}] : [];
@@ -47,5 +46,5 @@ export async function readTopicPublications(topicId: string, query: string, curs
       return null;
     }
   }));
-  return {papers: rows.flatMap(row => row ? [row] : []), nextCursor: result.nextCursor, unavailableCount, updating: result.updating, complete: result.nextCursor === null && unavailableCount === 0 && !result.updating};
+  return {papers: rows.flatMap(row => row ? [row] : []), nextCursor: result.isDone ? null : result.continueCursor, unavailableCount, updating: result.updating, complete: result.isDone && unavailableCount === 0 && !result.updating};
 }
