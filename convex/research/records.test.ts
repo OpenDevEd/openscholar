@@ -648,8 +648,37 @@ describe("research actions as assistant tools", () => {
     await alice.mutation(api.research.records.importBatch, batch);
     const bobTools = assistantTools(actionCtx(t), ids.bob, USER_ACTIONS);
     expect(await bobTools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: "call-3" })).toBeNull();
-    await bobTools.research_records_change.execute!({ command: { kind: "deleteSearch", id: record.id } }, { ...call, toolCallId: "call-4" });
+    // Deleting a search outright asks the person first. Allowed by Bob, it still deletes nothing of Alice's.
+    await expect(bobTools.research_records_change.execute!({ command: { kind: "deleteSearch", id: record.id } }, { ...call, toolCallId: "call-4" })).rejects.toThrow(/person's say first/);
+    await t.mutation(internal.research.records.changeForAssistant, { userId: ids.bob, requestId: "call-4", command: { kind: "deleteSearch", id: record.id }, approved: true });
     expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toEqual(listedRecord);
+  });
+
+  it("ask the person before a change nothing puts back, and not before one that returns an undo", async () => {
+    const { t, ids, alice } = await setup();
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "made", command: { kind: "createSearch", search: record } });
+    const long = "a".repeat(UNDO_SHORTCUT_MAX + 1);
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "long", command: { kind: "shortcut", shorthand: "long", value: { expansion: long, createdAt: 1 } } });
+    await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "short", command: { kind: "shortcut", shorthand: "short", value: { expansion: "tutoring", createdAt: 1 } } });
+    const asks = (command: ResearchCommand) => t.query(internal.assistant.asking.first, { userId: ids.alice, path: "research/records:change", input: JSON.stringify({ requestId: "r", command }) });
+    const edit = (change: Extract<ResearchCommand, { kind: "editSearch" }>["edit"]) => asks({ kind: "editSearch", id: record.id, edit: change });
+
+    // Nothing puts these back.
+    expect(await asks({ kind: "clearSearches" })).toBe(true);
+    expect(await asks({ kind: "clearShortcuts" })).toBe(true);
+    expect(await asks({ kind: "deleteSearch", id: record.id })).toBe(true);
+    expect(await edit({ kind: "clearScreeningQuestions" })).toBe(true);
+    // A shortcut too long to keep has no undo: deleting it, or setting one that long.
+    expect(await asks({ kind: "shortcut", shorthand: "long", value: null })).toBe(true);
+    expect(await asks({ kind: "shortcut", shorthand: "new", value: { expansion: long, createdAt: 1 } })).toBe(true);
+
+    // These return an undo, or add something.
+    expect(await asks({ kind: "createSearch", search: { ...record, id: "another" } })).toBe(false);
+    expect(await asks({ kind: "rating", paperId: "W1", rating: 4 })).toBe(false);
+    expect(await asks({ kind: "shortcut", shorthand: "short", value: null })).toBe(false);
+    expect(await edit({ kind: "query", query: "tutoring at scale", field: "title" })).toBe(false);
+    expect(await edit({ kind: "patch", fields: { page: 2 }, clear: [] })).toBe(false);
+    expect(await edit({ kind: "restore", revision: 1, expect: 2 })).toBe(false);
   });
 
   it("refuse a sender whose account was suspended or deleted during the turn", async () => {

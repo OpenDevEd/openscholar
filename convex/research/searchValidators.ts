@@ -8,13 +8,13 @@ import { capped } from "../lib/listCaps";
 
 /** Papers one page of results holds. */
 export const RESULTS_PAGE = 10;
-/** The last page that can be read: OpenAlex lists a search's first 10,000 works by page number. */
-export const LAST_PAGE = 10_000 / RESULTS_PAGE;
 /**
- * The last page under a sort that is read from the start (convex/paperSets/openalex.ts):
- * its first 2,000 works, which is ten requests of the person's allowance.
+ * The last page that can be read: OpenAlex lists a search's first 10,000 works by page
+ * number. A sort that is read from the start (convex/paperSets/openalex.ts) reaches as far:
+ * each 200 works on the way is a request of the person's OpenAlex allowance, which is what
+ * holds a deep read back.
  */
-export const LAST_PAGE_FROM_START = 2_000 / RESULTS_PAGE;
+export const LAST_PAGE = 10_000 / RESULTS_PAGE;
 
 const fieldValidator = v.union(v.literal("title_and_abstract"), v.literal("title"), v.literal("abstract"), v.literal("fulltext"));
 const sortValidator = v.union(v.literal("relevance"), v.literal("most_cited"), v.literal("newest"), v.literal("oldest"));
@@ -85,7 +85,7 @@ export const SETTINGS =
 /** Authors of a paper the results name, each with its ID to filter by. */
 export const AUTHORS_SHOWN = 3;
 /** Matches one lookup returns. */
-export const LOOKUP_MAX = 8;
+export const LOOKUP_MAX = 10;
 export const lookupKindValidator = v.union(v.literal("author"), v.literal("funder"), v.literal("researchArea"));
 export const lookupValidator = v.object({
   matches: capped(v.array(v.object({ id: v.string(), name: v.string(), detail: v.optional(v.string()) })), LOOKUP_MAX),
@@ -107,7 +107,7 @@ export const GROUPINGS = {
 } as const;
 export type Grouping = keyof typeof GROUPINGS;
 /** Groups one count returns: the largest, or under `year` the latest. */
-export const GROUPS_MAX = 40;
+export const GROUPS_MAX = 100;
 export const countValidator = v.object({
   /** How many papers match in all. */
   total: v.number(),

@@ -8,6 +8,7 @@ import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
 import { inputSchema } from "../lib/assistantTools";
+import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
@@ -186,15 +187,13 @@ describe("the assistant's tools", () => {
     expect((await steps()).map((step) => [step.order, step.toolCallId, step.status])).toEqual([[0, "call_0", "done"], [1, "call_0", "done"]]);
   });
 
-  it("don't run an action that doesn't exist, one too long to be a tool, or one whose arguments don't fit, and say why", async () => {
+  it("don't run an action that doesn't exist, or one whose arguments don't fit, and say why", async () => {
     const t = convexTest(schema);
     const { say, steps } = await chatOf(t);
     mockDoStream
       .mockImplementationOnce(
         calling(
           { id: "missing", name: "run_action", input: { name: "library/mutations:burn", arguments: {} } },
-          // Every saved search and shortcut could be cleared through this one, and its arguments run to thousands of tokens.
-          { id: "long", name: "run_action", input: { name: "research/records:change", arguments: { command: { kind: "clearSearches" } } } },
           { id: "unfit", name: "run_action", input: { name: "library/collections:renameCollection", arguments: { name: 3 } } },
         ),
       )
@@ -202,7 +201,6 @@ describe("the assistant's tools", () => {
     await say("Clear everything");
 
     expect(told(1, "missing")).toMatchObject({ error: expect.stringMatching(/No action is named/) });
-    expect(told(1, "long")).toMatchObject({ error: expect.stringMatching(/No action is named/) });
     // The arguments the action takes come back with the refusal.
     expect(told(1, "unfit")).toMatchObject({ error: expect.stringMatching(/don't fit/), arguments: { type: "object" } });
     expect(await steps()).toEqual([]);
@@ -398,17 +396,18 @@ describe("the assistant's tools", () => {
   it("hold a reply that carries on to how many a person has at once, and tell the model when a call it asked about was cut off mid-run", async () => {
     const t = convexTest(schema);
     const { asAda, threadId, say, sayUntilAsked, steps, thread } = await chatOf(t);
-    const others = await Promise.all(["Two", "Three", "Four", "Old chat"].map((title) => asAda.mutation(api.assistant.threads.create, { title })));
-    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: others[3] } } }));
+    const others = await Promise.all(Array.from({ length: ASSISTANT_REPLIES_AT_ONCE }, (_, index) => asAda.mutation(api.assistant.threads.create, { title: `Chat ${index + 2}` })));
+    const old = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
+    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: old } } }));
     await sayUntilAsked("Delete my old chat");
     const [asked] = await steps();
 
-    // Three replies of hers are being written elsewhere. Waiting isn't one of them, but carrying on would be a fourth.
+    // As many replies of hers as one person has at once are being written elsewhere. Waiting isn't one of them, but carrying on would be one more.
     mockDoStream.mockImplementation(hangingDoStream());
-    for (const id of others.slice(0, 3)) await asAda.mutation(api.assistant.replies.send, { threadId: id, text: "Go" });
-    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asked._id, allow: true })).rejects.toThrow(/already writing 3 replies/);
+    for (const id of others) await asAda.mutation(api.assistant.replies.send, { threadId: id, text: "Go" });
+    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asked._id, allow: true })).rejects.toThrow(new RegExp(`already writing ${ASSISTANT_REPLIES_AT_ONCE} replies`));
     expect((await steps())[0].status).toBe("asking");
-    for (const id of others.slice(0, 3)) {
+    for (const id of others) {
       await asAda.mutation(api.assistant.replies.stop, { threadId: id, attemptId: (await t.run(async (ctx) => ctx.db.get("assistantThreads", id)))!.reply!.attemptId });
       await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", id)))?.reply, { timeoutMs: 5_000 });
     }
@@ -706,8 +705,8 @@ describe("the assistant's tools", () => {
     expect(remove).toMatchObject({ asksFirst: true, arguments: { type: "object", properties: { threadId: { type: "string" } } } });
     // An action named outright comes first.
     expect(found("library/collections:renameCollection").actions[0]).toMatchObject({ name: "library/collections:renameCollection", arguments: { type: "object" } });
-    // One too long to be a tool isn't found.
-    expect(found("research/records:change clear every saved search").actions.map((action) => action.name)).not.toContain("research/records:change");
+    // One too long to be a tool of its own is found like the rest.
+    expect(found("research/records:change clear every saved search").actions.map((action) => action.name)).toContain("research/records:change");
     expect(found("zzzz").actions).toEqual([]);
     // What a search returns stays within what the model reads at once.
     expect(JSON.stringify(found("list count get search collection paper screening extraction")).length).toBeLessThanOrEqual(MODEL_READS + 6 * 60);

@@ -21,10 +21,14 @@ import { DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, forModel } from "./steps";
  * At 12, a literature review that searched, read, saved ten papers and filed them ran out.
  */
 export const MAX_STEPS = 20;
-/** Characters of an action's description and arguments, about 1,000 tokens (#326). A longer one has no tool. */
+/**
+ * Characters of the description and arguments of an action that is a tool of its own,
+ * about 1,000 tokens (#326): every request carries them. A longer action is reached
+ * through find_action, which returns its definition whole.
+ */
 export const DEFINITION_MAX = 4_000;
-/** Actions one search returns. */
-const FOUND_MAX = 6;
+/** Actions one search returns. As many are returned whole as the model reads at once (./steps.ts). */
+const FOUND_MAX = 12;
 /** Actions one reply may run, however many it calls at once: every one of them shows on the chat's page (./steps.ts). At 40, the same review saved five of its ten papers. */
 export const MAX_CALLS = 100;
 
@@ -84,21 +88,14 @@ export function definition(entry: UserAction) {
   const { $schema: _dialect, ...args } = z.toJSONSchema(inputSchema(entry));
   return { does: entry.description, arguments: args };
 }
-const sizes = new Map<string, number>();
-/** Whether an action is short enough to be a tool at all (#326). One that isn't waits to be split into smaller actions. */
-function fits(entry: UserAction) {
-  if (!sizes.has(entry.path)) sizes.set(entry.path, JSON.stringify(definition(entry)).length);
-  return sizes.get(entry.path)! <= DEFINITION_MAX;
-}
-/** The actions the assistant can reach: every registered one that fits. */
-const reachable = () => USER_ACTIONS.filter(fits);
-const entryAt = (path: string) => reachable().find((entry) => entry.path === path);
+/** The actions the assistant can reach: every registered one, however long its description. */
+const entryAt = (path: string) => USER_ACTIONS.find((entry) => entry.path === path);
 
 /** The core actions, as registered. */
 export function core() {
   return CORE_PATHS.map((path) => {
     const entry = entryAt(path);
-    if (!entry || !runsWithoutAsking(entry)) throw new Error(`${path} can't be a tool of its own: it isn't registered, it's too long, or it asks first.`);
+    if (!entry || !runsWithoutAsking(entry)) throw new Error(`${path} can't be a tool of its own: it isn't registered, or it asks first.`);
     return entry;
   });
 }
@@ -179,7 +176,7 @@ const messageOf = (error: unknown) => {
 export function found(keywords: string) {
   const asked = keywords.toLowerCase();
   const words = asked.split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 1);
-  const matches = reachable()
+  const matches = USER_ACTIONS
     .map((entry) => {
       const text = `${entry.path} ${entry.description}`.toLowerCase();
       return { entry, score: words.filter((word) => text.includes(word)).length + (asked.includes(entry.path.toLowerCase()) ? words.length : 0) };

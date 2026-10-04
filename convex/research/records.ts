@@ -572,6 +572,33 @@ export const changeAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   retryKey: "requestId",
+  // The assistant asks the person before a change nothing puts back, by the rules that decide whether a change returns an undo (applyCommand).
+  asksFirst: async (ctx, userId, { command }) => {
+    switch (command.kind) {
+      case "createSearch":
+      case "rating":
+        return false;
+      case "clearSearches":
+      case "clearShortcuts":
+        return true;
+      // The undo of a creation names what it made. Any other delete is outright.
+      case "deleteSearch":
+        return command.expect === undefined;
+      // A shortcut too long to keep has no undo, as it was or as it would be.
+      case "shortcut": {
+        const row = await ctx.db.query("queryShortcuts").withIndex("by_user_and_shorthand", q => q.eq("userId", userId).eq("data.shorthand", command.shorthand)).unique();
+        return [row?.data.expansion, command.value?.expansion].some(text => text !== undefined && text.length > UNDO_SHORTCUT_MAX);
+      }
+      case "editSearch": {
+        const kind = command.edit.kind;
+        // Changes to questions, answers and history stay done.
+        if (kind !== "patch" && kind !== "query" && kind !== "restore") return true;
+        // A change to the query or the filters is undone by restoring the revision before it. A search from before revisions were kept has none to go back to.
+        const found = await findSearch(ctx, userId, command.id);
+        return found !== null && (await revisionRow(ctx, found._id, found.revision)) === null;
+      }
+    }
+  },
   // The receipt makes a retried request apply once, from the page or from the assistant. It
   // keeps the undo, so a caller that lost the first answer gets the same one from a retry.
   run: async (ctx, userId, args, author: Author) => {
