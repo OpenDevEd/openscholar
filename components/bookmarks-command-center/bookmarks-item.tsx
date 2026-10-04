@@ -34,7 +34,7 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
   const format = useFormatter();
   const router = useRouter();
   const [editValue, setEditValue] = useState(bookmark.expansion);
-  const expansionText = useFullText<HTMLButtonElement>(`${viewMode}${isEditing}`);
+  const expansionText = useFullText<HTMLButtonElement>(`${viewMode}|${isEditing}|${bookmark.expansion}`);
   const grid = isGrid(viewMode);
   const simple = viewMode === "list-simple";
 
@@ -82,7 +82,7 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
           {format.dateTime(new Date(bookmark.createdAt), { month: "short", day: "numeric", year: "numeric" })}
         </time>
       }
-      className={cn(!grid && !simple && "h-7 self-start")}
+      className={cn(!grid && "h-7 self-start")}
     >
       <EntryAction label={tb("copyExpansion")} icon={Copy} onClick={copy} />
       <EntryAction label={tc("edit")} icon={Pencil} onClick={startEdit} />
@@ -143,7 +143,8 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
   );
 
   return (
-    <Entry viewMode={viewMode} active={isEditing}>
+    // In the one-line view everything lines up on the expansion's first line, also when it is shown in full.
+    <Entry viewMode={viewMode} active={isEditing} className={cn(simple && !isEditing && "items-start")}>
       {grid ? (
         <>
           <div className="flex items-center gap-2">
@@ -164,8 +165,8 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
             <>
               {simple ? (
                 <>
-                  <span className="min-w-0">{open("truncate", "block w-full")}</span>
-                  <FullTextToggle text={expansionText} iconOnly />
+                  <span className="min-w-0">{open("truncate", "block w-full py-1")}</span>
+                  <FullTextToggle text={expansionText} iconOnly className="mt-0.5" />
                   <span className="flex-1" />
                 </>
               ) : (

@@ -42,7 +42,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
   const [isHistoryWanted, setIsHistoryWanted] = useState(false);
   const history = useSearchHistoryEntries(item, "query", isQueryHistoryOpen || isHistoryWanted);
   const removeSearchResult = useSearchHistoryStore((state) => state.removeSearchResult);
-  const queryText = useFullText<HTMLButtonElement>(viewMode);
+  const queryText = useFullText<HTMLButtonElement>(`${viewMode}|${item.query}`);
 
   const handleCopy = async () => {
     try {
@@ -183,7 +183,8 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
   );
 
   return (
-    <Entry viewMode={viewMode} active={isBookmarking || isQueryHistoryOpen}>
+    // In the one-line view everything lines up on the query's first line, also when the query is shown in full.
+    <Entry viewMode={viewMode} active={isBookmarking || isQueryHistoryOpen} className={cn(viewMode === "list-simple" && "items-start")}>
       {isGrid(viewMode) ? (
         <>
           <div className="flex flex-wrap items-center gap-2">
@@ -211,11 +212,11 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
       ) : (
         <>
           {count}
-          <span className="min-w-0">{open("truncate", "block w-full")}</span>
-          <FullTextToggle text={queryText} iconOnly />
-          {versions}
+          <span className="min-w-0">{open("truncate", "block w-full py-1")}</span>
+          <FullTextToggle text={queryText} iconOnly className="mt-0.5" />
+          {versions && <span className="mt-0.5 flex">{versions}</span>}
           <span className="flex-1" />
-          {aside()}
+          {aside("h-7")}
         </>
       )}
     </Entry>
