@@ -821,6 +821,48 @@ describe("the assistant's tools", () => {
     expect((await asAda.query(api.assistant.spending.get, { threadId })).recent).toEqual([paid]);
   });
 
+  it("hold a reply that asked with its limit already reached until it's carried on, whatever the answer", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, thread, steps, settled } = await chatOf(t);
+    const other = await asAda.mutation(api.assistant.threads.create, { title: "Old chat" });
+    await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
+    mockDoStream
+      .mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: other } } }))
+      .mockImplementationOnce(finishingDoStream(["Deleted."]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Delete my old chat" });
+    await waitFor(async () => (await thread())?.asking !== undefined, { timeoutMs: 5_000 });
+    // The request that asked cost what she allowed. Saying yes to the action isn't saying yes to more credits.
+    expect((await thread())!.asking!.spent).toBeGreaterThanOrEqual(1);
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: true });
+    expect(await thread()).toMatchObject({ asking: { paused: "credits" } });
+    expect((await thread())?.reply).toBeUndefined();
+    expect(requests).toHaveLength(1);
+    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).not.toBeNull();
+    // Carried on, it runs what she allowed and answers.
+    await asAda.mutation(api.assistant.replies.carryOn, { threadId });
+    await settled();
+    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", other))).toBeNull();
+    expect(requests).toHaveLength(2);
+  });
+
+  it("keep nothing for a sender whose account is gone when their paused reply is stopped", async () => {
+    const t = convexTest(schema);
+    const { ada, ben, asAda, asBen, threadId, thread } = await chatOf(t);
+    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "write" });
+    await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
+    mockDoStream.mockImplementation(async () => calling({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: (requests.length % 3) + 1 } } })());
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Read all my collections" });
+    await waitFor(async () => (await thread())?.asking?.paused !== undefined, { timeoutMs: 5_000 });
+    // Her account is purged, record and all, while her reply waits in a chat Ben can write in.
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("assistantSpenders").collect()) await ctx.db.delete("assistantSpenders", row._id);
+      await ctx.db.delete("users", ada);
+    });
+    await asBen.mutation(api.assistant.replies.stop, { threadId, attemptId: (await asBen.query(api.assistant.replies.live, { threadId }))!.attemptId });
+    expect((await thread())?.asking).toBeUndefined();
+    expect(await t.run(async (ctx) => ctx.db.query("assistantSpenders").collect())).toEqual([]);
+  });
+
   it("end a paused reply when it's stopped, and take the next message", async () => {
     const t = convexTest(schema);
     const { asAda, threadId, say, thread, stop, shown } = await chatOf(t);

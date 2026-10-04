@@ -204,7 +204,13 @@ describe("what the assistant's model is sent", () => {
     mockDoStream.mockReset();
     mockDoStream.mockImplementationOnce(callingDoStream(list("first", COMPACT_AT_TOKENS + 1))).mockImplementationOnce(callingDoStream(list("second"))).mockImplementationOnce(finishingDoStream(["Answer 2"]));
     mockDoGenerate.mockImplementation(summaryOf("Decisions\nNone.\nNext step\nList the collections once more."));
+    const charges = () => t.run(async (ctx) => ctx.db.query("billingUsage").collect());
+    const before = (await charges()).length;
     await say("Question 2");
+    // What the reply cost counts the summary written on its way: all she was charged since she asked.
+    const charged = (await charges()).slice(before);
+    expect(charged.map((charge) => charge.description)).toContain("Conversation summary");
+    expect((await asAda.query(api.assistant.spending.get, { threadId })).recent.at(-1)).toBe(charged.reduce((sum, charge) => sum + charge.credits, 0));
 
     // The summary call read the reply's own request and what came of it, and runs through the exchange it was in.
     expect(said(sent(1)).at(-1)).toMatch(/^user: Write a summary/);

@@ -64,9 +64,11 @@ export const reply = internalAction({
     if (read.owed && read.answering && (read.compactedThrough ?? -1) < read.answering - 1) {
       try {
         const through = read.answering - 1;
-        const summary = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:before:${used.rounds}:summary`, shouldStop });
+        const { summary, credits } = await summarize(ctx, { ...read, ...turn, through, lastInputTokens: COMPACT_AT_TOKENS, chargeId: `chat:${attemptId}:before:${used.rounds}:summary`, shouldStop });
         await ctx.runMutation(internal.assistant.replies.summarized, { ...lock, summary, through });
         read = { ...read, summary, compactedThrough: through, owed: false };
+        // What it cost counts towards what the reply has spent.
+        used = { ...used, credits: used.credits + credits };
       } catch (error) {
         // Still owed. The reply goes ahead if the conversation can be read whole, and fails saying so if it can't.
         console.error("[assistant] owed compaction failed", { threadId, error: errorToLogString(error) });
@@ -175,17 +177,19 @@ export const compact = internalAction({
   returns: v.null(),
   handler: async (ctx, { threadId, attemptId, through, resume, ...turn }) => {
     const lock = { threadId, attemptId };
-    let summary: string | undefined;
+    let written: { summary: string; credits: number } | undefined;
     const shouldStop = async () => (await ctx.runQuery(internal.assistant.replies.lockState, lock)) !== "writing";
     try {
       if (!(await shouldStop())) {
         // A reply can be summarized more than once as it goes, and one that couldn't be written is tried again after its next request: each try is a charge of its own.
-        summary = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:through:${through}:${resume?.used.rounds ?? "end"}:summary`, shouldStop });
+        written = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, chargeId: `chat:${attemptId}:through:${through}:${resume?.used.rounds ?? "end"}:summary`, shouldStop });
       }
     } catch (error) {
       console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });
     }
-    await ctx.runMutation(internal.assistant.replies.release, { ...lock, ...(summary ? { summarized: { summary, through } } : {}), ...(resume ? { resume } : {}) });
+    // One written while the reply is under way counts towards what the reply has spent.
+    const from = resume && written ? { ...resume, used: { ...resume.used, credits: resume.used.credits + written.credits } } : resume;
+    await ctx.runMutation(internal.assistant.replies.release, { ...lock, ...(written ? { summarized: { summary: written.summary, through } } : {}), ...(from ? { resume: from } : {}) });
     return null;
   },
 });

@@ -67,7 +67,8 @@ export async function startWith(ctx: MutationCtx, threadId: Id<"assistantThreads
 
 /** Keeps what a reply cost among the person's last, for the Spending sheet's chart. One that cost nothing, stopped or failed before the model answered, isn't one of them. */
 export async function noteReply(ctx: MutationCtx, userId: Id<"users">, spent: number) {
-  if (spent <= 0) return;
+  // A reply can outlast its sender's account, paused in someone else's chat: nothing is kept for an account that is gone.
+  if (spent <= 0 || !(await ctx.db.get("users", userId))) return;
   const spender = await spenderOf(ctx, userId);
   if (!spender) await ctx.db.insert("assistantSpenders", { userId, recent: [spent] });
   else await ctx.db.patch("assistantSpenders", spender._id, { recent: [...spender.recent, spent].slice(-RECENT_REPLIES) });

@@ -70,11 +70,17 @@ async function admit(ctx: MutationCtx, userId: Id<"users">) {
   let stillWriting = 0;
   for (const other of mine) {
     if (await writing(ctx, other.reply)) stillWriting++;
-    else await ctx.db.patch("assistantThreads", other._id, { reply: undefined });
+    else await endDead(ctx, other);
   }
   if (stillWriting >= ASSISTANT_REPLIES_AT_ONCE) {
     throw createError("CONFLICT", `The assistant is already writing ${ASSISTANT_REPLIES_AT_ONCE} replies for you. Wait for one to finish.`);
   }
+}
+
+/** Clears the lock of a reply whose action died. What it had cost by then is still one of its sender's last replies. */
+async function endDead(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
+  if (thread.reply) await noteReply(ctx, thread.reply.senderId, thread.reply.spent ?? 0);
+  await ctx.db.patch("assistantThreads", thread._id, { reply: undefined });
 }
 
 export const send = mutation({
@@ -169,6 +175,13 @@ export const answer = mutation({
     else await declineSteps(ctx, [step]);
     // Calls it asked about together are answered one by one. The reply carries on after the last.
     if (left.length) return null;
+    // It asked with its limit already reached. The answers are kept, and it waits to be carried on before it runs them:
+    // answering a question isn't agreeing to spend more.
+    const paused = pausedAt(waiting);
+    if (paused) {
+      await ctx.db.patch("assistantThreads", threadId, { asking: { ...waiting, paused } });
+      return null;
+    }
     await goOnFrom(ctx, thread, waiting, { ...(waiting.cap === undefined ? {} : { cap: waiting.cap }), ...(waiting.lap === undefined ? {} : { lap: waiting.lap }) });
     return null;
   },
@@ -358,6 +371,29 @@ export const release = internalMutation({
       const { cap: _cap, ...held } = lock;
       return { ...held, scheduledId, spent: used.credits, ...(used.cap === undefined ? {} : { cap: used.cap }) };
     };
+    /**
+     * Why the reply pauses before the request it would make next, when it does: it has reached what its sender lets
+     * a reply spend, or the requests a reply makes before it asks (./spending.ts). One that was stopped ends at its
+     * next request instead, and one whose next request is its answer (./run.ts) makes it.
+     */
+    const pauseBefore = (used: Infer<typeof usedValidator>) => (current.stop || used.told ? null : pausedAt({ spent: used.credits, rounds: used.rounds, cap: used.cap, lap: used.lap }));
+    /** The paused reply, as the chat keeps it until it's carried on: where it stands in `order`, and what it runs to. */
+    const pausedFrom = ({ used, ...from }: Infer<typeof resumeValidator>, order: number, paused: NonNullable<ReturnType<typeof pauseBefore>>) => ({
+      senderId: current.senderId,
+      order,
+      promptMessageId: from.promptMessageId,
+      modelId: from.modelId,
+      ...(from.effort ? { effort: from.effort } : {}),
+      spent: used.credits,
+      rounds: used.rounds,
+      made: used.calls,
+      ...(used.failed ? { failed: used.failed } : {}),
+      ...(used.recent?.length ? { recent: used.recent } : {}),
+      ...(used.cap === undefined ? {} : { cap: used.cap }),
+      ...(used.lap === undefined ? {} : { lap: used.lap }),
+      paused,
+      askedAt: Date.now(),
+    });
     if (current.compacting) {
       const kept = summarized && !current.stop ? { summary: summarized.summary, compactedThrough: summarized.through, compactionOwed: undefined } : null;
       if (resume && kept) {
@@ -365,13 +401,21 @@ export const release = internalMutation({
         // with a message telling it to: the summary runs through the exchange it was in, message and all. Its next
         // request reads the summary, not what the last one read.
         const [message] = (await saveMessages(ctx, components.agent, { threadId: thread.agentThreadId, agentName: CARRIED, messages: [{ role: "user", content: CARRY_ON }] })).messages;
-        const lock = await goOn({ ...resume, promptMessageId: message._id, used: { ...resume.used, tokens: 0 } });
+        const from = { ...resume, promptMessageId: message._id, used: { ...resume.used, tokens: 0 } };
+        // A limit it reached is asked about now that the summary is written, so pausing never leaves a conversation unsummarized.
+        const paused = pauseBefore(from.used);
+        if (paused) {
+          await ctx.db.patch("assistantThreads", threadId, { ...kept, reply: undefined, asking: pausedFrom(from, message.order, paused) });
+          return null;
+        }
+        const lock = await goOn(from);
         await ctx.db.patch("assistantThreads", threadId, { ...kept, reply: { ...lock, order: message.order } });
         return null;
       }
       if (resume) {
         // The summary wasn't written, and stays owed. The reply goes on as it was, and is summarized after its next request.
-        await ctx.db.patch("assistantThreads", threadId, { reply: await goOn(resume) });
+        const paused = pauseBefore(resume.used);
+        await ctx.db.patch("assistantThreads", threadId, paused ? { reply: undefined, asking: pausedFrom(resume, current.order, paused) } : { reply: await goOn(resume) });
         return null;
       }
       // A summary that was stopped, or never written, stays owed: the next reply writes it first.
@@ -413,37 +457,20 @@ export const release = internalMutation({
       // The reply goes on, in an action of its own.
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
       const limits = { ...(next.cap === undefined ? {} : { cap: next.cap }), ...(next.lap === undefined ? {} : { lap: next.lap }) };
-      // It has reached what its sender lets a reply spend, or the requests a reply makes before it asks (./spending.ts).
-      // It waits to be carried on, as a reply that asked about an action waits for its answer. A reply that was
-      // stopped ends at its next request instead, and one whose next request is its answer (./run.ts) makes it.
-      const paused = current.stop || next.told ? null : pausedAt(next);
-      if (paused) {
-        const waiting = {
-          senderId: current.senderId,
-          order: current.order,
-          promptMessageId: next.promptMessageId,
-          modelId: ended.modelId,
-          ...(ended.effort ? { effort: ended.effort } : {}),
-          spent: next.spent,
-          rounds: next.rounds,
-          made: next.made,
-          ...(next.failed ? { failed: next.failed } : {}),
-          ...(next.recent.length ? { recent: next.recent } : {}),
-          ...limits,
-          paused,
-          askedAt: Date.now(),
-        };
-        // A conversation as long as a request should read is owed its summary: nothing compacts it while it waits.
-        await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: undefined, asking: waiting, ...(compactionDue({ ...ended, window }) ? { compactionOwed: true } : {}) });
-        return null;
-      }
       const from = { ...turn, promptMessageId: next.promptMessageId, used: { credits: next.spent, rounds: next.rounds, calls: next.made, tokens: next.tokens, failed: next.failed, recent: next.recent, ...(next.told ? { told: next.told } : {}), ...limits } };
       // A conversation as long as a request should read is summarized first, through what the reply
-      // has written, and the reply goes on from the summary (./context.ts).
+      // has written, and the reply goes on from the summary (./context.ts). A limit it has reached too
+      // is asked about once the summary is written.
       if (!current.stop && compactionDue({ ...ended, window })) {
         const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, through: current.order, lastInputTokens, resume: from });
         // Owed from here until a summary is kept, so one that is stopped, or whose action dies, is written by the next reply.
         await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true } });
+        return null;
+      }
+      // It waits to be carried on, as a reply that asked about an action waits for its answer.
+      const paused = pauseBefore(from.used);
+      if (paused) {
+        await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: undefined, asking: pausedFrom(from, current.order, paused) });
         return null;
       }
       await ctx.db.patch("assistantThreads", threadId, { ...preview, reply: await goOn(from) });
@@ -481,7 +508,7 @@ export const sweep = internalMutation({
       .withIndex("by_replyStartedAt", (q) => q.gt("reply.startedAt", 0))
       .take(SWEEP_BATCH);
     for (const thread of held) {
-      if (!(await writing(ctx, thread.reply))) await ctx.db.patch("assistantThreads", thread._id, { reply: undefined });
+      if (!(await writing(ctx, thread.reply))) await endDead(ctx, thread);
     }
     return null;
   },
