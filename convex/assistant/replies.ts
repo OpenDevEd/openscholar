@@ -25,7 +25,7 @@ import { internalMutation, internalQuery, mutation, query } from "../lib/functio
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
-import { viewOf, viewPart } from "../../lib/assistant/view";
+import { notePart, viewOf } from "../../lib/assistant/view";
 import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
@@ -101,21 +101,23 @@ export const send = mutation({
 
     // The message, the lock and the scheduled reply commit together, so a second send
     // can't slip in between them.
-    // Where it's sent from goes with the message, for the model alone, and stays there, so
-    // nothing already sent changes. It's left out when this person's last message said the
-    // same place and the model still reads that message: it isn't summarized, and no summary
-    // is owed that would take its place before this one is answered. In a shared chat each
-    // person's messages say their own place.
+    // Where it's sent from and the date go with the message, for the model alone, and stay
+    // there, so nothing already sent changes. The note is left out when this person's last
+    // message said the same place on the same day and the model still reads that message: it
+    // isn't summarized, and no summary is owed that would take its place before this one is
+    // answered. In a shared chat each person's messages say their own place.
+    const now = Date.now();
     const view = address === undefined ? null : viewOf(address);
-    const said = thread.view && thread.view.userId === userId && thread.view.order > (thread.compactedThrough ?? -1) && thread.compactionOwed !== true ? thread.view.address : undefined;
-    const moved = view !== null && view !== said;
+    // ponytail: the server's day, in UTC. Send the person's own date with the message if a day's difference near midnight comes to matter.
+    const today = new Date(now).toISOString().slice(0, 10);
+    const said = thread.view && thread.view.userId === userId && thread.view.order > (thread.compactedThrough ?? -1) && thread.compactionOwed !== true ? thread.view : undefined;
+    const moved = (view !== null && view !== said?.address) || today !== said?.day;
     const { messageId, message } = await assistant.saveMessage(ctx, {
       threadId: thread.agentThreadId,
       userId,
-      ...(moved ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: viewPart(view) }] } } : { prompt: text }),
+      ...(moved ? { message: { role: "user" as const, content: [{ type: "text" as const, text }, { type: "text" as const, text: notePart({ page: view ?? undefined, today }) }] } } : { prompt: text }),
       skipEmbeddings: true,
     });
-    const now = Date.now();
     const attemptId = `${now}:${Math.random().toString(36).slice(2)}`;
     await touchThread(ctx, threadId, now);
     const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.reply, {
@@ -129,7 +131,7 @@ export const send = mutation({
       // An effort the catalog has since dropped runs at the model's default.
       effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
     });
-    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), ...(moved ? { view: { address: view, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
+    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), ...(moved ? { view: { ...((view ?? said?.address) === undefined ? {} : { address: view ?? said?.address }), day: today, userId, order: message.order } } : {}), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
     return null;
   },
 });

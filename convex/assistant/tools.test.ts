@@ -233,7 +233,8 @@ describe("the assistant's tools", () => {
     // The reply carries on from one conversation, each message once: the question, the calls, then each call's result.
     expect((requests[1] as Sent).map((message) => (Array.isArray(message.content) ? `${message.role}: ${message.content.map((part) => `${part.type}${part.toolCallId ? ` ${part.toolCallId}` : ""}`).join(", ")}` : message.role))).toEqual([
       "system",
-      "user: text",
+      // What the person wrote, and the app's note after it.
+      "user: text, text",
       "assistant: tool-call public, tool-call private",
       "tool: tool-result private, tool-result public",
     ]);
