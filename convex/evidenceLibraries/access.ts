@@ -24,7 +24,7 @@ export async function readPendingLibraryInvitations(
     if (!library || library.state === "disabled") return null;
     const organization = await ctx.db.get("organizations", library.organizationId);
     if (organization?.state !== "active") return null;
-    return { invitationId: invitation._id, libraryId: library._id, name: library.name, role: invitation.role, organization: { name: organization.name, imageUrl: organization.imageUrl ?? null } };
+    return { invitationId: invitation._id, libraryId: library._id, name: library.name, role: invitation.role, organization: { id: organization._id, name: organization.name, imageUrl: organization.imageUrl ?? null } };
   }));
   return rows.filter(row => row !== null);
 }

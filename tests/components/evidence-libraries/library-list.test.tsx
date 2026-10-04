@@ -8,12 +8,21 @@ import { renderWithTooltip } from "../../helpers/render-with-tooltip";
 const mocks = vi.hoisted(() => ({ query: vi.fn(), respond: vi.fn(), restart: vi.fn() }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("convex/react", () => ({ useMutation: () => mocks.restart, useAction: () => mocks.respond }));
-vi.mock("@/convex/_generated/api", () => ({ api: { organizationFeatures: {libraryOrganizations: "organizations"}, evidenceLibraries: {
+vi.mock("@/convex/_generated/api", () => ({ api: { organizationFeatures: {listLibraryOrganizations: "organizations"}, evidenceLibraries: {
   teardown: { restartDevelopmentTeardown: "restart" },
-  queries: { listLibraryOverviews: "libraries" },
-  invitations: { listMine: "invitations" }, invitationActions: { respond: "respond" },
+  queries: { listLibraries: "libraries", countLibraries: "count", listLibraryOwners: "owners" },
+  invitations: { listInvitations: "invitations" }, invitationActions: { respond: "respond" },
 } } }));
-vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: (name: string) => mocks.query(name) }));
+// Organizations and invitations arrive as one page each; the tests give their rows.
+vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: (name: string) => {
+  if (name === "count") return { isReady: true, data: mocks.query("libraries").data.length };
+  const result = mocks.query(name);
+  return !result?.data ? result : { ...result, data: { page: result.data, isDone: true, continueCursor: "" } };
+} }));
+// The libraries arrive as one loaded page that has no page after it.
+vi.mock("@/lib/hooks/use-cursor-page", () => ({ useCursorPage: (name: string) => ({
+  items: mocks.query(name).data, isLoading: false, isStale: false, page: 1, offset: 0, hasPages: false, canPrevious: false, canNext: false, previous: vi.fn(), next: vi.fn(),
+}) }));
 import { LibraryList } from "@/components/evidence-libraries/library-list";
 const render = (ui: ReactElement, searchParams = "") => renderWithTooltip(<NuqsTestingAdapter searchParams={searchParams}>{ui}</NuqsTestingAdapter>);
 const libraries = ["owner", "editor", "creator"].map(role => ({ _id: role, name: `${role} library`, role, status: "active", publicAddress: `https://${role}.example.org`, organization: { name: `${role} organization` } }));
