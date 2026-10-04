@@ -940,9 +940,6 @@ export default defineSchema({
     // Papers its search's page had already answered every question for: done on those
     // answers, without asking the model.
     reused: v.optional(v.number()),
-    // Left by the sharded counters that once counted its papers; nothing reads it. It goes
-    // from the schema once migrations/dropScreeningResultCounts has cleared it everywhere.
-    resultCounts: v.optional(v.literal("sharded")),
     // The screening its answers go to.
     screeningId: v.id("screenings"),
     // Resolved per-user server model for this bulk screening run (credits path).
