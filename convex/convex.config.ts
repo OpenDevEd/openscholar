@@ -20,6 +20,8 @@ app.use(aggregate, { name: "creditsAgg" });
 // usageAgg: each charge counted under its user and its job, newest last, so the
 // billing page can page through charges with page numbers (convex/billing/usageLog.ts).
 app.use(aggregate, { name: "usageAgg" });
+// listCounts: how many rows each paged list holds, a namespace per list (convex/lib/listCounts.ts).
+app.use(aggregate, { name: "listCounts" });
 // Queues whose one worker each does shared bookkeeping in batches, so parallel work only
 // writes its own rows: Screen all's results (convex/screening/bookkeeping.ts) and the
 // usage ledger (convex/billing/ledger.ts).
