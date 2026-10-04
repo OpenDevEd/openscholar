@@ -76,7 +76,7 @@ export const changesValidator = v.array(
 /** What the settings mean, for the description of each tool that takes them. A value one doesn't take is refused with the ones it does. */
 export const SETTINGS =
   "The time span is whole years (`fromYear`, `toYear`) or exact days (`fromDate`, `toDate`, as YYYY-MM-DD), not both. " +
-  "`authorsIn` is where the authors' institutions are and `about` is where the paper is about: each a list of two-letter country codes or regions, such as africa, western_africa, southern_asia or europe. " +
+  "`authorsIn` is where the authors' institutions are and `about` is where the paper is about: each a list of two-letter country codes or regions, such as africa, sub_saharan_africa, western_africa, southern_asia, latin_america or europe. " +
   "`types` and `institutionTypes` are OpenAlex's, such as article, preprint, book-chapter, and education, government. `languages` are ISO 639 codes. `sdgs` are goal numbers, 1 to 17. " +
   "`authors` are author IDs from a result or from research/lookup:find, or names as papers print them. `funders` and `researchAreas` are IDs from research/lookup:find. " +
   "`citationsOf`, `referencesOf` and `relatedTo` each take one paper's ID: the papers that cite that paper, the papers in its own reference list, and papers related to it. " +
@@ -89,6 +89,32 @@ export const LOOKUP_MAX = 8;
 export const lookupKindValidator = v.union(v.literal("author"), v.literal("funder"), v.literal("researchArea"));
 export const lookupValidator = v.object({
   matches: capped(v.array(v.object({ id: v.string(), name: v.string(), detail: v.optional(v.string()) })), LOOKUP_MAX),
+});
+
+/** What a count of papers can be divided by, and OpenAlex's own name for each grouping. */
+export const GROUPINGS = {
+  year: "publication_year",
+  language: "language",
+  type: "type",
+  openAccess: "open_access.is_oa",
+  country: "authorships.countries",
+  author: "authorships.author.id",
+  institution: "authorships.institutions.id",
+  funder: "funders.id",
+  journal: "primary_location.source.id",
+  field: "primary_topic.field.id",
+  sdg: "sustainable_development_goals.id",
+} as const;
+export type Grouping = keyof typeof GROUPINGS;
+/** Groups one count returns: the largest, or under `year` the latest. */
+export const GROUPS_MAX = 40;
+export const countValidator = v.object({
+  /** How many papers match in all. */
+  total: v.number(),
+  /** The groups, largest first, or by year from the earliest. `id` is what the matching filter takes, where there is one. */
+  groups: capped(v.optional(v.array(v.object({ name: v.string(), count: v.number(), id: v.optional(v.string()) }))), GROUPS_MAX),
+  /** There are more groups than these. How many isn't known: OpenAlex returns the largest 200. */
+  moreGroups: v.optional(v.literal(true)),
 });
 
 /** Countries a paper's authors work in that a results page names. */

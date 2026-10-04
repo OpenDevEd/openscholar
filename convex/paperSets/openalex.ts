@@ -188,6 +188,33 @@ export async function readWork<Work>(id: string, select: string, spend: (pages: 
   return (await response.json()) as Work;
 }
 
+/**
+ * How many works the search has, divided by one of OpenAlex's groupings, as it counts them:
+ * up to 200 groups, the largest first. One request, counted against the acting person's
+ * allowance. An OQL search isn't a request OpenAlex groups.
+ */
+export async function groupSearch(request: SearchRequest, by: string, spend: (pages: number) => Promise<boolean>): Promise<{ total: number; groups: Array<{ key: string; name: string; count: number }> }> {
+  contact();
+  if (request.oql) throw createError("VALIDATION_ERROR", "A search written in OQL can't be counted by group.");
+  if (!(await spend(1))) throw limited();
+  let response: Response;
+  try {
+    response = await fetch(openAlexUrl("works", { search: request.search, filter: request.filter, group_by: by, "per-page": String(PAGE_SIZE) }), { signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
+  } catch (error) {
+    console.error(`[paperSets] OpenAlex count by ${by} didn't answer`, error);
+    throw createError("VALIDATION_ERROR", "OpenAlex didn't count these papers in time. Try again in a moment.");
+  }
+  if (!response.ok) {
+    console.error(`[paperSets] OpenAlex count by ${by} failed: ${response.status} ${(await response.text().catch(() => "")).slice(0, 500)}`);
+    throw createError("VALIDATION_ERROR", `OpenAlex couldn't count these papers (${response.status}). Try again in a moment.`);
+  }
+  const body = (await response.json()) as { meta?: { count?: unknown }; group_by?: Array<{ key?: unknown; key_display_name?: unknown; count?: unknown }> };
+  const groups = (Array.isArray(body.group_by) ? body.group_by : []).flatMap(({ key, key_display_name: name, count }) =>
+    typeof key === "string" && typeof count === "number" ? [{ key, name: typeof name === "string" && name ? name : key, count }] : [],
+  );
+  return { total: typeof body.meta?.count === "number" ? body.meta.count : 0, groups };
+}
+
 /** How many works the search has: one request for one work, counted against the acting person's allowance. */
 export async function countSearch(request: SearchRequest, spend: (pages: number) => Promise<boolean>): Promise<number> {
   contact();

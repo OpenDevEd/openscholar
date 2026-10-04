@@ -38,6 +38,7 @@ export const OUT_OF_CREDITS = `This reply has spent the credits one reply may. $
  */
 const CORE_PATHS = [
   "research/papers:search",
+  "research/papers:count",
   "research/papers:get",
   "research/lookup:find",
   "research/records:listedSearches",
@@ -52,7 +53,7 @@ const CORE_PATHS = [
   "library/queries:savedPaper",
   "library/papers:save",
   "library/mutations:setLibraryRating",
-  "library/mutations:setPaperInCollection",
+  "library/papers:collect",
   "library/collections:listCollections",
   "library/collections:createCollection",
   "screening/queries:listJobs",
