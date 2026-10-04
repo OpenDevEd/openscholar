@@ -195,6 +195,9 @@ describe("assistant replies", () => {
     await ended(t, threadId);
     expect(modelIdsSeen).toEqual([balanced, picked]);
 
+    // An effort with no model to take it is refused, not dropped.
+    await expect(asAda.mutation(api.assistant.threads.create, { effort: "low" })).rejects.toThrow(/Pick a model/);
+
     // A chat started on a model runs on it from its first message.
     const own = await asAda.mutation(api.assistant.threads.create, { modelId: picked });
     await asAda.mutation(api.assistant.replies.send, { threadId: own, text: "First" });

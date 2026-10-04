@@ -166,6 +166,8 @@ export const candidatesAction = defineUserQuery({
     const needle = text?.trim().toLowerCase() ?? "";
     const matches = (...fields: string[]) => !needle || fields.some((field) => field.toLowerCase().includes(needle));
     const mine = [...(await organizationsOf(ctx, me)).values()];
+    // Someone in no organization has nobody to suggest.
+    if (!mine.length) return { page: [], isDone: true, continueCursor: "" };
 
     // The people in those organizations. Someone in several of them is one membership in
     // each, so they show once on a page; the sheet drops a repeat on a later page.

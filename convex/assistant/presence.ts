@@ -6,12 +6,12 @@
  */
 import { Presence } from "@convex-dev/presence";
 import { v } from "convex/values";
-import { components } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
-import { mutation } from "../lib/functions";
+import { internalMutation, mutation } from "../lib/functions";
 import { PRESENCE_HEARTBEAT_MS } from "../../lib/assistant/presence";
 import { requireThread } from "./access";
 
@@ -34,6 +34,25 @@ export const leave = mutation({
   args: { sessionToken: v.string() },
   returns: v.null(),
   handler: async (ctx, { sessionToken }) => await presence.disconnect(ctx, sessionToken),
+});
+
+/** People one run of `forgetRoom` takes out of a deleted chat's room. */
+const FORGET_BATCH = 50;
+
+/**
+ * Empties a deleted chat's room, a batch of people at a time, then drops the room. It runs
+ * on its own, after the chat is gone, so a crowded room can't hold the deletion back.
+ */
+export const forgetRoom = internalMutation({
+  args: { threadId: v.id("assistantThreads") },
+  returns: v.null(),
+  handler: async (ctx, { threadId }) => {
+    const people = await presence.listRoom(ctx, threadId, false, FORGET_BATCH);
+    for (const person of people) await presence.removeRoomUser(ctx, threadId, person.userId);
+    if (people.length === FORGET_BATCH) await ctx.scheduler.runAfter(0, internal.assistant.presence.forgetRoom, { threadId });
+    else await presence.removeRoom(ctx, threadId);
+    return null;
+  },
 });
 
 /** The first `limit` people who have the chat open now. */
