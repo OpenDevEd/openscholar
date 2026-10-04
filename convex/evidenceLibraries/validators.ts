@@ -1016,3 +1016,8 @@ export const dnsRecordsValidator = capped(
 
 /** The sections one configuration version changed. */
 export const changedSectionsValidator = capped(v.array(sectionKeyValidator), MAX_CONFIG_SECTIONS);
+
+const sectionFields = { sectionKey: sectionKeyValidator, payload: sectionPayloadValidator, payloadByteLength: v.number(), contractProvenance: configProvenanceValidator };
+/** A draft's or a revision's sections: one per section key, so never more than the registry holds. */
+export const draftSectionsValidator = capped(v.array(v.object({ ...sectionFields, updatedAt: v.number() })), MAX_CONFIG_SECTIONS);
+export const revisionSectionsValidator = capped(v.array(v.object({ ...sectionFields, createdAt: v.number() })), MAX_CONFIG_SECTIONS);

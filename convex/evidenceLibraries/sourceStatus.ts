@@ -8,6 +8,7 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { requireEvidenceLibraryAccess } from "./access";
 import { authenticateLibraryServiceCredential } from "./credentials";
 import {
+  evidenceLibrarySourceStatusFields,
   type SourceStatus,
   sourceStatusSnapshotValidator,
   sourceStatusValidator,
@@ -68,7 +69,7 @@ export const record = internalMutation({
 /** The runtime's latest report, for the owner's configuration page. */
 export const listForLibrary = query({
   args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.union(v.null(), v.object({ observedAt: v.number(), sources: v.array(sourceStatusValidator) })),
+  returns: v.union(v.null(), v.object({ observedAt: v.number(), sources: evidenceLibrarySourceStatusFields.sources })),
   handler: async (ctx, args) => {
     await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
     const snapshot = await ctx.db
