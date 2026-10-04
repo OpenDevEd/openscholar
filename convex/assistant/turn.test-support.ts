@@ -136,6 +136,7 @@ export function erroringOnAbortDoStream(
  *  synchronously, so agent.streamText resolves the happy path. */
 export function finishingDoStream(
   deltas: string[],
+  inputTokens = 5,
 ): () => Promise<{ stream: ReadableStream<unknown> }> {
   return async () => ({
     stream: new ReadableStream({
@@ -150,7 +151,7 @@ export function finishingDoStream(
           type: "finish",
           finishReason: "stop",
           usage: {
-            inputTokens: { total: 5, noCache: 5, cacheRead: 0, cacheWrite: 0 },
+            inputTokens: { total: inputTokens, noCache: inputTokens, cacheRead: 0, cacheWrite: 0 },
             outputTokens: { total: 3, text: 3, reasoning: 0 },
           },
         });

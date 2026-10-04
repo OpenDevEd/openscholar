@@ -56,7 +56,7 @@ import { authorContentFields } from "./authors/validators";
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
-import { assistantThreadAccessFields, assistantThreadFields } from "./assistant/validators";
+import { assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, ratingValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
@@ -210,6 +210,9 @@ export default defineSchema({
     .index("by_replySender", ["reply.senderId"])
     // Every chat writing a reply, oldest first, for releasing the ones whose action died.
     .index("by_replyStartedAt", ["reply.startedAt"]),
+  // The actions a chat's replies ran, each found by the model's ID for the call.
+  assistantSteps: defineTable(assistantStepFields).index("by_thread_and_order", ["threadId", "order"]),
+  assistantStepResults: defineTable(assistantStepResultFields).index("by_step", ["stepId"]).index("by_thread", ["threadId"]),
   assistantThreadAccess: defineTable(assistantThreadAccessFields)
     // A person's chats, newest first, through each of their principals.
     .index("by_principal_and_lastMessageAt", ["principal", "lastMessageAt"])
@@ -331,7 +334,9 @@ export default defineSchema({
     .index("by_libraryId_and_groupId", ["libraryId", "groupId"]),
 
   evidenceLibraryCollectionSources: defineTable(evidenceLibraryCollectionSourceFields)
-    .index("by_libraryId_and_collectionId", ["libraryId", "collectionId"]),
+    .index("by_libraryId_and_collectionId", ["libraryId", "collectionId"])
+    // Whether any library follows a collection, which makes a change to it show outside the account.
+    .index("by_collectionId", ["collectionId"]),
 
   // The hosts Coolify served when it was last asked: one row per host per listing, and the
   // current listing. `listing` is a refresh's own ID; `startedAt`, when it began, orders
@@ -1107,6 +1112,8 @@ export default defineSchema({
     userId: v.id("users"),
     item: removedItemValidator,
     collectionIds: capped(v.array(v.id("collections")), MAX_COLLECTIONS_PER_USER),
+    // When the paper was put in each of `collectionIds`, in the same order. A removal from before these were kept has none.
+    assignedAts: capped(v.optional(v.array(v.number())), MAX_COLLECTIONS_PER_USER),
     expiresAt: v.number(),
   }),
 

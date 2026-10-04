@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { describe, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { api, internal } from "../_generated/api";
@@ -501,7 +501,7 @@ describe("a filtered library view, read page by page", () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
-    const collectionId = await asUser.mutation(api.library.collections.createCollection, { name: "Picked" });
+    const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "Picked" })).id;
     for (let i = 0; i < 24; i++) {
       const item = await seedLibraryItem(t, user!._id, { title: `Paper ${i}`, rating: (i % 5) + 1, publicationYear: 2010 + (i % 12), savedAt: 1_000 + i, openalexId: `https://openalex.org/W${i}` });
       if (i % 3 !== 0) await asUser.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: item!._id });
@@ -629,14 +629,8 @@ describe("getLibraryFilteredCount", () => {
     });
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    const collectionId = await asUser.mutation(
-      api.library.collections.createCollection,
-      { name: "Focus set" },
-    );
-    const otherCollectionId = await asUser.mutation(
-      api.library.collections.createCollection,
-      { name: "Other set" },
-    );
+    const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "Focus set" })).id;
+    const otherCollectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "Other set" })).id;
 
     const item1 = await seedLibraryItem(t, user!._id, {
       title: "Paper 1",
@@ -970,7 +964,7 @@ describe("removeFromLibrary", () => {
     });
 
     // What Undo needs is kept on the server, under the ID the removal returns.
-    expect(await t.run(async (ctx) => await ctx.db.get("libraryRemovals", removed!))).toMatchObject({ item: { openalexId: "https://openalex.org/W1", rating: 4, savedAt: item!.savedAt }, collectionIds: [] });
+    expect(await t.run(async (ctx) => await ctx.db.get("libraryRemovals", removed.undo!.args.removalId))).toMatchObject({ item: { openalexId: "https://openalex.org/W1", rating: 4, savedAt: item!.savedAt }, collectionIds: [] });
     const deleted = await t.run(async (ctx) => await ctx.db.get("libraryItems", item!._id));
     expect(deleted).toBeNull();
   });
@@ -989,7 +983,7 @@ describe("removeFromLibrary", () => {
       openalexId: "https://openalex.org/W1",
     });
 
-    expect(removed).toBeNull();
+    expect(removed.undo).toBeUndefined();
     const kept = await t.run(async (ctx) => await ctx.db.get("libraryItems", otherItem!._id));
     expect(kept).not.toBeNull();
   });
@@ -1003,7 +997,7 @@ describe("saving without a rating", () => {
     await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    const itemId = await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+    const { id: itemId } = await asUser.mutation(api.library.mutations.saveToLibrary, paper);
     expect((await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId)))?.rating).toBeUndefined();
 
     await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 4 });
@@ -1018,8 +1012,8 @@ describe("saving without a rating", () => {
     await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    const itemId = await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 2 });
-    await asUser.mutation(api.library.mutations.clearLibraryRating, { openalexId: paper.openalexId });
+    const { id: itemId } = await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 2 });
+    await asUser.mutation(api.library.mutations.setLibraryRating, { openalexId: paper.openalexId, rating: null });
 
     const item = await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId));
     expect(item).not.toBeNull();
@@ -1051,17 +1045,17 @@ describe("saving without a rating", () => {
     await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    const collectionId = await asUser.mutation(api.library.collections.createCollection, { name: "Reading" });
-    const itemId = await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 5 });
+    const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "Reading" })).id;
+    const { id: itemId } = await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 5 });
     await asUser.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: itemId });
     const savedAt = (await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId)))!.savedAt;
 
     const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
     expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(0);
 
-    const restoredId = await asUser.mutation(api.library.mutations.restoreLibraryItem, { removalId: removed! });
+    const { id: restoredId } = await asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
     // An undo works once, and never for someone else's removal.
-    await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, { removalId: removed! })).rejects.toThrow(/no longer be undone/);
+    await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args)).rejects.toThrow(/no longer be undone/);
 
     const restored = await t.run(async (ctx) => await ctx.db.get("libraryItems", restoredId));
     expect(restored).toMatchObject({ openalexId: paper.openalexId, rating: 5, savedAt });
@@ -1081,13 +1075,13 @@ describe("saving without a rating", () => {
       await asUser.mutation(api.library.mutations.saveToLibrary, paper);
       const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
       await seedUser(t, "clerk_user2", "user2@test.com");
-      await expect(t.withIdentity({ subject: "clerk_user2" }).mutation(api.library.mutations.restoreLibraryItem, { removalId: removed! })).rejects.toThrow(/no longer be undone/);
+      await expect(t.withIdentity({ subject: "clerk_user2" }).mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args)).rejects.toThrow(/no longer be undone/);
 
       // Past its day, it can't be undone, whether or not the cleanup has run yet.
       vi.setSystemTime(Date.now() + 24 * 60 * 60_000 + 1);
-      await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, { removalId: removed! })).rejects.toThrow(/no longer be undone/);
+      await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args)).rejects.toThrow(/no longer be undone/);
       await t.finishAllScheduledFunctions(vi.runAllTimers);
-      await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, { removalId: removed! })).rejects.toThrow(/no longer be undone/);
+      await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args)).rejects.toThrow(/no longer be undone/);
       expect(await t.run((ctx) => ctx.db.query("libraryRemovals").take(1))).toEqual([]);
     } finally {
       vi.useRealTimers();
@@ -1098,22 +1092,22 @@ describe("saving without a rating", () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
-    const itemId = await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+    const { id: itemId } = await asUser.mutation(api.library.mutations.saveToLibrary, paper);
     // 600 rows a deleted collection left behind, older than the live ones.
-    const gone = await asUser.mutation(api.library.collections.createCollection, { name: "Gone" });
+    const gone = (await asUser.mutation(api.library.collections.createCollection, { name: "Gone" })).id;
     await t.run(async (ctx) => {
       for (let i = 0; i < 600; i++) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: gone, libraryItemId: itemId, assignedAt: i });
       await ctx.db.delete("collections", gone);
     });
     const live = [];
     for (const name of ["One", "Two", "Three"]) {
-      const collectionId = await asUser.mutation(api.library.collections.createCollection, { name });
+      const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name })).id;
       await asUser.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: itemId });
       live.push(collectionId);
     }
 
     const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
-    const restoredId = await asUser.mutation(api.library.mutations.restoreLibraryItem, { removalId: removed! });
+    const { id: restoredId } = await asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
     await t.finishAllScheduledFunctions(() => {});
 
     const memberships = await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", restoredId)).take(10));
@@ -1126,8 +1120,8 @@ describe("saving without a rating", () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
-    const collectionId = await asUser.mutation(api.library.collections.createCollection, { name: "Big" });
-    const itemId = await asUser.mutation(api.library.mutations.saveToLibrary, paper);
+    const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "Big" })).id;
+    const { id: itemId } = await asUser.mutation(api.library.mutations.saveToLibrary, paper);
     // More than one transaction deletes.
     for (let start = 0; start < 2_500; start += 500) {
       await t.run(async (ctx) => {
@@ -1154,14 +1148,14 @@ describe("saving without a rating", () => {
     await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 3 });
     expect(await researchRating()).toBe(3);
 
-    await asUser.mutation(api.library.mutations.clearLibraryRating, { openalexId: paper.openalexId });
+    await asUser.mutation(api.library.mutations.setLibraryRating, { openalexId: paper.openalexId, rating: null });
     expect(await researchRating()).toBeNull();
 
     await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 5 });
     const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
     expect(await researchRating()).toBeNull();
 
-    await asUser.mutation(api.library.mutations.restoreLibraryItem, { removalId: removed! });
+    await asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
     expect(await researchRating()).toBe(5);
   });
 
@@ -1170,7 +1164,7 @@ describe("saving without a rating", () => {
     await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
-    const collectionId = await asUser.mutation(api.library.collections.createCollection, { name: "Reading" });
+    const collectionId = (await asUser.mutation(api.library.collections.createCollection, { name: "Reading" })).id;
     await asUser.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: true });
     await asUser.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: true });
 
@@ -1195,11 +1189,167 @@ describe("saving without a rating", () => {
     const asUser1 = t.withIdentity({ subject: "clerk_user1" });
     const asUser2 = t.withIdentity({ subject: "clerk_user2" });
 
-    const collectionId = await asUser2.mutation(api.library.collections.createCollection, { name: "Theirs" });
+    const collectionId = (await asUser2.mutation(api.library.collections.createCollection, { name: "Theirs" })).id;
 
     await expect(
       asUser1.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: true }),
     ).rejects.toThrow();
     expect(await asUser1.query(api.library.queries.getLibraryCount, {})).toBe(0);
+  });
+});
+
+describe("undoing a library change (#342)", () => {
+  const paper = { openalexId: "https://openalex.org/W1", title: "Paper 1" };
+  const { saveToLibrary, setLibraryRating, removeFromLibrary, restoreLibraryItem, setPaperInCollection } = api.library.mutations;
+  const [REMOVE, RATE, IN_COLLECTION, CHANGE] = ["library/mutations:removeFromLibrary", "library/mutations:setLibraryRating", "library/mutations:setPaperInCollection", "research/records:change"] as const;
+  /** The undo, once it's checked to go through the action expected. */
+  function through<Undo extends { path: string }, Path extends Undo["path"]>(undo: Undo | undefined, path: Path) {
+    if (undo?.path !== path) throw new Error(`Expected an undo through ${path}, got ${undo?.path}.`);
+    return undo as Extract<Undo, { path: Path }>;
+  }
+  // A save and a place in a collection are told apart by when they were made, so each step here takes a second.
+  beforeEach(() => void vi.useFakeTimers({ toFake: ["Date"], now: 1_800_000_000_000 }));
+  afterEach(() => void vi.useRealTimers());
+  async function library() {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_user1", "user1@test.com");
+    const signedIn = t.withIdentity({ subject: "clerk_user1" });
+    const mutation = ((...args: unknown[]) => {
+      vi.advanceTimersByTime(1_000);
+      return (signedIn.mutation as (...args: unknown[]) => unknown)(...args);
+    }) as unknown as typeof signedIn.mutation;
+    const onCards = () =>
+      t.run(async (ctx) => (await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", (q) => q.eq("userId", user!._id).eq("data.paperId", paper.openalexId)).unique())?.data.rating ?? null);
+    return {
+      t, mutation, onCards,
+      count: () => signedIn.query(api.library.queries.getLibraryCount, {}),
+      rating: async () => (await t.run((ctx) => ctx.db.query("libraryItems").first()))?.rating,
+      rateOnCards: (rating: number | null) => mutation(api.research.records.change, { accountId: "clerk_user1", requestId: `rate-${Date.now()}`, command: { kind: "rating", paperId: paper.openalexId, rating } }),
+    };
+  }
+
+  it("removes a paper its save added, unless the paper changed in between", async () => {
+    const { mutation, count, onCards, rateOnCards } = await library();
+    const saved = await mutation(saveToLibrary, paper);
+    const unsaved = await mutation(removeFromLibrary, through(saved.undo, REMOVE).args);
+    expect(await count()).toBe(0);
+    // Put back, it's the save it was, so the save can be undone again.
+    await mutation(restoreLibraryItem, unsaved.undo!.args);
+    expect(await count()).toBe(1);
+    await mutation(removeFromLibrary, through(saved.undo, REMOVE).args);
+    expect(await count()).toBe(0);
+    // Saved afresh, it isn't the paper that save added.
+    await mutation(saveToLibrary, paper);
+    await expect(mutation(removeFromLibrary, through(saved.undo, REMOVE).args)).rejects.toThrow(/changed since/);
+    await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+
+    // Rated since its save: undoing the save leaves it. Once that rating is undone, the save can be undone.
+    const second = await mutation(saveToLibrary, paper);
+    const rated = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 3 });
+    await expect(mutation(removeFromLibrary, through(second.undo, REMOVE).args)).rejects.toThrow(/changed since/);
+    await mutation(setLibraryRating, through(rated.undo, RATE).args);
+    // Rated on a search card alone since: removing the paper would clear that rating, so it stays too.
+    await rateOnCards(5);
+    await expect(mutation(removeFromLibrary, through(second.undo, REMOVE).args)).rejects.toThrow(/changed since/);
+    expect([await count(), await onCards()]).toEqual([1, 5]);
+    await rateOnCards(null);
+    await mutation(removeFromLibrary, through(second.undo, REMOVE).args);
+    expect(await count()).toBe(0);
+  });
+
+  it("leaves a paper put in a collection since its save, and keeps its save and its places through a removal that's undone", async () => {
+    const { t, mutation, count } = await library();
+    const { id: collectionId } = await mutation(api.library.collections.createCollection, { name: "Reading" });
+    const items = async () => (await t.run((ctx) => ctx.db.get("collections", collectionId)))?.itemCount;
+    const saved = await mutation(saveToLibrary, paper);
+    const added = await mutation(setPaperInCollection, { paper, collectionId, inCollection: true });
+    // Undoing the save would take the paper out of the collection.
+    await expect(mutation(removeFromLibrary, through(saved.undo, REMOVE).args)).rejects.toThrow(/changed since/);
+    expect([await count(), await items()]).toEqual([1, 1]);
+
+    // Removed and put back, it's the same save in the same place, so both steps can still be undone, newest first.
+    const removed = await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+    await mutation(restoreLibraryItem, removed.undo!.args);
+    expect([await count(), await items()]).toEqual([1, 1]);
+    await mutation(setPaperInCollection, added.undo!.args);
+    await mutation(removeFromLibrary, through(saved.undo, REMOVE).args);
+    expect([await count(), await items()]).toEqual([0, 0]);
+  });
+
+  it("puts a rating back to what it was in the library and on search cards, and refuses once either has changed", async () => {
+    const { mutation, rating, onCards, rateOnCards } = await library();
+    await mutation(saveToLibrary, paper);
+    const rated = await mutation(saveToLibrary, { ...paper, rating: 4 });
+    expect(rated.undo).toMatchObject({ path: RATE, args: { openalexId: paper.openalexId, rating: null, expect: { rating: 4 } } });
+    const rerated = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 2 });
+    await expect(mutation(setLibraryRating, through(rated.undo, RATE).args)).rejects.toThrow(/changed since/);
+    await mutation(setLibraryRating, through(rerated.undo, RATE).args);
+    expect([await rating(), await onCards()]).toEqual([4, 4]);
+    // Setting what it already is, and saving again without a rating, change nothing: no undo.
+    expect((await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 4 })).undo).toBeUndefined();
+    expect((await mutation(saveToLibrary, paper)).undo).toBeUndefined();
+
+    // Rated on a search card since: the undo would overwrite that, so it's refused and both stay.
+    await rateOnCards(5);
+    await expect(mutation(setLibraryRating, through(rated.undo, RATE).args)).rejects.toThrow(/changed since/);
+    expect([await rating(), await onCards()]).toEqual([4, 5]);
+    // The two now differ, so a new rating has no undo: putting one back would lose the other.
+    expect((await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 1 })).undo).toBeUndefined();
+
+    // A paper removed and saved afresh with the same rating isn't the paper the undo was for.
+    const first = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 3 });
+    await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+    await mutation(saveToLibrary, { ...paper, rating: 3 });
+    await expect(mutation(setLibraryRating, through(first.undo, RATE).args)).rejects.toThrow(/changed since/);
+    await expect(mutation(setLibraryRating, { openalexId: "https://openalex.org/W9", rating: 1 })).rejects.toThrow(/isn't in the library/);
+  });
+
+  it("keeps a rating a paper had on search cards before it was saved", async () => {
+    const { mutation, onCards, rateOnCards } = await library();
+    await rateOnCards(4);
+    // Removing the paper would clear that rating, so this save has no undo.
+    expect((await mutation(saveToLibrary, paper)).undo).toBeUndefined();
+    expect((await mutation(saveToLibrary, { openalexId: "https://openalex.org/W2", title: "Paper 2" })).undo).toBeDefined();
+    await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+
+    // Not in the library: clearing its rating clears the one on search cards, and the undo puts that back.
+    await rateOnCards(4);
+    const cleared = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: null });
+    expect(await onCards()).toBeNull();
+    await mutation(api.research.records.change, { accountId: "clerk_user1", requestId: "undo-clear", ...through(cleared.undo, CHANGE).args });
+    expect(await onCards()).toBe(4);
+  });
+
+  it("reverses only the collection change it made, by the paper's ID, and says so when the paper or the collection is gone", async () => {
+    const { t, mutation, count } = await library();
+    const { id: collectionId } = await mutation(api.library.collections.createCollection, { name: "Reading" });
+    const items = async () => (await t.run((ctx) => ctx.db.get("collections", collectionId)))?.itemCount;
+
+    const added = await mutation(setPaperInCollection, { paper, collectionId, inCollection: true });
+    expect(added.undo).toMatchObject({ path: IN_COLLECTION, args: { paper: { openalexId: paper.openalexId }, collectionId, inCollection: false } });
+    // Already there: no undo, so undoing never takes out a paper this call didn't put in.
+    expect((await mutation(setPaperInCollection, { paper, collectionId, inCollection: true })).undo).toBeUndefined();
+    const takenOut = await mutation(setPaperInCollection, added.undo!.args);
+    expect([await items(), await count()]).toEqual([0, 1]);
+    // Already out: no undo either.
+    expect((await mutation(setPaperInCollection, { paper, collectionId, inCollection: false })).undo).toBeUndefined();
+    // Put back by that undo, by its ID alone, it has its place again: the add can be undone once more.
+    await mutation(setPaperInCollection, takenOut.undo!.args);
+    await mutation(setPaperInCollection, added.undo!.args);
+    expect(await items()).toBe(0);
+    // Put in again by hand, it's a new place, which the first add's undo leaves.
+    await mutation(setPaperInCollection, { paper, collectionId, inCollection: true });
+    await expect(mutation(setPaperInCollection, added.undo!.args)).rejects.toThrow(/put in the collection again/);
+    expect(await items()).toBe(1);
+
+    const out = await mutation(setPaperInCollection, { paper, collectionId, inCollection: false });
+    await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+    await expect(mutation(setPaperInCollection, out.undo!.args)).rejects.toThrow(/no longer in the library/);
+    // Saved afresh, it isn't the paper that was taken out.
+    await mutation(saveToLibrary, paper);
+    await expect(mutation(setPaperInCollection, out.undo!.args)).rejects.toThrow(/saved again/);
+    expect(await items()).toBe(0);
+    await mutation(api.library.collections.deleteCollection, { collectionId });
+    await expect(mutation(setPaperInCollection, added.undo!.args)).rejects.toThrow(/no longer exists/);
   });
 });

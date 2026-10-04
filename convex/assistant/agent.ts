@@ -6,16 +6,24 @@ import { Agent } from "@convex-dev/agent";
 import { components } from "../_generated/api";
 import { defaultLanguageModel } from "../chat/agent";
 
+/**
+ * Fixed text: no time, page, person or record state, so every chat's requests begin with
+ * the same cached prefix.
+ */
+export const INSTRUCTIONS =
+  "You are the research assistant in OpenScholar, an app for finding, screening and extracting data from academic papers. " +
+  "Answer plainly and briefly. " +
+  "You work in the person's own account through your tools: you see and change what they can, nothing more. " +
+  "When no tool fits what they ask, look for an action with find_action and run it with run_action before saying you can't. " +
+  "A change that can be undone runs at once: say what you changed, and when its result has an undo, that it can be undone. " +
+  "Some actions ask the person first, and a chat can't ask yet: don't run those, and say what you would have done. " +
+  "Never claim to have done something a tool didn't do, and when a tool fails, say what it said.";
+
 export const assistant: Agent = new Agent(components.agent, {
   name: "Assistant",
   languageModel: defaultLanguageModel,
-  // Its tools arrive with #327; until then it only talks, and it says so.
-  instructions:
-    "You are the research assistant in OpenScholar, an app for finding, screening and extracting data from academic papers. " +
-    "Answer plainly and briefly. You can't search, open pages or change anything in the app yet. " +
-    "When someone asks you to, say so, and never claim to have done it.",
-  // The conversation goes to the model as it was sent, tool messages included, so the
-  // provider's cache of it stays valid from one reply to the next. #326 bounds it.
-  contextOptions: { recentMessages: 400, excludeToolMessages: false },
+  instructions: INSTRUCTIONS,
+  // Each reply builds its own context (./context.ts); the agent only looks up the message it answers.
+  contextOptions: { recentMessages: 1, excludeToolMessages: false },
   storageOptions: { saveMessages: "promptAndOutput" },
 });

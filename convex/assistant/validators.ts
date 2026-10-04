@@ -24,6 +24,8 @@ export const assistantReplyValidator = v.object({
   scheduledId: v.id("_scheduled_functions"),
   /** Set when someone stops it. */
   stop: v.optional(v.boolean()),
+  /** The reply is written, and the conversation so far is being summarized before the chat takes its next message (./context.ts). */
+  compacting: v.optional(v.boolean()),
 });
 
 export const assistantThreadFields = {
@@ -39,9 +41,41 @@ export const assistantThreadFields = {
   /** The reasoning effort its replies run at, when the model takes one. */
   effort: v.optional(effortValidator),
   reply: v.optional(assistantReplyValidator),
+  /** What the model reads in place of the messages through `compactedThrough` (./context.ts). The chat itself keeps them all. */
+  summary: v.optional(v.string()),
+  /** The last exchange the summary covers, by the agent component's order. */
+  compactedThrough: v.optional(v.number()),
+  /** A compaction was due and didn't finish, so the next reply writes the summary before it answers. */
+  compactionOwed: v.optional(v.boolean()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
+
+/** One action the assistant ran in a reply (./steps.ts). */
+export const assistantStepFields = {
+  threadId: v.id("assistantThreads"),
+  /** The exchange it belongs to: the agent component's order of the message being answered. */
+  order: v.number(),
+  /** Who it ran as: the person whose message was being answered. Only they can undo it. */
+  userId: v.id("users"),
+  /** The model's ID for the call. Models reuse these, so nothing is looked up by it. */
+  toolCallId: v.string(),
+  /** The action it ran, by its path in the registry. */
+  path: v.string(),
+  /** The action's arguments, as JSON. */
+  input: v.string(),
+  status: v.union(v.literal("running"), v.literal("done"), v.literal("failed")),
+  /** Why it failed, as the model was told. */
+  error: v.optional(v.string()),
+  /** What reverses it: the action to run, and its arguments as JSON. */
+  undo: v.optional(v.object({ path: v.string(), args: v.string() })),
+  /** Set once its undo has run. */
+  undone: v.optional(v.boolean()),
+  startedAt: v.number(),
+  endedAt: v.optional(v.number()),
+};
+/** What a step's action returned, as JSON: kept apart from the step, so listing steps reads none of it. */
+export const assistantStepResultFields = { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), result: v.string() };
 
 export const assistantThreadAccessFields = {
   threadId: v.id("assistantThreads"),

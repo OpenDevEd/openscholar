@@ -97,6 +97,7 @@ export async function deleteThread(ctx: MutationCtx, thread: Doc<"assistantThrea
   for (const row of await accessRows(ctx, thread._id)) await ctx.db.delete("assistantThreadAccess", row._id);
   await ctx.db.delete("assistantThreads", thread._id);
   await ctx.scheduler.runAfter(0, internal.assistant.presence.forgetRoom, { threadId: thread._id });
+  await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId: thread._id });
   await ctx.runMutation(components.agent.threads.deleteAllForThreadIdAsync, { threadId: thread.agentThreadId });
 }
 
