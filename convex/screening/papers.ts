@@ -11,6 +11,7 @@ import { createError } from "../lib/errors";
 import { MAX_SCREENING_PAPERS_PER_JOB } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { answerAt, answerPaper, paperAnswers, restoreAnswer, restoreModelAnswer } from "../research/answers";
+import { answerSourceValidator } from "../../lib/research/records";
 import schema from "../schema";
 import { account, answersNow, jobAnswers, shown, stood, withDeltas } from "./accounting";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
@@ -82,8 +83,8 @@ export const getForAssistant = assistantQuery(getAction);
 const answerOf = { jobId: v.id("screeningJobs"), paperId: v.string(), questionKey: v.string() };
 /** The answer as it was at a version of the screening's answers: how an undo puts one back, with who set it. */
 const asItWas = v.object({ asOf: v.number() });
-/** An answer as a change left it: what it is and when it was set. An undo is refused once either differs. */
-const answerAsLeft = v.object({ answer: v.union(v.boolean(), v.null()), at: v.number() });
+/** An answer as a change left it: what it is, who set it and when. An undo is refused once any of them differs. */
+const answerAsLeft = v.object({ answer: v.union(v.boolean(), v.null()), by: answerSourceValidator, at: v.number() });
 
 export const answerAction = defineUserMutation({
   path: "screening/papers:answer",
@@ -117,7 +118,7 @@ export const answerAction = defineUserMutation({
     const screening = (await ctx.db.get("screenings", screeningId))!;
     const stands = async () => (await paperAnswers(ctx, (await ctx.db.get("screenings", screeningId))!, paperId)).find((value) => value.question === question.question);
     const kept = await stands();
-    if (expect && (kept?.answer !== expect.answer || kept.updatedAt !== expect.at)) throw createError("CONFLICT", "This answer has changed since then, so it was left as it is.");
+    if (expect && (kept?.answer !== expect.answer || kept.setBy !== expect.by || kept.updatedAt !== expect.at)) throw createError("CONFLICT", "This answer has changed since then, so it was left as it is.");
     // The history's copy of the answer as it stands, which is what an undo goes back to.
     const recorded = await answerAt(ctx, screening, paperId, question.question, screening.version);
     if (answer !== null && typeof answer === "object") {
@@ -161,7 +162,7 @@ export const answerAction = defineUserMutation({
     if (expect && shelves) throw createError("CONFLICT", "Putting this answer back would move the paper in or out of what the screening saves, so it was left as it is.");
     const changed = kept && left && (kept.answer !== left.answer || kept.setBy !== left.setBy || kept.updatedAt !== left.updatedAt);
     const undo = changed && agreed && !shelves && recorded?.answer === kept.answer && recorded.setBy === kept.setBy && recorded.updatedAt === kept.updatedAt
-      ? { undo: { path: "screening/papers:answer" as const, args: { jobId, paperId, questionKey, answer: { asOf: screening.version }, expect: { answer: left.answer, at: left.updatedAt } } } }
+      ? { undo: { path: "screening/papers:answer" as const, args: { jobId, paperId, questionKey, answer: { asOf: screening.version }, expect: { answer: left.answer, by: left.setBy, at: left.updatedAt } } } }
       : {};
     // A paper the bookkeeping worker hasn't reached is counted there, on its answers as they stand then.
     if (result.doneAt !== undefined) {
