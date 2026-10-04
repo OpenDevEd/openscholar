@@ -1,8 +1,8 @@
 import { v, type Infer } from "convex/values";
 import { format, parseISO } from "date-fns";
-import { partial } from "convex-helpers/validators";
+import { partial, validate } from "convex-helpers/validators";
 import type { SearchResult } from "../types/search.types";
-import { MAX_FILTER_VALUES, MAX_LEGACY_ENTRIES, MAX_LINKED_ACCOUNTS, MAX_PENDING_REMOVALS, MAX_QUESTIONS, RANGE_ENDS, capped } from "../../convex/lib/listCaps";
+import { MAX_FILTER_VALUES, MAX_LEGACY_ENTRIES, MAX_LINKED_ACCOUNTS, MAX_PENDING_REMOVALS, MAX_QUESTIONS, RANGE_ENDS, capped, listsIn, overCap } from "../../convex/lib/listCaps";
 
 const strings = v.array(v.string());
 // Each stored list gets its own validator: a cap sticks to the one it's set on, and
@@ -26,6 +26,7 @@ export const QUESTION_TEXT_MAX = 4_000;
 export const searchFields = {
   id: v.string(),
   query: v.string(),
+  importSource: v.optional(v.object({ id: v.string(), query: v.string(), resolvedQuery: v.string(), resolution: v.literal("at_export") })),
   field: fieldValidator,
   count: v.number(),
   // The search's history lives in its own rows (convex/research/records.ts: searchHistory);
@@ -148,17 +149,40 @@ export const editValidator = v.union(
 export type SearchEdit = Infer<typeof editValidator>;
 
 /** Accept the native JSON export and the History CSV column names. */
-export function importSearchRecord(row: Record<string, unknown>, id = crypto.randomUUID()): SearchResult {
+export function importSearchRecord(row: Record<string, unknown>, id?: string): SearchResult {
+  if (row.format_version !== undefined && Number(row.format_version) !== 1) throw new Error("Unsupported search export version");
+  let record = row;
+  if (row.spec !== undefined) {
+    if (Number(row.format_version) !== 1) throw new Error("Unsupported search export version");
+    const spec: unknown = typeof row.spec === "string" ? JSON.parse(row.spec) : row.spec;
+    if (!spec || typeof spec !== "object" || Array.isArray(spec)) throw new Error("Invalid search specification");
+    if (!("query" in spec) || typeof spec.query !== "string" || typeof row.search_query !== "string" || typeof row.export_id !== "string") throw new Error("Invalid search export record");
+    record = { ...spec, query: row.search_query, count: row.count, field: row.field, importSource: { id: row.export_id, query: spec.query, resolvedQuery: row.search_query, resolution: "at_export" } };
+  }
   const now = new Date().toISOString();
-  const query = String(row.search_query ?? row.query ?? "");
-  const field = (row.field ?? "title_and_abstract") as SearchResult["field"];
-  const known = Object.fromEntries(Object.entries(row).filter(([key]) => key in searchFields));
-  const queryHistory = Array.isArray(row.queryHistory) && row.queryHistory.length ? row.queryHistory as SearchResult["queryHistory"] & object : [{ query, field, timestamp: now }];
-  const questionHistory = Array.isArray(row.questionHistory) ? row.questionHistory as SearchResult["questionHistory"] & object : [];
-  return {
+  const query = record.search_query ?? record.query;
+  if (typeof query !== "string") throw new Error("Each search needs query text");
+  const field = record.field ?? "title_and_abstract";
+  if (!validate(fieldValidator, field)) throw new Error("Unknown search field");
+  const count = Number(record.count ?? 0);
+  if (!Number.isSafeInteger(count) || count < 0) throw new Error("Invalid result count");
+  const known = Object.fromEntries(Object.entries(record).filter(([key]) => key in searchFields && key !== "chatJobIdsByAccountId" && key !== "screeningResponses"));
+  const queryHistory = record.queryHistory ?? [{ query, field, timestamp: now }];
+  const questionHistory = record.questionHistory ?? [];
+  if (!validate(historyArrays.queryHistory, queryHistory)) throw new Error("Invalid query history");
+  if (!validate(historyArrays.questionHistory, questionHistory)) throw new Error("Invalid question history");
+  const identity = [row.export_id, row.__importId, record.id].find(value => typeof value === "string" && value.length > 0);
+  const imported = {
     field, screeningQuestions: [], screeningResponses: {}, createdAt: now, updatedAt: now,
-    ...known, ...historySummary(queryHistory, questionHistory), queryHistory, questionHistory, id, query, count: Number(row.count ?? 0),
+    ...known, ...historySummary(queryHistory, questionHistory), queryHistory, questionHistory, id: id ?? (typeof identity === "string" ? `import:${identity}` : crypto.randomUUID()), query, count,
   } as SearchResult;
+  const saved = serializeSearch(imported);
+  validate(searchValidator, saved, { throw: true });
+  const oversized = overCap(saved, listsIn(searchValidator));
+  if (oversized) throw new Error(`Search field ${oversized.path} exceeds its import limit`);
+  for (const range of [saved.yearRange, saved.ratingRange]) if (range && (range.length !== 2 || range[0] > range[1] || range.some(n => !Number.isFinite(n)))) throw new Error("Invalid search range");
+  for (const date of [saved.createdAt, saved.updatedAt, saved.dateRange?.from, saved.dateRange?.to]) if (date !== undefined && !Number.isFinite(Date.parse(date))) throw new Error("Invalid search date");
+  return { ...restoreSearch(saved), queryHistory, questionHistory };
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -358,7 +382,7 @@ export const searchAsMade = v.object({ created: v.number(), revision: v.number()
 const shortcutValue = v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null());
 export const commandValidator = v.union(
   // `history`: the earlier queries and questions of a search brought from this browser or a file.
-  v.object({ kind: v.literal("createSearch"), search: searchValidator, history: v.optional(v.object(historyArrays)) }),
+  v.object({ kind: v.literal("createSearch"), search: searchValidator, history: v.optional(v.object(historyArrays)), ifExists: v.optional(v.literal("keep")) }),
   v.object({ kind: v.literal("editSearch"), id: v.string(), edit: editValidator }),
   // `expect` is the search as it should be now: anything done to it since, and not undone,
   // refuses the deletion, so undoing a search's creation never deletes later work.

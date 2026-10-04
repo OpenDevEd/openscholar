@@ -411,7 +411,10 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
   switch (command.kind) {
     case "createSearch": {
       validateSearch(command.search);
-      if (await findSearch(ctx, userId, command.search.id)) throw new Error("Search already exists.");
+      if (await findSearch(ctx, userId, command.search.id)) {
+        if (command.ifExists === "keep") return;
+        throw new Error("Search already exists.");
+      }
       // The history it starts with: what came with it, or else its first query.
       const queries = command.history?.queryHistory.length ? command.history.queryHistory : [{ query: command.search.query, field: command.search.field, timestamp: command.search.createdAt }];
       const questions = command.history?.questionHistory ?? [];

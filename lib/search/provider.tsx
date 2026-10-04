@@ -12,7 +12,8 @@
  */
 
 import { createContext, useContext, useMemo, useCallback, useEffect, useRef, type ReactNode } from 'react';
-import { useParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { getEffectiveSearchId } from '../utils';
 import { useQueryStates } from 'nuqs';
 import { format, parseISO } from 'date-fns';
 import useSWR from 'swr';
@@ -79,7 +80,7 @@ const ENTRY_SEARCH = 'openScholarSearch';
 type KeptSearch = SearchParams & { count: number };
 
 /** Whether the address is this search's results page, with or without a trailing slash. */
-const onSearchRoute = (searchId: string) => window.location.pathname.replace(/\/$/, '').endsWith(`/${searchId}`);
+const onSearchRoute = (searchId: string) => getEffectiveSearchId(window.location.pathname) === searchId;
 
 /** The tab's storage, which lasts as long as its Back and Forward list; a browser may refuse it. */
 function tabStorage<T>(use: (storage: Storage) => T): T | null {
@@ -128,8 +129,7 @@ function cloneSearchParams(params: SearchParams): SearchParams {
 export function SearchProvider({ children, local }: SearchProviderProps) {
   const toast = useAppToast();
   const tValidation = useTranslations("validation");
-  const routeParams = useParams<{ searchId: string }>();
-  const searchId = local?.searchId ?? routeParams?.searchId ?? '';
+  const searchId = getEffectiveSearchId(usePathname(), local?.searchId) ?? '';
   
   const account = useContext(ResearchContext);
   const [routeUrlParams, setRouteUrlParams] = useQueryStates(searchParamsParsers, {

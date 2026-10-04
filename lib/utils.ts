@@ -9,6 +9,7 @@ import { getCountryCodesForRegions, MIN_YEAR } from './constants'
 import { buildSearchSubfilter } from './search/search-field'
 import { researchAreaFilter, sdgFilterValue } from './openalex/vocabulary'
 import { authorFilterValue, isAuthorId } from './openalex/author-filter'
+import { parseImportFile } from './import'
 
 // Centralized default filter values
 export const DEFAULT_FILTERS = {
@@ -197,7 +198,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-type JsonValue = string | number | boolean | null | undefined | JsonValue[] | { [key: string]: JsonValue };
+export type JsonValue = string | number | boolean | null | undefined | JsonValue[] | { [key: string]: JsonValue };
 type JsonObject = { [key: string]: JsonValue }
 
 function escapeCSVValue(value: JsonValue): string {
@@ -605,38 +606,17 @@ export function uploadFile(file: File): Promise<Record<string, JsonValue>[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const content = e.target?.result as string;
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(content));
+        const fileId = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+        const records = (format: 'json' | 'csv') => parseImportFile(content, format).map((row, index) => ({ ...row, __importId: `${fileId}:${index}` }));
         
         if (file.type === 'application/json' || file.name.endsWith('.json')) {
-          const data = JSON.parse(content);
-          // Handle both array and single object
-          const items = Array.isArray(data) ? data : [data];
-          resolve(items);
+          resolve(records('json'));
         } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
-          const lines = content.split('\n').filter(line => line.trim());
-          if (lines.length < 2) {
-            reject(new Error('CSV file must have at least a header and one data row'));
-            return;
-          }
-          
-          const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-          const items = lines.slice(1).map(line => {
-            const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-            const item: Record<string, JsonValue> = {};
-            headers.forEach((header, index) => {
-              const value = values[index] || '';
-              // Try to parse numbers
-              if (!isNaN(Number(value)) && value !== '') {
-                item[header] = Number(value);
-              } else {
-                item[header] = value;
-              }
-            });
-            return item;
-          });
-          resolve(items);
+          resolve(records('csv'));
         } else {
           reject(new Error('Unsupported file type. Please upload a JSON or CSV file.'));
         }
@@ -693,7 +673,8 @@ export function getEffectiveSearchId(pathname: string | null, currentSearchId?: 
   // Second priority: extract from route if on results page
   if (pathname?.startsWith('/results')) {
     const match = pathname.match(/^\/results\/([^\/]+)/);
-    return match ? match[1] : undefined;
+    if (!match) return undefined;
+    try { return decodeURIComponent(match[1]); } catch { return undefined; }
   }
   
   return undefined;

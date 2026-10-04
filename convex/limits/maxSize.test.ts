@@ -219,7 +219,8 @@ describe("at the largest sizes the product allows", () => {
     expect(found).toEqual(["search-99"]);
 
     const { parts } = await exportParts(t, as, { kind: "history" });
-    expect(parts.flatMap(({ text }) => JSON.parse(text) as unknown[])).toHaveLength(100);
+    expect(parts.flatMap(({ text }) => (JSON.parse(text) as { searches: unknown[] }).searches)).toHaveLength(100);
+    expect(parts.every(({ text }) => new TextEncoder().encode(text).length < 20 * 1024 * 1024)).toBe(true);
 
     vi.useFakeTimers();
     await as.mutation(api.research.records.change, { accountId: clerkId, requestId: "clear", command: { kind: "clearSearches" } });

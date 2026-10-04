@@ -32,6 +32,16 @@ function connection() {
 }
 
 describe("research save recovery", () => {
+  it("validates the whole upload before queuing any search writes", () => {
+    const { client, commands } = connection();
+    const session = new ResearchSession(client, "alice");
+    expect(() => session.stores.history.getState().importSearchHistory([
+      { search_query: "reading", count: "0", field: "title" },
+      { search_query: "writing", count: "invalid", field: "title" },
+    ])).toThrow(/count/);
+    expect(session.getSnapshot().pending).toBe(0);
+    expect(commands).toEqual([]);
+  });
   it("rolls back a rejected save and still persists the next change", async () => {
     const { client, commands } = connection();
     const errors: Error[] = [];

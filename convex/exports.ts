@@ -19,11 +19,12 @@ import { screeningRevision } from "./screening/accounting";
 import { paperSetValidator, screeningJobStatusValidator, screeningQuestionsValidator, screeningScoringConfigValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import { effortValidator } from "./aiModelConfig/validators";
+import { currentSearch } from "../lib/research/records";
 
 /** Rows one export read takes; a library search reads its every match at once. */
 const EXPORT_PAGE_SIZE = 100;
-/** Bytes of searches or shortcuts one read takes at most; a read that stops there carries on from its cursor. */
-const HISTORY_PAGE_BYTES = 8 * 1024 * 1024;
+/** Leave room for the written and expanded queries, CSV escaping, and one large row after the byte cutoff. */
+const HISTORY_PAGE_BYTES = 512 * 1024;
 /**
  * Where a part file ends: Convex refuses an HTTP response over 20 MiB, and one more page of
  * rows can follow this mark, so it sits well below.
@@ -159,9 +160,8 @@ export const page = internalQuery({
     // function's 4,096 lookups fails the export by name, and would need the names read in chunks.
     const expansions = await shortcutExpansions(ctx, userId, shortcutNames(read.page.map((row) => row.data.query).join("\n")));
     const searches = read.page.map(({ data }) => ({
-      query: validateAndExpandKeywordsSilently(data.query, (text) => expandShortcuts(text, expansions)).expandedQuery,
-      count: data.count,
-      field: data.field,
+      ...currentSearch(data),
+      resolvedQuery: validateAndExpandKeywordsSilently(data.query, (text) => expandShortcuts(text, expansions)).expandedQuery,
     }));
     return write({ ...read, page: searches }, exportFiles.history[format].item);
   },
