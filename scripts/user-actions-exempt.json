@@ -36,6 +36,7 @@
     "ai/actions:translatePaperContent": "#327",
     "ai/actions:translateQuery": "#327",
     "aiModelConfig/admin:setPresetPick": "#323",
+    "aiModelConfig/queries:presetPicks": "#323",
     "aiModelConfig/queries:presets": "#323",
     "app/actions/author-publications:readAuthorPublications": "#327",
     "app/actions/authors:readProfileAuthor": "#327",

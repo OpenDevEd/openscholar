@@ -13,11 +13,16 @@ export async function isAdmin(ctx: QueryCtx | MutationCtx, userId: Id<"users">):
   return row !== null;
 }
 
+/** Refuses unless `userId` is an admin: for actions that take the acting user. */
+export async function requireAdminUser(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
+  if (!(await isAdmin(ctx, userId))) throw createError("FORBIDDEN", "Admins only");
+}
+
 /** The signed-in user, if they're an admin. Throws FORBIDDEN otherwise. */
 export async function requireAdmin(ctx: QueryCtx | MutationCtx): Promise<Doc<"users">> {
   const user = await getCurrentUser(ctx);
   if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
-  if (!(await isAdmin(ctx, user._id))) throw createError("FORBIDDEN", "Admins only");
+  await requireAdminUser(ctx, user._id);
   return user;
 }
 
