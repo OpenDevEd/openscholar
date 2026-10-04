@@ -381,6 +381,9 @@ export function revisionRow(ctx: Pick<QueryCtx, "db">, searchId: Id<"searches">,
   return ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", searchId).eq("revision", number)).unique();
 }
 
+/** The revision a search is made at. */
+const FIRST_REVISION = 1;
+
 /**
  * A search as it stands, for the undo of its creation to check against: the row itself, the
  * revision it's at, and the version of its answers. A screening job answers into the
@@ -412,7 +415,7 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       // The history it starts with: what came with it, or else its first query.
       const queries = command.history?.queryHistory.length ? command.history.queryHistory : [{ query: command.search.query, field: command.search.field, timestamp: command.search.createdAt }];
       const questions = command.history?.questionHistory ?? [];
-      const id = await ctx.db.insert("searches", { userId, localId: command.search.id, data: { ...command.search, ...historySummary(queries, questions), screeningResponses: [] }, revision: 1 });
+      const id = await ctx.db.insert("searches", { userId, localId: command.search.id, data: { ...command.search, ...historySummary(queries, questions), screeningResponses: [] }, revision: FIRST_REVISION });
       await addHistory(ctx, { _id: id, userId }, "query", queries.map(queryEntry));
       await addHistory(ctx, { _id: id, userId }, "question", questions.map(questionEntry));
       // Answers carried in a new search come from an import or the assistant; neither says who gave them.
@@ -491,8 +494,10 @@ export async function applyCommand(ctx: MutationCtx, userId: Id<"users">, comman
       if (command.expect) {
         // Still the search that was made: the same row, holding what it held then, its answers
         // untouched. A change since undone leaves it so. Anything else done to it keeps it.
-        const [then, now, made] = [command.expect, await asMade(ctx, found), await revisionRow(ctx, found._id, command.expect.revision)];
-        if (now.created !== then.created || now.answers !== then.answers || !made || contents(found.data) !== contents(made.data)) {
+        // `expect` is the caller's word, so what the search held then is read from its first
+        // revision: a later one named there would pass a changed search off as untouched.
+        const [then, now, made] = [command.expect, await asMade(ctx, found), await revisionRow(ctx, found._id, FIRST_REVISION)];
+        if (then.revision !== FIRST_REVISION || now.created !== then.created || now.answers !== then.answers || !made || contents(found.data) !== contents(made.data)) {
           throw createError("CONFLICT", "This search has changed since then, so it was left as it is.");
         }
       }
