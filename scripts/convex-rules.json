@@ -4,9 +4,6 @@
   },
   "listReturns": {
     "pending": {
-      "convex/authors/invitations.ts:listMine:[]": "#424",
-      "convex/authors/members.ts:list:.invitations[]": "#424",
-      "convex/authors/members.ts:list:.members[]": "#424",
       "convex/authors/publications.ts:list:[]": "#424",
       "convex/chat/chatPapers.ts:listChatSourcesWithInclusion:.rows[]": "#325",
       "convex/chat/model.ts:listChatModels:[]": "#325",
