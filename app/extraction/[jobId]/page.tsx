@@ -842,7 +842,7 @@ export default function JobDetailPage() {
                   )}
                 </div>
 
-                {displayedPapers.length > 0 && (
+                {(displayedPapers.length > 0 || results.hasPages) && (
                   <SmartPagination
                     currentPage={results.page}
                     pageSize={pageSize}

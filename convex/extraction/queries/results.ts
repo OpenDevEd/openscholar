@@ -366,7 +366,7 @@ export const listJobResultsAction = defineUserQuery({
         return matchesProjectionFilters(paper, filters);
       })
       // A job holds at most PAPER_LIMIT papers, so a filter reads each once at most.
-      .paginate({ cursor, numItems, maximumRowsRead: PAPER_LIMIT, maximumBytesRead: RESULTS_PAGE_BYTES });
+      .paginate({ ...args.paginationOpts, numItems, maximumRowsRead: PAPER_LIMIT, maximumBytesRead: RESULTS_PAGE_BYTES });
     return { page: await loadPaginatedPaperResults(ctx, read.page), isDone: read.isDone, continueCursor: read.continueCursor };
   },
 });
