@@ -25,6 +25,7 @@ import { createError } from "../lib/errors";
 import { internalAction, internalMutation, internalQuery, mutation, query } from "../lib/functions";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
+import { ABORT_ERROR_STRING } from "../../lib/chat/abort-signal";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { personName, requireThread, touchThread } from "./access";
@@ -71,12 +72,18 @@ export const send = mutation({
     }
     const { thread } = await requireThread(ctx, userId, threadId, "write");
     if (await writing(ctx, thread.reply)) throw createError("CONFLICT", "The assistant is still replying in this chat.");
+    // Twice the limit, so locks whose action died can't hide live ones behind them. The dead
+    // ones found are released here, which keeps the next count honest too.
     const mine = await ctx.db
       .query("assistantThreads")
       .withIndex("by_replySender", (q) => q.eq("reply.senderId", userId))
-      .take(CHAT_CONCURRENCY_LIMIT);
-    const stillWriting = await Promise.all(mine.map((other) => writing(ctx, other.reply)));
-    if (stillWriting.filter(Boolean).length >= CHAT_CONCURRENCY_LIMIT) {
+      .take(CHAT_CONCURRENCY_LIMIT * 2);
+    let stillWriting = 0;
+    for (const other of mine) {
+      if (await writing(ctx, other.reply)) stillWriting++;
+      else await ctx.db.patch("assistantThreads", other._id, { reply: undefined });
+    }
+    if (stillWriting >= CHAT_CONCURRENCY_LIMIT) {
       throw createError("CONFLICT", `The assistant is already writing ${CHAT_CONCURRENCY_LIMIT} replies for you. Wait for one to finish.`);
     }
     const model = thread.modelId ? await requireAvailableModel(ctx, thread.modelId) : null;
@@ -118,8 +125,21 @@ export const reply = internalAction({
   handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort }) => {
     const lock = { threadId, attemptId };
     const state = () => ctx.runQuery(internal.assistant.replies.lockState, lock);
+    const atStart = await state();
     // A reply whose chat was deleted, or whose lock is another reply's, never starts.
-    if ((await state()) === "gone") return null;
+    if (atStart === "gone") return null;
+    // Stopped while it waited to run: no credits are held and no model is called. The chat shows a stopped reply.
+    if (atStart === "stop") {
+      await assistant.saveMessage(ctx, {
+        threadId: agentThreadId,
+        promptMessageId,
+        message: { role: "assistant", content: "" },
+        metadata: { status: "failed", error: ABORT_ERROR_STRING },
+        skipEmbeddings: true,
+      });
+      await ctx.runMutation(internal.assistant.replies.release, lock);
+      return null;
+    }
     await runTurn(ctx, {
       agent: assistant,
       threadId: agentThreadId,

@@ -127,11 +127,18 @@ describe("assistant replies", () => {
 
   it("are limited to three at once for one person", async () => {
     const t = convexTest(schema);
-    const { asAda, threadId } = await sharedChat(t);
+    const { asAda, ada, threadId } = await sharedChat(t);
     const others = await Promise.all(["Two", "Three", "Four"].map((title) => asAda.mutation(api.assistant.threads.create, { title })));
     mockDoStream.mockImplementation(hangingDoStream());
 
     const writing = [threadId, others[0], others[1]];
+    // A lock whose action died, older than the live ones, doesn't count and doesn't hide them.
+    const dead = await asAda.mutation(api.assistant.threads.create, { title: "Dead" });
+    await t.run(async (ctx) => {
+      const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
+      await ctx.scheduler.cancel(scheduledId);
+      await ctx.db.patch("assistantThreads", dead, { reply: { attemptId: "dead", senderId: ada, order: 0, startedAt: 1, scheduledId } });
+    });
     for (const id of writing) await asAda.mutation(api.assistant.replies.send, { threadId: id, text: "Go" });
     await expect(asAda.mutation(api.assistant.replies.send, { threadId: others[2], text: "Go" })).rejects.toThrow(/already writing 3 replies/);
 
@@ -216,6 +223,25 @@ describe("assistant replies", () => {
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Me too" });
     await ended(t, threadId);
     expect(await newest()).toMatchObject({ text: "Ok", status: "done" });
+  });
+
+  it("stopped before their action starts call no model and charge nothing", async () => {
+    const t = convexTest(schema);
+    const { asAda, ada, threadId } = await sharedChat(t);
+    const turn = await t.run(async (ctx) => {
+      const thread = (await ctx.db.get("assistantThreads", threadId))!;
+      const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: "Hi", skipEmbeddings: true });
+      const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "early", senderId: ada, order: message.order, startedAt: Date.now(), scheduledId, stop: true } });
+      return { agentThreadId: thread.agentThreadId, promptMessageId: messageId };
+    });
+
+    await t.action(internal.assistant.replies.reply, { threadId, attemptId: "early", ...turn, senderId: ada, modelId: null });
+
+    expect(mockDoStream).not.toHaveBeenCalled();
+    expect(await charges(t)).toEqual([]);
+    expect((await chat(t, threadId))?.reply).toBeUndefined();
+    expect((await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0]).toMatchObject({ role: "assistant", status: "stopped", text: "" });
   });
 
   it("page their chat's messages within a limit the caller can't lift", async () => {
