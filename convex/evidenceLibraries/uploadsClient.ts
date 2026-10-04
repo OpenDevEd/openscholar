@@ -163,46 +163,48 @@ export async function deleteLibraryUpload(
   await deleteObjects(createStorageClient(input), [input.key]);
 }
 
-async function listObjectNames(
+/**
+ * One page of what is under `prefix`, from `offset`: the names of its files, and how many
+ * entries it held. A folder (an entry whose `id` is null) or an entry without a name is
+ * counted and not named, since a delete leaves it where it is. Null when the bucket is
+ * missing.
+ */
+async function listObjectPage(
   client: StorageClient,
   prefix: string,
-  onBatch?: () => Promise<void>,
-): Promise<string[]> {
-  const names: string[] = [];
-  for (let offset = 0; ; offset += LIST_PAGE_SIZE) {
-    await onBatch?.();
-    const response = await requestObjects(client, {
-      method: "POST",
-      path: bucketPath(`list/${EVIDENCE_LIBRARY_UPLOAD_BUCKET}`),
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prefix, limit: LIST_PAGE_SIZE, offset }),
-      allowMissingBucket: true,
-    });
-    if (!response) return names;
-    let payload: unknown;
-    try {
-      payload = await response.json();
-    } catch {
-      throw new StorageSetupError(
-        "STORAGE_INVALID_RESPONSE",
-        "The file store returned an invalid file list",
-      );
-    }
-    if (!Array.isArray(payload)) {
-      throw new StorageSetupError(
-        "STORAGE_INVALID_RESPONSE",
-        "The file store returned an invalid file list",
-      );
-    }
-    for (const entry of payload) {
-      const name =
-        typeof entry === "object" && entry !== null && "name" in entry
-          ? entry.name
-          : null;
-      if (typeof name === "string" && name) names.push(name);
-    }
-    if (payload.length < LIST_PAGE_SIZE) return names;
+  offset: number,
+): Promise<{ names: string[]; entries: number } | null> {
+  const response = await requestObjects(client, {
+    method: "POST",
+    path: bucketPath(`list/${EVIDENCE_LIBRARY_UPLOAD_BUCKET}`),
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ prefix, limit: LIST_PAGE_SIZE, offset }),
+    allowMissingBucket: true,
+  });
+  if (!response) return null;
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new StorageSetupError(
+      "STORAGE_INVALID_RESPONSE",
+      "The file store returned an invalid file list",
+    );
   }
+  if (!Array.isArray(payload)) {
+    throw new StorageSetupError(
+      "STORAGE_INVALID_RESPONSE",
+      "The file store returned an invalid file list",
+    );
+  }
+  const names: string[] = [];
+  for (const entry of payload) {
+    if (typeof entry !== "object" || entry === null) continue;
+    if ("id" in entry && entry.id === null) continue;
+    const name = "name" in entry ? entry.name : null;
+    if (typeof name === "string" && name) names.push(name);
+  }
+  return { names, entries: payload.length };
 }
 
 /**
@@ -222,9 +224,32 @@ export async function deleteLibraryUploads(
 ): Promise<{ deleted: number }> {
   const client = createStorageClient(input);
   const prefix = evidenceLibraryUploadPrefix(input.libraryId);
-  const names = await listObjectNames(client, prefix, input.onBatch);
-  const keys = names.map((name) => `${prefix}${name}`);
-  await input.onBatch?.();
-  await deleteObjects(client, keys);
-  return { deleted: keys.length };
+  let deleted = 0;
+  // The entries a delete leaves in place, which every later read steps over.
+  let kept = 0;
+  let previous: string | undefined;
+  // A page's files are deleted before the next page is read, so every read
+  // starts at the first file still there and no list of them all is held.
+  for (;;) {
+    await input.onBatch?.();
+    const page = await listObjectPage(client, prefix, kept);
+    if (!page) return { deleted };
+    if (page.names.length > 0) {
+      if (page.names[0] === previous) {
+        throw new StorageSetupError(
+          "STORAGE_REQUEST_FAILED",
+          "The file store kept files it was asked to delete",
+        );
+      }
+      previous = page.names[0];
+      await input.onBatch?.();
+      await deleteObjects(
+        client,
+        page.names.map((name) => `${prefix}${name}`),
+      );
+      deleted += page.names.length;
+    }
+    kept += page.entries - page.names.length;
+    if (page.entries < LIST_PAGE_SIZE) return { deleted };
+  }
 }

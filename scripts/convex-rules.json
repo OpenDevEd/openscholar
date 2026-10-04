@@ -38,7 +38,6 @@
     "pending": {
       "convex/chat/messages.ts:listRecentThreadArtifacts": "#325",
       "convex/chat/messages.ts:readThreadMessagesWithVisiblePageIntegrity": "#325",
-      "convex/evidenceLibraries/uploadsClient.ts:listObjectNames": "#425",
       "convex/zotero/actions.ts:fetchAllCollectionsForParent": "#425",
       "convex/zotero/actions.ts:fetchAllTopItemsForCollection": "#425",
       "convex/zotero/libraryGroupActions.ts:listAllUserGroups": "#425"
