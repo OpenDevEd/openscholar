@@ -244,12 +244,17 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
           onAbort: ({ steps }) => {
             // The SDK awaits this callback. Leave billing and finalization
             // to the action body after the stream has been consumed.
-            streamAbortedByUser = true;
-            console.info("[chat] stream aborted by user", {
-              ...log,
-              threadId,
-              stepCount: steps.length,
-            });
+            // A stream ends this way for a Stop, and also when the agent's own writer gives
+            // up on it, as when part of a reply can't be saved. Only the first is the
+            // person's doing. The second is a failure, which the agent has already marked
+            // on the reply's message with its reason, and it must not show as a stop.
+            if (abortController.signal.aborted) {
+              streamAbortedByUser = true;
+              console.info("[chat] stream aborted by user", { ...log, threadId, stepCount: steps.length });
+            } else {
+              streamErrored = true;
+              console.error("[chat] stream ended by its writer, not by a stop: the reply's message has the reason", { ...log, threadId, stepCount: steps.length });
+            }
           },
           onError: async ({ error }) => {
             if (isStop(error)) {

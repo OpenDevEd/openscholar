@@ -18,25 +18,83 @@ export const LAST_PAGE_FROM_START = 2_000 / RESULTS_PAGE;
 
 const fieldValidator = v.union(v.literal("title_and_abstract"), v.literal("title"), v.literal("abstract"), v.literal("fulltext"));
 const sortValidator = v.union(v.literal("relevance"), v.literal("most_cited"), v.literal("newest"), v.literal("oldest"));
-const yearValidator = v.optional(v.union(v.number(), v.null()));
+const numberValidator = v.optional(v.union(v.number(), v.null()));
+/** A day or a paper's ID, or null to take it off. */
+const textValidator = v.optional(v.union(v.string(), v.null()));
+const listValidator = v.optional(v.union(v.array(v.string()), v.null()));
 
-/** A search's settings, as the assistant gives them. Left out, a setting stays as it is; null takes a year or a minimum off. */
+/**
+ * A search's settings, as the assistant gives them: the filters its page has that take
+ * plain values. null takes a setting off. What they mean is said once, in SETTINGS, for the
+ * tools that take them.
+ */
 export const searchSettings = {
   /** Where the query's words are looked for. */
   field: v.optional(fieldValidator),
-  fromYear: yearValidator,
-  toYear: yearValidator,
+  fromYear: numberValidator,
+  toYear: numberValidator,
+  fromDate: textValidator,
+  toDate: textValidator,
+  authorsIn: listValidator,
+  about: listValidator,
+  types: listValidator,
+  languages: listValidator,
+  institutionTypes: listValidator,
+  sdgs: v.optional(v.union(v.array(v.number()), v.null())),
+  authors: listValidator,
+  funders: listValidator,
+  researchAreas: listValidator,
+  cites: textValidator,
+  citedBy: textValidator,
+  relatedTo: textValidator,
   openAccessOnly: v.optional(v.boolean()),
   withAbstractOnly: v.optional(v.boolean()),
   reviewsOnly: v.optional(v.boolean()),
-  minCitations: v.optional(v.union(v.number(), v.null())),
+  includeRetracted: v.optional(v.boolean()),
+  minCitations: numberValidator,
+  ratedOnly: v.optional(v.boolean()),
+  minRating: numberValidator,
+  maxRating: numberValidator,
   sort: v.optional(sortValidator),
 };
+
+/**
+ * A change to a saved search, as its edit takes them: one setting by name, with its new
+ * value. A list of these, and not the settings side by side, because a model that fills in
+ * every argument it's offered then names only what it means to change. Side by side, such a
+ * model sent null for each setting it wasn't asked about, which took every filter off.
+ */
+export const changesValidator = v.array(
+  v.object({
+    setting: v.union(v.literal("query"), ...Object.keys(searchSettings).map((name) => v.literal(name as keyof typeof searchSettings))),
+    value: v.union(v.string(), v.number(), v.boolean(), v.null(), v.array(v.union(v.string(), v.number()))),
+  }),
+);
+
+/** What the settings mean, for the description of each tool that takes them. A value one doesn't take is refused with the ones it does. */
+export const SETTINGS =
+  "The time span is whole years (`fromYear`, `toYear`) or exact days (`fromDate`, `toDate`, as YYYY-MM-DD), not both. " +
+  "`authorsIn` is where the authors' institutions are and `about` is where the paper is about: each a list of two-letter country codes or regions, such as africa, western_africa, southern_asia or europe. " +
+  "`types` and `institutionTypes` are OpenAlex's, such as article, preprint, book-chapter, and education, government. `languages` are ISO 639 codes. `sdgs` are goal numbers, 1 to 17. " +
+  "`authors` are author IDs from a result or from research/lookup:find, or names as papers print them. `funders` and `researchAreas` are IDs from research/lookup:find. " +
+  "`cites`, `citedBy` and `relatedTo` each take one paper's ID: papers that cite it, papers it cites, papers related to it. " +
+  "`ratedOnly` keeps only papers the person rated. `minRating` and `maxRating` (0 to 5) keep those rated within them, and turn `ratedOnly` on.";
+
+/** Authors of a paper the results name, each with its ID to filter by. */
+export const AUTHORS_SHOWN = 3;
+/** Matches one lookup returns. */
+export const LOOKUP_MAX = 8;
+export const lookupKindValidator = v.union(v.literal("author"), v.literal("funder"), v.literal("researchArea"));
+export const lookupValidator = v.object({
+  matches: capped(v.array(v.object({ id: v.string(), name: v.string(), detail: v.optional(v.string()) })), LOOKUP_MAX),
+});
 
 const paperValidator = v.object({
   id: v.string(),
   title: v.string(),
-  authors: v.optional(v.string()),
+  /** Its first authors, and how many more it has. An author OpenAlex has a record for comes with their ID. */
+  authors: capped(v.optional(v.array(v.object({ name: v.string(), id: v.optional(v.string()) }))), AUTHORS_SHOWN),
+  moreAuthors: v.optional(v.number()),
   year: v.optional(v.number()),
   venue: v.optional(v.string()),
   citations: v.optional(v.number()),

@@ -78,7 +78,7 @@ export type Work = {
   doi?: string | null;
   publication_year?: number | null;
   abstract_inverted_index?: Record<string, number[]> | null;
-  authorships?: Array<{ author?: { display_name?: string | null } | null }> | null;
+  authorships?: Array<{ author?: { id?: string | null; display_name?: string | null } | null }> | null;
   cited_by_count?: number | null;
   primary_location?: { source?: { display_name?: string | null } | null } | null;
 };

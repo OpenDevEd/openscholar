@@ -44,6 +44,7 @@ const CORE_PATHS = [
   "research/searches:create",
   "research/searches:update",
   "research/searches:results",
+  "research/lookup:find",
   "research/records:searchHistory",
   "research/records:listedShortcuts",
   "research/records:ratingsOf",
@@ -67,8 +68,15 @@ const CORE_PATHS = [
  */
 export const runsWithoutAsking = (entry: UserAction) => entry.kind === "query" || (!entry.spendsCredits && !entry.outsideEffect && entry.undoable);
 
-/** An action's description and arguments, as the model is sent them. */
-export const definition = (entry: UserAction) => ({ does: entry.description, arguments: z.toJSONSchema(inputSchema(entry)) });
+/**
+ * An action's description and arguments, as the model is sent them. Without the schema's
+ * own "$schema" line: what a tool returns is kept with the reply, and Convex keeps no
+ * field whose name starts with a dollar sign, so a result that held it ended the reply.
+ */
+export function definition(entry: UserAction) {
+  const { $schema: _dialect, ...args } = z.toJSONSchema(inputSchema(entry));
+  return { does: entry.description, arguments: args };
+}
 const sizes = new Map<string, number>();
 /** Whether an action is short enough to be a tool at all (#326). One that isn't waits to be split into smaller actions. */
 function fits(entry: UserAction) {
@@ -117,10 +125,11 @@ export function askedSteps(requests: Asked[]) {
   });
 }
 
-/** What a call is about, for its step's card: a title, a name or a query among its arguments. */
+/** What a call is about, for its step's card: a title, a name or a query among its arguments, or the query a change gives a search. */
 function subjectOf(input: Record<string, unknown>) {
   const paper = input.paper && typeof input.paper === "object" ? (input.paper as Record<string, unknown>) : {};
-  const named = [input.title, paper.title, input.name, input.query, input.search].find((value) => typeof value === "string" && value.trim() !== "");
+  const requeried = Array.isArray(input.changes) ? input.changes.find((change) => change?.setting === "query")?.value : undefined;
+  const named = [input.title, paper.title, input.name, input.query, input.search, requeried].find((value) => typeof value === "string" && value.trim() !== "");
   return typeof named === "string" ? cut(named.trim(), 200) : undefined;
 }
 

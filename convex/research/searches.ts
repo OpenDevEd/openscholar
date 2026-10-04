@@ -4,17 +4,19 @@
  * them onto the saved search's own fields, then go through `applyCommand` like every other
  * change, so the person's open page follows and each change has its undo (#342).
  */
-import { v, type Infer, type ObjectType } from "convex/values";
+import { v, type GenericValidator, type Infer, type ObjectType } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { internalAction, internalMutation } from "../lib/functions";
 import { assistantAction, assistantMutation, defineUserAction, defineUserMutation, reversedBy, userAction, userMutation } from "../lib/userActions";
 import { countSearch, PAGE_ORDERED_SORT, readSearchPage } from "../paperSets/openalex";
 import { keptByRating, SCREENING_FIELDS, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
-import { MIN_YEAR } from "../../lib/constants";
+import { COUNTRY_HIERARCHY, getCountryCodesForRegions, MIN_YEAR } from "../../lib/constants";
+import { authorFilterValue } from "../../lib/openalex/author-filter";
+import { INSTITUTION_TYPES, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { currentSearch, type SavedSearch, type UndoCommand } from "../../lib/research/records";
 import { applyCommand, findSearch, revisionRow } from "./records";
-import { LAST_PAGE, LAST_PAGE_FROM_START, RESULTS_PAGE, resultsValidator, searchSettings } from "./searchValidators";
+import { AUTHORS_SHOWN, changesValidator, LAST_PAGE, LAST_PAGE_FROM_START, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 
 const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
@@ -23,13 +25,73 @@ const REMOVE = "research/searches:remove" as const;
 
 const SORTS = { relevance: "relevance_score:desc", most_cited: "cited_by_count:desc", newest: "publication_date:desc", oldest: "publication_date:asc" } as const;
 /** Characters of each text a results page carries, so ten whole papers stay within what the model reads at once. */
-const SHOWN = { title: 200, authors: 100, venue: 80, abstract: 250 };
+const SHOWN = { title: 160, author: 30, name: 60, venue: 60, abstract: 180 };
 const short = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)}…` : text);
+/** A name the `authors` filter can search by: whole when it's short, its leading whole words when it isn't. */
+const leading = (name: string, max: number) => (name.length > max ? name.slice(0, max).replace(/\s+\S*$/, "") : name);
 
 type Settings = ObjectType<typeof searchSettings>;
 
 const needsQuery = () => createError("VALIDATION_ERROR", "A search needs a query.");
 const authorValidator = v.union(v.literal("user"), v.literal("assistant"));
+
+// A declared function, so a call to it ends the branch for the type checker as a `throw` does.
+function invalid(message: string): never {
+  throw createError("VALIDATION_ERROR", message);
+}
+
+type Region = { label: string; children?: Region[] };
+/** The regions the page's two geographic filters name, as it names them: africa, western_africa, and so on. */
+const REGIONS = (function names(region: Region): string[] {
+  return region.children?.length ? [region.label.toLowerCase().replace(/\s+/g, "_"), ...region.children.flatMap(names)] : [];
+})(COUNTRY_HIERARCHY);
+/** Countries the page lets one filter on where authors work reach: OpenAlex takes no more in one request. */
+const AUTHOR_COUNTRIES_MAX = 100;
+
+/** Places as the saved search keeps them: a region by its name on the page, a country by its two-letter code. */
+function places(given: string[], setting: string) {
+  return given.map((value) => {
+    const place = value.trim().length === 2 ? value.trim().toUpperCase() : value.trim().toLowerCase().replace(/\s+/g, "_");
+    if (!getCountryCodesForRegions([place], true).totalCount) invalid(`"${value}" isn't a place \`${setting}\` takes. Give a two-letter country code, or one of these regions: ${REGIONS.join(", ")}.`);
+    return place;
+  });
+}
+
+/** Values as one of the page's own lists has them, or a refusal that says what it takes. */
+const among = (allowed: readonly string[], setting: string) => (given: string[]) =>
+  given.map((value) => {
+    const found = allowed.find((one) => one === value.trim().toLowerCase());
+    if (!found) invalid(`"${value}" isn't one of \`${setting}\`. It takes: ${allowed.join(", ")}.`);
+    return found;
+  });
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** A day the calendar has: 2025-02-30 parses, as the 2nd of March, and the page then can't read the search. */
+const isDay = (day: string) => {
+  const at = DAY.test(day) ? Date.parse(`${day}T00:00:00Z`) : NaN;
+  return Number.isFinite(at) && new Date(at).toISOString().slice(0, 10) === day;
+};
+
+/** An OpenAlex ID of one kind, bare, from the ID or the address it was given as. */
+const openAlexId = (letter: string) => (value: string) => value.trim().match(new RegExp(`^(?:https?://openalex\\.org/(?:[a-z]+/)?)?(${letter}\\d+)$`, "i"))?.[1].toUpperCase();
+const workId = openAlexId("W");
+const funderId = openAlexId("F");
+/** A research area as the page's filter keeps it: a domain, field or subfield by its path, a topic by its ID. */
+const AREA = /^(?:(?:domains|fields|subfields)\/\d+|T\d+)$/;
+const LOOK_UP = "Find it with research/lookup:find.";
+
+/** The settings that are lists, the saved search's field each one is, and how its values are checked. */
+const LISTS = [
+  ["authors", "authors", (given: string[]) => given.map((value) => authorFilterValue(value) ?? invalid("An author is an ID, such as A5023888391, or a name."))],
+  ["funders", "funders", (given: string[]) => given.map((value) => funderId(value) ?? invalid(`"${value}" isn't a funder's ID, such as F4320332161. ${LOOK_UP}`))],
+  ["researchAreas", "researchAreas", (given: string[]) => given.map((value) => (AREA.test(value.trim()) ? value.trim() : invalid(`"${value}" isn't a research area's ID, such as fields/33 or T13958. ${LOOK_UP}`)))],
+  ["authorsIn", "selectedRegions", (given: string[]) => places(given, "authorsIn")],
+  ["about", "selectedCountryFocus", (given: string[]) => places(given, "about")],
+  ["types", "workTypes", among(WORK_TYPES.map((type) => type.id), "types")],
+  ["languages", "workLanguages", among(WORK_LANGUAGES, "languages")],
+  ["institutionTypes", "institutionTypes", among(INSTITUTION_TYPES.map((type) => type.id), "institutionTypes")],
+] as const;
+
 
 /**
  * Plain settings as the saved search's own fields: what to set, and what to take off.
@@ -40,12 +102,56 @@ function savedFields(settings: Settings, current?: SavedSearch) {
   const clear: string[] = [];
   const thisYear = new Date().getFullYear();
   if (settings.field !== undefined) fields.field = settings.field;
+  // Exact days and whole years are the page's two ways of giving a time span: it filters by the one last set.
+  // A call gives one of them. The other's ends, taken off or left out, go with it, so the search moves across whole.
+  const [days, years] = [settings.fromDate != null || settings.toDate != null, settings.fromYear != null || settings.toYear != null];
+  if (days && years) invalid("Give the time span as years or as exact days, not both.");
+  if (years) clear.push("dateRange");
+  else if (settings.fromDate !== undefined || settings.toDate !== undefined) {
+    const [from, to] = [settings.fromDate === undefined ? current?.dateRange?.from : settings.fromDate, settings.toDate === undefined ? current?.dateRange?.to : settings.toDate];
+    for (const day of [from, to]) if (day != null && !isDay(day)) invalid("A day is written YYYY-MM-DD, and is one the calendar has.");
+    if (from && to && from > to) invalid("The first day is after the last.");
+    fields.filterType = "date";
+    if (from == null && to == null) clear.push("dateRange");
+    else fields.dateRange = { ...(from ? { from } : {}), ...(to ? { to } : {}) };
+  }
+  for (const [setting, field, checked] of LISTS) {
+    const given = settings[setting];
+    if (given === undefined) continue;
+    // The page keeps an empty list for a filter that's off.
+    const values = given === null ? [] : [...new Set(checked(given))];
+    if (setting === "authorsIn" && getCountryCodesForRegions(values).isLimitExceeded) {
+      invalid(`\`authorsIn\` reaches at most ${AUTHOR_COUNTRIES_MAX} countries at once. Give smaller regions, or countries.`);
+    }
+    fields[field] = values;
+  }
+  if (settings.sdgs !== undefined) {
+    const goals = settings.sdgs ?? [];
+    if (goals.some((goal) => !Number.isInteger(goal) || goal < 1 || goal > 17)) invalid("An SDG is its goal's number, 1 to 17.");
+    fields.sdgs = [...new Set(goals)].map(String);
+  }
+  for (const [setting, field] of [["cites", "citesItemId"], ["citedBy", "citedByItemId"], ["relatedTo", "relatedToItemId"]] as const) {
+    const given = settings[setting];
+    if (given === undefined) continue;
+    // The page keeps an empty ID for one that's off.
+    fields[field] = given === null ? "" : (workId(given) ?? invalid(`\`${setting}\` takes one paper's ID, such as W2741809807, as a search's results give it.`));
+  }
+  if (settings.includeRetracted !== undefined) fields.includeRetracted = settings.includeRetracted;
+  if (settings.ratedOnly !== undefined) fields.onlyRatedPapers = settings.ratedOnly;
+  if (settings.minRating !== undefined || settings.maxRating !== undefined) {
+    // Left out, an end stays as it is. Taken off, it goes back to the end of the scale, which keeps every rating.
+    const [min, max] = [settings.minRating === undefined ? (current?.ratingRange?.[0] ?? 0) : (settings.minRating ?? 0), settings.maxRating === undefined ? (current?.ratingRange?.[1] ?? 5) : (settings.maxRating ?? 5)];
+    if (![min, max].every((rating) => Number.isInteger(rating) && rating >= 0 && rating <= 5) || min > max) invalid("Ratings are whole numbers from 0 to 5, the lowest first.");
+    fields.ratingRange = [min, max];
+    // The page reads a range only while it keeps rated papers alone, so a bound given turns that on.
+    if (settings.ratedOnly === undefined && (settings.minRating != null || settings.maxRating != null)) fields.onlyRatedPapers = true;
+  }
   for (const year of [settings.fromYear, settings.toYear]) {
     if (year != null && (!Number.isInteger(year) || year < MIN_YEAR || year > thisYear)) throw createError("VALIDATION_ERROR", `A year is a whole number from ${MIN_YEAR} to ${thisYear}.`);
   }
-  if (settings.fromYear !== undefined || settings.toYear !== undefined) {
+  if (days || settings.fromYear !== undefined || settings.toYear !== undefined) {
     const [from, to] = [settings.fromYear === undefined ? current?.yearRange?.[0] : settings.fromYear, settings.toYear === undefined ? current?.yearRange?.[1] : settings.toYear];
-    if (from == null && to == null) {
+    if (days || (from == null && to == null)) {
       clear.push("yearRange");
       fields.isYearRangeEnabled = false;
     } else {
@@ -78,7 +184,9 @@ export const createAction = defineUserMutation({
   path: CREATE,
   description:
     "Makes a saved search in the person's account from a query and filters, which shows in their search history at once. It doesn't run the search: read its results with research/searches:results. " +
-    "The query is keywords, with AND, OR, NOT and quoted phrases. Returns the search's ID, and `undo`, which deletes it while nothing has been done with it.",
+    "The query is keywords, with AND, OR, NOT and quoted phrases. " +
+    SETTINGS +
+    " Returns the search's ID, and `undo`, which deletes it while nothing has been done with it.",
   args: { query: v.string(), ...searchSettings },
   returns: v.object({ id: v.string(), undo: reversedBy(REMOVE, { id: v.string(), expect: madeHere }) }),
   spendsCredits: false,
@@ -110,12 +218,77 @@ export const createAction = defineUserMutation({
 export const create = userMutation(createAction);
 export const createForAssistant = assistantMutation(createAction);
 
+/** Whether a value is one a setting's validator takes. */
+function fits(validator: GenericValidator, value: unknown): boolean {
+  switch (validator.kind) {
+    case "union":
+      return validator.members.some((member) => fits(member, value));
+    case "literal":
+      return value === validator.value;
+    case "null":
+      return value === null;
+    case "string":
+      return typeof value === "string";
+    case "float64":
+      return typeof value === "number";
+    case "boolean":
+      return typeof value === "boolean";
+    case "array":
+      return Array.isArray(value) && value.every((inner) => fits(validator.element, inner));
+    default:
+      return false;
+  }
+}
+/** What a setting takes, in words, for the refusal of a value it doesn't. */
+function takes(validator: GenericValidator): string {
+  switch (validator.kind) {
+    case "union":
+      return [...new Set(validator.members.map(takes))].join(" or ");
+    case "literal":
+      return JSON.stringify(validator.value);
+    case "array":
+      return `a list of ${takes(validator.element)}`;
+    case "float64":
+      return "a number";
+    case "boolean":
+      return "true or false";
+    case "string":
+      return "text";
+    default:
+      return validator.kind;
+  }
+}
+
+/**
+ * The settings a list of changes gives, checked as the settings' own validators would have.
+ * Two slips are read as what they mean: one value where a list goes is a list of one, and
+ * null for a switch turns it off.
+ */
+function settingsOf(changes: Infer<typeof changesValidator>) {
+  const settings: Record<string, unknown> = {};
+  let query: string | undefined;
+  for (const { setting, value } of changes) {
+    if (setting === "query") {
+      if (typeof value !== "string" || !value.trim()) throw needsQuery();
+      query = value;
+      continue;
+    }
+    const validator = searchSettings[setting];
+    const given = fits(validator, value) ? value : value !== null && fits(validator, [value]) ? [value] : value === null && fits(validator, false) ? false : invalid(`\`${setting}\` takes ${takes(validator)}.`);
+    settings[setting] = given;
+  }
+  return { query, settings: settings as Settings };
+}
+
 export const updateAction = defineUserMutation({
   path: UPDATE,
   description:
-    "Changes a saved search's query, its filters, or both. Only what's given changes; null takes a year or the citation minimum off. The person's open page follows, from its first page of results. " +
+    "Changes a saved search: its query, its filters, or both. Give only what changes, as a list: each change names one setting and its new value, and a value of null takes a filter off. Every setting left out of the list stays as it is. " +
+    "The person's open page follows, from its first page of results. `query` is the search's words. " +
+    SETTINGS +
+    " " +
     "Returns `undo`, which puts the search back as it was before this change. It is refused if the search changed again in between.",
-  args: { id: v.string(), query: v.optional(v.string()), ...searchSettings },
+  args: { id: v.string(), changes: changesValidator },
   returns: v.object({ undo: reversedBy(RESTORE, restoreArgs) }),
   spendsCredits: false,
   outsideEffect: false,
@@ -125,8 +298,8 @@ export const updateAction = defineUserMutation({
     const found = await findSearch(ctx, userId, id);
     return found !== null && (await revisionRow(ctx, found._id, found.revision)) === null;
   },
-  run: async (ctx, userId, { id, query, ...settings }, author) => {
-    if (query !== undefined && !query.trim()) throw needsQuery();
+  run: async (ctx, userId, { id, changes }, author) => {
+    const { query, settings } = settingsOf(changes);
     const found = await findSearch(ctx, userId, id);
     if (!found) throw createError("NOT_FOUND", "Search not found.");
     const current = currentSearch(found.data);
@@ -134,8 +307,9 @@ export const updateAction = defineUserMutation({
     const asked = query?.trim() ?? current.query;
     // A new query, or the same one read in another field, is one more query the search has had, so it's its own edit.
     const requeried = asked !== current.query || field !== current.field;
-    const refiltered =
-      Object.entries(filters).some(([key, value]) => JSON.stringify(current[key as keyof SavedSearch]) !== JSON.stringify(value)) || clear.some((key) => current[key as keyof SavedSearch] !== undefined);
+    // A filter that's off is kept as nothing, false, an empty list or an empty ID: taking one off that's already off changes nothing.
+    const kept = (value: unknown) => (value === undefined || value === false || value === "" || (Array.isArray(value) && !value.length) ? "off" : JSON.stringify(value));
+    const refiltered = Object.entries(filters).some(([key, value]) => kept(current[key as keyof SavedSearch]) !== kept(value)) || clear.some((key) => current[key as keyof SavedSearch] !== undefined);
     if (!requeried && !refiltered) return {};
     const edits: Array<UndoCommand | undefined> = [];
     if (requeried) edits.push(await applyCommand(ctx, userId, { kind: "editSearch", id, edit: { kind: "query", query: asked, field } }, author));
@@ -230,7 +404,7 @@ export const recount = internalAction({
 export const resultsAction = defineUserAction({
   path: "research/searches:results",
   description:
-    `Reads a page of a saved search's results from OpenAlex, ${RESULTS_PAGE} papers a page: each paper's ID, title, authors, year, venue, citations and the start of its abstract, with how many results the search has in all. ` +
+    `Reads a page of a saved search's results from OpenAlex, ${RESULTS_PAGE} papers a page: each paper's ID, title, first authors with their IDs, year, venue, citations and the start of its abstract, with how many results the search has in all. ` +
     "The papers come in the order the search's own page lists them. A search that keeps only papers the person rated returns those of each page's papers, and its total counts the papers before that filter. " +
     "Reading counts against the person's OpenAlex allowance: one request a page by relevance, and under any other sort one for every 200 results up to the page.",
   args: { id: v.string(), page: v.optional(v.number()) },
@@ -251,6 +425,10 @@ export const resultsAction = defineUserAction({
     );
     await ctx.runMutation(internal.research.searches.counted, { userId, id, revision: found.revision, count: total, author });
     const papers = await keptByRating(ctx, userId, works.map(toPaper), found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined);
+    // An author OpenAlex has a record for comes with their ID, which the `authors` filter takes. One it has none for is filtered by name, so that name comes as words to search by.
+    const authorsOf = new Map(
+      works.map((work) => [work.id, (work.authorships ?? []).flatMap(({ author }) => (author?.display_name ? [author.id ? { name: short(author.display_name, SHOWN.author), id: author.id.split("/").at(-1)! } : { name: leading(author.display_name, SHOWN.name) }] : []))]),
+    );
     return {
       total,
       page,
@@ -258,7 +436,8 @@ export const resultsAction = defineUserAction({
       papers: papers.map((paper) => ({
         id: paper.openalexId,
         title: short(paper.title, SHOWN.title),
-        ...(paper.authors?.length ? { authors: short(paper.authors.slice(0, 3).join(", ") + (paper.authors.length > 3 ? " and others" : ""), SHOWN.authors) } : {}),
+        ...(authorsOf.get(paper.openalexId)?.length ? { authors: authorsOf.get(paper.openalexId)!.slice(0, AUTHORS_SHOWN) } : {}),
+        ...((authorsOf.get(paper.openalexId)?.length ?? 0) > AUTHORS_SHOWN ? { moreAuthors: authorsOf.get(paper.openalexId)!.length - AUTHORS_SHOWN } : {}),
         ...(paper.publicationYear === undefined ? {} : { year: paper.publicationYear }),
         ...(paper.venue ? { venue: short(paper.venue, SHOWN.venue) } : {}),
         ...(paper.citedByCount === undefined ? {} : { citations: paper.citedByCount }),

@@ -7,9 +7,10 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
+import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { people } from "./assistant.test-support";
 import { detailsOf } from "./details";
-import { MAX_ASKS } from "./steps";
+import { MAX_ASKS, forModel } from "./steps";
 import { DEFINITION_MAX, MAX_CALLS, MAX_STEPS, core, definition, found } from "./tools";
 import { finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
 
@@ -613,6 +614,31 @@ describe("the assistant's tools", () => {
     expect(toolsSent[0]).toHaveLength(core().length + 2);
     // About 1,000 tokens at most for a tool's description and arguments (#326).
     for (const entry of core()) expect(JSON.stringify(definition(entry)).length, entry.path).toBeLessThanOrEqual(DEFINITION_MAX);
+  });
+
+  it("return nothing Convex can't keep: no field of an action's definition is named with a dollar sign or an underscore", () => {
+    // A tool's result is saved with the reply as it streams. A field named like that fails the save, which ends the reply.
+    const reserved = (value: unknown, path = ""): string[] =>
+      !value || typeof value !== "object" ? [] : Object.entries(value).flatMap(([key, inner]) => [...(/^[$_]/.test(key) ? [path + "." + key] : []), ...reserved(inner, path + "." + key)]);
+    expect(USER_ACTIONS.flatMap((entry) => reserved(definition(entry), entry.path))).toEqual([]);
+    expect(reserved(found("rename collection share chat delete search"))).toEqual([]);
+  });
+
+  it("return nothing nested deeper than Convex keeps: what sits below is given as text", () => {
+    // Convex keeps a document sixteen levels deep, and a reply's message holds a tool's result five levels down.
+    const KEPT = 16 - 5;
+    const depth = (value: unknown): number => (value && typeof value === "object" ? 1 + Math.max(0, ...Object.values(value).map(depth)) : 0);
+    // An action whose arguments are lists of objects of lists: looking it up ended the reply.
+    const looked = found("country region filter search");
+    expect(depth(looked)).toBeGreaterThan(KEPT);
+    expect(depth(forModel(looked))).toBeLessThanOrEqual(KEPT);
+    // Nothing is lost: the levels below are there as their JSON text.
+    const deep = Array.from({ length: 14 }).reduce<unknown>((inner) => ({ inner }), "the bottom");
+    const kept = forModel(deep);
+    expect(depth(kept)).toBeLessThanOrEqual(KEPT);
+    expect(JSON.stringify(kept)).toContain("the bottom");
+    // A result that was shallow enough comes back as it was.
+    expect(forModel({ page: [{ id: "W1", authors: [{ name: "Ada" }] }] })).toEqual({ page: [{ id: "W1", authors: [{ name: "Ada" }] }] });
   });
 
   it("find actions by what they do, with the arguments they take and whether they ask first", () => {
