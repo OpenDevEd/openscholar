@@ -159,7 +159,7 @@ describe("Evidence Library setup draft", () => {
     );
     const refused = await admin.mutation(
       internal.evidenceLibraries.mutations.reserveAddress,
-      { organizationId: (await admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
+      { organizationId: ((await admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
         name: setupArgs.name,
         publicAddress: "https://climate-evidence-2-lib.libraries.example.test",
         slug: "climate-evidence-2",
@@ -283,7 +283,7 @@ describe("Evidence Library setup draft", () => {
     );
     const firstRepeated = await admin.mutation(
       internal.evidenceLibraries.mutations.reserveAddress,
-      { organizationId: (await admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
+      { organizationId: ((await admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
         name: "Climate Evidence",
         publicAddress: "https://climate-evidence-2-lib.libraries.example.test",
         slug: "climate-evidence-2",
@@ -427,7 +427,7 @@ describe("Evidence Library setup draft", () => {
     });
     const nextForFourth = await fourth.query(
       internal.evidenceLibraries.queries.readAddressCandidates,
-      { organizationId: (await fourth.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id, name: setupArgs.name },
+      { organizationId: ((await fourth.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id, name: setupArgs.name },
     );
     const counts = await t.run(async (ctx) => ({
       drafts: (await ctx.db.query("evidenceLibraryConfigDrafts").collect())
@@ -490,7 +490,7 @@ describe("Evidence Library setup draft", () => {
     });
 
     await expect(
-      admin.query(internal.evidenceLibraries.queries.readAddressCandidates, { organizationId: (await admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id,
+      admin.query(internal.evidenceLibraries.queries.readAddressCandidates, { organizationId: ((await admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
         name: "a".repeat(101),
       }),
     ).rejects.toThrow(/VALIDATION_ERROR/);

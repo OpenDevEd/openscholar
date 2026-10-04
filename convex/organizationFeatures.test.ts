@@ -153,7 +153,7 @@ test("the creation picker and authorization use the same eligible organizations"
     o: { id: "unrelated", rol: "org:member" },
   });
   expect(
-    (await owner.query(api.organizationFeatures.libraryOrganizations, {})).map(
+    ((await owner.query(api.organizationFeatures.listLibraryOrganizations, {})).page).map(
       (org) => org.id,
     ),
   ).toEqual([first, second]);
@@ -179,7 +179,7 @@ test("the creation picker and authorization use the same eligible organizations"
     ctx.db.patch("organizations", second!, { evidenceLibrariesEnabled: false }),
   );
   expect(
-    (await owner.query(api.organizationFeatures.libraryOrganizations, {})).map(
+    ((await owner.query(api.organizationFeatures.listLibraryOrganizations, {})).page).map(
       (org) => org.id,
     ),
   ).toEqual([first]);

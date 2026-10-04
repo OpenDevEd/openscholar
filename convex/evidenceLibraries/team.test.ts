@@ -108,19 +108,19 @@ describe("listTeam", () => {
       });
     });
     const creator = fixture.t.withIdentity({ subject: "user_creator" });
-    expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([]);
+    expect((await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([]);
     await fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_creator", role: "creator" });
-    expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([
+    expect((await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([
       expect.objectContaining({ _id: libraryId, role: "creator" }),
     ]);
     await expect(creator.query(api.evidenceLibraries.queries.listTeam, { libraryId })).rejects.toThrow();
     await expect(creator.mutation(api.evidenceLibraries.team.changeRole, { libraryId, clerkUserId: "user_creator", role: "editor" })).rejects.toThrow();
     await fixture.admin.mutation(api.evidenceLibraries.team.changeRole, { libraryId, clerkUserId: "user_creator", role: "editor" });
-    expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([
+    expect((await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([
       expect.objectContaining({ _id: libraryId, role: "editor" }),
     ]);
     await fixture.admin.mutation(api.evidenceLibraries.team.removeMember, { libraryId, clerkUserId: "user_creator" });
-    expect(await creator.query(api.evidenceLibraries.queries.listLibraryOverviews, {})).toEqual([]);
+    expect((await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([]);
   });
 
   it("removes deleted users' grants and never offers them as organization candidates", async () => {

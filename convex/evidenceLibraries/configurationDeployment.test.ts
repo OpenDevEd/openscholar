@@ -1037,9 +1037,9 @@ describe("Evidence Library configuration deployment", () => {
       { libraryId },
     );
     assert(draft, "Expected an accessible draft");
-    const overviews = await fixture.admin.query(
-      api.evidenceLibraries.queries.listLibraryOverviews,
-      {},
+    const { page: overviews } = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraries,
+      { paginationOpts: { cursor: null, numItems: 50 } },
     );
     const versions = await fixture.admin.query(
       api.evidenceLibraries.versions.listVersionRows,

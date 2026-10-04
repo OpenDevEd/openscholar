@@ -311,6 +311,8 @@ jobs:
           for table in evidenceLibraries evidenceLibraryConfigDrafts evidenceLibraryConfigRevisions evidenceLibraryConfigSections evidenceLibraryConfigOperations evidenceLibraryRuntimeBindings; do
             npx convex import --table "$table" --replace --yes "$RUNNER_TEMP/no-rows.jsonl"
           done
+          # An import skips the triggers that count those rows, so the counts kept from them go too.
+          npx convex run migrations/pagedLibraryList:reset
 
       - name: Run auth and citation E2E
         if: steps.auth-environment.outputs.available == 'true'

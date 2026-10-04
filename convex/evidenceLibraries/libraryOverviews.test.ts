@@ -25,7 +25,7 @@ describe("library overviews", () => {
     await expect(
       fixture.admin.query(
         internal.evidenceLibraries.queries.readAddressCandidates,
-        { organizationId: (await fixture.admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id, name: "Climate Evidence" },
+        { organizationId: ((await fixture.admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id, name: "Climate Evidence" },
       ),
     ).resolves.toEqual({
       status: "name-taken",
@@ -34,7 +34,7 @@ describe("library overviews", () => {
     await expect(
       fixture.admin.query(
         internal.evidenceLibraries.queries.readAddressCandidates,
-        { organizationId: (await fixture.admin.query(api.organizationFeatures.libraryOrganizations, {}))[0]!.id, name: "   " },
+        { organizationId: ((await fixture.admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id, name: "   " },
       ),
     ).rejects.toThrow(/VALIDATION_ERROR/);
   });
@@ -43,9 +43,9 @@ describe("library overviews", () => {
     const fixture = await createActivatedSetupFixture("overview_status");
     const libraryId = fixture.created.libraryId;
 
-    const settingUp = await fixture.admin.query(
-      api.evidenceLibraries.queries.listLibraryOverviews,
-      {},
+    const { page: settingUp } = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraries,
+      { paginationOpts: { cursor: null, numItems: 50 } },
     );
     expect(settingUp).toEqual([
       {
@@ -75,9 +75,9 @@ describe("library overviews", () => {
         error: { code: "DATABASE_UNAVAILABLE", message: "No database." },
       },
     );
-    const failed = await fixture.admin.query(
-      api.evidenceLibraries.queries.listLibraryOverviews,
-      {},
+    const { page: failed } = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraries,
+      { paginationOpts: { cursor: null, numItems: 50 } },
     );
     expect(failed[0]).toMatchObject({ status: "setup_failed", setupStage: "database" });
 
@@ -85,9 +85,9 @@ describe("library overviews", () => {
       api.evidenceLibraries.teardown.requestDevelopmentTeardown,
       { libraryId, confirmationName: "Climate Evidence" },
     );
-    const deleting = await fixture.admin.query(
-      api.evidenceLibraries.queries.listLibraryOverviews,
-      {},
+    const { page: deleting } = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraries,
+      { paginationOpts: { cursor: null, numItems: 50 } },
     );
     expect(deleting[0]).toMatchObject({
       status: "deleting",
@@ -102,9 +102,9 @@ describe("library overviews", () => {
       fixture.admin,
       "Second Library",
     );
-    const overviews = await fixture.admin.query(
-      api.evidenceLibraries.queries.listLibraryOverviews,
-      {},
+    const { page: overviews } = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraries,
+      { paginationOpts: { cursor: null, numItems: 50 } },
     );
     expect(overviews.find((row) => row._id === draft.libraryId)).toEqual({
       _id: draft.libraryId,
@@ -148,9 +148,9 @@ describe("library overviews", () => {
       });
     });
 
-    const overviews = await fixture.admin.query(
-      api.evidenceLibraries.queries.listLibraryOverviews,
-      {},
+    const { page: overviews } = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraries,
+      { paginationOpts: { cursor: null, numItems: 50 } },
     );
 
     expect(overviews[0]).toMatchObject({
@@ -198,9 +198,9 @@ describe("library overviews", () => {
     }
     expect(reachedDraftDeletion).toBe(true);
 
-    const overviews = await fixture.admin.query(
-      api.evidenceLibraries.queries.listLibraryOverviews,
-      {},
+    const { page: overviews } = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraries,
+      { paginationOpts: { cursor: null, numItems: 50 } },
     );
     expect(overviews).toEqual([
       expect.objectContaining({
@@ -253,9 +253,9 @@ describe("library overviews", () => {
         });
       });
 
-      const overviews = await fixture.admin.query(
-        api.evidenceLibraries.queries.listLibraryOverviews,
-        {},
+      const { page: overviews } = await fixture.admin.query(
+        api.evidenceLibraries.queries.listLibraries,
+        { paginationOpts: { cursor: null, numItems: 50 } },
       );
       const row = overviews.find((library) => library._id === libraryId);
       expect(row?.status).toBe("deleting");
@@ -283,9 +283,9 @@ describe("library overviews", () => {
       });
     });
 
-    const overviews = await fixture.admin.query(
-      api.evidenceLibraries.queries.listLibraryOverviews,
-      {},
+    const { page: overviews } = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraries,
+      { paginationOpts: { cursor: null, numItems: 50 } },
     );
     const row = overviews.find((library) => library._id === libraryId);
     expect(row?.teardownStage).toBe("storage");
