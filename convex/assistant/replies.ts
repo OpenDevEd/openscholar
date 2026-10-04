@@ -26,7 +26,8 @@ import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { requireAvailableModel } from "../models/catalog";
 import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { notePart, viewOf } from "../../lib/assistant/view";
-import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
+import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
+import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
 import { compactionDue } from "./context";
@@ -62,14 +63,14 @@ async function admit(ctx: MutationCtx, userId: Id<"users">) {
   const mine = await ctx.db
     .query("assistantThreads")
     .withIndex("by_replySender", (q) => q.eq("reply.senderId", userId))
-    .take(CHAT_CONCURRENCY_LIMIT * 2);
+    .take(ASSISTANT_REPLIES_AT_ONCE * 2);
   let stillWriting = 0;
   for (const other of mine) {
     if (await writing(ctx, other.reply)) stillWriting++;
     else await ctx.db.patch("assistantThreads", other._id, { reply: undefined });
   }
-  if (stillWriting >= CHAT_CONCURRENCY_LIMIT) {
-    throw createError("CONFLICT", `The assistant is already writing ${CHAT_CONCURRENCY_LIMIT} replies for you. Wait for one to finish.`);
+  if (stillWriting >= ASSISTANT_REPLIES_AT_ONCE) {
+    throw createError("CONFLICT", `The assistant is already writing ${ASSISTANT_REPLIES_AT_ONCE} replies for you. Wait for one to finish.`);
   }
 }
 
@@ -91,7 +92,7 @@ export const send = mutation({
     // A reply that was stopped, or died, around asking the person can leave calls without their results.
     await settleAsked(ctx, threadId);
     await healCalls(ctx, thread.agentThreadId);
-    const { modelId, effort } = await chatModel(ctx, thread);
+    const { modelId, effort } = await chatModel(ctx, thread, userId);
     // The model the chat falls back on, or one picked before the rule, is held to it too. So is
     // the server's own default, which runs when nothing picks a model, where the catalog has it.
     const model = modelId

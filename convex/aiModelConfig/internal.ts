@@ -8,6 +8,8 @@ type Pick = { modelId: string; effort?: Effort };
 const HEAVY: readonly AiTask[] = ["chat", "extraction"];
 const FLASH_LITE = "google/gemini-3.1-flash-lite-preview";
 const SONNET = "anthropic/claude-sonnet-4.6";
+/** What chat and the assistant run on unless a person picks otherwise: it drives the assistant's tools reliably at a fraction of a larger model's cost. */
+const LUNA = "openai/gpt-6-luna";
 
 /**
  * Starting picks. Slugs must be catalog rows users can pick, or the resolver
@@ -22,7 +24,7 @@ function defaultPick(preset: PresetKey, task: AiTask): Pick {
     case "fast":
       return { modelId: FLASH_LITE, effort: "minimal" };
     case "balanced":
-      return task === "chat" ? { modelId: SONNET, effort: "medium" } : { modelId: FLASH_LITE, effort: "low" };
+      return task === "chat" ? { modelId: LUNA, effort: "medium" } : { modelId: FLASH_LITE, effort: "low" };
     case "intelligent":
       return HEAVY.includes(task) ? { modelId: "anthropic/claude-opus-4.8", effort: "high" } : { modelId: SONNET, effort: "medium" };
   }

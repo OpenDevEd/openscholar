@@ -36,6 +36,13 @@ export const ESTIMATED_CREDITS_PER_CHAT_MESSAGE = 200;
 export const ASSISTANT_REPLY_CREDITS = 1_000;
 
 /**
+ * Replies the assistant writes for one person at once. A deployment runs so many actions at
+ * a time, 64 unless the backend is set otherwise, shared by everyone on it; this keeps one
+ * account to a quarter of them.
+ */
+export const ASSISTANT_REPLIES_AT_ONCE = 16;
+
+/**
  * Credits reserved before a wallet gateway call, plus one web search when it
  * asks for one. The call then settles to what it really cost.
  */

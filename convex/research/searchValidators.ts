@@ -85,7 +85,7 @@ export const SETTINGS =
 /** Authors of a paper the results name, each with its ID to filter by. */
 export const AUTHORS_SHOWN = 3;
 /** Matches one lookup returns. */
-export const LOOKUP_MAX = 8;
+export const LOOKUP_MAX = 10;
 export const lookupKindValidator = v.union(v.literal("author"), v.literal("funder"), v.literal("researchArea"));
 export const lookupValidator = v.object({
   matches: capped(v.array(v.object({ id: v.string(), name: v.string(), detail: v.optional(v.string()) })), LOOKUP_MAX),
@@ -107,7 +107,7 @@ export const GROUPINGS = {
 } as const;
 export type Grouping = keyof typeof GROUPINGS;
 /** Groups one count returns: the largest, or under `year` the latest. */
-export const GROUPS_MAX = 40;
+export const GROUPS_MAX = 100;
 export const countValidator = v.object({
   /** How many papers match in all. */
   total: v.number(),
