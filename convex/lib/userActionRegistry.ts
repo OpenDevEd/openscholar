@@ -8,7 +8,7 @@ import { clearLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAc
 import { countJobsAction as extractionJobCountAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
 import { countJobFailuresAction as extractionFailureCountAction } from "../extraction/queries/failures";
 import { countJobResultsAction as extractionResultCountAction, listJobResultsAction as extractionResultsAction } from "../extraction/queries/results";
-import { grantAction as chatGrantAction, listAccessAction as chatAccessAction, revokeAction as chatRevokeAction } from "../assistant/sharing";
+import { candidatesAction as chatCandidatesAction, grantAction as chatGrantAction, listAccessAction as chatAccessAction, revokeAction as chatRevokeAction } from "../assistant/sharing";
 import { messagesAction as chatMessagesAction } from "../assistant/replies";
 import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, removeAction as chatRemoveAction, renameAction as chatRenameAction, setModelAction as chatModelAction } from "../assistant/threads";
 import { savedPaperAction } from "../library/queries";
@@ -31,6 +31,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   chatRemoveAction,
   chatMessagesAction,
   chatAccessAction,
+  chatCandidatesAction,
   chatGrantAction,
   chatRevokeAction,
   extractionJobsAction,

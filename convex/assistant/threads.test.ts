@@ -12,6 +12,27 @@ const firstPage = { cursor: null, numItems: 10 };
 const titles = (page: { page: Array<{ title: string }> }) => page.page.map((chat) => chat.title);
 
 describe("assistant chats", () => {
+  it("suggest sharing with the person's own organizations and the people in them", async () => {
+    const t = convexTest(schema);
+    const { asAda, asCy, ben, team, elsewhere } = await people(t);
+    const names = (found: Array<{ principal: { kind: string } }>) => found.map((one) => one.principal);
+
+    expect(names(await asAda.query(api.assistant.sharing.candidates, {}))).toEqual([
+      { kind: "organization", organizationId: team },
+      { kind: "user", userId: ben },
+    ]);
+    expect(await asAda.query(api.assistant.sharing.candidates, { text: "BEN@" })).toMatchObject([{ principal: { kind: "user", userId: ben }, email: "ben@example.org" }]);
+    expect(await asAda.query(api.assistant.sharing.candidates, { text: "cy" })).toEqual([]);
+    // Cy is alone in the other organization.
+    expect(names(await asCy.query(api.assistant.sharing.candidates, {}))).toEqual([{ kind: "organization", organizationId: elsewhere }]);
+
+    // The access list says how big an organization is.
+    const threadId = await asAda.mutation(api.assistant.threads.create, {});
+    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "organization", organizationId: team }, role: "read" });
+    const access = await asAda.query(api.assistant.sharing.listAccess, { threadId, paginationOpts: firstPage });
+    expect(access.page.find((row) => row.principal.kind === "organization")).toMatchObject({ members: 2, role: "read" });
+  });
+
   it("list with who each is shared with and who has it open now", async () => {
     const t = convexTest(schema);
     const { asAda, asBen, asCy, ada, ben, team, threadId } = await (async () => {

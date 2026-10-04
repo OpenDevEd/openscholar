@@ -70,3 +70,11 @@ export const assistantMembersValidator = capped(v.array(v.object({ userId: v.id(
 
 /** The people in a chat's room (./presence.ts). */
 export const assistantViewersValidator = capped(v.array(v.object({ userId: v.string(), online: v.boolean(), lastDisconnected: v.number() })), MAX_ASSISTANT_THREAD_VIEWERS);
+
+/** People and organizations the share sheet suggests at once. */
+export const ASSISTANT_CANDIDATES_SHOWN = 8;
+/** Who a chat's owner could share it with: their organizations, then the people in them. */
+export const assistantCandidatesValidator = capped(
+  v.array(v.object({ principal: assistantPrincipalValidator, name: v.string(), email: v.optional(v.string()) })),
+  ASSISTANT_CANDIDATES_SHOWN,
+);

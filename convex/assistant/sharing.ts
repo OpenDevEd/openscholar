@@ -5,6 +5,7 @@
  * message, with that person's access and credits.
  */
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { mergedStream, stream } from "convex-helpers/server/stream";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -13,11 +14,16 @@ import { createError } from "../lib/errors";
 import { MAX_ASSISTANT_THREAD_GRANTS } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { readMemberOrganizations } from "../organizationFeatures";
+import schema from "../schema";
 import { accessRow, accessRows, personName, principalKey, principalOf, requireThread, type AssistantPrincipal } from "./access";
-import { assistantGrantRoleValidator, assistantPrincipalValidator, assistantRoleValidator } from "./validators";
+import { ASSISTANT_CANDIDATES_SHOWN, assistantCandidatesValidator, assistantGrantRoleValidator, assistantPrincipalValidator, assistantRoleValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
 const ACCESS_PAGE_MAX = 50;
+/** Organization members one suggestion read looks through for the ones the text matches. */
+const CANDIDATE_ROWS = 500;
+/** An organization's size is counted this far; past it the sheet says "100+". */
+const MEMBERS_COUNTED = 100;
 
 /** The owner's active organizations, by ID. */
 async function organizationsOf(ctx: QueryCtx | MutationCtx, user: Doc<"users">) {
@@ -109,6 +115,8 @@ export const listAccessAction = defineUserQuery({
       name: v.string(),
       /** A person's email, for the chat's owner only. */
       email: v.optional(v.string()),
+      /** An organization's active members, counted up to one past MEMBERS_COUNTED. */
+      members: v.optional(v.number()),
     }),
   ),
   run: async (ctx, userId, { threadId, paginationOpts }) => {
@@ -124,7 +132,12 @@ export const listAccessAction = defineUserQuery({
         if (!principal) return [];
         if (principal.kind === "organization") {
           const organization = await ctx.db.get("organizations", principal.organizationId);
-          return organization ? [{ principal, role: row.role, name: organization.name }] : [];
+          if (!organization) return [];
+          const members = await ctx.db
+            .query("organizationMemberships")
+            .withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active"))
+            .take(MEMBERS_COUNTED + 1);
+          return [{ principal, role: row.role, name: organization.name, members: members.length }];
         }
         const person = await ctx.db.get("users", principal.userId);
         if (!person) return [];
@@ -136,3 +149,51 @@ export const listAccessAction = defineUserQuery({
 });
 export const listAccess = userQuery(listAccessAction);
 export const listAccessForAssistant = assistantQuery(listAccessAction);
+
+export const candidatesAction = defineUserQuery({
+  path: "assistant/sharing:candidates",
+  description:
+    "Suggests who the person could share an assistant chat with: the organizations they belong to, then the people in them, a few at a time. " +
+    "Given `text`, only those whose name or email contains it.",
+  args: { text: v.optional(v.string()) },
+  returns: assistantCandidatesValidator,
+  run: async (ctx, userId, { text }) => {
+    await requireFeature(ctx, FLAG, userId);
+    const me = await ctx.db.get("users", userId);
+    if (!me) return [];
+    const needle = text?.trim().toLowerCase() ?? "";
+    const matches = (...fields: string[]) => !needle || fields.some((field) => field.toLowerCase().includes(needle));
+    const mine = [...(await organizationsOf(ctx, me)).values()];
+    const organizations = mine
+      .filter((organization) => matches(organization.name))
+      .slice(0, ASSISTANT_CANDIDATES_SHOWN)
+      .map((organization) => ({ principal: { kind: "organization" as const, organizationId: organization._id }, name: organization.name }));
+    const wanted = ASSISTANT_CANDIDATES_SHOWN - organizations.length;
+    if (!wanted) return organizations;
+
+    // The people in those organizations, each once however many they share with the person.
+    const seen = new Set<string>([me.clerkId]);
+    const found = new Map<string, Doc<"users">>();
+    await mergedStream(
+      mine.map((organization) =>
+        stream(ctx.db, schema)
+          .query("organizationMemberships")
+          .withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")),
+      ),
+      ["_creationTime"],
+    )
+      .filterWith(async (membership) => {
+        if (seen.has(membership.clerkUserId)) return false;
+        seen.add(membership.clerkUserId);
+        const person = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
+        if (person?.state !== "active" || !matches(personName(person), person.email)) return false;
+        found.set(membership.clerkUserId, person);
+        return true;
+      })
+      .paginate({ cursor: null, numItems: wanted, maximumRowsRead: CANDIDATE_ROWS });
+    const people = [...found.values()].slice(0, wanted).map((person) => ({ principal: { kind: "user" as const, userId: person._id }, name: personName(person), email: person.email }));
+    return [...organizations, ...people];
+  },
+});
+export const candidates = userQuery(candidatesAction);
+export const candidatesForAssistant = assistantQuery(candidatesAction);
