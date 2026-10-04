@@ -12,7 +12,7 @@ import { seedFullJobGraph, SEED_IDENTITY } from "./tests/seed";
  * DB reads → response shaping correctly. If the barrel split silently sends
  * a caller to the wrong handler, the headline assertion goes red.
  *
- * Covers: getJobShell, getJobDetails, getJobResultsPage,
+ * Covers: getJobShell, getJobDetails, listJobResults,
  * subscribeToJobProgress.
  */
 
@@ -65,12 +65,11 @@ describe("SN-3 public queries resolve against a seeded job graph", () => {
     expect("progress" in res).toBe(false);
   });
 
-  test("getJobResultsPage reaches handler", async () => {
+  test("listJobResults reaches handler", async () => {
     const { auth, ids } = await seedAndAuth();
-    const res = await auth.query(api.extraction.queries.getJobResultsPage, {
+    const res = await auth.query(api.extraction.queries.listJobResults, {
       jobId: ids.jobId,
-      page: 1,
-      pageSize: 200,
+      paginationOpts: { cursor: null, numItems: 200 },
       filters: {
         searchQuery: "",
         confidenceRange: [0, 100],
@@ -79,7 +78,7 @@ describe("SN-3 public queries resolve against a seeded job graph", () => {
       },
       sortBy: "default",
     });
-    expect(res.status).toBe("ok");
+    expect(res.isDone).toBe(true);
   });
 
   test("subscribeToJobProgress returns ok with seeded totals", async () => {

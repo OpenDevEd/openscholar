@@ -1,17 +1,17 @@
 /**
- * Job-results queries. The page query reads the projection-backed filtered
- * corpus, so counts and sorting stay full-corpus correct; an export reads it
- * page by page.
+ * Job-results queries. A page is read by cursor through the index of its order, with the
+ * filters applied from each paper's projection as it reads; a search reads its matches and
+ * sorts them. A filtered view is counted apart, and an export reads the pages one by one.
  */
 
-import { query, type QueryCtx } from "../../_generated/server";
+import type { QueryCtx } from "../../_generated/server";
 import { v, type Infer } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
 import schema from "../../schema";
 import { assistantQuery, defineUserQuery, userQuery } from "../../lib/userActions";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { ownJob, resolveOwnedJob } from "../access";
+import { ownJob } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
 import { PAPER_LIMIT, RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
 import {
@@ -25,31 +25,6 @@ import {
 import {
   buildQuestionAnswerToken,
 } from "../listProjection";
-
-const jobResultsPageOkValidator = v.object({
-  status: v.literal("ok"),
-  totalAll: v.number(),
-  totalFiltered: v.number(),
-  totalPages: v.number(),
-  page: v.number(),
-  pageSize: v.number(),
-  items: v.array(paginatedPaperWithResultsValidator),
-});
-
-const jobResultsPageEmptyValidator = v.object({
-  status: v.union(v.literal("unauthenticated"), v.literal("no_access")),
-  totalAll: v.number(),
-  totalFiltered: v.number(),
-  totalPages: v.number(),
-  page: v.number(),
-  pageSize: v.number(),
-  items: v.array(paginatedPaperWithResultsValidator),
-});
-
-function normalizePageNumber(value: number) {
-  if (!Number.isFinite(value)) return 1;
-  return Math.max(1, Math.floor(value));
-}
 
 function normalizePageSize(value: number) {
   if (!Number.isFinite(value)) return 1;
@@ -261,62 +236,6 @@ function sortFilteredPapers(
     (a, b) => getPaperAvgConfidence(a) - getPaperAvgConfidence(b),
   );
 }
-
-export const getJobResultsPage = query({
-  args: {
-    jobId: v.id("extractionJobs"),
-    page: v.number(),
-    pageSize: v.number(),
-    filters: resultsPageFiltersValidator,
-    sortBy: resultsSortByValidator,
-  },
-  returns: v.union(jobResultsPageOkValidator, jobResultsPageEmptyValidator),
-  handler: async (ctx, args) => {
-    const requestedPage = normalizePageNumber(args.page);
-    const pageSize = normalizePageSize(args.pageSize);
-    const filters = normalizeResultsFilters(args.filters);
-    const access = await resolveOwnedJob(ctx, args.jobId);
-    if (access.status !== "ok") {
-      return {
-        status: access.status,
-        totalAll: 0,
-        totalFiltered: 0,
-        totalPages: 0,
-        page: requestedPage,
-        pageSize,
-        items: [],
-      };
-    }
-    const { user } = access;
-    await requireFeature(ctx, "extraction.enabled");
-    const limit = PAPER_LIMIT;
-    const { totalAll, totalFiltered, filteredPapers } = await readFilteredJobPapers(
-      ctx,
-      {
-        job: access.job,
-        filters,
-        sortBy: args.sortBy,
-        limit,
-      },
-    );
-    const totalPages = totalFiltered === 0 ? 0 : Math.ceil(totalFiltered / pageSize);
-    const page =
-      totalPages === 0 ? 1 : Math.min(requestedPage, totalPages);
-    const sliceStart = (page - 1) * pageSize;
-    const pagePapers = filteredPapers.slice(sliceStart, sliceStart + pageSize);
-    const items = await loadPaginatedPaperResults(ctx, pagePapers);
-
-    return {
-      status: "ok" as const,
-      totalAll,
-      totalFiltered,
-      totalPages,
-      page,
-      pageSize,
-      items,
-    };
-  },
-});
 
 /** Bytes of papers one page of results may read while it looks for matches. */
 const RESULTS_PAGE_BYTES = 4 * 1024 * 1024;

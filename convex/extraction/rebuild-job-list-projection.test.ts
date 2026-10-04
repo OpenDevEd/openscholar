@@ -90,10 +90,9 @@ describe("rebuildJobListProjection", () => {
     const auth = t.withIdentity(OWNER_IDENTITY);
 
     await expect(
-      auth.query(api.extraction.queries.getJobResultsPage, {
+      auth.query(api.extraction.queries.listJobResults, {
         jobId,
-        page: 1,
-        pageSize: 25,
+        paginationOpts: { cursor: null, numItems: 25 },
         filters: {
           searchQuery: "",
           confidenceRange: [0, 100],
@@ -112,10 +111,9 @@ describe("rebuildJobListProjection", () => {
     expect(repair.remaining).toBe(0);
     expect(repair.scheduled).toBe(false);
 
-    const results = await auth.query(api.extraction.queries.getJobResultsPage, {
+    const results = await auth.query(api.extraction.queries.listJobResults, {
       jobId,
-      page: 1,
-      pageSize: 25,
+      paginationOpts: { cursor: null, numItems: 25 },
       filters: {
         searchQuery: "",
         confidenceRange: [0, 100],
@@ -125,12 +123,8 @@ describe("rebuildJobListProjection", () => {
       sortBy: "default",
     });
 
-    expect(results.status).toBe("ok");
-    if (results.status !== "ok") {
-      throw new Error("unreachable");
-    }
-    expect(results.totalFiltered).toBe(1);
-    expect(results.items[0]?.title).toBe("Repairable Paper");
-    expect(results.items[0]?.results[0]?.answer).toBe("Recovered answer");
+    expect(results.page).toHaveLength(1);
+    expect(results.page[0]?.title).toBe("Repairable Paper");
+    expect(results.page[0]?.results[0]?.answer).toBe("Recovered answer");
   });
 });

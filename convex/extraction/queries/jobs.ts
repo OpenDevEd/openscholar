@@ -14,15 +14,13 @@ import { paginationOptsValidator, paginationResultValidator } from "convex/serve
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import schema from "../../schema";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { getCurrentUser } from "../../lib/auth";
 import { ok, statusResultValidator } from "../../lib/query_states";
 import { resolveOwnedJob, type OwnedJobResolution } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
 import { assistantQuery, defineUserQuery, userQuery } from "../../lib/userActions";
 import { countRow } from "../../research/recordCounts";
-import { PAPER_LIMIT } from "@/lib/extraction/limits";
 import { readJobCounters } from "../jobCounters";
-import { extractionJobValidator, extractionQuestionValidator, jobQuestionsValidator, jobStatusValidator } from "../validators";
+import { extractionJobValidator, jobQuestionsValidator } from "../validators";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 async function resolveReadableJob(
@@ -34,47 +32,6 @@ async function resolveReadableJob(
   await requireFeature(ctx, "extraction.enabled");
   return access;
 }
-
-export const getMyJobs = query({
-  args: {
-    status: v.optional(jobStatusValidator),
-    mode: v.optional(
-      v.union(v.literal("extraction"), v.literal("chat")),
-    ),
-  },
-  returns: v.array(extractionJobValidator),
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return [];
-    await requireFeature(ctx, "extraction.enabled");
-
-    let jobs: Doc<"extractionJobs">[];
-    if (args.status) {
-      jobs = await ctx.db
-        .query("extractionJobs")
-        .withIndex("by_user_status", (q) =>
-          q.eq("userId", user._id).eq("status", args.status!),
-        )
-        .order("desc")
-        .take(50);
-    } else if (args.mode) {
-      jobs = await ctx.db
-        .query("extractionJobs")
-        .withIndex("by_user_mode_updated", (q) =>
-          q.eq("userId", user._id).eq("mode", args.mode!),
-        )
-        .order("desc")
-        .take(50);
-    } else {
-      jobs = await ctx.db
-        .query("extractionJobs")
-        .withIndex("by_user", (q) => q.eq("userId", user._id))
-        .order("desc")
-        .take(50);
-    }
-    return jobs;
-  },
-});
 
 /** Most jobs one page of the list holds, and the bytes and rows one read of it takes. */
 const JOBS_PAGE_MAX = 50;
