@@ -3421,6 +3421,25 @@
     "earlier": "Earlier messages",
     "model": "Model",
     "sendFailed": "Couldn't send your message",
-    "modelFailed": "Couldn't change the model"
+    "modelFailed": "Couldn't change the model",
+    "chats": "Chats",
+    "back": "Back",
+    "happeningNow": "{count} happening now",
+    "searchChats": "Search chats",
+    "whichChats": "Which chats",
+    "scopeAll": "All",
+    "scopeMine": "Mine",
+    "scopeShared": "Shared with me",
+    "groupNow": "Happening now",
+    "groupToday": "Today",
+    "groupEarlier": "Earlier",
+    "openNow": "Open now",
+    "here": "{count, plural, one {{names} is here} other {{names} are here}}",
+    "someone": "Someone",
+    "everyoneIn": "Everyone in {organization}",
+    "writingReply": "Writing a reply",
+    "noChatsMatch": "No chats match.",
+    "noChats": "Your chats will be listed here.",
+    "moreChats": "Earlier chats"
   }
 }

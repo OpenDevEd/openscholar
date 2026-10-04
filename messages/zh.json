@@ -3429,6 +3429,25 @@
     "earlier": "更早的消息",
     "model": "模型",
     "sendFailed": "无法发送你的消息",
-    "modelFailed": "无法更改模型"
+    "modelFailed": "无法更改模型",
+    "chats": "对话",
+    "back": "返回",
+    "happeningNow": "{count} 个进行中",
+    "searchChats": "搜索对话",
+    "whichChats": "显示哪些对话",
+    "scopeAll": "全部",
+    "scopeMine": "我的",
+    "scopeShared": "与我共享",
+    "groupNow": "进行中",
+    "groupToday": "今天",
+    "groupEarlier": "更早",
+    "openNow": "当前打开",
+    "here": "{names}在这里",
+    "someone": "有人",
+    "everyoneIn": "{organization} 的所有人",
+    "writingReply": "正在撰写回复",
+    "noChatsMatch": "没有匹配的对话。",
+    "noChats": "你的对话会显示在这里。",
+    "moreChats": "更早的对话"
   }
 }

@@ -3429,6 +3429,25 @@
     "earlier": "पहले के संदेश",
     "model": "मॉडल",
     "sendFailed": "आपका संदेश नहीं भेजा जा सका",
-    "modelFailed": "मॉडल नहीं बदला जा सका"
+    "modelFailed": "मॉडल नहीं बदला जा सका",
+    "chats": "चैट",
+    "back": "वापस",
+    "happeningNow": "{count} अभी चल रही हैं",
+    "searchChats": "चैट खोजें",
+    "whichChats": "कौन-सी चैट",
+    "scopeAll": "सभी",
+    "scopeMine": "मेरी",
+    "scopeShared": "मेरे साथ साझा",
+    "groupNow": "अभी चल रही",
+    "groupToday": "आज",
+    "groupEarlier": "पहले",
+    "openNow": "अभी खुली है",
+    "here": "{count, plural, one {{names} यहाँ हैं} other {{names} यहाँ हैं}}",
+    "someone": "कोई",
+    "everyoneIn": "{organization} में सभी",
+    "writingReply": "जवाब लिखा जा रहा है",
+    "noChatsMatch": "कोई चैट मेल नहीं खाती।",
+    "noChats": "आपकी चैट यहाँ दिखेंगी।",
+    "moreChats": "पहले की चैट"
   }
 }

@@ -3429,6 +3429,25 @@
     "earlier": "以前のメッセージ",
     "model": "モデル",
     "sendFailed": "メッセージを送信できませんでした",
-    "modelFailed": "モデルを変更できませんでした"
+    "modelFailed": "モデルを変更できませんでした",
+    "chats": "チャット",
+    "back": "戻る",
+    "happeningNow": "{count} 件が進行中",
+    "searchChats": "チャットを検索",
+    "whichChats": "表示するチャット",
+    "scopeAll": "すべて",
+    "scopeMine": "自分のチャット",
+    "scopeShared": "共有されたチャット",
+    "groupNow": "進行中",
+    "groupToday": "今日",
+    "groupEarlier": "以前",
+    "openNow": "表示中",
+    "here": "{names}が参加中",
+    "someone": "だれか",
+    "everyoneIn": "{organization} の全員",
+    "writingReply": "返信を作成中",
+    "noChatsMatch": "一致するチャットはありません。",
+    "noChats": "チャットはここに表示されます。",
+    "moreChats": "以前のチャット"
   }
 }

@@ -7,10 +7,11 @@
 
 import { Component, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
+import usePresence from "@convex-dev/presence/react";
 import { insertAtTop, useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
-import { ArrowUp, ChevronDown, CircleAlert, CircleStop, PictureInPicture2, Square, SquarePen } from "lucide-react";
+import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { ArrowUp, ChevronDown, CircleAlert, CircleStop, MessagesSquare, PictureInPicture2, Square, SquarePen } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -30,6 +31,8 @@ import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "./logo-mark";
+import { IconButton, WorkingText } from "./parts";
+import { Dim, HistorySheet, SHEET_SPRING, Sheet, stackedUnder, type SheetKind } from "./sheets";
 
 type ThreadId = Id<"assistantThreads">;
 type Message = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -98,18 +101,27 @@ function Overlay({
   // Read here, not in the chat, so the launcher shows a reply being written while the panel is folded.
   const live = useQuery(api.assistant.replies.live, threadId ? { threadId } : "skip") ?? null;
   const working = live !== null;
-  // A keyboard shortcut is an outside system: ⌘J or Ctrl+J opens and closes the panel.
+  // Sheets stacked over the panel, bottom first.
+  const [sheets, setSheets] = useState<SheetKind[]>([]);
+  const depth = sheets.length;
+  const pop = () => setSheets((all) => all.slice(0, -1));
+  // A keyboard shortcut is an outside system: ⌘J or Ctrl+J opens and closes the panel, and Escape closes the top sheet.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") {
         e.preventDefault();
+        setSheets([]);
         setOpen((o) => !o);
       }
+      if (e.key === "Escape") setSheets((all) => all.slice(0, -1));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [setOpen]);
-  const fold = () => setOpen(() => false);
+  const fold = () => {
+    setSheets([]);
+    setOpen(() => false);
+  };
 
   return (
     <MotionConfig reducedMotion="user">
@@ -127,7 +139,14 @@ function Overlay({
             style={{ width: PANEL_W, borderRadius: 18 }}
             aria-label={t("label")}
           >
-            <div className="absolute inset-0 flex flex-col overflow-hidden rounded-[18px] border border-border/70 bg-card/[0.97] shadow-[0_24px_80px_-24px_rgb(0_0_0/0.55),0_0_0_1px_rgb(255_255_255/0.03)] backdrop-blur-xl">
+            {threadId ? <Here threadId={threadId} /> : null}
+            <motion.div
+              className="absolute inset-0 flex flex-col overflow-hidden rounded-[18px] border border-border/70 bg-card/[0.97] shadow-[0_24px_80px_-24px_rgb(0_0_0/0.55),0_0_0_1px_rgb(255_255_255/0.03)] backdrop-blur-xl"
+              style={{ transformOrigin: "0% 50%" }}
+              initial={false}
+              animate={stackedUnder(depth)}
+              transition={SHEET_SPRING}
+            >
               <TooltipHint label={`${t("foldHint")}  ⌘J`}>
                 <motion.button
                   type="button"
@@ -147,9 +166,28 @@ function Overlay({
                 animate={{ opacity: 1, transition: { delay: 0.16, duration: 0.25 } }}
                 exit={{ opacity: 0, transition: { duration: 0.08 } }}
               >
-                <Chat threadId={threadId} setThreadId={setThreadId} live={live} onFold={fold} />
+                <Chat threadId={threadId} setThreadId={setThreadId} live={live} onFold={fold} onHistory={() => setSheets((all) => [...all, "history"])} />
               </motion.div>
-            </div>
+              <Dim on={depth > 0} />
+            </motion.div>
+            <AnimatePresence>
+              {sheets.map((kind, i) => (
+                <Sheet key={`${i}-${kind}`} index={i} depth={depth - 1 - i}>
+                  <HistorySheet
+                    current={threadId}
+                    onBack={pop}
+                    onOpen={(id) => {
+                      setThreadId(id);
+                      pop();
+                    }}
+                    onNew={() => {
+                      setThreadId(null);
+                      pop();
+                    }}
+                  />
+                </Sheet>
+              ))}
+            </AnimatePresence>
           </motion.aside>
         ) : null}
       </AnimatePresence>
@@ -159,7 +197,26 @@ function Overlay({
   );
 }
 
-function Chat({ threadId, setThreadId, live, onFold }: { threadId: ThreadId | null; setThreadId: (id: ThreadId | null) => void; live: Live | null; onFold: () => void }) {
+/** Keeps the person in the chat's room while the panel has it open, so the others in it see they're there. */
+function Here({ threadId }: { threadId: ThreadId }) {
+  // The room takes the session's own user, whatever is sent here.
+  usePresence(api.assistant.presence, threadId, "");
+  return null;
+}
+
+function Chat({
+  threadId,
+  setThreadId,
+  live,
+  onFold,
+  onHistory,
+}: {
+  threadId: ThreadId | null;
+  setThreadId: (id: ThreadId | null) => void;
+  live: Live | null;
+  onFold: () => void;
+  onHistory: () => void;
+}) {
   const t = useTranslations("assistant");
   const toast = useAppToast();
   const thread = useQuery(api.assistant.threads.get, threadId ? { threadId } : "skip");
@@ -221,8 +278,10 @@ function Chat({ threadId, setThreadId, live, onFold }: { threadId: ThreadId | nu
 
   return (
     <>
-      <Header title={threadId ? (thread?.title ?? "") : t("newChat")} onRestart={restart} onFold={onFold} />
+      <Header title={threadId ? (thread?.title ?? "") : t("newChat")} onHistory={onHistory} onRestart={restart} onFold={onFold} />
       <Thread
+        // A different chat starts at its own newest message.
+        key={threadId ?? "new"}
         messages={[...results].reverse()}
         live={live}
         fresh={threadId === null}
@@ -381,24 +440,6 @@ function Thinking() {
   );
 }
 
-/**
- * Text that a light sweeps across while work runs. It never drops below the muted
- * text colour, so the words stay readable mid-sweep; it holds still when motion is reduced.
- */
-function WorkingText({ children }: { children: string }) {
-  const reduceMotion = useReducedMotion();
-  if (reduceMotion) return <span className="text-muted-foreground">{children}</span>;
-  return (
-    <motion.span
-      className="bg-[linear-gradient(90deg,var(--muted-foreground)_0%,var(--muted-foreground)_38%,var(--foreground)_50%,var(--muted-foreground)_62%,var(--muted-foreground)_100%)] bg-[length:250%_100%] bg-clip-text text-transparent"
-      animate={{ backgroundPosition: ["100% 0%", "-150% 0%"] }}
-      transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
-    >
-      {children}
-    </motion.span>
-  );
-}
-
 function Empty() {
   const t = useTranslations("assistant");
   return (
@@ -409,7 +450,7 @@ function Empty() {
   );
 }
 
-function Header({ title, onRestart, onFold }: { title: string; onRestart: () => void; onFold: () => void }) {
+function Header({ title, onHistory, onRestart, onFold }: { title: string; onHistory: () => void; onRestart: () => void; onFold: () => void }) {
   const t = useTranslations("assistant");
   return (
     <div className="border-b border-border/50 px-4 pb-3 pt-3.5">
@@ -432,21 +473,12 @@ function Header({ title, onRestart, onFold }: { title: string; onRestart: () => 
           </AnimatePresence>
         </div>
         <div className="flex items-center">
+          <IconButton label={t("chats")} icon={<MessagesSquare className="size-4" />} onClick={onHistory} />
           <IconButton label={t("newChat")} icon={<SquarePen className="size-4" />} onClick={onRestart} />
           <IconButton label={t("foldIntoBubble")} shortcut="⌘J" icon={<PictureInPicture2 className="size-4" />} onClick={onFold} />
         </div>
       </div>
     </div>
-  );
-}
-
-function IconButton({ label, shortcut, icon, onClick }: { label: string; shortcut?: string; icon: ReactNode; onClick?: () => void }) {
-  return (
-    <TooltipHint label={shortcut ? `${label}  ${shortcut}` : label}>
-      <button type="button" aria-label={label} onClick={onClick} className="flex size-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
-        {icon}
-      </button>
-    </TooltipHint>
   );
 }
 

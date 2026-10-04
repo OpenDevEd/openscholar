@@ -3429,6 +3429,25 @@
     "earlier": "Messages précédents",
     "model": "Modèle",
     "sendFailed": "Impossible d'envoyer votre message",
-    "modelFailed": "Impossible de changer de modèle"
+    "modelFailed": "Impossible de changer de modèle",
+    "chats": "Discussions",
+    "back": "Retour",
+    "happeningNow": "{count} en cours",
+    "searchChats": "Rechercher des discussions",
+    "whichChats": "Quelles discussions",
+    "scopeAll": "Toutes",
+    "scopeMine": "Les miennes",
+    "scopeShared": "Partagées avec moi",
+    "groupNow": "En cours",
+    "groupToday": "Aujourd'hui",
+    "groupEarlier": "Plus tôt",
+    "openNow": "Ouverte",
+    "here": "{count, plural, one {{names} est là} other {{names} sont là}}",
+    "someone": "Quelqu'un",
+    "everyoneIn": "Tout le monde chez {organization}",
+    "writingReply": "Rédaction d'une réponse",
+    "noChatsMatch": "Aucune discussion ne correspond.",
+    "noChats": "Vos discussions apparaîtront ici.",
+    "moreChats": "Discussions plus anciennes"
   }
 }
