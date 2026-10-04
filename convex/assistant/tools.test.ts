@@ -248,12 +248,29 @@ describe("the assistant's tools", () => {
     // model is told why, so it answers. Its tools stay as they were: taking them away would void the cache.
     requests.length = 0;
     toolChoices.length = 0;
-    mockDoStream.mockImplementationOnce(calling({ ...list(100), read: 2_000_000_000 })).mockImplementationOnce(calling(list(101))).mockImplementationOnce(finishingDoStream(["Stopping here."]));
+    mockDoStream
+      .mockImplementationOnce(calling({ ...list(100), read: 2_000_000_000 }))
+      // Looking for something else to do is refused with the rest.
+      .mockImplementationOnce(calling(list(101), { id: "find", name: "find_action", input: { keywords: "rename collection" } }, { id: "run", name: "run_action", input: { name: "no/such:action", arguments: {} } }))
+      .mockImplementationOnce(finishingDoStream(["Stopping here."]));
     await say("Look again");
-    expect(told(2, "c101")).toMatchObject({ error: expect.stringMatching(/spent the credits/) });
+    for (const id of ["c101", "find", "run"]) expect(told(2, id)).toMatchObject({ error: expect.stringMatching(/spent the credits/) });
     expect(await steps()).toHaveLength(MAX_CALLS + 1);
     expect(toolChoices).toEqual(["auto", "auto", "auto"]);
     expect((await shown()).at(-1)).toBe("assistant: Stopping here.");
+  });
+
+  it("hold what the person has when that's less than a reply may cost, so a small balance still gets an answer", async () => {
+    const t = convexTest(schema);
+    const { asBen, ben } = await chatOf(t);
+    // What a new free account starts with: half of what a reply may cost.
+    await t.run(async (ctx) => seedCreditsForTest(ctx, { userId: ben, free: 500 }));
+    const threadId = await asBen.mutation(api.assistant.threads.create, { title: "First chat" });
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Here."]));
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "Hello" });
+    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply, { timeoutMs: 5_000 });
+    const { page } = await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
+    expect(page[0]).toMatchObject({ role: "assistant", text: "Here.", status: "done" });
   });
 
   it("show a reply that came back with nothing, when it called no tool", async () => {
