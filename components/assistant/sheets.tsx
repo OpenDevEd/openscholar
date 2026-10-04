@@ -336,7 +336,10 @@ export function ShareSheet({ threadId, title, onBack }: { threadId: ThreadId; ti
   const t = useTranslations("assistant");
   const toast = useAppToast();
   const thread = useQuery(api.assistant.threads.get, { threadId });
-  const { results: people } = usePaginatedQuery(api.assistant.sharing.listAccess, { threadId }, { initialNumItems: ACCESS_ROWS });
+  const { results } = usePaginatedQuery(api.assistant.sharing.listAccess, { threadId }, { initialNumItems: ACCESS_ROWS });
+  // The owner first, then organizations, then people.
+  const rank = (person: Access) => (person.role === "owner" ? 0 : person.principal.kind === "organization" ? 1 : 2);
+  const people = [...results].sort((a, b) => rank(a) - rank(b));
   const owner = thread?.role === "owner";
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
