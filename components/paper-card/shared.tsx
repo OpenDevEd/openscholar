@@ -660,7 +660,8 @@ export function AuthorsLine({
     <div className={cn("flex gap-2 text-sm text-muted-foreground", className)}>
       <Users className="h-4 w-4 flex-shrink-0 mt-0.5" />
       {onToggleAuthor ? (
-        <span className="line-clamp-1">
+        // Not cut to one line: a name hidden by the cut would still take keyboard focus.
+        <span>
           {authorships.slice(0, shown).map(({ author }, index) => {
             const id = author.id?.split("/").at(-1);
             return (
