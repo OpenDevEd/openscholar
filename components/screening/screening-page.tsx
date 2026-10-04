@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import { useQueryState } from "nuqs";
-import { CircleCheck, CircleX, Hourglass, ListChecks, LoaderCircle, Plus, Square } from "lucide-react";
+import { CircleCheck, CircleX, Hourglass, ListChecks, LoaderCircle, Plus, Square, type AppIcon } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -30,7 +30,7 @@ const RAIL_PAGE = 12;
 /** Screenings in progress read to tell the running from the waiting: far more than a person has at once. */
 const ACTIVE_MAX = 50;
 
-const ICON: Record<Exclude<Phase, "processing">, typeof Square> = {
+const ICON: Record<Exclude<Phase, "processing">, AppIcon> = {
   running: LoaderCircle, waiting: Hourglass, completed: CircleCheck, cancelled: Square, failed: CircleX, creditsExhausted: CircleX,
 };
 
@@ -170,7 +170,7 @@ export function ScreeningPage() {
 
 /** What a screening's bar in the rail is filled with: how far it has got while it runs, how much of it was included once it's done. */
 const FILL: Record<Exclude<Phase, "processing">, string> = {
-  running: "bg-primary", waiting: "bg-amber-400", completed: "bg-emerald-500", cancelled: "bg-muted-foreground/40", failed: "bg-destructive", creditsExhausted: "bg-destructive",
+  running: "bg-primary", waiting: "bg-warning", completed: "bg-success", cancelled: "bg-muted-foreground/40", failed: "bg-destructive", creditsExhausted: "bg-destructive",
 };
 
 /**
