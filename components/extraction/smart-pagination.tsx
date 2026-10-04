@@ -17,6 +17,8 @@ interface SmartPaginationProps {
   /** The page shown, from 1; the results are read a page at a time, so a page can't be jumped to. */
   currentPage: number;
   pageSize: number;
+  /** Whether the results run past one page; it holds while the next page loads, so the steps stay up. */
+  hasPages: boolean;
   canPrevious: boolean;
   canNext: boolean;
   onPrevious: () => void;
@@ -34,6 +36,7 @@ interface SmartPaginationProps {
 export function SmartPagination({
   currentPage,
   pageSize,
+  hasPages,
   canPrevious,
   canNext,
   onPrevious,
@@ -52,7 +55,8 @@ export function SmartPagination({
   return (
     <div className={cn("flex flex-col items-center justify-between gap-3 border-t border-border/50 px-4 py-3 sm:flex-row md:px-6", stale && "pointer-events-none opacity-60")}>
       {/* Left: Results info */}
-      <p className="text-xs tabular-nums text-muted-foreground">
+      {/* The sides share the row evenly, so the steps stay put when the count's text changes width. */}
+      <p className="text-xs tabular-nums text-muted-foreground sm:flex-1">
         {t("showingRange", { start: displayedCount === 0 ? 0 : offset + 1, end: endIdx, total: Math.max(filteredCount, endIdx) })}
         {filteredCount < totalCount && (
           <span className="text-xs ml-2">{t("filteredFrom", { total: totalCount })}</span>
@@ -60,7 +64,7 @@ export function SmartPagination({
       </p>
 
       {/* Center: Page navigation */}
-      {(canPrevious || canNext) && (
+      {hasPages && (
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon" className="size-8" onClick={onPrevious} disabled={!canPrevious}>
             <ChevronLeft className="h-4 w-4" />
@@ -77,20 +81,22 @@ export function SmartPagination({
       )}
 
       {/* Right: Page size selector */}
-      <Select
-        value={pageSize.toString()}
-        onValueChange={(v) => onPageSizeChange(Number(v))}
-      >
-        <SelectTrigger size="sm" aria-label={t("perPage", { count: pageSize })} className={cn("w-36", LIST_FILTER)}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="25">{t('perPage', { count: 25 })}</SelectItem>
-          <SelectItem value="50">{t('perPage', { count: 50 })}</SelectItem>
-          <SelectItem value="100">{t('perPage', { count: 100 })}</SelectItem>
-          <SelectItem value="200">{t('perPage', { count: 200 })}</SelectItem>
-        </SelectContent>
-      </Select>
+      <div className="flex sm:flex-1 sm:justify-end">
+        <Select
+          value={pageSize.toString()}
+          onValueChange={(v) => onPageSizeChange(Number(v))}
+        >
+          <SelectTrigger size="sm" aria-label={t("perPage", { count: pageSize })} className={cn("w-36", LIST_FILTER)}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="25">{t('perPage', { count: 25 })}</SelectItem>
+            <SelectItem value="50">{t('perPage', { count: 50 })}</SelectItem>
+            <SelectItem value="100">{t('perPage', { count: 100 })}</SelectItem>
+            <SelectItem value="200">{t('perPage', { count: 200 })}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 }

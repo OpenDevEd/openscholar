@@ -846,6 +846,7 @@ export default function JobDetailPage() {
                   <SmartPagination
                     currentPage={results.page}
                     pageSize={pageSize}
+                    hasPages={results.hasPages}
                     canPrevious={results.canPrevious}
                     canNext={results.canNext}
                     onPrevious={results.previous}
