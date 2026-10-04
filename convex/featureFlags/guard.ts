@@ -25,7 +25,7 @@ export async function requireFeature(
     throw createError("FEATURE_DISABLED", `Feature "${flagKey}" is disabled`);
   }
 
-  if (flagKey === "extraction.enabled") await requireOrganizationFeature(ctx, "extraction");
+  if (flagKey === "extraction.enabled") await requireOrganizationFeature(ctx, "extraction", userId);
 
   if (flag.planFeature) {
     if (!userId) {

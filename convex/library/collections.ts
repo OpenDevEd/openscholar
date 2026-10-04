@@ -8,6 +8,7 @@ import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { MAX_COLLECTIONS_PER_USER } from "../lib/queryBounds";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
+import { collectionSortName } from "./sortName";
 
 /** Most collections one page holds. */
 const COLLECTIONS_PAGE_MAX = 50;
@@ -18,10 +19,7 @@ export function collectionCountRow(ctx: Pick<QueryCtx, "db">, userId: Id<"users"
   return ctx.db.query("collectionCounts").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
 }
 
-/** How collections sort: by name, ignoring case and accents. */
-export function collectionSortName(name: string) {
-  return name.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
-}
+export { collectionSortName };
 
 // ═══════════════════════════════════════════════════════════════
 // COLLECTION CRUD (Plan 01 prerequisites)

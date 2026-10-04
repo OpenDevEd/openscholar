@@ -70,6 +70,47 @@ describe("useCursorPage", () => {
     expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canPrevious: false });
   });
 
+  it("stops offering next on a full last page once the page after it came back empty", () => {
+    // The list ends exactly on a full page, which the server can't tell until it reads past it.
+    server.pages.set("|c1", page(["c", "d"], "c2"));
+    server.pages.set("|c2", page([], "", true));
+    const { result } = renderHook(() => useCursorPage(query, {}, 2));
+    act(() => result.current.next());
+    expect(result.current).toMatchObject({ items: ["c", "d"], page: 2, canNext: true });
+    act(() => result.current.next());
+    expect(result.current).toMatchObject({ items: ["c", "d"], page: 2, canNext: false, canPrevious: true });
+    act(() => result.current.previous());
+    expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canNext: true });
+  });
+
+  it("offers next again on the last page once a row is added after it", () => {
+    server.pages.set("|c1", page(["c", "d"], "c2"));
+    server.pages.set("|c2", page([], "", true));
+    const { result, rerender } = renderHook(() => useCursorPage(query, {}, 2));
+    act(() => result.current.next());
+    act(() => result.current.next());
+    expect(result.current).toMatchObject({ page: 2, canNext: false });
+    server.pages.set("|c2", page(["e"], "c3", true));
+    rerender();
+    expect(result.current).toMatchObject({ items: ["c", "d"], page: 2, canNext: true });
+    act(() => result.current.next());
+    expect(result.current).toMatchObject({ items: ["e"], page: 3, canNext: false });
+  });
+
+  it("reads a page again from its start when an earlier read no longer stops where the next one starts", () => {
+    // A filtered read stops after a set number of rows; a row deleted inside it moves that stop one row on.
+    server.pages.set("|null", page(["a"], "s1"));
+    server.pages.set("|s1", page(["b"], "c1"));
+    const { result, rerender } = renderHook(() => useCursorPage(query, {}, 2));
+    expect(result.current.items).toEqual(["a", "b"]);
+    // The first read now reaches "b" as well, while the second still starts before it.
+    server.pages.set("|null", page(["a"], "s1b"));
+    server.pages.set("|null|1", page(["a", "b"], "c1"));
+    rerender();
+    expect(result.current.items).toEqual(["a", "b"]);
+    expect(server.reads.at(-1)?.paginationOpts).toMatchObject({ cursor: null, id: 1 });
+  });
+
   it("reads a page again from its start when rows added inside it grow it past its size", () => {
     // The first read of page 1 kept its range and grew; a fresh read of it is a page again.
     server.pages.set("|null|0", page(["a", "a2", "b"], "c1"));
