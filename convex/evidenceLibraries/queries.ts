@@ -396,11 +396,12 @@ export const listLibraries = query({
       rows++;
       return !needle || name.toLowerCase().includes(needle) || organizationName.toLowerCase().includes(needle);
     };
-    const sources: Array<{ key: string; read: (cursor: string | null, room: number) => Promise<{ page: Infer<typeof libraryOverviewValidator>[]; after: string | null }> }> = [
+    const sources: Array<{ key: string; name: string; read: (cursor: string | null, room: number) => Promise<{ page: Infer<typeof libraryOverviewValidator>[]; after: string | null }> }> = [
       ...owned
         .filter((entry) => !organization || entry._id === organization)
         .map((entry) => ({
           key: entry._id as string,
+          name: entry.name,
           read: async (cursor: string | null, room: number) => {
             const read = await stream(ctx.db, schema)
               .query("evidenceLibraries")
@@ -412,6 +413,7 @@ export const listLibraries = query({
         })),
       {
         key: GRANTED,
+        name: "",
         read: async (cursor: string | null, room: number) => {
           const read = await stream(ctx.db, schema)
             .query("evidenceLibraryMembers")
@@ -423,16 +425,17 @@ export const listLibraries = query({
         },
       },
     ];
-    const from: { source: string; after: string | null } = paginationOpts.cursor ? JSON.parse(paginationOpts.cursor) : { source: sources[0].key, after: null };
-    const start = sources.findIndex((source) => source.key === from.source);
-    // The organization the page before stopped in is no longer one the person owns: the list has changed under it.
-    if (start === -1) return { page: [], isDone: true, continueCursor: "" };
+    const stoppedAt = (at: number, after: string | null) => JSON.stringify({ source: sources[at].key, name: sources[at].name, after });
+    const from: { source: string; name: string; after: string | null } | null = paginationOpts.cursor ? JSON.parse(paginationOpts.cursor) : null;
+    const same = from ? sources.findIndex((source) => source.key === from.source) : 0;
+    // The organization the page before stopped in is no longer one the person owns: the list goes on from the next one after it by name.
+    const start = same !== -1 ? same : sources.findIndex((source) => source.key === GRANTED || (source.name.localeCompare(from!.name) || (source.key < from!.source ? -1 : 1)) > 0);
     const page: Infer<typeof libraryOverviewValidator>[] = [];
     for (let at = start; at < sources.length; at++) {
-      if (page.length >= numItems) return { page, isDone: false, continueCursor: JSON.stringify({ source: sources[at].key, after: null }) };
-      const read = await sources[at].read(at === start ? from.after : null, numItems - page.length);
+      if (page.length >= numItems) return { page, isDone: false, continueCursor: stoppedAt(at, null) };
+      const read = await sources[at].read(at === same ? (from?.after ?? null) : null, numItems - page.length);
       page.push(...read.page);
-      if (read.after !== null) return { page, isDone: false, continueCursor: JSON.stringify({ source: sources[at].key, after: read.after }) };
+      if (read.after !== null) return { page, isDone: false, continueCursor: stoppedAt(at, read.after) };
     }
     return { page, isDone: true, continueCursor: "" };
   },

@@ -118,11 +118,12 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState<string | null>(null);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator" } as const;
-  const chosen = owners.data?.page.find((entry) => entry.id === organization);
+  // The filter offers the organizations of the libraries and of the invitations, each once.
+  const organizations = [...new Map([...(owners.data?.page ?? []), ...(invitations.data?.page ?? []).map((invitation) => invitation.organization)].map((entry) => [entry.id, entry])).values()].sort((a, b) => a.name.localeCompare(b.name));
   // An address has at most a page of invitations waiting, so they are filtered here.
   const invited = (invitations.data?.page ?? []).filter(
     (invitation) =>
-      (organization === "all" || invitation.organization.name === chosen?.name) &&
+      (organization === "all" || invitation.organization.id === organization) &&
       `${invitation.name} ${invitation.organization.name}`.toLowerCase().includes(search.trim().toLowerCase()),
   );
   const visible: Library[] = view === "libraries"
@@ -174,7 +175,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All organizations</SelectItem>
-            {(owners.data?.page ?? []).map((org) => (
+            {organizations.map((org) => (
               <SelectItem key={org.id} value={org.id}>
                 <OrganizationAvatar name={org.name} imageUrl={org.imageUrl} />
                 {org.name}
@@ -213,8 +214,8 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
         ) : (
           // The page shown stays up, dimmed and inert, while the one it steps or filters to loads.
           <ul
-            // A paged list keeps a full page of rows with their addresses (75px each with its divider) where a row sits on one line, so a short last page, or a page of shorter rows, doesn't move the pager.
-            className={cn("divide-y divide-border/50", view === "libraries" && overviews.hasPages && "sm:min-h-[899px]", view === "libraries" && overviews.isStale && "opacity-60")}
+            // A paged list keeps a full page of rows with their addresses, so a short last page, or a page of shorter rows, doesn't move the pager: 75px a row with its divider where it sits on one line, 119px on a phone, where its actions take a second.
+            className={cn("divide-y divide-border/50", view === "libraries" && overviews.hasPages && "min-h-[1427px] sm:min-h-[899px]", view === "libraries" && overviews.isStale && "opacity-60")}
             inert={(view === "libraries" && overviews.isStale) || undefined}
             data-library-list
           >

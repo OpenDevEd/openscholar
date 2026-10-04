@@ -54,6 +54,20 @@ describe("the library list", () => {
     expect((await names(me, {}, 4))[0]).toEqual(["Alpha one (owner)", "Alpha two (owner)", "Alpha three (owner)", "Beta one (owner)"]);
   });
 
+  it("goes on from the next organization when the one a page stopped in is no longer the person's", async () => {
+    const { t, me, alpha } = await setup();
+    const first = await me.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 2 } });
+    expect(first.page.map((library) => library.name)).toEqual(["Alpha one", "Alpha two"]);
+    await t.run(async (ctx) => {
+      const membership = (await ctx.db.query("organizationMemberships").collect()).find((row) => row.organizationId === alpha)!;
+      await ctx.db.delete(membership._id);
+    });
+    const rest = await me.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: first.continueCursor, numItems: 10 } });
+    // Alpha one stays: the person holds a grant to it, so it now lists with the granted libraries.
+    expect(rest.page.map((library) => `${library.name} (${library.role})`)).toEqual(["Beta one (owner)", "Shared reading (editor)", "Alpha one (creator)"]);
+    expect(rest.isDone).toBe(true);
+  });
+
   it("keeps one organization's libraries, or those whose name or organization contains the search", async () => {
     const { me, alpha, partner } = await setup();
     expect((await names(me, { organization: alpha }, 10)).flat()).toEqual(["Alpha one (owner)", "Alpha two (owner)", "Alpha three (owner)"]);
@@ -99,8 +113,8 @@ describe("the library list", () => {
       expect(await me.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(before + 2);
 
       // A deployment whose libraries were replaced without their triggers forgets the counts, then counts again.
-      await t.mutation(internal.migrations.pagedLibraryList.reset, {});
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      // Twice: a count it already forgot is not cleared again.
+      for (let resets = 0; resets < 2; resets++) await t.action(internal.migrations.pagedLibraryList.reset, {});
       expect(await t.action(internal.migrations.pagedLibraryList.verify, {})).toBe(8);
       await t.mutation(internal.migrations.pagedLibraryList.run, { reset: true });
       await t.finishAllScheduledFunctions(vi.runAllTimers);

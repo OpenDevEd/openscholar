@@ -54,20 +54,36 @@ export const verify = internalAction({
 });
 
 /**
- * Forgets the counts kept from the library tables, a page of them at a time: for a deployment
- * whose libraries were replaced without their triggers, as CI's test backend is before every
- * run (.github/workflows/ci.yml). `run`, and `migrations/pagedLibraryVersions:run`, count
- * what is there again.
+ * One page of the counts kept from the library tables, forgotten. A count already at zero is
+ * left alone: clearing a count makes it again under a new ID, which a later page would meet
+ * and clear again without end.
  */
-export const reset = internalMutation({
+export const resetPage = internalMutation({
   args: { cursor: v.optional(v.string()) },
-  returns: v.null(),
+  returns: v.object({ isDone: v.boolean(), cursor: v.string() }),
   handler: async (ctx, { cursor }) => {
     const page = await listCounts.paginateNamespaces(ctx, cursor, 100);
-    for (const namespace of page.page) {
-      if (namespace.startsWith("organizationLibraries:") || namespace.startsWith("libraryVersions:")) await listCounts.clear(ctx, { namespace });
+    const kept = page.page.filter((namespace) => namespace?.startsWith("organizationLibraries:") || namespace?.startsWith("libraryVersions:"));
+    const counts = await listCounts.countBatch(ctx, kept.map((namespace) => ({ namespace })));
+    for (const [at, namespace] of kept.entries()) if (counts[at] > 0) await listCounts.clear(ctx, { namespace });
+    return { isDone: page.isDone, cursor: page.cursor };
+  },
+});
+
+/**
+ * Forgets the counts kept from the library tables, and answers once every one is forgotten:
+ * for a deployment whose libraries were replaced without their triggers, as CI's test backend
+ * is before every run (.github/workflows/ci.yml). `run`, and
+ * `migrations/pagedLibraryVersions:run`, count what is there again.
+ */
+export const reset = internalAction({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx): Promise<null> => {
+    for (let cursor: string | undefined; ;) {
+      const page: { isDone: boolean; cursor: string } = await ctx.runMutation(internal.migrations.pagedLibraryList.resetPage, { cursor });
+      if (page.isDone) return null;
+      cursor = page.cursor;
     }
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.pagedLibraryList.reset, { cursor: page.cursor });
-    return null;
   },
 });

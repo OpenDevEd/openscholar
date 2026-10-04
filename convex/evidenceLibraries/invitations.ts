@@ -112,7 +112,7 @@ export const change = mutation({
 const pendingInvitationValidator = v.object({
   invitationId: v.id("evidenceLibraryInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
   role: v.union(v.literal("editor"), v.literal("creator")),
-  organization: v.object({ name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
+  organization: v.object({ id: v.id("organizations"), name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
 });
 const pendingInvitations = async (ctx: QueryCtx) => {
   const user = await getCurrentUser(ctx);
