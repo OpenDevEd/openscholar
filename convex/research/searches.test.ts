@@ -8,11 +8,13 @@ import schema from "../schema";
 
 type Request = { url: URL };
 let requests: Request[] = [];
+/** The requests that read papers: one that only counts a search asks for a single work. */
+const reads = () => requests.filter((request) => request.url.searchParams.get("per-page") !== "1");
 /** OpenAlex, answering a page with as many works as it's asked for, of a search that has 57. */
 const openAlex = vi.fn(async (input: string | URL) => {
   const url = new URL(String(input));
   requests.push({ url });
-  const [page, size] = [Number(url.searchParams.get("page")), Number(url.searchParams.get("per-page"))];
+  const [page, size] = [url.searchParams.has("cursor") ? 1 : Number(url.searchParams.get("page")), Number(url.searchParams.get("per-page"))];
   const start = (page - 1) * size;
   // A search for "verbose" finds papers whose every text runs long.
   const long = decodeURIComponent(url.search).includes("verbose") ? "x".repeat(900) : "";
@@ -50,28 +52,44 @@ async function setup() {
   /** What the results page writes as a search is read: its result count and the page last opened. */
   const change = (command: FunctionArgs<typeof api.research.records.change>["command"]) => alice.mutation(api.research.records.change, { accountId: "alice", requestId: `change-${Math.random()}`, command });
   const opened = (id: string, count = 57, page = 2) => change({ kind: "editSearch", id, edit: { kind: "patch", fields: { count, page }, clear: [] } });
-  return { t, alice, bob: t.withIdentity({ subject: "bob" }), create, update, restore, remove, results, search, opened, change };
+  /** Lets the count that follows a new or changed search finish, so what comes next finds the search settled. */
+  const counted = async () => {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await t.finishInProgressScheduledFunctions();
+  };
+  const make = async (args: FunctionArgs<typeof create>) => {
+    const made = await alice.mutation(create, args);
+    await counted();
+    return made;
+  };
+  const edit = async (args: FunctionArgs<typeof update>) => {
+    const changed = await alice.mutation(update, args);
+    await counted();
+    return changed;
+  };
+  return { t, alice, bob: t.withIdentity({ subject: "bob" }), make, edit, create, update, restore, remove, results, search, opened, change };
 }
 
 describe("the assistant's search tools", () => {
   it("make a search from plain settings, and take it back only while nothing has been done with it", async () => {
-    const { alice, create, update, remove, search, opened } = await setup();
-    const made = await alice.mutation(create, { query: " tutoring AND \"primary school\" ", fromYear: 2015, toYear: 2024, openAccessOnly: true, sort: "most_cited" });
+    const { t, alice, make, edit, create, remove, search, opened } = await setup();
+    const made = await make({ query: " tutoring AND \"primary school\" ", fromYear: 2015, toYear: 2024, openAccessOnly: true, sort: "most_cited" });
+    // It's counted as it's made, so its history says how many results it has before anyone opens it.
     expect(await search(made.id)).toMatchObject({
-      query: 'tutoring AND "primary school"', field: "title_and_abstract", yearRange: [2015, 2024], isYearRangeEnabled: true, filterType: "year", openAccessOnly: true, sortBy: "cited_by_count:desc", queryHistoryCount: 1,
+      query: 'tutoring AND "primary school"', field: "title_and_abstract", yearRange: [2015, 2024], isYearRangeEnabled: true, filterType: "year", openAccessOnly: true, sortBy: "cited_by_count:desc", queryHistoryCount: 1, count: 57,
     });
     expect(made.undo).toMatchObject({ path: "research/searches:remove", args: { id: made.id } });
-    // Opening it, which writes its result count, isn't work done with it: it can still be taken back.
+    // Counting it, or opening it, isn't work done with it: it can still be taken back.
     await opened(made.id);
     await alice.mutation(remove, made.undo!.args);
     expect(await search(made.id)).toBeNull();
 
     // One whose filters were changed since stays.
-    const kept = await alice.mutation(create, { query: "tutoring" });
-    await alice.mutation(update, { id: kept.id, reviewsOnly: true });
+    const kept = await make({ query: "tutoring" });
+    await edit({ id: kept.id, reviewsOnly: true });
     await expect(alice.mutation(remove, kept.undo!.args)).rejects.toThrow(/changed since/);
     // Naming the revision it's at now doesn't pass it off as untouched.
-    await expect(alice.mutation(remove, { id: kept.id, expect: { ...kept.undo!.args.expect, revision: 2 } })).rejects.toThrow(/changed since/);
+    await expect(alice.mutation(remove, { id: kept.id, expect: { ...kept.undo!.args.expect, revision: await t.run(async (ctx) => (await ctx.db.query("searches").collect()).find((row) => row.localId === kept.id)!.revision) } })).rejects.toThrow(/changed since/);
     expect(await search(kept.id)).not.toBeNull();
     await expect(alice.mutation(create, { query: "  " })).rejects.toThrow(/needs a query/);
     await expect(alice.mutation(create, { query: "tutoring", fromYear: 2020.5 })).rejects.toThrow(/whole number/);
@@ -79,15 +97,16 @@ describe("the assistant's search tools", () => {
   });
 
   it("change a search's query and filters together, with one undo that puts both back", async () => {
-    const { alice, create, update, restore, search, opened } = await setup();
-    const { id } = await alice.mutation(create, { query: "tutoring", fromYear: 2010, minCitations: 5 });
+    const { alice, make, edit, update, restore, search, opened } = await setup();
+    const { id } = await make({ query: "tutoring", fromYear: 2010, minCitations: 5 });
     // The person has it open, on its second page.
     await opened(id);
-    const changed = await alice.mutation(update, { id, query: "tutoring AND randomized", field: "title", toYear: 2020, withAbstractOnly: true, minCitations: null });
+    const changed = await edit({ id, query: "tutoring AND randomized", field: "title", toYear: 2020, withAbstractOnly: true, minCitations: null });
     // The changed search's results start from their first page.
     expect(await search(id)).toMatchObject({ query: "tutoring AND randomized", field: "title", yearRange: [2010, 2020], hasAbstract: true, queryHistoryCount: 2, page: 1 });
     expect((await search(id))!.minCitations).toBeUndefined();
-    expect(changed.undo).toEqual({ path: "research/searches:restore", args: { id, revision: 2, expect: 4 } });
+    // Made, counted and opened are its first three revisions; the new query and the new filters the next two.
+    expect(changed.undo).toEqual({ path: "research/searches:restore", args: { id, revision: 3, expect: 5 } });
 
     // The results page reads the changed search and writes its count: the undo still goes through,
     // and brings back the count and the page the search had, which nothing would read again.
@@ -100,11 +119,11 @@ describe("the assistant's search tools", () => {
     expect(await search(id)).toMatchObject({ query: "tutoring AND randomized", yearRange: [2010, 2020] });
 
     // Changed again since, an older undo leaves it. Giving what it already has changes nothing.
-    await alice.mutation(update, { id, reviewsOnly: true });
+    await edit({ id, reviewsOnly: true });
     await expect(alice.mutation(restore, changed.undo!.args)).rejects.toThrow(/changed since/);
     expect((await alice.mutation(update, { id, reviewsOnly: true })).undo).toBeUndefined();
     // Both years taken off: the year filter goes.
-    await alice.mutation(update, { id, fromYear: null, toYear: null });
+    await edit({ id, fromYear: null, toYear: null });
     expect(await search(id)).toMatchObject({ isYearRangeEnabled: false });
     await expect(alice.mutation(update, { id, fromYear: 2021, toYear: 2020 })).rejects.toThrow(/first year is after/);
     // A blank query changes nothing, the filters given with it included.
@@ -112,32 +131,38 @@ describe("the assistant's search tools", () => {
     expect((await search(id))!.openAccessOnly).toBeUndefined();
   });
 
-  it("read a page of a search's results, ten papers at a time, with how many it has in all", async () => {
-    const { alice, bob, create, results, search, change } = await setup();
-    const { id } = await alice.mutation(create, { query: "tutoring", sort: "newest" });
+  it("read a page of a search's results, ten papers at a time, where the person sees them, with how many it has in all", async () => {
+    const { alice, bob, make, results, change } = await setup();
+    const { id } = await make({ query: "tutoring" });
     const page = await alice.action(results, { id, page: 6 });
     expect(page).toMatchObject({ total: 57, page: 6, pages: 6 });
-    // Its history shows the count from now on, without its page being opened.
-    expect((await search(id))!.count).toBe(57);
     expect(page.papers.map((paper) => paper.id)).toEqual(Array.from({ length: 7 }, (_, i) => `https://openalex.org/W${51 + i}`));
     expect(page.papers[0]).toMatchObject({ title: "Paper 51", authors: "Ada Lovelace, Alan Turing, Grace Hopper and others", year: 2020, venue: "A journal", citations: 12 });
     // An abstract is cut, so ten papers stay short enough for the model to read at once.
-    expect(page.papers[0].abstract!.length).toBeLessThanOrEqual(301);
+    expect(page.papers[0].abstract!.length).toBeLessThanOrEqual(251);
     expect(JSON.stringify(await alice.action(results, { id })).length).toBeLessThan(8_000);
-    // One request a page, for only that page, in the search's own order.
-    expect(requests).toHaveLength(2);
-    expect(Object.fromEntries(requests[0].url.searchParams)).toMatchObject({ page: "6", "per-page": "10", sort: "publication_date:desc" });
-    expect(decodeURIComponent(requests[0].url.search)).toContain("tutoring");
+    // By relevance, a page is one request for only its papers.
+    expect(reads()).toHaveLength(2);
+    expect(Object.fromEntries(reads()[0].url.searchParams)).toMatchObject({ page: "6", "per-page": "10", sort: "relevance_score:desc" });
+    expect(decodeURIComponent(reads()[0].url.search)).toContain("tutoring");
+
+    // Under any other sort OpenAlex orders numbered pages differently from the results page, so the page is read as the results page reads it: from the start.
+    const byDate = await make({ query: "tutoring", sort: "newest" });
+    requests = [];
+    expect((await alice.action(results, { id: byDate.id, page: 6 })).papers.map((paper) => paper.id)).toEqual(page.papers.map((paper) => paper.id));
+    expect(Object.fromEntries(reads()[0].url.searchParams)).toMatchObject({ cursor: "*", "per-page": "200", sort: "publication_date:desc" });
 
     // Someone else's search isn't read.
     await expect(bob.action(results, { id })).rejects.toThrow(/not found/i);
     await expect(alice.action(results, { id, page: 0 })).rejects.toThrow(/count from 1/);
-    // A page OpenAlex wouldn't answer isn't asked for.
+    // A page OpenAlex wouldn't answer, or one that would take many requests to reach, isn't asked for.
+    requests = [];
     await expect(alice.action(results, { id, page: 1_001 })).rejects.toThrow(/up to page 1,000/);
-    expect(requests).toHaveLength(2);
+    await expect(alice.action(results, { id: byDate.id, page: 201 })).rejects.toThrow(/up to page 200/);
+    expect(requests).toHaveLength(0);
 
     // Ten papers whose every text runs long are still read whole.
-    const verbose = await alice.mutation(create, { query: "verbose" });
+    const verbose = await make({ query: "verbose" });
     const wordy = await alice.action(results, { id: verbose.id });
     expect(wordy.papers).toHaveLength(10);
     expect(JSON.stringify(wordy).length).toBeLessThan(8_000);
@@ -147,5 +172,19 @@ describe("the assistant's search tools", () => {
     await change({ kind: "rating", paperId: "https://openalex.org/W2", rating: 5 });
     await change({ kind: "rating", paperId: "https://openalex.org/W3", rating: 2 });
     expect((await alice.action(results, { id })).papers.map((paper) => paper.id)).toEqual(["https://openalex.org/W2"]);
+  });
+
+  it("count a search again when its query or filters change, and record a count as whoever's read made it", async () => {
+    const { t, alice, make, edit, results, search } = await setup();
+    const { id } = await make({ query: "tutoring" });
+    // The count it holds was the old query's: the page isn't open to read the new one.
+    openAlex.mockImplementationOnce(async () => new Response(JSON.stringify({ meta: { count: 9 }, results: [] }), { status: 200 }));
+    await edit({ id, query: "tutoring AND randomized" });
+    expect((await search(id))!.count).toBe(9);
+    // Read by the person, a new count is theirs in the search's history, not the assistant's.
+    await alice.action(results, { id });
+    expect((await search(id))!.count).toBe(57);
+    const authors = await t.run(async (ctx) => (await ctx.db.query("searchRevisions").collect()).map((row) => row.author));
+    expect(new Set(authors)).toEqual(new Set(["user"]));
   });
 });

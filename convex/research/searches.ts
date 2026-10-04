@@ -7,14 +7,14 @@
 import { v, type Infer, type ObjectType } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
-import { internalMutation } from "../lib/functions";
+import { internalAction, internalMutation } from "../lib/functions";
 import { assistantAction, assistantMutation, defineUserAction, defineUserMutation, reversedBy, userAction, userMutation } from "../lib/userActions";
-import { readSearchPage } from "../paperSets/openalex";
+import { countSearch, PAGE_ORDERED_SORT, readSearchPage } from "../paperSets/openalex";
 import { keptByRating, SCREENING_FIELDS, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
 import { MIN_YEAR } from "../../lib/constants";
 import { currentSearch, type SavedSearch, type UndoCommand } from "../../lib/research/records";
 import { applyCommand, findSearch, revisionRow } from "./records";
-import { LAST_PAGE, RESULTS_PAGE, resultsValidator, searchSettings } from "./searchValidators";
+import { LAST_PAGE, LAST_PAGE_FROM_START, RESULTS_PAGE, resultsValidator, searchSettings } from "./searchValidators";
 
 const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
@@ -29,6 +29,7 @@ const short = (text: string, max: number) => (text.length > max ? `${text.slice(
 type Settings = ObjectType<typeof searchSettings>;
 
 const needsQuery = () => createError("VALIDATION_ERROR", "A search needs a query.");
+const authorValidator = v.union(v.literal("user"), v.literal("assistant"));
 
 /**
  * Plain settings as the saved search's own fields: what to set, and what to take off.
@@ -90,7 +91,7 @@ export const createAction = defineUserMutation({
       id: crypto.randomUUID(),
       query: query.trim(),
       field: "title_and_abstract",
-      // Counted when its results are first read, here or on its page.
+      // Counted right after it's made (`recount`).
       count: 0,
       queryHistoryCount: 0,
       questionCount: 0,
@@ -102,6 +103,7 @@ export const createAction = defineUserMutation({
       updatedAt: now,
     };
     const undo = await applyCommand(ctx, userId, { kind: "createSearch", search }, author);
+    await ctx.scheduler.runAfter(0, internal.research.searches.recount, { userId, id: search.id, author });
     return { id: search.id, ...(undo?.kind === "deleteSearch" ? { undo: { path: REMOVE, args: { id: undo.id, expect: { created: undo.expect.created, revision: undo.expect.revision } } } } : {}) };
   },
 });
@@ -140,6 +142,8 @@ export const updateAction = defineUserMutation({
     // Its results start again from their first page, as they do when the person changes the search on its page.
     const patch = { ...filters, ...(current.page !== undefined && current.page !== 1 ? { page: 1 } : {}) };
     if (Object.keys(patch).length || clear.length) edits.push(await applyCommand(ctx, userId, { kind: "editSearch", id, edit: { kind: "patch", fields: patch, clear } }, author));
+    // The count it held was the old query's and filters'.
+    await ctx.scheduler.runAfter(0, internal.research.searches.recount, { userId, id, author });
     const undone = edits.filter((undo): undo is Restore => undo?.kind === "editSearch");
     // A new query with no undo had no revision before it to go back to. Undoing the filters alone would leave that query, so the change has no undo at all.
     if (!undone.length || (requeried && edits[0]?.kind !== "editSearch")) return {};
@@ -192,11 +196,33 @@ export const removeForAssistant = assistantMutation(removeAction);
  * search history shows it. Left alone when the search changed while its results were read.
  */
 export const counted = internalMutation({
-  args: { userId: v.id("users"), id: v.string(), revision: v.number(), count: v.number() },
+  args: { userId: v.id("users"), id: v.string(), revision: v.number(), count: v.number(), author: authorValidator },
   returns: v.null(),
-  handler: async (ctx, { userId, id, revision, count }) => {
+  handler: async (ctx, { userId, id, revision, count, author }) => {
     const found = await findSearch(ctx, userId, id);
-    if (found?.revision === revision && currentSearch(found.data).count !== count) await applyCommand(ctx, userId, { kind: "editSearch", id, edit: { kind: "patch", fields: { count }, clear: [] } }, "assistant");
+    if (found?.revision === revision && currentSearch(found.data).count !== count) await applyCommand(ctx, userId, { kind: "editSearch", id, edit: { kind: "patch", fields: { count }, clear: [] } }, author);
+    return null;
+  },
+});
+
+/**
+ * Counts a search these tools just made or changed, so its history, and what can be
+ * screened from it, go by its new query and filters whether or not its page is open. One
+ * request for one work, from the person's allowance. A search that can't be counted now
+ * keeps the count it has until its results are next read.
+ */
+export const recount = internalAction({
+  args: { userId: v.id("users"), id: v.string(), author: authorValidator },
+  returns: v.null(),
+  handler: async (ctx, { userId, id, author }) => {
+    try {
+      const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: id });
+      if (!found.request) return null;
+      const count = await countSearch(found.request, (pages) => ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId: found.clerkId, count: pages }));
+      await ctx.runMutation(internal.research.searches.counted, { userId, id, revision: found.revision, count, author });
+    } catch (error) {
+      console.error("[research] couldn't count a search after it changed", { id, error: error instanceof Error ? error.message : String(error) });
+    }
     return null;
   },
 });
@@ -205,29 +231,30 @@ export const resultsAction = defineUserAction({
   path: "research/searches:results",
   description:
     `Reads a page of a saved search's results from OpenAlex, ${RESULTS_PAGE} papers a page: each paper's ID, title, authors, year, venue, citations and the start of its abstract, with how many results the search has in all. ` +
-    "The papers come in the order the search sorts them. A search that keeps only papers the person rated returns those of each page's papers, and its total counts the papers before that filter. " +
-    "Each page read counts against the person's OpenAlex allowance.",
+    "The papers come in the order the search's own page lists them. A search that keeps only papers the person rated returns those of each page's papers, and its total counts the papers before that filter. " +
+    "Reading counts against the person's OpenAlex allowance: one request a page by relevance, and under any other sort one for every 200 results up to the page.",
   args: { id: v.string(), page: v.optional(v.number()) },
   returns: resultsValidator,
   spendsCredits: false,
   outsideEffect: false,
   // It only keeps the search's result count, as reading the results page does: nothing to undo.
   undoable: true,
-  run: async (ctx, userId, { id, page = 1 }): Promise<Infer<typeof resultsValidator>> => {
+  run: async (ctx, userId, { id, page = 1 }, author): Promise<Infer<typeof resultsValidator>> => {
     if (!Number.isInteger(page) || page < 1) throw createError("VALIDATION_ERROR", "Pages count from 1.");
-    // Checked before anything is spent: OpenAlex answers no page past this one.
-    if (page > LAST_PAGE) throw createError("VALIDATION_ERROR", `A search's results can be read up to page ${LAST_PAGE.toLocaleString("en")}. Narrow the search to reach the rest.`);
     const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: id });
     if (!found.request) throw createError("VALIDATION_ERROR", "This search's query isn't valid. Fix it on the results page first.");
+    // Checked before anything is spent. OpenAlex answers no numbered page past the last, and a sort read from the start costs a request for every 200 works.
+    const lastPage = found.request.sort === PAGE_ORDERED_SORT ? LAST_PAGE : LAST_PAGE_FROM_START;
+    if (page > lastPage) throw createError("VALIDATION_ERROR", `This search's results can be read up to page ${lastPage.toLocaleString("en")}. Narrow the search to reach the rest.`);
     const { works, total } = await readSearchPage<Work>(found.request, { page, size: RESULTS_PAGE, select: SCREENING_FIELDS }, (count) =>
       ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId: found.clerkId, count }),
     );
-    await ctx.runMutation(internal.research.searches.counted, { userId, id, revision: found.revision, count: total });
+    await ctx.runMutation(internal.research.searches.counted, { userId, id, revision: found.revision, count: total, author });
     const papers = await keptByRating(ctx, userId, works.map(toPaper), found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined);
     return {
       total,
       page,
-      pages: Math.min(Math.ceil(total / RESULTS_PAGE), LAST_PAGE),
+      pages: Math.min(Math.ceil(total / RESULTS_PAGE), lastPage),
       papers: papers.map((paper) => ({
         id: paper.openalexId,
         title: short(paper.title, SHOWN.title),

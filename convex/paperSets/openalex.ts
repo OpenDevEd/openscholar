@@ -19,7 +19,7 @@ const PAGE_TIMEOUT_MS = 12_000;
  * position by relevance, but only 655 by citations and 724 by date, because OpenAlex breaks
  * ties differently on the two paths and can't sort by `id`. Other sorts read cursor pages.
  */
-const PAGE_ORDERED_SORT = "relevance_score:desc";
+export const PAGE_ORDERED_SORT = "relevance_score:desc";
 
 /** A search's request as the results page makes it (lib/openalex/works-query.ts), with its sort. */
 export const searchRequestValidator = v.object({
@@ -79,15 +79,15 @@ async function* cursorPages<Work>(request: SearchRequest, select: string, spend:
   let cursor: string | null = "*";
   while (cursor) {
     if (!(await spend(1))) throw limited();
-    const page: { works: Work[]; nextCursor: string | null } = await readPage<Work>(request, { cursor }, select);
-    yield page.works;
+    const page: { works: Work[]; nextCursor: string | null; total: number } = await readPage<Work>(request, { cursor }, select);
+    yield page;
     cursor = page.nextCursor;
   }
 }
 
 /**
- * Works `first` to `last` (counting from 1), and how many works came before the first one
- * returned. Numbered pages in parallel when they keep the results page's order, spent for
+ * Works `first` to `last` (counting from 1), how many works came before the first one
+ * returned, and how many the search has in all. Numbered pages in parallel when they keep the results page's order, spent for
  * together first. Otherwise cursor pages from the start, keeping only the range asked for:
  * a range deep in the search still holds no more than its own works.
  */
@@ -97,39 +97,57 @@ async function readWorks<Work>(
   last: number,
   select: string,
   spend: (pages: number) => Promise<boolean>,
-): Promise<{ works: Work[]; offset: number }> {
+): Promise<{ works: Work[]; offset: number; total: number }> {
   if (request.sort === PAGE_ORDERED_SORT) {
     const firstPage = Math.floor((first - 1) / PAGE_SIZE) + 1;
     const pages = Array.from({ length: Math.ceil(last / PAGE_SIZE) - firstPage + 1 }, (_, i) => firstPage + i);
     if (!(await spend(pages.length))) throw limited();
     const read = await Promise.all(pages.map((page) => readPage<Work>(request, { page }, select)));
-    return { works: read.flatMap((page) => page.works), offset: (firstPage - 1) * PAGE_SIZE };
+    return { works: read.flatMap((page) => page.works), offset: (firstPage - 1) * PAGE_SIZE, total: read[0]?.total ?? 0 };
   }
   const works: Work[] = [];
-  let seen = 0;
+  let [seen, total] = [0, 0];
   for await (const page of cursorPages<Work>(request, select, spend)) {
-    works.push(...page.slice(Math.max(0, first - 1 - seen), Math.max(0, last - seen)));
-    seen += page.length;
+    total = page.total;
+    works.push(...page.works.slice(Math.max(0, first - 1 - seen), Math.max(0, last - seen)));
+    seen += page.works.length;
     if (seen >= last) break;
   }
-  return { works, offset: first - 1 };
+  return { works, offset: first - 1, total };
 }
 
+const contact = () => {
+  if (!process.env.OPENALEX_CONTACT_EMAIL) throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
+};
+
 /**
- * One short page of the search, by number, with how many works the search has in all: what
- * the assistant reads (#327). One request, counted against the acting person's allowance.
+ * One short page of the search, in its results page's order, with how many works the
+ * search has in all: what the assistant reads (#327). Under the sort whose numbered pages
+ * keep that order, it's one request for just those works. Under any other it reads cursor
+ * pages from the start, as the results page does, so the papers stand where the person
+ * sees them: a request for every 200 works up to the page. Each request counts
+ * against the acting person's allowance.
  */
 export async function readSearchPage<Work>(
   request: SearchRequest,
   { page, size, select }: { page: number; size: number; select: string },
   spend: (pages: number) => Promise<boolean>,
 ): Promise<{ works: Work[]; total: number }> {
-  if (!process.env.OPENALEX_CONTACT_EMAIL) {
-    throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
+  contact();
+  if (request.sort !== PAGE_ORDERED_SORT) {
+    const { works, total } = await readWorks<Work>(request, (page - 1) * size + 1, page * size, select, spend);
+    return { works, total };
   }
   if (!(await spend(1))) throw limited();
   const { works, total } = await readPage<Work>(request, { page }, select, size);
   return { works, total };
+}
+
+/** How many works the search has: one request for one work, counted against the acting person's allowance. */
+export async function countSearch(request: SearchRequest, spend: (pages: number) => Promise<boolean>): Promise<number> {
+  contact();
+  if (!(await spend(1))) throw limited();
+  return (await readPage(request, { page: 1 }, "id", 1)).total;
 }
 
 /**
