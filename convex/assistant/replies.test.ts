@@ -64,11 +64,15 @@ describe("assistant replies", () => {
 
     const { page } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
     expect(page).toMatchObject([
-      { role: "assistant", text: "Hello Ben", status: "done", model: "mock/model" },
-      { role: "user", text: "Hi there", status: "done", sender: { userId: ben } },
+      { role: "assistant", text: "Hello Ben", status: "done", model: "mock/model", mine: false },
+      { role: "user", text: "Hi there", status: "done", sender: { userId: ben }, mine: false },
     ]);
+    expect((await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[1].mine).toBe(true);
     expect(page[0].order).toBe(page[1].order);
     expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
+    // The list shows the chat by what was said last.
+    expect((await asAda.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage })).page[0]).toMatchObject({ preview: "Hello Ben", writing: false });
+    expect((await asAda.query(api.assistant.threads.list, { scope: "all", text: "hello b", paginationOpts: firstPage })).page).toHaveLength(1);
 
     // Ben sent it, so Ben pays, though the chat is Ada's.
     const paid = await charges(t);
@@ -175,20 +179,30 @@ describe("assistant replies", () => {
     expect(mockDoStream).not.toHaveBeenCalled();
   });
 
-  it("run on the chat's model, once someone who writes in it picks one", async () => {
+  it("run on the Balanced preset's chat model until someone who writes in the chat picks one", async () => {
     const t = convexTest(schema);
     const { asAda, asBen, threadId } = await sharedChat(t);
-    const modelId = await mockModel(t);
+    const [balanced, picked] = [await mockModel(t, "mock/balanced"), await mockModel(t, "mock/picked")];
+    await t.run(async (ctx) => ctx.db.insert("aiModelConfig", { key: "preset.balanced.chat", modelId: "mock/balanced", updatedAt: 1 }));
     mockDoStream.mockImplementation(finishingDoStream(["Ok"]));
 
+    expect(await asAda.query(api.assistant.threads.get, { threadId })).toMatchObject({ model: { _id: balanced } });
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "First" });
     await ended(t, threadId);
-    await asBen.mutation(api.assistant.threads.setModel, { threadId, modelId });
-    expect(await asAda.query(api.assistant.threads.get, { threadId })).toMatchObject({ modelId });
+    await asBen.mutation(api.assistant.threads.setModel, { threadId, modelId: picked });
+    expect(await asAda.query(api.assistant.threads.get, { threadId })).toMatchObject({ model: { _id: picked } });
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Second" });
     await ended(t, threadId);
+    expect(modelIdsSeen).toEqual([balanced, picked]);
 
-    expect(modelIdsSeen).toEqual([null, modelId]);
+    // An effort with no model to take it is refused, not dropped.
+    await expect(asAda.mutation(api.assistant.threads.create, { effort: "low" })).rejects.toThrow(/Pick a model/);
+
+    // A chat started on a model runs on it from its first message.
+    const own = await asAda.mutation(api.assistant.threads.create, { modelId: picked });
+    await asAda.mutation(api.assistant.replies.send, { threadId: own, text: "First" });
+    await ended(t, own);
+    expect(modelIdsSeen.at(-1)).toBe(picked);
   });
 
   it("hold their chat while their action waits or runs, and no longer once it has ended", async () => {
@@ -271,10 +285,10 @@ describe("assistant replies", () => {
   });
 });
 
-function mockModel(t: Test) {
+function mockModel(t: Test, slug = "mock/model") {
   return t.run(async (ctx) =>
     ctx.db.insert("models", {
-      modelId: "mock/model",
+      modelId: slug,
       name: "Mock Model",
       provider: "openrouter",
       inputPricePerMillion: 1_000,

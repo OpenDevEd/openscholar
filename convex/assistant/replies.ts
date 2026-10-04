@@ -15,8 +15,8 @@ import { listMessages, listStreams, type MessageDoc } from "@convex-dev/agent";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
-import type { Doc, Id } from "../_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
@@ -30,6 +30,7 @@ import { errorCodeValidator, parseChatError } from "../../lib/errors/taxonomy";
 import { CHAT_CONCURRENCY_LIMIT, CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { personName, requireThread, touchThread } from "./access";
 import { assistant } from "./agent";
+import { chatModel, previewOf, writing } from "./threads";
 import { runTurn } from "./turn";
 
 const FLAG = "assistant.enabled";
@@ -48,17 +49,6 @@ const LIVE_READS = 30;
 /** Chats writing a reply that one sweep checks, oldest first. */
 const SWEEP_BATCH = 200;
 
-type Reply = NonNullable<Doc<"assistantThreads">["reply"]>;
-
-/**
- * Whether a reply is still being written: its action is waiting to run or running. An
- * action that ended, or died, without releasing its lock no longer holds the chat.
- */
-async function writing(ctx: QueryCtx | MutationCtx, reply: Reply | undefined): Promise<boolean> {
-  if (!reply) return false;
-  const state = (await ctx.db.system.get(reply.scheduledId))?.state.kind;
-  return state === "pending" || state === "inProgress";
-}
 
 export const send = mutation({
   args: { threadId: v.id("assistantThreads"), text: v.string() },
@@ -86,7 +76,8 @@ export const send = mutation({
     if (stillWriting >= CHAT_CONCURRENCY_LIMIT) {
       throw createError("CONFLICT", `The assistant is already writing ${CHAT_CONCURRENCY_LIMIT} replies for you. Wait for one to finish.`);
     }
-    const model = thread.modelId ? await requireAvailableModel(ctx, thread.modelId) : null;
+    const { modelId, effort } = await chatModel(ctx, thread);
+    const model = modelId ? await requireAvailableModel(ctx, modelId) : null;
 
     // The message, the lock and the scheduled reply commit together, so a second send
     // can't slip in between them.
@@ -101,11 +92,11 @@ export const send = mutation({
       attemptId,
       senderId: userId,
       // Taken when the message is sent, so a later change only affects the next reply.
-      modelId: thread.modelId ?? null,
+      modelId,
       // An effort the catalog has since dropped runs at the model's default.
-      effort: thread.effort && model?.reasoningEfforts?.includes(thread.effort) ? thread.effort : undefined,
+      effort: effort && model?.reasoningEfforts?.includes(effort) ? effort : undefined,
     });
-    await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
+    await ctx.db.patch("assistantThreads", threadId, { preview: previewOf(text), reply: { attemptId, senderId: userId, order: message.order, startedAt: now, scheduledId } });
     return null;
   },
 });
@@ -181,13 +172,16 @@ export const lockState = internalQuery({
   },
 });
 
-/** Releases a reply's lock when it ends, however it ends. */
+/** Releases a reply's lock when it ends, however it ends. What it wrote becomes the chat's preview. */
 export const release = internalMutation({
   args: lockArgs,
   returns: v.null(),
   handler: async (ctx, { threadId, attemptId }) => {
-    const current = (await ctx.db.get("assistantThreads", threadId))?.reply;
-    if (current?.attemptId === attemptId) await ctx.db.patch("assistantThreads", threadId, { reply: undefined });
+    const thread = await ctx.db.get("assistantThreads", threadId);
+    if (thread?.reply?.attemptId !== attemptId) return null;
+    const newest = (await listMessages(ctx, components.agent, { threadId: thread.agentThreadId, paginationOpts: { numItems: 1, cursor: null }, excludeToolMessages: true })).page[0];
+    const written = newest?.message?.role === "assistant" && newest.order === thread.reply.order ? previewOf(newest.text ?? "") : "";
+    await ctx.db.patch("assistantThreads", threadId, { reply: undefined, ...(written ? { preview: written } : {}) });
     return null;
   },
 });
@@ -230,6 +224,8 @@ const messageValidator = v.object({
   ),
   /** Who sent it, on a person's message. Their name is empty when they gave none. */
   sender: v.optional(v.object({ userId: v.id("users"), name: v.string() })),
+  /** Whether the person reading sent it. */
+  mine: v.boolean(),
   /** The model that wrote it, on a reply. */
   model: v.optional(v.string()),
   at: v.number(),
@@ -296,6 +292,7 @@ export const messagesAction = defineUserQuery({
               }
             : {}),
           ...(sender ? { sender } : {}),
+          mine: role === "user" && row.userId === userId,
           ...(role === "assistant" && row.model ? { model: row.model } : {}),
           at: row._creationTime,
         },
