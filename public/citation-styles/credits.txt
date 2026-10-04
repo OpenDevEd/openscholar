@@ -329,7 +329,7 @@ Betriebswirtschaftliche Forschung und Praxis (Deutsch) (betriebswirtschaftliche-
 Biblio 3W (Español) (biblio-3w). Authors: Patrick O'Brien, PhD.
 Bibliotheca Hertziana - Max Planck Institute for Art History (bibliotheca-hertziana-max-planck-institute-for-art-history). Authors: Chris Tomlinson.
 Bibliothecae.it (Italiano) (bibliothecae-it). Authors: Patrick O'Brien.
-Bibliothek &#8211; Forschung und Praxis (bibliothek-forschung-und-praxis). Authors: Jens Mittelbach.
+Bibliothek – Forschung und Praxis (bibliothek-forschung-und-praxis). Authors: Jens Mittelbach.
 Bibliothek für Bildungsgeschichtliche Forschung (BBF) (Deutsch) (bibliothek-fur-bildungsgeschichtliche-forschung). Authors: Klaus Thoden.
 Bibliothèque d'archéologie méditerranéenne et africaine (BiAMA) (Français) (bibliotheque-d-archeologie-mediterraneenne-et-africaine-biama). Authors: Nicolas Monteix.
 Bibliothèque universitaire de médecine - NLM/Vancouver (bibliotheque-universitaire-de-medecine-vancouver). Authors: Alexandre Racine.
@@ -917,7 +917,7 @@ Fizyoloji Medical Journal (fizyoloji-medical-journal). Authors: not named in the
 Flavour and Fragrance Journal (flavour-and-fragrance-journal). Authors: not named in the file. Contributors: Fred01.
 Florida Entomologist (florida-entomologist). Authors: Brian Stucky.
 Flux (Français) (flux). Authors: Aurelie Bur, Paul Gourdon.
-Focaal&#8212;Journal of Global and Historical Anthropology (focaal-journal-of-global-and-historical-anthropology). Authors: Patrick O'Brien.
+Focaal—Journal of Global and Historical Anthropology (focaal-journal-of-global-and-historical-anthropology). Authors: Patrick O'Brien.
 Sascha Foerster - Geisteswissenschaft (Deutsch) (foerster-geisteswissenschaft). Authors: Sascha Foerster. Contributors: Till A. Heilmann.
 FOLD&R (Fasti On Line Documents & Research) (fold-and-r). Authors: John Muccigrosso.
 Folia Amazonica (folia-amazonica). Authors: Ramon Aguilar-Manihuari.
@@ -1126,7 +1126,7 @@ Hochschule Hannover - Soziale Arbeit (Deutsch) (hochschule-hannover-soziale-arbe
 Hochschule München - Fakultät für Angewandte Sozialwissenschaften (Deutsch) (hochschule-munchen-fakultat-fur-angewandte-sozialwissenschaften). Authors: Patrick O'Brien.
 Hochschule Osnabrück - Fakultät Agrarwissenschaften und Landschaftsarchitektur (Deutsch) (hochschule-osnabruck-fakultat-agrarwissenschaften-und-landschaftsarchitektur). Authors: not named in the file. Contributors: dozent.
 Hochschule Pforzheim - Fakultät für Wirtschaft und Recht (Deutsch) (hochschule-pforzheim-fakultat-fur-wirtschaft-und-recht). Authors: Patrick O'Brien.
-Hochschule RheinMain - Wiesbaden Business School - Gesundheitsökonomie (Deutsch) (hochschule-rheinmain-wiesbaden-business-school-gesundheitsokonomie). Authors: Ann&#8209;Kathrina Uhlmann.
+Hochschule RheinMain - Wiesbaden Business School - Gesundheitsökonomie (Deutsch) (hochschule-rheinmain-wiesbaden-business-school-gesundheitsokonomie). Authors: Ann‑Kathrina Uhlmann.
 Homeopathy Thieme (homeopathy-thieme). Authors: Kurian Poruthukaren. Contributors: Patrick O'Brien.
 Hong Kong Journal of Radiology (hong-kong-journal-of-radiology). Authors: Michael Berkowitz. Contributors: Sean Takats, Sebastian Karcher, Gavin Koh.
 Hospital a Domicilio (hospital-a-domicilio). Authors: Patrick O'Brien.
@@ -1653,7 +1653,7 @@ KSCE Journal of Civil Engineering (ksce-journal-of-civil-engineering). Authors: 
 KTH Royal Institute of Technology - School of Computer Science and Communication (kth-royal-institute-of-technology-school-of-computer-science-and-communication). Authors: Fredrikku Bölske.
 KTH Royal Institute of Technology - School of Computer Science and Communication (Svenska) (kth-royal-institute-of-technology-school-of-computer-science-and-communication-sv). Authors: Fredrikku Bölske.
 Kunstakademie Münster (Deutsch) (kunstakademie-munster). Authors: Malte Frey.
-L'homme &#8211; Revue française d'anthropologie (Français) (l-homme). Authors: Mark Collins. Contributors: Patrick O'Brien.
+L'homme – Revue française d'anthropologie (Français) (l-homme). Authors: Mark Collins. Contributors: Patrick O'Brien.
 L'homme – Revue française d'anthropologie (English) (l-homme-english). Authors: Mark Collins. Contributors: Patrick O'Brien.
 la Nouvelle Revue du Travail (Français) (la-nouvelle-revue-du-travail). Authors: Célia Bouchet.
 La Revue des Sciences de Gestion (Français) (la-revue-des-sciences-de-gestion). Authors: Romain Pierronnet.
@@ -1920,8 +1920,8 @@ Norma Portuguesa 405 (Português) (norma-portuguesa-405). Authors: SBIDM. Univer
 Norois (Français) (norois). Authors: Patrick O'Brien.
 Norsk APA-manual - APA 7th edition (author-date) (norsk-apa-manual). Authors: not named in the file.
 Norsk APA-manual - APA 7th edition (note) (norsk-apa-manual-note). Authors: Brenton M. Wiernik.
-Norsk henvisningsstandard for rettsvitenskapelige tekster &#8211; kortnoter (Norsk - Bokmål | Norsk - Nynorsk) (norsk-henvisningsstandard-for-rettsvitenskapelige-tekster). Authors: Stian Øby Johansen. Contributors: Hans Gunnar Slokvik Lian.
-Norsk henvisningsstandard for rettsvitenskapelige tekster &#8211; fullstendig førstenote (Norsk - Bokmål | Norsk - Nynorsk) (norsk-henvisningsstandard-for-rettsvitenskapelige-tekster-full-firstnote). Authors: Stian Øby Johansen. Contributors: Hans Gunnar Slokvik Lian.
+Norsk henvisningsstandard for rettsvitenskapelige tekster – kortnoter (Norsk - Bokmål | Norsk - Nynorsk) (norsk-henvisningsstandard-for-rettsvitenskapelige-tekster). Authors: Stian Øby Johansen. Contributors: Hans Gunnar Slokvik Lian.
+Norsk henvisningsstandard for rettsvitenskapelige tekster – fullstendig førstenote (Norsk - Bokmål | Norsk - Nynorsk) (norsk-henvisningsstandard-for-rettsvitenskapelige-tekster-full-firstnote). Authors: Stian Øby Johansen. Contributors: Hans Gunnar Slokvik Lian.
 North Pacific Anadromous Fish Commission Bulletin (north-pacific-anadromous-fish-commission-bulletin). Authors: Brett Johnson.
 Northeastern Naturalist (northeastern-naturalist). Authors: Sebastian Karcher.
 Nottingham Trent University Library (author-date/Harvard) (nottingham-trent-university-library-harvard). Authors: Richard Cross. Contributors: Patrick O'Brien.
@@ -2437,7 +2437,7 @@ Technische Universität Dresden - Kunstgeschichte (note, Deutsch) (technische-un
 Technische Universität Dresden - Linguistik (Deutsch) (technische-universitat-dresden-linguistik). Authors: Simon Meier-Vieracker.
 Technische Universität Dresden - Medienwissenschaft und Neuere Deutsche Literatur (note, Deutsch) (technische-universitat-dresden-medienwissenschaft-und-neuere-deutsche-literatur-note). Authors: Jens Mittelbach.
 Technische Universität Dresden - Wirtschaftswissenschaften (Deutsch) (technische-universitat-dresden-wirtschaftswissenschaften). Authors: Jens Mittelbach.
-Technische Universität Hamburg &#8211; Institut für Smarte Entwicklung und Maschinenelemente (Deutsch) (technische-universitat-hamburg-institut-fur-smarte-entwicklung-und-maschinenelemente). Authors: Felix Förster.
+Technische Universität Hamburg – Institut für Smarte Entwicklung und Maschinenelemente (Deutsch) (technische-universitat-hamburg-institut-fur-smarte-entwicklung-und-maschinenelemente). Authors: Felix Förster.
 Technische Universität München - Controlling (Deutsch) (technische-universitat-munchen-controlling). Authors: Tom Raley.
 Technische Universität München - Unternehmensführung (Deutsch) (technische-universitat-munchen-unternehmensfuhrung). Authors: Tom Raley.
 Technische Universität Wien (dissertation) (Deutsch) (technische-universitat-wien). Authors: Gabriele Schachinger.
@@ -2832,7 +2832,7 @@ Xenotransplantation (xenotransplantation). Authors: Sebastian Karcher. Contribut
 Yeast (yeast). Authors: Julian Onions.
 Yozgat Bozok Üniversitesi - Fen Bilimleri Enstitüsü (Türkçe) (yozgat-bozok-universitesi-fen-bilimleri-enstitusu). Authors: Sebastian Karcher. Contributors: burak izgi.
 Zastosowania Komputerów w Elektrotechnice (zastosowania-komputerow-w-elektrotechnice). Authors: Mateusz Pacek. Contributors: Michael Berkowitz.
-ZDfm &#8211; Zeitschrift für Diversitätsforschung und -management (Deutsch - Österreich) (zdfm-zeitschrift-fur-diversitatsforschung-und-management). Authors: Patrick O'Brien, PhD.
+ZDfm – Zeitschrift für Diversitätsforschung und -management (Deutsch - Österreich) (zdfm-zeitschrift-fur-diversitatsforschung-und-management). Authors: Patrick O'Brien, PhD.
 Zdravniški Vestnik (Slovenian Medical Journal) (zdravniski-vestnik). Authors: Charles Parnot.
 Zeitgeschichte (Deutsch) (zeitgeschichte). Authors: Gunnar Mertz.
 Zeithistorische Forschungen/Studies in Contemporary History (zeithistorische-forschungen). Authors: Jan-Holger Kirsch. Contributors: Moritz Mähr.
