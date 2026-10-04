@@ -202,6 +202,13 @@ describe("a screening job's papers", () => {
     // Taking it out of the included papers has none either: its undo would save it again, over what its rating is by then.
     expect((await answer("W3", "q1", false)).undo).toBeUndefined();
 
+    // W1 stays included without its second answer, so that change has an undo. Once its first answer is
+    // unclear it's out, and putting the second back would bring it in and save it again: refused.
+    const second = await answer("W1", "q2", false);
+    expect(second.undo).toBeDefined();
+    expect(await answer("W1", "q1", null)).toEqual({ outcome: "unclear" });
+    await expect(t.withIdentity({ subject: "owner" }).mutation(api.screening.papers.answer, second.undo!.args)).rejects.toThrow(/would move the paper/);
+
     // W5's second answer is changed on the screening after the job counted it, so the job's record and
     // the screening's differ. One step can't put both back.
     const screeningId = (await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))!.screeningId;

@@ -156,6 +156,9 @@ export const answerAction = defineUserMutation({
     const [wasQualified, wasExcluded] = [(result.counted?.qualified ?? result.qualified) === true, (result.counted?.outcome ?? result.outcome) === "excluded"];
     const shelves = (!job.unsaved && wasQualified !== scored.qualified)
       || (job.prune === true && job.set?.kind === "collection" && (wasQualified !== scored.qualified || wasExcluded !== (outcome === "excluded")));
+    // An undo that would itself move the paper is refused, which takes back everything above:
+    // the paper's place changed after the answer did, and saving it again would write over its rating.
+    if (expect && shelves) throw createError("CONFLICT", "Putting this answer back would move the paper in or out of what the screening saves, so it was left as it is.");
     const changed = kept && left && (kept.answer !== left.answer || kept.setBy !== left.setBy || kept.updatedAt !== left.updatedAt);
     const undo = changed && agreed && !shelves && recorded?.answer === kept.answer && recorded.setBy === kept.setBy && recorded.updatedAt === kept.updatedAt
       ? { undo: { path: "screening/papers:answer" as const, args: { jobId, paperId, questionKey, answer: { asOf: screening.version }, expect: { answer: left.answer, at: left.updatedAt } } } }
